@@ -68,6 +68,8 @@ Las pestañas mensuales contienen totales diarios. No permiten reconstruir clien
 
 La pestaña `CREDITOS` sí contiene información adicional por operación, como plataforma, IMEI, costo, cuota inicial, saldo pendiente, utilidad y notas. Esa información se conservará en una tabla histórica separada.
 
+La auditoría detallada de esas pestañas encontró 836 líneas: 831 activas con fecha, 3 marcadas como anuladas y 2 sin fecha completa. El total diario consolidado reporta 835 créditos, por lo que ambos niveles no concilian exactamente por tienda. Se conservarán por separado, con su estado y observación de calidad, sin forzar una coincidencia artificial.
+
 ## 6. Modelo de datos
 
 ### 6.1 Resumen diario
@@ -96,6 +98,7 @@ Se creará `creditos_historicos` para conservar el detalle disponible en las pes
 La tabla tendrá una llave estable basada en archivo y fila de origen, además de:
 
 - tienda y fecha;
+- estado de origen (`activo` o `anulado`);
 - plataforma financiera;
 - cantidad;
 - IMEI;
@@ -104,9 +107,12 @@ La tabla tendrá una llave estable basada en archivo y fila de origen, además d
 - saldo pendiente;
 - utilidad;
 - notas;
+- estado y detalle de calidad;
 - metadatos de origen e importación.
 
 Esta tabla no se conectará con inventario, unidades, clientes ni conciliación porque las hojas no contienen toda la información necesaria para hacerlo de forma fiable.
+
+La fecha podrá ser nula únicamente para conservar las dos líneas que carecen de día o mes completo. Esas líneas quedarán marcadas como `revisar` y no participarán en indicadores por periodo.
 
 ## 7. Seguridad
 
@@ -159,6 +165,7 @@ La implementación se considerará correcta cuando:
 
 - existan exactamente 1.949 registros diarios para las 11 tiendas;
 - la suma de créditos sea 835;
+- existan 836 líneas de detalle de crédito: 831 activas con fecha, 3 anuladas y 2 sin fecha completa;
 - los totales financieros coincidan con la auditoría;
 - no existan duplicados por tienda y fecha;
 - las tres inconsistencias estén señaladas;
@@ -177,4 +184,3 @@ Cuando se defina la fecha del inventario inicial:
 3. se cargará el inventario inicial por tienda;
 4. se fijará la fecha de inicio operativo;
 5. a partir de ese día, las ventas reales se registrarán transaccionalmente en el ERP.
-

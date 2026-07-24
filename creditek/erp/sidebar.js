@@ -302,12 +302,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       `;
     }).join('');
 
-    // Nota: en gerencia/auditoría el selector de tienda es informativo — guarda la
-    // preferencia en localStorage pero no reescribe los filtros propios de cada
-    // pantalla (cada una conserva su propio filtro de tienda, ya funcional).
+    // Gerencia y auditoría comparten una tienda activa entre pantallas. Cada
+    // módulo decide cómo aplicar el contexto escuchando creditek:tienda-cambiada.
     const tiendaBloque = esCentral
       ? `<div class="tienda-selector">
-          <select id="sidebarTiendaSel" title="Preferencia de tienda (no filtra automáticamente cada pantalla)">
+          <select id="sidebarTiendaSel" title="Filtrar la pantalla por tienda">
             <option value="">Todas las tiendas</option>
             ${tiendas.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('')}
           </select>
@@ -361,6 +360,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (guardada) selTienda.value = guardada;
       selTienda.addEventListener('change', () => {
         localStorage.setItem('creditek_sidebar_tienda', selTienda.value);
+        window.dispatchEvent(new CustomEvent('creditek:tienda-cambiada', {
+          detail: { tiendaCodigo: selTienda.value },
+        }));
       });
     }
   }

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="sidebar.js"></script>
+<script src="inventario-export.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -54,8 +55,11 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .nav-user button:hover { background: #EAEAEC; }
 
 .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
-.page-top { margin-bottom: 20px; }
+.page-top { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .page-top h1 { font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.export-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-export { border: 1px solid var(--border); background: var(--surface); color: var(--azul); border-radius: 999px; padding: 9px 14px; font: 700 12.5px 'DM Sans', sans-serif; cursor: pointer; }
+.btn-export:hover { border-color: var(--turquesa); }
 
 .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
 .resumen-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
@@ -129,7 +133,13 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   <div class="main-content">
 
   <div class="page">
-    <div class="page-top"><h1>Inventario en vivo</h1></div>
+    <div class="page-top">
+      <h1>Inventario en vivo</h1>
+      <div class="export-actions">
+        <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
+        <button class="btn-export" id="btnExportarConteo">Descargar conteo ciego</button>
+      </div>
+    </div>
 
     <div class="resumen" id="resumenCards"></div>
 
@@ -194,6 +204,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const inventarioExport = window.CreditekInventarioExport;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -273,6 +284,8 @@ function initPagina() {
   document.getElementById('chkAgotados').addEventListener('change', renderAccesorios);
 
   document.getElementById('btnCerrarHistorial').addEventListener('click', () => document.getElementById('modalHistorial').classList.remove('show'));
+  document.getElementById('btnExportarInventario').addEventListener('click', () => descargarInventario(false));
+  document.getElementById('btnExportarConteo').addEventListener('click', () => descargarInventario(true));
 
   cargarTodo();
 }
@@ -366,8 +379,9 @@ function renderCelulares() {
   const producto = document.getElementById('filtroProductoCel').value;
   const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
 
+  const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
   const filtradas = unidadesCache.filter(u => {
-    if (tienda && u.tienda_actual !== tienda) return false;
+    if (tiendaPermitida && u.tienda_actual !== tiendaPermitida) return false;
     if (estado && u.estado !== estado) return false;
     if (producto && u.producto_id !== producto) return false;
     if (imei && !(u.imei || '').toLowerCase().includes(imei)) return false;
@@ -397,8 +411,9 @@ function renderAccesorios() {
   const categoria = document.getElementById('filtroCategoriaAcc').value;
   const soloAgotados = document.getElementById('chkAgotados').checked;
 
+  const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
   const filtrados = stockCache.filter(r => {
-    if (tienda && r.tienda_codigo !== tienda) return false;
+    if (tiendaPermitida && r.tienda_codigo !== tiendaPermitida) return false;
     if (categoria && r.productos?.categoria !== categoria) return false;
     if (soloAgotados && r.cantidad > 0) return false;
     return true;
@@ -439,6 +454,48 @@ async function abrirHistorial(unidadId) {
       <div class="fecha">${new Date(m.created_at).toLocaleString('es-CO')}</div>
     </div>
   `).join('');
+}
+
+function datosExportables() {
+  if (tabActual === 'celulares') {
+    const tienda = esCentral() ? document.getElementById('filtroTiendaCel').value : currentPerfil.tienda_codigo;
+    const estado = document.getElementById('filtroEstadoCel').value;
+    const producto = document.getElementById('filtroProductoCel').value;
+    const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
+    return unidadesCache.filter(unidad => {
+      if (tienda && unidad.tienda_actual !== tienda) return false;
+      if (estado && unidad.estado !== estado) return false;
+      if (producto && unidad.producto_id !== producto) return false;
+      if (imei && !(unidad.imei || '').toLowerCase().includes(imei)) return false;
+      return true;
+    });
+  }
+  const tienda = esCentral() ? document.getElementById('filtroTiendaAcc').value : currentPerfil.tienda_codigo;
+  const categoria = document.getElementById('filtroCategoriaAcc').value;
+  const soloAgotados = document.getElementById('chkAgotados').checked;
+  return stockCache.filter(registro => {
+    if (tienda && registro.tienda_codigo !== tienda) return false;
+    if (categoria && registro.productos?.categoria !== categoria) return false;
+    if (soloAgotados && Number(registro.cantidad || 0) > 0) return false;
+    return true;
+  });
+}
+
+function descargarInventario(conteoCiego) {
+  const corte = inventarioExport.fechaCorte();
+  const filas = datosExportables();
+  const contenido = tabActual === 'celulares'
+    ? inventarioExport.exportarCelulares({ unidades: filas, esCentral: esCentral(), conteoCiego, corte })
+    : inventarioExport.exportarAccesorios({ stock: filas, esCentral: esCentral(), conteoCiego, corte });
+  const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8' });
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = `inventario-${tabActual}-${corte.slice(0, 10)}${conteoCiego ? '-ciego' : ''}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  const url = enlace.href;
+  enlace.remove();
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>

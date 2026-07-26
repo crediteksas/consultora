@@ -516,6 +516,22 @@ tr:hover td{background:#F8FAFC}
       <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Elige una o varias zonas</div>
       <div class="zone-grid" id="wiz-zone-grid"></div>
 
+      <!-- FEATURE Agente3 Aliados 23-jul-2026 · botón + panel de multi-check -->
+      <div id="wiz-aliados-wrap" style="position:relative;text-align:center;margin-bottom:10px">
+        <button class="btn-secondary" id="wiz-aliados-btn"
+          style="font-size:12px;padding:7px 14px;border-style:dashed;border-color:#00C4CC;color:#00C4CC"
+          onclick="wizToggleAliados()">🤝 Aliados ▾</button>
+        <div id="wiz-aliados-panel"
+          style="display:none;position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 6px);z-index:10;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 25px -5px rgba(0,0,0,.15);padding:10px;min-width:260px;max-height:340px;overflow-y:auto;text-align:left">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">🤝 Ciudades de aliados</div>
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;font-weight:600;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="wiz-aliados-todas" onchange="wizToggleAllAliados()"> Seleccionar todas
+          </label>
+          <div id="wiz-aliados-list"></div>
+          <div id="wiz-aliados-status" style="font-size:11px;color:var(--text3);padding:6px 4px 2px"></div>
+        </div>
+      </div>
+
       <div id="wiz-search-toggle" style="text-align:center;margin-bottom:10px">
         <button class="btn-secondary" style="font-size:12px;padding:7px 14px" onclick="wizToggleSearch()">+ Buscar otra ciudad o municipio</button>
       </div>
@@ -799,6 +815,149 @@ async function wizSearchCity() {
     resultsDiv.innerHTML = `<div style="font-size:12px;color:#EF4444;padding:6px 0">Error de búsqueda: ${err.message}</div>`;
   }
 }
+
+// ============================================================================
+// FEATURE Aliados · botón "🤝 Aliados" con multi-check
+// Doc: FEATURE_Agente3_Aliados_23jul2026.md
+// Los keys de Meta se resuelven vía la API de Meta Search (mismo endpoint que
+// wizSearchCity) la primera vez que se abre el panel — no se hardcodean para
+// no dejar valores mágicos que puedan quedar desactualizados.
+// ============================================================================
+const CIUDADES_ALIADOS = [
+  'Apartadó', 'Barranquilla', 'Canalete', 'Chigorodó',
+  'El Carmen de Bolívar', 'Guamal', 'Los Córdobas', 'Malambo',
+  'Necoclí', 'San Pedro', 'Soledad', 'Suan'
+];
+let wizAliadoResueltos = {}; // { nombre → {key, region, region_id} }  cache post-fetch
+let wizAliadosCargando = false;
+
+function wizToggleAliados() {
+  const panel = document.getElementById('wiz-aliados-panel');
+  const abierto = panel.style.display === 'block';
+  panel.style.display = abierto ? 'none' : 'block';
+  if (!abierto && Object.keys(wizAliadoResueltos).length === 0) {
+    wizCargarAliados();
+  }
+}
+
+async function wizCargarAliados() {
+  if (wizAliadosCargando) return;
+  wizAliadosCargando = true;
+  const status = document.getElementById('wiz-aliados-status');
+  const lista = document.getElementById('wiz-aliados-list');
+  const token = localStorage.getItem('ck_meta_token');
+  if (!token) {
+    status.innerHTML = '<span style="color:#EF4444">Sin token Meta. Configúralo en el ícono de ajustes.</span>';
+    wizAliadosCargando = false;
+    return;
+  }
+  status.textContent = 'Resolviendo ciudades en Meta…';
+  lista.innerHTML = '';
+
+  await Promise.all(CIUDADES_ALIADOS.map(async (nombre) => {
+    try {
+      const url = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=${encodeURIComponent('["city"]')}&q=${encodeURIComponent(nombre)}&country_code=CO&access_token=${token}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      const cities = (data.data || []).filter(c => c.type === 'city');
+      // Preferir match exacto de nombre. Si hay varios (ej. Barranquilla), tomar el primero.
+      const match = cities.find(c => c.name === nombre) || cities[0];
+      if (match) {
+        wizAliadoResueltos[nombre] = { key: match.key, region: match.region, region_id: String(match.region_id) };
+      }
+    } catch (err) {
+      console.warn(`No se pudo resolver ciudad aliada "${nombre}":`, err);
+    }
+  }));
+
+  const resueltas = Object.keys(wizAliadoResueltos).length;
+  status.textContent = resueltas === CIUDADES_ALIADOS.length
+    ? ''
+    : `⚠ ${CIUDADES_ALIADOS.length - resueltas} ciudad(es) sin resolver — revisa el token/permisos.`;
+  wizAliadosCargando = false;
+  wizRenderAliadosLista();
+}
+
+function wizRenderAliadosLista() {
+  const lista = document.getElementById('wiz-aliados-list');
+  lista.innerHTML = CIUDADES_ALIADOS.map(nombre => {
+    const resuelto = wizAliadoResueltos[nombre];
+    const id = resuelto ? 'aliado_' + resuelto.key : '';
+    const checked = resuelto && wizSelectedZones.has(id);
+    const disabled = resuelto ? '' : 'disabled title="No se pudo resolver en Meta"';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:13px;cursor:${resuelto ? 'pointer' : 'not-allowed'};color:${resuelto ? 'inherit' : 'var(--text3)'}">
+      <input type="checkbox" data-aliado-nombre="${nombre.replace(/"/g, '&quot;')}" ${checked ? 'checked' : ''} ${disabled} onchange="wizToggleAliado('${nombre.replace(/'/g, "\\'")}', this.checked)"> ${nombre}
+    </label>`;
+  }).join('');
+  wizSincronizarTodas();
+}
+
+function wizToggleAliado(nombre, marcar) {
+  const resuelto = wizAliadoResueltos[nombre];
+  if (!resuelto) return;
+  const id = 'aliado_' + resuelto.key;
+  if (marcar) {
+    wizCustomZones[id] = { name: nombre, key: resuelto.key, region: resuelto.region, region_id: resuelto.region_id, sub: '🤝 Aliado' };
+    wizSelectedZones.add(id);
+  } else {
+    delete wizCustomZones[id];
+    wizSelectedZones.delete(id);
+  }
+  renderWizZones();
+  wizSincronizarTodas();
+  wizActualizarLabelAliados();
+}
+
+function wizToggleAllAliados() {
+  const chkTodas = document.getElementById('wiz-aliados-todas');
+  const nombresResueltos = CIUDADES_ALIADOS.filter(n => wizAliadoResueltos[n]);
+  if (chkTodas.checked) {
+    nombresResueltos.forEach(n => {
+      const r = wizAliadoResueltos[n];
+      const id = 'aliado_' + r.key;
+      wizCustomZones[id] = { name: n, key: r.key, region: r.region, region_id: r.region_id, sub: '🤝 Aliado' };
+      wizSelectedZones.add(id);
+    });
+  } else {
+    nombresResueltos.forEach(n => {
+      const id = 'aliado_' + wizAliadoResueltos[n].key;
+      delete wizCustomZones[id];
+      wizSelectedZones.delete(id);
+    });
+  }
+  renderWizZones();
+  wizRenderAliadosLista();
+  wizActualizarLabelAliados();
+}
+
+function wizSincronizarTodas() {
+  // "Seleccionar todas" refleja si TODAS las ciudades resueltas están marcadas.
+  const chkTodas = document.getElementById('wiz-aliados-todas');
+  if (!chkTodas) return;
+  const resueltas = CIUDADES_ALIADOS.filter(n => wizAliadoResueltos[n]);
+  if (resueltas.length === 0) { chkTodas.checked = false; return; }
+  chkTodas.checked = resueltas.every(n => wizSelectedZones.has('aliado_' + wizAliadoResueltos[n].key));
+}
+
+function wizActualizarLabelAliados() {
+  const btn = document.getElementById('wiz-aliados-btn');
+  if (!btn) return;
+  const n = [...wizSelectedZones].filter(id => id.startsWith('aliado_')).length;
+  btn.textContent = n === 0 ? '🤝 Aliados ▾' : `🤝 Aliados (${n}) ▾`;
+  btn.style.background = n > 0 ? '#00C4CC' : '';
+  btn.style.color = n > 0 ? 'white' : '#00C4CC';
+}
+
+// Cerrar el panel al clickar fuera
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('wiz-aliados-wrap');
+  const panel = document.getElementById('wiz-aliados-panel');
+  if (!wrap || !panel) return;
+  if (panel.style.display === 'block' && !wrap.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
 
 function wizToggleAB() {
   wizABTest = document.getElementById('wiz-ab-toggle').checked;

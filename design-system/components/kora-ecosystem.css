@@ -108,8 +108,38 @@ html[data-kora-ecosystem="2.0.0"] {
   .currency,
   .valor,
   .monto
-) {
+),
+.kora-product-page table .kora-numeric {
   text-align: right;
+}
+
+.kora-product-page :where(.page-header, .section-header, .dashboard-greeting, .header-content) {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ctk-space-1) var(--ctk-space-2);
+  justify-content: space-between;
+}
+
+.kora-product-page :where(.page-header, .section-header, .dashboard-greeting, .header-content)
+  :where(h1, h2, p) {
+  margin-block: 0;
+}
+
+.kora-product-page :where(.pagination, .paginacion) {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ctk-space-1);
+  justify-content: flex-end;
+}
+
+.kora-product-page :where(.toast, [role="status"]) {
+  box-shadow: var(--ctk-shadow-2);
+}
+
+.kora-product-page :where(.badge, .tag, .chip, .estado, .status) {
+  border: 1px solid var(--ctk-color-border);
 }
 
 .kora-product-page table th {
@@ -159,6 +189,14 @@ html[data-kora-ecosystem="2.0.0"] {
   .kora-product-page :where(.filters, .filtros, .filter-bar, .toolbar, .actions) > * {
     flex: 1 1 100%;
     min-width: 0;
+  }
+
+  .kora-product-page table {
+    min-width: max(100%, 40rem);
+  }
+
+  .kora-product-page :where(.kpi-card, .metric-card, .stat, .resumen-card) {
+    min-height: 6rem;
   }
 
   .kora-product-page :where(.modal, .modal-content, dialog, .drawer, .panel-lateral) {

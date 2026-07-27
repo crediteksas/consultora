@@ -44,13 +44,12 @@
 html.${SHELL_PENDING_CLASS} body > * { visibility: hidden !important; }
 html.${SHELL_PENDING_CLASS} body::before {
   content: ''; visibility: visible; position: fixed; inset: 0; z-index: 2147483646;
-  background: #F5F5F7;
+  background: #F8FAFC;
 }
 html.${SHELL_PENDING_CLASS} body::after {
   content: ''; visibility: visible; position: fixed; z-index: 2147483647;
-  width: 42px; height: 42px; top: calc(50% - 21px); left: calc(50% - 21px);
-  border: 4px solid rgba(11,30,61,.12); border-top-color: #00C4CC;
-  border-radius: 50%; animation: creditek-shell-spin .8s linear infinite;
+  height: 64px; top: 0; left: 256px; right: 0;
+  background: #FFFFFF; border-bottom: 1px solid #E2E8F0;
 }
 html.${SHELL_AUTHENTICATED_CLASS} #loginScreen { display: none !important; }
 html.${SHELL_ERROR_CLASS} body::before,
@@ -68,9 +67,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   margin-top: 18px; padding: 10px 18px; border: 0; border-radius: 10px;
   background: #0B1E3D; color: #fff; cursor: pointer; font: inherit;
 }
-@keyframes creditek-shell-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  html.${SHELL_PENDING_CLASS} body::after { animation: none; }
+@media (max-width: 1023px) {
+  html.${SHELL_PENDING_CLASS} body::after { left: 0; }
 }
     `;
     document.head.appendChild(style);
@@ -438,6 +436,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
             const href = item.action ? '#' : item.href;
             return `<a class="kora-nav-link" href="${escapeHtml(href)}"
               ${active ? 'aria-current="page"' : ''}
+              data-kora-sound="interaction"
               data-kora-action="${escapeHtml(item.action || '')}"
               data-kora-href="${escapeHtml(item.href || '')}"
               data-kora-title="${escapeHtml(item.label)}"
@@ -619,6 +618,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       storeSelector.addEventListener('change', () => localStorage.setItem('creditek_sidebar_tienda', storeSelector.value));
     }
     window.lucide?.createIcons();
+    requestAnimationFrame(() => root.dataset.koraStable = 'true');
   }
 
   function setKoraContext(title, breadcrumbs = ['KORA', title]) {

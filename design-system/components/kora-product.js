@@ -250,6 +250,10 @@
       wrapper.setAttribute('aria-label', `${accessibleName(table, index)}; desplaza horizontalmente para ver todas las columnas`);
       table.parentNode.insertBefore(wrapper, table);
       wrapper.appendChild(table);
+      table.querySelectorAll('tbody td').forEach(cell => {
+        const value = cell.textContent.trim();
+        if (/^-?[$€£]?\s?[\d.,]+%?$/.test(value)) cell.classList.add('kora-numeric');
+      });
     });
   }
 
@@ -313,6 +317,7 @@
       }
     });
     window.lucide?.createIcons?.();
+    requestAnimationFrame(() => document.documentElement.classList.add('kora-visual-ready'));
   }
 
   if (document.readyState === 'loading') {

@@ -4,17 +4,22 @@
 
 html.creditek-shell-pending body > * { visibility: hidden !important; }
 html.creditek-shell-pending body::before,
-html.creditek-shell-pending body::after { visibility: visible; position: fixed; z-index: var(--ctk-z-toast); }
-html.creditek-shell-pending body::before { background: var(--ctk-color-background); content: ""; inset: 0; }
+html.creditek-shell-pending body::after { box-sizing: border-box; content: ""; visibility: visible; position: fixed; z-index: var(--ctk-z-toast); }
+html.creditek-shell-pending body::before {
+  background: var(--ctk-color-neutral-50);
+  border-right: 1px solid var(--ctk-color-border);
+  bottom: 0;
+  left: 0;
+  top: 0;
+  width: var(--ctk-width-sidebar);
+}
 html.creditek-shell-pending body::after {
-  animation: ctk-spin var(--ctk-duration-4) linear infinite;
-  border: var(--ctk-space-0-5) solid var(--ctk-color-primary-100);
-  border-radius: var(--ctk-radius-full);
-  border-top-color: var(--ctk-color-secondary-500);
-  content: "";
-  height: var(--ctk-icon-xl);
-  inset: calc(50% - var(--ctk-icon-md)) auto auto calc(50% - var(--ctk-icon-md));
-  width: var(--ctk-icon-xl);
+  background: var(--ctk-color-surface);
+  border-bottom: 1px solid var(--ctk-color-border);
+  height: var(--ctk-height-topbar);
+  left: var(--ctk-width-sidebar);
+  right: 0;
+  top: 0;
 }
 
 .kora-shell-root {
@@ -156,6 +161,8 @@ html.creditek-shell-pending body::after {
 .kora-drawer-overlay[hidden] { display: none; }
 
 @media (max-width: 63.999rem) {
+  html.creditek-shell-pending body::before { display: none; }
+  html.creditek-shell-pending body::after { left: 0; }
   .kora-shell-root, .kora-shell-root[data-sidebar-collapsed="true"] { display: block !important; }
   .kora-sidebar { box-shadow: var(--ctk-shadow-3); left: 0; position: fixed; transform: translateX(-100%); transition: transform var(--ctk-duration-4) var(--ctk-ease-standard); width: var(--ctk-width-sidebar); }
   .kora-sidebar[data-open="true"] { transform: translateX(0); }
@@ -175,5 +182,4 @@ html.creditek-shell-pending body::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .kora-sidebar, .kora-nav-link, .kora-nav-group__label .lucide-chevron-down { transition-duration: var(--ctk-duration-1); }
-  html.creditek-shell-pending body::after { animation: none; }
 }

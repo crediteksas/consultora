@@ -1,7 +1,7 @@
 {
   "name": "Creditek Design System",
   "version": "1.0.0",
-  "koraProductVersion": "1.0.0",
+  "koraProductVersion": "2.0.0",
   "status": "stable",
   "updatedAt": "2026-07-27",
   "compatibility": "Creditek ERP multipágina",
@@ -13,17 +13,20 @@
     ]
   },
   "productSurface": {
-    "name": "KORA Visual Transformation",
-    "version": "1.0.0",
+    "name": "KORA Ecosystem Design",
+    "version": "2.0.0",
     "status": "stable",
     "css": "components/kora-product.css",
     "javascript": "components/kora-product.js",
+    "ecosystemCss": "components/kora-ecosystem.css",
     "accessibility": [
       "focus-visible",
       "keyboard",
       "responsive-tables",
       "reduced-motion",
-      "dialog-semantics"
+      "dialog-semantics",
+      "audio-opt-in",
+      "stable-first-frame"
     ],
     "compatibility": "KORA multipágina"
   },

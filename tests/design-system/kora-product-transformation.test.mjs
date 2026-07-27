@@ -152,14 +152,15 @@ test('el acceso al portal de agentes identifica el producto KORA y la empresa Cr
   assert.match(brand, /creditek_logo_corregido_alta\.png/);
 });
 
-test('la transformación visual queda versionada como KORA v1.0.0', async () => {
+test('la transformación visual queda versionada como KORA Ecosystem Design v2.0.0', async () => {
   const [manifestSource, changelog] = await Promise.all([
     read('design-system/components/manifest.json'),
     read('design-system/CHANGELOG.md'),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.koraProductVersion, '1.0.0');
+  assert.equal(manifest.koraProductVersion, '2.0.0');
   assert.equal(manifest.productSurface.css, 'components/kora-product.css');
+  assert.equal(manifest.productSurface.ecosystemCss, 'components/kora-ecosystem.css');
   assert.equal(manifest.productSurface.javascript, 'components/kora-product.js');
-  assert.match(changelog, /KORA Visual Transformation v1\.0\.0/);
+  assert.match(changelog, /KORA Ecosystem Design v2\.0\.0/);
 });

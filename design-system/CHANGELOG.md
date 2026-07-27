@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0] - 2026-07-27
+
+KORA Ecosystem Design v2.0.0.
+
+### Added
+
+- KORA Ecosystem Design con navegación clara, command bar y consistencia global.
+- Sonidos UI originales, opcionales y persistentes por usuario.
+- Estados responsive y accesibles para tablas, formularios y paneles.
+
+### Changed
+
+- Paleta mayoritariamente blanca y neutra con azul y turquesa como acentos.
+- Primer frame estable con geometría reservada para Sidebar y Topbar.
+- Superficie compartida actualizada para ERP, agentes y páginas públicas.
+
 Los cambios notables de Creditek Design System se registran en este archivo.
 El proyecto utiliza versionado semántico.
 

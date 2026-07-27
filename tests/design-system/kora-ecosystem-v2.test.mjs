@@ -41,6 +41,10 @@ test('reserva Sidebar y Topbar desde el primer frame sin spinner', async () => {
   assert.match(shell, /html\.creditek-shell-pending body::after[\s\S]*height: var\(--ctk-height-topbar\)/);
   assert.doesNotMatch(shell, /ctk-spin/);
   assert.match(source, /if \(KORA_SHELL_ENABLED\) installKoraAssets\(\)/);
+  assert.ok(
+    source.indexOf("const KORA_LUCIDE_URL") < source.indexOf('if (KORA_SHELL_ENABLED) installKoraAssets()'),
+    'Lucide debe declararse antes de instalar los recursos del shell'
+  );
   assert.match(source, /requestAnimationFrame\(\(\) => root\.dataset\.koraStable = 'true'\)/);
 });
 

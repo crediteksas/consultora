@@ -15,8 +15,6 @@
   const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 
-  if (KORA_SHELL_ENABLED) installKoraAssets();
-
   function installSharedSupabaseClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       throw new Error('Supabase no está disponible');
@@ -199,6 +197,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   const LOGO = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
   const ROL_LABEL = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' };
   const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
+  if (KORA_SHELL_ENABLED) installKoraAssets();
   const KORA_PORTAL_MODULES = [
     { titulo: 'PRINCIPAL', lucide: 'layout-dashboard', items: [
       { label: 'Dashboard', action: 'dashboard', lucide: 'layout-dashboard' },

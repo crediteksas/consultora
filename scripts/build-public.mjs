@@ -8,7 +8,7 @@ const PUBLIC_TREES = [
   'creditek/data',
 ];
 
-const DESIGN_SYSTEM_EXTENSIONS = new Set(['.css', '.mjs', '.json']);
+const DESIGN_SYSTEM_EXTENSIONS = new Set(['.css', '.js', '.mjs', '.json']);
 
 const PUBLIC_FILES = [
   'index.html',

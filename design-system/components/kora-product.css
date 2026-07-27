@@ -1,0 +1,520 @@
+@import url("../styles/index.css");
+
+[data-kora-product] {
+  color-scheme: light;
+}
+
+html[data-kora-product="1.0.0"] {
+  background: var(--ctk-color-background);
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+}
+
+[data-kora-product="1.0.0"] body,
+body.kora-product-page {
+  background: var(--ctk-color-background);
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+  font-size: var(--ctk-font-size-body);
+  line-height: var(--ctk-line-height-body);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.kora-product-page .kora-shell-root {
+  margin: 0;
+  max-width: none;
+  padding: 0;
+  width: 100%;
+}
+
+html.creditek-shell-authenticated .kora-product-page > header:not(.kora-topbar) {
+  display: none;
+}
+
+.kora-product-page *,
+.kora-product-page *::before,
+.kora-product-page *::after {
+  box-sizing: border-box;
+}
+
+.kora-product-page :where(h1, h2, h3, h4) {
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+  letter-spacing: -0.025em;
+  line-height: var(--ctk-line-height-heading);
+}
+
+.kora-product-page :where(h1) {
+  font-size: clamp(var(--ctk-font-size-h2), 3vw, var(--ctk-font-size-display));
+}
+
+.kora-product-page :where(h2) {
+  font-size: var(--ctk-font-size-h3);
+}
+
+.kora-product-page :where(h3) {
+  font-size: var(--ctk-font-size-h4);
+}
+
+.kora-product-page :where(p, small, .subtitulo, .subtitle, .descripcion, .description) {
+  color: var(--ctk-color-text-secondary);
+}
+
+.kora-product-page :where(a) {
+  color: var(--ctk-color-secondary-700);
+  text-underline-offset: var(--ctk-space-0-5);
+}
+
+.kora-product-page :where(
+  .page,
+  .container,
+  .contenido,
+  .content,
+  .main-area,
+  .main-content,
+  main
+) {
+  min-width: 0;
+}
+
+.kora-product-page :where(.page, .container, .contenido, main) {
+  margin-inline: auto;
+  max-width: var(--ctk-width-content);
+}
+
+.kora-product-page :where(
+  .card,
+  .panel,
+  .seccion,
+  .section,
+  .box,
+  .bloque,
+  .widget,
+  .metric-card,
+  .kpi-card,
+  .stat,
+  .resumen-card,
+  .pedido-card,
+  .producto-card
+) {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-lg);
+  box-shadow: var(--ctk-shadow-1);
+}
+
+.kora-product-page :where(
+  .card,
+  .panel,
+  .seccion,
+  .section,
+  .box,
+  .bloque,
+  .widget,
+  .pedido-card
+) {
+  padding: var(--ctk-space-3);
+}
+
+.kora-product-page :where(
+  .cards,
+  .stats,
+  .kpis,
+  .metricas,
+  .resumen-grid,
+  .stats-grid,
+  .cards-grid
+) {
+  display: grid;
+  gap: var(--ctk-space-2);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.kora-product-page :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea
+) {
+  appearance: none;
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-sm);
+  color: var(--ctk-color-text);
+  font: var(--ctk-font-weight-regular) var(--ctk-font-size-body)/var(--ctk-line-height-body) var(--ctk-font-family-ui);
+  min-height: var(--ctk-height-control-md);
+  padding: 0 var(--ctk-space-2);
+  transition:
+    border-color var(--ctk-duration-2) var(--ctk-ease-standard),
+    box-shadow var(--ctk-duration-2) var(--ctk-ease-standard),
+    background var(--ctk-duration-2) var(--ctk-ease-standard);
+}
+
+.kora-product-page :where(textarea) {
+  min-height: calc(var(--ctk-height-control-lg) * 2);
+  padding-block: var(--ctk-space-1);
+  resize: vertical;
+}
+
+.kora-product-page :where(input, select, textarea)::placeholder {
+  color: var(--ctk-color-text-muted);
+}
+
+.kora-product-page :where(input, select, textarea):hover:not(:disabled) {
+  border-color: var(--ctk-color-border-strong);
+}
+
+.kora-product-page :where(label, .label, .field-label, .campo label) {
+  color: var(--ctk-color-text-secondary);
+  font-size: var(--ctk-font-size-label);
+  font-weight: var(--ctk-font-weight-semibold);
+}
+
+.kora-product-page :where(.field, .campo, .form-group, .field-group) {
+  display: grid;
+  gap: var(--ctk-space-1);
+  min-width: 0;
+}
+
+.kora-product-page :where(form, .form-grid, .filtros, .filters, .filter-bar) {
+  gap: var(--ctk-space-2);
+}
+
+.kora-product-page :where(button, .btn, [role="button"]) {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--ctk-radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  font: var(--ctk-font-weight-semibold) var(--ctk-font-size-button)/1 var(--ctk-font-family-ui);
+  gap: var(--ctk-space-1);
+  justify-content: center;
+  min-height: var(--ctk-height-control-md);
+  padding: 0 var(--ctk-space-2);
+  transition:
+    background var(--ctk-duration-2) var(--ctk-ease-standard),
+    border-color var(--ctk-duration-2) var(--ctk-ease-standard),
+    color var(--ctk-duration-2) var(--ctk-ease-standard),
+    transform var(--ctk-duration-1) var(--ctk-ease-standard);
+}
+
+.kora-product-page :where(
+  button,
+  .btn-primary,
+  .btn-primario,
+  .primary,
+  .guardar-btn,
+  .submit-btn,
+  .generar-btn
+):not(.secondary):not(.ghost):not(.danger) {
+  background: var(--ctk-color-primary-900);
+  color: var(--ctk-color-neutral-0);
+}
+
+.kora-product-page :where(button, .btn):hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.kora-product-page :where(button, .btn):active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.kora-product-page :where(
+  .btn-secondary,
+  .secondary,
+  .btn-outline,
+  .ghost,
+  .tab-btn,
+  .vista-btn
+) {
+  background: var(--ctk-color-surface);
+  border-color: var(--ctk-color-border);
+  color: var(--ctk-color-text-secondary);
+}
+
+.kora-product-page :where(
+  .btn-danger,
+  .danger,
+  .eliminar,
+  .delete,
+  .anular
+) {
+  background: var(--ctk-color-danger-50);
+  border-color: var(--ctk-color-danger-100);
+  color: var(--ctk-color-danger-700);
+}
+
+.kora-product-page :where(button, input, select, textarea, a, [tabindex]):focus-visible {
+  border-color: var(--ctk-color-focus);
+  box-shadow: 0 0 0 var(--ctk-space-0-5) var(--ctk-color-secondary-100);
+  outline: none;
+}
+
+.kora-product-page :where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: var(--ctk-opacity-disabled);
+  transform: none;
+}
+
+.kora-product-page :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--ctk-color-secondary-600);
+  min-height: var(--ctk-icon-sm);
+  min-width: var(--ctk-icon-sm);
+}
+
+.kora-product-page .kora-table-region {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-lg);
+  max-width: 100%;
+  overflow: auto;
+  scrollbar-color: var(--ctk-color-neutral-300) transparent;
+}
+
+.kora-product-page .kora-table-region:focus-visible {
+  box-shadow: 0 0 0 var(--ctk-space-0-5) var(--ctk-color-secondary-100);
+}
+
+.kora-product-page table {
+  background: var(--ctk-color-surface);
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+  font-size: var(--ctk-font-size-table);
+  min-width: 100%;
+}
+
+.kora-product-page table :where(th, td) {
+  border-bottom: 1px solid var(--ctk-color-border);
+  height: var(--ctk-height-row);
+  padding: var(--ctk-space-1) var(--ctk-space-2);
+  vertical-align: middle;
+}
+
+.kora-product-page table th {
+  background: var(--ctk-color-surface-subtle);
+  color: var(--ctk-color-text-secondary);
+  font-size: var(--ctk-font-size-small);
+  font-weight: var(--ctk-font-weight-semibold);
+  letter-spacing: var(--ctk-letter-spacing-label);
+  position: sticky;
+  text-align: left;
+  text-transform: uppercase;
+  top: 0;
+  z-index: var(--ctk-z-sticky);
+}
+
+.kora-product-page table tbody tr {
+  transition: background var(--ctk-duration-1) var(--ctk-ease-standard);
+}
+
+.kora-product-page table tbody tr:hover {
+  background: var(--ctk-color-hover);
+}
+
+.kora-product-page table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.kora-product-page :where(.badge, .tag, .chip, .estado, .status) {
+  align-items: center;
+  background: var(--ctk-color-neutral-100);
+  border-radius: var(--ctk-radius-full);
+  color: var(--ctk-color-text-secondary);
+  display: inline-flex;
+  font-size: var(--ctk-font-size-small);
+  font-weight: var(--ctk-font-weight-semibold);
+  gap: var(--ctk-space-0-5);
+  min-height: var(--ctk-height-control-sm);
+  padding: 0 var(--ctk-space-1);
+}
+
+.kora-product-page :where(.success, .ok, .completado, .aprobado) {
+  --kora-state-background: var(--ctk-color-success-50);
+  --kora-state-color: var(--ctk-color-success-700);
+}
+
+.kora-product-page :where(.warning, .pendiente, .alerta) {
+  --kora-state-background: var(--ctk-color-warning-50);
+  --kora-state-color: var(--ctk-color-warning-700);
+}
+
+.kora-product-page :where(.error, .danger, .rechazado, .vencido) {
+  --kora-state-background: var(--ctk-color-danger-50);
+  --kora-state-color: var(--ctk-color-danger-700);
+}
+
+.kora-product-page :where(.alert, .mensaje, .notice, .toast, .empty-state, .loading) {
+  background: var(--kora-state-background, var(--ctk-color-surface-subtle));
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-md);
+  color: var(--kora-state-color, var(--ctk-color-text-secondary));
+  padding: var(--ctk-space-2);
+}
+
+.kora-product-page :where(dialog, .modal, .modal-content, .drawer, .panel-lateral) {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-xl);
+  box-shadow: var(--ctk-shadow-4);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page dialog::backdrop {
+  background: var(--ctk-color-overlay);
+}
+
+.kora-product-page :where(.modal-overlay, .overlay, .backdrop) {
+  background: var(--ctk-color-overlay);
+}
+
+.kora-product-page :where(.tabs, .tab-bar, .tabs-nav) {
+  align-items: center;
+  border-bottom: 1px solid var(--ctk-color-border);
+  display: flex;
+  gap: var(--ctk-space-0-5);
+  overflow-x: auto;
+}
+
+.kora-product-page :where(.tab, .tab-btn, [role="tab"]) {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--ctk-color-text-muted);
+  white-space: nowrap;
+}
+
+.kora-product-page :where(.tab.active, .tab-btn.active, [role="tab"][aria-selected="true"]) {
+  border-bottom-color: var(--ctk-color-secondary-500);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page :where(.login-screen, .login-overlay, .b2b-login-overlay) {
+  background: var(--ctk-color-background);
+}
+
+.kora-product-page #login-screen {
+  background: var(--ctk-color-background);
+}
+
+.kora-product-page #login-screen .login-box {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-xl);
+  box-shadow: var(--ctk-shadow-3);
+  padding: var(--ctk-space-4);
+}
+
+.kora-product-page #login-screen :where(.login-sub, .login-version) {
+  color: var(--ctk-color-text-muted);
+}
+
+.kora-product-page .kora-login-brand {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.kora-product-page .kora-login-brand > span:first-child {
+  color: var(--ctk-color-primary-900);
+  font-family: var(--ctk-font-family-brand);
+  font-size: var(--ctk-font-size-h2);
+  font-weight: var(--ctk-font-weight-bold);
+  letter-spacing: var(--ctk-letter-spacing-label);
+}
+
+.kora-product-page .kora-login-brand > span:nth-child(2) {
+  color: var(--ctk-color-secondary-700);
+  font-size: var(--ctk-font-size-caption);
+  font-weight: var(--ctk-font-weight-semibold);
+}
+
+.kora-product-page :where(.login-box, .login-card, .b2b-login-box, .oscar-login) {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-xl);
+  box-shadow: var(--ctk-shadow-3);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page :where(.header, header:not(.kora-topbar), .topbar) {
+  font-family: var(--ctk-font-family-ui);
+}
+
+.kora-product-page :where(img, svg, canvas, video) {
+  max-width: 100%;
+}
+
+.kora-product-page :where(.grid, .form-grid, .filters-grid) > * {
+  min-width: 0;
+}
+
+@media (max-width: 63.999rem) {
+  .kora-product-page :where(.page, .container, .contenido, main) {
+    padding-inline: var(--ctk-space-2);
+  }
+
+  .kora-product-page :where(.grid, .cards, .stats, .kpis, .form-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kora-product-page :where(.filters, .filtros, .filter-bar) {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .kora-product-page .header-right {
+    flex: 1 1 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .kora-product-page > :where(header, .header) {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--ctk-height-topbar);
+  }
+
+  .kora-product-page :where(.page, .container, .contenido, main) {
+    padding-inline: var(--ctk-space-1);
+  }
+
+  .kora-product-page :where(.grid, .cards, .stats, .kpis, .form-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kora-product-page :where(.card, .panel, .seccion, .section, .box, .bloque) {
+    border-radius: var(--ctk-radius-md);
+    padding: var(--ctk-space-2);
+  }
+
+  .kora-product-page :where(.modal, .modal-content, dialog) {
+    border-radius: var(--ctk-radius-lg);
+    max-height: calc(100dvh - var(--ctk-space-2));
+    max-width: calc(100vw - var(--ctk-space-2));
+    overflow: auto;
+  }
+
+  .kora-product-page :where(button, .btn, input, select) {
+    min-height: var(--ctk-height-control-lg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kora-product-page *,
+  .kora-product-page *::before,
+  .kora-product-page *::after {
+    animation-duration: var(--ctk-duration-1);
+    scroll-behavior: auto;
+    transition-duration: var(--ctk-duration-1);
+  }
+}

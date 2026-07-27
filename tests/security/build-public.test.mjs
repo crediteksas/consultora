@@ -26,6 +26,7 @@ test('build keeps required public applications and excludes backend source', asy
     'creditek/legal/index.html',
     'config/production-endpoints.js',
     'config/kora-environment.js',
+    'design-system/components/kora-product.js',
   ];
 
   for (const relative of required) {

@@ -113,6 +113,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   function waitForPageReady(appEl) {
+    if (appEl.dataset?.koraMounted === 'true') return Promise.resolve(true);
     if (appEl.classList.contains('show')) return Promise.resolve(true);
     if (document.querySelector?.('.sin-perfil-screen.show')) return Promise.resolve(true);
 
@@ -225,7 +226,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   function paginaActual() {
     const partes = location.pathname.split('/');
-    return partes[partes.length - 1] || 'app.html';
+    const pagina = partes[partes.length - 1] || 'app.html';
+    return pagina.includes('.') ? pagina : `${pagina}.html`;
   }
 
   function injectStyles() {
@@ -641,6 +643,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       );
 
       if (KORA_SHELL_ENABLED) {
+        appEl.classList.remove('hidden');
         mountKoraShell({
           root: document.querySelector('[data-kora-shell-root]') || appEl,
           profile: perfil,

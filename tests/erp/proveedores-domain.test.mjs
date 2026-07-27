@@ -120,5 +120,5 @@ test('la interfaz incluye las cuatro tarjetas y captura el vencimiento al compra
   assert.match(proveedoresHtml, /id="card-vencidas"/);
   assert.match(proveedoresHtml, /id="card-pagadas"/);
   assert.match(compraProveedorHtml, /id="fecha-vencimiento"/);
-  assert.match(compraProveedorHtml, /registrar_compra_proveedor_con_vencimiento/);
+  assert.match(compraProveedorHtml, /registrar_compra_proveedor_operativa/);
 });

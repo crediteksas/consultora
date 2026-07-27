@@ -2,13 +2,32 @@
 // Se auto-inyecta dentro de #app cuando hay sesión activa. Cada HTML solo
 // necesita: quitar su <nav class="navbar">, envolver el resto de #app en
 // <div class="main-content">, y agregar <script src="sidebar.js"></script>.
-// No depende del script propio de cada página: usa su propio cliente de
-// Supabase y lee la sesión ya guardada en localStorage por el login de la página.
+// Centraliza el cliente Supabase del navegador para que el shell y la página
+// validen exactamente la misma sesión y no compitan durante el arranque.
 (function () {
   const SHELL_PENDING_CLASS = 'creditek-shell-pending';
   const SHELL_AUTHENTICATED_CLASS = 'creditek-shell-authenticated';
   const SHELL_ERROR_CLASS = 'creditek-shell-error';
   const SHELL_READY_TIMEOUT_MS = 8_000;
+  const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+
+  function installSharedSupabaseClient() {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      throw new Error('Supabase no está disponible');
+    }
+    if (window.supabase.__creditekSharedClientInstalled) return;
+
+    const createClient = window.supabase.createClient.bind(window.supabase);
+    let sharedClient = null;
+
+    window.supabase.createClient = function createSharedClient(url, key, options) {
+      if (url !== SUPABASE_URL) return createClient(url, key, options);
+      if (!sharedClient) sharedClient = createClient(url, key, options);
+      return sharedClient;
+    };
+    window.supabase.__creditekSharedClientInstalled = true;
+  }
 
   function installBootCurtain() {
     document.documentElement.classList.add(SHELL_PENDING_CLASS);
@@ -120,9 +139,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   installBootCurtain();
-
-  const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+  installSharedSupabaseClient();
 
   const MODULOS = [
     { titulo: 'TABLERO', icono: '📊', items: [

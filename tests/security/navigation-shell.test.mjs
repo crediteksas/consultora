@@ -140,9 +140,17 @@ function createHarness({
     },
   };
 
+  let clientCreations = 0;
   const context = {
     document,
-    window: { supabase: { createClient: () => client } },
+    window: {
+      supabase: {
+        createClient: () => {
+          clientCreations += 1;
+          return client;
+        },
+      },
+    },
     location: {
       pathname: '/creditek/erp/ventas.html',
       reload() { events.push('reload'); },
@@ -167,6 +175,11 @@ function createHarness({
     styles,
     listeners,
     events,
+    createPageClient: () => context.window.supabase.createClient(
+      'https://jfkmiyvcdfbsbwchyvol.supabase.co',
+      'anon-key',
+    ),
+    getClientCreations: () => clientCreations,
     getBootError: () => bootError,
   };
 }
@@ -180,6 +193,15 @@ test('instala una cortina neutral antes de resolver la sesión', () => {
     harness.styles.find(style => style.id === 'creditekShellBootStyles').textContent,
     /creditek-shell-pending/,
   );
+});
+
+test('el shell y la página reutilizan un único cliente Supabase', async () => {
+  const harness = createHarness();
+
+  harness.createPageClient();
+  await harness.listeners.DOMContentLoaded();
+
+  assert.equal(harness.getClientCreations(), 1);
 });
 
 test('sin sesión retira la cortina y permite mostrar el login real', async () => {

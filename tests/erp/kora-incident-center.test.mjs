@@ -204,6 +204,7 @@ test('la migración crea consecutivo atómico, RLS, historial, comentarios y buc
   assert.match(sql, /create policy[\s\S]*storage\.objects/gi);
   assert.match(sql, /revoke all[\s\S]*from public, anon/gi);
   assert.match(sql, /security definer/gi);
+  assert.match(sql, /grant execute on function public\.kora_incident_can_view\(public\.kora_incidents\)[\s\S]*to authenticated/i);
   assert.match(sql, /raise exception 'Límite de reportes excedido[^']*'/i);
 });
 

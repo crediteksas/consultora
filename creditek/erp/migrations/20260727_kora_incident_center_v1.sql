@@ -1023,6 +1023,8 @@ revoke all on function public.kora_incident_has_permission(text)
   from public, anon;
 grant execute on function public.kora_incident_has_permission(text)
   to authenticated;
+grant execute on function public.kora_incident_can_view(public.kora_incidents)
+  to authenticated;
 revoke all on function public.kora_create_incident(jsonb, uuid)
   from public, anon;
 grant execute on function public.kora_create_incident(jsonb, uuid)

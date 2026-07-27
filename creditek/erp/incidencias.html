@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es" data-kora-version="2.0.1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Incidencias</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="sidebar.js" data-kora-shell="1.0.0"></script>
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <script src="incidencias-app.js" defer></script>
+</head>
+<body data-incident-mode="admin">
+<div id="app">
+  <main class="main-content">
+    <section class="kora-incidents-page">
+      <header><p>Administración</p><h1>Incidencias</h1><p>Seguimiento operativo y técnico de KORA.</p></header>
+      <div class="kora-incidents-kpis" aria-label="Indicadores de incidencias">
+        <article class="kora-incidents-kpi"><span>Nuevas</span><strong data-kpi="new">—</strong></article>
+        <article class="kora-incidents-kpi"><span>Críticas</span><strong data-kpi="critical">—</strong></article>
+        <article class="kora-incidents-kpi"><span>En desarrollo</span><strong data-kpi="development">—</strong></article>
+        <article class="kora-incidents-kpi"><span>Pendientes de validación</span><strong data-kpi="validation">—</strong></article>
+        <article class="kora-incidents-kpi"><span>Cerradas este mes</span><strong data-kpi="closed">—</strong></article>
+        <article class="kora-incidents-kpi"><span>Tiempo promedio</span><strong data-kpi="average">—</strong></article>
+      </div>
+      <form class="kora-incidents-filters" data-incident-filters>
+        <input type="search" data-incident-filter="code" aria-label="Código o título" placeholder="Código o título">
+        <select data-incident-filter="status" aria-label="Estado"><option value="">Todos los estados</option></select>
+        <select data-incident-filter="priority" aria-label="Prioridad"><option value="">Todas las prioridades</option><option>baja</option><option>media</option><option>alta</option><option>critica</option></select>
+        <input data-incident-filter="module" aria-label="Módulo" placeholder="Módulo">
+        <input type="date" data-incident-filter="date" aria-label="Fecha inicial">
+      </form>
+      <section class="kora-incidents-panel">
+        <div class="kora-incidents-table-wrap"><table class="kora-incidents-table"><thead><tr><th>Código</th><th>Fecha</th><th>Título</th><th>Tienda</th><th>Módulo</th><th>Prioridad</th><th>Estado</th><th>Reportado por</th><th>Responsable</th><th>Versión</th><th>Tiempo abierto</th></tr></thead><tbody data-incident-list><tr><td colspan="11">Cargando…</td></tr></tbody></table></div>
+        <div class="kora-incident-detail" data-incident-detail hidden>
+          <div class="kora-incident-detail-grid"><div><h2 data-detail-title></h2><div data-detail-content></div><h3>Historial</h3><ol class="kora-incident-timeline" data-incident-history></ol><h3>Comentarios</h3><div data-incident-comments></div></div>
+          <aside><label>Estado<select data-detail-status></select></label><label>Prioridad<select data-detail-priority><option>baja</option><option>media</option><option>alta</option><option>critica</option></select></label><label>Responsable<input data-detail-assignee></label><label>Resolución<textarea data-detail-resolution></textarea></label><label>Versión corregida<input data-detail-version></label><button type="button" data-detail-save>Guardar cambios</button><button type="button" data-generate-task>Generar tarea técnica</button></aside></div>
+          <dialog data-task-dialog><h2>Generar tarea técnica</h2><textarea class="kora-incident-task" aria-label="Tarea técnica editable"></textarea><button type="button" data-copy-task>Copiar</button><button type="button" data-close-task>Cerrar</button></dialog>
+        </div>
+      </section>
+      <p role="status" data-incident-page-status></p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

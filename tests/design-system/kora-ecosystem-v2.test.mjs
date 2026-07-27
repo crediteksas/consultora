@@ -74,3 +74,11 @@ test('el portal de pedidos usa navegación e iconografía KORA sin emojis de int
   assert.match(product, /Extended_Pictographic/);
   assert.doesNotMatch(product, /lucide@latest|\^1\.27\.0|~1\.27\.0/);
 });
+
+test('la ruta canónica del ERP abre el acceso real sin omitir autenticación', async () => {
+  const entry = await read('creditek/erp/index.html');
+  assert.match(entry, /window\.location\.replace\('\.\/app\.html'\)/);
+  assert.match(entry, /http-equiv="refresh" content="0; url=\.\/app\.html"/);
+  assert.match(entry, /data-kora-brand data-variant="login"/);
+  assert.doesNotMatch(entry, /supabase|password|token|service_role/i);
+});

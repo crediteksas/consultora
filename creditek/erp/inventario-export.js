@@ -58,10 +58,86 @@
     return csv(encabezados, filas);
   }
 
+  function textoSeguro(valor) {
+    const texto = valor === null || valor === undefined ? '' : String(valor);
+    return /^[\t\r ]*[=+\-@]/.test(texto) ? `'${texto}` : texto;
+  }
+
+  function numero(valor) {
+    const convertido = Number(valor);
+    return Number.isFinite(convertido) ? convertido : 0;
+  }
+
+  function filasCelulares(unidades, esCentral) {
+    return (unidades || []).map(unidad => {
+      const costo = numero(esCentral ? unidad.costo_remision : unidad.precio_tienda);
+      return {
+        Tienda: textoSeguro(unidad.tienda_actual),
+        Categoría: textoSeguro(unidad.productos?.categoria || 'Celulares'),
+        Referencia: textoSeguro(unidad.productos?.nombre),
+        Cantidad: 1,
+        Costo: costo,
+        'Costo total': costo,
+      };
+    });
+  }
+
+  function filasAccesorios(stock, esCentral) {
+    return (stock || []).map(registro => {
+      const cantidad = numero(registro.cantidad);
+      const costo = numero(esCentral ? registro.costo_promedio : registro.precio_tienda);
+      return {
+        Tienda: textoSeguro(registro.tienda_codigo),
+        Categoría: textoSeguro(registro.productos?.categoria || 'Accesorios'),
+        'Referencia o producto': textoSeguro(registro.productos?.nombre),
+        Cantidad: cantidad,
+        'Costo promedio unitario': costo,
+        'Costo total': cantidad * costo,
+      };
+    });
+  }
+
+  function crearLibroInventario({ XLSX, tipo, registros, esCentral, corte }) {
+    if (!XLSX?.utils?.json_to_sheet || !XLSX?.utils?.book_new) {
+      throw new Error('La biblioteca de Excel no está disponible.');
+    }
+    const filas = tipo === 'celulares'
+      ? filasCelulares(registros, esCentral)
+      : filasAccesorios(registros, esCentral);
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!autofilter'] = { ref: hoja['!ref'] || 'A1:F1' };
+    hoja['!cols'] = [
+      { wch: 18 }, { wch: 18 }, { wch: 32 },
+      { wch: 12 }, { wch: 22 }, { wch: 18 },
+    ];
+    for (let fila = 2; fila <= filas.length + 1; fila += 1) {
+      for (const columna of ['E', 'F']) {
+        const celda = hoja[`${columna}${fila}`];
+        if (celda) celda.z = '$#,##0.00';
+      }
+    }
+
+    const resumen = XLSX.utils.aoa_to_sheet([
+      ['Inventario KORA'],
+      ['Fecha y hora de corte', corte],
+      ['Tipo', tipo === 'celulares' ? 'Celulares' : 'Accesorios'],
+      ['Registros', filas.length],
+    ]);
+    resumen['!cols'] = [{ wch: 24 }, { wch: 24 }];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
+    XLSX.utils.book_append_sheet(libro, resumen, 'Resumen');
+    return libro;
+  }
+
   global.CreditekInventarioExport = Object.freeze({
     protegerCelda,
     fechaCorte,
     exportarCelulares,
     exportarAccesorios,
+    filasCelulares,
+    filasAccesorios,
+    crearLibroInventario,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

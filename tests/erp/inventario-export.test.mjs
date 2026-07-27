@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -10,6 +11,8 @@ const html = await readFile(path.join(root, 'creditek/erp/inventario.html'), 'ut
 const context = { window: {}, Intl, Date };
 vm.runInNewContext(source, context);
 const exportador = context.window.CreditekInventarioExport;
+const require = createRequire(import.meta.url);
+const XLSX = require('xlsx');
 
 const unidad = {
   tienda_actual: 'TIENDA-PRUEBA',
@@ -61,4 +64,74 @@ test('la tienda no solicita costos internos en las consultas de inventario', () 
   assert.match(html, /if \(esCentral\(\)\) columnas\.splice\(4, 0, 'costo_promedio'\)/);
   assert.match(html, /select\('tipo, nota, created_at'\)/);
   assert.match(html, /No fue posible cargar el inventario/);
+});
+
+test('el Excel de accesorios contiene columnas separadas y valores numéricos', () => {
+  const filas = exportador.filasAccesorios([{
+    tienda_codigo: 'TIENDA-PRUEBA',
+    cantidad: '8',
+    precio_tienda: '7011',
+    costo_promedio: '9120',
+    productos: { nombre: 'Silicona', categoria: 'Accesorios' },
+  }], false);
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(filas)),
+    [{
+      Tienda: 'TIENDA-PRUEBA',
+      Categoría: 'Accesorios',
+      'Referencia o producto': 'Silicona',
+      Cantidad: 8,
+      'Costo promedio unitario': 7011,
+      'Costo total': 56088,
+    }]
+  );
+  assert.equal(typeof filas[0].Cantidad, 'number');
+  assert.equal(typeof filas[0]['Costo promedio unitario'], 'number');
+});
+
+test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
+  const filas = exportador.filasCelulares([{
+    tienda_actual: 'TIENDA-PRUEBA',
+    precio_tienda: '500000',
+    costo_remision: '450000',
+    productos: { nombre: 'Equipo A', categoria: 'Celulares' },
+  }], false);
+
+  assert.deepEqual(Object.keys(filas[0]), [
+    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'Costo', 'Costo total',
+  ]);
+  assert.equal(filas[0].Cantidad, 1);
+  assert.equal(filas[0].Costo, 500000);
+});
+
+test('genera un libro con filtros, anchos y formato monetario sin mutar datos', () => {
+  const stock = [{
+    tienda_codigo: 'TIENDA-PRUEBA',
+    cantidad: 8,
+    precio_tienda: 7011,
+    productos: { nombre: 'Silicona', categoria: 'Accesorios' },
+  }];
+  const original = structuredClone(stock);
+  const libro = exportador.crearLibroInventario({
+    XLSX, tipo: 'accesorios', registros: stock, esCentral: false,
+    corte: '2026-07-27 15:00:00',
+  });
+  const hoja = libro.Sheets.Inventario;
+
+  assert.deepEqual(stock, original);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(hoja['!autofilter'])),
+    { ref: hoja['!ref'] }
+  );
+  assert.ok(hoja['!cols'].every(columna => columna.wch >= 10));
+  assert.equal(hoja.E2.t, 'n');
+  assert.equal(hoja.E2.z, '$#,##0.00');
+});
+
+test('la pantalla descarga inventario normal como xlsx', () => {
+  assert.match(html, /xlsx@0\.18\.5/);
+  assert.match(html, /crearLibroInventario/);
+  assert.match(html, /XLSX\.writeFile/);
+  assert.match(html, /\.xlsx/);
 });

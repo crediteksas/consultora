@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="sidebar.js" data-kora-shell="1.0.0"></script>
 <script src="inventario-export.js"></script>
 <style>
@@ -513,6 +514,17 @@ function datosExportables() {
 function descargarInventario(conteoCiego) {
   const corte = inventarioExport.fechaCorte();
   const filas = datosExportables();
+  if (!conteoCiego) {
+    const libro = inventarioExport.crearLibroInventario({
+      XLSX,
+      tipo: tabActual,
+      registros: filas,
+      esCentral: esCentral(),
+      corte,
+    });
+    XLSX.writeFile(libro, `inventario-${tabActual}-${corte.slice(0, 10)}.xlsx`);
+    return;
+  }
   const contenido = tabActual === 'celulares'
     ? inventarioExport.exportarCelulares({ unidades: filas, esCentral: esCentral(), conteoCiego, corte })
     : inventarioExport.exportarAccesorios({ stock: filas, esCentral: esCentral(), conteoCiego, corte });

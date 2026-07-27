@@ -114,6 +114,12 @@
         <span id="soporte-status" class="text-xs text-gray-500 mt-1 block"></span>
       </label>
 
+      <label class="block">
+        <span class="text-sm font-medium text-gray-700">Fecha de vencimiento <span class="text-red-500">*</span></span>
+        <input id="fecha-vencimiento" type="date" required
+               class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </label>
+
       <label class="block md:col-span-2">
         <span class="text-sm font-medium text-gray-700">Nota <span class="text-xs text-gray-500">(observaciones internas, opcional)</span></span>
         <textarea id="nota-factura" rows="2" maxlength="500"
@@ -546,11 +552,13 @@ async function guardarCompra() {
     const provId = document.getElementById('sel-proveedor').value;
     const numero = document.getElementById('num-factura').value.trim();
     const fecha = document.getElementById('fecha-factura').value;
+    const fechaVencimiento = document.getElementById('fecha-vencimiento').value;
     const nota = document.getElementById('nota-factura').value.trim();
 
     if (!provId) throw new Error('Selecciona un proveedor');
     if (!numero) throw new Error('El número de factura es requerido');
     if (!fecha) throw new Error('La fecha de la factura es requerida');
+    if (!fechaVencimiento) throw new Error('La fecha de vencimiento es requerida');
     if (items.length === 0) throw new Error('Agrega al menos un producto');
 
     const payload = [];
@@ -581,10 +589,11 @@ async function guardarCompra() {
     }
 
     // RPC
-    const { data, error } = await SB.rpc('registrar_compra_proveedor', {
+    const { data, error } = await SB.rpc('registrar_compra_proveedor_con_vencimiento', {
       p_proveedor_id: provId,
       p_numero_factura: numero,
       p_fecha: fecha,
+      p_fecha_vencimiento: fechaVencimiento,
       p_items: payload,
       p_soporte_path: soportePath,
       p_nota: nota || null
@@ -611,6 +620,7 @@ function limpiarFormulario() {
   document.getElementById('sel-proveedor').value = '';
   document.getElementById('num-factura').value = '';
   document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fecha-vencimiento').value = '';
   document.getElementById('nota-factura').value = '';
   document.getElementById('file-soporte').value = '';
   document.getElementById('soporte-status').textContent = '';

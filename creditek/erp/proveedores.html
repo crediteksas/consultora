@@ -59,6 +59,29 @@
   <!-- Toast de notificación -->
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
+  <section aria-label="Resumen de cartera" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <article id="card-total-por-pagar" class="bg-white rounded-lg shadow-sm border-l-4 border-blue-600 p-4">
+      <p class="text-sm font-medium text-gray-600">Total por pagar</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-gray-900">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas pendientes</p>
+    </article>
+    <article id="card-por-vencer" class="bg-white rounded-lg shadow-sm border-l-4 border-yellow-400 p-4">
+      <p class="text-sm font-medium text-gray-600">Por vencer</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-yellow-700">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
+    </article>
+    <article id="card-vencidas" class="bg-white rounded-lg shadow-sm border-l-4 border-red-500 p-4">
+      <p class="text-sm font-medium text-gray-600">Vencidas</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-red-700">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
+    </article>
+    <article id="card-pagadas" class="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4">
+      <p class="text-sm font-medium text-gray-600">Pagadas</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-green-700">0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">$ 0 en facturas</p>
+    </article>
+  </section>
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- ---------- COLUMNA 1: FORMULARIO ---------- -->
@@ -335,6 +358,7 @@ async function verificarAuth() {
 // ============================================================
 let proveedores = [];
 let saldoPorProveedor = {};   // id -> saldo pendiente agregado
+let facturas = [];
 let proveedorSeleccionado = null;
 let detalleFacturaActual = null;
 let pagoIdempotencyKey = null;
@@ -353,10 +377,11 @@ async function cargarProveedores() {
   // Saldos pendientes agregados
   const { data: fact, error: fErr } = await SB
     .from('facturas_proveedor')
-    .select('proveedor_id, saldo');
+    .select('id, proveedor_id, total, saldo, fecha_vencimiento');
   if (fErr) { toast('Error cargando facturas: ' + fErr.message, 'error'); return; }
+  facturas = fact || [];
   saldoPorProveedor = {};
-  (fact || []).forEach(f => {
+  facturas.forEach(f => {
     saldoPorProveedor[f.proveedor_id] = (saldoPorProveedor[f.proveedor_id] || 0) + Number(f.saldo || 0);
   });
 
@@ -383,6 +408,7 @@ function render() {
 
   document.getElementById('contador').textContent =
     filtrados.length + ' de ' + proveedores.length + ' proveedores';
+  renderResumen(filtrados);
 
   if (filtrados.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">Sin resultados</td></tr>';
@@ -414,6 +440,43 @@ function render() {
   }).join('');
 }
 
+function renderResumen(proveedoresFiltrados) {
+  const resumen = proveedoresDomain.resumirCartera({
+    facturas,
+    proveedorIds: proveedoresFiltrados.map(p => p.id),
+    hoy: proveedoresDomain.fechaCalendarioLocal(new Date()),
+  });
+  const actualizar = (id, valor, detalle) => {
+    const tarjeta = document.getElementById(id);
+    tarjeta.querySelector('[data-valor]').textContent = valor;
+    tarjeta.querySelector('[data-detalle]').textContent = detalle;
+  };
+  actualizar(
+    'card-total-por-pagar',
+    money(resumen.totalPorPagar.valor),
+    `${resumen.totalPorPagar.cantidad} facturas pendientes`
+  );
+  actualizar(
+    'card-por-vencer',
+    money(resumen.porVencer.valor),
+    `${resumen.porVencer.cantidad} facturas`
+  );
+  actualizar(
+    'card-vencidas',
+    money(resumen.vencidas.valor),
+    `${resumen.vencidas.cantidad} facturas`
+  );
+  actualizar(
+    'card-pagadas',
+    String(resumen.pagadas.cantidad),
+    `${money(resumen.pagadas.valor)} en facturas`
+  );
+  if (resumen.sinVencimiento.cantidad > 0) {
+    document.getElementById('card-total-por-pagar').querySelector('[data-detalle]').textContent +=
+      ` · ${resumen.sinVencimiento.cantidad} sin vencimiento`;
+  }
+}
+
 // ============================================================
 // FACTURAS DEL PROVEEDOR SELECCIONADO
 // ============================================================
@@ -427,7 +490,7 @@ async function mostrarFacturas(provId) {
 
   const { data, error } = await SB
     .from('facturas_proveedor')
-    .select('id, numero, fecha, total, saldo, nota')
+    .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota')
     .eq('proveedor_id', provId)
     .order('fecha', { ascending: false });
 

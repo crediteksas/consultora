@@ -61,10 +61,54 @@
     return `${anio}-${mes}-${dia}`;
   }
 
+  function resumirCartera({ facturas, proveedorIds, hoy }) {
+    const idsPermitidos = new Set(proveedorIds || []);
+    const unicas = new Map();
+    (facturas || []).forEach(factura => {
+      if (factura?.id != null && idsPermitidos.has(factura.proveedor_id)) {
+        unicas.set(factura.id, factura);
+      }
+    });
+
+    const resumen = {
+      totalPorPagar: { cantidad: 0, valor: 0 },
+      porVencer: { cantidad: 0, valor: 0 },
+      vencidas: { cantidad: 0, valor: 0 },
+      pagadas: { cantidad: 0, valor: 0 },
+      sinVencimiento: { cantidad: 0, valor: 0 },
+    };
+
+    unicas.forEach(factura => {
+      const saldo = numero(factura.saldo);
+      const total = numero(factura.total);
+      if (saldo <= 0) {
+        resumen.pagadas.cantidad += 1;
+        resumen.pagadas.valor += total;
+        return;
+      }
+
+      resumen.totalPorPagar.cantidad += 1;
+      resumen.totalPorPagar.valor += saldo;
+      if (!factura.fecha_vencimiento) {
+        resumen.sinVencimiento.cantidad += 1;
+        resumen.sinVencimiento.valor += saldo;
+      } else if (factura.fecha_vencimiento < hoy) {
+        resumen.vencidas.cantidad += 1;
+        resumen.vencidas.valor += saldo;
+      } else if (factura.fecha_vencimiento > hoy) {
+        resumen.porVencer.cantidad += 1;
+        resumen.porVencer.valor += saldo;
+      }
+    });
+
+    return resumen;
+  }
+
   global.CreditekProveedoresDomain = Object.freeze({
     normalizarDetalle,
     validarPago,
     normalizarFechaLocal,
     fechaCalendarioLocal,
+    resumirCartera,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

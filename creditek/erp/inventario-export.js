@@ -76,6 +76,7 @@
         Categoría: textoSeguro(unidad.productos?.categoria || 'Celulares'),
         Referencia: textoSeguro(unidad.productos?.nombre),
         Cantidad: 1,
+        IMEI: textoSeguro(unidad.imei),
         Costo: costo,
         'Costo total': costo,
       };
@@ -106,12 +107,18 @@
       : filasAccesorios(registros, esCentral);
     const hoja = XLSX.utils.json_to_sheet(filas);
     hoja['!autofilter'] = { ref: hoja['!ref'] || 'A1:F1' };
-    hoja['!cols'] = [
-      { wch: 18 }, { wch: 18 }, { wch: 32 },
-      { wch: 12 }, { wch: 22 }, { wch: 18 },
-    ];
+    hoja['!cols'] = tipo === 'celulares'
+      ? [
+        { wch: 18 }, { wch: 18 }, { wch: 32 }, { wch: 12 },
+        { wch: 20 }, { wch: 18 }, { wch: 18 },
+      ]
+      : [
+        { wch: 18 }, { wch: 18 }, { wch: 32 },
+        { wch: 12 }, { wch: 22 }, { wch: 18 },
+      ];
+    const columnasMoneda = tipo === 'celulares' ? ['F', 'G'] : ['E', 'F'];
     for (let fila = 2; fila <= filas.length + 1; fila += 1) {
-      for (const columna of ['E', 'F']) {
+      for (const columna of columnasMoneda) {
         const celda = hoja[`${columna}${fila}`];
         if (celda) celda.z = '$#,##0.00';
       }

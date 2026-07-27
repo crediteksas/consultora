@@ -93,15 +93,17 @@ test('el Excel de accesorios contiene columnas separadas y valores numéricos', 
 test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
   const filas = exportador.filasCelulares([{
     tienda_actual: 'TIENDA-PRUEBA',
+    imei: '000000000000001',
     precio_tienda: '500000',
     costo_remision: '450000',
     productos: { nombre: 'Equipo A', categoria: 'Celulares' },
   }], false);
 
   assert.deepEqual(Object.keys(filas[0]), [
-    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'Costo', 'Costo total',
+    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'IMEI', 'Costo', 'Costo total',
   ]);
   assert.equal(filas[0].Cantidad, 1);
+  assert.equal(filas[0].IMEI, '000000000000001');
   assert.equal(filas[0].Costo, 500000);
 });
 

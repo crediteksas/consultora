@@ -15,7 +15,14 @@
     const mapa = Object.fromEntries(partes.map(p => [p.type, p.value]));
     return `${mapa.year}-${mapa.month}-${mapa.day}`;
   };
-  const estado = { filas: [], filtradas: [], comparacion: [], granularidad: 'dia', chart: null };
+  const estado = {
+    filas: [],
+    filtradas: [],
+    comparacion: [],
+    granularidad: 'dia',
+    chart: null,
+    tablasExpandidas: new Set(),
+  };
 
   function toast(mensaje, error = false) {
     const el = document.getElementById('toast');
@@ -116,7 +123,7 @@
     if (!resultado.comparable) { el.textContent = 'Sin datos comparables'; return; }
     const formato = tipo === 'porcentaje' ? `${(resultado.diferencia * 100).toFixed(1)} pp` : money(resultado.diferencia);
     el.textContent = `${formato} · ${resultado.variacion >= 0 ? '+' : ''}${(resultado.variacion * 100).toFixed(1)}%`;
-    el.className = `text-xs mt-2 ${resultado.diferencia >= 0 ? 'text-green-700' : 'text-red-700'}`;
+    el.className = `kpi-delta ${resultado.diferencia >= 0 ? 'text-green-700' : 'text-red-700'}`;
   }
 
   function renderKpis(rangoCmp) {
@@ -152,10 +159,10 @@
       data: {
         labels: grupos.map(g => g.periodo),
         datasets: [
-          { type:'bar', label:'Facturado', data:grupos.map(g => g.facturado), backgroundColor:'#3b82f6' },
-          { type:'bar', label:'Costo real', data:grupos.map(g => g.costo), backgroundColor:'#f97316' },
-          { type:'bar', label:'Utilidad', data:grupos.map(g => g.utilidad), backgroundColor:'#10b981' },
-          { type:'line', label:'Margen %', data:grupos.map(g => g.margen == null ? null : g.margen * 100), borderColor:'#a855f7', yAxisID:'y1' },
+          { type:'bar', label:'Facturado', data:grupos.map(g => g.facturado), backgroundColor:'#0B1E3D', borderRadius:5 },
+          { type:'bar', label:'Costo real', data:grupos.map(g => g.costo), backgroundColor:'#f59e0b', borderRadius:5 },
+          { type:'bar', label:'Utilidad', data:grupos.map(g => g.utilidad), backgroundColor:'#00C4CC', borderRadius:5 },
+          { type:'line', label:'Margen %', data:grupos.map(g => g.margen == null ? null : g.margen * 100), borderColor:'#7459d9', backgroundColor:'#7459d9', borderWidth:2.5, pointRadius:3, tension:.3, yAxisID:'y1' },
         ],
       },
       options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom'}}, scales:{ y:{beginAtZero:true}, y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>`${v}%`}} } },
@@ -165,15 +172,24 @@
   const cabecera = titulo => `<tr class="bg-gray-100 text-left"><th class="px-4 py-2">${titulo}</th><th class="px-4 py-2 text-right">Facturado</th><th class="px-4 py-2 text-right">Costo real</th><th class="px-4 py-2 text-right">Utilidad</th><th class="px-4 py-2 text-right">Margen %</th><th class="px-4 py-2 text-right">Participación</th></tr>`;
   function renderTabla(prefijo, titulo, filas) {
     document.getElementById(`thead-${prefijo}`).innerHTML = cabecera(titulo);
-    document.getElementById(`tbody-${prefijo}`).innerHTML = filas.length ? filas.map(f => `<tr><td class="px-4 py-2">${escapeHtml(f.nombre)}</td><td class="px-4 py-2 text-right font-mono">${money(f.facturado)}</td><td class="px-4 py-2 text-right font-mono">${money(f.costo)}</td><td class="px-4 py-2 text-right font-mono">${money(f.utilidad)}</td><td class="px-4 py-2 text-right">${porcentaje(f.margen)}</td><td class="px-4 py-2 text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
+    const expandidas = estado.tablasExpandidas.has(prefijo);
+    const visibles = expandidas ? filas : filas.slice(0, 5);
+    const boton = document.querySelector(`[data-ver-todas="${prefijo}"]`);
+    boton.textContent = expandidas ? 'Ver top 5' : 'Ver todas';
+    boton.classList.toggle('invisible', filas.length <= 5);
+    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td class="text-right font-mono">${money(f.facturado)}</td><td class="text-right font-mono">${money(f.costo)}</td><td class="text-right font-mono">${money(f.utilidad)}</td><td class="text-right">${porcentaje(f.margen)}</td><td class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
   }
 
   function renderTodo(base, rangoCmp) {
     const resumen = renderKpis(rangoCmp);
     renderChart(base);
-    renderTabla('tienda', 'Tienda', D.agruparDimension(estado.filtradas, 'tienda_codigo'));
-    renderTabla('plataforma', 'Plataforma', D.agruparDimension(estado.filtradas, 'plataforma'));
-    renderTabla('referencia', 'Referencia', D.agruparDimension(estado.filtradas, 'referencia'));
+    const porTienda = D.agruparDimension(estado.filtradas, 'tienda_codigo');
+    const porPlataforma = D.agruparDimension(estado.filtradas, 'plataforma');
+    const porReferencia = D.agruparDimension(estado.filtradas, 'referencia')
+      .sort((a, b) => b.utilidad - a.utilidad);
+    renderTabla('tienda', 'Tienda', porTienda);
+    renderTabla('plataforma', 'Plataforma', porPlataforma);
+    renderTabla('referencia', 'Referencia', porReferencia);
     document.getElementById('resumen-rango').textContent = `${base.desde} a ${base.hasta}`;
     document.getElementById('res-dias').textContent = intFmt.format(D.dias(base.desde, base.hasta));
     document.getElementById('res-tiendas').textContent = intFmt.format(resumen.tiendas);
@@ -218,6 +234,13 @@
   }
 
   function enlazar() {
+    document.getElementById('btn-filtros-avanzados').addEventListener('click', () => {
+      const panel = document.getElementById('panel-filtros-avanzados');
+      const boton = document.getElementById('btn-filtros-avanzados');
+      const abierto = panel.classList.toggle('hidden') === false;
+      boton.classList.toggle('active', abierto);
+      boton.setAttribute('aria-expanded', String(abierto));
+    });
     document.querySelectorAll('[data-rapido]').forEach(btn => btn.addEventListener('click', () => {
       document.querySelectorAll('[data-rapido]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -233,6 +256,16 @@
       if (btn.disabled) return;
       estado.granularidad = btn.dataset.granularidad;
       renderChart(filtros());
+    }));
+    document.querySelectorAll('[data-ver-todas]').forEach(btn => btn.addEventListener('click', () => {
+      const tabla = btn.dataset.verTodas;
+      if (estado.tablasExpandidas.has(tabla)) estado.tablasExpandidas.delete(tabla);
+      else estado.tablasExpandidas.add(tabla);
+      renderTodo(filtros(), D.rangoComparacion(
+        document.getElementById('comparativo').value,
+        document.getElementById('fecha-desde').value,
+        document.getElementById('fecha-hasta').value
+      ));
     }));
     document.getElementById('btn-exportar').addEventListener('click', exportar);
   }

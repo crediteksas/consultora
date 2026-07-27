@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="sidebar.js" data-kora-shell="1.0.0"></script>
 <script src="ventas-utilidad-domain.js"></script>
+<script src="caja-piloto-domain.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -306,6 +307,7 @@ const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ventasUtilidad = window.CreditekVentasUtilidad;
+const ventasPagos = window.CreditekCajaPiloto;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -527,6 +529,21 @@ function avanzarPaso() {
     const inicial = Number(document.getElementById('creditoInicial').value || 0);
     const esperado = Number(document.getElementById('creditoValorEsperado').value || 0);
     if (esperado <= 0) { err.textContent = 'Ingresa el valor esperado de la financiera.'; err.classList.add('show'); return; }
+    const totalVenta = venta.items.reduce(
+      (suma, item) => suma + Number(item.precio_venta || 0) * Number(item.cantidad || 1),
+      0
+    );
+    try {
+      ventasPagos.clasificarVentaCredito({
+        totalVenta,
+        cuotaInicial: inicial,
+        saldoPendiente: esperado,
+      });
+    } catch (error) {
+      err.textContent = error.message;
+      err.classList.add('show');
+      return;
+    }
     venta.credito = {
       financiera: document.getElementById('creditoFinanciera').value,
       cuota_inicial: inicial,

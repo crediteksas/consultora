@@ -86,3 +86,11 @@ test('la pantalla usa el cálculo autoritativo del servidor', async () => {
   assert.match(html, /Saldo por cobrar/);
   assert.match(html, /Salidas explícitas/);
 });
+
+test('ventas concilia total, dinero recibido y saldo por cobrar antes del RPC', async () => {
+  const html = await readFile(path.join(root, 'creditek/erp/ventas.html'), 'utf8');
+
+  assert.match(html, /caja-piloto-domain\.js/);
+  assert.match(html, /clasificarVentaCredito/);
+  assert.match(html, /saldoPendiente:\s*esperado/);
+});

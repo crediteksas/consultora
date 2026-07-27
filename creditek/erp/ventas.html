@@ -211,7 +211,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <div class="tabla-wrap">
       <table>
-        <thead><tr><th>#</th><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Productos</th><th>Total</th><th>Vendedor</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
         <tbody id="tbodyVentas"></tbody>
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando ventas...</div>
@@ -418,7 +418,9 @@ async function cargarVentas() {
   const fecha = document.getElementById('filtroFecha').value;
   const tienda = document.getElementById('filtroTienda').value;
 
-  let q = sb.from('ventas').select('*, clientes(nombre_completo, cedula), vendedor_perfil:vendedor(nombre), venta_items(cantidad, productos(nombre))').order('created_at', { ascending: false });
+  let q = sb.from('ventas')
+    .select('*, clientes(nombre_completo), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(cantidad, precio_venta, unidades(imei), productos(nombre))')
+    .order('created_at', { ascending: false });
   if (fecha) q = q.eq('fecha', fecha);
   if (tienda) q = q.eq('tienda_codigo', tienda);
 
@@ -437,21 +439,32 @@ function renderTablaVentas() {
   if (!filtradas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay ventas con estos filtros.'; return; }
   empty.style.display = 'none';
 
-  tbody.innerHTML = filtradas.map(v => {
-    const hora = v.created_at ? new Date(v.created_at).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : '—';
-    const cliente = v.clientes ? `${escapeHtml(v.clientes.nombre_completo)} (CC ${escapeHtml(v.clientes.cedula)})` : 'Cliente general';
-    const productos = (v.venta_items || []).map(it => `${escapeHtml(it.productos?.nombre || '—')}${it.cantidad > 1 ? ' ×' + it.cantidad : ''}`).join(', ');
-    return `
+  tbody.innerHTML = filtradas.flatMap(v => {
+    const fecha = v.fecha
+      ? new Date(`${v.fecha}T12:00:00`).toLocaleDateString('es-CO')
+      : '—';
+    const cliente = escapeHtml(v.clientes?.nombre_completo || 'Cliente general');
+    const tienda = escapeHtml(v.origen?.nombre || v.tienda_codigo || '—');
+    const credito = Array.isArray(v.creditos) ? v.creditos[0] : v.creditos;
+    const plataforma = escapeHtml(v.tipo === 'credito' ? (credito?.financiera || '—') : 'Contado');
+    const items = v.venta_items?.length ? v.venta_items : [null];
+    return items.map(it => {
+      const valorLinea = it
+        ? Number(it.precio_venta || 0) * Number(it.cantidad || 0)
+        : Number(v.total || 0);
+      return `
       <tr>
-        <td>#${v.consecutivo}</td>
-        <td>${hora}</td>
+        <td>${fecha}</td>
+        <td>${tienda}</td>
         <td>${cliente}</td>
-        <td><span class="tag ${v.tipo}">${v.tipo === 'credito' ? 'Crédito' : 'Contado'}</span></td>
-        <td>${productos}</td>
-        <td>${fmtCOP(v.total)}</td>
+        <td>${escapeHtml(it?.productos?.nombre || '—')}${Number(it?.cantidad || 0) > 1 ? ` ×${Number(it.cantidad)}` : ''}</td>
+        <td>${escapeHtml(it?.unidades?.imei || '—')}</td>
+        <td>${plataforma}</td>
+        <td>${fmtCOP(valorLinea)}</td>
         <td>${escapeHtml(v.vendedor_perfil?.nombre || '—')}</td>
       </tr>
-    `;
+      `;
+    });
   }).join('');
 }
 

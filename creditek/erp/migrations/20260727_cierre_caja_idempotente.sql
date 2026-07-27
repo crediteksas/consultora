@@ -18,9 +18,6 @@ $$;
 alter table public.caja_diaria
   add column if not exists cierre_idempotency_key uuid;
 
-create unique index if not exists caja_diaria_tienda_fecha_uidx
-  on public.caja_diaria (tienda_codigo, fecha);
-
 create unique index if not exists caja_diaria_cierre_idempotency_uidx
   on public.caja_diaria (cierre_idempotency_key)
   where cierre_idempotency_key is not null;

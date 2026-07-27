@@ -172,7 +172,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // SPEC v2 · 23-jul-2026: Doc. remisión se quita del menú. Se abre con
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
     { titulo: 'BODEGA CENTRAL', icono: '🏭', items: [
-      { label: 'Proveedores', href: 'proveedores.html', roles: ['gerencia', 'auditoria'] },
+      { label: 'Cartera de Proveedores', href: 'proveedores.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Bodega Central', href: 'bodega-central.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', roles: ['gerencia', 'auditoria'] },

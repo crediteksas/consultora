@@ -7,6 +7,7 @@ import vm from 'node:vm';
 const root = path.resolve(import.meta.dirname, '../..');
 const source = await readFile(path.join(root, 'creditek/erp/proveedores-domain.js'), 'utf8');
 const proveedoresHtml = await readFile(path.join(root, 'creditek/erp/proveedores.html'), 'utf8');
+const sidebarJs = await readFile(path.join(root, 'creditek/erp/sidebar.js'), 'utf8');
 const context = { window: {} };
 vm.runInNewContext(source, context);
 const proveedores = context.window.CreditekProveedoresDomain;
@@ -69,4 +70,10 @@ test('la pantalla integra detalle y pago de cuentas por pagar', () => {
   assert.match(proveedoresHtml, /registrar_pago_proveedor/);
   assert.match(proveedoresHtml, /data-detalle-factura/);
   assert.match(proveedoresHtml, /Registrar pago/);
+});
+
+test('el módulo se presenta como Cartera de Proveedores', () => {
+  assert.match(proveedoresHtml, /<title>Cartera de Proveedores · Creditek<\/title>/);
+  assert.match(proveedoresHtml, />Cartera de Proveedores<\/h1>/);
+  assert.match(sidebarJs, /label: 'Cartera de Proveedores', href: 'proveedores\.html'/);
 });

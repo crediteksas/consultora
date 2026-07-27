@@ -142,10 +142,13 @@ test('el shell conserva el módulo activo cuando Cloudflare elimina la extensió
 });
 
 test('el acceso al portal de agentes identifica el producto KORA y la empresa Creditek', async () => {
-  const source = await read('creditek/agentes/index.html');
-  assert.match(source, /class="kora-login-brand"/);
-  assert.match(source, />KORA<\/span>/);
-  assert.match(source, />Creditek<\/span>/);
+  const [source, brand] = await Promise.all([
+    read('creditek/agentes/index.html'),
+    read('design-system/components/kora-product.js'),
+  ]);
+  assert.match(source, /data-kora-brand data-variant="login"/);
+  assert.match(brand, /KORA — Creditek/);
+  assert.match(brand, /creditek_logo_corregido_alta\.png/);
 });
 
 test('la transformación visual queda versionada como KORA v1.0.0', async () => {

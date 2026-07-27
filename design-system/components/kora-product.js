@@ -1,5 +1,54 @@
 (function () {
   document.documentElement.dataset.koraProduct = '1.0.0';
+  document.documentElement.dataset.koraBrandVersion = '1.0.1';
+
+  const KORA_BRAND_ASSETS = Object.freeze({
+    appIcon: null,
+    corporateFavicon: '/creditek/agentes/logos/creditek_logo_corregido_alta.png',
+    creditekLogo: '/creditek/agentes/logos/creditek_logo_corregido_alta.png',
+    startupImage: null,
+  });
+
+  function ensureBrandMetadata() {
+    if (document.head.querySelector('link[rel~="icon"]')) return;
+    const favicon = document.createElement('link');
+    favicon.rel = 'icon';
+    favicon.type = 'image/png';
+    favicon.href = KORA_BRAND_ASSETS.corporateFavicon;
+    document.head.appendChild(favicon);
+  }
+
+  function brandTemplate(variant) {
+    const compact = variant === 'sidebar-collapsed';
+    const signature = variant === 'public' ? 'Una solución de' : 'by';
+    return `
+      <span class="kora-brand__product" aria-hidden="true">KORA</span>
+      <span class="kora-brand__signature" aria-hidden="true">${signature}</span>
+      <span class="kora-brand__logo-frame${compact ? ' kora-brand__logo-frame--compact' : ''}" aria-hidden="true">
+        <img class="kora-brand__logo" src="${KORA_BRAND_ASSETS.creditekLogo}" alt="" width="1906" height="825">
+      </span>`;
+  }
+
+  function renderBrand(root) {
+    if (!(root instanceof Element) || root.dataset.koraBrandReady === 'true') return;
+    const variant = root.dataset.variant || 'public';
+    root.classList.add('kora-brand', `kora-brand--${variant}`);
+    root.setAttribute('role', 'img');
+    root.setAttribute('aria-label', 'KORA — Creditek');
+    root.innerHTML = brandTemplate(variant);
+    root.dataset.koraBrandReady = 'true';
+  }
+
+  function renderBrands(scope = document) {
+    scope.querySelectorAll('[data-kora-brand]').forEach(renderBrand);
+  }
+
+  window.KoraBrand = Object.freeze({
+    assets: KORA_BRAND_ASSETS,
+    render: renderBrand,
+    renderAll: renderBrands,
+    version: '1.0.1',
+  });
 
   function accessibleName(table, index) {
     const caption = table.querySelector('caption')?.textContent?.trim();
@@ -46,6 +95,8 @@
 
   function initialize() {
     document.body.classList.add('kora-product-page');
+    ensureBrandMetadata();
+    renderBrands();
     enhanceTables();
     enhanceControls();
     enhanceOverlays();
@@ -57,4 +108,5 @@
   } else {
     initialize();
   }
+  document.dispatchEvent(new CustomEvent('kora-brand-ready'));
 })();

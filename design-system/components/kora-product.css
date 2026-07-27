@@ -4,6 +4,136 @@
   color-scheme: light;
 }
 
+.kora-brand {
+  align-items: flex-start;
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ctk-space-0-5);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.kora-brand__product {
+  color: var(--ctk-color-primary-900);
+  font-family: var(--ctk-font-family-brand);
+  font-size: var(--ctk-font-size-h3);
+  font-weight: var(--ctk-font-weight-bold);
+  letter-spacing: var(--ctk-letter-spacing-label);
+  line-height: var(--ctk-line-height-tight);
+}
+
+.kora-brand__signature {
+  color: var(--ctk-color-text-muted);
+  font-size: var(--ctk-font-size-small);
+  line-height: var(--ctk-line-height-tight);
+}
+
+.kora-brand__logo-frame {
+  align-items: center;
+  background: var(--ctk-color-neutral-0);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-sm);
+  display: inline-flex;
+  min-height: var(--ctk-height-control-sm);
+  overflow: hidden;
+  padding: var(--ctk-space-0-5) var(--ctk-space-1);
+}
+
+.kora-brand__logo {
+  display: block;
+  height: auto;
+  max-height: calc(var(--ctk-height-control-md) - var(--ctk-space-1));
+  max-width: min(8.5rem, 100%);
+  object-fit: contain;
+  width: auto;
+}
+
+.kora-brand--sidebar .kora-brand__product,
+.kora-brand--sidebar-collapsed .kora-brand__product,
+.kora-brand--drawer .kora-brand__product,
+.kora-brand--compact-inverse .kora-brand__product,
+.kora-brand--login-inverse .kora-brand__product {
+  color: var(--ctk-color-neutral-0);
+}
+
+.kora-brand--sidebar .kora-brand__signature,
+.kora-brand--sidebar-collapsed .kora-brand__signature,
+.kora-brand--drawer .kora-brand__signature,
+.kora-brand--compact-inverse .kora-brand__signature,
+.kora-brand--login-inverse .kora-brand__signature {
+  color: var(--ctk-color-neutral-300);
+}
+
+.kora-brand--sidebar-collapsed {
+  align-items: center;
+}
+
+.kora-brand--sidebar-collapsed .kora-brand__product {
+  font-size: var(--ctk-font-size-caption);
+}
+
+.kora-brand--sidebar-collapsed .kora-brand__signature {
+  display: none;
+}
+
+.kora-brand--sidebar-collapsed .kora-brand__logo-frame {
+  height: var(--ctk-height-control-sm);
+  padding: var(--ctk-space-0-5);
+  width: var(--ctk-height-control-sm);
+}
+
+.kora-brand--sidebar-collapsed .kora-brand__logo {
+  height: calc(var(--ctk-height-control-sm) - var(--ctk-space-1));
+  max-height: none;
+  max-width: none;
+  width: auto;
+}
+
+.kora-brand--login,
+.kora-brand--login-inverse {
+  align-items: center;
+  width: 100%;
+}
+
+.kora-brand--login .kora-brand__product,
+.kora-brand--login-inverse .kora-brand__product {
+  font-size: var(--ctk-font-size-h2);
+}
+
+.kora-brand--login .kora-brand__logo,
+.kora-brand--login-inverse .kora-brand__logo {
+  max-width: min(10rem, 80vw);
+}
+
+.kora-brand--compact-inverse {
+  align-items: center;
+  flex-direction: row;
+  gap: var(--ctk-space-1);
+}
+
+.kora-brand--compact-inverse .kora-brand__product {
+  font-size: var(--ctk-font-size-caption);
+}
+
+.kora-brand--compact-inverse .kora-brand__signature {
+  display: none;
+}
+
+.kora-brand--compact-inverse .kora-brand__logo-frame {
+  min-height: var(--ctk-height-control-sm);
+}
+
+.kora-brand--compact-inverse .kora-brand__logo {
+  max-height: calc(var(--ctk-height-control-sm) - var(--ctk-space-1));
+  max-width: 7rem;
+}
+
+@media (max-width: 47.999rem) {
+  .kora-brand__logo {
+    max-width: min(7.5rem, 42vw);
+  }
+}
+
 html[data-kora-product="1.0.0"] {
   background: var(--ctk-color-background);
   color: var(--ctk-color-text);

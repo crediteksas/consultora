@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Panel de Validación</title>
+<title>KORA · Panel de Validación — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -108,7 +108,7 @@ header.topbar {
 
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <div class="logo-title">Credi<span>tek</span> · Validación</div>
+    <div data-kora-brand data-variant="login"></div>
     <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Entrar</button>
@@ -118,7 +118,7 @@ header.topbar {
 
 <div id="app">
   <header class="topbar">
-    <div class="logo-title">Credi<span>tek</span> · Validación</div>
+    <div data-kora-brand data-variant="public"></div>
     <div class="right">
       <span id="userEmail"></span>
       <button class="logout" id="btnLogout">Salir</button>

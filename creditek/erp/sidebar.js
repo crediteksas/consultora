@@ -499,8 +499,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     aside.setAttribute('aria-label', 'Navegación principal');
     aside.dataset.open = 'false';
     aside.innerHTML = `<div class="kora-sidebar__brand">
+      <div data-kora-brand data-variant="sidebar" title="KORA — Creditek"></div>
       <button class="kora-icon-button kora-drawer-close" type="button" aria-label="Cerrar navegación"><i data-lucide="x"></i></button>
-      <span class="kora-wordmark">KORA</span><span class="kora-company">Creditek</span>
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
     <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
@@ -511,6 +511,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     root.append(aside, main, overlay);
     root.classList.add('kora-shell-root');
     root.dataset.koraMounted = 'true';
+    root.dataset.sidebarCollapsed = localStorage.getItem('kora_sidebar_collapsed') === 'true' ? 'true' : 'false';
+
+    const renderShellBrand = () => {
+      const marker = aside.querySelector('[data-kora-brand]');
+      marker.className = '';
+      marker.dataset.variant = root.dataset.sidebarCollapsed === 'true' ? 'sidebar-collapsed' : 'sidebar';
+      marker.dataset.koraBrandReady = 'false';
+      marker.innerHTML = '';
+      window.KoraBrand?.render?.(marker);
+    };
+    renderShellBrand();
+    if (!window.KoraBrand) document.addEventListener('kora-brand-ready', renderShellBrand, { once: true });
 
     const focusable = () => Array.from(aside.querySelectorAll('a[href],button:not([disabled]),select:not([disabled])'));
     let previousFocus = null;
@@ -547,8 +559,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const collapsed = root.dataset.sidebarCollapsed !== 'true';
       root.dataset.sidebarCollapsed = String(collapsed);
       localStorage.setItem('kora_sidebar_collapsed', String(collapsed));
+      renderShellBrand();
     });
-    root.dataset.sidebarCollapsed = localStorage.getItem('kora_sidebar_collapsed') === 'true' ? 'true' : 'false';
     aside.querySelectorAll('.kora-nav-group__label').forEach(button => button.addEventListener('click', () => {
       const group = button.closest('.kora-nav-group');
       const open = group.dataset.open !== 'true';

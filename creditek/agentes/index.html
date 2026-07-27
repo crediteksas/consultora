@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CREDITEK · Sistema Operativo</title>
+<title>KORA · Agentes — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="../erp/sidebar.js" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
@@ -226,12 +226,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="" style="width:44px;height:44px;object-fit:contain">
-      <div class="kora-login-brand">
-        <span>KORA</span>
-        <span>Creditek</span>
-        <div class="login-sub">Sistema operativo</div>
-      </div>
+      <div data-kora-brand data-variant="login"></div>
     </div>
     <div class="login-field">
       <input type="password" id="login-pwd" placeholder="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
@@ -248,7 +243,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" style="width:160px;height:auto;object-fit:contain;padding:8px 0">
+      <div data-kora-brand data-variant="sidebar"></div>
     </div>
 
     <div class="sidebar-section">Principal</div>

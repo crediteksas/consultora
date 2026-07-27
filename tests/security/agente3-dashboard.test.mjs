@@ -21,6 +21,7 @@ test('el resumen aditivo combina campañas sin duplicar tipos de acción', () =>
       spend: '100',
       impressions: '1000',
       clicks: '10',
+      reach: '500',
       actions: [
         { action_type: 'lead', value: '2' },
         { action_type: 'link_click', value: '10' },
@@ -30,6 +31,7 @@ test('el resumen aditivo combina campañas sin duplicar tipos de acción', () =>
       spend: '200',
       impressions: '2000',
       clicks: '20',
+      reach: '1000',
       actions: [
         { action_type: 'lead', value: '3' },
         { action_type: 'link_click', value: '20' },
@@ -41,6 +43,11 @@ test('el resumen aditivo combina campañas sin duplicar tipos de acción', () =>
     spend: 300,
     impressions: 3000,
     clicks: 30,
+    reach: 1500,
+    frequency: 2,
+    cpm: 100,
+    cpc: 10,
+    ctr: 1,
     actions: [
       { action_type: 'lead', value: 5 },
       { action_type: 'link_click', value: 30 },

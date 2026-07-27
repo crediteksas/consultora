@@ -52,6 +52,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text1);min-height:
 /* FIX v28, 13-jul-2026: selector de campaña individual — mismo look que el
    scope-label que reemplaza, pero interactivo. */
 .scope-selector{font-size:12px;font-weight:600;color:var(--text2);background:var(--card2,rgba(0,0,0,.04));display:inline-block;padding:6px 10px;border-radius:6px;margin-bottom:10px;border:1px solid var(--border);font-family:var(--font);cursor:pointer;max-width:100%}
+.metadata-filters{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.metadata-filters select{min-width:170px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text2);font:600 12px var(--font)}
 
 /* AI Analysis banner */
 .ai-banner{background:linear-gradient(135deg,var(--navy) 0%,#1a3a6e 100%);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:none}
@@ -223,6 +225,7 @@ tr:hover td{background:#F8FAFC}
       <div class="header-sub">Meta Ads Intelligence</div>
     </div>
   </div>
+
   <div class="header-right">
     <button class="refresh-btn" onclick="abrirWizard()" style="background:var(--turq)">+ Crear campaña</button>
     <button class="config-btn" onclick="abrirConfig()">⚙ Configurar</button>
@@ -279,6 +282,18 @@ tr:hover td{background:#F8FAFC}
       </div>
       <span class="last-update" id="last-update">Sin datos</span>
     </div>
+  </div>
+
+  <div class="metadata-filters" id="metadata-filters" style="display:none">
+    <select id="filter-city" onchange="applyMetadataFilters()">
+      <option value="">Todos los municipios</option>
+    </select>
+    <select id="filter-platform" onchange="applyMetadataFilters()">
+      <option value="">Todas las plataformas</option>
+    </select>
+    <select id="filter-origin" onchange="applyMetadataFilters()">
+      <option value="">Origen propio y aliados</option>
+    </select>
   </div>
 
   <!-- FIX v23, 13-jul-2026 — Hallazgo 3: el presupuesto, el análisis de IA y
@@ -598,6 +613,18 @@ tr:hover td{background:#F8FAFC}
         </select>
       </div>
       <div class="field">
+        <label>Plataforma comercial asociada</label>
+        <select id="wiz-platform">
+          <option value="">Selecciona una plataforma</option>
+          <option value="PayJoy">PayJoy</option>
+          <option value="Alo Credit">Alo Credit</option>
+          <option value="Addi">Addi</option>
+          <option value="Krediya">Krediya</option>
+          <option value="Contado">Contado</option>
+          <option value="General">Campaña general</option>
+        </select>
+      </div>
+      <div class="field">
         <label>Audiencia estimada</label>
         <div id="wiz-audience-estimate" style="font-size:13px;color:var(--text2)">Calculando...</div>
         <div style="width:100%;height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden">
@@ -661,6 +688,7 @@ tr:hover td{background:#F8FAFC}
         <div class="wiz-review-row"><span class="lbl">💰 Presupuesto</span><span class="val" id="wiz-rev-budget">—</span></div>
         <div class="wiz-review-row"><span class="lbl">📅 Duración</span><span class="val" id="wiz-rev-duration">—</span></div>
         <div class="wiz-review-row"><span class="lbl">🎯 Objetivo</span><span class="val" id="wiz-rev-objective">—</span></div>
+        <div class="wiz-review-row"><span class="lbl">💳 Plataforma</span><span class="val" id="wiz-rev-platform">—</span></div>
         <div class="wiz-review-row" style="border-bottom:none"><span class="lbl">📲 Placements</span><span class="val" style="color:var(--turq)">Facebook + Instagram</span></div>
       </div>
       <div class="field">
@@ -689,6 +717,7 @@ tr:hover td{background:#F8FAFC}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="agente3-targeting.js"></script>
 <script src="agente3-dashboard.js"></script>
+<script src="agente3-metadata.js"></script>
 <script>
 // ── Estado ────────────────────────────────────────────────────────
 let currentDays = 7;
@@ -1117,6 +1146,10 @@ async function actualizarAudienciaEstimada() {
 
 function wizGoStep(n) {
   if (n === 2 && wizSelectedZones.size === 0) { showToast('Elige al menos una zona', '#EF4444'); return; }
+  if (n >= 3 && !document.getElementById('wiz-platform').value) {
+    showToast('Selecciona la plataforma comercial', '#EF4444');
+    return;
+  }
   if (n >= 2) {
     const validation = CreditekMetaTargeting.validateSelectedZones(
       wizSelectedZones,
@@ -1153,6 +1186,7 @@ function wizGoStep(n) {
     document.getElementById('wiz-rev-budget').textContent = fmtCOP(budgetVal) + '/semana';
     document.getElementById('wiz-rev-duration').textContent = wizDuration + ' días';
     document.getElementById('wiz-rev-objective').textContent = document.getElementById('wiz-objective').selectedOptions[0].textContent.replace(' ✓ probado', '');
+    document.getElementById('wiz-rev-platform').textContent = document.getElementById('wiz-platform').value;
 
     const adText4 = document.getElementById('wiz-ad-text').value.trim();
     const horaActual4 = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit', hour12:false});
@@ -1193,6 +1227,7 @@ async function publicarCampana() {
     );
     const nombreAutoFallback = `Creditek - ${summaryNames.join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual} - ${copySnippet}`;
     const campaignName = document.getElementById('wiz-campaign-name').value.trim() || nombreAutoFallback;
+    const platform = document.getElementById('wiz-platform').value;
 
     // 1. Subir imagen(es)
     progress.textContent = 'Subiendo imagen...';
@@ -1341,11 +1376,25 @@ async function publicarCampana() {
     }
 
     progress.textContent = 'Publicando anuncio...';
-    await crearCreativeYAd(imageHash, wizABTest ? 'Variante A' : null);
+    const createdAds = [];
+    createdAds.push(await crearCreativeYAd(imageHash, wizABTest ? 'Variante A' : null));
     if (wizABTest && imageHashB) {
       progress.textContent = 'Publicando Variante B...';
-      await crearCreativeYAd(imageHashB, 'Variante B');
+      createdAds.push(await crearCreativeYAd(imageHashB, 'Variante B'));
     }
+
+    progress.textContent = 'Guardando clasificación Creditek...';
+    const campaignMetadata = CreditekCampaignMetadata.buildCampaignMetadata({
+      campaignId: campData.id,
+      adsetId: adsetData.id,
+      adIds: createdAds.map(ad => ad.id),
+      selectedIds: wizSelectedZones,
+      zones: wizAllZones(),
+      platform,
+      createdBy: getCurrentCreditekUser(),
+      createdAt: new Date().toISOString(),
+    });
+    await saveCampaignMetadata(campaignMetadata);
 
     progress.textContent = '✓ ¡Campaña publicada!';
     showToast(wizABTest ? '✓ Campaña con 2 variantes A/B creada en Meta' : '✓ Campaña creada en Meta correctamente', '#10B981');
@@ -1363,6 +1412,7 @@ async function publicarCampana() {
       delete document.getElementById('wiz-campaign-name').dataset.editado;
       document.getElementById('wiz-headline').value = '';
       document.getElementById('wiz-ad-text').value = '';
+      document.getElementById('wiz-platform').value = '';
       document.getElementById('wiz-img-preview').style.display = 'none';
       document.getElementById('wiz-upload-placeholder').style.display = 'block';
       document.getElementById('wiz-img-preview-b').style.display = 'none';
@@ -1388,6 +1438,49 @@ let estadoReal = { semanaSpendCOP: null, mesSpendCOP: null };
 // clientes.
 const WORKER_API = 'https://creditek-bot.comercial-853.workers.dev';
 const WORKER_SHARED_SECRET = '73ef5474869b234c9d666476271a47fcf82b259d54ca3619';
+let metadataFilters = { cityKey: '', platform: '', origin: '' };
+
+function getCurrentCreditekUser() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem('ck_supa_session') || '{}');
+    return session.user?.email || session.email || 'Sin identificar';
+  } catch (_) {
+    return 'Sin identificar';
+  }
+}
+
+async function saveCampaignMetadata(metadata) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(`${WORKER_API}/api/meta-campaigns-metadata`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Worker-Secret': WORKER_SHARED_SECRET,
+        },
+        body: JSON.stringify(metadata),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(`La campaña quedó creada en Meta, pero no se pudo guardar su clasificación: ${lastError.message}`);
+}
+
+async function loadCampaignMetadata(campaignIds) {
+  const ids = [...new Set((campaignIds || []).filter(Boolean))];
+  if (ids.length === 0) return {};
+  const response = await fetch(
+    `${WORKER_API}/api/meta-campaigns-metadata?campaign_ids=${encodeURIComponent(ids.join(','))}`,
+    { headers: { 'X-Worker-Secret': WORKER_SHARED_SECRET } },
+  );
+  if (!response.ok) throw new Error(`No se pudieron cargar metadatos Creditek (${response.status})`);
+  const payload = await response.json();
+  return payload.metadata || {};
+}
 
 // ── Config ───────────────────────────────────────────────────────
 // FIX v32/v33, 21-jul-2026: dashboard 100% en COP (account_currency=COP
@@ -1628,6 +1721,12 @@ async function cargarDatos() {
     if (dataCamp.error) throw new Error(dataCamp.error.message);
     let campsData = dataCamp.data || [];
 
+    const urlCampPrev = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,ctr,cpm,cpc,actions&time_range={"since":"${prevFechas.since}","until":"${since}"}&level=campaign&access_token=${token}`;
+    const resCampPrev = await fetch(urlCampPrev);
+    const dataCampPrev = await resCampPrev.json();
+    if (dataCampPrev.error) throw new Error(dataCampPrev.error.message);
+    const prevCampsData = dataCampPrev.data || [];
+
     // Fix v1 — traer el estado real de cada campaña (insights no lo tiene, /campaigns sí)
     const campaignIds = campsData.map(c => c.campaign_id).filter(Boolean);
     let statusMap = {};
@@ -1696,10 +1795,10 @@ async function cargarDatos() {
     for (let w = 7; w >= 0; w--) {
       const wEnd   = new Date(); wEnd.setDate(wEnd.getDate() - w*7);
       const wStart = new Date(); wStart.setDate(wStart.getDate() - (w+1)*7);
-      const wUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend,actions,ctr&time_range={"since":"${wStart.toISOString().split('T')[0]}","until":"${wEnd.toISOString().split('T')[0]}"}&level=account&access_token=${token}`;
+      const wUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,spend,impressions,clicks,reach,actions&time_range={"since":"${wStart.toISOString().split('T')[0]}","until":"${wEnd.toISOString().split('T')[0]}"}&level=campaign&access_token=${token}`;
       const wRes = await fetch(wUrl);
       const wDat = await wRes.json();
-      trendData.push({ week: w, data: wDat.data?.[0] || null });
+      trendData.push({ week: w, data: wDat.data || [] });
     }
 
     // FIX v29, 13-jul-2026: "Total ejecutado por mes" (histórico) — misma
@@ -1711,10 +1810,10 @@ async function cargarDatos() {
       const hoyM = new Date();
       const inicioMes = new Date(hoyM.getFullYear(), hoyM.getMonth() - mAtras, 1);
       const finMes = mAtras === 0 ? hoyM : new Date(hoyM.getFullYear(), hoyM.getMonth() - mAtras + 1, 0);
-      const mUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend,actions,ctr&time_range={"since":"${fmtFecha(inicioMes)}","until":"${fmtFecha(finMes)}"}&level=account&access_token=${token}`;
+      const mUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,spend,impressions,clicks,reach,actions&time_range={"since":"${fmtFecha(inicioMes)}","until":"${fmtFecha(finMes)}"}&level=campaign&access_token=${token}`;
       const mRes = await fetch(mUrl);
       const mDat = await mRes.json();
-      trendDataMensual.push({ mesLabel: `${MESES_CORTOS[inicioMes.getMonth()]} ${inicioMes.getFullYear()}`, data: mDat.data?.[0] || null });
+      trendDataMensual.push({ mesLabel: `${MESES_CORTOS[inicioMes.getMonth()]} ${inicioMes.getFullYear()}`, data: mDat.data || [] });
     }
 
     const mainFromCampaigns = CreditekMetaDashboard.aggregateCampaignInsights(campsData);
@@ -1734,8 +1833,33 @@ async function cargarDatos() {
     }
 
     const hasMainData = CreditekMetaDashboard.hasMetricsData(data.data?.[0]) || campsData.length > 0;
-    lastData = { main, hasMainData, prev: dataPrev.data?.[0], camps: campsData, trend: trendData, trendMensual: trendDataMensual, ads: adsData, ventasPorCampaña, pctSinAtribucion };
-    renderDatos(lastData);
+    const metadataMap = await loadCampaignMetadata([
+      ...campsData.map(campaign => campaign.campaign_id),
+      ...prevCampsData.map(campaign => campaign.campaign_id),
+      ...trendData.flatMap(point => point.data.map(campaign => campaign.campaign_id)),
+      ...trendDataMensual.flatMap(point => point.data.map(campaign => campaign.campaign_id)),
+    ]);
+    lastData = {
+      main,
+      mainAll: main,
+      hasMainData,
+      prev: dataPrev.data?.[0],
+      prevAll: dataPrev.data?.[0],
+      camps: campsData,
+      allCamps: campsData,
+      prevCamps: prevCampsData,
+      trend: trendData.map(point => ({ ...point, data: CreditekMetaDashboard.aggregateCampaignInsights(point.data) })),
+      trendMensual: trendDataMensual.map(point => ({ ...point, data: CreditekMetaDashboard.aggregateCampaignInsights(point.data) })),
+      allTrend: trendData,
+      allTrendMensual: trendDataMensual,
+      ads: adsData,
+      allAds: adsData,
+      metadataMap,
+      ventasPorCampaña,
+      pctSinAtribucion,
+    };
+    renderMetadataFilters();
+    applyMetadataFilters();
     document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO');
     // FIX v28, 13-jul-2026: el análisis de IA (analizarConIA) ya no se llama
     // aquí directo — ahora lo dispara renderVista(), que también se ejecuta
@@ -1795,6 +1919,79 @@ function poblarSelector(camps) {
   const sigueExistiendo = valorPrevio === '__all__' || (camps || []).some(c => c.campaign_id === valorPrevio);
   sel.value = sigueExistiendo ? valorPrevio : '__all__';
   sel.style.display = 'inline-block';
+}
+
+function setFilterOptions(selectId, options, valueField, labelField) {
+  const select = document.getElementById(selectId);
+  const previous = select.value;
+  const escapeOption = value => String(value || '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+  select.innerHTML = '<option value="">Todos</option>' + options.map(option => {
+    const value = typeof option === 'string' ? option : option[valueField];
+    const label = typeof option === 'string' ? option : option[labelField];
+    return `<option value="${escapeOption(value)}">${escapeOption(label)}</option>`;
+  }).join('');
+  if ([...select.options].some(option => option.value === previous)) select.value = previous;
+}
+
+function renderMetadataFilters() {
+  const options = CreditekCampaignMetadata.getMetadataFilterOptions(
+    lastData?.allCamps || [],
+    lastData?.metadataMap || {},
+  );
+  setFilterOptions('filter-city', options.cities, 'key', 'name');
+  setFilterOptions('filter-platform', options.platforms);
+  setFilterOptions('filter-origin', options.origins);
+  document.getElementById('metadata-filters').style.display = 'flex';
+}
+
+function aggregateTrend(points, metadataMap, filters) {
+  return CreditekCampaignMetadata.filterTrendSeries(points, metadataMap, filters)
+    .map(point => ({
+      ...point,
+      data: CreditekMetaDashboard.aggregateCampaignInsights(point.data),
+    }));
+}
+
+function applyMetadataFilters() {
+  if (!lastData) return;
+  metadataFilters = {
+    cityKey: document.getElementById('filter-city').value,
+    platform: document.getElementById('filter-platform').value,
+    origin: document.getElementById('filter-origin').value,
+  };
+  const isFiltered = Object.values(metadataFilters).some(Boolean);
+  const filteredCamps = CreditekCampaignMetadata.filterCampaigns(
+    lastData.allCamps,
+    lastData.metadataMap,
+    metadataFilters,
+  );
+  const filteredPrev = CreditekCampaignMetadata.filterCampaigns(
+    lastData.prevCamps,
+    lastData.metadataMap,
+    metadataFilters,
+  );
+  const campaignIds = new Set(filteredCamps.map(campaign => campaign.campaign_id));
+
+  lastData.camps = filteredCamps;
+  lastData.ads = lastData.allAds.filter(ad => campaignIds.has(ad.campaign_id));
+  lastData.main = isFiltered
+    ? CreditekMetaDashboard.aggregateCampaignInsights(filteredCamps)
+    : lastData.mainAll;
+  lastData.prev = isFiltered
+    ? CreditekMetaDashboard.aggregateCampaignInsights(filteredPrev)
+    : lastData.prevAll;
+  lastData.hasMainData = filteredCamps.length > 0
+    && CreditekMetaDashboard.hasMetricsData(lastData.main);
+  lastData.trend = aggregateTrend(lastData.allTrend, lastData.metadataMap, metadataFilters);
+  lastData.trendMensual = aggregateTrend(lastData.allTrendMensual, lastData.metadataMap, metadataFilters);
+
+  const reconciliation = CreditekMetaDashboard.reconcileCampaignTotals(lastData.main, filteredCamps);
+  if (!reconciliation.matches) {
+    console.warn('[META-FILTROS] El total filtrado no concilia con su detalle.', reconciliation);
+  }
+  renderDatos(lastData);
 }
 
 function renderDatos(d) {
@@ -1894,9 +2091,13 @@ function renderVista() {
     setKPI('kpi-leads', fmtNum(k.leads), pk.leads, k.leads, 'Fuente: acciones de lead');
   }
 
+  const visibleCampaignIds = new Set((d.camps || []).map(item => item.campaign_id));
   const attributedSales = modoIndividual
     ? Number(d.ventasPorCampaña?.[camp.campaign_id] || 0)
-    : Object.values(d.ventasPorCampaña || {}).reduce((total, value) => total + Number(value || 0), 0);
+    : Object.entries(d.ventasPorCampaña || {}).reduce(
+      (total, [campaignId, value]) => total + (visibleCampaignIds.has(campaignId) ? Number(value || 0) : 0),
+      0,
+    );
   setKPI('kpi-sales', fmtNum(attributedSales), null, null, 'Fuente: cierres confirmados');
 
   // Alerta frecuencia (barra bajo la tarjeta de Frecuencia)

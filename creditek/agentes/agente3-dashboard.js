@@ -117,13 +117,14 @@
   }
 
   function aggregateCampaignInsights(campaignSources = []) {
-    const totals = { spend: 0, impressions: 0, clicks: 0 };
+    const totals = { spend: 0, impressions: 0, clicks: 0, reach: 0 };
     const actionTotals = new Map();
 
     for (const campaign of campaignSources) {
       totals.spend += number(campaign.spend);
       totals.impressions += integer(campaign.impressions);
       totals.clicks += integer(campaign.clicks);
+      totals.reach += integer(campaign.reach);
       for (const action of campaign.actions || []) {
         const type = action.action_type;
         if (!type) continue;
@@ -133,6 +134,10 @@
 
     return {
       ...totals,
+      frequency: totals.reach > 0 ? totals.impressions / totals.reach : 0,
+      cpm: totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0,
+      cpc: totals.clicks > 0 ? totals.spend / totals.clicks : 0,
+      ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
       actions: [...actionTotals.entries()].map(([action_type, value]) => ({
         action_type,
         value,

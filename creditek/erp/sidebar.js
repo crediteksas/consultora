@@ -182,7 +182,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', items: [
-      { label: 'Registro', href: 'registro.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Registrar cliente', href: 'registro-interno.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Validación', href: 'validacion.html', roles: ['gerencia', 'auditoria'] },
     ]},
     // SPEC_Modulo_Reportes_ERP_v1_23jul2026 · 24-jul-2026:

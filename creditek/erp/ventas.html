@@ -587,7 +587,7 @@ async function buscarClientePorCedula() {
   const { data: cliente, error } = await sb.from('clientes').select('*').eq('cedula', cedula).maybeSingle();
   if (error) { cont.innerHTML = 'Error: ' + error.message; return; }
   if (!cliente) {
-    const link = `registro.html?origen=${encodeURIComponent(currentPerfil.tienda_codigo || '')}&v=${encodeURIComponent(currentPerfil.nombre || '')}`;
+    const link = 'registro-interno.html';
     cont.innerHTML = `<div class="aviso-validacion">Este cliente no existe en la Base Maestra.<br><a class="link-registro" href="${link}" target="_blank" rel="noopener">Registrarlo ahora →</a></div>`;
     venta.cliente_id = null;
     venta.clienteInfo = null;

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Registrar cliente</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <style>
+    .registro-interno { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field.full { grid-column:1/-1; }
+    .field label { font-size:13px; font-weight:650; }
+    .field input,.field select { width:100%; min-height:42px; border:1px solid var(--kora-border,#dce2ea); border-radius:10px; padding:8px 11px; }
+    .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+    .message { margin-top:16px; padding:12px; border-radius:10px; display:none; }
+    .message.show { display:block; }
+    .message.error { color:#991b1b; background:#fef2f2; }
+    .message.success { color:#166534; background:#f0fdf4; }
+    @media(max-width:720px){.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.registro-interno{padding:20px 16px}}
+  </style>
+</head>
+<body>
+<main id="app" class="registro-interno" hidden>
+  <header class="page-header">
+    <p>Clientes</p>
+    <h1>Registrar cliente</h1>
+    <p>Registro interno para personal autenticado de KORA.</p>
+  </header>
+  <form id="formCliente" novalidate>
+    <div class="form-grid">
+      <div class="field"><label for="cedula">Cédula</label><input id="cedula" inputmode="numeric" maxlength="12" required></div>
+      <div class="field"><label for="nombre">Nombre completo</label><input id="nombre" maxlength="160" required></div>
+      <div class="field"><label for="celular">Celular</label><input id="celular" inputmode="numeric" maxlength="10" required></div>
+      <div class="field"><label for="email">Correo (opcional)</label><input id="email" type="email" maxlength="180"></div>
+      <div class="field"><label for="ciudad">Ciudad</label><input id="ciudad" maxlength="120" required></div>
+      <div class="field"><label for="direccion">Dirección</label><input id="direccion" maxlength="220" required></div>
+      <div class="field"><label for="tienda">Tienda</label><select id="tienda" required></select></div>
+      <div class="field"><label for="producto">Producto de interés</label><input id="producto" maxlength="180"></div>
+      <div class="field"><label for="financiera">Financiera</label><select id="financiera"><option value="">No definida</option><option>PayJoy</option><option>Alo Credit</option><option>Addi</option><option>Krediya</option></select></div>
+      <label class="field full"><span><input id="autorizacion" type="checkbox" required> El cliente autorizó el tratamiento de datos.</span></label>
+    </div>
+    <div id="mensaje" class="message" role="status" aria-live="polite"></div>
+    <div class="actions"><a href="ventas.html">Cancelar</a><button id="guardar" type="submit">Registrar cliente</button></div>
+  </form>
+</main>
+<script>
+const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let perfil = null;
+
+function mensaje(texto, tipo) {
+  const el = document.getElementById('mensaje');
+  el.textContent = texto;
+  el.className = `message show ${tipo}`;
+}
+
+async function iniciar() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'app.html'; return; }
+  const { data, error } = await sb.from('perfiles').select('id,nombre,rol,tienda_codigo,activo').eq('id', session.user.id).maybeSingle();
+  if (error || !data?.activo || !['gerencia','auditoria','admin_tienda','asesor'].includes(data.rol)) {
+    mensaje('No tienes permiso para registrar clientes.', 'error');
+    return;
+  }
+  perfil = data;
+  const tienda = document.getElementById('tienda');
+  if (['gerencia','auditoria'].includes(perfil.rol)) {
+    const { data: tiendas, error: tiendasError } = await sb.from('origenes').select('codigo,nombre').eq('tipo','propia').eq('activo',true).order('nombre');
+    if (tiendasError) throw tiendasError;
+    tienda.innerHTML = '<option value="">Selecciona una tienda</option>' + (tiendas || []).map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('');
+  } else {
+    tienda.innerHTML = `<option value="${perfil.tienda_codigo}">${perfil.tienda_codigo}</option>`;
+    tienda.disabled = true;
+  }
+  document.getElementById('app').hidden = false;
+}
+
+document.getElementById('formCliente').addEventListener('submit', async event => {
+  event.preventDefault();
+  const cedula = document.getElementById('cedula').value.trim();
+  const celular = document.getElementById('celular').value.trim();
+  if (!/^[0-9]{5,12}$/.test(cedula)) return mensaje('Ingresa una cédula válida.', 'error');
+  if (!/^3[0-9]{9}$/.test(celular)) return mensaje('Ingresa un celular colombiano válido.', 'error');
+  if (!document.getElementById('autorizacion').checked) return mensaje('Confirma la autorización de tratamiento de datos.', 'error');
+  const boton = document.getElementById('guardar');
+  boton.disabled = true;
+  const { data, error } = await sb.rpc('crear_cliente_interno_seguro', {
+    p_cedula: cedula,
+    p_nombre_completo: document.getElementById('nombre').value.trim(),
+    p_celular: celular,
+    p_email: document.getElementById('email').value.trim() || null,
+    p_ciudad: document.getElementById('ciudad').value.trim(),
+    p_direccion: document.getElementById('direccion').value.trim(),
+    p_origen_codigo: document.getElementById('tienda').value,
+    p_producto_interes: document.getElementById('producto').value.trim() || null,
+    p_financiera: document.getElementById('financiera').value || null,
+  });
+  boton.disabled = false;
+  if (error || !data?.ok) return mensaje(error?.message || 'No se pudo registrar el cliente.', 'error');
+  mensaje('Cliente registrado correctamente.', 'success');
+  event.target.reset();
+  if (!['gerencia','auditoria'].includes(perfil.rol)) document.getElementById('tienda').value = perfil.tienda_codigo;
+});
+
+iniciar().catch(error => mensaje(`No se pudo abrir el registro interno: ${error.message}`, 'error'));
+</script>
+<script src="sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{
+  "_notice": "STAGING ONLY — DATOS SINTÉTICOS",
+  "store": {
+    "code": "STG-001",
+    "name": "Tienda Ficticia Staging"
+  },
+  "users": [
+    {
+      "role": "gerencia",
+      "displayName": "Usuario Gerencia Staging",
+      "email": "gerencia@staging.invalid"
+    },
+    {
+      "role": "admin_tienda",
+      "displayName": "Usuario Tienda Staging",
+      "email": "tienda@staging.invalid",
+      "storeCode": "STG-001"
+    }
+  ],
+  "products": [
+    {
+      "reference": "STG-PHONE-001",
+      "category": "celular",
+      "description": "Producto ficticio para pruebas"
+    },
+    {
+      "reference": "STG-ACC-001",
+      "category": "accesorio",
+      "description": "Accesorio ficticio para pruebas"
+    }
+  ],
+  "inventory": [
+    {
+      "storeCode": "STG-001",
+      "reference": "STG-PHONE-001",
+      "quantity": 1
+    },
+    {
+      "storeCode": "STG-001",
+      "reference": "STG-ACC-001",
+      "quantity": 10
+    }
+  ],
+  "sales": [
+    {
+      "externalReference": "STG-SALE-001",
+      "storeCode": "STG-001",
+      "productReference": "STG-PHONE-001",
+      "amount": 1000000
+    }
+  ],
+  "financialMovements": [
+    {
+      "externalReference": "STG-MOV-001",
+      "storeCode": "STG-001",
+      "type": "ingreso_sintetico",
+      "amount": 1000000
+    }
+  ]
+}

@@ -1,22 +1,11 @@
 // crear_admins.mjs
-// Crea 10 usuarios admin_tienda en Supabase Auth + perfil correspondiente
-// Uso: SUPABASE_SERVICE_KEY=xxx node crear_admins.mjs
+// Crea usuarios admin_tienda en Supabase Auth + perfil correspondiente.
+// Es dry-run por defecto y exige entorno, URL y confirmación del proyecto.
 
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { writeFileSync } from 'fs';
-
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-if (!SERVICE_KEY) {
-  console.error('❌ Falta SUPABASE_SERVICE_KEY. Corre con: SUPABASE_SERVICE_KEY=xxx node crear_admins.mjs');
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+import { validateAdminExecution } from '../../../config/admin-script-guard.mjs';
 
 const ADMINS = [
   { tienda: 'CK-01', nombre: 'Luisa Fernanda Medrano Villa',   email: 'luisa.medrano@crediteksas.com' },
@@ -41,7 +30,24 @@ function generarPassword() {
   return pwd;
 }
 
-async function crearAdmin(admin) {
+function argumentValue(name) {
+  const prefix = `--${name}=`;
+  return process.argv.find(argument => argument.startsWith(prefix))?.slice(prefix.length) || '';
+}
+
+function executionOptions() {
+  return {
+    environment: argumentValue('environment') || process.env.KORA_ENV || '',
+    targetUrl: argumentValue('target-url') || process.env.KORA_ERP_SUPABASE_URL || '',
+    targetProject: argumentValue('target-project') || '',
+    confirmProject: argumentValue('confirm-project') || '',
+    dryRun: process.argv.includes('--dry-run') || !process.argv.includes('--execute'),
+    allowProduction: process.argv.includes('--allow-production'),
+    confirmProduction: argumentValue('confirm-production'),
+  };
+}
+
+async function crearAdmin(supabase, admin) {
   const password = generarPassword();
 
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -79,12 +85,29 @@ async function crearAdmin(admin) {
 }
 
 async function main() {
-  console.log('🚀 Creando 10 usuarios admin...\n');
+  const execution = validateAdminExecution(executionOptions());
+  if (execution.dryRun) {
+    console.log(
+      `DRY-RUN seguro: ${ADMINS.length} usuarios previstos para `
+      + `${execution.environment}/${execution.targetProject}. No se realizaron escrituras.`,
+    );
+    return;
+  }
+
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!serviceKey) {
+    throw new Error('Falta la credencial administrativa requerida para ejecutar escrituras');
+  }
+  const supabase = createClient(executionOptions().targetUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  console.log(`Iniciando creación controlada en ${execution.environment}/${execution.targetProject}`);
 
   const resultados = [];
   for (const admin of ADMINS) {
-    process.stdout.write(`  ${admin.tienda} ${admin.nombre.padEnd(35)} ... `);
-    const r = await crearAdmin(admin);
+    process.stdout.write(`  ${admin.tienda} ... `);
+    const r = await crearAdmin(supabase, admin);
     resultados.push(r);
     console.log(r.ok ? `✅` : `❌ ${r.error}`);
   }
@@ -114,7 +137,7 @@ async function main() {
   }
 }
 
-main().catch(e => {
-  console.error('❌ Error fatal:', e);
+main().catch(error => {
+  console.error(`❌ ${error.message}`);
   process.exit(1);
 });

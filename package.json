@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
+    "build:environment": "npm run config:check && npm run build && npm run config:generate -- --output=public/config/kora-environment.generated.js && node scripts/verify-public-artifact.mjs",
+    "config:check": "node scripts/check-kora-config-security.mjs",
+    "config:generate": "node scripts/generate-kora-environment.mjs",
     "test": "node --test tests/security/*.test.mjs",
+    "test:config": "node --test tests/config/*.test.mjs",
     "test:design-system": "node --test tests/design-system/*.test.mjs",
     "test:live": "node --test tests/security/live-smoke.test.mjs",
     "preview:upload": "npm run build && wrangler versions upload",

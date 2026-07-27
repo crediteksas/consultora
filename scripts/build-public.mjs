@@ -15,6 +15,8 @@ const PUBLIC_FILES = [
   'creditek/convenios/index.html',
   'creditek/legal/index.html',
   'creditek/portal/index.html',
+  'config/production-endpoints.js',
+  'config/kora-environment.js',
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);

@@ -24,6 +24,8 @@ test('build keeps required public applications and excludes backend source', asy
     'creditek/convenios/index.html',
     'creditek/erp/app.html',
     'creditek/legal/index.html',
+    'config/production-endpoints.js',
+    'config/kora-environment.js',
   ];
 
   for (const relative of required) {
@@ -32,6 +34,10 @@ test('build keeps required public applications and excludes backend source', asy
 
   const portalHtml = await readFile(path.join(out, 'creditek/portal/index.html'), 'utf8');
   assert.match(portalHtml, /Portal de Pedidos/i);
+  await assert.rejects(
+    stat(path.join(out, 'config/kora-environment.example.js')),
+    { code: 'ENOENT' },
+  );
 });
 
 test('build does not publish known server-only paths', async () => {

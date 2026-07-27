@@ -41,7 +41,9 @@
       document.getElementById('auth-guard').classList.remove('hidden');
       return false;
     }
-    document.getElementById('app').classList.remove('hidden');
+    const app = document.getElementById('app');
+    app.classList.remove('hidden');
+    app.classList.add('show');
     return true;
   }
 

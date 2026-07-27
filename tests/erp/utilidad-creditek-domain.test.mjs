@@ -93,3 +93,8 @@ test('la pantalla existente integra rangos, filtros, comparación y exportación
   assert.match(app, /'Por plataforma'/);
   assert.match(app, /'Por referencia'/);
 });
+
+test('la aplicación avisa al shell compartido cuando terminó de autenticar', () => {
+  assert.match(app, /app\.classList\.remove\('hidden'\)/);
+  assert.match(app, /app\.classList\.add\('show'\)/);
+});

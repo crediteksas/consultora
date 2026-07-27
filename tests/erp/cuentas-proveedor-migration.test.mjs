@@ -13,7 +13,10 @@ const sql = normalize(await readFile(migrationPath, 'utf8'));
 
 test('el detalle de factura está restringido a roles centrales', () => {
   assert.match(sql, /create or replace function public\.obtener_detalle_factura_proveedor/);
-  assert.match(sql, /if not public\.es_central\(\)/);
+  assert.equal(
+    (sql.match(/if not coalesce\(public\.es_central\(\), false\)/g) || []).length,
+    2
+  );
   assert.match(sql, /from public\.pagos_proveedor/);
   assert.match(sql, /revoke all on function public\.obtener_detalle_factura_proveedor/);
 });

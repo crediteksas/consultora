@@ -36,7 +36,7 @@ declare
   v_lineas jsonb;
   v_pagos jsonb;
 begin
-  if not public.es_central() then
+  if not coalesce(public.es_central(), false) then
     raise exception 'Solo gerencia o auditoría pueden consultar compras';
   end if;
 
@@ -132,7 +132,7 @@ declare
   v_factura public.facturas_proveedor%rowtype;
   v_pago public.pagos_proveedor%rowtype;
 begin
-  if not public.es_central() then
+  if not coalesce(public.es_central(), false) then
     raise exception 'Solo gerencia o auditoría pueden registrar pagos';
   end if;
   if p_idempotency_key is null then

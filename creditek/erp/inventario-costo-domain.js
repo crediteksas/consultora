@@ -24,7 +24,25 @@
     return ((stock * costo) + (entrada * costoNuevo)) / cantidadTotal;
   }
 
+  function calcularCostoVentaAccesorio({
+    cantidad,
+    precioVentaUnitario,
+    costoPromedioUnitario,
+  }) {
+    const unidades = numeroNoNegativo(cantidad);
+    const precio = numeroNoNegativo(precioVentaUnitario);
+    const costo = numeroNoNegativo(costoPromedioUnitario);
+    if (unidades === null || precio === null || costo === null) return null;
+    const costoTotal = unidades * costo;
+    return {
+      costoCongeladoUnitario: costo,
+      costoTotal,
+      utilidad: (unidades * precio) - costoTotal,
+    };
+  }
+
   global.CreditekInventarioCosto = Object.freeze({
     calcularPromedioPonderado,
+    calcularCostoVentaAccesorio,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

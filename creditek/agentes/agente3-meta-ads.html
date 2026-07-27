@@ -516,13 +516,11 @@ tr:hover td{background:#F8FAFC}
       <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Elige una o varias zonas</div>
       <div class="zone-grid" id="wiz-zone-grid"></div>
 
-      <!-- FEATURE Agente3 Aliados 23-jul-2026 · botón + panel de multi-check -->
+      <!-- Panel de selección de municipios de aliados. La tarjeta se renderiza
+           dentro de wiz-zone-grid, junto a las demás ciudades. -->
       <div id="wiz-aliados-wrap" style="position:relative;text-align:center;margin-bottom:10px">
-        <button class="btn-secondary" id="wiz-aliados-btn"
-          style="font-size:12px;padding:7px 14px;border-style:dashed;border-color:#00C4CC;color:#00C4CC"
-          onclick="wizToggleAliados()">🤝 Aliados ▾</button>
         <div id="wiz-aliados-panel"
-          style="display:none;position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 6px);z-index:10;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 25px -5px rgba(0,0,0,.15);padding:10px;min-width:260px;max-height:340px;overflow-y:auto;text-align:left">
+          style="display:none;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 25px -5px rgba(0,0,0,.15);padding:10px;max-width:360px;margin:0 auto 14px;max-height:340px;overflow-y:auto;text-align:left">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">🤝 Ciudades de aliados</div>
           <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;font-weight:600;font-size:13px;cursor:pointer">
             <input type="checkbox" id="wiz-aliados-todas" onchange="wizToggleAllAliados()"> Seleccionar todas
@@ -665,6 +663,7 @@ tr:hover td{background:#F8FAFC}
 <!-- FIX v25, 13-jul-2026 — Fase 2, Mejora 3: mismo Chart.js (misma versión)
      ya usado en creditek-agente-respuestas.html, vía CDN. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="agente3-targeting.js"></script>
 <script>
 // ── Estado ────────────────────────────────────────────────────────
 let currentDays = 7;
@@ -735,18 +734,35 @@ function wizAllZones() {
   return { ...WIZ_ZONES, ...wizCustomZones };
 }
 
+function wizCreateZoneCard(id, zone) {
+  const card = document.createElement('div');
+  card.className = 'zone-card' + (wizSelectedZones.has(id) ? ' sel' : '');
+  card.innerHTML = `${zone.name}<div class="sub">${zone.sub || zone.region}</div>`;
+  card.onclick = () => {
+    if (wizSelectedZones.has(id)) wizSelectedZones.delete(id); else wizSelectedZones.add(id);
+    renderWizZones();
+  };
+  return card;
+}
+
 function renderWizZones() {
   const grid = document.getElementById('wiz-zone-grid');
   grid.innerHTML = '';
-  Object.entries(wizAllZones()).forEach(([id, z]) => {
-    const card = document.createElement('div');
-    card.className = 'zone-card' + (wizSelectedZones.has(id) ? ' sel' : '');
-    card.innerHTML = `${z.name}<div class="sub">${z.sub || z.region}</div>`;
-    card.onclick = () => {
-      if (wizSelectedZones.has(id)) wizSelectedZones.delete(id); else wizSelectedZones.add(id);
-      renderWizZones();
-    };
-    grid.appendChild(card);
+
+  Object.entries(WIZ_ZONES).forEach(([id, zone]) => {
+    grid.appendChild(wizCreateZoneCard(id, zone));
+  });
+
+  const selectedAllies = [...wizSelectedZones].filter(id => id.startsWith('aliado_')).length;
+  const card = document.createElement('div');
+  card.id = 'wiz-aliados-btn';
+  card.className = 'zone-card' + (selectedAllies > 0 ? ' sel' : '');
+  card.innerHTML = `Aliados<div class="sub">${selectedAllies > 0 ? `${selectedAllies} municipio(s)` : 'Municipios aliados'}</div>`;
+  card.onclick = wizToggleAliados;
+  grid.appendChild(card);
+
+  Object.entries(wizCustomZones).forEach(([id, zone]) => {
+    grid.appendChild(wizCreateZoneCard(id, zone));
   });
 }
 
@@ -941,20 +957,20 @@ function wizSincronizarTodas() {
 }
 
 function wizActualizarLabelAliados() {
-  const btn = document.getElementById('wiz-aliados-btn');
-  if (!btn) return;
+  const card = document.getElementById('wiz-aliados-btn');
+  if (!card) return;
   const n = [...wizSelectedZones].filter(id => id.startsWith('aliado_')).length;
-  btn.textContent = n === 0 ? '🤝 Aliados ▾' : `🤝 Aliados (${n}) ▾`;
-  btn.style.background = n > 0 ? '#00C4CC' : '';
-  btn.style.color = n > 0 ? 'white' : '#00C4CC';
+  card.className = 'zone-card' + (n > 0 ? ' sel' : '');
+  card.innerHTML = `Aliados<div class="sub">${n > 0 ? `${n} municipio(s)` : 'Municipios aliados'}</div>`;
 }
 
 // Cerrar el panel al clickar fuera
 document.addEventListener('click', (e) => {
   const wrap = document.getElementById('wiz-aliados-wrap');
   const panel = document.getElementById('wiz-aliados-panel');
-  if (!wrap || !panel) return;
-  if (panel.style.display === 'block' && !wrap.contains(e.target)) {
+  const card = document.getElementById('wiz-aliados-btn');
+  if (!wrap || !panel || !card) return;
+  if (panel.style.display === 'block' && !wrap.contains(e.target) && !card.contains(e.target)) {
     panel.style.display = 'none';
   }
 });
@@ -1046,10 +1062,7 @@ async function actualizarAudienciaEstimada() {
     const targetingSpec = {
       age_min: 18, age_max: 65,
       geo_locations: {
-        cities: [...wizSelectedZones].map(id => ({
-          key: wizAllZones()[id].key, radius: 20, distance_unit: 'kilometer',
-          region: wizAllZones()[id].region, region_id: wizAllZones()[id].region_id, country: 'CO'
-        })),
+        cities: CreditekMetaTargeting.buildMetaCities(wizSelectedZones, wizAllZones()),
         location_types: ['home', 'recent']
       },
       ...(excludedCities.length > 0 ? { excluded_geo_locations: { cities: excludedCities, location_types: ['home', 'recent'] } } : {})
@@ -1181,10 +1194,7 @@ async function publicarCampana() {
     const targeting = {
       age_min: 18, age_max: 65,
       geo_locations: {
-        cities: [...wizSelectedZones].map(id => ({
-          key: wizAllZones()[id].key, radius: 20, distance_unit: 'kilometer',
-          region: wizAllZones()[id].region, region_id: wizAllZones()[id].region_id, country: 'CO'
-        })),
+        cities: CreditekMetaTargeting.buildMetaCities(wizSelectedZones, wizAllZones()),
         location_types: ['home', 'recent']
       },
       ...(excludedCities.length > 0 ? {

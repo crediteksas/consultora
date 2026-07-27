@@ -365,12 +365,12 @@ tr:hover td{background:#F8FAFC}
       <div class="kpi-sub" id="freq-alert">Alerta en 3.5</div>
       <div class="kpi-alert" id="freq-bar"></div>
     </div>
-    <div class="kpi-card" title="Cuánto dinero real se ha gastado en este período, ya convertido de pesos colombianos a dólares.">
+    <div class="kpi-card" title="Cuánto dinero real se ha gastado en pesos colombianos durante el período seleccionado.">
       <div class="kpi-rank">#6</div>
       <div class="kpi-label">Gasto total</div>
       <div class="kpi-value" id="kpi-spend">—</div>
       <div class="kpi-delta neutral" id="delta-spend">Sin datos</div>
-      <div class="kpi-sub">USD (convertido de COP)</div>
+      <div class="kpi-sub">COP del período</div>
     </div>
     <div class="kpi-card" title="Cuántas veces se mostró el anuncio en total, contando repeticiones. A diferencia del Alcance, si una persona lo vio 3 veces, aquí cuenta 3 veces.">
       <div class="kpi-rank">#7</div>
@@ -386,12 +386,12 @@ tr:hover td{background:#F8FAFC}
       <div class="kpi-delta neutral" id="delta-cpm">Sin datos</div>
       <div class="kpi-sub">Costo por mil impresiones</div>
     </div>
-    <div class="kpi-card" title="Acciones reales que cuentan como resultado (mensajes iniciados, clics al link), no cualquier interacción como un 'me gusta' o un comentario.">
+    <div class="kpi-card" title="Suma de conversaciones iniciadas y formularios de lead reportados por Meta, sin sumar clics ni vistas de página.">
       <div class="kpi-rank">#9</div>
-      <div class="kpi-label">Conversiones</div>
+      <div class="kpi-label">Conversaciones + leads</div>
       <div class="kpi-value" id="kpi-conv">—</div>
       <div class="kpi-delta neutral" id="delta-conv">Sin datos</div>
-      <div class="kpi-sub">Acciones completadas</div>
+      <div class="kpi-sub">Resultados sin duplicar clics</div>
     </div>
     <div class="kpi-card" title="Costo Por Clic — cuánto pagas en promedio cada vez que alguien le da clic a tu anuncio.">
       <div class="kpi-rank">#10</div>
@@ -399,6 +399,30 @@ tr:hover td{background:#F8FAFC}
       <div class="kpi-value" id="kpi-cpc">—</div>
       <div class="kpi-delta neutral" id="delta-cpc">Sin datos</div>
       <div class="kpi-sub">Costo por clic</div>
+    </div>
+    <div class="kpi-card" title="Clics reportados directamente por Meta para el período y alcance seleccionados.">
+      <div class="kpi-label">Clics</div>
+      <div class="kpi-value" id="kpi-clicks">—</div>
+      <div class="kpi-delta neutral" id="delta-clicks">Sin datos</div>
+      <div class="kpi-sub">Fuente: Meta Insights</div>
+    </div>
+    <div class="kpi-card" title="Conversaciones iniciadas reportadas por Meta.">
+      <div class="kpi-label">Conversaciones</div>
+      <div class="kpi-value" id="kpi-conversations">—</div>
+      <div class="kpi-delta neutral" id="delta-conversations">Sin datos</div>
+      <div class="kpi-sub">Fuente: acciones de mensajería</div>
+    </div>
+    <div class="kpi-card" title="Leads reportados por Meta, separados de conversaciones y clics.">
+      <div class="kpi-label">Leads</div>
+      <div class="kpi-value" id="kpi-leads">—</div>
+      <div class="kpi-delta neutral" id="delta-leads">Sin datos</div>
+      <div class="kpi-sub">Fuente: acciones de lead</div>
+    </div>
+    <div class="kpi-card" title="Ventas confirmadas y atribuidas a campañas mediante el identificador del anuncio.">
+      <div class="kpi-label">Ventas atribuidas</div>
+      <div class="kpi-value" id="kpi-sales">—</div>
+      <div class="kpi-delta neutral" id="delta-sales">Sin comparación</div>
+      <div class="kpi-sub">Fuente: cierres confirmados</div>
     </div>
   </div>
 
@@ -664,6 +688,7 @@ tr:hover td{background:#F8FAFC}
      ya usado en creditek-agente-respuestas.html, vía CDN. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="agente3-targeting.js"></script>
+<script src="agente3-dashboard.js"></script>
 <script>
 // ── Estado ────────────────────────────────────────────────────────
 let currentDays = 7;
@@ -739,7 +764,11 @@ function wizCreateZoneCard(id, zone) {
   card.className = 'zone-card' + (wizSelectedZones.has(id) ? ' sel' : '');
   card.innerHTML = `${zone.name}<div class="sub">${zone.sub || zone.region}</div>`;
   card.onclick = () => {
-    if (wizSelectedZones.has(id)) wizSelectedZones.delete(id); else wizSelectedZones.add(id);
+    CreditekMetaTargeting.updateSelectedZone(
+      wizSelectedZones,
+      id,
+      !wizSelectedZones.has(id),
+    );
     renderWizZones();
   };
   return card;
@@ -797,7 +826,9 @@ async function resolverCiudadesExcluidas(token) {
 }
 
 async function wizSearchCity() {
-  const q = document.getElementById('wiz-search-input').value.trim();
+  const q = CreditekMetaTargeting.normalizeLocationQuery(
+    document.getElementById('wiz-search-input').value,
+  );
   const resultsDiv = document.getElementById('wiz-search-results');
   if (!q) return;
   resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Buscando...</div>';
@@ -915,11 +946,10 @@ function wizToggleAliado(nombre, marcar) {
   const id = 'aliado_' + resuelto.key;
   if (marcar) {
     wizCustomZones[id] = { name: nombre, key: resuelto.key, region: resuelto.region, region_id: resuelto.region_id, sub: '🤝 Aliado' };
-    wizSelectedZones.add(id);
   } else {
     delete wizCustomZones[id];
-    wizSelectedZones.delete(id);
   }
+  CreditekMetaTargeting.updateSelectedZone(wizSelectedZones, id, marcar);
   renderWizZones();
   wizSincronizarTodas();
   wizActualizarLabelAliados();
@@ -933,13 +963,13 @@ function wizToggleAllAliados() {
       const r = wizAliadoResueltos[n];
       const id = 'aliado_' + r.key;
       wizCustomZones[id] = { name: n, key: r.key, region: r.region, region_id: r.region_id, sub: '🤝 Aliado' };
-      wizSelectedZones.add(id);
+      CreditekMetaTargeting.updateSelectedZone(wizSelectedZones, id, true);
     });
   } else {
     nombresResueltos.forEach(n => {
       const id = 'aliado_' + wizAliadoResueltos[n].key;
       delete wizCustomZones[id];
-      wizSelectedZones.delete(id);
+      CreditekMetaTargeting.updateSelectedZone(wizSelectedZones, id, false);
     });
   }
   renderWizZones();
@@ -1087,6 +1117,16 @@ async function actualizarAudienciaEstimada() {
 
 function wizGoStep(n) {
   if (n === 2 && wizSelectedZones.size === 0) { showToast('Elige al menos una zona', '#EF4444'); return; }
+  if (n >= 2) {
+    const validation = CreditekMetaTargeting.validateSelectedZones(
+      wizSelectedZones,
+      wizAllZones(),
+    );
+    if (!validation.valid) {
+      showToast(validation.error, '#EF4444');
+      return;
+    }
+  }
   if (n === 4) {
     if (!wizImageBase64) { showToast('Sube una imagen', '#EF4444'); return; }
     if (wizABTest && !wizImageBaseB) { showToast('Sube la imagen de la Variante B', '#EF4444'); return; }
@@ -1103,7 +1143,11 @@ function wizGoStep(n) {
     actualizarAudienciaEstimada();
   }
   if (n === 4) {
-    const zoneNames = [...wizSelectedZones].map(id => wizAllZones()[id].name).join(', ');
+    const summaryNames = CreditekMetaTargeting.buildSummaryNames(
+      wizSelectedZones,
+      wizAllZones(),
+    );
+    const zoneNames = summaryNames.join(', ');
     const budgetVal = document.getElementById('wiz-budget-slider').value;
     document.getElementById('wiz-rev-zone').textContent = zoneNames;
     document.getElementById('wiz-rev-budget').textContent = fmtCOP(budgetVal) + '/semana';
@@ -1113,7 +1157,7 @@ function wizGoStep(n) {
     const adText4 = document.getElementById('wiz-ad-text').value.trim();
     const horaActual4 = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit', hour12:false});
     const copySnippet4 = adText4 ? adText4.split(' ').slice(0,4).join(' ') : 'sin-copy';
-    const nombreAuto = `Creditek - ${[...wizSelectedZones].map(id => wizAllZones()[id].name).join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual4} - ${copySnippet4}`;
+    const nombreAuto = `Creditek - ${summaryNames.join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual4} - ${copySnippet4}`;
     const campoNombre = document.getElementById('wiz-campaign-name');
     if (!campoNombre.dataset.editado) { campoNombre.value = nombreAuto; }
     campoNombre.oninput = function() { campoNombre.dataset.editado = '1'; };
@@ -1129,6 +1173,12 @@ async function publicarCampana() {
   btn.disabled = true;
 
   try {
+    const zoneValidation = CreditekMetaTargeting.validateSelectedZones(
+      wizSelectedZones,
+      wizAllZones(),
+    );
+    if (!zoneValidation.valid) throw new Error(zoneValidation.error);
+
     const budgetCop = parseInt(document.getElementById('wiz-budget-slider').value); // FIX v33 — ya en COP, sin multiplicar
     const dailyBudgetCop = Math.round(budgetCop / 7);
     const adText = document.getElementById('wiz-ad-text').value.trim();
@@ -1137,7 +1187,11 @@ async function publicarCampana() {
     const status = activarYa ? 'ACTIVE' : 'PAUSED';
     const horaActual = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit', hour12:false});
     const copySnippet = adText ? adText.split(' ').slice(0,4).join(' ') : 'sin-copy';
-    const nombreAutoFallback = `Creditek - ${[...wizSelectedZones].map(id => wizAllZones()[id].name).join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual} - ${copySnippet}`;
+    const summaryNames = CreditekMetaTargeting.buildSummaryNames(
+      wizSelectedZones,
+      wizAllZones(),
+    );
+    const nombreAutoFallback = `Creditek - ${summaryNames.join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual} - ${copySnippet}`;
     const campaignName = document.getElementById('wiz-campaign-name').value.trim() || nombreAutoFallback;
 
     // 1. Subir imagen(es)
@@ -1374,9 +1428,7 @@ const RESULT_ACTION_TYPES = [
   'landing_page_view'
 ];
 function contarResultadosReales(actions) {
-  return (actions || [])
-    .filter(a => RESULT_ACTION_TYPES.includes(a.action_type))
-    .reduce((s, a) => s + parseInt(a.value || 0), 0);
+  return CreditekMetaDashboard.computeMetrics({ actions }).results;
 }
 
 function abrirConfig() {
@@ -1417,13 +1469,7 @@ function setPeriod(days, btn) {
 
 // ── Fechas ───────────────────────────────────────────────────────
 function getFechas(days) {
-  const end   = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - days);
-  return {
-    since: start.toISOString().split('T')[0],
-    until: end.toISOString().split('T')[0],
-  };
+  return CreditekMetaDashboard.getDateRanges(days).current;
 }
 
 // FIX v29, 13-jul-2026: Sección A — "Tu estado actual". Fechas de calendario
@@ -1469,6 +1515,13 @@ async function cargarEstadoActual() {
     estadoReal.mesSpendCOP    = parseFloat(dMes.data?.[0]?.spend || 0);
     renderEstadoActual();
   } catch (e) {
+    estadoReal.semanaSpendCOP = null;
+    estadoReal.mesSpendCOP = null;
+    document.getElementById('estado-semana-pct').textContent = 'No disponible';
+    document.getElementById('estado-semana-spent').textContent = 'Meta no devolvió el gasto semanal';
+    document.getElementById('estado-semana-remain').textContent = '';
+    document.getElementById('estado-mes-valor').textContent = 'No disponible';
+    document.getElementById('estado-mes-sub').textContent = 'Meta no devolvió el gasto mensual';
     console.error('[ESTADO-ACTUAL] error:', e);
   }
 }
@@ -1485,16 +1538,17 @@ function renderEstadoActual() {
   // Misma lógica de v23 (sin capear el sobregasto real), solo que ahora
   // alimentada con el gasto real de la semana en curso, no con el rango
   // prorrateado.
-  const pctReal = (spendSemana / weeklyBudget) * 100;
-  const pctBar  = Math.min(pctReal, 100);
+  const budgetState = CreditekMetaDashboard.calculateBudget(spendSemana, weeklyBudget);
+  const pctReal = budgetState.percentage;
+  const pctBar  = budgetState.barPercentage;
   document.getElementById('estado-semana-pct').textContent = pctReal.toFixed(0) + '%';
   const bar = document.getElementById('estado-semana-bar');
   bar.style.width = pctBar + '%';
   bar.className = 'budget-bar-fill' + (pctReal >= 100 ? ' over' : pctReal >= 80 ? ' warn' : '');
   document.getElementById('estado-semana-spent').textContent  = 'Gastado: ' + fmtCOP(spendSemana);
-  document.getElementById('estado-semana-remain').textContent = pctReal > 100
-    ? 'Sobregasto: ' + fmtCOP(spendSemana - weeklyBudget)
-    : 'Restante: ' + fmtCOP(weeklyBudget - spendSemana);
+  document.getElementById('estado-semana-remain').textContent = budgetState.overrun > 0
+    ? 'Sobregasto: ' + fmtCOP(budgetState.overrun)
+    : 'Restante: ' + fmtCOP(budgetState.remaining);
   document.getElementById('estado-semana-title').textContent = `💰 Gasto real de esta semana (lun—hoy) — presupuesto ${fmtCOP(weeklyBudget)}`;
 
   document.getElementById('estado-mes-valor').textContent = fmtCOP(spendMes);
@@ -1537,13 +1591,14 @@ async function cargarDatos() {
   cargarEstadoActual();
 
   try {
-    const { since, until } = getFechas(currentDays);
-    const prevFechas = getFechas(currentDays * 2);
+    const ranges = CreditekMetaDashboard.getDateRanges(currentDays);
+    const { since, until } = ranges.current;
+    const prevFechas = ranges.previous;
     // FIX v24, 13-jul-2026 — Fase 1, Mejora 2: el período anterior real que
     // se le pide a Meta (ver urlPrev abajo) es [prevFechas.since, since] —
     // NO [prevFechas.since, prevFechas.until] — por eso se arma el label con
     // esas mismas 2 fechas, para que coincida exacto con el dato mostrado.
-    prevRangeLabel = `${formatFechaCorta(prevFechas.since)} - ${formatFechaCorta(since)}`;
+    prevRangeLabel = `${formatFechaCorta(prevFechas.since)} - ${formatFechaCorta(prevFechas.until)}`;
 
     // Actualizar label período
     document.getElementById('period-label').textContent =
@@ -1565,20 +1620,13 @@ async function cargarDatos() {
     const resPrev = await fetch(urlPrev);
     const dataPrev = await resPrev.json();
 
-    // Campañas — status removido (inválido en insights) + fallback date_preset=today
+    // Campañas del mismo rango exacto que los indicadores de cuenta.
     const urlCamp = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,ctr,cpm,cpc,actions&time_range={"since":"${since}","until":"${until}"}&level=campaign&access_token=${token}`;
     const resCamp = await fetch(urlCamp);
     const dataCamp = await resCamp.json();
 
+    if (dataCamp.error) throw new Error(dataCamp.error.message);
     let campsData = dataCamp.data || [];
-    if (campsData.length === 0 && dataCamp.error === undefined) {
-      const urlCampToday = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,ctr,cpm,cpc,actions&date_preset=today&level=campaign&access_token=${token}`;
-      const resCampToday = await fetch(urlCampToday);
-      const dataCampToday = await resCampToday.json();
-      if (dataCampToday.data && dataCampToday.data.length > 0) {
-        campsData = dataCampToday.data;
-      }
-    }
 
     // Fix v1 — traer el estado real de cada campaña (insights no lo tiene, /campaigns sí)
     const campaignIds = campsData.map(c => c.campaign_id).filter(Boolean);
@@ -1669,7 +1717,24 @@ async function cargarDatos() {
       trendDataMensual.push({ mesLabel: `${MESES_CORTOS[inicioMes.getMonth()]} ${inicioMes.getFullYear()}`, data: mDat.data?.[0] || null });
     }
 
-    lastData = { main: data.data?.[0], prev: dataPrev.data?.[0], camps: campsData, trend: trendData, trendMensual: trendDataMensual, ads: adsData, ventasPorCampaña, pctSinAtribucion };
+    const mainFromCampaigns = CreditekMetaDashboard.aggregateCampaignInsights(campsData);
+    const accountMain = data.data?.[0] || {};
+    const main = {
+      ...accountMain,
+      ...mainFromCampaigns,
+      reach: accountMain.reach || 0,
+      frequency: accountMain.frequency || 0,
+      cpm: accountMain.cpm || 0,
+      cpc: accountMain.cpc || 0,
+      ctr: accountMain.ctr || 0,
+    };
+    const reconciliation = CreditekMetaDashboard.reconcileCampaignTotals(main, campsData);
+    if (!reconciliation.matches) {
+      console.warn('[META-RECONCILIACION] Los totales aditivos no coinciden con el detalle.', reconciliation);
+    }
+
+    const hasMainData = CreditekMetaDashboard.hasMetricsData(data.data?.[0]) || campsData.length > 0;
+    lastData = { main, hasMainData, prev: dataPrev.data?.[0], camps: campsData, trend: trendData, trendMensual: trendDataMensual, ads: adsData, ventasPorCampaña, pctSinAtribucion };
     renderDatos(lastData);
     document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO');
     // FIX v28, 13-jul-2026: el análisis de IA (analizarConIA) ya no se llama
@@ -1679,6 +1744,7 @@ async function cargarDatos() {
 
   } catch(e) {
     showToast('Error: ' + e.message, '#EF4444');
+    document.getElementById('last-update').textContent = 'Error al actualizar · se conservan los últimos datos válidos';
     console.error(e);
   }
 
@@ -1697,18 +1763,23 @@ function computeKPIs(obj) {
   // FIX v32 — spendCOP ya es el valor real en pesos (account_currency=COP,
   // confirmado). Antes se dividía por COP_TO_USD como si spend viniera en
   // USD, mientras cpm/cpc se dejaban tal cual — esa mezcla era el bug.
-  const spendCOP = parseFloat(obj.spend || 0);
-  const impr     = parseInt(obj.impressions || 0);
-  const clicks   = parseInt(obj.clicks || 0);
-  const reach    = parseInt(obj.reach || 0);
-  const freq     = parseFloat(obj.frequency || 0);
-  const cpm      = parseFloat(obj.cpm || 0);
-  const cpc      = parseFloat(obj.cpc || 0);
-  const ctr      = parseFloat(obj.ctr || 0);
-  const results  = contarResultadosReales(obj.actions || []);
+  const metrics = CreditekMetaDashboard.computeMetrics(obj);
+  const spendCOP = metrics.spend;
+  const impr     = metrics.impressions;
+  const clicks   = metrics.clicks;
+  const reach    = metrics.reach;
+  const freq     = metrics.frequency;
+  const cpm      = metrics.cpm;
+  const cpc      = metrics.cpc;
+  const ctr      = metrics.ctr;
+  const results  = metrics.results;
   const cpr      = results > 0 ? spendCOP / results : 0;
   const roas     = spendCOP > 0 ? (results * 50000 / spendCOP) : 0;
-  return { spendCOP, impr, clicks, reach, freq, cpm, cpc, ctr, results, cpr, roas };
+  return {
+    spendCOP, impr, clicks, reach, freq, cpm, cpc, ctr, results, cpr, roas,
+    conversations: metrics.conversations,
+    leads: metrics.leads,
+  };
 }
 
 // FIX v28, 13-jul-2026: construye las opciones del selector de campaña
@@ -1760,6 +1831,22 @@ function renderVista() {
     return renderVista();
   }
 
+  const sourceHasData = modoIndividual
+    ? CreditekMetaDashboard.hasMetricsData(camp)
+    : d.hasMainData;
+  if (!sourceHasData) {
+    [
+      'kpi-roas', 'kpi-cpr', 'kpi-ctr', 'kpi-reach', 'kpi-freq',
+      'kpi-spend', 'kpi-impr', 'kpi-cpm', 'kpi-conv', 'kpi-cpc',
+      'kpi-clicks', 'kpi-conversations', 'kpi-leads',
+    ].forEach(id => setKPI(id, 'Sin datos', null, null, 'Meta no devolvió datos para este período'));
+    setKPI('kpi-sales', 'Sin datos', null, null, 'No hay datos atribuibles para este período');
+    document.getElementById('budget-section').style.display = 'none';
+    document.getElementById('freq-bar').className = 'kpi-alert';
+    refrescarAlertas([]);
+    return;
+  }
+
   const k = computeKPIs(modoIndividual ? camp : d.main);
 
   if (modoIndividual) {
@@ -1775,8 +1862,11 @@ function renderVista() {
     setKPI('kpi-spend', fmtCOP(k.spendCOP), 0, 1, 'COP del periodo');
     setKPI('kpi-impr',  fmtNum(k.impr), 0, 1, 'Solo esta campaña');
     setKPI('kpi-cpm',   fmtCOP(k.cpm), 0, 1, 'Por mil impresiones');
-    setKPI('kpi-conv',  fmtNum(k.results), 0, 1, 'Acciones totales');
+    setKPI('kpi-conv',  fmtNum(k.results), 0, 1, 'Conversaciones + leads');
     setKPI('kpi-cpc',   fmtCOP(k.cpc), 0, 1, 'Por clic');
+    setKPI('kpi-clicks', fmtNum(k.clicks), 0, 1, 'Fuente: Meta Insights');
+    setKPI('kpi-conversations', fmtNum(k.conversations), 0, 1, 'Fuente: acciones de mensajería');
+    setKPI('kpi-leads', fmtNum(k.leads), 0, 1, 'Fuente: acciones de lead');
   } else {
     const pk = computeKPIs(d.prev);
     setKPI('kpi-roas',  k.roas > 0 ? k.roas.toFixed(1)+'x' : 'N/A', null, null, 'Proyección — no confirma venta real');
@@ -1797,9 +1887,17 @@ function renderVista() {
     setKPI('kpi-spend', fmtCOP(k.spendCOP), pk.spendCOP, k.spendCOP, 'COP del periodo');
     setKPI('kpi-impr',  fmtNum(k.impr), pk.impr, k.impr, 'Total de veces visto');
     setKPI('kpi-cpm',   fmtCOP(k.cpm), pk.cpm, k.cpm, 'Por mil impresiones');
-    setKPI('kpi-conv',  fmtNum(k.results), pk.results, k.results, 'Acciones totales');
+    setKPI('kpi-conv',  fmtNum(k.results), pk.results, k.results, 'Conversaciones + leads');
     setKPI('kpi-cpc',   fmtCOP(k.cpc), pk.cpc, k.cpc, 'Por clic');
+    setKPI('kpi-clicks', fmtNum(k.clicks), pk.clicks, k.clicks, 'Fuente: Meta Insights');
+    setKPI('kpi-conversations', fmtNum(k.conversations), pk.conversations, k.conversations, 'Fuente: acciones de mensajería');
+    setKPI('kpi-leads', fmtNum(k.leads), pk.leads, k.leads, 'Fuente: acciones de lead');
   }
+
+  const attributedSales = modoIndividual
+    ? Number(d.ventasPorCampaña?.[camp.campaign_id] || 0)
+    : Object.values(d.ventasPorCampaña || {}).reduce((total, value) => total + Number(value || 0), 0);
+  setKPI('kpi-sales', fmtNum(attributedSales), null, null, 'Fuente: cierres confirmados');
 
   // Alerta frecuencia (barra bajo la tarjeta de Frecuencia)
   const freqBar = document.getElementById('freq-bar');

@@ -192,6 +192,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     { titulo: 'REPORTES', icono: '📈', lucide: 'chart-no-axes-combined', items: [
       { label: 'Dashboard', href: 'reportes.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
     ]},
+    { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', items: [
+      { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', roles: ['gerencia', 'auditoria', 'soporte'] },
+      { label: 'Mis reportes', href: 'mis-reportes.html', lucide: 'message-square-warning', roles: ['gerencia', 'auditoria', 'soporte', 'admin_tienda', 'asesor'] },
+    ]},
   ];
 
   const LOGO = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
@@ -407,6 +411,30 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       script.addEventListener('load', () => window.lucide?.createIcons());
       document.head.appendChild(script);
     }
+    if (!document.getElementById('koraIncidentStyles')) {
+      const link = document.createElement('link');
+      link.id = 'koraIncidentStyles';
+      link.rel = 'stylesheet';
+      link.href = '/design-system/components/kora-incident-center.css';
+      document.head.appendChild(link);
+    }
+    const installIncidentCenter = () => {
+      if (document.getElementById('koraIncidentCenter')) return;
+      const center = document.createElement('script');
+      center.id = 'koraIncidentCenter';
+      center.src = '/creditek/erp/kora-incident-center.js';
+      document.head.appendChild(center);
+    };
+    if (window.KoraIncidentDomain || document.getElementById('koraIncidentDomain')) {
+      if (window.KoraIncidentDomain) installIncidentCenter();
+      else document.getElementById('koraIncidentDomain').addEventListener('load', installIncidentCenter, { once: true });
+    } else {
+      const domain = document.createElement('script');
+      domain.id = 'koraIncidentDomain';
+      domain.src = '/creditek/erp/kora-incident-domain.js';
+      domain.addEventListener('load', installIncidentCenter, { once: true });
+      document.head.appendChild(domain);
+    }
   }
 
   function koraCurrentItem(modules) {
@@ -471,7 +499,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name}" data-lucide-static="${name}" aria-hidden="true">${icons[name]}</svg>`;
   }
 
-  function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout }) {
+  function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout, supabaseClient }) {
     if (!root || root.dataset.koraMounted === 'true') return;
     installKoraAssets();
     const current = activeItem || koraCurrentItem(modules);
@@ -638,6 +666,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
     window.lucide?.createIcons();
     requestAnimationFrame(() => root.dataset.koraStable = 'true');
+    const mountIncidentCenter = () => window.KoraIncidentCenter?.mount?.({
+      sb: supabaseClient,
+      profile,
+      stores,
+      koraVersion: document.documentElement.dataset.koraVersion
+        || document.documentElement.dataset.koraEcosystem
+        || '2.0.1',
+    });
+    mountIncidentCenter();
+    if (!window.KoraIncidentCenter) {
+      document.addEventListener('kora-incident-ready', mountIncidentCenter, { once: true });
+    }
   }
 
   function setKoraContext(title, breadcrumbs = ['KORA', title]) {
@@ -710,6 +750,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
           root: document.querySelector('[data-kora-shell-root]') || appEl,
           profile: perfil,
           stores: tiendas || [],
+          supabaseClient: sb,
           onLogout: async () => {
             await sb.auth.signOut();
             location.reload();
@@ -727,7 +768,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
-      window.creditekSidebar = { perfil, tiendas: tiendas || [] };
+      window.creditekSidebar = { perfil, tiendas: tiendas || [], sb };
+      if (typeof CustomEvent === 'function') {
+        document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
+      }
       if (await waitForPageReady(appEl)) revealDestination();
       else showBootError();
     } catch (_) {

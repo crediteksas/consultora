@@ -1,0 +1,40 @@
+.kora-incident-trigger{display:flex;align-items:center;gap:var(--ctk-space-2,8px);width:100%;min-height:44px;padding:0 var(--ctk-space-3,12px);border:1px solid var(--ctk-color-border-default,#e5e7eb);border-radius:var(--ctk-radius-md,10px);background:var(--ctk-color-surface-primary,#fff);color:var(--ctk-color-text-secondary,#475569);font:600 13px/1 Inter,sans-serif;cursor:pointer;transition:background 180ms,color 180ms,border-color 180ms}
+.kora-incident-trigger:hover{background:var(--ctk-color-background-secondary,#f8fafc);color:var(--ctk-color-text-primary,#0b1e3d)}
+.kora-incident-trigger:focus-visible,.kora-incident-dialog button:focus-visible,.kora-incident-dialog input:focus-visible,.kora-incident-dialog textarea:focus-visible,.kora-incident-dialog select:focus-visible{outline:3px solid color-mix(in srgb,var(--ctk-color-accent-primary,#00c4cc) 25%,transparent);outline-offset:2px}
+.kora-shell-root[data-sidebar-collapsed=true] .kora-incident-trigger span{display:none}
+.kora-shell-root[data-sidebar-collapsed=true] .kora-incident-trigger{justify-content:center;padding:0}
+.kora-incident-backdrop{position:fixed;inset:0;z-index:var(--ctk-z-modal,1000);display:grid;place-items:center;padding:16px;background:rgba(11,30,61,.36)}
+.kora-incident-backdrop[hidden]{display:none}
+.kora-incident-dialog{width:min(680px,100%);max-height:min(860px,calc(100dvh - 32px));overflow:auto;border:1px solid var(--ctk-color-border-default,#e5e7eb);border-radius:var(--ctk-radius-xl,18px);background:var(--ctk-color-surface-primary,#fff);box-shadow:var(--ctk-shadow-4,0 24px 64px rgba(11,30,61,.18));color:var(--ctk-color-text-primary,#0b1e3d)}
+.kora-incident-head,.kora-incident-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid var(--ctk-color-border-subtle,#eef2f7)}
+.kora-incident-head h2{margin:0;font:700 20px/1.3 Inter,sans-serif}
+.kora-incident-head p{margin:4px 0 0;color:var(--ctk-color-text-secondary,#64748b);font-size:13px}
+.kora-incident-close{width:40px;height:40px;border:0;border-radius:10px;background:transparent;cursor:pointer}
+.kora-incident-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:24px}
+.kora-incident-field{display:grid;gap:6px}
+.kora-incident-field--full{grid-column:1/-1}
+.kora-incident-field label{font-size:12px;font-weight:650;color:var(--ctk-color-text-secondary,#475569)}
+.kora-incident-field input,.kora-incident-field textarea,.kora-incident-field select{width:100%;border:1px solid var(--ctk-color-border-default,#dfe5ec);border-radius:var(--ctk-radius-md,10px);background:#fff;color:inherit;padding:11px 12px;font:14px/1.45 Inter,sans-serif}
+.kora-incident-field textarea{min-height:94px;resize:vertical}
+.kora-incident-evidence{padding:14px;border:1px dashed var(--ctk-color-border-strong,#cbd5e1);border-radius:12px;background:var(--ctk-color-background-secondary,#f8fafc)}
+.kora-incident-preview img{display:block;max-width:100%;max-height:180px;margin-top:10px;border-radius:10px;object-fit:contain}
+.kora-incident-note,.kora-incident-status{grid-column:1/-1;margin:0;font-size:12px;color:var(--ctk-color-text-secondary,#64748b)}
+.kora-incident-note{padding:10px 12px;border-radius:9px;background:var(--ctk-color-warning-subtle,#fff7ed);color:var(--ctk-color-warning-strong,#9a3412)}
+.kora-incident-status[data-kind=error]{color:var(--ctk-color-danger-strong,#b91c1c)}
+.kora-incident-status[data-kind=success]{color:var(--ctk-color-success-strong,#15803d);font-weight:650}
+.kora-incident-similar{grid-column:1/-1;padding:12px;border:1px solid var(--ctk-color-border-default,#e5e7eb);border-radius:10px;background:#f8fafc;font-size:13px}
+.kora-incident-actions{grid-column:1/-1;margin:8px -24px -24px;border-top:1px solid var(--ctk-color-border-subtle,#eef2f7);border-bottom:0}
+.kora-incident-actions button{min-height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--ctk-color-border-default,#dfe5ec);background:#fff;font-weight:650;cursor:pointer}
+.kora-incident-actions button[type=submit]{border-color:var(--ctk-color-accent-primary,#00c4cc);background:var(--ctk-color-accent-primary,#00c4cc);color:#fff}
+.kora-incident-actions button:disabled{opacity:.55;cursor:not-allowed}
+.kora-incidents-page{max-width:1440px;margin:0 auto;padding:28px}
+.kora-incidents-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:20px 0}
+.kora-incidents-kpi,.kora-incidents-panel{border:1px solid var(--ctk-color-border-default,#e5e7eb);border-radius:14px;background:#fff}
+.kora-incidents-kpi{padding:16px}.kora-incidents-kpi span{display:block;color:#64748b;font-size:12px}.kora-incidents-kpi strong{display:block;margin-top:7px;font-size:24px}
+.kora-incidents-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.kora-incidents-filters input,.kora-incidents-filters select{min-height:40px;border:1px solid #dfe5ec;border-radius:9px;background:#fff;padding:0 10px}
+.kora-incidents-panel{overflow:hidden}.kora-incidents-table-wrap{overflow:auto}.kora-incidents-table{width:100%;border-collapse:collapse;font-size:13px}.kora-incidents-table th,.kora-incidents-table td{padding:12px 14px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}.kora-incidents-table th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase}.kora-incidents-table button{border:0;background:none;color:#087f86;font-weight:650;cursor:pointer}
+.kora-incident-detail{padding:20px}.kora-incident-detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}.kora-incident-timeline{list-style:none;padding:0}.kora-incident-timeline li{padding:10px 0;border-bottom:1px solid #eef2f7}.kora-incident-task{width:100%;min-height:300px;font:12px/1.5 ui-monospace,monospace}
+@media(max-width:1100px){.kora-incidents-kpis{grid-template-columns:repeat(3,1fr)}.kora-incidents-filters{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.kora-incident-backdrop{align-items:end;padding:0}.kora-incident-dialog{max-height:92dvh;border-radius:18px 18px 0 0}.kora-incident-form{grid-template-columns:1fr;padding:18px}.kora-incident-actions{margin:6px -18px -18px}.kora-incidents-page{padding:18px}.kora-incidents-kpis{grid-template-columns:repeat(2,1fr)}.kora-incidents-filters{grid-template-columns:1fr}.kora-incident-detail-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.kora-incident-trigger{transition:none}}

@@ -5,6 +5,122 @@
 // No depende del script propio de cada página: usa su propio cliente de
 // Supabase y lee la sesión ya guardada en localStorage por el login de la página.
 (function () {
+  const SHELL_PENDING_CLASS = 'creditek-shell-pending';
+  const SHELL_AUTHENTICATED_CLASS = 'creditek-shell-authenticated';
+  const SHELL_ERROR_CLASS = 'creditek-shell-error';
+  const SHELL_READY_TIMEOUT_MS = 8_000;
+
+  function installBootCurtain() {
+    document.documentElement.classList.add(SHELL_PENDING_CLASS);
+    if (document.getElementById('creditekShellBootStyles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'creditekShellBootStyles';
+    style.textContent = `
+html.${SHELL_PENDING_CLASS} body > * { visibility: hidden !important; }
+html.${SHELL_PENDING_CLASS} body::before {
+  content: ''; visibility: visible; position: fixed; inset: 0; z-index: 2147483646;
+  background: #F5F5F7;
+}
+html.${SHELL_PENDING_CLASS} body::after {
+  content: ''; visibility: visible; position: fixed; z-index: 2147483647;
+  width: 42px; height: 42px; top: calc(50% - 21px); left: calc(50% - 21px);
+  border: 4px solid rgba(11,30,61,.12); border-top-color: #00C4CC;
+  border-radius: 50%; animation: creditek-shell-spin .8s linear infinite;
+}
+html.${SHELL_AUTHENTICATED_CLASS} #loginScreen { display: none !important; }
+html.${SHELL_ERROR_CLASS} body::before,
+html.${SHELL_ERROR_CLASS} body::after { display: none; }
+html.${SHELL_ERROR_CLASS} #creditekShellBootError {
+  visibility: visible !important; display: flex !important; position: fixed; inset: 0;
+  z-index: 2147483647; align-items: center; justify-content: center; padding: 24px;
+  background: #F5F5F7; color: #0B1E3D; font-family: Montserrat, Arial, sans-serif;
+}
+html.${SHELL_ERROR_CLASS} #creditekShellBootError > div {
+  max-width: 420px; text-align: center; background: #fff; padding: 28px;
+  border-radius: 16px; box-shadow: 0 12px 35px rgba(11,30,61,.12);
+}
+html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
+  margin-top: 18px; padding: 10px 18px; border: 0; border-radius: 10px;
+  background: #0B1E3D; color: #fff; cursor: pointer; font: inherit;
+}
+@keyframes creditek-shell-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  html.${SHELL_PENDING_CLASS} body::after { animation: none; }
+}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function markAuthenticated() {
+    document.documentElement.classList.add(SHELL_AUTHENTICATED_CLASS);
+  }
+
+  function revealDestination() {
+    document.documentElement.classList.remove(SHELL_PENDING_CLASS);
+  }
+
+  function showBootError() {
+    let errorEl = document.getElementById('creditekShellBootError');
+    if (!errorEl) {
+      errorEl = document.createElement('div');
+      errorEl.id = 'creditekShellBootError';
+      errorEl.setAttribute('role', 'alert');
+      errorEl.innerHTML = `
+        <div>
+          <strong>No fue posible cargar esta sección.</strong>
+          <p>Comprueba tu conexión e inténtalo nuevamente.</p>
+          <button type="button">Recargar</button>
+        </div>
+      `;
+      errorEl.querySelector('button').addEventListener('click', () => location.reload());
+      document.body.appendChild(errorEl);
+    }
+    document.documentElement.classList.add(SHELL_ERROR_CLASS);
+  }
+
+  function withBootTimeout(promise) {
+    let timeout;
+    const deadline = new Promise((_, reject) => {
+      timeout = setTimeout(
+        () => reject(new Error('Tiempo de espera agotado')),
+        SHELL_READY_TIMEOUT_MS,
+      );
+    });
+    return Promise.race([promise, deadline]).finally(() => clearTimeout(timeout));
+  }
+
+  function waitForPageReady(appEl) {
+    if (appEl.classList.contains('show')) return Promise.resolve(true);
+    if (document.querySelector?.('.sin-perfil-screen.show')) return Promise.resolve(true);
+
+    return new Promise(resolve => {
+      let finished = false;
+      const done = ready => {
+        if (finished) return;
+        finished = true;
+        observer.disconnect();
+        clearTimeout(timeout);
+        resolve(ready);
+      };
+      const observer = new MutationObserver(() => {
+        if (
+          appEl.classList.contains('show')
+          || document.querySelector?.('.sin-perfil-screen.show')
+        ) done(true);
+      });
+      const timeout = setTimeout(() => done(false), SHELL_READY_TIMEOUT_MS);
+      observer.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ['class'],
+      });
+    });
+  }
+
+  installBootCurtain();
+
   const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 
@@ -234,30 +350,52 @@
 
   async function init() {
     const appEl = document.getElementById('app');
-    if (!appEl) return; // esta página no usa el shell compartido
+    if (!appEl) {
+      revealDestination();
+      return; // esta página no usa el shell compartido
+    }
 
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { data: sessionData } = await sb.auth.getSession();
-    if (!sessionData || !sessionData.session) return; // el login propio de la página se encarga
+    try {
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: sessionData } = await withBootTimeout(sb.auth.getSession());
+      if (!sessionData || !sessionData.session) {
+        revealDestination();
+        return; // el login propio de la página se encarga
+      }
 
-    const userId = sessionData.session.user.id;
-    const { data: perfil } = await sb.from('perfiles').select('*').eq('id', userId).maybeSingle();
-    if (!perfil || !perfil.activo) return;
+      markAuthenticated();
+      const userId = sessionData.session.user.id;
+      const { data: perfil } = await withBootTimeout(
+        sb.from('perfiles').select('*').eq('id', userId).maybeSingle(),
+      );
+      if (!perfil || !perfil.activo) {
+        if (await waitForPageReady(appEl)) revealDestination();
+        else showBootError();
+        return;
+      }
 
-    const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
+      const { data: tiendas } = await withBootTimeout(
+        sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+      );
 
-    injectStyles();
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = buildSidebarHtml(perfil, tiendas || []);
-    // El botón hamburguesa y el overlay van sueltos en <body>, el <aside> dentro de #app
-    document.body.appendChild(wrapper.querySelector('#sidebarHamburguesa'));
-    document.body.appendChild(wrapper.querySelector('#sidebarOverlay'));
-    appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
+      injectStyles();
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = buildSidebarHtml(perfil, tiendas || []);
+      // El botón hamburguesa y el overlay van sueltos en <body>, el <aside> dentro de #app
+      document.body.appendChild(wrapper.querySelector('#sidebarHamburguesa'));
+      document.body.appendChild(wrapper.querySelector('#sidebarOverlay'));
+      appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
 
-    wireInteractions(sb);
+      wireInteractions(sb);
 
-    // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
-    window.creditekSidebar = { perfil, tiendas: tiendas || [] };
+      // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
+      window.creditekSidebar = { perfil, tiendas: tiendas || [] };
+      if (await waitForPageReady(appEl)) revealDestination();
+      else showBootError();
+    } catch (_) {
+      // Evita revelar el login o contenido protegido después de confirmar una sesión.
+      showBootError();
+    }
   }
 
   if (document.readyState === 'loading') {

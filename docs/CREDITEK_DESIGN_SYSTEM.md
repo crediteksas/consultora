@@ -1,10 +1,37 @@
-# Creditek Design System 1.0
+# Creditek Design System
+
+**Versión: 1.0.0**
+
+**Estado: estable**
+
+**Fecha de publicación: 2026-07-27**
 
 ## Propósito
 
 Creditek Design System define la infraestructura visual común del ERP, agentes,
 acceso, configuración, reportes, dashboards y módulos futuros. Esta primera
 versión no reemplaza estilos existentes ni modifica lógica funcional.
+
+## Compatibilidad
+
+La versión 1.0.0 es compatible con la arquitectura multipágina de Creditek ERP
+y con páginas HTML independientes. No requiere un framework de frontend ni
+modifica los contratos actuales con Supabase, Workers o APIs externas.
+
+Los recursos ejecutables se publican en `/design-system/`. La documentación
+interna y el changelog permanecen fuera del artefacto público.
+
+## Política de versionado
+
+Creditek Design System utiliza versionado semántico:
+
+- **PATCH** (`1.0.1`): correcciones compatibles sin cambiar contratos públicos.
+- **MINOR** (`1.1.0`): componentes, tokens o capacidades compatibles.
+- **MAJOR** (`2.0.0`): cambios incompatibles que requieren migración.
+
+Cada versión estable debe actualizar `design-system/version.json`, el manifiesto,
+el changelog y esta documentación. Un cambio visual no se considera compatible
+si renombra clases, elimina tokens o altera comportamientos públicos.
 
 ## Instalación
 
@@ -304,10 +331,20 @@ mediante `aria-describedby`.
 ## Iconografía Lucide
 
 `icons/lucide.mjs` adapta la API oficial de Lucide. La aplicación consumidora
-debe cargar una versión fijada y pasar la API a `renderLucideIcons()`.
+debe cargar `lucide@1.27.0` y pasar la API a `renderLucideIcons()`. No se permite
+usar `latest`, rangos abiertos ni versiones flotantes.
 
 Los emojis no se usan para acciones, navegación, estados o métricas. Pueden
 permanecer cuando forman parte del contenido creado por los usuarios.
+
+## Dependencias tipográficas
+
+Inter Variable y Montserrat se cargan actualmente desde Google Fonts. Una
+interrupción, bloqueo de red o cambio externo podría impedir su descarga y
+activar las fuentes de respaldo del sistema.
+
+Como mejora futura se evaluará alojar ambas familias localmente. La versión
+1.0.0 no descarga ni incorpora archivos de fuente al repositorio.
 
 ## Utilidades
 

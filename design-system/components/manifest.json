@@ -1,5 +1,16 @@
 {
+  "name": "Creditek Design System",
   "version": "1.0.0",
+  "status": "stable",
+  "updatedAt": "2026-07-27",
+  "compatibility": "Creditek ERP multipágina",
+  "dependencies": {
+    "lucide": "1.27.0",
+    "fonts": [
+      "Inter Variable",
+      "Montserrat"
+    ]
+  },
   "components": [
     "Button",
     "IconButton",
@@ -35,5 +46,279 @@
     "Progress",
     "Avatar",
     "Dropdown"
+  ],
+  "componentCatalog": [
+    {
+      "name": "Button",
+      "status": "stable",
+      "css": "components/actions.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["focus-visible", "disabled", "aria-busy"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "IconButton",
+      "status": "stable",
+      "css": "components/actions.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["aria-label", "focus-visible", "disabled"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Input",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["label", "aria-describedby", "aria-invalid"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Textarea",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["label", "aria-describedby", "aria-invalid"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Select",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["native-select", "label", "disabled"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Checkbox",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["native-checkbox", "label", "keyboard"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Switch",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["native-checkbox", "label", "keyboard"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Radio",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["native-radio", "fieldset", "legend"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Search",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["search-role", "label", "clear-name"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "DatePicker",
+      "status": "stable",
+      "css": "components/forms.css",
+      "javascript": null,
+      "accessibility": ["native-date", "label", "error-description"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Badge",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["text-alternative", "color-not-exclusive"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "StatusBadge",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["status-text", "color-not-exclusive"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Card",
+      "status": "stable",
+      "css": "components/data-display.css",
+      "javascript": null,
+      "accessibility": ["semantic-heading", "reading-order"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "MetricCard",
+      "status": "stable",
+      "css": "components/data-display.css",
+      "javascript": null,
+      "accessibility": ["semantic-label", "value-description"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "AlertCard",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["role-alert-when-critical", "color-not-exclusive"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "EmptyState",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["semantic-heading", "action-name"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Skeleton",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["aria-busy", "reduced-motion"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Toast",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["aria-live", "status-or-alert", "non-blocking"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Modal",
+      "status": "stable",
+      "css": "components/overlays.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["aria-modal", "focus-trap", "escape", "focus-restore"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Drawer",
+      "status": "stable",
+      "css": "components/overlays.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["dialog-role", "focus-trap", "escape", "focus-restore"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Tooltip",
+      "status": "stable",
+      "css": "components/overlays.css",
+      "javascript": null,
+      "accessibility": ["aria-describedby", "keyboard-trigger", "non-essential"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Tabs",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["tablist-pattern", "arrow-keys", "home-end"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Breadcrumb",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": null,
+      "accessibility": ["navigation-label", "aria-current"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Sidebar",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": null,
+      "accessibility": ["navigation-landmark", "current-page", "keyboard"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Topbar",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": null,
+      "accessibility": ["banner-landmark", "reading-order", "keyboard"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "PageHeader",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": null,
+      "accessibility": ["single-h1", "action-names"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "FilterBar",
+      "status": "stable",
+      "css": "components/navigation.css",
+      "javascript": null,
+      "accessibility": ["group-label", "field-labels", "responsive-reflow"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "DataTable",
+      "status": "stable",
+      "css": "components/data-display.css",
+      "javascript": null,
+      "accessibility": ["table-headers", "caption", "responsive-scroll"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Pagination",
+      "status": "stable",
+      "css": "components/data-display.css",
+      "javascript": null,
+      "accessibility": ["navigation-label", "aria-current", "button-names"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Loading",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["status", "visible-label", "aria-busy"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Spinner",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["decorative-hidden", "reduced-motion"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Progress",
+      "status": "stable",
+      "css": "components/feedback.css",
+      "javascript": null,
+      "accessibility": ["native-progress", "accessible-name", "value"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Avatar",
+      "status": "stable",
+      "css": "components/data-display.css",
+      "javascript": null,
+      "accessibility": ["image-alt", "initials-label"],
+      "compatibility": "Creditek ERP multipágina"
+    },
+    {
+      "name": "Dropdown",
+      "status": "stable",
+      "css": "components/overlays.css",
+      "javascript": "components/interactions.mjs",
+      "accessibility": ["aria-expanded", "aria-controls", "escape", "focus-restore"],
+      "compatibility": "Creditek ERP multipágina"
+    }
   ]
 }

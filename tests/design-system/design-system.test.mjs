@@ -54,6 +54,15 @@ const requiredComponents = [
   'Dropdown',
 ];
 
+const release = {
+  name: 'Creditek Design System',
+  version: '1.0.0',
+  status: 'stable',
+  releaseDate: '2026-07-27',
+  compatibility: 'Creditek ERP multipágina',
+  breakingChanges: false,
+};
+
 test('incluye la estructura mínima del Design System', async () => {
   for (const directory of requiredDirectories) {
     await access(path.join(designSystem, directory));
@@ -65,6 +74,45 @@ test('declara el catálogo completo de componentes base', async () => {
     await readFile(path.join(designSystem, 'components/manifest.json'), 'utf8'),
   );
   assert.deepEqual(manifest.components, requiredComponents);
+});
+
+test('formaliza la versión estable 1.0.0', async () => {
+  const version = JSON.parse(
+    await readFile(path.join(designSystem, 'version.json'), 'utf8'),
+  );
+  assert.deepEqual(version, release);
+});
+
+test('mantiene un changelog para la versión publicada', async () => {
+  const changelog = await readFile(path.join(designSystem, 'CHANGELOG.md'), 'utf8');
+  assert.match(changelog, /^# Changelog/m);
+  assert.match(changelog, /^## \[1\.0\.0\] - 2026-07-27$/m);
+  assert.match(changelog, /^### Added$/m);
+  for (const name of ['Added', 'Changed', 'Fixed', 'Deprecated', 'Removed', 'Security']) {
+    const section = changelog.match(
+      new RegExp(`^### ${name}\\n([\\s\\S]*?)(?=^### |^## |(?![\\s\\S]))`, 'm'),
+    );
+    if (section) assert.ok(section[1].trim(), `La sección ${name} está vacía`);
+  }
+});
+
+test('describe estado, archivos y accesibilidad por componente', async () => {
+  const manifest = JSON.parse(
+    await readFile(path.join(designSystem, 'components/manifest.json'), 'utf8'),
+  );
+  assert.equal(manifest.name, release.name);
+  assert.equal(manifest.version, release.version);
+  assert.equal(manifest.updatedAt, release.releaseDate);
+  assert.equal(manifest.componentCatalog.length, requiredComponents.length);
+
+  for (const component of manifest.componentCatalog) {
+    assert.equal(component.status, 'stable');
+    assert.match(component.css, /^components\/.+\.css$/);
+    assert.ok(Array.isArray(component.accessibility));
+    assert.ok(component.accessibility.length > 0);
+    assert.equal(component.compatibility, release.compatibility);
+    assert.ok(component.javascript === null || /^components\/.+\.mjs$/.test(component.javascript));
+  }
 });
 
 test('centraliza los valores de color fuera de los componentes', async () => {
@@ -118,6 +166,31 @@ test('documenta cada componente base', async () => {
   for (const component of requiredComponents) {
     assert.match(docs, new RegExp(`\\b${component}\\b`), `Falta documentar ${component}`);
   }
+});
+
+test('fija Lucide 1.27.0 sin latest ni rangos abiertos', async () => {
+  const manifest = JSON.parse(
+    await readFile(path.join(designSystem, 'components/manifest.json'), 'utf8'),
+  );
+  const iconsReadme = await readFile(path.join(designSystem, 'icons/README.md'), 'utf8');
+  const docs = await readFile(path.join(root, 'docs/CREDITEK_DESIGN_SYSTEM.md'), 'utf8');
+
+  assert.equal(manifest.dependencies.lucide, '1.27.0');
+  assert.match(iconsReadme, /lucide@1\.27\.0/);
+  assert.match(docs, /lucide@1\.27\.0/);
+  assert.doesNotMatch(`${iconsReadme}\n${docs}`, /lucide@latest/i);
+  assert.doesNotMatch(manifest.dependencies.lucide, /[~^*xX><=|]/);
+});
+
+test('mantiene la documentación normativa dentro del repositorio', async () => {
+  const docsPath = path.join(root, 'docs/CREDITEK_DESIGN_SYSTEM.md');
+  await access(docsPath);
+  assert.equal(path.relative(root, docsPath), 'docs/CREDITEK_DESIGN_SYSTEM.md');
+  const docs = await readFile(docsPath, 'utf8');
+  assert.match(docs, /Versión:\s*1\.0\.0/);
+  assert.match(docs, /Estado:\s*estable/i);
+  assert.match(docs, /## Política de versionado/);
+  assert.match(docs, /## Compatibilidad/);
 });
 
 test('publica recursos ejecutables sin exponer documentación interna', async () => {

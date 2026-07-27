@@ -27,11 +27,13 @@ test('las vistas de incidencias usan el shell, filtros, KPIs, detalle e historia
   ]);
 
   assert.match(admin, /sidebar\.js" data-kora-shell="1\.0\.0"/);
+  assert.match(admin, /data-kora-requires-auth="true"/);
   assert.match(admin, /Nuevas[\s\S]*Críticas[\s\S]*En desarrollo[\s\S]*Pendientes de validación/);
   assert.match(admin, /data-incident-filter="status"/);
   assert.match(admin, /data-incident-history/);
   assert.match(admin, /Generar tarea técnica/);
   assert.match(own, /sidebar\.js" data-kora-shell="1\.0\.0"/);
+  assert.match(own, /data-kora-requires-auth="true"/);
   assert.match(own, /Mis reportes/);
   assert.match(own, /data-incident-add-comment/);
   assert.match(own, /data-incident-confirm-fixed/);

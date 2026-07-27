@@ -725,6 +725,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data: sessionData } = await withBootTimeout(sb.auth.getSession());
       if (!sessionData || !sessionData.session) {
+        if (document.body?.dataset?.koraRequiresAuth === 'true') {
+          location.href = 'app.html';
+          return;
+        }
         revealDestination();
         return; // el login propio de la página se encarga
       }

@@ -14,7 +14,7 @@
     if (className) node.className = className;
     return node;
   };
-  let state = { sb: null, profile: null, mode: document.body.dataset.incidentMode, incidents: [], selected: null };
+  let state = { sb: null, profile: null, mode: document.body.dataset.incidentMode, incidents: [], selected: null, assignees: [] };
 
   function status(message, error = false) {
     const node = document.querySelector('[data-incident-page-status]');
@@ -60,13 +60,19 @@
     if (state.mode !== 'admin') return state.incidents;
     const read = name => document.querySelector(`[data-incident-filter="${name}"]`)?.value?.trim().toLowerCase() || '';
     const code = read('code');
-    const selectedDate = read('date');
+    const dateFrom = read('dateFrom');
+    const dateTo = read('dateTo');
     return state.incidents.filter(item =>
       (!code || item.incident_code.toLowerCase().includes(code) || item.title.toLowerCase().includes(code))
       && (!read('status') || item.status === read('status'))
       && (!read('priority') || item.priority === read('priority'))
+      && (!read('store') || String(item.store_name_snapshot || item.store_code || '').toLowerCase().includes(read('store')))
       && (!read('module') || item.module.toLowerCase().includes(read('module')))
-      && (!selectedDate || item.created_at.slice(0, 10) >= selectedDate));
+      && (!read('user') || item.user_name_snapshot.toLowerCase().includes(read('user')))
+      && (!read('assignee') || String(item.assigned_to || '').toLowerCase().includes(read('assignee')))
+      && (!read('version') || item.kora_version.toLowerCase().includes(read('version')))
+      && (!dateFrom || item.created_at.slice(0, 10) >= dateFrom)
+      && (!dateTo || item.created_at.slice(0, 10) <= dateTo));
   }
   function renderList() {
     const body = document.querySelector('[data-incident-list]');
@@ -134,7 +140,22 @@
     const historyNode = detail.querySelector('[data-incident-history]');
     historyNode.replaceChildren(...(history || []).map(event => el('li', `${formatDate(event.created_at)} · ${label(event.event_type)}${event.comment ? ` · ${event.comment}` : ''}`)));
     const commentsNode = detail.querySelector('[data-incident-comments]');
-    commentsNode.replaceChildren(...(comments || []).map(comment => el('p', `${comment.author_name_snapshot}: ${comment.body}`)));
+    commentsNode.replaceChildren();
+    for (const comment of comments || []) {
+      const paragraph = el('p', `${comment.author_name_snapshot}: ${comment.body}`);
+      if (comment.evidence_path) {
+        const { data: signed } = await window.KoraIncidentCenter.createSignedEvidenceUrl(state.sb, comment.evidence_path);
+        if (signed?.signedUrl) {
+          paragraph.append(' · ');
+          const link = el('a', 'Abrir evidencia');
+          link.href = signed.signedUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          paragraph.append(link);
+        }
+      }
+      commentsNode.append(paragraph);
+    }
     if (state.mode === 'admin') {
       detail.querySelector('[data-detail-status]').value = item.status;
       detail.querySelector('[data-detail-priority]').value = item.priority;
@@ -143,6 +164,22 @@
       detail.querySelector('[data-detail-version]').value = item.fixed_version || '';
     }
     detail.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+  async function loadAssignees() {
+    if (state.mode !== 'admin') return;
+    const { data, error } = await state.sb.from('perfiles')
+      .select('id,nombre,rol')
+      .eq('activo', true)
+      .in('rol', ['gerencia', 'auditoria', 'soporte'])
+      .order('nombre');
+    if (error) return;
+    state.assignees = data || [];
+    const select = document.querySelector('[data-detail-assignee]');
+    state.assignees.forEach(person => {
+      const option = el('option', `${person.nombre} · ${label(person.rol)}`);
+      option.value = person.id;
+      select.append(option);
+    });
   }
   async function saveAdmin() {
     const detail = document.querySelector('[data-incident-detail]');
@@ -166,11 +203,29 @@
   }
   async function addComment() {
     const input = document.querySelector('[data-comment-text]');
-    const { error } = await state.sb.rpc('kora_add_incident_comment', {
+    const fileInput = document.querySelector('[data-comment-evidence]');
+    const file = fileInput?.files?.[0];
+    const validation = window.KoraIncidentDomain.validateEvidence(file);
+    if (!validation.ok) throw new Error(validation.error);
+    const { data, error } = await state.sb.rpc('kora_add_incident_comment', {
       p_incident_id: state.selected.id, p_body: input.value, p_is_internal: false,
     });
     if (error) throw error;
+    if (file) {
+      const comment = Array.isArray(data) ? data[0] : data;
+      const extension = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const path = `${state.selected.id}/${crypto.randomUUID()}.${extension === 'jpeg' ? 'jpg' : extension}`;
+      const { error: uploadError } = await state.sb.storage.from('kora-incident-evidence').upload(path, file, {
+        contentType: file.type, cacheControl: '3600', upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      const { error: attachError } = await state.sb.rpc('kora_attach_incident_comment_evidence', {
+        p_comment_id: comment.id, p_path: path, p_name: file.name, p_mime: file.type, p_size: file.size,
+      });
+      if (attachError) throw attachError;
+    }
     input.value = '';
+    if (fileInput) fileInput.value = '';
     status('Información agregada.');
     await openDetail(state.selected);
   }
@@ -202,7 +257,7 @@
       }
       fillStateOptions();
       bind();
-      await Promise.all([loadMetrics(), loadIncidents()]);
+      await Promise.all([loadMetrics(), loadIncidents(), loadAssignees()]);
     } catch (error) {
       status(error.message || 'No fue posible cargar las incidencias.', true);
     }

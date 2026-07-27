@@ -191,6 +191,7 @@ test('la migración crea consecutivo atómico, RLS, historial, comentarios y buc
   assert.match(sql, /create table if not exists public\.kora_incidents/i);
   assert.match(sql, /create table if not exists public\.kora_incident_history/i);
   assert.match(sql, /create table if not exists public\.kora_incident_comments/i);
+  assert.match(sql, /create or replace function public\.kora_attach_incident_comment_evidence/i);
   assert.match(sql, /create table if not exists public\.kora_incident_permissions/i);
   assert.match(sql, /create table if not exists public\.kora_incident_notifications/i);
   assert.match(sql, /for update/i);

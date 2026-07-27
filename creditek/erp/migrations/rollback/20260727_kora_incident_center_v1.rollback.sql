@@ -28,6 +28,7 @@ drop function if exists public.kora_find_similar_incidents(text, text, text, tex
 drop function if exists public.kora_confirm_incident_resolved(uuid);
 drop function if exists public.kora_update_incident(uuid, text, text, uuid, text, text);
 drop function if exists public.kora_add_incident_comment(uuid, text, boolean);
+drop function if exists public.kora_attach_incident_comment_evidence(uuid, text, text, text, bigint);
 drop function if exists public.kora_attach_incident_evidence(uuid, text, text, text, bigint);
 drop function if exists public.kora_create_incident(jsonb, uuid);
 drop function if exists public.kora_next_incident_code();

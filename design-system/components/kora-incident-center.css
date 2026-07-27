@@ -31,7 +31,7 @@
 .kora-incidents-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:20px 0}
 .kora-incidents-kpi,.kora-incidents-panel{border:1px solid var(--ctk-color-border-default,#e5e7eb);border-radius:14px;background:#fff}
 .kora-incidents-kpi{padding:16px}.kora-incidents-kpi span{display:block;color:#64748b;font-size:12px}.kora-incidents-kpi strong{display:block;margin-top:7px;font-size:24px}
-.kora-incidents-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.kora-incidents-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
 .kora-incidents-filters input,.kora-incidents-filters select{min-height:40px;border:1px solid #dfe5ec;border-radius:9px;background:#fff;padding:0 10px}
 .kora-incidents-panel{overflow:hidden}.kora-incidents-table-wrap{overflow:auto}.kora-incidents-table{width:100%;border-collapse:collapse;font-size:13px}.kora-incidents-table th,.kora-incidents-table td{padding:12px 14px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}.kora-incidents-table th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase}.kora-incidents-table button{border:0;background:none;color:#087f86;font-weight:650;cursor:pointer}
 .kora-incident-detail{padding:20px}.kora-incident-detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}.kora-incident-timeline{list-style:none;padding:0}.kora-incident-timeline li{padding:10px 0;border-bottom:1px solid #eef2f7}.kora-incident-task{width:100%;min-height:300px;font:12px/1.5 ui-monospace,monospace}

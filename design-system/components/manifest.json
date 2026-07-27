@@ -1,6 +1,7 @@
 {
   "name": "Creditek Design System",
   "version": "1.0.0",
+  "koraProductVersion": "1.0.0",
   "status": "stable",
   "updatedAt": "2026-07-27",
   "compatibility": "Creditek ERP multipágina",
@@ -10,6 +11,21 @@
       "Inter Variable",
       "Montserrat"
     ]
+  },
+  "productSurface": {
+    "name": "KORA Visual Transformation",
+    "version": "1.0.0",
+    "status": "stable",
+    "css": "components/kora-product.css",
+    "javascript": "components/kora-product.js",
+    "accessibility": [
+      "focus-visible",
+      "keyboard",
+      "responsive-tables",
+      "reduced-motion",
+      "dialog-semantics"
+    ],
+    "compatibility": "KORA multipágina"
   },
   "components": [
     "Button",

@@ -3,6 +3,21 @@
 Los cambios notables de Creditek Design System se registran en este archivo.
 El proyecto utiliza versionado semántico.
 
+## KORA Visual Transformation v1.0.0 - 2026-07-27
+
+### Added
+
+- Superficie visual compartida para las 34 pantallas ERP, Agentes y portales.
+- Adaptador progresivo para tablas accesibles, controles, estados y overlays.
+- Integración consistente del KORA Navigation Shell en el ERP autenticado.
+- Responsive validado para escritorio, tablet y móvil.
+
+### Changed
+
+- Las pantallas existentes consumen tokens, tipografía, controles, tablas,
+  estados y navegación del Creditek Design System.
+- Los estilos heredados quedan aislados bajo la capa visual compartida.
+
 ## [1.0.0] - 2026-07-27
 
 ### Added
@@ -35,6 +50,5 @@ El proyecto utiliza versionado semántico.
 
 - Inter Variable y Montserrat se cargan desde Google Fonts.
 - Lucide debe cargarse desde una URL fijada o desde una futura copia local.
-- Ninguna pantalla existente consume todavía el Design System.
 - Los breakpoints se reflejan como valores estáticos en `@media` por una
   limitación nativa de CSS.

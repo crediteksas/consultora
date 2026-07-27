@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="sidebar.js"></script>
+<script src="caja-piloto-domain.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -182,6 +183,7 @@ tr.fila-abierta { background: #FEF2F2; }
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const cajaPiloto = window.CreditekCajaPiloto;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -265,12 +267,22 @@ function initPagina() {
 
 // ─── Cálculo del cuadrito (compartido) ─────────────────────────────────
 async function calcularCuadrito(tienda, fecha) {
-  const [{ data: ventas }, { data: gastos }, { data: caja }] = await Promise.all([
+  const [
+    { data: ventas, error: ventasError },
+    { data: gastos, error: gastosError },
+    { data: cuadre, error: cuadreError },
+  ] = await Promise.all([
     sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items(*, productos(nombre, tipo))')
       .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false),
     sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha),
-    sb.from('caja_diaria').select('*').eq('tienda_codigo', tienda).eq('fecha', fecha).maybeSingle(),
+    sb.rpc('calcular_efectivo_esperado_tienda', {
+      p_tienda_codigo: tienda,
+      p_fecha: fecha,
+    }),
   ]);
+  if (ventasError) throw ventasError;
+  if (gastosError) throw gastosError;
+  if (cuadreError) throw cuadreError;
 
   const ventasList = ventas || [];
   const gastosValidos = (gastos || []).filter(g => g.conceptos_gasto?.preautorizado || g.estado === 'aprobado');
@@ -298,16 +310,45 @@ async function calcularCuadrito(tienda, fecha) {
       producto: celular?.productos?.nombre || '—',
       financiera: credito?.financiera || '—',
       inicial: credito?.cuota_inicial || 0,
-      financiado: (v.total || 0) - (credito?.cuota_inicial || 0),
+      financiado: credito?.valor_esperado_financiera || 0,
     };
   });
 
-  const totalContado = ventasList.filter(v => v.tipo === 'contado').reduce((s, v) => s + Number(v.total || 0), 0);
-  const totalIniciales = creditosDelDia.reduce((s, c) => s + Number(c.inicial || 0), 0);
-  const totalGastos = gastosValidos.reduce((s, g) => s + Number(g.monto || 0), 0);
-  const esperado = totalContado + totalIniciales - totalGastos;
+  const apertura = Number(cuadre.apertura || 0);
+  const totalContado = Number(cuadre.contado_ventas || 0);
+  const totalFinanciado = Number(cuadre.financiado_ventas || 0);
+  const totalIniciales = Number(cuadre.iniciales || 0);
+  const otrosIngresos = Number(cuadre.otros_ingresos || 0);
+  const totalGastos = Number(cuadre.gastos_efectivo || 0);
+  const salidasExplicitas = Number(cuadre.salidas_explicitas || 0);
+  const esperado = cajaPiloto.calcularEfectivoEsperado({
+    apertura,
+    ventasContado: totalContado,
+    financiadoRecibido: totalFinanciado,
+    iniciales: totalIniciales,
+    otrosIngresos,
+    gastosEfectivo: totalGastos,
+    salidasExplicitas,
+  });
+  if (esperado !== Number(cuadre.esperado || 0)) {
+    throw new Error('El cálculo de caja del servidor no coincide con sus componentes.');
+  }
 
-  return { telefonos, accesorios: Object.values(accesoriosMap), creditosDelDia, gastos: gastosValidos, totalContado, totalIniciales, totalGastos, esperado, caja };
+  return {
+    telefonos,
+    accesorios: Object.values(accesoriosMap),
+    creditosDelDia,
+    gastos: gastosValidos,
+    apertura,
+    totalContado,
+    totalFinanciado,
+    totalIniciales,
+    otrosIngresos,
+    totalGastos,
+    salidasExplicitas,
+    esperado,
+    caja: cuadre.caja || null,
+  };
 }
 
 // ─── Vista tienda ───────────────────────────────────────────────────
@@ -354,9 +395,13 @@ async function cargarCuadrito(tienda, fecha) {
           `).join('') : '<div class="cuadrito-vacio">Sin gastos hoy.</div>'}
         </div>
         <div class="cuadrito-totales">
+          <div class="cuadrito-linea"><span class="izq">Apertura</span><span class="der">${fmtCOP(c.apertura)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total contado</span><span class="der">${fmtCOP(c.totalContado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Financiado recibido</span><span class="der">${fmtCOP(c.totalFinanciado)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total iniciales</span><span class="der">${fmtCOP(c.totalIniciales)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Salidas explícitas</span><span class="der">-${fmtCOP(c.salidasExplicitas)}</span></div>
           <div class="cuadrito-linea esperado ${c.esperado < 0 ? 'negativo' : ''}"><span class="izq">Efectivo esperado</span><span class="der">${fmtCOP(c.esperado)}</span></div>
         </div>
 
@@ -437,7 +482,7 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += c.creditosDelDia.length ? c.creditosDelDia.map(cr => `${cr.cliente} — ${cr.producto} — ${cr.financiera}\n  Inicial: ${fmtCOP(cr.inicial)} | Financiado: ${fmtCOP(cr.financiado)}`).join('\n') : 'Sin créditos.';
   texto += `\n\n*GASTOS*\n`;
   texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
-  texto += `\n\n━━━━━━━━━━━━━\nTotal contado: ${fmtCOP(c.totalContado)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido: ${fmtCOP(c.totalFinanciado)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');
@@ -484,7 +529,11 @@ async function cargarConsolidado() {
       const cerrada = c.caja && c.caja.estado === 'cerrada';
       filas.push({
         tiendaNombre: tienda.nombre, fecha,
-        contado: c.totalContado, iniciales: c.totalIniciales, gastos: c.totalGastos, esperado: c.esperado,
+        contado: c.totalContado,
+        financiado: c.totalFinanciado,
+        iniciales: c.totalIniciales,
+        gastos: c.totalGastos,
+        esperado: c.esperado,
         contadoReal: cerrada ? c.caja.efectivo_contado : null,
         diferencia: cerrada ? c.caja.diferencia : null,
         cerrada,

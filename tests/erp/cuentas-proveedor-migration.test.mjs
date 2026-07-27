@@ -25,6 +25,14 @@ test('el pago bloquea la factura, impide sobrepago y actualiza el saldo', () => 
   assert.match(sql, /update public\.facturas_proveedor[\s\S]*set saldo = saldo - p_monto/);
 });
 
+test('el pago conserva el proveedor de la factura', () => {
+  assert.match(
+    sql,
+    /insert into public\.pagos_proveedor \(\s*factura_id,\s*proveedor_id,/
+  );
+  assert.match(sql, /p_factura_id,\s*v_factura\.proveedor_id,/);
+});
+
 test('el pago es idempotente y no se expone a usuarios anónimos', () => {
   assert.match(sql, /idempotency_key/);
   assert.match(sql, /create unique index if not exists pagos_proveedor_idempotency_key_uidx/);

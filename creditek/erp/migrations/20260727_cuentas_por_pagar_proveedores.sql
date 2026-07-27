@@ -178,6 +178,7 @@ begin
 
   insert into public.pagos_proveedor (
     factura_id,
+    proveedor_id,
     monto,
     fecha,
     metodo,
@@ -189,6 +190,7 @@ begin
   )
   values (
     p_factura_id,
+    v_factura.proveedor_id,
     p_monto,
     p_fecha,
     nullif(trim(p_metodo), ''),

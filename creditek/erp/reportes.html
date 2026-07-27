@@ -468,6 +468,10 @@ function num(n) { return n == null ? '—' : fmtInt.format(Number(n)); }
 function pct(n, base) { if (!base) return '—'; return (100 * Number(n) / Number(base)).toFixed(1) + '%'; }
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+function exigirRespuestas(...respuestas) {
+  const fallida = respuestas.find(respuesta => respuesta?.error);
+  if (fallida) throw new Error(fallida.error.message);
+}
 function toast(msg, tipo = 'ok') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -825,6 +829,7 @@ async function cargarPresupuesto() {
     sb.from('presupuestos').select('tienda_codigo, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
     sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
   ]);
+  exigirRespuestas(pRes, vRes);
 
   const msgEl = document.getElementById('msg-presupuestos');
   if (!pRes.data || pRes.data.length === 0) {
@@ -872,6 +877,7 @@ async function cargarRentabilidadTienda() {
     sb.from('venta_items').select('venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true),
     sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado'),
   ]);
+  exigirRespuestas(vRes, viRes, gRes);
   const porTienda = {};
   (vRes.data || []).forEach(v => {
     if (!tiendaVisible(v.tienda_codigo)) return;
@@ -985,9 +991,11 @@ async function cargarCrecimiento() {
 // ============================================================================
 async function cargarTopProductos() {
   const { desde, hasta } = getPeriodo();
-  const { data: vi } = await sb.from('venta_items')
+  const viRes = await sb.from('venta_items')
     .select('cantidad, precio_venta, producto_id, productos(nombre), ventas!inner(tienda_codigo, fecha, anulada)')
     .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
+  exigirRespuestas(viRes);
+  const vi = viRes.data;
   const porProd = {};
   (vi || []).forEach(v => {
     if (!tiendaVisible(v.ventas?.tienda_codigo)) return;
@@ -1009,7 +1017,9 @@ async function cargarTopProductos() {
   const iso = d => d.toISOString().slice(0, 10);
   let qUn = sb.from('unidades').select('producto_id, created_at, productos(nombre)').eq('estado', 'disponible').lte('created_at', iso(hace30));
   qUn = aplicarFiltroTienda(qUn, 'tienda_actual');
-  const { data: uns } = await qUn;
+  const unidadesRes = await qUn;
+  exigirRespuestas(unidadesRes);
+  const uns = unidadesRes.data;
   const slowMap = {};
   (uns || []).forEach(u => {
     const pid = u.producto_id;

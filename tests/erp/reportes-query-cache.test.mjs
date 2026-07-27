@@ -70,4 +70,8 @@ test('reportes comparte ventas, cartera e inventario durante cada refresco', asy
   assert.match(html, /cargarVentas\(cache\)/);
   assert.match(html, /cargarCartera\(cache\)/);
   assert.match(html, /cargarInventario\(cache\)/);
+  assert.match(html, /function exigirRespuestas\(\.\.\.respuestas\)/);
+  assert.match(html, /exigirRespuestas\(pRes, vRes\)/);
+  assert.match(html, /exigirRespuestas\(vRes, viRes, gRes\)/);
+  assert.match(html, /exigirRespuestas\(unidadesRes\)/);
 });

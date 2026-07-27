@@ -452,21 +452,33 @@ async function cerrarCajaAccion(tienda, fecha, esperado) {
   if (document.getElementById('efectivoContado').value === '') {
     err.textContent = 'Ingresa el efectivo contado.'; err.classList.add('show'); return;
   }
-  const dif = efectivo - esperado;
-  if (dif !== 0 && !nota) {
-    err.textContent = 'La diferencia no es cero — agrega una nota explicando por qué.'; err.classList.add('show'); return;
+  const validacion = cajaPiloto.validarCierre({
+    efectivoContado: efectivo,
+    efectivoEsperado: esperado,
+  });
+  if (!validacion.ok) {
+    err.textContent = validacion.mensaje; err.classList.add('show'); return;
   }
   if (!confirm('¿Confirmas el cierre de caja? No se puede cerrar dos veces el mismo día.')) return;
 
   const btn = document.getElementById('btnCerrarCaja');
+  const idempotencyKey = btn.dataset.idempotencyKey || crypto.randomUUID();
+  btn.dataset.idempotencyKey = idempotencyKey;
   btn.disabled = true; btn.textContent = 'Cerrando...';
 
-  const { data, error } = await sb.rpc('cerrar_caja', { p_tienda_codigo: tienda, p_fecha: fecha, p_efectivo_contado: efectivo, p_nota: nota });
+  const { data, error } = await sb.rpc('cerrar_caja_piloto', {
+    p_tienda_codigo: tienda,
+    p_fecha: fecha,
+    p_efectivo_contado: efectivo,
+    p_idempotency_key: idempotencyKey,
+    p_nota: nota,
+  });
 
   btn.disabled = false; btn.textContent = 'Cerrar caja';
 
   if (error) { err.textContent = 'No se pudo cerrar: ' + error.message; err.classList.add('show'); return; }
 
+  delete btn.dataset.idempotencyKey;
   mostrarBanner(`✅ Caja cerrada — Diferencia: ${fmtCOP(data.diferencia)}`);
   cargarCuadrito(tienda, fecha);
 }

@@ -24,7 +24,32 @@
       - numero(salidasExplicitas);
   }
 
+  function validarCierre({ efectivoContado, efectivoEsperado }) {
+    const contado = Number(efectivoContado);
+    const esperado = Number(efectivoEsperado);
+
+    if (!Number.isFinite(contado) || !Number.isFinite(esperado) || contado < 0) {
+      return {
+        ok: false,
+        diferencia: null,
+        mensaje: 'El efectivo contado y esperado deben ser valores válidos.',
+      };
+    }
+
+    const diferencia = contado - esperado;
+    if (diferencia !== 0) {
+      return {
+        ok: false,
+        diferencia,
+        mensaje: `La caja tiene una diferencia de ${diferencia}.`,
+      };
+    }
+
+    return { ok: true, diferencia: 0, mensaje: '' };
+  }
+
   global.CreditekCajaPiloto = Object.freeze({
     calcularEfectivoEsperado,
+    validarCierre,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

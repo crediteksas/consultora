@@ -87,7 +87,7 @@ test('la pantalla existente integra rangos, filtros, comparación y exportación
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /xlsx\.full\.min\.js/);
-  assert.match(app, /utilidad_creditek_rango/);
+  assert.match(app, /consultar_utilidad_creditek_rango/);
   assert.match(app, /XLSX\.writeFile/);
   assert.match(app, /'Por tienda'/);
   assert.match(app, /'Por plataforma'/);

@@ -91,8 +91,10 @@
     const rangoCmp = D.rangoComparacion(document.getElementById('comparativo').value, desde, hasta);
     const consultaDesde = rangoCmp && rangoCmp.desde < desde ? rangoCmp.desde : desde;
     const consultaHasta = rangoCmp && rangoCmp.hasta > hasta ? rangoCmp.hasta : hasta;
-    const { data, error } = await SB.from('utilidad_creditek_rango').select('*')
-      .gte('fecha', consultaDesde).lte('fecha', consultaHasta).order('fecha');
+    const { data, error } = await SB.rpc('consultar_utilidad_creditek_rango', {
+      p_desde: consultaDesde,
+      p_hasta: consultaHasta,
+    });
     if (error) throw error;
     estado.filas = (data || []).map(fila => ({
       ...fila,
@@ -277,7 +279,14 @@
       enlazar();
       await cargar();
     } catch (error) {
-      toast(`No se pudo cargar Utilidad Creditek: ${error.message}`, true);
+      const mensaje = error?.message || 'Error desconocido';
+      const panel = document.getElementById('error-utilidad');
+      if (panel) {
+        panel.classList.remove('hidden');
+        panel.querySelector('[data-error-mensaje]').textContent =
+          `No se pudo consultar la utilidad. ${mensaje}`;
+      }
+      toast(`No se pudo cargar Utilidad Creditek: ${mensaje}`, true);
     }
   })();
 })();

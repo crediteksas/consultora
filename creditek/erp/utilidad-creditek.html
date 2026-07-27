@@ -161,6 +161,11 @@
       <button class="quick" data-rapido="hoy">Hoy</button><button class="quick" data-rapido="semana">Esta semana</button><button class="quick active" data-rapido="mes">Este mes</button><button class="quick" data-rapido="mes_anterior">Mes anterior</button><button class="quick" data-rapido="30_dias">Últimos 30 días</button><button class="quick" data-rapido="personalizado">Personalizado</button>
     </div>
   </section>
+  <section id="error-utilidad" class="surface hidden" role="alert">
+    <strong>No fue posible cargar Utilidad Creditek.</strong>
+    <p data-error-mensaje>Comprueba la conexión e inténtalo nuevamente.</p>
+    <button type="button" onclick="location.reload()">Reintentar</button>
+  </section>
 
   <section class="kpi-grid">
     <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><p id="kpi-facturado" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>

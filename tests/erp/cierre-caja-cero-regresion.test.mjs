@@ -41,6 +41,40 @@ test('rechaza una diferencia y muestra la causa', async () => {
   assert.match(resultado.mensaje, /diferencia/i);
 });
 
+test('permite cerrar el caso reportado con efectivo exacto de 1.658.000', async () => {
+  const context = { window: {} };
+  vm.runInNewContext(await readFile(domainPath, 'utf8'), context);
+  const caja = context.window.CreditekCajaPiloto;
+  const esperado = caja.calcularEfectivoEsperado({
+    apertura: 1000000,
+    ventasContado: 500000,
+    financiadoRecibido: 0,
+    saldoPorCobrar: 465000,
+    iniciales: 158000,
+    otrosIngresos: 0,
+    gastosEfectivo: 0,
+    salidasExplicitas: 0,
+  });
+
+  assert.equal(esperado, 1658000);
+  assert.deepEqual(
+    { ...caja.validarCierre({ efectivoContado: 1658000, efectivoEsperado: esperado }) },
+    { ok: true, diferencia: 0, mensaje: '' }
+  );
+});
+
+test('mantiene bloqueado el cierre cuando existe una diferencia real', async () => {
+  const context = { window: {} };
+  vm.runInNewContext(await readFile(domainPath, 'utf8'), context);
+  const resultado = context.window.CreditekCajaPiloto.validarCierre({
+    efectivoContado: 1657999,
+    efectivoEsperado: 1658000,
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.diferencia, -1);
+});
+
 test('el cierre servidor reutiliza el cálculo, bloquea y es idempotente', async () => {
   assert.equal(existsSync(migrationPath), true, 'falta la migración mínima de cierre');
   const sql = (await readFile(migrationPath, 'utf8')).toLowerCase();

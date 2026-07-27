@@ -319,6 +319,7 @@ async function calcularCuadrito(tienda, fecha) {
   const apertura = Number(cuadre.apertura || 0);
   const totalContado = Number(cuadre.contado_ventas || 0);
   const totalFinanciado = Number(cuadre.financiado_ventas || 0);
+  const saldoPorCobrar = Number(cuadre.saldo_por_cobrar || 0);
   const totalIniciales = Number(cuadre.iniciales || 0);
   const otrosIngresos = Number(cuadre.otros_ingresos || 0);
   const totalGastos = Number(cuadre.gastos_efectivo || 0);
@@ -344,6 +345,7 @@ async function calcularCuadrito(tienda, fecha) {
     apertura,
     totalContado,
     totalFinanciado,
+    saldoPorCobrar,
     totalIniciales,
     otrosIngresos,
     totalGastos,
@@ -399,7 +401,8 @@ async function cargarCuadrito(tienda, fecha) {
         <div class="cuadrito-totales">
           <div class="cuadrito-linea"><span class="izq">Apertura</span><span class="der">${fmtCOP(c.apertura)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total contado</span><span class="der">${fmtCOP(c.totalContado)}</span></div>
-          <div class="cuadrito-linea"><span class="izq">Financiado recibido</span><span class="der">${fmtCOP(c.totalFinanciado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Financiado recibido en tienda</span><span class="der">${fmtCOP(c.totalFinanciado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Saldo por cobrar</span><span class="der">${fmtCOP(c.saldoPorCobrar)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total iniciales</span><span class="der">${fmtCOP(c.totalIniciales)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
@@ -496,7 +499,7 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += c.creditosDelDia.length ? c.creditosDelDia.map(cr => `${cr.cliente} — ${cr.producto} — ${cr.financiera}\n  Inicial: ${fmtCOP(cr.inicial)} | Financiado: ${fmtCOP(cr.financiado)}`).join('\n') : 'Sin créditos.';
   texto += `\n\n*GASTOS*\n`;
   texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
-  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido: ${fmtCOP(c.totalFinanciado)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');

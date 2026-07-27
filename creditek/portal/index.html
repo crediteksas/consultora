@@ -211,9 +211,9 @@
     <div data-kora-brand data-variant="login-inverse"></div>
   </div>
   <div class="header-right">
-    <button class="vista-btn active" id="btnTienda" onclick="cambiarVista('tienda')">🏪 Catálogo</button>
-    <button class="vista-btn" id="btnHistorial" onclick="cambiarVista('historial')">📋 Mis Pedidos</button>
-    <button class="vista-btn" id="btnOscar" onclick="cambiarVista('oscar')">🔒 Admin</button>
+    <button class="vista-btn active" id="btnTienda" onclick="cambiarVista('tienda')"><i data-lucide="store" aria-hidden="true"></i><span>Catálogo</span></button>
+    <button class="vista-btn" id="btnHistorial" onclick="cambiarVista('historial')"><i data-lucide="clipboard-list" aria-hidden="true"></i><span>Mis pedidos</span></button>
+    <button class="vista-btn" id="btnOscar" onclick="cambiarVista('oscar')"><i data-lucide="shield-check" aria-hidden="true"></i><span>Admin</span></button>
     <span class="badge-pedido" onclick="abrirCarrito()">🛒 Pedido (<span id="badgeNum">0</span>)</span>
   </div>
 </header>
@@ -266,12 +266,12 @@
       <div class="cat-selector-title">¿Qué categoría buscas?</div>
       <div class="cat-selector-sub">Selecciona una categoría para ver el catálogo</div>
       <div class="cat-grid">
-        <button class="cat-btn" onclick="seleccionarCategoria('Celulares')"><span class="cat-btn-emoji">📱</span><span class="cat-btn-label">Celulares</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Sonido')"><span class="cat-btn-emoji">🔊</span><span class="cat-btn-label">Sonido</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Accesorios')"><span class="cat-btn-emoji">🔌</span><span class="cat-btn-label">Accesorios</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Electrodomésticos')"><span class="cat-btn-emoji">🏠</span><span class="cat-btn-label">Electrodomésticos</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Computadores')"><span class="cat-btn-emoji">💻</span><span class="cat-btn-label">Computadores</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Movilidad')"><span class="cat-btn-emoji">🛴</span><span class="cat-btn-label">Movilidad</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Celulares')"><span class="cat-btn-emoji"><i data-lucide="smartphone" aria-hidden="true"></i></span><span class="cat-btn-label">Celulares</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Sonido')"><span class="cat-btn-emoji"><i data-lucide="speaker" aria-hidden="true"></i></span><span class="cat-btn-label">Sonido</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Accesorios')"><span class="cat-btn-emoji"><i data-lucide="cable" aria-hidden="true"></i></span><span class="cat-btn-label">Accesorios</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Electrodomésticos')"><span class="cat-btn-emoji"><i data-lucide="home" aria-hidden="true"></i></span><span class="cat-btn-label">Electrodomésticos</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Computadores')"><span class="cat-btn-emoji"><i data-lucide="laptop" aria-hidden="true"></i></span><span class="cat-btn-label">Computadores</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Movilidad')"><span class="cat-btn-emoji"><i data-lucide="bike" aria-hidden="true"></i></span><span class="cat-btn-label">Movilidad</span></button>
       </div>
     </div>
   </div>

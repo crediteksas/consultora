@@ -51,3 +51,22 @@ test('mantiene responsive, reducción de movimiento y tablas locales', async () 
   assert.match(ecosystem, /prefers-reduced-motion: reduce/);
   assert.match(ecosystem, /table\s*\{[\s\S]*min-width: max\(100%, 40rem\)/);
 });
+
+test('el portal de pedidos usa navegación e iconografía KORA sin emojis de interfaz', async () => {
+  const [portal, ecosystem, product] = await Promise.all([
+    read('creditek/portal/index.html'),
+    read('design-system/components/kora-ecosystem.css'),
+    read('design-system/components/kora-product.js'),
+  ]);
+  assert.match(portal, /data-lucide="store"/);
+  assert.match(portal, /data-lucide="smartphone"/);
+  assert.doesNotMatch(portal, /class="vista-btn[^"]*"[^>]*>[^<]*[🏪📋🔒]/u);
+  assert.doesNotMatch(portal, /class="cat-btn-emoji">[📱🔊🔌🏠💻🛴]/u);
+  assert.match(ecosystem, /Portal de pedidos: neutraliza la superficie heredada/);
+  assert.match(ecosystem, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(product, /https:\/\/unpkg\.com\/lucide@1\.27\.0\/dist\/umd\/lucide\.min\.js/);
+  assert.match(product, /ensureLucideIcons\(\)/);
+  assert.match(product, /normalizeInterfaceIcons\(\)/);
+  assert.match(product, /Extended_Pictographic/);
+  assert.doesNotMatch(product, /lucide@latest|\^1\.27\.0|~1\.27\.0/);
+});

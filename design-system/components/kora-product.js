@@ -9,6 +9,120 @@
     creditekLogo: '/creditek/agentes/logos/creditek_logo_corregido_alta.png',
     startupImage: null,
   });
+  const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
+
+  function renderLucideIcons() {
+    window.lucide?.createIcons?.({
+      attrs: {
+        'aria-hidden': 'true',
+        'stroke-width': 1.8,
+      },
+    });
+  }
+
+  function ensureLucideIcons() {
+    if (window.lucide?.createIcons) {
+      renderLucideIcons();
+      return;
+    }
+    const current = document.querySelector('script[data-kora-lucide]');
+    if (current) {
+      current.addEventListener('load', renderLucideIcons, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = KORA_LUCIDE_URL;
+    script.defer = true;
+    script.dataset.koraLucide = '1.27.0';
+    script.addEventListener('load', renderLucideIcons, { once: true });
+    document.head.appendChild(script);
+  }
+
+  function iconForLabel(label) {
+    const value = label.toLocaleLowerCase('es');
+    if (/config|ajuste/.test(value)) return 'settings';
+    if (/inventario|producto|bodega|pedido/.test(value)) return 'boxes';
+    if (/campaña|publicidad|meta ads/.test(value)) return 'megaphone';
+    if (/venta|gasto|costo|presupuesto|pago|cartera/.test(value)) return 'wallet';
+    if (/reporte|análisis|tendencia|rendimiento|kpi/.test(value)) return 'bar-chart-3';
+    if (/cliente|usuario|perfil/.test(value)) return 'users';
+    if (/tienda|estado actual/.test(value)) return 'store';
+    if (/copiar|documento|historial/.test(value)) return 'clipboard-list';
+    if (/buscar/.test(value)) return 'search';
+    if (/alerta|advertencia|novedad/.test(value)) return 'alert-triangle';
+    if (/éxito|correct|cruzado|aprobado/.test(value)) return 'check-circle';
+    if (/cerrar|bloque|seguridad|admin/.test(value)) return 'shield-check';
+    if (/crear|generar/.test(value)) return 'sparkles';
+    return 'circle-dot';
+  }
+
+  function replaceLeadingEmoji(element) {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let textNode = walker.nextNode();
+    while (textNode && !/^\s*\p{Extended_Pictographic}/u.test(textNode.nodeValue || '')) {
+      textNode = walker.nextNode();
+    }
+    if (!textNode) return;
+    const clean = (textNode.nodeValue || '')
+      .replace(/^\s*[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u, '')
+      .trimStart();
+    const icon = document.createElement('i');
+    icon.dataset.lucide = iconForLabel(clean || element.textContent);
+    icon.className = 'kora-interface-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    textNode.parentNode.insertBefore(icon, textNode);
+    textNode.nodeValue = clean ? ` ${clean}` : '';
+  }
+
+  const KORA_INTERFACE_ICON_SELECTOR = [
+    'button',
+    '.budget-title',
+    '.cierre-title',
+    '.estado-mes-label',
+    '.estado-real-header',
+    '.excel-title',
+    '.hist-titulo',
+    '.kpi-label',
+    '.modal-title',
+    '.page-title',
+    '.section-divider',
+    '.section-title',
+    '.table-title',
+    'h1',
+    'h2',
+  ].join(', ');
+
+  function normalizeInterfaceIcons(scope = document) {
+    const iconOnly = '.nav-icon, .module-icon, .tool-icon, .cat-btn-emoji, .icono, .lock';
+    scope.querySelectorAll?.(iconOnly).forEach(element => {
+      if (!/\p{Extended_Pictographic}/u.test(element.textContent || '')) return;
+      const icon = document.createElement('i');
+      icon.dataset.lucide = iconForLabel(element.closest('button, a, article, section')?.textContent || element.textContent);
+      icon.className = 'kora-interface-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      element.replaceChildren(icon);
+    });
+    scope.querySelectorAll?.(KORA_INTERFACE_ICON_SELECTOR).forEach(replaceLeadingEmoji);
+  }
+
+  function observeInterfaceIcons() {
+    const observer = new MutationObserver(records => {
+      records.forEach(record => {
+        const element = record.target.nodeType === Node.TEXT_NODE
+          ? record.target.parentElement
+          : record.target;
+        if (!(element instanceof Element)) return;
+        const target = element.matches(KORA_INTERFACE_ICON_SELECTOR)
+          ? element
+          : element.closest(KORA_INTERFACE_ICON_SELECTOR);
+        if (target && /\p{Extended_Pictographic}/u.test(target.textContent || '')) {
+          replaceLeadingEmoji(target);
+          renderLucideIcons();
+        }
+      });
+    });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+  }
 
   function ensureBrandMetadata() {
     if (document.head.querySelector('link[rel~="icon"]')) return;
@@ -284,6 +398,8 @@
     document.body.classList.add('kora-product-page');
     ensureBrandMetadata();
     renderBrands();
+    normalizeInterfaceIcons();
+    observeInterfaceIcons();
     enhanceTables();
     enhanceControls();
     enhanceOverlays();
@@ -316,7 +432,7 @@
         first.focus();
       }
     });
-    window.lucide?.createIcons?.();
+    ensureLucideIcons();
     requestAnimationFrame(() => document.documentElement.classList.add('kora-visual-ready'));
   }
 

@@ -171,6 +171,126 @@ html[data-kora-ecosystem="2.0.0"] {
   cursor: progress;
 }
 
+.kora-product-page .kora-interface-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  height: var(--ctk-icon-md);
+  stroke-width: 1.8;
+  vertical-align: -0.2em;
+  width: var(--ctk-icon-md);
+}
+
+.kora-product-page :where(.nav-icon, .module-icon, .tool-icon, .cat-btn-emoji, .icono, .lock)
+  .kora-interface-icon {
+  height: var(--ctk-icon-lg);
+  width: var(--ctk-icon-lg);
+}
+
+/* Portal de pedidos: neutraliza la superficie heredada sin alterar su flujo. */
+.kora-product-page:has(.cat-selector-wrap) {
+  background: var(--ctk-color-neutral-50);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page:has(.cat-selector-wrap) > header {
+  background: color-mix(in srgb, var(--ctk-color-surface) 94%, transparent);
+  border-bottom: 1px solid var(--ctk-color-border);
+  box-shadow: var(--ctk-shadow-1);
+  min-height: var(--ctk-height-topbar);
+  padding: var(--ctk-space-1) var(--ctk-space-2);
+}
+
+.kora-product-page:has(.cat-selector-wrap) > header .kora-brand__product,
+.kora-product-page:has(.cat-selector-wrap) > header .kora-brand__signature {
+  color: var(--ctk-color-primary-900);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .header-right {
+  gap: var(--ctk-space-0-5);
+}
+
+body.kora-product-page:has(.cat-selector-wrap) .vista-btn.vista-btn {
+  align-items: center;
+  background: transparent;
+  border-color: transparent;
+  color: var(--ctk-color-text-secondary);
+  display: inline-flex;
+  gap: var(--ctk-space-0-5);
+  min-height: var(--ctk-height-control-sm);
+  padding-inline: var(--ctk-space-1);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .vista-btn svg {
+  height: var(--ctk-icon-sm);
+  width: var(--ctk-icon-sm);
+}
+
+body.kora-product-page:has(.cat-selector-wrap) .vista-btn.vista-btn.active {
+  background: var(--ctk-color-secondary-50);
+  border-color: var(--ctk-color-secondary-100);
+  color: var(--ctk-color-primary-900);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-selector-wrap {
+  padding-block: var(--ctk-space-5) var(--ctk-space-3);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-selector-title {
+  color: var(--ctk-color-primary-900);
+  font-family: var(--ctk-font-family-ui);
+  font-size: var(--ctk-font-size-h2);
+  letter-spacing: var(--ctk-letter-spacing-tight);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-selector-sub {
+  color: var(--ctk-color-text-muted);
+  margin-bottom: var(--ctk-space-3);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-grid {
+  gap: var(--ctk-space-1);
+  max-width: 54rem;
+}
+
+body.kora-product-page:has(.cat-selector-wrap) .cat-btn.cat-btn {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-md);
+  box-shadow: none;
+  color: var(--ctk-color-text);
+  gap: var(--ctk-space-1);
+  padding: var(--ctk-space-3) var(--ctk-space-2);
+}
+
+body.kora-product-page:has(.cat-selector-wrap) .cat-btn.cat-btn:hover {
+  background: var(--ctk-color-neutral-50);
+  border-color: var(--ctk-color-secondary-300);
+  box-shadow: var(--ctk-shadow-1);
+  transform: translateY(-1px);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-btn-emoji {
+  align-items: center;
+  background: var(--ctk-color-secondary-50);
+  border-radius: var(--ctk-radius-md);
+  color: var(--ctk-color-secondary-700);
+  display: inline-flex;
+  height: var(--ctk-space-6);
+  justify-content: center;
+  width: var(--ctk-space-6);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-btn-emoji svg {
+  height: var(--ctk-icon-lg);
+  width: var(--ctk-icon-lg);
+}
+
+.kora-product-page:has(.cat-selector-wrap) .cat-btn-label {
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+  letter-spacing: normal;
+}
+
 @media (max-width: 63.999rem) {
   .kora-product-page {
     --kora-page-gutter: var(--ctk-space-2);
@@ -204,6 +324,37 @@ html[data-kora-ecosystem="2.0.0"] {
     max-height: calc(100dvh - var(--ctk-space-2));
     max-width: calc(100vw - var(--ctk-space-2));
     overflow: auto;
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ctk-space-1);
+    position: static;
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) .header-right {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) .vista-btn {
+    justify-content: center;
+    min-width: 0;
+    padding-inline: var(--ctk-space-0-5);
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) .cat-selector-wrap {
+    padding-top: var(--ctk-space-3);
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) .cat-grid {
+    gap: var(--ctk-space-1);
+  }
+
+  .kora-product-page:has(.cat-selector-wrap) .cat-btn {
+    padding: var(--ctk-space-2) var(--ctk-space-1);
   }
 }
 

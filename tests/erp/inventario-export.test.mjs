@@ -53,3 +53,12 @@ test('la pantalla fuerza la tienda del perfil para usuarios no centrales', () =>
   assert.match(html, /btnExportarInventario/);
   assert.match(html, /btnExportarConteo/);
 });
+
+test('la tienda no solicita costos internos en las consultas de inventario', () => {
+  assert.doesNotMatch(html, /from\('unidades'\)[\s\S]{0,120}\.select\('\*'/);
+  assert.doesNotMatch(html, /from\('stock_cantidad'\)[\s\S]{0,120}\.select\('\*'/);
+  assert.match(html, /if \(esCentral\(\)\) columnas\.splice\(5, 0, 'costo_remision'\)/);
+  assert.match(html, /if \(esCentral\(\)\) columnas\.splice\(4, 0, 'costo_promedio'\)/);
+  assert.match(html, /select\('tipo, nota, created_at'\)/);
+  assert.match(html, /No fue posible cargar el inventario/);
+});

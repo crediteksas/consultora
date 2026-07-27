@@ -181,7 +181,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th>Costo promedio</th><th>Valor total</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAccesorio">Costo</th><th>Valor total</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -274,6 +274,8 @@ function initPagina() {
     document.getElementById('filtroTiendaCel').style.display = '';
     document.getElementById('filtroTiendaAcc').style.display = '';
   }
+  document.getElementById('thCostoAccesorio').textContent =
+    esCentral() ? 'Costo promedio' : 'Costo tienda';
 
   document.getElementById('tabCelulares').addEventListener('click', () => cambiarTab('celulares'));
   document.getElementById('tabAccesorios').addEventListener('click', () => cambiarTab('accesorios'));
@@ -299,12 +301,21 @@ function cambiarTab(tab) {
 }
 
 async function cargarTodo() {
-  const [{ data: productos }, { data: tiendas }] = await Promise.all([
-    sb.from('productos').select('*').eq('activo', true).order('nombre'),
+  const [productosRes, tiendasRes] = await Promise.all([
+    sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('nombre'),
     sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
   ]);
-  productosCache = productos || [];
-  tiendasCache = tiendas || [];
+  const error = productosRes.error || tiendasRes.error;
+  if (error) {
+    ['emptyCelulares', 'emptyAccesorios'].forEach(id => {
+      const elemento = document.getElementById(id);
+      elemento.style.display = 'block';
+      elemento.textContent = `No fue posible cargar el inventario: ${error.message}`;
+    });
+    return;
+  }
+  productosCache = productosRes.data || [];
+  tiendasCache = tiendasRes.data || [];
 
   const opcionesTienda = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
   document.getElementById('filtroTiendaCel').innerHTML = opcionesTienda;
@@ -321,9 +332,15 @@ async function cargarCelulares() {
   // que retornaba null porque en SPEC v2 el costo_oscar vive en remision_margenes
   // (accesible solo con RLS es_central) y el path no siempre resolvía. El costo
   // real de Oscar ya está en unidades.costo_remision (guardado al momento de la
-  // compra), que se trae con el * y funciona sin joins extra.
+  // compra), que se solicita solo para el rol central y funciona sin joins extra.
+  const columnas = [
+    'id', 'imei', 'estado', 'tienda_actual', 'precio_tienda',
+    'producto_id', 'created_at', 'productos(nombre, categoria)',
+    'tiendas:tienda_actual(nombre)',
+  ];
+  if (esCentral()) columnas.splice(5, 0, 'costo_remision');
   const { data, error } = await sb.from('unidades')
-    .select('*, productos(nombre, categoria), tiendas:tienda_actual(nombre)')
+    .select(columnas.join(', '))
     .order('created_at', { ascending: false });
   if (error) { document.getElementById('emptyCelulares').style.display = 'block'; document.getElementById('emptyCelulares').textContent = 'Error: ' + error.message; return; }
   unidadesCache = data || [];
@@ -331,8 +348,13 @@ async function cargarCelulares() {
 }
 
 async function cargarAccesorios() {
+  const columnas = [
+    'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
+    'productos(nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
+  ];
+  if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
   const { data, error } = await sb.from('stock_cantidad')
-    .select('*, productos(nombre, categoria), tiendas:tienda_codigo(nombre)')
+    .select(columnas.join(', '))
     .order('updated_at', { ascending: false });
   if (error) { document.getElementById('emptyAccesorios').style.display = 'block'; document.getElementById('emptyAccesorios').textContent = 'Error: ' + error.message; return; }
   stockCache = data || [];
@@ -349,9 +371,10 @@ function renderResumen() {
   // Valor visto por la TIENDA: precio_tienda (lo que le costó la remisión).
   // Fallback a costo_remision para unidades legacy sin precio_tienda seteado.
   const valorRemisionSerializados = disponibles.reduce(
-    (s, u) => s + Number(u.precio_tienda ?? u.costo_remision ?? 0), 0);
+    (s, u) => s + Number(u.precio_tienda ?? (esCentral() ? u.costo_remision : 0) ?? 0), 0);
   const valorAccesorios = stockCache.reduce(
-    (s, r) => s + Number(r.cantidad || 0) * Number(r.precio_tienda ?? r.costo_promedio ?? 0), 0);
+    (s, r) => s + Number(r.cantidad || 0)
+      * Number(r.precio_tienda ?? (esCentral() ? r.costo_promedio : 0) ?? 0), 0);
   const valorTotalRemision = valorRemisionSerializados + valorAccesorios;
 
   let cards = `
@@ -398,7 +421,7 @@ function renderCelulares() {
       <td>${escapeHtml(u.productos?.nombre || '—')}</td>
       <td><span class="badge ${u.estado}">${u.estado}</span></td>
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
-      <td>${fmtCOP(u.costo_remision)}</td>
+      <td>${fmtCOP(esCentral() ? u.costo_remision : u.precio_tienda)}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
     </tr>
   `).join('');
@@ -425,13 +448,14 @@ function renderAccesorios() {
   empty.style.display = 'none';
   tbody.innerHTML = filtrados.map(r => {
     const bajoStock = r.cantidad < 3;
+    const costoVisible = esCentral() ? r.costo_promedio : r.precio_tienda;
     return `
       <tr class="${bajoStock ? 'fila-bajo-stock' : ''}">
         <td>${escapeHtml(r.productos?.nombre || '—')}</td>
         <td>${escapeHtml(r.tiendas?.nombre || r.tienda_codigo || '—')}</td>
         <td>${r.cantidad}${bajoStock ? ' ⚠️' : ''}</td>
-        <td>${fmtCOP(r.costo_promedio)}</td>
-        <td>${fmtCOP(r.cantidad * r.costo_promedio)}</td>
+        <td>${fmtCOP(costoVisible)}</td>
+        <td>${fmtCOP(r.cantidad * costoVisible)}</td>
       </tr>
     `;
   }).join('');
@@ -444,7 +468,10 @@ async function abrirHistorial(unidadId) {
   document.getElementById('histLista').innerHTML = 'Cargando...';
   document.getElementById('modalHistorial').classList.add('show');
 
-  const { data, error } = await sb.from('movimientos').select('*').eq('unidad_id', unidadId).order('created_at', { ascending: false });
+  const { data, error } = await sb.from('movimientos')
+    .select('tipo, nota, created_at')
+    .eq('unidad_id', unidadId)
+    .order('created_at', { ascending: false });
   if (error) { document.getElementById('histLista').textContent = 'Error: ' + error.message; return; }
   if (!data || !data.length) { document.getElementById('histLista').innerHTML = '<div class="empty-state">Sin movimientos registrados.</div>'; return; }
 

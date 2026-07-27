@@ -463,6 +463,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     </label>`;
   }
 
+  function koraStaticIcon(name) {
+    const icons = {
+      'panel-left-close': '<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path>',
+      'panel-left-open': '<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m14 9 3 3-3 3"></path>',
+    };
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name}" data-lucide-static="${name}" aria-hidden="true">${icons[name]}</svg>`;
+  }
+
   function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout }) {
     if (!root || root.dataset.koraMounted === 'true') return;
     installKoraAssets();
@@ -476,7 +484,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     children.forEach(child => content.appendChild(child));
     main.innerHTML = `<header class="kora-topbar">
       <button class="kora-icon-button kora-mobile-menu ghost" type="button" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
-      <button class="kora-icon-button kora-collapse ghost" type="button" aria-label="Colapsar navegación"><i data-lucide="panel-left-close"></i></button>
+      <button class="kora-icon-button kora-collapse ghost" type="button" aria-label="Colapsar navegación" title="Colapsar navegación">${koraStaticIcon('panel-left-close')}</button>
       <div class="kora-topbar__context">
         <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
         <ol class="kora-breadcrumb" aria-label="Breadcrumb">
@@ -584,11 +592,23 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
-    main.querySelector('.kora-collapse')?.addEventListener('click', () => {
+    const collapseControl = main.querySelector('.kora-collapse');
+    const syncCollapseControl = () => {
+      if (!collapseControl) return;
+      const collapsed = root.dataset.sidebarCollapsed === 'true';
+      const label = collapsed ? 'Expandir navegación' : 'Colapsar navegación';
+      collapseControl.setAttribute('aria-label', label);
+      collapseControl.setAttribute('title', label);
+      collapseControl.setAttribute('aria-expanded', String(!collapsed));
+      collapseControl.innerHTML = koraStaticIcon(collapsed ? 'panel-left-open' : 'panel-left-close');
+    };
+    syncCollapseControl();
+    collapseControl?.addEventListener('click', () => {
       const collapsed = root.dataset.sidebarCollapsed !== 'true';
       root.dataset.sidebarCollapsed = String(collapsed);
       localStorage.setItem('kora_sidebar_collapsed', String(collapsed));
       renderShellBrand();
+      syncCollapseControl();
     });
     aside.querySelectorAll('.kora-nav-group__label').forEach(button => button.addEventListener('click', () => {
       const group = button.closest('.kora-nav-group');

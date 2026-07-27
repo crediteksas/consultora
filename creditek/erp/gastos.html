@@ -192,7 +192,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 <div class="modal-bg" id="modalGasto">
   <div class="modal-box">
     <h2>Registrar gasto</h2>
-    <div class="modal-sub">La fecha y hora se registran automáticamente.</div>
+    <div class="modal-sub">Completa los datos soportados por el registro de gastos.</div>
+    <div class="campo">
+      <label for="gastoFecha">Fecha</label>
+      <input type="date" id="gastoFecha" required>
+    </div>
     <!-- FIX 22-jul-2026 · FEATURE_ReportesDiarios: gerencia/auditoria puede
          registrar gastos "generales" contra CENTRAL (ej. pago volanteo,
          insumos que no son de ninguna tienda). Admins de tienda no ven este
@@ -202,12 +206,16 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <select id="gastoTienda"></select>
     </div>
     <div class="campo">
-      <label>Concepto</label>
+      <label for="gastoConcepto">Categoría / concepto</label>
       <select id="gastoConcepto"></select>
     </div>
     <div class="aviso-adicional" id="avisoAdicional">Este concepto no está preautorizado — quedará en cola para que Mayte lo apruebe.</div>
     <div class="campo"><label>Monto</label><input type="number" id="gastoMonto" min="1" placeholder="0"></div>
     <div class="campo"><label id="labelDescripcion">Descripción (opcional)</label><textarea id="gastoDescripcion" rows="2" placeholder="Detalle del gasto..."></textarea></div>
+    <div class="campo">
+      <label for="gastoResponsable">Usuario responsable</label>
+      <input type="text" id="gastoResponsable" readonly aria-readonly="true">
+    </div>
     <div class="modal-err" id="modalGastoErr"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCancelarGasto">Cancelar</button>
@@ -243,7 +251,9 @@ let tiendasCache = [];
 let gastoIdParaRechazar = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
-function puedeRegistrarGasto() { return !!currentPerfil && currentPerfil.rol === 'admin_tienda'; }
+function puedeRegistrarGasto() {
+  return !!currentPerfil && ['admin_tienda', 'gerencia', 'auditoria'].includes(currentPerfil.rol);
+}
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -451,8 +461,12 @@ function renderTablaGastos() {
 
 // ─── Registrar gasto ─────────────────────────────────────────────────
 function abrirModalGasto() {
+  document.getElementById('gastoFecha').value = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota',
+  }).format(new Date());
   document.getElementById('gastoMonto').value = '';
   document.getElementById('gastoDescripcion').value = '';
+  document.getElementById('gastoResponsable').value = currentPerfil.nombre || currentUser.email || '';
   document.getElementById('modalGastoErr').classList.remove('show');
   if (document.getElementById('gastoConcepto').options.length) onConceptoCambiado();
   document.getElementById('modalGasto').classList.add('show');
@@ -471,11 +485,14 @@ async function guardarGasto() {
   err.classList.remove('show');
 
   const concepto_id = document.getElementById('gastoConcepto').value;
+  const fechaSeleccionada = document.getElementById('gastoFecha').value;
   const monto = Number(document.getElementById('gastoMonto').value || 0);
   const descripcion = document.getElementById('gastoDescripcion').value.trim();
   const sel = document.getElementById('gastoConcepto');
   const preautorizado = sel.options[sel.selectedIndex]?.dataset.preautorizado === 'true';
 
+  if (!fechaSeleccionada) { err.textContent = 'Selecciona la fecha del gasto.'; err.classList.add('show'); return; }
+  if (!concepto_id) { err.textContent = 'Selecciona una categoría o concepto.'; err.classList.add('show'); return; }
   if (monto <= 0) { err.textContent = 'Ingresa un monto válido.'; err.classList.add('show'); return; }
   if (!preautorizado && !descripcion) { err.textContent = 'La descripción es obligatoria para gastos adicionales.'; err.classList.add('show'); return; }
 
@@ -493,6 +510,7 @@ async function guardarGasto() {
 
   const { error } = await sb.from('gastos').insert({
     tienda_codigo: tiendaSeleccionada,
+    fecha: fechaSeleccionada,
     concepto_id, monto, descripcion: descripcion || null,
     estado: 'registrado', registrado_por: currentUser.id,
   });

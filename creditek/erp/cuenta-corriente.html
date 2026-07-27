@@ -78,9 +78,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .saldo-alto { color: var(--rojo); font-weight: 700; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
 
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1200; padding: 16px; overflow: hidden; }
 .modal-bg.show { display: flex; }
-.modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-box { position: relative; background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 560px; max-height: min(92vh, 760px); overflow-y: auto; overscroll-behavior: contain; box-shadow: var(--shadow-md); z-index: 1; }
+.modal-box table thead { position: static; }
+body.modal-open { overflow: hidden; }
 .modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 4px; }
 .modal-sub { font-size: 12.5px; color: var(--text2); margin-bottom: 16px; }
 .saldo-grande { font-family: 'Montserrat', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 16px; }
@@ -171,10 +173,24 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 <!-- Modal: registrar abono -->
 <div class="modal-bg" id="modalAbono">
-  <div class="modal-box">
-    <h2>Registrar abono</h2>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="abonoTitulo">
+    <h2 id="abonoTitulo">Registrar abono</h2>
     <div class="modal-sub" id="abonoTiendaTexto"></div>
+    <div class="campo"><label>Fecha</label><input type="date" id="abonoFecha"></div>
+    <div class="campo"><label>Tipo de movimiento</label><select id="abonoTipo"><option value="abono_tienda">Abono de tienda</option><option value="pago_socio">Pago a socio</option></select></div>
+    <div class="campo"><label>Tercero o socio/proveedor</label><input type="text" id="abonoTercero" maxlength="120" placeholder="Nombre del tercero"></div>
+    <div class="campo"><label>Concepto</label><input type="text" id="abonoConcepto" maxlength="160" value="Consignación"></div>
     <div class="campo"><label>Monto</label><input type="number" id="abonoMonto" min="1" placeholder="0"></div>
+    <div class="campo">
+      <label>Fuente de fondos</label>
+      <select id="abonoFuente">
+        <option value="sin_afectar_caja">No afecta caja de la tienda</option>
+        <option value="efectivo_tienda">Efectivo de la tienda</option>
+      </select>
+      <small>Solo “Efectivo de la tienda” registra una salida en Caja.</small>
+    </div>
+    <div class="campo"><label>Observación</label><textarea id="abonoObservacion" rows="2" maxlength="500"></textarea></div>
+    <div class="campo"><label>Usuario responsable</label><input type="text" id="abonoResponsable" readonly></div>
     <div class="campo">
       <label>Foto del soporte de consignación (obligatoria)</label>
       <input type="file" id="abonoFoto" accept="image/*" capture="environment">
@@ -199,6 +215,8 @@ let movimientosCC = [];
 let tiendasCache = [];
 let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
+let modalAnteriorAbono = null;
+let abonoIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -282,14 +300,40 @@ async function comprimirImagen(file, maxSide = 1600, quality = 0.7) {
 
 // ─── Página: Cuenta corriente ───────────────────────────────────────────
 function initPagina() {
-  document.getElementById('btnCerrarDetalle').addEventListener('click', () => document.getElementById('modalDetalle').classList.remove('show'));
+  document.getElementById('btnCerrarDetalle').addEventListener('click', () => cerrarModal('modalDetalle'));
   document.getElementById('btnAbrirAbono').addEventListener('click', abrirModalAbono);
-  document.getElementById('btnCancelarAbono').addEventListener('click', () => document.getElementById('modalAbono').classList.remove('show'));
+  document.getElementById('btnCancelarAbono').addEventListener('click', cerrarModalAbono);
   document.getElementById('abonoFoto').addEventListener('change', onFotoAbonoSeleccionada);
   document.getElementById('btnGuardarAbono').addEventListener('click', guardarAbono);
 
   cargarTodo();
 }
+
+function abrirModal(id, activador) {
+  const modal = document.getElementById(id);
+  modal._activador = activador || document.activeElement;
+  modal.classList.add('show');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => modal.querySelector('input, select, textarea, button')?.focus());
+}
+
+function cerrarModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('show');
+  if (!document.querySelector('.modal-bg.show')) document.body.classList.remove('modal-open');
+  modal._activador?.focus?.();
+}
+
+function cerrarModalAbono() {
+  cerrarModal('modalAbono');
+  if (modalAnteriorAbono) abrirModal('modalDetalle', modalAnteriorAbono);
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
+  else if (document.getElementById('modalDetalle').classList.contains('show')) cerrarModal('modalDetalle');
+});
 
 async function cargarTodo() {
   const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
@@ -372,7 +416,7 @@ function abrirDetalleTienda(codigo, nombre) {
     btn.addEventListener('click', () => marcarAbonoVerificado(btn.dataset.abono));
   });
 
-  document.getElementById('modalDetalle').classList.add('show');
+  abrirModal('modalDetalle');
 }
 
 async function marcarAbonoVerificado(abonoId) {
@@ -385,15 +429,25 @@ async function marcarAbonoVerificado(abonoId) {
 
 // ─── Registrar abono ─────────────────────────────────────────────────
 function abrirModalAbono() {
+  modalAnteriorAbono = document.activeElement;
+  cerrarModal('modalDetalle');
   const codigo = esCentral() ? tiendaDetalleActual.codigo : currentPerfil.tienda_codigo;
   const nombre = esCentral() ? tiendaDetalleActual.nombre : (tiendasCache.find(t => t.codigo === codigo)?.nombre || codigo);
   document.getElementById('abonoTiendaTexto').textContent = 'Tienda: ' + nombre;
   document.getElementById('abonoMonto').value = '';
+  document.getElementById('abonoFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  document.getElementById('abonoTipo').value = 'abono_tienda';
+  document.getElementById('abonoTercero').value = '';
+  document.getElementById('abonoConcepto').value = 'Consignación';
+  document.getElementById('abonoFuente').value = 'sin_afectar_caja';
+  document.getElementById('abonoObservacion').value = '';
+  document.getElementById('abonoResponsable').value = currentPerfil?.nombre || currentUser?.email || currentUser?.id || '';
   document.getElementById('abonoFoto').value = '';
   document.getElementById('abonoFotoPreview').style.display = 'none';
   document.getElementById('modalAbonoErr').classList.remove('show');
   fotoAbonoBlob = null;
-  document.getElementById('modalAbono').classList.add('show');
+  abonoIdempotencyKey = crypto.randomUUID();
+  abrirModal('modalAbono', modalAnteriorAbono);
 }
 
 async function onFotoAbonoSeleccionada(e) {
@@ -410,8 +464,15 @@ async function guardarAbono() {
   err.classList.remove('show');
   const codigo = esCentral() ? tiendaDetalleActual.codigo : currentPerfil.tienda_codigo;
   const monto = Number(document.getElementById('abonoMonto').value || 0);
+  const fecha = document.getElementById('abonoFecha').value;
+  const tipo = document.getElementById('abonoTipo').value;
+  const tercero = document.getElementById('abonoTercero').value.trim();
+  const concepto = document.getElementById('abonoConcepto').value.trim();
+  const fuente = document.getElementById('abonoFuente').value;
+  const observacion = document.getElementById('abonoObservacion').value.trim();
 
   if (monto <= 0) { err.textContent = 'Ingresa un monto válido.'; err.classList.add('show'); return; }
+  if (!fecha || !concepto) { err.textContent = 'Fecha y concepto son obligatorios.'; err.classList.add('show'); return; }
   if (!fotoAbonoBlob) { err.textContent = 'La foto del soporte de consignación es obligatoria.'; err.classList.add('show'); return; }
 
   const btn = document.getElementById('btnGuardarAbono');
@@ -426,27 +487,28 @@ async function guardarAbono() {
     return;
   }
 
-  const { data: abono, error: errAbono } = await sb.from('abonos').insert({
-    tienda_codigo: codigo, monto, soporte_path: path, registrado_por: currentUser.id,
-  }).select().maybeSingle();
+  const { data: resultado, error: errAbono } = await sb.rpc('registrar_abono_cuenta_corriente', {
+    p_tienda_codigo: codigo,
+    p_fecha: fecha,
+    p_tipo_movimiento: tipo,
+    p_tercero: tercero || null,
+    p_concepto: concepto,
+    p_monto: monto,
+    p_fuente_fondos: fuente,
+    p_observacion: observacion || null,
+    p_soporte_path: path,
+    p_idempotency_key: abonoIdempotencyKey,
+  });
 
-  if (errAbono) {
+  if (errAbono || !resultado?.ok) {
     btn.disabled = false; btn.textContent = 'Guardar abono';
-    err.textContent = 'No se pudo registrar el abono: ' + errAbono.message;
+    err.textContent = 'No se pudo registrar el abono: ' + (errAbono?.message || 'respuesta inválida');
     err.classList.add('show');
     return;
   }
 
-  const { error: errCC } = await sb.from('cuenta_corriente').insert({
-    tienda_codigo: codigo, tipo: 'abono', concepto: 'Consignación', monto,
-    referencia_tipo: 'abono', referencia_id: abono.id, usuario: currentUser.id,
-  });
-
   btn.disabled = false; btn.textContent = 'Guardar abono';
-
-  if (errCC) { err.textContent = 'El abono se guardó, pero no se pudo reflejar en cuenta corriente: ' + errCC.message; err.classList.add('show'); return; }
-
-  document.getElementById('modalAbono').classList.remove('show');
+  cerrarModal('modalAbono');
   mostrarBanner(`✅ Abono de ${fmtCOP(monto)} registrado correctamente.`);
   await cargarMovimientosCC();
   if (tiendaDetalleActual) abrirDetalleTienda(tiendaDetalleActual.codigo, tiendaDetalleActual.nombre);

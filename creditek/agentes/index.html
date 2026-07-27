@@ -217,6 +217,8 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--white);padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;z-index:9999;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -224,8 +226,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" style="width:160px;height:auto;object-fit:contain;padding:8px 0">
-      <div>
+      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="" style="width:44px;height:44px;object-fit:contain">
+      <div class="kora-login-brand">
+        <span>KORA</span>
+        <span>Creditek</span>
         <div class="login-sub">Sistema operativo</div>
       </div>
     </div>

@@ -122,6 +122,22 @@
         <input id="fecha-vencimiento" type="date" required
                class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </label>
+      <label class="block">
+        <span class="text-sm font-medium text-gray-700">Tipo de compra <span class="text-red-500">*</span></span>
+        <select id="tipo-compra" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+          <option value="credito">A crédito</option>
+          <option value="contado">De contado</option>
+        </select>
+      </label>
+      <label class="block hidden" id="campo-fuente-fondos">
+        <span class="text-sm font-medium text-gray-700">Fuente de fondos <span class="text-red-500">*</span></span>
+        <select id="fuente-fondos" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+          <option value="">Selecciona una fuente</option>
+          <option value="caja_central">Caja central</option>
+          <option value="banco_corporativo">Banco corporativo</option>
+        </select>
+        <span class="text-xs text-gray-500">La compra de contado queda pagada y registra una salida en Tesorería Central.</span>
+      </label>
 
       <label class="block md:col-span-2">
         <span class="text-sm font-medium text-gray-700">Nota <span class="text-xs text-gray-500">(observaciones internas, opcional)</span></span>
@@ -190,7 +206,7 @@
   <!-- =========================== 3. GUARDAR =========================== -->
   <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-gray-600">
-      Esta acción entra la mercancía a <b>Bodega Central</b>, crea la factura de proveedor y deja el saldo pendiente por pagar.
+      Esta acción entra la mercancía a <b>Bodega Central</b>. A crédito deja saldo pendiente; de contado registra el pago y la salida de fondos.
     </p>
     <div class="flex gap-2">
       <button id="btn-limpiar" type="button"
@@ -288,6 +304,7 @@ let productos = [];     // [{id, nombre, categoria, tipo, margen_tipo, margen_va
 // SPEC v2 · items ahora incluye margen y precio_remision
 let items = [];         // [{tempId, producto_id, producto_nombre, producto_tipo, cantidad, costo_unitario, margen_tipo, margen_valor, precio_remision, precio_manual}]
 let indiceItemActivo = null;   // para el modal de búsqueda
+let compraIdempotencyKey = crypto.randomUUID();
 
 // ============================================================
 // CARGA INICIAL DE CATÁLOGOS
@@ -555,13 +572,16 @@ async function guardarCompra() {
     const provId = document.getElementById('sel-proveedor').value;
     const numero = document.getElementById('num-factura').value.trim();
     const fecha = document.getElementById('fecha-factura').value;
+    const tipoCompra = document.getElementById('tipo-compra').value;
     const fechaVencimiento = document.getElementById('fecha-vencimiento').value;
+    const fuenteFondos = document.getElementById('fuente-fondos').value;
     const nota = document.getElementById('nota-factura').value.trim();
 
     if (!provId) throw new Error('Selecciona un proveedor');
     if (!numero) throw new Error('El número de factura es requerido');
     if (!fecha) throw new Error('La fecha de la factura es requerida');
-    if (!fechaVencimiento) throw new Error('La fecha de vencimiento es requerida');
+    if (tipoCompra === 'credito' && !fechaVencimiento) throw new Error('La fecha de vencimiento es requerida');
+    if (tipoCompra === 'contado' && !fuenteFondos) throw new Error('Selecciona la fuente de fondos');
     if (items.length === 0) throw new Error('Agrega al menos un producto');
 
     const payload = [];
@@ -592,14 +612,17 @@ async function guardarCompra() {
     }
 
     // RPC
-    const { data, error } = await SB.rpc('registrar_compra_proveedor_con_vencimiento', {
+    const { data, error } = await SB.rpc('registrar_compra_proveedor_operativa', {
       p_proveedor_id: provId,
       p_numero_factura: numero,
       p_fecha: fecha,
-      p_fecha_vencimiento: fechaVencimiento,
+      p_tipo_compra: tipoCompra,
+      p_fecha_vencimiento: tipoCompra === 'credito' ? fechaVencimiento : null,
+      p_fuente_fondos: tipoCompra === 'contado' ? fuenteFondos : null,
       p_items: payload,
       p_soporte_path: soportePath,
-      p_nota: nota || null
+      p_nota: nota || null,
+      p_idempotency_key: compraIdempotencyKey,
     });
 
     if (error) throw new Error(error.message);
@@ -624,11 +647,16 @@ function limpiarFormulario() {
   document.getElementById('num-factura').value = '';
   document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
   document.getElementById('fecha-vencimiento').value = '';
+  document.getElementById('tipo-compra').value = 'credito';
+  document.getElementById('fuente-fondos').value = '';
+  document.getElementById('campo-fuente-fondos').classList.add('hidden');
+  document.getElementById('fecha-vencimiento').required = true;
   document.getElementById('nota-factura').value = '';
   document.getElementById('file-soporte').value = '';
   document.getElementById('soporte-status').textContent = '';
   document.getElementById('panel-exito').classList.add('hidden');
   items = [];
+  compraIdempotencyKey = crypto.randomUUID();
   renderItems();
 }
 
@@ -637,6 +665,13 @@ function limpiarFormulario() {
 // ============================================================
 document.getElementById('btn-agregar-item').addEventListener('click', nuevoItem);
 document.getElementById('btn-guardar').addEventListener('click', guardarCompra);
+document.getElementById('tipo-compra').addEventListener('change', event => {
+  const contado = event.target.value === 'contado';
+  document.getElementById('campo-fuente-fondos').classList.toggle('hidden', !contado);
+  const vencimiento = document.getElementById('fecha-vencimiento');
+  vencimiento.required = !contado;
+  if (contado) vencimiento.value = '';
+});
 document.getElementById('btn-limpiar').addEventListener('click', () => {
   if (items.length > 0 && !confirm('¿Descartar todos los ítems y limpiar el formulario?')) return;
   limpiarFormulario();

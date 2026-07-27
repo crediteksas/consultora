@@ -1,4 +1,5 @@
 @import url("../styles/index.css");
+@import url("./kora-ecosystem.css");
 
 [data-kora-product] {
   color-scheme: light;
@@ -48,16 +49,12 @@
   width: auto;
 }
 
-.kora-brand--sidebar .kora-brand__product,
-.kora-brand--sidebar-collapsed .kora-brand__product,
 .kora-brand--drawer .kora-brand__product,
 .kora-brand--compact-inverse .kora-brand__product,
 .kora-brand--login-inverse .kora-brand__product {
   color: var(--ctk-color-neutral-0);
 }
 
-.kora-brand--sidebar .kora-brand__signature,
-.kora-brand--sidebar-collapsed .kora-brand__signature,
 .kora-brand--drawer .kora-brand__signature,
 .kora-brand--compact-inverse .kora-brand__signature,
 .kora-brand--login-inverse .kora-brand__signature {

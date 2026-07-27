@@ -1,0 +1,179 @@
+/* KORA Ecosystem Design v2.0.0 — visual layer only */
+
+html[data-kora-ecosystem="2.0.0"] {
+  background: var(--ctk-color-neutral-50);
+}
+
+.kora-product-page {
+  --kora-page-gutter: clamp(var(--ctk-space-2), 3vw, var(--ctk-space-4));
+  background: var(--ctk-color-neutral-50);
+}
+
+.kora-product-page :where(.page, .container, .contenido, .content, main) {
+  padding-block: var(--ctk-space-3);
+}
+
+.kora-product-page :where(.card, .panel, .section, .seccion, .box, .bloque, .widget) {
+  box-shadow: none;
+}
+
+.kora-product-page :where(.card, .panel, .section, .seccion, .box, .bloque, .widget)
+  :where(.card, .panel, .section, .seccion, .box, .bloque, .widget) {
+  border-color: transparent;
+  border-radius: var(--ctk-radius-sm);
+  box-shadow: none;
+}
+
+.kora-product-page :where(.header, header:not(.kora-topbar), .topbar:not(.kora-topbar)) {
+  background: var(--ctk-color-surface);
+  border-color: var(--ctk-color-border);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page :where(.sidebar:not(.kora-sidebar), .side-menu, .menu-lateral) {
+  background: var(--ctk-color-neutral-50);
+  border-color: var(--ctk-color-border);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page :where(.sidebar:not(.kora-sidebar), .side-menu, .menu-lateral)
+  :where(a, button, .nav-item, .menu-item) {
+  color: var(--ctk-color-text-secondary);
+}
+
+.kora-product-page :where(.sidebar:not(.kora-sidebar), .side-menu, .menu-lateral)
+  :where(a, button, .nav-item, .menu-item):hover {
+  background: var(--ctk-color-neutral-100);
+  color: var(--ctk-color-text);
+}
+
+.kora-product-page :where(.sidebar:not(.kora-sidebar), .side-menu, .menu-lateral)
+  :where(.active, [aria-current="page"]) {
+  background: var(--ctk-color-primary-50);
+  color: var(--ctk-color-primary-900);
+}
+
+.kora-product-page :where(.filters, .filtros, .filter-bar, .toolbar, .actions) {
+  align-items: end;
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-md);
+  box-shadow: none;
+  gap: var(--ctk-space-1);
+  padding: var(--ctk-space-1);
+}
+
+.kora-product-page :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea
+) {
+  background: var(--ctk-color-neutral-0);
+  border-color: var(--ctk-color-border);
+}
+
+.kora-product-page :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select
+) {
+  min-height: var(--ctk-height-control-sm);
+}
+
+.kora-product-page :where(.kpi-card, .metric-card, .stat, .resumen-card) {
+  border-color: var(--ctk-color-border);
+  box-shadow: none;
+  min-height: 7rem;
+}
+
+.kora-product-page :where(.kpi-card, .metric-card, .stat, .resumen-card)::before {
+  background: var(--ctk-color-secondary-500);
+  border-radius: var(--ctk-radius-full);
+  content: "";
+  display: block;
+  height: var(--ctk-space-0-5);
+  margin-bottom: var(--ctk-space-1);
+  width: var(--ctk-space-4);
+}
+
+.kora-product-page table {
+  font-variant-numeric: tabular-nums;
+}
+
+.kora-product-page table :where(td, th):is(
+  [data-type="number"],
+  [data-type="currency"],
+  .number,
+  .numeric,
+  .money,
+  .currency,
+  .valor,
+  .monto
+) {
+  text-align: right;
+}
+
+.kora-product-page table th {
+  background: var(--ctk-color-neutral-50);
+  border-bottom-color: var(--ctk-color-border-strong);
+  color: var(--ctk-color-text-muted);
+}
+
+.kora-product-page table tbody tr:hover {
+  background: var(--ctk-color-neutral-50);
+}
+
+.kora-product-page :where(.modal, .modal-content, dialog, .drawer, .panel-lateral) {
+  box-shadow: var(--ctk-shadow-3);
+}
+
+.kora-product-page :where(.empty-state, .empty, .sin-datos) {
+  align-items: center;
+  background: transparent;
+  border-style: dashed;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 10rem;
+  text-align: center;
+}
+
+.kora-product-page :where(.loading, [aria-busy="true"]) {
+  cursor: progress;
+}
+
+@media (max-width: 63.999rem) {
+  .kora-product-page {
+    --kora-page-gutter: var(--ctk-space-2);
+  }
+
+  .kora-product-page :where(.filters, .filtros, .filter-bar, .toolbar, .actions) {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .kora-product-page {
+    --kora-page-gutter: var(--ctk-space-1);
+  }
+
+  .kora-product-page :where(.filters, .filtros, .filter-bar, .toolbar, .actions) > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .kora-product-page :where(.modal, .modal-content, dialog, .drawer, .panel-lateral) {
+    border-radius: var(--ctk-radius-lg);
+    max-height: calc(100dvh - var(--ctk-space-2));
+    max-width: calc(100vw - var(--ctk-space-2));
+    overflow: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kora-product-page *,
+  .kora-product-page *::before,
+  .kora-product-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: var(--ctk-duration-1) !important;
+  }
+}

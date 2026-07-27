@@ -1,6 +1,7 @@
 (function () {
   document.documentElement.dataset.koraProduct = '1.0.0';
   document.documentElement.dataset.koraBrandVersion = '1.0.1';
+  document.documentElement.dataset.koraEcosystem = '2.0.0';
 
   const KORA_BRAND_ASSETS = Object.freeze({
     appIcon: null,

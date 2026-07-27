@@ -15,6 +15,8 @@
   const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 
+  if (KORA_SHELL_ENABLED) installKoraAssets();
+
   function installSharedSupabaseClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       throw new Error('Supabase no está disponible');
@@ -483,6 +485,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
           <li>KORA</li><li>${escapeHtml(current?.group || 'Inicio')}</li><li aria-current="page">${escapeHtml(current?.label || 'Inicio')}</li>
         </ol>
       </div>
+      <label class="kora-command">
+        <span class="ctk-sr-only">Buscar módulo</span>
+        <i data-lucide="search"></i>
+        <input type="search" data-kora-command placeholder="Buscar módulo" autocomplete="off">
+      </label>
       <div class="kora-topbar__actions">
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
@@ -544,6 +551,28 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     main.querySelector('.kora-mobile-menu')?.addEventListener('click', openDrawer);
     aside.querySelector('.kora-drawer-close')?.addEventListener('click', closeDrawer);
     overlay.addEventListener('click', closeDrawer);
+    const command = main.querySelector('[data-kora-command]');
+    command?.addEventListener('input', () => {
+      const query = command.value.trim().toLocaleLowerCase('es');
+      aside.querySelectorAll('.kora-nav-group').forEach(group => {
+        let matches = 0;
+        group.querySelectorAll('.kora-nav-link').forEach(link => {
+          const visible = !query || link.textContent.toLocaleLowerCase('es').includes(query);
+          link.hidden = !visible;
+          if (visible) matches += 1;
+        });
+        group.hidden = matches === 0;
+        if (query && matches) group.dataset.open = 'true';
+      });
+    });
+    command?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      const visibleLinks = Array.from(aside.querySelectorAll('.kora-nav-link:not([hidden])'));
+      if (visibleLinks.length === 1) {
+        event.preventDefault();
+        visibleLinks[0].click();
+      }
+    });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && aside.dataset.open === 'true') closeDrawer();
       if (event.key === 'Tab' && aside.dataset.open === 'true') {

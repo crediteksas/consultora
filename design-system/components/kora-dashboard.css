@@ -450,6 +450,30 @@ body[data-kora-dashboard="1.0.0"] {
   scrollbar-color: var(--ctk-color-neutral-300) transparent;
 }
 
+.tabla-wrap:focus-visible {
+  border-radius: var(--ctk-radius-sm);
+  box-shadow: 0 0 0 var(--ctk-focus-ring-width) var(--ctk-color-focus);
+  outline: none;
+}
+
+.dashboard-alerts-panel .alertas-lista {
+  max-height: 31rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline-end: var(--ctk-space-0-5);
+  scrollbar-color: var(--ctk-color-neutral-300) transparent;
+}
+
+.dashboard-loading-state {
+  align-items: center;
+  color: var(--ctk-color-text-muted);
+  display: flex;
+  font-size: var(--ctk-font-size-caption);
+  gap: var(--ctk-space-1);
+  justify-content: center;
+  min-height: 10rem;
+}
+
 .dashboard-table {
   border-collapse: collapse;
   font-size: var(--ctk-font-size-table);
@@ -768,6 +792,10 @@ body[data-kora-dashboard="1.0.0"] .kora-profile {
   body[data-kora-dashboard="1.0.0"] .kora-topbar {
     padding-inline: var(--ctk-space-2);
   }
+
+  body[data-kora-dashboard="1.0.0"] .kora-extension {
+    display: none;
+  }
 }
 
 @media (max-width: 47.999rem) {
@@ -803,18 +831,30 @@ body[data-kora-dashboard="1.0.0"] .kora-profile {
 
   .dashboard-metrics {
     border-radius: var(--ctk-radius-md);
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-metric {
-    border-bottom: 1px solid var(--ctk-color-border);
-  }
-
-  .dashboard-metric:last-child {
     border-bottom: 0;
   }
 
+  .dashboard-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--ctk-color-border);
+  }
+
+  .dashboard-metric:nth-child(odd) {
+    border-right: 1px solid var(--ctk-color-border);
+  }
+
   .dashboard-metric::after {
+    display: none;
+  }
+
+  body[data-kora-dashboard="1.0.0"] .kora-topbar__context {
+    display: none;
+  }
+
+  body[data-kora-dashboard="1.0.0"] [data-kora-notifications] {
     display: none;
   }
 
@@ -836,6 +876,20 @@ body[data-kora-dashboard="1.0.0"] .kora-profile {
   .dashboard-table th,
   .dashboard-table td {
     padding-inline: var(--ctk-space-1);
+  }
+}
+
+@media (max-width: 23.999rem) {
+  .dashboard-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-metric:nth-child(3) {
+    border-bottom: 1px solid var(--ctk-color-border);
+  }
+
+  .dashboard-metric:nth-child(odd) {
+    border-right: 0;
   }
 }
 

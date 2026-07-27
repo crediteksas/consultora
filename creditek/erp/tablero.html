@@ -127,7 +127,7 @@
         </div>
         <span class="dashboard-section-heading__meta">Cumplimiento del mes</span>
       </div>
-      <div class="tabla-wrap">
+      <div class="tabla-wrap" tabindex="0" role="region" aria-label="Rendimiento por tienda; desplaza horizontalmente para ver todas las columnas">
       <table class="dashboard-table">
         <thead><tr>
           <th>Tienda</th><th class="num">Créditos</th><th class="num">Meta</th><th class="centro">Avance</th>
@@ -149,7 +149,12 @@
         </div>
         <span class="dashboard-alert-count" aria-hidden="true"></span>
       </div>
-      <div class="alertas-lista" id="listaAlertas"></div>
+      <div class="alertas-lista" id="listaAlertas" aria-live="polite">
+        <div class="dashboard-loading-state" role="status">
+          <span class="ctk-spinner" aria-hidden="true"></span>
+          <span>Consultando alertas operativas…</span>
+        </div>
+      </div>
     </aside>
   </div>
 
@@ -184,7 +189,7 @@
       </div>
       <span class="dashboard-section-heading__meta">Mes en curso</span>
     </div>
-    <div class="tabla-wrap">
+    <div class="tabla-wrap" tabindex="0" role="region" aria-label="Desempeño ejecutivo; desplaza horizontalmente para ver todas las columnas">
       <table class="dashboard-table">
         <thead><tr><th>Ejecutivo</th><th class="num">Aliadas activas</th><th class="num">Créditos del mes</th><th>Comisión</th></tr></thead>
         <tbody id="tbodyEjecutivos"></tbody>
@@ -508,14 +513,15 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
       ],
     },
     options: {
+      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', align: 'start', labels: { usePointStyle: true, boxWidth: 8, padding: 18 } },
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, border: { display: false } },
-        y: { stacked: true, beginAtZero: true, grid: { color: tokenColor('--ctk-color-neutral-100') }, border: { display: false } },
+        x: { stacked: true, beginAtZero: true, grid: { color: tokenColor('--ctk-color-neutral-100') }, border: { display: false } },
+        y: { stacked: true, grid: { display: false }, border: { display: false } },
       },
     },
   });

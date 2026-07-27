@@ -87,3 +87,20 @@ test('el Dashboard tiene jerarquía SaaS, iconografía Lucide y responsive propi
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /:focus-visible/);
 });
+
+test('el Dashboard controla densidad real, carga y tablas anchas sin perder datos', async () => {
+  const [source, css] = await Promise.all([
+    read('creditek/erp/tablero.html'),
+    read('design-system/components/kora-dashboard.css'),
+  ]);
+
+  assert.match(source, /class="dashboard-loading-state" role="status"/);
+  assert.match(source, /class="tabla-wrap" tabindex="0" role="region"/);
+  assert.match(source, /indexAxis:\s*'y'/);
+  assert.match(css, /\.dashboard-alerts-panel \.alertas-lista\s*\{[^}]*max-height:/s);
+  assert.match(css, /\.dashboard-alerts-panel \.alertas-lista\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /@media \(max-width: 47\.999rem\)[\s\S]*\.dashboard-metrics\s*\{[^}]*grid-template-columns:\s*repeat\(2,/);
+  assert.match(css, /@media \(max-width: 47\.999rem\)[\s\S]*\.kora-topbar__context\s*\{[^}]*display:\s*none/);
+  assert.match(css, /@media \(max-width: 47\.999rem\)[\s\S]*\[data-kora-notifications\]\s*\{[^}]*display:\s*none/);
+  assert.match(css, /@media \(max-width: 63\.999rem\)[\s\S]*\.kora-extension\s*\{[^}]*display:\s*none/);
+});

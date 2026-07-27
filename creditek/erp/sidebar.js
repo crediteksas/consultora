@@ -9,6 +9,9 @@
   const SHELL_AUTHENTICATED_CLASS = 'creditek-shell-authenticated';
   const SHELL_ERROR_CLASS = 'creditek-shell-error';
   const SHELL_READY_TIMEOUT_MS = 8_000;
+  const SHELL_SCRIPT = document.currentScript;
+  const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
+  const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
   const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 
@@ -138,16 +141,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     });
   }
 
-  installBootCurtain();
-  installSharedSupabaseClient();
+  if (KORA_SHELL_MODE !== 'agents') {
+    installBootCurtain();
+    installSharedSupabaseClient();
+  }
 
   const MODULOS = [
-    { titulo: 'TABLERO', icono: '📊', items: [
+    { titulo: 'TABLERO', icono: '📊', lucide: 'layout-dashboard', items: [
       { label: 'Dashboard', href: 'tablero.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'INVENTARIO', icono: '📦', items: [
+    { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', items: [
       { label: 'Catálogo', href: 'catalogo.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Remisiones', href: 'remisiones.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Stock', href: 'inventario.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
@@ -157,7 +162,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Kardex', href: 'kardex.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
     ]},
-    { titulo: 'CAJA', icono: '💰', items: [
+    { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', items: [
       { label: 'Ventas', href: 'ventas.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Gastos', href: 'gastos.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Cierre día', href: 'caja.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
@@ -171,13 +176,13 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // recibe una remisión necesita abrir el documento para aceptarla).
     // SPEC v2 · 23-jul-2026: Doc. remisión se quita del menú. Se abre con
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
-    { titulo: 'BODEGA CENTRAL', icono: '🏭', items: [
+    { titulo: 'BODEGA CENTRAL', icono: '🏭', lucide: 'warehouse', items: [
       { label: 'Cartera de Proveedores', href: 'proveedores.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Bodega Central', href: 'bodega-central.html', roles: ['gerencia', 'auditoria'] },
       { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'CLIENTES', icono: '👤', items: [
+    { titulo: 'CLIENTES', icono: '👤', lucide: 'users', items: [
       { label: 'Registro', href: 'registro.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Validación', href: 'validacion.html', roles: ['gerencia', 'auditoria'] },
     ]},
@@ -185,13 +190,33 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // dashboard consolidado con Fase 1 completa (1.1 ventas, 1.2 cartera, 1.3 inventario)
     // + Fase 2 (2.1 presupuesto sobre tabla existente, 2.2 rentabilidad tienda, 2.3 categoría, 2.4 link)
     // + Fase 3 parcial (3.1 crecimiento, 3.2 top/slow, 3.4 proveedores). RLS heredada.
-    { titulo: 'REPORTES', icono: '📈', items: [
+    { titulo: 'REPORTES', icono: '📈', lucide: 'chart-no-axes-combined', items: [
       { label: 'Dashboard', href: 'reportes.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
     ]},
   ];
 
   const LOGO = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
   const ROL_LABEL = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' };
+  const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
+  const KORA_PORTAL_MODULES = [
+    { titulo: 'PRINCIPAL', lucide: 'layout-dashboard', items: [
+      { label: 'Dashboard', action: 'dashboard', lucide: 'layout-dashboard' },
+    ]},
+    { titulo: 'AGENTES IA', lucide: 'sparkles', items: [
+      { label: 'Diseño', action: 'module', href: 'creditek-agente-redes.html', lucide: 'palette' },
+      { label: 'Respuestas', action: 'module', href: 'creditek-agente-respuestas.html', lucide: 'messages-square' },
+      { label: 'Meta Ads', action: 'module', href: 'agente3-meta-ads.html', lucide: 'chart-spline' },
+      { label: 'Calendario', action: 'module', href: 'creditek-agente-calendario.html', lucide: 'calendar-days' },
+    ]},
+    { titulo: 'COMERCIAL', lucide: 'briefcase-business', items: [
+      { label: 'Portal B2B', action: 'module', href: '../portal/index.html', lucide: 'shopping-bag' },
+      { label: 'Google Business', action: 'module', href: 'creditek-gbp-fichas.html', lucide: 'map-pin' },
+      { label: 'Convenios de Aliados', action: 'external', href: '../convenios/index.html', lucide: 'handshake' },
+    ]},
+    { titulo: 'SISTEMA', lucide: 'settings', items: [
+      { label: 'Configuración', action: 'configuration', lucide: 'settings' },
+    ]},
+  ];
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -365,6 +390,226 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
   }
 
+  function installKoraAssets() {
+    if (!document.getElementById('koraShellStyles')) {
+      const link = document.createElement('link');
+      link.id = 'koraShellStyles';
+      link.rel = 'stylesheet';
+      link.href = '/design-system/components/kora-shell.css';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('koraLucide')) {
+      const script = document.createElement('script');
+      script.id = 'koraLucide';
+      script.src = KORA_LUCIDE_URL;
+      script.defer = true;
+      script.addEventListener('load', () => window.lucide?.createIcons());
+      document.head.appendChild(script);
+    }
+  }
+
+  function koraCurrentItem(modules) {
+    const current = paginaActual();
+    return modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })))
+      .find(item => item.href === current)
+      || modules[0]?.items[0];
+  }
+
+  function koraNavigationHtml(modules, role, activeItem) {
+    return modules.map(module => {
+      const items = module.items.filter(item => !item.roles || item.roles.includes(role));
+      if (!items.length) return '';
+      const isActive = item => item === activeItem
+        || (item.href && item.href === activeItem?.href)
+        || (item.action && item.action === activeItem?.action && !item.href && !activeItem?.href);
+      const open = items.some(isActive);
+      return `<section class="kora-nav-group" data-open="${open}">
+        <button class="kora-nav-group__label" type="button" aria-expanded="${open}">
+          <i data-lucide="${module.lucide || 'circle'}"></i><span>${escapeHtml(module.titulo)}</span>
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <div class="kora-nav-group__items">
+          ${items.map(item => {
+            const active = isActive(item);
+            const href = item.action ? '#' : item.href;
+            return `<a class="kora-nav-link" href="${escapeHtml(href)}"
+              ${active ? 'aria-current="page"' : ''}
+              data-kora-action="${escapeHtml(item.action || '')}"
+              data-kora-href="${escapeHtml(item.href || '')}"
+              data-kora-title="${escapeHtml(item.label)}"
+              title="${escapeHtml(item.label)}">
+              <i data-lucide="${escapeHtml(item.lucide || module.lucide || 'circle')}"></i>
+              <span class="kora-nav-text">${escapeHtml(item.label)}</span>
+            </a>`;
+          }).join('')}
+        </div>
+      </section>`;
+    }).join('');
+  }
+
+  function koraStoreHtml(profile, stores) {
+    const central = profile.rol === 'gerencia' || profile.rol === 'auditoria';
+    if (!central) {
+      return `<span class="kora-extension"><i data-lucide="store"></i><span>${escapeHtml(nombreTienda(profile.tienda_codigo, stores))}</span></span>`;
+    }
+    return `<label class="kora-store">
+      <span class="ctk-sr-only">Tienda</span>
+      <select class="ctk-select" id="koraStoreSelector" aria-label="Tienda seleccionada">
+        <option value="">Todas las tiendas</option>
+        ${stores.map(store => `<option value="${escapeHtml(store.codigo)}">${escapeHtml(store.nombre)}</option>`).join('')}
+      </select>
+    </label>`;
+  }
+
+  function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout }) {
+    if (!root || root.dataset.koraMounted === 'true') return;
+    installKoraAssets();
+    const current = activeItem || koraCurrentItem(modules);
+    const roleLabel = ROL_LABEL[profile.rol] || profile.rol;
+    const children = Array.from(root.children);
+    const main = document.createElement('div');
+    main.className = 'kora-shell-main';
+    const content = document.createElement('div');
+    content.className = 'kora-shell-content';
+    children.forEach(child => content.appendChild(child));
+    main.innerHTML = `<header class="kora-topbar">
+      <button class="kora-icon-button kora-mobile-menu" type="button" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
+      <button class="kora-icon-button kora-collapse" type="button" aria-label="Colapsar navegación"><i data-lucide="panel-left-close"></i></button>
+      <div class="kora-topbar__context">
+        <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
+        <ol class="kora-breadcrumb" aria-label="Breadcrumb">
+          <li>KORA</li><li>${escapeHtml(current?.group || 'Inicio')}</li><li aria-current="page">${escapeHtml(current?.label || 'Inicio')}</li>
+        </ol>
+      </div>
+      <div class="kora-topbar__actions">
+        ${koraStoreHtml(profile, stores)}
+        <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
+        <button class="kora-icon-button" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" disabled><i data-lucide="bell"></i></button>
+        <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
+          <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
+        </div>
+      </div>
+    </header>`;
+    main.appendChild(content);
+
+    const aside = document.createElement('aside');
+    aside.className = 'kora-sidebar';
+    aside.setAttribute('aria-label', 'Navegación principal');
+    aside.dataset.open = 'false';
+    aside.innerHTML = `<div class="kora-sidebar__brand">
+      <button class="kora-icon-button kora-drawer-close" type="button" aria-label="Cerrar navegación"><i data-lucide="x"></i></button>
+      <span class="kora-wordmark">KORA</span><span class="kora-company">Creditek</span>
+    </div>
+    <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
+    <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
+    const overlay = document.createElement('div');
+    overlay.className = 'kora-drawer-overlay';
+    overlay.hidden = true;
+
+    root.append(aside, main, overlay);
+    root.classList.add('kora-shell-root');
+    root.dataset.koraMounted = 'true';
+
+    const focusable = () => Array.from(aside.querySelectorAll('a[href],button:not([disabled]),select:not([disabled])'));
+    let previousFocus = null;
+    const closeDrawer = () => {
+      aside.dataset.open = 'false';
+      aside.removeAttribute('role');
+      aside.removeAttribute('aria-modal');
+      overlay.hidden = true;
+      previousFocus?.focus?.();
+    };
+    const openDrawer = () => {
+      previousFocus = document.activeElement;
+      aside.dataset.open = 'true';
+      aside.setAttribute('role', 'dialog');
+      aside.setAttribute('aria-modal', 'true');
+      overlay.hidden = false;
+      focusable()[0]?.focus();
+    };
+    main.querySelector('.kora-mobile-menu')?.addEventListener('click', openDrawer);
+    aside.querySelector('.kora-drawer-close')?.addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && aside.dataset.open === 'true') closeDrawer();
+      if (event.key === 'Tab' && aside.dataset.open === 'true') {
+        const nodes = focusable();
+        if (!nodes.length) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+    main.querySelector('.kora-collapse')?.addEventListener('click', () => {
+      const collapsed = root.dataset.sidebarCollapsed !== 'true';
+      root.dataset.sidebarCollapsed = String(collapsed);
+      localStorage.setItem('kora_sidebar_collapsed', String(collapsed));
+    });
+    root.dataset.sidebarCollapsed = localStorage.getItem('kora_sidebar_collapsed') === 'true' ? 'true' : 'false';
+    aside.querySelectorAll('.kora-nav-group__label').forEach(button => button.addEventListener('click', () => {
+      const group = button.closest('.kora-nav-group');
+      const open = group.dataset.open !== 'true';
+      group.dataset.open = String(open);
+      button.setAttribute('aria-expanded', String(open));
+    }));
+    aside.querySelectorAll('.kora-nav-link[data-kora-action]').forEach(link => link.addEventListener('click', event => {
+      const action = link.dataset.koraAction;
+      if (!action) return;
+      event.preventDefault();
+      aside.querySelectorAll('[aria-current="page"]').forEach(node => node.removeAttribute('aria-current'));
+      link.setAttribute('aria-current', 'page');
+      const title = link.dataset.koraTitle;
+      if (action === 'dashboard') window.showSection?.('dashboard', link);
+      if (action === 'configuration') window.showSection?.('configuracion', link);
+      if (action === 'module') window.openModule?.(link.dataset.koraHref, title, link);
+      if (action === 'external') window.open(link.dataset.koraHref, '_blank', 'noopener');
+      setKoraContext(title, ['KORA', link.closest('.kora-nav-group')?.querySelector('.kora-nav-group__label span')?.textContent, title]);
+      closeDrawer();
+    }));
+    aside.querySelector('.kora-logout')?.addEventListener('click', onLogout);
+    const storeSelector = main.querySelector('#koraStoreSelector');
+    if (storeSelector) {
+      storeSelector.value = localStorage.getItem('creditek_sidebar_tienda') || '';
+      storeSelector.addEventListener('change', () => localStorage.setItem('creditek_sidebar_tienda', storeSelector.value));
+    }
+    window.lucide?.createIcons();
+  }
+
+  function setKoraContext(title, breadcrumbs = ['KORA', title]) {
+    const root = document.querySelector('.kora-shell-root');
+    const titleNode = root?.querySelector('.kora-topbar__title');
+    const breadcrumb = root?.querySelector('.kora-breadcrumb');
+    if (titleNode) titleNode.textContent = title;
+    if (breadcrumb) breadcrumb.innerHTML = breadcrumbs.filter(Boolean).map((item, index, list) =>
+      `<li ${index === list.length - 1 ? 'aria-current="page"' : ''}>${escapeHtml(item)}</li>`).join('');
+  }
+
+  function mountPortalShell() {
+    const root = document.getElementById('app');
+    const active = { label: 'Dashboard', action: 'dashboard', group: 'PRINCIPAL' };
+    mountKoraShell({
+      root,
+      profile: { nombre: 'Oscar Pacheco', rol: 'gerencia' },
+      modules: KORA_PORTAL_MODULES,
+      activeItem: active,
+      onLogout: () => window.doLogout?.(),
+    });
+  }
+
+  window.KoraNavigation = {
+    mount(options) {
+      mountKoraShell({
+        ...options,
+        modules: options.modules || MODULOS,
+        activeItem: options.activeItem || koraCurrentItem(options.modules || MODULOS),
+      });
+    },
+    mountPortal: mountPortalShell,
+    setContext: setKoraContext,
+    version: '1.0.0',
+  };
+
   async function init() {
     const appEl = document.getElementById('app');
     if (!appEl) {
@@ -395,15 +640,26 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
 
-      injectStyles();
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = buildSidebarHtml(perfil, tiendas || []);
-      // El botón hamburguesa y el overlay van sueltos en <body>, el <aside> dentro de #app
-      document.body.appendChild(wrapper.querySelector('#sidebarHamburguesa'));
-      document.body.appendChild(wrapper.querySelector('#sidebarOverlay'));
-      appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
-
-      wireInteractions(sb);
+      if (KORA_SHELL_ENABLED) {
+        mountKoraShell({
+          root: document.querySelector('[data-kora-shell-root]') || appEl,
+          profile: perfil,
+          stores: tiendas || [],
+          onLogout: async () => {
+            await sb.auth.signOut();
+            location.reload();
+          },
+        });
+      } else {
+        injectStyles();
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = buildSidebarHtml(perfil, tiendas || []);
+        // El botón hamburguesa y el overlay van sueltos en <body>, el <aside> dentro de #app
+        document.body.appendChild(wrapper.querySelector('#sidebarHamburguesa'));
+        document.body.appendChild(wrapper.querySelector('#sidebarOverlay'));
+        appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
+        wireInteractions(sb);
+      }
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
       window.creditekSidebar = { perfil, tiendas: tiendas || [] };
@@ -415,7 +671,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
   }
 
-  if (document.readyState === 'loading') {
+  if (KORA_SHELL_MODE === 'agents') {
+    installKoraAssets();
+  } else if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();

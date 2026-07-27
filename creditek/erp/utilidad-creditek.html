@@ -12,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="utilidad-creditek-domain.js"></script>
+  <script src="sidebar.js" data-kora-shell="1.0.0"></script>
   <style>
     :root { --navy:#0B1E3D; --navy-2:#15345f; --teal:#00C4CC; --canvas:#f4f7fb; --line:#dfe7f1; }
     * { box-sizing:border-box; }
@@ -121,6 +122,7 @@
   </style>
 </head>
 <body>
+<div data-kora-shell-root>
 <header class="topbar">
   <div class="page-shell topbar-inner">
     <div class="brand-block">
@@ -191,6 +193,7 @@
     <div class="period-stat"><span class="period-label">Ticket promedio</span><span id="res-ticket" class="period-value"></span></div>
   </section>
 </main>
+</div>
 <script src="utilidad-creditek-app.js"></script>
 </body>
 </html>

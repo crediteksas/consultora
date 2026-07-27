@@ -6,6 +6,7 @@
 <title>CREDITEK · Sistema Operativo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../erp/sidebar.js" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
 <style>
 :root {
   --navy:   #0B1E3D;
@@ -525,6 +526,7 @@ function doLogout() {
 // ── Init ─────────────────────────────────────────────────────────
 
 function initApp() {
+  window.KoraNavigation?.mountPortal();
   updateDate();
   setInterval(updateDate, 60000);
   checkConfigStatus();
@@ -555,6 +557,10 @@ function showSection(id, el) {
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent =
     id === 'dashboard' ? 'Dashboard' : 'Configuración';
+  window.KoraNavigation?.setContext(
+    id === 'dashboard' ? 'Dashboard' : 'Configuración',
+    ['KORA', 'Agentes', id === 'dashboard' ? 'Dashboard' : 'Configuración'],
+  );
 }
 
 function openModule(url, title, el) {
@@ -568,6 +574,7 @@ function openModule(url, title, el) {
   document.getElementById('iframe-link').href = url;
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-breadcrumb').textContent = 'Creditek · ' + title;
+  window.KoraNavigation?.setContext(title, ['KORA', 'Agentes', title]);
 }
 
 function openModuleFromCard(url, title) {
@@ -584,6 +591,7 @@ function closeIframe() {
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
   document.getElementById('topbar-breadcrumb').textContent = 'Sistema operativo Creditek';
+  window.KoraNavigation?.setContext('Dashboard', ['KORA', 'Agentes', 'Dashboard']);
 }
 
 // ── Config ───────────────────────────────────────────────────────

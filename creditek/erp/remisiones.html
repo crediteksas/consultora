@@ -95,9 +95,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .banner-ok button { background: none; border: none; color: #166534; font-weight: 700; cursor: pointer; font-size: 16px; }
 
 /* ── Modales ── */
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1200; padding: 16px; overflow:hidden; }
 .modal-bg.show { display: flex; }
-.modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-box { position:relative; z-index:1; background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 620px; max-height:min(92vh,820px); overflow-y:auto; overscroll-behavior:contain; box-shadow: var(--shadow-md); }
+.modal-box table thead { position:static; }
+body.modal-open { overflow:hidden; }
 .modal-box.ancho { max-width: 720px; }
 .modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 6px; }
 .modal-sub { font-size: 12.5px; color: var(--text2); margin-bottom: 18px; }
@@ -209,7 +211,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 <!-- Modal: crear / editar / ver remisión -->
 <div class="modal-bg" id="modalRemision">
-  <div class="modal-box ancho">
+  <div class="modal-box ancho" role="dialog" aria-modal="true" aria-labelledby="modalRemisionTitulo">
     <h2 id="modalRemisionTitulo">Nueva remisión</h2>
     <div class="modal-sub" id="modalRemisionSub"></div>
     <input type="hidden" id="remId">
@@ -236,8 +238,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 <!-- Modal: crear producto inline -->
 <div class="modal-bg" id="modalProducto">
-  <div class="modal-box">
-    <h2>Nuevo producto</h2>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalProductoTitulo">
+    <h2 id="modalProductoTitulo">Nuevo producto</h2>
     <div class="campo"><label>Código</label><input type="text" id="prodCodigo" placeholder="Ej. SAM-A17"></div>
     <div class="campo"><label>Nombre</label><input type="text" id="prodNombre" placeholder="Ej. Samsung Galaxy A17 4G"></div>
     <div class="campo">
@@ -267,7 +269,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 <!-- Modal: recepción (tienda) -->
 <div class="modal-bg" id="modalRecepcion">
-  <div class="modal-box ancho">
+  <div class="modal-box ancho" role="dialog" aria-modal="true" aria-labelledby="recepcionTitulo">
     <h2 id="recepcionTitulo">Recibir remisión</h2>
     <div class="modal-sub">Confirma lo que llegó físicamente a la tienda.</div>
     <div id="recepcionItems"></div>
@@ -299,6 +301,25 @@ let tiendasCache = [];
 let itemRowSeq = 0;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+
+function abrirModalAccesible(id, activador) {
+  const modal = document.getElementById(id);
+  modal._activador = activador || document.activeElement;
+  modal.classList.add('show');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => modal.querySelector('input, select, textarea, button')?.focus());
+}
+function cerrarModalAccesible(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('show');
+  if (!document.querySelector('.modal-bg.show')) document.body.classList.remove('modal-open');
+  modal._activador?.focus?.();
+}
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  const abierto = [...document.querySelectorAll('.modal-bg.show')].at(-1);
+  if (abierto) cerrarModalAccesible(abierto.id);
+});
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -372,13 +393,16 @@ function initPagina() {
   document.getElementById('btnNuevaRemision').addEventListener('click', () => {
     location.href = 'bodega-central.html';
   });
-  document.getElementById('btnCerrarModalRemision').addEventListener('click', () => document.getElementById('modalRemision').classList.remove('show'));
+  document.getElementById('btnCerrarModalRemision').addEventListener('click', () => cerrarModalAccesible('modalRemision'));
   document.getElementById('btnAgregarItem').addEventListener('click', () => agregarItemRow(null));
   document.getElementById('btnGuardarRemision').addEventListener('click', guardarRemision);
   document.getElementById('btnCrearProductoDesdeRemision').addEventListener('click', () => abrirModalProducto());
-  document.getElementById('btnCancelarProducto').addEventListener('click', () => document.getElementById('modalProducto').classList.remove('show'));
+  document.getElementById('btnCancelarProducto').addEventListener('click', () => cerrarModalAccesible('modalProducto'));
   document.getElementById('btnGuardarProductoInline').addEventListener('click', guardarProductoInline);
-  document.getElementById('btnCerrarModalRecepcion').addEventListener('click', () => document.getElementById('modalRecepcion').classList.remove('show'));
+  document.getElementById('btnCerrarModalRecepcion').addEventListener('click', () => cerrarModalAccesible('modalRecepcion'));
+  document.querySelectorAll('.modal-bg').forEach(modal => modal.addEventListener('click', event => {
+    if (event.target === modal) cerrarModalAccesible(modal.id);
+  }));
   document.getElementById('btnConfirmarRecepcion').addEventListener('click', confirmarRecepcion);
   document.getElementById('btnCerrarScanner').addEventListener('click', cerrarScanner);
 
@@ -500,7 +524,7 @@ function abrirModalRemision(rem) {
     actualizarTotalRemision();
   }
 
-  document.getElementById('modalRemision').classList.add('show');
+  abrirModalAccesible('modalRemision');
 }
 
 async function cargarItemsRemision(remisionId, soloLectura) {
@@ -595,7 +619,7 @@ async function guardarRemision() {
   document.getElementById('modalRemisionOk').classList.add('show');
   document.getElementById('remId').value = remisionId;
   await cargarRemisiones();
-  setTimeout(() => document.getElementById('modalRemision').classList.remove('show'), 700);
+  setTimeout(() => cerrarModalAccesible('modalRemision'), 700);
 }
 
 async function despacharRemision(id) {
@@ -622,7 +646,7 @@ function abrirModalProducto() {
   document.getElementById('prodTipo').value = 'serializado';
   document.getElementById('prodPrecioGuia').value = '';
   document.getElementById('prodModalErr').classList.remove('show');
-  document.getElementById('modalProducto').classList.add('show');
+  abrirModalAccesible('modalProducto');
 }
 
 async function guardarProductoInline() {
@@ -654,7 +678,7 @@ async function guardarProductoInline() {
   const ultima = filas[filas.length - 1];
   if (ultima) ultima.querySelector('.it-producto').value = data.id;
   actualizarTotalRemision();
-  document.getElementById('modalProducto').classList.remove('show');
+  cerrarModalAccesible('modalProducto');
 }
 
 // ─── Recepción (tienda) ────────────────────────────────────────────────
@@ -706,7 +730,7 @@ async function abrirModalRecepcion(rem) {
     });
   }
 
-  document.getElementById('modalRecepcion').classList.add('show');
+  abrirModalAccesible('modalRecepcion');
 }
 
 async function confirmarRecepcion() {
@@ -741,7 +765,7 @@ async function confirmarRecepcion() {
 
   if (error) { err.textContent = 'No se pudo confirmar: ' + error.message; err.classList.add('show'); return; }
 
-  document.getElementById('modalRecepcion').classList.remove('show');
+  cerrarModalAccesible('modalRecepcion');
   mostrarBanner(`✅ Remisión #${recepcionRemisionActual.consecutivo} recibida correctamente.`);
   recepcionRemisionActual = null;
   cargarRemisiones();

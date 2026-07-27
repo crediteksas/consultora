@@ -425,7 +425,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         || (item.action && item.action === activeItem?.action && !item.href && !activeItem?.href);
       const open = items.some(isActive);
       return `<section class="kora-nav-group" data-open="${open}">
-        <button class="kora-nav-group__label" type="button" aria-expanded="${open}">
+        <button class="kora-nav-group__label ghost" type="button" aria-expanded="${open}">
           <i data-lucide="${module.lucide || 'circle'}"></i><span>${escapeHtml(module.titulo)}</span>
           <i data-lucide="chevron-down"></i>
         </button>
@@ -475,8 +475,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     content.className = 'kora-shell-content';
     children.forEach(child => content.appendChild(child));
     main.innerHTML = `<header class="kora-topbar">
-      <button class="kora-icon-button kora-mobile-menu" type="button" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
-      <button class="kora-icon-button kora-collapse" type="button" aria-label="Colapsar navegación"><i data-lucide="panel-left-close"></i></button>
+      <button class="kora-icon-button kora-mobile-menu ghost" type="button" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
+      <button class="kora-icon-button kora-collapse ghost" type="button" aria-label="Colapsar navegación"><i data-lucide="panel-left-close"></i></button>
       <div class="kora-topbar__context">
         <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
         <ol class="kora-breadcrumb" aria-label="Breadcrumb">
@@ -491,8 +491,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <div class="kora-topbar__actions">
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
-        <button class="kora-icon-button" type="button" data-kora-audio-settings aria-label="Configuración de experiencia"><i data-lucide="sliders-horizontal"></i></button>
-        <button class="kora-icon-button" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" disabled><i data-lucide="bell"></i></button>
+        <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia"><i data-lucide="sliders-horizontal"></i></button>
+        <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" disabled><i data-lucide="bell"></i></button>
         <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
           <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
         </div>
@@ -506,10 +506,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     aside.dataset.open = 'false';
     aside.innerHTML = `<div class="kora-sidebar__brand">
       <div data-kora-brand data-variant="sidebar" title="KORA — Creditek"></div>
-      <button class="kora-icon-button kora-drawer-close" type="button" aria-label="Cerrar navegación"><i data-lucide="x"></i></button>
+      <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación"><i data-lucide="x"></i></button>
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
-    <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
+    <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
     const overlay = document.createElement('div');
     overlay.className = 'kora-drawer-overlay';
     overlay.hidden = true;

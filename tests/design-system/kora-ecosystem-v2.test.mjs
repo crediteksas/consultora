@@ -46,6 +46,8 @@ test('reserva Sidebar y Topbar desde el primer frame sin spinner', async () => {
     'Lucide debe declararse antes de instalar los recursos del shell'
   );
   assert.match(source, /requestAnimationFrame\(\(\) => root\.dataset\.koraStable = 'true'\)/);
+  assert.match(source, /class="kora-nav-group__label ghost"/);
+  assert.match(source, /class="kora-icon-button kora-collapse ghost"/);
 });
 
 test('mantiene responsive, reducción de movimiento y tablas locales', async () => {

@@ -273,6 +273,7 @@ async function calcularCuadrito(tienda, fecha) {
     { data: ventas, error: ventasError },
     { data: gastos, error: gastosError },
     { data: cuadre, error: cuadreError },
+    { data: movimientosCaja, error: movimientosCajaError },
   ] = await Promise.all([
     sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items(*, productos(nombre, tipo))')
       .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false),
@@ -281,10 +282,16 @@ async function calcularCuadrito(tienda, fecha) {
       p_tienda_codigo: tienda,
       p_fecha: fecha,
     }),
+    sb.from('movimientos_caja_tienda')
+      .select('id, fecha, tipo, monto, observacion, creado_por, created_at')
+      .eq('tienda_codigo', tienda)
+      .eq('fecha', fecha)
+      .order('created_at', { ascending: true }),
   ]);
   if (ventasError) throw ventasError;
   if (gastosError) throw gastosError;
   if (cuadreError) throw cuadreError;
+  if (movimientosCajaError) throw movimientosCajaError;
 
   const ventasList = ventas || [];
   const gastosValidos = (gastos || []).filter(g => g.conceptos_gasto?.preautorizado || g.estado === 'aprobado');
@@ -352,6 +359,7 @@ async function calcularCuadrito(tienda, fecha) {
     salidasExplicitas,
     esperado,
     caja: cuadre.caja || null,
+    movimientosCaja: movimientosCaja || [],
   };
 }
 
@@ -410,6 +418,23 @@ async function cargarCuadrito(tienda, fecha) {
           <div class="cuadrito-linea esperado ${c.esperado < 0 ? 'negativo' : ''}"><span class="izq">Efectivo esperado</span><span class="der">${fmtCOP(c.esperado)}</span></div>
         </div>
 
+        <div class="cuadrito-seccion" aria-labelledby="movimientosCajaTitulo">
+          <div class="page-top" style="margin-bottom:10px;">
+            <div>
+              <h3 id="movimientosCajaTitulo">Movimientos y saldo acumulado</h3>
+              <div class="meta">Incluye únicamente movimientos explícitos de caja de la fecha seleccionada.</div>
+            </div>
+            <input id="filtroMovimientosCaja" type="search" placeholder="Filtrar por tipo, usuario o concepto" aria-label="Filtrar movimientos de caja" style="max-width:280px;">
+          </div>
+          <div class="tabla-wrap" style="margin:0;">
+            <table class="detalle-tabla">
+              <thead><tr><th>Hora</th><th>Tipo</th><th>Concepto</th><th>Usuario</th><th>Entrada</th><th>Salida</th><th>Saldo</th></tr></thead>
+              <tbody id="tbodyMovimientosCaja"></tbody>
+            </table>
+          </div>
+          <div class="cuadrito-vacio" style="margin-top:8px;">Saldo inicial ${fmtCOP(c.apertura)} · Saldo actual esperado ${fmtCOP(c.esperado)}</div>
+        </div>
+
         ${cerrada ? `
           <div class="cierre-box">
             <div class="cuadrito-linea"><span class="izq">Efectivo contado</span><span class="der">${fmtCOP(c.caja.efectivo_contado)}</span></div>
@@ -429,6 +454,32 @@ async function cargarCuadrito(tienda, fecha) {
       </div>
     </div>
   `;
+
+  const tiposSalida = new Set(['transferencia_central', 'pago_directo_central', 'retiro', 'consignacion', 'devolucion_efectivo']);
+  const renderMovimientosCaja = filtro => {
+    let saldo = c.apertura;
+    const filas = c.movimientosCaja.map(m => {
+      const salida = tiposSalida.has(m.tipo);
+      saldo += salida ? -Number(m.monto) : Number(m.monto);
+      return { ...m, salida, saldo };
+    }).filter(m => {
+      const texto = `${m.tipo} ${m.observacion || ''} ${m.creado_por || ''}`.toLowerCase();
+      return !filtro || texto.includes(filtro.toLowerCase());
+    });
+    document.getElementById('tbodyMovimientosCaja').innerHTML = filas.length ? filas.map(m => `
+      <tr>
+        <td>${new Date(m.created_at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}</td>
+        <td>${escapeHtml(m.tipo.replaceAll('_', ' '))}</td>
+        <td>${escapeHtml(m.observacion || '—')}</td>
+        <td class="font-mono">${escapeHtml(m.creado_por || '—')}</td>
+        <td>${m.salida ? '' : fmtCOP(m.monto)}</td>
+        <td>${m.salida ? fmtCOP(m.monto) : ''}</td>
+        <td>${fmtCOP(m.saldo)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text2);">Sin movimientos explícitos para esta fecha.</td></tr>';
+  };
+  renderMovimientosCaja('');
+  document.getElementById('filtroMovimientosCaja').addEventListener('input', event => renderMovimientosCaja(event.target.value));
 
   if (!cerrada && currentPerfil.rol === 'admin_tienda') {
     const inputContado = document.getElementById('efectivoContado');

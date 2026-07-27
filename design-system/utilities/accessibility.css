@@ -1,0 +1,34 @@
+.ctk-sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.ctk-skip-link {
+  background: var(--ctk-color-primary-900);
+  border-radius: var(--ctk-radius-sm);
+  color: var(--ctk-color-neutral-0);
+  left: var(--ctk-space-2);
+  padding: var(--ctk-space-1) var(--ctk-space-2);
+  position: fixed;
+  top: var(--ctk-space-2);
+  transform: translateY(calc(-100% - var(--ctk-space-4)));
+  transition: transform var(--ctk-duration-2) var(--ctk-ease-standard);
+  z-index: var(--ctk-z-tooltip);
+}
+
+.ctk-skip-link:focus {
+  transform: translateY(0);
+}
+
+.ctk-touch-target {
+  min-height: var(--ctk-height-control-lg);
+  min-width: var(--ctk-height-control-lg);
+}

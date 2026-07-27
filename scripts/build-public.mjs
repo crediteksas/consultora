@@ -8,6 +8,8 @@ const PUBLIC_TREES = [
   'creditek/data',
 ];
 
+const DESIGN_SYSTEM_EXTENSIONS = new Set(['.css', '.mjs', '.json']);
+
 const PUBLIC_FILES = [
   'index.html',
   'creditek/convenios/index.html',
@@ -38,6 +40,20 @@ export async function buildPublic(rootDir, outDir) {
       filter: source => !path.basename(source).startsWith('.'),
     });
   }
+
+  await cp(
+    path.join(rootDir, 'design-system'),
+    path.join(outDir, 'design-system'),
+    {
+      recursive: true,
+      filter: source => {
+        const name = path.basename(source);
+        if (name.startsWith('.')) return false;
+        const extension = path.extname(name);
+        return extension === '' || DESIGN_SYSTEM_EXTENSIONS.has(extension);
+      },
+    },
+  );
 
   const erpDir = path.join(rootDir, 'creditek/erp');
   for (const entry of await readdir(erpDir)) {

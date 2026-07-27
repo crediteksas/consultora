@@ -1,0 +1,42 @@
+html {
+  background: var(--ctk-color-background);
+  color: var(--ctk-color-text);
+  font-family: var(--ctk-font-family-ui);
+}
+
+body {
+  background: var(--ctk-color-background);
+  color: var(--ctk-color-text);
+  font-size: var(--ctk-font-size-body);
+  line-height: var(--ctk-line-height-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--ctk-color-text);
+  font-weight: var(--ctk-font-weight-bold);
+  line-height: var(--ctk-line-height-heading);
+}
+
+h1 { font-size: var(--ctk-font-size-h1); }
+h2 { font-size: var(--ctk-font-size-h2); }
+h3 { font-size: var(--ctk-font-size-h3); }
+h4 { font-size: var(--ctk-font-size-h4); }
+
+a {
+  color: var(--ctk-color-primary-700);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--ctk-color-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--ctk-color-secondary-200);
+  color: var(--ctk-color-primary-950);
+}

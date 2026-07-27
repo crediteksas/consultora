@@ -34,7 +34,7 @@ export async function verifyPublicArtifact(outDir) {
     if (FORBIDDEN_NAMES.has(name) || FORBIDDEN_EXTENSIONS.has(extension)) {
       throw new Error(`Server-only file in public artifact: ${path.relative(outDir, file)}`);
     }
-    if (['.html', '.js', '.json', '.txt'].includes(extension)) {
+    if (['.css', '.html', '.js', '.json', '.mjs', '.txt'].includes(extension)) {
       const content = await readFile(file, 'utf8');
       for (const pattern of FORBIDDEN_CONTENT) {
         if (pattern.test(content)) {

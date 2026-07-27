@@ -29,6 +29,7 @@ test('usa una paleta clara y tokens en la capa global', async () => {
   assert.match(shell, /\.kora-sidebar\s*\{[^}]*background: var\(--ctk-color-neutral-50\)/s);
   assert.match(shell, /data-sidebar-collapsed/);
   assert.match(shell, /\.kora-command/);
+  assert.match(shell, /body\.kora-product-page \.kora-shell-root \.kora-topbar__title/);
   assert.doesNotMatch(ecosystem, /#[0-9a-f]{3,8}\b/gi);
 });
 

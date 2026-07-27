@@ -144,7 +144,12 @@ html.creditek-shell-pending body::after {
 }
 .kora-command:focus-within { border-color: var(--ctk-color-focus); box-shadow: 0 0 0 var(--ctk-space-0-5) var(--ctk-color-secondary-100); }
 .kora-topbar__context { min-width: 0; }
-.kora-topbar__title { color: var(--ctk-color-text); font: var(--ctk-font-weight-semibold) var(--ctk-font-size-body)/var(--ctk-line-height-heading) var(--ctk-font-family-ui); margin: 0; }
+body.kora-product-page .kora-shell-root .kora-topbar__title {
+  color: var(--ctk-color-text);
+  font: var(--ctk-font-weight-semibold) var(--ctk-font-size-body)/var(--ctk-line-height-heading) var(--ctk-font-family-ui);
+  letter-spacing: normal;
+  margin: 0;
+}
 .kora-breadcrumb { color: var(--ctk-color-text-muted); display: flex; font-size: var(--ctk-font-size-small); gap: var(--ctk-space-0-5); list-style: none; margin: var(--ctk-space-0-5) 0 0; padding: 0; }
 .kora-breadcrumb li:not(:last-child)::after { content: "/"; margin-left: var(--ctk-space-0-5); }
 .kora-breadcrumb [aria-current="page"] { color: var(--ctk-color-text-secondary); }

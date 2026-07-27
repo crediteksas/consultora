@@ -123,7 +123,8 @@ test('el adaptador visual no contiene consultas ni altera contratos de negocio',
   assert.match(source, /dataset\.koraProduct = '1\.0\.0'/);
   assert.match(source, /classList\.add\('kora-product-page'\)/);
   assert.match(source, /classList\.add\('kora-table-region'\)/);
-  assert.doesNotMatch(source, /supabase|fetch\(|XMLHttpRequest|\.from\(|localStorage|sessionStorage/i);
+  assert.doesNotMatch(source, /supabase|fetch\(|XMLHttpRequest|\.from\(\s*['"]|sessionStorage/i);
+  assert.match(source, /kora_ui_audio:/);
 });
 
 test('el shell revela de forma segura las pantallas que usaban la utilidad hidden', async () => {

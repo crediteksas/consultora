@@ -493,6 +493,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <div class="kora-topbar__actions">
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
+        <button class="kora-icon-button" type="button" data-kora-audio-settings aria-label="Configuración de experiencia"><i data-lucide="sliders-horizontal"></i></button>
         <button class="kora-icon-button" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" disabled><i data-lucide="bell"></i></button>
         <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
           <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
@@ -518,6 +519,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     root.append(aside, main, overlay);
     root.classList.add('kora-shell-root');
     root.dataset.koraMounted = 'true';
+    window.KoraAudio?.setUser?.(profile.id || profile.nombre || 'anonymous');
     root.dataset.sidebarCollapsed = localStorage.getItem('kora_sidebar_collapsed') === 'true' ? 'true' : 'false';
 
     const renderShellBrand = () => {

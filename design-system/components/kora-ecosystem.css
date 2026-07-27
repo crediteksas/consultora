@@ -177,3 +177,117 @@ html[data-kora-ecosystem="2.0.0"] {
     transition-duration: var(--ctk-duration-1) !important;
   }
 }
+
+.kora-overlay-open {
+  overflow: hidden;
+}
+
+.kora-audio-panel {
+  inset: 0;
+  position: fixed;
+  z-index: var(--ctk-z-modal);
+}
+
+.kora-audio-panel[hidden] {
+  display: none;
+}
+
+.kora-audio-backdrop {
+  background: var(--ctk-color-overlay);
+  inset: 0;
+  position: absolute;
+}
+
+.kora-audio-dialog {
+  background: var(--ctk-color-surface);
+  border-left: 1px solid var(--ctk-color-border);
+  box-shadow: var(--ctk-shadow-4);
+  height: 100dvh;
+  margin-left: auto;
+  max-width: 30rem;
+  overflow: auto;
+  padding: var(--ctk-space-3);
+  position: relative;
+  width: min(100%, 30rem);
+}
+
+.kora-audio-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--ctk-space-2);
+  justify-content: space-between;
+}
+
+.kora-audio-header h2 {
+  margin: var(--ctk-space-0-5) 0;
+}
+
+.kora-audio-header p {
+  margin: 0;
+}
+
+.kora-audio-eyebrow {
+  color: var(--ctk-color-text-muted);
+  font-size: var(--ctk-font-size-small);
+  font-weight: var(--ctk-font-weight-semibold);
+  letter-spacing: var(--ctk-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.kora-audio-body {
+  display: grid;
+  gap: var(--ctk-space-3);
+  margin-top: var(--ctk-space-4);
+}
+
+.kora-audio-setting,
+.kora-audio-volume {
+  align-items: center;
+  border-bottom: 1px solid var(--ctk-color-border);
+  display: flex;
+  gap: var(--ctk-space-2);
+  justify-content: space-between;
+  padding-bottom: var(--ctk-space-2);
+}
+
+.kora-audio-setting span,
+.kora-audio-volume span {
+  display: grid;
+  gap: var(--ctk-space-0-5);
+}
+
+.kora-audio-setting small {
+  color: var(--ctk-color-text-muted);
+}
+
+.kora-audio-volume {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.kora-audio-volume > span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.kora-audio-grid {
+  align-items: center;
+  display: grid;
+  gap: var(--ctk-space-1);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.kora-audio-grid label {
+  align-items: center;
+  display: flex;
+  gap: var(--ctk-space-1);
+}
+
+@media (max-width: 47.999rem) {
+  .kora-audio-dialog {
+    border-left: 0;
+    max-width: none;
+    padding: var(--ctk-space-2);
+    width: 100%;
+  }
+}

@@ -237,18 +237,14 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <div class="login-logo">
       <div data-kora-brand data-variant="login" data-product-name="AURA"></div>
     </div>
-    <form id="login-form" autocomplete="off" novalidate>
+    <div id="login-form">
       <div class="login-field">
-        <label for="login-email">Correo</label>
-        <input type="email" id="login-email" name="email" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="tu@crediteksas.com" required>
+        <label for="login-pwd">Clave de acceso</label>
+        <input type="password" id="login-pwd" name="aura-access-key" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="Escribe tu clave" aria-label="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <div class="login-field">
-        <label for="login-password">Contraseña</label>
-        <input type="password" id="login-password" name="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" placeholder="Tu contraseña" required>
-      </div>
-      <button class="login-btn" id="login-submit" type="submit" aria-busy="false">Ingresar →</button>
+      <button class="login-btn" id="login-submit" type="button" onclick="doLogin()">Ingresar →</button>
       <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>
-    </form>
+    </div>
     <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
   </div>
 </div>
@@ -510,13 +506,8 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
-<script src="aura-auth.js"></script>
 <script>
-const auraAuth = CreditekAuraAuth.createAuraAuth({
-  supabaseUrl: 'https://ditiwpndvmyuqcagupea.supabase.co',
-  publishableKey: 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW',
-  sessionStorage
-});
+const PWD = 'creditek2026';
 
 // ── Login ────────────────────────────────────────────────────────
 function showAuthenticatedApp() {
@@ -529,34 +520,41 @@ function showAuthenticatedApp() {
 }
 
 async function doLogin() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-  const submit = document.getElementById('login-submit');
-  const error = document.getElementById('login-error');
-
-  error.textContent = '';
-  submit.disabled = true;
-  submit.setAttribute('aria-busy', 'true');
-
-  try {
-    const result = await auraAuth.signIn(email, password);
-    if (!result.ok) {
-      error.textContent = result.message;
-      document.getElementById('login-password').value = '';
-      return;
+  const value = document.getElementById('login-pwd').value;
+  if (value === PWD) {
+    sessionStorage.setItem('ck_auth', '1');
+    try {
+      const response = await fetch('https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({gate: PWD})
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const session = JSON.stringify({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          expires_at: data.expires_at,
+          email: data.email
+        });
+        sessionStorage.setItem('ck_supa_session', session);
+        sessionStorage.setItem('aura_supa_session', session);
+      }
+    } catch (loginError) {
+      console.error('SSO login error', loginError);
     }
     showAuthenticatedApp();
-  } catch (loginError) {
-    console.error('AURA login error', loginError);
-    error.textContent = 'No fue posible conectar. Intenta nuevamente.';
-  } finally {
-    submit.disabled = false;
-    submit.setAttribute('aria-busy', 'false');
+  } else {
+    document.getElementById('login-error').textContent = 'Clave incorrecta';
+    document.getElementById('login-pwd').value = '';
+    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
   }
 }
 
 function doLogout() {
-  auraAuth.signOut();
+  sessionStorage.removeItem('ck_auth');
+  sessionStorage.removeItem('ck_supa_session');
+  sessionStorage.removeItem('aura_supa_session');
   location.reload();
 }
 
@@ -678,18 +676,13 @@ function showToast(msg, color='#0B1E3D') {
 }
 
 // ── Auto-login si sesión activa ──────────────────────────────────
-document.getElementById('login-form').addEventListener('submit', event => {
-  event.preventDefault();
-  doLogin();
-});
-
-window.addEventListener('load', async () => {
-  if (await auraAuth.restoreSession()) {
+window.addEventListener('load', () => {
+  if (sessionStorage.getItem('ck_auth') === '1') {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
     initApp();
   } else {
-    setTimeout(() => document.getElementById('login-email').focus(), 100);
+    setTimeout(() => document.getElementById('login-pwd').focus(), 100);
   }
 });
 </script>

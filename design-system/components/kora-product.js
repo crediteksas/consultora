@@ -40,6 +40,15 @@
 
   function iconForLabel(label) {
     const value = label.toLocaleLowerCase('es');
+    if (/cuadro de ventas/.test(value)) return 'shopping-cart';
+    if (/cartera pendiente/.test(value)) return 'hand-coins';
+    if (/inventario valorizado/.test(value)) return 'package-search';
+    if (/cumplimiento de presupuesto/.test(value)) return 'target';
+    if (/rentabilidad por tienda/.test(value)) return 'store';
+    if (/rentabilidad por categoría/.test(value)) return 'tags';
+    if (/utilidad creditek/.test(value)) return 'chart-no-axes-column-increasing';
+    if (/crecimiento mes a mes/.test(value)) return 'trending-up';
+    if (/top productos|slow movers/.test(value)) return 'trophy';
     if (/config|ajuste/.test(value)) return 'settings';
     if (/inventario|producto|bodega|pedido/.test(value)) return 'boxes';
     if (/campaña|publicidad|meta ads/.test(value)) return 'megaphone';

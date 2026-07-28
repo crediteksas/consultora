@@ -20,7 +20,8 @@ const PUBLIC_FILES = [
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);
-const KORA_SHELL_ASSET_VERSION = '2.0.2';
+const KORA_SHELL_ASSET_VERSION = '2.0.3';
+const KORA_PRODUCT_ASSET_VERSION = '2.0.3';
 
 async function copyFileFromRoot(rootDir, outDir, relative) {
   const source = path.join(rootDir, relative);
@@ -29,14 +30,32 @@ async function copyFileFromRoot(rootDir, outDir, relative) {
   await cp(source, destination);
 }
 
-async function versionKoraShellReference(outDir, relative) {
+async function versionKoraAssetReferences(outDir, relative) {
   const file = path.join(outDir, relative);
   const html = await readFile(file, 'utf8');
-  const versioned = html.replace(
-    /src="((?:\.\.\/erp\/)?sidebar\.js)(?:\?[^"]*)?"/g,
-    `src="$1?v=${KORA_SHELL_ASSET_VERSION}"`,
-  );
+  const versioned = html
+    .replace(
+      /src="((?:\.\.\/erp\/)?sidebar\.js)(?:\?[^"]*)?"/g,
+      `src="$1?v=${KORA_SHELL_ASSET_VERSION}"`,
+    )
+    .replace(
+      /src="(\/design-system\/components\/kora-product\.js)(?:\?[^"]*)?"/g,
+      `src="$1?v=${KORA_PRODUCT_ASSET_VERSION}"`,
+    );
   if (versioned !== html) await writeFile(file, versioned);
+}
+
+async function versionHtmlReferences(outDir, relative = '') {
+  const directory = path.join(outDir, relative);
+  for (const entry of await readdir(directory)) {
+    const childRelative = path.join(relative, entry);
+    const child = path.join(outDir, childRelative);
+    if ((await stat(child)).isDirectory()) {
+      await versionHtmlReferences(outDir, childRelative);
+    } else if (path.extname(entry) === '.html') {
+      await versionKoraAssetReferences(outDir, childRelative);
+    }
+  }
 }
 
 export async function buildPublic(rootDir, outDir) {
@@ -76,11 +95,7 @@ export async function buildPublic(rootDir, outDir) {
     await copyFileFromRoot(rootDir, outDir, `creditek/erp/${entry}`);
   }
 
-  for (const entry of await readdir(path.join(outDir, 'creditek/erp'))) {
-    if (path.extname(entry) !== '.html') continue;
-    await versionKoraShellReference(outDir, `creditek/erp/${entry}`);
-  }
-  await versionKoraShellReference(outDir, 'creditek/agentes/index.html');
+  await versionHtmlReferences(outDir);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -147,15 +147,15 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   const MODULOS = [
-    { titulo: 'TABLERO', icono: '📊', lucide: 'layout-dashboard', items: [
+    { titulo: 'TABLERO', icono: '📊', lucide: 'layout-dashboard', description: 'Indicadores ejecutivos, presupuestos y desempeño comercial.', items: [
       { label: 'Resumen ejecutivo', href: 'tablero.html', lucide: 'layout-dashboard', description: 'Resumen en tiempo real de ventas, utilidad, tiendas y alertas operativas.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'badge-dollar-sign', description: 'Consulta y compara los presupuestos comerciales por tienda y período.', roles: ['gerencia', 'auditoria'] },
       { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', lucide: 'users-round', description: 'Compara el desempeño de los equipos y responsables comerciales.', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'ANÁLISIS', icono: '📈', lucide: 'chart-no-axes-combined', items: [
+    { titulo: 'ANÁLISIS', icono: '📈', lucide: 'chart-no-axes-combined', description: 'Informes históricos, comparativos y exportables del negocio.', items: [
       { label: 'Análisis e informes', href: 'reportes.html', lucide: 'file-chart-column-increasing', description: 'Informes históricos, comparativos y exportables para análisis detallado.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
     ]},
-    { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', items: [
+    { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', description: 'Productos, existencias, traslados y trazabilidad por IMEI.', items: [
       { label: 'Catálogo', href: 'catalogo.html', lucide: 'grid-2x2', description: 'Administra referencias, categorías y datos maestros de los productos.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Remisiones', href: 'remisiones.html', lucide: 'file-output', description: 'Crea y consulta envíos de mercancía entre central y tiendas.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Stock', href: 'inventario.html', lucide: 'warehouse', description: 'Consulta las existencias disponibles por tienda, producto e IMEI.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
@@ -165,7 +165,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', lucide: 'file-search', description: 'Compara existencias y movimientos para detectar diferencias.', roles: ['gerencia', 'auditoria'] },
       { label: 'Kardex', href: 'kardex.html', lucide: 'history', description: 'Revisa el historial cronológico de entradas y salidas de inventario.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
     ]},
-    { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', items: [
+    { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', description: 'Ventas, gastos, cierres y movimientos financieros diarios.', items: [
       { label: 'Ventas', href: 'ventas.html', lucide: 'shopping-cart', description: 'Registra y consulta las ventas realizadas por la tienda.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Gastos', href: 'gastos.html', lucide: 'receipt', description: 'Registra y consulta los gastos operativos autorizados.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Cierre día', href: 'caja.html', lucide: 'circle-check-big', description: 'Concilia el efectivo esperado y realiza el cierre diario de caja.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
@@ -179,17 +179,17 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // recibe una remisión necesita abrir el documento para aceptarla).
     // SPEC v2 · 23-jul-2026: Doc. remisión se quita del menú. Se abre con
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
-    { titulo: 'BODEGA CENTRAL', icono: '🏭', lucide: 'warehouse', items: [
+    { titulo: 'BODEGA CENTRAL', icono: '🏭', lucide: 'warehouse', description: 'Compras, proveedores, inventario central y utilidad consolidada.', items: [
       { label: 'Cartera de Proveedores', href: 'proveedores.html', lucide: 'hand-coins', description: 'Consulta obligaciones, pagos y saldos pendientes con proveedores.', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
       { label: 'Bodega Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de la bodega principal.', roles: ['gerencia', 'auditoria'] },
       { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza ingresos, costos, gastos y utilidad consolidada.', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'CLIENTES', icono: '👤', lucide: 'users', items: [
+    { titulo: 'CLIENTES', icono: '👤', lucide: 'users', description: 'Registro y validación segura de clientes de Creditek.', items: [
       { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
-    { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', items: [
+    { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
       { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona errores reportados, responsables, estados y soluciones.', roles: ['gerencia', 'auditoria', 'soporte'] },
       { label: 'Mis incidencias', href: 'mis-reportes.html', lucide: 'message-square-warning', description: 'Consulta el avance y las respuestas de los errores que reportaste.', roles: ['gerencia', 'auditoria', 'soporte', 'admin_tienda', 'asesor'] },
     ]},
@@ -451,7 +451,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const open = items.some(isActive);
       return `<section class="kora-nav-group" data-open="${open}">
         <button class="kora-nav-group__label ghost" type="button" aria-expanded="${open}"
-          data-kora-tooltip="${escapeHtml(`Mostrar u ocultar ${module.titulo.toLocaleLowerCase('es')}`)}">
+          data-kora-tooltip="${escapeHtml(module.description)}">
           <i data-lucide="${module.lucide || 'circle'}"></i><span>${escapeHtml(module.titulo)}</span>
           <i data-lucide="chevron-down"></i>
         </button>

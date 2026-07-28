@@ -16,6 +16,7 @@ test('los controles críticos del header conservan iconos visibles sin depender 
     assert.match(source, new RegExp(`koraStaticIcon\\('${icon}'\\)`));
   }
   assert.match(css, /\.kora-icon-button\s*>\s*svg\s*\{[^}]*height:\s*var\(--ctk-icon-md\)[^}]*width:\s*var\(--ctk-icon-md\)/s);
+  assert.match(css, /\.kora-icon-button\s*\{[^}]*padding:\s*0/s);
   assert.match(css, /\.kora-icon-button:active/);
 });
 

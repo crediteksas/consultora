@@ -88,7 +88,7 @@
         return;
       }
       notifications.forEach(item => {
-        const button = element('button', undefined, 'kora-notification-item');
+        const button = element('button', undefined, 'kora-notification-item ghost');
         button.type = 'button';
         button.dataset.unread = String(!item.read_at);
         const title = element('strong', item.title);

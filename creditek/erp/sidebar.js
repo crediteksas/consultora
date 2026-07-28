@@ -418,7 +418,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraNotifications')) {
       const notifications = document.createElement('script');
       notifications.id = 'koraNotifications';
-      notifications.src = '/creditek/erp/kora-notifications.js';
+      notifications.src = '/creditek/erp/kora-notifications.js?v=1.1.2';
       document.head.appendChild(notifications);
     }
     const installIncidentCenter = () => {

@@ -237,14 +237,14 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <div class="login-logo">
       <div data-kora-brand data-variant="login" data-product-name="AURA"></div>
     </div>
-    <form id="login-form" novalidate>
+    <form id="login-form" autocomplete="off" novalidate>
       <div class="login-field">
         <label for="login-email">Correo</label>
-        <input type="email" id="login-email" name="email" autocomplete="username" placeholder="tu@crediteksas.com" required>
+        <input type="email" id="login-email" name="email" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="tu@crediteksas.com" required>
       </div>
       <div class="login-field">
         <label for="login-password">Contraseña</label>
-        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Tu contraseña" required>
+        <input type="password" id="login-password" name="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" placeholder="Tu contraseña" required>
       </div>
       <button class="login-btn" id="login-submit" type="submit" aria-busy="false">Ingresar →</button>
       <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>

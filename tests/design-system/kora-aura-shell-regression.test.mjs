@@ -61,8 +61,8 @@ test('los campos individuales de AURA permanecen editables y accesibles', async 
   const email = portal.match(/<input\s+type="email"\s+id="login-email"[^>]*>/)?.[0] || '';
   const password = portal.match(/<input\s+type="password"\s+id="login-password"[^>]*>/)?.[0] || '';
 
-  assert.match(email, /autocomplete="username"/);
-  assert.match(password, /autocomplete="current-password"/);
+  assert.match(email, /autocomplete="off"/);
+  assert.match(password, /autocomplete="new-password"/);
   assert.doesNotMatch(email, /\b(?:disabled|readonly)\b/i);
   assert.doesNotMatch(password, /\b(?:disabled|readonly)\b/i);
   assert.match(portal, /<label for="login-email">Correo<\/label>/);

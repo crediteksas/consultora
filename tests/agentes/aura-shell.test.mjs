@@ -13,9 +13,10 @@ test('el acceso AURA expone controles etiquetados de correo y contraseña', asyn
   const html = await read('creditek/agentes/index.html');
 
   assert.match(html, /<label[^>]*for="login-email"[^>]*>\s*Correo\s*<\/label>/);
-  assert.match(html, /<input[^>]*type="email"[^>]*id="login-email"[^>]*name="email"[^>]*autocomplete="username"/);
+  assert.match(html, /<form[^>]*id="login-form"[^>]*autocomplete="off"/);
+  assert.match(html, /<input[^>]*type="email"[^>]*id="login-email"[^>]*name="email"[^>]*autocomplete="off"[^>]*data-1p-ignore/);
   assert.match(html, /<label[^>]*for="login-password"[^>]*>\s*Contraseña\s*<\/label>/);
-  assert.match(html, /<input[^>]*type="password"[^>]*id="login-password"[^>]*name="password"[^>]*autocomplete="current-password"/);
+  assert.match(html, /<input[^>]*type="password"[^>]*id="login-password"[^>]*name="password"[^>]*autocomplete="new-password"[^>]*data-1p-ignore/);
   assert.match(html, /id="login-error"[^>]*role="alert"[^>]*aria-live="polite"/);
   assert.match(html, /#login-form\s*\{[^}]*pointer-events:\s*auto\s*!important/s);
   assert.match(html, /#login-form\s*\{[^}]*z-index:\s*2/s);

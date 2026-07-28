@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,12 +20,23 @@ const PUBLIC_FILES = [
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);
+const KORA_SHELL_ASSET_VERSION = '1.0.0-final';
 
 async function copyFileFromRoot(rootDir, outDir, relative) {
   const source = path.join(rootDir, relative);
   const destination = path.join(outDir, relative);
   await mkdir(path.dirname(destination), { recursive: true });
   await cp(source, destination);
+}
+
+async function versionKoraShellReference(outDir, relative) {
+  const file = path.join(outDir, relative);
+  const html = await readFile(file, 'utf8');
+  const versioned = html.replace(
+    /src="((?:\.\.\/erp\/)?sidebar\.js)(?:\?[^"]*)?"/g,
+    `src="$1?v=${KORA_SHELL_ASSET_VERSION}"`,
+  );
+  if (versioned !== html) await writeFile(file, versioned);
 }
 
 export async function buildPublic(rootDir, outDir) {
@@ -64,6 +75,12 @@ export async function buildPublic(rootDir, outDir) {
     if (!ERP_EXTENSIONS.has(path.extname(entry))) continue;
     await copyFileFromRoot(rootDir, outDir, `creditek/erp/${entry}`);
   }
+
+  for (const entry of await readdir(path.join(outDir, 'creditek/erp'))) {
+    if (path.extname(entry) !== '.html') continue;
+    await versionKoraShellReference(outDir, `creditek/erp/${entry}`);
+  }
+  await versionKoraShellReference(outDir, 'creditek/agentes/index.html');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

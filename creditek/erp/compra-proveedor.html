@@ -513,7 +513,7 @@ function renderBusqueda(q) {
   }
   res.innerHTML = hits.map(p => `
     <button type="button" data-prod-id="${esc(p.id)}"
-            class="w-full text-left px-3 py-2 border-b border-gray-100 last:border-0">
+            class="secondary kora-product-search-result w-full text-left px-3 py-2 border-b border-gray-100 last:border-0">
       <div class="flex items-center justify-between">
         <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
         <span class="px-2 py-0.5 rounded text-xs ${p.tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${esc(p.tipo)}</span>

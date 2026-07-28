@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>KORA · Registrar cliente</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="sidebar.js" data-kora-shell="1.0.0"></script>
   <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="/design-system/components/kora-product.js" defer></script>
   <style>
@@ -22,7 +23,7 @@
     @media(max-width:720px){.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.registro-interno{padding:20px 16px}}
   </style>
 </head>
-<body>
+<body data-kora-requires-auth="true">
 <main id="app" class="registro-interno" hidden>
   <header class="page-header">
     <p>Clientes</p>
@@ -47,9 +48,7 @@
   </form>
 </main>
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let sb = null;
 let perfil = null;
 
 function mensaje(texto, tipo) {
@@ -58,19 +57,29 @@ function mensaje(texto, tipo) {
   el.className = `message show ${tipo}`;
 }
 
+function esperarContexto() {
+  if (window.creditekSidebar?.sb && window.creditekSidebar?.perfil) {
+    return Promise.resolve(window.creditekSidebar);
+  }
+  return new Promise(resolve => {
+    document.addEventListener('kora-sidebar-ready', () => resolve(window.creditekSidebar), { once: true });
+  });
+}
+
 async function iniciar() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'app.html'; return; }
-  const { data, error } = await sb.from('perfiles').select('id,nombre,rol,tienda_codigo,activo').eq('id', session.user.id).maybeSingle();
-  if (error || !data?.activo || !['gerencia','auditoria','admin_tienda','asesor'].includes(data.rol)) {
+  const contexto = await esperarContexto();
+  sb = contexto.sb;
+  perfil = contexto.perfil;
+  if (!perfil?.activo || !['gerencia','auditoria','admin_tienda','asesor'].includes(perfil.rol)) {
+    const app = document.getElementById('app');
+    app.hidden = false;
+    app.classList.add('show');
     mensaje('No tienes permiso para registrar clientes.', 'error');
     return;
   }
-  perfil = data;
   const tienda = document.getElementById('tienda');
   if (['gerencia','auditoria'].includes(perfil.rol)) {
-    const { data: tiendas, error: tiendasError } = await sb.from('origenes').select('codigo,nombre').eq('tipo','propia').eq('activo',true).order('nombre');
-    if (tiendasError) throw tiendasError;
+    const tiendas = contexto.tiendas || [];
     tienda.innerHTML = '<option value="">Selecciona una tienda</option>' + (tiendas || []).map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('');
   } else {
     tienda.innerHTML = `<option value="${perfil.tienda_codigo}">${perfil.tienda_codigo}</option>`;
@@ -108,8 +117,12 @@ document.getElementById('formCliente').addEventListener('submit', async event =>
   if (!['gerencia','auditoria'].includes(perfil.rol)) document.getElementById('tienda').value = perfil.tienda_codigo;
 });
 
-iniciar().catch(error => mensaje(`No se pudo abrir el registro interno: ${error.message}`, 'error'));
+iniciar().catch(error => {
+  const app = document.getElementById('app');
+  app.hidden = false;
+  app.classList.add('show');
+  mensaje(`No se pudo abrir el registro interno: ${error.message}`, 'error');
+});
 </script>
-<script src="sidebar.js"></script>
 </body>
 </html>

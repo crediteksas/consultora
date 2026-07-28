@@ -13,7 +13,12 @@ const sql = (await readFile(
 )).replace(/\s+/g, ' ').toLowerCase();
 
 test('el registro interno exige sesión y usa un RPC separado', () => {
-  assert.match(internal, /auth\.getSession\(\)/);
+  assert.match(internal, /data-kora-requires-auth=["']true["']/);
+  assert.match(internal, /sidebar\.js["'] data-kora-shell=["']1\.0\.0["']/);
+  assert.match(internal, /kora-sidebar-ready/);
+  assert.match(internal, /window\.creditekSidebar/);
+  assert.doesNotMatch(internal, /supabase\.createClient/);
+  assert.equal((internal.match(/sidebar\.js/g) || []).length, 1);
   assert.match(internal, /crear_cliente_interno_seguro/);
   assert.match(internal, /classList\.add\(['"]show['"]\)/);
   assert.match(sidebar, /Registrar cliente.*registro-interno\.html/);

@@ -37,7 +37,7 @@ El formulario presentará:
 - estado de envío;
 - entrada con Enter.
 
-Una sesión autenticada no bastará por sí sola para autorizar AURA. El arranque debe comprobar el perfil o rol permitido antes de revelar la aplicación. No se introducirán claves, tokens ni secretos nuevos en el HTML.
+Una sesión autenticada no bastará por sí sola para autorizar AURA. El arranque debe comprobar el atributo privado `user.app_metadata.aura_access === true` antes de revelar la aplicación. Por ahora ese atributo se asignará únicamente a la cuenta de Oscar. No se introducirán claves, tokens ni secretos nuevos en el HTML.
 
 ### 2. Interacción y accesibilidad
 

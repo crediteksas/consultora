@@ -30,7 +30,7 @@
 
 **Interfaces:**
 - Produces: `window.CreditekAuraAuth.createAuraAuth(options)`
-- `options`: `{ supabaseUrl, publishableKey, fetchFn, sessionStorage, allowedRoles }`
+- `options`: `{ supabaseUrl, publishableKey, fetchFn, sessionStorage }`
 - Returned methods: `signIn(email, password)`, `restoreSession()`, `signOut()`, `isAuthorized(user)`
 - Session storage key: `aura_supa_session`
 
@@ -51,7 +51,7 @@ test('signIn sends email and password to Supabase Auth and stores only the retur
   assert.equal(storage.getItem('password'), null);
 });
 
-test('signIn rejects authenticated users without an allowed AURA role', async () => {
+test('signIn rejects authenticated users without private AURA access', async () => {
   const auth = createAuth({
     storage: memoryStorage(),
     fetchFn: async () => response(200, unauthorizedSession),
@@ -108,11 +108,10 @@ Expected: FAIL with `ENOENT` because `aura-auth.js` has not been created.
     publishableKey,
     fetchFn = fetch,
     sessionStorage,
-    allowedRoles = ['gerencia', 'admin'],
   }) {
     function isAuthorized(user) {
       const metadata = user?.app_metadata || {};
-      return metadata.aura_access === true || allowedRoles.includes(metadata.role);
+      return metadata.aura_access === true;
     }
 
     async function signIn(email, password) {
@@ -246,7 +245,6 @@ const auraAuth = CreditekAuraAuth.createAuraAuth({
   supabaseUrl: 'https://ditiwpndvmyuqcagupea.supabase.co',
   publishableKey: 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW',
   sessionStorage,
-  allowedRoles: ['gerencia', 'admin'],
 });
 
 async function doLogin() {

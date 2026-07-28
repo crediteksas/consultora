@@ -37,8 +37,8 @@ test('build keeps required public applications and excludes backend source', asy
   assert.match(portalHtml, /Portal de Pedidos/i);
   const dashboardHtml = await readFile(path.join(out, 'creditek/erp/tablero.html'), 'utf8');
   const agentsHtml = await readFile(path.join(out, 'creditek/agentes/index.html'), 'utf8');
-  assert.match(dashboardHtml, /src="sidebar\.js\?v=1\.0\.0-final"/);
-  assert.match(agentsHtml, /src="\.\.\/erp\/sidebar\.js\?v=1\.0\.0-final"/);
+  assert.match(dashboardHtml, /src="sidebar\.js\?v=2\.0\.2"/);
+  assert.match(agentsHtml, /src="\.\.\/erp\/sidebar\.js\?v=2\.0\.2"/);
   await assert.rejects(
     stat(path.join(out, 'config/kora-environment.example.js')),
     { code: 'ENOENT' },

@@ -39,12 +39,12 @@ test('la navegación KORA usa Design System, Lucide fijado y no estilos inline',
 test('preserva rutas y roles verificables del ERP', async () => {
   const source = await read('creditek/erp/sidebar.js');
   const contracts = [
-    /Dashboard', href: 'tablero\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
+    /Resumen ejecutivo', href: 'tablero\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Stock', href: 'inventario\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
     /Ventas', href: 'ventas\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
     /Cartera de Proveedores', href: 'proveedores\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Utilidad Creditek', href: 'utilidad-creditek\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
-    /Dashboard', href: 'reportes\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
+    /Análisis e informes', href: 'reportes\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
   ];
   contracts.forEach(contract => assert.match(source, contract));
   assert.match(source, /creditek_sidebar_tienda/);

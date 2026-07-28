@@ -9,13 +9,13 @@ const read = relative => readFile(path.join(root, relative), 'utf8');
 test('el control superior conserva la función de colapsar sin depender de una carga tardía', async () => {
   const source = await read('creditek/erp/sidebar.js');
 
-  assert.match(source, /class="kora-icon-button kora-collapse ghost"/);
+  assert.match(source, /class="kora-icon-button kora-navigation-toggle ghost"/);
   assert.match(source, /aria-label="Colapsar navegación"/);
-  assert.match(source, /title="Colapsar navegación"/);
+  assert.match(source, /data-kora-tooltip="Colapsar navegación"/);
   assert.match(source, /data-lucide-static="\$\{name\}"/);
   assert.match(source, /koraStaticIcon\('panel-left-close'\)/);
   assert.match(source, /addEventListener\('click',[\s\S]*sidebarCollapsed/);
-  assert.match(source, /syncCollapseControl/);
+  assert.match(source, /syncNavigationControl/);
 });
 
 test('el shell compartido no genera botones vacíos', async () => {

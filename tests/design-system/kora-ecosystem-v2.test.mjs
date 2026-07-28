@@ -48,7 +48,7 @@ test('reserva Sidebar y Topbar desde el primer frame sin spinner', async () => {
   );
   assert.match(source, /requestAnimationFrame\(\(\) => root\.dataset\.koraStable = 'true'\)/);
   assert.match(source, /class="kora-nav-group__label ghost"/);
-  assert.match(source, /class="kora-icon-button kora-collapse ghost"/);
+  assert.match(source, /class="kora-icon-button kora-navigation-toggle ghost"/);
 });
 
 test('mantiene responsive, reducción de movimiento y tablas locales', async () => {

@@ -9,6 +9,7 @@
   const SHELL_AUTHENTICATED_CLASS = 'creditek-shell-authenticated';
   const SHELL_ERROR_CLASS = 'creditek-shell-error';
   const SHELL_READY_TIMEOUT_MS = 8_000;
+  const KORA_TOOLTIP_DELAY_MS = 2_500;
   const SHELL_SCRIPT = document.currentScript;
   const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
   const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
@@ -147,26 +148,29 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   const MODULOS = [
     { titulo: 'TABLERO', icono: '📊', lucide: 'layout-dashboard', items: [
-      { label: 'Dashboard', href: 'tablero.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Presupuestos', href: 'presupuestos.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', roles: ['gerencia', 'auditoria'] },
+      { label: 'Resumen ejecutivo', href: 'tablero.html', lucide: 'layout-dashboard', description: 'Resumen en tiempo real de ventas, utilidad, tiendas y alertas operativas.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'badge-dollar-sign', description: 'Consulta y compara los presupuestos comerciales por tienda y período.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', lucide: 'users-round', description: 'Compara el desempeño de los equipos y responsables comerciales.', roles: ['gerencia', 'auditoria'] },
+    ]},
+    { titulo: 'ANÁLISIS', icono: '📈', lucide: 'chart-no-axes-combined', items: [
+      { label: 'Análisis e informes', href: 'reportes.html', lucide: 'file-chart-column-increasing', description: 'Informes históricos, comparativos y exportables para análisis detallado.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
     ]},
     { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', items: [
-      { label: 'Catálogo', href: 'catalogo.html', lucide: 'grid-2x2', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Remisiones', href: 'remisiones.html', lucide: 'file-output', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Stock', href: 'inventario.html', lucide: 'warehouse', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
-      { label: 'Traslados', href: 'traslados.html', lucide: 'arrow-left-right', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Ajustes', href: 'ajustes.html', lucide: 'sliders-horizontal', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Cierre mes', href: 'cierre-periodo.html', lucide: 'calendar-check', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', lucide: 'file-search', roles: ['gerencia', 'auditoria'] },
-      { label: 'Kardex', href: 'kardex.html', lucide: 'history', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Catálogo', href: 'catalogo.html', lucide: 'grid-2x2', description: 'Administra referencias, categorías y datos maestros de los productos.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Remisiones', href: 'remisiones.html', lucide: 'file-output', description: 'Crea y consulta envíos de mercancía entre central y tiendas.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Stock', href: 'inventario.html', lucide: 'warehouse', description: 'Consulta las existencias disponibles por tienda, producto e IMEI.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Traslados', href: 'traslados.html', lucide: 'arrow-left-right', description: 'Gestiona movimientos de inventario entre tiendas y bodegas.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Ajustes', href: 'ajustes.html', lucide: 'sliders-horizontal', description: 'Registra ajustes controlados de cantidades y existencias.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Cierre mes', href: 'cierre-periodo.html', lucide: 'calendar-check', description: 'Cierra el período de inventario y conserva su trazabilidad.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', lucide: 'file-search', description: 'Compara existencias y movimientos para detectar diferencias.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Kardex', href: 'kardex.html', lucide: 'history', description: 'Revisa el historial cronológico de entradas y salidas de inventario.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
     ]},
     { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', items: [
-      { label: 'Ventas', href: 'ventas.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
-      { label: 'Gastos', href: 'gastos.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Cierre día', href: 'caja.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Cuenta cte.', href: 'cuenta-corriente.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Conciliación', href: 'conciliacion.html', roles: ['gerencia', 'auditoria'] },
+      { label: 'Ventas', href: 'ventas.html', lucide: 'shopping-cart', description: 'Registra y consulta las ventas realizadas por la tienda.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Gastos', href: 'gastos.html', lucide: 'receipt', description: 'Registra y consulta los gastos operativos autorizados.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Cierre día', href: 'caja.html', lucide: 'circle-check-big', description: 'Concilia el efectivo esperado y realiza el cierre diario de caja.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Cuenta cte.', href: 'cuenta-corriente.html', lucide: 'book-open-check', description: 'Administra saldos, abonos y movimientos con terceros.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Conciliación', href: 'conciliacion.html', lucide: 'scale', description: 'Compara pagos y movimientos para identificar diferencias.', roles: ['gerencia', 'auditoria'] },
     ]},
     // FIX 23-jul-2026 v2 (paquete FIX_Sidebar_BodegaCentral_v1_23jul2026.md):
     // renombrar 'PROVEEDORES' → 'BODEGA CENTRAL', mover antes de CLIENTES,
@@ -176,25 +180,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // SPEC v2 · 23-jul-2026: Doc. remisión se quita del menú. Se abre con
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
     { titulo: 'BODEGA CENTRAL', icono: '🏭', lucide: 'warehouse', items: [
-      { label: 'Cartera de Proveedores', href: 'proveedores.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Compra proveedor', href: 'compra-proveedor.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Bodega Central', href: 'bodega-central.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', roles: ['gerencia', 'auditoria'] },
+      { label: 'Cartera de Proveedores', href: 'proveedores.html', lucide: 'hand-coins', description: 'Consulta obligaciones, pagos y saldos pendientes con proveedores.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Bodega Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de la bodega principal.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza ingresos, costos, gastos y utilidad consolidada.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', items: [
-      { label: 'Registrar cliente', href: 'registro-interno.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
-      { label: 'Validación', href: 'validacion.html', roles: ['gerencia', 'auditoria'] },
-    ]},
-    // SPEC_Modulo_Reportes_ERP_v1_23jul2026 · 24-jul-2026:
-    // dashboard consolidado con Fase 1 completa (1.1 ventas, 1.2 cartera, 1.3 inventario)
-    // + Fase 2 (2.1 presupuesto sobre tabla existente, 2.2 rentabilidad tienda, 2.3 categoría, 2.4 link)
-    // + Fase 3 parcial (3.1 crecimiento, 3.2 top/slow, 3.4 proveedores). RLS heredada.
-    { titulo: 'REPORTES', icono: '📈', lucide: 'chart-no-axes-combined', items: [
-      { label: 'Dashboard', href: 'reportes.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', items: [
-      { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', roles: ['gerencia', 'auditoria', 'soporte'] },
-      { label: 'Mis reportes', href: 'mis-reportes.html', lucide: 'message-square-warning', roles: ['gerencia', 'auditoria', 'soporte', 'admin_tienda', 'asesor'] },
+      { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona errores reportados, responsables, estados y soluciones.', roles: ['gerencia', 'auditoria', 'soporte'] },
+      { label: 'Mis incidencias', href: 'mis-reportes.html', lucide: 'message-square-warning', description: 'Consulta el avance y las respuestas de los errores que reportaste.', roles: ['gerencia', 'auditoria', 'soporte', 'admin_tienda', 'asesor'] },
     ]},
   ];
 
@@ -400,7 +397,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraShellStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-shell.css?v=1.0.0-final';
+      link.href = '/design-system/components/kora-shell.css?v=2.0.2';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraLucide')) {
@@ -453,7 +450,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         || (item.action && item.action === activeItem?.action && !item.href && !activeItem?.href);
       const open = items.some(isActive);
       return `<section class="kora-nav-group" data-open="${open}">
-        <button class="kora-nav-group__label ghost" type="button" aria-expanded="${open}">
+        <button class="kora-nav-group__label ghost" type="button" aria-expanded="${open}"
+          data-kora-tooltip="${escapeHtml(`Mostrar u ocultar ${module.titulo.toLocaleLowerCase('es')}`)}">
           <i data-lucide="${module.lucide || 'circle'}"></i><span>${escapeHtml(module.titulo)}</span>
           <i data-lucide="chevron-down"></i>
         </button>
@@ -467,7 +465,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
               data-kora-action="${escapeHtml(item.action || '')}"
               data-kora-href="${escapeHtml(item.href || '')}"
               data-kora-title="${escapeHtml(item.label)}"
-              title="${escapeHtml(item.label)}">
+              data-kora-tooltip="${escapeHtml(item.description || item.label)}">
               <i data-lucide="${escapeHtml(item.lucide || module.lucide || 'circle')}"></i>
               <span class="kora-nav-text">${escapeHtml(item.label)}</span>
             </a>`;
@@ -515,8 +513,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     content.className = 'kora-shell-content';
     children.forEach(child => content.appendChild(child));
     main.innerHTML = `<header class="kora-topbar">
-      <button class="kora-icon-button kora-mobile-menu ghost" type="button" aria-label="Abrir navegación" title="Abrir navegación">${koraStaticIcon('menu')}</button>
-      <button class="kora-icon-button kora-collapse ghost" type="button" aria-label="Colapsar navegación" title="Colapsar navegación">${koraStaticIcon('panel-left-close')}</button>
+      <button class="kora-icon-button kora-navigation-toggle ghost" type="button" aria-label="Colapsar navegación"
+        data-kora-tooltip="Colapsar navegación">${koraStaticIcon('panel-left-close')}</button>
       <div class="kora-topbar__context">
         <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
         <ol class="kora-breadcrumb" aria-label="Breadcrumb">
@@ -588,7 +586,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       overlay.hidden = false;
       focusable()[0]?.focus();
     };
-    main.querySelector('.kora-mobile-menu')?.addEventListener('click', openDrawer);
     aside.querySelector('.kora-drawer-close')?.addEventListener('click', closeDrawer);
     overlay.addEventListener('click', closeDrawer);
     const command = main.querySelector('[data-kora-command]');
@@ -624,24 +621,38 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
-    const collapseControl = main.querySelector('.kora-collapse');
-    const syncCollapseControl = () => {
-      if (!collapseControl) return;
+    const navigationControl = main.querySelector('.kora-navigation-toggle');
+    const navigationMedia = matchMedia('(max-width: 63.999rem)');
+    const syncNavigationControl = () => {
+      if (!navigationControl) return;
+      if (navigationMedia.matches) {
+        navigationControl.setAttribute('aria-label', 'Abrir navegación');
+        navigationControl.dataset.koraTooltip = 'Abrir navegación';
+        navigationControl.removeAttribute('aria-expanded');
+        navigationControl.innerHTML = koraStaticIcon('menu');
+        return;
+      }
       const collapsed = root.dataset.sidebarCollapsed === 'true';
       const label = collapsed ? 'Expandir navegación' : 'Colapsar navegación';
-      collapseControl.setAttribute('aria-label', label);
-      collapseControl.setAttribute('title', label);
-      collapseControl.setAttribute('aria-expanded', String(!collapsed));
-      collapseControl.innerHTML = koraStaticIcon(collapsed ? 'panel-left-open' : 'panel-left-close');
+      navigationControl.setAttribute('aria-label', label);
+      navigationControl.dataset.koraTooltip = label;
+      navigationControl.setAttribute('aria-expanded', String(!collapsed));
+      navigationControl.innerHTML = koraStaticIcon(collapsed ? 'panel-left-open' : 'panel-left-close');
     };
-    syncCollapseControl();
-    collapseControl?.addEventListener('click', () => {
+    syncNavigationControl();
+    navigationMedia.addEventListener?.('change', syncNavigationControl);
+    navigationControl?.addEventListener('click', () => {
+      if (navigationMedia.matches) {
+        openDrawer();
+        return;
+      }
       const collapsed = root.dataset.sidebarCollapsed !== 'true';
       root.dataset.sidebarCollapsed = String(collapsed);
       localStorage.setItem('kora_sidebar_collapsed', String(collapsed));
       renderShellBrand();
-      syncCollapseControl();
+      syncNavigationControl();
     });
+    installDelayedTooltips(root);
     aside.querySelectorAll('.kora-nav-group__label').forEach(button => button.addEventListener('click', () => {
       const group = button.closest('.kora-nav-group');
       const open = group.dataset.open !== 'true';
@@ -691,6 +702,56 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (titleNode) titleNode.textContent = title;
     if (breadcrumb) breadcrumb.innerHTML = breadcrumbs.filter(Boolean).map((item, index, list) =>
       `<li ${index === list.length - 1 ? 'aria-current="page"' : ''}>${escapeHtml(item)}</li>`).join('');
+  }
+
+  function installDelayedTooltips(root) {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'kora-delayed-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.hidden = true;
+    document.body.appendChild(tooltip);
+    let timer = null;
+    let target = null;
+
+    const hide = () => {
+      clearTimeout(timer);
+      timer = null;
+      target = null;
+      tooltip.hidden = true;
+    };
+    const show = element => {
+      const message = element.dataset.koraTooltip;
+      if (!message) return;
+      hide();
+      target = element;
+      timer = setTimeout(() => {
+        if (target !== element || !element.isConnected) return;
+        tooltip.textContent = message;
+        tooltip.hidden = false;
+        const anchor = element.getBoundingClientRect();
+        const box = tooltip.getBoundingClientRect();
+        const left = Math.min(
+          window.innerWidth - box.width - 12,
+          Math.max(12, anchor.right + 10),
+        );
+        const top = Math.min(
+          window.innerHeight - box.height - 12,
+          Math.max(12, anchor.top + (anchor.height - box.height) / 2),
+        );
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }, KORA_TOOLTIP_DELAY_MS);
+    };
+
+    root.querySelectorAll('[data-kora-tooltip]').forEach(element => {
+      element.addEventListener('mouseenter', () => show(element));
+      element.addEventListener('mouseleave', hide);
+      element.addEventListener('focus', () => show(element));
+      element.addEventListener('blur', hide);
+      element.addEventListener('click', hide);
+    });
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
   }
 
   function mountPortalShell() {

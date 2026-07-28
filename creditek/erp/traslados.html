@@ -357,8 +357,12 @@ async function cargarTraslados() {
 
   const { data, error } = await sb.from('traslados')
     .select('*, origen:tienda_origen(nombre), destino:tienda_destino(nombre), traslado_items(cantidad, productos(nombre))')
-    .order('created_at', { ascending: false });
-  if (error) { empty.textContent = 'Error cargando traslados: ' + error.message; return; }
+    .order('despachado_at', { ascending: false });
+  if (error) {
+    console.error('[TRASLADOS] No fue posible cargar el listado:', error);
+    empty.textContent = 'No fue posible cargar los traslados. Intenta nuevamente.';
+    return;
+  }
   trasladosCache = data || [];
   renderTablaTraslados();
 }
@@ -371,7 +375,7 @@ function renderTablaTraslados() {
   const filtrados = trasladosCache.filter(t => {
     if (estado && t.estado !== estado) return false;
     if (tienda && t.tienda_origen !== tienda && t.tienda_destino !== tienda) return false;
-    if (fecha && (!t.created_at || t.created_at.slice(0, 10) !== fecha)) return false;
+    if (fecha && (!t.despachado_at || t.despachado_at.slice(0, 10) !== fecha)) return false;
     return true;
   });
 
@@ -382,7 +386,7 @@ function renderTablaTraslados() {
 
   tbody.innerHTML = filtrados.map(t => {
     const items = (t.traslado_items || []).map(it => `${escapeHtml(it.productos?.nombre || '—')} ×${it.cantidad}`).join(', ');
-    const fecha = t.created_at ? new Date(t.created_at).toLocaleDateString('es-CO') : '—';
+    const fecha = t.despachado_at ? new Date(t.despachado_at).toLocaleDateString('es-CO') : '—';
     let acciones = `<button class="btn-ver" data-id="${t.id}">Ver</button>`;
     const puedeRecibir = t.estado === 'despachado' && (esCentral() || currentPerfil.tienda_codigo === t.tienda_destino);
     const puedeAnular = t.estado === 'despachado' && esCentral();

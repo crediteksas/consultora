@@ -74,6 +74,191 @@
   .rango-personalizado button:hover { background: #1e3a8a; }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
+<style id="kora-report-filter-styles">
+  .kora-report-filters {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-lg);
+    box-shadow: var(--ctk-shadow-1);
+    display: grid;
+    gap: var(--ctk-space-2);
+    padding: var(--ctk-space-2);
+  }
+
+  .kora-report-filter-row {
+    align-items: center;
+    display: flex;
+    gap: var(--ctk-space-2);
+    min-width: 0;
+  }
+
+  .kora-filter-label {
+    color: var(--ctk-color-text-muted);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-label);
+    font-weight: var(--ctk-font-weight-semibold);
+    letter-spacing: var(--ctk-letter-spacing-label);
+    text-transform: uppercase;
+  }
+
+  .kora-period-viewport {
+    min-width: 0;
+  }
+
+  .kora-period-segments {
+    align-items: center;
+    background: var(--ctk-color-surface-subtle);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-md);
+    display: flex;
+    gap: var(--ctk-space-0-5);
+    padding: var(--ctk-space-0-5);
+    width: max-content;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text-secondary);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-caption);
+    font-weight: var(--ctk-font-weight-medium);
+    min-height: var(--ctk-height-control-sm);
+    padding: 0 0.75rem;
+    transform: none;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav:hover:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav.active {
+    background: var(--ctk-color-primary-900);
+    border-color: var(--ctk-color-primary-900);
+    box-shadow: var(--ctk-shadow-1);
+    color: var(--ctk-color-neutral-0);
+    font-weight: var(--ctk-font-weight-semibold);
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav[data-periodo="personalizado"]:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text-secondary);
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-md);
+    min-width: 13.5rem;
+    padding: 0 2.25rem 0 0.875rem;
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn:hover {
+    background: var(--ctk-color-hover);
+    border-color: var(--ctk-color-border-strong);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn.abierto {
+    border-color: var(--ctk-color-focus);
+    box-shadow: 0 0 0 3px var(--ctk-color-secondary-100);
+  }
+
+  .kora-store-filter-row {
+    border-top: 1px solid var(--ctk-color-border);
+    padding-top: var(--ctk-space-2);
+  }
+
+  .kora-report-filters #rango-visible {
+    color: var(--ctk-color-text-muted);
+    font-size: var(--ctk-font-size-caption);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado {
+    margin-left: var(--ctk-space-1);
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado input[type="date"] {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  body.kora-product-page .kora-report-filters #btnAplicarRango {
+    background: var(--ctk-color-primary-900);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-neutral-0);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  @media (max-width: 63.999rem) {
+    .kora-period-viewport {
+      -webkit-overflow-scrolling: touch;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      padding-bottom: var(--ctk-space-0-5);
+      scrollbar-width: thin;
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .kora-report-filters {
+      padding: var(--ctk-space-1);
+    }
+
+    .kora-report-filter-row {
+      align-items: stretch;
+      flex-direction: column;
+      gap: var(--ctk-space-1);
+    }
+
+    .kora-period-viewport,
+    .kora-report-filters .multi-select,
+    body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+      width: 100%;
+    }
+
+    .kora-report-filters #rango-visible {
+      margin-left: 0;
+      white-space: normal;
+    }
+
+    body.kora-product-page .kora-report-filters .rango-personalizado.abierto {
+      align-items: stretch;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      margin-left: 0;
+    }
+
+    body.kora-product-page .kora-report-filters #btnAplicarRango {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kora-report-filters *,
+    .kora-report-filters *::before,
+    .kora-report-filters *::after {
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="sidebar.js" data-kora-shell="1.0.0"></script>
 </head>
@@ -98,19 +283,23 @@
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
   <!-- FILTROS GLOBALES -->
-  <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-3">
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold mr-1">Período:</span>
-      <button class="btn-nav active" data-periodo="hoy">Hoy</button>
-      <button class="btn-nav" data-periodo="ayer">Ayer</button>
-      <button class="btn-nav" data-periodo="semana">Esta semana</button>
-      <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
-      <button class="btn-nav" data-periodo="mes">Este mes</button>
-      <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
-      <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
-      <button class="btn-nav" data-periodo="anio">Este año</button>
-      <button class="btn-nav" data-periodo="anio_pasado">Año pasado</button>
-      <button class="btn-nav" data-periodo="personalizado">Personalizado ▾</button>
+  <section class="kora-report-filters">
+    <div class="kora-report-filter-row">
+      <span class="kora-filter-label">Período</span>
+      <div class="kora-period-viewport">
+        <div class="kora-period-segments" aria-label="Seleccionar período">
+          <button class="btn-nav active" data-periodo="hoy">Hoy</button>
+          <button class="btn-nav" data-periodo="ayer">Ayer</button>
+          <button class="btn-nav" data-periodo="semana">Esta semana</button>
+          <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
+          <button class="btn-nav" data-periodo="mes">Este mes</button>
+          <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
+          <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
+          <button class="btn-nav" data-periodo="anio">Este año</button>
+          <button class="btn-nav" data-periodo="anio_pasado">Año pasado</button>
+          <button class="btn-nav" data-periodo="personalizado">Personalizado ▾</button>
+        </div>
+      </div>
       <div class="rango-personalizado" id="rangoPersonalizado">
         <label class="text-xs text-gray-500">Desde</label>
         <input type="date" id="fechaDesde">
@@ -119,8 +308,8 @@
         <button id="btnAplicarRango">Aplicar</button>
       </div>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold mr-1">Tiendas:</span>
+    <div class="kora-report-filter-row kora-store-filter-row">
+      <span class="kora-filter-label">Tiendas</span>
       <div class="multi-select" id="filtroTiendasWrap">
         <button type="button" class="multi-select-btn" id="btnTiendas">Todas las tiendas</button>
         <div class="multi-select-panel" id="panelTiendas">

@@ -76,7 +76,9 @@ async function iniciar() {
     tienda.innerHTML = `<option value="${perfil.tienda_codigo}">${perfil.tienda_codigo}</option>`;
     tienda.disabled = true;
   }
-  document.getElementById('app').hidden = false;
+  const app = document.getElementById('app');
+  app.hidden = false;
+  app.classList.add('show');
 }
 
 document.getElementById('formCliente').addEventListener('submit', async event => {

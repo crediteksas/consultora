@@ -15,7 +15,15 @@ const sql = (await readFile(
 test('el registro interno exige sesión y usa un RPC separado', () => {
   assert.match(internal, /auth\.getSession\(\)/);
   assert.match(internal, /crear_cliente_interno_seguro/);
+  assert.match(internal, /classList\.add\(['"]show['"]\)/);
   assert.match(sidebar, /Registrar cliente.*registro-interno\.html/);
+});
+
+test('el formulario interno publica sus campos principales al shell', () => {
+  for (const field of ['cedula', 'nombre', 'celular', 'ciudad', 'direccion', 'tienda']) {
+    assert.match(internal, new RegExp(`id=["']${field}["']`));
+  }
+  assert.match(internal, /id=["']formCliente["']/);
 });
 
 test('el registro público conserva token, expiración y Worker seguro', () => {

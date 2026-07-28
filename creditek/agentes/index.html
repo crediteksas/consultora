@@ -45,7 +45,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 .login-mark{width:48px;height:48px;background:var(--turq);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--navy);flex-shrink:0}
 .login-wordmark{font-size:28px;font-weight:700;color:var(--white);letter-spacing:2px}
 .login-sub{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
-.login-field{position:relative;margin-bottom:12px}
+.login-field{position:relative;margin-bottom:14px;text-align:left;pointer-events:auto}
+.login-field label{display:block;margin-bottom:6px;color:rgba(255,255,255,.78);font-size:12px;font-weight:600;pointer-events:auto}
 .login-field input{
   width:100%;padding:14px 16px;
   background:rgba(255,255,255,.06);
@@ -53,12 +54,12 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   border-radius:var(--r);color:var(--white);
   font-size:14px;font-family:var(--font);
   outline:none;transition:border .2s;
-  text-align:center;letter-spacing:2px;
+  text-align:left;letter-spacing:0;
   pointer-events:auto;position:relative;z-index:1;
   user-select:text;-webkit-user-select:text;
 }
 .login-field input::placeholder{letter-spacing:0;color:rgba(255,255,255,.3)}
-.login-field input:focus{border-color:var(--turq)}
+.login-field input:focus,.login-field input:focus-visible{border-color:var(--turq);box-shadow:0 0 0 3px rgba(0,196,204,.2)}
 .login-btn{
   width:100%;padding:14px;margin-top:4px;
   background:var(--turq);border:none;border-radius:var(--r);
@@ -67,6 +68,7 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   letter-spacing:.5px;
 }
 .login-btn:hover{background:var(--turq2)}
+.login-btn:disabled{cursor:wait;opacity:.7}
 .login-error{color:#FCA5A5;font-size:12px;margin-top:8px;height:16px}
 .login-version{font-size:11px;color:rgba(255,255,255,.2);margin-top:32px;font-family:var(--mono)}
 
@@ -162,7 +164,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 .module-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--turq);opacity:0;transition:opacity .2s}
 .module-card:hover::before{opacity:1}
 .module-top{display:flex;align-items:flex-start;justify-content:space-between}
-.module-icon{font-size:22px}
+.module-icon{width:38px;height:38px;border-radius:10px;background:rgba(0,196,204,.1);color:var(--turq2);display:flex;align-items:center;justify-content:center}
+.module-icon svg{width:21px;height:21px;stroke-width:1.9}
 .module-status{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px}
 .module-status.active{background:rgba(16,185,129,.1);color:var(--green)}
 .module-status.pending{background:rgba(245,158,11,.1);color:var(--yellow)}
@@ -230,11 +233,18 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <div class="login-logo">
       <div data-kora-brand data-variant="login" data-product-name="AURA"></div>
     </div>
-    <div class="login-field">
-      <input type="password" id="login-pwd" name="password" placeholder="Clave de acceso" autocomplete="current-password" aria-label="Contraseña de acceso" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-    <div class="login-error" id="login-error"></div>
+    <form id="login-form" novalidate>
+      <div class="login-field">
+        <label for="login-email">Correo</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="tu@crediteksas.com" required>
+      </div>
+      <div class="login-field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="Tu contraseña" required>
+      </div>
+      <button class="login-btn" id="login-submit" type="submit" aria-busy="false">Ingresar →</button>
+      <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>
+    </form>
     <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
   </div>
 </div>
@@ -345,7 +355,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
         <div class="modules-grid">
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-redes.html','Agente Diseño')">
             <div class="module-top">
-              <div class="module-icon">🎨</div>
+              <div class="module-icon"><i data-lucide="megaphone" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Redes Sociales</div>
@@ -358,7 +368,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-respuestas.html','Agente Respuestas')">
             <div class="module-top">
-              <div class="module-icon">💬</div>
+              <div class="module-icon"><i data-lucide="message-circle" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Respuestas automáticas</div>
@@ -371,7 +381,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence')">
             <div class="module-top">
-              <div class="module-icon">📊</div>
+              <div class="module-icon"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Meta Ads Intelligence</div>
@@ -384,7 +394,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de Contenido')">
             <div class="module-top">
-              <div class="module-icon">📅</div>
+              <div class="module-icon"><i data-lucide="calendar-days" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Calendario de contenido</div>
@@ -496,31 +506,53 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
+<script src="aura-auth.js"></script>
 <script>
-const PWD = 'creditek2026';
+const auraAuth = CreditekAuraAuth.createAuraAuth({
+  supabaseUrl: 'https://ditiwpndvmyuqcagupea.supabase.co',
+  publishableKey: 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW',
+  sessionStorage
+});
 
 // ── Login ────────────────────────────────────────────────────────
+function showAuthenticatedApp() {
+  document.getElementById('login-screen').classList.add('exit');
+  setTimeout(() => {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    initApp();
+  }, 400);
+}
+
 async function doLogin() {
-  const v = document.getElementById('login-pwd').value;
-  if (v === PWD) {
-    sessionStorage.setItem('ck_auth', '1');
-    try{const r=await fetch('https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gate:PWD})});if(r.ok){const d=await r.json();sessionStorage.setItem('ck_supa_session',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,email:d.email}))}}catch(e){console.error('SSO login error',e)}
-    document.getElementById('login-screen').classList.add('exit');
-    setTimeout(() => {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      initApp();
-    }, 400);
-  } else {
-    document.getElementById('login-error').textContent = 'Clave incorrecta';
-    document.getElementById('login-pwd').value = '';
-    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const submit = document.getElementById('login-submit');
+  const error = document.getElementById('login-error');
+
+  error.textContent = '';
+  submit.disabled = true;
+  submit.setAttribute('aria-busy', 'true');
+
+  try {
+    const result = await auraAuth.signIn(email, password);
+    if (!result.ok) {
+      error.textContent = result.message;
+      document.getElementById('login-password').value = '';
+      return;
+    }
+    showAuthenticatedApp();
+  } catch (loginError) {
+    console.error('AURA login error', loginError);
+    error.textContent = 'No fue posible conectar. Intenta nuevamente.';
+  } finally {
+    submit.disabled = false;
+    submit.setAttribute('aria-busy', 'false');
   }
 }
 
 function doLogout() {
-  sessionStorage.removeItem('ck_auth');
-  sessionStorage.removeItem('ck_supa_session');
+  auraAuth.signOut();
   location.reload();
 }
 
@@ -560,7 +592,7 @@ function showSection(id, el) {
     id === 'dashboard' ? 'Dashboard' : 'Configuración';
   window.KoraNavigation?.setContext(
     id === 'dashboard' ? 'Dashboard' : 'Configuración',
-    ['KORA', 'Agentes', id === 'dashboard' ? 'Dashboard' : 'Configuración'],
+    ['AURA', 'Agentes', id === 'dashboard' ? 'Dashboard' : 'Configuración'],
   );
 }
 
@@ -574,8 +606,8 @@ function openModule(url, title, el) {
   document.getElementById('main-iframe').src = url;
   document.getElementById('iframe-link').href = url;
   document.getElementById('topbar-title').textContent = title;
-  document.getElementById('topbar-breadcrumb').textContent = 'Creditek · ' + title;
-  window.KoraNavigation?.setContext(title, ['KORA', 'Agentes', title]);
+  document.getElementById('topbar-breadcrumb').textContent = 'AURA · ' + title;
+  window.KoraNavigation?.setContext(title, ['AURA', 'Agentes', title]);
 }
 
 function openModuleFromCard(url, title) {
@@ -591,8 +623,8 @@ function closeIframe() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
-  document.getElementById('topbar-breadcrumb').textContent = 'Sistema operativo Creditek';
-  window.KoraNavigation?.setContext('Dashboard', ['KORA', 'Agentes', 'Dashboard']);
+  document.getElementById('topbar-breadcrumb').textContent = 'AURA · Principal';
+  window.KoraNavigation?.setContext('Dashboard', ['AURA', 'Agentes', 'Dashboard']);
 }
 
 // ── Config ───────────────────────────────────────────────────────
@@ -642,13 +674,18 @@ function showToast(msg, color='#0B1E3D') {
 }
 
 // ── Auto-login si sesión activa ──────────────────────────────────
-window.addEventListener('load', () => {
-  if (sessionStorage.getItem('ck_auth') === '1') {
+document.getElementById('login-form').addEventListener('submit', event => {
+  event.preventDefault();
+  doLogin();
+});
+
+window.addEventListener('load', async () => {
+  if (await auraAuth.restoreSession()) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
     initApp();
   } else {
-    setTimeout(() => document.getElementById('login-pwd').focus(), 100);
+    setTimeout(() => document.getElementById('login-email').focus(), 100);
   }
 });
 </script>

@@ -501,9 +501,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name}" data-lucide-static="${name}" aria-hidden="true">${icons[name]}</svg>`;
   }
 
-  function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout, supabaseClient }) {
+  function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout, supabaseClient, productName }) {
     if (!root || root.dataset.koraMounted === 'true') return;
     installKoraAssets();
+    const shellProductName = productName || 'KORA';
     const current = activeItem || koraCurrentItem(modules);
     const roleLabel = ROL_LABEL[profile.rol] || profile.rol;
     const children = Array.from(root.children);
@@ -518,7 +519,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <div class="kora-topbar__context">
         <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
         <ol class="kora-breadcrumb" aria-label="Breadcrumb">
-          <li>KORA</li><li>${escapeHtml(current?.group || 'Inicio')}</li><li aria-current="page">${escapeHtml(current?.label || 'Inicio')}</li>
+          <li>${escapeHtml(shellProductName)}</li><li>${escapeHtml(current?.group || 'Inicio')}</li><li aria-current="page">${escapeHtml(current?.label || 'Inicio')}</li>
         </ol>
       </div>
       <label class="kora-command">
@@ -543,7 +544,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     aside.setAttribute('aria-label', 'Navegación principal');
     aside.dataset.open = 'false';
     aside.innerHTML = `<div class="kora-sidebar__brand">
-      <div data-kora-brand data-variant="sidebar" title="KORA — Creditek"></div>
+      <div data-kora-brand data-variant="sidebar" data-product-name="${escapeHtml(productName)}" title="${escapeHtml(shellProductName)} — Creditek"></div>
       <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación" title="Cerrar navegación">${koraStaticIcon('x')}</button>
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
@@ -562,6 +563,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const marker = aside.querySelector('[data-kora-brand]');
       marker.className = '';
       marker.dataset.variant = root.dataset.sidebarCollapsed === 'true' ? 'sidebar-collapsed' : 'sidebar';
+      if (productName) marker.dataset.productName = productName;
       marker.dataset.koraBrandReady = 'false';
       marker.innerHTML = '';
       window.KoraBrand?.render?.(marker);
@@ -670,7 +672,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (action === 'configuration') window.showSection?.('configuracion', link);
       if (action === 'module') window.openModule?.(link.dataset.koraHref, title, link);
       if (action === 'external') window.open(link.dataset.koraHref, '_blank', 'noopener');
-      setKoraContext(title, ['KORA', link.closest('.kora-nav-group')?.querySelector('.kora-nav-group__label span')?.textContent, title]);
+      setKoraContext(title, [shellProductName, link.closest('.kora-nav-group')?.querySelector('.kora-nav-group__label span')?.textContent, title]);
       closeDrawer();
     }));
     aside.querySelector('.kora-logout')?.addEventListener('click', onLogout);
@@ -763,6 +765,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       modules: KORA_PORTAL_MODULES,
       activeItem: active,
       onLogout: () => window.doLogout?.(),
+      productName: 'AURA',
     });
   }
 

@@ -56,14 +56,17 @@ test('el acceso de agentes se identifica como AURA y conserva Creditek', async (
   assert.match(product, /setAttribute\('aria-label', `\$\{productName\} — Creditek`\)/);
 });
 
-test('el campo de contraseña de AURA permanece editable y accesible', async () => {
+test('los campos individuales de AURA permanecen editables y accesibles', async () => {
   const portal = await read('creditek/agentes/index.html');
-  const input = portal.match(/<input\s+type="password"\s+id="login-pwd"[^>]*>/)?.[0] || '';
+  const email = portal.match(/<input\s+type="email"\s+id="login-email"[^>]*>/)?.[0] || '';
+  const password = portal.match(/<input\s+type="password"\s+id="login-password"[^>]*>/)?.[0] || '';
 
-  assert.match(input, /name="password"/);
-  assert.match(input, /autocomplete="current-password"/);
-  assert.match(input, /aria-label="Contraseña de acceso"/);
-  assert.match(input, /onkeydown="if\(event\.key==='Enter'\)doLogin\(\)"/);
-  assert.doesNotMatch(input, /\b(?:disabled|readonly)\b/i);
+  assert.match(email, /autocomplete="username"/);
+  assert.match(password, /autocomplete="current-password"/);
+  assert.doesNotMatch(email, /\b(?:disabled|readonly)\b/i);
+  assert.doesNotMatch(password, /\b(?:disabled|readonly)\b/i);
+  assert.match(portal, /<label for="login-email">Correo<\/label>/);
+  assert.match(portal, /<label for="login-password">Contraseña<\/label>/);
+  assert.match(portal, /id="login-form"/);
   assert.match(portal, /\.login-field input\s*\{[^}]*pointer-events:\s*auto/s);
 });

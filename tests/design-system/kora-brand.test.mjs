@@ -49,8 +49,10 @@ test('el shell usa KoraBrand y no texto corporativo manual', async () => {
   ]);
 
   assert.match(source, /data-kora-brand data-variant="sidebar"/);
+  assert.match(source, /data-product-name="\$\{escapeHtml\(productName\)\}"/);
+  assert.match(source, /const shellProductName = productName \|\| 'KORA'/);
   assert.match(source, /sidebar-collapsed/);
-  assert.match(source, /title="KORA — Creditek"/);
+  assert.match(source, /title="\$\{escapeHtml\(shellProductName\)\} — Creditek"/);
   assert.doesNotMatch(source, /kora-company|kora-wordmark/);
   assert.match(css, /\.kora-drawer-close/);
   assert.match(css, /height: var\(--ctk-height-control-sm\)/);

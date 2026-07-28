@@ -49,3 +49,28 @@ test('los módulos internos comparten la sesión individual de AURA', async () =
   assert.match(responses, /aura_supa_session/);
   assert.doesNotMatch(responses, /ck_supa_session/);
 });
+
+test('el shell se identifica como AURA by Creditek sin referencias KORA', async () => {
+  const html = await readAuraHtml();
+
+  assert.match(html, /<title>AURA · Creditek<\/title>/);
+  assert.match(html, /class="login-wordmark">\s*AURA\s*<\/div>/);
+  assert.match(html, /class="sidebar-name">\s*AURA\s*<\/div>/);
+  assert.match(html, /AURA · Principal/);
+  assert.doesNotMatch(html, /\bKORA\b/i);
+});
+
+test('cada agente principal tiene un icono semántico diferente', async () => {
+  const html = await readAuraHtml();
+  const icons = [...html.matchAll(/class="module-icon"[^>]*>\s*<i data-lucide="([^"]+)"/g)]
+    .map(match => match[1]);
+
+  assert.deepEqual(icons, [
+    'megaphone',
+    'message-circle',
+    'chart-no-axes-combined',
+    'calendar-days'
+  ]);
+  assert.match(html, /lucide@0\.468\.0/);
+  assert.match(html, /lucide\.createIcons\(\)/);
+});

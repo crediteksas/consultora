@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CREDITEK · Sistema Operativo</title>
+<title>AURA · Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -87,7 +87,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   display:flex;align-items:center;gap:10px;
 }
 .sidebar-mark{width:32px;height:32px;background:var(--turq);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--navy);flex-shrink:0}
-.sidebar-name{font-size:16px;font-weight:700;color:var(--white);letter-spacing:1px}
+.sidebar-name{font-size:18px;font-weight:700;color:var(--navy);letter-spacing:1.5px}
+.sidebar-byline{font-size:10px;color:var(--text3);margin-top:2px}
 
 .sidebar-section{padding:20px 12px 8px;font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:1.5px;text-transform:uppercase}
 .nav-item{
@@ -161,7 +162,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 .module-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--turq);opacity:0;transition:opacity .2s}
 .module-card:hover::before{opacity:1}
 .module-top{display:flex;align-items:flex-start;justify-content:space-between}
-.module-icon{font-size:22px}
+.module-icon{width:38px;height:38px;border-radius:10px;background:rgba(0,196,204,.1);color:var(--turq2);display:flex;align-items:center;justify-content:center}
+.module-icon svg{width:21px;height:21px;stroke-width:1.9}
 .module-status{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px}
 .module-status.active{background:rgba(16,185,129,.1);color:var(--green)}
 .module-status.pending{background:rgba(245,158,11,.1);color:var(--yellow)}
@@ -225,9 +227,9 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" style="width:160px;height:auto;object-fit:contain;padding:8px 0">
       <div>
-        <div class="login-sub">Sistema operativo</div>
+        <div class="login-wordmark">AURA</div>
+        <div class="login-sub">by Creditek</div>
       </div>
     </div>
     <form id="login-form" novalidate>
@@ -252,7 +254,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" style="width:160px;height:auto;object-fit:contain;padding:8px 0">
+      <div>
+        <div class="sidebar-name">AURA</div>
+        <div class="sidebar-byline">by Creditek</div>
+      </div>
     </div>
 
     <div class="sidebar-section">Principal</div>
@@ -308,7 +313,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
   <div class="main-area">
     <div class="topbar">
       <span class="topbar-title" id="topbar-title">Dashboard</span>
-      <span class="topbar-breadcrumb" id="topbar-breadcrumb">Sistema operativo Creditek</span>
+      <span class="topbar-breadcrumb" id="topbar-breadcrumb">AURA · Principal</span>
       <div class="topbar-right">
         <div class="status-dot"></div>
         <span class="status-text">Sistema activo</span>
@@ -352,7 +357,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
         <div class="modules-grid">
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-redes.html','Agente Diseño')">
             <div class="module-top">
-              <div class="module-icon">🎨</div>
+              <div class="module-icon"><i data-lucide="megaphone" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Redes Sociales</div>
@@ -365,7 +370,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-respuestas.html','Agente Respuestas')">
             <div class="module-top">
-              <div class="module-icon">💬</div>
+              <div class="module-icon"><i data-lucide="message-circle" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Respuestas automáticas</div>
@@ -378,7 +383,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence')">
             <div class="module-top">
-              <div class="module-icon">📊</div>
+              <div class="module-icon"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Meta Ads Intelligence</div>
@@ -391,7 +396,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de Contenido')">
             <div class="module-top">
-              <div class="module-icon">📅</div>
+              <div class="module-icon"><i data-lucide="calendar-days" aria-hidden="true"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Calendario de contenido</div>
@@ -503,6 +508,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 <script src="aura-auth.js"></script>
 <script>
 const auraAuth = CreditekAuraAuth.createAuraAuth({
@@ -598,7 +604,7 @@ function openModule(url, title, el) {
   document.getElementById('main-iframe').src = url;
   document.getElementById('iframe-link').href = url;
   document.getElementById('topbar-title').textContent = title;
-  document.getElementById('topbar-breadcrumb').textContent = 'Creditek · ' + title;
+  document.getElementById('topbar-breadcrumb').textContent = 'AURA · ' + title;
 }
 
 function openModuleFromCard(url, title) {
@@ -614,7 +620,7 @@ function closeIframe() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
-  document.getElementById('topbar-breadcrumb').textContent = 'Sistema operativo Creditek';
+  document.getElementById('topbar-breadcrumb').textContent = 'AURA · Principal';
 }
 
 // ── Config ───────────────────────────────────────────────────────
@@ -670,6 +676,7 @@ document.getElementById('login-form').addEventListener('submit', event => {
 });
 
 window.addEventListener('load', async () => {
+  lucide.createIcons();
   if (await auraAuth.restoreSession()) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');

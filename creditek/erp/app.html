@@ -175,6 +175,12 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 let currentPerfil = null; // { id, nombre, rol, tienda_codigo }
+const KORA_HOME_BY_ROLE = Object.freeze({
+  gerencia: 'tablero.html',
+  auditoria: 'tablero.html',
+  admin_tienda: 'inventario.html',
+  asesor: 'ventas.html',
+});
 
 function esCentral() {
   return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria');
@@ -227,10 +233,7 @@ async function entrarApp(user) {
     return;
   }
 
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('app').classList.add('show');
-  pintarNavUser();
-  if (typeof initPagina === 'function') initPagina();
+  window.location.replace(KORA_HOME_BY_ROLE[perfil.rol] || 'reportes.html');
 }
 
 function pintarNavUser() {

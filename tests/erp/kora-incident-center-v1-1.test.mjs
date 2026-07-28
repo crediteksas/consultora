@@ -106,4 +106,6 @@ test('el shell monta campana, contador y panel de notificaciones', async () => {
   assert.match(notifications, /kora-notifications-refresh/);
   assert.match(await read('creditek/erp/incidencias-app.js'), /kora-notifications-refresh/);
   assert.match(css, /\.kora-notifications-panel/);
+  assert.match(css, /\.kora-notifications-panel \.kora-notification-item/);
+  assert.match(css, /kora-notification-item\{[^}]*color:var\(--ctk-color-text-primary/);
 });

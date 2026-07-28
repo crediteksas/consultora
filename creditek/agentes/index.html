@@ -44,7 +44,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 .login-mark{width:48px;height:48px;background:var(--turq);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--navy);flex-shrink:0}
 .login-wordmark{font-size:28px;font-weight:700;color:var(--white);letter-spacing:2px}
 .login-sub{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
-.login-field{position:relative;margin-bottom:12px}
+.login-field{position:relative;margin-bottom:14px;text-align:left;pointer-events:auto}
+.login-field label{display:block;margin-bottom:6px;color:rgba(255,255,255,.78);font-size:12px;font-weight:600;pointer-events:auto}
 .login-field input{
   width:100%;padding:14px 16px;
   background:rgba(255,255,255,.06);
@@ -52,10 +53,10 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   border-radius:var(--r);color:var(--white);
   font-size:14px;font-family:var(--font);
   outline:none;transition:border .2s;
-  text-align:center;letter-spacing:2px;
+  text-align:left;letter-spacing:0;pointer-events:auto;
 }
 .login-field input::placeholder{letter-spacing:0;color:rgba(255,255,255,.3)}
-.login-field input:focus{border-color:var(--turq)}
+.login-field input:focus,.login-field input:focus-visible{border-color:var(--turq);box-shadow:0 0 0 3px rgba(0,196,204,.2)}
 .login-btn{
   width:100%;padding:14px;margin-top:4px;
   background:var(--turq);border:none;border-radius:var(--r);
@@ -64,6 +65,7 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   letter-spacing:.5px;
 }
 .login-btn:hover{background:var(--turq2)}
+.login-btn:disabled{cursor:wait;opacity:.7}
 .login-error{color:#FCA5A5;font-size:12px;margin-top:8px;height:16px}
 .login-version{font-size:11px;color:rgba(255,255,255,.2);margin-top:32px;font-family:var(--mono)}
 
@@ -228,11 +230,18 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
         <div class="login-sub">Sistema operativo</div>
       </div>
     </div>
-    <div class="login-field">
-      <input type="password" id="login-pwd" placeholder="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-    <div class="login-error" id="login-error"></div>
+    <form id="login-form" novalidate>
+      <div class="login-field">
+        <label for="login-email">Correo</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="tu@crediteksas.com" required>
+      </div>
+      <div class="login-field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="Tu contraseña" required>
+      </div>
+      <button class="login-btn" id="login-submit" type="submit" aria-busy="false">Ingresar →</button>
+      <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>
+    </form>
     <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
   </div>
 </div>
@@ -494,31 +503,53 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
+<script src="aura-auth.js"></script>
 <script>
-const PWD = 'creditek2026';
+const auraAuth = CreditekAuraAuth.createAuraAuth({
+  supabaseUrl: 'https://ditiwpndvmyuqcagupea.supabase.co',
+  publishableKey: 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW',
+  sessionStorage
+});
 
 // ── Login ────────────────────────────────────────────────────────
+function showAuthenticatedApp() {
+  document.getElementById('login-screen').classList.add('exit');
+  setTimeout(() => {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    initApp();
+  }, 400);
+}
+
 async function doLogin() {
-  const v = document.getElementById('login-pwd').value;
-  if (v === PWD) {
-    sessionStorage.setItem('ck_auth', '1');
-    try{const r=await fetch('https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gate:PWD})});if(r.ok){const d=await r.json();sessionStorage.setItem('ck_supa_session',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,email:d.email}))}}catch(e){console.error('SSO login error',e)}
-    document.getElementById('login-screen').classList.add('exit');
-    setTimeout(() => {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      initApp();
-    }, 400);
-  } else {
-    document.getElementById('login-error').textContent = 'Clave incorrecta';
-    document.getElementById('login-pwd').value = '';
-    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const submit = document.getElementById('login-submit');
+  const error = document.getElementById('login-error');
+
+  error.textContent = '';
+  submit.disabled = true;
+  submit.setAttribute('aria-busy', 'true');
+
+  try {
+    const result = await auraAuth.signIn(email, password);
+    if (!result.ok) {
+      error.textContent = result.message;
+      document.getElementById('login-password').value = '';
+      return;
+    }
+    showAuthenticatedApp();
+  } catch (loginError) {
+    console.error('AURA login error', loginError);
+    error.textContent = 'No fue posible conectar. Intenta nuevamente.';
+  } finally {
+    submit.disabled = false;
+    submit.setAttribute('aria-busy', 'false');
   }
 }
 
 function doLogout() {
-  sessionStorage.removeItem('ck_auth');
-  sessionStorage.removeItem('ck_supa_session');
+  auraAuth.signOut();
   location.reload();
 }
 
@@ -633,13 +664,18 @@ function showToast(msg, color='#0B1E3D') {
 }
 
 // ── Auto-login si sesión activa ──────────────────────────────────
-window.addEventListener('load', () => {
-  if (sessionStorage.getItem('ck_auth') === '1') {
+document.getElementById('login-form').addEventListener('submit', event => {
+  event.preventDefault();
+  doLogin();
+});
+
+window.addEventListener('load', async () => {
+  if (await auraAuth.restoreSession()) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
     initApp();
   } else {
-    setTimeout(() => document.getElementById('login-pwd').focus(), 100);
+    setTimeout(() => document.getElementById('login-email').focus(), 100);
   }
 });
 </script>

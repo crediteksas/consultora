@@ -58,9 +58,10 @@ test('el shell usa KoraBrand y no texto corporativo manual', async () => {
 });
 
 test('el sidebar colapsado conserva únicamente el isotipo oficial sin cortar el nombre', async () => {
-  const [source, css] = await Promise.all([
+  const [source, css, shellCss] = await Promise.all([
     read('design-system/components/kora-product.js'),
     read('design-system/components/kora-product.css'),
+    read('design-system/components/kora-shell.css'),
   ]);
 
   assert.match(source, /kora-brand__logo-crop/);
@@ -75,6 +76,14 @@ test('el sidebar colapsado conserva únicamente el isotipo oficial sin cortar el
   assert.match(
     css,
     /\.kora-brand--sidebar-collapsed \.kora-brand__product\s*\{[^}]*display:\s*none/s,
+  );
+  assert.match(
+    shellCss,
+    /data-sidebar-collapsed="true"[^}]*\.kora-brand__logo-crop\s*\{[^}]*width:\s*1\.75rem/s,
+  );
+  assert.match(
+    shellCss,
+    /data-sidebar-collapsed="true"[^}]*\.kora-brand__logo\s*\{[^}]*height:\s*3rem/s,
   );
 });
 

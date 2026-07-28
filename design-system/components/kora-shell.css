@@ -115,6 +115,16 @@ html.creditek-shell-pending body::after {
   min-width: var(--ctk-height-control-md);
   width: var(--ctk-height-control-md);
 }
+
+.kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand .kora-brand__logo-crop {
+  width: 1.75rem;
+}
+
+.kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand .kora-brand__logo {
+  height: 3rem;
+  max-height: none;
+  max-width: none;
+}
 .kora-topbar {
   align-items: center; background: var(--ctk-color-surface); border-bottom: 1px solid var(--ctk-color-border);
   display: flex; gap: var(--ctk-space-2); min-height: var(--ctk-height-topbar); padding: var(--ctk-space-1) var(--ctk-space-3);

@@ -25,6 +25,10 @@
     assignees: [],
     people: new Map(),
     saving: false,
+    selectedHistory: [],
+    taskText: '',
+    taskActivator: null,
+    copyingTask: false,
   };
 
   function status(message, error = false) {
@@ -157,6 +161,7 @@
       state.sb.from('kora_incident_comments').select('*').eq('incident_id', item.id).order('created_at'),
     ]);
     if (historyError || commentsError) throw historyError || commentsError;
+    state.selectedHistory = history || [];
     (comments || []).forEach(comment => {
       if (comment.author_user_id && comment.author_name_snapshot) {
         state.people.set(comment.author_user_id, { id: comment.author_user_id, nombre: comment.author_name_snapshot });
@@ -276,13 +281,87 @@
       button.removeAttribute('aria-busy');
     }
   }
-  function taskDialog() {
+  function displayValue(value) {
+    if (value === null || value === undefined || value === '') return 'Sin información';
+    return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  }
+  function setTaskText(name, value) {
+    const node = document.querySelector(`[data-task-field="${name}"]`);
+    if (node) node.textContent = displayValue(value);
+  }
+  function fillFacts(node, facts) {
+    node.replaceChildren();
+    facts.forEach(([term, value]) => {
+      node.append(el('dt', term), el('dd', displayValue(value)));
+    });
+  }
+  function technicalContext(incident) {
+    const source = incident.technical_context && typeof incident.technical_context === 'object'
+      ? incident.technical_context : {};
+    return [
+      ['Navegador', source.browser || incident.browser],
+      ['Viewport', source.viewport || incident.viewport],
+      ['Sistema operativo', source.operating_system || source.operatingSystem || incident.operating_system],
+      ['Estado de conexión', source.connection_status || source.connection || incident.connection_status],
+      ['Resolución de pantalla', source.screen_resolution || incident.screen_resolution],
+      ['Identificador de sesión', source.session_identifier || incident.session_identifier],
+    ];
+  }
+  function renderTaskDialog(incident) {
+    fillFacts(document.querySelector('[data-task-field="information"]'), [
+      ['ID', incident.incident_code],
+      ['Título', incident.title],
+      ['Módulo', incident.module],
+      ['Pantalla', incident.page_name],
+      ['Prioridad', label(incident.priority)],
+      ['Estado', label(incident.status)],
+      ['Reportado por', incident.user_name_snapshot],
+      ['Responsable', assigneeName(incident.assigned_to)],
+      ['Versión', incident.kora_version],
+    ]);
+    setTaskText('description', incident.description);
+    setTaskText('attemptedAction', incident.attempted_action);
+    setTaskText('steps', incident.reproduction_steps);
+    setTaskText('actualResult', incident.actual_result);
+    setTaskText('expectedResult', incident.expected_result);
+    setTaskText('evidence', incident.evidence_path ? 'Disponible de forma privada en KORA' : 'Sin evidencia adjunta');
+    fillFacts(document.querySelector('[data-task-field="technical"]'), technicalContext(incident));
+    setTaskText('history', incident.history || state.selectedHistory.map(event =>
+      management?.historyText(event, state.people) || event.comment || 'Actividad registrada.'
+    ).join('\n'));
+    setTaskText('restrictions', incident.restrictions);
+    setTaskText('doNotModify', incident.do_not_modify);
+    setTaskText('requiredTests', incident.required_tests);
+  }
+  function closeTaskDialog() {
     const dialog = document.querySelector('[data-task-dialog]');
-    dialog.querySelector('textarea').value = window.KoraIncidentDomain.generateTechnicalTask({
+    if (dialog?.open) dialog.close();
+    state.taskActivator?.focus();
+  }
+  function trapTaskFocus(event) {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget;
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  }
+  function taskDialog(event) {
+    const dialog = document.querySelector('[data-task-dialog]');
+    state.taskActivator = event?.currentTarget || document.querySelector('[data-generate-task]');
+    state.taskText = window.KoraIncidentDomain.generateTechnicalTask({
       ...state.selected,
       assigned_to: assigneeName(state.selected?.assigned_to),
     });
+    renderTaskDialog(state.selected);
+    document.querySelector('[data-task-copy-status]').textContent = '';
     dialog.showModal();
+    dialog.querySelector('[data-copy-task]').focus();
   }
   async function requestInformation() {
     const input = document.querySelector('[data-information-request]');
@@ -346,10 +425,28 @@
     document.querySelector('[data-detail-save]')?.addEventListener('click', () => saveAdmin().catch(error => status(error.message, true)));
     document.querySelector('[data-request-information]')?.addEventListener('click', () => requestInformation().catch(error => status(error.message, true)));
     document.querySelector('[data-generate-task]')?.addEventListener('click', taskDialog);
-    document.querySelector('[data-close-task]')?.addEventListener('click', () => document.querySelector('[data-task-dialog]').close());
+    document.querySelectorAll('[data-close-task]').forEach(button => button.addEventListener('click', closeTaskDialog));
     document.querySelector('[data-copy-task]')?.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(document.querySelector('[data-task-dialog] textarea').value);
-      status('Tarea técnica copiada.');
+      if (state.copyingTask) return;
+      const button = document.querySelector('[data-copy-task]');
+      state.copyingTask = true;
+      button.disabled = true;
+      try {
+        await navigator.clipboard.writeText(state.taskText);
+        document.querySelector('[data-task-copy-status]').textContent = 'Tarea técnica copiada';
+      } finally {
+        state.copyingTask = false;
+        button.disabled = false;
+      }
+    });
+    const taskModal = document.querySelector('[data-task-dialog]');
+    taskModal?.addEventListener('keydown', trapTaskFocus);
+    taskModal?.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeTaskDialog();
+    });
+    taskModal?.addEventListener('click', event => {
+      if (event.target === taskModal) closeTaskDialog();
     });
     document.querySelector('[data-incident-add-comment]')?.addEventListener('click', () => addComment().catch(error => status(error.message, true)));
     document.querySelector('[data-incident-confirm-fixed]')?.addEventListener('click', () => confirmFixed().catch(error => status(error.message, true)));

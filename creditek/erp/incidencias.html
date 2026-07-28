@@ -49,7 +49,36 @@
             <div class="kora-incident-management__field kora-incident-management__field--full"><label for="incidentInformationRequest">Solicitar información adicional</label><textarea id="incidentInformationRequest" data-information-request placeholder="Explica qué información necesita soporte."></textarea><button type="button" class="kora-incident-management__secondary" data-request-information>Solicitar información</button></div>
             <div class="kora-incident-management__actions"><button type="button" data-detail-save>Guardar cambios</button><button type="button" class="kora-incident-management__secondary" data-generate-task>Generar tarea técnica</button></div>
           </aside></div>
-          <dialog data-task-dialog><h2>Generar tarea técnica</h2><textarea class="kora-incident-task" aria-label="Tarea técnica editable"></textarea><button type="button" data-copy-task>Copiar</button><button type="button" data-close-task>Cerrar</button></dialog>
+          <dialog class="kora-incident-task-dialog" data-task-dialog role="dialog" aria-modal="true" aria-labelledby="incidentTaskTitle">
+            <header class="kora-incident-task-dialog__header">
+              <div><p>Tarea para desarrollo</p><h2 id="incidentTaskTitle">Generar tarea técnica</h2></div>
+              <button type="button" class="kora-incident-task-dialog__icon-close" data-close-task aria-label="Cerrar tarea técnica" title="Cerrar"><span aria-hidden="true">×</span></button>
+            </header>
+            <div class="kora-incident-task-dialog__body" data-task-scroll>
+              <section class="kora-incident-task-section kora-incident-task-section--summary" aria-labelledby="taskInfoTitle">
+                <h3 id="taskInfoTitle">Información de la incidencia</h3>
+                <dl class="kora-incident-task-facts" data-task-field="information"></dl>
+              </section>
+              <section class="kora-incident-task-section"><h3>Descripción del problema</h3><div data-task-field="description"></div></section>
+              <section class="kora-incident-task-section"><h3>Acción intentada</h3><div data-task-field="attemptedAction"></div></section>
+              <section class="kora-incident-task-section"><h3>Pasos conocidos para reproducir</h3><div data-task-field="steps"></div></section>
+              <section class="kora-incident-task-section"><h3>Resultado actual</h3><div data-task-field="actualResult"></div></section>
+              <section class="kora-incident-task-section"><h3>Resultado esperado</h3><div data-task-field="expectedResult"></div></section>
+              <section class="kora-incident-task-section"><h3>Evidencia</h3><div data-task-field="evidence"></div></section>
+              <section class="kora-incident-task-section"><h3>Datos técnicos</h3><dl class="kora-incident-task-facts" data-task-field="technical"></dl></section>
+              <section class="kora-incident-task-section"><h3>Historial</h3><div data-task-field="history"></div></section>
+              <section class="kora-incident-task-section"><h3>Restricciones</h3><div data-task-field="restrictions"></div></section>
+              <section class="kora-incident-task-section"><h3>No modificar</h3><div data-task-field="doNotModify"></div></section>
+              <section class="kora-incident-task-section"><h3>Pruebas requeridas</h3><div data-task-field="requiredTests"></div></section>
+            </div>
+            <footer class="kora-incident-task-dialog__footer">
+              <p role="status" aria-live="polite" data-task-copy-status></p>
+              <div>
+                <button type="button" class="kora-incident-task-dialog__copy" data-copy-task>Copiar al portapapeles</button>
+                <button type="button" class="kora-incident-task-dialog__primary" data-close-task>Cerrar</button>
+              </div>
+            </footer>
+          </dialog>
         </div>
       </section>
       <p role="status" data-incident-page-status></p>

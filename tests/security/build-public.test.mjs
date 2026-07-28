@@ -15,6 +15,7 @@ test('build keeps required public applications and excludes backend source', asy
 
   const required = [
     'creditek/agentes/index.html',
+    'creditek/agentes/aura-auth.js',
     'creditek/agentes/creditek-agente-redes.html',
     'creditek/agentes/creditek-agente-respuestas.html',
     'creditek/agentes/agente3-meta-ads.html',

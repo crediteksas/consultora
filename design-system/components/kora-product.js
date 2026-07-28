@@ -133,11 +133,11 @@
     document.head.appendChild(favicon);
   }
 
-  function brandTemplate(variant) {
+  function brandTemplate(variant, productName) {
     const compact = variant === 'sidebar-collapsed';
     const signature = variant === 'public' ? 'Una solución de' : 'by';
     return `
-      <span class="kora-brand__product" aria-hidden="true">KORA</span>
+      <span class="kora-brand__product" aria-hidden="true">${productName}</span>
       <span class="kora-brand__signature" aria-hidden="true">${signature}</span>
       <span class="kora-brand__logo-frame${compact ? ' kora-brand__logo-frame--compact' : ''}" aria-hidden="true">
         <img class="kora-brand__logo" src="${KORA_BRAND_ASSETS.creditekLogo}" alt="" width="1906" height="825">
@@ -147,10 +147,11 @@
   function renderBrand(root) {
     if (!(root instanceof Element) || root.dataset.koraBrandReady === 'true') return;
     const variant = root.dataset.variant || 'public';
+    const productName = root.dataset.productName || 'KORA';
     root.classList.add('kora-brand', `kora-brand--${variant}`);
     root.setAttribute('role', 'img');
-    root.setAttribute('aria-label', 'KORA — Creditek');
-    root.innerHTML = brandTemplate(variant);
+    root.setAttribute('aria-label', `${productName} — Creditek`);
+    root.innerHTML = brandTemplate(variant, productName);
     root.dataset.koraBrandReady = 'true';
   }
 

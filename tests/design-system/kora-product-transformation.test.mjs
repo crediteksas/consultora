@@ -142,13 +142,14 @@ test('el shell conserva el módulo activo cuando Cloudflare elimina la extensió
   assert.match(source, /return pagina\.includes\('\.'\) \? pagina : `\$\{pagina\}\.html`;/);
 });
 
-test('el acceso al portal de agentes identifica el producto KORA y la empresa Creditek', async () => {
+test('el acceso al portal de agentes identifica el producto AURA y la empresa Creditek', async () => {
   const [source, brand] = await Promise.all([
     read('creditek/agentes/index.html'),
     read('design-system/components/kora-product.js'),
   ]);
-  assert.match(source, /data-kora-brand data-variant="login"/);
-  assert.match(brand, /KORA — Creditek/);
+  assert.match(source, /data-kora-brand data-variant="login" data-product-name="AURA"/);
+  assert.match(brand, /root\.dataset\.productName \|\| 'KORA'/);
+  assert.match(brand, /`\$\{productName\} — Creditek`/);
   assert.match(brand, /creditek_logo_corregido_alta\.png/);
 });
 

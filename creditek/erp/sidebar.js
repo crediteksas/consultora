@@ -152,14 +152,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', items: [
-      { label: 'Catálogo', href: 'catalogo.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Remisiones', href: 'remisiones.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Stock', href: 'inventario.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
-      { label: 'Traslados', href: 'traslados.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Ajustes', href: 'ajustes.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Cierre mes', href: 'cierre-periodo.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
-      { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', roles: ['gerencia', 'auditoria'] },
-      { label: 'Kardex', href: 'kardex.html', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Catálogo', href: 'catalogo.html', lucide: 'grid-2x2', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Remisiones', href: 'remisiones.html', lucide: 'file-output', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Stock', href: 'inventario.html', lucide: 'warehouse', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
+      { label: 'Traslados', href: 'traslados.html', lucide: 'arrow-left-right', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Ajustes', href: 'ajustes.html', lucide: 'sliders-horizontal', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Cierre mes', href: 'cierre-periodo.html', lucide: 'calendar-check', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Auditoría cruzada', href: 'auditoria-cruzada.html', lucide: 'file-search', roles: ['gerencia', 'auditoria'] },
+      { label: 'Kardex', href: 'kardex.html', lucide: 'history', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
     ]},
     { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', items: [
       { label: 'Ventas', href: 'ventas.html', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
@@ -493,8 +493,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   function koraStaticIcon(name) {
     const icons = {
+      menu: '<path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path>',
       'panel-left-close': '<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path>',
       'panel-left-open': '<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m14 9 3 3-3 3"></path>',
+      'sliders-horizontal': '<line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line>',
+      bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path>',
+      x: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
     };
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name}" data-lucide-static="${name}" aria-hidden="true">${icons[name]}</svg>`;
   }
@@ -511,7 +515,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     content.className = 'kora-shell-content';
     children.forEach(child => content.appendChild(child));
     main.innerHTML = `<header class="kora-topbar">
-      <button class="kora-icon-button kora-mobile-menu ghost" type="button" aria-label="Abrir navegación"><i data-lucide="menu"></i></button>
+      <button class="kora-icon-button kora-mobile-menu ghost" type="button" aria-label="Abrir navegación" title="Abrir navegación">${koraStaticIcon('menu')}</button>
       <button class="kora-icon-button kora-collapse ghost" type="button" aria-label="Colapsar navegación" title="Colapsar navegación">${koraStaticIcon('panel-left-close')}</button>
       <div class="kora-topbar__context">
         <h1 class="kora-topbar__title">${escapeHtml(current?.label || 'KORA')}</h1>
@@ -527,8 +531,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <div class="kora-topbar__actions">
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
-        <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia"><i data-lucide="sliders-horizontal"></i></button>
-        <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" disabled><i data-lucide="bell"></i></button>
+        <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia" title="Configuración de experiencia">${koraStaticIcon('sliders-horizontal')}</button>
+        <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" title="Notificaciones (próximamente)" disabled>${koraStaticIcon('bell')}</button>
         <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
           <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
         </div>
@@ -542,7 +546,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     aside.dataset.open = 'false';
     aside.innerHTML = `<div class="kora-sidebar__brand">
       <div data-kora-brand data-variant="sidebar" title="KORA — Creditek"></div>
-      <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación"><i data-lucide="x"></i></button>
+      <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación" title="Cerrar navegación">${koraStaticIcon('x')}</button>
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
     <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;

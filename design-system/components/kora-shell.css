@@ -169,6 +169,24 @@ body.kora-product-page .kora-shell-root .kora-topbar__title {
   align-items: center; background: transparent; border: 1px solid var(--ctk-color-border); border-radius: var(--ctk-radius-sm);
   color: var(--ctk-color-text-secondary); display: inline-flex; height: var(--ctk-height-control-md); justify-content: center; width: var(--ctk-height-control-md);
 }
+.kora-icon-button > svg {
+  display: block;
+  flex: 0 0 auto;
+  height: var(--ctk-icon-md);
+  pointer-events: none;
+  width: var(--ctk-icon-md);
+}
+.kora-icon-button:hover:not(:disabled) {
+  background: var(--ctk-color-neutral-100);
+  color: var(--ctk-color-text);
+}
+.kora-icon-button:active:not(:disabled) {
+  background: var(--ctk-color-neutral-200);
+}
+.kora-icon-button:disabled {
+  color: var(--ctk-color-disabled-text);
+  cursor: not-allowed;
+}
 .kora-icon-button:focus-visible, .kora-nav-link:focus-visible, .kora-nav-group__label:focus-visible, .kora-logout:focus-visible {
   outline: var(--ctk-space-0-5) solid var(--ctk-color-focus); outline-offset: var(--ctk-space-0-5);
 }

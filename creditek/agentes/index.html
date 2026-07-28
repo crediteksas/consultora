@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KORA · Agentes — Creditek</title>
+<title>AURA · Agentes — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="../erp/sidebar.js" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
@@ -54,6 +54,8 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
   font-size:14px;font-family:var(--font);
   outline:none;transition:border .2s;
   text-align:center;letter-spacing:2px;
+  pointer-events:auto;position:relative;z-index:1;
+  user-select:text;-webkit-user-select:text;
 }
 .login-field input::placeholder{letter-spacing:0;color:rgba(255,255,255,.3)}
 .login-field input:focus{border-color:var(--turq)}
@@ -226,10 +228,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <div data-kora-brand data-variant="login"></div>
+      <div data-kora-brand data-variant="login" data-product-name="AURA"></div>
     </div>
     <div class="login-field">
-      <input type="password" id="login-pwd" placeholder="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="login-pwd" name="password" placeholder="Clave de acceso" autocomplete="current-password" aria-label="Contraseña de acceso" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">Ingresar →</button>
     <div class="login-error" id="login-error"></div>

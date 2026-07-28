@@ -33,7 +33,8 @@ test('KoraBrand es la fuente compartida y accesible para producto y empresa', as
   assert.match(source, /version: '1\.0\.1'/);
   assert.match(source, /dataset\.koraBrandVersion = '1\.0\.1'/);
   assert.doesNotMatch(source, /documentElement\.dataset\.koraBrand\s*=/);
-  assert.match(source, /aria-label', 'KORA — Creditek'/);
+  assert.match(source, /root\.dataset\.productName \|\| 'KORA'/);
+  assert.match(source, /setAttribute\('aria-label', `\$\{productName\} — Creditek`\)/);
   assert.match(source, /data-kora-brand/);
   assert.match(css, /\.kora-brand--sidebar-collapsed/);
   assert.match(css, /\.kora-brand--login-inverse/);

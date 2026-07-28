@@ -40,6 +40,13 @@
   padding: var(--ctk-space-0-5) var(--ctk-space-1);
 }
 
+.kora-brand__logo-crop {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  max-width: 100%;
+}
+
 .kora-brand__logo {
   display: block;
   height: auto;
@@ -66,7 +73,7 @@
 }
 
 .kora-brand--sidebar-collapsed .kora-brand__product {
-  font-size: var(--ctk-font-size-caption);
+  display: none;
 }
 
 .kora-brand--sidebar-collapsed .kora-brand__signature {
@@ -74,15 +81,26 @@
 }
 
 .kora-brand--sidebar-collapsed .kora-brand__logo-frame {
-  height: var(--ctk-height-control-sm);
-  padding: var(--ctk-space-0-5);
-  width: var(--ctk-height-control-sm);
+  height: var(--ctk-height-control-md);
+  padding: 0;
+  width: var(--ctk-height-control-md);
+}
+
+.kora-brand--sidebar-collapsed .kora-brand__logo-crop {
+  height: var(--ctk-height-control-md);
+  overflow: hidden;
+  position: relative;
+  width: 2.125rem;
 }
 
 .kora-brand--sidebar-collapsed .kora-brand__logo {
-  height: calc(var(--ctk-height-control-sm) - var(--ctk-space-1));
+  height: 3.5rem;
+  left: 0;
   max-height: none;
   max-width: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   width: auto;
 }
 

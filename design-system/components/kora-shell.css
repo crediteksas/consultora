@@ -111,6 +111,10 @@ html.creditek-shell-pending body::after {
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-group__label,
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-link { justify-content: center; }
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand { align-items: center; justify-content: center; padding-inline: var(--ctk-space-1); }
+.kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand .kora-brand__logo-frame {
+  min-width: var(--ctk-height-control-md);
+  width: var(--ctk-height-control-md);
+}
 .kora-topbar {
   align-items: center; background: var(--ctk-color-surface); border-bottom: 1px solid var(--ctk-color-border);
   display: flex; gap: var(--ctk-space-2); min-height: var(--ctk-height-topbar); padding: var(--ctk-space-1) var(--ctk-space-3);
@@ -212,10 +216,10 @@ body.kora-product-page .kora-shell-root .kora-icon-button {
   background: var(--ctk-color-primary-900);
   border-radius: var(--ctk-radius-sm);
   box-shadow: var(--ctk-shadow-2);
-  color: var(--ctk-color-text-inverse);
+  color: var(--ctk-color-neutral-0);
   font: var(--ctk-font-weight-medium) var(--ctk-font-size-small)/var(--ctk-line-height-body) var(--ctk-font-family-ui);
   max-width: 18rem;
-  padding: var(--ctk-space-1) var(--ctk-space-1-5);
+  padding: var(--ctk-space-1);
   pointer-events: none;
   position: fixed;
   z-index: var(--ctk-z-tooltip);

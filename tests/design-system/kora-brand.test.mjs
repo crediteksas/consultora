@@ -57,6 +57,27 @@ test('el shell usa KoraBrand y no texto corporativo manual', async () => {
   assert.match(css, /border-radius: var\(--ctk-radius-full\)/);
 });
 
+test('el sidebar colapsado conserva únicamente el isotipo oficial sin cortar el nombre', async () => {
+  const [source, css] = await Promise.all([
+    read('design-system/components/kora-product.js'),
+    read('design-system/components/kora-product.css'),
+  ]);
+
+  assert.match(source, /kora-brand__logo-crop/);
+  assert.match(
+    css,
+    /\.kora-brand--sidebar-collapsed \.kora-brand__logo-crop\s*\{[^}]*overflow:\s*hidden/s,
+  );
+  assert.match(
+    css,
+    /\.kora-brand--sidebar-collapsed \.kora-brand__logo\s*\{[^}]*height:\s*3\.5rem/s,
+  );
+  assert.match(
+    css,
+    /\.kora-brand--sidebar-collapsed \.kora-brand__product\s*\{[^}]*display:\s*none/s,
+  );
+});
+
 test('login, agentes y superficies públicas consumen la marca compartida', async () => {
   const contracts = new Map([
     ['creditek/erp/app.html', 'login'],

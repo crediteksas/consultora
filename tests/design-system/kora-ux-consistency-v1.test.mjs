@@ -9,7 +9,7 @@ const read = relative => readFile(path.join(root, relative), 'utf8');
 test('la navegación distingue resumen ejecutivo, análisis e incidencias sin cambiar rutas', async () => {
   const source = await read('creditek/erp/sidebar.js');
 
-  assert.match(source, /label: 'Resumen ejecutivo', href: 'tablero\.html'/);
+  assert.match(source, /label: 'Resumen ejecutivo', href: 'tablero\.html', lucide: 'gauge'/);
   assert.match(source, /label: 'Análisis e informes', href: 'reportes\.html'/);
   assert.match(source, /label: 'Mis incidencias', href: 'mis-reportes\.html'/);
   assert.doesNotMatch(source, /label: 'Dashboard', href: '(?:tablero|reportes)\.html'/);
@@ -62,6 +62,15 @@ test('los tooltips globales aparecen tras 2.5 segundos y no dependen de title na
   assert.match(source, /role', 'tooltip'/);
   assert.match(source, /setTimeout\([^]*KORA_TOOLTIP_DELAY_MS/);
   assert.match(css, /\.kora-delayed-tooltip/);
+  assert.match(
+    css,
+    /\.kora-delayed-tooltip\s*\{[^}]*color:\s*var\(--ctk-color-neutral-0\)/s,
+  );
+  assert.match(
+    css,
+    /\.kora-delayed-tooltip\s*\{[^}]*padding:\s*var\(--ctk-space-1\)/s,
+  );
+  assert.doesNotMatch(css, /--ctk-color-text-inverse|--ctk-space-1-5/);
 });
 
 test('breadcrumbs reservan espacio y condensan niveles intermedios sin superponerse', async () => {
@@ -71,4 +80,15 @@ test('breadcrumbs reservan espacio y condensan niveles intermedios sin superpone
   assert.match(css, /\.kora-breadcrumb\s*\{[^}]*min-width:\s*0/s);
   assert.match(css, /\.kora-breadcrumb li\s*\{[^}]*text-overflow:\s*ellipsis/s);
   assert.match(css, /@media \(max-width: 79\.999rem\)[^]*\.kora-breadcrumb li:not\(:first-child\):not\(:last-child\)/);
+});
+
+test('el build invalida la caché del shell y la marca corregidos', async () => {
+  const [source, build] = await Promise.all([
+    read('creditek/erp/sidebar.js'),
+    read('scripts/build-public.mjs'),
+  ]);
+
+  assert.match(source, /kora-shell\.css\?v=2\.0\.4/);
+  assert.match(build, /KORA_SHELL_ASSET_VERSION = '2\.0\.4'/);
+  assert.match(build, /KORA_PRODUCT_ASSET_VERSION = '2\.0\.4'/);
 });

@@ -148,7 +148,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   const MODULOS = [
     { titulo: 'TABLERO', icono: '📊', lucide: 'layout-dashboard', description: 'Indicadores ejecutivos, presupuestos y desempeño comercial.', items: [
-      { label: 'Resumen ejecutivo', href: 'tablero.html', lucide: 'layout-dashboard', description: 'Resumen en tiempo real de ventas, utilidad, tiendas y alertas operativas.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Resumen ejecutivo', href: 'tablero.html', lucide: 'gauge', description: 'Resumen en tiempo real de ventas, utilidad, tiendas y alertas operativas.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'badge-dollar-sign', description: 'Consulta y compara los presupuestos comerciales por tienda y período.', roles: ['gerencia', 'auditoria'] },
       { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', lucide: 'users-round', description: 'Compara el desempeño de los equipos y responsables comerciales.', roles: ['gerencia', 'auditoria'] },
     ]},
@@ -397,7 +397,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraShellStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-shell.css?v=2.0.2';
+      link.href = '/design-system/components/kora-shell.css?v=2.0.4';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraLucide')) {

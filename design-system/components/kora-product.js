@@ -149,7 +149,9 @@
       <span class="kora-brand__product" aria-hidden="true">${productName}</span>
       <span class="kora-brand__signature" aria-hidden="true">${signature}</span>
       <span class="kora-brand__logo-frame${compact ? ' kora-brand__logo-frame--compact' : ''}" aria-hidden="true">
-        <img class="kora-brand__logo" src="${KORA_BRAND_ASSETS.creditekLogo}" alt="" width="1906" height="825">
+        <span class="kora-brand__logo-crop">
+          <img class="kora-brand__logo" src="${KORA_BRAND_ASSETS.creditekLogo}" alt="" width="1906" height="825">
+        </span>
       </span>`;
   }
 

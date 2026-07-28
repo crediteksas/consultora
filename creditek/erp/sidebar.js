@@ -412,7 +412,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraIncidentStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-incident-center.css';
+      link.href = '/design-system/components/kora-incident-center.css?v=1.1.0';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraNotifications')) {

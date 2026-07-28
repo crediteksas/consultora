@@ -50,7 +50,14 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 #login-form{position:relative;z-index:2;pointer-events:auto!important}
 .kora-product-page #login-screen .login-field{position:relative;z-index:2;pointer-events:auto!important}
 .kora-product-page #login-screen .login-field label{color:var(--ctk-color-text-secondary)!important;position:relative;z-index:2}
-.kora-product-page #login-screen .login-field input{cursor:text;pointer-events:auto!important;position:relative;z-index:3;touch-action:manipulation}
+.kora-product-page #login-screen .login-field input{
+  cursor:text;pointer-events:auto!important;position:relative;z-index:3;touch-action:manipulation;
+  color:var(--ctk-color-text-primary)!important;
+  background:var(--ctk-color-surface)!important;
+  border-color:var(--ctk-color-border)!important;
+  caret-color:var(--ctk-color-text-primary);
+}
+.kora-product-page #login-screen .login-field input::placeholder{color:var(--ctk-color-text-muted)!important}
 .login-field input{
   width:100%;padding:14px 16px;
   background:rgba(255,255,255,.06);

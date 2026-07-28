@@ -68,4 +68,8 @@ test('el campo temporal de acceso AURA permite escritura, autofill y Enter', asy
   assert.match(portal, /<form id="login-form"[^>]*autocomplete="on"/);
   assert.match(portal, /type="submit"/);
   assert.match(portal, /\.login-field input\s*\{[^}]*pointer-events:\s*auto/s);
+  assert.match(
+    portal,
+    /\.kora-product-page #login-screen \.login-field input\s*\{[^}]*color:\s*var\(--ctk-color-text-primary\)\s*!important/s,
+  );
 });

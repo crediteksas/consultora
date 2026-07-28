@@ -13,10 +13,13 @@ test('el acceso AURA expone controles etiquetados de correo y contraseña', asyn
   const html = await read('creditek/agentes/index.html');
 
   assert.match(html, /<label[^>]*for="login-email"[^>]*>\s*Correo\s*<\/label>/);
-  assert.match(html, /<input[^>]*type="email"[^>]*id="login-email"[^>]*autocomplete="username"/);
+  assert.match(html, /<input[^>]*type="email"[^>]*id="login-email"[^>]*name="email"[^>]*autocomplete="username"/);
   assert.match(html, /<label[^>]*for="login-password"[^>]*>\s*Contraseña\s*<\/label>/);
-  assert.match(html, /<input[^>]*type="password"[^>]*id="login-password"[^>]*autocomplete="current-password"/);
+  assert.match(html, /<input[^>]*type="password"[^>]*id="login-password"[^>]*name="password"[^>]*autocomplete="current-password"/);
   assert.match(html, /id="login-error"[^>]*role="alert"[^>]*aria-live="polite"/);
+  assert.match(html, /#login-form\s*\{[^}]*pointer-events:\s*auto\s*!important/s);
+  assert.match(html, /#login-form\s*\{[^}]*z-index:\s*2/s);
+  assert.match(html, /\.kora-product-page #login-screen \.login-field label\s*\{[^}]*color:\s*var\(--ctk-color-text-secondary\)\s*!important/s);
 });
 
 test('el acceso AURA usa el cliente individual y elimina la compuerta compartida', async () => {

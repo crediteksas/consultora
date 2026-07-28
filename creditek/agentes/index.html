@@ -47,6 +47,10 @@ body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hi
 .login-sub{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
 .login-field{position:relative;margin-bottom:14px;text-align:left;pointer-events:auto}
 .login-field label{display:block;margin-bottom:6px;color:rgba(255,255,255,.78);font-size:12px;font-weight:600;pointer-events:auto}
+#login-form{position:relative;z-index:2;pointer-events:auto!important}
+.kora-product-page #login-screen .login-field{position:relative;z-index:2;pointer-events:auto!important}
+.kora-product-page #login-screen .login-field label{color:var(--ctk-color-text-secondary)!important;position:relative;z-index:2}
+.kora-product-page #login-screen .login-field input{cursor:text;pointer-events:auto!important;position:relative;z-index:3;touch-action:manipulation}
 .login-field input{
   width:100%;padding:14px 16px;
   background:rgba(255,255,255,.06);
@@ -236,11 +240,11 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <form id="login-form" novalidate>
       <div class="login-field">
         <label for="login-email">Correo</label>
-        <input type="email" id="login-email" autocomplete="username" placeholder="tu@crediteksas.com" required>
+        <input type="email" id="login-email" name="email" autocomplete="username" placeholder="tu@crediteksas.com" required>
       </div>
       <div class="login-field">
         <label for="login-password">Contraseña</label>
-        <input type="password" id="login-password" autocomplete="current-password" placeholder="Tu contraseña" required>
+        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Tu contraseña" required>
       </div>
       <button class="login-btn" id="login-submit" type="submit" aria-busy="false">Ingresar →</button>
       <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>

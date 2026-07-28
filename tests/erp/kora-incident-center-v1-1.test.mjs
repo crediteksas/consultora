@@ -96,7 +96,7 @@ test('el shell monta campana, contador y panel de notificaciones', async () => {
     read('design-system/components/kora-incident-center.css'),
   ]);
   assert.match(sidebar, /KoraNotifications\?\.mount/);
-  assert.match(sidebar, /kora-incident-center\.css\?v=1\.1\.0/);
+  assert.match(sidebar, /kora-incident-center\.css\?v=1\.1\.1/);
   assert.doesNotMatch(sidebar, /data-kora-notifications[^>]*disabled/);
   assert.match(notifications, /kora_notifications/);
   assert.match(notifications, /data-kora-notification-count/);
@@ -108,5 +108,6 @@ test('el shell monta campana, contador y panel de notificaciones', async () => {
   assert.match(await read('creditek/erp/incidencias-app.js'), /kora-notifications-refresh/);
   assert.match(css, /\.kora-notifications-panel/);
   assert.match(css, /\.kora-notifications-panel \.kora-notification-item/);
-  assert.match(css, /kora-notification-item\{[^}]*color:var\(--ctk-color-text-primary/);
+  assert.match(css, /kora-notification-item\{[^}]*background:var\(--ctk-color-neutral-0/);
+  assert.match(css, /kora-notification-item\{[^}]*color:var\(--ctk-color-primary-900/);
 });

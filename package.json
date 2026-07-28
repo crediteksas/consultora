@@ -11,6 +11,7 @@
     "test": "node --test tests/security/*.test.mjs tests/agentes/*.test.mjs",
     "test:config": "node --test tests/config/*.test.mjs",
     "test:design-system": "node --test tests/design-system/*.test.mjs",
+    "test:e2e:aura": "node --test tests/e2e/aura-login-production.test.mjs",
     "test:live": "node --test tests/security/live-smoke.test.mjs",
     "preview:upload": "npm run build && wrangler versions upload",
     "deploy": "npm run build && wrangler deploy"
@@ -27,6 +28,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "wrangler": "4.114.0"
   }
 }

@@ -56,13 +56,16 @@ test('el acceso de agentes se identifica como AURA y conserva Creditek', async (
   assert.match(product, /setAttribute\('aria-label', `\$\{productName\} — Creditek`\)/);
 });
 
-test('el campo temporal de acceso AURA permanece editable y accesible', async () => {
+test('el campo temporal de acceso AURA permite escritura, autofill y Enter', async () => {
   const portal = await read('creditek/agentes/index.html');
   const password = portal.match(/<input\s+type="password"\s+id="login-pwd"[^>]*>/)?.[0] || '';
 
-  assert.match(password, /autocomplete="off"/);
+  assert.match(password, /name="password"/);
+  assert.match(password, /autocomplete="current-password"/);
   assert.doesNotMatch(password, /\b(?:disabled|readonly)\b/i);
-  assert.match(portal, /<label for="login-pwd">Clave de acceso<\/label>/);
-  assert.match(portal, /id="login-form"/);
+  assert.doesNotMatch(password, /data-(?:1p-ignore|lpignore)/);
+  assert.match(portal, /<label for="login-pwd">Contraseña<\/label>/);
+  assert.match(portal, /<form id="login-form"[^>]*autocomplete="on"/);
+  assert.match(portal, /type="submit"/);
   assert.match(portal, /\.login-field input\s*\{[^}]*pointer-events:\s*auto/s);
 });

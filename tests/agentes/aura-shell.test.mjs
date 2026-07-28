@@ -12,8 +12,9 @@ async function read(relative) {
 test('el acceso AURA expone un único campo visible para la clave compartida', async () => {
   const html = await read('creditek/agentes/index.html');
 
-  assert.match(html, /<label[^>]*for="login-pwd"[^>]*>\s*Clave de acceso\s*<\/label>/);
-  assert.match(html, /<input[^>]*type="password"[^>]*id="login-pwd"[^>]*autocomplete="off"[^>]*data-1p-ignore/);
+  assert.match(html, /<label[^>]*for="login-pwd"[^>]*>\s*Contraseña\s*<\/label>/);
+  assert.match(html, /<input[^>]*type="password"[^>]*id="login-pwd"[^>]*name="password"[^>]*autocomplete="current-password"/);
+  assert.doesNotMatch(html, /data-(?:1p-ignore|lpignore)/);
   assert.match(html, /id="login-error"[^>]*role="alert"[^>]*aria-live="polite"/);
   assert.match(html, /#login-form\s*\{[^}]*pointer-events:\s*auto\s*!important/s);
   assert.match(html, /#login-form\s*\{[^}]*z-index:\s*2/s);
@@ -33,8 +34,9 @@ test('el formulario AURA permite clic, Enter y restauración de sesión', async 
   const html = await read('creditek/agentes/index.html');
 
   assert.match(html, /id="login-form"/);
-  assert.match(html, /type="button" onclick="doLogin\(\)"/);
-  assert.match(html, /event\.key==='Enter'/);
+  assert.match(html, /<form id="login-form"[^>]*autocomplete="on"/);
+  assert.match(html, /type="submit"/);
+  assert.match(html, /addEventListener\('submit', event =>/);
   assert.match(html, /sessionStorage\.getItem\('ck_auth'\)/);
 });
 

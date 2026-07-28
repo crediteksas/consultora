@@ -237,14 +237,14 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <div class="login-logo">
       <div data-kora-brand data-variant="login" data-product-name="AURA"></div>
     </div>
-    <div id="login-form">
+    <form id="login-form" autocomplete="on" novalidate>
       <div class="login-field">
-        <label for="login-pwd">Clave de acceso</label>
-        <input type="password" id="login-pwd" name="aura-access-key" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="Escribe tu clave" aria-label="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
+        <label for="login-pwd">Contraseña</label>
+        <input type="password" id="login-pwd" name="password" autocomplete="current-password" placeholder="Tu contraseña" aria-label="Contraseña">
       </div>
-      <button class="login-btn" id="login-submit" type="button" onclick="doLogin()">Ingresar →</button>
+      <button class="login-btn" id="login-submit" type="submit">Ingresar →</button>
       <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>
-    </div>
+    </form>
     <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
   </div>
 </div>
@@ -550,6 +550,11 @@ async function doLogin() {
     setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
   }
 }
+
+document.getElementById('login-form').addEventListener('submit', event => {
+  event.preventDefault();
+  doLogin();
+});
 
 function doLogout() {
   sessionStorage.removeItem('ck_auth');

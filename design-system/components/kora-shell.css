@@ -170,6 +170,9 @@ body.kora-product-page .kora-shell-root .kora-topbar__title {
   color: var(--ctk-color-text-secondary); display: inline-flex; flex: 0 0 auto; height: var(--ctk-height-control-md); justify-content: center;
   padding: 0; width: var(--ctk-height-control-md);
 }
+body.kora-product-page .kora-shell-root .kora-icon-button {
+  padding: 0;
+}
 .kora-icon-button > svg {
   display: block;
   flex: 0 0 auto;

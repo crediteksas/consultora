@@ -266,6 +266,7 @@
       status(values.status === 'corregido'
         ? 'Incidencia resuelta correctamente'
         : 'Incidencia actualizada correctamente.');
+      document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       await Promise.all([loadMetrics(), loadIncidents()]);
       const refreshed = state.incidents.find(item => item.id === state.selected.id);
       if (refreshed) await openDetail(refreshed);

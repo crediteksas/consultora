@@ -172,6 +172,7 @@
         close({ restoreFocus: false });
       }
     });
+    document.addEventListener('kora-notifications-refresh', load);
     window.addEventListener('focus', load);
     load();
   }

@@ -205,6 +205,25 @@ body.modal-open { overflow: hidden; }
   </div>
 </div>
 
+<!-- Modal: verificar abono y asociarlo al pago central -->
+<div class="modal-bg" id="modalVerificarAbono">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="verificarAbonoTitulo">
+    <h2 id="verificarAbonoTitulo">Verificar abono</h2>
+    <div class="modal-sub">Selecciona la factura de proveedor a la que se aplicará este dinero.</div>
+    <div class="campo">
+      <label for="verificarFactura">Factura de proveedor</label>
+      <select id="verificarFactura" required>
+        <option value="">Selecciona una factura pendiente</option>
+      </select>
+    </div>
+    <div class="modal-err" id="modalVerificarErr"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancelar" id="btnCancelarVerificacion">Cancelar</button>
+      <button type="button" class="btn-guardar" id="btnConfirmarVerificacion">Verificar y aplicar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
@@ -218,6 +237,8 @@ let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
 let modalAnteriorAbono = null;
 let abonoIdempotencyKey = null;
+let abonoVerificacionActual = null;
+let verificacionIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -306,6 +327,8 @@ function initPagina() {
   document.getElementById('btnCancelarAbono').addEventListener('click', cerrarModalAbono);
   document.getElementById('abonoFoto').addEventListener('change', onFotoAbonoSeleccionada);
   document.getElementById('btnGuardarAbono').addEventListener('click', guardarAbono);
+  document.getElementById('btnCancelarVerificacion').addEventListener('click', cerrarModalVerificacion);
+  document.getElementById('btnConfirmarVerificacion').addEventListener('click', confirmarVerificacionAbono);
 
   cargarTodo();
 }
@@ -332,7 +355,8 @@ function cerrarModalAbono() {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
+  if (document.getElementById('modalVerificarAbono').classList.contains('show')) cerrarModalVerificacion();
+  else if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
   else if (document.getElementById('modalDetalle').classList.contains('show')) cerrarModal('modalDetalle');
 });
 
@@ -347,7 +371,7 @@ async function cargarMovimientosCC() {
   empty.style.display = 'block';
   empty.textContent = 'Cargando...';
 
-  const { data, error } = await sb.from('cuenta_corriente').select('*').order('created_at', { ascending: true });
+  const { data, error } = await sb.rpc('listar_cuenta_corriente_con_abonos');
   if (error) { empty.textContent = 'Error cargando cuenta corriente: ' + error.message; return; }
   movimientosCC = data || [];
   renderTablaTiendas();
@@ -422,10 +446,69 @@ function abrirDetalleTienda(codigo, nombre) {
 
 async function marcarAbonoVerificado(abonoId) {
   if (!abonoId || abonoId === 'null') return;
-  const { error } = await sb.from('abonos').update({ verificado_por: currentUser.id, verificado_at: new Date().toISOString() }).eq('id', abonoId);
-  if (error) { alert('No se pudo marcar como verificado: ' + error.message); return; }
+  if (!esCentral()) {
+    alert('Solo Gerencia o Auditoría pueden verificar abonos.');
+    return;
+  }
+  const select = document.getElementById('verificarFactura');
+  const err = document.getElementById('modalVerificarErr');
+  select.innerHTML = '<option value="">Selecciona una factura pendiente</option>';
+  err.classList.remove('show');
+  abonoVerificacionActual = abonoId;
+  verificacionIdempotencyKey = crypto.randomUUID();
+
+  const { data, error } = await sb
+    .from('facturas_proveedor')
+    .select('id, numero, saldo, proveedores(nombre)')
+    .gt('saldo', 0)
+    .order('fecha', { ascending: true });
+  if (error) {
+    err.textContent = 'No se pudieron cargar las facturas pendientes: ' + error.message;
+    err.classList.add('show');
+  } else {
+    select.innerHTML += (data || []).map(factura =>
+      `<option value="${escapeHtml(factura.id)}">${escapeHtml(factura.proveedores?.nombre || 'Proveedor')} · ${escapeHtml(factura.numero || 'Sin número')} · ${fmtCOP(factura.saldo)}</option>`
+    ).join('');
+  }
+  abrirModal('modalVerificarAbono');
+}
+
+function cerrarModalVerificacion() {
+  cerrarModal('modalVerificarAbono');
+  abonoVerificacionActual = null;
+}
+
+async function confirmarVerificacionAbono() {
+  if (!abonoVerificacionActual) return;
+  const facturaId = document.getElementById('verificarFactura').value;
+  const err = document.getElementById('modalVerificarErr');
+  if (!facturaId) {
+    err.textContent = 'Selecciona la factura de proveedor.';
+    err.classList.add('show');
+    document.getElementById('verificarFactura').focus();
+    return;
+  }
+  const btn = document.getElementById('btnConfirmarVerificacion');
+  btn.disabled = true;
+  btn.textContent = 'Aplicando...';
+  const { data, error } = await sb.rpc('verificar_abono_y_registrar_pago', {
+    p_abono_id: abonoVerificacionActual,
+    p_factura_proveedor_id: facturaId,
+    p_request_id: verificacionIdempotencyKey,
+  });
+  btn.disabled = false;
+  btn.textContent = 'Verificar y aplicar';
+  if (error || !data?.ok) {
+    err.textContent = 'No se pudo verificar el abono: ' + (error?.message || 'respuesta inválida');
+    err.classList.add('show');
+    return;
+  }
+  cerrarModalVerificacion();
   await cargarMovimientosCC();
   abrirDetalleTienda(tiendaDetalleActual.codigo, tiendaDetalleActual.nombre);
+  mostrarBanner(data.reutilizado
+    ? 'El abono ya estaba verificado y aplicado.'
+    : '✅ Abono verificado y aplicado a la factura de proveedor.');
 }
 
 // ─── Registrar abono ─────────────────────────────────────────────────

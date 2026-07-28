@@ -415,6 +415,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       link.href = '/design-system/components/kora-incident-center.css';
       document.head.appendChild(link);
     }
+    if (!document.getElementById('koraNotifications')) {
+      const notifications = document.createElement('script');
+      notifications.id = 'koraNotifications';
+      notifications.src = '/creditek/erp/kora-notifications.js';
+      document.head.appendChild(notifications);
+    }
     const installIncidentCenter = () => {
       if (document.getElementById('koraIncidentCenter')) return;
       const center = document.createElement('script');
@@ -531,7 +537,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
         <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia" title="Configuración de experiencia">${koraStaticIcon('sliders-horizontal')}</button>
-        <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones (próximamente)" title="Notificaciones (próximamente)" disabled>${koraStaticIcon('bell')}</button>
+        <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones" title="Notificaciones">${koraStaticIcon('bell')}</button>
         <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
           <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
         </div>
@@ -694,6 +700,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     mountIncidentCenter();
     if (!window.KoraIncidentCenter) {
       document.addEventListener('kora-incident-ready', mountIncidentCenter, { once: true });
+    }
+    const mountNotifications = () => window.KoraNotifications?.mount?.({
+      sb: supabaseClient,
+      profile,
+    });
+    mountNotifications();
+    if (!window.KoraNotifications) {
+      document.addEventListener('kora-notifications-ready', mountNotifications, { once: true });
     }
   }
 

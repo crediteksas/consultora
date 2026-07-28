@@ -2,7 +2,9 @@
   'use strict';
 
   const STATES = ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado'];
-  const label = value => String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
+  const management = window.KoraIncidentManagement;
+  const label = value => management?.statusLabel(value)
+    || String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
   const formatDate = value => value ? new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
   const age = value => {
     const hours = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 3_600_000));
@@ -14,7 +16,16 @@
     if (className) node.className = className;
     return node;
   };
-  let state = { sb: null, profile: null, mode: document.body.dataset.incidentMode, incidents: [], selected: null, assignees: [] };
+  let state = {
+    sb: null,
+    profile: null,
+    mode: document.body.dataset.incidentMode,
+    incidents: [],
+    selected: null,
+    assignees: [],
+    people: new Map(),
+    saving: false,
+  };
 
   function status(message, error = false) {
     const node = document.querySelector('[data-incident-page-status]');
@@ -69,10 +80,14 @@
       && (!read('store') || String(item.store_name_snapshot || item.store_code || '').toLowerCase().includes(read('store')))
       && (!read('module') || item.module.toLowerCase().includes(read('module')))
       && (!read('user') || item.user_name_snapshot.toLowerCase().includes(read('user')))
-      && (!read('assignee') || String(item.assigned_to || '').toLowerCase().includes(read('assignee')))
+      && (!read('assignee') || assigneeName(item.assigned_to).toLowerCase().includes(read('assignee')))
       && (!read('version') || item.kora_version.toLowerCase().includes(read('version')))
       && (!dateFrom || item.created_at.slice(0, 10) >= dateFrom)
       && (!dateTo || item.created_at.slice(0, 10) <= dateTo));
+  }
+  function assigneeName(id) {
+    if (!id) return 'Sin asignar';
+    return management?.displayName(state.people.get(id) || { id }) || 'Usuario sin nombre';
   }
   function renderList() {
     const body = document.querySelector('[data-incident-list]');
@@ -90,7 +105,7 @@
       codeButton.type = 'button';
       codeButton.addEventListener('click', () => openDetail(item));
       const cells = state.mode === 'admin'
-        ? [codeButton, formatDate(item.created_at), item.title, item.store_name_snapshot || '—', item.module, label(item.priority), label(item.status), item.user_name_snapshot, item.assigned_to || 'Sin asignar', item.kora_version, age(item.created_at)]
+        ? [codeButton, formatDate(item.created_at), item.title, item.store_name_snapshot || '—', item.module, label(item.priority), label(item.status), item.user_name_snapshot, assigneeName(item.assigned_to), item.kora_version, age(item.created_at)]
         : [codeButton, formatDate(item.created_at), item.title, item.module, label(item.priority), label(item.status), formatDate(item.updated_at)];
       cells.forEach(value => {
         const cell = el('td');
@@ -106,6 +121,11 @@
     const { data, error } = await query;
     if (error) throw error;
     state.incidents = data || [];
+    state.incidents.forEach(item => {
+      if (item.user_id && item.user_name_snapshot) {
+        state.people.set(item.user_id, { id: item.user_id, nombre: item.user_name_snapshot });
+      }
+    });
     renderList();
   }
   async function evidenceLink(item, target) {
@@ -137,8 +157,16 @@
       state.sb.from('kora_incident_comments').select('*').eq('incident_id', item.id).order('created_at'),
     ]);
     if (historyError || commentsError) throw historyError || commentsError;
+    (comments || []).forEach(comment => {
+      if (comment.author_user_id && comment.author_name_snapshot) {
+        state.people.set(comment.author_user_id, { id: comment.author_user_id, nombre: comment.author_name_snapshot });
+      }
+    });
     const historyNode = detail.querySelector('[data-incident-history]');
-    historyNode.replaceChildren(...(history || []).map(event => el('li', `${formatDate(event.created_at)} · ${label(event.event_type)}${event.comment ? ` · ${event.comment}` : ''}`)));
+    historyNode.replaceChildren(...(history || []).map(event => {
+      const text = management?.historyText(event, state.people) || event.comment || 'Actividad registrada.';
+      return el('li', `${formatDate(event.created_at)} · ${text}`);
+    }));
     const commentsNode = detail.querySelector('[data-incident-comments]');
     commentsNode.replaceChildren();
     for (const comment of comments || []) {
@@ -162,6 +190,7 @@
       detail.querySelector('[data-detail-assignee]').value = item.assigned_to || '';
       detail.querySelector('[data-detail-resolution]').value = item.resolution_summary || '';
       detail.querySelector('[data-detail-version]').value = item.fixed_version || '';
+      clearManagementErrors();
     }
     detail.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
@@ -174,6 +203,7 @@
       .order('nombre');
     if (error) return;
     state.assignees = data || [];
+    state.assignees.forEach(person => state.people.set(person.id, person));
     const select = document.querySelector('[data-detail-assignee]');
     state.assignees.forEach(person => {
       const option = el('option', `${person.nombre} · ${label(person.rol)}`);
@@ -181,25 +211,100 @@
       select.append(option);
     });
   }
+  function clearManagementErrors() {
+    document.querySelectorAll('[data-detail-field-error]').forEach(node => { node.textContent = ''; });
+    document.querySelectorAll('[data-detail-resolution],[data-detail-version]').forEach(node => node.removeAttribute('aria-invalid'));
+  }
+  function showManagementErrors(errors) {
+    clearManagementErrors();
+    Object.entries(errors).forEach(([key, message]) => {
+      const node = document.querySelector(`[data-detail-field-error="${key}"]`);
+      if (node) node.textContent = message;
+      const field = key === 'resolution'
+        ? document.querySelector('[data-detail-resolution]')
+        : document.querySelector('[data-detail-version]');
+      field?.setAttribute('aria-invalid', 'true');
+    });
+    const first = errors.resolution
+      ? document.querySelector('[data-detail-resolution]')
+      : document.querySelector('[data-detail-version]');
+    first?.focus();
+  }
   async function saveAdmin() {
+    if (state.saving || !state.selected) return;
     const detail = document.querySelector('[data-incident-detail]');
     const assignee = detail.querySelector('[data-detail-assignee]').value.trim();
-    const { error } = await state.sb.rpc('kora_update_incident', {
-      p_incident_id: state.selected.id,
-      p_status: detail.querySelector('[data-detail-status]').value,
-      p_priority: detail.querySelector('[data-detail-priority]').value,
-      p_assigned_to: assignee || null,
-      p_resolution_summary: detail.querySelector('[data-detail-resolution]').value || null,
-      p_fixed_version: detail.querySelector('[data-detail-version]').value || null,
-    });
-    if (error) throw error;
-    status('Incidencia actualizada correctamente.');
-    await Promise.all([loadMetrics(), loadIncidents()]);
+    const values = {
+      status: detail.querySelector('[data-detail-status]').value,
+      priority: detail.querySelector('[data-detail-priority]').value,
+      resolution: detail.querySelector('[data-detail-resolution]').value,
+      fixedVersion: detail.querySelector('[data-detail-version]').value,
+    };
+    const validation = management.validateManagement(values);
+    if (!validation.ok) {
+      showManagementErrors(validation.errors);
+      status('Completa los campos marcados para resolver la incidencia.', true);
+      return;
+    }
+    clearManagementErrors();
+    const button = detail.querySelector('[data-detail-save]');
+    state.saving = true;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    const requestId = crypto.randomUUID();
+    try {
+      const { error } = await state.sb.rpc('kora_manage_incident_v1_1', {
+        p_incident_id: state.selected.id,
+        p_status: values.status,
+        p_priority: values.priority,
+        p_assigned_to: assignee || null,
+        p_resolution_summary: values.resolution || null,
+        p_fixed_version: values.fixedVersion || null,
+        p_request_id: requestId,
+      });
+      if (error) throw error;
+      status(values.status === 'corregido'
+        ? 'Incidencia resuelta correctamente'
+        : 'Incidencia actualizada correctamente.');
+      await Promise.all([loadMetrics(), loadIncidents()]);
+      const refreshed = state.incidents.find(item => item.id === state.selected.id);
+      if (refreshed) await openDetail(refreshed);
+    } finally {
+      state.saving = false;
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    }
   }
   function taskDialog() {
     const dialog = document.querySelector('[data-task-dialog]');
-    dialog.querySelector('textarea').value = window.KoraIncidentDomain.generateTechnicalTask(state.selected);
+    dialog.querySelector('textarea').value = window.KoraIncidentDomain.generateTechnicalTask({
+      ...state.selected,
+      assigned_to: assigneeName(state.selected?.assigned_to),
+    });
     dialog.showModal();
+  }
+  async function requestInformation() {
+    const input = document.querySelector('[data-information-request]');
+    const body = input?.value.trim();
+    if (!body) {
+      input?.focus();
+      throw new Error('Escribe la información que necesitas solicitar.');
+    }
+    const button = document.querySelector('[data-request-information]');
+    button.disabled = true;
+    try {
+      const { error } = await state.sb.rpc('kora_request_incident_information', {
+        p_incident_id: state.selected.id,
+        p_body: body,
+        p_request_id: crypto.randomUUID(),
+      });
+      if (error) throw error;
+      input.value = '';
+      status('Solicitud de información enviada.');
+      await openDetail(state.selected);
+    } finally {
+      button.disabled = false;
+    }
   }
   async function addComment() {
     const input = document.querySelector('[data-comment-text]');
@@ -238,6 +343,7 @@
   function bind() {
     document.querySelector('[data-incident-filters]')?.addEventListener('input', renderList);
     document.querySelector('[data-detail-save]')?.addEventListener('click', () => saveAdmin().catch(error => status(error.message, true)));
+    document.querySelector('[data-request-information]')?.addEventListener('click', () => requestInformation().catch(error => status(error.message, true)));
     document.querySelector('[data-generate-task]')?.addEventListener('click', taskDialog);
     document.querySelector('[data-close-task]')?.addEventListener('click', () => document.querySelector('[data-task-dialog]').close());
     document.querySelector('[data-copy-task]')?.addEventListener('click', async () => {
@@ -257,7 +363,13 @@
       }
       fillStateOptions();
       bind();
-      await Promise.all([loadMetrics(), loadIncidents(), loadAssignees()]);
+      await loadAssignees();
+      await Promise.all([loadMetrics(), loadIncidents()]);
+      const requestedId = new URLSearchParams(location.search).get('id');
+      if (requestedId) {
+        const requested = state.incidents.find(item => item.id === requestedId);
+        if (requested) await openDetail(requested);
+      }
     } catch (error) {
       status(error.message || 'No fue posible cargar las incidencias.', true);
     }

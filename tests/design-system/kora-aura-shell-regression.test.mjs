@@ -15,6 +15,7 @@ test('los controles críticos del header conservan iconos visibles sin depender 
   for (const icon of ['menu', 'panel-left-close', 'sliders-horizontal', 'bell', 'x']) {
     assert.match(source, new RegExp(`koraStaticIcon\\('${icon}'\\)`));
   }
+  assert.match(source, /kora-shell\.css\?v=1\.0\.0/);
   assert.match(css, /\.kora-icon-button\s*>\s*svg\s*\{[^}]*height:\s*var\(--ctk-icon-md\)[^}]*width:\s*var\(--ctk-icon-md\)/s);
   assert.match(css, /\.kora-icon-button\s*\{[^}]*padding:\s*0/s);
   assert.match(css, /\.kora-icon-button:active/);

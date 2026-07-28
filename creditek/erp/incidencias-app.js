@@ -292,7 +292,9 @@
   function fillFacts(node, facts) {
     node.replaceChildren();
     facts.forEach(([term, value]) => {
-      node.append(el('dt', term), el('dd', displayValue(value)));
+      const fact = el('div');
+      fact.append(el('dt', term), el('dd', displayValue(value)));
+      node.append(fact);
     });
   }
   function technicalContext(incident) {

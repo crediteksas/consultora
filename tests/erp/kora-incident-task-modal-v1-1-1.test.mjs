@@ -39,6 +39,7 @@ test('el controlador conserva el generador, copia el texto completo y gestiona f
 
   assert.match(app, /KoraIncidentDomain\.generateTechnicalTask/);
   assert.match(app, /navigator\.clipboard\.writeText\(state\.taskText\)/);
+  assert.match(app, /fact\.append\(el\('dt', term\), el\('dd', displayValue\(value\)\)\)/);
   assert.match(app, /Tarea técnica copiada/);
   assert.match(app, /event\.key !== 'Tab'/);
   assert.match(app, /event\.target === taskModal/);

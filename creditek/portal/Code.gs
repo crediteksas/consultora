@@ -8,8 +8,10 @@
 var CONFIG = {
   PHONE_NUMBER_ID: '1171114292752516',
   WA_ACCESS_TOKEN: 'EAAVLHpnYaZAABR4T7rY65WcUpVxjUGYzcjMwQRWVIkmoEKE40d9N1rcnaH5ayZBZAEbOT1Da8x4vBiFHunZASkDT4gdCpZAwQZANYpT69aJ6LaAQ6WFyrAcAW5VJBaIGjl214zLJmLqjTCYZAcL3YapBmp7xs5PqrcbMywRCdet7SRK1DbunfumeHQYW1YRFQ88',
-  WA_TEMPLATE_NAME: 'conf_pedido_b2b',
-  WA_LANGUAGE_CODE: 'es',
+  WA_ORDER_TEMPLATE_NAME: 'conf_pedido_b2b',
+  WA_ORDER_LANGUAGE_CODE: 'es',
+  WA_TEMPLATE_NAME: 'aviso_cierre_pedido',
+  WA_LANGUAGE_CODE: 'es_CO',
   WA_API_VERSION: 'v19.0',
   SHEET_TIENDAS: 'TIENDAS',
   SHEET_HISTORIAL: 'HISTORIAL',
@@ -220,14 +222,14 @@ function guardarPedido_(items) {
 function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
   try {
     if (CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') return { enviado: false, motivo: 'Token no configurado' };
-    if (CONFIG.WA_TEMPLATE_NAME === 'PEGA_AQUI_NOMBRE_PLANTILLA') return { enviado: false, motivo: 'Plantilla no configurada' };
+    if (CONFIG.WA_ORDER_TEMPLATE_NAME === 'PEGA_AQUI_NOMBRE_PLANTILLA') return { enviado: false, motivo: 'Plantilla no configurada' };
     var telefono = obtenerTelefonoTienda_(tiendaNombre, ciudad);
     if (!telefono) return { enviado: false, motivo: 'Sin telefono registrado para ' + tiendaNombre };
     var totalUnidades = items.reduce(function(s, i) { return s + Number(i.cantidad); }, 0);
     var totalValor = items.reduce(function(s, i) { return s + (Number(i.precioCredilek) * Number(i.cantidad)); }, 0);
     var valorFormateado = '$' + Math.round(totalValor).toLocaleString('es-CO');
     var parameters;
-    if (CONFIG.WA_TEMPLATE_NAME === 'test_variable') {
+    if (CONFIG.WA_ORDER_TEMPLATE_NAME === 'test_variable') {
       var resumenCompleto = 'Pedido ' + numeroPedido + ' | Tienda: ' + tiendaNombre + ' | ' + String(totalUnidades) + ' uds | Total: ' + valorFormateado;
       parameters = [{ type: 'text', text: resumenCompleto }];
     } else {
@@ -243,8 +245,8 @@ function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
       to: telefono.toString().replace(/[\s+\-().]/g, ''),
       type: 'template',
       template: {
-        name: CONFIG.WA_TEMPLATE_NAME,
-        language: { code: CONFIG.WA_LANGUAGE_CODE },
+        name: CONFIG.WA_ORDER_TEMPLATE_NAME,
+        language: { code: CONFIG.WA_ORDER_LANGUAGE_CODE },
         components: [{ type: 'body', parameters: parameters }]
       }
     };

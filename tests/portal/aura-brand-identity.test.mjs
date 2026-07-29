@@ -16,7 +16,7 @@ const agentPages = await Promise.all([
 ].map(async file => [file, await readFile(new URL(file, agentsDir), 'utf8')]));
 
 test('el Portal B2B declara AURA como producto visible', () => {
-  assert.match(portal, /<title>AURA · Portal de Pedidos — Creditek<\/title>/);
+  assert.match(portal, /<title>AURA \| Creditek<\/title>/);
   assert.match(
     portal,
     /data-kora-brand[^>]*data-product-name="AURA"|data-product-name="AURA"[^>]*data-kora-brand/,

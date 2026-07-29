@@ -14,6 +14,7 @@ const PUBLIC_FILES = [
   'creditek/convenios/index.html',
   'creditek/legal/index.html',
   'creditek/portal/index.html',
+  'creditek/portal/manifest.json',
   'creditek/portal/catalog-admin.css',
   'creditek/portal/catalog-admin.mjs',
   'creditek/portal/catalog-api.mjs',

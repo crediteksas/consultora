@@ -34,7 +34,7 @@ function doGet(e) {
     if (action === 'catalogo') {
       result = leerCatalogo_();
     } else if (action === 'leer' || action === 'leer_pedidos') {
-      result = leerPedidos_();
+      result = { ok: false, error: 'La consulta administrativa requiere autenticación' };
     } else if (action === 'historial') {
       result = leerHistorial_(e.parameter.tienda || '');
     } else if (action === 'tiendas') {
@@ -60,10 +60,25 @@ function doPost(e) {
     var action = e.parameter.action || 'guardar';
     var body = JSON.parse(e.postData.contents);
 
-    if (action === 'guardar' || action === 'guardar_pedido') {
-      result = guardarPedido_(body);
+    if (body.action === 'leer_pedidos_admin' || body.action === 'cierre_periodo_admin') {
+      if (!validarAdminSupabase_(body.access_token)) {
+        result = { ok: false, error: 'Acceso administrativo denegado' };
+      } else {
+        result = body.action === 'leer_pedidos_admin'
+          ? leerPedidos_()
+          : cerrarPeriodo_(body.pedidos || []);
+      }
+    } else if (body.internalBody && body.signature) {
+      result = guardarPedidoSeguro_(body);
+    } else if (action === 'guardar' || action === 'guardar_pedido') {
+      var secureOnly = PropertiesService.getScriptProperties().getProperty('B2B_SECURE_ORDERS_ONLY');
+      result = secureOnly === 'true'
+        ? { ok: false, error: 'El contrato anterior de pedidos está deshabilitado' }
+        : guardarPedido_(body);
+    } else if (action === 'guardar_pedido_seguro') {
+      result = { ok: false, error: 'Firma requerida' };
     } else if (action === 'catalogo') {
-      result = guardarCatalogo_(body);
+      result = { ok: false, error: 'El catálogo se administra exclusivamente en Supabase' };
     } else if (action === 'cierre_periodo') {
       result = cerrarPeriodo_(body);
     } else {
@@ -76,6 +91,73 @@ function doPost(e) {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function validarAdminSupabase_(accessToken) {
+  if (!accessToken) return false;
+  var properties = PropertiesService.getScriptProperties();
+  var supabaseUrl = properties.getProperty('B2B_SUPABASE_URL');
+  var anonKey = properties.getProperty('B2B_SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !anonKey) return false;
+  var response = UrlFetchApp.fetch(supabaseUrl + '/rest/v1/rpc/b2b_is_catalog_admin', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      apikey: anonKey,
+      Authorization: 'Bearer ' + accessToken
+    },
+    payload: '{}',
+    muteHttpExceptions: true
+  });
+  return response.getResponseCode() === 200 && response.getContentText().trim() === 'true';
+}
+
+function bytesToHex_(bytes) {
+  return bytes.map(function(byte) {
+    var normalized = byte < 0 ? byte + 256 : byte;
+    return ('0' + normalized.toString(16)).slice(-2);
+  }).join('');
+}
+
+function safeEqual_(left, right) {
+  left = String(left || '');
+  right = String(right || '');
+  if (left.length !== right.length) return false;
+  var diff = 0;
+  for (var i = 0; i < left.length; i++) {
+    diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function pedidoYaRegistrado_(numeroPedido) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var hist = ss.getSheetByName(CONFIG.SHEET_HISTORIAL);
+  if (!hist || hist.getLastRow() < 2) return false;
+  return hist.getRange(2, 2, hist.getLastRow() - 1, 1)
+    .getValues()
+    .some(function(row) { return String(row[0]) === String(numeroPedido); });
+}
+
+function guardarPedidoSeguro_(envelope) {
+  var secret = PropertiesService.getScriptProperties().getProperty('B2B_APPS_SCRIPT_SECRET');
+  if (!secret) return { ok: false, error: 'B2B_APPS_SCRIPT_SECRET no configurado' };
+
+  var expected = bytesToHex_(Utilities.computeHmacSha256Signature(envelope.internalBody, secret));
+  if (!safeEqual_(expected, envelope.signature)) return { ok: false, error: 'Firma inválida' };
+
+  var internal = JSON.parse(envelope.internalBody);
+  if (internal.action !== 'guardar_pedido_seguro') return { ok: false, error: 'Acción inválida' };
+  var timestamp = new Date(internal.timestamp).getTime();
+  if (!timestamp || Math.abs(Date.now() - timestamp) > 5 * 60 * 1000) {
+    return { ok: false, error: 'Solicitud vencida' };
+  }
+  if (pedidoYaRegistrado_(internal.order_id)) {
+    return { ok: true, numeroPedido: internal.order_id, duplicado: true };
+  }
+  if (!internal.items || !internal.items.length) return { ok: false, error: 'Pedido vacío' };
+
+  return guardarPedido_(internal.items);
 }
 
 // ============================================================
@@ -462,9 +544,15 @@ function leerCatalogo_() {
 
   var headers = data[0];
   var productos = data.slice(1).map(function(row, i) {
-    var obj = { id: i };
-    headers.forEach(function(h, j) { obj[h] = row[j]; });
-    return obj;
+    var rowData = {};
+    headers.forEach(function(h, j) { rowData[h] = row[j]; });
+    return {
+      catalog_item_id: 'legacy-' + i,
+      nombre: rowData.nombre,
+      precioVenta: rowData.precioVenta,
+      marca: rowData.marca,
+      categoria: rowData.categoria
+    };
   }).filter(function(p) { return p.nombre && p.precioVenta > 0; });
 
   return { ok: true, productos: productos };

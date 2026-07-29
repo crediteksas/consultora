@@ -115,6 +115,8 @@ const analyze = async () => {
     const result = await catalogApi.analyze({
       provider_id: $('#catalogProvider').value,
       raw_text: $('#catalogRawText').value,
+      utility_type: $('#catalogUtilityType').value,
+      utility_value: $('#catalogUtilityValue').value,
     });
     await renderAnalysis(result);
     await setTab('exceptions');
@@ -163,7 +165,13 @@ const close = () => {
   $('#vistaOscar').style.display = 'block';
 };
 
-window.B2BCatalogAdmin = { open, close };
+window.B2BCatalogAdmin = {
+  open,
+  close,
+  authenticate: pin => catalogApi.authenticate(pin),
+  adminOrders: () => catalogApi.adminOrders(),
+  closePeriod: pedidos => catalogApi.closePeriod(pedidos),
+};
 window.B2BCatalog = {
   async reload() {
     try {
@@ -182,6 +190,18 @@ window.B2BCatalog = {
 $$('[data-catalog-tab]').forEach(button => button.addEventListener('click', () => setTab(button.dataset.catalogTab)));
 $('#catalogAnalyze')?.addEventListener('click', analyze);
 $('#catalogSaveUtility')?.addEventListener('click', saveUtility);
+$('#catalogRollback')?.addEventListener('click', async event => {
+  event.currentTarget.disabled = true;
+  try {
+    await catalogApi.rollback();
+    await window.B2BCatalog.reload();
+    showAlert('Versión anterior restaurada correctamente.');
+  } catch (error) {
+    showAlert(error.message);
+  } finally {
+    event.currentTarget.disabled = false;
+  }
+});
 let historyTimer;
 $('#catalogHistorySearch')?.addEventListener('input', () => {
   clearTimeout(historyTimer);
@@ -189,10 +209,8 @@ $('#catalogHistorySearch')?.addEventListener('input', () => {
 });
 
 try {
-  const [isAdmin] = await Promise.all([
-    catalogApi.isAdmin(),
-    window.B2BCatalog.reload(),
-  ]);
+  await window.B2BCatalog.reload();
+  const isAdmin = await catalogApi.isAdmin();
   $('#btnActualizarCatalogo').hidden = isAdmin !== true;
 } catch (error) {
   showAlert(error.message);

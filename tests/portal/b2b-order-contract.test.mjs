@@ -6,7 +6,7 @@ import {
   sanitizeOrderResponse,
 } from '../../creditek/portal/order-contract.mjs';
 
-test('el navegador envía únicamente IDs públicos, cantidades y datos de tienda', () => {
+test('el navegador envía únicamente producto, cantidades y datos de tienda', () => {
   const request = buildOrderRequest({
     orderId: 'order-123',
     storeCode: 'CRD-COR-01',
@@ -14,6 +14,7 @@ test('el navegador envía únicamente IDs públicos, cantidades y datos de tiend
     city: 'Corozal',
     items: [{
       catalog_item_id: 'item-1',
+      nombre: 'SAMSUNG A16 128GB',
       cantidad: 2,
       proveedor: 'Inity Colombia',
       precioCompra: 410000,
@@ -26,7 +27,7 @@ test('el navegador envía únicamente IDs públicos, cantidades y datos de tiend
     store_code: 'CRD-COR-01',
     store_name: 'Móvil Shoping',
     city: 'Corozal',
-    items: [{ catalog_item_id: 'item-1', quantity: 2 }],
+    items: [{ product: 'SAMSUNG A16 128GB', quantity: 2 }],
   });
 });
 

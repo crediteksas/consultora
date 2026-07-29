@@ -7,6 +7,7 @@ const edgePath = new URL('../../supabase/functions/submit-b2b-order/index.ts', i
 const appsScriptPath = new URL('../../creditek/portal/Code.gs', import.meta.url);
 const analyzerPath = new URL('../../supabase/functions/analyze-b2b-catalog/index.ts', import.meta.url);
 const portalPath = new URL('../../creditek/portal/index.html', import.meta.url);
+const catalogApiPath = new URL('../../creditek/portal/catalog-api.mjs', import.meta.url);
 
 test('la migración separa la vista pública de las tablas internas', async () => {
   const sql = await readFile(migrationPath, 'utf8');
@@ -30,12 +31,11 @@ test('submit-b2b-order exige JWT y resuelve los ítems dentro de Supabase', asyn
   assert.doesNotMatch(source, /service_role\s*[:=]\s*['"]/i);
 });
 
-test('Apps Script valida firma e idempotencia antes de guardar el pedido interno', async () => {
+test('Apps Script resuelve costos internamente y aplica idempotencia', async () => {
   const source = await readFile(appsScriptPath, 'utf8');
 
-  assert.match(source, /guardar_pedido_seguro/);
-  assert.match(source, /B2B_APPS_SCRIPT_SECRET/);
-  assert.match(source, /Utilities\.computeHmacSha256Signature/);
+  assert.match(source, /guardarPedidoPublico_/);
+  assert.match(source, /resolverProductosCatalogo_/);
   assert.match(source, /pedidoYaRegistrado_/);
 });
 
@@ -49,13 +49,38 @@ test('el analizador conserva el texto original y exige permiso administrativo', 
   assert.doesNotMatch(source, /publish_b2b_catalog/i);
 });
 
-test('el portal elimina la carga heredada de Excel y usa Supabase como fuente del catálogo', async () => {
+test('el portal elimina la carga heredada de Excel y usa el catálogo público de Apps Script', async () => {
   const source = await readFile(portalPath, 'utf8');
+  const api = await readFile(catalogApiPath, 'utf8');
 
   assert.doesNotMatch(source, /function\s+cargarExcel\s*\(/);
-  assert.doesNotMatch(source, /action=catalogo/);
+  assert.match(api, /action=catalogo/);
   assert.match(source, /const\s+catalogoRaw\s*=\s*\[\s*\]/);
   assert.match(source, /catalog-admin\.mjs/);
+});
+
+test('la actualización de catálogo exige una credencial administrativa validada en Apps Script', async () => {
+  const source = await readFile(appsScriptPath, 'utf8');
+
+  assert.match(source, /validarAdminCatalogo_/);
+  assert.match(source, /B2B_ADMIN_PIN_HASH/);
+  assert.match(source, /publicarCatalogoAdmin_/);
+  assert.match(source, /crearSnapshotCatalogo_/);
+});
+
+test('el contrato de tienda no envía ni recibe proveedor o costos', async () => {
+  const appsScript = await readFile(appsScriptPath, 'utf8');
+  const portal = await readFile(portalPath, 'utf8');
+  const publicCatalog = appsScript.match(
+    /function leerCatalogo_\(\)[\s\S]+?(?=\nfunction )/,
+  )?.[0] ?? '';
+  const submit = portal.match(
+    /async function enviarPedido\(\)[\s\S]+?(?=\nfunction )/,
+  )?.[0] ?? '';
+
+  assert.doesNotMatch(publicCatalog, /proveedor|precioCompra|margen|utilidad/i);
+  assert.doesNotMatch(submit, /proveedor|precioCompra|margen|utilidad/i);
+  assert.match(submit, /nombre:i\.producto\.nombre/);
 });
 
 test('la publicación bloquea excepciones comerciales y referencias sin fotografía', async () => {

@@ -1,104 +1,128 @@
-const getConfig = () => {
-  const config = window.__AURA_B2B_CONFIG__ || {};
-  if (!config.enabled || !config.supabaseUrl || !config.supabaseAnonKey) {
-    throw new Error('El catálogo seguro no está configurado en este entorno');
-  }
-  return config;
+const appsScriptUrl = () => {
+  const url = window.__AURA_B2B_APPS_SCRIPT_URL__;
+  if (!url) throw new Error('El servicio B2B no está configurado');
+  return url;
 };
 
-export const getAuraSession = () => {
-  try {
-    const session = JSON.parse(sessionStorage.getItem('ck_supa_session') || 'null');
-    return session?.access_token ? session : null;
-  } catch {
-    return null;
-  }
-};
+const adminPin = () => sessionStorage.getItem('aura_b2b_admin_pin') || '';
 
-const request = async (path, options = {}) => {
-  const config = getConfig();
-  const session = getAuraSession();
-  if (!session) throw new Error('Inicia sesión en AURA para continuar');
-  const response = await fetch(`${config.supabaseUrl}${path}`, {
-    ...options,
-    headers: {
-      apikey: config.supabaseAnonKey,
-      authorization: `Bearer ${session.access_token}`,
-      'content-type': 'application/json',
-      ...(options.headers || {}),
-    },
+const post = async payload => {
+  const response = await fetch(appsScriptUrl(), {
+    method: 'POST',
+    headers: { 'content-type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || data.error || 'La operación no pudo completarse');
+  if (!response.ok || data.ok !== true) {
+    throw new Error(data.error || 'La operación no pudo completarse');
+  }
   return data;
 };
 
+let latestDraft = [];
+
 export const catalogApi = {
-  publicCatalog() {
-    return request('/rest/v1/b2b_catalog_public?select=*&order=nombre.asc');
+  async publicCatalog() {
+    const response = await fetch(`${appsScriptUrl()}?action=catalogo`);
+    const data = await response.json();
+    if (!response.ok || data.ok !== true) throw new Error(data.error || 'No fue posible cargar el catálogo');
+    return data.productos || [];
   },
-  access() {
-    return request('/rest/v1/b2b_user_access?select=role,store_code,store_name,city&limit=1');
+  async authenticate(pin) {
+    const data = await post({ action: 'validar_admin_catalogo', admin_pin: pin });
+    sessionStorage.setItem('aura_b2b_admin_pin', pin);
+    return data.admin === true;
   },
-  isAdmin() {
-    return request('/rest/v1/rpc/b2b_is_catalog_admin', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
+  async isAdmin() {
+    if (!adminPin()) return false;
+    try {
+      return (await post({ action: 'validar_admin_catalogo', admin_pin: adminPin() })).admin === true;
+    } catch {
+      sessionStorage.removeItem('aura_b2b_admin_pin');
+      return false;
+    }
   },
   providers() {
-    return request('/rest/v1/b2b_catalog_providers?select=id,name&active=eq.true&order=name.asc');
+    return Promise.resolve([
+      { id: 'Conquia', name: 'Conquia' },
+      { id: 'Inity Colombia', name: 'Inity Colombia' },
+      { id: 'Mundo Net', name: 'Mundo Net' },
+      { id: 'Corbeta', name: 'Corbeta' },
+    ]);
   },
-  settings() {
-    return request('/rest/v1/b2b_catalog_settings?select=utility_type,utility_value&limit=1');
+  async products() {
+    const data = await post({ action: 'catalogo_privado_admin', admin_pin: adminPin() });
+    return (data.productos || []).map(item => ({ id: item.nombre, canonical_name: item.nombre }));
   },
-  setUtility(utilityType, utilityValue) {
-    return request('/rest/v1/rpc/set_b2b_catalog_utility', {
-      method: 'POST',
-      body: JSON.stringify({
-        p_utility_type: utilityType,
-        p_utility_value: Number(utilityValue),
-      }),
+  async settings() {
+    return [];
+  },
+  setUtility() {
+    return Promise.resolve({ ok: true });
+  },
+  async correctOffer(offerId, productId) {
+    const item = latestDraft.find(row => row.offer_id === offerId);
+    if (!item) throw new Error('Excepción inexistente');
+    const products = await this.products();
+    const product = products.find(row => row.id === productId);
+    if (!product) throw new Error('Referencia inexistente');
+    item.nombre = product.canonical_name;
+    item.publishable = true;
+    return item;
+  },
+  async history(search = '') {
+    const data = await post({
+      action: 'historico_catalogo_admin',
+      admin_pin: adminPin(),
+      search,
+    });
+    return data.productos || [];
+  },
+  async providerStats() {
+    const data = await post({ action: 'estadisticas_catalogo_admin', admin_pin: adminPin() });
+    return data.proveedores || [];
+  },
+  async analyze(payload) {
+    const data = await post({
+      action: 'analizar_catalogo_admin',
+      admin_pin: adminPin(),
+      provider: payload.provider_id,
+      raw_text: payload.raw_text,
+      utility_type: payload.utility_type,
+      utility_value: payload.utility_value,
+    });
+    latestDraft = data.draft || [];
+    return data;
+  },
+  async publish() {
+    const productos = latestDraft.filter(item => item.publishable);
+    return post({
+      action: 'publicar_catalogo_admin',
+      admin_pin: adminPin(),
+      productos,
     });
   },
-  products() {
-    return request('/rest/v1/b2b_catalog_products?select=id,canonical_name&active=eq.true&order=canonical_name.asc');
+  rollback() {
+    return post({ action: 'rollback_catalogo_admin', admin_pin: adminPin() });
   },
-  correctOffer(offerId, productId) {
-    return request('/rest/v1/rpc/correct_b2b_catalog_offer', {
-      method: 'POST',
-      body: JSON.stringify({ p_offer_id: offerId, p_product_id: productId }),
-    });
+  async submitOrder(payload) {
+    const data = await post({ action: 'guardar_pedido_publico', ...payload });
+    return {
+      ok: true,
+      order_number: data.numeroPedido,
+      total_units: payload.items.reduce((sum, item) => sum + item.quantity, 0),
+      total_sale: 0,
+    };
   },
-  history(search = '') {
-    const filter = search ? `&canonical_name=ilike.*${encodeURIComponent(search)}*` : '';
-    return request(`/rest/v1/b2b_catalog_price_history?select=*&order=created_at.desc${filter}`);
+  async adminOrders() {
+    const data = await post({ action: 'leer_pedidos_admin', admin_pin: adminPin() });
+    return data.pedidos || [];
   },
-  providerStats() {
-    return request('/rest/v1/b2b_catalog_provider_stats?select=*&order=month.desc');
-  },
-  analyze(payload) {
-    return request('/functions/v1/analyze-b2b-catalog', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-  publish(versionId) {
-    return request('/rest/v1/rpc/publish_b2b_catalog', {
-      method: 'POST',
-      body: JSON.stringify({ p_version_id: versionId }),
-    });
-  },
-  rollback(versionId) {
-    return request('/rest/v1/rpc/rollback_b2b_catalog', {
-      method: 'POST',
-      body: JSON.stringify({ p_target_version_id: versionId }),
-    });
-  },
-  submitOrder(payload) {
-    return request('/functions/v1/submit-b2b-order', {
-      method: 'POST',
-      body: JSON.stringify(payload),
+  closePeriod(pedidos) {
+    return post({
+      action: 'cierre_periodo_admin',
+      admin_pin: adminPin(),
+      pedidos,
     });
   },
 };

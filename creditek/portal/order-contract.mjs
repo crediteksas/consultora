@@ -18,7 +18,7 @@ export function buildOrderRequest({ orderId, storeCode, storeName, city, items }
         throw new Error('Cantidad inválida');
       }
       return {
-        catalog_item_id: assertText(item.catalog_item_id, 'Producto sin identificador público'),
+        product: assertText(item.nombre, 'Producto requerido'),
         quantity,
       };
     }),

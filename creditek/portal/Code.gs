@@ -16,6 +16,7 @@ var CONFIG = {
   SHEET_TIENDAS: 'TIENDAS',
   SHEET_HISTORIAL: 'HISTORIAL',
   SHEET_CATALOGO: 'CATALOGO',
+  SHEET_PROVEEDORES: 'PROVEEDORES',
   EMAIL_COMERCIAL: 'comercial@crediteksas.com',
   EMAIL_GESTION: 'gestion@crediteksas.com',
   SHEET_ID: '1vezpPcLasTiCtYBkKhaYZiw01dVApO_oSqyzbU8jAU4'
@@ -54,7 +55,8 @@ function doPost(e) {
     } else if ([
       'validar_admin_catalogo', 'leer_pedidos_admin', 'cierre_periodo_admin',
       'analizar_catalogo_admin', 'publicar_catalogo_admin', 'rollback_catalogo_admin',
-      'catalogo_privado_admin', 'historico_catalogo_admin', 'estadisticas_catalogo_admin'
+      'catalogo_privado_admin', 'historico_catalogo_admin', 'estadisticas_catalogo_admin',
+      'listar_proveedores_admin', 'guardar_proveedor_admin'
     ].indexOf(body.action) !== -1) {
       if (!validarAdminCatalogo_(body.admin_pin)) {
         result = { ok: false, error: 'Acceso administrativo denegado' };
@@ -66,6 +68,8 @@ function doPost(e) {
       else if (body.action === 'rollback_catalogo_admin') result = rollbackCatalogoAdmin_();
       else if (body.action === 'catalogo_privado_admin') result = leerCatalogoPrivado_();
       else if (body.action === 'historico_catalogo_admin') result = leerHistoricoCatalogo_(body.search || '');
+      else if (body.action === 'listar_proveedores_admin') result = listarProveedoresAdmin_(body.solo_activos === true);
+      else if (body.action === 'guardar_proveedor_admin') result = guardarProveedorAdmin_(body.proveedor || {});
       else result = estadisticasCatalogo_();
     } else if (action === 'guardar' || action === 'guardar_pedido') {
       result = { ok: false, error: 'Utiliza el contrato público seguro de pedidos' };
@@ -113,6 +117,144 @@ function validarAdminCatalogo_(pin) {
 
 function normalizarReferencia_(value) {
   return String(value || '').toUpperCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizarNombreProveedor_(value) {
+  var text = String(value || '').trim().replace(/\s+/g, ' ');
+  try {
+    text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  } catch (error) {
+    // Apps Script V8 soporta normalize; el fallback conserva comparación segura.
+  }
+  return text.toUpperCase();
+}
+
+function asegurarHojaProveedores_() {
+  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  var sheet = ss.getSheetByName(CONFIG.SHEET_PROVEEDORES);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_PROVEEDORES);
+    sheet.appendRow([
+      'ID', 'Nombre', 'Nombre comercial', 'NIT', 'Contacto', 'Teléfono',
+      'Correo', 'Estado', 'Observaciones', 'Creado en', 'Actualizado en'
+    ]);
+    sheet.getRange(1, 1, 1, 11)
+      .setFontWeight('bold')
+      .setBackground('#0B1E3D')
+      .setFontColor('#00C4CC');
+  }
+  if (sheet.getLastRow() === 1) {
+    var conocidos = {};
+    leerFilasCatalogo_().forEach(function(item) {
+      var nombre = String(item.proveedor || '').trim();
+      if (nombre) conocidos[normalizarNombreProveedor_(nombre)] = nombre;
+    });
+    var imports = ss.getSheetByName('CATALOGO_IMPORTS');
+    if (imports && imports.getLastRow() > 1) {
+      imports.getRange(2, 2, imports.getLastRow() - 1, 1).getValues().forEach(function(row) {
+        var nombre = String(row[0] || '').trim();
+        if (nombre) conocidos[normalizarNombreProveedor_(nombre)] = nombre;
+      });
+    }
+    Object.keys(conocidos).sort().forEach(function(key) {
+      var now = new Date();
+      sheet.appendRow([Utilities.getUuid(), conocidos[key], conocidos[key], '', '', '', '', 'activo', '', now, now]);
+    });
+  }
+  return sheet;
+}
+
+function leerProveedores_() {
+  var sheet = asegurarHojaProveedores_();
+  if (sheet.getLastRow() <= 1) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues().map(function(row, index) {
+    return {
+      id: String(row[0] || ''),
+      name: String(row[1] || ''),
+      commercial_name: String(row[2] || ''),
+      nit: String(row[3] || ''),
+      contact: String(row[4] || ''),
+      phone: String(row[5] || ''),
+      email: String(row[6] || ''),
+      status: normalizarReferencia_(row[7]) === 'INACTIVO' ? 'inactivo' : 'activo',
+      notes: String(row[8] || ''),
+      created_at: row[9] instanceof Date ? row[9].toISOString() : String(row[9] || ''),
+      updated_at: row[10] instanceof Date ? row[10].toISOString() : String(row[10] || ''),
+      _row: index + 2
+    };
+  }).filter(function(provider) { return provider.id && provider.name; });
+}
+
+function listarProveedoresAdmin_(soloActivos) {
+  var proveedores = leerProveedores_().filter(function(provider) {
+    return !soloActivos || provider.status === 'activo';
+  }).map(function(provider) {
+    delete provider._row;
+    return provider;
+  });
+  return { ok: true, proveedores: proveedores };
+}
+
+function guardarProveedorAdmin_(input) {
+  var id = String(input.id || '').trim();
+  var nombre = String(input.name || '').trim().replace(/\s+/g, ' ');
+  var nombreComercial = String(input.commercial_name || '').trim().replace(/\s+/g, ' ');
+  var estado = String(input.status || 'activo').toLowerCase() === 'inactivo' ? 'inactivo' : 'activo';
+  if (!nombre) return { ok: false, error: 'El nombre del proveedor es obligatorio' };
+  if (!nombreComercial) return { ok: false, error: 'El nombre comercial del proveedor es obligatorio' };
+  var email = String(input.email || '').trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: 'El correo del proveedor no es válido' };
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    var sheet = asegurarHojaProveedores_();
+    var proveedores = leerProveedores_();
+    var normalized = normalizarNombreProveedor_(nombre);
+    if (proveedores.some(function(provider) {
+      return provider.id !== id && normalizarNombreProveedor_(provider.name) === normalized;
+    })) return { ok: false, error: 'Ya existe un proveedor con ese nombre' };
+
+    var existente = id ? proveedores.filter(function(provider) { return provider.id === id; })[0] : null;
+    if (id && !existente) return { ok: false, error: 'El proveedor no existe' };
+    var now = new Date();
+    var row = [
+      existente ? existente.id : Utilities.getUuid(),
+      nombre,
+      nombreComercial,
+      String(input.nit || '').trim(),
+      String(input.contact || '').trim(),
+      String(input.phone || '').trim(),
+      email,
+      estado,
+      String(input.notes || '').trim(),
+      existente && existente.created_at ? new Date(existente.created_at) : now,
+      now
+    ];
+    if (existente) sheet.getRange(existente._row, 1, 1, 11).setValues([row]);
+    else sheet.appendRow(row);
+    var saved = {
+      id: row[0], name: row[1], commercial_name: row[2], nit: row[3],
+      contact: row[4], phone: row[5], email: row[6], status: row[7],
+      notes: row[8], created_at: row[9].toISOString(), updated_at: row[10].toISOString()
+    };
+    return { ok: true, proveedor: saved };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function resolverProveedorActivo_(idOrName) {
+  var key = String(idOrName || '').trim();
+  var normalized = normalizarNombreProveedor_(key);
+  var provider = leerProveedores_().filter(function(item) {
+    return item.status === 'activo'
+      && (item.id === key || normalizarNombreProveedor_(item.name) === normalized);
+  })[0];
+  if (!provider) throw new Error('Selecciona un proveedor activo');
+  return provider;
 }
 
 function leerFilasCatalogo_() {
@@ -499,10 +641,15 @@ function guardarImportOriginal_(proveedor, rawText) {
 
 function analizarCatalogoAdmin_(body) {
   var rawText = String(body.raw_text || '');
-  var proveedor = String(body.provider || '').trim();
+  var proveedor;
   var utilityType = body.utility_type === 'percentage' ? 'percentage' : 'fixed';
   var utilityValue = Number(body.utility_value);
-  if (!proveedor || !rawText.trim()) return { ok: false, error: 'Proveedor y lista son obligatorios' };
+  if (!body.provider || !rawText.trim()) return { ok: false, error: 'Proveedor y lista son obligatorios' };
+  try {
+    proveedor = resolverProveedorActivo_(body.provider).name;
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
   if (!isFinite(utilityValue) || utilityValue < 0) return { ok: false, error: 'Utilidad inválida' };
 
   guardarImportOriginal_(proveedor, rawText);

@@ -25,4 +25,21 @@
 .catalog-empty{padding:40px;text-align:center;color:#7a8899}
 .catalog-alert{display:none;margin:12px 0;padding:12px;border-radius:9px;background:#fff7ed;color:#9a3412}
 .catalog-alert.show{display:block}
-@media(max-width:760px){.catalog-admin-view{padding:14px}.catalog-admin-head{flex-direction:column}.catalog-form-grid,.catalog-utility{grid-template-columns:1fr}.catalog-field textarea{min-height:220px}}
+.catalog-provider-select{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.catalog-provider-toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:16px}
+.catalog-provider-toolbar .catalog-field{flex:1;max-width:440px}
+.catalog-row-actions{display:flex;gap:6px;white-space:nowrap}
+.catalog-status{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700;text-transform:capitalize}
+.catalog-status-activo{background:#dcfce7;color:#166534}
+.catalog-status-inactivo{background:#f1f5f9;color:#64748b}
+.catalog-provider-dialog{width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px);border:0;border-radius:16px;padding:0;box-shadow:0 24px 70px rgba(11,30,61,.28)}
+.catalog-provider-dialog::backdrop{background:rgba(11,30,61,.58)}
+.catalog-provider-dialog form{padding:24px}
+.catalog-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:20px}
+.catalog-dialog-head h2{font-family:'Bebas Neue',sans-serif;color:var(--azul);letter-spacing:1px}
+.catalog-dialog-head p{margin-top:4px;color:#607080;font-size:13px}
+.catalog-dialog-close{width:40px;height:40px;border:0;border-radius:9px;background:var(--gris2);color:var(--azul);font-size:24px;cursor:pointer}
+.catalog-provider-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.catalog-provider-form .catalog-field textarea{min-height:96px}
+.catalog-field-wide{grid-column:1/-1}
+@media(max-width:760px){.catalog-admin-view{padding:14px}.catalog-admin-head{flex-direction:column}.catalog-form-grid,.catalog-utility,.catalog-provider-form{grid-template-columns:1fr}.catalog-field textarea{min-height:220px}.catalog-field-wide{grid-column:auto}.catalog-provider-select{grid-template-columns:1fr}.catalog-provider-toolbar{align-items:stretch;flex-direction:column}.catalog-provider-toolbar .catalog-field{max-width:none}.catalog-row-actions{white-space:normal}.catalog-provider-dialog form{padding:18px}}

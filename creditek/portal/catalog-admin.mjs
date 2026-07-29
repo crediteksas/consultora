@@ -23,10 +23,115 @@ const table = (headers, rows) => {
   }</tbody></table></div>`;
 };
 
+let providersCache = [];
+
 const setTab = async name => {
   $$('[data-catalog-tab]').forEach(button => button.classList.toggle('active', button.dataset.catalogTab === name));
   $$('[data-catalog-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.catalogPanel === name));
   if (name === 'stats') await loadStats();
+  if (name === 'providers') await loadProvidersAdmin();
+};
+
+const providerLabel = provider => provider.commercial_name
+  ? `${provider.name} — ${provider.commercial_name}`
+  : provider.name;
+
+const refreshProviderSelect = async (selectedId = '') => {
+  const providers = await catalogApi.providers({ activeOnly: true });
+  const select = $('#catalogProvider');
+  select.innerHTML = '<option value="">Seleccionar proveedor</option>' +
+    providers.map(provider => `<option value="${escapeHtml(provider.id)}">${escapeHtml(providerLabel(provider))}</option>`).join('');
+  if (selectedId && providers.some(provider => provider.id === selectedId)) select.value = selectedId;
+  return providers;
+};
+
+const renderProviders = () => {
+  const needle = $('#catalogProviderSearch').value.trim().toLocaleLowerCase('es');
+  const rows = providersCache.filter(provider => (
+    `${provider.name} ${provider.commercial_name}`.toLocaleLowerCase('es').includes(needle)
+  ));
+  $('#catalogProvidersTable').innerHTML = rows.length
+    ? `<div class="catalog-table-wrap"><table class="catalog-table"><thead><tr>
+        <th>Proveedor</th><th>Nombre comercial</th><th>NIT</th><th>Contacto</th><th>Estado</th><th>Acciones</th>
+      </tr></thead><tbody>${rows.map(provider => `<tr>
+        <td>${escapeHtml(provider.name)}</td>
+        <td>${escapeHtml(provider.commercial_name)}</td>
+        <td>${escapeHtml(provider.nit)}</td>
+        <td>${escapeHtml(provider.contact)}</td>
+        <td><span class="catalog-status catalog-status-${provider.status}">${escapeHtml(provider.status)}</span></td>
+        <td class="catalog-row-actions">
+          <button class="catalog-secondary" type="button" data-edit-provider="${escapeHtml(provider.id)}">Editar</button>
+          <button class="catalog-secondary" type="button" data-toggle-provider="${escapeHtml(provider.id)}">${
+            provider.status === 'activo' ? 'Desactivar' : 'Activar'
+          }</button>
+        </td>
+      </tr>`).join('')}</tbody></table></div>`
+    : '<div class="catalog-empty">No se encontraron proveedores.</div>';
+};
+
+const loadProvidersAdmin = async () => {
+  providersCache = await catalogApi.providers({ activeOnly: false });
+  renderProviders();
+};
+
+const openProviderDialog = (provider = null) => {
+  const form = $('#catalogProviderForm');
+  form.reset();
+  $('#catalogProviderId').value = provider?.id || '';
+  $('#catalogProviderName').value = provider?.name || '';
+  $('#catalogProviderCommercialName').value = provider?.commercial_name || '';
+  $('#catalogProviderNit').value = provider?.nit || '';
+  $('#catalogProviderContact').value = provider?.contact || '';
+  $('#catalogProviderPhone').value = provider?.phone || '';
+  $('#catalogProviderEmail').value = provider?.email || '';
+  $('#catalogProviderStatus').value = provider?.status || 'activo';
+  $('#catalogProviderNotes').value = provider?.notes || '';
+  $('#catalogProviderDialogTitle').textContent = provider ? 'Editar proveedor' : 'Nuevo proveedor';
+  $('#catalogProviderDialog').showModal();
+  $('#catalogProviderName').focus();
+};
+
+const closeProviderDialog = () => $('#catalogProviderDialog').close();
+
+const saveProvider = async event => {
+  event.preventDefault();
+  const button = $('#catalogSaveProvider');
+  button.disabled = true;
+  try {
+    const saved = await catalogApi.saveProvider({
+      id: $('#catalogProviderId').value,
+      name: $('#catalogProviderName').value,
+      commercial_name: $('#catalogProviderCommercialName').value,
+      nit: $('#catalogProviderNit').value,
+      contact: $('#catalogProviderContact').value,
+      phone: $('#catalogProviderPhone').value,
+      email: $('#catalogProviderEmail').value,
+      status: $('#catalogProviderStatus').value,
+      notes: $('#catalogProviderNotes').value,
+    });
+    closeProviderDialog();
+    await Promise.all([loadProvidersAdmin(), refreshProviderSelect(saved.id)]);
+    showAlert('Proveedor guardado correctamente.');
+  } catch (error) {
+    showAlert(error.message);
+  } finally {
+    button.disabled = false;
+  }
+};
+
+const toggleProvider = async id => {
+  const provider = providersCache.find(item => item.id === id);
+  if (!provider) return;
+  try {
+    await catalogApi.saveProvider({
+      ...provider,
+      status: provider.status === 'activo' ? 'inactivo' : 'activo',
+    });
+    await Promise.all([loadProvidersAdmin(), refreshProviderSelect()]);
+    showAlert(`Proveedor ${provider.status === 'activo' ? 'desactivado' : 'activado'} correctamente.`);
+  } catch (error) {
+    showAlert(error.message);
+  }
 };
 
 const loadStats = async () => {
@@ -147,12 +252,10 @@ const saveUtility = async () => {
 
 const open = async () => {
   $('#vistaCatalogAdmin').hidden = false;
-  const [providers, settings] = await Promise.all([
-    catalogApi.providers(),
+  const [, settings] = await Promise.all([
+    refreshProviderSelect(),
     catalogApi.settings(),
   ]);
-  $('#catalogProvider').innerHTML = '<option value="">Seleccionar proveedor</option>' +
-    providers.map(provider => `<option value="${provider.id}">${provider.name}</option>`).join('');
   if (settings[0]) {
     $('#catalogUtilityType').value = settings[0].utility_type;
     $('#catalogUtilityValue').value = settings[0].utility_value;
@@ -188,6 +291,21 @@ window.B2BCatalog = {
 $$('[data-catalog-tab]').forEach(button => button.addEventListener('click', () => setTab(button.dataset.catalogTab)));
 $('#catalogAnalyze')?.addEventListener('click', analyze);
 $('#catalogSaveUtility')?.addEventListener('click', saveUtility);
+$('#catalogNewProvider')?.addEventListener('click', () => openProviderDialog());
+$('#catalogCreateProvider')?.addEventListener('click', () => openProviderDialog());
+$('#catalogCloseProvider')?.addEventListener('click', closeProviderDialog);
+$('#catalogCancelProvider')?.addEventListener('click', closeProviderDialog);
+$('#catalogProviderForm')?.addEventListener('submit', saveProvider);
+$('#catalogProviderSearch')?.addEventListener('input', renderProviders);
+$('#catalogProvidersTable')?.addEventListener('click', event => {
+  const edit = event.target.closest('[data-edit-provider]');
+  if (edit) openProviderDialog(providersCache.find(provider => provider.id === edit.dataset.editProvider));
+  const toggle = event.target.closest('[data-toggle-provider]');
+  if (toggle) toggleProvider(toggle.dataset.toggleProvider);
+});
+$('#catalogProviderDialog')?.addEventListener('click', event => {
+  if (event.target === $('#catalogProviderDialog')) closeProviderDialog();
+});
 $('#catalogRollback')?.addEventListener('click', async event => {
   event.currentTarget.disabled = true;
   try {

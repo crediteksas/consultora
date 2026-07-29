@@ -42,13 +42,21 @@ export const catalogApi = {
       return false;
     }
   },
-  providers() {
-    return Promise.resolve([
-      { id: 'Conquia', name: 'Conquia' },
-      { id: 'Inity Colombia', name: 'Inity Colombia' },
-      { id: 'Mundo Net', name: 'Mundo Net' },
-      { id: 'Corbeta', name: 'Corbeta' },
-    ]);
+  async providers({ activeOnly = true } = {}) {
+    const data = await post({
+      action: 'listar_proveedores_admin',
+      admin_pin: adminPin(),
+      solo_activos: activeOnly,
+    });
+    return data.proveedores || [];
+  },
+  async saveProvider(provider) {
+    const data = await post({
+      action: 'guardar_proveedor_admin',
+      admin_pin: adminPin(),
+      proveedor: provider,
+    });
+    return data.proveedor;
   },
   async products() {
     const data = await post({ action: 'catalogo_privado_admin', admin_pin: adminPin() });

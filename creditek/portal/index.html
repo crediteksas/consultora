@@ -354,12 +354,16 @@
     <button data-catalog-tab="publish">Comparación y publicación</button>
     <button data-catalog-tab="history">Histórico por referencia</button>
     <button data-catalog-tab="stats">Estadísticas de proveedores</button>
+    <button data-catalog-tab="providers">Proveedores</button>
   </nav>
   <div class="catalog-admin-panel active" data-catalog-panel="import">
     <div class="catalog-form-grid">
       <div class="catalog-field">
         <label for="catalogProvider">Proveedor</label>
-        <select id="catalogProvider"><option value="">Seleccionar proveedor</option></select>
+        <div class="catalog-provider-select">
+          <select id="catalogProvider"><option value="">Seleccionar proveedor</option></select>
+          <button id="catalogNewProvider" class="catalog-secondary" type="button">+ Nuevo proveedor</button>
+        </div>
       </div>
       <fieldset class="catalog-utility">
         <legend>Regla de utilidad Creditek</legend>
@@ -398,7 +402,70 @@
   <div class="catalog-admin-panel" data-catalog-panel="stats">
     <div id="catalogStats" class="catalog-empty">Cargando estadísticas…</div>
   </div>
+  <div class="catalog-admin-panel" data-catalog-panel="providers">
+    <div class="catalog-provider-toolbar">
+      <div class="catalog-field">
+        <label for="catalogProviderSearch">Buscar proveedor</label>
+        <input id="catalogProviderSearch" type="search" placeholder="Nombre o nombre comercial">
+      </div>
+      <button id="catalogCreateProvider" class="catalog-primary" type="button">+ Nuevo proveedor</button>
+    </div>
+    <div id="catalogProvidersTable" class="catalog-empty">Cargando proveedores…</div>
+  </div>
 </section>
+<dialog id="catalogProviderDialog" class="catalog-provider-dialog" aria-labelledby="catalogProviderDialogTitle">
+  <form id="catalogProviderForm">
+    <input id="catalogProviderId" type="hidden">
+    <div class="catalog-dialog-head">
+      <div>
+        <h2 id="catalogProviderDialogTitle">Nuevo proveedor</h2>
+        <p>Los proveedores inactivos conservan su histórico y no aparecen al actualizar el catálogo.</p>
+      </div>
+      <button id="catalogCloseProvider" class="catalog-dialog-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="catalog-provider-form">
+      <div class="catalog-field">
+        <label for="catalogProviderName">Nombre del proveedor *</label>
+        <input id="catalogProviderName" required autocomplete="organization">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderCommercialName">Nombre comercial</label>
+        <input id="catalogProviderCommercialName" required autocomplete="organization">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderNit">NIT</label>
+        <input id="catalogProviderNit" inputmode="numeric">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderContact">Contacto</label>
+        <input id="catalogProviderContact" autocomplete="name">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderPhone">Teléfono</label>
+        <input id="catalogProviderPhone" type="tel" autocomplete="tel">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderEmail">Correo</label>
+        <input id="catalogProviderEmail" type="email" autocomplete="email">
+      </div>
+      <div class="catalog-field">
+        <label for="catalogProviderStatus">Estado</label>
+        <select id="catalogProviderStatus">
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+      </div>
+      <div class="catalog-field catalog-field-wide">
+        <label for="catalogProviderNotes">Observaciones</label>
+        <textarea id="catalogProviderNotes"></textarea>
+      </div>
+    </div>
+    <div class="catalog-actions">
+      <button id="catalogCancelProvider" class="catalog-secondary" type="button">Cancelar</button>
+      <button id="catalogSaveProvider" class="catalog-primary" type="submit">Guardar proveedor</button>
+    </div>
+  </form>
+</dialog>
 <div class="toast" id="toast"></div>
 
 <!-- ── MODAL DE ÉXITO ── -->

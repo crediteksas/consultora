@@ -167,6 +167,38 @@ function pedidoYaRegistrado_(numeroPedido) {
   });
 }
 
+function normalizarNumeroPedidoAura_(numeroPedido) {
+  var suffix = String(numeroPedido || '')
+    .trim()
+    .replace(/^(?:[A-Z]+-B2B|CRD)-?/i, '')
+    .replace(/[^A-Z0-9-]/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return 'AURA-B2B-' + (suffix || Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss'));
+}
+
+function formatearCOP_(valor) {
+  var entero = Math.round(Number(valor) || 0);
+  var absoluto = String(Math.abs(entero)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (entero < 0 ? '-$' : '$') + absoluto;
+}
+
+function construirMensajeConfirmacion_(nombre, numeroPedido, totalUnidades, totalValor) {
+  return [
+    'Pedido confirmado – AURA B2B',
+    '',
+    'Hola, ' + String(nombre || 'cliente') + ' 👋',
+    '',
+    'Tu pedido ha sido registrado exitosamente.',
+    '',
+    '📋 Número de pedido: ' + numeroPedido,
+    '📦 Unidades: ' + String(totalUnidades),
+    '💰 Valor total: ' + formatearCOP_(totalValor),
+    '',
+    'Nuestro equipo lo procesará en las próximas horas. Gracias por confiar en Creditek.'
+  ].join('\n');
+}
+
 function guardarPedidoPublico_(body) {
   if (!body.order_id || !Array.isArray(body.items) || !body.items.length) {
     return { ok: false, error: 'Pedido inválido' };
@@ -177,13 +209,14 @@ function guardarPedidoPublico_(body) {
   var lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
-    if (pedidoYaRegistrado_(body.order_id)) {
-      return { ok: true, numeroPedido: body.order_id, duplicado: true };
+    var numeroPedido = normalizarNumeroPedidoAura_(body.order_id);
+    if (pedidoYaRegistrado_(numeroPedido)) {
+      return { ok: true, numeroPedido: numeroPedido, duplicado: true };
     }
     var resolved = resolverProductosCatalogo_(body.items).map(function(item) {
       item.tienda = body.store_name;
       item.ciudad = body.city;
-      item.numeroPedido = body.order_id;
+      item.numeroPedido = numeroPedido;
       return item;
     });
     return guardarPedido_(resolved);
@@ -216,7 +249,18 @@ function guardarPedido_(items) {
   });
   guardarEnHistorial_(items, numeroPedido, fecha, tiendaNombre, ciudad);
   var resultWA = enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad);
-  return { ok: true, numeroPedido: numeroPedido, tienda: tiendaNombre, ciudad: ciudad, whatsapp: resultWA };
+  var totalUnidades = items.reduce(function(s, i) { return s + Number(i.cantidad); }, 0);
+  var totalValor = items.reduce(function(s, i) { return s + (Number(i.precioCredilek) * Number(i.cantidad)); }, 0);
+  return {
+    ok: true,
+    numeroPedido: numeroPedido,
+    tienda: tiendaNombre,
+    ciudad: ciudad,
+    totalUnidades: totalUnidades,
+    totalValor: totalValor,
+    mensaje: construirMensajeConfirmacion_(tiendaNombre, numeroPedido, totalUnidades, totalValor),
+    whatsapp: resultWA
+  };
 }
 
 function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
@@ -227,10 +271,10 @@ function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
     if (!telefono) return { enviado: false, motivo: 'Sin telefono registrado para ' + tiendaNombre };
     var totalUnidades = items.reduce(function(s, i) { return s + Number(i.cantidad); }, 0);
     var totalValor = items.reduce(function(s, i) { return s + (Number(i.precioCredilek) * Number(i.cantidad)); }, 0);
-    var valorFormateado = '$' + Math.round(totalValor).toLocaleString('es-CO');
+    var valorFormateado = formatearCOP_(totalValor);
     var parameters;
     if (CONFIG.WA_ORDER_TEMPLATE_NAME === 'test_variable') {
-      var resumenCompleto = 'Pedido ' + numeroPedido + ' | Tienda: ' + tiendaNombre + ' | ' + String(totalUnidades) + ' uds | Total: ' + valorFormateado;
+      var resumenCompleto = construirMensajeConfirmacion_(tiendaNombre, numeroPedido, totalUnidades, totalValor);
       parameters = [{ type: 'text', text: resumenCompleto }];
     } else {
       parameters = [
@@ -352,10 +396,10 @@ function generarNumeroPedido_() {
   var contador = 1;
   if (hist) {
     var data = hist.getDataRange().getValues();
-    var prefijo = 'CRD-' + fechaStr + '-';
+    var prefijo = 'AURA-B2B-' + fechaStr + '-';
     data.slice(1).forEach(function(row) { if (String(row[1]).indexOf(prefijo) === 0) contador++; });
   }
-  return 'CRD-' + fechaStr + '-' + String(contador).padStart(3, '0');
+  return 'AURA-B2B-' + fechaStr + '-' + String(contador).padStart(3, '0');
 }
 
 function leerTiendas_() {
@@ -758,7 +802,7 @@ function enviarNotificacionCierre_(tiendaNombre, ciudad, numerosPedido) {
 
 function testWhatsApp() {
   var testItems = [{ tienda: 'TEST', ciudad: 'TEST', producto: 'SAMSUNG A16 4/128GB', cantidad: 2, precioCredilek: 470000 }];
-  var result = enviarConfirmacionWA_(testItems, 'CRD-TEST-001', 'KrediSinu', 'Cienaga de Oro');
+  var result = enviarConfirmacionWA_(testItems, 'AURA-B2B-TEST-001', 'KrediSinu', 'Cienaga de Oro');
   Logger.log('Test WhatsApp: ' + JSON.stringify(result));
   Logger.log('Resultado test WA: ' + JSON.stringify(result, null, 2));
 }

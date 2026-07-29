@@ -110,8 +110,9 @@ export const catalogApi = {
     return {
       ok: true,
       order_number: data.numeroPedido,
-      total_units: payload.items.reduce((sum, item) => sum + item.quantity, 0),
-      total_sale: 0,
+      total_units: Number(data.totalUnidades)
+        || payload.items.reduce((sum, item) => sum + item.quantity, 0),
+      total_sale: Number(data.totalValor) || 0,
     };
   },
   async adminOrders() {

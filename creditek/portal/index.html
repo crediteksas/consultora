@@ -312,15 +312,20 @@
           <div class="resumen-titulo">📋 Panel de Control</div>
           <div class="resumen-sub">Vista privada · Administración Creditek SAS</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="btnActualizarCatalogo" hidden onclick="window.B2BCatalogAdmin.open()" style="background:var(--turquesa);border:none;color:var(--azul);padding:8px 16px;border-radius:8px;cursor:pointer;font:700 12px 'DM Sans',sans-serif;">ACTUALIZAR CATÁLOGO</button>
-          <button onclick="cerrarSesion()" style="background:rgba(255,255,255,0.1);border:none;color:white;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cerrar sesión</button>
-        </div>
+        <button onclick="cerrarSesion()" style="background:rgba(255,255,255,0.1);border:none;color:white;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cerrar sesión</button>
       </div>
       <div class="resumen-stats">
         <div class="rstat"><div class="rstat-num" id="rTotalPedidos">0</div><div class="rstat-label">Pedidos recibidos</div></div>
         <div class="rstat"><div class="rstat-num" id="rTotalUnidades">0</div><div class="rstat-label">Unidades totales</div></div>
         <div class="rstat"><div class="rstat-num" id="rTotalValor">$0</div><div class="rstat-label">Valor compra proveedor</div></div>
+      </div>
+    </div>
+    <div class="excel-section">
+      <div class="excel-title">📊 Actualizar Precios</div>
+      <div class="excel-desc">Actualiza el catálogo del Portal B2B conservando referencias, fotografías e histórico. La información de proveedores y costos permanece restringida a administración.</div>
+      <div class="excel-drop" id="btnActualizarCatalogo" hidden onclick="window.B2BCatalogAdmin.open()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.B2BCatalogAdmin.open()}">
+        <div class="excel-drop-icon">📁</div>
+        <div class="excel-drop-text">Abrir herramienta administrativa<br><strong>ACTUALIZAR CATÁLOGO</strong></div>
       </div>
     </div>
     <div class="cierre-section">

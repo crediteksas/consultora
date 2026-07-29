@@ -59,6 +59,20 @@ test('el portal elimina la carga heredada de Excel y usa el catálogo público d
   assert.match(source, /catalog-admin\.mjs/);
 });
 
+test('la ampliación conserva el lenguaje visual previo del Portal B2B', async () => {
+  const source = await readFile(portalPath, 'utf8');
+
+  assert.match(source, /class="resumen-header"/);
+  assert.match(source, /class="excel-section"/);
+  assert.match(source, /class="excel-drop" id="btnActualizarCatalogo"/);
+  assert.match(source, /class="cierre-section"/);
+  assert.doesNotMatch(
+    source,
+    /id="btnActualizarCatalogo"[^>]+style=/,
+    'El acceso nuevo no debe introducir una variante visual inline en el encabezado',
+  );
+});
+
 test('la actualización de catálogo exige una credencial administrativa validada en Apps Script', async () => {
   const source = await readFile(appsScriptPath, 'utf8');
 

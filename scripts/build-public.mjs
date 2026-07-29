@@ -6,6 +6,7 @@ const PUBLIC_TREES = [
   'creditek/agentes',
   'creditek/assets',
   'creditek/data',
+  'design-system',
 ];
 
 const PUBLIC_FILES = [

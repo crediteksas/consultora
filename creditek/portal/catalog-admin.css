@@ -1,5 +1,5 @@
-.catalog-admin-view{display:none;max-width:1400px;margin:0 auto;padding:24px}
-.catalog-admin-view.open{display:block}
+.catalog-admin-view{display:block;margin-top:20px}
+.catalog-admin-view[hidden]{display:none}
 .catalog-admin-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}
 .catalog-admin-head h1{font-family:'Bebas Neue',sans-serif;color:var(--azul);letter-spacing:1px}
 .catalog-admin-tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;border-bottom:1px solid var(--gris2)}

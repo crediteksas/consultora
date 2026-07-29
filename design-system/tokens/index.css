@@ -1,0 +1,184 @@
+:root {
+  color-scheme: light;
+
+  /* Brand and semantic color scales */
+  --ctk-color-primary-50: #F2F6FC;
+  --ctk-color-primary-100: #E4ECF7;
+  --ctk-color-primary-200: #C7D8EC;
+  --ctk-color-primary-300: #9CBADB;
+  --ctk-color-primary-400: #6692C3;
+  --ctk-color-primary-500: #3F70A7;
+  --ctk-color-primary-600: #28558A;
+  --ctk-color-primary-700: #1C426E;
+  --ctk-color-primary-800: #123159;
+  --ctk-color-primary-900: #0B1E3D;
+  --ctk-color-primary-950: #071429;
+
+  --ctk-color-secondary-50: #ECFEFF;
+  --ctk-color-secondary-100: #CFFAFE;
+  --ctk-color-secondary-200: #A5F3F7;
+  --ctk-color-secondary-300: #67E8ED;
+  --ctk-color-secondary-400: #22D7DD;
+  --ctk-color-secondary-500: #00C4CC;
+  --ctk-color-secondary-600: #009EA8;
+  --ctk-color-secondary-700: #087D86;
+  --ctk-color-secondary-800: #11646B;
+  --ctk-color-secondary-900: #12535A;
+  --ctk-color-secondary-950: #043A40;
+
+  --ctk-color-accent-50: #F5F3FF;
+  --ctk-color-accent-100: #EDE9FE;
+  --ctk-color-accent-500: #7459D9;
+  --ctk-color-accent-700: #5B3FBA;
+  --ctk-color-success-50: #ECFDF5;
+  --ctk-color-success-100: #D1FAE5;
+  --ctk-color-success-500: #10B981;
+  --ctk-color-success-700: #047857;
+  --ctk-color-warning-50: #FFFBEB;
+  --ctk-color-warning-100: #FEF3C7;
+  --ctk-color-warning-500: #F59E0B;
+  --ctk-color-warning-700: #B45309;
+  --ctk-color-danger-50: #FEF2F2;
+  --ctk-color-danger-100: #FEE2E2;
+  --ctk-color-danger-500: #EF4444;
+  --ctk-color-danger-700: #B91C1C;
+  --ctk-color-info-50: #EFF6FF;
+  --ctk-color-info-100: #DBEAFE;
+  --ctk-color-info-500: #3B82F6;
+  --ctk-color-info-700: #1D4ED8;
+
+  --ctk-color-neutral-0: #FFFFFF;
+  --ctk-color-neutral-50: #F8FAFC;
+  --ctk-color-neutral-100: #F1F5F9;
+  --ctk-color-neutral-200: #E2E8F0;
+  --ctk-color-neutral-300: #CBD5E1;
+  --ctk-color-neutral-400: #94A3B8;
+  --ctk-color-neutral-500: #64748B;
+  --ctk-color-neutral-600: #475569;
+  --ctk-color-neutral-700: #334155;
+  --ctk-color-neutral-800: #1E293B;
+  --ctk-color-neutral-900: #0F172A;
+  --ctk-color-neutral-950: #020617;
+
+  /* Semantic aliases */
+  --ctk-color-background: var(--ctk-color-neutral-50);
+  --ctk-color-surface: var(--ctk-color-neutral-0);
+  --ctk-color-surface-subtle: var(--ctk-color-neutral-100);
+  --ctk-color-border: var(--ctk-color-neutral-200);
+  --ctk-color-border-strong: var(--ctk-color-neutral-300);
+  --ctk-color-text: var(--ctk-color-primary-900);
+  --ctk-color-text-secondary: var(--ctk-color-neutral-600);
+  --ctk-color-text-muted: var(--ctk-color-neutral-500);
+  --ctk-color-muted: var(--ctk-color-neutral-100);
+  --ctk-color-disabled: var(--ctk-color-neutral-300);
+  --ctk-color-disabled-text: var(--ctk-color-neutral-500);
+  --ctk-color-hover: var(--ctk-color-primary-50);
+  --ctk-color-active: var(--ctk-color-primary-100);
+  --ctk-color-focus: var(--ctk-color-secondary-500);
+  --ctk-color-overlay: #0B1E3DA3;
+
+  /* Typography */
+  --ctk-font-family-ui: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ctk-font-family-brand: Montserrat, var(--ctk-font-family-ui);
+  --ctk-font-family-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --ctk-font-weight-regular: 400;
+  --ctk-font-weight-medium: 500;
+  --ctk-font-weight-semibold: 600;
+  --ctk-font-weight-bold: 700;
+  --ctk-font-size-display: 2.25rem;
+  --ctk-font-size-h1: 1.875rem;
+  --ctk-font-size-h2: 1.5rem;
+  --ctk-font-size-h3: 1.25rem;
+  --ctk-font-size-h4: 1.0625rem;
+  --ctk-font-size-body: 0.9375rem;
+  --ctk-font-size-caption: 0.8125rem;
+  --ctk-font-size-small: 0.75rem;
+  --ctk-font-size-label: 0.75rem;
+  --ctk-font-size-button: 0.875rem;
+  --ctk-font-size-table: 0.8125rem;
+  --ctk-line-height-tight: 1.2;
+  --ctk-line-height-heading: 1.3;
+  --ctk-line-height-body: 1.5;
+  --ctk-letter-spacing-label: 0.04em;
+
+  /* 8px spacing grid with 4px exception */
+  --ctk-space-0: 0;
+  --ctk-space-0-5: 0.25rem;
+  --ctk-space-1: 0.5rem;
+  --ctk-space-2: 1rem;
+  --ctk-space-3: 1.5rem;
+  --ctk-space-4: 2rem;
+  --ctk-space-5: 2.5rem;
+  --ctk-space-6: 3rem;
+  --ctk-space-8: 4rem;
+  --ctk-space-10: 5rem;
+  --ctk-space-12: 6rem;
+
+  /* Radius */
+  --ctk-radius-xs: 0.25rem;
+  --ctk-radius-sm: 0.5rem;
+  --ctk-radius-md: 0.75rem;
+  --ctk-radius-lg: 1rem;
+  --ctk-radius-xl: 1.5rem;
+  --ctk-radius-full: 9999px;
+
+  /* Four official shadow levels */
+  --ctk-shadow-1: 0 1px 2px #0B1E3D0A;
+  --ctk-shadow-2: 0 4px 12px #0B1E3D12;
+  --ctk-shadow-3: 0 12px 28px #0B1E3D1A;
+  --ctk-shadow-4: 0 24px 56px #0B1E3D24;
+
+  /* Motion */
+  --ctk-duration-1: 120ms;
+  --ctk-duration-2: 180ms;
+  --ctk-duration-3: 220ms;
+  --ctk-duration-4: 300ms;
+  --ctk-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ctk-ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  --ctk-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Layering */
+  --ctk-z-base: 0;
+  --ctk-z-sticky: 100;
+  --ctk-z-dropdown: 300;
+  --ctk-z-drawer: 500;
+  --ctk-z-modal: 700;
+  --ctk-z-toast: 900;
+  --ctk-z-tooltip: 1000;
+
+  /* Breakpoint references */
+  --ctk-breakpoint-mobile: 30rem;
+  --ctk-breakpoint-tablet: 48rem;
+  --ctk-breakpoint-laptop: 64rem;
+  --ctk-breakpoint-desktop: 80rem;
+
+  /* Opacity */
+  --ctk-opacity-disabled: 0.48;
+  --ctk-opacity-muted: 0.64;
+  --ctk-opacity-hover: 0.08;
+  --ctk-opacity-active: 0.14;
+  --ctk-opacity-overlay: 0.64;
+
+  /* Icon sizes */
+  --ctk-icon-xs: 0.875rem;
+  --ctk-icon-sm: 1rem;
+  --ctk-icon-md: 1.25rem;
+  --ctk-icon-lg: 1.5rem;
+  --ctk-icon-xl: 2rem;
+
+  /* Standard heights */
+  --ctk-height-control-sm: 2rem;
+  --ctk-height-control-md: 2.5rem;
+  --ctk-height-control-lg: 3rem;
+  --ctk-height-topbar: 4rem;
+  --ctk-height-row: 2.75rem;
+
+  /* Standard widths */
+  --ctk-width-sidebar: 16rem;
+  --ctk-width-sidebar-collapsed: 4.5rem;
+  --ctk-width-content: 90rem;
+  --ctk-width-form: 42rem;
+  --ctk-width-modal-sm: 28rem;
+  --ctk-width-modal-md: 40rem;
+  --ctk-width-modal-lg: 56rem;
+}

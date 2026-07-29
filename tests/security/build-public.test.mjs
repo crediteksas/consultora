@@ -20,6 +20,8 @@ test('build keeps required public applications and excludes backend source', asy
     'creditek/agentes/agente3-meta-ads.html',
     'creditek/agentes/creditek-agente-calendario.html',
     'creditek/portal/index.html',
+    'design-system/components/kora-product.css',
+    'design-system/components/kora-product.js',
     'creditek/agentes/creditek-gbp-fichas.html',
     'creditek/convenios/index.html',
     'creditek/erp/app.html',

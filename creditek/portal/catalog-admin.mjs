@@ -146,8 +146,7 @@ const saveUtility = async () => {
 };
 
 const open = async () => {
-  $('#vistaOscar').style.display = 'none';
-  $('#vistaCatalogAdmin').classList.add('open');
+  $('#vistaCatalogAdmin').hidden = false;
   const [providers, settings] = await Promise.all([
     catalogApi.providers(),
     catalogApi.settings(),
@@ -161,8 +160,7 @@ const open = async () => {
 };
 
 const close = () => {
-  $('#vistaCatalogAdmin').classList.remove('open');
-  $('#vistaOscar').style.display = 'block';
+  $('#vistaCatalogAdmin').hidden = true;
 };
 
 window.B2BCatalogAdmin = {
@@ -209,9 +207,10 @@ $('#catalogHistorySearch')?.addEventListener('input', () => {
 });
 
 try {
+  $('#catalogAdminMount')?.append($('#vistaCatalogAdmin'));
   await window.B2BCatalog.reload();
   const isAdmin = await catalogApi.isAdmin();
-  $('#btnActualizarCatalogo').hidden = isAdmin !== true;
+  if (isAdmin === true) await open();
 } catch (error) {
   showAlert(error.message);
 }

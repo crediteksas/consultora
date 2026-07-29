@@ -8,6 +8,8 @@ const appsScriptPath = new URL('../../creditek/portal/Code.gs', import.meta.url)
 const analyzerPath = new URL('../../supabase/functions/analyze-b2b-catalog/index.ts', import.meta.url);
 const portalPath = new URL('../../creditek/portal/index.html', import.meta.url);
 const catalogApiPath = new URL('../../creditek/portal/catalog-api.mjs', import.meta.url);
+const productCssPath = new URL('../../design-system/components/kora-product.css', import.meta.url);
+const productJsPath = new URL('../../design-system/components/kora-product.js', import.meta.url);
 
 test('la migración separa la vista pública de las tablas internas', async () => {
   const sql = await readFile(migrationPath, 'utf8');
@@ -59,18 +61,31 @@ test('el portal elimina la carga heredada de Excel y usa el catálogo público d
   assert.match(source, /catalog-admin\.mjs/);
 });
 
-test('la ampliación conserva el lenguaje visual previo del Portal B2B', async () => {
+test('la ampliación conserva la interfaz moderna compartida de AURA', async () => {
   const source = await readFile(portalPath, 'utf8');
+  const productCss = await readFile(productCssPath, 'utf8');
+  const productJs = await readFile(productJsPath, 'utf8');
 
+  assert.match(source, /design-system\/components\/kora-product\.css/);
+  assert.match(source, /design-system\/components\/kora-product\.js/);
+  assert.match(source, /data-kora-brand/);
+  assert.match(source, /data-lucide="store"/);
   assert.match(source, /class="resumen-header"/);
   assert.match(source, /class="excel-section"/);
-  assert.match(source, /class="excel-drop" id="btnActualizarCatalogo"/);
+  assert.match(source, /id="catalogAdminMount"/);
   assert.match(source, /class="cierre-section"/);
-  assert.doesNotMatch(
-    source,
-    /id="btnActualizarCatalogo"[^>]+style=/,
-    'El acceso nuevo no debe introducir una variante visual inline en el encabezado',
-  );
+  assert.doesNotMatch(source, /id="btnActualizarCatalogo"/);
+  assert.doesNotMatch(source, /B2BCatalogAdmin\.open\(\)[^;]*["']ACTUALIZAR CATÁLOGO/);
+  assert.match(productCss, /@import url\("\.\.\/styles\/index\.css"\)/);
+  assert.match(productJs, /dataset\.koraProduct = '1\.0\.0'/);
+});
+
+test('el cierre conserva los identificadores de hoja y retira los pedidos cerrados', async () => {
+  const source = await readFile(portalPath, 'utf8');
+
+  assert.match(source, /_hoja:p\._hoja/);
+  assert.match(source, /_fila:p\._fila/);
+  assert.match(source, /cargarPendientesAdmin\(\);renderConsolidado\(\)/);
 });
 
 test('la actualización de catálogo exige una credencial administrativa validada en Apps Script', async () => {

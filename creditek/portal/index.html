@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Portal de Pedidos</title>
+<title>KORA · Portal de Pedidos — Creditek</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%2300C4CC'/><text y='.9em' font-size='70' x='50%' text-anchor='middle' fill='%230B1E3D' font-weight='900'>C</text></svg>">
 <link rel="stylesheet" href="./catalog-admin.css">
 <style>
@@ -202,20 +202,18 @@
   .hist-select-tienda{background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.2);color:white;border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer;}
   .hist-select-tienda option{background:#0B1E3D;}
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 <header>
   <div class="logo">
-    <div class="logo-icon">✓</div>
-    <div>
-      <div class="logo-text">CREDITEK</div>
-      <div class="logo-sub">Portal de Pedidos B2B</div>
-    </div>
+    <div data-kora-brand data-variant="login-inverse"></div>
   </div>
   <div class="header-right">
-    <button class="vista-btn active" id="btnTienda" onclick="cambiarVista('tienda')">🏪 Catálogo</button>
-    <button class="vista-btn" id="btnHistorial" onclick="cambiarVista('historial')">📋 Mis Pedidos</button>
-    <button class="vista-btn" id="btnOscar" onclick="cambiarVista('oscar')">🔒 Admin</button>
+    <button class="vista-btn active" id="btnTienda" onclick="cambiarVista('tienda')"><i data-lucide="store" aria-hidden="true"></i><span>Catálogo</span></button>
+    <button class="vista-btn" id="btnHistorial" onclick="cambiarVista('historial')"><i data-lucide="clipboard-list" aria-hidden="true"></i><span>Mis pedidos</span></button>
+    <button class="vista-btn" id="btnOscar" onclick="cambiarVista('oscar')"><i data-lucide="shield-check" aria-hidden="true"></i><span>Admin</span></button>
     <span class="badge-pedido" onclick="abrirCarrito()">🛒 Pedido (<span id="badgeNum">0</span>)</span>
   </div>
 </header>
@@ -268,12 +266,12 @@
       <div class="cat-selector-title">¿Qué categoría buscas?</div>
       <div class="cat-selector-sub">Selecciona una categoría para ver el catálogo</div>
       <div class="cat-grid">
-        <button class="cat-btn" onclick="seleccionarCategoria('Celulares')"><span class="cat-btn-emoji">📱</span><span class="cat-btn-label">Celulares</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Sonido')"><span class="cat-btn-emoji">🔊</span><span class="cat-btn-label">Sonido</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Accesorios')"><span class="cat-btn-emoji">🔌</span><span class="cat-btn-label">Accesorios</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Electrodomésticos')"><span class="cat-btn-emoji">🏠</span><span class="cat-btn-label">Electrodomésticos</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Computadores')"><span class="cat-btn-emoji">💻</span><span class="cat-btn-label">Computadores</span></button>
-        <button class="cat-btn" onclick="seleccionarCategoria('Movilidad')"><span class="cat-btn-emoji">🛴</span><span class="cat-btn-label">Movilidad</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Celulares')"><span class="cat-btn-emoji"><i data-lucide="smartphone" aria-hidden="true"></i></span><span class="cat-btn-label">Celulares</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Sonido')"><span class="cat-btn-emoji"><i data-lucide="speaker" aria-hidden="true"></i></span><span class="cat-btn-label">Sonido</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Accesorios')"><span class="cat-btn-emoji"><i data-lucide="cable" aria-hidden="true"></i></span><span class="cat-btn-label">Accesorios</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Electrodomésticos')"><span class="cat-btn-emoji"><i data-lucide="home" aria-hidden="true"></i></span><span class="cat-btn-label">Electrodomésticos</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Computadores')"><span class="cat-btn-emoji"><i data-lucide="laptop" aria-hidden="true"></i></span><span class="cat-btn-label">Computadores</span></button>
+        <button class="cat-btn" onclick="seleccionarCategoria('Movilidad')"><span class="cat-btn-emoji"><i data-lucide="bike" aria-hidden="true"></i></span><span class="cat-btn-label">Movilidad</span></button>
       </div>
     </div>
   </div>
@@ -323,10 +321,7 @@
     <div class="excel-section">
       <div class="excel-title">📊 Actualizar Precios</div>
       <div class="excel-desc">Actualiza el catálogo del Portal B2B conservando referencias, fotografías e histórico. La información de proveedores y costos permanece restringida a administración.</div>
-      <div class="excel-drop" id="btnActualizarCatalogo" hidden onclick="window.B2BCatalogAdmin.open()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.B2BCatalogAdmin.open()}">
-        <div class="excel-drop-icon">📁</div>
-        <div class="excel-drop-text">Abrir herramienta administrativa<br><strong>ACTUALIZAR CATÁLOGO</strong></div>
-      </div>
+      <div id="catalogAdminMount"></div>
     </div>
     <div class="cierre-section">
       <div class="cierre-title">🔴 Cierre de Periodo</div>
@@ -340,13 +335,12 @@
     <div id="consolidadoContainer"><div class="sin-pedidos">📭 No hay pedidos confirmados aún.</div></div>
   </div>
 </div>
-<section id="vistaCatalogAdmin" class="catalog-admin-view" aria-labelledby="catalogAdminTitle">
+<section id="vistaCatalogAdmin" class="catalog-admin-view" aria-labelledby="catalogAdminTitle" hidden>
   <div class="catalog-admin-head">
     <div>
       <h1 id="catalogAdminTitle">Actualizar catálogo</h1>
       <p>Interpreta listas de proveedores, revisa excepciones y publica una versión segura para las tiendas.</p>
     </div>
-    <button class="catalog-secondary" type="button" onclick="window.B2BCatalogAdmin.close()">← Volver al panel</button>
   </div>
   <div id="catalogAdminAlert" class="catalog-alert" role="alert"></div>
   <nav class="catalog-admin-tabs" aria-label="Secciones de actualización del catálogo">
@@ -528,12 +522,12 @@ function mostrarModalExito(numeroPedido,items,tiendaNombre){document.getElementB
 function cerrarModal(){document.getElementById('modalExito').classList.remove('open');}
 function irAHistorial(){cerrarModal();cambiarVista('historial');const sel=document.getElementById('histSelectTienda');if(ultimaTiendaHistorial){for(let i=0;i<sel.options.length;i++){if(sel.options[i].value===ultimaTiendaHistorial){sel.selectedIndex=i;break;}}}cargarHistorial();}
 function cambiarVista(v){document.getElementById('vistaTienda').style.display=v==='tienda'?'block':'none';document.getElementById('vistaOscar').style.display=v==='oscar'?'block':'none';document.getElementById('vistaHistorial').style.display=v==='historial'?'block':'none';document.getElementById('btnTienda').className='vista-btn'+(v==='tienda'?' active':'');document.getElementById('btnOscar').className='vista-btn'+(v==='oscar'?' active':'');document.getElementById('btnHistorial').className='vista-btn'+(v==='historial'?' active':'');}
-async function verificarPass(){try{const pin=document.getElementById('passInput').value;if(!await window.B2BCatalogAdmin.authenticate(pin))throw new Error('Acceso denegado');document.getElementById('oscarLogin').style.display='none';document.getElementById('oscarPanel').style.display='block';document.getElementById('btnActualizarCatalogo').hidden=false;await cargarPendientesAdmin();renderConsolidado();}catch(e){document.getElementById('passError').textContent='❌ Contraseña incorrecta';}}
-async function cargarPendientesAdmin(){try{const pedidos=await window.B2BCatalogAdmin.adminOrders();const porTienda={};pedidos.forEach(p=>{const k=p.tienda+'|'+p.ciudad;if(!porTienda[k])porTienda[k]={tienda:p.tienda,ciudad:p.ciudad,fecha:'',items:[]};porTienda[k].items.push({producto:{nombre:p.producto,proveedor:p.proveedor,precioCompra:Number(p.precioProveedor)||0,precioVenta:Number(p.precioCredilek)||0},cantidad:Number(p.cantidad)||0,numeroPedido:p.numeroPedido||''});});pedidosConfirmados=Object.values(porTienda);}catch(e){mostrarToast('❌ No fue posible cargar el panel administrativo');}}
+async function verificarPass(){try{const pin=document.getElementById('passInput').value;if(!await window.B2BCatalogAdmin.authenticate(pin))throw new Error('Acceso denegado');document.getElementById('oscarLogin').style.display='none';document.getElementById('oscarPanel').style.display='block';await window.B2BCatalogAdmin.open();await cargarPendientesAdmin();renderConsolidado();}catch(e){document.getElementById('passError').textContent='❌ Contraseña incorrecta';}}
+async function cargarPendientesAdmin(){try{const pedidos=await window.B2BCatalogAdmin.adminOrders();const porTienda={};pedidos.forEach(p=>{const k=p.tienda+'|'+p.ciudad;if(!porTienda[k])porTienda[k]={tienda:p.tienda,ciudad:p.ciudad,fecha:'',items:[]};porTienda[k].items.push({producto:{nombre:p.producto,proveedor:p.proveedor,precioCompra:Number(p.precioProveedor)||0,precioVenta:Number(p.precioCredilek)||0},cantidad:Number(p.cantidad)||0,numeroPedido:p.numeroPedido||'',_hoja:p._hoja,_fila:p._fila});});pedidosConfirmados=Object.values(porTienda);}catch(e){mostrarToast('❌ No fue posible cargar el panel administrativo');}}
 function cerrarSesion(){document.getElementById('oscarLogin').style.display='block';document.getElementById('oscarPanel').style.display='none';document.getElementById('passInput').value='';document.getElementById('passError').textContent='';cambiarVista('tienda');}
 function cambiarTab(tab,btn){tabActual=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');btn.className='tab-btn active';renderConsolidado();}
 function renderConsolidado(){const total=pedidosConfirmados.reduce((s,p)=>s+p.items.reduce((ss,i)=>ss+i.cantidad,0),0);const valor=pedidosConfirmados.reduce((s,p)=>s+p.items.reduce((ss,i)=>ss+i.producto.precioCompra*i.cantidad,0),0);document.getElementById('rTotalPedidos').textContent=pedidosConfirmados.length;document.getElementById('rTotalUnidades').textContent=total;document.getElementById('rTotalValor').textContent=formatCOP(valor);if(!pedidosConfirmados.length){document.getElementById('consolidadoContainer').innerHTML='<div class="sin-pedidos">📭 No hay pedidos confirmados aún.</div>';return;}if(tabActual==='pedidos'){document.getElementById('consolidadoContainer').innerHTML=pedidosConfirmados.map(p=>{const tot=p.items.reduce((s,i)=>s+i.producto.precioVenta*i.cantidad,0);return`<div class="pedido-card"><div class="pedido-card-header"><div><div class="pedido-tienda-nombre">🏪 ${p.tienda}</div><div class="pedido-ciudad">📍 ${p.ciudad} · ${p.fecha}</div></div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--turquesa)">${formatCOP(tot)}</div></div><table class="pedido-tabla"><tr><th>Producto</th><th>Proveedor</th><th>Cant.</th><th>Total</th></tr>${p.items.map(i=>`<tr><td>${i.producto.nombre}</td><td style="font-size:11px;color:#7a8899">${i.producto.proveedor}</td><td>${i.cantidad}</td><td>${formatCOP(i.producto.precioVenta*i.cantidad)}</td></tr>`).join('')}</table></div>`;}).join('');}else{const porCiudad={};pedidosConfirmados.forEach(p=>{if(!porCiudad[p.ciudad])porCiudad[p.ciudad]=[];porCiudad[p.ciudad].push(p);});document.getElementById('consolidadoContainer').innerHTML=Object.entries(porCiudad).map(([ciudad,pedidos])=>`<div class="pedido-card"><div class="pedido-card-header"><div class="pedido-tienda-nombre">📍 ${ciudad}</div></div>${pedidos.map(p=>`<div style="margin-bottom:12px"><div class="pedido-ciudad" style="margin-bottom:8px">🏪 ${p.tienda}</div><table class="pedido-tabla"><tr><th>Producto</th><th>Cant.</th></tr>${p.items.map(i=>`<tr><td>${i.producto.nombre}</td><td>${i.cantidad}</td></tr>`).join('')}</table></div>`).join('')}</div>`).join('');}}
-async function cerrarPeriodo(){const btn=document.getElementById('btnCierre');btn.disabled=true;btn.innerHTML='⏳ Enviando reporte...';try{await window.B2BCatalogAdmin.closePeriod(pedidosConfirmados.flatMap(p=>p.items.map(i=>({tienda:p.tienda,ciudad:p.ciudad,producto:i.producto.nombre,proveedor:i.producto.proveedor,cantidad:i.cantidad,precioProveedor:i.producto.precioCompra,precioCredilek:i.producto.precioVenta,numeroPedido:i.numeroPedido||''}))));mostrarToast('✅ Reporte enviado a comercial y gestion@crediteksas.com');}catch(e){mostrarToast('❌ Error al enviar: '+e.message);}finally{btn.disabled=false;btn.innerHTML='📧 Cerrar Periodo y Enviar Reporte Consolidado';}}
+async function cerrarPeriodo(){const btn=document.getElementById('btnCierre');btn.disabled=true;btn.innerHTML='⏳ Enviando reporte...';try{await window.B2BCatalogAdmin.closePeriod(pedidosConfirmados.flatMap(p=>p.items.map(i=>({tienda:p.tienda,ciudad:p.ciudad,producto:i.producto.nombre,proveedor:i.producto.proveedor,cantidad:i.cantidad,precioProveedor:i.producto.precioCompra,precioCredilek:i.producto.precioVenta,numeroPedido:i.numeroPedido||'',_hoja:i._hoja,_fila:i._fila}))));await cargarPendientesAdmin();renderConsolidado();mostrarToast('✅ Reporte enviado a comercial y gestion@crediteksas.com');}catch(e){mostrarToast('❌ Error al enviar: '+e.message);}finally{btn.disabled=false;btn.innerHTML='📧 Cerrar Periodo y Enviar Reporte Consolidado';}}
 
 function mostrarToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 async function cargarEnriquecimiento(){try{const r=await fetch('../data/catalogo.json');const d=await r.json();if(d&&typeof d==='object'){enriquecimientoData=d;renderProductos();}}catch(e){}}

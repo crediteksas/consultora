@@ -19,6 +19,7 @@ const PUBLIC_FILES = [
   'creditek/portal/catalog-admin.mjs',
   'creditek/portal/catalog-api.mjs',
   'creditek/portal/catalog-domain.mjs',
+  'creditek/portal/canonical-reference.mjs',
   'creditek/portal/order-contract.mjs',
   'creditek/portal/provider-display.mjs',
 ];

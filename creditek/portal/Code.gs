@@ -17,6 +17,8 @@ var CONFIG = {
   SHEET_HISTORIAL: 'HISTORIAL',
   SHEET_CATALOGO: 'CATALOGO',
   SHEET_PROVEEDORES: 'PROVEEDORES',
+  SHEET_CATALOGO_EXCEPCIONES: 'CATALOGO_EXCEPCIONES',
+  SHEET_CATALOGO_REGLAS: 'CATALOGO_REGLAS',
   EMAIL_COMERCIAL: 'comercial@crediteksas.com',
   EMAIL_GESTION: 'gestion@crediteksas.com',
   SHEET_ID: '1vezpPcLasTiCtYBkKhaYZiw01dVApO_oSqyzbU8jAU4'
@@ -56,7 +58,8 @@ function doPost(e) {
       'validar_admin_catalogo', 'leer_pedidos_admin', 'cierre_periodo_admin',
       'analizar_catalogo_admin', 'publicar_catalogo_admin', 'rollback_catalogo_admin',
       'catalogo_privado_admin', 'historico_catalogo_admin', 'estadisticas_catalogo_admin',
-      'listar_proveedores_admin', 'guardar_proveedor_admin'
+      'listar_proveedores_admin', 'guardar_proveedor_admin',
+      'listar_excepciones_catalogo_admin', 'guardar_regla_catalogo_admin'
     ].indexOf(body.action) !== -1) {
       if (!validarAdminCatalogo_(body.admin_pin)) {
         result = { ok: false, error: 'Acceso administrativo denegado' };
@@ -70,6 +73,8 @@ function doPost(e) {
       else if (body.action === 'historico_catalogo_admin') result = leerHistoricoCatalogo_(body.search || '');
       else if (body.action === 'listar_proveedores_admin') result = listarProveedoresAdmin_(body.solo_activos === true);
       else if (body.action === 'guardar_proveedor_admin') result = guardarProveedorAdmin_(body.proveedor || {});
+      else if (body.action === 'listar_excepciones_catalogo_admin') result = listarExcepcionesCatalogoAdmin_();
+      else if (body.action === 'guardar_regla_catalogo_admin') result = guardarReglaCatalogoAdmin_(body);
       else result = estadisticasCatalogo_();
     } else if (action === 'guardar' || action === 'guardar_pedido') {
       result = { ok: false, error: 'Utiliza el contrato público seguro de pedidos' };
@@ -631,35 +636,107 @@ function detectarMarca_(nombre) {
   return 'OTROS';
 }
 
-function guardarImportOriginal_(proveedor, rawText) {
-  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  var sheet = ss.getSheetByName('CATALOGO_IMPORTS') || ss.insertSheet('CATALOGO_IMPORTS');
-  if (sheet.getLastRow() === 0) sheet.appendRow(['Fecha', 'Proveedor', 'Texto original']);
-  sheet.appendRow([new Date(), proveedor, rawText]);
-  sheet.hideSheet();
+function normalizarReferenciaCompleta_(value) {
+  var text = String(value || '').trim().replace(/\s+/g, ' ');
+  try {
+    text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  } catch (error) {
+    // El fallback conserva una comparación segura en runtimes antiguos.
+  }
+  return text.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 }
 
-function analizarCatalogoAdmin_(body) {
-  var rawText = String(body.raw_text || '');
-  var proveedor;
-  var utilityType = body.utility_type === 'percentage' ? 'percentage' : 'fixed';
-  var utilityValue = Number(body.utility_value);
-  if (!body.provider || !rawText.trim()) return { ok: false, error: 'Proveedor y lista son obligatorios' };
-  try {
-    proveedor = resolverProveedorActivo_(body.provider).name;
-  } catch (error) {
-    return { ok: false, error: error.message };
+function asegurarHojaCatalogoExcepciones_() {
+  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  var sheet = ss.getSheetByName(CONFIG.SHEET_CATALOGO_EXCEPCIONES);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_CATALOGO_EXCEPCIONES);
+    sheet.appendRow([
+      'ID', 'Fila importación', 'Offer ID', 'Proveedor', 'Referencia recibida',
+      'Tipo excepción', 'Costo', 'Precio venta', 'Marca', 'Categoría', 'Estado',
+      'Referencia canónica', 'Creado en', 'Actualizado en'
+    ]);
+    sheet.getRange(1, 1, 1, 14)
+      .setFontWeight('bold')
+      .setBackground('#0B1E3D')
+      .setFontColor('#00C4CC');
+    sheet.hideSheet();
   }
-  if (!isFinite(utilityValue) || utilityValue < 0) return { ok: false, error: 'Utilidad inválida' };
+  return sheet;
+}
 
-  guardarImportOriginal_(proveedor, rawText);
+function asegurarHojaCatalogoReglas_() {
+  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  var sheet = ss.getSheetByName(CONFIG.SHEET_CATALOGO_REGLAS);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_CATALOGO_REGLAS);
+    sheet.appendRow([
+      'ID', 'Proveedor', 'Referencia normalizada', 'Referencia recibida',
+      'Referencia canónica', 'Activa', 'Creado en', 'Actualizado en'
+    ]);
+    sheet.getRange(1, 1, 1, 8)
+      .setFontWeight('bold')
+      .setBackground('#0B1E3D')
+      .setFontColor('#00C4CC');
+    sheet.hideSheet();
+  }
+  return sheet;
+}
+
+function leerReglasCatalogo_() {
+  var sheet = asegurarHojaCatalogoReglas_();
+  if (sheet.getLastRow() <= 1) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues().map(function(row, index) {
+    return {
+      id: String(row[0] || ''),
+      provider: String(row[1] || ''),
+      source_normalized: String(row[2] || ''),
+      source_reference: String(row[3] || ''),
+      canonical_name: String(row[4] || ''),
+      active: String(row[5] || '').toUpperCase() !== 'NO',
+      created_at: row[6],
+      updated_at: row[7],
+      _row: index + 2
+    };
+  }).filter(function(rule) { return rule.id && rule.active; });
+}
+
+function leerExcepcionesCatalogo_() {
+  var sheet = asegurarHojaCatalogoExcepciones_();
+  if (sheet.getLastRow() <= 1) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 14).getValues().map(function(row, index) {
+    return {
+      id: String(row[0] || ''),
+      import_row: Number(row[1]) || 0,
+      offer_id: String(row[2] || ''),
+      provider: String(row[3] || ''),
+      source_reference: String(row[4] || ''),
+      exception_type: String(row[5] || ''),
+      cost: Number(row[6]) || 0,
+      sale_price: Number(row[7]) || 0,
+      brand: String(row[8] || ''),
+      category: String(row[9] || ''),
+      status: String(row[10] || 'pendiente').toLowerCase(),
+      canonical_name: String(row[11] || ''),
+      created_at: row[12],
+      updated_at: row[13],
+      _row: index + 2
+    };
+  }).filter(function(exception) { return exception.id; });
+}
+
+function construirBorradorCatalogo_(proveedor, rawText, utilityType, utilityValue) {
   var actuales = leerFilasCatalogo_();
   var porNombre = {};
   actuales.forEach(function(item) { porNombre[normalizarReferencia_(item.nombre)] = item; });
+  var reglas = {};
+  leerReglasCatalogo_().forEach(function(rule) {
+    reglas[normalizarNombreProveedor_(rule.provider) + '|' + rule.source_normalized] = rule.canonical_name;
+  });
   var draft = [];
   var exceptions = [];
 
-  rawText.split(/\r?\n/).forEach(function(linea, index) {
+  String(rawText || '').split(/\r?\n/).forEach(function(linea, index) {
     var texto = String(linea).trim();
     var costo = parsePrecio_(texto);
     if (!texto || !costo) return;
@@ -671,10 +748,15 @@ function analizarCatalogoAdmin_(body) {
       .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
       .replace(/\b(?:57)?3\d{9}\b/g, '')
       .replace(/\s+/g, ' ')
-      .replace(/[-:|]+$/g, '')
+      .replace(/[-:|→]+$/g, '')
       .trim();
     if (!referencia) return;
-    var existente = porNombre[normalizarReferencia_(referencia)];
+    var learnedName = reglas[
+      normalizarNombreProveedor_(proveedor) + '|' + normalizarReferenciaCompleta_(referencia)
+    ];
+    var existente = learnedName
+      ? porNombre[normalizarReferencia_(learnedName)]
+      : porNombre[normalizarReferencia_(referencia)];
     var salePrice = utilityType === 'percentage'
       ? Math.round(costo * (1 + utilityValue / 100))
       : Math.round(costo + utilityValue);
@@ -696,6 +778,84 @@ function analizarCatalogoAdmin_(body) {
       exception_type: noPublicable ? 'not_publishable' : 'missing_image'
     });
   });
+  return { draft: draft, exceptions: exceptions };
+}
+
+function persistirExcepcionesCatalogo_(importRow, proveedor, draft, exceptions) {
+  var sheet = asegurarHojaCatalogoExcepciones_();
+  var existing = leerExcepcionesCatalogo_();
+  var now = new Date();
+  exceptions.forEach(function(exception) {
+    var item = draft.filter(function(row) { return row.offer_id === exception.offer_id; })[0];
+    if (!item) return;
+    var current = existing.filter(function(row) {
+      return normalizarNombreProveedor_(row.provider) === normalizarNombreProveedor_(proveedor)
+        && normalizarReferenciaCompleta_(row.source_reference) === normalizarReferenciaCompleta_(exception.source_reference)
+        && row.status === 'pendiente';
+    })[0];
+    var id = current ? current.id : 'catalog-exception-' + importRow + '-' + exception.offer_id;
+    var values = [
+      id, importRow, exception.offer_id, proveedor, exception.source_reference,
+      exception.exception_type, item.precioCompra, item.precioVenta, item.marca,
+      item.categoria, 'pendiente', '', current ? current.created_at : now, now
+    ];
+    if (current) sheet.getRange(current._row, 1, 1, 14).setValues([values]);
+    else sheet.appendRow(values);
+  });
+}
+
+function bootstrapExcepcionesCatalogo_() {
+  var sheet = asegurarHojaCatalogoExcepciones_();
+  if (sheet.getLastRow() > 1) return;
+  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  var imports = ss.getSheetByName('CATALOGO_IMPORTS');
+  if (!imports || imports.getLastRow() <= 1) return;
+  var importRow = imports.getLastRow();
+  var row = imports.getRange(importRow, 1, 1, 3).getValues()[0];
+  var parsed = construirBorradorCatalogo_(String(row[1] || ''), String(row[2] || ''), 'fixed', 0);
+  persistirExcepcionesCatalogo_(importRow, String(row[1] || ''), parsed.draft, parsed.exceptions);
+}
+
+function listarExcepcionesCatalogoAdmin_() {
+  bootstrapExcepcionesCatalogo_();
+  return {
+    ok: true,
+    excepciones: leerExcepcionesCatalogo_().filter(function(exception) {
+      return exception.status === 'pendiente';
+    }).map(function(exception) {
+      delete exception._row;
+      return exception;
+    })
+  };
+}
+
+function guardarImportOriginal_(proveedor, rawText) {
+  var ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  var sheet = ss.getSheetByName('CATALOGO_IMPORTS') || ss.insertSheet('CATALOGO_IMPORTS');
+  if (sheet.getLastRow() === 0) sheet.appendRow(['Fecha', 'Proveedor', 'Texto original']);
+  sheet.appendRow([new Date(), proveedor, rawText]);
+  sheet.hideSheet();
+  return sheet.getLastRow();
+}
+
+function analizarCatalogoAdmin_(body) {
+  var rawText = String(body.raw_text || '');
+  var proveedor;
+  var utilityType = body.utility_type === 'percentage' ? 'percentage' : 'fixed';
+  var utilityValue = Number(body.utility_value);
+  if (!body.provider || !rawText.trim()) return { ok: false, error: 'Proveedor y lista son obligatorios' };
+  try {
+    proveedor = resolverProveedorActivo_(body.provider).name;
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!isFinite(utilityValue) || utilityValue < 0) return { ok: false, error: 'Utilidad inválida' };
+
+  var importRow = guardarImportOriginal_(proveedor, rawText);
+  var parsed = construirBorradorCatalogo_(proveedor, rawText, utilityType, utilityValue);
+  var draft = parsed.draft;
+  var exceptions = parsed.exceptions;
+  persistirExcepcionesCatalogo_(importRow, proveedor, draft, exceptions);
   return {
     ok: true,
     draft: draft,
@@ -708,6 +868,115 @@ function analizarCatalogoAdmin_(body) {
     }),
     version_id: 'sheet-draft'
   };
+}
+
+function guardarReglaCatalogo_(sheet, exception, canonicalName) {
+  var rules = leerReglasCatalogo_();
+  var normalizedSource = normalizarReferenciaCompleta_(exception.source_reference);
+  var current = rules.filter(function(rule) {
+    return normalizarNombreProveedor_(rule.provider) === normalizarNombreProveedor_(exception.provider)
+      && rule.source_normalized === normalizedSource;
+  })[0];
+  var now = new Date();
+  var values = [
+    current ? current.id : Utilities.getUuid(),
+    exception.provider,
+    normalizedSource,
+    exception.source_reference,
+    canonicalName,
+    'SI',
+    current ? current.created_at : now,
+    now
+  ];
+  if (current) sheet.getRange(current._row, 1, 1, 8).setValues([values]);
+  else sheet.appendRow(values);
+}
+
+function agregarReferenciaCatalogo_(exception, canonical) {
+  var name = String(canonical.canonicalName || '').trim().replace(/\s+/g, ' ');
+  var brand = String(canonical.brand || '').trim();
+  var model = String(canonical.model || '').trim();
+  var ram = Number(canonical.ramGb);
+  var storage = Number(canonical.storageGb);
+  var category = String(canonical.category || 'Celulares').trim();
+  if (!name || !brand || !model || !ram || !storage || !category) {
+    throw new Error('Completa o selecciona una referencia canónica antes de guardar.');
+  }
+  var actuales = leerFilasCatalogo_();
+  var duplicate = actuales.filter(function(item) {
+    return normalizarReferenciaCompleta_(item.nombre) === normalizarReferenciaCompleta_(name);
+  })[0];
+  if (duplicate) throw new Error('Ya existe una referencia similar. Revísala antes de crear una nueva.');
+
+  var sheet = SpreadsheetApp.openById(CONFIG.SHEET_ID).getSheetByName(CONFIG.SHEET_CATALOGO);
+  if (!sheet) throw new Error('No existe la hoja central CATALOGO');
+  sheet.appendRow([
+    exception.provider,
+    name,
+    exception.cost,
+    exception.sale_price,
+    brand,
+    normalizarReferencia_(category) === 'CELULARES' ? 'Celular' : category
+  ]);
+  return name;
+}
+
+function guardarReglaCatalogoAdmin_(body) {
+  var exceptionId = String(body.exception_id || '').trim();
+  if (!exceptionId) return { ok: false, error: 'Excepción inexistente' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    bootstrapExcepcionesCatalogo_();
+    var exceptionSheet = asegurarHojaCatalogoExcepciones_();
+    var exception = leerExcepcionesCatalogo_().filter(function(row) {
+      return row.id === exceptionId;
+    })[0];
+    if (!exception) return { ok: false, error: 'Excepción inexistente' };
+    if (exception.status === 'resuelta') {
+      return {
+        ok: true,
+        idempotent: true,
+        offer_id: exception.offer_id,
+        canonical_name: exception.canonical_name,
+        pending_count: leerExcepcionesCatalogo_().filter(function(row) {
+          return row.status === 'pendiente';
+        }).length
+      };
+    }
+
+    var canonicalName = '';
+    if (body.create_new === true) {
+      canonicalName = agregarReferenciaCatalogo_(exception, body.canonical || {});
+    } else {
+      canonicalName = String(body.canonical_product_id || '').trim();
+      if (!canonicalName) {
+        return { ok: false, error: 'Completa o selecciona una referencia canónica antes de guardar.' };
+      }
+      var product = leerFilasCatalogo_().filter(function(item) {
+        return normalizarReferencia_(item.nombre) === normalizarReferencia_(canonicalName);
+      })[0];
+      if (!product) return { ok: false, error: 'Referencia canónica inexistente' };
+      canonicalName = product.nombre;
+    }
+
+    guardarReglaCatalogo_(asegurarHojaCatalogoReglas_(), exception, canonicalName);
+    var now = new Date();
+    exceptionSheet.getRange(exception._row, 11, 1, 4).setValues([[
+      'resuelta', canonicalName, exception.created_at || now, now
+    ]]);
+    return {
+      ok: true,
+      offer_id: exception.offer_id,
+      canonical_name: canonicalName,
+      created: body.create_new === true,
+      pending_count: leerExcepcionesCatalogo_().filter(function(row) {
+        return row.status === 'pendiente';
+      }).length
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function crearSnapshotCatalogo_() {

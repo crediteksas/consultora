@@ -60,7 +60,36 @@ export const catalogApi = {
   },
   async products() {
     const data = await post({ action: 'catalogo_privado_admin', admin_pin: adminPin() });
-    return (data.productos || []).map(item => ({ id: item.nombre, canonical_name: item.nombre }));
+    return (data.productos || []).map(item => ({
+      id: item.nombre,
+      canonical_name: item.nombre,
+      brand: item.marca,
+      category: item.categoria,
+    }));
+  },
+  async exceptions() {
+    const data = await post({
+      action: 'listar_excepciones_catalogo_admin',
+      admin_pin: adminPin(),
+    });
+    return data.excepciones || [];
+  },
+  async saveOfferRule(payload) {
+    const data = await post({
+      action: 'guardar_regla_catalogo_admin',
+      admin_pin: adminPin(),
+      exception_id: payload.exception_id,
+      canonical_product_id: payload.canonical_product_id || '',
+      create_new: payload.create_new === true,
+      canonical: payload.canonical || null,
+      force_create: payload.force_create === true,
+    });
+    const draftItem = latestDraft.find(item => item.offer_id === data.offer_id);
+    if (draftItem) {
+      draftItem.nombre = data.canonical_name;
+      draftItem.publishable = true;
+    }
+    return data;
   },
   async settings() {
     return [];
@@ -69,14 +98,11 @@ export const catalogApi = {
     return Promise.resolve({ ok: true });
   },
   async correctOffer(offerId, productId) {
-    const item = latestDraft.find(row => row.offer_id === offerId);
-    if (!item) throw new Error('Excepción inexistente');
-    const products = await this.products();
-    const product = products.find(row => row.id === productId);
-    if (!product) throw new Error('Referencia inexistente');
-    item.nombre = product.canonical_name;
-    item.publishable = true;
-    return item;
+    return this.saveOfferRule({
+      exception_id: offerId,
+      canonical_product_id: productId,
+      create_new: false,
+    });
   },
   async history(search = '') {
     const data = await post({

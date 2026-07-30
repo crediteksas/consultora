@@ -142,6 +142,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .corr-stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
   .corr-stat-num{font-size:22px;font-weight:700;color:var(--accent);}
   .corr-stat-label{font-size:10px;color:var(--text3);margin-top:2px;}
+.sofia-access-error{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.sofia-access-error.show{display:flex}
+.sofia-access-card{max-width:460px;padding:28px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);text-align:center}
+.sofia-access-card h2{margin-bottom:8px;color:var(--text)}
+.sofia-access-card p{margin-bottom:18px;color:var(--text2);line-height:1.5}
+.sofia-access-card button{border:0;border-radius:8px;padding:10px 16px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -268,6 +274,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="right-panel" id="right-panel"></div>
 </div>
 
+<div class="sofia-access-error" id="sofiaAccessError" role="alert" aria-live="assertive">
+  <div class="sofia-access-card">
+    <h2>No fue posible abrir Sofía</h2>
+    <p id="sofiaAccessErrorMessage">No tienes una sesión válida para consultar Sofía.</p>
+    <button type="button" onclick="volverAlHub()">Volver a AURA</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const API='https://creditek-bot.comercial-853.workers.dev';
@@ -311,10 +325,11 @@ const SUPA='https://ditiwpndvmyuqcagupea.supabase.co/rest/v1';
 const SUPA_KEY='sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
   const SUPA_BASE='https://ditiwpndvmyuqcagupea.supabase.co';
   function getSession(){try{return JSON.parse(sessionStorage.getItem('ck_supa_session')||'null')}catch(e){return null}}
-  function irAlHub(){top.location.href='index.html'}
-  async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,email:s.email};sessionStorage.setItem('ck_supa_session',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
-  async function supaFetch(url,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}let res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+s.access_token})}));if(res.status===401){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error('401')}res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+nuevo.access_token})}))}return res}
-  function logoutPanel(){sessionStorage.removeItem('ck_supa_session');irAlHub()}
+  function showAccessError(message){const screen=document.getElementById('sofiaAccessError');const text=document.getElementById('sofiaAccessErrorMessage');if(text)text.textContent=message||'No tienes una sesión válida para consultar Sofía.';if(screen)screen.classList.add('show')}
+  function volverAlHub(){if(window.top!==window)window.parent.postMessage({type:'aura:close-module'},location.origin);else location.href='index.html'}
+  async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,email:s.email};sessionStorage.setItem('ck_supa_session',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
+  async function supaFetch(url,opts){opts=opts||{};let s=getSession();if(!s){showAccessError('No tienes una sesión válida para consultar Sofía.');throw new Error('Sin sesión')}let res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+s.access_token})}));if(res.status===401){const nuevo=await refreshSession();if(!nuevo){showAccessError('Tu sesión venció. Vuelve a AURA e inicia sesión nuevamente.');throw new Error('Sesión vencida')}res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+nuevo.access_token})}))}if(res.status===401||res.status===403){showAccessError('Tu usuario no tiene permisos para consultar Sofía.');throw new Error('Acceso denegado')}return res}
+  function logoutPanel(){sessionStorage.removeItem('ck_supa_session');showAccessError('La sesión de Sofía fue cerrada.')}
 async function loadConvs(){
   try{
     const convResp=await(await supaFetch('/conversaciones?select=*&order=timestamp.desc&limit=1000')).json();
@@ -624,7 +639,7 @@ function timeAgo(ts){
 
 function hashCode(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return h}
 
-if(getSession()){loadAll();setInterval(loadAll,15000);}else{irAlHub();}
+if(getSession()){loadAll();setInterval(loadAll,15000);}else{showAccessError('No tienes una sesión válida para consultar Sofía.');}
 </script>
 </body>
 </html>

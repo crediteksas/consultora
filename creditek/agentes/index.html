@@ -562,7 +562,24 @@ function showSection(id, el) {
     id === 'dashboard' ? 'Dashboard' : 'Configuración';
 }
 
-function openModule(url, title, el) {
+async function ensureSofiaSession() {
+  const { ensureAuraSession } = await import('./aura-session.mjs');
+  return ensureAuraSession({
+    storage: sessionStorage,
+    fetchImpl: fetch,
+    endpoint: 'https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login',
+    gate: PWD,
+  });
+}
+
+async function openModule(url, title, el) {
+  if (url === 'creditek-agente-respuestas.html') {
+    const sessionResult = await ensureSofiaSession();
+    if (!sessionResult.ok) {
+      showToast('No fue posible abrir Sofía. Inicia sesión nuevamente.', '#EF4444');
+      return;
+    }
+  }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
   document.getElementById('main-content').style.display = 'none';
@@ -590,6 +607,10 @@ function closeIframe() {
   document.getElementById('topbar-title').textContent = 'Dashboard';
   document.getElementById('topbar-breadcrumb').textContent = 'Sistema operativo Creditek';
 }
+
+window.addEventListener('message', event => {
+  if (event.origin === location.origin && event.data?.type === 'aura:close-module') closeIframe();
+});
 
 // ── Config ───────────────────────────────────────────────────────
 function saveKey(name, inputId, storageKey) {

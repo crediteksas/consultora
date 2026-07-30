@@ -7,6 +7,7 @@ const apiPath = new URL('../../creditek/portal/catalog-api.mjs', import.meta.url
 const adminPath = new URL('../../creditek/portal/catalog-admin.mjs', import.meta.url);
 const portalPath = new URL('../../creditek/portal/index.html', import.meta.url);
 const appsScriptPath = new URL('../../creditek/portal/Code.gs', import.meta.url);
+const buildPath = new URL('../../scripts/build-public.mjs', import.meta.url);
 
 test('los proveedores se obtienen de Apps Script y no de una lista fija del frontend', async () => {
   const api = await readFile(apiPath, 'utf8');
@@ -72,4 +73,10 @@ test('muestra el único nombre disponible y conserva ambos cuando son diferentes
     formatProviderLabel({ name: 'Comunicare SAS', commercial_name: 'Comunicaribe' }),
     'Comunicare SAS — Comunicaribe',
   );
+});
+
+test('el build público incluye el formateador compartido de proveedores', async () => {
+  const build = await readFile(buildPath, 'utf8');
+
+  assert.match(build, /creditek\/portal\/provider-display\.mjs/);
 });

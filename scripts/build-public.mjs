@@ -20,6 +20,7 @@ const PUBLIC_FILES = [
   'creditek/portal/catalog-api.mjs',
   'creditek/portal/catalog-domain.mjs',
   'creditek/portal/order-contract.mjs',
+  'creditek/portal/provider-display.mjs',
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);

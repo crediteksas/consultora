@@ -1,5 +1,6 @@
 import { catalogApi } from './catalog-api.mjs';
 import { buildOrderRequest, sanitizeOrderResponse } from './order-contract.mjs';
+import { formatProviderLabel } from './provider-display.mjs';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -32,15 +33,11 @@ const setTab = async name => {
   if (name === 'providers') await loadProvidersAdmin();
 };
 
-const providerLabel = provider => provider.commercial_name
-  ? `${provider.name} — ${provider.commercial_name}`
-  : provider.name;
-
 const refreshProviderSelect = async (selectedId = '') => {
   const providers = await catalogApi.providers({ activeOnly: true });
   const select = $('#catalogProvider');
   select.innerHTML = '<option value="">Seleccionar proveedor</option>' +
-    providers.map(provider => `<option value="${escapeHtml(provider.id)}">${escapeHtml(providerLabel(provider))}</option>`).join('');
+    providers.map(provider => `<option value="${escapeHtml(provider.id)}">${escapeHtml(formatProviderLabel(provider))}</option>`).join('');
   if (selectedId && providers.some(provider => provider.id === selectedId)) select.value = selectedId;
   return providers;
 };
@@ -52,10 +49,9 @@ const renderProviders = () => {
   ));
   $('#catalogProvidersTable').innerHTML = rows.length
     ? `<div class="catalog-table-wrap"><table class="catalog-table"><thead><tr>
-        <th>Proveedor</th><th>Nombre comercial</th><th>NIT</th><th>Contacto</th><th>Estado</th><th>Acciones</th>
+        <th>Proveedor</th><th>NIT</th><th>Contacto</th><th>Estado</th><th>Acciones</th>
       </tr></thead><tbody>${rows.map(provider => `<tr>
-        <td>${escapeHtml(provider.name)}</td>
-        <td>${escapeHtml(provider.commercial_name)}</td>
+        <td>${escapeHtml(formatProviderLabel(provider))}</td>
         <td>${escapeHtml(provider.nit)}</td>
         <td>${escapeHtml(provider.contact)}</td>
         <td><span class="catalog-status catalog-status-${provider.status}">${escapeHtml(provider.status)}</span></td>

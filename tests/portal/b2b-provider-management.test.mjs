@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { formatProviderLabel } from '../../creditek/portal/provider-display.mjs';
 
 const apiPath = new URL('../../creditek/portal/catalog-api.mjs', import.meta.url);
 const adminPath = new URL('../../creditek/portal/catalog-admin.mjs', import.meta.url);
@@ -57,4 +58,18 @@ test('el selector operativo recibe únicamente proveedores activos', async () =>
   assert.match(api, /providers\(\{\s*activeOnly\s*=\s*true\s*\}/);
   assert.match(source, /solo_activos/);
   assert.match(source, /provider\.status\s*===\s*'activo'/);
+});
+
+test('evita repetir nombre y nombre comercial equivalentes en la presentación', () => {
+  assert.equal(formatProviderLabel({ name: 'Mundo Net', commercial_name: 'Mundo Net' }), 'Mundo Net');
+  assert.equal(formatProviderLabel({ name: '  INÍTY   Colombia ', commercial_name: 'inity colombia' }), 'INÍTY Colombia');
+});
+
+test('muestra el único nombre disponible y conserva ambos cuando son diferentes', () => {
+  assert.equal(formatProviderLabel({ name: '', commercial_name: 'Corbeta de Colombia' }), 'Corbeta de Colombia');
+  assert.equal(formatProviderLabel({ name: 'Inditek', commercial_name: '' }), 'Inditek');
+  assert.equal(
+    formatProviderLabel({ name: 'Comunicare SAS', commercial_name: 'Comunicaribe' }),
+    'Comunicare SAS — Comunicaribe',
+  );
 });

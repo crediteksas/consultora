@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const migrationUrl = new URL('../../creditek/erp/migrations/20260731_kora_2026_000017_costo_promedio_tienda.sql', import.meta.url);
+const correctiveMigrationUrl = new URL('../../creditek/erp/migrations/20260731_kora_2026_000017_solo_no_serializados.sql', import.meta.url);
 const domainUrl = new URL('../../creditek/erp/inventario-costo-domain.js', import.meta.url);
 
 async function source(url) {
@@ -39,13 +40,16 @@ test('la migracion pondera solo entradas de remision y traslado en la tienda des
   assert.doesNotMatch(sql, /create or replace function public\.ejecutar_traslado_despacho/i);
 });
 
-test('actualiza unidades disponibles exactas sin tocar otras tiendas ni ventas historicas', async () => {
-  const sql = await source(migrationUrl);
+test('la correccion excluye serializados sin tocar ventas ni movimientos historicos', async () => {
+  const sql = await source(correctiveMigrationUrl);
 
-  assert.match(sql, /update public\.unidades[\s\S]*tienda_actual = p_tienda_codigo[\s\S]*producto_id = p_producto_id[\s\S]*estado = 'disponible'/i);
-  assert.match(sql, /costo_promedio_tienda_historial/i);
-  assert.match(sql, /costo_anterior[\s\S]*costo_nuevo[\s\S]*usuario_id[\s\S]*origen_tipo[\s\S]*origen_id/i);
-  assert.match(sql, /raise exception 'El historial de costo promedio es inmutable'/i);
+  assert.match(sql, /El costo promedio solo aplica a productos no serializados/i);
+  assert.match(sql, /p_tipo_inventario\s*<>\s*'cantidad'/i);
+  assert.match(sql, /confirmar_recepcion_remision\(uuid,jsonb\)/i);
+  assert.match(sql, /ejecutar_traslado_recepcion\(uuid\)/i);
+  const replacementBodies = [...sql.matchAll(/\$new\$([\s\S]*?)\$new\$/gi)].map(match => match[1]).join('\n');
+  assert.doesNotMatch(replacementBodies, /aplicar_costo_promedio_tienda/i);
+  assert.doesNotMatch(replacementBodies, /set precio_tienda = v_costo_nuevo/i);
   assert.doesNotMatch(sql, /update public\.venta_items/i);
   assert.doesNotMatch(sql, /update public\.movimientos/i);
 });
@@ -54,6 +58,7 @@ test('la venta posterior conserva el costo promedio vigente como snapshot', asyn
   const utilidad = await source(new URL('../../creditek/erp/migrations/20260727_utilidad_tienda_costo_remision.sql', import.meta.url));
 
   assert.match(utilidad, /select\s+u\.precio_tienda/i);
+  assert.match(utilidad, /where u\.id = new\.unidad_id/i);
   assert.match(utilidad, /select\s+sc\.precio_tienda/i);
   assert.match(utilidad, /new\.costo_remision_congelado\s*:=\s*v_costo_remision/i);
 });

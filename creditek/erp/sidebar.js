@@ -191,7 +191,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
       { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona errores reportados, responsables, estados y soluciones.', roles: ['gerencia', 'auditoria', 'soporte'] },
-      { label: 'Mis incidencias', href: 'mis-reportes.html', lucide: 'message-square-warning', description: 'Consulta el avance y las respuestas de los errores que reportaste.', roles: ['gerencia', 'auditoria', 'soporte', 'admin_tienda', 'asesor'] },
     ]},
   ];
 

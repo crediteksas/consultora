@@ -5,14 +5,14 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '../..');
 
-test('el shell monta un único botón global y agrega Administración y Mis incidencias', async () => {
+test('el shell monta un único escarabajo y elimina Mis incidencias del menú', async () => {
   const [sidebar, center] = await Promise.all([
     readFile(path.join(root, 'creditek/erp/sidebar.js'), 'utf8'),
     readFile(path.join(root, 'creditek/erp/kora-incident-center.js'), 'utf8'),
   ]);
 
   assert.match(sidebar, /label:\s*'Incidencias'[\s\S]*roles:\s*\['gerencia',\s*'auditoria'/);
-  assert.match(sidebar, /label:\s*'Mis incidencias'/);
+  assert.doesNotMatch(sidebar, /label:\s*'Mis incidencias'/);
   assert.match(sidebar, /KoraIncidentCenter\?\.mount/);
   assert.match(center, /data-kora-report-incident/);
   assert.match(center, /aria-label="Reportar error"/);

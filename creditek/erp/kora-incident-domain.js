@@ -30,6 +30,7 @@
     asesor: new Set([
       'incident_create',
       'incident_view_own',
+      'incident_view_store',
       'incident_comment',
     ]),
     admin_tienda: new Set([
@@ -53,29 +54,12 @@
     ]),
     auditoria: new Set([
       'incident_create',
-      'incident_view_own',
-      'incident_view_store',
       'incident_view_all',
-      'incident_comment',
-      'incident_assign',
-      'incident_change_priority',
-      'incident_change_status',
-      'incident_close',
-      'incident_admin',
-      'incident_generate_task',
     ]),
     soporte: new Set([
       'incident_create',
-      'incident_view_own',
-      'incident_view_store',
       'incident_view_all',
       'incident_comment',
-      'incident_assign',
-      'incident_change_priority',
-      'incident_change_status',
-      'incident_close',
-      'incident_admin',
-      'incident_generate_task',
     ]),
   });
 

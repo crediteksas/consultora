@@ -29,6 +29,7 @@
     taskText: '',
     taskActivator: null,
     copyingTask: false,
+    canAdmin: false,
   };
 
   function status(message, error = false) {
@@ -189,7 +190,7 @@
       }
       commentsNode.append(paragraph);
     }
-    if (state.mode === 'admin') {
+    if (state.mode === 'admin' && state.canAdmin) {
       detail.querySelector('[data-detail-status]').value = item.status;
       detail.querySelector('[data-detail-priority]').value = item.priority;
       detail.querySelector('[data-detail-assignee]').value = item.assigned_to || '';
@@ -200,7 +201,7 @@
     detail.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
   async function loadAssignees() {
-    if (state.mode !== 'admin') return;
+    if (state.mode !== 'admin' || !state.canAdmin) return;
     const { data, error } = await state.sb.from('perfiles')
       .select('id,nombre,rol')
       .eq('activo', true)
@@ -459,12 +460,18 @@
       state = { ...state, sb: context.sb, profile: context.perfil };
       if (state.mode === 'admin') {
         const { data, error } = await state.sb.rpc('kora_incident_has_permission', { p_permission: 'incident_admin' });
-        if (error || !data) throw new Error('No tienes permiso para administrar incidencias.');
+        if (error) throw error;
+        state.canAdmin = Boolean(data);
+        const managementPanel = document.querySelector('[data-detail-management]');
+        if (managementPanel) managementPanel.hidden = !state.canAdmin;
       }
       fillStateOptions();
       bind();
-      await loadAssignees();
-      await Promise.all([loadMetrics(), loadIncidents()]);
+      if (state.canAdmin) await loadAssignees();
+      await Promise.all([
+        state.canAdmin ? loadMetrics() : Promise.resolve(),
+        loadIncidents(),
+      ]);
       const requestedId = new URLSearchParams(location.search).get('id');
       if (requestedId) {
         const requested = state.incidents.find(item => item.id === requestedId);

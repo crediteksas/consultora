@@ -31,6 +31,28 @@ test('Resuelto exige resolución y versión, pero En revisión no', async () => 
   assert.equal(domain.statusLabel('corregido'), 'Resuelto');
 });
 
+test('clasifica discretamente incidencias gestionadas y pendientes', async () => {
+  const domain = loadManagement(await read('creditek/erp/kora-incident-management.js'));
+
+  for (const status of ['corregido', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado']) {
+    assert.equal(domain.statusTone(status), 'managed');
+  }
+  for (const status of ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'pendiente_validacion']) {
+    assert.equal(domain.statusTone(status), 'pending');
+  }
+
+  const [app, css] = await Promise.all([
+    read('creditek/erp/incidencias-app.js'),
+    read('design-system/components/kora-incident-center.css'),
+  ]);
+  assert.match(app, /kora-incident-status--\$\{tone\}/);
+  assert.match(app, /row\.dataset\.managementState = tone/);
+  assert.match(css, /\.kora-incident-status--managed/);
+  assert.match(css, /\.kora-incident-status--pending/);
+  assert.match(css, /data-management-state=managed/);
+  assert.match(css, /data-management-state=pending/);
+});
+
 test('nunca usa un UUID como nombre visible', async () => {
   const domain = loadManagement(await read('creditek/erp/kora-incident-management.js'));
   assert.equal(domain.displayName({ nombre: 'Oscar Javier Pacheco' }), 'Oscar Javier Pacheco');

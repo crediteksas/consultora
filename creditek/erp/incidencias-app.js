@@ -106,15 +106,24 @@
     }
     records.forEach(item => {
       const row = el('tr');
+      const tone = management?.statusTone(item.status) || 'pending';
+      row.dataset.managementState = tone;
       const codeButton = el('button', item.incident_code);
       codeButton.type = 'button';
       codeButton.addEventListener('click', () => openDetail(item));
       const cells = state.mode === 'admin'
         ? [codeButton, formatDate(item.created_at), item.title, item.store_name_snapshot || '—', item.module, label(item.priority), label(item.status), item.user_name_snapshot, assigneeName(item.assigned_to), item.kora_version, age(item.created_at)]
         : [codeButton, formatDate(item.created_at), item.title, item.module, label(item.priority), label(item.status), formatDate(item.updated_at)];
-      cells.forEach(value => {
+      const statusIndex = state.mode === 'admin' ? 6 : 5;
+      cells.forEach((value, index) => {
         const cell = el('td');
-        if (value instanceof Node) cell.append(value); else cell.textContent = value;
+        if (value instanceof Node) {
+          cell.append(value);
+        } else if (index === statusIndex) {
+          cell.append(el('span', value, `kora-incident-status kora-incident-status--${tone}`));
+        } else {
+          cell.textContent = value;
+        }
         row.append(cell);
       });
       body.append(row);

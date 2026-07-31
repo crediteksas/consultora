@@ -19,6 +19,12 @@
     return STATUS_LABELS[value] || String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
   }
 
+  function statusTone(value) {
+    return ['corregido', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado'].includes(value)
+      ? 'managed'
+      : 'pending';
+  }
+
   function displayName(person) {
     if (person && typeof person === 'object') {
       const name = String(person.nombre || person.name || '').trim();
@@ -77,6 +83,7 @@
     displayName,
     historyText,
     statusLabel,
+    statusTone,
     validateManagement,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

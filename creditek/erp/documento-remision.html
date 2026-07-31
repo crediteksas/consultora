@@ -479,11 +479,16 @@ function renderDocumento() {
       const p = it.productos || { id: it.producto_id, nombre: '(producto)', tipo: '', categoria: '', foto_url: null };
       // SPEC v2 · si el producto no tiene foto_url, mostrar botón "Subir foto" (global — se guarda en productos.foto_url).
       const tieneFoto = !!p.foto_url;
+      const puedeCargarFoto = !tieneFoto
+        && remision.estado === 'despachada'
+        && rolActual === 'admin_tienda'
+        && tiendaActual === remision.tienda_codigo;
       const thumbHtml = tieneFoto
         ? `<div class="thumb"><img src="${esc(p.foto_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" /></div>`
-        : `<button type="button" class="btn-subir-foto thumb no-print" data-prod-id="${esc(p.id)}"
+        : puedeCargarFoto ? `<button type="button" class="btn-subir-foto thumb no-print" data-prod-id="${esc(p.id)}"
               style="cursor:pointer; border:2px dashed #d1d5db; background:#f9fafb;"
-              title="Subir foto (queda global para todas las tiendas)">📷</button>`;
+              title="Subir foto (queda global para todas las tiendas)">📷</button>`
+          : '<div class="thumb">📷</div>';
       return `
         <tr class="border-b border-gray-100" data-prod-id="${esc(p.id)}">
           <td class="py-3 pl-2 pr-2 text-center text-gray-500 font-mono text-xs">${idx + 1}</td>
@@ -629,6 +634,10 @@ async function aceptarRecepcion() {
   btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Procesando...';
 
   try {
+    const sinFoto = items.find(it => !it.productos?.foto_url);
+    if (sinFoto && rolActual === 'admin_tienda') {
+      throw new Error('Carga la foto de "' + (sinFoto.productos?.nombre || 'la referencia') + '" antes de recibir.');
+    }
     const payload = [];
     for (const it of items) {
       const p = it.productos || {};
@@ -757,17 +766,27 @@ inputFotoHidden.addEventListener('change', async () => {
   if (btn) btn.textContent = '⏳';
 
   try {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `producto_${prodId}_${Date.now()}.${ext}`;
+    const path = `canonicas/${prodId}`;
     const { error: upErr } = await SB.storage.from('productos-fotos').upload(path, file, { cacheControl: '31536000', upsert: false });
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) {
+      const { data: actual } = await SB.from('productos').select('foto_url').eq('id', prodId).maybeSingle();
+      if (actual?.foto_url) {
+        items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = actual.foto_url; });
+        renderDocumento();
+        return;
+      }
+    }
     const { data: pub } = SB.storage.from('productos-fotos').getPublicUrl(path);
     const publicUrl = pub.publicUrl;
-    const { error: dbErr } = await SB.from('productos').update({ foto_url: publicUrl }).eq('id', prodId);
-    if (dbErr) throw new Error(dbErr.message);
+    const { data, error: dbErr } = await SB.rpc('registrar_foto_producto_recepcion', {
+      p_remision_id: REMISION_ID,
+      p_producto_id: prodId,
+      p_foto_url: publicUrl,
+    });
+    if (dbErr || !data?.ok) throw new Error(dbErr?.message || 'El servidor no confirmó la foto');
 
     // Actualiza en memoria y re-renderiza la tabla.
-    items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = publicUrl; });
+    items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = data.foto_url; });
     renderDocumento();
     toast('Foto guardada — todas las tiendas la ven ahora.');
   } catch (e) {

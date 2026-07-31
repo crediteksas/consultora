@@ -197,6 +197,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <label>Foto del producto</label>
       <input type="file" id="input-foto" accept="image/jpeg,image/png,image/webp">
       <div id="preview-foto" style="margin-top:.5rem;"></div>
+      <button type="button" class="link-edit" id="btnEliminarFotoProducto" hidden>Eliminar foto</button>
     </div>
     <div class="modal-err" id="modalErr"></div>
     <div class="modal-ok" id="modalOk">Producto guardado.</div>
@@ -301,6 +302,7 @@ function initPagina() {
   document.getElementById('btnNuevoProducto').addEventListener('click', () => abrirModalProducto(null));
   document.getElementById('btnCancelarModal').addEventListener('click', cerrarModalProducto);
   document.getElementById('btnGuardarProducto').addEventListener('click', guardarProducto);
+  document.getElementById('btnEliminarFotoProducto').addEventListener('click', eliminarFotoProducto);
   document.getElementById('prodCategoria').addEventListener('change', onCategoriaCambiada);
   document.getElementById('prodMargenTipo').addEventListener('change', actualizarLabelMargen);
 
@@ -337,13 +339,12 @@ function fmtMargen(tipo, valor) {
   return tipo === 'porcentaje' ? `${valor}%` : `+${fmtCOP(valor)}`;
 }
 
-async function subirFotoProducto(codigoProducto, archivo) {
-  const ext = archivo.name.split('.').pop().toLowerCase();
-  const nombreArchivo = `${codigoProducto}_${Date.now()}.${ext}`;
+async function subirFotoProducto(productoId, archivo) {
+  const nombreArchivo = `canonicas/${productoId}`;
 
   const { error } = await sb.storage
     .from('productos-fotos')
-    .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: false });
+    .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: true });
 
   if (error) throw error;
 
@@ -456,6 +457,7 @@ function abrirModalProducto(prod) {
   document.getElementById('preview-foto').innerHTML = prod && prod.foto_url
     ? `<img src="${escapeHtml(prod.foto_url)}" alt="foto actual">`
     : '';
+  document.getElementById('btnEliminarFotoProducto').hidden = !(prod && prod.foto_url);
   document.getElementById('modalErr').classList.remove('show');
   document.getElementById('modalOk').classList.remove('show');
   document.getElementById('modalProducto').classList.add('show');
@@ -482,21 +484,10 @@ async function guardarProducto() {
   const btn = document.getElementById('btnGuardarProducto');
   btn.disabled = true; btn.textContent = 'Guardando...';
 
-  let foto_url = document.getElementById('prodFotoActual').value || null;
   const archivo = document.getElementById('input-foto').files[0];
-  if (archivo) {
-    try {
-      foto_url = await subirFotoProducto(codigo, archivo);
-    } catch (e) {
-      btn.disabled = false; btn.textContent = 'Guardar';
-      err.textContent = 'No se pudo subir la foto: ' + e.message;
-      err.classList.add('show');
-      return;
-    }
-  }
 
   let resultado;
-  const payload = { codigo, nombre, categoria, tipo, precio_guia, foto_url, margen_tipo, margen_valor };
+  const payload = { codigo, nombre, categoria, tipo, precio_guia, margen_tipo, margen_valor };
   if (id) {
     resultado = await sb.from('productos').update(payload).eq('id', id).select().maybeSingle();
   } else {
@@ -513,10 +504,59 @@ async function guardarProducto() {
     return;
   }
 
+  if (archivo) {
+    try {
+      const productoId = resultado.data.id;
+      const fotoUrl = await subirFotoProducto(productoId, archivo);
+      const { error: fotoError } = await sb.rpc('gestionar_foto_producto_central', {
+        p_producto_id: productoId,
+        p_foto_url: fotoUrl,
+        p_motivo: id ? 'Reemplazo desde catálogo' : 'Carga inicial desde catálogo'
+      });
+      if (fotoError) throw fotoError;
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Guardar';
+      err.textContent = 'El producto se guardó, pero no se pudo registrar la foto: ' + e.message;
+      err.classList.add('show');
+      return;
+    }
+  }
+
   document.getElementById('modalOk').classList.add('show');
   await cargarCategoriasExistentes();
   await cargarProductos();
   setTimeout(cerrarModalProducto, 700);
+}
+
+async function eliminarFotoProducto() {
+  const id = document.getElementById('prodId').value;
+  const fotoActual = document.getElementById('prodFotoActual').value;
+  if (!id || !fotoActual || !confirm('¿Eliminar la foto canónica de esta referencia?')) return;
+
+  const err = document.getElementById('modalErr');
+  err.classList.remove('show');
+  const { error } = await sb.rpc('gestionar_foto_producto_central', {
+    p_producto_id: id,
+    p_foto_url: null,
+    p_motivo: 'Eliminación desde catálogo'
+  });
+  if (error) {
+    err.textContent = 'No se pudo eliminar la foto: ' + error.message;
+    err.classList.add('show');
+    return;
+  }
+
+  const { error: storageError } = await sb.storage
+    .from('productos-fotos')
+    .remove([`canonicas/${id}`]);
+  if (storageError) {
+    err.textContent = 'La foto se retiró del catálogo, pero el archivo no pudo eliminarse: ' + storageError.message;
+    err.classList.add('show');
+  }
+  document.getElementById('prodFotoActual').value = '';
+  document.getElementById('preview-foto').innerHTML = '';
+  document.getElementById('btnEliminarFotoProducto').hidden = true;
+  await cargarProductos();
 }
 </script>
 </body>

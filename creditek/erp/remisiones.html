@@ -695,6 +695,9 @@ async function abrirModalRecepcion(rem) {
   const cont = document.getElementById('recepcionItems');
   cont.innerHTML = recepcionRemisionActual.items.map((it, idx) => {
     const prod = it.productos;
+    const fotoRecepcion = prod.foto_url
+      ? `<div><small>Foto canónica disponible para esta referencia.</small></div>`
+      : `<div class="campo"><label>Foto del equipo (obligatoria)</label><input type="file" class="foto-recepcion-input" data-item="${idx}" accept="image/jpeg,image/png,image/webp" capture="environment"></div>`;
     if (prod.tipo === 'serializado') {
       const imeis = Array.from({ length: it.cantidad }).map((_, i) => `
         <div class="imei-row">
@@ -704,11 +707,13 @@ async function abrirModalRecepcion(rem) {
       `).join('');
       return `<div class="item-recepcion" data-tipo="serializado" data-item="${idx}">
         <div class="nombre-prod">${escapeHtml(prod.nombre)} — se esperan ${it.cantidad} unidad(es)</div>
+        ${fotoRecepcion}
         ${imeis}
       </div>`;
     } else {
       return `<div class="item-recepcion" data-tipo="cantidad" data-item="${idx}">
         <div class="nombre-prod">${escapeHtml(prod.nombre)} — se despacharon ${it.cantidad}</div>
+        ${fotoRecepcion}
         <input type="number" min="0" class="cantidad-recibida-input" data-item="${idx}" value="${it.cantidad}">
         <div class="aviso-diferencia" id="aviso-${idx}">Esta diferencia generará un ajuste de inventario pendiente de revisión.</div>
       </div>`;
@@ -731,6 +736,41 @@ async function abrirModalRecepcion(rem) {
   }
 
   abrirModalAccesible('modalRecepcion');
+}
+
+async function registrarFotosFaltantesRecepcion() {
+  for (let idx = 0; idx < recepcionRemisionActual.items.length; idx++) {
+    const it = recepcionRemisionActual.items[idx];
+    if (it.productos.foto_url) continue;
+    const input = document.querySelector(`.foto-recepcion-input[data-item="${idx}"]`);
+    const archivo = input?.files?.[0];
+    if (!archivo) {
+      throw new Error(`Adjunta la foto de "${it.productos.nombre}".`);
+    }
+    const path = `canonicas/${it.producto_id}`;
+    const subida = await sb.storage.from('productos-fotos').upload(path, archivo, {
+      cacheControl: '31536000',
+      contentType: archivo.type,
+      upsert: false,
+    });
+    if (subida.error) {
+      const { data: actual } = await sb.from('productos').select('foto_url').eq('id', it.producto_id).maybeSingle();
+      if (actual?.foto_url) {
+        it.productos.foto_url = actual.foto_url;
+        continue;
+      }
+    }
+    const { data: publica } = sb.storage.from('productos-fotos').getPublicUrl(path);
+    const { data, error } = await sb.rpc('registrar_foto_producto_recepcion', {
+      p_remision_id: recepcionRemisionActual.id,
+      p_producto_id: it.producto_id,
+      p_foto_url: publica.publicUrl,
+    });
+    if (error || !data?.ok) {
+      throw new Error(`No se pudo asociar la foto de "${it.productos.nombre}": ${error?.message || 'respuesta inválida'}`);
+    }
+    it.productos.foto_url = data.foto_url;
+  }
 }
 
 async function confirmarRecepcion() {
@@ -757,6 +797,14 @@ async function confirmarRecepcion() {
 
   const btn = document.getElementById('btnConfirmarRecepcion');
   btn.disabled = true; btn.textContent = 'Confirmando...';
+  try {
+    await registrarFotosFaltantesRecepcion();
+  } catch (fotoError) {
+    btn.disabled = false; btn.textContent = 'Confirmar recepción';
+    err.textContent = fotoError.message;
+    err.classList.add('show');
+    return;
+  }
   const { data, error } = await sb.rpc('confirmar_recepcion_remision', {
     p_remision_id: recepcionRemisionActual.id,
     p_items: payload,

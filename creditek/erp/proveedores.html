@@ -246,6 +246,23 @@
           </table>
         </div>
 
+        <h3 class="font-semibold text-sm text-gray-700 mb-2">Aplicación FIFO de consignaciones</h3>
+        <p class="text-xs text-gray-500 mb-2">Las consignaciones se aplican desde la factura más antigua hasta la más nueva.</p>
+        <div class="overflow-x-auto mb-5">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 text-left">
+              <tr>
+                <th class="px-3 py-2">Orden FIFO</th>
+                <th class="px-3 py-2">Fecha instrucción</th>
+                <th class="px-3 py-2">Tienda</th>
+                <th class="px-3 py-2">Banco / cuenta</th>
+                <th class="px-3 py-2 text-right">Monto aplicado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-aplicaciones-fifo"></tbody>
+          </table>
+        </div>
+
         <form id="form-pago-proveedor" class="hidden border-t border-gray-200 pt-4 space-y-3">
           <h3 class="font-semibold text-gray-800">Registrar pago</h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -584,6 +601,32 @@ function renderDetalleFactura(datos) {
   pagoIdempotencyKey = crypto.randomUUID();
 }
 
+async function cargarAplicacionesFifo(facturaId) {
+  const tbody = document.getElementById('tbody-aplicaciones-fifo');
+  tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-400">Cargando...</td></tr>';
+  const { data, error } = await SB
+    .from('aplicaciones_consignacion_proveedor')
+    .select('monto_aplicado, orden_fifo, instruccion_id, instrucciones_consignacion(tienda_codigo, fecha, banco, numero_cuenta)')
+    .eq('factura_id', facturaId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-red-600">${esc(error.message)}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data?.length
+    ? data.map(aplicacion => {
+      const instruccion = aplicacion.instrucciones_consignacion || {};
+      return `<tr>
+        <td class="px-3 py-2">${aplicacion.orden_fifo}</td>
+        <td class="px-3 py-2">${fecha(instruccion.fecha)}</td>
+        <td class="px-3 py-2">${esc(instruccion.tienda_codigo) || '—'}</td>
+        <td class="px-3 py-2">${esc([instruccion.banco, instruccion.numero_cuenta].filter(Boolean).join(' · ')) || '—'}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(aplicacion.monto_aplicado)}</td>
+      </tr>`;
+    }).join('')
+    : '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-400">Sin aplicaciones de consignación.</td></tr>';
+}
+
 async function mostrarDetalleFactura(facturaId) {
   const panel = document.getElementById('panel-detalle-factura');
   panel.classList.remove('hidden');
@@ -598,6 +641,7 @@ async function mostrarDetalleFactura(facturaId) {
     return;
   }
   renderDetalleFactura(data);
+  await cargarAplicacionesFifo(facturaId);
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

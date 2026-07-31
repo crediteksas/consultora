@@ -153,6 +153,18 @@ body.modal-open { overflow: hidden; }
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando...</div>
     </div>
+
+    <div class="page-top" style="margin-top:28px;">
+      <h1 style="font-size:18px;">Instrucciones de consignación</h1>
+      <button class="btn-primary" id="btnNuevaInstruccion" style="display:none;">+ Nueva instrucción</button>
+    </div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Tienda</th><th>Banco</th><th>Cuenta destino</th><th>Valor</th><th>Comprobante</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tbodyInstrucciones"></tbody>
+      </table>
+      <div class="empty-state" id="emptyInstrucciones" style="display:none;">No hay instrucciones.</div>
+    </div>
   </div>
   </div>
 </div>
@@ -205,6 +217,44 @@ body.modal-open { overflow: hidden; }
   </div>
 </div>
 
+<!-- Modal: instrucción creada por Maythe/Oscar -->
+<div class="modal-bg" id="modalInstruccion">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="instruccionTitulo">
+    <h2 id="instruccionTitulo">Nueva instrucción</h2>
+    <div class="modal-sub">La tienda recibirá estos datos como un snapshot inmutable.</div>
+    <div class="campo"><label>Tienda</label><select id="instruccionTienda"></select></div>
+    <div class="campo"><label>Fecha</label><input type="date" id="instruccionFecha"></div>
+    <div class="campo"><label>Efectivo disponible</label><input id="instruccionDisponible" readonly value="—"></div>
+    <div class="campo"><label>Banco</label><input id="instruccionBanco" maxlength="120"></div>
+    <div class="campo"><label>Número de cuenta</label><input id="instruccionCuenta" maxlength="120"></div>
+    <div class="campo"><label>Valor esperado</label><input type="number" id="instruccionValor" min="1"></div>
+    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR</option></select></div>
+    <div class="campo" id="campoInstruccionProveedor"><label>Proveedor</label><select id="instruccionProveedor"></select></div>
+    <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
+    <div class="modal-err" id="modalInstruccionErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarInstruccion">Cancelar</button>
+      <button class="btn-guardar" id="btnGuardarInstruccion">Crear instrucción</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: comprobante enviado por la tienda -->
+<div class="modal-bg" id="modalComprobante">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="comprobanteTitulo">
+    <h2 id="comprobanteTitulo">Enviar comprobante</h2>
+    <div class="modal-sub" id="comprobanteDestino"></div>
+    <div class="campo"><label>Valor consignado</label><input type="number" id="comprobanteValor" min="1"></div>
+    <div class="campo"><label>Foto del comprobante</label><input type="file" id="comprobanteFoto" accept="image/*" capture="environment"></div>
+    <img class="foto-preview" id="comprobantePreview">
+    <div class="modal-err" id="modalComprobanteErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarComprobante">Cancelar</button>
+      <button class="btn-guardar" id="btnEnviarComprobante">Enviar comprobante</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
@@ -218,6 +268,11 @@ let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
 let modalAnteriorAbono = null;
 let abonoIdempotencyKey = null;
+let instrucciones = [];
+let proveedoresCache = [];
+let instruccionComprobanteActual = null;
+let fotoComprobanteBlob = null;
+let comprobanteIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -306,6 +361,15 @@ function initPagina() {
   document.getElementById('btnCancelarAbono').addEventListener('click', cerrarModalAbono);
   document.getElementById('abonoFoto').addEventListener('change', onFotoAbonoSeleccionada);
   document.getElementById('btnGuardarAbono').addEventListener('click', guardarAbono);
+  document.getElementById('btnNuevaInstruccion').addEventListener('click', abrirNuevaInstruccion);
+  document.getElementById('btnCancelarInstruccion').addEventListener('click', () => cerrarModal('modalInstruccion'));
+  document.getElementById('btnGuardarInstruccion').addEventListener('click', guardarInstruccion);
+  document.getElementById('instruccionTipo').addEventListener('change', actualizarTipoInstruccion);
+  document.getElementById('instruccionTienda').addEventListener('change', cargarEfectivoDisponible);
+  document.getElementById('instruccionFecha').addEventListener('change', cargarEfectivoDisponible);
+  document.getElementById('btnCancelarComprobante').addEventListener('click', () => cerrarModal('modalComprobante'));
+  document.getElementById('comprobanteFoto').addEventListener('change', onFotoComprobanteSeleccionada);
+  document.getElementById('btnEnviarComprobante').addEventListener('click', enviarComprobante);
 
   cargarTodo();
 }
@@ -333,13 +397,21 @@ function cerrarModalAbono() {
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
   if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
+  else if (document.getElementById('modalInstruccion').classList.contains('show')) cerrarModal('modalInstruccion');
+  else if (document.getElementById('modalComprobante').classList.contains('show')) cerrarModal('modalComprobante');
   else if (document.getElementById('modalDetalle').classList.contains('show')) cerrarModal('modalDetalle');
 });
 
 async function cargarTodo() {
   const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
   tiendasCache = tiendas || [];
+  if (esCentral()) {
+    const { data: proveedores } = await sb.from('proveedores').select('id, nombre').eq('activo', true).order('nombre');
+    proveedoresCache = proveedores || [];
+    document.getElementById('btnNuevaInstruccion').style.display = 'inline-block';
+  }
   await cargarMovimientosCC();
+  await cargarInstrucciones();
 }
 
 async function cargarMovimientosCC() {
@@ -393,7 +465,7 @@ function renderTablaTiendas() {
 function abrirDetalleTienda(codigo, nombre) {
   tiendaDetalleActual = { codigo, nombre };
   document.getElementById('detalleTitulo').textContent = nombre || codigo;
-  document.getElementById('btnAbrirAbono').style.display = (esCentral() || currentPerfil.tienda_codigo === codigo) ? 'inline-block' : 'none';
+  document.getElementById('btnAbrirAbono').style.display = esCentral() ? 'inline-block' : 'none';
 
   const movs = movimientosCC.filter(m => m.tienda_codigo === codigo).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   let saldoAcumulado = 0;
@@ -406,7 +478,7 @@ function abrirDetalleTienda(codigo, nombre) {
   document.getElementById('tbodyDetalle').innerHTML = filas.map(m => `
     <tr>
       <td>${new Date(m.created_at).toLocaleDateString('es-CO')}</td>
-      <td>${escapeHtml(m.concepto)}${m.tipo === 'abono' && m.verificado_at ? '<span class="tag-verificado">Verificado</span>' : ''}${m.tipo === 'abono' && !m.verificado_at && esCentral() ? `<button class="link-chico" data-cc="${m.id}" data-abono="${m.referencia_id}">Marcar verificado</button>` : ''}</td>
+      <td>${escapeHtml(m.concepto)}${m.tipo === 'abono' && m.verificado_at ? '<span class="tag-verificado">Verificado</span>' : ''}${m.tipo === 'abono' && !m.verificado_at && esCentral() ? `<button class="link-chico" data-cc="${m.id}" data-abono="${m.referencia_id}">Marcar verificado</button>` : ''}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
       <td class="cargo">${m.tipo === 'cargo' ? fmtCOP(m.monto) : ''}</td>
       <td class="abono">${m.tipo === 'abono' ? fmtCOP(m.monto) : ''}</td>
       <td>${fmtCOP(m.saldoAcumulado)}</td>
@@ -418,6 +490,205 @@ function abrirDetalleTienda(codigo, nombre) {
   });
 
   abrirModal('modalDetalle');
+}
+
+function etiquetaEstadoInstruccion(estado) {
+  return {
+    pendiente: 'Pendiente',
+    en_validacion: 'Pendiente de validación',
+    validado: 'Validado',
+    rechazado: 'Rechazado',
+  }[estado] || estado;
+}
+
+async function cargarInstrucciones() {
+  const empty = document.getElementById('emptyInstrucciones');
+  const tbody = document.getElementById('tbodyInstrucciones');
+  const { data, error } = await sb.rpc('listar_instrucciones_consignacion');
+  if (error) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'No se pudieron cargar las instrucciones: ' + error.message;
+    return;
+  }
+  instrucciones = data || [];
+  empty.style.display = instrucciones.length ? 'none' : 'block';
+  tbody.innerHTML = instrucciones.map(i => {
+    const puedeEnviar = !esCentral() && ['pendiente', 'rechazado'].includes(i.estado);
+    const puedeDecidir = esCentral() && i.estado === 'en_validacion';
+    const destino = [i.banco, i.numero_cuenta].filter(Boolean).join(' · ');
+    const interno = esCentral()
+      ? `<br><small>${escapeHtml(i.tipo_destino || '')}${i.proveedor_nombre ? ` · ${escapeHtml(i.proveedor_nombre)}` : ''}</small>`
+      : '';
+    return `<tr>
+      <td>${escapeHtml(i.fecha)}</td>
+      <td>${escapeHtml(i.tienda_codigo)}</td>
+      <td>${escapeHtml(i.banco)}</td>
+      <td>${escapeHtml(destino || '—')}</td>
+      <td>${fmtCOP(i.valor_esperado)}</td>
+      <td>${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : '—'}</td>
+      <td>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</td>
+      <td>
+        ${puedeEnviar ? `<button class="link-chico" data-enviar="${i.id}">Enviar</button>` : ''}
+        ${puedeDecidir ? `<button class="link-chico" data-aprobar="${i.id}">Aprobar</button><button class="link-chico" data-rechazar="${i.id}">Rechazar</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-enviar]').forEach(btn => btn.addEventListener('click', () => abrirComprobante(btn.dataset.enviar)));
+  tbody.querySelectorAll('[data-aprobar]').forEach(btn => btn.addEventListener('click', () => decidirInstruccion(btn.dataset.aprobar, 'validado')));
+  tbody.querySelectorAll('[data-rechazar]').forEach(btn => btn.addEventListener('click', () => decidirInstruccion(btn.dataset.rechazar, 'rechazado')));
+  tbody.querySelectorAll('[data-soporte]').forEach(btn => btn.addEventListener('click', () => abrirSoporteInstruccion(btn.dataset.soporte)));
+}
+
+function abrirNuevaInstruccion() {
+  document.getElementById('instruccionTienda').innerHTML = tiendasCache
+    .map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
+  document.getElementById('instruccionProveedor').innerHTML = '<option value="">Selecciona proveedor</option>' +
+    proveedoresCache.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
+  document.getElementById('instruccionFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  document.getElementById('instruccionBanco').value = '';
+  document.getElementById('instruccionCuenta').value = '';
+  document.getElementById('instruccionValor').value = '';
+  document.getElementById('instruccionTipo').value = 'PROVEEDOR';
+  document.getElementById('instruccionObservacion').value = '';
+  document.getElementById('modalInstruccionErr').classList.remove('show');
+  actualizarTipoInstruccion();
+  abrirModal('modalInstruccion', document.getElementById('btnNuevaInstruccion'));
+  cargarEfectivoDisponible();
+}
+
+function actualizarTipoInstruccion() {
+  document.getElementById('campoInstruccionProveedor').style.display =
+    document.getElementById('instruccionTipo').value === 'PROVEEDOR' ? 'block' : 'none';
+}
+
+async function cargarEfectivoDisponible() {
+  const tienda = document.getElementById('instruccionTienda').value;
+  const fecha = document.getElementById('instruccionFecha').value;
+  const campo = document.getElementById('instruccionDisponible');
+  if (!tienda || !fecha) { campo.value = '—'; return; }
+  campo.value = 'Calculando...';
+  const { data, error } = await sb.rpc('calcular_efectivo_esperado_tienda', {
+    p_tienda_codigo: tienda,
+    p_fecha: fecha,
+  });
+  const reservado = instrucciones
+    .filter(i => i.tienda_codigo === tienda && i.fecha === fecha && ['pendiente', 'en_validacion'].includes(i.estado))
+    .reduce((total, i) => total + Number(i.valor_esperado || 0), 0);
+  campo.value = error ? 'No disponible' : fmtCOP(Number(data?.esperado || 0) - reservado);
+}
+
+async function guardarInstruccion() {
+  const err = document.getElementById('modalInstruccionErr');
+  err.classList.remove('show');
+  const tipo = document.getElementById('instruccionTipo').value;
+  const payload = {
+    p_tienda_codigo: document.getElementById('instruccionTienda').value,
+    p_fecha: document.getElementById('instruccionFecha').value,
+    p_banco: document.getElementById('instruccionBanco').value.trim(),
+    p_numero_cuenta: document.getElementById('instruccionCuenta').value.trim(),
+    p_valor_esperado: Number(document.getElementById('instruccionValor').value || 0),
+    p_tipo_destino: tipo,
+    p_proveedor_id: tipo === 'PROVEEDOR' ? document.getElementById('instruccionProveedor').value || null : null,
+    p_observacion: document.getElementById('instruccionObservacion').value.trim() || null,
+  };
+  const btn = document.getElementById('btnGuardarInstruccion');
+  btn.disabled = true;
+  const { data, error } = await sb.rpc('crear_instruccion_consignacion', payload);
+  btn.disabled = false;
+  if (error || !data?.ok) {
+    err.textContent = error?.message || 'El servidor no confirmó la instrucción.';
+    err.classList.add('show');
+    return;
+  }
+  cerrarModal('modalInstruccion');
+  mostrarBanner('✅ Instrucción creada correctamente.');
+  await cargarInstrucciones();
+}
+
+function abrirComprobante(id) {
+  instruccionComprobanteActual = instrucciones.find(i => i.id === id);
+  if (!instruccionComprobanteActual) return;
+  const destino = `${instruccionComprobanteActual.banco} · ${instruccionComprobanteActual.numero_cuenta}`;
+  document.getElementById('comprobanteDestino').textContent =
+    `${destino} · ${fmtCOP(instruccionComprobanteActual.valor_esperado)}`;
+  document.getElementById('comprobanteValor').value = instruccionComprobanteActual.valor_esperado;
+  document.getElementById('comprobanteFoto').value = '';
+  document.getElementById('comprobantePreview').style.display = 'none';
+  document.getElementById('modalComprobanteErr').classList.remove('show');
+  fotoComprobanteBlob = null;
+  comprobanteIdempotencyKey = crypto.randomUUID();
+  abrirModal('modalComprobante');
+}
+
+async function onFotoComprobanteSeleccionada(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  fotoComprobanteBlob = await comprimirImagen(file);
+  const preview = document.getElementById('comprobantePreview');
+  preview.src = URL.createObjectURL(fotoComprobanteBlob);
+  preview.style.display = 'block';
+}
+
+async function enviarComprobante() {
+  const err = document.getElementById('modalComprobanteErr');
+  err.classList.remove('show');
+  const valor = Number(document.getElementById('comprobanteValor').value || 0);
+  if (valor <= 0 || !fotoComprobanteBlob) {
+    err.textContent = 'Confirma el valor y adjunta la foto del comprobante.';
+    err.classList.add('show');
+    return;
+  }
+  const path = `${currentPerfil.tienda_codigo}/consignaciones/${instruccionComprobanteActual.id}/${comprobanteIdempotencyKey}.jpg`;
+  const subida = await sb.storage.from('soportes').upload(path, fotoComprobanteBlob, { contentType: 'image/jpeg' });
+  if (subida.error) {
+    err.textContent = 'No se pudo subir el comprobante: ' + subida.error.message;
+    err.classList.add('show');
+    return;
+  }
+  const { data, error } = await sb.rpc('enviar_comprobante_consignacion', {
+    p_instruccion_id: instruccionComprobanteActual.id,
+    p_valor_confirmado: valor,
+    p_soporte_path: path,
+    p_idempotency_key: comprobanteIdempotencyKey,
+  });
+  if (error || !data?.ok) {
+    err.textContent = error?.message || 'El servidor no confirmó el comprobante.';
+    err.classList.add('show');
+    return;
+  }
+  cerrarModal('modalComprobante');
+  mostrarBanner('✅ Comprobante enviado para validación.');
+  await cargarInstrucciones();
+}
+
+async function decidirInstruccion(id, decision) {
+  const motivo = decision === 'rechazado' ? prompt('Motivo del rechazo:') : null;
+  if (decision === 'rechazado' && !motivo?.trim()) return;
+  if (decision === 'validado' && !confirm('¿Aprobar y aplicar este movimiento?')) return;
+  const { data, error } = await sb.rpc('decidir_instruccion_consignacion', {
+    p_instruccion_id: id,
+    p_decision: decision,
+    p_motivo: motivo,
+    p_request_id: crypto.randomUUID(),
+  });
+  if (error || !data?.ok) {
+    alert('No se pudo procesar la decisión: ' + (error?.message || 'respuesta inválida'));
+    return;
+  }
+  mostrarBanner(decision === 'validado' ? '✅ Consignación validada.' : 'Consignación rechazada.');
+  await cargarMovimientosCC();
+  await cargarInstrucciones();
+}
+
+async function abrirSoporteInstruccion(path) {
+  if (!path) return;
+  const { data, error } = await sb.storage.from('soportes').createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    alert('No se pudo abrir el comprobante.');
+    return;
+  }
+  window.open(data.signedUrl, '_blank', 'noopener');
 }
 
 async function marcarAbonoVerificado(abonoId) {

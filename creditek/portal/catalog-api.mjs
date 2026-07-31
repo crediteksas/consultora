@@ -4,7 +4,7 @@ const appsScriptUrl = () => {
   return url;
 };
 
-const adminPin = () => sessionStorage.getItem('aura_b2b_admin_pin') || '';
+const adminSessionToken = () => window.B2BAccessSession?.token({ requireAdmin: true }) || '';
 
 const post = async payload => {
   const response = await fetch(appsScriptUrl(), {
@@ -29,23 +29,15 @@ export const catalogApi = {
     return data.productos || [];
   },
   async authenticate(pin) {
-    const data = await post({ action: 'validar_admin_catalogo', admin_pin: pin });
-    sessionStorage.setItem('aura_b2b_admin_pin', pin);
-    return data.admin === true;
+    return window.B2BAccessSession.login(pin, { requireAdmin: true });
   },
   async isAdmin() {
-    if (!adminPin()) return false;
-    try {
-      return (await post({ action: 'validar_admin_catalogo', admin_pin: adminPin() })).admin === true;
-    } catch {
-      sessionStorage.removeItem('aura_b2b_admin_pin');
-      return false;
-    }
+    return window.B2BAccessSession.restoreSession({ requireAdmin: true });
   },
   async providers({ activeOnly = true } = {}) {
     const data = await post({
       action: 'listar_proveedores_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       solo_activos: activeOnly,
     });
     return data.proveedores || [];
@@ -53,13 +45,13 @@ export const catalogApi = {
   async saveProvider(provider) {
     const data = await post({
       action: 'guardar_proveedor_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       proveedor: provider,
     });
     return data.proveedor;
   },
   async products() {
-    const data = await post({ action: 'catalogo_privado_admin', admin_pin: adminPin() });
+    const data = await post({ action: 'catalogo_privado_admin', session_token: adminSessionToken() });
     return (data.productos || []).map(item => ({
       id: item.nombre,
       canonical_name: item.nombre,
@@ -70,14 +62,14 @@ export const catalogApi = {
   async exceptions() {
     const data = await post({
       action: 'listar_excepciones_catalogo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
     });
     return data.excepciones || [];
   },
   async saveOfferRule(payload) {
     const data = await post({
       action: 'guardar_regla_catalogo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       exception_id: payload.exception_id,
       canonical_product_id: payload.canonical_product_id || '',
       create_new: payload.create_new === true,
@@ -107,19 +99,19 @@ export const catalogApi = {
   async history(search = '') {
     const data = await post({
       action: 'historico_catalogo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       search,
     });
     return data.productos || [];
   },
   async providerStats() {
-    const data = await post({ action: 'estadisticas_catalogo_admin', admin_pin: adminPin() });
+    const data = await post({ action: 'estadisticas_catalogo_admin', session_token: adminSessionToken() });
     return data.proveedores || [];
   },
   async analyze(payload) {
     const data = await post({
       action: 'analizar_catalogo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       provider: payload.provider_id,
       raw_text: payload.raw_text,
       utility_type: payload.utility_type,
@@ -132,12 +124,12 @@ export const catalogApi = {
     const productos = latestDraft.filter(item => item.publishable);
     return post({
       action: 'publicar_catalogo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       productos,
     });
   },
   rollback() {
-    return post({ action: 'rollback_catalogo_admin', admin_pin: adminPin() });
+    return post({ action: 'rollback_catalogo_admin', session_token: adminSessionToken() });
   },
   async submitOrder(payload) {
     const data = await post({ action: 'guardar_pedido_publico', ...payload });
@@ -150,13 +142,13 @@ export const catalogApi = {
     };
   },
   async adminOrders() {
-    const data = await post({ action: 'leer_pedidos_admin', admin_pin: adminPin() });
+    const data = await post({ action: 'leer_pedidos_admin', session_token: adminSessionToken() });
     return data.pedidos || [];
   },
   closePeriod(pedidos) {
     return post({
       action: 'cierre_periodo_admin',
-      admin_pin: adminPin(),
+      session_token: adminSessionToken(),
       pedidos,
     });
   },

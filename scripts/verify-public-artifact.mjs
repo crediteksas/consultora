@@ -13,6 +13,8 @@ const FORBIDDEN_CONTENT = [
   /-----BEGIN (?:RSA )?PRIVATE KEY-----/,
   /\bWA_ACCESS_TOKEN\s*:/,
   /\bGCP_WIF_PRIVATE_KEY\s*=/,
+  /\bconst\s+CLAVE(?:_B2B)?\s*=/,
+  /\badmin_pin\s*:/,
 ];
 
 async function walk(root, current = root) {

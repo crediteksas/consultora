@@ -88,11 +88,12 @@ test('el cierre conserva los identificadores de hoja y retira los pedidos cerrad
   assert.match(source, /cargarPendientesAdmin\(\);renderConsolidado\(\)/);
 });
 
-test('la actualización de catálogo exige una credencial administrativa validada en Apps Script', async () => {
+test('la actualización de catálogo exige una sesión administrativa validada en Apps Script', async () => {
   const source = await readFile(appsScriptPath, 'utf8');
 
-  assert.match(source, /validarAdminCatalogo_/);
+  assert.match(source, /validarSesionConAlcance_\(body\.session_token, 'admin'\)/);
   assert.match(source, /B2B_ADMIN_PIN_HASH/);
+  assert.doesNotMatch(source, /body\.admin_pin/);
   assert.match(source, /publicarCatalogoAdmin_/);
   assert.match(source, /crearSnapshotCatalogo_/);
 });

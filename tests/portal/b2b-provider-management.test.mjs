@@ -7,7 +7,7 @@ const apiPath = new URL('../../creditek/portal/catalog-api.mjs', import.meta.url
 const adminPath = new URL('../../creditek/portal/catalog-admin.mjs', import.meta.url);
 const portalPath = new URL('../../creditek/portal/index.html', import.meta.url);
 const appsScriptPath = new URL('../../creditek/portal/Code.gs', import.meta.url);
-const buildPath = new URL('../../scripts/build-public.mjs', import.meta.url);
+const buildPath = new URL('../../scripts/build-aura-b2b.mjs', import.meta.url);
 
 test('los proveedores se obtienen de Apps Script y no de una lista fija del frontend', async () => {
   const api = await readFile(apiPath, 'utf8');

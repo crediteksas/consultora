@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { buildPublic } from '../../scripts/build-public.mjs';
@@ -19,7 +19,6 @@ test('build keeps required public applications and excludes backend source', asy
     'creditek/agentes/creditek-agente-respuestas.html',
     'creditek/agentes/agente3-meta-ads.html',
     'creditek/agentes/creditek-agente-calendario.html',
-    'creditek/portal/index.html',
     'design-system/components/kora-product.css',
     'design-system/components/kora-product.js',
     'creditek/agentes/creditek-gbp-fichas.html',
@@ -32,8 +31,7 @@ test('build keeps required public applications and excludes backend source', asy
     assert.equal((await stat(path.join(out, relative))).isFile(), true, relative);
   }
 
-  const portalHtml = await readFile(path.join(out, 'creditek/portal/index.html'), 'utf8');
-  assert.match(portalHtml, /Portal de Pedidos/i);
+  await assert.rejects(stat(path.join(out, 'creditek/portal/index.html')), { code: 'ENOENT' });
 });
 
 test('build does not publish known server-only paths', async () => {

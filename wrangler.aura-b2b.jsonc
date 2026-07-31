@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "aura-b2b",
+  "compatibility_date": "2026-07-31",
+  "assets": {
+    "directory": "./public-aura-b2b",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "routes": [
+    {
+      "pattern": "registro.crediteksas.com/creditek/portal/*",
+      "zone_name": "crediteksas.com"
+    }
+  ]
+}

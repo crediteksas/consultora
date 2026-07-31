@@ -5,11 +5,13 @@
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
+    "build:aura-b2b": "node scripts/build-aura-b2b.mjs && node -e \"import('./scripts/verify-public-artifact.mjs').then(m=>m.verifyPublicArtifact('public-aura-b2b'))\"",
     "test": "node --test tests/security/*.test.mjs",
     "test:portal": "node --test tests/portal/*.test.mjs tests/security/b2b-catalog-security.test.mjs",
     "test:live": "node --test tests/security/live-smoke.test.mjs",
     "preview:upload": "npm run build && wrangler versions upload",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:aura-b2b": "npm run build:aura-b2b && wrangler deploy --config wrangler.aura-b2b.jsonc"
   },
   "keywords": [],
   "author": "",

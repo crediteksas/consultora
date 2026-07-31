@@ -52,19 +52,22 @@ function doPost(e) {
   try {
     var action = e.parameter.action || 'guardar';
     var body = JSON.parse(e.postData.contents);
-    if (body.action === 'guardar_pedido_publico') {
+    if (body.action === 'autenticar_portal_b2b') {
+      result = autenticarPortalB2B_(body);
+    } else if (body.action === 'validar_sesion_portal_b2b') {
+      result = validarSesionPortalB2B_(body.session_token, body.required_scope);
+    } else if (body.action === 'guardar_pedido_publico') {
       result = guardarPedidoPublico_(body);
     } else if ([
-      'validar_admin_catalogo', 'leer_pedidos_admin', 'cierre_periodo_admin',
+      'leer_pedidos_admin', 'cierre_periodo_admin',
       'analizar_catalogo_admin', 'publicar_catalogo_admin', 'rollback_catalogo_admin',
       'catalogo_privado_admin', 'historico_catalogo_admin', 'estadisticas_catalogo_admin',
       'listar_proveedores_admin', 'guardar_proveedor_admin',
       'listar_excepciones_catalogo_admin', 'guardar_regla_catalogo_admin'
     ].indexOf(body.action) !== -1) {
-      if (!validarAdminCatalogo_(body.admin_pin)) {
+      if (!validarSesionConAlcance_(body.session_token, 'admin')) {
         result = { ok: false, error: 'Acceso administrativo denegado' };
-      } else if (body.action === 'validar_admin_catalogo') result = { ok: true, admin: true };
-      else if (body.action === 'leer_pedidos_admin') result = leerPedidos_();
+      } else if (body.action === 'leer_pedidos_admin') result = leerPedidos_();
       else if (body.action === 'cierre_periodo_admin') result = cerrarPeriodo_(body.pedidos || []);
       else if (body.action === 'analizar_catalogo_admin') result = analizarCatalogoAdmin_(body);
       else if (body.action === 'publicar_catalogo_admin') result = publicarCatalogoAdmin_(body);
@@ -111,13 +114,83 @@ function sha256Hex_(value) {
   }).join('');
 }
 
-function validarAdminCatalogo_(pin) {
-  var configured = PropertiesService.getScriptProperties().getProperty('B2B_ADMIN_PIN_HASH');
-  if (!configured || !pin) return false;
-  var received = sha256Hex_(pin);
-  return configured.split(',').some(function(hash) {
-    return safeEqual_(hash.trim().toLowerCase(), received);
-  });
+var B2B_SESSION_TTL_SECONDS = 1800;
+var B2B_MAX_ATTEMPTS = 5;
+var B2B_ATTEMPT_WINDOW_SECONDS = 300;
+
+function hashConfiguradoUnico_(propertyName) {
+  var configured = String(PropertiesService.getScriptProperties().getProperty(propertyName) || '')
+    .trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(configured) ? configured : '';
+}
+
+function claveCoincide_(password, propertyName) {
+  var configured = hashConfiguradoUnico_(propertyName);
+  if (!configured || !String(password || '')) return false;
+  return safeEqual_(configured, sha256Hex_(password));
+}
+
+function cacheKeyB2B_(prefix, value) {
+  return 'b2b:' + prefix + ':' + sha256Hex_(String(value || '')).slice(0, 40);
+}
+
+function autenticarPortalB2B_(body) {
+  var password = String(body.password || '');
+  var clientId = String(body.client_id || '').trim();
+  var requireAdmin = body.require_admin === true;
+  if (!clientId || !password) return { ok: false, error: 'Acceso denegado' };
+
+  var cache = CacheService.getScriptCache();
+  var attemptKey = cacheKeyB2B_('attempts', clientId);
+  var attempts = Number(cache.get(attemptKey) || 0);
+  if (attempts >= B2B_MAX_ATTEMPTS) {
+    return { ok: false, error: 'Demasiados intentos. Intenta nuevamente más tarde.' };
+  }
+
+  var isAdmin = claveCoincide_(password, 'B2B_ADMIN_PIN_HASH');
+  var isAccess = claveCoincide_(password, 'B2B_ACCESS_PIN_HASH');
+  if ((requireAdmin && !isAdmin) || (!requireAdmin && !isAccess)) {
+    cache.put(attemptKey, String(attempts + 1), B2B_ATTEMPT_WINDOW_SECONDS);
+    return { ok: false, error: 'Acceso denegado' };
+  }
+
+  cache.remove(attemptKey);
+  var scope = isAdmin ? 'admin' : 'access';
+  var token = Utilities.getUuid() + Utilities.getUuid();
+  var expiresAt = Date.now() + B2B_SESSION_TTL_SECONDS * 1000;
+  cache.put(cacheKeyB2B_('session', token), JSON.stringify({
+    scope: scope,
+    expires_at: expiresAt
+  }), B2B_SESSION_TTL_SECONDS);
+  return { ok: true, session_token: token, scope: scope, expires_at: expiresAt };
+}
+
+function leerSesionPortalB2B_(token) {
+  if (!String(token || '').trim()) return null;
+  var raw = CacheService.getScriptCache().get(cacheKeyB2B_('session', token));
+  if (!raw) return null;
+  try {
+    var session = JSON.parse(raw);
+    if (!session.expires_at || Number(session.expires_at) <= Date.now()) return null;
+    return session;
+  } catch (error) {
+    return null;
+  }
+}
+
+function validarSesionConAlcance_(token, requiredScope) {
+  var session = leerSesionPortalB2B_(token);
+  if (!session) return false;
+  return requiredScope !== 'admin' || session.scope === 'admin';
+}
+
+function validarSesionPortalB2B_(token, requiredScope) {
+  var session = leerSesionPortalB2B_(token);
+  var required = requiredScope === 'admin' ? 'admin' : 'access';
+  if (!session || (required === 'admin' && session.scope !== 'admin')) {
+    return { ok: false, valid: false, error: 'Sesión vencida o inválida' };
+  }
+  return { ok: true, valid: true, scope: session.scope, expires_at: Number(session.expires_at) };
 }
 
 function normalizarReferencia_(value) {

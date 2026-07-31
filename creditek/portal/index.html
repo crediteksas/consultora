@@ -535,19 +535,15 @@
   </div>
 </div>
 <script>
-const CLAVE='creditek2026';
-const CLAVE_B2B='crediteK';
-
-function verificarB2B(){
+async function verificarB2B(){
   const input = document.getElementById('b2bPass').value;
-  if(input === CLAVE_B2B || input === CLAVE){
+  try {
+    await window.B2BAccessReady;
+    await window.B2BAccessSession.login(input);
     document.getElementById('b2bLoginOverlay').style.display='none';
     document.getElementById('b2bError').textContent='';
-    // Si es admin, ir directo al panel
-    if(input === CLAVE){
-      cambiarVista('oscar');
-    }
-  } else {
+    document.getElementById('b2bPass').value='';
+  } catch (error) {
     document.getElementById('b2bError').textContent='❌ Contraseña incorrecta';
     document.getElementById('b2bPass').value='';
   }
@@ -639,6 +635,8 @@ async function cargarHistorial(){const tienda=document.getElementById('histSelec
 poblarFiltros();productosFiltrados=[...catalogo];cargarEnriquecimiento();
 window.__b2bReplaceCatalog=function(items){catalogo.length=0;items.forEach((p,i)=>catalogo.push({...p,id:i,categoria:p.categoria||'General'}));productosFiltrados=[...catalogo];document.getElementById('filtroMarca').innerHTML='<option value="">Todas las marcas</option>';document.getElementById('filtroCategoria').innerHTML='<option value="">Todas las categorías</option>';poblarFiltros();document.getElementById('statTotal').textContent=catalogo.length;renderProductos();};
 </script>
+<script>window.__AURA_B2B_APPS_SCRIPT_URL__=APPS_SCRIPT_URL;</script>
+<script type="module" src="./b2b-session.mjs"></script>
 <script type="module" src="./catalog-admin.mjs"></script>
 </body>
 </html>

@@ -278,7 +278,7 @@ with check (
      and remision.estado = 'despachada'
     join public.remision_items item
       on item.remision_id = remision.id
-     and item.producto_id = storage.filename(name)::uuid
+     and item.producto_id::text = storage.filename(name)
     join public.productos producto
       on producto.id = item.producto_id
     where perfil.id = auth.uid()

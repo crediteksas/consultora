@@ -43,7 +43,7 @@ test('Storage acepta una única ruta canónica y no copias por tienda', async ()
   assert.match(sql, /canonicas\/[^\n]*producto/);
   assert.match(sql, /create policy[\s\S]*productos_fotos_insert_recepcion/);
   assert.match(sql, /storage\.foldername\(name\)/);
-  assert.match(sql, /storage\.filename\(name\)::uuid/);
+  assert.match(sql, /item\.producto_id::text = storage\.filename\(name\)/);
   assert.match(sql, /remision_items/);
   assert.match(sql, /producto\.foto_url is null/);
 });

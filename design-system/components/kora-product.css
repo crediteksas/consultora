@@ -464,6 +464,10 @@ html.creditek-shell-authenticated .kora-product-page > header:not(.kora-topbar) 
   border-bottom: 0;
 }
 
+.kora-product-page .modal-bg {
+  z-index: var(--ctk-z-modal);
+}
+
 .kora-product-page :where(.badge, .tag, .chip, .estado, .status) {
   align-items: center;
   background: var(--ctk-color-neutral-100);

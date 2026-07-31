@@ -41,3 +41,15 @@ test('no inventa soporte ni categoría fuera del esquema existente', () => {
   assert.doesNotMatch(html, /soporte_path\s*:/);
   assert.doesNotMatch(html, /categoria\s*:/);
 });
+
+test('todo gasto registrado entra a la cola hasta ser aprobado o rechazado', () => {
+  const cola = html.match(
+    /function renderColaAprobacion\(\)[\s\S]*?async function aprobarGasto/,
+  )?.[0] || '';
+
+  assert.match(cola, /g\.estado === 'registrado'/);
+  assert.doesNotMatch(cola, /preautorizado/);
+  assert.match(html, /estado:\s*'aprobado'/);
+  assert.match(html, /estado:\s*'rechazado'/);
+  assert.match(html, /nota_rechazo:\s*nota/);
+});

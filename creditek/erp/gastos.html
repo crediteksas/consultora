@@ -377,7 +377,7 @@ async function cargarGastos() {
 
 function renderColaAprobacion() {
   if (!esCentral()) return;
-  const pendientes = gastosCache.filter(g => g.estado === 'registrado' && g.conceptos_gasto && !g.conceptos_gasto.preautorizado);
+  const pendientes = gastosCache.filter(g => g.estado === 'registrado');
   const cont = document.getElementById('colaAprobacion');
   if (!pendientes.length) { cont.innerHTML = '<div class="empty-state">No hay gastos pendientes de aprobar.</div>'; return; }
   cont.innerHTML = pendientes.map(g => `

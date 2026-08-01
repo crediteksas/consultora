@@ -20,11 +20,8 @@ test('el shell monta un único escarabajo y elimina Mis incidencias del menú', 
   assert.match(center, /KoraAudio\?\.play/);
 });
 
-test('las vistas de incidencias usan el shell, filtros, KPIs, detalle e historial', async () => {
-  const [admin, own] = await Promise.all([
-    readFile(path.join(root, 'creditek/erp/incidencias.html'), 'utf8'),
-    readFile(path.join(root, 'creditek/erp/mis-reportes.html'), 'utf8'),
-  ]);
+test('el Centro de Incidencias concentra consulta, detalle y seguimiento', async () => {
+  const admin = await readFile(path.join(root, 'creditek/erp/incidencias.html'), 'utf8');
 
   assert.match(admin, /sidebar\.js" data-kora-shell="1\.0\.0"/);
   assert.match(admin, /data-kora-requires-auth="true"/);
@@ -33,10 +30,6 @@ test('las vistas de incidencias usan el shell, filtros, KPIs, detalle e historia
   assert.match(admin, /data-incident-filter="store"[\s\S]*data-incident-filter="user"[\s\S]*data-incident-filter="assignee"[\s\S]*data-incident-filter="version"/);
   assert.match(admin, /data-incident-history/);
   assert.match(admin, /Generar tarea técnica/);
-  assert.match(own, /sidebar\.js" data-kora-shell="1\.0\.0"/);
-  assert.match(own, /data-kora-requires-auth="true"/);
-  assert.match(own, /Mis reportes/);
-  assert.match(own, /data-incident-add-comment/);
-  assert.match(own, /data-comment-evidence/);
-  assert.match(own, /data-incident-confirm-fixed/);
+  assert.match(admin, /data-incident-add-comment/);
+  assert.match(admin, /data-comment-evidence/);
 });

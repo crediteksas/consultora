@@ -62,9 +62,10 @@
     function safePath(item) {
       const configured = String(item.metadata?.internal_path || '');
       const allowed = /^\/creditek\/erp\/(?:mis-reportes|incidencias)\.html\?id=[0-9a-f-]{36}$/i;
-      return allowed.test(configured)
-        ? configured
-        : `/creditek/erp/mis-reportes.html?id=${encodeURIComponent(item.incident_id)}`;
+      if (allowed.test(configured)) {
+        return configured.replace('/mis-reportes.html', '/incidencias.html');
+      }
+      return `/creditek/erp/incidencias.html?id=${encodeURIComponent(item.incident_id)}`;
     }
 
     async function markRead(item) {

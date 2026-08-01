@@ -2,6 +2,7 @@
   'use strict';
 
   const STATES = ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado'];
+  const OPEN_INCIDENT_STATES = new Set(['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion']);
   const management = window.KoraIncidentManagement;
   const label = value => management?.statusLabel(value)
     || String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
@@ -30,6 +31,7 @@
     taskActivator: null,
     copyingTask: false,
     canAdmin: false,
+    canComment: false,
   };
 
   function status(message, error = false) {
@@ -199,6 +201,8 @@
       }
       commentsNode.append(paragraph);
     }
+    const commentForm = detail.querySelector('[data-incident-comment-form]');
+    if (commentForm) commentForm.hidden = !(state.canComment && OPEN_INCIDENT_STATES.has(item.status));
     if (state.mode === 'admin' && state.canAdmin) {
       detail.querySelector('[data-detail-status]').value = item.status;
       detail.querySelector('[data-detail-priority]').value = item.priority;
@@ -468,9 +472,13 @@
       const context = await waitForContext();
       state = { ...state, sb: context.sb, profile: context.perfil };
       if (state.mode === 'admin') {
-        const { data, error } = await state.sb.rpc('kora_incident_has_permission', { p_permission: 'incident_admin' });
-        if (error) throw error;
-        state.canAdmin = Boolean(data);
+        const [adminPermission, commentPermission] = await Promise.all([
+          state.sb.rpc('kora_incident_has_permission', { p_permission: 'incident_admin' }),
+          state.sb.rpc('kora_incident_has_permission', { p_permission: 'incident_comment' }),
+        ]);
+        if (adminPermission.error || commentPermission.error) throw adminPermission.error || commentPermission.error;
+        state.canAdmin = Boolean(adminPermission.data);
+        state.canComment = Boolean(commentPermission.data);
         const managementPanel = document.querySelector('[data-detail-management]');
         if (managementPanel) managementPanel.hidden = !state.canAdmin;
       }

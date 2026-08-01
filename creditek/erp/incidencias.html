@@ -9,13 +9,13 @@
   <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="/design-system/components/kora-product.js" defer></script>
   <script src="kora-incident-management.js" defer></script>
-  <script src="incidencias-app.js?v=1.1.1" defer></script>
+  <script src="incidencias-app.js?v=1.2.0" defer></script>
 </head>
 <body data-incident-mode="admin" data-kora-requires-auth="true">
 <div id="app" class="hidden">
   <main class="main-content">
     <section class="kora-incidents-page">
-      <header><p>Administración</p><h1>Incidencias</h1><p>Seguimiento operativo y técnico de KORA.</p></header>
+      <header><p>Soporte</p><h1>Centro de Incidencias</h1><p>Seguimiento operativo y técnico de KORA.</p></header>
       <div class="kora-incidents-kpis" aria-label="Indicadores de incidencias">
         <article class="kora-incidents-kpi"><span>Nuevas</span><strong data-kpi="new">—</strong></article>
         <article class="kora-incidents-kpi"><span>Críticas</span><strong data-kpi="critical">—</strong></article>
@@ -39,8 +39,8 @@
       <section class="kora-incidents-panel">
         <div class="kora-incidents-table-wrap"><table class="kora-incidents-table"><thead><tr><th>Código</th><th>Fecha</th><th>Título</th><th>Tienda</th><th>Módulo</th><th>Prioridad</th><th>Estado</th><th>Reportado por</th><th>Responsable</th><th>Versión</th><th>Tiempo abierto</th></tr></thead><tbody data-incident-list><tr><td colspan="11">Cargando…</td></tr></tbody></table></div>
         <div class="kora-incident-detail" data-incident-detail hidden>
-          <div class="kora-incident-detail-grid"><div><h2 data-detail-title></h2><div data-detail-content></div><h3>Historial</h3><ol class="kora-incident-timeline" data-incident-history></ol><h3>Comentarios</h3><div data-incident-comments></div></div>
-          <aside class="kora-incident-management" data-detail-management>
+          <div class="kora-incident-detail-grid"><div><h2 data-detail-title></h2><div data-detail-content></div><h3>Historial</h3><ol class="kora-incident-timeline" data-incident-history></ol><h3>Comentarios y respuestas</h3><div data-incident-comments></div><div data-incident-comment-form hidden><label>Agregar información<textarea data-comment-text aria-label="Agregar información"></textarea></label><label>Agregar evidencia<input type="file" data-comment-evidence aria-label="Agregar evidencia" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"></label><button type="button" data-incident-add-comment>Enviar comentario</button></div></div>
+          <aside class="kora-incident-management" data-detail-management hidden>
             <div class="kora-incident-management__field"><label for="incidentManagementStatus">Estado</label><select id="incidentManagementStatus" data-detail-status aria-label="Estado de la incidencia"></select></div>
             <div class="kora-incident-management__field"><label for="incidentManagementPriority">Prioridad</label><select id="incidentManagementPriority" data-detail-priority aria-label="Prioridad de la incidencia"><option>baja</option><option>media</option><option>alta</option><option>critica</option></select></div>
             <div class="kora-incident-management__field kora-incident-management__field--full"><label for="incidentManagementAssignee">Responsable</label><select id="incidentManagementAssignee" data-detail-assignee aria-label="Responsable"><option value="">Sin asignar</option></select></div>

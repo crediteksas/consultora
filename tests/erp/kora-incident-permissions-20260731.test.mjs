@@ -14,10 +14,12 @@ const [sidebar, app, domainSource, sql] = await Promise.all([
 ]);
 const normalizedSql = sql.toLowerCase().replace(/\s+/g, ' ');
 
-test('elimina Mis incidencias de la navegación sin borrar su pantalla', async () => {
+test('elimina Mis incidencias de la navegación y concentra la consulta en incidencias', async () => {
   assert.doesNotMatch(sidebar, /label:\s*'Mis incidencias'/);
   assert.match(sidebar, /label:\s*'Incidencias'/);
-  assert.match(await read('creditek/erp/mis-reportes.html'), /Mis reportes/);
+  await assert.rejects(read('creditek/erp/mis-reportes.html'), error => error.code === 'ENOENT');
+  assert.match(app, /incident_comment/);
+  assert.match(app, /OPEN_INCIDENT_STATES/);
 });
 
 test('los permisos de dominio reflejan tienda, Maythe y Gerencia', () => {
@@ -52,7 +54,7 @@ test('la migración limita administración y cierre a Gerencia', () => {
 });
 
 test('la vista existente pasa a solo lectura cuando no hay incident_admin', () => {
-  assert.match(app, /state\.canAdmin\s*=\s*Boolean\(data\)/);
+  assert.match(app, /state\.canAdmin\s*=\s*Boolean\(adminPermission\.data\)/);
   assert.match(app, /managementPanel\.hidden\s*=\s*!state\.canAdmin/);
   assert.doesNotMatch(app, /throw new Error\('No tienes permiso para administrar incidencias\.'/);
   assert.match(app, /if \(state\.canAdmin\) await loadAssignees\(\)/);

@@ -130,7 +130,7 @@
           <p class="kora-incident-note">No incluyas contraseñas, documentos personales ni información bancaria en la captura.</p>
           <div class="kora-incident-similar" data-kora-incident-similar hidden></div>
           <p class="kora-incident-status" role="status" aria-live="polite"></p>
-          <footer class="kora-incident-actions"><button type="button" data-kora-incident-cancel>Cancelar</button><button type="submit">Enviar reporte</button></footer>
+          <footer class="kora-incident-actions"><button type="button" data-kora-open-incidents>Consultar incidencias</button><button type="button" data-kora-incident-cancel>Cancelar</button><button type="submit">Enviar reporte</button></footer>
         </form>
       </section></div>`;
   }
@@ -172,6 +172,9 @@
     trigger.addEventListener('click', open);
     backdrop.querySelector('.kora-incident-close').addEventListener('click', close);
     backdrop.querySelector('[data-kora-incident-cancel]').addEventListener('click', close);
+    backdrop.querySelector('[data-kora-open-incidents]').addEventListener('click', () => {
+      location.assign('/creditek/erp/incidencias.html');
+    });
     backdrop.addEventListener('click', event => { if (event.target === backdrop) close(); });
     dialog.addEventListener('keydown', event => {
       if (event.key === 'Escape') close();

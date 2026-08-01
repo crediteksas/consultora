@@ -28,6 +28,11 @@ test('Resuelto exige resolución y versión, pero En revisión no', async () => 
     resolution: 'Se corrigió la capa del modal.',
     fixedVersion: '2.0.1',
   }).ok, true);
+  assert.equal(domain.validateManagement({ status: 'cerrado' }).ok, false);
+  assert.equal(domain.validateManagement({
+    status: 'cerrado',
+    resolution: 'Corrección validada por Gerencia.',
+  }).ok, true);
   assert.equal(domain.statusLabel('corregido'), 'Resuelto');
 });
 
@@ -145,6 +150,7 @@ test('la migración de cierre unifica transición, permisos y fecha de cierre', 
   assert.match(sql, /v_incident\.status = 'corregido'[\s\S]*v_status in \('pendiente_validacion', 'cerrado', 'en_desarrollo'\)/i);
   assert.match(sql, /closed_at = case[\s\S]*v_status = 'cerrado'[\s\S]*now\(\)/i);
   assert.match(sql, /resolution_summary/i);
+  assert.doesNotMatch(sql, /Para cerrar[^']*versión corregida/i);
   assert.match(sql, /assigned_to/i);
   assert.match(sql, /revoke all on function public\.kora_manage_incident_v1_1/i);
   assert.match(sql, /grant execute on function public\.kora_manage_incident_v1_1[\s\S]*to authenticated/i);

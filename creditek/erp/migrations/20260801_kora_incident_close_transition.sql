@@ -115,9 +115,8 @@ begin
     raise exception 'Para resolver debes indicar la resolución y la versión corregida';
   end if;
   if v_status = 'cerrado'
-     and (coalesce(v_resolution, v_incident.resolution_summary) is null
-       or coalesce(v_fixed_version, v_incident.fixed_version) is null) then
-    raise exception 'Para cerrar debes conservar la resolución y la versión corregida';
+     and coalesce(v_resolution, v_incident.resolution_summary) is null then
+    raise exception 'Para cerrar debes conservar la resolución';
   end if;
 
   update public.kora_incidents

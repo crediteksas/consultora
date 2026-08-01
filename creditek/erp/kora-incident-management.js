@@ -55,6 +55,9 @@
       if (!String(input.resolution || '').trim()) errors.resolution = 'Escribe la resolución aplicada.';
       if (!String(input.fixedVersion || '').trim()) errors.fixedVersion = 'Indica la versión corregida.';
     }
+    if (status === 'cerrado' && !String(input.resolution || '').trim()) {
+      errors.resolution = 'Conserva la resolución antes de cerrar.';
+    }
     return { ok: Object.keys(errors).length === 0, errors };
   }
 

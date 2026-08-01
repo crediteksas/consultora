@@ -33,21 +33,21 @@
     .search-results button:hover { background-color: #eff6ff; }
     #modal-buscar { z-index: 1000; }
     #toast { z-index: 1200; }
-    body.kora-product-page .compra-producto-opcion,
-    body.kora-product-page .compra-producto-seleccionado {
+    .compra-producto-opcion,
+    .compra-producto-seleccionado {
       background: #fff;
       color: #0B1E3D;
     }
-    body.kora-product-page .compra-producto-opcion:hover,
-    body.kora-product-page .compra-producto-seleccionado:hover { background: #eff6ff; }
-    body.kora-product-page .compra-items-table { min-width: 1180px; }
-    body.kora-product-page .compra-costo-input { min-width: 120px; }
-    body.kora-product-page .compra-margen-valor { min-width: 88px; }
+    .compra-producto-opcion:hover,
+    .compra-producto-seleccionado:hover { background: #eff6ff; }
+    .compra-items-table { min-width: 1180px; }
+    .compra-costo-input { min-width: 120px; }
+    .compra-margen-valor { min-width: 88px; }
     input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
-<script src="/design-system/components/kora-product.js" defer></script>
-<script src="sidebar.js" data-kora-shell="1.0.0"></script>
+<script src="/design-system/components/kora-product.js?v=2.0.4" defer></script>
+<script src="sidebar.js?v=2.0.4" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -436,7 +436,7 @@ function renderItems() {
         ? `<span class="ml-2 px-2 py-0.5 rounded text-xs ${i.producto_tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${i.producto_tipo}</span>`
         : '';
       const productoBtn = i.producto_id
-        ? `<button type="button" data-buscar-idx="${idx}" class="compra-producto-seleccionado text-left w-full hover:bg-blue-50 rounded px-2 py-1">
+        ? `<button type="button" data-buscar-idx="${idx}" class="secondary compra-producto-seleccionado text-left w-full hover:bg-blue-50 rounded px-2 py-1">
              <span class="font-medium text-gray-800">${esc(i.producto_nombre)}</span>${tipoBadge}
            </button>`
         : `<button type="button" data-buscar-idx="${idx}" class="text-blue-600 hover:text-blue-800 text-sm underline">
@@ -525,7 +525,7 @@ function renderBusqueda(q) {
   }
   res.innerHTML = hits.map(p => `
     <button type="button" data-prod-id="${esc(p.id)}"
-            class="compra-producto-opcion w-full text-left px-3 py-2 border-b border-gray-100 last:border-0">
+            class="secondary compra-producto-opcion w-full text-left px-3 py-2 border-b border-gray-100 last:border-0">
       <div class="flex items-center justify-between">
         <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
         <span class="px-2 py-0.5 rounded text-xs ${p.tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${esc(p.tipo)}</span>

@@ -300,6 +300,10 @@ function pintarNavUser() {
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
 function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function formatearFechaGasto(fecha) {
+  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })
+    .format(new Date(`${fecha}T12:00:00-05:00`));
+}
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -449,7 +453,7 @@ function renderTablaGastos() {
 
   tbody.innerHTML = filtrados.map(g => `
     <tr>
-      <td>${new Date(g.fecha).toLocaleDateString('es-CO')}</td>
+      <td>${formatearFechaGasto(g.fecha)}</td>
       <td>${escapeHtml(g.conceptos_gasto?.nombre || '—')}</td>
       <td>${fmtCOP(g.monto)}</td>
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>

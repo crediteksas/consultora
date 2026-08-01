@@ -26,6 +26,12 @@ test('la fecha elegida y el responsable autenticado se conservan al registrar', 
   assert.match(html, /gastoResponsable/);
 });
 
+test('la fecha SQL del gasto se muestra como día calendario de Colombia', () => {
+  assert.match(html, /timeZone:\s*'America\/Bogota'/);
+  assert.match(html, /formatearFechaGasto\(g\.fecha\)/);
+  assert.doesNotMatch(html, /new Date\(g\.fecha\)\.toLocaleDateString/);
+});
+
 test('gerencia, auditoría y administración de tienda conservan el alta prevista', () => {
   assert.match(
     html,

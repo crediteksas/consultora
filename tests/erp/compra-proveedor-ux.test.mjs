@@ -8,11 +8,12 @@ const html = await readFile(
 );
 
 test('el buscador de productos queda por encima de la tabla y mantiene opciones legibles', () => {
-  assert.match(html, /#modal-buscar\s*\{[^}]*z-index:\s*1000/s);
-  assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*background:\s*#fff/s);
-  assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*color:\s*#0B1E3D/s);
-  assert.match(html, /class="[^"]*secondary[^"]*compra-producto-opcion[^"]*"/);
+  assert.match(html, /#modal-buscar\s*\{[^}]*z-index:\s*var\(--ctk-z-modal\)/s);
+  assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*background:\s*var\(--ctk-color-surface\)/s);
+  assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*color:\s*var\(--ctk-color-text\)/s);
+  assert.match(html, /class="[^"]*ctk-dropdown__item[^"]*secondary[^"]*compra-producto-opcion[^"]*"/);
   assert.match(html, /class="[^"]*secondary[^"]*compra-producto-seleccionado[^"]*"/);
+  assert.match(html, /class="ctk-modal compra-buscador-modal" role="dialog" aria-modal="true"/);
 });
 
 test('la fila de compra reserva espacio suficiente para costo y margen', () => {
@@ -24,6 +25,6 @@ test('la fila de compra reserva espacio suficiente para costo y margen', () => {
 });
 
 test('los errores de guardado se muestran por encima del shell de KORA', () => {
-  assert.match(html, /#toast\s*\{[^}]*z-index:\s*1200/s);
+  assert.match(html, /#toast\s*\{[^}]*z-index:\s*var\(--ctk-z-toast\)/s);
   assert.match(html, /id="toast"[^>]*role="alert"/);
 });

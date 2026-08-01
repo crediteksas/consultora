@@ -14,6 +14,18 @@
     no_reproducible: 'No reproducible',
     duplicado: 'Duplicado',
   });
+  const STATUS_ORDER = Object.freeze({
+    nuevo: 0,
+    pendiente_validacion: 1,
+    en_revision: 2,
+    confirmado: 2,
+    en_desarrollo: 2,
+    corregido: 3,
+    cerrado: 4,
+    rechazado: 4,
+    no_reproducible: 4,
+    duplicado: 4,
+  });
 
   function statusLabel(value) {
     return STATUS_LABELS[value] || String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
@@ -44,6 +56,25 @@
       if (!String(input.fixedVersion || '').trim()) errors.fixedVersion = 'Indica la versión corregida.';
     }
     return { ok: Object.keys(errors).length === 0, errors };
+  }
+
+  function sortIncidents(records = []) {
+    return [...records].sort((left, right) => {
+      const statusDifference = (STATUS_ORDER[left.status] ?? 4) - (STATUS_ORDER[right.status] ?? 4);
+      if (statusDifference) return statusDifference;
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    });
+  }
+
+  function paginateIncidents(records = [], page = 1, pageSize = 20) {
+    const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentPage - 1) * pageSize;
+    return {
+      currentPage,
+      totalPages,
+      items: records.slice(start, start + pageSize),
+    };
   }
 
   function personFor(id, people) {
@@ -82,6 +113,8 @@
   global.KoraIncidentManagement = Object.freeze({
     displayName,
     historyText,
+    paginateIncidents,
+    sortIncidents,
     statusLabel,
     statusTone,
     validateManagement,

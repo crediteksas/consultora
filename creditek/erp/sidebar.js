@@ -433,7 +433,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     } else {
       const domain = document.createElement('script');
       domain.id = 'koraIncidentDomain';
-      domain.src = '/creditek/erp/kora-incident-domain.js';
+      domain.src = '/creditek/erp/kora-incident-domain.js?v=1.1.0';
       domain.addEventListener('load', installIncidentCenter, { once: true });
       document.head.appendChild(domain);
     }

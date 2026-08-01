@@ -19,7 +19,7 @@
     en_revision: new Set(['confirmado', 'no_reproducible', 'rechazado', 'duplicado']),
     confirmado: new Set(['en_desarrollo', 'rechazado', 'duplicado']),
     en_desarrollo: new Set(['corregido', 'no_reproducible']),
-    corregido: new Set(['pendiente_validacion', 'en_desarrollo']),
+    corregido: new Set(['pendiente_validacion', 'cerrado', 'en_desarrollo']),
     pendiente_validacion: new Set(['cerrado', 'en_desarrollo']),
     cerrado: new Set(),
     rechazado: new Set(),

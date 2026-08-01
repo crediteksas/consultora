@@ -31,6 +31,31 @@ test('Resuelto exige resolución y versión, pero En revisión no', async () => 
   assert.equal(domain.statusLabel('corregido'), 'Resuelto');
 });
 
+test('ordena por estado y fecha, y pagina sin duplicar registros', async () => {
+  const domain = loadManagement(await read('creditek/erp/kora-incident-management.js'));
+  const records = Array.from({ length: 45 }, (_, index) => ({
+    id: `inc-${index}`,
+    status: index % 5 === 0 ? 'cerrado' : index % 3 === 0 ? 'pendiente_validacion' : 'nuevo',
+    created_at: new Date(Date.UTC(2026, 7, 1, 0, index)).toISOString(),
+  }));
+
+  const sorted = domain.sortIncidents(records);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(sorted.slice(0, 3).map(item => item.id))),
+    ['inc-44', 'inc-43', 'inc-41'],
+  );
+  const first = domain.paginateIncidents(sorted, 1, 20);
+  const second = domain.paginateIncidents(sorted, 2, 20);
+  const third = domain.paginateIncidents(sorted, 3, 20);
+
+  assert.equal(first.totalPages, 3);
+  assert.equal(first.items.length, 20);
+  assert.equal(second.items.length, 20);
+  assert.equal(third.items.length, 5);
+  assert.equal(new Set([...first.items, ...second.items, ...third.items].map(item => item.id)).size, 45);
+  assert.equal(first.items.some(item => second.items.includes(item)), false);
+});
+
 test('clasifica discretamente incidencias gestionadas y pendientes', async () => {
   const domain = loadManagement(await read('creditek/erp/kora-incident-management.js'));
 
@@ -101,6 +126,8 @@ test('la interfaz usa el cierre v1.1, feedback, nombres y formulario responsive'
     read('design-system/components/kora-incident-center.css'),
   ]);
   assert.match(app, /kora_manage_incident_v1_1/);
+  assert.match(app, /PAGE_SIZE\s*=\s*20/);
+  assert.match(app, /paginateIncidents/);
   assert.match(app, /Incidencia resuelta correctamente/);
   assert.match(app, /crypto\.randomUUID\(\)/);
   assert.doesNotMatch(app, /item\.assigned_to \|\| 'Sin asignar'/);
@@ -109,6 +136,18 @@ test('la interfaz usa el cierre v1.1, feedback, nombres y formulario responsive'
   assert.match(admin, /data-detail-field-error="fixedVersion"/);
   assert.match(css, /\.kora-incident-management/);
   assert.match(css, /@media\(max-width:720px\)[\s\S]*kora-incident-management/s);
+});
+
+test('la migración de cierre unifica transición, permisos y fecha de cierre', async () => {
+  const sql = await read('creditek/erp/migrations/20260801_kora_incident_close_transition.sql');
+  assert.match(sql, /kora_incident_has_permission\('incident_admin'\)/i);
+  assert.match(sql, /kora_incident_has_permission\('incident_close'\)/i);
+  assert.match(sql, /v_incident\.status = 'corregido'[\s\S]*v_status in \('pendiente_validacion', 'cerrado', 'en_desarrollo'\)/i);
+  assert.match(sql, /closed_at = case[\s\S]*v_status = 'cerrado'[\s\S]*now\(\)/i);
+  assert.match(sql, /resolution_summary/i);
+  assert.match(sql, /assigned_to/i);
+  assert.match(sql, /revoke all on function public\.kora_manage_incident_v1_1/i);
+  assert.match(sql, /grant execute on function public\.kora_manage_incident_v1_1[\s\S]*to authenticated/i);
 });
 
 test('el shell monta campana, contador y panel de notificaciones', async () => {

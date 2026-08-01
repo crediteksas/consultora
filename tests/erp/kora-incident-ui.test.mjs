@@ -25,6 +25,7 @@ test('el Centro de Incidencias concentra consulta, detalle y seguimiento', async
 
   assert.match(admin, /sidebar\.js" data-kora-shell="1\.0\.0"/);
   assert.match(admin, /data-kora-requires-auth="true"/);
+  assert.match(admin, /kora-incident-management\.js\?v=1\.2\.0/);
   assert.match(admin, /Nuevas[\s\S]*Críticas[\s\S]*En desarrollo[\s\S]*Pendientes de validación/);
   assert.match(admin, /data-incident-filter="status"/);
   assert.match(admin, /data-incident-filter="store"[\s\S]*data-incident-filter="user"[\s\S]*data-incident-filter="assignee"[\s\S]*data-incident-filter="version"/);
@@ -32,4 +33,8 @@ test('el Centro de Incidencias concentra consulta, detalle y seguimiento', async
   assert.match(admin, /Generar tarea técnica/);
   assert.match(admin, /data-incident-add-comment/);
   assert.match(admin, /data-comment-evidence/);
+  assert.match(admin, /data-incident-pagination/);
+  assert.match(admin, /data-incident-previous/);
+  assert.match(admin, /data-incident-next/);
+  assert.match(admin, /data-incident-page/);
 });

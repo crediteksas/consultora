@@ -20,6 +20,7 @@ test('elimina Mis incidencias de la navegación y concentra la consulta en incid
   await assert.rejects(read('creditek/erp/mis-reportes.html'), error => error.code === 'ENOENT');
   assert.match(app, /incident_comment/);
   assert.match(app, /OPEN_INCIDENT_STATES/);
+  assert.match(sidebar, /kora-incident-domain\.js\?v=1\.1\.0/);
 });
 
 test('los permisos de dominio reflejan tienda, Maythe y Gerencia', () => {

@@ -175,6 +175,7 @@ test('aplica el flujo oficial y reserva cambios administrativos a permisos expl√
   assert.equal(domain.canTransition('nuevo', 'en_revision'), true);
   assert.equal(domain.canTransition('en_revision', 'confirmado'), true);
   assert.equal(domain.canTransition('pendiente_validacion', 'cerrado'), true);
+  assert.equal(domain.canTransition('corregido', 'cerrado'), true);
   assert.equal(domain.canTransition('cerrado', 'en_desarrollo'), false);
   assert.equal(domain.hasIncidentPermission('asesor', 'incident_assign'), false);
   assert.equal(domain.hasIncidentPermission('admin_tienda', 'incident_view_store'), true);

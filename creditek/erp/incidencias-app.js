@@ -3,6 +3,7 @@
 
   const STATES = ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado'];
   const OPEN_INCIDENT_STATES = new Set(['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion']);
+  const PAGE_SIZE = 20;
   const management = window.KoraIncidentManagement;
   const label = value => management?.statusLabel(value)
     || String(value || '').replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
@@ -32,6 +33,7 @@
     copyingTask: false,
     canAdmin: false,
     canComment: false,
+    currentPage: 1,
   };
 
   function status(message, error = false) {
@@ -75,12 +77,12 @@
     });
   }
   function filteredIncidents() {
-    if (state.mode !== 'admin') return state.incidents;
+    if (state.mode !== 'admin') return management.sortIncidents(state.incidents);
     const read = name => document.querySelector(`[data-incident-filter="${name}"]`)?.value?.trim().toLowerCase() || '';
     const code = read('code');
     const dateFrom = read('dateFrom');
     const dateTo = read('dateTo');
-    return state.incidents.filter(item =>
+    return management.sortIncidents(state.incidents.filter(item =>
       (!code || item.incident_code.toLowerCase().includes(code) || item.title.toLowerCase().includes(code))
       && (!read('status') || item.status === read('status'))
       && (!read('priority') || item.priority === read('priority'))
@@ -90,7 +92,7 @@
       && (!read('assignee') || assigneeName(item.assigned_to).toLowerCase().includes(read('assignee')))
       && (!read('version') || item.kora_version.toLowerCase().includes(read('version')))
       && (!dateFrom || item.created_at.slice(0, 10) >= dateFrom)
-      && (!dateTo || item.created_at.slice(0, 10) <= dateTo));
+      && (!dateTo || item.created_at.slice(0, 10) <= dateTo)));
   }
   function assigneeName(id) {
     if (!id) return 'Sin asignar';
@@ -99,7 +101,16 @@
   function renderList() {
     const body = document.querySelector('[data-incident-list]');
     body.replaceChildren();
-    const records = filteredIncidents();
+    const filtered = filteredIncidents();
+    const pagination = management.paginateIncidents(filtered, state.currentPage, PAGE_SIZE);
+    state.currentPage = pagination.currentPage;
+    const records = pagination.items;
+    const pageNode = document.querySelector('[data-incident-page]');
+    if (pageNode) pageNode.textContent = `Página ${pagination.currentPage} de ${pagination.totalPages}`;
+    const previous = document.querySelector('[data-incident-previous]');
+    const next = document.querySelector('[data-incident-next]');
+    if (previous) previous.disabled = pagination.currentPage <= 1;
+    if (next) next.disabled = pagination.currentPage >= pagination.totalPages;
     if (!records.length) {
       const row = el('tr');
       const cell = el('td', 'No hay incidencias para mostrar.');
@@ -204,6 +215,13 @@
     const commentForm = detail.querySelector('[data-incident-comment-form]');
     if (commentForm) commentForm.hidden = !(state.canComment && OPEN_INCIDENT_STATES.has(item.status));
     if (state.mode === 'admin' && state.canAdmin) {
+      const statusSelect = detail.querySelector('[data-detail-status]');
+      statusSelect.replaceChildren();
+      [item.status, ...STATES.filter(value => window.KoraIncidentDomain.canTransition(item.status, value))].forEach(value => {
+        const option = el('option', label(value));
+        option.value = value;
+        statusSelect.append(option);
+      });
       detail.querySelector('[data-detail-status]').value = item.status;
       detail.querySelector('[data-detail-priority]').value = item.priority;
       detail.querySelector('[data-detail-assignee]').value = item.assigned_to || '';
@@ -437,7 +455,18 @@
     await loadIncidents();
   }
   function bind() {
-    document.querySelector('[data-incident-filters]')?.addEventListener('input', renderList);
+    document.querySelector('[data-incident-filters]')?.addEventListener('input', () => {
+      state.currentPage = 1;
+      renderList();
+    });
+    document.querySelector('[data-incident-previous]')?.addEventListener('click', () => {
+      state.currentPage -= 1;
+      renderList();
+    });
+    document.querySelector('[data-incident-next]')?.addEventListener('click', () => {
+      state.currentPage += 1;
+      renderList();
+    });
     document.querySelector('[data-detail-save]')?.addEventListener('click', () => saveAdmin().catch(error => status(error.message, true)));
     document.querySelector('[data-request-information]')?.addEventListener('click', () => requestInformation().catch(error => status(error.message, true)));
     document.querySelector('[data-generate-task]')?.addEventListener('click', taskDialog);

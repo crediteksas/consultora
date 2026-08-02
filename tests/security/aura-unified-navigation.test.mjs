@@ -35,7 +35,7 @@ test('AURA is the only login and renders modules from the authenticated access p
   const html = await read('creditek/agentes/index.html');
   assert.match(html, /type="email"[^>]+id="login-email"/);
   assert.match(html, /type="password"[^>]+id="login-password"/);
-  assert.match(html, /aura-auth\.mjs/);
+  assert.match(html, /aura-auth(?:-otp-20260802)?\.mjs/);
   assert.match(html, /data-aura-app="portal_b2b"/);
   assert.match(html, /data-aura-app="sofia"/);
   assert.match(html, /renderAuthorizedModules/);

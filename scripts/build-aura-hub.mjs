@@ -14,4 +14,8 @@ await cp(
   path.join(root, 'creditek', 'agentes', 'index.html'),
   path.join(agentsOutput, 'aura-otp-20260802.html'),
 );
+await cp(
+  path.join(root, 'creditek', 'agentes', 'aura-auth.mjs'),
+  path.join(agentsOutput, 'aura-auth-otp-20260802.mjs'),
+);
 await writeFile(path.join(output, '_aura-hub-release.json'), JSON.stringify({ product: 'AURA Hub', isolated: true }));

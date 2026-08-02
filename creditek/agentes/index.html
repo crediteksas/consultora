@@ -591,7 +591,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="toast"></div>
 
 <script type="module">
-import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth.mjs?v=20260802-otp1';
+import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth-otp-20260802.mjs';
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');

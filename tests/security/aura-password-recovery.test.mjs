@@ -157,7 +157,7 @@ test('la interfaz AURA ofrece recuperación por código sin callback PKCE', asyn
   assert.match(html, /Confirmar contraseña/);
   assert.match(html, /verifyRecoveryCode/);
   assert.match(html, /requestPasswordRecovery/);
-  assert.match(html, /aura-auth\.mjs\?v=20260802-otp1/);
+  assert.match(html, /aura-auth-otp-20260802\.mjs/);
   assert.doesNotMatch(html, /consumeAuthCallback|handleAuraEntry|code_verifier|grant_type=pkce/);
   assert.doesNotMatch(html, /Clave de acceso|Acceso pausado|Sistema operativo/i);
 });

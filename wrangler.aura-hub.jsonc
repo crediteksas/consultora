@@ -26,6 +26,10 @@
     {
       "pattern": "registro.crediteksas.com/creditek/agentes/aura-auth.mjs",
       "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/aura-auth-otp-20260802.mjs",
+      "zone_name": "crediteksas.com"
     }
   ]
 }

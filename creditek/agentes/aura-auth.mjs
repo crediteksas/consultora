@@ -4,6 +4,8 @@ export const AURA_AUTH = Object.freeze({
   storage: 'aura_supabase_session_v1',
 });
 
+export const AURA_RECOVERY_REDIRECT = 'https://registro.crediteksas.com/creditek/agentes/';
+
 const STORAGE_KEY = AURA_AUTH.storage;
 const ALLOWED_RETURN_PREFIXES = ['/creditek/agentes/', '/creditek/portal/'];
 
@@ -51,13 +53,29 @@ function parseSession(storage) {
   }
 }
 
+function callbackType(params) {
+  const type = params.get('type');
+  return type === 'invite' || type === 'recovery' ? type : '';
+}
+
+function cleanCallbackUrl(rawUrl) {
+  const url = new URL(rawUrl, AURA_RECOVERY_REDIRECT);
+  const safe = new URLSearchParams();
+  const returnTo = sanitizeReturnTo(url.searchParams.get('return_to') || '');
+  if (returnTo) safe.set('return_to', returnTo);
+  const query = safe.toString();
+  return `${url.pathname}${query ? `?${query}` : ''}`;
+}
+
 export function createAuraAuthClient({
   fetchImpl = globalThis.fetch,
   storage = globalThis.localStorage,
+  transientStorage = globalThis.sessionStorage,
   now = () => Date.now(),
 } = {}) {
   if (!storage) throw new Error('Almacenamiento de sesión no disponible');
-  let session = parseSession(storage);
+  let rememberSession = true;
+  let session = parseSession(storage) || (transientStorage ? parseSession(transientStorage) : null);
   let access = null;
 
   async function authFetch(path, options = {}) {
@@ -77,7 +95,10 @@ export function createAuraAuthClient({
       refresh_token: next.refresh_token,
       expires_at: Number(next.expires_at) || Math.floor(now() / 1000) + Number(next.expires_in || 3600),
     };
-    storage.setItem(STORAGE_KEY, JSON.stringify(session));
+    const destination = rememberSession || !transientStorage ? storage : transientStorage;
+    const alternate = destination === storage ? transientStorage : storage;
+    alternate?.removeItem(STORAGE_KEY);
+    destination.setItem(STORAGE_KEY, JSON.stringify(session));
     return session;
   }
 
@@ -85,6 +106,110 @@ export function createAuraAuthClient({
     session = null;
     access = null;
     storage.removeItem(STORAGE_KEY);
+    transientStorage?.removeItem(STORAGE_KEY);
+  }
+
+  async function requestPasswordRecovery(email) {
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized || !normalized.includes('@')) throw new Error('Escribe un correo electrónico válido');
+    const response = await authFetch(`/auth/v1/recover?redirect_to=${encodeURIComponent(AURA_RECOVERY_REDIRECT)}`, {
+      method: 'POST',
+      body: JSON.stringify({ email: normalized }),
+    });
+    if (!response.ok && response.status === 429) {
+      throw new Error('Hay demasiadas solicitudes. Espera unos minutos e inténtalo nuevamente.');
+    }
+    return {
+      message: 'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.',
+    };
+  }
+
+  async function consumeAuthCallback(rawUrl, replaceUrl = () => {}) {
+    const url = new URL(rawUrl, AURA_RECOVERY_REDIRECT);
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
+    const query = url.searchParams;
+    const type = callbackType(hash.has('type') ? hash : query);
+    const hasCallback = hash.has('access_token') || query.has('code') || hash.has('error') || query.has('error');
+    if (!hasCallback) return { mode: 'none', type: '' };
+
+    replaceUrl(cleanCallbackUrl(url.href));
+    if (hash.get('error') || query.get('error')) {
+      clear();
+      return {
+        mode: 'callback-error',
+        message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
+      };
+    }
+
+    if (!type) {
+      clear();
+      return {
+        mode: 'callback-error',
+        message: 'Este enlace no corresponde a una invitación o recuperación válida de AURA.',
+      };
+    }
+
+    const accessToken = hash.get('access_token');
+    const refreshToken = hash.get('refresh_token');
+    if (accessToken && refreshToken) {
+      save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: Number(hash.get('expires_in') || 3600),
+        expires_at: Number(hash.get('expires_at') || 0),
+      });
+      return { mode: 'set-password', type };
+    }
+
+    const code = query.get('code');
+    const verifierKey = `${STORAGE_KEY}-code-verifier`;
+    const verifier = storage.getItem(verifierKey);
+    if (!code || !verifier) {
+      clear();
+      return {
+        mode: 'callback-error',
+        message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
+      };
+    }
+
+    const response = await authFetch('/auth/v1/token?grant_type=pkce', {
+      method: 'POST',
+      body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
+    });
+    storage.removeItem(verifierKey);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.access_token || !data.refresh_token) {
+      clear();
+      return {
+        mode: 'callback-error',
+        message: 'Este enlace venció, ya fue utilizado o es inválido. Solicita uno nuevo.',
+      };
+    }
+    save(data);
+    return { mode: 'set-password', type };
+  }
+
+  async function updatePassword(password) {
+    if (String(password || '').length < 10) {
+      throw new Error('La contraseña debe tener al menos 10 caracteres');
+    }
+    const bearer = await token();
+    if (!bearer) throw new Error('La sesión de recuperación venció. Solicita un enlace nuevo.');
+    const response = await authFetch('/auth/v1/user', {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${bearer}` },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 422 && /same|different/i.test(data?.message || '')) {
+        throw new Error('La nueva contraseña debe ser diferente de la anterior');
+      }
+      throw new Error('No pudimos actualizar la contraseña. Solicita un enlace nuevo.');
+    }
+    const profile = await loadAccess();
+    if (!profile) throw new Error('La contraseña se actualizó, pero la sesión debe iniciarse nuevamente.');
+    return profile;
   }
 
   async function refresh() {
@@ -156,11 +281,17 @@ export function createAuraAuthClient({
       return profile;
     },
     async restore() {
-      session = parseSession(storage);
+      session = parseSession(storage) || (transientStorage ? parseSession(transientStorage) : null);
       if (!session) return null;
       const profile = await loadAccess();
       if (!profile) clear();
       return profile;
+    },
+    requestPasswordRecovery,
+    consumeAuthCallback,
+    updatePassword,
+    setRememberSession(value) {
+      rememberSession = Boolean(value);
     },
     signOut,
     token,

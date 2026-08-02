@@ -35,42 +35,77 @@
   --sidebar:220px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font);background:var(--navy);min-height:100vh;overflow:hidden}
+body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden}
 
 /* ── LOGIN ─────────────────────────────────────────────────── */
 #login-screen{
-  position:fixed;inset:0;background:var(--navy);
+  position:fixed;inset:0;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(0,196,204,.13),transparent 30%),
+    radial-gradient(circle at 85% 80%,rgba(11,30,61,.09),transparent 34%),
+    linear-gradient(145deg,#F8FAFC 0%,#EEF3F7 100%);
   display:flex;align-items:center;justify-content:center;
-  z-index:1000;transition:opacity .4s,transform .4s;
+  z-index:1000;transition:opacity .42s ease,transform .42s ease;
+  padding:24px;overflow:auto;
 }
-#login-screen.exit{opacity:0;transform:scale(1.05);pointer-events:none}
-.login-box{width:360px;text-align:center}
-.login-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:40px}
-.login-mark{width:48px;height:48px;background:var(--turq);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--navy);flex-shrink:0}
-.login-wordmark{font-size:28px;font-weight:700;color:var(--white);letter-spacing:2px}
-.login-sub{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
-.login-field{position:relative;margin-bottom:12px}
+#login-screen.exit{opacity:0;transform:scale(1.018);pointer-events:none}
+.login-box{
+  width:min(100%,430px);text-align:left;background:#fff;border:1px solid rgba(148,163,184,.22);
+  border-radius:28px;padding:38px 38px 30px;box-shadow:0 28px 70px rgba(11,30,61,.14),0 2px 10px rgba(11,30,61,.05);
+  position:relative;overflow:hidden;
+}
+.login-box::before{content:'';position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--navy),var(--turq))}
+.login-brand{text-align:center;margin-bottom:30px}
+.login-brand img{display:block;width:132px;height:auto;object-fit:contain;margin:0 auto 16px;mix-blend-mode:multiply}
+.login-brand h1{font-size:37px;line-height:1;font-weight:700;color:var(--navy);letter-spacing:.18em;margin-left:.18em}
+.login-brand p{font-size:13px;color:#64748B;letter-spacing:.04em;margin-top:8px}
+.auth-view{display:none;animation:authViewIn .28s ease both}
+.auth-view.active{display:block}
+@keyframes authViewIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.auth-title{font-size:21px;font-weight:700;color:var(--navy);text-align:center;margin-bottom:7px}
+.auth-copy{font-size:13px;line-height:1.55;color:#64748B;text-align:center;margin:0 auto 22px;max-width:330px}
+.login-field{position:relative;margin-bottom:14px}
+.login-field label{display:block;font-size:12px;font-weight:650;color:#334155;margin:0 0 7px 2px}
 .login-field input{
-  width:100%;padding:14px 16px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:var(--r);color:var(--white);
+  width:100%;padding:13px 45px 13px 14px;background:#F8FAFC;
+  border:1.5px solid #DCE4EC;border-radius:12px;color:var(--navy);
   font-size:14px;font-family:var(--font);
-  outline:none;transition:border .2s;
-  text-align:center;letter-spacing:2px;
+  outline:none;transition:border .2s,box-shadow .2s,background .2s;
 }
-.login-field input::placeholder{letter-spacing:0;color:rgba(255,255,255,.3)}
-.login-field input:focus{border-color:var(--turq)}
+.login-field input::placeholder{color:#94A3B8}
+.login-field input:focus{background:#fff;border-color:var(--turq);box-shadow:0 0 0 4px rgba(0,196,204,.12)}
+.password-toggle{position:absolute;right:10px;bottom:8px;width:34px;height:34px;border:0;background:transparent;color:#64748B;border-radius:9px;cursor:pointer;font-size:17px}
+.password-toggle:hover{background:#EAF1F5;color:var(--navy)}
+.login-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 1px 18px}
+.remember-option{display:flex;align-items:center;gap:8px;color:#64748B;font-size:12px;cursor:pointer}
+.remember-option input{accent-color:var(--turq);width:16px;height:16px}
+.auth-link{border:0;background:none;color:#087D83;font-family:var(--font);font-weight:650;font-size:12px;cursor:pointer;padding:4px 0}
+.auth-link:hover{text-decoration:underline;color:var(--navy)}
 .login-btn{
-  width:100%;padding:14px;margin-top:4px;
-  background:var(--turq);border:none;border-radius:var(--r);
+  width:100%;min-height:48px;padding:13px 16px;margin-top:2px;
+  background:var(--navy);border:none;border-radius:12px;
   color:var(--navy);font-size:14px;font-weight:700;
-  font-family:var(--font);cursor:pointer;transition:background .2s;
-  letter-spacing:.5px;
+  color:#fff;font-family:var(--font);cursor:pointer;transition:transform .2s,background .2s,box-shadow .2s;
+  letter-spacing:.2px;box-shadow:0 8px 18px rgba(11,30,61,.18);
 }
-.login-btn:hover{background:var(--turq2)}
-.login-error{color:#FCA5A5;font-size:12px;margin-top:8px;height:16px}
-.login-version{font-size:11px;color:rgba(255,255,255,.2);margin-top:32px;font-family:var(--mono)}
+.login-btn:hover:not(:disabled){background:#132D55;transform:translateY(-1px);box-shadow:0 11px 22px rgba(11,30,61,.23)}
+.login-btn:disabled{opacity:.68;cursor:wait}
+.login-btn.secondary{background:#E7F8F8;color:#087D83;box-shadow:none}
+.auth-back{display:block;margin:16px auto 0}
+.auth-status{display:none;border-radius:11px;padding:11px 12px;margin:14px 0 0;font-size:12px;line-height:1.45;text-align:left}
+.auth-status.visible{display:block}
+.auth-status.error{background:#FEF2F2;color:#B42318;border:1px solid #FECACA}
+.auth-status.success{background:#ECFDF5;color:#047857;border:1px solid #A7F3D0}
+.auth-status.info{background:#EFF8FF;color:#175CD3;border:1px solid #B2DDFF}
+.success-mark{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;background:#E7F8F8;color:#087D83;font-size:28px;font-weight:700}
+.login-version{text-align:center;font-size:10px;color:#94A3B8;margin-top:25px;font-family:var(--mono)}
+@media(max-width:520px){
+  #login-screen{padding:14px}
+  .login-box{padding:31px 22px 24px;border-radius:22px}
+  .login-brand{margin-bottom:25px}.login-brand h1{font-size:32px}
+  .login-options{align-items:flex-start;flex-direction:column;gap:8px}
+}
+@media(prefers-reduced-motion:reduce){.auth-view,#login-screen{animation:none;transition:none}}
 
 /* ── APP SHELL ──────────────────────────────────────────────── */
 #app{display:none;height:100vh;flex-direction:row}
@@ -227,21 +262,69 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">
-      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" style="width:160px;height:auto;object-fit:contain;padding:8px 0">
-      <div>
-        <div class="login-sub">Sistema operativo</div>
+    <div class="login-brand">
+      <img src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="Creditek">
+      <h1>AURA</h1>
+      <p>by Creditek</p>
+    </div>
+
+    <div class="auth-view active" id="auth-view-login">
+      <h2 class="auth-title">Bienvenido</h2>
+      <p class="auth-copy">Ingresa con tu cuenta individual para acceder a tus módulos autorizados.</p>
+      <div class="login-field">
+        <label for="login-email">Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="nombre@crediteksas.com" autocomplete="username">
       </div>
+      <div class="login-field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" placeholder="Tu contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('login-password',this)">◉</button>
+      </div>
+      <div class="login-options">
+        <label class="remember-option"><input type="checkbox" id="remember-session" checked> Recordar sesión</label>
+        <button class="auth-link" type="button" onclick="showAuthView('forgot')">Olvidé mi contraseña</button>
+      </div>
+      <button class="login-btn" id="login-submit" onclick="doLogin()">Iniciar sesión</button>
+      <div class="auth-status" id="login-error" role="status" aria-live="polite"></div>
     </div>
-    <div class="login-field">
-      <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+
+    <div class="auth-view" id="auth-view-forgot">
+      <h2 class="auth-title">Recupera tu acceso</h2>
+      <p class="auth-copy">Te enviaremos un enlace seguro para crear una nueva contraseña dentro de AURA.</p>
+      <div class="login-field">
+        <label for="recovery-email">Correo electrónico</label>
+        <input type="email" id="recovery-email" placeholder="nombre@crediteksas.com" autocomplete="email" onkeydown="if(event.key==='Enter')requestRecovery()">
+      </div>
+      <button class="login-btn" id="recovery-submit" onclick="requestRecovery()">Enviar enlace de recuperación</button>
+      <div class="auth-status" id="recovery-status" role="status" aria-live="polite"></div>
+      <button class="auth-link auth-back" type="button" onclick="showAuthView('login')">← Volver a iniciar sesión</button>
     </div>
-    <div class="login-field">
-      <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <div class="auth-view" id="auth-view-set-password">
+      <h2 class="auth-title" id="set-password-title">Crear contraseña</h2>
+      <p class="auth-copy">Crea una contraseña segura para continuar directamente a AURA.</p>
+      <div class="login-field">
+        <label for="new-password">Nueva contraseña</label>
+        <input type="password" id="new-password" placeholder="Mínimo 10 caracteres" autocomplete="new-password">
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('new-password',this)">◉</button>
+      </div>
+      <div class="login-field">
+        <label for="confirm-password">Confirmar contraseña</label>
+        <input type="password" id="confirm-password" placeholder="Repite la contraseña" autocomplete="new-password" onkeydown="if(event.key==='Enter')saveNewPassword()">
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('confirm-password',this)">◉</button>
+      </div>
+      <button class="login-btn" id="password-submit" onclick="saveNewPassword()">Guardar contraseña</button>
+      <div class="auth-status" id="password-status" role="status" aria-live="polite"></div>
     </div>
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-    <div class="login-error" id="login-error"></div>
-    <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
+
+    <div class="auth-view" id="auth-view-password-updated">
+      <div class="success-mark">✓</div>
+      <h2 class="auth-title">Contraseña actualizada correctamente</h2>
+      <p class="auth-copy">Tu sesión está lista. Estamos abriendo tus módulos autorizados.</p>
+      <button class="login-btn secondary" type="button" onclick="enterAura()">Entrar a AURA</button>
+    </div>
+
+    <div class="login-version">Acceso seguro · AURA 2026</div>
   </div>
 </div>
 
@@ -507,23 +590,93 @@ import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
+let passwordFlowType = 'recovery';
+
+function setAuthStatus(id, message = '', kind = 'error') {
+  const element = document.getElementById(id);
+  element.textContent = message;
+  element.className = `auth-status${message ? ` visible ${kind}` : ''}`;
+}
+
+function showAuthView(name) {
+  document.querySelectorAll('.auth-view').forEach(view => view.classList.remove('active'));
+  document.getElementById(`auth-view-${name}`).classList.add('active');
+  setTimeout(() => {
+    document.querySelector(`#auth-view-${name} input`)?.focus();
+  }, 80);
+}
+
+function togglePassword(inputId, button) {
+  const input = document.getElementById(inputId);
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  button.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+  button.textContent = visible ? '◉' : '◎';
+  input.focus();
+}
+
+async function withLoading(buttonId, loadingText, action) {
+  const button = document.getElementById(buttonId);
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = loadingText;
+  try { return await action(); }
+  finally { button.disabled = false; button.textContent = original; }
+}
 
 // ── Login ────────────────────────────────────────────────────────
 async function doLogin() {
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
-  const button = document.querySelector('.login-btn');
-  button.disabled = true;
-  document.getElementById('login-error').textContent = '';
-  try {
-    auraAccess = await auraAuth.signIn(email, password);
-    enterAura();
-  } catch (error) {
-    document.getElementById('login-error').textContent = error.message;
-    document.getElementById('login-password').value = '';
-  } finally {
-    button.disabled = false;
+  auraAuth.setRememberSession(document.getElementById('remember-session').checked);
+  setAuthStatus('login-error');
+  await withLoading('login-submit', 'Cargando...', async () => {
+    try {
+      auraAccess = await auraAuth.signIn(email, password);
+      enterAura();
+    } catch (error) {
+      setAuthStatus('login-error', error.message);
+      document.getElementById('login-password').value = '';
+    }
+  });
+}
+
+async function requestRecovery() {
+  const email = document.getElementById('recovery-email').value;
+  setAuthStatus('recovery-status');
+  await withLoading('recovery-submit', 'Enviando...', async () => {
+    try {
+      const result = await auraAuth.requestPasswordRecovery(email);
+      setAuthStatus('recovery-status', result.message, 'success');
+    } catch (error) {
+      setAuthStatus('recovery-status', error.message);
+    }
+  });
+}
+
+async function saveNewPassword() {
+  const password = document.getElementById('new-password').value;
+  const confirmation = document.getElementById('confirm-password').value;
+  setAuthStatus('password-status');
+  if (password.length < 10) {
+    setAuthStatus('password-status', 'La contraseña debe tener al menos 10 caracteres.');
+    return;
   }
+  if (password !== confirmation) {
+    setAuthStatus('password-status', 'Las contraseñas no coinciden.');
+    return;
+  }
+  await withLoading('password-submit', 'Guardando...', async () => {
+    try {
+      auraAccess = await auraAuth.updatePassword(password);
+      document.getElementById('new-password').value = '';
+      document.getElementById('confirm-password').value = '';
+      showAuthView('password-updated');
+      setTimeout(() => enterAura(), 1100);
+    } catch (error) {
+      setAuthStatus('password-status', error.message);
+    }
+  });
 }
 
 async function doLogout() {
@@ -564,7 +717,10 @@ function enterAura() {
   }, 250);
 }
 
-Object.assign(window, { doLogin, doLogout });
+Object.assign(window, {
+  doLogin, doLogout, requestRecovery, saveNewPassword,
+  showAuthView, togglePassword, enterAura,
+});
 
 // ── Init ─────────────────────────────────────────────────────────
 
@@ -690,6 +846,22 @@ function showToast(msg, color='#0B1E3D') {
 
 // ── Auto-login si sesión activa ──────────────────────────────────
 window.addEventListener('load', async () => {
+  const callback = await auraAuth.consumeAuthCallback(location.href, safeUrl => {
+    history.replaceState({}, '', safeUrl);
+  });
+  if (callback.mode === 'set-password') {
+    passwordFlowType = callback.type;
+    document.getElementById('set-password-title').textContent = callback.type === 'invite'
+      ? 'Crear contraseña'
+      : 'Restablecer contraseña';
+    showAuthView('set-password');
+    return;
+  }
+  if (callback.mode === 'callback-error') {
+    showAuthView('forgot');
+    setAuthStatus('recovery-status', callback.message, 'error');
+    return;
+  }
   auraAccess = await auraAuth.restore();
   if (auraAccess) enterAura();
   else setTimeout(() => document.getElementById('login-email').focus(), 100);

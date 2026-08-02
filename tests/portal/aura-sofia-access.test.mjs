@@ -60,14 +60,15 @@ test('restablece la sesión antes de abrir Sofía cuando ck_auth existe por sepa
   assert.equal(JSON.parse(browserStorage.getItem('ck_supa_session')).access_token, 'new-public-test-token');
 });
 
-test('un fallo de sesión muestra un error y no expulsa al usuario del hub', async () => {
+test('Sofía reutiliza la sesión única de AURA y un fallo no fuerza navegación externa', async () => {
   const hub = await readFile(hubPath, 'utf8');
   const sofia = await readFile(sofiaPath, 'utf8');
 
-  assert.match(hub, /ensureAuraSession/);
-  assert.match(hub, /No fue posible abrir Sofía/);
+  assert.match(hub, /aura-auth\.mjs/);
+  assert.match(hub, /hasPermission\(auraAccess, appId, 'sofia\.use'\)/);
   assert.match(hub, /aura:close-module/);
   assert.doesNotMatch(sofia, /top\.location\.href\s*=/);
   assert.match(sofia, /showAccessError/);
   assert.match(sofia, /No tienes una sesión válida para consultar Sofía/);
+  assert.match(sofia, /aura_supabase_session_v1/);
 });

@@ -10,6 +10,7 @@ node_modules/
 .worktrees/
 public/
 public-aura-b2b/
+public-aura-hub/
 .wrangler/
 .clasp.json
 

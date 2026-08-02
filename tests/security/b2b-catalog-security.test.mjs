@@ -51,12 +51,12 @@ test('el analizador conserva el texto original y exige permiso administrativo', 
   assert.doesNotMatch(source, /publish_b2b_catalog/i);
 });
 
-test('el portal elimina la carga heredada de Excel y usa el catálogo público de Apps Script', async () => {
+test('el portal carga el catálogo público únicamente a través de la API autenticada de AURA', async () => {
   const source = await readFile(portalPath, 'utf8');
   const api = await readFile(catalogApiPath, 'utf8');
 
-  assert.doesNotMatch(source, /function\s+cargarExcel\s*\(/);
-  assert.match(api, /action=catalogo/);
+  assert.match(api, /apiFetch\('\/api\/catalog'\)/);
+  assert.doesNotMatch(api, /script\.google\.com/);
   assert.match(source, /const\s+catalogoRaw\s*=\s*\[\s*\]/);
   assert.match(source, /catalog-admin\.mjs/);
 });
@@ -88,11 +88,12 @@ test('el cierre conserva los identificadores de hoja y retira los pedidos cerrad
   assert.match(source, /cargarPendientesAdmin\(\);renderConsolidado\(\)/);
 });
 
-test('la actualización de catálogo exige una sesión administrativa validada en Apps Script', async () => {
+test('la actualización de catálogo exige el backend privado de AURA y no un PIN independiente', async () => {
   const source = await readFile(appsScriptPath, 'utf8');
 
-  assert.match(source, /validarSesionConAlcance_\(body\.session_token, 'admin'\)/);
-  assert.match(source, /B2B_ADMIN_PIN_HASH/);
+  assert.match(source, /verificarBackendAura_\(envelope\.backend_secret\)/);
+  assert.match(source, /AURA_BACKEND_SECRET/);
+  assert.doesNotMatch(source, /B2B_ADMIN_PIN_HASH/);
   assert.doesNotMatch(source, /body\.admin_pin/);
   assert.match(source, /publicarCatalogoAdmin_/);
   assert.match(source, /crearSnapshotCatalogo_/);

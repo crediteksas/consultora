@@ -12,7 +12,9 @@ const AURA_B2B_FILES = [
   'creditek/portal/canonical-reference.mjs',
   'creditek/portal/order-contract.mjs',
   'creditek/portal/provider-display.mjs',
-  'creditek/portal/b2b-session.mjs',
+  'creditek/portal/aura-portal-guard.mjs',
+  'creditek/portal/aura-portal-bootstrap.mjs',
+  'creditek/agentes/aura-auth.mjs',
 ];
 
 async function copyFile(rootDir, outDir, relative) {

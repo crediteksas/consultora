@@ -1,0 +1,7 @@
+name = "aura-b2b-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[vars]
+SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
+ALLOWED_ORIGIN = "https://registro.crediteksas.com"

@@ -12,7 +12,7 @@ const buildPath = new URL('../../scripts/build-aura-b2b.mjs', import.meta.url);
 test('los proveedores se obtienen de Apps Script y no de una lista fija del frontend', async () => {
   const api = await readFile(apiPath, 'utf8');
 
-  assert.match(api, /action:\s*'listar_proveedores_admin'/);
+  assert.match(api, /\/api\/admin\/providers\/list/);
   assert.doesNotMatch(api, /Promise\.resolve\(\s*\[\s*\{\s*id:\s*'Conquia'/);
 });
 

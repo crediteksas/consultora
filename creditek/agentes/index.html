@@ -234,7 +234,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
       </div>
     </div>
     <div class="login-field">
-      <input type="password" id="login-pwd" placeholder="Clave de acceso" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">Ingresar →</button>
     <div class="login-error" id="login-error"></div>
@@ -256,44 +259,44 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
       <span class="nav-icon">⊞</span> Dashboard
     </a>
 
-    <div class="sidebar-section">Agentes IA</div>
-    <a class="nav-item" onclick="openModule('creditek-agente-redes.html','Agente Diseño',this)">
+    <div class="sidebar-section" data-aura-app="sofia">Agentes IA</div>
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-redes.html','Agente Diseño',this,'sofia')">
       <span class="nav-icon">🎨</span> Diseño
       <span class="nav-badge">v4.1</span>
     </a>
-    <a class="nav-item" onclick="openModule('creditek-agente-respuestas.html','Agente Respuestas',this)">
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-respuestas.html','Agente Respuestas',this,'sofia')">
       <span class="nav-icon">💬</span> Respuestas
     </a>
-    <a class="nav-item" onclick="openModule('agente3-meta-ads.html','Meta Ads Intelligence',this)">
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('agente3-meta-ads.html','Meta Ads Intelligence',this,'sofia')">
       <span class="nav-icon">📊</span> Meta Ads
       <span class="nav-badge new">IA</span>
     </a>
-    <a class="nav-item" onclick="openModule('creditek-agente-calendario.html','Calendario de Contenido',this)">
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-calendario.html','Calendario de Contenido',this,'sofia')">
       <span class="nav-icon">📅</span> Calendario
     </a>
 
     <div class="sidebar-section">Comercial</div>
-    <a class="nav-item" onclick="openModule('../portal/index.html','Portal de Pedidos B2B',this)">
+    <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
       <span class="nav-icon">🛒</span> Portal B2B
     </a>
-    <a class="nav-item" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this)">
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this,'sofia')">
       <span class="nav-icon">📍</span> Google Business
     </a>
-    <a class="nav-item" onclick="window.open('../convenios/index.html','_blank')">
+    <a class="nav-item" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
       <span class="nav-icon">✍️</span> Convenios de Aliados
     </a>
 
-    <div class="sidebar-section">Sistema</div>
-    <a class="nav-item" onclick="showSection('configuracion',this)">
+    <div class="sidebar-section" data-aura-app="sofia">Sistema</div>
+    <a class="nav-item" data-aura-app="sofia" onclick="showSection('configuracion',this)">
       <span class="nav-icon">⚙</span> Configuración
     </a>
 
     <div class="sidebar-footer">
       <div class="sidebar-user">
-        <div class="user-avatar">OJ</div>
+        <div class="user-avatar" id="aura-user-initials">—</div>
         <div>
-          <div class="user-name">Oscar Pacheco</div>
-          <div class="user-role">CEO · Creditek SAS</div>
+          <div class="user-name" id="aura-user-name">—</div>
+          <div class="user-role" id="aura-user-role">AURA</div>
         </div>
         <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión">⏻</button>
       </div>
@@ -346,7 +349,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
         <div class="section-title">Agentes de inteligencia artificial</div>
         <div class="modules-grid">
-          <div class="module-card" onclick="openModuleFromCard('creditek-agente-redes.html','Agente Diseño')">
+          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-redes.html','Agente Diseño','sofia')">
             <div class="module-top">
               <div class="module-icon">🎨</div>
               <div class="module-status active">● Activo</div>
@@ -359,7 +362,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" onclick="openModuleFromCard('creditek-agente-respuestas.html','Agente Respuestas')">
+          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-respuestas.html','Agente Respuestas','sofia')">
             <div class="module-top">
               <div class="module-icon">💬</div>
               <div class="module-status active">● Activo</div>
@@ -372,7 +375,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence')">
+          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','sofia')">
             <div class="module-top">
               <div class="module-icon">📊</div>
               <div class="module-status active">● Activo</div>
@@ -385,7 +388,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de Contenido')">
+          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de Contenido','sofia')">
             <div class="module-top">
               <div class="module-icon">📅</div>
               <div class="module-status active">● Activo</div>
@@ -401,7 +404,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
         <div class="section-title">Herramientas comerciales</div>
         <div class="tools-grid">
-          <a class="tool-row" onclick="openModuleFromCard('../portal/index.html','Portal de Pedidos B2B')">
+          <a class="tool-row" data-aura-app="portal_b2b" onclick="openModuleFromCard('/creditek/portal/','Portal de Pedidos B2B','portal_b2b')">
             <div class="tool-icon">🛒</div>
             <div>
               <div class="tool-name">Portal de Pedidos B2B</div>
@@ -409,7 +412,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </a>
-          <a class="tool-row" onclick="openModuleFromCard('creditek-gbp-fichas.html','Fichas Google Business')">
+          <a class="tool-row" data-aura-app="sofia" onclick="openModuleFromCard('creditek-gbp-fichas.html','Fichas Google Business','sofia')">
             <div class="tool-icon">📍</div>
             <div>
               <div class="tool-name">Fichas Google Business</div>
@@ -417,7 +420,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </a>
-          <a class="tool-row" onclick="window.open('../convenios/index.html','_blank')">
+          <a class="tool-row" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
             <div class="tool-icon">✍️</div>
             <div>
               <div class="tool-name">Convenios de Aliados</div>
@@ -499,33 +502,69 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
-<script>
-const PWD = 'creditek2026';
+<script type="module">
+import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth.mjs';
+
+let auraAccess = null;
+const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
 
 // ── Login ────────────────────────────────────────────────────────
 async function doLogin() {
-  const v = document.getElementById('login-pwd').value;
-  if (v === PWD) {
-    sessionStorage.setItem('ck_auth', '1');
-    try{const r=await fetch('https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gate:PWD})});if(r.ok){const d=await r.json();sessionStorage.setItem('ck_supa_session',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at,email:d.email}))}}catch(e){console.error('SSO login error',e)}
-    document.getElementById('login-screen').classList.add('exit');
-    setTimeout(() => {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      initApp();
-    }, 400);
-  } else {
-    document.getElementById('login-error').textContent = 'Clave incorrecta';
-    document.getElementById('login-pwd').value = '';
-    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const button = document.querySelector('.login-btn');
+  button.disabled = true;
+  document.getElementById('login-error').textContent = '';
+  try {
+    auraAccess = await auraAuth.signIn(email, password);
+    enterAura();
+  } catch (error) {
+    document.getElementById('login-error').textContent = error.message;
+    document.getElementById('login-password').value = '';
+  } finally {
+    button.disabled = false;
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem('ck_auth');
-  sessionStorage.removeItem('ck_supa_session');
-  location.reload();
+async function doLogout() {
+  await auraAuth.signOut();
+  location.replace('/creditek/agentes/');
 }
+
+function renderAuthorizedModules() {
+  document.querySelectorAll('[data-aura-app]').forEach(element => {
+    const appId = element.dataset.auraApp;
+    const allowed = appId === 'portal_b2b'
+      ? hasPermission(auraAccess, appId, 'portal.read')
+      : hasPermission(auraAccess, appId, 'sofia.use');
+    element.hidden = !allowed;
+  });
+  const name = auraAccess?.display_name || auraAccess?.email || 'Usuario AURA';
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  document.getElementById('aura-user-name').textContent = name;
+  document.getElementById('aura-user-initials').textContent = initials || 'AU';
+  const roles = (auraAccess?.apps || []).map(app => app.role_id);
+  document.getElementById('aura-user-role').textContent = roles.includes('aura.owner') ? 'Propietario AURA' : roles[0] || 'Usuario AURA';
+}
+
+function enterAura() {
+  renderAuthorizedModules();
+  document.getElementById('login-screen').classList.add('exit');
+  setTimeout(() => {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    initApp();
+    if (requestedModule) {
+      if (requestedModule.startsWith('/creditek/portal/') && hasPermission(auraAccess, 'portal_b2b', 'portal.read')) {
+        location.replace(requestedModule);
+      } else if (requestedModule.startsWith('/creditek/portal/')) {
+        showToast('No tienes permiso para abrir Portal B2B.', '#EF4444');
+      }
+    }
+  }, 250);
+}
+
+Object.assign(window, { doLogin, doLogout });
 
 // ── Init ─────────────────────────────────────────────────────────
 
@@ -562,23 +601,14 @@ function showSection(id, el) {
     id === 'dashboard' ? 'Dashboard' : 'Configuración';
 }
 
-async function ensureSofiaSession() {
-  const { ensureAuraSession } = await import('./aura-session.mjs');
-  return ensureAuraSession({
-    storage: sessionStorage,
-    fetchImpl: fetch,
-    endpoint: 'https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login',
-    gate: PWD,
-  });
-}
-
-async function openModule(url, title, el) {
-  if (url === 'creditek-agente-respuestas.html') {
-    const sessionResult = await ensureSofiaSession();
-    if (!sessionResult.ok) {
-      showToast('No fue posible abrir Sofía. Inicia sesión nuevamente.', '#EF4444');
-      return;
-    }
+async function openModule(url, title, el, appId = '') {
+  if (appId === 'portal_b2b' && !hasPermission(auraAccess, appId, 'portal.read')) {
+    showToast('No tienes permiso para abrir Portal B2B.', '#EF4444');
+    return;
+  }
+  if (appId === 'sofia' && !hasPermission(auraAccess, appId, 'sofia.use')) {
+    showToast('No tienes permiso para abrir este módulo.', '#EF4444');
+    return;
   }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -592,8 +622,8 @@ async function openModule(url, title, el) {
   document.getElementById('topbar-breadcrumb').textContent = 'Creditek · ' + title;
 }
 
-function openModuleFromCard(url, title) {
-  openModule(url, title, null);
+function openModuleFromCard(url, title, appId = '') {
+  openModule(url, title, null, appId);
 }
 
 function closeIframe() {
@@ -659,14 +689,15 @@ function showToast(msg, color='#0B1E3D') {
 }
 
 // ── Auto-login si sesión activa ──────────────────────────────────
-window.addEventListener('load', () => {
-  if (sessionStorage.getItem('ck_auth') === '1') {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').classList.add('visible');
-    initApp();
-  } else {
-    setTimeout(() => document.getElementById('login-pwd').focus(), 100);
-  }
+window.addEventListener('load', async () => {
+  auraAccess = await auraAuth.restore();
+  if (auraAccess) enterAura();
+  else setTimeout(() => document.getElementById('login-email').focus(), 100);
+});
+
+Object.assign(window, {
+  showSection, openModule, openModuleFromCard, closeIframe,
+  saveKey, saveMetaKeys, showToast,
 });
 </script>
 </body>

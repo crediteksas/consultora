@@ -16,6 +16,9 @@
   :root{--azul:#0B1E3D;--turquesa:#00C4CC;--blanco:#FFFFFF;--gris:#F4F6F9;--gris2:#E8EDF4;--texto:#1a2a3a;}
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'DM Sans',sans-serif;background:var(--azul);color:var(--texto);min-height:100vh;}
+  body.aura-auth-pending>*:not(#portalAccessDenied){visibility:hidden;}
+  #portalAccessDenied{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;color:white;text-align:center;}
+  #portalAccessDenied .denied-card{max-width:460px;background:white;color:var(--azul);padding:36px;border-radius:18px;}
   header{background:var(--azul);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,0.3);}
   .logo{display:flex;align-items:center;gap:10px;}
   .logo-icon{width:36px;height:36px;background:var(--turquesa);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--azul);}
@@ -73,22 +76,6 @@
   .enviar-btn{width:100%;background:var(--turquesa);color:var(--azul);border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
   .enviar-btn:hover{background:#00adb5;}
   .empty-carrito{text-align:center;padding:40px 20px;color:#7a8899;}
-  .b2b-login-overlay{position:fixed;inset:0;background:var(--azul);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
-  .b2b-login-box{background:var(--blanco);border-radius:20px;padding:40px;max-width:360px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.3);}
-  .b2b-login-box img{width:120px;margin-bottom:20px;}
-  .b2b-login-box h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--azul);letter-spacing:2px;margin-bottom:6px;}
-  .b2b-login-box p{font-size:13px;color:#7a8899;margin-bottom:24px;}
-  .b2b-login-box input{width:100%;border:2px solid var(--gris2);border-radius:10px;padding:12px 16px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:4px;margin-bottom:12px;}
-  .b2b-login-box input:focus{border-color:var(--turquesa);}
-  .b2b-login-box button{width:100%;background:var(--azul);color:var(--turquesa);border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
-  .b2b-login-box .error{color:#e74c3c;font-size:12px;margin-top:8px;min-height:18px;}
-  .oscar-login{background:var(--blanco);border-radius:16px;padding:40px;max-width:360px;margin:60px auto;box-shadow:0 4px 30px rgba(11,30,61,0.1);text-align:center;}
-  .oscar-login h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--azul);margin-bottom:6px;letter-spacing:2px;}
-  .oscar-login p{font-size:13px;color:#7a8899;margin-bottom:24px;}
-  .oscar-login input{width:100%;border:2px solid var(--gris2);border-radius:10px;padding:12px 16px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:4px;}
-  .oscar-login input:focus{border-color:var(--turquesa);}
-  .oscar-login button{width:100%;margin-top:16px;background:var(--azul);color:var(--turquesa);border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
-  .oscar-login .error{color:#e74c3c;font-size:12px;margin-top:8px;}
   .resumen-header{background:var(--azul);border-radius:14px;padding:24px;margin-bottom:20px;color:var(--blanco);}
   .resumen-titulo{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--turquesa);letter-spacing:2px;}
   .resumen-sub{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;}
@@ -210,7 +197,15 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
-<body>
+<body class="aura-auth-pending">
+<div id="portalAccessDenied">
+  <div class="denied-card">
+    <h1>Acceso denegado</h1>
+    <p>Tu usuario no tiene permiso para abrir Portal B2B.</p>
+    <p style="margin-top:16px"><a href="/creditek/agentes/">Volver a AURA</a></p>
+  </div>
+</div>
+<script type="module" src="./aura-portal-bootstrap.mjs"></script>
 <header>
   <div class="logo">
     <div data-kora-brand data-product-name="AURA" data-variant="login-inverse"></div>
@@ -218,7 +213,7 @@
   <div class="header-right">
     <button class="vista-btn active" id="btnTienda" onclick="cambiarVista('tienda')"><i data-lucide="store" aria-hidden="true"></i><span>Catálogo</span></button>
     <button class="vista-btn" id="btnHistorial" onclick="cambiarVista('historial')"><i data-lucide="clipboard-list" aria-hidden="true"></i><span>Mis pedidos</span></button>
-    <button class="vista-btn" id="btnOscar" onclick="cambiarVista('oscar')"><i data-lucide="shield-check" aria-hidden="true"></i><span>Admin</span></button>
+    <button class="vista-btn" id="btnOscar" data-portal-permission="portal.admin" onclick="cambiarVista('oscar')"><i data-lucide="shield-check" aria-hidden="true"></i><span>Admin</span></button>
     <span class="badge-pedido" onclick="abrirCarrito()">🛒 Pedido (<span id="badgeNum">0</span>)</span>
   </div>
 </header>
@@ -296,18 +291,6 @@
   </div>
 </div>
 <div class="container" id="vistaOscar" style="display:none">
-  <div id="oscarLogin">
-    <div class="oscar-login">
-      <div style="font-size:40px;margin-bottom:12px">🔒</div>
-      <h2>ACCESO ADMIN</h2>
-      <p>Zona privada — Oscar y Maythe</p>
-      <form onsubmit="event.preventDefault();verificarPass()">
-        <input type="password" id="passInput" placeholder="Contraseña">
-        <button type="submit">Entrar</button>
-      </form>
-      <div class="error" id="passError"></div>
-    </div>
-  </div>
   <div id="oscarPanel" style="display:none">
     <div class="resumen-header">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -535,21 +518,7 @@
   </div>
 </div>
 <script>
-async function verificarB2B(){
-  const input = document.getElementById('b2bPass').value;
-  try {
-    await window.B2BAccessReady;
-    await window.B2BAccessSession.login(input);
-    document.getElementById('b2bLoginOverlay').style.display='none';
-    document.getElementById('b2bError').textContent='';
-    document.getElementById('b2bPass').value='';
-  } catch (error) {
-    document.getElementById('b2bError').textContent='❌ Contraseña incorrecta';
-    document.getElementById('b2bPass').value='';
-  }
-}
 const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxanckSp6EwHLjSE3neSC3E6aSxAPJbQA2rTLe-foV_8w8LszngF3nabDAwOSPD3CER/exec';
-window.__AURA_B2B_APPS_SCRIPT_URL__=APPS_SCRIPT_URL;
 const TIENDAS_MAP={
   'Cellfiao Tolú|Tolú':          {codigo:'CRD-TOL-01',tienda:'Cellfiao Tolú',        ciudad:'Tolú'},
   'Móvil Shoping|Corozal':       {codigo:'CRD-COR-01',tienda:'Móvil Shoping',        ciudad:'Corozal'},
@@ -618,9 +587,8 @@ function mostrarModalExito(numeroPedido,items,tiendaNombre){document.getElementB
 function cerrarModal(){document.getElementById('modalExito').classList.remove('open');}
 function irAHistorial(){cerrarModal();cambiarVista('historial');const sel=document.getElementById('histSelectTienda');if(ultimaTiendaHistorial){for(let i=0;i<sel.options.length;i++){if(sel.options[i].value===ultimaTiendaHistorial){sel.selectedIndex=i;break;}}}cargarHistorial();}
 function cambiarVista(v){document.getElementById('vistaTienda').style.display=v==='tienda'?'block':'none';document.getElementById('vistaOscar').style.display=v==='oscar'?'block':'none';document.getElementById('vistaHistorial').style.display=v==='historial'?'block':'none';document.getElementById('btnTienda').className='vista-btn'+(v==='tienda'?' active':'');document.getElementById('btnOscar').className='vista-btn'+(v==='oscar'?' active':'');document.getElementById('btnHistorial').className='vista-btn'+(v==='historial'?' active':'');}
-async function verificarPass(){try{const pin=document.getElementById('passInput').value;if(!await window.B2BCatalogAdmin.authenticate(pin))throw new Error('Acceso denegado');document.getElementById('oscarLogin').style.display='none';document.getElementById('oscarPanel').style.display='block';await window.B2BCatalogAdmin.open();await cargarPendientesAdmin();renderConsolidado();}catch(e){document.getElementById('passError').textContent='❌ Contraseña incorrecta';}}
 async function cargarPendientesAdmin(){try{const pedidos=await window.B2BCatalogAdmin.adminOrders();const porTienda={};pedidos.forEach(p=>{const k=p.tienda+'|'+p.ciudad;if(!porTienda[k])porTienda[k]={tienda:p.tienda,ciudad:p.ciudad,fecha:'',items:[]};porTienda[k].items.push({producto:{nombre:p.producto,proveedor:p.proveedor,precioCompra:Number(p.precioProveedor)||0,precioVenta:Number(p.precioCredilek)||0},cantidad:Number(p.cantidad)||0,numeroPedido:p.numeroPedido||'',_hoja:p._hoja,_fila:p._fila});});pedidosConfirmados=Object.values(porTienda);}catch(e){mostrarToast('❌ No fue posible cargar el panel administrativo');}}
-function cerrarSesion(){document.getElementById('oscarLogin').style.display='block';document.getElementById('oscarPanel').style.display='none';document.getElementById('passInput').value='';document.getElementById('passError').textContent='';cambiarVista('tienda');}
+async function cerrarSesion(){await window.AuraPortal.signOut();}
 function cambiarTab(tab,btn){tabActual=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');btn.className='tab-btn active';renderConsolidado();}
 function renderConsolidado(){const total=pedidosConfirmados.reduce((s,p)=>s+p.items.reduce((ss,i)=>ss+i.cantidad,0),0);const valor=pedidosConfirmados.reduce((s,p)=>s+p.items.reduce((ss,i)=>ss+i.producto.precioCompra*i.cantidad,0),0);document.getElementById('rTotalPedidos').textContent=pedidosConfirmados.length;document.getElementById('rTotalUnidades').textContent=total;document.getElementById('rTotalValor').textContent=formatCOP(valor);if(!pedidosConfirmados.length){document.getElementById('consolidadoContainer').innerHTML='<div class="sin-pedidos">📭 No hay pedidos confirmados aún.</div>';return;}if(tabActual==='pedidos'){document.getElementById('consolidadoContainer').innerHTML=pedidosConfirmados.map(p=>{const tot=p.items.reduce((s,i)=>s+i.producto.precioVenta*i.cantidad,0);return`<div class="pedido-card"><div class="pedido-card-header"><div><div class="pedido-tienda-nombre">🏪 ${p.tienda}</div><div class="pedido-ciudad">📍 ${p.ciudad} · ${p.fecha}</div></div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--turquesa)">${formatCOP(tot)}</div></div><table class="pedido-tabla"><tr><th>Producto</th><th>Proveedor</th><th>Cant.</th><th>Total</th></tr>${p.items.map(i=>`<tr><td>${i.producto.nombre}</td><td style="font-size:11px;color:#7a8899">${i.producto.proveedor}</td><td>${i.cantidad}</td><td>${formatCOP(i.producto.precioVenta*i.cantidad)}</td></tr>`).join('')}</table></div>`;}).join('');}else{const porCiudad={};pedidosConfirmados.forEach(p=>{if(!porCiudad[p.ciudad])porCiudad[p.ciudad]=[];porCiudad[p.ciudad].push(p);});document.getElementById('consolidadoContainer').innerHTML=Object.entries(porCiudad).map(([ciudad,pedidos])=>`<div class="pedido-card"><div class="pedido-card-header"><div class="pedido-tienda-nombre">📍 ${ciudad}</div></div>${pedidos.map(p=>`<div style="margin-bottom:12px"><div class="pedido-ciudad" style="margin-bottom:8px">🏪 ${p.tienda}</div><table class="pedido-tabla"><tr><th>Producto</th><th>Cant.</th></tr>${p.items.map(i=>`<tr><td>${i.producto.nombre}</td><td>${i.cantidad}</td></tr>`).join('')}</table></div>`).join('')}</div>`).join('');}}
 async function cerrarPeriodo(){const btn=document.getElementById('btnCierre');btn.disabled=true;btn.innerHTML='⏳ Enviando reporte...';try{await window.B2BCatalogAdmin.closePeriod(pedidosConfirmados.flatMap(p=>p.items.map(i=>({tienda:p.tienda,ciudad:p.ciudad,producto:i.producto.nombre,proveedor:i.producto.proveedor,cantidad:i.cantidad,precioProveedor:i.producto.precioCompra,precioCredilek:i.producto.precioVenta,numeroPedido:i.numeroPedido||'',_hoja:i._hoja,_fila:i._fila}))));await cargarPendientesAdmin();renderConsolidado();mostrarToast('✅ Reporte enviado a comercial y gestion@crediteksas.com');}catch(e){mostrarToast('❌ Error al enviar: '+e.message);}finally{btn.disabled=false;btn.innerHTML='📧 Cerrar Periodo y Enviar Reporte Consolidado';}}
@@ -630,13 +598,11 @@ async function cargarEnriquecimiento(){try{const r=await fetch('../data/catalogo
 function seleccionarCategoria(cat){document.getElementById('filtroCategoria').value=cat;document.getElementById('buscar').value='';document.getElementById('filtroMarca').value='';filtrar();document.getElementById('vistaCategorias').style.display='none';document.getElementById('vistaProductos').style.display='';}
 function volverCategorias(){document.getElementById('vistaCategorias').style.display='';document.getElementById('vistaProductos').style.display='none';document.getElementById('buscar').value='';document.getElementById('filtroMarca').value='';document.getElementById('filtroCategoria').value='';}
 // ── HISTORIAL ──
-async function cargarHistorial(){const tienda=document.getElementById('histSelectTienda').value;const cont=document.getElementById('histContainer');if(!tienda){cont.innerHTML='<div class="hist-empty">Selecciona tu tienda para ver el historial de pedidos.</div>';return;}cont.innerHTML='<div class="hist-loading">⏳ Cargando historial...</div>';try{const r=await fetch(APPS_SCRIPT_URL+'?action=historial&tienda='+encodeURIComponent(tienda));const d=await r.json();if(!d.ok||!d.pedidos||!d.pedidos.length){cont.innerHTML='<div class="hist-empty">📭 No hay pedidos registrados para <strong>'+tienda+'</strong> todavía.</div>';return;}cont.innerHTML=d.pedidos.map(p=>{const badgeClass=(p['Estado WA']||'PENDIENTE').toLowerCase().replace(' ','_');const productos=(p['Productos']||'').split('|').map(s=>`<div>• ${s.trim()}</div>`).join('');const valor=Number(p['Valor Total COP'])||0;return`<div class="hist-card"><div class="hist-card-header"><div><div class="hist-num">${p['No. Pedido']||'—'}</div><div class="hist-fecha">${p['Fecha']||''} · ${p['Ciudad']||''}</div></div><span class="hist-badge ${badgeClass}">${p['Estado WA']||'PENDIENTE'}</span></div><div class="hist-productos">${productos}</div><div class="hist-footer-card"><div class="hist-unidades">${p['Total Unidades']||0} unidades</div><div class="hist-valor">${formatCOP(valor)}</div></div></div>`;}).join('');}catch(e){cont.innerHTML='<div class="hist-empty">❌ Error al cargar el historial. Intenta de nuevo.</div>';}}
+async function cargarHistorial(){const tienda=document.getElementById('histSelectTienda').value;const cont=document.getElementById('histContainer');if(!tienda){cont.innerHTML='<div class="hist-empty">Selecciona tu tienda para ver el historial de pedidos.</div>';return;}cont.innerHTML='<div class="hist-loading">⏳ Cargando historial...</div>';try{await window.AuraPortalReady;const r=await window.AuraPortal.fetch('/api/history?store='+encodeURIComponent(tienda));const d=await r.json();if(!d.ok||!d.pedidos||!d.pedidos.length){cont.innerHTML='<div class="hist-empty">📭 No hay pedidos registrados para <strong>'+escapeHtml(tienda)+'</strong> todavía.</div>';return;}cont.innerHTML=d.pedidos.map(p=>{const estado=p['Estado WA']||'PENDIENTE';const badgeClass=safeStatusClass(estado);const productos=String(p['Productos']||'').split('|').map(s=>`<div>• ${escapeHtml(s.trim())}</div>`).join('');const valor=Number(p['Valor Total COP'])||0;return`<div class="hist-card"><div class="hist-card-header"><div><div class="hist-num">${escapeHtml(p['No. Pedido']||'—')}</div><div class="hist-fecha">${escapeHtml(p['Fecha']||'')} · ${escapeHtml(p['Ciudad']||'')}</div></div><span class="hist-badge ${badgeClass}">${escapeHtml(estado)}</span></div><div class="hist-productos">${productos}</div><div class="hist-footer-card"><div class="hist-unidades">${Number(p['Total Unidades'])||0} unidades</div><div class="hist-valor">${formatCOP(valor)}</div></div></div>`;}).join('');}catch(e){cont.innerHTML='<div class="hist-empty">❌ Error al cargar el historial. Intenta de nuevo.</div>';}}
 
 poblarFiltros();productosFiltrados=[...catalogo];cargarEnriquecimiento();
 window.__b2bReplaceCatalog=function(items){catalogo.length=0;items.forEach((p,i)=>catalogo.push({...p,id:i,categoria:p.categoria||'General'}));productosFiltrados=[...catalogo];document.getElementById('filtroMarca').innerHTML='<option value="">Todas las marcas</option>';document.getElementById('filtroCategoria').innerHTML='<option value="">Todas las categorías</option>';poblarFiltros();document.getElementById('statTotal').textContent=catalogo.length;renderProductos();};
 </script>
-<script>window.__AURA_B2B_APPS_SCRIPT_URL__=APPS_SCRIPT_URL;</script>
-<script type="module" src="./b2b-session.mjs"></script>
 <script type="module" src="./catalog-admin.mjs"></script>
 </body>
 </html>

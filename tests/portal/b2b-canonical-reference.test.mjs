@@ -71,8 +71,8 @@ test('la interfaz permite crear en la fila y conserva Guardar regla individual',
 test('la API carga pendientes persistidos y guarda una regla por fila', async () => {
   const source = await readFile(apiPath, 'utf8');
 
-  assert.match(source, /listar_excepciones_catalogo_admin/);
-  assert.match(source, /guardar_regla_catalogo_admin/);
+  assert.match(source, /\/api\/admin\/catalog\/exceptions/);
+  assert.match(source, /\/api\/admin\/catalog\/rule/);
   assert.match(source, /create_new/);
 });
 

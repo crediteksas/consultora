@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "aura-hub",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public-aura-hub",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "routes": [
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/index.html",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/aura-auth.mjs",
+      "zone_name": "crediteksas.com"
+    }
+  ]
+}

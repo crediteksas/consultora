@@ -7,7 +7,7 @@
 // ⚙️ CONFIGURACIÓN — Reemplaza los valores marcados con ⬅️
 var CONFIG = {
   PHONE_NUMBER_ID: '1171114292752516',
-  WA_ACCESS_TOKEN: 'EAAVLHpnYaZAABR4T7rY65WcUpVxjUGYzcjMwQRWVIkmoEKE40d9N1rcnaH5ayZBZAEbOT1Da8x4vBiFHunZASkDT4gdCpZAwQZANYpT69aJ6LaAQ6WFyrAcAW5VJBaIGjl214zLJmLqjTCYZAcL3YapBmp7xs5PqrcbMywRCdet7SRK1DbunfumeHQYW1YRFQ88',
+  WA_ACCESS_TOKEN: PropertiesService.getScriptProperties().getProperty('WA_ACCESS_TOKEN') || '',
   WA_ORDER_TEMPLATE_NAME: 'conf_pedido_b2b',
   WA_ORDER_LANGUAGE_CODE: 'es',
   WA_TEMPLATE_NAME: 'aviso_cierre_pedido',
@@ -21,7 +21,7 @@ var CONFIG = {
   SHEET_CATALOGO_REGLAS: 'CATALOGO_REGLAS',
   EMAIL_COMERCIAL: 'comercial@crediteksas.com',
   EMAIL_GESTION: 'gestion@crediteksas.com',
-  SHEET_ID: '1vezpPcLasTiCtYBkKhaYZiw01dVApO_oSqyzbU8jAU4'
+  SHEET_ID: PropertiesService.getScriptProperties().getProperty('AURA_SPREADSHEET_ID') || ''
 };
 
 function doGet(e) {
@@ -50,48 +50,40 @@ function doGet(e) {
 function doPost(e) {
   var result;
   try {
-    var action = e.parameter.action || 'guardar';
-    var body = JSON.parse(e.postData.contents);
-    if (body.action === 'autenticar_portal_b2b') {
-      result = autenticarPortalB2B_(body);
-    } else if (body.action === 'validar_sesion_portal_b2b') {
-      result = validarSesionPortalB2B_(body.session_token, body.required_scope);
-    } else if (body.action === 'guardar_pedido_publico') {
-      result = guardarPedidoPublico_(body);
-    } else if ([
-      'leer_pedidos_admin', 'cierre_periodo_admin',
-      'analizar_catalogo_admin', 'publicar_catalogo_admin', 'rollback_catalogo_admin',
-      'catalogo_privado_admin', 'historico_catalogo_admin', 'estadisticas_catalogo_admin',
-      'listar_proveedores_admin', 'guardar_proveedor_admin',
-      'listar_excepciones_catalogo_admin', 'guardar_regla_catalogo_admin'
-    ].indexOf(body.action) !== -1) {
-      if (!validarSesionConAlcance_(body.session_token, 'admin')) {
-        result = { ok: false, error: 'Acceso administrativo denegado' };
-      } else if (body.action === 'leer_pedidos_admin') result = leerPedidos_();
-      else if (body.action === 'cierre_periodo_admin') result = cerrarPeriodo_(body.pedidos || []);
-      else if (body.action === 'analizar_catalogo_admin') result = analizarCatalogoAdmin_(body);
-      else if (body.action === 'publicar_catalogo_admin') result = publicarCatalogoAdmin_(body);
-      else if (body.action === 'rollback_catalogo_admin') result = rollbackCatalogoAdmin_();
-      else if (body.action === 'catalogo_privado_admin') result = leerCatalogoPrivado_();
-      else if (body.action === 'historico_catalogo_admin') result = leerHistoricoCatalogo_(body.search || '');
-      else if (body.action === 'listar_proveedores_admin') result = listarProveedoresAdmin_(body.solo_activos === true);
-      else if (body.action === 'guardar_proveedor_admin') result = guardarProveedorAdmin_(body.proveedor || {});
-      else if (body.action === 'listar_excepciones_catalogo_admin') result = listarExcepcionesCatalogoAdmin_();
-      else if (body.action === 'guardar_regla_catalogo_admin') result = guardarReglaCatalogoAdmin_(body);
-      else result = estadisticasCatalogo_();
-    } else if (action === 'guardar' || action === 'guardar_pedido') {
-      result = { ok: false, error: 'Utiliza el contrato público seguro de pedidos' };
-    } else if (action === 'catalogo') {
-      result = { ok: false, error: 'La actualización del catálogo requiere autorización' };
-    } else if (action === 'cierre_periodo') {
-      result = cerrarPeriodo_(body);
+    var envelope = JSON.parse(e && e.postData && e.postData.contents || '{}');
+    if (!verificarBackendAura_(envelope.backend_secret)) {
+      result = { ok: false, error: 'No autorizado' };
     } else {
-      result = { ok: false, error: 'Accion POST no reconocida: ' + action };
+      var body = envelope.payload || {};
+      switch (envelope.action) {
+        case 'catalogo': result = leerCatalogo_(); break;
+        case 'catalogo_guardar': result = guardarCatalogo_(body.products || []); break;
+        case 'historial': result = leerHistorial_(body.store || ''); break;
+        case 'leer': result = leerPedidos_(); break;
+        case 'guardar_pedido': result = guardarPedido_(body.items || []); break;
+        case 'cierre_periodo': result = cerrarPeriodo_(body.orders || []); break;
+        case 'listar_proveedores_admin': result = listarProveedoresAdmin_(body.solo_activos === true); break;
+        case 'guardar_proveedor_admin': result = guardarProveedorAdmin_(body.proveedor || {}); break;
+        case 'catalogo_privado_admin': result = leerCatalogoPrivado_(); break;
+        case 'listar_excepciones_catalogo_admin': result = listarExcepcionesCatalogoAdmin_(); break;
+        case 'guardar_regla_catalogo_admin': result = guardarReglaCatalogoAdmin_(body); break;
+        case 'historico_catalogo_admin': result = leerHistoricoCatalogo_(body.search || ''); break;
+        case 'estadisticas_catalogo_admin': result = estadisticasCatalogo_(); break;
+        case 'analizar_catalogo_admin': result = analizarCatalogoAdmin_(body); break;
+        case 'publicar_catalogo_admin': result = publicarCatalogoAdmin_(body); break;
+        case 'rollback_catalogo_admin': result = rollbackCatalogoAdmin_(); break;
+        default: result = { ok: false, error: 'Accion no permitida' };
+      }
     }
   } catch (err) {
     result = { ok: false, error: err.message };
   }
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function verificarBackendAura_(candidate) {
+  var expected = PropertiesService.getScriptProperties().getProperty('AURA_BACKEND_SECRET');
+  return safeEqual_(expected, candidate) && String(expected || '').length >= 32;
 }
 
 function safeEqual_(left, right) {
@@ -101,96 +93,6 @@ function safeEqual_(left, right) {
   var diff = 0;
   for (var i = 0; i < left.length; i++) diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
   return diff === 0;
-}
-
-function sha256Hex_(value) {
-  return Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    String(value || ''),
-    Utilities.Charset.UTF_8
-  ).map(function(byte) {
-    var normalized = byte < 0 ? byte + 256 : byte;
-    return ('0' + normalized.toString(16)).slice(-2);
-  }).join('');
-}
-
-var B2B_SESSION_TTL_SECONDS = 1800;
-var B2B_MAX_ATTEMPTS = 5;
-var B2B_ATTEMPT_WINDOW_SECONDS = 300;
-
-function hashConfiguradoUnico_(propertyName) {
-  var configured = String(PropertiesService.getScriptProperties().getProperty(propertyName) || '')
-    .trim().toLowerCase();
-  return /^[a-f0-9]{64}$/.test(configured) ? configured : '';
-}
-
-function claveCoincide_(password, propertyName) {
-  var configured = hashConfiguradoUnico_(propertyName);
-  if (!configured || !String(password || '')) return false;
-  return safeEqual_(configured, sha256Hex_(password));
-}
-
-function cacheKeyB2B_(prefix, value) {
-  return 'b2b:' + prefix + ':' + sha256Hex_(String(value || '')).slice(0, 40);
-}
-
-function autenticarPortalB2B_(body) {
-  var password = String(body.password || '');
-  var clientId = String(body.client_id || '').trim();
-  var requireAdmin = body.require_admin === true;
-  if (!clientId || !password) return { ok: false, error: 'Acceso denegado' };
-
-  var cache = CacheService.getScriptCache();
-  var attemptKey = cacheKeyB2B_('attempts', clientId);
-  var attempts = Number(cache.get(attemptKey) || 0);
-  if (attempts >= B2B_MAX_ATTEMPTS) {
-    return { ok: false, error: 'Demasiados intentos. Intenta nuevamente más tarde.' };
-  }
-
-  var isAdmin = claveCoincide_(password, 'B2B_ADMIN_PIN_HASH');
-  var isAccess = claveCoincide_(password, 'B2B_ACCESS_PIN_HASH');
-  if ((requireAdmin && !isAdmin) || (!requireAdmin && !isAccess)) {
-    cache.put(attemptKey, String(attempts + 1), B2B_ATTEMPT_WINDOW_SECONDS);
-    return { ok: false, error: 'Acceso denegado' };
-  }
-
-  cache.remove(attemptKey);
-  var scope = isAdmin ? 'admin' : 'access';
-  var token = Utilities.getUuid() + Utilities.getUuid();
-  var expiresAt = Date.now() + B2B_SESSION_TTL_SECONDS * 1000;
-  cache.put(cacheKeyB2B_('session', token), JSON.stringify({
-    scope: scope,
-    expires_at: expiresAt
-  }), B2B_SESSION_TTL_SECONDS);
-  return { ok: true, session_token: token, scope: scope, expires_at: expiresAt };
-}
-
-function leerSesionPortalB2B_(token) {
-  if (!String(token || '').trim()) return null;
-  var raw = CacheService.getScriptCache().get(cacheKeyB2B_('session', token));
-  if (!raw) return null;
-  try {
-    var session = JSON.parse(raw);
-    if (!session.expires_at || Number(session.expires_at) <= Date.now()) return null;
-    return session;
-  } catch (error) {
-    return null;
-  }
-}
-
-function validarSesionConAlcance_(token, requiredScope) {
-  var session = leerSesionPortalB2B_(token);
-  if (!session) return false;
-  return requiredScope !== 'admin' || session.scope === 'admin';
-}
-
-function validarSesionPortalB2B_(token, requiredScope) {
-  var session = leerSesionPortalB2B_(token);
-  var required = requiredScope === 'admin' ? 'admin' : 'access';
-  if (!session || (required === 'admin' && session.scope !== 'admin')) {
-    return { ok: false, valid: false, error: 'Sesión vencida o inválida' };
-  }
-  return { ok: true, valid: true, scope: session.scope, expires_at: Number(session.expires_at) };
 }
 
 function normalizarReferencia_(value) {
@@ -485,7 +387,7 @@ function guardarPedido_(items) {
 
 function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
   try {
-    if (CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') return { enviado: false, motivo: 'Token no configurado' };
+    if (!CONFIG.WA_ACCESS_TOKEN || CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') return { enviado: false, motivo: 'Token no configurado' };
     if (CONFIG.WA_ORDER_TEMPLATE_NAME === 'PEGA_AQUI_NOMBRE_PLANTILLA') return { enviado: false, motivo: 'Plantilla no configurada' };
     var telefono = obtenerTelefonoTienda_(tiendaNombre, ciudad);
     if (!telefono) return { enviado: false, motivo: 'Sin telefono registrado para ' + tiendaNombre };
@@ -1253,7 +1155,7 @@ function guardarCierreEnSheet_(pedidos, fechaCierreStr) {
 
 function enviarNotificacionCierre_(tiendaNombre, ciudad, numerosPedido) {
   try {
-    if (CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') return { enviado: false, motivo: 'Token no configurado' };
+    if (!CONFIG.WA_ACCESS_TOKEN || CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') return { enviado: false, motivo: 'Token no configurado' };
     var telefono = obtenerTelefonoTienda_(tiendaNombre, ciudad);
     if (!telefono) return { enviado: false, tienda: tiendaNombre, motivo: 'Sin telefono registrado' };
 

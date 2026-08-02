@@ -361,7 +361,6 @@ const close = () => {
 window.B2BCatalogAdmin = {
   open,
   close,
-  authenticate: pin => catalogApi.authenticate(pin),
   adminOrders: () => catalogApi.adminOrders(),
   closePeriod: pedidos => catalogApi.closePeriod(pedidos),
 };

@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { appendFile, cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -17,5 +17,9 @@ await cp(
 await cp(
   path.join(root, 'creditek', 'agentes', 'aura-auth.mjs'),
   path.join(agentsOutput, 'aura-auth-otp-20260802.mjs'),
+);
+await appendFile(
+  path.join(agentsOutput, 'aura-auth-otp-20260802.mjs'),
+  '\n// AURA OTP release 20260802\n',
 );
 await writeFile(path.join(output, '_aura-hub-release.json'), JSON.stringify({ product: 'AURA Hub', isolated: true }));

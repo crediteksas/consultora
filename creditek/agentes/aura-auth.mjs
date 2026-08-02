@@ -84,6 +84,10 @@ function base64Url(bytes) {
   return result;
 }
 
+function validPkceVerifier(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9._~-]{43,128}$/.test(value);
+}
+
 export function createAuraAuthClient({
   fetchImpl = globalThis.fetch,
   storage = globalThis.localStorage,
@@ -137,12 +141,12 @@ export function createAuraAuthClient({
     if (!cryptoImpl?.subtle || !cryptoImpl?.getRandomValues) {
       throw new Error('Este navegador no permite iniciar una recuperación segura. Actualízalo e inténtalo nuevamente.');
     }
-    const random = cryptoImpl.getRandomValues(new Uint8Array(48));
-    const verifier = base64Url(random);
+    const pendingVerifier = storage.getItem(PKCE_VERIFIER_KEY);
+    const verifier = validPkceVerifier(pendingVerifier)
+      ? pendingVerifier
+      : base64Url(cryptoImpl.getRandomValues(new Uint8Array(48)));
     const digest = await cryptoImpl.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
     const challenge = base64Url(new Uint8Array(digest));
-    storage.setItem(PKCE_VERIFIER_KEY, verifier);
-    storage.setItem(AUTH_FLOW_TYPE_KEY, 'recovery');
     const response = await authFetch(`/auth/v1/recover?redirect_to=${encodeURIComponent(AURA_RECOVERY_REDIRECT)}`, {
       method: 'POST',
       body: JSON.stringify({
@@ -154,6 +158,11 @@ export function createAuraAuthClient({
     if (!response.ok && response.status === 429) {
       throw new Error('Hay demasiadas solicitudes. Espera unos minutos e inténtalo nuevamente.');
     }
+    if (!response.ok) {
+      throw new Error('No fue posible enviar el enlace. Inténtalo nuevamente.');
+    }
+    if (!validPkceVerifier(pendingVerifier)) storage.setItem(PKCE_VERIFIER_KEY, verifier);
+    storage.setItem(AUTH_FLOW_TYPE_KEY, 'recovery');
     return {
       message: 'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.',
     };
@@ -168,9 +177,7 @@ export function createAuraAuthClient({
     const hasCallback = hash.has('access_token') || query.has('code') || hash.has('error') || query.has('error');
     if (!hasCallback) return { mode: 'none', type: '' };
 
-    replaceUrl(cleanCallbackUrl(url.href));
     if (hash.get('error') || query.get('error')) {
-      clear();
       return {
         mode: 'callback-error',
         message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
@@ -178,7 +185,6 @@ export function createAuraAuthClient({
     }
 
     if (!type) {
-      clear();
       return {
         mode: 'callback-error',
         message: 'Este enlace no corresponde a una invitación o recuperación válida de AURA.',
@@ -194,13 +200,15 @@ export function createAuraAuthClient({
         expires_in: Number(hash.get('expires_in') || 3600),
         expires_at: Number(hash.get('expires_at') || 0),
       });
+      storage.removeItem(PKCE_VERIFIER_KEY);
+      storage.removeItem(AUTH_FLOW_TYPE_KEY);
+      replaceUrl(cleanCallbackUrl(url.href));
       return { mode: 'set-password', type };
     }
 
     const code = query.get('code');
     const verifier = storage.getItem(PKCE_VERIFIER_KEY);
-    if (!code || !verifier) {
-      clear();
+    if (!code || !validPkceVerifier(verifier)) {
       return {
         mode: 'callback-error',
         message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
@@ -211,17 +219,17 @@ export function createAuraAuthClient({
       method: 'POST',
       body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
     });
-    storage.removeItem(PKCE_VERIFIER_KEY);
-    storage.removeItem(AUTH_FLOW_TYPE_KEY);
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.access_token || !data.refresh_token) {
-      clear();
       return {
         mode: 'callback-error',
         message: 'Este enlace venció, ya fue utilizado o es inválido. Solicita uno nuevo.',
       };
     }
     save(data);
+    storage.removeItem(PKCE_VERIFIER_KEY);
+    storage.removeItem(AUTH_FLOW_TYPE_KEY);
+    replaceUrl(cleanCallbackUrl(url.href));
     return { mode: 'set-password', type };
   }
 

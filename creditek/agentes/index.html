@@ -872,6 +872,11 @@ async function handleAuraEntry() {
   if (callbackPresent) lastCallbackHref = href;
 
   try {
+    if (callbackPresent) {
+      revealAuthShell();
+      showAuthView('forgot');
+      setAuthStatus('recovery-status', 'Validando enlace seguro…', 'info');
+    }
     const callback = await auraAuth.consumeAuthCallback(href, safeUrl => {
       history.replaceState({}, '', safeUrl);
     });

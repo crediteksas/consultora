@@ -4,11 +4,7 @@ export const AURA_AUTH = Object.freeze({
   storage: 'aura_supabase_session_v1',
 });
 
-export const AURA_RECOVERY_REDIRECT = 'https://registro.crediteksas.com/creditek/agentes/';
-
 const STORAGE_KEY = AURA_AUTH.storage;
-const PKCE_VERIFIER_KEY = `${STORAGE_KEY}-code-verifier`;
-const AUTH_FLOW_TYPE_KEY = `${STORAGE_KEY}-flow-type`;
 const ALLOWED_RETURN_PREFIXES = ['/creditek/agentes/', '/creditek/portal/'];
 
 export function sanitizeReturnTo(value) {
@@ -55,44 +51,10 @@ function parseSession(storage) {
   }
 }
 
-function callbackType(params) {
-  const type = params.get('type');
-  return type === 'invite' || type === 'recovery' ? type : '';
-}
-
-function cleanCallbackUrl(rawUrl) {
-  const url = new URL(rawUrl, AURA_RECOVERY_REDIRECT);
-  const safe = new URLSearchParams();
-  const returnTo = sanitizeReturnTo(url.searchParams.get('return_to') || '');
-  if (returnTo) safe.set('return_to', returnTo);
-  const query = safe.toString();
-  return `${url.pathname}${query ? `?${query}` : ''}`;
-}
-
-function base64Url(bytes) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-  let result = '';
-  for (let index = 0; index < bytes.length; index += 3) {
-    const a = bytes[index];
-    const b = bytes[index + 1];
-    const c = bytes[index + 2];
-    result += alphabet[a >> 2];
-    result += alphabet[((a & 3) << 4) | ((b ?? 0) >> 4)];
-    if (b !== undefined) result += alphabet[((b & 15) << 2) | ((c ?? 0) >> 6)];
-    if (c !== undefined) result += alphabet[c & 63];
-  }
-  return result;
-}
-
-function validPkceVerifier(value) {
-  return typeof value === 'string' && /^[A-Za-z0-9._~-]{43,128}$/.test(value);
-}
-
 export function createAuraAuthClient({
   fetchImpl = globalThis.fetch,
   storage = globalThis.localStorage,
   transientStorage = globalThis.sessionStorage,
-  cryptoImpl = globalThis.crypto,
   now = () => Date.now(),
 } = {}) {
   if (!storage) throw new Error('Almacenamiento de sesión no disponible');
@@ -129,108 +91,44 @@ export function createAuraAuthClient({
     access = null;
     storage.removeItem(STORAGE_KEY);
     transientStorage?.removeItem(STORAGE_KEY);
-    storage.removeItem(PKCE_VERIFIER_KEY);
-    storage.removeItem(AUTH_FLOW_TYPE_KEY);
-    transientStorage?.removeItem(PKCE_VERIFIER_KEY);
-    transientStorage?.removeItem(AUTH_FLOW_TYPE_KEY);
   }
 
   async function requestPasswordRecovery(email) {
     const normalized = String(email || '').trim().toLowerCase();
     if (!normalized || !normalized.includes('@')) throw new Error('Escribe un correo electrónico válido');
-    if (!cryptoImpl?.subtle || !cryptoImpl?.getRandomValues) {
-      throw new Error('Este navegador no permite iniciar una recuperación segura. Actualízalo e inténtalo nuevamente.');
-    }
-    const pendingVerifier = storage.getItem(PKCE_VERIFIER_KEY);
-    const verifier = validPkceVerifier(pendingVerifier)
-      ? pendingVerifier
-      : base64Url(cryptoImpl.getRandomValues(new Uint8Array(48)));
-    const digest = await cryptoImpl.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-    const challenge = base64Url(new Uint8Array(digest));
-    const response = await authFetch(`/auth/v1/recover?redirect_to=${encodeURIComponent(AURA_RECOVERY_REDIRECT)}`, {
+    const response = await authFetch('/auth/v1/recover', {
       method: 'POST',
-      body: JSON.stringify({
-        email: normalized,
-        code_challenge: challenge,
-        code_challenge_method: 's256',
-      }),
+      body: JSON.stringify({ email: normalized }),
     });
     if (!response.ok && response.status === 429) {
       throw new Error('Hay demasiadas solicitudes. Espera unos minutos e inténtalo nuevamente.');
     }
     if (!response.ok) {
-      throw new Error('No fue posible enviar el enlace. Inténtalo nuevamente.');
+      throw new Error('No fue posible enviar el código. Inténtalo nuevamente.');
     }
-    if (!validPkceVerifier(pendingVerifier)) storage.setItem(PKCE_VERIFIER_KEY, verifier);
-    storage.setItem(AUTH_FLOW_TYPE_KEY, 'recovery');
     return {
-      message: 'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.',
+      message: 'Si el correo está registrado, recibirás un código de seis dígitos.',
     };
   }
 
-  async function consumeAuthCallback(rawUrl, replaceUrl = () => {}) {
-    const url = new URL(rawUrl, AURA_RECOVERY_REDIRECT);
-    const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
-    const query = url.searchParams;
-    const type = callbackType(hash.has('type') ? hash : query)
-      || callbackType(new URLSearchParams({ type: storage.getItem(AUTH_FLOW_TYPE_KEY) || '' }));
-    const hasCallback = hash.has('access_token') || query.has('code') || hash.has('error') || query.has('error');
-    if (!hasCallback) return { mode: 'none', type: '' };
-
-    if (hash.get('error') || query.get('error')) {
-      return {
-        mode: 'callback-error',
-        message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
-      };
-    }
-
-    if (!type) {
-      return {
-        mode: 'callback-error',
-        message: 'Este enlace no corresponde a una invitación o recuperación válida de AURA.',
-      };
-    }
-
-    const accessToken = hash.get('access_token');
-    const refreshToken = hash.get('refresh_token');
-    if (accessToken && refreshToken) {
-      save({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_in: Number(hash.get('expires_in') || 3600),
-        expires_at: Number(hash.get('expires_at') || 0),
-      });
-      storage.removeItem(PKCE_VERIFIER_KEY);
-      storage.removeItem(AUTH_FLOW_TYPE_KEY);
-      replaceUrl(cleanCallbackUrl(url.href));
-      return { mode: 'set-password', type };
-    }
-
-    const code = query.get('code');
-    const verifier = storage.getItem(PKCE_VERIFIER_KEY);
-    if (!code || !validPkceVerifier(verifier)) {
-      return {
-        mode: 'callback-error',
-        message: 'Este enlace es inválido o venció. Solicita uno nuevo para continuar.',
-      };
-    }
-
-    const response = await authFetch('/auth/v1/token?grant_type=pkce', {
+  async function verifyRecoveryCode(email, code) {
+    const normalized = String(email || '').trim().toLowerCase();
+    const tokenValue = String(code || '').trim();
+    if (!normalized || !normalized.includes('@')) throw new Error('Escribe un correo electrónico válido');
+    if (!/^\d{6}$/.test(tokenValue)) throw new Error('El código debe tener seis dígitos');
+    const response = await authFetch('/auth/v1/verify', {
       method: 'POST',
-      body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
+      body: JSON.stringify({ email: normalized, token: tokenValue, type: 'recovery' }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.access_token || !data.refresh_token) {
-      return {
-        mode: 'callback-error',
-        message: 'Este enlace venció, ya fue utilizado o es inválido. Solicita uno nuevo.',
-      };
+      if (data?.error_code === 'otp_expired') {
+        throw new Error('El código venció o ya fue utilizado. Solicita uno nuevo.');
+      }
+      throw new Error('El código es inválido. Verifícalo e inténtalo nuevamente.');
     }
     save(data);
-    storage.removeItem(PKCE_VERIFIER_KEY);
-    storage.removeItem(AUTH_FLOW_TYPE_KEY);
-    replaceUrl(cleanCallbackUrl(url.href));
-    return { mode: 'set-password', type };
+    return { verified: true };
   }
 
   async function updatePassword(password) {
@@ -332,7 +230,7 @@ export function createAuraAuthClient({
       return profile;
     },
     requestPasswordRecovery,
-    consumeAuthCallback,
+    verifyRecoveryCode,
     updatePassword,
     setRememberSession(value) {
       rememberSession = Boolean(value);

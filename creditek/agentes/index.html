@@ -290,19 +290,23 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
     <div class="auth-view" id="auth-view-forgot">
       <h2 class="auth-title">Recupera tu acceso</h2>
-      <p class="auth-copy">Te enviaremos un enlace seguro para crear una nueva contraseña dentro de AURA.</p>
+      <p class="auth-copy">Te enviaremos un código de seis dígitos para crear una nueva contraseña dentro de AURA.</p>
       <div class="login-field">
         <label for="recovery-email">Correo electrónico</label>
         <input type="email" id="recovery-email" placeholder="nombre@crediteksas.com" autocomplete="email" onkeydown="if(event.key==='Enter')requestRecovery()">
       </div>
-      <button class="login-btn" id="recovery-submit" onclick="requestRecovery()">Enviar enlace de recuperación</button>
+      <button class="login-btn" id="recovery-submit" onclick="requestRecovery()">Enviar código de recuperación</button>
       <div class="auth-status" id="recovery-status" role="status" aria-live="polite"></div>
       <button class="auth-link auth-back" type="button" onclick="showAuthView('login')">← Volver a iniciar sesión</button>
     </div>
 
-    <div class="auth-view" id="auth-view-set-password">
-      <h2 class="auth-title" id="set-password-title">Crear contraseña</h2>
-      <p class="auth-copy">Crea una contraseña segura para continuar directamente a AURA.</p>
+    <div class="auth-view" id="auth-view-verify-code">
+      <h2 class="auth-title">Crear nueva contraseña</h2>
+      <p class="auth-copy">Ingresa el código recibido por correo y define tu nueva contraseña.</p>
+      <div class="login-field">
+        <label for="recovery-code">Código de verificación</label>
+        <input type="text" id="recovery-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+      </div>
       <div class="login-field">
         <label for="new-password">Nueva contraseña</label>
         <input type="password" id="new-password" placeholder="Mínimo 10 caracteres" autocomplete="new-password">
@@ -310,11 +314,12 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
       </div>
       <div class="login-field">
         <label for="confirm-password">Confirmar contraseña</label>
-        <input type="password" id="confirm-password" placeholder="Repite la contraseña" autocomplete="new-password" onkeydown="if(event.key==='Enter')saveNewPassword()">
+        <input type="password" id="confirm-password" placeholder="Repite la contraseña" autocomplete="new-password" onkeydown="if(event.key==='Enter')completeRecovery()">
         <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('confirm-password',this)">◉</button>
       </div>
-      <button class="login-btn" id="password-submit" onclick="saveNewPassword()">Guardar contraseña</button>
+      <button class="login-btn" id="password-submit" onclick="completeRecovery()">Guardar contraseña</button>
       <div class="auth-status" id="password-status" role="status" aria-live="polite"></div>
+      <button class="auth-link auth-back" type="button" onclick="showAuthView('forgot')">← Solicitar un código nuevo</button>
     </div>
 
     <div class="auth-view" id="auth-view-password-updated">
@@ -390,7 +395,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
   <div class="main-area">
     <div class="topbar">
       <span class="topbar-title" id="topbar-title">Dashboard</span>
-      <span class="topbar-breadcrumb" id="topbar-breadcrumb">Sistema operativo Creditek</span>
+      <span class="topbar-breadcrumb" id="topbar-breadcrumb">Ecosistema AURA</span>
       <div class="topbar-right">
         <div class="status-dot"></div>
         <span class="status-text">Sistema activo</span>
@@ -586,11 +591,11 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <div id="toast"></div>
 
 <script type="module">
-import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth.mjs';
+import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth.mjs?v=20260802-otp1';
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
-let passwordFlowType = 'recovery';
+let recoveryEmail = '';
 
 function setAuthStatus(id, message = '', kind = 'error') {
   const element = document.getElementById(id);
@@ -647,14 +652,17 @@ async function requestRecovery() {
   await withLoading('recovery-submit', 'Enviando...', async () => {
     try {
       const result = await auraAuth.requestPasswordRecovery(email);
-      setAuthStatus('recovery-status', result.message, 'success');
+      recoveryEmail = String(email || '').trim().toLowerCase();
+      showAuthView('verify-code');
+      setAuthStatus('password-status', result.message, 'success');
     } catch (error) {
       setAuthStatus('recovery-status', error.message);
     }
   });
 }
 
-async function saveNewPassword() {
+async function completeRecovery() {
+  const code = document.getElementById('recovery-code').value;
   const password = document.getElementById('new-password').value;
   const confirmation = document.getElementById('confirm-password').value;
   setAuthStatus('password-status');
@@ -668,7 +676,9 @@ async function saveNewPassword() {
   }
   await withLoading('password-submit', 'Guardando...', async () => {
     try {
+      await auraAuth.verifyRecoveryCode(recoveryEmail, code);
       auraAccess = await auraAuth.updatePassword(password);
+      document.getElementById('recovery-code').value = '';
       document.getElementById('new-password').value = '';
       document.getElementById('confirm-password').value = '';
       showAuthView('password-updated');
@@ -718,7 +728,7 @@ function enterAura() {
 }
 
 Object.assign(window, {
-  doLogin, doLogout, requestRecovery, saveNewPassword,
+  doLogin, doLogout, requestRecovery, completeRecovery,
   showAuthView, togglePassword, enterAura,
 });
 
@@ -791,7 +801,7 @@ function closeIframe() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
-  document.getElementById('topbar-breadcrumb').textContent = 'Sistema operativo Creditek';
+  document.getElementById('topbar-breadcrumb').textContent = 'Ecosistema AURA';
 }
 
 window.addEventListener('message', event => {
@@ -844,77 +854,17 @@ function showToast(msg, color='#0B1E3D') {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── Entrada única: carga, PKCE y retorno por hash en Safari ─────
-let auraEntryRunning = false;
-let auraEntrySettled = false;
-let lastCallbackHref = '';
-
-function hasAuthCallback(rawUrl = location.href) {
-  const url = new URL(rawUrl);
-  const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
-  return hash.has('access_token') || hash.has('refresh_token') || hash.has('error')
-    || url.searchParams.has('code') || url.searchParams.has('error');
+// ── Entrada única: restaura una sesión existente ────────────────
+async function initializeAura() {
+  auraAccess = await auraAuth.restore();
+  if (auraAccess) enterAura();
+  else setTimeout(() => document.getElementById('login-email').focus(), 100);
 }
 
-function revealAuthShell() {
-  document.getElementById('app').classList.remove('visible');
-  const screen = document.getElementById('login-screen');
-  screen.style.display = 'flex';
-  screen.classList.remove('exit');
-}
-
-async function handleAuraEntry() {
-  const href = location.href;
-  const callbackPresent = hasAuthCallback(href);
-  if (auraEntryRunning || (!callbackPresent && auraEntrySettled)) return;
-  if (callbackPresent && href === lastCallbackHref) return;
-  auraEntryRunning = true;
-  if (callbackPresent) lastCallbackHref = href;
-
-  try {
-    if (callbackPresent) {
-      revealAuthShell();
-      showAuthView('forgot');
-      setAuthStatus('recovery-status', 'Validando enlace seguro…', 'info');
-    }
-    const callback = await auraAuth.consumeAuthCallback(href, safeUrl => {
-      history.replaceState({}, '', safeUrl);
-    });
-    if (callback.mode === 'set-password') {
-      revealAuthShell();
-      passwordFlowType = callback.type;
-      document.getElementById('set-password-title').textContent = callback.type === 'invite'
-        ? 'Crear contraseña'
-        : 'Restablecer contraseña';
-      showAuthView('set-password');
-      auraEntrySettled = true;
-      return;
-    }
-    if (callback.mode === 'callback-error') {
-      revealAuthShell();
-      showAuthView('forgot');
-      setAuthStatus('recovery-status', callback.message, 'error');
-      auraEntrySettled = true;
-      return;
-    }
-    if (!auraEntrySettled) {
-      auraAccess = await auraAuth.restore();
-      if (auraAccess) enterAura();
-      else setTimeout(() => document.getElementById('login-email').focus(), 100);
-      auraEntrySettled = true;
-    }
-  } finally {
-    auraEntryRunning = false;
-  }
-}
-
-window.addEventListener('hashchange', handleAuraEntry);
-window.addEventListener('popstate', handleAuraEntry);
-window.addEventListener('pageshow', handleAuraEntry);
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', handleAuraEntry, { once: true });
+  document.addEventListener('DOMContentLoaded', initializeAura, { once: true });
 } else {
-  queueMicrotask(handleAuraEntry);
+  queueMicrotask(initializeAura);
 }
 
 Object.assign(window, {

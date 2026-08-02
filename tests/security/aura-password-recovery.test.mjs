@@ -12,6 +12,7 @@ function memoryStorage(seed = {}) {
     getItem: key => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, String(value)),
     removeItem: key => values.delete(key),
+    entries: () => [...values.entries()],
   };
 }
 
@@ -19,8 +20,8 @@ function jsonResponse(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
 
-test('solicita recuperación dentro del dominio AURA sin revelar si el correo existe', async () => {
-  const { createAuraAuthClient, AURA_RECOVERY_REDIRECT } = await import('../../creditek/agentes/aura-auth.mjs');
+test('solicita un código de recuperación sin enlace ni desafío PKCE', async () => {
+  const { createAuraAuthClient } = await import('../../creditek/agentes/aura-auth.mjs');
   const calls = [];
   const storage = memoryStorage();
   const client = createAuraAuthClient({
@@ -32,176 +33,96 @@ test('solicita recuperación dentro del dominio AURA sin revelar si el correo ex
   });
 
   const result = await client.requestPasswordRecovery('Comercial@CreditekSAS.com');
-  assert.equal(result.message, 'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.');
-  assert.match(calls[0].url, /\/auth\/v1\/recover\?redirect_to=/);
-  assert.equal(new URL(calls[0].url).searchParams.get('redirect_to'), AURA_RECOVERY_REDIRECT);
-  const body = JSON.parse(calls[0].options.body);
-  assert.equal(body.email, 'comercial@crediteksas.com');
-  assert.equal(body.code_challenge_method, 's256');
-  assert.match(body.code_challenge, /^[A-Za-z0-9_-]{43}$/);
-  assert.match(storage.getItem('aura_supabase_session_v1-code-verifier'), /^[A-Za-z0-9_-]{43,128}$/);
-  assert.equal(storage.getItem('aura_supabase_session_v1-flow-type'), 'recovery');
+  assert.equal(result.message, 'Si el correo está registrado, recibirás un código de seis dígitos.');
+  assert.match(calls[0].url, /\/auth\/v1\/recover$/);
+  assert.deepEqual(JSON.parse(calls[0].options.body), { email: 'comercial@crediteksas.com' });
+  assert.equal(storage.entries().some(([key]) => /verifier|recovery|otp|code/i.test(key)), false);
 });
 
-test('un reintento rechazado con 429 conserva el verificador de la primera recuperación', async () => {
+test('un segundo envío limitado con 429 no altera sesión ni estado local', async () => {
   const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
-  const verifierKey = `${AURA_AUTH.storage}-code-verifier`;
-  const storage = memoryStorage();
-  let recoveries = 0;
-  const exchanges = [];
+  const existing = JSON.stringify({ access_token: 'existing', refresh_token: 'refresh', expires_at: 9999999999 });
+  const storage = memoryStorage({ [AURA_AUTH.storage]: existing });
   const client = createAuraAuthClient({
     storage,
-    fetchImpl: async (url, options) => {
-      if (url.includes('/auth/v1/recover')) {
-        recoveries += 1;
-        return recoveries === 1 ? jsonResponse({}) : jsonResponse({}, 429);
-      }
-      exchanges.push(JSON.parse(options.body));
-      return jsonResponse({ access_token: 'pkce-access', refresh_token: 'pkce-refresh', expires_in: 3600 });
-    },
+    fetchImpl: async () => jsonResponse({ error_code: 'over_email_send_rate_limit' }, 429),
   });
-
-  await client.requestPasswordRecovery('comercial@crediteksas.com');
-  const verifierA = storage.getItem(verifierKey);
-  await assert.rejects(
-    client.requestPasswordRecovery('comercial@crediteksas.com'),
-    /demasiadas solicitudes/i,
-  );
-  assert.equal(storage.getItem(verifierKey), verifierA);
-
-  const result = await client.consumeAuthCallback(
-    'https://registro.crediteksas.com/creditek/agentes/?code=code-from-first-email',
-  );
-  assert.deepEqual(result, { mode: 'set-password', type: 'recovery' });
-  assert.equal(exchanges[0].code_verifier, verifierA);
+  await assert.rejects(client.requestPasswordRecovery('comercial@crediteksas.com'), /demasiadas solicitudes/i);
+  assert.equal(storage.getItem(AURA_AUTH.storage), existing);
+  assert.equal(storage.entries().some(([key]) => /verifier|recovery|otp|code/i.test(key)), false);
 });
 
-test('procesa recovery e invite implícitos, guarda sesión y limpia tokens de la URL', async () => {
-  const { createAuraAuthClient } = await import('../../creditek/agentes/aura-auth.mjs');
-  for (const type of ['recovery', 'invite']) {
-    const storage = memoryStorage();
-    let cleaned = '';
-    const client = createAuraAuthClient({ storage, fetchImpl: async () => jsonResponse({}) });
-    const result = await client.consumeAuthCallback(
-      `https://registro.crediteksas.com/creditek/agentes/?return_to=%2Fcreditek%2Fportal%2F#access_token=secret-access&refresh_token=secret-refresh&expires_in=3600&type=${type}`,
-      value => { cleaned = value; },
-    );
-    assert.deepEqual(result, { mode: 'set-password', type });
-    assert.equal(client.session().access_token, 'secret-access');
-    assert.equal(cleaned, '/creditek/agentes/?return_to=%2Fcreditek%2Fportal%2F');
-    assert.doesNotMatch(cleaned, /token|secret|type=/);
-  }
-});
-
-test('intercambia un código PKCE una sola vez cuando existe verificador', async () => {
+test('verifica el OTP recovery y crea una sesión sin persistir el código', async () => {
   const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
-  const verifierKey = `${AURA_AUTH.storage}-code-verifier`;
-  const storage = memoryStorage({
-    [verifierKey]: 'v'.repeat(64),
-    [`${AURA_AUTH.storage}-flow-type`]: 'recovery',
-  });
+  const storage = memoryStorage();
   const calls = [];
   const client = createAuraAuthClient({
     storage,
     fetchImpl: async (url, options) => {
-      assert.equal(cleaned, '', 'la URL no debe limpiarse antes de confirmar el intercambio');
       calls.push({ url, options });
-      return jsonResponse({ access_token: 'pkce-access', refresh_token: 'pkce-refresh', expires_in: 3600 });
+      return jsonResponse({ access_token: 'otp-access', refresh_token: 'otp-refresh', expires_in: 3600 });
     },
   });
-  let cleaned = '';
-  const result = await client.consumeAuthCallback(
-    'https://registro.crediteksas.com/creditek/agentes/?code=one-time-code',
-    value => { cleaned = value; },
-  );
-  assert.deepEqual(result, { mode: 'set-password', type: 'recovery' });
-  assert.match(calls[0].url, /\/auth\/v1\/token\?grant_type=pkce$/);
+
+  const result = await client.verifyRecoveryCode('Comercial@CreditekSAS.com', '123456');
+  assert.deepEqual(result, { verified: true });
+  assert.match(calls[0].url, /\/auth\/v1\/verify$/);
   assert.deepEqual(JSON.parse(calls[0].options.body), {
-    auth_code: 'one-time-code',
-    code_verifier: 'v'.repeat(64),
+    email: 'comercial@crediteksas.com',
+    token: '123456',
+    type: 'recovery',
   });
-  assert.equal(storage.getItem(verifierKey), null);
-  assert.equal(storage.getItem(`${AURA_AUTH.storage}-flow-type`), null);
-  assert.equal(cleaned, '/creditek/agentes/');
+  assert.equal(client.session().access_token, 'otp-access');
+  assert.equal(storage.getItem(AURA_AUTH.storage).includes('123456'), false);
+  assert.equal(storage.entries().some(([, value]) => value === '123456'), false);
 });
 
-test('un callback vencido, inválido o reutilizado falla seguro y conserva el callback para recuperación', async () => {
-  const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
-  const verifierKey = `${AURA_AUTH.storage}-code-verifier`;
-  const storage = memoryStorage({ [verifierKey]: 'e'.repeat(64) });
-  const client = createAuraAuthClient({
-    storage,
-    fetchImpl: async () => jsonResponse({ error: 'invalid_grant', error_description: 'code expired' }, 400),
-  });
-  let cleaned = '';
-  const result = await client.consumeAuthCallback(
-    'https://registro.crediteksas.com/creditek/agentes/?code=reused-code&type=recovery',
-    value => { cleaned = value; },
-  );
-  assert.equal(result.mode, 'callback-error');
-  assert.match(result.message, /venció|utilizado|inválido/i);
-  assert.doesNotMatch(result.message, /reused-code|expired-verifier|invalid_grant/);
-  assert.equal(cleaned, '');
-  assert.equal(storage.getItem(verifierKey), 'e'.repeat(64));
-  assert.equal(client.session(), null);
-});
-
-test('un callback sin verificador no limpia el code ni permite que continúe el login', async () => {
+test('rechaza localmente códigos con formato incorrecto', async () => {
   const { createAuraAuthClient } = await import('../../creditek/agentes/aura-auth.mjs');
-  const storage = memoryStorage();
-  let cleaned = '';
-  const client = createAuraAuthClient({ storage, fetchImpl: async () => jsonResponse({}) });
-  const result = await client.consumeAuthCallback(
-    'https://registro.crediteksas.com/creditek/agentes/?code=orphan-code&type=recovery',
-    value => { cleaned = value; },
-  );
-  assert.equal(result.mode, 'callback-error');
-  assert.equal(cleaned, '');
-  assert.equal(client.session(), null);
-});
-
-test('un verificador corrupto falla antes del intercambio y conserva el callback', async () => {
-  const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
-  const storage = memoryStorage({
-    [`${AURA_AUTH.storage}-code-verifier`]: 'corrupto',
-    [`${AURA_AUTH.storage}-flow-type`]: 'recovery',
-  });
   let fetches = 0;
-  let cleaned = '';
   const client = createAuraAuthClient({
-    storage,
+    storage: memoryStorage(),
     fetchImpl: async () => { fetches += 1; return jsonResponse({}); },
   });
-  const result = await client.consumeAuthCallback(
-    'https://registro.crediteksas.com/creditek/agentes/?code=valid-looking-code',
-    value => { cleaned = value; },
-  );
-  assert.equal(result.mode, 'callback-error');
+  for (const invalid of ['', '12345', '1234567', '12A456']) {
+    await assert.rejects(client.verifyRecoveryCode('comercial@crediteksas.com', invalid), /seis dígitos/i);
+  }
   assert.equal(fetches, 0);
-  assert.equal(cleaned, '');
 });
 
-test('la doble apertura del mismo enlace no reutiliza la sesión PKCE', async () => {
-  const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
-  const storage = memoryStorage({
-    [`${AURA_AUTH.storage}-code-verifier`]: 'd'.repeat(64),
-    [`${AURA_AUTH.storage}-flow-type`]: 'recovery',
-  });
-  let exchanges = 0;
+test('distingue código incorrecto, vencido o reutilizado sin exponer detalles técnicos', async () => {
+  const { createAuraAuthClient } = await import('../../creditek/agentes/aura-auth.mjs');
+  for (const errorCode of ['otp_expired', 'otp_disabled', 'bad_code_verifier']) {
+    const client = createAuraAuthClient({
+      storage: memoryStorage(),
+      fetchImpl: async () => jsonResponse({ error_code: errorCode, msg: 'sensitive backend detail' }, 403),
+    });
+    await assert.rejects(
+      client.verifyRecoveryCode('comercial@crediteksas.com', '123456'),
+      error => /inválido|venció|utilizado/i.test(error.message)
+        && !error.message.includes(errorCode)
+        && !error.message.includes('sensitive'),
+    );
+  }
+});
+
+test('el código queda inutilizable después de la primera verificación', async () => {
+  const { createAuraAuthClient } = await import('../../creditek/agentes/aura-auth.mjs');
+  let attempts = 0;
   const client = createAuraAuthClient({
-    storage,
+    storage: memoryStorage(),
     fetchImpl: async () => {
-      exchanges += 1;
-      return jsonResponse({ access_token: 'access', refresh_token: 'refresh', expires_in: 3600 });
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse({ access_token: 'access', refresh_token: 'refresh', expires_in: 3600 })
+        : jsonResponse({ error_code: 'otp_expired' }, 403);
     },
   });
-  const url = 'https://registro.crediteksas.com/creditek/agentes/?code=single-use-code';
-  assert.equal((await client.consumeAuthCallback(url)).mode, 'set-password');
-  assert.equal((await client.consumeAuthCallback(url)).mode, 'callback-error');
-  assert.equal(exchanges, 1);
+  assert.deepEqual(await client.verifyRecoveryCode('comercial@crediteksas.com', '123456'), { verified: true });
+  await assert.rejects(client.verifyRecoveryCode('comercial@crediteksas.com', '123456'), /venció|utilizado|inválido/i);
 });
 
-test('actualiza la contraseña con la sesión del enlace y conserva el acceso AURA', async () => {
+test('actualiza la contraseña con la sesión OTP y conserva el acceso AURA', async () => {
   const { createAuraAuthClient, AURA_AUTH } = await import('../../creditek/agentes/aura-auth.mjs');
   const storage = memoryStorage({
     [AURA_AUTH.storage]: JSON.stringify({ access_token: 'access', refresh_token: 'refresh', expires_at: 9999999999 }),
@@ -225,31 +146,29 @@ test('actualiza la contraseña con la sesión del enlace y conserva el acceso AU
   assert.equal(access.email, 'comercial@crediteksas.com');
 });
 
-test('la interfaz AURA ofrece los cinco estados con apariencia premium y accesible', async () => {
+test('la interfaz AURA ofrece recuperación por código sin callback PKCE', async () => {
   const html = await read('creditek/agentes/index.html');
-  assert.match(html, />AURA<\/h1>/);
-  assert.match(html, />by Creditek<\/p>/);
   assert.match(html, /id="auth-view-login"/);
   assert.match(html, /id="auth-view-forgot"/);
-  assert.match(html, /id="auth-view-set-password"/);
-  assert.match(html, /id="auth-view-password-updated"/);
-  assert.match(html, /Olvidé mi contraseña/);
-  assert.match(html, /id="remember-session"/);
-  assert.match(html, /Mostrar contraseña|aria-label="Mostrar/);
+  assert.match(html, /id="auth-view-verify-code"/);
+  assert.match(html, /id="recovery-code"[^>]*inputmode="numeric"/);
+  assert.match(html, /Código de verificación/);
   assert.match(html, /Nueva contraseña/);
   assert.match(html, /Confirmar contraseña/);
-  assert.match(html, /#0B1E3D/i);
-  assert.match(html, /#00C4CC/i);
-  assert.match(html, /box-shadow/);
-  assert.match(html, /border-radius/);
-  assert.match(html, /@media\s*\(max-width/);
+  assert.match(html, /verifyRecoveryCode/);
   assert.match(html, /requestPasswordRecovery/);
-  assert.match(html, /consumeAuthCallback/);
-  assert.match(html, /updatePassword/);
-  assert.match(html, /handleAuraEntry/);
-  assert.match(html, /addEventListener\(['"]hashchange['"]/);
-  assert.match(html, /addEventListener\(['"]pageshow['"]/);
-  assert.match(html, /addEventListener\(['"]popstate['"]/);
-  assert.match(html, /document\.readyState/);
-  assert.doesNotMatch(html, /access_token\s*[=:]|refresh_token\s*[=:]/);
+  assert.match(html, /aura-auth\.mjs\?v=20260802-otp1/);
+  assert.doesNotMatch(html, /consumeAuthCallback|handleAuraEntry|code_verifier|grant_type=pkce/);
+  assert.doesNotMatch(html, /Clave de acceso|Acceso pausado|Sistema operativo/i);
+});
+
+test('el build no contiene secretos, códigos persistentes ni la pantalla histórica', async () => {
+  const [html, auth] = await Promise.all([
+    read('creditek/agentes/index.html'),
+    read('creditek/agentes/aura-auth.mjs'),
+  ]);
+  const published = `${html}\n${auth}`;
+  assert.doesNotMatch(published, /localStorage\.setItem\([^\n]*(recovery[_-]?(otp|code)|code[_-]?verifier)/i);
+  assert.doesNotMatch(published, /console\.(log|warn|error)/);
+  assert.doesNotMatch(published, /Clave de acceso|Acceso pausado|Sistema operativo/i);
 });

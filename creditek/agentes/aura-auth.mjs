@@ -7,6 +7,8 @@ export const AURA_AUTH = Object.freeze({
 export const AURA_RECOVERY_REDIRECT = 'https://registro.crediteksas.com/creditek/agentes/';
 
 const STORAGE_KEY = AURA_AUTH.storage;
+const PKCE_VERIFIER_KEY = `${STORAGE_KEY}-code-verifier`;
+const AUTH_FLOW_TYPE_KEY = `${STORAGE_KEY}-flow-type`;
 const ALLOWED_RETURN_PREFIXES = ['/creditek/agentes/', '/creditek/portal/'];
 
 export function sanitizeReturnTo(value) {
@@ -67,10 +69,26 @@ function cleanCallbackUrl(rawUrl) {
   return `${url.pathname}${query ? `?${query}` : ''}`;
 }
 
+function base64Url(bytes) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let result = '';
+  for (let index = 0; index < bytes.length; index += 3) {
+    const a = bytes[index];
+    const b = bytes[index + 1];
+    const c = bytes[index + 2];
+    result += alphabet[a >> 2];
+    result += alphabet[((a & 3) << 4) | ((b ?? 0) >> 4)];
+    if (b !== undefined) result += alphabet[((b & 15) << 2) | ((c ?? 0) >> 6)];
+    if (c !== undefined) result += alphabet[c & 63];
+  }
+  return result;
+}
+
 export function createAuraAuthClient({
   fetchImpl = globalThis.fetch,
   storage = globalThis.localStorage,
   transientStorage = globalThis.sessionStorage,
+  cryptoImpl = globalThis.crypto,
   now = () => Date.now(),
 } = {}) {
   if (!storage) throw new Error('Almacenamiento de sesión no disponible');
@@ -107,14 +125,31 @@ export function createAuraAuthClient({
     access = null;
     storage.removeItem(STORAGE_KEY);
     transientStorage?.removeItem(STORAGE_KEY);
+    storage.removeItem(PKCE_VERIFIER_KEY);
+    storage.removeItem(AUTH_FLOW_TYPE_KEY);
+    transientStorage?.removeItem(PKCE_VERIFIER_KEY);
+    transientStorage?.removeItem(AUTH_FLOW_TYPE_KEY);
   }
 
   async function requestPasswordRecovery(email) {
     const normalized = String(email || '').trim().toLowerCase();
     if (!normalized || !normalized.includes('@')) throw new Error('Escribe un correo electrónico válido');
+    if (!cryptoImpl?.subtle || !cryptoImpl?.getRandomValues) {
+      throw new Error('Este navegador no permite iniciar una recuperación segura. Actualízalo e inténtalo nuevamente.');
+    }
+    const random = cryptoImpl.getRandomValues(new Uint8Array(48));
+    const verifier = base64Url(random);
+    const digest = await cryptoImpl.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    const challenge = base64Url(new Uint8Array(digest));
+    storage.setItem(PKCE_VERIFIER_KEY, verifier);
+    storage.setItem(AUTH_FLOW_TYPE_KEY, 'recovery');
     const response = await authFetch(`/auth/v1/recover?redirect_to=${encodeURIComponent(AURA_RECOVERY_REDIRECT)}`, {
       method: 'POST',
-      body: JSON.stringify({ email: normalized }),
+      body: JSON.stringify({
+        email: normalized,
+        code_challenge: challenge,
+        code_challenge_method: 's256',
+      }),
     });
     if (!response.ok && response.status === 429) {
       throw new Error('Hay demasiadas solicitudes. Espera unos minutos e inténtalo nuevamente.');
@@ -128,7 +163,8 @@ export function createAuraAuthClient({
     const url = new URL(rawUrl, AURA_RECOVERY_REDIRECT);
     const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
     const query = url.searchParams;
-    const type = callbackType(hash.has('type') ? hash : query);
+    const type = callbackType(hash.has('type') ? hash : query)
+      || callbackType(new URLSearchParams({ type: storage.getItem(AUTH_FLOW_TYPE_KEY) || '' }));
     const hasCallback = hash.has('access_token') || query.has('code') || hash.has('error') || query.has('error');
     if (!hasCallback) return { mode: 'none', type: '' };
 
@@ -162,8 +198,7 @@ export function createAuraAuthClient({
     }
 
     const code = query.get('code');
-    const verifierKey = `${STORAGE_KEY}-code-verifier`;
-    const verifier = storage.getItem(verifierKey);
+    const verifier = storage.getItem(PKCE_VERIFIER_KEY);
     if (!code || !verifier) {
       clear();
       return {
@@ -176,7 +211,8 @@ export function createAuraAuthClient({
       method: 'POST',
       body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
     });
-    storage.removeItem(verifierKey);
+    storage.removeItem(PKCE_VERIFIER_KEY);
+    storage.removeItem(AUTH_FLOW_TYPE_KEY);
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.access_token || !data.refresh_token) {
       clear();

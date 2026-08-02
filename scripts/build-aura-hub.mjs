@@ -10,4 +10,8 @@ await mkdir(agentsOutput, { recursive: true });
 for (const file of ['index.html', 'aura-auth.mjs']) {
   await cp(path.join(root, 'creditek', 'agentes', file), path.join(agentsOutput, file));
 }
+await cp(
+  path.join(root, 'creditek', 'agentes', 'index.html'),
+  path.join(agentsOutput, 'aura-otp-20260802.html'),
+);
 await writeFile(path.join(output, '_aura-hub-release.json'), JSON.stringify({ product: 'AURA Hub', isolated: true }));

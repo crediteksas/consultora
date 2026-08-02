@@ -16,8 +16,13 @@ test('AURA Hub ejecuta un Worker antes de assets para retirar caché heredada', 
 test('el documento principal de AURA siempre responde no-store', async () => {
   const { default: worker } = await import('../../creditek/workers/aura-hub/src/index.js');
   const html = '<!doctype html><title>AURA | Creditek</title>';
-  const env = { ASSETS: { fetch: async () => new Response(html, { headers: { 'content-type': 'text/html' } }) } };
+  let requestedPath = '';
+  const env = { ASSETS: { fetch: async request => {
+    requestedPath = new URL(request.url).pathname;
+    return new Response(html, { headers: { 'content-type': 'text/html' } });
+  } } };
   const response = await worker.fetch(new Request('https://registro.crediteksas.com/creditek/agentes/'), env);
+  assert.equal(requestedPath, '/creditek/agentes/aura-otp-20260802.html');
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
   assert.equal(response.headers.get('pragma'), 'no-cache');

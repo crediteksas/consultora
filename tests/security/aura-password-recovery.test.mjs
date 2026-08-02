@@ -156,5 +156,10 @@ test('la interfaz AURA ofrece los cinco estados con apariencia premium y accesib
   assert.match(html, /requestPasswordRecovery/);
   assert.match(html, /consumeAuthCallback/);
   assert.match(html, /updatePassword/);
+  assert.match(html, /handleAuraEntry/);
+  assert.match(html, /addEventListener\(['"]hashchange['"]/);
+  assert.match(html, /addEventListener\(['"]pageshow['"]/);
+  assert.match(html, /addEventListener\(['"]popstate['"]/);
+  assert.match(html, /document\.readyState/);
   assert.doesNotMatch(html, /access_token\s*[=:]|refresh_token\s*[=:]/);
 });

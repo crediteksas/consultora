@@ -844,28 +844,73 @@ function showToast(msg, color='#0B1E3D') {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── Auto-login si sesión activa ──────────────────────────────────
-window.addEventListener('load', async () => {
-  const callback = await auraAuth.consumeAuthCallback(location.href, safeUrl => {
-    history.replaceState({}, '', safeUrl);
-  });
-  if (callback.mode === 'set-password') {
-    passwordFlowType = callback.type;
-    document.getElementById('set-password-title').textContent = callback.type === 'invite'
-      ? 'Crear contraseña'
-      : 'Restablecer contraseña';
-    showAuthView('set-password');
-    return;
+// ── Entrada única: carga, PKCE y retorno por hash en Safari ─────
+let auraEntryRunning = false;
+let auraEntrySettled = false;
+let lastCallbackHref = '';
+
+function hasAuthCallback(rawUrl = location.href) {
+  const url = new URL(rawUrl);
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
+  return hash.has('access_token') || hash.has('refresh_token') || hash.has('error')
+    || url.searchParams.has('code') || url.searchParams.has('error');
+}
+
+function revealAuthShell() {
+  document.getElementById('app').classList.remove('visible');
+  const screen = document.getElementById('login-screen');
+  screen.style.display = 'flex';
+  screen.classList.remove('exit');
+}
+
+async function handleAuraEntry() {
+  const href = location.href;
+  const callbackPresent = hasAuthCallback(href);
+  if (auraEntryRunning || (!callbackPresent && auraEntrySettled)) return;
+  if (callbackPresent && href === lastCallbackHref) return;
+  auraEntryRunning = true;
+  if (callbackPresent) lastCallbackHref = href;
+
+  try {
+    const callback = await auraAuth.consumeAuthCallback(href, safeUrl => {
+      history.replaceState({}, '', safeUrl);
+    });
+    if (callback.mode === 'set-password') {
+      revealAuthShell();
+      passwordFlowType = callback.type;
+      document.getElementById('set-password-title').textContent = callback.type === 'invite'
+        ? 'Crear contraseña'
+        : 'Restablecer contraseña';
+      showAuthView('set-password');
+      auraEntrySettled = true;
+      return;
+    }
+    if (callback.mode === 'callback-error') {
+      revealAuthShell();
+      showAuthView('forgot');
+      setAuthStatus('recovery-status', callback.message, 'error');
+      auraEntrySettled = true;
+      return;
+    }
+    if (!auraEntrySettled) {
+      auraAccess = await auraAuth.restore();
+      if (auraAccess) enterAura();
+      else setTimeout(() => document.getElementById('login-email').focus(), 100);
+      auraEntrySettled = true;
+    }
+  } finally {
+    auraEntryRunning = false;
   }
-  if (callback.mode === 'callback-error') {
-    showAuthView('forgot');
-    setAuthStatus('recovery-status', callback.message, 'error');
-    return;
-  }
-  auraAccess = await auraAuth.restore();
-  if (auraAccess) enterAura();
-  else setTimeout(() => document.getElementById('login-email').focus(), 100);
-});
+}
+
+window.addEventListener('hashchange', handleAuraEntry);
+window.addEventListener('popstate', handleAuraEntry);
+window.addEventListener('pageshow', handleAuraEntry);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', handleAuraEntry, { once: true });
+} else {
+  queueMicrotask(handleAuraEntry);
+}
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe,

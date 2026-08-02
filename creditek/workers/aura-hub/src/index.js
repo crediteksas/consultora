@@ -1,5 +1,5 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
-const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
+const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802';
 
 export default {
   async fetch(request, env) {

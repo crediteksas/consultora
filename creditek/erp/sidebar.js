@@ -13,8 +13,9 @@
   const SHELL_SCRIPT = document.currentScript;
   const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
   const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
-  const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+  const KORA_ENV = window.__KORA_ENV__ || {};
+  const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL || 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
+  const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
 
   function installSharedSupabaseClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {

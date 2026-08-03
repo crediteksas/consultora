@@ -112,3 +112,9 @@ test('agrupa la liquidación por ejecutivo con aliados únicos, bonos y total a 
   ]);
   assert.deepEqual(rows,[{ ejecutivoId:'e1',ejecutivo:'Ejecutiva Uno',aliados:2,operaciones:3,ventas:1600000,bonos:60000,totalRecibir:60000,estadoPago:'pagado',novedades:1 }]);
 });
+
+test('resuelve acceso con la sesión única de KORA antes de evaluar la capacidad', () => {
+  assert.equal(domain.resolverAccesoKora({ session:null, permitido:false, operador:null }),'redirect');
+  assert.equal(domain.resolverAccesoKora({ session:{ user:{ id:'u1' } }, permitido:false, operador:null }),'denied');
+  assert.equal(domain.resolverAccesoKora({ session:{ user:{ id:'u1' } }, permitido:true, operador:{ capacidad:'revisor' } }),'allowed');
+});

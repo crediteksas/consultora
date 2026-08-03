@@ -90,3 +90,18 @@ test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () =
     assert.match(app,new RegExp(label));
   }
 });
+
+test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA', () => {
+  assert.match(html,/kora-environment\.generated\.js/);
+  assert.match(html,/data-kora-requires-auth="true"/);
+  assert.doesNotMatch(html,/loginEmail|loginPass|btnLogin|type="password"/);
+  assert.doesNotMatch(app,/signInWithPassword|createClient\(/);
+  assert.match(app,/window\.creditekSidebar\.sb/);
+  assert.match(app,/window\.creditekSidebar\.perfil/);
+  assert.match(app,/tiene_capacidad_aliados/);
+  assert.match(app,/kora-sidebar-ready/);
+  assert.match(app,/location\.href='app\.html'/);
+  assert.match(html,/Acceso denegado/);
+  assert.match(sidebar,/KORA_ERP_SUPABASE_URL/);
+  assert.match(sidebar,/KORA_ERP_SUPABASE_ANON_KEY/);
+});

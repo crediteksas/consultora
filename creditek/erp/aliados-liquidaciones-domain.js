@@ -238,9 +238,13 @@
     return [...grupos.values()].map(({ _aliados, _operaciones, ...grupo }) => ({ ...grupo, aliados:_aliados.size, operaciones:_operaciones.size }));
   }
   function puedeTransicionar(actual, siguiente) { return !!TRANSICIONES[actual]?.includes(siguiente); }
+  function resolverAccesoKora({ session, permitido, operador }) {
+    if (!session) return 'redirect';
+    return permitido === true && operador ? 'allowed' : 'denied';
+  }
   function evento(tipo, liquidacionId, extras = {}) {
     if (!/^(liquidation|payment)\./.test(tipo)) throw new Error('evento_invalido');
     return { type: tipo, aggregate_type: tipo.startsWith('payment.') ? 'payment' : 'liquidation', aggregate_id: liquidacionId, occurred_at: new Date().toISOString(), data: { liquidation_id: liquidacionId, ...extras } };
   }
-  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, evento };
+  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
 });

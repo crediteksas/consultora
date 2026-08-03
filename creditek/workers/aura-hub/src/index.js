@@ -1,5 +1,13 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
 const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802';
+const MANAGED_PATHS = new Set([
+  '/creditek/agentes/index.html',
+  '/creditek/agentes/aura-auth.mjs',
+  '/creditek/agentes/aura-auth-otp-20260802.mjs',
+  '/creditek/agentes/creditek-agente-respuestas.html',
+  '/creditek/agentes/agente3-meta-ads.html',
+  '/creditek/agentes/agente3-aura-session.mjs',
+]);
 
 export default {
   async fetch(request, env) {
@@ -12,7 +20,7 @@ export default {
       : request;
     const response = await env.ASSETS.fetch(assetRequest);
     const headers = new Headers(response.headers);
-    if (isDocument) {
+    if (isDocument || MANAGED_PATHS.has(pathname)) {
       headers.set('cache-control', NO_STORE);
       headers.set('pragma', 'no-cache');
       headers.set('expires', '0');

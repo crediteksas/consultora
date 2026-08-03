@@ -28,6 +28,7 @@ test('Meta Ads tiene permisos propios y no hereda acceso de Sofía', () => {
   for (const permission of ['meta_ads.access','meta_ads.read','meta_ads.analyze','meta_ads.manage','meta_ads.campaign.create','meta_ads.campaign.pause','meta_ads.budget.manage','meta_ads.audit.read']) {
     assert.match(migration, new RegExp(permission.replace('.', '\\.')));
   }
+  assert.match(migration, /select id, 'aura\.owner', array\[\s*'meta_ads\.read'\s*\]::text\[\]/);
   assert.doesNotMatch(migration, /sofia\.use/);
   assert.match(migration, /comercial@crediteksas\.com/);
 });

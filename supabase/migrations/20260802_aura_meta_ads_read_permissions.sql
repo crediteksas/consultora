@@ -43,9 +43,7 @@ grant execute on function public.aura_meta_ads_my_access() to authenticated;
 
 insert into public.aura_meta_ads_access (user_id, role_id, permissions, active)
 select id, 'aura.owner', array[
-  'meta_ads.access','meta_ads.read','meta_ads.analyze','meta_ads.manage',
-  'meta_ads.campaign.create','meta_ads.campaign.pause',
-  'meta_ads.budget.manage','meta_ads.audit.read'
+  'meta_ads.read'
 ]::text[], true
 from auth.users
 where lower(email) = 'comercial@crediteksas.com'

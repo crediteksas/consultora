@@ -22,6 +22,34 @@ test('AURA auth client keeps one Supabase session and evaluates app permissions'
   assert.equal(auth.portalDecision({ session: null, access: null }), 'redirect');
 });
 
+test('AURA fusiona el permiso aislado de Meta Ads en la sesión central', async () => {
+  const { createAuraAuthClient, AURA_AUTH, hasPermission } = await import('../../creditek/agentes/aura-auth.mjs');
+  const session = JSON.stringify({ access_token: 'access', refresh_token: 'refresh', expires_at: 9999999999 });
+  const values = new Map([[AURA_AUTH.storage, session]]);
+  const storage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
+  };
+  const client = createAuraAuthClient({
+    storage,
+    fetchImpl: async url => {
+      if (url.endsWith('/rpc/aura_my_access')) {
+        return { ok: true, status: 200, json: async () => ({ user_id: 'owner', apps: [{ app_id: 'sofia', permissions: ['sofia.use'] }] }) };
+      }
+      if (url.endsWith('/rpc/aura_meta_ads_my_access')) {
+        return { ok: true, status: 200, json: async () => ({ app_id: 'meta_ads', role_id: 'aura.owner', permissions: ['meta_ads.read'], active: true }) };
+      }
+      throw new Error(`Solicitud inesperada: ${url}`);
+    },
+  });
+
+  const access = await client.restore();
+
+  assert.equal(hasPermission(access, 'sofia', 'sofia.use'), true);
+  assert.equal(hasPermission(access, 'meta_ads', 'meta_ads.read'), true);
+});
+
 test('return destinations are restricted to AURA and Portal paths', async () => {
   const { sanitizeReturnTo, loginUrlFor } = await import('../../creditek/agentes/aura-auth.mjs');
   assert.equal(sanitizeReturnTo('/creditek/portal/'), '/creditek/portal/');
@@ -107,9 +135,18 @@ test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () =>
   assert.doesNotMatch(config, /creditek\/agentes\/\*/);
   assert.match(config, /creditek\/agentes\/index\.html/);
   assert.match(config, /creditek\/agentes\/aura-auth\.mjs/);
+  assert.match(config, /creditek\/agentes\/creditek-agente-respuestas\.html/);
+  assert.match(config, /creditek\/agentes\/agente3-meta-ads\.html/);
+  assert.match(build, /creditek-agente-respuestas\.html/);
+  assert.match(build, /agente3-meta-ads\.html/);
+  assert.match(build, /agente3-aura-session\.mjs/);
   assert.doesNotMatch(config, /creditek\/portal|creditek\/erp|kora/i);
   assert.match(build, /creditek', 'agentes/);
-  assert.match(build, /\['index\.html', 'aura-auth\.mjs'\]/);
+  assert.match(build, /'index\.html',[\s\S]*'aura-auth\.mjs',[\s\S]*'creditek-agente-respuestas\.html'/);
+  const worker = await readFile(new URL('../../creditek/workers/aura-hub/src/index.js', import.meta.url), 'utf8');
+  assert.match(worker, /MANAGED_PATHS/);
+  assert.match(worker, /creditek-agente-respuestas\.html/);
+  assert.match(worker, /agente3-meta-ads\.html/);
   assert.doesNotMatch(build, /cp\([^;]+recursive:\s*true/);
   assert.doesNotMatch(build, /portal|erp|kora/i);
 });

@@ -177,7 +177,7 @@ export function createAuraAuthClient({
   async function loadAccess() {
     const bearer = await token();
     if (!bearer) return null;
-    const response = await fetchImpl(`${AURA_AUTH.url}/rest/v1/rpc/aura_my_access`, {
+    const options = {
       method: 'POST',
       headers: {
         apikey: AURA_AUTH.key,
@@ -185,12 +185,22 @@ export function createAuraAuthClient({
         'content-type': 'application/json',
       },
       body: '{}',
-    });
+    };
+    const [response, metaResponse] = await Promise.all([
+      fetchImpl(`${AURA_AUTH.url}/rest/v1/rpc/aura_my_access`, options),
+      fetchImpl(`${AURA_AUTH.url}/rest/v1/rpc/aura_meta_ads_my_access`, options).catch(() => null),
+    ]);
     if (!response.ok) {
       if (response.status === 401) clear();
       return null;
     }
     access = await response.json();
+    if (metaResponse?.ok) {
+      const metaGrant = await metaResponse.json().catch(() => null);
+      if (metaGrant?.active && Array.isArray(metaGrant.permissions)) {
+        access.apps = [...(Array.isArray(access.apps) ? access.apps : []), metaGrant];
+      }
+    }
     return access;
   }
 

@@ -7,7 +7,13 @@ const output = path.join(root, 'public-aura-hub');
 await rm(output, { recursive: true, force: true });
 const agentsOutput = path.join(output, 'creditek', 'agentes');
 await mkdir(agentsOutput, { recursive: true });
-for (const file of ['index.html', 'aura-auth.mjs']) {
+for (const file of [
+  'index.html',
+  'aura-auth.mjs',
+  'creditek-agente-respuestas.html',
+  'agente3-meta-ads.html',
+  'agente3-aura-session.mjs',
+]) {
   await cp(path.join(root, 'creditek', 'agentes', file), path.join(agentsOutput, file));
 }
 await cp(

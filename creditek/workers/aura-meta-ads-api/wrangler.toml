@@ -1,0 +1,17 @@
+name = "aura-meta-ads-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-02"
+
+[vars]
+SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
+ALLOWED_ORIGIN = "https://registro.crediteksas.com"
+META_GRAPH_VERSION = "v25.0"
+RATE_LIMIT_PER_MINUTE = "30"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]

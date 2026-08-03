@@ -93,3 +93,22 @@ test('genera pagos por beneficiario y controla estados y eventos seguros', () =>
   const event = domain.evento('liquidation.approved','l1',{ platform:'payjoy' });
   assert.deepEqual(Object.keys(event.data).sort(),['liquidation_id','platform']);
 });
+
+test('agrupa la liquidación por aliado sin exponer utilidad ni reglas internas', () => {
+  const rows = domain.agruparPorAliado([
+    { aliadoId:'a1', aliado:'Aliado Uno', sede:'Sede Centro', plataforma:'alo', operacionId:'o1', montoLiquidado:700000, inicial:175000, pagoAliado:364000, bonosAliado:25000, novedades:1, estadoPago:'pendiente' },
+    { aliadoId:'a1', aliado:'Aliado Uno', sede:'Sede Centro', plataforma:'alo', operacionId:'o2', montoLiquidado:500000, inicial:125000, pagoAliado:260000, bonosAliado:0, novedades:0, estadoPago:'programado' },
+  ]);
+  assert.deepEqual(rows,[{ aliadoId:'a1',aliado:'Aliado Uno',sede:'Sede Centro',plataforma:'alo',operaciones:2,montoLiquidado:1200000,inicial:300000,pagoAliado:624000,bonos:25000,novedades:1,estadoPago:'programado' }]);
+  assert.equal('utilidadCreditek' in rows[0],false);
+  assert.equal('policySnapshot' in rows[0],false);
+});
+
+test('agrupa la liquidación por ejecutivo con aliados únicos, bonos y total a recibir', () => {
+  const rows = domain.agruparPorEjecutivo([
+    { ejecutivoId:'e1', ejecutivo:'Ejecutiva Uno', aliadoId:'a1', operacionId:'o1', venta:700000, bonosEjecutivo:30000, novedades:1, estadoPago:'pendiente' },
+    { ejecutivoId:'e1', ejecutivo:'Ejecutiva Uno', aliadoId:'a1', operacionId:'o2', venta:500000, bonosEjecutivo:20000, novedades:0, estadoPago:'pagado' },
+    { ejecutivoId:'e1', ejecutivo:'Ejecutiva Uno', aliadoId:'a2', operacionId:'o3', venta:400000, bonosEjecutivo:10000, novedades:0, estadoPago:'pagado' },
+  ]);
+  assert.deepEqual(rows,[{ ejecutivoId:'e1',ejecutivo:'Ejecutiva Uno',aliados:2,operaciones:3,ventas:1600000,bonos:60000,totalRecibir:60000,estadoPago:'pagado',novedades:1 }]);
+});

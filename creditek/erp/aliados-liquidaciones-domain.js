@@ -201,10 +201,46 @@
     });
     return [...pagos.values()];
   }
+  const ORDEN_PAGO = ['pendiente','programado','pagado','conciliado','rechazado','anulado'];
+  function estadoPagoActual(actual, siguiente) {
+    return ORDEN_PAGO.indexOf(siguiente) > ORDEN_PAGO.indexOf(actual) ? siguiente : actual;
+  }
+  function agruparPorAliado(detalles) {
+    const grupos = new Map();
+    (detalles || []).forEach(item => {
+      const key = [item.aliadoId,item.sede,item.plataforma].join('|');
+      const grupo = grupos.get(key) || { aliadoId:item.aliadoId,aliado:item.aliado,sede:item.sede,plataforma:item.plataforma,operaciones:0,montoLiquidado:0,inicial:0,pagoAliado:0,bonos:0,novedades:0,estadoPago:'pendiente',_operaciones:new Set() };
+      grupo._operaciones.add(item.operacionId);
+      grupo.montoLiquidado += dinero(item.montoLiquidado);
+      grupo.inicial += dinero(item.inicial);
+      grupo.pagoAliado += dinero(item.pagoAliado);
+      grupo.bonos += dinero(item.bonosAliado);
+      grupo.novedades += Number(item.novedades || 0);
+      grupo.estadoPago = estadoPagoActual(grupo.estadoPago,item.estadoPago || 'pendiente');
+      grupos.set(key,grupo);
+    });
+    return [...grupos.values()].map(({ _operaciones, ...grupo }) => ({ ...grupo, operaciones:_operaciones.size }));
+  }
+  function agruparPorEjecutivo(detalles) {
+    const grupos = new Map();
+    (detalles || []).forEach(item => {
+      const key = item.ejecutivoId;
+      const grupo = grupos.get(key) || { ejecutivoId:key,ejecutivo:item.ejecutivo,aliados:0,operaciones:0,ventas:0,bonos:0,totalRecibir:0,estadoPago:'pendiente',novedades:0,_aliados:new Set(),_operaciones:new Set() };
+      grupo._aliados.add(item.aliadoId);
+      grupo._operaciones.add(item.operacionId);
+      grupo.ventas += dinero(item.venta);
+      grupo.bonos += dinero(item.bonosEjecutivo);
+      grupo.totalRecibir += dinero(item.bonosEjecutivo);
+      grupo.novedades += Number(item.novedades || 0);
+      grupo.estadoPago = estadoPagoActual(grupo.estadoPago,item.estadoPago || 'pendiente');
+      grupos.set(key,grupo);
+    });
+    return [...grupos.values()].map(({ _aliados, _operaciones, ...grupo }) => ({ ...grupo, aliados:_aliados.size, operaciones:_operaciones.size }));
+  }
   function puedeTransicionar(actual, siguiente) { return !!TRANSICIONES[actual]?.includes(siguiente); }
   function evento(tipo, liquidacionId, extras = {}) {
     if (!/^(liquidation|payment)\./.test(tipo)) throw new Error('evento_invalido');
     return { type: tipo, aggregate_type: tipo.startsWith('payment.') ? 'payment' : 'liquidation', aggregate_id: liquidacionId, occurred_at: new Date().toISOString(), data: { liquidation_id: liquidacionId, ...extras } };
   }
-  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, calcularAliados, resumir, generarPagos, puedeTransicionar, evento };
+  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, evento };
 });

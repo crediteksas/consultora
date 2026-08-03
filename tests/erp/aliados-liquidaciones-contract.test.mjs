@@ -80,3 +80,13 @@ test('interfaz usa el shell actual y no genera Excel', () => {
   assert.match(sidebar,/CREDITEK ALIADOS/);
   assert.match(sidebar,/perfil\.es_operador_aliados/);
 });
+
+test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () => {
+  assert.match(html,/data-tab="allies"[^>]*>Por aliado</);
+  assert.match(html,/data-tab="executives"[^>]*>Por ejecutivo</);
+  assert.match(app,/D\.agruparPorAliado/);
+  assert.match(app,/D\.agruparPorEjecutivo/);
+  for (const label of ['Aliado','Sede','Plataforma','Monto liquidado','Pago al aliado','Estado del pago','Ejecutivo','Aliados incluidos','Total a recibir']) {
+    assert.match(app,new RegExp(label));
+  }
+});

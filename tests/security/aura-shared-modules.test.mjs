@@ -26,7 +26,7 @@ test('Meta Ads usa app_id y permiso propios sin heredar acceso de Sofía', () =>
 });
 
 test('Meta Ads permanece pausado de forma clara y no captura credenciales en el navegador', () => {
-  assert.match(meta, /Meta Ads pausado por seguridad: pendiente integración backend AURA/);
+  assert.match(meta, /Meta Ads pausado por seguridad/);
   assert.doesNotMatch(meta, /graph\.facebook\.com|ck_meta_token|inp-token/);
   assert.doesNotMatch(hub, /ck_meta_token|cfg-meta-account|saveMetaKeys/);
 });

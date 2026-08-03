@@ -64,7 +64,7 @@ test('Sofía reutiliza la sesión única de AURA y un fallo no fuerza navegació
   const hub = await readFile(hubPath, 'utf8');
   const sofia = await readFile(sofiaPath, 'utf8');
 
-  assert.match(hub, /aura-auth\.mjs/);
+  assert.match(hub, /aura-auth(?:-otp-\d+)?\.mjs/);
   assert.match(hub, /hasPermission\(auraAccess, appId, 'sofia\.use'\)/);
   assert.match(hub, /aura:close-module/);
   assert.doesNotMatch(sofia, /top\.location\.href\s*=/);

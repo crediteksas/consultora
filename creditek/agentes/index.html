@@ -355,7 +355,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-respuestas.html','Agente Respuestas',this,'sofia')">
       <span class="nav-icon">💬</span> Respuestas
     </a>
-    <a class="nav-item" data-aura-app="sofia" onclick="openModule('agente3-meta-ads.html','Meta Ads Intelligence',this,'sofia')">
+    <a class="nav-item" data-aura-app="meta_ads" onclick="openModule('agente3-meta-ads.html','Meta Ads Intelligence',this,'meta_ads')">
       <span class="nav-icon">📊</span> Meta Ads
       <span class="nav-badge new">IA</span>
     </a>
@@ -463,7 +463,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','sofia')">
+          <div class="module-card" data-aura-app="meta_ads" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','meta_ads')">
             <div class="module-top">
               <div class="module-icon">📊</div>
               <div class="module-status active">● Activo</div>
@@ -556,19 +556,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             <button class="config-save" onclick="saveKey('openai','cfg-openai','ck_openai_key')">Guardar</button>
             <div class="config-status"><div class="config-dot" id="dot-openai"></div><span id="txt-openai">Sin configurar</span></div>
           </div>
-          <div class="config-card">
+          <div class="config-card" data-aura-app="meta_ads">
             <div class="config-title">Meta Ads</div>
-            <div class="config-desc">Token y cuenta publicitaria para el Agente 3.</div>
-            <div class="config-field">
-              <label>Token de acceso</label>
-              <input type="password" id="cfg-meta" placeholder="EAAxxxxx...">
-            </div>
-            <div class="config-field">
-              <label>ID cuenta publicitaria</label>
-              <input type="text" id="cfg-meta-account" placeholder="123456789">
-            </div>
-            <button class="config-save" onclick="saveMetaKeys()">Guardar</button>
-            <div class="config-status"><div class="config-dot" id="dot-meta"></div><span id="txt-meta">Sin configurar</span></div>
+            <div class="config-desc">Credenciales administradas exclusivamente en el backend AURA.</div>
+            <div class="config-status"><div class="config-dot ok"></div><span>Modo seguro de solo lectura</span></div>
           </div>
         </div>
       </div>
@@ -699,7 +690,9 @@ function renderAuthorizedModules() {
     const appId = element.dataset.auraApp;
     const allowed = appId === 'portal_b2b'
       ? hasPermission(auraAccess, appId, 'portal.read')
-      : hasPermission(auraAccess, appId, 'sofia.use');
+      : appId === 'meta_ads'
+        ? hasPermission(auraAccess, appId, 'meta_ads.read')
+        : hasPermission(auraAccess, appId, 'sofia.use');
     element.hidden = !allowed;
   });
   const name = auraAccess?.display_name || auraAccess?.email || 'Usuario AURA';
@@ -776,6 +769,10 @@ async function openModule(url, title, el, appId = '') {
     showToast('No tienes permiso para abrir este módulo.', '#EF4444');
     return;
   }
+  if (appId === 'meta_ads' && !hasPermission(auraAccess, appId, 'meta_ads.read')) {
+    showToast('No tienes permiso para abrir Meta Ads.', '#EF4444');
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
   document.getElementById('main-content').style.display = 'none';
@@ -818,23 +815,11 @@ function saveKey(name, inputId, storageKey) {
   checkConfigStatus();
 }
 
-function saveMetaKeys() {
-  const t = document.getElementById('cfg-meta').value.trim();
-  const a = document.getElementById('cfg-meta-account').value.trim();
-  if (t) localStorage.setItem('ck_meta_token', t);
-  if (a) localStorage.setItem('ck_meta_account', a);
-  document.getElementById('cfg-meta').value = '';
-  document.getElementById('cfg-meta-account').value = '';
-  showToast('✓ Meta Ads guardado');
-  checkConfigStatus();
-}
-
 function checkConfigStatus() {
   const keys = [
     { dot:'dot-claude',  txt:'txt-claude',  key:'ck_api_key',      label:'Claude API' },
     { dot:'dot-vertex',  txt:'txt-vertex',  key:'ck_vertex_key',   label:'Vertex AI' },
     { dot:'dot-openai',  txt:'txt-openai',  key:'ck_openai_key',   label:'OpenAI' },
-    { dot:'dot-meta',    txt:'txt-meta',    key:'ck_meta_token',   label:'Meta Ads' },
   ];
   keys.forEach(k => {
     const ok = !!localStorage.getItem(k.key);
@@ -869,7 +854,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe,
-  saveKey, saveMetaKeys, showToast,
+  saveKey, showToast,
 });
 </script>
 </body>

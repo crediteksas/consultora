@@ -285,18 +285,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const API='https://creditek-bot.comercial-853.workers.dev';
-// SPEC v5-CRM, 13-jul-2026 — secreto compartido para /api/enviar-mensaje,
-// mismo patron que ya usa gemini-proxy (X-Worker-Secret). DEBE coincidir
-// exacto con el valor configurado en el Worker (wrangler secret put
-// WORKER_SHARED_SECRET en creditek-bot).
-const WORKER_SHARED_SECRET='73ef5474869b234c9d666476271a47fcf82b259d54ca3619';
+// Las operaciones administrativas permanecen pausadas hasta contar con un
+// backend que valide sesión, app_id y permiso AURA sin secretos en navegador.
 let cityMap={};let allTiendas=[];
 let allConvs=[],allClients=[],grouped={},currentTel=null;
 const colors=['#8b5cf6','#0ea5e9','#f59e0b','#ef4444','#22c55e','#ec4899','#6366f1','#14b8a6'];
 
 async function loadTiendas(){
   try{
-    allTiendas=await(await fetch(API+'/api/tiendas',{headers:{'X-Worker-Secret':WORKER_SHARED_SECRET}})).json();
+    throw new Error('Integración pausada: pendiente autenticación AURA en backend');
     cityMap={};
     const ciudades=new Set();
     allTiendas.forEach(t=>{cityMap[t.id]=t.ciudad;ciudades.add(t.ciudad)});
@@ -312,7 +309,7 @@ async function loadStats(){
     // FIX v22, 13-jul-2026 — Hallazgo 1: /api/stats y /api/tiendas ahora
     // exigen el secreto compartido en el Worker (mismo patron que ya usa
     // /api/enviar-mensaje).
-    const d=await(await fetch(API+'/api/stats',{headers:{'X-Worker-Secret':WORKER_SHARED_SECRET}})).json();
+    throw new Error('Integración pausada: pendiente autenticación AURA en backend');
     document.getElementById('s-clientes').textContent=d.total_clientes||0;
     document.getElementById('s-convs').textContent=d.hoy||0;
     document.getElementById('s-optins').textContent=d.optins||0;
@@ -390,7 +387,7 @@ async function guardarCorreccion(){
   const msg=document.getElementById('corrMsg');
   if(!mensaje||!buena){msg.style.color='#dc2626';msg.textContent='El mensaje del cliente y la respuesta correcta son obligatorios.';return;}
   try{
-    const res=await fetch(SUPA+'/correcciones_sofia',{method:'POST',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({mensaje_cliente:mensaje,respuesta_mala:mala||null,respuesta_correcta:buena,contexto:contexto||null,activa:true})});
+    const res=await supaFetch('/correcciones_sofia',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({mensaje_cliente:mensaje,respuesta_mala:mala||null,respuesta_correcta:buena,contexto:contexto||null,activa:true})});
     if(res.ok){
       msg.style.color='#16a34a';msg.textContent='✓ Guardado! Sofia ya sabe esto.';
       document.getElementById('corrMensaje').value='';document.getElementById('corrMala').value='';document.getElementById('corrBuena').value='';document.getElementById('corrContexto').value='';
@@ -400,13 +397,13 @@ async function guardarCorreccion(){
 }
 
 async function toggleCorr(id,activa){
-  await fetch(SUPA+'/correcciones_sofia?id=eq.'+id,{method:'PATCH',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({activa:!activa})});
+  await supaFetch('/correcciones_sofia?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({activa:!activa})});
   cargarCorrecciones();
 }
 
 async function eliminarCorr(id){
   if(!confirm('Eliminar esta correccion?'))return;
-  await fetch(SUPA+'/correcciones_sofia?id=eq.'+id,{method:'DELETE',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,Prefer:'return=minimal'}});
+  await supaFetch('/correcciones_sofia?id=eq.'+id,{method:'DELETE',headers:{Prefer:'return=minimal'}});
   cargarCorrecciones();
 }
 
@@ -529,7 +526,7 @@ function openChat(tel){
 
 // SPEC v5-CRM, 13-jul-2026 — Pieza 1: envia el mensaje al cliente usando el
 // mismo mecanismo que ya usa Sofia (enviarMensajeWA en creditek-bot), via el
-// nuevo endpoint /api/enviar-mensaje protegido con X-Worker-Secret. No hay
+// endpoint /api/enviar-mensaje. No hay
 // camino paralelo: el Worker es quien llama a la API de WhatsApp y guarda en
 // conversaciones (respondido_por:'admin'), igual que ya hace para Sofia.
 async function enviarDesdePanel(tel){
@@ -541,11 +538,9 @@ async function enviarDesdePanel(tel){
   if(btn)btn.disabled=true;
   if(statusEl)statusEl.textContent='Enviando...';
   try{
-    const res=await fetch(API+'/api/enviar-mensaje',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Worker-Secret':WORKER_SHARED_SECRET},
-      body:JSON.stringify({telefono:tel,mensaje}),
-    });
+    throw new Error('Envío pausado: pendiente autenticación AURA en backend');
+    /* istanbul ignore next -- reactivación exige el contrato autenticado */
+    const res=null;
     const data=await res.json().catch(()=>({}));
     if(!res.ok||data.error){
       if(statusEl)statusEl.textContent='Error: '+(data.error||'no se pudo enviar');

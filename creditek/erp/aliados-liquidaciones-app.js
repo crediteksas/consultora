@@ -79,9 +79,9 @@
     $('metrics').innerHTML = metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
       ['Base liquidada', selected.total_operaciones], ['Total a pagar', selected.total_pagar], ['Bonos', selected.total_bonos], ['Utilidad Creditek', selected.total_utilidad_creditek]
-    ]) + metrics('Resumen tiendas propias', [
+    ]) + metrics('Resumen Operaciones Retail', [
       ['Operaciones', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad de tiendas', selected.total_utilidad_tiendas]
-    ]) + metrics('Resumen aliados', [
+    ]) + metrics('Resumen Operaciones Aliados', [
       ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos]
     ]);
   }
@@ -111,8 +111,8 @@
       const payField = isOwn && operator.capacidad === 'aprobador' && !selected.frozen_at
         ? `<div class="actions"><input class="control" data-pagamos-input="${row.id}" inputmode="numeric" value="${Number(row.pagamos || 0)}" aria-label="Pagamos"><button class="btn secondary" data-save-pagamos="${row.id}">Guardar</button></div>`
         : money(row.pagamos);
-      if (isOwn) return `<tr><td>Tienda propia</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_base)}</td><td>${money(row.inicial)}</td><td>${money(row.inicial_kora)}</td><td>${money(difference)}</td><td>${money(row.costo_equipo)}</td><td>${payField}</td><td>${money(row.pago_neto_tienda)}</td><td>${money(row.utilidad_creditek_tienda)}</td><td>${money(row.utilidad_tienda)}</td><td>${state(selected.estado)}</td><td>${difference ? '<span class="badge con_novedades">Requiere revisión</span>' : 'Sin diferencia'}</td></tr>`;
-      return `<tr><td>Aliado</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>Según política vigente</td><td>${row.reconocida ? 'Reconocida' : 'Con novedad'}</td></tr>`;
+      if (isOwn) return `<tr><td>Operación Retail</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_base)}</td><td>${money(row.inicial)}</td><td>${money(row.inicial_kora)}</td><td>${money(difference)}</td><td>${money(row.costo_equipo)}</td><td>${payField}</td><td>${money(row.pago_neto_tienda)}</td><td>${money(row.utilidad_creditek_tienda)}</td><td>${money(row.utilidad_tienda)}</td><td>${state(selected.estado)}</td><td>${difference ? '<span class="badge con_novedades">Requiere revisión</span>' : 'Sin diferencia'}</td></tr>`;
+      return `<tr><td>Operación Aliados</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>Según política vigente</td><td>${row.reconocida ? 'Reconocida' : 'Con novedad'}</td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
   }

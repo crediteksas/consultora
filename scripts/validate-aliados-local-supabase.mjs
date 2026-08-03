@@ -124,7 +124,7 @@ for (const platform of ['payjoy','alo']) {
   expectOk(await maite.rpc('aliados_cambiar_estado',{ p_id:liquidationId,p_estado:'validada',p_comentario:'Validación local' }),`${platform} validación`);
   const dbOperations=expectOk(await maite.from('liquidation_operations').select('id,source_key,ejecutivo_id,tipo_establecimiento').eq('liquidation_id',liquidationId),`${platform} operaciones`);
   const allies=dbOperations.filter(item=>item.tipo_establecimiento==='aliado');
-  const ownOperations=expectOk(await admin.from('liquidation_operations').select('*').eq('liquidation_id',liquidationId).eq('tipo_establecimiento','propia'),`${platform} tiendas propias`);
+  const ownOperations=expectOk(await admin.from('liquidation_operations').select('*').eq('liquidation_id',liquidationId).eq('tipo_establecimiento','propia'),`${platform} Operaciones Retail`);
   assert.equal(allies.length,expected[platform].operations);
   assert.equal(ownOperations.length,platform==='payjoy'?24:4);
   for (const [index,operation] of ownOperations.entries()) {

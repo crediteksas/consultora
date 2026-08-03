@@ -9,13 +9,13 @@ test('formatea dinero y fechas para administración sin ISO completo', () => {
   assert.equal(ux.fechaAuditoria('2026-08-03T15:20:30.000Z'),'2026-08-03 10:20');
 });
 
-test('calcula tienda PayJoy con la inicial real registrada en KORA', () => {
+test('calcula Operación Retail PayJoy con la inicial real registrada en KORA', () => {
   assert.deepEqual(ux.calcularTiendaPropia({ plataforma:'payjoy',montoCredito:1000000,montoTotal:1000000,inicialPlataforma:100000,inicialKora:120000,costo:700000,pagamos:800000 }),{
     diferencia:20000,totalRealTienda:880000,pagoNetoTienda:660000,utilidadCreditek:220000,utilidadTienda:100000,
   });
 });
 
-test('calcula tienda ALO con diferencia entre inicial esperada y recibida', () => {
+test('calcula Operación Retail ALO con diferencia entre inicial esperada y recibida', () => {
   assert.deepEqual(ux.calcularTiendaPropia({ plataforma:'alo',montoCredito:900000,montoTotal:960000,inicialPlataforma:240000,inicialKora:200000,costo:650000,pagamos:750000 }),{
     diferencia:40000,totalRealTienda:760000,pagoNetoTienda:470000,utilidadCreditek:490000,utilidadTienda:100000,
   });

@@ -56,7 +56,7 @@ test('estados, aprobación exclusiva e inmutabilidad se aplican en servidor', ()
   assert.match(sql,/diferencia_inicial_sin_revisar/);
 });
 
-test('tiendas propias extienden operaciones con snapshots sin crear tablas paralelas', () => {
+test('operaciones Retail extienden operaciones con snapshots sin crear tablas paralelas', () => {
   for (const field of ['inicial_kora','diferencia_inicial','costo_equipo','pagamos','pago_neto_tienda','utilidad_tienda']) assert.match(sql,new RegExp(field));
   assert.doesNotMatch(sql,/create table if not exists public\.(liquidation_store|tiendas_liquidacion)/i);
   assert.match(sql,/from public\.venta_items vi/);
@@ -114,12 +114,13 @@ test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () =
 
 test('interfaz administrativa separa modelos y oculta datos técnicos por defecto', () => {
   assert.match(html,/aliados-liquidaciones-ux\.js/);
-  for (const label of ['Todas','Tiendas propias','Aliados','Estado actual','Guardar revisión','Aprobar liquidación','Rechazar y devolver a revisión']) assert.match(html,new RegExp(label));
+  for (const label of ['Todas','Operaciones Retail','Operaciones Aliados','Estado actual','Guardar revisión','Aprobar liquidación','Rechazar y devolver a revisión']) assert.match(html,new RegExp(label));
   for (const label of ['Beneficiario','Fecha programada','Fecha de pago','Cuenta bancaria','Realizada por','Descripción','Resultado','Ver detalle técnico']) assert.match(app,new RegExp(label));
   assert.match(app,/UX\.formatoCOP/);
   assert.match(app,/UX\.fechaCorta/);
   assert.match(app,/aliados_guardar_pagamos/);
   assert.doesNotMatch(app,/head=\['Pago','Valor'/);
+  assert.doesNotMatch(`${html}\n${app}`,/Tiendas propias|Tienda propia|Terceros|Operaciones Creditek/i);
 });
 
 test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA', () => {

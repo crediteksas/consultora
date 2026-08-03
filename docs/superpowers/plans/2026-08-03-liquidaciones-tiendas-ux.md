@@ -1,8 +1,8 @@
-# Liquidaciones de tiendas propias y experiencia administrativa Implementation Plan
+# Liquidaciones de Operaciones Retail y experiencia administrativa — Plan de implementación
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Liquidar tiendas propias y aliados en el mismo lote con cálculos seguros y una interfaz administrativa comprensible.
+**Goal:** Liquidar Operaciones Retail y Operaciones Aliados en el mismo lote con cálculos seguros y una interfaz administrativa comprensible.
 
 **Architecture:** Extender las operaciones y RPC existentes; mantener el dominio puro en `aliados-liquidaciones-domain.js` y la representación en un módulo UX separado. Persistir snapshots y controlar permisos/transiciones en PostgreSQL.
 

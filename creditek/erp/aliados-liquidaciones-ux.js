@@ -17,6 +17,7 @@
   const states = {
     pendiente:'Pendiente',programado:'Programado',pagado:'Pagado',conciliado:'Conciliado',rechazado:'Rechazado',anulado:'Anulado',
     importada:'Importada',validada:'Validada',con_novedades:'Con novedades',calculada:'Calculada',revisada:'En revisión',aprobada:'Aprobada',programada:'Programada',pagada:'Pagada',conciliada:'Conciliada',cerrada:'Cerrada',
+    propia:'Operación Retail',aliado:'Operación Aliados',pago_tienda:'Pago Operación Retail',pago_aliado:'Pago Operación Aliados',
   };
   const actions = {
     aliados_liquidacion_importada:['Archivo de liquidación importado','Importada'],

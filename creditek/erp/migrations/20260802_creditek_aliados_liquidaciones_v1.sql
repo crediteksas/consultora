@@ -321,7 +321,7 @@ create or replace function public.aliados_resolver_operaciones_propias(p_liquida
 returns integer language plpgsql security definer set search_path=public,pg_temp as $$
 declare o public.liquidation_operations%rowtype;v_count integer;v_venta uuid;v_credito uuid;v_unidad uuid;v_inicial numeric;v_costo numeric;v_resueltas integer:=0;
 begin
- if not public.tiene_capacidad_aliados('revisor') then raise exception 'No autorizado para revisar tiendas propias';end if;
+ if not public.tiene_capacidad_aliados('revisor') then raise exception 'No autorizado para revisar Operaciones Retail';end if;
  if exists(select 1 from public.liquidations where id=p_liquidation_id and frozen_at is not null) then raise exception 'Liquidación aprobada inmutable';end if;
  for o in select * from public.liquidation_operations where liquidation_id=p_liquidation_id and tipo_establecimiento='propia' loop
   select count(*),min(v.id::text)::uuid,min(c.id::text)::uuid,min(u.id::text)::uuid,min(c.cuota_inicial),min(coalesce(u.costo_remision,u.precio_tienda))

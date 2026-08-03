@@ -1,8 +1,8 @@
-# Liquidaciones de tiendas propias y experiencia administrativa
+# Liquidaciones de Operaciones Retail y experiencia administrativa
 
 ## Alcance
 
-Extender el motor actual de Liquidaciones sin tablas paralelas. Cada archivo conserva operaciones propias y aliadas. Los aliados mantienen sus políticas y conciliaciones actuales; las tiendas propias se calculan con un `Pagamos` definido exclusivamente por Óscar.
+Extender el motor actual de Liquidaciones sin tablas paralelas. Cada archivo conserva Operaciones Retail y Operaciones Aliados. Las Operaciones Aliados mantienen sus políticas y conciliaciones actuales; las Operaciones Retail se calculan con un `Pagamos` definido exclusivamente por Óscar.
 
 ## Datos y seguridad
 

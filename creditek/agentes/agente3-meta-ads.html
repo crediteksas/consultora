@@ -25,14 +25,17 @@ const money=new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maxim
 const integer=new Intl.NumberFormat('es-CO');
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function metric(label,value){return `<div class="card"><div class="label">${label}</div><div class="value">${value}</div></div>`}
-function fail(message){document.querySelector('#error').textContent=message;document.querySelector('#error').classList.remove('hidden')}
+const errors={401:'La sesión AURA no es válida. Vuelve a iniciar sesión.',403:'No tienes permiso para consultar Meta Ads.',429:'Demasiadas consultas. Intenta nuevamente en un minuto.',502:'Meta no está disponible temporalmente.',503:'Meta Ads todavía no está configurado en el servidor.'};
+function fail(message){document.querySelector('#error').textContent=message;document.querySelector('#error').classList.remove('hidden');document.querySelector('#campaigns').textContent='No fue posible cargar campañas.';document.querySelector('#trends').textContent='No fue posible cargar la tendencia diaria.'}
 async function load(){
   document.querySelector('#error').classList.add('hidden');
   const token=auraSessionToken();
   if(!token){location.href='/creditek/agentes/?return_to='+encodeURIComponent(location.pathname);return}
-  const response=await fetch(`${API}/v1/dashboard?period=${encodeURIComponent(document.querySelector('#period').value)}`,{headers:{authorization:`Bearer ${token}`}});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok){fail(data.error==='Forbidden'?'No tienes permiso para consultar Meta Ads.':'Meta Ads continúa bloqueado de forma segura.');return}
+  document.querySelector('#campaigns').textContent='Cargando…';document.querySelector('#trends').textContent='Cargando…';
+  let response,data;
+  try{response=await fetch(`${API}/v1/dashboard?period=${encodeURIComponent(document.querySelector('#period').value)}`,{headers:{authorization:`Bearer ${token}`}});data=await response.json().catch(()=>({}));}
+  catch(error){fail('No fue posible conectar con Meta Ads. Intenta nuevamente.');return}
+  if(!response.ok){fail(errors[response.status]||'Meta Ads no pudo completar la consulta.');return}
   document.querySelector('#banner').className='banner';document.querySelector('#banner').textContent='Meta Ads disponible en modo lectura.';
   const m=data.metrics||{};
   document.querySelector('#metrics').innerHTML=[metric('Gasto total',money.format(m.spend||0)),metric('Gasto semanal',money.format(m.spend_weekly||0)),metric('Gasto mensual',money.format(m.spend_monthly||0)),metric('Presupuesto semanal',money.format(m.budget_weekly||0)),metric('Impresiones',integer.format(m.impressions||0)),metric('Alcance',integer.format(m.reach||0)),metric('CTR',`${Number(m.ctr||0).toFixed(2)}%`),metric('CPC',money.format(m.cpc||0)),metric('CPM',money.format(m.cpm||0)),metric('Conversiones',integer.format(m.conversions||0)),metric('Costo por resultado',m.cost_per_result==null?'Sin datos':money.format(m.cost_per_result)),metric('Frecuencia',Number(m.frequency||0).toFixed(2)),metric('ROAS estimado','Sin atribución')].join('');

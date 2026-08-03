@@ -17,6 +17,12 @@ test('el navegador usa el Worker dedicado y la sesión AURA', () => {
   assert.doesNotMatch(html, /sofia\.use/);
 });
 
+test('el frontend termina los estados de carga y muestra errores del backend', () => {
+  assert.match(html, /function fail\([^)]*\)[\s\S]*#campaigns[\s\S]*#trends/);
+  assert.match(html, /catch\([^)]*\)[\s\S]*fail\(/);
+  assert.match(html, /401[\s\S]*403[\s\S]*429[\s\S]*502[\s\S]*503/);
+});
+
 test('el Worker es de solo lectura y no acepta tokens del navegador', () => {
   assert.match(worker, /meta_ads\.read/);
   assert.match(worker, /META_ACCESS_TOKEN/);

@@ -8,9 +8,9 @@ const MANAGED_PATHS = new Set([
   '/creditek/agentes/agente3-meta-ads.html',
   '/creditek/agentes/agente3-aura-session.mjs',
 ]);
-const DOCUMENT_ALIASES = new Map([
-  ['/creditek/agentes/creditek-agente-respuestas', '/creditek/agentes/creditek-agente-respuestas.html'],
-  ['/creditek/agentes/agente3-meta-ads', '/creditek/agentes/agente3-meta-ads.html'],
+const CANONICAL_DOCUMENTS = new Set([
+  '/creditek/agentes/creditek-agente-respuestas',
+  '/creditek/agentes/agente3-meta-ads',
 ]);
 
 export default {
@@ -19,11 +19,11 @@ export default {
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';
-    const assetPath = isDocument ? CURRENT_DOCUMENT : DOCUMENT_ALIASES.get(pathname);
+    const assetPath = isDocument ? CURRENT_DOCUMENT : null;
     const assetRequest = assetPath ? new Request(new URL(assetPath, request.url), request) : request;
     const response = await env.ASSETS.fetch(assetRequest);
     const headers = new Headers(response.headers);
-    if (isDocument || MANAGED_PATHS.has(pathname) || DOCUMENT_ALIASES.has(pathname)) {
+    if (isDocument || MANAGED_PATHS.has(pathname) || CANONICAL_DOCUMENTS.has(pathname)) {
       headers.set('cache-control', NO_STORE);
       headers.set('pragma', 'no-cache');
       headers.set('expires', '0');

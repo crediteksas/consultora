@@ -24,6 +24,14 @@ await cp(
   path.join(root, 'creditek', 'agentes', 'aura-auth.mjs'),
   path.join(agentsOutput, 'aura-auth-otp-20260802.mjs'),
 );
+await cp(
+  path.join(root, 'creditek', 'agentes', 'creditek-agente-respuestas.html'),
+  path.join(agentsOutput, 'creditek-agente-respuestas'),
+);
+await cp(
+  path.join(root, 'creditek', 'agentes', 'agente3-meta-ads.html'),
+  path.join(agentsOutput, 'agente3-meta-ads'),
+);
 await appendFile(
   path.join(agentsOutput, 'aura-auth-otp-20260802.mjs'),
   '\n// AURA OTP release 20260802\n',

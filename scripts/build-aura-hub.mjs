@@ -33,6 +33,10 @@ await cp(
   path.join(agentsOutput, 'sofia-aura-20260803.html'),
 );
 await cp(
+  path.join(root, 'creditek', 'agentes', 'creditek-agente-respuestas.html'),
+  path.join(agentsOutput, 'sofia-aura-20260803'),
+);
+await cp(
   path.join(root, 'creditek', 'agentes', 'agente3-meta-ads.html'),
   path.join(agentsOutput, 'agente3-meta-ads'),
 );

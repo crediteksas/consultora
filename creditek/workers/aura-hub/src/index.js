@@ -12,6 +12,7 @@ const MANAGED_PATHS = new Set([
 const CANONICAL_DOCUMENTS = new Set([
   '/creditek/agentes/creditek-agente-respuestas',
   '/creditek/agentes/agente3-meta-ads',
+  '/creditek/agentes/sofia-aura-20260803',
 ]);
 
 export default {

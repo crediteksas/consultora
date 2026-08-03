@@ -6,6 +6,7 @@ const sql = await readFile('creditek/erp/migrations/20260802_creditek_aliados_li
 const rollback = await readFile('creditek/erp/migrations/rollback/20260802_creditek_aliados_liquidaciones_v1_rollback.sql','utf8');
 const html = await readFile('creditek/erp/aliados-liquidaciones.html','utf8');
 const app = await readFile('creditek/erp/aliados-liquidaciones-app.js','utf8');
+const login = await readFile('creditek/erp/app.html','utf8');
 const sidebar = await readFile('creditek/erp/sidebar.js','utf8');
 
 test('la migración reutiliza maestros, auditoría y bucket sin crear duplicados', () => {
@@ -110,4 +111,8 @@ test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA
   assert.match(html,/Acceso denegado/);
   assert.match(sidebar,/KORA_ERP_SUPABASE_URL/);
   assert.match(sidebar,/KORA_ERP_SUPABASE_ANON_KEY/);
+  assert.match(login,/kora-environment\.generated\.js/);
+  assert.match(login,/KORA_ENV\.KORA_ERP_SUPABASE_URL/);
+  assert.match(login,/KORA_ENV\.KORA_ERP_SUPABASE_ANON_KEY/);
+  assert.doesNotMatch(login,/const SUPABASE_URL = 'https:\/\//);
 });

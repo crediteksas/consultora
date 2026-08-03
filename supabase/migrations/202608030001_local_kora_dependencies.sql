@@ -60,6 +60,7 @@ drop policy if exists origenes_autenticados on public.origenes;
 create policy origenes_autenticados on public.origenes
 for select to authenticated using (true);
 
+grant select on public.perfiles, public.ejecutivos, public.origenes to authenticated;
 grant all on public.perfiles, public.ejecutivos, public.origenes, public.audit_log to service_role;
 grant usage, select on all sequences in schema public to service_role;
 

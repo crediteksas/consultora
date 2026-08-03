@@ -13,9 +13,10 @@
   const SHELL_SCRIPT = document.currentScript;
   const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
   const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
-  const KORA_ENV = window.__KORA_ENV__ || {};
-  const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL || 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-  const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+  const KORA_ENV = window.__KORA_ENV__;
+  const SUPABASE_URL = KORA_ENV?.KORA_ERP_SUPABASE_URL;
+  const SUPABASE_ANON_KEY = KORA_ENV?.KORA_ERP_SUPABASE_ANON_KEY;
+  const KORA_CONFIGURATION_AVAILABLE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
   function installSharedSupabaseClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -82,7 +83,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     document.documentElement.classList.remove(SHELL_PENDING_CLASS);
   }
 
-  function showBootError() {
+  function showBootError(configurationMissing = false) {
     let errorEl = document.getElementById('creditekShellBootError');
     if (!errorEl) {
       errorEl = document.createElement('div');
@@ -90,8 +91,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       errorEl.setAttribute('role', 'alert');
       errorEl.innerHTML = `
         <div>
-          <strong>No fue posible cargar esta sección.</strong>
-          <p>Comprueba tu conexión e inténtalo nuevamente.</p>
+          <strong>${configurationMissing ? 'Configuración de KORA no disponible' : 'No fue posible cargar esta sección.'}</strong>
+          <p>${configurationMissing ? 'Contacta al administrador.' : 'Comprueba tu conexión e inténtalo nuevamente.'}</p>
           <button type="button">Recargar</button>
         </div>
       `;
@@ -144,7 +145,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   if (KORA_SHELL_MODE !== 'agents') {
     installBootCurtain();
-    installSharedSupabaseClient();
+    if (KORA_CONFIGURATION_AVAILABLE) installSharedSupabaseClient();
   }
 
   const MODULOS = [
@@ -807,6 +808,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
 
     try {
+      if (!KORA_CONFIGURATION_AVAILABLE) {
+        showBootError(true);
+        return;
+      }
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data: sessionData } = await withBootTimeout(sb.auth.getSession());
       if (!sessionData || !sessionData.session) {

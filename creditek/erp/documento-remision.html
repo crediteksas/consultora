@@ -34,6 +34,7 @@
   <title>Remisión · Creditek</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -246,14 +247,11 @@
 <script>
 const SB = (function () {
   if (window.SB) return window.SB;
-  const env = window.CREDITEK_ENV || {
-    SUPABASE_URL: 'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ'
-  };
-  return window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  const env = window.__KORA_ENV__;
+  return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
 })();
 
-const SUPABASE_STORAGE_URL = (window.CREDITEK_ENV?.SUPABASE_URL || 'https://jfkmiyvcdfbsbwchyvol.supabase.co') + '/storage/v1/object/public';
+const SUPABASE_STORAGE_URL = window.__KORA_ENV__.KORA_ERP_SUPABASE_URL + '/storage/v1/object/public';
 
 // ============================================================
 // HELPERS

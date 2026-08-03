@@ -137,7 +137,7 @@ test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA
   assert.match(sidebar,/KORA_ERP_SUPABASE_URL/);
   assert.match(sidebar,/KORA_ERP_SUPABASE_ANON_KEY/);
   assert.match(login,/kora-environment\.generated\.js/);
-  assert.match(login,/KORA_ENV\.KORA_ERP_SUPABASE_URL/);
-  assert.match(login,/KORA_ENV\.KORA_ERP_SUPABASE_ANON_KEY/);
+  assert.match(login,/KORA_ENV\?\.KORA_ERP_SUPABASE_URL/);
+  assert.match(login,/KORA_ENV\?\.KORA_ERP_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(login,/const SUPABASE_URL = 'https:\/\//);
 });

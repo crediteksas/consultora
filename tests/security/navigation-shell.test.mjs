@@ -144,6 +144,10 @@ function createHarness({
   const context = {
     document,
     window: {
+      __KORA_ENV__: {
+        KORA_ERP_SUPABASE_URL: 'https://erp.test.invalid',
+        KORA_ERP_SUPABASE_ANON_KEY: 'public-test-key',
+      },
       supabase: {
         createClient: () => {
           clientCreations += 1;
@@ -176,8 +180,8 @@ function createHarness({
     listeners,
     events,
     createPageClient: () => context.window.supabase.createClient(
-      'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-      'anon-key',
+      context.window.__KORA_ENV__.KORA_ERP_SUPABASE_URL,
+      context.window.__KORA_ENV__.KORA_ERP_SUPABASE_ANON_KEY,
     ),
     getClientCreations: () => clientCreations,
     getBootError: () => bootError,

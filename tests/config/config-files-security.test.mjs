@@ -21,14 +21,15 @@ test('los ejemplos existen y no contienen secretos utilizables', async () => {
   }
 });
 
-test('ninguna pantalla productiva consume todavía el adaptador', async () => {
+test('las pantallas ERP consumen el entorno público y Agentes permanece sin cambios', async () => {
   for (const relative of [
     'creditek/erp/sidebar.js',
     'creditek/erp/tablero.html',
     'creditek/erp/utilidad-creditek-app.js',
-    'creditek/agentes/index.html',
   ]) {
     const source = await readFile(path.join(root, relative), 'utf8');
-    assert.doesNotMatch(source, /KoraEnvironment|__KORA_ENV__/);
+    assert.match(source, /__KORA_ENV__/);
   }
+  const agents = await readFile(path.join(root, 'creditek/agentes/index.html'), 'utf8');
+  assert.doesNotMatch(agents, /KoraEnvironment|__KORA_ENV__/);
 });

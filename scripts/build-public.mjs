@@ -66,6 +66,11 @@ export async function buildPublic(rootDir, outDir) {
     await copyFileFromRoot(rootDir, outDir, relative);
   }
 
+  await cp(
+    path.join(rootDir, 'config/generated/kora-environment.generated.js'),
+    path.join(outDir, 'config/kora-environment.generated.js'),
+  );
+
   for (const relative of PUBLIC_TREES) {
     await cp(path.join(rootDir, relative), path.join(outDir, relative), {
       recursive: true,

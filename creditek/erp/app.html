@@ -170,9 +170,13 @@ body {
 
 <script>
 // Proyecto ERP definido por el entorno activo de KORA.
-const KORA_ENV = window.__KORA_ENV__ || {};
-const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
-const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV?.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV?.KORA_ERP_SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  document.getElementById('loginScreen').innerHTML = '<div class="login-box"><strong>Configuración de KORA no disponible</strong><p>Contacta al administrador.</p></div>';
+  throw new Error('Configuración de KORA no disponible');
+}
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;

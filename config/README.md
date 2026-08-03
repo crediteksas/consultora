@@ -5,7 +5,8 @@ Producto: KORA
 Empresa: Creditek
 
 Esta infraestructura prepara configuraciones separadas para `development`,
-`staging` y `production`. Ninguna pantalla consume todavía el adaptador.
+`staging` y `production`. Las pantallas ERP consumen exclusivamente el
+artefacto generado mediante `window.__KORA_ENV__`.
 
 ## Archivos
 
@@ -63,8 +64,8 @@ Definir las variables públicas de los proyectos aislados y ejecutar:
 npm run build:environment
 ```
 
-Esto construye el artefacto y genera
-`public/config/kora-environment.generated.js`. El proceso falla si falta una variable,
+Esto genera la configuración temporal ignorada por Git, construye el artefacto
+y valida `public/config/kora-environment.generated.js`. El proceso falla si falta una variable,
 ERP y Agentes usan el mismo origen o alguna URL coincide con un host productivo.
 
 ### Production
@@ -100,6 +101,21 @@ En una integración posterior:
 2. Restaurar la constante anterior mediante el commit aislado de esa pantalla.
 3. Ejecutar el build normal.
 4. Confirmar que no se publica `public/config/kora-environment.generated.js`.
+
+## Salud del proyecto ERP
+
+La comprobación pública del proyecto usa únicamente endpoints operativos:
+
+```bash
+npm run health:kora
+```
+
+- Auth: `/auth/v1/settings`.
+- REST/RLS: consulta de `perfiles` con `limit=0`.
+- RPC: llamada anónima segura a `es_central`.
+
+`GET /rest/v1/` no se usa como health check porque corresponde al esquema
+OpenAPI y puede exigir una clave privilegiada aunque Auth, RLS y RPC estén sanos.
 
 ## Inventario de conexiones
 

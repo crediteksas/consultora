@@ -79,8 +79,8 @@ async function authenticate(request: Request, env: Env) {
 }
 
 async function audit(env: Env, token: string, action: string, metadata: Record<string, unknown>) {
-  const result = await supabase(env, '/rest/v1/rpc/aura_record_action', token, {
-    p_action: action, p_app_id: APP_ID, p_metadata: metadata,
+  const result = await supabase(env, '/rest/v1/rpc/aura_meta_ads_record_action', token, {
+    p_action: action, p_period: number(metadata.period),
   });
   return result.ok;
 }

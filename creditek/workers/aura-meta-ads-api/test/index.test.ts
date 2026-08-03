@@ -39,7 +39,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
       apps: [{ app_id: 'meta_ads', role_id: 'meta_ads.reader', permissions }],
     });
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_my_access')) return json({ active: true, role_id: 'meta_ads.reader', permissions });
-    if (url.endsWith('/rest/v1/rpc/aura_record_action')) return json(true);
+    if (url.endsWith('/rest/v1/rpc/aura_meta_ads_record_action')) return json(true);
     if (url.includes('/act_123/insights')) return json({ data: [{ spend: '10000', impressions: '1000', clicks: '50', reach: '800', frequency: '1.25', ctr: '5', cpc: '200', cpm: '10000', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '4' }] }] });
     if (url.includes('/act_123/campaigns')) return json({ data: [{ id: 'c1', name: 'Campaña 1', effective_status: 'ACTIVE', daily_budget: '50000' }] });
     throw new Error(`unexpected ${url}`);
@@ -68,14 +68,14 @@ describe('AURA Meta Ads read-only worker', () => {
     expect(response.status).toBe(200);
     expect(body.metrics).toMatchObject({ spend: 10000, impressions: 1000, clicks: 50, conversions: 4 });
     expect(body.campaigns).toHaveLength(1);
-    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('aura_record_action'))).toBe(true);
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('aura_meta_ads_record_action'))).toBe(true);
   });
 
   it('fails closed when audit is unavailable', async () => {
     mockNetwork();
     const base = globalThis.fetch as any;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes('aura_record_action')) return json({}, 503);
+      if (String(input).includes('aura_meta_ads_record_action')) return json({}, 503);
       return base(input, init);
     }) as any;
     const response = await worker.fetch(request(), env());

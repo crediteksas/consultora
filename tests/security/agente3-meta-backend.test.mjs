@@ -38,3 +38,12 @@ test('Meta Ads tiene permisos propios y no hereda acceso de Sofía', () => {
   assert.doesNotMatch(migration, /sofia\.use/);
   assert.match(migration, /comercial@crediteksas\.com/);
 });
+
+test('Meta Ads audita con una función aislada y de solo lectura', () => {
+  assert.match(worker, /aura_meta_ads_record_action/);
+  assert.doesNotMatch(worker, /\/rpc\/aura_record_action/);
+  assert.match(migration, /create or replace function public\.aura_meta_ads_record_action/);
+  assert.match(migration, /p_action <> 'meta_ads\.dashboard\.read'/);
+  assert.match(migration, /aura_audit_log/);
+  assert.match(migration, /grant execute on function public\.aura_meta_ads_record_action/);
+});

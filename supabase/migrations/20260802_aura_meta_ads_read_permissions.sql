@@ -41,6 +41,62 @@ $$;
 revoke all on function public.aura_meta_ads_my_access() from public, anon;
 grant execute on function public.aura_meta_ads_my_access() to authenticated;
 
+-- Auditoría aislada para consultas de Meta Ads. No amplía la función
+-- compartida de Portal B2B ni admite acciones o metadatos arbitrarios.
+create or replace function public.aura_meta_ads_record_action(
+  p_action text,
+  p_period integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'AURA authentication required';
+  end if;
+
+  if p_action <> 'meta_ads.dashboard.read' then
+    raise exception 'Meta Ads audit action denied';
+  end if;
+
+  if p_period is null or p_period < 1 or p_period > 90 then
+    raise exception 'Meta Ads audit period invalid';
+  end if;
+
+  if not exists (
+    select 1
+    from public.aura_meta_ads_access access
+    where access.user_id = auth.uid()
+      and access.active
+      and 'meta_ads.read' = any(access.permissions)
+  ) then
+    raise exception 'Meta Ads audit permission denied';
+  end if;
+
+  insert into public.aura_audit_log(actor_user_id, app_id, action, metadata)
+  values (
+    auth.uid(),
+    'meta_ads',
+    p_action,
+    jsonb_build_object(
+      'source', 'meta_ads_worker',
+      'event_class', 'read_request',
+      'schema_version', 1,
+      'period', p_period
+    )
+  );
+
+  return jsonb_build_object('ok', true, 'event_class', 'read_request');
+end;
+$$;
+
+revoke all on function public.aura_meta_ads_record_action(text, integer)
+  from public, anon;
+grant execute on function public.aura_meta_ads_record_action(text, integer)
+  to authenticated;
+
 insert into public.aura_meta_ads_access (user_id, role_id, permissions, active)
 select id, 'aura.owner', array[
   'meta_ads.read'

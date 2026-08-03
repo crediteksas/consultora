@@ -47,6 +47,10 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/sofia-aura-20260803b.html",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/sofia-aura-20260803",
       "zone_name": "crediteksas.com"
     },

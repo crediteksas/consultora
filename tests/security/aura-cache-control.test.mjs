@@ -22,7 +22,7 @@ test('el documento principal de AURA siempre responde no-store', async () => {
     return new Response(html, { headers: { 'content-type': 'text/html' } });
   } } };
   const response = await worker.fetch(new Request('https://registro.crediteksas.com/creditek/agentes/'), env);
-  assert.equal(requestedPath, '/creditek/agentes/aura-otp-20260802');
+  assert.equal(requestedPath, '/creditek/agentes/aura-otp-20260802.html');
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
   assert.equal(response.headers.get('pragma'), 'no-cache');

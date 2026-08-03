@@ -1,11 +1,12 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
-const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802';
+const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
   '/creditek/agentes/aura-auth-otp-20260802.mjs',
   '/creditek/agentes/creditek-agente-respuestas.html',
   '/creditek/agentes/sofia-aura-20260803.html',
+  '/creditek/agentes/sofia-aura-20260803b.html',
   '/creditek/agentes/agente3-meta-ads.html',
   '/creditek/agentes/agente3-aura-session.mjs',
 ]);
@@ -18,13 +19,6 @@ const CANONICAL_DOCUMENTS = new Set([
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
-    if (pathname === '/creditek/agentes/sofia-aura-20260803'
-      || pathname === '/creditek/agentes/sofia-aura-20260803.html'
-      || pathname === '/creditek/agentes/creditek-agente-respuestas.html') {
-      return new Response(SOFIA_HTML, {
-        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': NO_STORE, pragma: 'no-cache', expires: '0' },
-      });
-    }
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';
@@ -40,4 +34,3 @@ export default {
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
 };
-import SOFIA_HTML from '../../../agentes/creditek-agente-respuestas.html';

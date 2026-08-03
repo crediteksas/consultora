@@ -27,11 +27,11 @@ La migración crea solo entidades específicas de liquidación: operadores, plat
 
 El 77 % se registra mediante `aliados_seed_politica_inicial(fecha)`, ejecutado por el aprobador autenticado. Crea versiones independientes para PayJoy y ALO con snapshot inmutable por cálculo. No vive en el motor JavaScript.
 
-## Contradicción ALO pendiente
+## Política ALO Aliados aprobada
 
-El archivo fuente `ALO COMO LO RECIBO.xlsx` suma $3.317.600 en **Monto Total** para los cuatro aliados. El total solicitado de $3.257.600 excluye $60.000 de accesorios del contrato 303448 y coincide con **Monto Crédito**. El archivo enviado a gerencia también excluye ese accesorio. La regla escrita exige usar Monto Total para incluir accesorios.
+La versión inicial de la política ALO Aliados usa `monto_credito` como base liquidable. `monto_total`, cantidad de accesorios y valor de accesorios se conservan por separado como datos originales y visibles, pero los accesorios no entran en la base del 77 %.
 
-El importador conserva y usa Monto Total, por lo que la conciliación ALO no puede certificarse hasta definir si ese accesorio se excluye excepcionalmente o si el total aprobado debe corregirse a $3.317.600.
+La conciliación histórica queda certificada en: base liquidable $3.257.600; inicial $814.400; base 77 % $2.508.352; pago neto $1.693.952; bonos $100.000; utilidad Creditek $1.463.648; total a girar $1.793.952. Una inclusión futura de accesorios requiere una nueva versión de política con vigencia hacia adelante.
 
 ## Aplicación y rollback
 

@@ -66,19 +66,23 @@ create table if not exists public.liquidation_operations (
   source_key text not null, external_id text not null, operation_at timestamptz, establishment_name text not null,
   origen_codigo text references public.origenes(codigo), tipo_establecimiento text not null check(tipo_establecimiento in('propia','aliado','no_reconocido')),
   ejecutivo_id uuid references public.ejecutivos(id), cliente_documento text, cliente_nombre text, imei text, referencia text, modelo text,
-  monto_credito numeric(16,2), monto_base numeric(16,2) not null, inicial numeric(16,2) not null default 0, accesorios numeric(16,2) not null default 0,
+  monto_credito numeric(16,2), monto_base numeric(16,2) not null, inicial numeric(16,2) not null default 0,
+  accesorios_cantidad integer not null default 0 check(accesorios_cantidad>=0), accesorios numeric(16,2) not null default 0,
   reconocida boolean not null default false, normalized_data jsonb not null, created_at timestamptz not null default now(), unique(liquidation_id,source_key)
 );
 create unique index if not exists liquidation_operations_platform_external_uidx on public.liquidation_operations(plataforma,external_id,liquidation_id);
 
 create table if not exists public.settlement_policy_versions (
   id uuid primary key default gen_random_uuid(), version integer not null check(version>0), plataforma text not null references public.liquidation_platforms(id),
-  tipo_establecimiento text not null check(tipo_establecimiento in('propia','aliado')), porcentaje numeric(8,6) check(porcentaje>0 and porcentaje<=1), formula_code text not null,
+  tipo_establecimiento text not null check(tipo_establecimiento in('propia','aliado')), porcentaje numeric(8,6) check(porcentaje>0 and porcentaje<=1),
+  base_field text not null check(base_field in('monto_base','monto_credito')), formula_code text not null,
   vigente_desde date not null, vigente_hasta date, estado text not null check(estado in('borrador','pendiente','aprobada','inactiva','rechazada')),
   creado_por uuid references public.perfiles(id), aprobado_por uuid references public.perfiles(id), aprobado_at timestamptz,
   created_at timestamptz not null default now(), check(vigente_hasta is null or vigente_hasta>=vigente_desde),
   check(estado<>'aprobada' or (creado_por is not null and aprobado_por is not null and aprobado_at is not null)), unique(plataforma,tipo_establecimiento,version)
 );
+alter table public.liquidation_operations add column if not exists accesorios_cantidad integer not null default 0 check(accesorios_cantidad>=0);
+alter table public.settlement_policy_versions add column if not exists base_field text not null default 'monto_base' check(base_field in('monto_base','monto_credito'));
 create unique index if not exists settlement_policy_one_open_range_idx on public.settlement_policy_versions(plataforma,tipo_establecimiento,vigente_desde,coalesce(vigente_hasta,'infinity'::date)) where estado='aprobada';
 
 create table if not exists public.liquidation_calculations (
@@ -149,9 +153,9 @@ create or replace function public.aliados_seed_politica_inicial(p_vigente_desde 
 returns void language plpgsql security definer set search_path=public,pg_temp as $$
 begin
   if not public.tiene_capacidad_aliados('aprobador') then raise exception 'Solo el aprobador puede activar la política inicial'; end if;
-  insert into public.settlement_policy_versions(version,plataforma,tipo_establecimiento,porcentaje,formula_code,vigente_desde,estado,creado_por,aprobado_por,aprobado_at)
-  values(1,'payjoy','aliado',0.77,'BASE_X_PORCENTAJE_MENOS_INICIAL',p_vigente_desde,'aprobada',auth.uid(),auth.uid(),now()),
-        (1,'alo','aliado',0.77,'MONTO_TOTAL_X_PORCENTAJE_MENOS_INICIAL',p_vigente_desde,'aprobada',auth.uid(),auth.uid(),now())
+  insert into public.settlement_policy_versions(version,plataforma,tipo_establecimiento,porcentaje,base_field,formula_code,vigente_desde,estado,creado_por,aprobado_por,aprobado_at)
+  values(1,'payjoy','aliado',0.77,'monto_base','BASE_LIQUIDABLE_X_PORCENTAJE_MENOS_INICIAL',p_vigente_desde,'aprobada',auth.uid(),auth.uid(),now()),
+        (1,'alo','aliado',0.77,'monto_credito','BASE_LIQUIDABLE_X_PORCENTAJE_MENOS_INICIAL',p_vigente_desde,'aprobada',auth.uid(),auth.uid(),now())
   on conflict(plataforma,tipo_establecimiento,version) do nothing;
 end; $$;
 
@@ -170,8 +174,8 @@ begin
   values(v_id,v_file,coalesce(v_row->>'sheet','Datos'),(v_row->>'row_number')::int,v_row->>'movement_type',v_row->>'source_key',v_row->'original');
  end loop;
  for v_op in select * from jsonb_array_elements(coalesce(p_operations,'[]')) loop
-  insert into public.liquidation_operations(liquidation_id,plataforma,source_key,external_id,operation_at,establishment_name,origen_codigo,tipo_establecimiento,ejecutivo_id,cliente_documento,cliente_nombre,imei,referencia,modelo,monto_credito,monto_base,inicial,accesorios,reconocida,normalized_data)
-  values(v_id,p_plataforma,v_op->>'sourceKey',v_op->>'externalId',(v_op->>'fecha')::timestamptz,v_op->>'establecimientoNombre',nullif(v_op#>>'{establecimiento,codigo}',''),coalesce(nullif(v_op->>'tipoEstablecimiento',''),'no_reconocido'),nullif(v_op#>>'{ejecutivo,id}','')::uuid,v_op->>'clienteDocumento',v_op->>'clienteNombre',v_op->>'imei',v_op->>'referencia',v_op->>'modelo',nullif(v_op->>'montoCredito','')::numeric,(v_op->>'montoBase')::numeric,coalesce((v_op->>'inicial')::numeric,0),coalesce((v_op->>'accesorios')::numeric,0),coalesce((v_op->>'reconocida')::boolean,false),v_op);
+  insert into public.liquidation_operations(liquidation_id,plataforma,source_key,external_id,operation_at,establishment_name,origen_codigo,tipo_establecimiento,ejecutivo_id,cliente_documento,cliente_nombre,imei,referencia,modelo,monto_credito,monto_base,inicial,accesorios_cantidad,accesorios,reconocida,normalized_data)
+  values(v_id,p_plataforma,v_op->>'sourceKey',v_op->>'externalId',(v_op->>'fecha')::timestamptz,v_op->>'establecimientoNombre',nullif(v_op#>>'{establecimiento,codigo}',''),coalesce(nullif(v_op->>'tipoEstablecimiento',''),'no_reconocido'),nullif(v_op#>>'{ejecutivo,id}','')::uuid,v_op->>'clienteDocumento',v_op->>'clienteNombre',v_op->>'imei',v_op->>'referencia',v_op->>'modelo',nullif(v_op->>'montoCredito','')::numeric,(v_op->>'montoBase')::numeric,coalesce((v_op->>'inicial')::numeric,0),coalesce((v_op->>'accesoriosCantidad')::integer,0),coalesce((v_op->>'accesorios')::numeric,0),coalesce((v_op->>'reconocida')::boolean,false),v_op);
  end loop;
  for v_inc in select * from jsonb_array_elements(coalesce(p_incidents,'[]')) loop
   insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion)
@@ -219,7 +223,7 @@ returns public.liquidations language plpgsql security definer set search_path=pu
 declare v public.liquidations%rowtype;o public.liquidation_operations%rowtype;p public.settlement_policy_versions%rowtype;
  b public.liquidation_beneficiaries%rowtype;a public.beneficiary_bank_accounts%rowtype;c public.liquidation_calculations%rowtype;
  bn public.liquidation_bonuses%rowtype;
- v_count int;v_policy_id uuid;v_bonus numeric;v_order uuid;v_tot_base numeric:=0;v_tot_pago numeric:=0;v_tot_bonus numeric:=0;v_tot_util numeric:=0;
+ v_count int;v_policy_id uuid;v_base numeric;v_bonus numeric;v_order uuid;v_tot_base numeric:=0;v_tot_pago numeric:=0;v_tot_bonus numeric:=0;v_tot_util numeric:=0;
 begin
  if not public.tiene_capacidad_aliados('revisor') then raise exception 'No autorizado para calcular'; end if;
  select * into v from public.liquidations where id=p_id for update; if not found then raise exception 'Liquidación no encontrada'; end if;
@@ -232,9 +236,11 @@ begin
   select count(*),min(id) into v_count,v_policy_id from public.settlement_policy_versions where plataforma=o.plataforma and tipo_establecimiento='aliado' and estado='aprobada' and vigente_desde<=o.operation_at::date and (vigente_hasta is null or vigente_hasta>=o.operation_at::date);
   if v_count<>1 then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,case when v_count=0 then 'politica_ausente' else 'politica_ambigua' end,'No existe una política única vigente') on conflict do nothing;continue;end if;
   select * into p from public.settlement_policy_versions where id=v_policy_id;
+  v_base:=case p.base_field when 'monto_credito' then o.monto_credito else o.monto_base end;
+  if v_base is null or v_base<0 then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,'base_liquidable_invalida','La base indicada por la política no está disponible') on conflict do nothing;continue;end if;
   select coalesce(sum(valor),0) into v_bonus from public.liquidation_bonuses where operation_id=o.id and estado='aprobado';
   insert into public.liquidation_calculations(liquidation_id,operation_id,policy_version_id,policy_snapshot,pagamos,pago_aliado,total_bonos,utilidad_creditek,explanation)
-  values(p_id,o.id,p.id,to_jsonb(p),round(o.monto_base*p.porcentaje,2),round(o.monto_base*p.porcentaje-o.inicial,2),v_bonus,round(o.monto_base-(o.monto_base*p.porcentaje-o.inicial)-v_bonus,2),jsonb_build_object('base',o.monto_base,'porcentaje',p.porcentaje,'inicial',o.inicial,'formula',p.formula_code)) returning * into c;
+  values(p_id,o.id,p.id,to_jsonb(p),round(v_base*p.porcentaje,2),round(v_base*p.porcentaje-o.inicial,2),v_bonus,round(v_base-(v_base*p.porcentaje-o.inicial)-v_bonus,2),jsonb_build_object('base_field',p.base_field,'base_liquidable',v_base,'monto_total_original',o.monto_base,'accesorios_cantidad',o.accesorios_cantidad,'accesorios_valor',o.accesorios,'porcentaje',p.porcentaje,'inicial',o.inicial,'formula',p.formula_code)) returning * into c;
   if c.pago_aliado<0 or c.utilidad_creditek<0 then raise exception 'valor_negativo_imposible';end if;
   select * into b from public.liquidation_beneficiaries where tipo='aliado' and origen_codigo=o.origen_codigo and activo limit 1;
   if not found then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,'beneficiario_sin_identificacion','No existe beneficiario del aliado') on conflict do nothing;continue;end if;
@@ -243,7 +249,7 @@ begin
   insert into public.payment_orders(liquidation_id,beneficiary_id,bank_account_id,valor,idempotency_key) values(p_id,b.id,a.id,c.pago_aliado,gen_random_uuid())
   on conflict(liquidation_id,beneficiary_id) do update set valor=public.payment_orders.valor+excluded.valor returning id into v_order;
   insert into public.payment_items(payment_order_id,operation_id,concepto,valor) values(v_order,o.id,'pago_aliado',c.pago_aliado);
-  v_tot_base:=v_tot_base+o.monto_base;v_tot_pago:=v_tot_pago+c.pago_aliado;v_tot_bonus:=v_tot_bonus+v_bonus;v_tot_util:=v_tot_util+c.utilidad_creditek;
+  v_tot_base:=v_tot_base+v_base;v_tot_pago:=v_tot_pago+c.pago_aliado;v_tot_bonus:=v_tot_bonus+v_bonus;v_tot_util:=v_tot_util+c.utilidad_creditek;
  end loop;
  for bn in select * from public.liquidation_bonuses where liquidation_id=p_id and estado='aprobado' loop
   select * into a from public.beneficiary_bank_accounts where beneficiary_id=bn.beneficiary_id and activo and validada order by validada_at desc limit 1;

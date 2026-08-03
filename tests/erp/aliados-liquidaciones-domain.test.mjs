@@ -16,7 +16,7 @@ const establecimientos = [
   { id:'a4', nombre:'Distritoys', aliases:['Distritoys '], tipo:'aliado', ejecutivo:{ id:'e4' }, beneficiarioId:'b4' },
   { id:'t1', nombre:'CREDITEK CIENAGA DE ORO 1', tipo:'propia' },
 ];
-const policy = plataforma => ({ id:`p-${plataforma}`,version:1,plataforma,tipoEstablecimiento:'aliado',porcentaje:.77,vigenteDesde:'2026-01-01',vigenteHasta:null,estado:'aprobada' });
+const policy = plataforma => ({ id:`p-${plataforma}`,version:1,plataforma,tipoEstablecimiento:'aliado',porcentaje:.77,baseCampo:plataforma==='alo'?'monto_credito':'monto_base',vigenteDesde:'2026-01-01',vigenteHasta:null,estado:'aprobada' });
 
 function sheetRows(file, sheetName) {
   const workbook = XLSX.readFile(file, { cellDates: true });
@@ -66,14 +66,19 @@ test('conciliación histórica PayJoy reproduce el detalle aprobado y no la tabl
   assert.deepEqual(totals,{ operaciones:4,montoBase:2760000,inicial:276000,pagamos:2125200,pagoAliados:1849200,bonos:230000,utilidadCreditek:680800,totalPagar:2079200 });
 });
 
-test('ALO usa Monto Total y evidencia la diferencia histórica de accesorios', { skip: !fs.existsSync(path.join(os.homedir(),'Downloads','ALO COMO LO RECIBO.xlsx')) }, () => {
+test('ALO conserva Monto Total y liquida aliados sobre Monto Crédito según la política versionada', { skip: !fs.existsSync(path.join(os.homedir(),'Downloads','ALO COMO LO RECIBO.xlsx')) }, () => {
   const source = path.join(os.homedir(),'Downloads','ALO COMO LO RECIBO.xlsx');
   const imported = domain.importarAlo(sheetRows(source,'Worksheet'), establecimientos);
   const allies = imported.operaciones.filter(op => op.tipoEstablecimiento === 'aliado');
   assert.equal(allies.length,4);
   assert.equal(allies.reduce((sum,op) => sum + op.montoBase,0),3317600);
+  assert.equal(allies.reduce((sum,op) => sum + op.montoCredito,0),3257600);
+  assert.equal(allies.reduce((sum,op) => sum + op.accesoriosCantidad,0),1);
   assert.equal(allies.reduce((sum,op) => sum + op.accesorios,0),60000);
-  assert.equal(3317600 - 60000,3257600, 'el total solicitado excluye exactamente el accesorio observado');
+  const bonuses = allies.map((op,index) => ({ operationKey:op.sourceKey,valor:25000,estado:'aprobado',tipoBeneficiario:'ejecutivo',beneficiarioId:`alo-bono-${index}` }));
+  const calculations = domain.calcularAliados(allies.map(op=>({...op,incidencias:[]})),[policy('alo')],bonuses);
+  assert.deepEqual(domain.resumir(calculations),{ operaciones:4,montoBase:3257600,inicial:814400,pagamos:2508352,pagoAliados:1693952,bonos:100000,utilidadCreditek:1463648,totalPagar:1793952 });
+  assert.ok(calculations.every(item => item.policySnapshot.baseCampo === 'monto_credito'));
 });
 
 test('genera pagos por beneficiario y controla estados y eventos seguros', () => {

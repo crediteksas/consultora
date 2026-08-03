@@ -22,8 +22,19 @@ test('política 77 queda como dato versionado y no en el motor JavaScript', asyn
   assert.match(sql,/settlement_policy_versions/);
   assert.match(sql,/values\(1,'payjoy','aliado',0\.77/);
   assert.match(sql,/\(1,'alo','aliado',0\.77/);
+  assert.match(sql,/base_field text not null/);
+  assert.match(sql,/'alo','aliado',0\.77,'monto_credito'/);
   assert.doesNotMatch(domain,/\b0\.77\b|\b77\s*%/);
   assert.match(sql,/policy_snapshot jsonb not null/);
+});
+
+test('ALO conserva total y accesorios separados mientras la política elige monto crédito', () => {
+  assert.match(sql,/monto_credito numeric/);
+  assert.match(sql,/monto_base numeric/);
+  assert.match(sql,/accesorios_cantidad integer/);
+  assert.match(sql,/accesorios numeric/);
+  assert.match(sql,/case p\.base_field when 'monto_credito' then o\.monto_credito else o\.monto_base end/);
+  assert.match(app,/monto_credito,monto_base,accesorios_cantidad,accesorios/);
 });
 
 test('estados, aprobación exclusiva e inmutabilidad se aplican en servidor', () => {

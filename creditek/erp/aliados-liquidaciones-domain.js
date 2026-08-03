@@ -138,8 +138,10 @@
         clienteNombre: texto(valor(row,'Nombre Completo')), clienteCelular: texto(valor(row,'Numero Celular')),
         clienteEmail: texto(valor(row,'Email')), referencia: texto(valor(row,'Referencia')),
         vendedorNombre: texto(valor(row,'Vendedor')), plazo: texto(valor(row,'Plazo del Prestamo')),
-        montoCredito: dinero(valor(row,'Monto Credito')), montoBase,
-        inicial: dinero(valor(row,'Valor Cuota Inicial')), accesorios: dinero(valor(row,'Suma Precios Accesorios')),
+        montoCredito: dinero(valor(row,'Monto Credito')), montoTotal: montoBase, montoBase,
+        inicial: dinero(valor(row,'Valor Cuota Inicial')),
+        accesoriosCantidad: Number(valor(row,'Cantidad de Accesorios') || 0),
+        accesorios: dinero(valor(row,'Suma Precios Accesorios')),
         reconocida: clave(valor(row,'Estado del Contrato')) === 'activo',
         movimientos: [{ fila: index + 2, tipo: 'contrato', original: row }], incidencias: [...new Set(problemas)],
       };
@@ -162,20 +164,24 @@
       try { policy = resolverPolitica(policies, operation.fecha, operation.plataforma, 'aliado'); }
       catch (error) { return { operacion: operation, bloqueada: true, incidencias: [error.message] }; }
       const porcentaje = Number(policy.porcentaje);
-      const pagamos = Math.round(operation.montoBase * porcentaje * 100) / 100;
+      const baseCampo = policy.baseCampo || policy.base_field || 'monto_base';
+      const bases = { monto_base: operation.montoBase, monto_credito: operation.montoCredito };
+      const baseLiquidable = Number(bases[baseCampo]);
+      if (!Number.isFinite(baseLiquidable) || baseLiquidable < 0) return { operacion: operation, bloqueada: true, incidencias: ['base_liquidable_invalida'] };
+      const pagamos = Math.round(baseLiquidable * porcentaje * 100) / 100;
       const pagoAliado = Math.round((pagamos - operation.inicial) * 100) / 100;
       const bonosOperacion = bonos.filter(bonus => bonus.operationKey === operation.sourceKey && bonus.estado !== 'anulado');
       const totalBonos = bonosOperacion.reduce((sum, bonus) => sum + dinero(bonus.valor), 0);
-      const utilidadCreditek = Math.round((operation.montoBase - pagoAliado - totalBonos) * 100) / 100;
+      const utilidadCreditek = Math.round((baseLiquidable - pagoAliado - totalBonos) * 100) / 100;
       const incidencias = [];
       if (pagoAliado < 0 || utilidadCreditek < 0) incidencias.push('valor_negativo_imposible');
       if (!operation.ejecutivo) incidencias.push('aliado_sin_ejecutivo');
-      return { operacion: operation, policySnapshot: JSON.parse(JSON.stringify(policy)), pagamos, pagoAliado, bonos: bonosOperacion, totalBonos, utilidadCreditek, bloqueada: incidencias.length > 0, incidencias };
+      return { operacion: operation, policySnapshot: JSON.parse(JSON.stringify(policy)), baseCampo, baseLiquidable, pagamos, pagoAliado, bonos: bonosOperacion, totalBonos, utilidadCreditek, bloqueada: incidencias.length > 0, incidencias };
     });
   }
   function resumir(calculos) {
     return calculos.filter(item => !item.omitida && !item.bloqueada).reduce((out, item) => {
-      out.operaciones += 1; out.montoBase += item.operacion.montoBase; out.inicial += item.operacion.inicial;
+      out.operaciones += 1; out.montoBase += item.baseLiquidable; out.inicial += item.operacion.inicial;
       out.pagamos += item.pagamos; out.pagoAliados += item.pagoAliado; out.bonos += item.totalBonos;
       out.utilidadCreditek += item.utilidadCreditek; out.totalPagar += item.pagoAliado + item.totalBonos;
       return out;

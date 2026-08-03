@@ -36,7 +36,15 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-respuestas",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/agente3-meta-ads.html",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/agente3-meta-ads",
       "zone_name": "crediteksas.com"
     },
     {

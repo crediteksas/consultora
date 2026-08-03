@@ -156,6 +156,8 @@ test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () =>
   assert.match(worker, /creditek-agente-respuestas\.html/);
   assert.match(worker, /agente3-meta-ads\.html/);
   assert.match(worker, /CANONICAL_DOCUMENTS/);
+  assert.match(worker, /import SOFIA_HTML/);
+  assert.match(worker, /new Response\(SOFIA_HTML/);
   assert.doesNotMatch(build, /cp\([^;]+recursive:\s*true/);
   assert.doesNotMatch(build, /portal|erp|kora/i);
 });

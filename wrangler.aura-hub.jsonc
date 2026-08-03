@@ -3,6 +3,9 @@
   "name": "aura-hub",
   "main": "creditek/workers/aura-hub/src/index.js",
   "compatibility_date": "2026-08-01",
+  "rules": [
+    { "type": "Text", "globs": ["**/*.html"], "fallthrough": true }
+  ],
   "assets": {
     "directory": "./public-aura-hub",
     "binding": "ASSETS",

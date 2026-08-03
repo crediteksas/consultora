@@ -18,6 +18,13 @@ const CANONICAL_DOCUMENTS = new Set([
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
+    if (pathname === '/creditek/agentes/sofia-aura-20260803'
+      || pathname === '/creditek/agentes/sofia-aura-20260803.html'
+      || pathname === '/creditek/agentes/creditek-agente-respuestas.html') {
+      return new Response(SOFIA_HTML, {
+        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': NO_STORE, pragma: 'no-cache', expires: '0' },
+      });
+    }
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';
@@ -33,3 +40,4 @@ export default {
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
 };
+import SOFIA_HTML from '../../../agentes/creditek-agente-respuestas.html';

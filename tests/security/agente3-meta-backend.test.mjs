@@ -46,4 +46,6 @@ test('Meta Ads audita con una función aislada y de solo lectura', () => {
   assert.match(migration, /p_action <> 'meta_ads\.dashboard\.read'/);
   assert.match(migration, /aura_audit_log/);
   assert.match(migration, /grant execute on function public\.aura_meta_ads_record_action/);
+  assert.match(migration, /aura_audit_log_app_id_check/);
+  assert.match(migration, /'portal_b2b'[\s\S]*'sofia'[\s\S]*'meta_ads'/);
 });

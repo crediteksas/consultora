@@ -41,6 +41,14 @@ $$;
 revoke all on function public.aura_meta_ads_my_access() from public, anon;
 grant execute on function public.aura_meta_ads_my_access() to authenticated;
 
+-- La bitácora compartida ya admite Portal B2B y Sofía. Agente 3 necesita
+-- registrar únicamente sus lecturas sin relajar ninguna otra validación.
+alter table public.aura_audit_log
+  drop constraint if exists aura_audit_log_app_id_check;
+alter table public.aura_audit_log
+  add constraint aura_audit_log_app_id_check
+  check (app_id is null or app_id in ('portal_b2b', 'sofia', 'meta_ads'));
+
 -- Auditoría aislada para consultas de Meta Ads. No amplía la función
 -- compartida de Portal B2B ni admite acciones o metadatos arbitrarios.
 create or replace function public.aura_meta_ads_record_action(

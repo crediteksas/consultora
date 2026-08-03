@@ -51,7 +51,7 @@ create table if not exists public.liquidations (
 create table if not exists public.liquidation_imported_files (
   id uuid primary key default gen_random_uuid(), liquidation_id uuid not null unique references public.liquidations(id),
   original_name text not null, sha256 text not null check(sha256 ~ '^[0-9a-f]{64}$'), storage_path text not null unique,
-  size_bytes bigint not null check(size_bytes>0 and size_bytes<=20971520), mime_type text not null,
+  size_bytes bigint not null check(size_bytes>0 and size_bytes<=10485760), mime_type text not null,
   detected_cutoff date, uploaded_by uuid not null references public.perfiles(id) default auth.uid(), uploaded_at timestamptz not null default now()
 );
 create unique index if not exists liquidation_imported_files_sha256_uidx on public.liquidation_imported_files(sha256);
@@ -233,7 +233,7 @@ begin
  for o in select * from public.liquidation_operations where liquidation_id=p_id and tipo_establecimiento='aliado' loop
   if not o.reconocida then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,'operacion_no_reconocida','La plataforma no reconoce la operación') on conflict do nothing;continue;end if;
   if o.ejecutivo_id is null then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,'aliado_sin_ejecutivo','El aliado no tiene ejecutivo vigente') on conflict do nothing;continue;end if;
-  select count(*),min(id) into v_count,v_policy_id from public.settlement_policy_versions where plataforma=o.plataforma and tipo_establecimiento='aliado' and estado='aprobada' and vigente_desde<=o.operation_at::date and (vigente_hasta is null or vigente_hasta>=o.operation_at::date);
+  select count(*),min(id::text)::uuid into v_count,v_policy_id from public.settlement_policy_versions where plataforma=o.plataforma and tipo_establecimiento='aliado' and estado='aprobada' and vigente_desde<=o.operation_at::date and (vigente_hasta is null or vigente_hasta>=o.operation_at::date);
   if v_count<>1 then insert into public.liquidation_incidents(liquidation_id,operation_id,tipo,descripcion) values(p_id,o.id,case when v_count=0 then 'politica_ausente' else 'politica_ambigua' end,'No existe una política única vigente') on conflict do nothing;continue;end if;
   select * into p from public.settlement_policy_versions where id=v_policy_id;
   v_base:=case p.base_field when 'monto_credito' then o.monto_credito else o.monto_base end;
@@ -275,6 +275,38 @@ begin
  insert into public.audit_log(usuario,accion,tabla,registro_id,detalle) values(auth.uid(),'aliados_bono_manual','liquidation_bonuses',v.id,to_jsonb(v));return v;
 end; $$;
 
+create or replace function public.aliados_cambiar_estado_pago(p_id uuid,p_estado text,p_soporte_path text default null)
+returns public.payment_orders language plpgsql security definer set search_path=public,pg_temp as $$
+declare v public.payment_orders%rowtype;v_anterior text;v_event text;
+begin
+ if not public.tiene_capacidad_aliados('revisor') then raise exception 'No autorizado para gestionar pagos';end if;
+ select * into v from public.payment_orders where id=p_id for update;if not found then raise exception 'Pago no encontrado';end if;
+ v_anterior:=v.estado;
+ if (v.estado,p_estado) not in (('pendiente','programado'),('programado','pagado'),('pagado','conciliado')) then
+  raise exception 'Transición de pago inválida';
+ end if;
+ if p_estado in('pagado','conciliado') and not public.tiene_capacidad_aliados('aprobador') then
+  raise exception 'Solo Óscar/aprobador puede confirmar el pago';
+ end if;
+ update public.payment_orders set estado=p_estado,
+  fecha_programada=case when p_estado='programado' then current_date else fecha_programada end,
+  fecha_pagada=case when p_estado='pagado' then now() else fecha_pagada end,
+  soporte_path=coalesce(nullif(btrim(p_soporte_path),''),soporte_path),updated_at=now()
+ where id=p_id returning * into v;
+ v_event:=case p_estado when 'programado' then 'payment.scheduled' when 'pagado' then 'payment.completed' else null end;
+ if v_event is not null then
+  insert into public.liquidation_domain_events(event_type,aggregate_type,aggregate_id,payload,idempotency_key)
+  values(v_event,'payment',p_id,jsonb_build_object('payment_id',p_id,'liquidation_id',v.liquidation_id),p_id||':'||p_estado)
+  on conflict(idempotency_key) do nothing;
+ end if;
+ if not exists(select 1 from public.payment_orders where liquidation_id=v.liquidation_id and estado<>p_estado) then
+  update public.liquidations set estado=case p_estado when 'programado' then 'programada' when 'pagado' then 'pagada' when 'conciliado' then 'conciliada' end,updated_at=now() where id=v.liquidation_id;
+ end if;
+ insert into public.audit_log(usuario,accion,tabla,registro_id,detalle)
+ values(auth.uid(),'aliados_pago_'||p_estado,'payment_orders',p_id,jsonb_build_object('anterior',v_anterior,'nuevo',p_estado,'soporte_path',v.soporte_path));
+ return v;
+end; $$;
+
 create or replace function public.aliados_impedir_cambio_aprobado() returns trigger language plpgsql as $$
 begin
  if old.frozen_at is not null and (old.plataforma,old.periodo_desde,old.periodo_hasta,old.fecha_corte,old.total_operaciones,old.total_pago_aliados,old.total_bonos,old.total_utilidad_creditek,old.total_pagar)
@@ -292,12 +324,17 @@ do $rls$ declare t text;begin
   execute format('revoke all on public.%I from public,anon',t);
   execute format('revoke insert,update,delete on public.%I from authenticated',t);
   execute format('grant select on public.%I to authenticated',t);
+  execute format('grant all on public.%I to service_role',t);
  end loop;
 end;$rls$;
 drop policy if exists soportes_aliados_insert on storage.objects;
-create policy soportes_aliados_insert on storage.objects for insert to authenticated with check(bucket_id='soportes' and public.tiene_capacidad_aliados('revisor') and name ~ '^aliados/(originales|pagos)/[0-9a-f-]{36}\.(xlsx|xls|pdf|jpg|jpeg|png)$' and coalesce((metadata->>'size')::bigint,0) between 1 and 20971520);
+create policy soportes_aliados_insert on storage.objects for insert to authenticated with check(bucket_id='soportes' and public.tiene_capacidad_aliados('revisor') and name ~ '^aliados/(originales|pagos)/[0-9a-f-]{36}\.(xlsx|xls|pdf|jpg|jpeg|png)$');
 drop policy if exists soportes_aliados_select on storage.objects;
 create policy soportes_aliados_select on storage.objects for select to authenticated using(bucket_id='soportes' and public.tiene_capacidad_aliados('revisor') and name ~ '^aliados/(originales|pagos)/');
-revoke all on function public.aliados_seed_politica_inicial(date),public.aliados_importar_liquidacion(text,text,text,text,bigint,text,date,date,date,jsonb,jsonb,jsonb,uuid),public.aliados_calcular_liquidacion(uuid),public.aliados_guardar_bono(uuid,uuid,uuid,text,numeric,text,uuid),public.aliados_cambiar_estado(uuid,text,text) from public,anon;
-grant execute on function public.aliados_seed_politica_inicial(date),public.aliados_importar_liquidacion(text,text,text,text,bigint,text,date,date,date,jsonb,jsonb,jsonb,uuid),public.aliados_calcular_liquidacion(uuid),public.aliados_guardar_bono(uuid,uuid,uuid,text,numeric,text,uuid),public.aliados_cambiar_estado(uuid,text,text) to authenticated;
+drop policy if exists audit_log_aliados_select on public.audit_log;
+create policy audit_log_aliados_select on public.audit_log for select to authenticated
+using(public.tiene_capacidad_aliados('revisor') and tabla in('liquidations','liquidation_bonuses','payment_orders'));
+grant select on public.audit_log to authenticated;
+revoke all on function public.aliados_seed_politica_inicial(date),public.aliados_importar_liquidacion(text,text,text,text,bigint,text,date,date,date,jsonb,jsonb,jsonb,uuid),public.aliados_calcular_liquidacion(uuid),public.aliados_guardar_bono(uuid,uuid,uuid,text,numeric,text,uuid),public.aliados_cambiar_estado(uuid,text,text),public.aliados_cambiar_estado_pago(uuid,text,text) from public,anon;
+grant execute on function public.aliados_seed_politica_inicial(date),public.aliados_importar_liquidacion(text,text,text,text,bigint,text,date,date,date,jsonb,jsonb,jsonb,uuid),public.aliados_calcular_liquidacion(uuid),public.aliados_guardar_bono(uuid,uuid,uuid,text,numeric,text,uuid),public.aliados_cambiar_estado(uuid,text,text),public.aliados_cambiar_estado_pago(uuid,text,text) to authenticated;
 commit;

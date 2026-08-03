@@ -44,6 +44,10 @@ test('estados, aprobación exclusiva e inmutabilidad se aplican en servidor', ()
   assert.match(sql,/liquidation_immutable_after_approval/);
   assert.match(sql,/Existen novedades que bloquean la aprobación/);
   assert.match(sql,/Pago total diferente al detalle/);
+  assert.match(sql,/aliados_cambiar_estado_pago/);
+  assert.match(sql,/Transición de pago inválida/);
+  assert.match(sql,/payment\.scheduled/);
+  assert.match(sql,/payment\.completed/);
 });
 
 test('importación, pagos y eventos tienen claves de idempotencia', () => {
@@ -57,9 +61,11 @@ test('importación, pagos y eventos tienen claves de idempotencia', () => {
 test('RLS y Storage solo exponen Aliados a operadores autorizados', () => {
   assert.match(sql,/enable row level security/);
   assert.match(sql,/create policy aliados_select/);
+  assert.match(sql,/create policy audit_log_aliados_select/);
   assert.match(sql,/tiene_capacidad_aliados\('revisor'\)/);
   assert.match(sql,/bucket_id='soportes'/);
   assert.match(sql,/\^aliados\/\(originales\|pagos\)/);
+  assert.match(sql,/10485760/);
   assert.doesNotMatch(sql,/UUID_[0-9a-f-]{8}/i);
 });
 

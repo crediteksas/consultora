@@ -8,6 +8,8 @@ begin
 end;$guard$;
 drop policy if exists soportes_aliados_insert on storage.objects;
 drop policy if exists soportes_aliados_select on storage.objects;
+drop policy if exists audit_log_aliados_select on public.audit_log;
+drop function if exists public.aliados_cambiar_estado_pago(uuid,text,text);
 drop function if exists public.aliados_guardar_bono(uuid,uuid,uuid,text,numeric,text,uuid);
 drop function if exists public.aliados_calcular_liquidacion(uuid);
 drop function if exists public.aliados_cambiar_estado(uuid,text,text);
@@ -31,6 +33,6 @@ drop table if exists public.liquidation_source_rows;
 drop table if exists public.liquidation_imported_files;
 drop table if exists public.liquidations;
 drop table if exists public.liquidation_platforms;
-drop function if exists public.tiene_capacidad_aliados(text);
 drop table if exists public.aliados_operadores;
+drop function if exists public.tiene_capacidad_aliados(text);
 commit;

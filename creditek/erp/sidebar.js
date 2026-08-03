@@ -179,11 +179,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // recibe una remisión necesita abrir el documento para aceptarla).
     // SPEC v2 · 23-jul-2026: Doc. remisión se quita del menú. Se abre con
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
-    { titulo: 'BODEGA CENTRAL', icono: '🏭', lucide: 'warehouse', description: 'Compras, proveedores, inventario central y utilidad consolidada.', items: [
+    { titulo: 'CREDITEK B2B', b2b: true, icono: '🏭', lucide: 'warehouse', description: 'Compras, proveedores, inventario central y resultado del negocio B2B.', items: [
       { label: 'Cartera de Proveedores', href: 'proveedores.html', lucide: 'hand-coins', description: 'Consulta obligaciones, pagos y saldos pendientes con proveedores.', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Bodega Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de la bodega principal.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Utilidad Creditek', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza ingresos, costos, gastos y utilidad consolidada.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Inventario Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de Creditek B2B.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Resultado B2B', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza facturación, costo congelado, gastos y retiros B2B.', roles: ['gerencia', 'auditoria'] },
+    ]},
+    { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [
+      { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', description: 'Registro y validación segura de clientes de Creditek.', items: [
       { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
@@ -312,7 +315,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     const esCentral = perfil.rol === 'gerencia' || perfil.rol === 'auditoria';
     const rolLabel = ROL_LABEL[perfil.rol] || perfil.rol;
 
-    const modulosHtml = MODULOS.map(mod => {
+    const modulosHtml = MODULOS.filter(mod => (!mod.b2b || perfil.es_admin_b2b) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
       const items = mod.items.filter(it => it.roles.includes(perfil.rol));
       if (!items.length) return '';
       const abierto = items.some(it => it.href === activa);
@@ -446,8 +449,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       || modules[0]?.items[0];
   }
 
-  function koraNavigationHtml(modules, role, activeItem) {
-    return modules.map(module => {
+  function koraNavigationHtml(modules, role, activeItem, profile) {
+    return modules.filter(module => (!module.b2b || profile.es_admin_b2b) && (!module.aliados || profile.es_operador_aliados)).map(module => {
       const items = module.items.filter(item => !item.roles || item.roles.includes(role));
       if (!items.length) return '';
       const isActive = item => item === activeItem
@@ -552,7 +555,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <div data-kora-brand data-variant="sidebar" data-product-name="${escapeHtml(productName)}" title="${escapeHtml(shellProductName)} — Creditek"></div>
       <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación" title="Cerrar navegación">${koraStaticIcon('x')}</button>
     </div>
-    <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current)}</nav>
+    <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current, profile)}</nav>
     <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
     const overlay = document.createElement('div');
     overlay.className = 'kora-drawer-overlay';
@@ -824,6 +827,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         else showBootError();
         return;
       }
+      let esAdminB2b = false;
+      if (typeof sb.rpc === 'function') {
+        const permisoB2b = await withBootTimeout(sb.rpc('es_admin_b2b'));
+        esAdminB2b = permisoB2b?.error ? false : permisoB2b?.data === true;
+      }
+      perfil.es_admin_b2b = esAdminB2b;
+      let esOperadorAliados = false;
+      if (typeof sb.rpc === 'function') {
+        const permisoAliados = await withBootTimeout(sb.rpc('tiene_capacidad_aliados', { p_capacidad: 'revisor' }));
+        esOperadorAliados = permisoAliados?.error ? false : permisoAliados?.data === true;
+      }
+      perfil.es_operador_aliados = esOperadorAliados;
 
       const { data: tiendas } = await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),

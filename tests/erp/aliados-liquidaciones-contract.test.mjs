@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const sql = await readFile('creditek/erp/migrations/20260802_creditek_aliados_liquidaciones_v1.sql','utf8');
+const rollback = await readFile('creditek/erp/migrations/rollback/20260802_creditek_aliados_liquidaciones_v1_rollback.sql','utf8');
+const html = await readFile('creditek/erp/aliados-liquidaciones.html','utf8');
+const app = await readFile('creditek/erp/aliados-liquidaciones-app.js','utf8');
+const sidebar = await readFile('creditek/erp/sidebar.js','utf8');
+
+test('la migración reutiliza maestros, auditoría y bucket sin crear duplicados', () => {
+  assert.match(sql,/to_regclass\('public\.origenes'\)/);
+  assert.match(sql,/to_regclass\('public\.ejecutivos'\)/);
+  assert.match(sql,/public\.audit_log/);
+  assert.match(sql,/storage\.buckets where id='soportes'/);
+  assert.doesNotMatch(sql,/insert into storage\.buckets/i);
+  assert.doesNotMatch(sql,/create table if not exists public\.(allies|executives|establishments)/i);
+});
+
+test('política 77 queda como dato versionado y no en el motor JavaScript', async () => {
+  const domain = await readFile('creditek/erp/aliados-liquidaciones-domain.js','utf8');
+  assert.match(sql,/settlement_policy_versions/);
+  assert.match(sql,/values\(1,'payjoy','aliado',0\.77/);
+  assert.match(sql,/\(1,'alo','aliado',0\.77/);
+  assert.doesNotMatch(domain,/\b0\.77\b|\b77\s*%/);
+  assert.match(sql,/policy_snapshot jsonb not null/);
+});
+
+test('estados, aprobación exclusiva e inmutabilidad se aplican en servidor', () => {
+  for (const state of ['importada','validada','con_novedades','calculada','revisada','aprobada','programada','pagada','conciliada','cerrada','anulada']) assert.match(sql,new RegExp(`'${state}'`));
+  assert.match(sql,/tiene_capacidad_aliados\('aprobador'\)/);
+  assert.match(sql,/Solo Óscar\/aprobador puede aprobar/);
+  assert.match(sql,/liquidation_immutable_after_approval/);
+  assert.match(sql,/Existen novedades que bloquean la aprobación/);
+  assert.match(sql,/Pago total diferente al detalle/);
+});
+
+test('importación, pagos y eventos tienen claves de idempotencia', () => {
+  assert.match(sql,/liquidations[\s\S]*idempotency_key uuid not null unique/);
+  assert.match(sql,/payment_orders[\s\S]*idempotency_key uuid not null unique/);
+  assert.match(sql,/liquidation_bonuses[\s\S]*idempotency_key uuid not null unique/);
+  assert.match(sql,/liquidation_domain_events[\s\S]*idempotency_key text not null unique/);
+  for (const event of ['liquidation.imported','liquidation.validated','liquidation.has_incidents','liquidation.calculated','liquidation.reviewed','liquidation.approved','payment.scheduled','payment.completed','payment.rejected','liquidation.closed']) assert.match(sql,new RegExp(event.replace('.','\\.')));
+});
+
+test('RLS y Storage solo exponen Aliados a operadores autorizados', () => {
+  assert.match(sql,/enable row level security/);
+  assert.match(sql,/create policy aliados_select/);
+  assert.match(sql,/tiene_capacidad_aliados\('revisor'\)/);
+  assert.match(sql,/bucket_id='soportes'/);
+  assert.match(sql,/\^aliados\/\(originales\|pagos\)/);
+  assert.doesNotMatch(sql,/UUID_[0-9a-f-]{8}/i);
+});
+
+test('rollback se niega a borrar históricos y retira solo objetos V1', () => {
+  assert.match(rollback,/exists\(select 1 from public\.liquidations\)/);
+  assert.match(rollback,/Rollback automático bloqueado/);
+  assert.doesNotMatch(rollback,/drop table.*(origenes|ejecutivos|perfiles|audit_log)/i);
+  assert.doesNotMatch(rollback,/delete from public\.(origenes|ejecutivos|perfiles|audit_log)/i);
+});
+
+test('interfaz usa el shell actual y no genera Excel', () => {
+  assert.match(html,/sidebar\.js/);
+  assert.match(html,/aliados-liquidaciones-domain\.js/);
+  assert.match(html,/Nueva importación/);
+  assert.match(app,/XLSX\.read/);
+  assert.doesNotMatch(app,/XLSX\.write|writeFile|book_new/);
+  assert.match(app,/storage\.from\('soportes'\)/);
+  assert.match(sidebar,/CREDITEK ALIADOS/);
+  assert.match(sidebar,/perfil\.es_operador_aliados/);
+});

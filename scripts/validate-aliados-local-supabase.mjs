@@ -88,6 +88,7 @@ const imported = {
 
 const beneficiaries=[];
 for (const origin of establishments.filter(item=>item.tipo==='aliado')) beneficiaries.push({ id:crypto.randomUUID(),tipo:'aliado',identificacion:`NIT-${origin.codigo}`,nombre:origin.nombre,origen_codigo:origin.codigo,activo:true });
+for (const origin of establishments.filter(item=>item.tipo==='propia')) beneficiaries.push({ id:crypto.randomUUID(),tipo:'otro',identificacion:`TIENDA-${origin.codigo}`,nombre:origin.nombre,origen_codigo:origin.codigo,activo:true });
 for (const executive of executives) beneficiaries.push({ id:crypto.randomUUID(),tipo:'ejecutivo',identificacion:`CC-${executive.id.slice(0,8)}`,nombre:executive.nombre,ejecutivo_id:executive.id,activo:true });
 expectOk(await admin.from('liquidation_beneficiaries').upsert(beneficiaries),'beneficiarios');
 expectOk(await admin.from('beneficiary_bank_accounts').upsert(beneficiaries.map((item,index)=>({ beneficiary_id:item.id,banco:'BANCO LOCAL',tipo_cuenta:'ahorros',numero_cuenta:`LOCAL-${index+1}`,validada:true,validada_por:users.oscar.id,validada_at:new Date().toISOString(),activo:true }))),'cuentas');
@@ -123,14 +124,35 @@ for (const platform of ['payjoy','alo']) {
   expectOk(await maite.rpc('aliados_cambiar_estado',{ p_id:liquidationId,p_estado:'validada',p_comentario:'Validación local' }),`${platform} validación`);
   const dbOperations=expectOk(await maite.from('liquidation_operations').select('id,source_key,ejecutivo_id,tipo_establecimiento').eq('liquidation_id',liquidationId),`${platform} operaciones`);
   const allies=dbOperations.filter(item=>item.tipo_establecimiento==='aliado');
+  const ownOperations=expectOk(await admin.from('liquidation_operations').select('*').eq('liquidation_id',liquidationId).eq('tipo_establecimiento','propia'),`${platform} tiendas propias`);
   assert.equal(allies.length,expected[platform].operations);
+  assert.equal(ownOperations.length,platform==='payjoy'?24:4);
+  for (const [index,operation] of ownOperations.entries()) {
+    const productId=crypto.randomUUID(),unitId=crypto.randomUUID(),saleId=crypto.randomUUID();
+    const koraInitial=Number(operation.inicial)+(index===0?10000:0);
+    expectOk(await admin.from('productos').insert({ id:productId,nombre:operation.modelo||operation.referencia||'Equipo local' }),`${platform} producto local`);
+    expectOk(await admin.from('unidades').insert({ id:unitId,imei:operation.imei,producto_id:productId,tienda_actual:operation.origen_codigo,estado:'vendido',costo_remision:Math.round(Number(operation.monto_base)*0.55),precio_tienda:Number(operation.monto_base) }),`${platform} unidad local`);
+    expectOk(await admin.from('ventas').insert({ id:saleId,tienda_codigo:operation.origen_codigo,fecha:'2026-08-03',tipo:'credito',total:Number(operation.monto_base),anulada:false }),`${platform} venta local`);
+    expectOk(await admin.from('creditos').insert({ venta_id:saleId,cuota_inicial:koraInitial,financiera:platform,valor_esperado_financiera:Number(operation.monto_base)-koraInitial }),`${platform} crédito local`);
+    expectOk(await admin.from('venta_items').insert({ venta_id:saleId,unidad_id:unitId,producto_id:productId,cantidad:1,precio_venta:Number(operation.monto_base) }),`${platform} ítem local`);
+  }
+  expectOk(await maite.rpc('aliados_resolver_operaciones_propias',{ p_liquidation_id:liquidationId }),`${platform} resolución de inicial por IMEI`);
+  const firstOwn=(await maite.from('liquidation_operations').select('id').eq('liquidation_id',liquidationId).eq('tipo_establecimiento','propia').limit(1).single()).data;
+  const maitePagamos=await maite.rpc('aliados_guardar_pagamos',{ p_operation_id:firstOwn.id,p_pagamos:100000 });
+  assert.match(maitePagamos.error?.message||'',/Solo Óscar/);
+  const differences=expectOk(await maite.from('liquidation_incidents').select('id').eq('liquidation_id',liquidationId).eq('tipo','diferencia_inicial_sin_revisar').eq('estado','abierta'),`${platform} diferencias`);
+  assert.equal(differences.length,1);
+  for (const incident of differences) expectOk(await maite.rpc('aliados_resolver_novedad',{ p_incident_id:incident.id,p_justificacion:'Inicial KORA verificada contra la venta y crédito del mismo IMEI' }),`${platform} justificación de inicial`);
+  for (const operation of ownOperations) expectOk(await oscar.rpc('aliados_guardar_pagamos',{ p_operation_id:operation.id,p_pagamos:Math.round(Number(operation.monto_base)*0.77) }),`${platform} Pagamos Óscar`);
   for (const operation of allies) {
     const executiveBeneficiary=beneficiaries.find(item=>item.tipo==='ejecutivo'&&item.ejecutivo_id===operation.ejecutivo_id);
     const value=platform==='payjoy'?bonusValues.payjoy[operation.source_key]:25000;
     expectOk(await maite.rpc('aliados_guardar_bono',{ p_liquidation_id:liquidationId,p_operation_id:operation.id,p_beneficiary_id:executiveBeneficiary.id,p_tipo:'histórico_validado',p_valor:value,p_motivo:'Conciliación histórica local',p_idempotency_key:crypto.randomUUID() }),`${platform} bono`);
   }
   const calculated=expectOk(await maite.rpc('aliados_calcular_liquidacion',{ p_id:liquidationId }),`${platform} cálculo`);
-  for (const field of ['total_operaciones','total_pago_aliados','total_bonos','total_utilidad_creditek','total_pagar']) assert.equal(Number(calculated[field]),expected[platform][field],`${platform} ${field}`);
+  for (const field of ['total_pago_aliados','total_bonos']) assert.equal(Number(calculated[field]),expected[platform][field],`${platform} ${field}`);
+  const allyCalculations=expectOk(await maite.from('liquidation_calculations').select('utilidad_creditek').eq('liquidation_id',liquidationId).in('operation_id',allies.map(item=>item.id)),`${platform} utilidad aliados`);
+  assert.equal(allyCalculations.reduce((sum,item)=>sum+Number(item.utilidad_creditek),0),expected[platform].total_utilidad_creditek,`${platform} utilidad histórica aliados`);
   expectOk(await maite.rpc('aliados_cambiar_estado',{ p_id:liquidationId,p_estado:'revisada',p_comentario:'Revisada por Maite local' }),`${platform} revisión`);
   expectOk(await oscar.rpc('aliados_cambiar_estado',{ p_id:liquidationId,p_estado:'aprobada',p_comentario:'Aprobada por Óscar local' }),`${platform} aprobación`);
   const immutable=await admin.from('liquidations').update({ total_pagar:1 }).eq('id',liquidationId);
@@ -149,7 +171,7 @@ for (const platform of ['payjoy','alo']) {
   const events=expectOk(await oscar.from('liquidation_domain_events').select('event_type').eq('aggregate_id',liquidationId),`${platform} eventos liquidación`);
   const paymentEvents=expectOk(await oscar.from('liquidation_domain_events').select('event_type').in('aggregate_id',payments.map(item=>item.id)),`${platform} eventos pagos`);
   const audit=expectOk(await oscar.from('audit_log').select('accion').or(`and(tabla.eq.liquidations,registro_id.eq.${liquidationId}),and(tabla.eq.payment_orders,registro_id.in.(${payments.map(item=>item.id).join(',')}))`),`${platform} auditoría`);
-  report.platforms[platform]={ liquidationId,operations:allies.length,totals:Object.fromEntries(Object.keys(expected[platform]).filter(key=>key!=='operations').map(key=>[key,Number(calculated[key])])),payments:payments.length,finalState:'conciliada',auditEvents:audit.length,domainEvents:[...events,...paymentEvents].map(item=>item.event_type).sort(),duplicateImport:'bloqueada',immutable:'bloqueada',storage:{ original:storagePath,paymentSupport:supportPath } };
+  report.platforms[platform]={ liquidationId,alliedOperations:allies.length,storeOperations:ownOperations.length,allyReconciliation:expected[platform],payments:payments.length,finalState:'conciliada',auditEvents:audit.length,domainEvents:[...events,...paymentEvents].map(item=>item.event_type).sort(),duplicateImport:'bloqueada',immutable:'bloqueada',initialDifference:'revisada y justificada por Maite',maitePagamos:'denegado',storage:{ original:storagePath,paymentSupport:supportPath } };
 }
 
 const blockedUpload=await blocked.storage.from('soportes').upload(`aliados/pagos/${crypto.randomUUID()}.pdf`,Buffer.from('%PDF'),{ contentType:'application/pdf' });

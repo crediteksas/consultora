@@ -36,6 +36,35 @@ create table if not exists public.audit_log (
   detalle jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+create table if not exists public.kora_notifications (
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references public.perfiles(id), type text not null default 'info',
+  title text not null, message text not null, incident_id uuid, read_at timestamptz, metadata jsonb not null default '{}'::jsonb, created_at timestamptz not null default now()
+);
+
+create or replace function public.es_admin_b2b()
+returns boolean language sql stable security definer set search_path=public,pg_temp as $$
+  select exists(select 1 from public.perfiles where id=auth.uid() and activo and rol='gerencia');
+$$;
+
+create table if not exists public.productos (
+  id uuid primary key default gen_random_uuid(), nombre text not null, activo boolean not null default true
+);
+create table if not exists public.unidades (
+  id uuid primary key default gen_random_uuid(), imei text not null, producto_id uuid references public.productos(id),
+  tienda_actual text references public.origenes(codigo), estado text not null default 'vendido', costo_remision numeric, precio_tienda numeric
+);
+create table if not exists public.ventas (
+  id uuid primary key default gen_random_uuid(), tienda_codigo text not null references public.origenes(codigo), fecha date not null,
+  tipo text not null default 'credito', total numeric not null default 0, anulada boolean not null default false
+);
+create table if not exists public.creditos (
+  id uuid primary key default gen_random_uuid(), venta_id uuid not null references public.ventas(id), cuota_inicial numeric not null default 0,
+  financiera text, valor_esperado_financiera numeric
+);
+create table if not exists public.venta_items (
+  id uuid primary key default gen_random_uuid(), venta_id uuid not null references public.ventas(id), unidad_id uuid references public.unidades(id),
+  producto_id uuid references public.productos(id), cantidad integer not null default 1, precio_venta numeric not null default 0
+);
 
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('soportes', 'soportes', false, 10485760)
@@ -47,6 +76,7 @@ alter table public.perfiles enable row level security;
 alter table public.ejecutivos enable row level security;
 alter table public.origenes enable row level security;
 alter table public.audit_log enable row level security;
+alter table public.kora_notifications enable row level security;
 
 drop policy if exists perfiles_propio on public.perfiles;
 create policy perfiles_propio on public.perfiles
@@ -60,8 +90,14 @@ drop policy if exists origenes_autenticados on public.origenes;
 create policy origenes_autenticados on public.origenes
 for select to authenticated using (true);
 
+drop policy if exists kora_notifications_propias on public.kora_notifications;
+create policy kora_notifications_propias on public.kora_notifications
+for all to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+
 grant select on public.perfiles, public.ejecutivos, public.origenes to authenticated;
-grant all on public.perfiles, public.ejecutivos, public.origenes, public.audit_log to service_role;
+grant select,update on public.kora_notifications to authenticated;
+grant execute on function public.es_admin_b2b() to authenticated;
+grant all on public.perfiles, public.ejecutivos, public.origenes, public.audit_log, public.kora_notifications, public.productos, public.unidades, public.ventas, public.creditos, public.venta_items to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
 commit;

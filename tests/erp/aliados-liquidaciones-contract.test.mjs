@@ -49,6 +49,20 @@ test('estados, aprobación exclusiva e inmutabilidad se aplican en servidor', ()
   assert.match(sql,/Transición de pago inválida/);
   assert.match(sql,/payment\.scheduled/);
   assert.match(sql,/payment\.completed/);
+  assert.match(sql,/aliados_resolver_operaciones_propias/);
+  assert.match(sql,/aliados_guardar_pagamos/);
+  assert.match(sql,/aliados_resolver_novedad/);
+  assert.match(sql,/operacion_tienda_sin_pagamos/);
+  assert.match(sql,/diferencia_inicial_sin_revisar/);
+});
+
+test('tiendas propias extienden operaciones con snapshots sin crear tablas paralelas', () => {
+  for (const field of ['inicial_kora','diferencia_inicial','costo_equipo','pagamos','pago_neto_tienda','utilidad_tienda']) assert.match(sql,new RegExp(field));
+  assert.doesNotMatch(sql,/create table if not exists public\.(liquidation_store|tiendas_liquidacion)/i);
+  assert.match(sql,/from public\.venta_items vi/);
+  assert.match(sql,/join public\.ventas v/);
+  assert.match(sql,/join public\.creditos c/);
+  assert.match(sql,/join public\.unidades u/);
 });
 
 test('importación, pagos y eventos tienen claves de idempotencia', () => {
@@ -96,6 +110,16 @@ test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () =
   for (const label of ['Aliado','Sede','Plataforma','Monto liquidado','Pago al aliado','Estado del pago','Ejecutivo','Aliados incluidos','Total a recibir']) {
     assert.match(app,new RegExp(label));
   }
+});
+
+test('interfaz administrativa separa modelos y oculta datos técnicos por defecto', () => {
+  assert.match(html,/aliados-liquidaciones-ux\.js/);
+  for (const label of ['Todas','Tiendas propias','Aliados','Estado actual','Guardar revisión','Aprobar liquidación','Rechazar y devolver a revisión']) assert.match(html,new RegExp(label));
+  for (const label of ['Beneficiario','Fecha programada','Fecha de pago','Cuenta bancaria','Realizada por','Descripción','Resultado','Ver detalle técnico']) assert.match(app,new RegExp(label));
+  assert.match(app,/UX\.formatoCOP/);
+  assert.match(app,/UX\.fechaCorta/);
+  assert.match(app,/aliados_guardar_pagamos/);
+  assert.doesNotMatch(app,/head=\['Pago','Valor'/);
 });
 
 test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA', () => {

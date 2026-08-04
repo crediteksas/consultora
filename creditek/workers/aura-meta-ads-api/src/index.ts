@@ -230,6 +230,10 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     campaignPayload(payload, name),
     'POST',
   ));
+  const metaIds = { campaign_id: String(campaign.id) };
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
+  return { ok: true, status: 'PAUSED', meta_ids: metaIds };
+  /* istanbul ignore next -- las etapas posteriores permanecen bloqueadas hasta una aprobación separada */
   const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };
   if (payload.platforms?.includes('facebook')) targeting.facebook_positions = ['feed'];
   if (payload.platforms?.includes('instagram')) targeting.instagram_positions = ['stream'];
@@ -244,9 +248,6 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   if (payload.platforms?.includes('instagram')) story.instagram_actor_id = env.META_INSTAGRAM_ACTOR_ID;
   const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
   const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: String(adset.id), creative: JSON.stringify({ creative_id: creative.id }), status: 'PAUSED' }, 'POST'));
-  const metaIds = { campaign_id: String(campaign.id), adset_id: String(adset.id), creative_id: String(creative.id), ad_id: String(ad.id) };
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
-  return { ok: true, status: 'PAUSED', meta_ids: metaIds };
 }
 
 async function coordinate(env: Env, key: string, action: string, result?: unknown) {

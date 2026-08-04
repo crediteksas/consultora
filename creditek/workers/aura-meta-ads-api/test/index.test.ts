@@ -200,12 +200,12 @@ describe('AURA Meta Ads secure publisher', () => {
     expect((await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload), env())).status).toBe(400);
   });
 
-  it('creates a paused campaign, ad set, creative and ad through the server and returns every Meta id', async () => {
+  it('crea únicamente la campaña controlada pausada y se detiene antes del conjunto', async () => {
     mockNetwork(publishPermissions);
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-1'), env());
     const body = await response.json() as any;
     expect(response.status).toBe(201);
-    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
+    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1' });
     expect(body.status).toBe('PAUSED');
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
     expect(metaCalls.every(([, init]: [unknown, RequestInit]) => !String(init?.body || '').includes('server-only-meta-token'))).toBe(true);
@@ -218,6 +218,9 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(campaignBody).toContain('status=PAUSED');
     expect(campaignBody).toContain('buying_type=AUCTION');
     expect(campaignBody).toContain('special_ad_categories=%5B%5D');
+    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adsets'))).toBe(false);
+    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(false);
+    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(false);
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

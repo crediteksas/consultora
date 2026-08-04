@@ -263,9 +263,39 @@ describe('AURA Meta Ads secure publisher', () => {
       .filter(([url]: [unknown]) => String(url).includes('/rest/v1/rpc/aura_meta_ads_record_publish'))
       .map(([, init]: [unknown, RequestInit]) => JSON.parse(String(init?.body || '{}')).p_meta_ids);
     expect(audits).toEqual([
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1' },
       { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1' },
       { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' },
     ]);
+  });
+
+  it('reabre únicamente la campaña controlada con una llave versionada y audita antes del creativo', async () => {
+    mockNetwork(publishPermissions);
+    const coordinatorName = vi.fn((key: string) => key);
+    const coordinator = {
+      idFromName: coordinatorName,
+      get: () => ({
+        fetch: async (_url: string, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body || '{}'));
+          return body.action === 'reserve' ? json({ state: 'reserved' }) : json({ state: 'completed' });
+        },
+      }),
+    };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'controlled-reopen'), env({
+      META_CONTINUE_CAMPAIGN_ID: 'campaign-existing', PUBLISH_COORDINATOR: coordinator,
+    }));
+    expect(response.status).toBe(201);
+    expect(coordinatorName).toHaveBeenCalledWith('complete_campaign_campaign-existing_instagram_assignment_v2');
+    const audits = (globalThis.fetch as any).mock.calls
+      .filter(([url]: [unknown]) => String(url).includes('/rest/v1/rpc/aura_meta_ads_record_publish'))
+      .map(([, init]: [unknown, RequestInit]) => JSON.parse(String(init?.body || '{}')));
+    expect(audits[0]).toMatchObject({
+      p_status: 'REOPENED',
+      p_meta_ids: { campaign_id: 'campaign-existing', adset_id: 'adset-1' },
+    });
+    const creativeCall = (globalThis.fetch as any).mock.calls.findIndex(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'));
+    const reopenAudit = (globalThis.fetch as any).mock.calls.findIndex(([url]: [unknown]) => String(url).includes('/rest/v1/rpc/aura_meta_ads_record_publish'));
+    expect(reopenAudit).toBeLessThan(creativeCall);
   });
 
   it('descubre el actor desde la página vinculada y reutiliza el conjunto pausado existente', async () => {

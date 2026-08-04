@@ -314,6 +314,12 @@ async function continueCampaign(env: Env, auth: { token: string }, payload: Publ
     || Number(adset.daily_budget) !== 6000 || !String(adset.start_time || '').startsWith('2026-08-05')
     || !String(adset.end_time || '').startsWith('2026-08-06') || !cities.every(city => targetCities.some(item => String(item.key) === city.key))
     || JSON.stringify(targetPlatforms) !== JSON.stringify(['facebook','instagram'])) throw new Error('INVALID_EXISTING_ADSET');
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'REOPENED', {
+    campaign_id: campaignId, adset_id: String(adset.id),
+  });
+  console.warn('meta_publication_reopened', {
+    idempotency_key: idempotencyKey, campaign_id: campaignId, adset_id: String(adset.id),
+  });
   const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
   const linkData = { message: payload.copy, link: destination, name: payload.headline, picture: payload.image_url, call_to_action: { type: payload.cta, value: { link: destination } } };
   const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
@@ -411,7 +417,7 @@ async function handle(request: Request, env: Env, origin?: string) {
     try { payload = validatePublishPayload(await request.json()); }
     catch (error) { return reply({ ok: false, error: error instanceof Error ? error.message : 'INVALID_REQUEST' }, error instanceof Error && error.message === 'CONFIRMATION_REQUIRED' ? 409 : 400, origin); }
     const controlledCampaignId = String(env.META_CONTINUE_CAMPAIGN_ID || '').trim();
-    const coordinationKey = controlledCampaignId ? `complete_campaign_${controlledCampaignId}_instagram_page_v1` : key;
+    const coordinationKey = controlledCampaignId ? `complete_campaign_${controlledCampaignId}_instagram_assignment_v2` : key;
     const existing = await coordinate(env, coordinationKey, 'reserve');
     if (existing.state === 'completed') return reply(existing.result, 200, origin);
     if (existing.state !== 'reserved') return reply({ ok: false, error: 'Publication already in progress' }, 409, origin);

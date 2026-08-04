@@ -128,9 +128,19 @@ async function metaObject(env: Env, path: string, params: Record<string, string>
   const response = await fetch(url, init);
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok || body.error) {
-    const metaError = body.error && typeof body.error === 'object' ? body.error as { code?: unknown; type?: unknown; error_subcode?: unknown; message?: unknown } : {};
+    const metaError = body.error && typeof body.error === 'object' ? body.error as {
+      code?: unknown; type?: unknown; error_subcode?: unknown; message?: unknown;
+      error_user_title?: unknown; error_user_msg?: unknown; error_data?: unknown; fbtrace_id?: unknown;
+    } : {};
     const safeMessage = String(metaError.message || 'UNKNOWN').replace(/[A-Za-z0-9_-]{80,}/g, '[redacted]').slice(0, 240);
-    console.warn('meta_write_failed', JSON.stringify({ path, status: response.status, code: String(metaError.code || 'UNKNOWN'), subcode: String(metaError.error_subcode || 'NONE'), type: String(metaError.type || 'UNKNOWN'), message: safeMessage }));
+    const safeDetail = (value: unknown) => JSON.stringify(value ?? null).replace(/[A-Za-z0-9_-]{80,}/g, '[redacted]').slice(0, 800);
+    console.warn('meta_write_failed', JSON.stringify({
+      path, status: response.status, code: String(metaError.code || 'UNKNOWN'),
+      subcode: String(metaError.error_subcode || 'NONE'), type: String(metaError.type || 'UNKNOWN'),
+      message: safeMessage, error_user_title: safeDetail(metaError.error_user_title),
+      error_user_msg: safeDetail(metaError.error_user_msg), error_data: safeDetail(metaError.error_data),
+      fbtrace_id: String(metaError.fbtrace_id || 'NONE').slice(0, 80),
+    }));
     throw new Error('META_UPSTREAM');
   }
   return body;

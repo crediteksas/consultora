@@ -34,6 +34,7 @@ test('los cuatro módulos montan directamente el shell real de KORA', async () =
   }
 
   assert.match(context, /window\.KoraNavigation\.mount/);
+  assert.match(context, /productName:\s*'AURA'/);
   assert.doesNotMatch(context, /innerHTML|insertAdjacentHTML|createElement/);
 });
 

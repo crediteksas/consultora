@@ -38,6 +38,7 @@
       modules: MODULES,
       activeItem,
       profile: { id: 'aura-session', nombre: 'AURA', rol: 'gerencia' },
+      productName: 'AURA',
       stores: [],
       onLogout: () => { location.href = 'index.html'; },
     });

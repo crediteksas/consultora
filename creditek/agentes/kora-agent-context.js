@@ -5,8 +5,8 @@
     ] },
     { titulo: 'AGENTES', lucide: 'sparkles', items: [
       { label: 'Sofía', href: 'sofia-aura-20260803b.html', lucide: 'messages-square' },
-      { label: 'Agente 1 · Piezas comerciales', href: 'creditek-agente-redes.html', lucide: 'palette' },
-      { label: 'Agente 3 · Publicación y métricas', href: 'agente3-meta-ads.html', lucide: 'chart-spline' },
+      { label: 'Agente 1 · Piezas comerciales', href: 'creditek-agente-redes.html', lucide: 'image-plus' },
+      { label: 'Agente 3 · Publicación y métricas', href: 'agente3-meta-ads.html', lucide: 'megaphone' },
       { label: 'Agente 4 · Reels orgánicos', href: 'creditek-agente-calendario.html', lucide: 'clapperboard' },
     ] },
     { titulo: 'NEGOCIO', lucide: 'briefcase-business', items: [
@@ -17,6 +17,7 @@
   ];
 
   const TITLES = {
+    home: 'Inicio',
     'agent-1': 'Agente 1 · Piezas comerciales',
     'agent-3': 'Agente 3 · Publicación y métricas',
     'agent-4': 'Agente 4 · Reels orgánicos',

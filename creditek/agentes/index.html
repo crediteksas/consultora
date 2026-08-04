@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-kora-product="1.0.0" data-kora-version="2.0.4">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +11,14 @@
 <link rel="manifest" href="/creditek/agentes/manifest.json?v=1.3.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard.css">
+<link rel="stylesheet" href="/design-system/components/kora-shell.css?v=2.0.4">
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="/creditek/erp/sidebar.js?v=2.0.4" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
+<script src="kora-agent-context.js" defer></script>
+<script>document.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons());</script>
 <style>
 :root {
   --navy:   #0B1E3D;
@@ -35,7 +43,7 @@
   --sidebar:220px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden}
+body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);min-height:100dvh;overflow-y:auto}
 
 /* ── LOGIN ─────────────────────────────────────────────────── */
 #login-screen{
@@ -108,8 +116,10 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 @media(prefers-reduced-motion:reduce){.auth-view,#login-screen{animation:none;transition:none}}
 
 /* ── APP SHELL ──────────────────────────────────────────────── */
-#app{display:none;height:100vh;flex-direction:row}
-#app.visible{display:flex}
+#app{display:none;min-height:100dvh}
+#app.visible{display:grid}
+#app:not(.visible){display:none!important}
+#app.visible.kora-shell-root{display:grid!important}
 
 /* ── SIDEBAR ────────────────────────────────────────────────── */
 .sidebar{
@@ -152,7 +162,7 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 .logout-btn:hover{color:#0B1E3D}
 
 /* ── MAIN AREA ──────────────────────────────────────────────── */
-.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.main-area{flex:1;display:flex;flex-direction:column;min-width:0;min-height:calc(100dvh - var(--ctk-height-topbar));overflow:visible;background:var(--ctk-color-background,#F5F5F7)}
 
 .topbar{
   height:52px;flex-shrink:0;
@@ -168,28 +178,28 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 .status-text{font-size:12px;color:var(--text2)}
 .topbar-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
 
-.content{flex:1;overflow-y:auto;padding:24px}
+.content{flex:1;width:100%;max-width:var(--ctk-width-content);margin:0 auto;overflow:visible;padding:var(--ctk-space-3,24px)}
 
 /* ── DASHBOARD ──────────────────────────────────────────────── */
-.dashboard-greeting{margin-bottom:24px}
+.dashboard-greeting{margin-bottom:14px}
 .greeting-text{font-size:22px;font-weight:700;color:var(--text1)}
 .greeting-sub{font-size:13px;color:var(--text2);margin-top:2px}
 
-.quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.qstat{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:16px}
-.qstat-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.qstat{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:13px 15px}
+.qstat-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .qstat-value{font-size:22px;font-weight:700;color:var(--text1)}
 .qstat-value.turq{color:var(--turq2)}
 .qstat-sub{font-size:11px;color:var(--text2);margin-top:3px}
 
 /* ── MODULES GRID ───────────────────────────────────────────── */
-.section-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
-.modules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.modules-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 @media(max-width:900px){.modules-grid{grid-template-columns:repeat(2,1fr)}}
 
 .module-card{
   background:var(--card);border:1px solid var(--border2);
-  border-radius:var(--r);padding:18px;
+  border-radius:var(--r);padding:15px 16px;
   cursor:pointer;transition:all .2s;
   display:flex;flex-direction:column;gap:10px;
   text-decoration:none;color:inherit;
@@ -199,7 +209,8 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 .module-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--turq);opacity:0;transition:opacity .2s}
 .module-card:hover::before{opacity:1}
 .module-top{display:flex;align-items:flex-start;justify-content:space-between}
-.module-icon{font-size:22px}
+.module-icon,.tool-icon{color:var(--navy)}
+.module-icon svg{width:21px;height:21px;stroke-width:1.9}
 .module-status{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px}
 .module-status.active{background:rgba(16,185,129,.1);color:var(--green)}
 .module-status.pending{background:rgba(245,158,11,.1);color:var(--yellow)}
@@ -210,6 +221,17 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 .module-tag{font-size:10px;color:var(--text3);font-family:var(--mono)}
 .module-arrow{font-size:16px;color:var(--text3);transition:color .2s,transform .2s}
 .module-card:hover .module-arrow{color:var(--turq);transform:translateX(3px)}
+.operations-strip{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(320px,1.2fr);gap:10px;margin-bottom:16px}
+.operations-card{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;min-width:0}
+.operations-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#ECFDF5;color:#047857;flex:0 0 auto}
+.operations-icon.alert{background:#FFF7ED;color:#C2410C}
+.operations-icon svg{width:18px;height:18px}
+.operations-copy{min-width:0;flex:1}
+.operations-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--text1)}
+.operations-title .live{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(16,185,129,.12)}
+.operations-detail{font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.operations-badge{margin-left:auto;padding:4px 8px;border-radius:999px;background:#ECFDF5;color:#047857;font-size:10px;font-weight:700}
+.operations-badge.review{background:#FFF7ED;color:#C2410C}
 
 /* ── HERRAMIENTAS SECTION ───────────────────────────────────── */
 .tools-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -221,6 +243,8 @@ body{font-family:var(--font);background:#F4F7FA;min-height:100vh;overflow:hidden
 }
 .tool-row:hover{border-color:var(--turq);box-shadow:0 4px 16px rgba(0,196,204,.1)}
 .tool-icon{font-size:18px;width:36px;height:36px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tool-icon svg{width:18px;height:18px}
+@media(max-width:760px){.quick-stats,.modules-grid,.operations-strip,.tools-grid{grid-template-columns:1fr}.content{padding:14px}.operations-detail{white-space:normal}}
 .tool-name{font-size:13px;font-weight:600;color:var(--text1)}
 .tool-desc{font-size:11px;color:var(--text2);margin-top:1px}
 .tool-arrow{margin-left:auto;color:var(--text3);font-size:14px}
@@ -257,7 +281,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 #toast.show{opacity:1}
 </style>
 </head>
-<body>
+<body class="kora-product-page" data-kora-agent-id="home">
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -334,7 +358,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 </div>
 
 <!-- APP -->
-<div id="app">
+<div id="app" data-kora-shell-root>
 
   <!-- Sidebar -->
   <div class="sidebar">
@@ -435,11 +459,30 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
           </div>
         </div>
 
+        <div class="operations-strip" aria-label="Estado operativo y alertas">
+          <div class="operations-card">
+            <div class="operations-icon"><i data-lucide="activity"></i></div>
+            <div class="operations-copy">
+              <div class="operations-title"><span class="live"></span>Estado operativo</div>
+              <div class="operations-detail">AURA y sus cuatro agentes están disponibles.</div>
+            </div>
+            <span class="operations-badge">Operativo</span>
+          </div>
+          <div class="operations-card">
+            <div class="operations-icon alert"><i data-lucide="bell-ring"></i></div>
+            <div class="operations-copy">
+              <div class="operations-title">Alertas</div>
+              <div class="operations-detail">Sin alertas críticas. Revisa cada agente para ver novedades específicas.</div>
+            </div>
+            <span class="operations-badge review">Al día</span>
+          </div>
+        </div>
+
         <div class="section-title">Agentes de inteligencia artificial</div>
         <div class="modules-grid">
           <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-redes.html','Agente Diseño','sofia')">
             <div class="module-top">
-              <div class="module-icon">🎨</div>
+              <div class="module-icon"><i data-lucide="image-plus"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Redes Sociales</div>
@@ -452,7 +495,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('sofia-aura-20260803b.html','Agente Respuestas','sofia')">
             <div class="module-top">
-              <div class="module-icon">💬</div>
+              <div class="module-icon"><i data-lucide="messages-square"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Respuestas automáticas</div>
@@ -465,7 +508,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" data-aura-app="meta_ads" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','meta_ads')">
             <div class="module-top">
-              <div class="module-icon">📊</div>
+              <div class="module-icon"><i data-lucide="megaphone"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Meta Ads Intelligence</div>
@@ -478,7 +521,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
           <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de Contenido','sofia')">
             <div class="module-top">
-              <div class="module-icon">📅</div>
+              <div class="module-icon"><i data-lucide="clapperboard"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
             <div class="module-name">Calendario de contenido</div>
@@ -493,7 +536,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
         <div class="section-title">Herramientas comerciales</div>
         <div class="tools-grid">
           <a class="tool-row" data-aura-app="portal_b2b" onclick="openModuleFromCard('/creditek/portal/','Portal de Pedidos B2B','portal_b2b')">
-            <div class="tool-icon">🛒</div>
+            <div class="tool-icon"><i data-lucide="shopping-bag"></i></div>
             <div>
               <div class="tool-name">Portal de Pedidos B2B</div>
               <div class="tool-desc">264 referencias · Órdenes a proveedores · Admin panel</div>
@@ -501,7 +544,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
             <span class="tool-arrow">→</span>
           </a>
           <a class="tool-row" data-aura-app="sofia" onclick="openModuleFromCard('creditek-gbp-fichas.html','Fichas Google Business','sofia')">
-            <div class="tool-icon">📍</div>
+            <div class="tool-icon"><i data-lucide="map-pin"></i></div>
             <div>
               <div class="tool-name">Fichas Google Business</div>
               <div class="tool-desc">SEO local · 11 tiendas · Caribe colombiano</div>

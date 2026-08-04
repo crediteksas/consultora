@@ -61,6 +61,8 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities')) return json([{ id: 'tolu', name: 'Tolú', country_code: 'CO', active: true }]);
     if (url.includes('/debug_token')) return json({ data: { app_id: '123456789', is_valid: true, scopes: ['ads_management', 'business_management'] } });
     if (url.includes('/search?')) return json({ data: [{ key: '123', name: 'Tolú', type: 'city', country_code: 'CO' }] });
+    if (url.includes('/page-1?')) return json({ id: 'page-1', name: 'Creditek', instagram_business_account: { id: '17841400000000000', username: 'creditek' } });
+    if (url.includes('/campaign-existing/adsets?')) return json({ data: [{ id: 'adset-1', campaign_id: 'campaign-existing', name: 'Tolú · Tráfico · 5–6 agosto · conjunto', status: 'PAUSED', effective_status: 'PAUSED', daily_budget: '6000', start_time: '2026-08-05T12:00:00-0500', end_time: '2026-08-06T23:59:00-0500', targeting: { geo_locations: { cities: [{ key: '123' }] }, publisher_platforms: ['facebook','instagram'] } }] });
     if (url.includes('/campaign-existing?')) return json({ id: 'campaign-existing', account_id: '123', objective: 'OUTCOME_TRAFFIC', status: 'PAUSED', effective_status: 'PAUSED' });
     if (url.includes('/act_123/campaigns') && init?.method === 'POST') return json({ id: 'campaign-1' });
     if (url.includes('/act_123/adsets')) return json({ id: 'adset-1' });
@@ -234,10 +236,7 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(body.statuses).toEqual({ campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' });
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
     expect(metaCalls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/campaigns') && init?.method === 'POST')).toBe(false);
-    const adsetBody = String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/adsets'))?.[1]?.body);
-    expect(adsetBody).toContain('campaign_id=campaign-existing');
-    expect(adsetBody).toContain('daily_budget=6000');
-    expect(adsetBody).toContain('status=PAUSED');
+    expect(metaCalls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/adsets') && init?.method === 'POST')).toBe(false);
     expect(String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/ads'))?.[1]?.body)).toContain('status=PAUSED');
   });
 
@@ -249,10 +248,20 @@ describe('AURA Meta Ads secure publisher', () => {
       .filter(([url]: [unknown]) => String(url).includes('/rest/v1/rpc/aura_meta_ads_record_publish'))
       .map(([, init]: [unknown, RequestInit]) => JSON.parse(String(init?.body || '{}')).p_meta_ids);
     expect(audits).toEqual([
-      { campaign_id: 'campaign-existing', adset_id: 'adset-1' },
       { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1' },
       { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' },
     ]);
+  });
+
+  it('descubre el actor desde la página vinculada y reutiliza el conjunto pausado existente', async () => {
+    mockNetwork(publishPermissions);
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'linked-instagram'), env({ META_CONTINUE_CAMPAIGN_ID: 'campaign-existing' }));
+    expect(response.status).toBe(201);
+    const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
+    expect(metaCalls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/adsets') && init?.method === 'POST')).toBe(false);
+    const creativeBody = String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))?.[1]?.body);
+    expect(creativeBody).toContain('instagram_actor_id%22%3A%2217841400000000000');
+    expect(creativeBody).not.toContain('instagram_actor_id%22%3A%22ig-1');
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

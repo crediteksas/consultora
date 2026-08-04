@@ -5,7 +5,6 @@ export interface Env {
   META_AD_ACCOUNT_ID: string;
   META_GRAPH_VERSION: string;
   META_PAGE_ID: string;
-  META_INSTAGRAM_ACTOR_ID: string;
   META_CONTINUE_CAMPAIGN_ID?: string;
   META_DESTINATION_URL?: string;
   ALLOWED_ORIGIN: string;
@@ -210,6 +209,20 @@ async function resolveCities(env: Env, token: string, ids: string[]) {
   }));
 }
 
+async function resolveInstagramActor(env: Env) {
+  const page = await metaObject(env, env.META_PAGE_ID, {
+    fields: 'id,name,instagram_business_account{id,username},connected_instagram_account{id,username}',
+  });
+  const business = page.instagram_business_account && typeof page.instagram_business_account === 'object'
+    ? page.instagram_business_account as MetaRow : null;
+  const connected = page.connected_instagram_account && typeof page.connected_instagram_account === 'object'
+    ? page.connected_instagram_account as MetaRow : null;
+  const actorId = String(business?.id || connected?.id || '');
+  if (String(page.id) !== String(env.META_PAGE_ID) || !/^\d+$/.test(actorId)) throw new Error('INSTAGRAM_ACTOR_UNAVAILABLE');
+  console.info('meta_instagram_actor_resolved', { page_id: String(page.id), instagram_actor_id: actorId, source: business?.id ? 'instagram_business_account' : 'connected_instagram_account' });
+  return actorId;
+}
+
 async function recordPublish(env: Env, token: string, payload: PublishPayload, idempotencyKey: string, status: string, metaIds: Record<string, string>) {
   const response = await supabase(env, '/rest/v1/rpc/aura_meta_ads_record_publish', token, {
     p_piece_id: payload.piece_id, p_cities: payload.cities, p_platforms: payload.platforms,
@@ -274,19 +287,22 @@ async function continueCampaign(env: Env, auth: { token: string }, payload: Publ
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
   const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
-  const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };
-  targeting.facebook_positions = ['feed'];
-  targeting.instagram_positions = ['stream'];
-  const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, {
-    name: `${name} · conjunto`, campaign_id: campaignId, daily_budget: String(payload.budget_cop),
-    billing_event: 'IMPRESSIONS', optimization_goal: 'LINK_CLICKS', bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-    start_time: `${payload.start_date}T12:00:00-05:00`, end_time: `${payload.end_date}T23:59:00-05:00`,
-    targeting: JSON.stringify(targeting), status: 'PAUSED',
-  }, 'POST'));
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: String(adset.id) });
+  const adsetsResult = await publicationStep('META_ADSET_VALIDATION_FAILED', () => metaObject(env, `${campaignId}/adsets`, {
+    fields: 'id,campaign_id,name,status,effective_status,daily_budget,start_time,end_time,targeting', limit: '50',
+  }));
+  const adsets = Array.isArray(adsetsResult.data) ? adsetsResult.data as MetaRow[] : [];
+  const adset = adsets.find(item => String(item.name) === `${name} · conjunto`);
+  const targeting = adset?.targeting && typeof adset.targeting === 'object' ? adset.targeting as MetaRow : {};
+  const geo = targeting.geo_locations && typeof targeting.geo_locations === 'object' ? targeting.geo_locations as MetaRow : {};
+  const targetCities = Array.isArray(geo.cities) ? geo.cities as MetaRow[] : [];
+  const targetPlatforms = Array.isArray(targeting.publisher_platforms) ? targeting.publisher_platforms.map(String).sort() : [];
+  if (!adset || String(adset.campaign_id) !== campaignId || String(adset.status) !== 'PAUSED'
+    || Number(adset.daily_budget) !== 6000 || !String(adset.start_time || '').startsWith('2026-08-05')
+    || !String(adset.end_time || '').startsWith('2026-08-06') || !cities.every(city => targetCities.some(item => String(item.key) === city.key))
+    || JSON.stringify(targetPlatforms) !== JSON.stringify(['facebook','instagram'])) throw new Error('INVALID_EXISTING_ADSET');
+  const instagramActorId = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
   const linkData = { message: payload.copy, link: destination, name: payload.headline, picture: payload.image_url, call_to_action: { type: payload.cta, value: { link: destination } } };
-  const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, link_data: linkData };
-  if (payload.platforms?.includes('instagram')) story.instagram_actor_id = env.META_INSTAGRAM_ACTOR_ID;
+  const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, instagram_actor_id: instagramActorId, link_data: linkData };
   const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: String(adset.id), creative_id: String(creative.id) });
   const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: String(adset.id), creative: JSON.stringify({ creative_id: creative.id }), status: 'PAUSED' }, 'POST'));
@@ -381,7 +397,7 @@ async function handle(request: Request, env: Env, origin?: string) {
     try { payload = validatePublishPayload(await request.json()); }
     catch (error) { return reply({ ok: false, error: error instanceof Error ? error.message : 'INVALID_REQUEST' }, error instanceof Error && error.message === 'CONFIRMATION_REQUIRED' ? 409 : 400, origin); }
     const controlledCampaignId = String(env.META_CONTINUE_CAMPAIGN_ID || '').trim();
-    const coordinationKey = controlledCampaignId ? `complete_campaign_${controlledCampaignId}` : key;
+    const coordinationKey = controlledCampaignId ? `complete_campaign_${controlledCampaignId}_instagram_page_v1` : key;
     const existing = await coordinate(env, coordinationKey, 'reserve');
     if (existing.state === 'completed') return reply(existing.result, 200, origin);
     if (existing.state !== 'reserved') return reply({ ok: false, error: 'Publication already in progress' }, 409, origin);

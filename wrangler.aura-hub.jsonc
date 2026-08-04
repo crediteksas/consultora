@@ -71,6 +71,10 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/agente3-meta-ads*",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/agente3-aura-session.mjs",
       "zone_name": "crediteksas.com"
     },

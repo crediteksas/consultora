@@ -92,7 +92,7 @@ test('toda página que monta el shell carga primero el control de acceso', async
     const html = await readFile(new URL(file, erpDir), 'utf8');
     const shell = html.indexOf('src="sidebar.js');
     if (shell < 0) continue;
-    const guard = html.indexOf('src="kora-access-control.js?v=2.0.5"');
+    const guard = html.indexOf('src="kora-access-control.js?v=2.0.6"');
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });

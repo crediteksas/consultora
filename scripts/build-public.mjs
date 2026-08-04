@@ -20,8 +20,8 @@ const PUBLIC_FILES = [
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);
-const KORA_SHELL_ASSET_VERSION = '2.0.5';
-const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.5';
+const KORA_SHELL_ASSET_VERSION = '2.0.6';
+const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.6';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.4';
 
 async function copyFileFromRoot(rootDir, outDir, relative) {

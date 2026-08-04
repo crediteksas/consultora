@@ -34,11 +34,8 @@
     const message = error && typeof error.message === 'string'
       ? error.message
       : String(error || 'Error desconocido');
-    console.error('[KORA Shell] Error de inicialización', {
-      stage: bootStage,
-      message,
-      stack: error && typeof error.stack === 'string' ? error.stack : undefined,
-    });
+    const stack = error && typeof error.stack === 'string' ? error.stack : '';
+    console.error(`[KORA Shell] Error de inicialización | etapa=${bootStage} | mensaje=${message} | stack=${stack}`);
   }
 
   function installSharedSupabaseClient() {

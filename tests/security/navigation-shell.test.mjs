@@ -282,12 +282,10 @@ test('un fallo autenticado informa la etapa exacta sin exponer la sesión', asyn
   await harness.listeners.DOMContentLoaded();
 
   assert.equal(harness.getErrors().length, 1);
-  const [message, diagnostic] = harness.getErrors()[0];
-  assert.equal(message, '[KORA Shell] Error de inicialización');
-  assert.equal(diagnostic.stage, 'profile');
-  assert.equal(diagnostic.message, 'fallo sintético');
-  assert.equal('session' in diagnostic, false);
-  assert.equal('userId' in diagnostic, false);
+  const [message] = harness.getErrors()[0];
+  assert.match(message, /^\[KORA Shell\] Error de inicialización \| etapa=profile/);
+  assert.match(message, /mensaje=fallo sintético/);
+  assert.doesNotMatch(message, /user-test|session|userId/);
 });
 
 test('un getSession bloqueado muestra un error recuperable', async () => {

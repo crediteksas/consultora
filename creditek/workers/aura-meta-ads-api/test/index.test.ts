@@ -183,6 +183,7 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(response.status).toBe(200);
     expect(body.pieces).toEqual([expect.objectContaining({ id: 'piece-1', estado: 'lista_para_publicar' })]);
     expect(body.cities).toEqual([expect.objectContaining({ id: 'tolu', name: 'Tolú' })]);
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/debug_token'))).toBe(true);
   });
 
   it('requires all publishing permissions and never calls Meta when one is missing', async () => {

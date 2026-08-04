@@ -138,6 +138,7 @@ async function supabaseRows(env: Env, path: string, token: string) {
 }
 
 async function publisherOptions(env: Env, token: string) {
+  await verifyMetaApp(env);
   const [piecesResponse, cities] = await Promise.all([
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token, {}),
     supabaseRows(env, '/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&active=eq.true&order=name.asc', token),

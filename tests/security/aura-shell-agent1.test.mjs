@@ -29,13 +29,12 @@ test('la navegación compartida conserva los destinos oficiales de AURA', async 
   const shellJs = await readFile(shellJsPath, 'utf8');
   const expectedDestinations = [
     'index.html',
-    'creditek-agente-redes.html',
     'sofia-aura-20260803b.html',
+    'creditek-agente-redes.html',
     'agente3-meta-ads.html',
     'creditek-agente-calendario.html',
     '/creditek/portal/',
-    'creditek-gbp-fichas.html',
-    '../convenios/index.html',
+    '../erp/reportes.html',
     'index.html#configuracion',
   ];
 
@@ -43,6 +42,7 @@ test('la navegación compartida conserva los destinos oficiales de AURA', async 
     assert.ok(shellJs.includes(`href: '${destination}'`), `falta ${destination}`);
   }
   assert.match(shellJs, /aria-current="page"/);
+  assert.doesNotMatch(shellJs, /aura-shell-topbar/);
 });
 
 test('el shell usa selectores aislados y no contiene lógica de IA', async () => {

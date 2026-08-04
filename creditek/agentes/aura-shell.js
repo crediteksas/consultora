@@ -1,31 +1,25 @@
 (function () {
   const NAVIGATION = [
     {
-      title: 'Principal',
+      title: 'AURA',
       items: [
-        { label: 'Dashboard', icon: '⊞', href: 'index.html' },
+        { label: 'Inicio', icon: '⌂', href: 'index.html' },
       ],
     },
     {
-      title: 'Agentes IA',
+      title: 'Agentes',
       items: [
-        { label: 'Diseño', icon: '🎨', href: 'creditek-agente-redes.html', id: 'agent-design' },
-        { label: 'Respuestas', icon: '💬', href: 'sofia-aura-20260803b.html' },
-        { label: 'Meta Ads', icon: '📊', href: 'agente3-meta-ads.html' },
-        { label: 'Calendario', icon: '📅', href: 'creditek-agente-calendario.html' },
+        { label: 'Sofía', icon: '✦', href: 'sofia-aura-20260803b.html' },
+        { label: 'Agente 1 · Piezas comerciales', icon: '🎨', href: 'creditek-agente-redes.html', id: 'agent-design' },
+        { label: 'Agente 3 · Publicación y métricas', icon: '📊', href: 'agente3-meta-ads.html' },
+        { label: 'Agente 4 · Reels orgánicos', icon: '▶', href: 'creditek-agente-calendario.html' },
       ],
     },
     {
-      title: 'Comercial',
+      title: '',
       items: [
         { label: 'Portal B2B', icon: '🛒', href: '/creditek/portal/' },
-        { label: 'Google Business', icon: '📍', href: 'creditek-gbp-fichas.html' },
-        { label: 'Convenios de Aliados', icon: '✍️', href: '../convenios/index.html' },
-      ],
-    },
-    {
-      title: 'Sistema',
-      items: [
+        { label: 'Reportes', icon: '▥', href: '../erp/reportes.html' },
         { label: 'Configuración', icon: '⚙', href: 'index.html#configuracion' },
       ],
     },
@@ -44,7 +38,7 @@
   function renderNavigation(activeId) {
     return NAVIGATION.map(group => `
       <div class="aura-shell-nav-group">
-        <div class="aura-shell-nav-title">${escapeHtml(group.title)}</div>
+        ${group.title ? `<div class="aura-shell-nav-title">${escapeHtml(group.title)}</div>` : ''}
         ${group.items.map(item => `
           <a href="${escapeHtml(item.href)}"${item.id === activeId ? ' aria-current="page"' : ''}>
             <span class="aura-shell-nav-icon" aria-hidden="true">${item.icon}</span>
@@ -61,8 +55,6 @@
     if (!page || !content || document.querySelector('.aura-shell-layout')) return;
 
     const activeId = page.dataset.auraShellPage;
-    const title = page.dataset.auraShellTitle || 'AURA';
-    const context = page.dataset.auraShellContext || 'Ecosistema AURA';
     const layout = document.createElement('div');
     layout.className = 'aura-shell-layout';
     layout.dataset.menuOpen = 'false';
@@ -78,12 +70,7 @@
         <div class="aura-shell-footer"><a href="index.html">Volver al inicio</a></div>
       </aside>
       <main class="aura-shell-main">
-        <header class="aura-shell-topbar">
-          <button class="aura-shell-menu" type="button" aria-label="Abrir navegación" aria-expanded="false">☰</button>
-          <span class="aura-shell-topbar-title">${escapeHtml(title)}</span>
-          <span class="aura-shell-topbar-context">${escapeHtml(context)}</span>
-          <span class="aura-shell-status">Sistema activo</span>
-        </header>
+        <button class="aura-shell-menu" type="button" aria-label="Abrir navegación" aria-expanded="false">☰</button>
         <div class="aura-shell-content"></div>
       </main>
     `;

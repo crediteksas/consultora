@@ -70,7 +70,12 @@
         <div class="aura-shell-footer"><a href="index.html">Volver al inicio</a></div>
       </aside>
       <main class="aura-shell-main">
-        <button class="aura-shell-menu" type="button" aria-label="Abrir navegación" aria-expanded="false">☰</button>
+        <header class="aura-shell-topbar">
+          <button class="aura-shell-menu" type="button" aria-label="Abrir navegación" aria-expanded="false">☰</button>
+          <span class="aura-shell-topbar-title">Agente 1 · Piezas comerciales</span>
+          <span class="aura-shell-topbar-context">AURA</span>
+          <span class="aura-shell-topbar-status">Sistema activo</span>
+        </header>
         <div class="aura-shell-content"></div>
       </main>
     `;

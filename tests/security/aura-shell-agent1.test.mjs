@@ -42,7 +42,8 @@ test('la navegación compartida conserva los destinos oficiales de AURA', async 
     assert.ok(shellJs.includes(`href: '${destination}'`), `falta ${destination}`);
   }
   assert.match(shellJs, /aria-current="page"/);
-  assert.doesNotMatch(shellJs, /aura-shell-topbar/);
+  assert.match(shellJs, /aura-shell-topbar/);
+  assert.match(shellJs, /Agente 1 · Piezas comerciales/);
 });
 
 test('el shell usa selectores aislados y no contiene lógica de IA', async () => {

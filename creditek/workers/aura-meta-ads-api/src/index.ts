@@ -232,6 +232,7 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   ));
   const metaIds = { campaign_id: String(campaign.id) };
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
+  console.info('meta_campaign_created', { campaign_id: metaIds.campaign_id, status: 'PAUSED' });
   return { ok: true, status: 'PAUSED', meta_ids: metaIds };
   /* istanbul ignore next -- las etapas posteriores permanecen bloqueadas hasta una aprobación separada */
   const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };

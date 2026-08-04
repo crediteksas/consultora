@@ -191,7 +191,7 @@ async function verifyMetaApp(env: Env) {
   const result = await metaObject(env, 'debug_token', { input_token: env.META_ACCESS_TOKEN });
   const data = (result.data || {}) as MetaRow;
   const scopes = Array.isArray(data.scopes) ? data.scopes.map(String) : [];
-  console.info('meta_token_scopes_verified', { scopes: scopes.sort() });
+  console.warn('meta_token_scopes_verified', { scopes: scopes.sort() });
   if (!/^\d+$/.test(String(data.app_id || '')) || data.is_valid !== true || !scopes.includes('ads_management')) throw new Error('META_PERMISSION_DENIED');
 }
 

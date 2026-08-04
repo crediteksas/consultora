@@ -6,9 +6,11 @@ const html = await readFile(new URL('../../creditek/agentes/agente3-meta-ads.htm
 const worker = await readFile(new URL('../../creditek/workers/aura-meta-ads-api/src/index.ts', import.meta.url), 'utf8').catch(() => '');
 const migration = await readFile(new URL('../../supabase/migrations/20260802_aura_meta_ads_read_permissions.sql', import.meta.url), 'utf8').catch(() => '');
 
-test('Agente 3 no contiene tokens, claves ni llamadas directas a Meta o KORA', () => {
+test('Agente 3 no contiene tokens, claves ni llamadas directas a Meta o al backend de KORA', () => {
   assert.doesNotMatch(html, /graph\.facebook\.com|EAA[A-Za-z0-9]|sk-ant-|META_ACCESS_TOKEN|WORKER_SHARED_SECRET|localStorage\.setItem\(['"]meta/i);
-  assert.doesNotMatch(html, /kora/i);
+  assert.doesNotMatch(html, /KORA_API|kora[^'"\s]*\.workers\.dev|\/api\/kora/i);
+  assert.match(html, /kora-shell\.css\?v=2\.0\.4/);
+  assert.match(html, /sidebar\.js\?v=2\.0\.4/);
 });
 
 test('el navegador usa el Worker dedicado y la sesión AURA', () => {

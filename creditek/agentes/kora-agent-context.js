@@ -18,7 +18,9 @@
 
   const TITLES = {
     'agent-1': 'Agente 1 · Piezas comerciales',
+    'agent-3': 'Agente 3 · Publicación y métricas',
     'agent-4': 'Agente 4 · Reels orgánicos',
+    sofia: 'Sofía',
   };
 
   function mount() {

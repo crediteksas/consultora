@@ -279,7 +279,9 @@ function tokenColor(name) { return getComputedStyle(document.documentElement).ge
 function pintarIconos() { window.lucide?.createIcons(); }
 
 function initPagina() {
-  window.KoraNavigation?.setContext('Resumen ejecutivo', ['KORA', 'Tablero']);
+  const sincronizarEncabezado = () => window.KoraNavigation?.setContext('Resumen ejecutivo', ['KORA', 'Tablero']);
+  sincronizarEncabezado();
+  document.addEventListener('kora-sidebar-ready', sincronizarEncabezado, { once: true });
   if (!esCentral()) {
     document.getElementById('pageContenido').innerHTML = '';
     document.getElementById('pageContenido').appendChild(document.getElementById('tplAccesoNegado').content.cloneNode(true));

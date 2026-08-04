@@ -12,4 +12,5 @@ test('el encabezado del tablero muestra un único título y breadcrumb compacto'
   assert.equal((html.match(/Resumen ejecutivo/g) || []).length, 1);
   assert.match(html, /El pulso comercial y operativo de Creditek, en una sola vista\./);
   assert.match(html, /setContext\('Resumen ejecutivo', \['KORA', 'Tablero'\]\)/);
+  assert.match(html, /addEventListener\('kora-sidebar-ready', sincronizarEncabezado, \{ once: true \}\)/);
 });

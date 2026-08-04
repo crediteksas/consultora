@@ -292,7 +292,10 @@ async function handle(request: Request, env: Env, origin?: string) {
   if (url.pathname === '/v1/publisher/options' && request.method === 'GET') {
     if (!PUBLISH_PERMISSIONS.every(permission => auth.grant.permissions.includes(permission))) return reply({ ok: false, error: 'Forbidden' }, 403, origin);
     try { return reply(await publisherOptions(env, auth.token), 200, origin); }
-    catch { return reply({ ok: false, error: 'Publisher catalog unavailable' }, 503, origin); }
+    catch (error) {
+      console.warn('publisher_options_unavailable', error instanceof Error ? error.message : 'UNKNOWN');
+      return reply({ ok: false, error: 'Publisher catalog unavailable' }, 503, origin);
+    }
   }
   if (url.pathname === '/v1/publisher/publish' && request.method === 'POST') {
     if (!PUBLISH_PERMISSIONS.every(permission => auth.grant.permissions.includes(permission))) return reply({ ok: false, error: 'Forbidden' }, 403, origin);

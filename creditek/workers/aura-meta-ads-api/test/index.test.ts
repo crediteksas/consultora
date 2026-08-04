@@ -61,6 +61,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities')) return json([{ id: 'tolu', name: 'Tolú', country_code: 'CO', active: true }]);
     if (url.includes('/debug_token')) return json({ data: { app_id: '123456789', is_valid: true, scopes: ['ads_management', 'business_management'] } });
     if (url.includes('/search?')) return json({ data: [{ key: '123', name: 'Tolú', type: 'city', country_code: 'CO' }] });
+    if (url.includes('/campaign-existing?')) return json({ id: 'campaign-existing', account_id: '123', objective: 'OUTCOME_TRAFFIC', status: 'PAUSED', effective_status: 'PAUSED' });
     if (url.includes('/act_123/campaigns') && init?.method === 'POST') return json({ id: 'campaign-1' });
     if (url.includes('/act_123/adsets')) return json({ id: 'adset-1' });
     if (url.includes('/act_123/adcreatives')) return json({ id: 'creative-1' });
@@ -222,6 +223,36 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adsets'))).toBe(false);
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(false);
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(false);
+  });
+
+  it('continúa la campaña existente y crea conjunto, creativo y anuncio pausados sin crear otra campaña', async () => {
+    mockNetwork(publishPermissions);
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'complete-existing'), env({ META_CONTINUE_CAMPAIGN_ID: 'campaign-existing' }));
+    const body = await response.json() as any;
+    expect(response.status).toBe(201);
+    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
+    expect(body.statuses).toEqual({ campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' });
+    const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
+    expect(metaCalls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/campaigns') && init?.method === 'POST')).toBe(false);
+    const adsetBody = String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/adsets'))?.[1]?.body);
+    expect(adsetBody).toContain('campaign_id=campaign-existing');
+    expect(adsetBody).toContain('daily_budget=6000');
+    expect(adsetBody).toContain('status=PAUSED');
+    expect(String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/ads'))?.[1]?.body)).toContain('status=PAUSED');
+  });
+
+  it('audita progresivamente cada objeto antes de crear el siguiente', async () => {
+    mockNetwork(publishPermissions);
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'audit-existing'), env({ META_CONTINUE_CAMPAIGN_ID: 'campaign-existing' }));
+    expect(response.status).toBe(201);
+    const audits = (globalThis.fetch as any).mock.calls
+      .filter(([url]: [unknown]) => String(url).includes('/rest/v1/rpc/aura_meta_ads_record_publish'))
+      .map(([, init]: [unknown, RequestInit]) => JSON.parse(String(init?.body || '{}')).p_meta_ids);
+    expect(audits).toEqual([
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1' },
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1' },
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' },
+    ]);
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

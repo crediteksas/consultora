@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
+<script src="kora-auth.js"></script>
 <script src="sidebar.js" data-kora-shell="1.0.0"></script>
 <style>
 :root {
@@ -32,24 +33,78 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Login ── */
-.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at 30% 20%, #EAFBFC 0%, var(--bg) 55%); }
-.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; width: 100%; max-width: 360px; box-shadow: var(--shadow-md); }
-.login-box img.logo { display: block; height: 40px; margin: 0 auto 22px; object-fit: contain; }
-.login-box input {
-  width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm);
-  padding: 13px 14px; font-size: 15px; margin-bottom: 12px; font-family: inherit; transition: all .15s ease;
+/* ── Acceso KORA ── */
+.login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  padding: 32px 20px; position: relative;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(0,196,204,.16), transparent 32%),
+    radial-gradient(circle at 86% 78%, rgba(11,30,61,.12), transparent 34%),
+    linear-gradient(145deg, #F7FCFC 0%, #F2F4F8 52%, #EDF4F7 100%);
 }
-.login-box input:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 4px rgba(0,196,204,0.14); }
-.login-box button {
-  width: 100%; background: var(--turquesa); color: white; border: none; border-radius: var(--radius-sm);
-  padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px;
-  box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); transition: transform .12s ease, box-shadow .12s ease;
+.login-screen::before, .login-screen::after {
+  content: ''; position: absolute; border-radius: 999px; pointer-events: none; filter: blur(1px);
 }
-.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -4px rgba(0,196,204,0.55); }
-.login-box button:disabled { background: #D2D2D7; box-shadow: none; }
-.login-err { color: var(--rojo); font-size: 12.5px; margin-top: 10px; display: none; }
-.login-err.show { display: block; }
+.login-screen::before { width: 280px; height: 280px; left: -120px; bottom: -130px; background: rgba(0,196,204,.08); }
+.login-screen::after { width: 220px; height: 220px; right: -90px; top: -100px; border: 1px solid rgba(11,30,61,.08); }
+.login-box {
+  background: rgba(255,255,255,.94); border: 1px solid rgba(255,255,255,.9); border-radius: 28px;
+  padding: 36px 34px 32px; width: 100%; max-width: 430px; position: relative; z-index: 1;
+  box-shadow: 0 28px 70px -30px rgba(11,30,61,.34), 0 8px 24px rgba(11,30,61,.08);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.login-box::before { content: ''; position: absolute; inset: 0 24px auto; height: 4px; border-radius: 0 0 6px 6px; background: linear-gradient(90deg, var(--azul), var(--turquesa)); }
+.auth-brand { min-height: 54px; margin-bottom: 24px; display: flex; justify-content: center; }
+.auth-view { display: none; }
+.auth-view.active { display: block; animation: auth-enter .22s ease-out; }
+@keyframes auth-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.auth-title { font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -.025em; text-align: center; }
+.auth-copy { color: var(--text2); font-size: 13.5px; line-height: 1.55; margin: 8px auto 24px; max-width: 330px; text-align: center; }
+.login-field { margin-bottom: 16px; }
+.login-field label { display: block; color: var(--azul); font-size: 12.5px; font-weight: 700; margin: 0 0 7px 2px; }
+.login-input-wrap { position: relative; }
+.login-field input:not([type="checkbox"]) {
+  width: 100%; height: 48px; border: 1px solid rgba(11,30,61,.13); background: #F8F9FB;
+  border-radius: 13px; padding: 0 14px; color: var(--azul); font: 500 14.5px inherit;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.login-field input.has-toggle { padding-right: 48px; }
+.login-field input::placeholder { color: #989AA2; }
+.login-field input:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 4px rgba(0,196,204,.13); }
+.login-box .password-toggle {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 40px; height: 38px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--text2); cursor: pointer;
+  font-size: 11px; font-weight: 700;
+}
+.login-box .password-toggle:hover { background: rgba(11,30,61,.05); color: var(--azul); }
+.login-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 20px; }
+.remember-option { display: inline-flex; align-items: center; gap: 8px; color: var(--text2); font-size: 12.5px; cursor: pointer; }
+.remember-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--turquesa); }
+.login-box .auth-link { width: auto; min-height: 0; border: 0; background: transparent; box-shadow: none; color: #087D83; font: 700 12.5px inherit; cursor: pointer; padding: 3px 0; text-decoration: none; }
+.login-box .auth-link:hover { background: transparent; box-shadow: none; color: var(--azul); transform: none; text-decoration: underline; }
+.login-btn {
+  width: 100%; min-height: 48px; background: var(--azul); color: white; border: 0; border-radius: 13px;
+  padding: 13px 18px; font: 700 14.5px inherit; cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgba(11,30,61,.62); transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+.login-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 28px -10px rgba(11,30,61,.68); }
+.login-btn:disabled { cursor: wait; opacity: .58; }
+.login-box .auth-back { display: block; margin: 18px auto 0; }
+.auth-status { display: none; border-radius: 11px; margin-top: 14px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; }
+.auth-status.show { display: block; }
+.auth-status.error { color: #9F2525; background: #FFF0F0; border: 1px solid #FFD9D9; }
+.auth-status.success { color: #176A42; background: #ECFAF3; border: 1px solid #C9F0DC; }
+.auth-status.info { color: #31546B; background: #EEF7FA; border: 1px solid #D5EAF0; }
+.otp-input { font-family: 'Montserrat', sans-serif !important; font-size: 21px !important; font-weight: 700 !important; letter-spacing: .3em; text-align: center; padding-left: calc(14px + .3em) !important; }
+.success-mark { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; margin: 2px auto 18px; background: rgba(0,196,204,.13); color: #087D83; font-size: 28px; font-weight: 800; }
+@media (max-width: 520px) {
+  .login-screen { padding: 20px 14px; align-items: flex-start; overflow-y: auto; }
+  .login-box { margin: auto 0; border-radius: 23px; padding: 30px 22px 26px; }
+  .auth-brand { margin-bottom: 20px; }
+  .auth-title { font-size: 21px; }
+  .login-options { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .auth-view.active { animation: none; } .login-btn { transition: none; } }
 
 /* ── Sin perfil ── */
 .sin-perfil-screen { min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 20px; text-align: center; }
@@ -117,11 +172,74 @@ body {
 
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <div data-kora-brand data-variant="login"></div>
-    <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
-    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
-    <button id="btnLogin">Entrar</button>
-    <div class="login-err" id="loginErr"></div>
+    <div class="auth-brand" data-kora-brand data-variant="login"></div>
+
+    <section class="auth-view active" id="auth-view-login" aria-labelledby="loginTitle">
+      <h1 class="auth-title" id="loginTitle">Bienvenido</h1>
+      <p class="auth-copy">Ingresa a KORA para gestionar la operación de Creditek.</p>
+      <div class="login-field">
+        <label for="loginEmail">Correo electrónico</label>
+        <input type="email" id="loginEmail" placeholder="tu@correo.com" autocomplete="username" inputmode="email">
+      </div>
+      <div class="login-field">
+        <label for="loginPass">Contraseña</label>
+        <div class="login-input-wrap">
+          <input class="has-toggle" type="password" id="loginPass" placeholder="Tu contraseña" autocomplete="current-password">
+          <button class="password-toggle" type="button" data-password-target="loginPass" aria-label="Mostrar contraseña">Ver</button>
+        </div>
+      </div>
+      <div class="login-options">
+        <label class="remember-option"><input type="checkbox" id="rememberSession" checked> Recordar sesión</label>
+        <button class="auth-link ghost" type="button" id="btnForgot">¿Olvidaste tu contraseña?</button>
+      </div>
+      <button class="login-btn" id="btnLogin">Entrar</button>
+      <div class="auth-status" id="loginErr" aria-live="polite"></div>
+    </section>
+
+    <section class="auth-view" id="auth-view-forgot" aria-labelledby="forgotTitle">
+      <h1 class="auth-title" id="forgotTitle">Recupera tu acceso</h1>
+      <p class="auth-copy">Escribe el correo asociado a KORA. Si está registrado, recibirás un código de seis dígitos.</p>
+      <div class="login-field">
+        <label for="recoveryEmail">Correo electrónico</label>
+        <input type="email" id="recoveryEmail" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
+      </div>
+      <button class="login-btn" id="btnRequestOtp">Enviar código</button>
+      <div class="auth-status" id="recoveryStatus" aria-live="polite"></div>
+      <button class="auth-link auth-back ghost" type="button" data-auth-back>Volver al login</button>
+    </section>
+
+    <section class="auth-view" id="auth-view-verify-code" aria-labelledby="verifyTitle">
+      <h1 class="auth-title" id="verifyTitle">Crea una contraseña nueva</h1>
+      <p class="auth-copy">Ingresa el código de seis dígitos que recibiste y define tu nueva contraseña.</p>
+      <div class="login-field">
+        <label for="recoveryCode">Código de verificación</label>
+        <input class="otp-input" type="text" id="recoveryCode" placeholder="000000" autocomplete="one-time-code" inputmode="numeric" maxlength="6">
+      </div>
+      <div class="login-field">
+        <label for="newPassword">Nueva contraseña</label>
+        <div class="login-input-wrap">
+          <input class="has-toggle" type="password" id="newPassword" placeholder="Mínimo 10 caracteres" autocomplete="new-password">
+          <button class="password-toggle" type="button" data-password-target="newPassword" aria-label="Mostrar contraseña">Ver</button>
+        </div>
+      </div>
+      <div class="login-field">
+        <label for="confirmPassword">Confirmar contraseña</label>
+        <div class="login-input-wrap">
+          <input class="has-toggle" type="password" id="confirmPassword" placeholder="Repite tu contraseña" autocomplete="new-password">
+          <button class="password-toggle" type="button" data-password-target="confirmPassword" aria-label="Mostrar contraseña">Ver</button>
+        </div>
+      </div>
+      <button class="login-btn" id="btnUpdatePassword">Cambiar contraseña</button>
+      <div class="auth-status" id="passwordStatus" aria-live="polite"></div>
+      <button class="auth-link auth-back ghost" type="button" id="btnRequestNewOtp">Solicitar un código nuevo</button>
+    </section>
+
+    <section class="auth-view" id="auth-view-password-updated" aria-labelledby="updatedTitle">
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <h1 class="auth-title" id="updatedTitle">Contraseña actualizada</h1>
+      <p class="auth-copy">Ya puedes ingresar a KORA con tu nueva contraseña.</p>
+      <button class="login-btn" id="btnReturnLogin">Volver al login</button>
+    </section>
   </div>
 </div>
 
@@ -177,10 +295,26 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   document.getElementById('loginScreen').innerHTML = '<div class="login-box"><strong>Configuración de KORA no disponible</strong><p>Contacta al administrador.</p></div>';
   throw new Error('Configuración de KORA no disponible');
 }
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let rememberKoraSession = true;
+const koraAuthStorage = {
+  getItem(key) { return localStorage.getItem(key) || sessionStorage.getItem(key); },
+  setItem(key, value) {
+    const primary = rememberKoraSession ? localStorage : sessionStorage;
+    const secondary = rememberKoraSession ? sessionStorage : localStorage;
+    secondary.removeItem(key);
+    primary.setItem(key, value);
+  },
+  removeItem(key) { localStorage.removeItem(key); sessionStorage.removeItem(key); },
+};
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, storage: koraAuthStorage },
+});
+const koraRecovery = KoraAuth.createKoraRecoveryClient(sb.auth);
+const KORA_LOGIN_PATH = '/creditek/erp/app';
 
 let currentUser = null;
 let currentPerfil = null; // { id, nombre, rol, tienda_codigo }
+let recoveryEmail = '';
 const KORA_HOME_BY_ROLE = Object.freeze({
   gerencia: 'tablero.html',
   auditoria: 'tablero.html',
@@ -192,27 +326,129 @@ function esCentral() {
   return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria');
 }
 
+function showAuthView(name) {
+  document.querySelectorAll('.auth-view').forEach((view) => view.classList.remove('active'));
+  document.getElementById(`auth-view-${name}`).classList.add('active');
+}
+
+function setAuthStatus(id, message = '', kind = 'error') {
+  const status = document.getElementById(id);
+  status.textContent = message;
+  status.className = `auth-status${message ? ` show ${kind}` : ''}`;
+}
+
+async function runAuthAction(button, loadingLabel, action) {
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = loadingLabel;
+  try { await action(); } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+function returnToLogin() {
+  recoveryEmail = '';
+  document.getElementById('recoveryCode').value = '';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('confirmPassword').value = '';
+  setAuthStatus('recoveryStatus');
+  setAuthStatus('passwordStatus');
+  showAuthView('login');
+  document.getElementById('loginEmail').focus();
+}
+
+document.querySelectorAll('[data-password-target]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const input = document.getElementById(button.dataset.passwordTarget);
+    const willShow = input.type === 'password';
+    input.type = willShow ? 'text' : 'password';
+    button.textContent = willShow ? 'Ocultar' : 'Ver';
+    button.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  });
+});
+
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
+document.getElementById('btnForgot').addEventListener('click', () => {
+  document.getElementById('recoveryEmail').value = document.getElementById('loginEmail').value.trim();
+  setAuthStatus('loginErr');
+  showAuthView('forgot');
+  document.getElementById('recoveryEmail').focus();
+});
+document.querySelectorAll('[data-auth-back]').forEach((button) => button.addEventListener('click', returnToLogin));
+document.getElementById('btnReturnLogin').addEventListener('click', () => window.location.replace(KORA_LOGIN_PATH));
+document.getElementById('btnRequestNewOtp').addEventListener('click', () => {
+  document.getElementById('recoveryEmail').value = recoveryEmail;
+  setAuthStatus('passwordStatus');
+  showAuthView('forgot');
+});
+document.getElementById('btnRequestOtp').addEventListener('click', solicitarOtp);
+document.getElementById('recoveryEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') solicitarOtp(); });
+document.getElementById('btnUpdatePassword').addEventListener('click', completarRecuperacion);
+document.getElementById('confirmPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') completarRecuperacion(); });
 
 async function hacerLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPass').value;
   const btn = document.getElementById('btnLogin');
-  const err = document.getElementById('loginErr');
-  err.classList.remove('show');
-  if (!email || !password) return;
-  btn.disabled = true;
-  btn.textContent = 'Entrando...';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  btn.disabled = false;
-  btn.textContent = 'Entrar';
-  if (error) {
-    err.textContent = 'Correo o contraseña incorrectos.';
-    err.classList.add('show');
+  setAuthStatus('loginErr');
+  if (!email || !password) {
+    setAuthStatus('loginErr', 'Escribe tu correo y contraseña.');
     return;
   }
-  entrarApp(data.user);
+  rememberKoraSession = document.getElementById('rememberSession').checked;
+  await runAuthAction(btn, 'Entrando…', async () => {
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error || !data?.user) {
+        setAuthStatus('loginErr', 'Correo o contraseña incorrectos.');
+        return;
+      }
+      document.getElementById('loginPass').value = '';
+      entrarApp(data.user);
+    } catch {
+      setAuthStatus('loginErr', 'No pudimos iniciar sesión. Inténtalo nuevamente.');
+    }
+  });
+}
+
+async function solicitarOtp() {
+  const btn = document.getElementById('btnRequestOtp');
+  setAuthStatus('recoveryStatus');
+  await runAuthAction(btn, 'Enviando código…', async () => {
+    try {
+      recoveryEmail = KoraAuth.validateRecoveryEmail(document.getElementById('recoveryEmail').value);
+      const result = await koraRecovery.requestPasswordRecovery(recoveryEmail);
+      showAuthView('verify-code');
+      setAuthStatus('passwordStatus', result.message, 'success');
+      document.getElementById('recoveryCode').focus();
+    } catch (error) {
+      setAuthStatus('recoveryStatus', error.message || 'No fue posible enviar el código. Inténtalo nuevamente.');
+    }
+  });
+}
+
+async function completarRecuperacion() {
+  const btn = document.getElementById('btnUpdatePassword');
+  const code = document.getElementById('recoveryCode').value;
+  const password = document.getElementById('newPassword').value;
+  const confirmation = document.getElementById('confirmPassword').value;
+  setAuthStatus('passwordStatus');
+  await runAuthAction(btn, 'Actualizando…', async () => {
+    try {
+      KoraAuth.validateRecoveryCode(code);
+      KoraAuth.validateNewPassword(password, confirmation);
+      await koraRecovery.verifyRecoveryCode(recoveryEmail, code);
+      await koraRecovery.updatePassword(password, confirmation);
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      showAuthView('password-updated');
+      window.setTimeout(() => window.location.replace(KORA_LOGIN_PATH), 1800);
+    } catch (error) {
+      setAuthStatus('passwordStatus', error.message || 'No pudimos actualizar la contraseña. Solicita un código nuevo.');
+    }
+  });
 }
 
 document.getElementById('btnLogout').addEventListener('click', cerrarSesion);

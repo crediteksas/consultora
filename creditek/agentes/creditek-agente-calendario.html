@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-kora-product="1.0.0" data-kora-version="2.0.4">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,14 +10,21 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/creditek/assets/aura/apple-touch-icon.png?v=1.3.0">
 <link rel="manifest" href="/creditek/agentes/manifest.json?v=1.3.0">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard.css">
+<link rel="stylesheet" href="/design-system/components/kora-shell.css?v=2.0.4">
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="/creditek/erp/sidebar.js?v=2.0.4" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
+<script src="kora-agent-context.js" defer></script>
 <style>
-:root{--azul:#0B1E3D;--turquesa:#00C4CC;--bg:#0B1E3D;--bg2:#112444;--bg3:#172d54;--bord:rgba(0,196,204,0.15);--bord2:rgba(0,196,204,0.35);--txt:#F0EFEB;--txt2:#9BB8CC;--txt3:#567890;--r:12px;--rs:8px}
+:root{--azul:var(--ctk-color-primary-900);--turquesa:var(--ctk-color-secondary-500);--bg:var(--ctk-color-background);--bg2:var(--ctk-color-surface);--bg3:var(--ctk-color-surface-subtle);--bord:var(--ctk-color-border);--bord2:var(--ctk-color-focus);--txt:var(--ctk-color-text);--txt2:var(--ctk-color-text-secondary);--txt3:var(--ctk-color-text-muted);--r:var(--ctk-radius-xl);--rs:var(--ctk-radius-sm)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:15px;line-height:1.6}
 .shell{display:flex;flex:1;min-height:0;overflow:hidden}
 
 /* SIDEBAR */
-.sidebar{width:296px;min-width:296px;background:var(--bg2);border-right:1px solid var(--bord);display:flex;flex-direction:column;overflow-y:auto}
+.agent4-config-panel{width:320px;min-width:320px;background:var(--bg2);border-right:1px solid var(--bord);display:flex;flex-direction:column;overflow-y:auto}
 .logo-wrap{padding:18px 18px 14px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:10px}
 .logo-img{height:36px;object-fit:contain}
 .logo-title{font-family:'Montserrat',sans-serif;font-weight:800;font-size:13px;color:var(--turquesa);letter-spacing:.04em}
@@ -52,8 +59,8 @@ select option{background:var(--bg2)}
 .progress-lbl{font-size:10px;color:var(--txt3);margin-top:5px;text-align:center}
 
 /* MAIN */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.topbar{padding:14px 24px 12px;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.agent4-workspace{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.agent4-content-toolbar{padding:14px 24px 12px;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--ctk-color-surface)}
 .ttl{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700}
 .tsub{font-size:11px;color:var(--txt3);margin-top:1px}
 .topbar-actions{display:flex;gap:8px}
@@ -151,16 +158,16 @@ select option{background:var(--bg2)}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bord);border-radius:2px}
 
 /* ── MODAL API KEY ─────────────────────────────────────────────── */
-#apiModal{position:fixed;inset:0;background:rgba(5,12,26,.93);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
+#apiModal{position:fixed;inset:0;background:var(--ctk-color-overlay);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
 #apiModal.hidden{display:none}
-.m-card{background:#112444;border:1px solid rgba(0,196,204,.3);border-radius:16px;padding:36px 32px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.m-card{background:var(--ctk-color-surface);border:1px solid var(--ctk-color-border);border-radius:var(--ctk-radius-xl);padding:36px 32px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px;box-shadow:var(--ctk-shadow-4)}
 .m-logo{display:flex;align-items:center;gap:12px}
 .m-logo img{height:34px;object-fit:contain}
 .m-logo-name{font-family:'Montserrat',sans-serif;font-weight:800;font-size:14px;color:#00C4CC;letter-spacing:.05em}
-.m-title{font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem;color:#F0EFEB;margin-bottom:3px}
-.m-desc{font-size:13px;color:#9BB8CC;line-height:1.6}
+.m-title{font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem;color:var(--ctk-color-text);margin-bottom:3px}
+.m-desc{font-size:13px;color:var(--ctk-color-text-secondary);line-height:1.6}
 .m-field{position:relative}
-.m-input{width:100%;background:#172d54;border:1px solid rgba(0,196,204,.2);color:#F0EFEB;border-radius:8px;font-family:monospace;font-size:13px;padding:12px 52px 12px 14px;outline:none;transition:border-color .2s;letter-spacing:.02em}
+.m-input{width:100%;background:var(--ctk-color-surface-subtle);border:1px solid var(--ctk-color-border);color:var(--ctk-color-text);border-radius:var(--ctk-radius-sm);font-family:monospace;font-size:13px;padding:12px 52px 12px 14px;outline:none;transition:border-color .2s;letter-spacing:.02em}
 .m-input:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.1)}
 .m-input::placeholder{color:#567890;font-family:'DM Sans',sans-serif;letter-spacing:0;font-size:12px}
 .m-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#567890;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;padding:4px;transition:color .15s}
@@ -176,7 +183,7 @@ select option{background:var(--bg2)}
 
 /* PRINT */
 @media print{
-  .sidebar,.topbar,.filters,.stats-bar,.dcard-actions{display:none!important}
+  .agent4-config-panel,.agent4-content-toolbar,.filters,.stats-bar,.dcard-actions{display:none!important}
   .ca{overflow:visible;padding:10px}
   .cal-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .dcard{break-inside:avoid;border:1px solid #ccc}
@@ -194,9 +201,21 @@ select option{background:var(--bg2)}
 .breadcrumb .cur{color:#9BB8CC}
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;z-index:500;color:#fff}
 .toast.show{opacity:1;transform:translateY(0)}
+.breadcrumb{display:none}
+.dcard,.sk-card,.eico{background:var(--ctk-color-surface);border-color:var(--ctk-color-border);box-shadow:var(--ctk-shadow-1)}
+.agent4-workspace-shell :where(select,input,textarea,button){border-radius:var(--ctk-radius-sm)}
+@media(max-width:63.999rem){
+  body{height:auto;min-height:100dvh;overflow:auto}
+  .agent4-workspace-shell{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));overflow:visible}
+  .agent4-config-panel{width:100%;min-width:0;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent4-workspace{min-height:42rem;overflow:visible}
+  .ca{overflow:visible;padding:var(--ctk-space-2)}
+  .cal-grid{grid-template-columns:1fr}
+  .agent4-content-toolbar,.filters,.stats-bar{padding-inline:var(--ctk-space-2)}
+}
 </style>
 </head>
-<body>
+<body class="kora-product-page" data-kora-agent-id="agent-4">
 <nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Calendario</span></nav>
 <div id="toast" class="toast"></div>
 
@@ -224,18 +243,11 @@ select option{background:var(--bg2)}
     </div>
   </div>
 </div>
-<div class="shell">
+<div id="app" data-kora-shell-root>
+<div class="shell agent4-workspace-shell">
 
 <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
-<aside class="sidebar">
-  <div class="logo-wrap">
-    <img class="logo-img" src="/logos/creditek_logo_corregido_alta.png" alt="Creditek">
-    <div>
-      <div class="logo-title">CREDITEK</div>
-      <div class="logo-sub">Agente 4 · Calendario</div>
-    </div>
-  </div>
-
+<aside class="agent4-config-panel">
   <div class="sec">
     <span class="lbl">Tienda</span>
     <div class="fg">
@@ -324,8 +336,8 @@ select option{background:var(--bg2)}
 </aside>
 
 <!-- ══════════════════════════ MAIN ══════════════════════════ -->
-<div class="main">
-  <div class="topbar">
+<div class="agent4-workspace">
+  <div class="agent4-content-toolbar">
     <div>
       <div class="ttl" id="topTitle">Calendario Mensual de Contenido</div>
       <div class="tsub" id="topSub">Configura la tienda y el mes, luego genera</div>
@@ -376,6 +388,7 @@ select option{background:var(--bg2)}
 </div>
 
 </div><!-- /shell -->
+</div><!-- /app -->
 
 <script>
 function showToast(msg, color='#22c55e'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}

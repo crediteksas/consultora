@@ -218,7 +218,8 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
   const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
-  const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/campaigns`, { name, objective: String(payload.objective), buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]' }, 'POST'));
+  const campaignObjective = payload.objective === 'OUTCOME_TRAFFIC' ? 'LINK_CLICKS' : String(payload.objective);
+  const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/campaigns`, { name, objective: campaignObjective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]' }, 'POST'));
   const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };
   if (payload.platforms?.includes('facebook')) targeting.facebook_positions = ['feed'];
   if (payload.platforms?.includes('instagram')) targeting.instagram_positions = ['stream'];

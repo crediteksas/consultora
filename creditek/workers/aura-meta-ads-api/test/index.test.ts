@@ -211,6 +211,7 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(metaCalls.every(([, init]: [unknown, RequestInit]) => !String(init?.body || '').includes('server-only-meta-token'))).toBe(true);
     const campaignCall = metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/campaigns'));
     expect(String(campaignCall?.[1]?.body)).toContain('buying_type=AUCTION');
+    expect(String(campaignCall?.[1]?.body)).toContain('objective=LINK_CLICKS');
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

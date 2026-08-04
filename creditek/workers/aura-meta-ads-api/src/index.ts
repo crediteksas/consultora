@@ -128,8 +128,9 @@ async function metaObject(env: Env, path: string, params: Record<string, string>
   const response = await fetch(url, init);
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok || body.error) {
-    const metaError = body.error && typeof body.error === 'object' ? body.error as { code?: unknown; type?: unknown } : {};
-    console.warn('meta_write_failed', `path=${path}`, `status=${response.status}`, `code=${String(metaError.code || 'UNKNOWN')}`, `type=${String(metaError.type || 'UNKNOWN')}`);
+    const metaError = body.error && typeof body.error === 'object' ? body.error as { code?: unknown; type?: unknown; error_subcode?: unknown; message?: unknown } : {};
+    const safeMessage = String(metaError.message || 'UNKNOWN').replace(/[A-Za-z0-9_-]{80,}/g, '[redacted]').slice(0, 240);
+    console.warn('meta_write_failed', `path=${path}`, `status=${response.status}`, `code=${String(metaError.code || 'UNKNOWN')}`, `subcode=${String(metaError.error_subcode || 'NONE')}`, `type=${String(metaError.type || 'UNKNOWN')}`, `message=${safeMessage}`);
     throw new Error('META_UPSTREAM');
   }
   return body;

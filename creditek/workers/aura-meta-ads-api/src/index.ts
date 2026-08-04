@@ -224,7 +224,13 @@ async function resolveInstagramActor(env: Env) {
   const actorId = String(business?.id || connected?.id || '');
   const available = Array.isArray(availableResult.data) ? availableResult.data as MetaRow[] : [];
   if (String(page.id) !== String(env.META_PAGE_ID) || !/^\d+$/.test(actorId)) throw new Error('INSTAGRAM_ACTOR_UNAVAILABLE');
-  if (!available.some(account => String(account.id) === actorId)) throw new Error('INSTAGRAM_ACTOR_NOT_ASSIGNED_TO_AD_ACCOUNT');
+  if (!available.some(account => String(account.id) === actorId)) {
+    console.warn('meta_instagram_actor_assignment_missing', {
+      page_id: String(page.id), linked_actor_id: actorId,
+      ad_account_actor_ids: available.map(account => String(account.id)).filter(id => /^\d+$/.test(id)),
+    });
+    throw new Error('INSTAGRAM_ACTOR_NOT_ASSIGNED_TO_AD_ACCOUNT');
+  }
   const source = business?.id ? 'instagram_business_account' : 'connected_instagram_account';
   console.info('meta_instagram_actor_resolved', { page_id: String(page.id), instagram_actor_id: actorId, source, ad_account_assigned: true });
   return { ready: true, page_id: String(page.id), actor_id: actorId, source };

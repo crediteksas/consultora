@@ -23,7 +23,7 @@ test('el shell monta un único escarabajo y elimina Mis incidencias del menú', 
 test('el Centro de Incidencias concentra consulta, detalle y seguimiento', async () => {
   const admin = await readFile(path.join(root, 'creditek/erp/incidencias.html'), 'utf8');
 
-  assert.match(admin, /sidebar\.js\?v=2\.0\.7" data-kora-shell="1\.0\.0"/);
+  assert.match(admin, /sidebar\.js\?v=2\.0\.8" data-kora-shell="1\.0\.0"/);
   assert.match(admin, /data-kora-requires-auth="true"/);
   assert.match(admin, /kora-incident-management\.js\?v=1\.2\.1/);
   assert.match(admin, /Nuevas[\s\S]*Críticas[\s\S]*En desarrollo[\s\S]*Pendientes de validación/);

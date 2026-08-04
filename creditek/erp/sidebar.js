@@ -19,6 +19,8 @@
   const KORA_CONFIGURATION_AVAILABLE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
   const BOOT_TRACE_KEY = 'kora_shell_boot_trace';
   const trustedGetSession = new WeakMap();
+  let bootstrapClient = null;
+  let sharedPageClient = null;
   let bootStage = 'configuration';
   let initializationPromise = null;
   let routeAccessSettled = false;
@@ -76,19 +78,23 @@
     if (window.supabase.__creditekSharedClientInstalled) return;
 
     const createClient = window.supabase.createClient.bind(window.supabase);
-    let sharedClient = null;
+    bootstrapClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    trustedGetSession.set(
+      bootstrapClient,
+      bootstrapClient.auth.getSession.bind(bootstrapClient.auth),
+    );
 
     window.supabase.createClient = function createSharedClient(url, key, options) {
       if (url !== SUPABASE_URL) return createClient(url, key, options);
-      if (!sharedClient) {
-        sharedClient = createClient(url, key, options);
-        const nativeGetSession = sharedClient.auth.getSession.bind(sharedClient.auth);
-        trustedGetSession.set(sharedClient, nativeGetSession);
-        sharedClient.auth.getSession = (...args) => routeAccessPromise.then(result => (
+      if (!sharedPageClient) {
+        sharedPageClient = createClient(url, key, options);
+        const nativeGetSession = sharedPageClient.auth.getSession.bind(sharedPageClient.auth);
+        trustedGetSession.set(sharedPageClient, nativeGetSession);
+        sharedPageClient.auth.getSession = (...args) => routeAccessPromise.then(result => (
           result.allowed ? nativeGetSession(...args) : { data: { session: null }, error: null }
         ));
       }
-      return sharedClient;
+      return sharedPageClient;
     };
     window.supabase.__creditekSharedClientInstalled = true;
   }
@@ -913,7 +919,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
       completeBootStage('configuration');
       startBootStage('supabase-client');
-      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const sb = bootstrapClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       completeBootStage('supabase-client');
       startBootStage('access-control');
       if (!window.KoraAccessControl) {
@@ -970,7 +976,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const capabilities = { b2b: esAdminB2b, aliados: esOperadorAliados };
       startBootStage('authorization');
       const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
-      window.creditekSidebar = { perfil, tiendas: [], sb, authorization };
+      const pageClient = sharedPageClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.creditekSidebar = { perfil, tiendas: [], sb: pageClient, authorization };
       if (!authorization.allowed) {
         finishRouteAccess(false, { profile: perfil, authorization });
         showAccessDenied();
@@ -1004,9 +1011,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
           profile: perfil,
           stores: tiendas || [],
           modules: modulesForProfile(perfil),
-          supabaseClient: sb,
+          supabaseClient: pageClient,
           onLogout: async () => {
-            await sb.auth.signOut();
+            await pageClient.auth.signOut();
             location.reload();
           },
         });
@@ -1018,12 +1025,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         document.body.appendChild(wrapper.querySelector('#sidebarHamburguesa'));
         document.body.appendChild(wrapper.querySelector('#sidebarOverlay'));
         appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
-        wireInteractions(sb);
+        wireInteractions(pageClient);
       }
       completeBootStage('mount');
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
-      window.creditekSidebar = { perfil, tiendas: tiendas || [], sb, authorization };
+      window.creditekSidebar = { perfil, tiendas: tiendas || [], sb: pageClient, authorization };
       if (typeof CustomEvent === 'function') {
         document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
       }

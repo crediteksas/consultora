@@ -8,7 +8,7 @@ const appHtml = fs.readFileSync(
 );
 
 test('una sesión válida entra al destino resuelto por el control compartido', () => {
-  assert.match(appHtml, /<script src="kora-access-control\.js\?v=2\.0\.7"><\/script>/);
+  assert.match(appHtml, /<script src="kora-access-control\.js\?v=2\.0\.8"><\/script>/);
   assert.match(appHtml, /const home = window\.KoraAccessControl\?\.homeFor\(perfil\)/);
   assert.match(appHtml, /window\.location\.replace\(home\)/);
 });

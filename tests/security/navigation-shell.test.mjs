@@ -226,13 +226,13 @@ test('instala una cortina neutral antes de resolver la sesión', () => {
   );
 });
 
-test('el shell y la página reutilizan un único cliente Supabase', async () => {
+test('el arranque usa un cliente nativo separado del cliente bloqueado de la página', async () => {
   const harness = createHarness();
 
   harness.createPageClient();
   await harness.listeners.DOMContentLoaded();
 
-  assert.equal(harness.getClientCreations(), 1);
+  assert.equal(harness.getClientCreations(), 2);
 });
 
 test('sin sesión retira la cortina y permite mostrar el login real', async () => {

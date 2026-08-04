@@ -7,23 +7,16 @@ const appHtml = fs.readFileSync(
   'utf8',
 );
 
-test('una sesión válida entra al destino moderno correspondiente al rol', () => {
-  assert.match(
-    appHtml,
-    /const KORA_HOME_BY_ROLE = Object\.freeze\(\{[\s\S]*gerencia:\s*'tablero\.html'[\s\S]*auditoria:\s*'tablero\.html'[\s\S]*admin_tienda:\s*'inventario\.html'[\s\S]*asesor:\s*'ventas\.html'/,
-  );
-  assert.match(
-    appHtml,
-    /window\.location\.replace\(KORA_HOME_BY_ROLE\[perfil\.rol\] \|\| 'reportes\.html'\)/,
-  );
+test('una sesión válida entra al destino resuelto por el control compartido', () => {
+  assert.match(appHtml, /<script src="kora-access-control\.js\?v=2\.0\.0"><\/script>/);
+  assert.match(appHtml, /const home = window\.KoraAccessControl\?\.homeFor\(perfil\)/);
+  assert.match(appHtml, /window\.location\.replace\(home\)/);
 });
 
 test('la redirección ocurre solo después de validar perfil activo y cambio de clave', () => {
   const profileGuard = appHtml.indexOf('if (error || !perfil || !perfil.activo)');
   const passwordGuard = appHtml.indexOf("if (perfil.rol === 'admin_tienda' && !yaCambioClave)");
-  const modernRedirect = appHtml.indexOf(
-    "window.location.replace(KORA_HOME_BY_ROLE[perfil.rol] || 'reportes.html')",
-  );
+  const modernRedirect = appHtml.indexOf('window.location.replace(home)');
 
   assert.ok(profileGuard >= 0, 'debe conservar la validación del perfil');
   assert.ok(passwordGuard > profileGuard, 'debe validar el cambio obligatorio de clave');

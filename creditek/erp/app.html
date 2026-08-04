@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-auth.js"></script>
+<script src="kora-access-control.js?v=2.0.0"></script>
 <script src="sidebar.js" data-kora-shell="1.0.0"></script>
 <style>
 :root {
@@ -315,12 +316,6 @@ const KORA_LOGIN_PATH = '/creditek/erp/app';
 let currentUser = null;
 let currentPerfil = null; // { id, nombre, rol, tienda_codigo }
 let recoveryEmail = '';
-const KORA_HOME_BY_ROLE = Object.freeze({
-  gerencia: 'tablero.html',
-  auditoria: 'tablero.html',
-  admin_tienda: 'inventario.html',
-  asesor: 'ventas.html',
-});
 
 function esCentral() {
   return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria');
@@ -475,7 +470,13 @@ async function entrarApp(user) {
     return;
   }
 
-  window.location.replace(KORA_HOME_BY_ROLE[perfil.rol] || 'reportes.html');
+  const home = window.KoraAccessControl?.homeFor(perfil);
+  if (!home) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('sinPerfilScreen').classList.add('show');
+    return;
+  }
+  window.location.replace(home);
 }
 
 function pintarNavUser() {

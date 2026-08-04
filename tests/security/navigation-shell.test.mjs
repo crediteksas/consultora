@@ -8,6 +8,10 @@ const source = await readFile(
   path.resolve(import.meta.dirname, '../../creditek/erp/sidebar.js'),
   'utf8',
 );
+const accessSource = await readFile(
+  path.resolve(import.meta.dirname, '../../creditek/erp/kora-access-control.js'),
+  'utf8',
+);
 
 function classList(initial = [], onChange = () => {}) {
   const values = new Set(initial);
@@ -28,6 +32,9 @@ function createHarness({
   profileError = false,
   sessionHangs = false,
   immediateTimers = false,
+  profileRole = 'admin_tienda',
+  storeCode = 'T-01',
+  pathname = '/creditek/erp/ventas.html',
 } = {}) {
   const events = [];
   const listeners = {};
@@ -116,6 +123,7 @@ function createHarness({
       signOut: async () => {},
     },
     from(table) {
+      events.push(`from:${table}`);
       if (table === 'perfiles') {
         if (profileError) {
           return {
@@ -131,8 +139,8 @@ function createHarness({
         return queryResult({
           id: session?.user?.id,
           nombre: 'Usuario sintético',
-          rol: 'admin_tienda',
-          tienda_codigo: 'T-01',
+          rol: profileRole,
+          tienda_codigo: storeCode,
           activo: true,
         });
       }
@@ -156,7 +164,7 @@ function createHarness({
       },
     },
     location: {
-      pathname: '/creditek/erp/ventas.html',
+      pathname,
       reload() { events.push('reload'); },
     },
     localStorage: { getItem: () => null, setItem() {} },
@@ -173,6 +181,7 @@ function createHarness({
     },
   };
 
+  vm.runInNewContext(accessSource, context, { filename: 'kora-access-control.js' });
   vm.runInNewContext(source, context, { filename: 'sidebar.js' });
   return {
     rootClasses,
@@ -229,6 +238,22 @@ test('con sesión inyecta el sidebar antes de revelar el destino', async () => {
     harness.events.indexOf('insert:sidebar')
       < harness.events.indexOf('remove:creditek-shell-pending'),
   );
+});
+
+test('una ruta corporativa bloqueada para tienda no libera la sesión ni consulta datos', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileRole: 'admin_tienda',
+    pathname: '/creditek/erp/utilidad-creditek.html',
+  });
+  const pageSession = harness.createPageClient().auth.getSession();
+
+  await harness.listeners.DOMContentLoaded();
+
+  assert.equal((await pageSession).data.session, null);
+  assert.equal(harness.events.includes('from:origenes'), false);
+  assert.match(harness.getBootError().innerHTML, /Acceso denegado/);
+  assert.equal(harness.events.includes('insert:sidebar'), false);
 });
 
 test('un fallo de bootstrap no deja la interfaz oculta', async () => {

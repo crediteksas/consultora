@@ -17,6 +17,17 @@
   const SUPABASE_URL = KORA_ENV?.KORA_ERP_SUPABASE_URL;
   const SUPABASE_ANON_KEY = KORA_ENV?.KORA_ERP_SUPABASE_ANON_KEY;
   const KORA_CONFIGURATION_AVAILABLE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const trustedGetSession = new WeakMap();
+  let routeAccessSettled = false;
+  let settleRouteAccess;
+  const routeAccessPromise = new Promise(resolve => { settleRouteAccess = resolve; });
+  window.__KORA_ROUTE_ACCESS__ = routeAccessPromise;
+
+  function finishRouteAccess(allowed, context = {}) {
+    if (routeAccessSettled) return;
+    routeAccessSettled = true;
+    settleRouteAccess({ allowed, ...context });
+  }
 
   function installSharedSupabaseClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -29,7 +40,14 @@
 
     window.supabase.createClient = function createSharedClient(url, key, options) {
       if (url !== SUPABASE_URL) return createClient(url, key, options);
-      if (!sharedClient) sharedClient = createClient(url, key, options);
+      if (!sharedClient) {
+        sharedClient = createClient(url, key, options);
+        const nativeGetSession = sharedClient.auth.getSession.bind(sharedClient.auth);
+        trustedGetSession.set(sharedClient, nativeGetSession);
+        sharedClient.auth.getSession = (...args) => routeAccessPromise.then(result => (
+          result.allowed ? nativeGetSession(...args) : { data: { session: null }, error: null }
+        ));
+      }
       return sharedClient;
     };
     window.supabase.__creditekSharedClientInstalled = true;
@@ -97,6 +115,28 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         </div>
       `;
       errorEl.querySelector('button').addEventListener('click', () => location.reload());
+      document.body.appendChild(errorEl);
+    }
+    document.documentElement.classList.add(SHELL_ERROR_CLASS);
+  }
+
+  function showAccessDenied() {
+    let errorEl = document.getElementById('creditekShellBootError');
+    if (!errorEl) {
+      errorEl = document.createElement('div');
+      errorEl.id = 'creditekShellBootError';
+      errorEl.setAttribute('role', 'alert');
+      errorEl.innerHTML = `
+        <div>
+          <strong>Acceso denegado</strong>
+          <p>No tienes permiso para abrir esta sección de KORA.</p>
+          <button type="button">Ir a mi inicio</button>
+        </div>
+      `;
+      errorEl.querySelector('button').addEventListener('click', () => {
+        const home = window.KoraAccessControl?.homeFor(window.creditekSidebar?.perfil);
+        location.href = home || 'app.html';
+      });
       document.body.appendChild(errorEl);
     }
     document.documentElement.classList.add(SHELL_ERROR_CLASS);
@@ -447,8 +487,26 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraCurrentItem(modules) {
     const current = paginaActual();
     return modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })))
-      .find(item => item.href === current)
+      .find(item => item.href?.split('#')[0] === current)
       || modules[0]?.items[0];
+  }
+
+  function modulesForProfile(profile) {
+    const capabilities = {
+      b2b: profile.es_admin_b2b === true,
+      aliados: profile.es_operador_aliados === true,
+    };
+    return (window.KoraAccessControl?.navigationFor(profile, capabilities) || []).map(section => ({
+      titulo: section.title,
+      lucide: section.icon,
+      description: section.title,
+      items: section.items.map(item => ({
+        label: item.label,
+        href: item.href,
+        lucide: item.icon,
+        description: item.label,
+      })),
+    }));
   }
 
   function koraNavigationHtml(modules, role, activeItem, profile) {
@@ -813,8 +871,15 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         return;
       }
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const { data: sessionData } = await withBootTimeout(sb.auth.getSession());
+      if (!window.KoraAccessControl) {
+        finishRouteAccess(false);
+        showBootError(true);
+        return;
+      }
+      const getTrustedSession = trustedGetSession.get(sb) || sb.auth.getSession.bind(sb.auth);
+      const { data: sessionData } = await withBootTimeout(getTrustedSession());
       if (!sessionData || !sessionData.session) {
+        finishRouteAccess(true, { authenticated: false });
         if (document.body?.dataset?.koraRequiresAuth === 'true') {
           location.href = 'app.html';
           return;
@@ -829,8 +894,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         sb.from('perfiles').select('*').eq('id', userId).maybeSingle(),
       );
       if (!perfil || !perfil.activo) {
-        if (await waitForPageReady(appEl)) revealDestination();
-        else showBootError();
+        finishRouteAccess(false);
+        showAccessDenied();
         return;
       }
       let esAdminB2b = false;
@@ -846,6 +911,16 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
       perfil.es_operador_aliados = esOperadorAliados;
 
+      const capabilities = { b2b: esAdminB2b, aliados: esOperadorAliados };
+      const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
+      window.creditekSidebar = { perfil, tiendas: [], sb, authorization };
+      if (!authorization.allowed) {
+        finishRouteAccess(false, { profile: perfil, authorization });
+        showAccessDenied();
+        return;
+      }
+      finishRouteAccess(true, { profile: perfil, authorization });
+
       const { data: tiendas } = await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
@@ -856,6 +931,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
           root: document.querySelector('[data-kora-shell-root]') || appEl,
           profile: perfil,
           stores: tiendas || [],
+          modules: modulesForProfile(perfil),
           supabaseClient: sb,
           onLogout: async () => {
             await sb.auth.signOut();
@@ -874,13 +950,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
-      window.creditekSidebar = { perfil, tiendas: tiendas || [], sb };
+      window.creditekSidebar = { perfil, tiendas: tiendas || [], sb, authorization };
       if (typeof CustomEvent === 'function') {
         document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
       }
       if (await waitForPageReady(appEl)) revealDestination();
       else showBootError();
     } catch (_) {
+      finishRouteAccess(false);
       // Evita revelar el login o contenido protegido después de confirmar una sesión.
       showBootError();
     }

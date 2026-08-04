@@ -40,6 +40,7 @@ function createHarness({
   const errors = [];
   const listeners = {};
   const styles = [];
+  const sessionValues = new Map();
   let bootError = null;
   const rootClasses = classList([], (operation, name) => {
     events.push(`${operation}:${name}`);
@@ -75,6 +76,9 @@ function createHarness({
     body,
     addEventListener(name, callback) {
       listeners[name] = callback;
+    },
+    dispatchEvent(event) {
+      events.push(`dispatch:${event.type}`);
     },
     createElement(tag) {
       if (tag === 'style') return { id: '', textContent: '' };
@@ -170,8 +174,16 @@ function createHarness({
     location: {
       pathname,
       reload() { events.push('reload'); },
+      replace(target) { events.push(`replace:${target}`); },
+    },
+    CustomEvent: class {
+      constructor(type) { this.type = type; }
     },
     localStorage: { getItem: () => null, setItem() {} },
+    sessionStorage: {
+      getItem(key) { return sessionValues.get(key) || null; },
+      setItem(key, value) { sessionValues.set(key, value); },
+    },
     setTimeout: immediateTimers
       ? callback => {
           queueMicrotask(callback);
@@ -199,6 +211,7 @@ function createHarness({
     getClientCreations: () => clientCreations,
     getBootError: () => bootError,
     getErrors: () => errors,
+    getBootTrace: () => JSON.parse(sessionValues.get('kora_shell_boot_trace') || '[]'),
   };
 }
 
@@ -259,6 +272,54 @@ test('una ruta corporativa bloqueada para tienda no libera la sesión ni consult
   assert.equal(harness.events.includes('from:origenes'), false);
   assert.match(harness.getBootError().innerHTML, /Acceso denegado/);
   assert.equal(harness.events.includes('insert:sidebar'), false);
+});
+
+test('app autenticada redirige desde el coordinador sin montar ni consultar tiendas', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileRole: 'gerencia',
+    storeCode: null,
+    pathname: '/creditek/erp/app',
+  });
+  const pageSession = harness.createPageClient().auth.getSession();
+  let pageSessionSettled = false;
+  pageSession.then(() => { pageSessionSettled = true; });
+
+  await harness.listeners.DOMContentLoaded();
+  await Promise.resolve();
+
+  assert.equal(harness.events.includes('replace:tablero.html'), true);
+  assert.equal(harness.events.includes('from:origenes'), false);
+  assert.equal(harness.events.includes('insert:sidebar'), false);
+  assert.equal(pageSessionSettled, false);
+});
+
+test('la inicialización es idempotente aunque DOMContentLoaded se invoque dos veces', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    appReady: true,
+  });
+
+  await Promise.all([
+    harness.listeners.DOMContentLoaded(),
+    harness.listeners.DOMContentLoaded(),
+  ]);
+
+  assert.equal(harness.events.filter(event => event === 'from:perfiles').length, 1);
+  assert.equal(harness.events.filter(event => event === 'dispatch:kora-sidebar-ready').length, 1);
+});
+
+test('la traza persistente conserva etapas sin identidad ni credenciales', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    appReady: true,
+  });
+
+  await harness.listeners.DOMContentLoaded();
+
+  const serialized = JSON.stringify(harness.getBootTrace());
+  assert.match(serialized, /session|profile|authorization|ready/);
+  assert.doesNotMatch(serialized, /user-test|email|token|uuid/i);
 });
 
 test('un fallo de bootstrap no deja la interfaz oculta', async () => {

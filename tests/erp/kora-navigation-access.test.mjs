@@ -85,6 +85,33 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
   assert.doesNotMatch(labels, /Terceros|Partners|Operaciones Creditek|Tiendas propias/);
 });
 
+test('matriz equivalente de Óscar conserva Corporativo, Retail, B2B, Aliados y Administración', () => {
+  const profile = { rol: 'gerencia', activo: true };
+  const navigation = access.navigationFor(profile, { b2b: true, aliados: true });
+  assert.deepEqual(
+    Array.from(navigation, section => section.title),
+    ['TABLERO', 'CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
+  );
+  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: true }).allowed, true);
+  assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: true }).allowed, true);
+});
+
+test('matriz equivalente de Maite conserva Corporativo y aplica capacidades existentes', () => {
+  const profile = { rol: 'auditoria', activo: true };
+  assert.equal(access.resolveExperience(profile), 'corporate');
+  assert.equal(access.authorize(profile, 'ventas.html').allowed, true);
+  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, false);
+});
+
+test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tienda', () => {
+  const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
+  const navigation = access.navigationFor(profile);
+  assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
+  for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html', 'incidencias.html']) {
+    assert.equal(access.authorize(profile, route).allowed, false, route);
+  }
+});
+
 test('toda página que monta el shell carga primero el control de acceso', async () => {
   const erpDir = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(erpDir)).filter(name => name.endsWith('.html'));
@@ -92,7 +119,7 @@ test('toda página que monta el shell carga primero el control de acceso', async
     const html = await readFile(new URL(file, erpDir), 'utf8');
     const shell = html.indexOf('src="sidebar.js');
     if (shell < 0) continue;
-    const guard = html.indexOf('src="kora-access-control.js?v=2.0.6"');
+    const guard = html.indexOf('src="kora-access-control.js?v=2.0.7"');
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });

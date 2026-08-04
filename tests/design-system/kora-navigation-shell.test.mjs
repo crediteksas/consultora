@@ -13,8 +13,8 @@ test('el shell KORA se activa únicamente en las tres pantallas piloto', async (
     read('creditek/agentes/index.html'),
   ]);
 
-  assert.match(tablero, /sidebar\.js\?v=2\.0\.6" data-kora-shell="1\.0\.0"/);
-  assert.match(utilidad, /sidebar\.js\?v=2\.0\.6" data-kora-shell="1\.0\.0"/);
+  assert.match(tablero, /sidebar\.js\?v=2\.0\.7" data-kora-shell="1\.0\.0"/);
+  assert.match(utilidad, /sidebar\.js\?v=2\.0\.7" data-kora-shell="1\.0\.0"/);
   assert.match(
     agentes,
     /\.\.\/erp\/sidebar\.js" data-kora-shell="1\.0\.0" data-kora-shell-mode="agents"/,

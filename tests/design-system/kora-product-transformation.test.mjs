@@ -88,7 +88,7 @@ test('todas las pantallas ERP autenticadas consumen una única navegación KORA'
     const source = await read(path);
     assert.match(
       source,
-      /<script src="sidebar\.js\?v=2\.0\.6" data-kora-shell="1\.0\.0"><\/script>/,
+      /<script src="sidebar\.js\?v=2\.0\.7" data-kora-shell="1\.0\.0"><\/script>/,
       `${path} no activa el shell compartido`,
     );
   }

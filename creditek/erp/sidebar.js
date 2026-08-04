@@ -17,8 +17,10 @@
   const SUPABASE_URL = KORA_ENV?.KORA_ERP_SUPABASE_URL;
   const SUPABASE_ANON_KEY = KORA_ENV?.KORA_ERP_SUPABASE_ANON_KEY;
   const KORA_CONFIGURATION_AVAILABLE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const BOOT_TRACE_KEY = 'kora_shell_boot_trace';
   const trustedGetSession = new WeakMap();
   let bootStage = 'configuration';
+  let initializationPromise = null;
   let routeAccessSettled = false;
   let settleRouteAccess;
   const routeAccessPromise = new Promise(resolve => { settleRouteAccess = resolve; });
@@ -30,11 +32,40 @@
     settleRouteAccess({ allowed, ...context });
   }
 
+  function recordBootTrace(stage, status, details = {}) {
+    try {
+      const previous = JSON.parse(sessionStorage.getItem(BOOT_TRACE_KEY) || '[]');
+      const trace = Array.isArray(previous) ? previous.slice(-39) : [];
+      trace.push({ at: new Date().toISOString(), stage, status, ...details });
+      sessionStorage.setItem(BOOT_TRACE_KEY, JSON.stringify(trace));
+    } catch (_) {
+      // El diagnóstico nunca debe impedir el arranque.
+    }
+  }
+
+  function startBootStage(stage) {
+    bootStage = stage;
+    recordBootTrace(stage, 'started');
+  }
+
+  function completeBootStage(stage, details = {}) {
+    recordBootTrace(stage, 'completed', details);
+  }
+
+  function safeDiagnosticMessage(value) {
+    return String(value || 'Error desconocido')
+      .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[correo]')
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, '[uuid]')
+      .slice(0, 240);
+  }
+
   function reportBootFailure(error) {
-    const message = error && typeof error.message === 'string'
+    const rawMessage = error && typeof error.message === 'string'
       ? error.message
       : String(error || 'Error desconocido');
+    const message = safeDiagnosticMessage(rawMessage);
     const stack = error && typeof error.stack === 'string' ? error.stack : '';
+    recordBootTrace(bootStage, 'failed', { message });
     console.error(`[KORA Shell] Error de inicialización | etapa=${bootStage} | mensaje=${message} | stack=${stack}`);
   }
 
@@ -867,7 +898,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     version: '1.0.0',
   };
 
-  async function init() {
+  async function initialize() {
     const appEl = document.getElementById('app');
     if (!appEl) {
       revealDestination();
@@ -875,23 +906,27 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
 
     try {
-      bootStage = 'configuration';
+      startBootStage('configuration');
       if (!KORA_CONFIGURATION_AVAILABLE) {
         showBootError(true);
         return;
       }
-      bootStage = 'supabase-client';
+      completeBootStage('configuration');
+      startBootStage('supabase-client');
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      bootStage = 'access-control';
+      completeBootStage('supabase-client');
+      startBootStage('access-control');
       if (!window.KoraAccessControl) {
         finishRouteAccess(false);
         showBootError(true);
         return;
       }
+      completeBootStage('access-control');
       const getTrustedSession = trustedGetSession.get(sb) || sb.auth.getSession.bind(sb.auth);
-      bootStage = 'session';
+      startBootStage('session');
       const { data: sessionData } = await withBootTimeout(getTrustedSession());
       if (!sessionData || !sessionData.session) {
+        completeBootStage('session', { authenticated: false });
         finishRouteAccess(true, { authenticated: false });
         if (document.body?.dataset?.koraRequiresAuth === 'true') {
           location.href = 'app.html';
@@ -900,10 +935,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         revealDestination();
         return; // el login propio de la página se encarga
       }
+      completeBootStage('session', { authenticated: true });
 
       markAuthenticated();
       const userId = sessionData.session.user.id;
-      bootStage = 'profile';
+      startBootStage('profile');
       const { data: perfil } = await withBootTimeout(
         sb.from('perfiles').select('*').eq('id', userId).maybeSingle(),
       );
@@ -912,23 +948,27 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         showAccessDenied();
         return;
       }
+      const experience = window.KoraAccessControl.resolveExperience(perfil);
+      completeBootStage('profile', { active: true, experience });
       let esAdminB2b = false;
       if (typeof sb.rpc === 'function') {
-        bootStage = 'b2b-capability';
+        startBootStage('b2b-capability');
         const permisoB2b = await withBootTimeout(sb.rpc('es_admin_b2b'));
         esAdminB2b = permisoB2b?.error ? false : permisoB2b?.data === true;
       }
       perfil.es_admin_b2b = esAdminB2b;
+      completeBootStage('b2b-capability', { enabled: esAdminB2b });
       let esOperadorAliados = false;
       if (typeof sb.rpc === 'function') {
-        bootStage = 'allies-capability';
+        startBootStage('allies-capability');
         const permisoAliados = await withBootTimeout(sb.rpc('tiene_capacidad_aliados', { p_capacidad: 'revisor' }));
         esOperadorAliados = permisoAliados?.error ? false : permisoAliados?.data === true;
       }
       perfil.es_operador_aliados = esOperadorAliados;
+      completeBootStage('allies-capability', { enabled: esOperadorAliados });
 
       const capabilities = { b2b: esAdminB2b, aliados: esOperadorAliados };
-      bootStage = 'authorization';
+      startBootStage('authorization');
       const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
       window.creditekSidebar = { perfil, tiendas: [], sb, authorization };
       if (!authorization.allowed) {
@@ -936,15 +976,28 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         showAccessDenied();
         return;
       }
-      finishRouteAccess(true, { profile: perfil, authorization });
+      completeBootStage('authorization', { allowed: true, experience: authorization.experience });
 
-      bootStage = 'stores';
+      if (authorization.route === 'app.html') {
+        const home = window.KoraAccessControl.homeFor(perfil);
+        if (!home) {
+          finishRouteAccess(false, { profile: perfil, authorization });
+          showAccessDenied();
+          return;
+        }
+        completeBootStage('ready', { outcome: 'redirect', experience });
+        location.replace(home);
+        return;
+      }
+
+      startBootStage('stores');
       const { data: tiendas } = await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
+      completeBootStage('stores', { loaded: true });
 
+      startBootStage('mount');
       if (KORA_SHELL_ENABLED) {
-        bootStage = 'mount';
         appEl.classList.remove('hidden');
         mountKoraShell({
           root: document.querySelector('[data-kora-shell-root]') || appEl,
@@ -967,21 +1020,38 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         appEl.insertBefore(wrapper.querySelector('#sidebarEl'), appEl.firstChild);
         wireInteractions(sb);
       }
+      completeBootStage('mount');
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
       window.creditekSidebar = { perfil, tiendas: tiendas || [], sb, authorization };
       if (typeof CustomEvent === 'function') {
         document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
       }
-      bootStage = 'page-ready';
-      if (await waitForPageReady(appEl)) revealDestination();
-      else showBootError();
+      completeBootStage('event', { name: 'kora-sidebar-ready' });
+      finishRouteAccess(true, { profile: perfil, authorization });
+      startBootStage('page-ready');
+      if (await waitForPageReady(appEl)) {
+        completeBootStage('page-ready');
+        revealDestination();
+        completeBootStage('ready', { outcome: 'mounted', experience });
+      } else {
+        reportBootFailure(new Error('La página no confirmó su estado listo'));
+        showBootError();
+      }
     } catch (error) {
       finishRouteAccess(false);
       reportBootFailure(error);
       // Evita revelar el login o contenido protegido después de confirmar una sesión.
       showBootError();
     }
+  }
+
+  function init() {
+    if (!initializationPromise) {
+      initializationPromise = initialize();
+      window.__KORA_SHELL_READY__ = initializationPromise;
+    }
+    return initializationPromise;
   }
 
   if (KORA_SHELL_MODE === 'agents') {

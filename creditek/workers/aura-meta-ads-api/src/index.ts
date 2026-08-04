@@ -154,9 +154,10 @@ async function supabaseRows(env: Env, path: string, token: string) {
 
 async function publisherOptions(env: Env, token: string) {
   await verifyMetaApp(env);
-  const [piecesResponse, citiesResponse] = await Promise.all([
+  const [piecesResponse, citiesResponse, instagram] = await Promise.all([
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token, {}),
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_cities', token, {}),
+    resolveInstagramActor(env),
   ]);
   if (!piecesResponse.ok || !citiesResponse.ok) {
     const citiesError = citiesResponse.ok ? null : await citiesResponse.clone().json().catch(() => ({})) as { code?: string };
@@ -165,7 +166,7 @@ async function publisherOptions(env: Env, token: string) {
   }
   const pieces = await piecesResponse.json() as MetaRow[];
   const cities = await citiesResponse.json() as MetaRow[];
-  return { ok: true, pieces, cities, objectives: OBJECTIVES, ctas: CTAS };
+  return { ok: true, pieces, cities, objectives: OBJECTIVES, ctas: CTAS, instagram };
 }
 
 type PublishPayload = {
@@ -210,17 +211,23 @@ async function resolveCities(env: Env, token: string, ids: string[]) {
 }
 
 async function resolveInstagramActor(env: Env) {
-  const page = await metaObject(env, env.META_PAGE_ID, {
-    fields: 'id,name,instagram_business_account{id,username},connected_instagram_account{id,username}',
-  });
+  const [page, availableResult] = await Promise.all([
+    metaObject(env, env.META_PAGE_ID, {
+      fields: 'id,name,instagram_business_account{id,username},connected_instagram_account{id,username}',
+    }),
+    metaObject(env, `${env.META_AD_ACCOUNT_ID}/instagram_accounts`, { fields: 'id,username', limit: '100' }),
+  ]);
   const business = page.instagram_business_account && typeof page.instagram_business_account === 'object'
     ? page.instagram_business_account as MetaRow : null;
   const connected = page.connected_instagram_account && typeof page.connected_instagram_account === 'object'
     ? page.connected_instagram_account as MetaRow : null;
   const actorId = String(business?.id || connected?.id || '');
+  const available = Array.isArray(availableResult.data) ? availableResult.data as MetaRow[] : [];
   if (String(page.id) !== String(env.META_PAGE_ID) || !/^\d+$/.test(actorId)) throw new Error('INSTAGRAM_ACTOR_UNAVAILABLE');
-  console.info('meta_instagram_actor_resolved', { page_id: String(page.id), instagram_actor_id: actorId, source: business?.id ? 'instagram_business_account' : 'connected_instagram_account' });
-  return actorId;
+  if (!available.some(account => String(account.id) === actorId)) throw new Error('INSTAGRAM_ACTOR_NOT_ASSIGNED_TO_AD_ACCOUNT');
+  const source = business?.id ? 'instagram_business_account' : 'connected_instagram_account';
+  console.info('meta_instagram_actor_resolved', { page_id: String(page.id), instagram_actor_id: actorId, source, ad_account_assigned: true });
+  return { ready: true, page_id: String(page.id), actor_id: actorId, source };
 }
 
 async function recordPublish(env: Env, token: string, payload: PublishPayload, idempotencyKey: string, status: string, metaIds: Record<string, string>) {
@@ -300,9 +307,9 @@ async function continueCampaign(env: Env, auth: { token: string }, payload: Publ
     || Number(adset.daily_budget) !== 6000 || !String(adset.start_time || '').startsWith('2026-08-05')
     || !String(adset.end_time || '').startsWith('2026-08-06') || !cities.every(city => targetCities.some(item => String(item.key) === city.key))
     || JSON.stringify(targetPlatforms) !== JSON.stringify(['facebook','instagram'])) throw new Error('INVALID_EXISTING_ADSET');
-  const instagramActorId = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
+  const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
   const linkData = { message: payload.copy, link: destination, name: payload.headline, picture: payload.image_url, call_to_action: { type: payload.cta, value: { link: destination } } };
-  const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, instagram_actor_id: instagramActorId, link_data: linkData };
+  const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
   const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: String(adset.id), creative_id: String(creative.id) });
   const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: String(adset.id), creative: JSON.stringify({ creative_id: creative.id }), status: 'PAUSED' }, 'POST'));

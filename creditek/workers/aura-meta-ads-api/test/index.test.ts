@@ -62,6 +62,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.includes('/debug_token')) return json({ data: { app_id: '123456789', is_valid: true, scopes: ['ads_management', 'business_management'] } });
     if (url.includes('/search?')) return json({ data: [{ key: '123', name: 'Tolú', type: 'city', country_code: 'CO' }] });
     if (url.includes('/page-1?')) return json({ id: 'page-1', name: 'Creditek', instagram_business_account: { id: '17841400000000000', username: 'creditek' } });
+    if (url.includes('/act_123/instagram_accounts?')) return json({ data: [{ id: '17841400000000000', username: 'creditek' }] });
     if (url.includes('/campaign-existing/adsets?')) return json({ data: [{ id: 'adset-1', campaign_id: 'campaign-existing', name: 'Tolú · Tráfico · 5–6 agosto · conjunto', status: 'PAUSED', effective_status: 'PAUSED', daily_budget: '6000', start_time: '2026-08-05T12:00:00-0500', end_time: '2026-08-06T23:59:00-0500', targeting: { geo_locations: { cities: [{ key: '123' }] }, publisher_platforms: ['facebook','instagram'] } }] });
     if (url.includes('/campaign-existing?')) return json({ id: 'campaign-existing', account_id: '123', objective: 'OUTCOME_TRAFFIC', status: 'PAUSED', effective_status: 'PAUSED' });
     if (url.includes('/act_123/campaigns') && init?.method === 'POST') return json({ id: 'campaign-1' });
@@ -190,6 +191,20 @@ describe('AURA Meta Ads secure publisher', () => {
     expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/debug_token'))).toBe(true);
   });
 
+  it('reports the Page-linked Instagram actor only when the ad account exposes it', async () => {
+    mockNetwork(publishPermissions);
+    const response = await worker.fetch(request('/v1/publisher/options'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(200);
+    expect(body.instagram).toEqual({
+      ready: true,
+      page_id: 'page-1',
+      actor_id: '17841400000000000',
+      source: 'instagram_business_account',
+    });
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/act_123/instagram_accounts?'))).toBe(true);
+  });
+
   it('requires all publishing permissions and never calls Meta when one is missing', async () => {
     mockNetwork(['meta_ads.access','meta_ads.read','meta_ads.manage']);
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-1'), env());
@@ -262,6 +277,20 @@ describe('AURA Meta Ads secure publisher', () => {
     const creativeBody = String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))?.[1]?.body);
     expect(creativeBody).toContain('instagram_actor_id%22%3A%2217841400000000000');
     expect(creativeBody).not.toContain('instagram_actor_id%22%3A%22ig-1');
+  });
+
+  it('detiene la publicación antes del creativo si el actor de la Page no está asignado a la cuenta publicitaria', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/instagram_accounts?')) return json({ data: [] });
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'unassigned-instagram'), env({ META_CONTINUE_CAMPAIGN_ID: 'campaign-existing' }));
+    const body = await response.json() as any;
+    expect(response.status).toBe(502);
+    expect(body.reason).toBe('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED');
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(false);
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

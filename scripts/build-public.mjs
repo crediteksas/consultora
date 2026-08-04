@@ -20,7 +20,8 @@ const PUBLIC_FILES = [
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js']);
-const KORA_SHELL_ASSET_VERSION = '2.0.4';
+const KORA_SHELL_ASSET_VERSION = '2.0.5';
+const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.5';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.4';
 
 async function copyFileFromRoot(rootDir, outDir, relative) {
@@ -37,6 +38,10 @@ async function versionKoraAssetReferences(outDir, relative) {
     .replace(
       /src="((?:\.\.\/erp\/)?sidebar\.js)(?:\?[^"]*)?"/g,
       `src="$1?v=${KORA_SHELL_ASSET_VERSION}"`,
+    )
+    .replace(
+      /src="((?:\.\.\/erp\/)?kora-access-control\.js)(?:\?[^\"]*)?"/g,
+      `src="$1?v=${KORA_ACCESS_CONTROL_ASSET_VERSION}"`,
     )
     .replace(
       /src="(\/design-system\/components\/kora-product\.js)(?:\?[^"]*)?"/g,

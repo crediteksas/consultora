@@ -173,7 +173,7 @@ describe('AURA Meta Ads secure publisher', () => {
   const payload = {
     piece_id: 'piece-1', cities: ['tolu'], platforms: ['facebook','instagram'], objective: 'OUTCOME_TRAFFIC',
     budget_cop: 6000, start_date: '2026-08-05', end_date: '2026-08-06', copy: 'Sujeto a aprobación de crédito. Aplican términos y condiciones.',
-    headline: 'Estrena hoy', cta: 'LEARN_MORE', image_url: 'https://cdn.test/piece.jpg', campaign_name: 'Control AURA', final_confirmation: true,
+    headline: 'Estrena hoy', cta: 'LEARN_MORE', image_url: 'https://cdn.test/piece.jpg', campaign_name: 'Tolú · Tráfico · 5–6 agosto', final_confirmation: true,
   };
 
   it('lists only approved pieces and official cities for an authorized publisher', async () => {
@@ -211,7 +211,13 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(metaCalls.every(([, init]: [unknown, RequestInit]) => !String(init?.body || '').includes('server-only-meta-token'))).toBe(true);
     const campaignCall = metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/campaigns'));
     expect(String(campaignCall?.[1]?.body)).toContain('buying_type=AUCTION');
-    expect(String(campaignCall?.[1]?.body)).toContain('objective=LINK_CLICKS');
+    const campaignBody = String(campaignCall?.[1]?.body);
+    expect(campaignBody).toContain('name=Tol%C3%BA+%C2%B7+Tr%C3%A1fico+%C2%B7+5%E2%80%936+agosto');
+    expect(campaignBody).toContain('objective=OUTCOME_TRAFFIC');
+    expect(campaignBody).not.toContain('objective=LINK_CLICKS');
+    expect(campaignBody).toContain('status=PAUSED');
+    expect(campaignBody).toContain('buying_type=AUCTION');
+    expect(campaignBody).toContain('special_ad_categories=%5B%5D');
   });
 
   it('returns the completed result for the same idempotency key without creating a second campaign', async () => {

@@ -213,13 +213,23 @@ async function publicationStep<T>(code: string, operation: () => Promise<T>) {
   catch { throw new Error(code); }
 }
 
+function campaignPayload(payload: PublishPayload, name: string): Record<string, string> {
+  const objective = String(payload.objective);
+  if (!OBJECTIVES.includes(objective)) throw new Error('INVALID_CAMPAIGN_OBJECTIVE');
+  return { name, objective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]' };
+}
+
 async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
   await verifyMetaApp(env);
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
   const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
-  const campaignObjective = payload.objective === 'OUTCOME_TRAFFIC' ? 'LINK_CLICKS' : String(payload.objective);
-  const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/campaigns`, { name, objective: campaignObjective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]' }, 'POST'));
+  const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(
+    env,
+    `${env.META_AD_ACCOUNT_ID}/campaigns`,
+    campaignPayload(payload, name),
+    'POST',
+  ));
   const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };
   if (payload.platforms?.includes('facebook')) targeting.facebook_positions = ['feed'];
   if (payload.platforms?.includes('instagram')) targeting.instagram_positions = ['stream'];

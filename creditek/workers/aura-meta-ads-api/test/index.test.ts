@@ -222,4 +222,21 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(second.status).toBe(200);
     expect(callsAfterSecond).toBe(callsAfterFirst);
   });
+
+  it('closes a failed idempotency key and never repeats the Meta write', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/campaigns') && init?.method === 'POST') return json({ error: { code: 100 } }, 400);
+      return base(input, init);
+    }) as any;
+    const testEnv = env();
+    const first = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-failed'), testEnv);
+    const callsAfterFirst = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/campaigns')).length;
+    const second = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-failed'), testEnv);
+    const callsAfterSecond = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/campaigns')).length;
+    expect(first.status).toBe(502);
+    expect(second.status).toBe(200);
+    expect(callsAfterSecond).toBe(callsAfterFirst);
+  });
 });

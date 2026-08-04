@@ -112,7 +112,7 @@ async function meta(env: Env, path: string, params: Record<string, string>) {
   const url = new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION || 'v25.0'}/${path}`);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   url.searchParams.set('access_token', env.META_ACCESS_TOKEN);
-  const response = await fetch(url, { headers: { accept: 'application/json' } });
+  const response = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw new Error(response.status === 404 ? 'META_NOT_FOUND' : 'META_UPSTREAM');
   const body = await response.json() as { data?: MetaRow[] };
   return Array.isArray(body.data) ? body.data : [];
@@ -122,12 +122,16 @@ async function metaObject(env: Env, path: string, params: Record<string, string>
   if (!env.META_ACCESS_TOKEN || !env.META_AD_ACCOUNT_ID) throw new Error('META_NOT_CONFIGURED');
   const url = new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION || 'v25.0'}/${path}`);
   url.searchParams.set('access_token', env.META_ACCESS_TOKEN);
-  const init: RequestInit = { method, headers: { accept: 'application/json' } };
+  const init: RequestInit = { method, headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15_000) };
   if (method === 'GET') Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   else { init.headers = { ...init.headers, 'content-type': 'application/x-www-form-urlencoded' }; init.body = new URLSearchParams(params); }
   const response = await fetch(url, init);
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (!response.ok || body.error) throw new Error('META_UPSTREAM');
+  if (!response.ok || body.error) {
+    const metaError = body.error && typeof body.error === 'object' ? body.error as { code?: unknown; type?: unknown } : {};
+    console.warn('meta_write_failed', `path=${path}`, `status=${response.status}`, `code=${String(metaError.code || 'UNKNOWN')}`, `type=${String(metaError.type || 'UNKNOWN')}`);
+    throw new Error('META_UPSTREAM');
+  }
   return body;
 }
 
@@ -322,7 +326,10 @@ async function handle(request: Request, env: Env, origin?: string) {
     } catch (error) {
       const code = error instanceof Error ? error.message : 'META_UPSTREAM';
       const status = code === 'META_PERMISSION_DENIED' ? 403 : code === 'AUDIT_UNAVAILABLE' ? 503 : 502;
-      return reply({ ok: false, error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely' }, status, origin);
+      const failure = { ok: false, error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely' };
+      console.warn('publication_failed', code);
+      await coordinate(env, key, 'complete', failure);
+      return reply(failure, status, origin);
     }
   }
   if (request.method !== 'GET') return reply({ ok: false, error: 'Method not allowed' }, 405, origin);

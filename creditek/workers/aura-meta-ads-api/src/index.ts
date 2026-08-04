@@ -139,12 +139,16 @@ async function supabaseRows(env: Env, path: string, token: string) {
 
 async function publisherOptions(env: Env, token: string) {
   await verifyMetaApp(env);
-  const [piecesResponse, cities] = await Promise.all([
+  const [piecesResponse, citiesResponse] = await Promise.all([
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token, {}),
-    supabaseRows(env, '/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&active=eq.true&order=name.asc', token),
+    supabase(env, '/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&active=eq.true&order=name.asc', token),
   ]);
-  if (!piecesResponse.ok) throw new Error('CATALOG_UNAVAILABLE');
+  if (!piecesResponse.ok || !citiesResponse.ok) {
+    console.warn('publisher_catalog_http', `pieces=${piecesResponse.status}`, `cities=${citiesResponse.status}`);
+    throw new Error('CATALOG_UNAVAILABLE');
+  }
   const pieces = await piecesResponse.json() as MetaRow[];
+  const cities = await citiesResponse.json() as MetaRow[];
   return { ok: true, pieces, cities, objectives: OBJECTIVES, ctas: CTAS };
 }
 

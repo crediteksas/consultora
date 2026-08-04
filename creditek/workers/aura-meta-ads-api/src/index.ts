@@ -144,7 +144,8 @@ async function publisherOptions(env: Env, token: string) {
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_cities', token, {}),
   ]);
   if (!piecesResponse.ok || !citiesResponse.ok) {
-    console.warn('publisher_catalog_http', `pieces=${piecesResponse.status}`, `cities=${citiesResponse.status}`);
+    const citiesError = citiesResponse.ok ? null : await citiesResponse.clone().json().catch(() => ({})) as { code?: string };
+    console.warn('publisher_catalog_http', `pieces=${piecesResponse.status}`, `cities=${citiesResponse.status}`, `code=${citiesError?.code || 'UNKNOWN'}`);
     throw new Error('CATALOG_UNAVAILABLE');
   }
   const pieces = await piecesResponse.json() as MetaRow[];

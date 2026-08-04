@@ -53,8 +53,6 @@
 <template id="tplTablero">
   <header class="dashboard-hero">
     <div>
-      <p class="dashboard-eyebrow">Vista consolidada</p>
-      <h1>Resumen ejecutivo</h1>
       <p class="dashboard-subtitle">El pulso comercial y operativo de Creditek, en una sola vista.</p>
     </div>
     <div class="dashboard-updated">
@@ -281,6 +279,7 @@ function tokenColor(name) { return getComputedStyle(document.documentElement).ge
 function pintarIconos() { window.lucide?.createIcons(); }
 
 function initPagina() {
+  window.KoraNavigation?.setContext('Resumen ejecutivo', ['KORA', 'Tablero']);
   if (!esCentral()) {
     document.getElementById('pageContenido').innerHTML = '';
     document.getElementById('pageContenido').appendChild(document.getElementById('tplAccesoNegado').content.cloneNode(true));

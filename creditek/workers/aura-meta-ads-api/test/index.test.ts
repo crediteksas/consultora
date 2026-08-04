@@ -58,7 +58,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_record_action')) return json(true);
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_record_publish')) return json({ ok: true });
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_pieces')) return json([{ id: 'piece-1', headline: 'Estrena hoy', copy: 'Sujeto a aprobación de crédito. Aplican términos y condiciones.', imagen_url: 'https://cdn.test/piece.jpg', plataformas: ['facebook', 'instagram'], estado: 'lista_para_publicar' }]);
-    if (url.includes('/rest/v1/aura_meta_ads_cities')) return json([{ id: 'tolu', name: 'Tolú', country_code: 'CO', active: true }]);
+    if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities')) return json([{ id: 'tolu', name: 'Tolú', country_code: 'CO', active: true }]);
     if (url.includes('/debug_token')) return json({ data: { app_id: '123456789', is_valid: true, scopes: ['ads_management', 'business_management'] } });
     if (url.includes('/search?')) return json({ data: [{ key: '123', name: 'Tolú', type: 'city', country_code: 'CO' }] });
     if (url.includes('/act_123/campaigns') && init?.method === 'POST') return json({ id: 'campaign-1' });
@@ -183,6 +183,7 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(response.status).toBe(200);
     expect(body.pieces).toEqual([expect.objectContaining({ id: 'piece-1', estado: 'lista_para_publicar' })]);
     expect(body.cities).toEqual([expect.objectContaining({ id: 'tolu', name: 'Tolú' })]);
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities'))).toBe(true);
     expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/debug_token'))).toBe(true);
   });
 

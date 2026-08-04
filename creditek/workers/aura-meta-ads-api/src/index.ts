@@ -141,7 +141,7 @@ async function publisherOptions(env: Env, token: string) {
   await verifyMetaApp(env);
   const [piecesResponse, citiesResponse] = await Promise.all([
     supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token, {}),
-    supabase(env, '/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&active=eq.true&order=name.asc', token),
+    supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_cities', token, {}),
   ]);
   if (!piecesResponse.ok || !citiesResponse.ok) {
     console.warn('publisher_catalog_http', `pieces=${piecesResponse.status}`, `cities=${citiesResponse.status}`);
@@ -178,8 +178,11 @@ async function verifyMetaApp(env: Env) {
 }
 
 async function resolveCities(env: Env, token: string, ids: string[]) {
-  const filter = encodeURIComponent(`(${ids.join(',')})`);
-  const catalog = await supabaseRows(env, `/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&id=in.${filter}&active=eq.true`, token);
+  const response = await supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_cities', token, {});
+  if (!response.ok) throw new Error('CATALOG_UNAVAILABLE');
+  const available = await response.json() as MetaRow[];
+  const requested = new Set(ids);
+  const catalog = available.filter(city => requested.has(String(city.id)));
   if (catalog.length !== new Set(ids).size) throw new Error('INVALID_CITY');
   return Promise.all(catalog.map(async city => {
     const result = await metaObject(env, 'search', { type: 'adgeolocation', location_types: '["city"]', q: String(city.name), country_code: String(city.country_code || 'CO') });

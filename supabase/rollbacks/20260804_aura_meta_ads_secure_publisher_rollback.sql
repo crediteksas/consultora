@@ -1,6 +1,7 @@
 begin;
 
 drop function if exists public.aura_meta_ads_record_publish(uuid,text[],text[],text,bigint,date,date,text,text,jsonb);
+drop function if exists public.aura_meta_ads_ready_cities();
 drop function if exists public.aura_meta_ads_ready_pieces();
 drop table if exists public.aura_meta_ads_publications;
 drop table if exists public.aura_meta_ads_cities;

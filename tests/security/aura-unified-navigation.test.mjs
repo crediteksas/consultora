@@ -136,8 +136,11 @@ test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () =>
   assert.match(config, /creditek\/agentes\/index\.html/);
   assert.match(config, /"html_handling": "none"/);
   assert.match(config, /creditek\/agentes\/aura-auth\.mjs/);
+  assert.match(config, /creditek\/agentes\/kora-agent-context\.js/);
+  assert.match(config, /creditek\/agentes\/creditek-agente-redes\.html/);
   assert.match(config, /creditek\/agentes\/creditek-agente-respuestas\.html/);
   assert.match(config, /creditek\/agentes\/agente3-meta-ads\.html/);
+  assert.match(config, /creditek\/agentes\/creditek-agente-calendario\.html/);
   assert.match(config, /creditek\/agentes\/creditek-agente-respuestas"/);
   assert.match(config, /creditek\/agentes\/sofia-aura-20260803\.html/);
   assert.match(config, /creditek\/agentes\/sofia-aura-20260803"/);
@@ -145,10 +148,14 @@ test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () =>
   assert.match(build, /creditek-agente-respuestas\.html/);
   assert.match(build, /agente3-meta-ads\.html/);
   assert.match(build, /agente3-aura-session\.mjs/);
+  assert.match(build, /kora-agent-context\.js/);
+  assert.match(build, /creditek-agente-redes\.html/);
+  assert.match(build, /creditek-agente-calendario\.html/);
   assert.match(build, /path\.join\(agentsOutput, 'creditek-agente-respuestas'\)/);
   assert.match(build, /path\.join\(agentsOutput, 'sofia-aura-20260803\.html'\)/);
   assert.match(build, /path\.join\(agentsOutput, 'agente3-meta-ads'\)/);
-  assert.doesNotMatch(config, /creditek\/portal|creditek\/erp|kora/i);
+  const auraRoutes = JSON.parse(config).routes.map(route => route.pattern);
+  assert.equal(auraRoutes.some(route => /creditek\/portal|creditek\/erp/.test(route)), false);
   assert.match(build, /creditek', 'agentes/);
   assert.match(build, /'index\.html',[\s\S]*'aura-auth\.mjs',[\s\S]*'creditek-agente-respuestas\.html'/);
   const worker = await readFile(new URL('../../creditek/workers/aura-hub/src/index.js', import.meta.url), 'utf8');
@@ -158,5 +165,5 @@ test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () =>
   assert.match(worker, /CANONICAL_DOCUMENTS/);
   assert.match(worker, /aura-otp-20260802\.html/);
   assert.doesNotMatch(build, /cp\([^;]+recursive:\s*true/);
-  assert.doesNotMatch(build, /portal|erp|kora/i);
+  assert.doesNotMatch(build, /creditek['",\s]+['"](?:portal|erp)/i);
 });

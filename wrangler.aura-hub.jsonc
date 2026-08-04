@@ -35,6 +35,14 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/kora-agent-context.js",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-redes.html",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-respuestas.html",
       "zone_name": "crediteksas.com"
     },
@@ -64,6 +72,10 @@
     },
     {
       "pattern": "registro.crediteksas.com/creditek/agentes/agente3-aura-session.mjs",
+      "zone_name": "crediteksas.com"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-calendario.html",
       "zone_name": "crediteksas.com"
     }
   ]

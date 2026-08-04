@@ -218,6 +218,7 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(campaignBody).toContain('status=PAUSED');
     expect(campaignBody).toContain('buying_type=AUCTION');
     expect(campaignBody).toContain('special_ad_categories=%5B%5D');
+    expect(campaignBody).toContain('is_adset_budget_sharing_enabled=false');
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adsets'))).toBe(false);
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(false);
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(false);

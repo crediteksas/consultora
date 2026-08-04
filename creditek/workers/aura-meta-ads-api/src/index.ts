@@ -226,7 +226,7 @@ async function publicationStep<T>(code: string, operation: () => Promise<T>) {
 function campaignPayload(payload: PublishPayload, name: string): Record<string, string> {
   const objective = String(payload.objective);
   if (!OBJECTIVES.includes(objective)) throw new Error('INVALID_CAMPAIGN_OBJECTIVE');
-  return { name, objective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]' };
+  return { name, objective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]', is_adset_budget_sharing_enabled: 'false' };
 }
 
 async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {

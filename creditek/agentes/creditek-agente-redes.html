@@ -491,8 +491,10 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .pieza-card,.img-card,.empty-icon{border-color:var(--ctk-color-border);border-radius:var(--ctk-radius-xl);box-shadow:var(--ctk-shadow-1)}
 .agent-workspace :where(select,input[type=text],textarea,button){border-radius:var(--ctk-radius-sm)}
 @media(max-width:63.999rem){
-  .agent-workspace{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));overflow:visible}
-  .agent-workspace-panel{width:100%;min-width:0;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent-workspace{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));max-width:100%;overflow-x:hidden;overflow-y:visible}
+  .agent-workspace-panel{width:100%;min-width:0;max-width:100%;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent-workspace-panel :where(.prod-toggle,.platform-grid){grid-template-columns:repeat(2,minmax(0,1fr));max-width:100%}
+  .agent-workspace-panel :where(button,input,select,textarea){min-width:0;max-width:100%}
   .agent-workspace-main{min-height:42rem;overflow:visible}
   .content-area{overflow:visible}
 }

@@ -206,8 +206,10 @@ select option{background:var(--bg2)}
 .agent4-workspace-shell :where(select,input,textarea,button){border-radius:var(--ctk-radius-sm)}
 @media(max-width:63.999rem){
   body{height:auto;min-height:100dvh;overflow:auto}
-  .agent4-workspace-shell{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));overflow:visible}
-  .agent4-config-panel{width:100%;min-width:0;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent4-workspace-shell{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));max-width:100%;overflow-x:hidden;overflow-y:visible}
+  .agent4-config-panel{width:100%;min-width:0;max-width:100%;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent4-config-panel :where(button,input,select,textarea){min-width:0;max-width:100%}
+  .plat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .agent4-workspace{min-height:42rem;overflow:visible}
   .ca{overflow:visible;padding:var(--ctk-space-2)}
   .cal-grid{grid-template-columns:1fr}

@@ -232,10 +232,12 @@ describe('AURA Meta Ads secure publisher', () => {
     }) as any;
     const testEnv = env();
     const first = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-failed'), testEnv);
+    const firstBody = await first.clone().json() as any;
     const callsAfterFirst = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/campaigns')).length;
     const second = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-failed'), testEnv);
     const callsAfterSecond = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/campaigns')).length;
     expect(first.status).toBe(502);
+    expect(firstBody.reason).toBe('META_CAMPAIGN_CREATE_FAILED');
     expect(second.status).toBe(200);
     expect(callsAfterSecond).toBe(callsAfterFirst);
   });

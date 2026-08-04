@@ -51,3 +51,13 @@ test('Meta Ads audita con una función aislada y de solo lectura', () => {
   assert.match(migration, /aura_audit_log_app_id_check/);
   assert.match(migration, /'portal_b2b'[\s\S]*'sofia'[\s\S]*'meta_ads'/);
 });
+
+test('Agente 3 expone el publicador seguro sin recibir ni guardar credenciales Meta', () => {
+  for (const marker of ['publisher-piece','publisher-cities','publisher-platform-facebook','publisher-platform-instagram','publisher-objective','publisher-budget','publisher-start','publisher-end','publisher-copy','publisher-headline','publisher-cta','publisher-preview','publisher-confirm','publisher-submit']) {
+    assert.match(html, new RegExp(`id=["']${marker}["']`));
+  }
+  assert.match(html, /\/v1\/publisher\/options/);
+  assert.match(html, /\/v1\/publisher\/publish/);
+  assert.match(html, /idempotency-key/i);
+  assert.doesNotMatch(html, /ck_meta_token|META_PAGE_ACCESS_TOKEN|access_token/);
+});

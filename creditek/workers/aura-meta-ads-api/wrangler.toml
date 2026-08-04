@@ -7,11 +7,22 @@ SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
 ALLOWED_ORIGIN = "https://registro.crediteksas.com"
 META_GRAPH_VERSION = "v25.0"
 RATE_LIMIT_PER_MINUTE = "30"
+META_DESTINATION_URL = "https://registro.crediteksas.com/creditek/agentes/"
+META_PAGE_ID = "1191052130747281"
+META_INSTAGRAM_ACTOR_ID = "17841476738628018"
 
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"
 class_name = "RateLimiter"
 
+[[durable_objects.bindings]]
+name = "PUBLISH_COORDINATOR"
+class_name = "PublicationCoordinator"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["RateLimiter"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["PublicationCoordinator"]

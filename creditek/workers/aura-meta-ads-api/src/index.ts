@@ -4,16 +4,23 @@ export interface Env {
   META_ACCESS_TOKEN: string;
   META_AD_ACCOUNT_ID: string;
   META_GRAPH_VERSION: string;
+  META_PAGE_ID: string;
+  META_INSTAGRAM_ACTOR_ID: string;
+  META_DESTINATION_URL?: string;
   ALLOWED_ORIGIN: string;
   RATE_LIMIT_PER_MINUTE: string;
   RATE_LIMITER: DurableObjectNamespace;
+  PUBLISH_COORDINATOR: DurableObjectNamespace;
 }
 
 type Grant = { app_id: string; role_id: string; permissions: string[] };
 type Access = { user_id: string; email: string; active?: boolean; apps: Grant[] };
 type MetaRow = Record<string, unknown>;
 const APP_ID = 'meta_ads';
-const ALL_PERMISSIONS = ['meta_ads.access','meta_ads.read','meta_ads.analyze','meta_ads.manage','meta_ads.campaign.create','meta_ads.campaign.pause','meta_ads.budget.manage','meta_ads.audit.read'];
+const ALL_PERMISSIONS = ['meta_ads.access','meta_ads.read','meta_ads.analyze','meta_ads.publish','meta_ads.manage','meta_ads.campaign.create','meta_ads.campaign.pause','meta_ads.budget.manage','meta_ads.audit.read'];
+const PUBLISH_PERMISSIONS = ['meta_ads.publish','meta_ads.manage','meta_ads.budget.manage'];
+const OBJECTIVES = ['OUTCOME_AWARENESS','OUTCOME_TRAFFIC','OUTCOME_ENGAGEMENT','OUTCOME_LEADS','OUTCOME_SALES'];
+const CTAS = ['LEARN_MORE','APPLY_NOW','CONTACT_US','SEND_MESSAGE','SHOP_NOW'];
 
 function reply(body: unknown, status = 200, origin?: string) {
   const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -111,6 +118,113 @@ async function meta(env: Env, path: string, params: Record<string, string>) {
   return Array.isArray(body.data) ? body.data : [];
 }
 
+async function metaObject(env: Env, path: string, params: Record<string, string>, method: 'GET' | 'POST' = 'GET') {
+  if (!env.META_ACCESS_TOKEN || !env.META_AD_ACCOUNT_ID) throw new Error('META_NOT_CONFIGURED');
+  const url = new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION || 'v25.0'}/${path}`);
+  url.searchParams.set('access_token', env.META_ACCESS_TOKEN);
+  const init: RequestInit = { method, headers: { accept: 'application/json' } };
+  if (method === 'GET') Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  else { init.headers = { ...init.headers, 'content-type': 'application/x-www-form-urlencoded' }; init.body = new URLSearchParams(params); }
+  const response = await fetch(url, init);
+  const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok || body.error) throw new Error('META_UPSTREAM');
+  return body;
+}
+
+async function supabaseRows(env: Env, path: string, token: string) {
+  const response = await supabase(env, path, token);
+  if (!response.ok) throw new Error('CATALOG_UNAVAILABLE');
+  return await response.json() as MetaRow[];
+}
+
+async function publisherOptions(env: Env, token: string) {
+  const [piecesResponse, cities] = await Promise.all([
+    supabase(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token, {}),
+    supabaseRows(env, '/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&active=eq.true&order=name.asc', token),
+  ]);
+  if (!piecesResponse.ok) throw new Error('CATALOG_UNAVAILABLE');
+  const pieces = await piecesResponse.json() as MetaRow[];
+  return { ok: true, pieces, cities, objectives: OBJECTIVES, ctas: CTAS };
+}
+
+type PublishPayload = {
+  piece_id?: string; cities?: string[]; platforms?: string[]; objective?: string; budget_cop?: number;
+  start_date?: string; end_date?: string; copy?: string; headline?: string; cta?: string; image_url?: string;
+  campaign_name?: string; final_confirmation?: boolean;
+};
+
+function validatePublishPayload(value: unknown): PublishPayload {
+  const input = (value && typeof value === 'object' ? value : {}) as PublishPayload;
+  if (!input.final_confirmation) throw new Error('CONFIRMATION_REQUIRED');
+  if (!input.piece_id || !Array.isArray(input.cities) || !input.cities.length) throw new Error('INVALID_REQUEST');
+  if (!Array.isArray(input.platforms) || !input.platforms.length || input.platforms.some(item => !['facebook','instagram'].includes(item))) throw new Error('INVALID_REQUEST');
+  if (!OBJECTIVES.includes(String(input.objective)) || !CTAS.includes(String(input.cta))) throw new Error('INVALID_REQUEST');
+  if (!Number.isInteger(Number(input.budget_cop)) || Number(input.budget_cop) < 6000 || Number(input.budget_cop) > 10000000) throw new Error('INVALID_BUDGET');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.start_date)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(input.end_date)) || String(input.end_date) < String(input.start_date)) throw new Error('INVALID_DATES');
+  if (!String(input.copy || '').trim() || !String(input.headline || '').trim() || !/^https:\/\//.test(String(input.image_url || ''))) throw new Error('INVALID_CREATIVE');
+  return input;
+}
+
+async function verifyMetaApp(env: Env) {
+  const result = await metaObject(env, 'debug_token', { input_token: env.META_ACCESS_TOKEN });
+  const data = (result.data || {}) as MetaRow;
+  const scopes = Array.isArray(data.scopes) ? data.scopes.map(String) : [];
+  if (!/^\d+$/.test(String(data.app_id || '')) || data.is_valid !== true || !scopes.includes('ads_management')) throw new Error('META_PERMISSION_DENIED');
+}
+
+async function resolveCities(env: Env, token: string, ids: string[]) {
+  const filter = encodeURIComponent(`(${ids.join(',')})`);
+  const catalog = await supabaseRows(env, `/rest/v1/aura_meta_ads_cities?select=id,name,country_code,active&id=in.${filter}&active=eq.true`, token);
+  if (catalog.length !== new Set(ids).size) throw new Error('INVALID_CITY');
+  return Promise.all(catalog.map(async city => {
+    const result = await metaObject(env, 'search', { type: 'adgeolocation', location_types: '["city"]', q: String(city.name), country_code: String(city.country_code || 'CO') });
+    const choices = Array.isArray(result.data) ? result.data as MetaRow[] : [];
+    const match = choices.find(item => String(item.name).toLowerCase() === String(city.name).toLowerCase()) || choices[0];
+    if (!match?.key) throw new Error('INVALID_CITY');
+    return { key: String(match.key), radius: 25, distance_unit: 'kilometer' };
+  }));
+}
+
+async function recordPublish(env: Env, token: string, payload: PublishPayload, idempotencyKey: string, status: string, metaIds: Record<string, string>) {
+  const response = await supabase(env, '/rest/v1/rpc/aura_meta_ads_record_publish', token, {
+    p_piece_id: payload.piece_id, p_cities: payload.cities, p_platforms: payload.platforms,
+    p_objective: payload.objective, p_budget_cop: payload.budget_cop, p_start_date: payload.start_date,
+    p_end_date: payload.end_date, p_idempotency_key: idempotencyKey, p_status: status, p_meta_ids: metaIds,
+  });
+  if (!response.ok) throw new Error('AUDIT_UNAVAILABLE');
+}
+
+async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
+  await verifyMetaApp(env);
+  const cities = await resolveCities(env, auth.token, payload.cities || []);
+  const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
+  const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
+  const campaign = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/campaigns`, { name, objective: String(payload.objective), status: 'PAUSED', special_ad_categories: '[]' }, 'POST');
+  const targeting: Record<string, unknown> = { geo_locations: { cities }, publisher_platforms: payload.platforms };
+  if (payload.platforms?.includes('facebook')) targeting.facebook_positions = ['feed'];
+  if (payload.platforms?.includes('instagram')) targeting.instagram_positions = ['stream'];
+  const adset = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, {
+    name: `${name} · conjunto`, campaign_id: String(campaign.id), daily_budget: String(payload.budget_cop),
+    billing_event: 'IMPRESSIONS', optimization_goal: 'LINK_CLICKS', bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+    start_time: `${payload.start_date}T12:00:00-05:00`, end_time: `${payload.end_date}T23:59:00-05:00`,
+    targeting: JSON.stringify(targeting), status: 'PAUSED',
+  }, 'POST');
+  const linkData = { message: payload.copy, link: destination, name: payload.headline, picture: payload.image_url, call_to_action: { type: payload.cta, value: { link: destination } } };
+  const story: Record<string, unknown> = { page_id: env.META_PAGE_ID, link_data: linkData };
+  if (payload.platforms?.includes('instagram')) story.instagram_actor_id = env.META_INSTAGRAM_ACTOR_ID;
+  const creative = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST');
+  const ad = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: String(adset.id), creative: JSON.stringify({ creative_id: creative.id }), status: 'PAUSED' }, 'POST');
+  const metaIds = { campaign_id: String(campaign.id), adset_id: String(adset.id), creative_id: String(creative.id), ad_id: String(ad.id) };
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
+  return { ok: true, status: 'PAUSED', meta_ids: metaIds };
+}
+
+async function coordinate(env: Env, key: string, action: string, result?: unknown) {
+  const stub = env.PUBLISH_COORDINATOR.get(env.PUBLISH_COORDINATOR.idFromName(key));
+  const response = await stub.fetch('https://publish-lock/state', { method: 'POST', body: JSON.stringify({ action, result }) });
+  return await response.json() as { state: string; result?: unknown };
+}
+
 async function dashboard(env: Env, url: URL) {
   const range = dateRange(url);
   const timeRange = JSON.stringify({ since: range.since, until: range.until });
@@ -168,13 +282,38 @@ async function dashboard(env: Env, url: URL) {
 }
 
 async function handle(request: Request, env: Env, origin?: string) {
-  if (request.method !== 'GET') return reply({ ok: false, error: 'Read-only mode' }, 405, origin);
   const auth = await authenticate(request, env);
   if (!auth) return reply({ ok: false, error: 'Unauthorized' }, 401, origin);
   if (!auth.grant.permissions.includes('meta_ads.read')) return reply({ ok: false, error: 'Forbidden' }, 403, origin);
   const rate = await allowed(env, auth.access.user_id);
   if (!rate.ok) return reply({ ok: false, error: 'Rate limit', retry_after: 60 }, 429, origin);
   const url = new URL(request.url);
+  if (url.pathname === '/v1/publisher/options' && request.method === 'GET') {
+    if (!PUBLISH_PERMISSIONS.every(permission => auth.grant.permissions.includes(permission))) return reply({ ok: false, error: 'Forbidden' }, 403, origin);
+    try { return reply(await publisherOptions(env, auth.token), 200, origin); }
+    catch { return reply({ ok: false, error: 'Publisher catalog unavailable' }, 503, origin); }
+  }
+  if (url.pathname === '/v1/publisher/publish' && request.method === 'POST') {
+    if (!PUBLISH_PERMISSIONS.every(permission => auth.grant.permissions.includes(permission))) return reply({ ok: false, error: 'Forbidden' }, 403, origin);
+    const key = request.headers.get('idempotency-key')?.trim() || '';
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) return reply({ ok: false, error: 'Invalid idempotency key' }, 400, origin);
+    let payload: PublishPayload;
+    try { payload = validatePublishPayload(await request.json()); }
+    catch (error) { return reply({ ok: false, error: error instanceof Error ? error.message : 'INVALID_REQUEST' }, error instanceof Error && error.message === 'CONFIRMATION_REQUIRED' ? 409 : 400, origin); }
+    const existing = await coordinate(env, key, 'reserve');
+    if (existing.state === 'completed') return reply(existing.result, 200, origin);
+    if (existing.state !== 'reserved') return reply({ ok: false, error: 'Publication already in progress' }, 409, origin);
+    try {
+      const result = await publishCampaign(env, auth, payload, key);
+      await coordinate(env, key, 'complete', result);
+      return reply(result, 201, origin);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'META_UPSTREAM';
+      const status = code === 'META_PERMISSION_DENIED' ? 403 : code === 'AUDIT_UNAVAILABLE' ? 503 : 502;
+      return reply({ ok: false, error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely' }, status, origin);
+    }
+  }
+  if (request.method !== 'GET') return reply({ ok: false, error: 'Method not allowed' }, 405, origin);
   if (url.pathname === '/v1/session') return reply({ ok: true, app_id: APP_ID, role_id: auth.grant.role_id, permissions: auth.grant.permissions, mode: 'read' }, 200, origin);
   if (url.pathname !== '/v1/dashboard') return reply({ ok: false, error: 'Not found' }, 404, origin);
   const range = dateRange(url);
@@ -201,14 +340,35 @@ export class RateLimiter {
   }
 }
 
+export class PublicationCoordinator {
+  constructor(private state: DurableObjectState) {}
+  async fetch(request: Request) {
+    const input = await request.json() as { action?: string; result?: unknown };
+    const stored = await this.state.storage.get<{ state: string; result?: unknown }>('publication');
+    if (input.action === 'get') return reply(stored || { state: 'new' });
+    if (input.action === 'reserve') {
+      if (stored) return reply(stored);
+      const reserved = { state: 'reserved' };
+      await this.state.storage.put('publication', reserved);
+      return reply(reserved);
+    }
+    if (input.action === 'complete') {
+      const completed = { state: 'completed', result: input.result };
+      await this.state.storage.put('publication', completed);
+      return reply(completed);
+    }
+    return reply({ state: 'invalid' }, 400);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env) {
     const origin = request.headers.get('origin') || undefined;
     if (origin && origin !== env.ALLOWED_ORIGIN) return reply({ ok: false, error: 'Origin denied' }, 403);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: {
       'access-control-allow-origin': env.ALLOWED_ORIGIN,
-      'access-control-allow-methods': 'GET, OPTIONS',
-      'access-control-allow-headers': 'authorization', vary: 'Origin',
+      'access-control-allow-methods': 'GET, POST, OPTIONS',
+      'access-control-allow-headers': 'authorization, content-type, idempotency-key', vary: 'Origin',
     } });
     if (new URL(request.url).pathname === '/health') return reply({ ok: true, app_id: APP_ID, mode: 'read' }, 200, origin);
     return handle(request, env, origin);

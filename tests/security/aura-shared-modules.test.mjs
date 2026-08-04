@@ -25,8 +25,9 @@ test('Meta Ads usa app_id y permiso propios sin heredar acceso de Sofía', () =>
   assert.match(hub, /appId === 'meta_ads'/);
 });
 
-test('Meta Ads permanece pausado de forma clara y no captura credenciales en el navegador', () => {
-  assert.match(meta, /Meta Ads pausado por seguridad/);
+test('Meta Ads muestra el publicador seguro y no captura credenciales en el navegador', () => {
+  assert.match(meta, /Métricas y publicador seguro/);
+  assert.match(meta, /Crear campaña pausada/);
   assert.doesNotMatch(meta, /graph\.facebook\.com|ck_meta_token|inp-token/);
   assert.doesNotMatch(hub, /ck_meta_token|cfg-meta-account|saveMetaKeys/);
 });

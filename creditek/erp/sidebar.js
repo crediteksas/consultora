@@ -18,6 +18,7 @@
   const SUPABASE_ANON_KEY = KORA_ENV?.KORA_ERP_SUPABASE_ANON_KEY;
   const KORA_CONFIGURATION_AVAILABLE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
   const trustedGetSession = new WeakMap();
+  let bootStage = 'configuration';
   let routeAccessSettled = false;
   let settleRouteAccess;
   const routeAccessPromise = new Promise(resolve => { settleRouteAccess = resolve; });
@@ -27,6 +28,17 @@
     if (routeAccessSettled) return;
     routeAccessSettled = true;
     settleRouteAccess({ allowed, ...context });
+  }
+
+  function reportBootFailure(error) {
+    const message = error && typeof error.message === 'string'
+      ? error.message
+      : String(error || 'Error desconocido');
+    console.error('[KORA Shell] Error de inicialización', {
+      stage: bootStage,
+      message,
+      stack: error && typeof error.stack === 'string' ? error.stack : undefined,
+    });
   }
 
   function installSharedSupabaseClient() {
@@ -866,17 +878,21 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
 
     try {
+      bootStage = 'configuration';
       if (!KORA_CONFIGURATION_AVAILABLE) {
         showBootError(true);
         return;
       }
+      bootStage = 'supabase-client';
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      bootStage = 'access-control';
       if (!window.KoraAccessControl) {
         finishRouteAccess(false);
         showBootError(true);
         return;
       }
       const getTrustedSession = trustedGetSession.get(sb) || sb.auth.getSession.bind(sb.auth);
+      bootStage = 'session';
       const { data: sessionData } = await withBootTimeout(getTrustedSession());
       if (!sessionData || !sessionData.session) {
         finishRouteAccess(true, { authenticated: false });
@@ -890,6 +906,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
       markAuthenticated();
       const userId = sessionData.session.user.id;
+      bootStage = 'profile';
       const { data: perfil } = await withBootTimeout(
         sb.from('perfiles').select('*').eq('id', userId).maybeSingle(),
       );
@@ -900,18 +917,21 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
       let esAdminB2b = false;
       if (typeof sb.rpc === 'function') {
+        bootStage = 'b2b-capability';
         const permisoB2b = await withBootTimeout(sb.rpc('es_admin_b2b'));
         esAdminB2b = permisoB2b?.error ? false : permisoB2b?.data === true;
       }
       perfil.es_admin_b2b = esAdminB2b;
       let esOperadorAliados = false;
       if (typeof sb.rpc === 'function') {
+        bootStage = 'allies-capability';
         const permisoAliados = await withBootTimeout(sb.rpc('tiene_capacidad_aliados', { p_capacidad: 'revisor' }));
         esOperadorAliados = permisoAliados?.error ? false : permisoAliados?.data === true;
       }
       perfil.es_operador_aliados = esOperadorAliados;
 
       const capabilities = { b2b: esAdminB2b, aliados: esOperadorAliados };
+      bootStage = 'authorization';
       const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
       window.creditekSidebar = { perfil, tiendas: [], sb, authorization };
       if (!authorization.allowed) {
@@ -921,11 +941,13 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
       finishRouteAccess(true, { profile: perfil, authorization });
 
+      bootStage = 'stores';
       const { data: tiendas } = await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
 
       if (KORA_SHELL_ENABLED) {
+        bootStage = 'mount';
         appEl.classList.remove('hidden');
         mountKoraShell({
           root: document.querySelector('[data-kora-shell-root]') || appEl,
@@ -954,10 +976,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (typeof CustomEvent === 'function') {
         document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
       }
+      bootStage = 'page-ready';
       if (await waitForPageReady(appEl)) revealDestination();
       else showBootError();
-    } catch (_) {
+    } catch (error) {
       finishRouteAccess(false);
+      reportBootFailure(error);
       // Evita revelar el login o contenido protegido después de confirmar una sesión.
       showBootError();
     }

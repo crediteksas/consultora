@@ -37,6 +37,7 @@ function createHarness({
   pathname = '/creditek/erp/ventas.html',
 } = {}) {
   const events = [];
+  const errors = [];
   const listeners = {};
   const styles = [];
   let bootError = null;
@@ -150,6 +151,9 @@ function createHarness({
 
   let clientCreations = 0;
   const context = {
+    console: {
+      error(...args) { errors.push(args); },
+    },
     document,
     window: {
       __KORA_ENV__: {
@@ -194,6 +198,7 @@ function createHarness({
     ),
     getClientCreations: () => clientCreations,
     getBootError: () => bootError,
+    getErrors: () => errors,
   };
 }
 
@@ -266,6 +271,23 @@ test('un fallo de bootstrap no deja la interfaz oculta', async () => {
   assert.equal(harness.rootClasses.contains('creditek-shell-pending'), true);
   assert.equal(harness.rootClasses.contains('creditek-shell-authenticated'), true);
   assert.equal(harness.rootClasses.contains('creditek-shell-error'), true);
+});
+
+test('un fallo autenticado informa la etapa exacta sin exponer la sesión', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileError: true,
+  });
+
+  await harness.listeners.DOMContentLoaded();
+
+  assert.equal(harness.getErrors().length, 1);
+  const [message, diagnostic] = harness.getErrors()[0];
+  assert.equal(message, '[KORA Shell] Error de inicialización');
+  assert.equal(diagnostic.stage, 'profile');
+  assert.equal(diagnostic.message, 'fallo sintético');
+  assert.equal('session' in diagnostic, false);
+  assert.equal('userId' in diagnostic, false);
 });
 
 test('un getSession bloqueado muestra un error recuperable', async () => {

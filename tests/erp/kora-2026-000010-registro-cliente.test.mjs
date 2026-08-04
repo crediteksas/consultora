@@ -40,7 +40,7 @@ test('el alta permanece atómica y bloquea cédula o celular duplicados', () => 
 });
 
 test('la pantalla conserva el shell y la superficie moderna aprobada', () => {
-  assert.match(html, /sidebar\.js\?v=2\.0\.8" data-kora-shell="1\.0\.0"/);
+  assert.match(html, /sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"/);
   assert.match(html, /class="page"/);
   assert.match(html, /class="form-card"/);
   assert.match(html, /--bg:\s*#F5F5F7/);

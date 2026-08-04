@@ -107,17 +107,19 @@
     if (experience === 'store') {
       return { allowed: STORE_ROUTES_BY_ROLE[profile.rol].has(normalized), route: normalized, experience };
     }
+    const hasFullCorporateAccess = profile.rol === 'gerencia';
     if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
-    if (B2B_ROUTES.has(normalized) && capabilities.b2b !== true) return { allowed: false, route: normalized, experience };
-    if (ALLIES_ROUTES.has(normalized) && capabilities.aliados !== true) return { allowed: false, route: normalized, experience };
+    if (!hasFullCorporateAccess && B2B_ROUTES.has(normalized) && capabilities.b2b !== true) return { allowed: false, route: normalized, experience };
+    if (!hasFullCorporateAccess && ALLIES_ROUTES.has(normalized) && capabilities.aliados !== true) return { allowed: false, route: normalized, experience };
     return { allowed: true, route: normalized, experience };
   }
 
   function navigationFor(profile, capabilities = {}) {
     const experience = resolveExperience(profile);
     if (experience === 'corporate') {
+      const hasFullCorporateAccess = profile.rol === 'gerencia';
       return CORPORATE_NAVIGATION
-        .filter(section => !section.capability || capabilities[section.capability] === true)
+        .filter(section => hasFullCorporateAccess || !section.capability || capabilities[section.capability] === true)
         .map(section => ({ ...section, items: section.items.map(item => ({ ...item })) }));
     }
     if (experience === 'store') {

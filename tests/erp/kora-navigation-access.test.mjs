@@ -51,7 +51,7 @@ test('asesor conserva solo las operaciones permitidas por su rol', () => {
 });
 
 test('rutas B2B y Aliados requieren la capacidad vigente además del rol corporativo', () => {
-  const profile = { rol: 'gerencia', activo: true };
+  const profile = { rol: 'auditoria', activo: true };
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, false);
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: true }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, false);
@@ -87,13 +87,13 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
 
 test('matriz equivalente de Óscar conserva Corporativo, Retail, B2B, Aliados y Administración', () => {
   const profile = { rol: 'gerencia', activo: true };
-  const navigation = access.navigationFor(profile, { b2b: true, aliados: true });
+  const navigation = access.navigationFor(profile, { b2b: false, aliados: false });
   assert.deepEqual(
     Array.from(navigation, section => section.title),
     ['TABLERO', 'CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
   );
-  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: true }).allowed, true);
-  assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: true }).allowed, true);
+  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
+  assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, true);
 });
 
 test('matriz equivalente de Maite conserva Corporativo y aplica capacidades existentes', () => {
@@ -119,7 +119,7 @@ test('toda página que monta el shell carga primero el control de acceso', async
     const html = await readFile(new URL(file, erpDir), 'utf8');
     const shell = html.indexOf('src="sidebar.js');
     if (shell < 0) continue;
-    const guard = html.indexOf('src="kora-access-control.js?v=2.0.8"');
+    const guard = html.indexOf('src="kora-access-control.js?v=2.0.9"');
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });

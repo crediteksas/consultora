@@ -163,3 +163,15 @@ test('el login KORA contiene las cuatro vistas accesibles y conserva su entorno 
   assert.match(app, /KORA_ERP_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(app, /AURA_AUTH|aura_supabase_session|ditiwpndvmyuqcagupea/);
 });
+
+test('la configuración Auth versionada usa solo KORA productivo y recovery por OTP', async () => {
+  const config = await readFile(path.join(root, 'supabase/config.toml'), 'utf8');
+  const template = await readFile(path.join(root, 'supabase/templates/kora-recovery-otp.html'), 'utf8');
+
+  assert.match(config, /site_url = "https:\/\/registro\.crediteksas\.com\/creditek\/erp\/app"/);
+  assert.match(config, /https:\/\/registro\.crediteksas\.com\/creditek\/erp\/app\/\*\*/);
+  assert.match(config, /https:\/\/registro\.crediteksas\.com\/creditek\/erp\/\*\*/);
+  assert.doesNotMatch(config, /localhost:3000|127\.0\.0\.1:3000|workers\.dev/);
+  assert.match(template, /\{\{ \.Token \}\}/);
+  assert.doesNotMatch(template, /ConfirmationURL|RedirectTo|SiteURL|href=/i);
+});

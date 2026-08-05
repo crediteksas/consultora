@@ -275,6 +275,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
     { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Tesorería', href: 'aliados-tesoreria.html', lucide: 'landmark', description: 'Administra pagos, compensaciones y saldos separados de B2B y Tercerización.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', description: 'Registro y validación segura de clientes de Creditek.', items: [
       { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },

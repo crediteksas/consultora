@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
 const ERP_DIRECTORY = new URL('../../creditek/erp/', import.meta.url);
-const EXPECTED_VERSION = '2.0.11';
+const EXPECTED_VERSION = '2.0.12';
 
 test('todas las páginas ERP versionan el shell y su guard con el mismo identificador', async () => {
   const htmlFiles = (await readdir(ERP_DIRECTORY)).filter(name => name.endsWith('.html'));
@@ -25,12 +25,12 @@ test('todas las páginas ERP versionan el shell y su guard con el mismo identifi
     );
   }
 
-  assert.equal(shellPages, 33, 'debe validar todas las páginas ERP que montan el shell');
+  assert.equal(shellPages, 34, 'debe validar todas las páginas ERP que montan el shell');
 });
 
 test('el build conserva la versión única vigente del shell', async () => {
   const buildScript = await readFile(new URL('../../scripts/build-public.mjs', import.meta.url), 'utf8');
-  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2\.0\.11'/);
-  assert.match(buildScript, /const KORA_ACCESS_CONTROL_ASSET_VERSION = '2\.0\.11'/);
+  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2\.0\.12'/);
+  assert.match(buildScript, /const KORA_ACCESS_CONTROL_ASSET_VERSION = '2\.0\.12'/);
   assert.doesNotMatch(buildScript, /KORA_SHELL_ASSET_VERSION = '2\.0\.4'/);
 });

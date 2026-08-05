@@ -22,7 +22,7 @@ test('navegación separa gestión, reporte y consulta por rol', async () => {
   await assert.rejects(read('creditek/erp/mis-reportes.html'), error => error.code === 'ENOENT');
   assert.match(app, /incident_comment/);
   assert.match(app, /OPEN_INCIDENT_STATES/);
-  assert.match(sidebar, /kora-incident-domain\.js\?v=1\.1\.1/);
+  assert.match(sidebar, /kora-incident-domain\.js\?v=1\.1\.2/);
 });
 
 test('los permisos de dominio reflejan tienda, Maythe y Gerencia', () => {

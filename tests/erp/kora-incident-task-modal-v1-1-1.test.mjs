@@ -14,7 +14,7 @@ test('el modal técnico es amplio, accesible y organiza toda la información', a
   assert.match(html, /data-task-dialog[^>]*aria-labelledby="incidentTaskTitle"/);
   assert.match(html, /role="dialog"/);
   assert.match(html, /aria-modal="true"/);
-  assert.match(html, /incidencias-app\.js\?v=1\.3\.2/);
+  assert.match(html, /incidencias-app\.js\?v=1\.3\.3/);
   for (const section of [
     'Información de la incidencia',
     'Descripción del problema',

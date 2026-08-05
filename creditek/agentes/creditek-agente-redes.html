@@ -16,8 +16,20 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
-<script src="/creditek/erp/sidebar.js?v=2.0.4" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
-<script src="kora-agent-context.js" defer></script>
+<script>
+if(window.self===window.top){
+  const shell=document.createElement('script');
+  shell.src='/creditek/erp/sidebar.js?v=2.0.4';
+  shell.dataset.koraShell='1.0.0';
+  shell.dataset.koraShellMode='agents';
+  shell.onload=()=>{
+    const context=document.createElement('script');
+    context.src='kora-agent-context.js';
+    document.head.append(context);
+  };
+  document.head.append(shell);
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root {

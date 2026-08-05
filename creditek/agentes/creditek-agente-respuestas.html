@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AURA | Creditek</title>
+<script>if(window.self!==window.top)document.documentElement.classList.add('aura-embedded')</script>
 <link rel="icon" type="image/svg+xml" href="/creditek/assets/aura/favicon.svg?v=1.3.0">
 <link rel="icon" type="image/png" sizes="64x64" href="/creditek/assets/aura/favicon.png?v=1.3.0">
 <link rel="icon" type="image/x-icon" href="/creditek/assets/aura/favicon.ico?v=1.3.0">
@@ -21,6 +22,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:var(--ctk-color-background);--card:var(--ctk-color-surface);--border:var(--ctk-color-border);--text:var(--ctk-color-text);--text2:var(--ctk-color-text-secondary);--text3:var(--ctk-color-text-muted);--accent:var(--ctk-color-secondary-600);--accent2:var(--ctk-color-secondary-700);--green:var(--ctk-color-success-500);--red:var(--ctk-color-danger-700);--amber:var(--ctk-color-warning-500);--purple:var(--ctk-color-primary-700);--sidebar-w:340px;--topbar:56px}
 body{font-family:var(--ctk-font-family-ui);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+html.aura-embedded,html.aura-embedded body{width:100%;height:100dvh;min-height:0;overflow:hidden}
+html.aura-embedded #app{display:flex!important;flex:1;flex-direction:column;width:100%;height:100dvh;min-height:0}
 
 .sofia-summary-bar{min-height:var(--topbar);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:var(--ctk-space-2);padding:var(--ctk-space-1) var(--ctk-space-3);flex-shrink:0}
 .sofia-summary-left{display:flex;align-items:center;gap:10px}

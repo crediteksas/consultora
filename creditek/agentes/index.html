@@ -43,7 +43,7 @@
   --sidebar:220px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);min-height:100dvh;overflow-y:auto}
+body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);height:100dvh;min-height:0;overflow:hidden}
 
 /* ── LOGIN ─────────────────────────────────────────────────── */
 #login-screen{
@@ -116,7 +116,7 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);min-
 @media(prefers-reduced-motion:reduce){.auth-view,#login-screen{animation:none;transition:none}}
 
 /* ── APP SHELL ──────────────────────────────────────────────── */
-#app{display:none;min-height:100dvh}
+#app{display:none;height:100dvh;min-height:0;overflow:hidden}
 #app.visible{display:grid}
 #app:not(.visible){display:none!important}
 #app.visible.kora-shell-root{display:grid!important}
@@ -162,7 +162,7 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);min-
 .logout-btn:hover{color:#0B1E3D}
 
 /* ── MAIN AREA ──────────────────────────────────────────────── */
-.main-area{flex:1;display:flex;flex-direction:column;min-width:0;min-height:calc(100dvh - var(--ctk-height-topbar));overflow:visible;background:var(--ctk-color-background,#F5F5F7)}
+.main-area{flex:1;display:flex;flex-direction:column;min-width:0;height:100dvh;min-height:0;overflow:hidden;background:var(--ctk-color-background,#F5F5F7)}
 
 .topbar{
   height:52px;flex-shrink:0;
@@ -178,7 +178,7 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);min-
 .status-text{font-size:12px;color:var(--text2)}
 .topbar-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
 
-.content{flex:1;width:100%;max-width:var(--ctk-width-content);margin:0 auto;overflow:visible;padding:var(--ctk-space-3,24px)}
+.content{flex:1;width:100%;max-width:var(--ctk-width-content);margin:0 auto;min-height:0;overflow-y:auto;padding:var(--ctk-space-3,24px)}
 
 /* ── DASHBOARD ──────────────────────────────────────────────── */
 .dashboard-greeting{margin-bottom:14px}

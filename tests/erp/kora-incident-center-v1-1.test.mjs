@@ -21,17 +21,21 @@ test('Resuelto exige resolución y versión, pero En revisión no', async () => 
     {
       resolution: 'Escribe la resolución aplicada.',
       fixedVersion: 'Indica la versión corregida.',
+      assignee: 'Asigna un responsable antes de resolver o cerrar.',
     },
   );
   assert.equal(domain.validateManagement({
     status: 'corregido',
     resolution: 'Se corrigió la capa del modal.',
     fixedVersion: '2.0.1',
+    assignee: 'responsable-id',
   }).ok, true);
   assert.equal(domain.validateManagement({ status: 'cerrado' }).ok, false);
   assert.equal(domain.validateManagement({
     status: 'cerrado',
     resolution: 'Corrección validada por Gerencia.',
+    fixedVersion: '2.0.1',
+    assignee: 'responsable-id',
   }).ok, true);
   assert.equal(domain.statusLabel('corregido'), 'Resuelta');
 });

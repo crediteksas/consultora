@@ -1,8 +1,9 @@
 (function () {
   'use strict';
 
-  const STATES = ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion', 'cerrado', 'rechazado', 'no_reproducible', 'duplicado'];
-  const OPEN_INCIDENT_STATES = new Set(['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion']);
+  const STATES = ['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'pendiente_validacion', 'corregido', 'cerrado', 'reabierto', 'rechazado', 'no_reproducible', 'duplicado'];
+  const MANAGER_STATES = ['nuevo', 'en_revision', 'en_desarrollo', 'pendiente_validacion', 'corregido', 'cerrado', 'reabierto', 'rechazado', 'duplicado'];
+  const OPEN_INCIDENT_STATES = new Set(['nuevo', 'en_revision', 'confirmado', 'en_desarrollo', 'corregido', 'pendiente_validacion', 'reabierto']);
   const PAGE_SIZE = 20;
   const management = window.KoraIncidentManagement;
   const label = value => management?.statusLabel(value)
@@ -217,7 +218,7 @@
     if (state.mode === 'admin' && state.canAdmin) {
       const statusSelect = detail.querySelector('[data-detail-status]');
       statusSelect.replaceChildren();
-      [item.status, ...STATES.filter(value => window.KoraIncidentDomain.canTransition(item.status, value))].forEach(value => {
+      MANAGER_STATES.forEach(value => {
         const option = el('option', label(value));
         option.value = value;
         statusSelect.append(option);
@@ -250,7 +251,7 @@
   }
   function clearManagementErrors() {
     document.querySelectorAll('[data-detail-field-error]').forEach(node => { node.textContent = ''; });
-    document.querySelectorAll('[data-detail-resolution],[data-detail-version]').forEach(node => node.removeAttribute('aria-invalid'));
+    document.querySelectorAll('[data-detail-resolution],[data-detail-version],[data-detail-assignee]').forEach(node => node.removeAttribute('aria-invalid'));
   }
   function showManagementErrors(errors) {
     clearManagementErrors();
@@ -259,12 +260,16 @@
       if (node) node.textContent = message;
       const field = key === 'resolution'
         ? document.querySelector('[data-detail-resolution]')
-        : document.querySelector('[data-detail-version]');
+        : key === 'fixedVersion'
+          ? document.querySelector('[data-detail-version]')
+          : document.querySelector('[data-detail-assignee]');
       field?.setAttribute('aria-invalid', 'true');
     });
     const first = errors.resolution
       ? document.querySelector('[data-detail-resolution]')
-      : document.querySelector('[data-detail-version]');
+      : errors.fixedVersion
+        ? document.querySelector('[data-detail-version]')
+        : document.querySelector('[data-detail-assignee]');
     first?.focus();
   }
   async function saveAdmin() {
@@ -274,6 +279,7 @@
     const values = {
       status: detail.querySelector('[data-detail-status]').value,
       priority: detail.querySelector('[data-detail-priority]').value,
+      assignee,
       resolution: detail.querySelector('[data-detail-resolution]').value,
       fixedVersion: detail.querySelector('[data-detail-version]').value,
     };
@@ -300,9 +306,12 @@
         p_request_id: requestId,
       });
       if (error) throw error;
-      status(values.status === 'corregido'
-        ? 'Incidencia resuelta correctamente'
-        : 'Incidencia actualizada correctamente.');
+      const confirmation = {
+        corregido: 'Incidencia resuelta correctamente.',
+        cerrado: 'Incidencia cerrada correctamente.',
+        reabierto: 'Incidencia reabierta correctamente.',
+      }[values.status] || 'Incidencia actualizada correctamente.';
+      status(confirmation);
       document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       await Promise.all([loadMetrics(), loadIncidents()]);
       const refreshed = state.incidents.find(item => item.id === state.selected.id);

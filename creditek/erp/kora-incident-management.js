@@ -8,8 +8,9 @@
     confirmado: 'En atención',
     en_desarrollo: 'En atención',
     corregido: 'Resuelta',
-    pendiente_validacion: 'Resuelta',
+    pendiente_validacion: 'Pendiente de validación',
     cerrado: 'Cerrada',
+    reabierto: 'Reabierta',
     rechazado: 'Rechazado',
     no_reproducible: 'No reproducible',
     duplicado: 'Duplicado',
@@ -22,6 +23,7 @@
     en_desarrollo: 2,
     corregido: 3,
     cerrado: 4,
+    reabierto: 1,
     rechazado: 4,
     no_reproducible: 4,
     duplicado: 4,
@@ -51,12 +53,10 @@
   function validateManagement(input = {}) {
     const status = String(input.status || '').trim();
     const errors = {};
-    if (status === 'corregido') {
+    if (['corregido', 'cerrado'].includes(status)) {
       if (!String(input.resolution || '').trim()) errors.resolution = 'Escribe la resolución aplicada.';
       if (!String(input.fixedVersion || '').trim()) errors.fixedVersion = 'Indica la versión corregida.';
-    }
-    if (status === 'cerrado' && !String(input.resolution || '').trim()) {
-      errors.resolution = 'Conserva la resolución antes de cerrar.';
+      if (!String(input.assignee || '').trim()) errors.assignee = 'Asigna un responsable antes de resolver o cerrar.';
     }
     return { ok: Object.keys(errors).length === 0, errors };
   }

@@ -22,6 +22,7 @@
     corregido: new Set(['pendiente_validacion', 'cerrado', 'en_desarrollo']),
     pendiente_validacion: new Set(['cerrado', 'en_desarrollo']),
     cerrado: new Set(),
+    reabierto: new Set(['en_revision', 'en_desarrollo', 'corregido', 'cerrado']),
     rechazado: new Set(),
     no_reproducible: new Set(['en_revision']),
     duplicado: new Set(['en_revision']),
@@ -55,6 +56,7 @@
     auditoria: new Set([
       'incident_create',
       'incident_view_all',
+      'incident_comment',
     ]),
     soporte: new Set([
       'incident_create',

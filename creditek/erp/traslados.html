@@ -10,6 +10,7 @@
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.11"></script>
 <script src="sidebar.js?v=2.0.11" data-kora-shell="1.0.0"></script>
+<script src="traslados-domain.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -130,6 +131,14 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .modal-actions .btn-guardar { background: var(--turquesa); color: white; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
+.traslado-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.traslado-resumen > div { border: 1px solid var(--border); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; }
+.traslado-resumen span { display: block; color: var(--text2); font-size: 11px; margin-bottom: 4px; }
+.traslado-resumen strong { font-size: 14px; }
+.traslado-resumen .valor-total { background: var(--azul); color: white; }
+.traslado-resumen .valor-total span { color: rgba(255,255,255,.72); }
+.traslado-novedad { color: var(--rojo); font-size: 12px; font-weight: 700; margin: -4px 0 12px; }
+@media (max-width: 620px) { .traslado-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .scanner-overlay { display: none; position: fixed; inset: 0; background: black; z-index: 100; align-items: center; justify-content: center; flex-direction: column; }
 .scanner-overlay.show { display: flex; }
@@ -216,7 +225,13 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <button id="btnAgregarAccesorioTra">🎧 + Accesorio</button>
     </div>
     <div id="itemsTrasladoContainer"></div>
-    <div class="total-linea">Total: <span id="traTotal">$0</span></div>
+    <div class="traslado-resumen" aria-label="Resumen del traslado">
+      <div><span>Total de unidades</span><strong id="traTotalUnidades">0</strong></div>
+      <div><span>Total celulares</span><strong id="traTotalCelulares">0</strong></div>
+      <div><span>Total accesorios</span><strong id="traTotalAccesorios">0</strong></div>
+      <div class="valor-total"><span>Valor total del traslado</span><strong id="traTotal">$ 0</strong></div>
+    </div>
+    <div class="traslado-novedad" id="traNovedadValor" role="alert"></div>
 
     <div class="campo"><label>Nota (opcional)</label><textarea id="traNota" rows="2" placeholder="Detalle adicional..."></textarea></div>
 
@@ -234,6 +249,12 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <h2 id="verTrasladoTitulo">Traslado</h2>
     <div class="modal-sub" id="verTrasladoSub"></div>
     <div id="verTrasladoItems"></div>
+    <div class="traslado-resumen" aria-label="Resumen histórico del traslado">
+      <div><span>Total de unidades</span><strong id="verTotalUnidades">0</strong></div>
+      <div><span>Total celulares</span><strong id="verTotalCelulares">0</strong></div>
+      <div><span>Total accesorios</span><strong id="verTotalAccesorios">0</strong></div>
+      <div class="valor-total"><span>Valor total del traslado</span><strong id="verTotalTraslado">$ 0</strong></div>
+    </div>
     <div class="modal-err" id="modalVerTrasladoErr"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCerrarVerTraslado">Cerrar</button>
@@ -310,7 +331,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return window.KoraTrasladosDomain.formatearCOP(n); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -505,7 +526,7 @@ async function renderItemsTraslado() {
       }
       if (it.imei) validarImeiTraslado(idx, it.imei, true);
     } else {
-      div.querySelector('.cantidad-input').addEventListener('input', (e) => { itemsTraslado[idx].cantidad = Number(e.target.value || 1); actualizarTotalTraslado(); verificarStockAccesorioTra(idx); });
+      div.querySelector('.cantidad-input').addEventListener('input', (e) => { itemsTraslado[idx].cantidad = Number(e.target.value); actualizarTotalTraslado(); verificarStockAccesorioTra(idx); });
       verificarStockAccesorioTra(idx);
     }
   }
@@ -560,8 +581,13 @@ async function validarImeiTraslado(idx, imei, silencioso) {
 }
 
 function actualizarTotalTraslado() {
-  const total = itemsTraslado.reduce((s, it) => s + (it.costo || 0) * (it.tipoProducto === 'cantidad' ? (it.cantidad || 0) : 1), 0);
-  document.getElementById('traTotal').textContent = fmtCOP(total);
+  const resumen = window.KoraTrasladosDomain.resumir(itemsTraslado);
+  document.getElementById('traTotalUnidades').textContent = resumen.unidades;
+  document.getElementById('traTotalCelulares').textContent = resumen.celulares;
+  document.getElementById('traTotalAccesorios').textContent = resumen.accesorios;
+  document.getElementById('traTotal').textContent = fmtCOP(resumen.valorTotal);
+  document.getElementById('traNovedadValor').textContent = resumen.novedades.join(' · ');
+  return resumen;
 }
 
 async function confirmarDespacho() {
@@ -571,6 +597,9 @@ async function confirmarDespacho() {
   const tienda_destino = document.getElementById('traTiendaDestino').value;
   if (!tienda_destino) { err.textContent = 'Elige la tienda destino.'; err.classList.add('show'); return; }
   if (!itemsTraslado.length) { err.textContent = 'Agrega al menos un producto.'; err.classList.add('show'); return; }
+  const resumen = actualizarTotalTraslado();
+  if (resumen.duplicados.length) { err.textContent = `IMEI duplicado: ${resumen.duplicados.join(', ')}.`; err.classList.add('show'); return; }
+  if (resumen.novedades.length) { err.textContent = 'Producto sin valor definido. Corrige la novedad antes de confirmar.'; err.classList.add('show'); return; }
 
   const payload = [];
   for (const it of itemsTraslado) {
@@ -613,6 +642,12 @@ async function abrirModalVerTraslado(t) {
       <div class="meta">Costo: ${fmtCOP(it.costo)}${it.unidad_id ? ' · Serializado' : ''}</div>
     </div>
   `).join('') || '<div class="empty-state">Sin productos.</div>';
+
+  const resumen = window.KoraTrasladosDomain.resumir(items || []);
+  document.getElementById('verTotalUnidades').textContent = resumen.unidades;
+  document.getElementById('verTotalCelulares').textContent = resumen.celulares;
+  document.getElementById('verTotalAccesorios').textContent = resumen.accesorios;
+  document.getElementById('verTotalTraslado').textContent = fmtCOP(resumen.valorTotal);
 
   const puedeRecibir = t.estado === 'despachado' && (esCentral() || currentPerfil.tienda_codigo === t.tienda_destino);
   document.getElementById('btnConfirmarRecepcionTra').style.display = puedeRecibir ? 'inline-block' : 'none';

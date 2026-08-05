@@ -20,3 +20,12 @@ test('un fallo de carga no expone especificaciones técnicas de la base de datos
   assert.match(html, /No fue posible cargar los traslados\. Intenta nuevamente\./);
   assert.doesNotMatch(html, /Error cargando traslados:\s*['"]?\s*\+\s*error\.message/);
 });
+
+test('la confirmación valida cantidades, costos y duplicados antes de invocar el RPC', async () => {
+  const html = await readFile(path.join(root, 'creditek/erp/traslados.html'), 'utf8');
+  const validation = html.indexOf('resumen.novedades.length');
+  const rpc = html.indexOf("sb.rpc('ejecutar_traslado_despacho'");
+  assert.ok(validation > 0 && validation < rpc);
+  assert.match(html, /resumen\.duplicados\.length/);
+  assert.match(html, /Number\(e\.target\.value\)/);
+});

@@ -35,6 +35,8 @@
     canAdmin: false,
     canComment: false,
     currentPage: 1,
+    listScrollY: 0,
+    detailActivator: null,
   };
 
   function status(message, error = false) {
@@ -124,7 +126,7 @@
       row.dataset.managementState = tone;
       const codeButton = el('button', item.incident_code);
       codeButton.type = 'button';
-      codeButton.addEventListener('click', () => openDetail(item));
+      codeButton.addEventListener('click', () => openDetail(item, codeButton));
       const cells = state.mode === 'admin'
         ? [codeButton, formatDate(item.created_at), item.title, item.store_name_snapshot || '—', item.module, label(item.priority), label(item.status), item.user_name_snapshot, assigneeName(item.assigned_to), item.kora_version, age(item.created_at)]
         : [codeButton, formatDate(item.created_at), item.title, item.module, label(item.priority), label(item.status), formatDate(item.updated_at)];
@@ -166,9 +168,11 @@
     link.rel = 'noopener noreferrer';
     target.append(link);
   }
-  async function openDetail(item) {
+  async function openDetail(item, activator = null) {
     state.selected = item;
     const detail = document.querySelector('[data-incident-detail]');
+    if (detail.hidden) state.listScrollY = scrollY;
+    if (activator) state.detailActivator = activator;
     detail.hidden = false;
     detail.querySelector('[data-detail-title]').textContent = `${item.incident_code} · ${item.title}`;
     const content = detail.querySelector('[data-detail-content]');
@@ -231,6 +235,17 @@
       clearManagementErrors();
     }
     detail.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+  function closeDetail() {
+    const detail = document.querySelector('[data-incident-detail]');
+    detail.hidden = true;
+    state.selected = null;
+    state.selectedHistory = [];
+    const url = new URL(location.href);
+    url.searchParams.delete('id');
+    history.replaceState(history.state, '', url);
+    scrollTo({ top: state.listScrollY, behavior: 'auto' });
+    state.detailActivator?.focus({ preventScroll: true });
   }
   async function loadAssignees() {
     if (state.mode !== 'admin' || !state.canAdmin) return;
@@ -504,6 +519,7 @@
     });
     document.querySelector('[data-incident-add-comment]')?.addEventListener('click', () => addComment().catch(error => status(error.message, true)));
     document.querySelector('[data-incident-confirm-fixed]')?.addEventListener('click', () => confirmFixed().catch(error => status(error.message, true)));
+    document.querySelector('[data-incident-back]')?.addEventListener('click', closeDetail);
   }
   async function init() {
     try {

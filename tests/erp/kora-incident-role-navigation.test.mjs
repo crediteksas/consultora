@@ -53,7 +53,7 @@ test('navegación usa la arañita y no reutiliza Auditoría', () => {
   assert.match(center, /location\.hash === '#reportar'/);
   assert.match(sidebar, /kora-incident-center\.js\?v=1\.2\.1/);
   assert.match(page, /kora-incident-management\.js\?v=1\.2\.4/);
-  assert.match(page, /incidencias-app\.js\?v=1\.3\.3/);
+  assert.match(page, /incidencias-app\.js\?v=1\.3\.4/);
 });
 
 test('centro adapta título y breadcrumb al rol sin mostrar controles de gestión a Maite o tienda', () => {

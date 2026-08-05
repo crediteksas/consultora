@@ -25,7 +25,7 @@ test('todas las páginas ERP versionan el shell y su guard con el mismo identifi
     );
   }
 
-  assert.equal(shellPages, 26, 'debe validar todas las páginas ERP que montan el shell');
+  assert.equal(shellPages, 33, 'debe validar todas las páginas ERP que montan el shell');
 });
 
 test('el build conserva la versión única vigente del shell', async () => {

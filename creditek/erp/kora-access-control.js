@@ -9,7 +9,11 @@
     'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html',
     'utilidad-creditek.html',
   ]);
-  const ALLIES_ROUTES = new Set(['aliados-liquidaciones.html']);
+  const ALLIES_ROUTES = new Set([
+    'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
+    'aliados-plataformas.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
+    'aliados-bonificaciones.html', 'aliados-reportes.html',
+  ]);
   const CORPORATE_ROUTES = new Set([
     'tablero.html', 'presupuestos.html', 'ventas.html', 'registro-interno.html',
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
@@ -52,14 +56,14 @@
       { label: 'Reportes B2B', href: 'utilidad-creditek.html#reportes', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'CREDITEK ALIADOS', icon: 'handshake', capability: 'aliados', items: [
-      { label: 'Dashboard Aliados', href: 'aliados-liquidaciones.html#dashboard', icon: 'layout-dashboard' },
-      { label: 'Aliados', href: 'aliados-liquidaciones.html#aliados', icon: 'handshake' },
-      { label: 'Ejecutivos', href: 'aliados-liquidaciones.html#ejecutivos', icon: 'users-round' },
-      { label: 'Plataformas', href: 'aliados-liquidaciones.html#plataformas', icon: 'panels-top-left' },
+      { label: 'Dashboard Aliados', href: 'aliados-dashboard.html', icon: 'layout-dashboard' },
+      { label: 'Aliados', href: 'aliados.html', icon: 'handshake' },
+      { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
+      { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
-      { label: 'Calidad', href: 'aliados-liquidaciones.html#calidad', icon: 'badge-check' },
-      { label: 'Bonificaciones', href: 'aliados-liquidaciones.html#bonificaciones', icon: 'badge-dollar-sign' },
-      { label: 'Reportes Aliados', href: 'aliados-liquidaciones.html#reportes', icon: 'file-chart-column-increasing' },
+      { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
+      { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign' },
+      { label: 'Reportes Aliados', href: 'aliados-reportes.html', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
       { label: 'Auditoría', href: 'incidencias.html', icon: 'file-search' },

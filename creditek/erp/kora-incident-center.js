@@ -118,8 +118,8 @@
   function dialogHtml() {
     return `<div class="kora-incident-backdrop" data-kora-incident-backdrop hidden>
       <section class="kora-incident-dialog" role="dialog" aria-modal="true" aria-labelledby="koraIncidentTitle">
-        <header class="kora-incident-head"><div><h2 id="koraIncidentTitle">Reportar error</h2><p>Ayúdanos a identificar y corregir el problema.</p></div>
-          <button class="kora-incident-close" type="button" aria-label="Cerrar reporte"><i data-lucide="x"></i></button></header>
+        <header class="kora-incident-head"><div><h2 id="koraIncidentTitle">Reportar incidencia</h2><p>Ayúdanos a identificar y corregir el problema.</p></div>
+          <button class="kora-incident-close" type="button" aria-label="Cerrar incidencia"><i data-lucide="x"></i></button></header>
         <form class="kora-incident-form" novalidate>
           <div class="kora-incident-field kora-incident-field--full"><label for="koraIncidentShortTitle">Título breve</label><input id="koraIncidentShortTitle" name="title" maxlength="160" required></div>
           <div class="kora-incident-field kora-incident-field--full"><label for="koraIncidentDescription">Descripción del problema</label><textarea id="koraIncidentDescription" name="description" maxlength="5000" required></textarea></div>
@@ -130,7 +130,7 @@
           <p class="kora-incident-note">No incluyas contraseñas, documentos personales ni información bancaria en la captura.</p>
           <div class="kora-incident-similar" data-kora-incident-similar hidden></div>
           <p class="kora-incident-status" role="status" aria-live="polite"></p>
-          <footer class="kora-incident-actions"><button type="button" data-kora-open-incidents>Consultar incidencias</button><button type="button" data-kora-incident-cancel>Cancelar</button><button type="submit">Enviar reporte</button></footer>
+          <footer class="kora-incident-actions"><button type="button" data-kora-open-incidents>Consultar incidencias</button><button type="button" data-kora-incident-cancel>Cancelar</button><button type="submit">Enviar incidencia</button></footer>
         </form>
       </section></div>`;
   }
@@ -144,9 +144,10 @@
     mounted = true;
     captureErrors();
     const triggerTemplate = document.createElement('template');
-    triggerTemplate.innerHTML = '<button type="button" class="kora-incident-trigger" data-kora-report-incident aria-label="Reportar error" title="Reportar error"><i data-lucide="bug"></i><span>Reportar error</span></button>';
+    triggerTemplate.innerHTML = '<button type="button" class="kora-incident-trigger" data-kora-report-incident aria-label="Reportar incidencia" title="Reportar incidencia"><i data-lucide="bug"></i><span>Reportar incidencia</span></button>';
     const trigger = triggerTemplate.content.firstElementChild;
-    footer.prepend(trigger);
+    const showNormalReportFlow = profile.rol !== 'gerencia';
+    if (showNormalReportFlow) footer.prepend(trigger);
     document.body.insertAdjacentHTML('beforeend', dialogHtml());
     const backdrop = document.querySelector('[data-kora-incident-backdrop]');
     const dialog = backdrop.querySelector('.kora-incident-dialog');
@@ -170,6 +171,7 @@
       global.KoraAudio?.play?.('interaction');
     };
     trigger.addEventListener('click', open);
+    if (showNormalReportFlow && location.hash === '#reportar') queueMicrotask(open);
     backdrop.querySelector('.kora-incident-close').addEventListener('click', close);
     backdrop.querySelector('[data-kora-incident-cancel]').addEventListener('click', close);
     backdrop.querySelector('[data-kora-open-incidents]').addEventListener('click', () => {

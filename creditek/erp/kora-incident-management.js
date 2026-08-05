@@ -3,13 +3,13 @@
 
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const STATUS_LABELS = Object.freeze({
-    nuevo: 'Nuevo',
+    nuevo: 'Nueva',
     en_revision: 'En revisión',
-    confirmado: 'Confirmado',
-    en_desarrollo: 'En desarrollo',
-    corregido: 'Resuelto',
-    pendiente_validacion: 'Pendiente de validación',
-    cerrado: 'Cerrado',
+    confirmado: 'En atención',
+    en_desarrollo: 'En atención',
+    corregido: 'Resuelta',
+    pendiente_validacion: 'Resuelta',
+    cerrado: 'Cerrada',
     rechazado: 'Rechazado',
     no_reproducible: 'No reproducible',
     duplicado: 'Duplicado',

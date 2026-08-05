@@ -33,7 +33,7 @@ test('Resuelto exige resolución y versión, pero En revisión no', async () => 
     status: 'cerrado',
     resolution: 'Corrección validada por Gerencia.',
   }).ok, true);
-  assert.equal(domain.statusLabel('corregido'), 'Resuelto');
+  assert.equal(domain.statusLabel('corregido'), 'Resuelta');
 });
 
 test('ordena por estado y fecha, y pagina sin duplicar registros', async () => {

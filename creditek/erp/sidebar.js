@@ -281,7 +281,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
-      { label: 'Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona errores reportados, responsables, estados y soluciones.', roles: ['gerencia', 'auditoria', 'soporte'] },
+      { label: 'Centro de Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona responsables, prioridades, estados y soluciones.', roles: ['gerencia'] },
+      { label: 'Reportar incidencia', href: 'incidencias.html#reportar', lucide: 'bug', description: 'Registra una incidencia para seguimiento.', roles: ['auditoria', 'admin_tienda'] },
+      { label: 'Ver incidencias', href: 'incidencias.html#ver', lucide: 'bug', description: 'Consulta incidencias, respuestas, historial y cierre.', roles: ['auditoria'] },
+      { label: 'Mis incidencias', href: 'incidencias.html#ver', lucide: 'bug', description: 'Consulta incidencias propias o de la tienda.', roles: ['admin_tienda'] },
     ]},
   ];
 
@@ -515,7 +518,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (document.getElementById('koraIncidentCenter')) return;
       const center = document.createElement('script');
       center.id = 'koraIncidentCenter';
-      center.src = '/creditek/erp/kora-incident-center.js';
+      center.src = '/creditek/erp/kora-incident-center.js?v=1.2.0';
       document.head.appendChild(center);
     };
     if (window.KoraIncidentDomain || document.getElementById('koraIncidentDomain')) {

@@ -500,6 +500,16 @@
     try {
       const context = await waitForContext();
       state = { ...state, sb: context.sb, profile: context.perfil };
+      const isManager = state.profile.rol === 'gerencia';
+      document.title = isManager ? 'KORA · Centro de Incidencias' : 'KORA · Ver incidencias';
+      const title = document.querySelector('[data-incident-title]');
+      const breadcrumb = document.querySelector('[data-incident-breadcrumb]');
+      const subtitle = document.querySelector('[data-incident-subtitle]');
+      if (title) title.textContent = isManager ? 'Centro de Incidencias' : 'Ver incidencias';
+      if (breadcrumb) breadcrumb.textContent = isManager ? 'KORA / Administración' : 'KORA / Incidencias';
+      if (subtitle) subtitle.textContent = isManager
+        ? 'Asigna, prioriza, responde, resuelve y cierra incidencias.'
+        : 'Consulta estados, respuestas, responsables, historial y soluciones aplicadas.';
       if (state.mode === 'admin') {
         const [adminPermission, commentPermission] = await Promise.all([
           state.sb.rpc('kora_incident_has_permission', { p_permission: 'incident_admin' }),

@@ -16,8 +16,8 @@ test('cada módulo de Creditek Aliados tiene una ruta real e independiente', asy
     assert.match(guard, new RegExp(route.replace('.', '\\.')));
     const html = await readFile(`creditek/erp/${route}`, 'utf8');
     assert.match(html, /data-kora-requires-auth="true"/);
-    assert.match(html, /kora-access-control\.js\?v=2\.0\.9/);
-    assert.match(html, /sidebar\.js\?v=2\.0\.9/);
+    assert.match(html, /kora-access-control\.js\?v=2\.0\.10/);
+    assert.match(html, /sidebar\.js\?v=2\.0\.10/);
     assert.match(html, /Acceso denegado/);
     assert.doesNotMatch(html, /En desarrollo/i);
   }

@@ -24,7 +24,7 @@
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-      'inventario.html', 'gastos.html', 'cuenta-corriente.html',
+      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'incidencias.html',
     ]),
     asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']),
   });
@@ -66,7 +66,9 @@
       { label: 'Reportes Aliados', href: 'aliados-reportes.html', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
-      { label: 'Auditoría', href: 'incidencias.html', icon: 'file-search' },
+      { label: 'Centro de Incidencias', href: 'incidencias.html', icon: 'bug', roles: ['gerencia'] },
+      { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['auditoria'] },
+      { label: 'Ver incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['auditoria'] },
     ] },
   ]);
 
@@ -80,6 +82,8 @@
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },
       { label: 'Cartera', href: 'cuenta-corriente.html', icon: 'book-open-check', roles: ['admin_tienda'] },
       { label: 'Reportes', href: 'reportes.html#reportes', icon: 'file-chart-column-increasing', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['admin_tienda'] },
+      { label: 'Mis incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['admin_tienda'] },
     ] },
   ]);
 
@@ -124,7 +128,13 @@
       const hasFullCorporateAccess = profile.rol === 'gerencia';
       return CORPORATE_NAVIGATION
         .filter(section => hasFullCorporateAccess || !section.capability || capabilities[section.capability] === true)
-        .map(section => ({ ...section, items: section.items.map(item => ({ ...item })) }));
+        .map(section => ({
+          ...section,
+          items: section.items
+            .filter(item => !item.roles || item.roles.includes(profile.rol))
+            .map(item => ({ ...item })),
+        }))
+        .filter(section => section.items.length > 0);
     }
     if (experience === 'store') {
       return STORE_NAVIGATION.map(section => ({

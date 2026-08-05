@@ -28,11 +28,11 @@ test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const allowed = [
     'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-    'inventario.html', 'gastos.html', 'cuenta-corriente.html',
+    'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'incidencias.html',
   ];
   const forbidden = [
     'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
-    'utilidad-creditek.html', 'aliados-liquidaciones.html', 'incidencias.html',
+    'utilidad-creditek.html', 'aliados-liquidaciones.html',
     'tablero.html', 'remisiones.html', 'auditoria-cruzada.html',
   ];
 
@@ -107,7 +107,8 @@ test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tien
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const navigation = access.navigationFor(profile);
   assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
-  for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html', 'incidencias.html']) {
+  assert.equal(access.authorize(profile, 'incidencias.html').allowed, true);
+  for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html']) {
     assert.equal(access.authorize(profile, route).allowed, false, route);
   }
 });
@@ -119,7 +120,7 @@ test('toda página que monta el shell carga primero el control de acceso', async
     const html = await readFile(new URL(file, erpDir), 'utf8');
     const shell = html.indexOf('src="sidebar.js');
     if (shell < 0) continue;
-    const guard = html.indexOf('src="kora-access-control.js?v=2.0.9"');
+    const guard = html.indexOf('src="kora-access-control.js?v=2.0.10"');
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });

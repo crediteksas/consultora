@@ -14,9 +14,11 @@ const [sidebar, app, domainSource, sql] = await Promise.all([
 ]);
 const normalizedSql = sql.toLowerCase().replace(/\s+/g, ' ');
 
-test('elimina Mis incidencias de la navegación y concentra la consulta en incidencias', async () => {
-  assert.doesNotMatch(sidebar, /label:\s*'Mis incidencias'/);
-  assert.match(sidebar, /label:\s*'Incidencias'/);
+test('navegación separa gestión, reporte y consulta por rol', async () => {
+  assert.match(sidebar, /label:\s*'Centro de Incidencias'/);
+  assert.match(sidebar, /label:\s*'Reportar incidencia'/);
+  assert.match(sidebar, /label:\s*'Ver incidencias'/);
+  assert.match(sidebar, /label:\s*'Mis incidencias'/);
   await assert.rejects(read('creditek/erp/mis-reportes.html'), error => error.code === 'ENOENT');
   assert.match(app, /incident_comment/);
   assert.match(app, /OPEN_INCIDENT_STATES/);

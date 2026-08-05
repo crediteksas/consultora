@@ -69,11 +69,10 @@ test('el contexto compartido conserva navegación y páginas activas', async () 
     'agente3-meta-ads.html',
     'creditek-agente-calendario.html',
     '../portal/index.html',
-    '../erp/reportes.html',
     'index.html#configuracion',
   ]) assert.ok(context.includes(destination), `falta ${destination}`);
-  assert.match(context, /agent-1/);
-  assert.match(context, /agent-3/);
-  assert.match(context, /agent-4/);
+  assert.match(context, /Redes Sociales/);
+  assert.match(context, /Meta Ads Intelligence/);
+  assert.match(context, /Calendario de contenido/);
   assert.match(context, /sofia/);
 });

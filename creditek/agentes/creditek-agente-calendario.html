@@ -15,12 +15,25 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
-<script src="/creditek/erp/sidebar.js?v=2.0.4" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
-<script src="kora-agent-context.js" defer></script>
+<script>
+if(window.self===window.top){
+  const shell=document.createElement('script');
+  shell.src='/creditek/erp/sidebar.js?v=2.0.4';
+  shell.dataset.koraShell='1.0.0';
+  shell.dataset.koraShellMode='agents';
+  shell.onload=()=>{
+    const context=document.createElement('script');
+    context.src='kora-agent-context.js';
+    document.head.append(context);
+  };
+  document.head.append(shell);
+}
+</script>
 <style>
 :root{--azul:var(--ctk-color-primary-900);--turquesa:var(--ctk-color-secondary-500);--bg:var(--ctk-color-background);--bg2:var(--ctk-color-surface);--bg3:var(--ctk-color-surface-subtle);--bord:var(--ctk-color-border);--bord2:var(--ctk-color-focus);--txt:var(--ctk-color-text);--txt2:var(--ctk-color-text-secondary);--txt3:var(--ctk-color-text-muted);--r:var(--ctk-radius-xl);--rs:var(--ctk-radius-sm)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:15px;line-height:1.6}
+#app{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .shell{display:flex;flex:1;min-height:0;overflow:hidden}
 
 /* SIDEBAR */
@@ -59,7 +72,7 @@ select option{background:var(--bg2)}
 .progress-lbl{font-size:10px;color:var(--txt3);margin-top:5px;text-align:center}
 
 /* MAIN */
-.agent4-workspace{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.agent4-workspace{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
 .agent4-content-toolbar{padding:14px 24px 12px;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--ctk-color-surface)}
 .ttl{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700}
 .tsub{font-size:11px;color:var(--txt3);margin-top:1px}

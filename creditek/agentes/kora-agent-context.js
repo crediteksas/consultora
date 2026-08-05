@@ -1,26 +1,25 @@
 (function () {
   const MODULES = [
     { titulo: 'AURA', lucide: 'layout-dashboard', items: [
-      { label: 'Inicio', href: 'index.html', lucide: 'house' },
+      { label: 'Panel general', href: 'index.html', lucide: 'house' },
     ] },
     { titulo: 'AGENTES', lucide: 'sparkles', items: [
       { label: 'Sofía', href: 'sofia-aura-20260803b.html', lucide: 'messages-square' },
-      { label: 'Agente 1 · Piezas comerciales', href: 'creditek-agente-redes.html', lucide: 'image-plus' },
-      { label: 'Agente 3 · Publicación y métricas', href: 'agente3-meta-ads.html', lucide: 'megaphone' },
-      { label: 'Agente 4 · Reels orgánicos', href: 'creditek-agente-calendario.html', lucide: 'clapperboard' },
+      { label: 'Redes Sociales', href: 'creditek-agente-redes.html', lucide: 'image-plus' },
+      { label: 'Meta Ads Intelligence', href: 'agente3-meta-ads.html', lucide: 'megaphone' },
+      { label: 'Calendario de contenido', href: 'creditek-agente-calendario.html', lucide: 'clapperboard' },
     ] },
     { titulo: 'NEGOCIO', lucide: 'briefcase-business', items: [
       { label: 'Portal B2B', href: '../portal/index.html', lucide: 'shopping-bag' },
-      { label: 'Reportes', href: '../erp/reportes.html', lucide: 'file-chart-column-increasing' },
       { label: 'Configuración', href: 'index.html#configuracion', lucide: 'settings' },
     ] },
   ];
 
   const TITLES = {
-    home: 'Inicio',
-    'agent-1': 'Agente 1 · Piezas comerciales',
-    'agent-3': 'Agente 3 · Publicación y métricas',
-    'agent-4': 'Agente 4 · Reels orgánicos',
+    home: 'Panel general',
+    'agent-1': 'Redes Sociales',
+    'agent-3': 'Meta Ads Intelligence',
+    'agent-4': 'Calendario de contenido',
     sofia: 'Sofía',
   };
 

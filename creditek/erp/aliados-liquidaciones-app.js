@@ -78,9 +78,9 @@
     const metrics = (title, values) => `<section class="card"><h2>${title}</h2><div class="grid">${values.map(([label, value, count]) => `<div class="metric"><small>${label}</small><strong>${count ? Number(value || 0) : money(value)}</strong></div>`).join('')}</div></section>`;
     $('metrics').innerHTML = metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
-      ['Base liquidada', selected.total_operaciones], ['Total a pagar', selected.total_pagar], ['Bonos', selected.total_bonos], ['Utilidad Creditek', selected.total_utilidad_creditek]
+      ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad Creditek', selected.total_utilidad_creditek], ['Total a girar', selected.total_pagar]
     ]) + metrics('Resumen Operaciones Retail', [
-      ['Operaciones', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad de tiendas', selected.total_utilidad_tiendas]
+      ['Operaciones Retail', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad Creditek Retail', selected.total_utilidad_tiendas]
     ]) + metrics('Resumen Operaciones Aliados', [
       ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos]
     ]);
@@ -96,23 +96,27 @@
   }
 
   async function loadOperations() {
-    const operationFields = 'id,liquidation_id,plataforma,external_id,operation_at,establishment_name,origen_codigo,tipo_establecimiento,ejecutivo_id,cliente_documento,cliente_nombre,imei,referencia,modelo,monto_credito,monto_base,accesorios_cantidad,accesorios,inicial,reconocida,inicial_kora,diferencia_inicial,costo_equipo,pagamos,pago_neto_tienda,utilidad_tienda,utilidad_creditek_tienda,diferencia_justificacion,diferencia_revisada_at';
+    const operationFields = 'id,liquidation_id,plataforma,external_id,operation_at,establishment_name,origen_codigo,tipo_establecimiento,ejecutivo_id,cliente_documento,cliente_nombre,imei,referencia,modelo,monto_credito,monto_base,accesorios_cantidad,accesorios,inicial,reconocida,inicial_kora,diferencia_inicial,costo_equipo,pagamos,pago_neto_tienda,utilidad_tienda,utilidad_creditek_tienda,diferencia_justificacion,diferencia_revisada_at,valor_comercial,porcentaje_politica,pago_neto_beneficiario,bonos_aplicados,utilidad_creditek,liquidation_calculations(pagamos,pago_aliado,total_bonos,utilidad_creditek,policy_snapshot,explanation)';
     const { data, error } = await sb.from('liquidation_operations').select(operationFields).eq('liquidation_id', selected.id).order('operation_at');
     if (error) throw error;
     const rows = (data || []).filter((row) => activeModel === 'all' || row.tipo_establecimiento === activeModel);
-    const own = activeModel === 'propia' || (activeModel === 'all' && rows.some((row) => row.tipo_establecimiento === 'propia'));
-    const headers = own
-      ? ['Modelo', 'Tienda', 'Cliente', 'Documento', 'Equipo', 'IMEI', 'Monto plataforma', 'Inicial plataforma', 'Inicial recibida en KORA', 'Diferencia de inicial', 'Costo', 'Pagamos', 'Pago neto', 'Utilidad Creditek', 'Utilidad tienda', 'Estado', 'Novedades']
-      : ['Modelo', 'Establecimiento', 'Cliente', 'Documento', 'Equipo', 'IMEI', 'Base liquidable', 'Inicial', 'Pago al aliado', 'Estado'];
+    const headers = ['Tipo de operación', 'Beneficiario', 'Cliente', 'IMEI', 'Valor crédito', 'Inicial plataforma', 'Inicial KORA', 'Diferencia de inicial', 'Valor comercial', 'Porcentaje aplicado', 'Pagamos', 'Pago neto', 'Bonos', 'Utilidad Creditek', 'Estado', 'Novedades'];
     $('detailHead').innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>`;
     $('detailBody').innerHTML = rows.map((row) => {
       const isOwn = row.tipo_establecimiento === 'propia';
+      const future = String(row.operation_at || '').slice(0, 10) >= '2026-08-05';
       const difference = Number(row.diferencia_inicial || 0);
-      const payField = isOwn && operator.capacidad === 'aprobador' && !selected.frozen_at
+      const calculation = Array.isArray(row.liquidation_calculations) ? row.liquidation_calculations[0] : row.liquidation_calculations;
+      const payField = isOwn && !future && operator.capacidad === 'aprobador' && !selected.frozen_at
         ? `<div class="actions"><input class="control" data-pagamos-input="${row.id}" inputmode="numeric" value="${Number(row.pagamos || 0)}" aria-label="Pagamos"><button class="btn secondary" data-save-pagamos="${row.id}">Guardar</button></div>`
-        : money(row.pagamos);
-      if (isOwn) return `<tr><td>Operación Retail</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_base)}</td><td>${money(row.inicial)}</td><td>${money(row.inicial_kora)}</td><td>${money(difference)}</td><td>${money(row.costo_equipo)}</td><td>${payField}</td><td>${money(row.pago_neto_tienda)}</td><td>${money(row.utilidad_creditek_tienda)}</td><td>${money(row.utilidad_tienda)}</td><td>${state(selected.estado)}</td><td>${difference ? '<span class="badge con_novedades">Requiere revisión</span>' : 'Sin diferencia'}</td></tr>`;
-      return `<tr><td>Operación Aliados</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.cliente_documento || '—')}</td><td>${esc(row.modelo || row.referencia || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>Según política vigente</td><td>${row.reconocida ? 'Reconocida' : 'Con novedad'}</td></tr>`;
+        : money(row.pagamos ?? calculation?.pagamos);
+      const commercial = row.valor_comercial ?? calculation?.explanation?.valor_comercial ?? calculation?.explanation?.base_liquidable;
+      const percent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
+      const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
+      const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
+      const utility = row.utilidad_creditek ?? row.utilidad_creditek_tienda ?? calculation?.utilidad_creditek;
+      const issues = !row.reconocida ? '<span class="badge con_novedades">Operación no reconocida</span>' : isOwn && difference ? '<span class="badge con_novedades">Diferencia por revisar</span>' : 'Sin novedades';
+      return `<tr><td>${isOwn ? 'Retail' : 'Aliados'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
   }

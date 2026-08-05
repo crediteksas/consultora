@@ -108,6 +108,10 @@
         movimientos: movimientos.map(item => ({ fila: item.index, tipo: texto(valor(item.row,'transaction type')), original: item.row })),
         incidencias: [...new Set(problemas)],
       };
+      operacion.montoCredito = operacion.montoBase;
+      operacion.valorCredito = operacion.montoCredito;
+      operacion.inicialPlataforma = operacion.inicial;
+      operacion.valorComercial = operacion.valorCredito + operacion.inicialPlataforma;
       operaciones.push(operacion);
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));
     }
@@ -145,6 +149,9 @@
         reconocida: clave(valor(row,'Estado del Contrato')) === 'activo',
         movimientos: [{ fila: index + 2, tipo: 'contrato', original: row }], incidencias: [...new Set(problemas)],
       };
+      operacion.valorCredito = operacion.montoCredito;
+      operacion.inicialPlataforma = operacion.inicial;
+      operacion.valorComercial = operacion.valorCredito + operacion.inicialPlataforma;
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));
       return operacion;
     });
@@ -155,6 +162,63 @@
     const matches = (policies || []).filter(policy => policy.estado === 'aprobada' && policy.plataforma === plataforma && policy.tipoEstablecimiento === tipoEstablecimiento && policy.vigenteDesde <= day && (!policy.vigenteHasta || policy.vigenteHasta >= day));
     if (matches.length !== 1) throw new Error(matches.length ? 'politica_ambigua' : 'politica_ausente');
     return matches[0];
+  }
+  function normalizarOperacion(operation) {
+    const valorCredito = dinero(operation.valorCredito ?? operation.montoCredito ?? operation.montoBase);
+    const inicialPlataforma = dinero(operation.inicialPlataforma ?? operation.inicial);
+    return {
+      ...operation,
+      valorCredito,
+      inicialPlataforma,
+      valorComercial: valorCredito + inicialPlataforma,
+      accesoriosCantidad: Number(operation.accesoriosCantidad || 0),
+      accesorios: dinero(operation.accesorios),
+    };
+  }
+  function calcularOperaciones(operaciones, policies, bonos = []) {
+    return (operaciones || []).map(rawOperation => {
+      const operation = normalizarOperacion(rawOperation);
+      if (!['propia','aliado'].includes(operation.tipoEstablecimiento) || !operation.reconocida || operation.incidencias?.length) {
+        return { operacion:operation, bloqueada:true, incidencias:operation.incidencias || ['operacion_no_reconocida'] };
+      }
+      let policy;
+      try { policy = resolverPolitica(policies, operation.fecha, operation.plataforma, operation.tipoEstablecimiento); }
+      catch (error) { return { operacion:operation, bloqueada:true, incidencias:[error.message] }; }
+      const porcentaje = Number(policy.porcentaje);
+      const pagamos = Math.round(operation.valorComercial * porcentaje * 100) / 100;
+      const pagoNeto = Math.round((pagamos - operation.inicialPlataforma) * 100) / 100;
+      const bonuses = bonos.filter(bonus => bonus.operationKey === operation.sourceKey && bonus.estado !== 'anulado');
+      const totalBonos = bonuses.reduce((sum, bonus) => sum + dinero(bonus.valor), 0);
+      const utilidadCreditek = Math.round((operation.valorComercial - pagoNeto - totalBonos) * 100) / 100;
+      const incidencias = [];
+      if (pagoNeto < 0 || utilidadCreditek < 0) incidencias.push('valor_negativo_imposible');
+      if (operation.tipoEstablecimiento === 'aliado' && !operation.ejecutivo) incidencias.push('aliado_sin_ejecutivo');
+      return {
+        operacion:operation, policySnapshot:JSON.parse(JSON.stringify(policy)), porcentaje,
+        valorCredito:operation.valorCredito, inicialPlataforma:operation.inicialPlataforma,
+        valorComercial:operation.valorComercial, pagamos, pagoNeto, bonuses, totalBonos,
+        utilidadCreditek, bloqueada:incidencias.length > 0, incidencias,
+      };
+    });
+  }
+  function resumirUnificado(calculos) {
+    const empty = tipo => ({ tipo,operaciones:0,valorComercial:0,pagamos:0,pagoNeto:0,bonos:0,utilidadCreditek:0,totalPagar:0,novedades:0 });
+    const retail = empty('retail');
+    const aliados = empty('aliados');
+    for (const item of calculos || []) {
+      const target = item.operacion?.tipoEstablecimiento === 'propia' ? retail : aliados;
+      if (item.bloqueada) { target.novedades += 1; continue; }
+      target.operaciones += 1;
+      target.valorComercial += item.valorComercial;
+      target.pagamos += item.pagamos;
+      target.pagoNeto += item.pagoNeto;
+      target.bonos += item.totalBonos;
+      target.utilidadCreditek += item.utilidadCreditek;
+      target.totalPagar += item.pagoNeto + item.totalBonos;
+    }
+    const general = empty('general');
+    for (const key of ['operaciones','valorComercial','pagamos','pagoNeto','bonos','utilidadCreditek','totalPagar','novedades']) general[key] = retail[key] + aliados[key];
+    return { general, retail, aliados };
   }
   function calcularAliados(operaciones, policies, bonos = []) {
     return operaciones.map(operation => {
@@ -246,5 +310,5 @@
     if (!/^(liquidation|payment)\./.test(tipo)) throw new Error('evento_invalido');
     return { type: tipo, aggregate_type: tipo.startsWith('payment.') ? 'payment' : 'liquidation', aggregate_id: liquidacionId, occurred_at: new Date().toISOString(), data: { liquidation_id: liquidacionId, ...extras } };
   }
-  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
+  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, normalizarOperacion, calcularOperaciones, resumirUnificado, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
 });

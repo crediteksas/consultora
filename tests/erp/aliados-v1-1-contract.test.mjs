@@ -73,3 +73,8 @@ test('las vistas reutilizan datos reales y nunca convierten ausencia de calidad 
   assert.doesNotMatch(app, /calidad[^\n]{0,30}:\s*0/i);
   assert.match(app, /Intl\.NumberFormat\('es-CO'/);
 });
+
+test('el artefacto productivo incluye la hoja visual compartida de Aliados', async () => {
+  const build = await readFile('scripts/build-public.mjs', 'utf8');
+  assert.match(build, /ERP_EXTENSIONS = new Set\(\['\.html', '\.js', '\.css'\]\)/);
+});

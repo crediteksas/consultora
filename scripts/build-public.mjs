@@ -19,7 +19,7 @@ const PUBLIC_FILES = [
   'config/kora-environment.js',
 ];
 
-const ERP_EXTENSIONS = new Set(['.html', '.js']);
+const ERP_EXTENSIONS = new Set(['.html', '.js', '.css']);
 const KORA_SHELL_ASSET_VERSION = '2.0.9';
 const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.9';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.4';

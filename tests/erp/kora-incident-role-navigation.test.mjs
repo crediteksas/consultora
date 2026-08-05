@@ -51,7 +51,7 @@ test('navegación usa la arañita y no reutiliza Auditoría', () => {
   assert.doesNotMatch(sidebar, /label:\s*'Auditoría'[^\n]*incidencias\.html/);
   assert.match(center, /profile\.rol !== 'gerencia'/);
   assert.match(center, /location\.hash === '#reportar'/);
-  assert.match(sidebar, /kora-incident-center\.js\?v=1\.2\.0/);
+  assert.match(sidebar, /kora-incident-center\.js\?v=1\.2\.1/);
   assert.match(page, /kora-incident-management\.js\?v=1\.2\.2/);
   assert.match(page, /incidencias-app\.js\?v=1\.3\.1/);
 });

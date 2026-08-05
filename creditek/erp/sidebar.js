@@ -518,7 +518,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (document.getElementById('koraIncidentCenter')) return;
       const center = document.createElement('script');
       center.id = 'koraIncidentCenter';
-      center.src = '/creditek/erp/kora-incident-center.js?v=1.2.0';
+      center.src = '/creditek/erp/kora-incident-center.js?v=1.2.1';
       document.head.appendChild(center);
     };
     if (window.KoraIncidentDomain || document.getElementById('koraIncidentDomain')) {

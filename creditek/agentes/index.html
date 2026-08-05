@@ -235,6 +235,12 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);heig
 
 /* ── HERRAMIENTAS SECTION ───────────────────────────────────── */
 .tools-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:1200px){
+  .modules-grid{grid-template-columns:repeat(4,1fr)}
+  .tools-grid{grid-template-columns:repeat(3,1fr)}
+  .module-card{padding:13px 14px}
+  .module-desc{line-height:1.35}
+}
 .tool-row{
   background:var(--card);border:1px solid var(--border2);
   border-radius:var(--r);padding:14px 18px;

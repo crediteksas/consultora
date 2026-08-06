@@ -72,6 +72,10 @@ export default {
       headers.set('pragma', 'no-cache');
       headers.set('expires', '0');
     }
+    if (isDocument) {
+      headers.set('x-aura-worker', 'aura-hub');
+      headers.set('x-aura-document', CURRENT_DOCUMENT);
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   },
 };

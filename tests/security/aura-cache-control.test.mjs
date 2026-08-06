@@ -30,6 +30,8 @@ test('todas las entradas de AURA sirven directamente el mismo index canónico si
     assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
     assert.equal(response.headers.get('cloudflare-cdn-cache-control'), 'no-store');
     assert.equal(response.headers.get('cdn-cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-aura-worker'), 'aura-hub');
+    assert.equal(response.headers.get('x-aura-document'), '/creditek/agentes/index.html');
     assert.equal(response.headers.get('pragma'), 'no-cache');
     assert.equal(response.headers.get('expires'), '0');
     assert.equal(await response.text(), html);

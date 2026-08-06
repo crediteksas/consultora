@@ -43,6 +43,10 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/redes-publicador.js",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-respuestas.html",
       "zone_name": "crediteksas.com"
     },

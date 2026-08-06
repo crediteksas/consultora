@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
+<script src="redes-publicador.js?v=20260805" defer></script>
 <script>
 if(window.self===window.top){
   const shell=document.createElement('script');
@@ -28,6 +29,9 @@ if(window.self===window.top){
     document.head.append(context);
   };
   document.head.append(shell);
+}
+if(window.self!==window.top){
+  window.addEventListener('DOMContentLoaded',()=>document.getElementById('app')?.classList.add('show'));
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -211,6 +215,13 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 }
 .copy-all-btn:hover { border-color: var(--turquesa); color: var(--turquesa); }
 .content-area { flex: 1; min-height: 0; overflow-y: auto; overflow-x: clip; padding: 24px 28px 40px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.publisher-panel{background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:18px;padding:16px;box-shadow:0 6px 18px rgba(11,30,61,.05)}
+.publisher-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.publisher-head h2{font:700 14px Montserrat,sans-serif}.publisher-head p,.publisher-meta{font-size:11px;color:var(--text3)}
+.publisher-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.publisher-controls label{font-size:11px;font-weight:700;color:var(--text2)}.publisher-controls select{min-height:74px;margin-top:4px}
+.publisher-summary{display:grid;grid-template-columns:repeat(6,minmax(78px,1fr));gap:7px;margin:10px 0}.publisher-summary span{display:flex;flex-direction:column;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px;font-size:10px;color:var(--text3)}.publisher-summary b{font-size:15px;color:var(--text)}
+.publisher-list{max-height:220px;overflow-y:auto;border-top:1px solid var(--border)}.publisher-row{display:grid;grid-template-columns:1.1fr 1fr 1.4fr auto;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2)}.publisher-row span:first-child{display:flex;flex-direction:column}.publisher-row strong{font-size:10px;color:var(--turquesa)}
+.publisher-error{color:#b91c1c;font-size:12px}.publisher-panel[data-state="ready"] .publisher-loading,.publisher-panel:not([data-state="error"]) .publisher-error{display:none}
+@media(max-width:800px){.publisher-controls{grid-template-columns:1fr}.publisher-summary{grid-template-columns:repeat(3,1fr)}.publisher-row{grid-template-columns:1fr 1fr}.publisher-row span:nth-child(3){grid-column:1/-1}}
 .empty-state {
   min-height: 360px; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -878,6 +889,18 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div id="canva-brief-content"></div>
   </div>
   <div class="content-area" id="content-area">
+    <section class="publisher-panel" id="publisher-pending" data-state="loading" aria-live="polite">
+      <div class="publisher-head"><div><h2>Pendientes del Agente Publicador</h2><p id="publisher-source-count">Cargando fuente real de aliados…</p></div><span class="publisher-meta" id="publisher-pending-count">Consultando…</span></div>
+      <div class="publisher-controls">
+        <label>Ciudades de aliados<select id="publisher-city-filter" multiple aria-label="Ciudades de aliados"><option value="*" selected>Todas las ciudades</option></select></label>
+        <label>Aliados<select id="publisher-ally-filter" multiple aria-label="Aliados"><option value="*" selected>Todos los aliados</option></select></label>
+      </div>
+      <div class="publisher-meta" id="publisher-selection">Configuración de publicación: todas las ciudades · todos los aliados</div>
+      <div class="publisher-summary" id="publisher-summary"></div>
+      <div class="publisher-list" id="publisher-list"></div>
+      <div class="publisher-loading">Cargando publicaciones guardadas…</div>
+      <div class="publisher-error" id="publisher-error"></div>
+    </section>
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">
         <img style="display:none" src="logo.png" alt="Creditek">

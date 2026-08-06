@@ -10,3 +10,7 @@ test('Redes Sociales no monta un segundo shell cuando abre dentro de AURA', () =
   assert.doesNotMatch(redes, /<script src="kora-agent-context\.js/);
   assert.match(redes, /data-kora-shell-root/);
 });
+
+test('Redes Sociales hace visible el contenido cuando está embebido en AURA', () => {
+  assert.match(redes, /window\.self\s*!==\s*window\.top[\s\S]*classList\.add\(['"]show['"]\)/);
+});

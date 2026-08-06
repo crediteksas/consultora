@@ -12,6 +12,7 @@ for (const file of [
   'aura-auth.mjs',
   'kora-agent-context.js',
   'creditek-agente-redes.html',
+  'redes-publicador.js',
   'creditek-agente-respuestas.html',
   'agente3-meta-ads.html',
   'agente3-aura-session.mjs',

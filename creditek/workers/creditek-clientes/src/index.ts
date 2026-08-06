@@ -268,7 +268,7 @@ async function handleDocumentosRoute(
 // funcional del entregable.
 async function handleOrigenes(env: Env): Promise<Response> {
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/origenes?activo=eq.true&select=codigo,nombre,tipo&order=codigo`,
+    `${SUPABASE_URL}/rest/v1/origenes?activo=eq.true&select=codigo,nombre,tipo,ciudad&order=codigo`,
     { headers: sbHeaders(env) }
   );
   if (!r.ok) {

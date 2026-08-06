@@ -1,6 +1,6 @@
 {
   "name": "consultora",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,8 @@
     "test:e2e:aura": "node --test tests/e2e/aura-login-production.test.mjs",
     "test:live": "node --test tests/security/live-smoke.test.mjs",
     "preview:upload": "npm run build:environment && wrangler versions upload",
-    "deploy": "npm run build:environment && wrangler deploy"
+    "deploy": "node scripts/deny-direct-kora-deploy.mjs",
+    "deploy:kora:production": "node scripts/deploy-kora-production.mjs"
   },
   "keywords": [],
   "author": "",

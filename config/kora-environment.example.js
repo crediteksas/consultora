@@ -1,6 +1,6 @@
 window.__KORA_ENV__ = Object.freeze({
   KORA_ENV: 'staging',
-  KORA_VERSION: '1.0.0',
+  KORA_VERSION: '3.0.0',
   KORA_ENV_LABEL: 'STAGING',
   KORA_ERP_SUPABASE_URL: 'https://erp-staging.example.invalid',
   KORA_ERP_SUPABASE_ANON_KEY: 'public-anon-erp-staging',

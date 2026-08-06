@@ -1,7 +1,7 @@
 {
   "name": "KORA Environment Configuration",
-  "version": "1.0.0",
-  "status": "preparation",
-  "releaseDate": "2026-07-27",
-  "breakingChanges": false
+  "version": "3.0.0",
+  "status": "stable",
+  "releaseDate": "2026-08-05",
+  "breakingChanges": true
 }

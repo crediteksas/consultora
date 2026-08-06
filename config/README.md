@@ -1,8 +1,11 @@
-# KORA Environment Configuration v1.0.0
+# KORA Environment Configuration — KORA v3.0
 
 Producto: KORA
 
 Empresa: Creditek
+
+Versión productiva oficial: `3.0.0`. El único despliegue autorizado se ejecuta
+con `npm run deploy:kora:production`.
 
 Esta infraestructura prepara configuraciones separadas para `development`,
 `staging` y `production`. Las pantallas ERP consumen exclusivamente el

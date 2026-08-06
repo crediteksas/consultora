@@ -10,6 +10,8 @@
   const SHELL_ERROR_CLASS = 'creditek-shell-error';
   const SHELL_READY_TIMEOUT_MS = 8_000;
   const KORA_TOOLTIP_DELAY_MS = 2_500;
+  const KORA_VERSION = '3.0.0';
+  const KORA_DISPLAY_VERSION = 'KORA v3.0';
   const SHELL_SCRIPT = document.currentScript;
   const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
   const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
@@ -666,12 +668,20 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       <button class="kora-icon-button kora-drawer-close ghost" type="button" aria-label="Cerrar navegación" title="Cerrar navegación">${koraStaticIcon('x')}</button>
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current, profile)}</nav>
-    <div class="kora-sidebar__footer"><button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button></div>`;
+    <div class="kora-sidebar__footer">
+      <button class="kora-nav-link ghost" type="button" data-kora-about><i data-lucide="info"></i><span class="kora-nav-text">Acerca de KORA</span></button>
+      <span class="kora-nav-text" style="display:block;padding:4px 16px 10px;font-size:11px;opacity:.7">${KORA_DISPLAY_VERSION}</span>
+      <button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button>
+    </div>`;
+    const aboutDialog = document.createElement('dialog');
+    aboutDialog.setAttribute('aria-labelledby', 'koraAboutTitle');
+    aboutDialog.style.cssText = 'max-width:440px;border:0;border-radius:18px;padding:0;box-shadow:0 24px 70px rgba(11,30,61,.24);color:#0B1E3D';
+    aboutDialog.innerHTML = `<div style="padding:28px"><p style="margin:0 0 6px;color:#00A8B0;font-weight:700">Creditek ERP</p><h2 id="koraAboutTitle" style="margin:0 0 12px">${KORA_DISPLAY_VERSION}</h2><p style="line-height:1.5;color:#526075">Shell V2 · Retail · B2B · Aliados · Liquidaciones · Tesorería · Centro de Incidencias</p><button type="button" class="btn primary" data-kora-about-close>Cerrar</button></div>`;
     const overlay = document.createElement('div');
     overlay.className = 'kora-drawer-overlay';
     overlay.hidden = true;
 
-    root.append(aside, main, overlay);
+    root.append(aside, main, overlay, aboutDialog);
     root.classList.add('kora-shell-root');
     root.dataset.koraMounted = 'true';
     window.KoraAudio?.setUser?.(profile.id || profile.nombre || 'anonymous');
@@ -794,6 +804,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       closeDrawer();
     }));
     aside.querySelector('.kora-logout')?.addEventListener('click', onLogout);
+    aside.querySelector('[data-kora-about]')?.addEventListener('click', () => aboutDialog.showModal());
+    aboutDialog.querySelector('[data-kora-about-close]')?.addEventListener('click', () => aboutDialog.close());
     const storeSelector = main.querySelector('#koraStoreSelector');
     if (storeSelector) {
       storeSelector.value = localStorage.getItem('creditek_sidebar_tienda') || '';
@@ -807,7 +819,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       stores,
       koraVersion: document.documentElement.dataset.koraVersion
         || document.documentElement.dataset.koraEcosystem
-        || '2.0.1',
+        || KORA_VERSION,
     });
     mountIncidentCenter();
     if (!window.KoraIncidentCenter) {
@@ -905,7 +917,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     },
     mountPortal: mountPortalShell,
     setContext: setKoraContext,
-    version: '1.0.0',
+    version: KORA_VERSION,
   };
 
   async function initialize() {

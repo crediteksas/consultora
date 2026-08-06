@@ -1,0 +1,12 @@
+{
+  "product": "KORA",
+  "version": "3.0.0",
+  "displayVersion": "KORA v3.0",
+  "worker": "consultora",
+  "productionUrl": "https://registro.crediteksas.com/creditek/erp/app",
+  "supabaseProjectRef": "jfkmiyvcdfbsbwchyvol",
+  "authorizedRepositoryGitDir": "/Users/oscarpacheco/consultora/.git",
+  "authorizedWorktreeRealPath": "/private/tmp/consultora-kora-shell-v2",
+  "authorizedBranch": "codex/kora-shell-v2",
+  "legacyAppSha256": "afa9120d6eae11ecb113f812cf387126b3d4da9fe1badd837fa322470be80311"
+}

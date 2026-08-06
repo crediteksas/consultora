@@ -26,6 +26,7 @@ test('la API real de orígenes entrega ciudad junto a tipo sin mezclar fuentes',
 test('el Publicador usa una lectura autenticada de AURA y no consulta servicios externos desde el navegador', () => {
   assert.match(source, /\/creditek\/agentes\/api\/publicador/);
   assert.match(source, /auraAuth\.token\(\)/);
+  assert.doesNotMatch(source, /auraAuth\.restore\(\)/);
   assert.doesNotMatch(source, /supabase\.co|workers\.dev|apikey/);
   assert.match(auraWorker, /aura_my_access/);
   assert.match(auraWorker, /sofia\.permissions[\s\S]*sofia\.use/);

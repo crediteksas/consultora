@@ -123,7 +123,6 @@
     if (!panel) return;
     try {
       const { auraAuth } = await import('./aura-auth-otp-20260802.mjs');
-      await auraAuth.restore();
       const bearer = await auraAuth.token();
       if (!bearer) throw new Error('SESION_REQUERIDA');
       const response = await fetch(PUBLICADOR_URL, {

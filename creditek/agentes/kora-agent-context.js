@@ -26,8 +26,12 @@
   function mount() {
     const root = document.querySelector('[data-kora-shell-root]');
     const agentId = document.body.dataset.koraAgentId;
-    if (window.self !== window.top || agentId === 'home') return;
-    if (!root || !agentId || !window.KoraNavigation) return;
+    if (!root || !agentId) return;
+    if (window.self !== window.top) {
+      root.classList.add('show');
+      return;
+    }
+    if (agentId === 'home' || !window.KoraNavigation) return;
     const title = TITLES[agentId];
     const activeItem = MODULES.flatMap(module => module.items.map(item => ({
       ...item,

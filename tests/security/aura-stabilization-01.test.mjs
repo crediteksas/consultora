@@ -9,6 +9,7 @@ const hub = await read('creditek/agentes/index.html');
 const sofia = await read('creditek/agentes/creditek-agente-respuestas.html');
 const calendar = await read('creditek/agentes/creditek-agente-calendario.html');
 const googleBusiness = await read('creditek/agentes/creditek-gbp-fichas.html');
+const agentContext = await read('creditek/agentes/kora-agent-context.js');
 const build = await read('scripts/build-aura-hub.mjs');
 const config = await read('wrangler.aura-hub.jsonc');
 const incidents = await import('../../creditek/agentes/aura-incident-report.mjs');
@@ -25,7 +26,11 @@ test('el shell conserva encabezado y barra lateral mientras cada módulo ocupa e
 });
 
 test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de KORA', () => {
-  assert.match(hub, /class="sidebar-logo"[\s\S]*creditek_logo_corregido_alta\.png/);
+  assert.match(hub, /class="sidebar-brand-name">AURA</);
+  assert.match(hub, /class="sidebar-brand-by">by</);
+  assert.match(hub, /class="sidebar-brand-logo"[^>]*creditek_logo_corregido_alta\.png/);
+  assert.doesNotMatch(hub, /id="aura-user-(?:initials|name|role)"/);
+  assert.doesNotMatch(hub, /Propietario AURA/);
   for (const name of ['Redes Sociales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {
     assert.match(hub, new RegExp(`>${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<`, 'i'));
   }
@@ -43,6 +48,11 @@ test('el botón AURA vuelve al Panel general y Sofía usa su ruta canónica', ()
   assert.doesNotMatch(hub, /openModule\('sofia-aura-20260803b\.html'/);
   assert.match(sofia, /\.conv-scroll\{[^}]*overflow-y:auto/);
   assert.match(sofia, /\.chat-msgs\{[^}]*overflow-y:auto/);
+});
+
+test('los módulos internos revelan su contenido al cargarse dentro del iframe de AURA', () => {
+  assert.match(agentContext, /window\.self !== window\.top[\s\S]*root\.classList\.add\('show'\)/);
+  assert.match(agentContext, /root\.classList\.add\('show'\)[\s\S]*return/);
 });
 
 test('todos los indicadores del Panel general tienen ayuda accesible', () => {

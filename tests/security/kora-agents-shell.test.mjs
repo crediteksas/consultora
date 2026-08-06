@@ -76,6 +76,7 @@ test('el contexto compartido conserva únicamente la navegación autorizada de A
   assert.match(context, /agent-3/);
   assert.match(context, /agent-4/);
   assert.match(context, /sofia/);
-  assert.match(context, /window\.self !== window\.top \|\| agentId === 'home'/);
+  assert.match(context, /window\.self !== window\.top[\s\S]*root\.classList\.add\('show'\)[\s\S]*return/);
+  assert.match(context, /agentId === 'home'/);
   assert.doesNotMatch(context, /\.\.\/erp\/reportes\.html|label:\s*'Reportes'|Agente [1-4]/);
 });

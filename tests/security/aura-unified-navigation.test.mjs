@@ -129,32 +129,23 @@ test('AURA API validates Supabase identity, app role, permissions and operator s
   assert.doesNotMatch(worker, /\bkora\b/i);
 });
 
-test('AURA hub deploy is isolated from Portal, ERP and KORA routes', async () => {
+test('AURA hub owns only the complete AURA route and remains isolated from Portal and ERP', async () => {
   const config = await read('wrangler.aura-hub.jsonc');
   const build = await read('scripts/build-aura-hub.mjs');
-  assert.doesNotMatch(config, /creditek\/agentes\/\*/);
-  assert.match(config, /creditek\/agentes\/index\.html/);
+  const auraRoutes = JSON.parse(config).routes.map(route => route.pattern);
+  assert.deepEqual(auraRoutes, ['registro.crediteksas.com/creditek/agentes*']);
   assert.match(config, /"html_handling": "none"/);
-  assert.match(config, /creditek\/agentes\/aura-auth\.mjs/);
-  assert.match(config, /creditek\/agentes\/kora-agent-context\.js/);
-  assert.match(config, /creditek\/agentes\/creditek-agente-redes\.html/);
-  assert.match(config, /creditek\/agentes\/creditek-agente-respuestas\.html/);
-  assert.match(config, /creditek\/agentes\/agente3-meta-ads\.html/);
-  assert.match(config, /creditek\/agentes\/creditek-agente-calendario\.html/);
-  assert.match(config, /creditek\/agentes\/creditek-agente-respuestas"/);
-  assert.match(config, /creditek\/agentes\/sofia-aura-20260803\.html/);
-  assert.match(config, /creditek\/agentes\/sofia-aura-20260803"/);
-  assert.match(config, /creditek\/agentes\/agente3-meta-ads"/);
   assert.match(build, /creditek-agente-respuestas\.html/);
   assert.match(build, /agente3-meta-ads\.html/);
   assert.match(build, /agente3-aura-session\.mjs/);
   assert.match(build, /kora-agent-context\.js/);
   assert.match(build, /creditek-agente-redes\.html/);
   assert.match(build, /creditek-agente-calendario\.html/);
+  assert.match(build, /manifest\.json/);
+  assert.match(build, /creditek_logo_corregido_alta\.png/);
   assert.match(build, /path\.join\(agentsOutput, 'creditek-agente-respuestas'\)/);
   assert.match(build, /path\.join\(agentsOutput, 'sofia-aura-20260803\.html'\)/);
   assert.match(build, /path\.join\(agentsOutput, 'agente3-meta-ads'\)/);
-  const auraRoutes = JSON.parse(config).routes.map(route => route.pattern);
   assert.equal(auraRoutes.some(route => /creditek\/portal|creditek\/erp/.test(route)), false);
   assert.match(build, /creditek', 'agentes/);
   assert.match(build, /'index\.html',[\s\S]*'aura-auth\.mjs',[\s\S]*'creditek-agente-respuestas\.html'/);

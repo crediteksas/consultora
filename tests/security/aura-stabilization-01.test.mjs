@@ -90,6 +90,6 @@ test('Ciénaga de Oro conserva tarjetas uniformes y el calendario alinea Publica
 test('el build aislado publica Google Business y el centro de incidencias mediante aura-hub', () => {
   assert.match(build, /creditek-gbp-fichas\.html/);
   assert.match(build, /aura-incident-report\.mjs/);
-  assert.match(config, /creditek\/agentes\/creditek-gbp-fichas\.html/);
-  assert.match(config, /creditek\/agentes\/aura-incident-report\.mjs/);
+  assert.match(config, /registro\.crediteksas\.com\/creditek\/agentes\*/);
+  assert.doesNotMatch(config, /creditek\/portal|creditek\/erp/);
 });

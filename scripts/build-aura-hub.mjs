@@ -19,8 +19,20 @@ for (const file of [
   'creditek-agente-calendario.html',
   'creditek-gbp-fichas.html',
   'logo.png',
+  'manifest.json',
 ]) {
   await cp(path.join(root, 'creditek', 'agentes', file), path.join(agentsOutput, file));
+}
+const logosOutput = path.join(agentsOutput, 'logos');
+await mkdir(logosOutput, { recursive: true });
+for (const file of [
+  'alocredit.png',
+  'payjoy.png',
+  'addi.png',
+  'krediya.png',
+  'creditek_logo_corregido_alta.png',
+]) {
+  await cp(path.join(root, 'creditek', 'agentes', 'logos', file), path.join(logosOutput, file));
 }
 await cp(
   path.join(root, 'creditek', 'agentes', 'index.html'),

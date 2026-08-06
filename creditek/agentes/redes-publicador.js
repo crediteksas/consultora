@@ -2,9 +2,20 @@
   'use strict';
 
   const PUBLICADOR_URL = '/creditek/agentes/api/publicador';
+  const SESSION_KEY = 'aura_supabase_session_v1';
 
   const text = value => String(value ?? '').trim();
   const key = value => text(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-CO');
+
+  function sessionToken() {
+    for (const storage of [global.localStorage, global.sessionStorage]) {
+      try {
+        const session = JSON.parse(storage?.getItem(SESSION_KEY) || 'null');
+        if (session?.access_token && Number(session?.expires_at) > Math.floor(Date.now() / 1000)) return session.access_token;
+      } catch {}
+    }
+    return '';
+  }
 
   function normalizeOrigins(rows) {
     const normalized = (Array.isArray(rows) ? rows : []).map(row => ({
@@ -122,8 +133,7 @@
     const panel = document.getElementById('publisher-pending');
     if (!panel) return;
     try {
-      const { auraAuth } = await import('./aura-auth-otp-20260802.mjs');
-      const bearer = await auraAuth.token();
+      const bearer = sessionToken();
       if (!bearer) throw new Error('SESION_REQUERIDA');
       const response = await fetch(PUBLICADOR_URL, {
         headers: { authorization: `Bearer ${bearer}` },

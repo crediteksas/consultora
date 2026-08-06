@@ -29,6 +29,7 @@ test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de 
   assert.match(hub, /class="sidebar-brand-name">AURA</);
   assert.match(hub, /class="sidebar-brand-by">by</);
   assert.match(hub, /class="sidebar-brand-logo"[^>]*creditek_logo_corregido_alta\.png/);
+  assert.match(hub, /body\.kora-product-page \.sidebar-home\{background:transparent;color:var\(--navy\)\}/);
   assert.doesNotMatch(hub, /id="aura-user-(?:initials|name|role)"/);
   assert.doesNotMatch(hub, /Propietario AURA/);
   for (const name of ['Redes Sociales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {

@@ -15,6 +15,10 @@
   },
   "routes": [
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes*",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes",
       "zone_name": "crediteksas.com"
     },

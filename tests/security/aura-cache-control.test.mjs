@@ -11,6 +11,7 @@ test('AURA Hub ejecuta un Worker antes de assets para retirar caché heredada', 
   assert.equal(config.main, 'creditek/workers/aura-hub/src/index.js');
   assert.equal(config.assets.binding, 'ASSETS');
   assert.equal(config.assets.run_worker_first, true);
+  assert.equal(config.routes.some(route => route.pattern === 'registro.crediteksas.com/creditek/agentes*'), true);
   assert.equal(config.routes.some(route => route.pattern === 'registro.crediteksas.com/creditek/agentes/agente3-meta-ads*'), true);
 });
 

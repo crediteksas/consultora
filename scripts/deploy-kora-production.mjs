@@ -41,33 +41,40 @@ const deployments = JSON.parse(capture('npx', ['wrangler', 'deployments', 'list'
 const previous = deployments.at(-1)?.versions?.find(version => version.percentage === 100)?.version_id;
 if (!previous) throw new Error('No se pudo determinar la versión de rollback');
 const message = `${policy.displayVersion} commit ${commit} sha256 ${manifest.appSha256}`;
+const previewAlias = `kora-${commit.slice(0, 12)}`;
 // Solo el pipeline ejecuta versions upload y versions deploy con --message.
-const upload = captureCombined('npx', ['wrangler', 'versions', 'upload', '--message', message]);
+const upload = captureCombined('npx', ['wrangler', 'versions', 'upload', '--message', message, '--preview-alias', previewAlias]);
 const candidate = upload.match(/Worker Version ID:\s*([0-9a-f-]{36})/i)?.[1]
   || upload.match(/Version ID:\s*([0-9a-f-]{36})/i)?.[1];
 if (!candidate) throw new Error('Cloudflare no devolvió la versión cargada');
 
+const hashResponse = async url => {
+  const response = await fetch(url, { redirect: 'follow', headers: { 'cache-control': 'no-cache' } });
+  if (!response.ok) throw new Error(`${url} respondió ${response.status}`);
+  const crypto = await import('node:crypto');
+  return crypto.createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+};
+const previewUrl = `https://${previewAlias}-consultora.comercial-853.workers.dev/creditek/erp/app`;
+const previewSha = await hashResponse(previewUrl);
+if (previewSha !== manifest.appSha256) throw new Error(`SHA de Worker Version distinto: ${previewSha}`);
+
 const promote = version => run('npx', ['wrangler', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
 const rollback = rollbackVersion => run('npx', ['wrangler', 'versions', 'deploy', `${rollbackVersion}@100`, '--message', `ROLLBACK automático ${policy.displayVersion} desde ${candidate}`, '--yes']);
 const validate = async () => {
-  const crypto = await import('node:crypto');
   let lastError;
-  for (let attempt = 1; attempt <= 5; attempt += 1) {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
     try {
-      const response = await fetch(`${policy.productionUrl}?deployment=${candidate}&attempt=${attempt}`, { redirect: 'follow' });
-      if (!response.ok) throw new Error(`Producción respondió ${response.status}`);
-      const body = Buffer.from(await response.arrayBuffer());
-      const remoteSha = crypto.createHash('sha256').update(body).digest('hex');
+      const remoteSha = await hashResponse(`${policy.productionUrl}?deployment=${candidate}&attempt=${attempt}`);
       if (remoteSha !== manifest.appSha256) throw new Error(`SHA productivo distinto: ${remoteSha}`);
       return remoteSha;
     } catch (error) {
       lastError = error;
-      if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 2000));
+      if (attempt < 30) await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   throw lastError;
 };
 const remoteSha = await promoteWithRollback({ candidateVersion: candidate, previousVersion: previous, promote, validate, rollback });
-const log = { ...manifest, deploymentVersion: candidate, previousVersion: previous, remoteSha, deployedAt: new Date().toISOString() };
+const log = { ...manifest, deploymentVersion: candidate, previousVersion: previous, previewUrl, previewSha, remoteSha, deployedAt: new Date().toISOString() };
 await writeFile(`/tmp/kora-production-deployment-${commit}.json`, `${JSON.stringify(log, null, 2)}\n`);
 console.log(JSON.stringify(log));

@@ -1,12 +1,19 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "consultora",
+  "main": "src/kora-version-worker.mjs",
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
   "build": {
     "command": "node scripts/require-kora-production-pipeline.mjs"
   },
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/kora-build-manifest.json"]
+  },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "kv_namespaces": [
+    { "binding": "KORA_RELEASES", "id": "c7b51079c44d43abbe035caf05b9938d" }
+  ]
 }

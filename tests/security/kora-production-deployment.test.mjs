@@ -14,8 +14,38 @@ test('KORA v3.0 queda registrada en configuración, shell y documentación', asy
   assert.equal(JSON.parse(version).version, '3.0.0');
   assert.match(sidebar, /KORA v3\.0/);
   assert.match(sidebar, /Acerca de KORA/);
+  assert.match(sidebar, /KORA ERP v3\.0/);
+  assert.match(sidebar, /Versión (?:no )?verificada/);
   assert.match(documentation, /KORA v3\.0/);
   assert.match(documentation, /3\.0\.x[\s\S]*3\.1[\s\S]*4\.0/);
+});
+
+test('el manifiesto runtime combina build, deployment y versión sin secretos en el navegador', async () => {
+  const [worker, wrangler, sidebar] = await Promise.all([
+    read('src/kora-version-worker.mjs'), read('wrangler.jsonc'), read('creditek/erp/sidebar.js'),
+  ]);
+  assert.match(worker, /CF_VERSION_METADATA/);
+  assert.match(worker, /KORA_RELEASES/);
+  assert.match(worker, /kora-build-manifest\.static\.json/);
+  assert.match(wrangler, /version_metadata/);
+  assert.match(wrangler, /KORA_RELEASES/);
+  assert.match(sidebar, /crypto\.subtle\.digest/);
+  assert.match(sidebar, /deploymentId/);
+  assert.doesNotMatch(sidebar, /60502b8f-b698-4f64-ab9a-e85e3f5e5d98/);
+});
+
+test('el endpoint runtime entrega la release activa y confirma coincidencia', async () => {
+  const worker = (await import('../../src/kora-version-worker.mjs')).default;
+  const response = await worker.fetch(new Request('https://registro.crediteksas.com/kora-build-manifest.json'), {
+    ASSETS: { fetch: async () => Response.json({ displayVersion: 'KORA v3.0', commit: 'abc1234' }) },
+    KORA_RELEASES: { get: async () => ({ deploymentId: 'deployment', workerVersion: 'version', buildStatus: 'Aprobado' }) },
+    CF_VERSION_METADATA: { id: 'version', timestamp: '2026-08-05T00:00:00Z' },
+  });
+  const manifest = await response.json();
+  assert.equal(manifest.deploymentId, 'deployment');
+  assert.equal(manifest.workerVersion, 'version');
+  assert.equal(manifest.runtimeMatchesRelease, true);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('solo existe un comando autorizado para producción y wrangler directo queda bloqueado', async () => {

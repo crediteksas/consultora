@@ -42,9 +42,15 @@ export async function verifyKoraProductionArtifact({ commit, writeManifest = fal
     product: policy.product, version: policy.version, displayVersion: policy.displayVersion,
     commit, worker: policy.worker, productionUrl: policy.productionUrl,
     appPath: 'creditek/erp/app.html', appSha256, shellAssetVersion: sidebar,
-    supabaseProjectRef: policy.supabaseProjectRef, generatedAt: new Date().toISOString(),
+    shellVersion: '2.0.0', environment: 'Producción', branch: policy.authorizedBranch,
+    buildStatus: 'Aprobado', supabaseProjectRef: policy.supabaseProjectRef,
+    resources: await Promise.all(['creditek/erp/sidebar.js', 'creditek/erp/kora-access-control.js', 'config/kora-environment.generated.js'].map(async resourcePath => ({
+      path: `/${resourcePath}`,
+      sha256: sha256(await readFile(path.join(artifactRoot, resourcePath))),
+    }))),
+    generatedAt: new Date().toISOString(),
   };
-  if (writeManifest) await writeFile(path.join(artifactRoot, 'kora-build-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (writeManifest) await writeFile(path.join(artifactRoot, 'kora-build-manifest.static.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
 }
 

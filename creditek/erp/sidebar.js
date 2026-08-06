@@ -621,6 +621,56 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name}" data-lucide-static="${name}" aria-hidden="true">${icons[name]}</svg>`;
   }
 
+  async function koraSha256(response) {
+    const bytes = await response.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function loadKoraVersionManifest({ aside, aboutDialog }) {
+    const status = aboutDialog.querySelector('[data-kora-version-status]');
+    const details = aboutDialog.querySelector('[data-kora-version-details]');
+    const buildLabel = aside.querySelector('[data-kora-build]');
+    const fields = [
+      ['Versión KORA', 'displayVersion'], ['Build', 'shortCommit'], ['Commit completo', 'commit'],
+      ['Deployment ID', 'deploymentId'], ['Worker Version', 'workerVersion'], ['Fecha del despliegue', 'deployedAt'],
+      ['Rama', 'branch'], ['Estado del build', 'buildStatus'], ['SHA del artefacto', 'appSha256'],
+      ['Ambiente', 'environment'], ['Shell Version', 'shellVersion'], ['Recursos cargados', 'resourceSummary'],
+    ];
+    try {
+      const manifestResponse = await fetch('/kora-build-manifest.json', { cache: 'no-store' });
+      if (!manifestResponse.ok) throw new Error('manifest');
+      const manifest = await manifestResponse.json();
+      manifest.shortCommit = manifest.commit?.slice(0, 7) || '—';
+      buildLabel.textContent = manifest.shortCommit;
+      const resourceChecks = await Promise.all((manifest.resources || []).map(async resource => {
+        const response = await fetch(resource.path, { cache: 'no-store' });
+        return response.ok && await koraSha256(response) === resource.sha256;
+      }));
+      const appResponse = await fetch(manifest.productionUrl, { cache: 'no-store' });
+      const appMatches = appResponse.ok && await koraSha256(appResponse) === manifest.appSha256;
+      manifest.resourceSummary = `${resourceChecks.filter(Boolean).length}/${resourceChecks.length}`;
+      const verified = Boolean(
+        manifest.runtimeMatchesRelease && appMatches && resourceChecks.length && resourceChecks.every(Boolean)
+        && manifest.shellAssetVersion && manifest.shellVersion && manifest.environment === 'Producción',
+      );
+      status.textContent = verified ? 'Versión verificada' : 'Versión no verificada';
+      status.style.color = verified ? '#087A65' : '#8A5A00';
+      details.replaceChildren(...fields.flatMap(([label, key]) => {
+        const term = document.createElement('dt');
+        term.textContent = label;
+        term.style.fontWeight = '700';
+        const value = document.createElement('dd');
+        value.textContent = manifest[key] || 'No disponible';
+        value.style.cssText = 'margin:0;overflow-wrap:anywhere;color:#526075';
+        return [term, value];
+      }));
+    } catch (_) {
+      status.textContent = 'Versión no verificada';
+      details.textContent = 'No fue posible validar el manifiesto de esta versión.';
+    }
+  }
+
   function mountKoraShell({ root, profile, stores = [], modules = MODULOS, activeItem, onLogout, supabaseClient, productName }) {
     if (!root || root.dataset.koraMounted === 'true') return;
     installKoraAssets();
@@ -670,13 +720,15 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current, profile)}</nav>
     <div class="kora-sidebar__footer">
       <button class="kora-nav-link ghost" type="button" data-kora-about><i data-lucide="info"></i><span class="kora-nav-text">Acerca de KORA</span></button>
-      <span class="kora-nav-text" style="display:block;padding:4px 16px 10px;font-size:11px;opacity:.7">${KORA_DISPLAY_VERSION}</span>
+      <button class="ghost kora-nav-text" type="button" data-kora-version style="display:block;width:100%;padding:4px 16px 10px;text-align:left;font-size:11px;line-height:1.45;opacity:.78">
+        <span style="display:block">KORA ERP v3.0</span><span style="display:block">Build: <span data-kora-build>—</span></span><span style="display:block">Ambiente: Producción</span>
+      </button>
       <button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button>
     </div>`;
     const aboutDialog = document.createElement('dialog');
     aboutDialog.setAttribute('aria-labelledby', 'koraAboutTitle');
     aboutDialog.style.cssText = 'max-width:440px;border:0;border-radius:18px;padding:0;box-shadow:0 24px 70px rgba(11,30,61,.24);color:#0B1E3D';
-    aboutDialog.innerHTML = `<div style="padding:28px"><p style="margin:0 0 6px;color:#00A8B0;font-weight:700">Creditek ERP</p><h2 id="koraAboutTitle" style="margin:0 0 12px">${KORA_DISPLAY_VERSION}</h2><p style="line-height:1.5;color:#526075">Shell V2 · Retail · B2B · Aliados · Liquidaciones · Tesorería · Centro de Incidencias</p><button type="button" class="btn primary" data-kora-about-close>Cerrar</button></div>`;
+    aboutDialog.innerHTML = `<div style="padding:28px;min-width:min(380px,80vw)"><p style="margin:0 0 6px;color:#00A8B0;font-weight:700">Creditek ERP</p><h2 id="koraAboutTitle" style="margin:0 0 12px">${KORA_DISPLAY_VERSION}</h2><p data-kora-version-status style="font-weight:700;color:#8A5A00">Versión no verificada</p><dl data-kora-version-details style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 16px;font-size:13px"></dl><button type="button" class="btn primary" data-kora-about-close style="margin-top:20px">Cerrar</button></div>`;
     const overlay = document.createElement('div');
     overlay.className = 'kora-drawer-overlay';
     overlay.hidden = true;
@@ -804,8 +856,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       closeDrawer();
     }));
     aside.querySelector('.kora-logout')?.addEventListener('click', onLogout);
-    aside.querySelector('[data-kora-about]')?.addEventListener('click', () => aboutDialog.showModal());
+    const openAbout = () => aboutDialog.showModal();
+    aside.querySelector('[data-kora-about]')?.addEventListener('click', openAbout);
+    aside.querySelector('[data-kora-version]')?.addEventListener('click', openAbout);
     aboutDialog.querySelector('[data-kora-about-close]')?.addEventListener('click', () => aboutDialog.close());
+    loadKoraVersionManifest({ aside, aboutDialog });
     const storeSelector = main.querySelector('#koraStoreSelector');
     if (storeSelector) {
       storeSelector.value = localStorage.getItem('creditek_sidebar_tienda') || '';

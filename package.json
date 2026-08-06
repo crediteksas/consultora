@@ -12,6 +12,7 @@
     "config:verify-artifact": "node scripts/verify-kora-environment-artifact.mjs",
     "health:kora": "node scripts/check-kora-supabase-health.mjs",
     "test": "node --test tests/security/*.test.mjs tests/agentes/*.test.mjs",
+    "test:local": "node scripts/run-kora-local-tests.mjs",
     "test:config": "node --test tests/config/*.test.mjs",
     "test:design-system": "node --test tests/design-system/*.test.mjs",
     "test:e2e:aura": "node --test tests/e2e/aura-login-production.test.mjs",

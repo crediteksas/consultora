@@ -27,6 +27,23 @@ divergencia ejecuta automáticamente la promoción de la versión anterior.
 El historial autoritativo queda en los deployments de Cloudflare. Una copia
 operativa de cada resultado se guarda fuera del repositorio en `/tmp`.
 
+## Identificación visible y manifiesto
+
+Todas las pantallas ERP muestran `KORA ERP v3.0`, el build corto y el ambiente.
+El modal **Acerca de KORA** consume exclusivamente
+`/kora-build-manifest.json`. El Worker combina el manifiesto inmutable del
+artefacto con `CF_VERSION_METADATA` y el registro técnico `KORA_RELEASES`; así
+expone el Deployment ID y Worker Version activos sin entregar credenciales al
+navegador. El estado **Versión verificada** exige coincidencia de HTML, SHA,
+recursos, Shell y release activa.
+
+## Preparación para CI
+
+El pipeline acepta `KORA_DEPLOY_EXECUTOR=ci` y, en ese modo, exige que
+`KORA_PRODUCTION_COMMIT` coincida exactamente con `HEAD`. No se incluye todavía
+un workflow de GitHub Actions. La siguiente etapa puede restringir la credencial
+Cloudflare al runner autorizado sin cambiar el proceso de build o promoción.
+
 ## Incidente de recuperación 2026-08-05
 
 Un deployment sin anotación sustituyó el tráfico con un `public/app.html`

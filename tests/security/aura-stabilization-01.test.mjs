@@ -6,6 +6,7 @@ const root = new URL('../../', import.meta.url);
 const read = relative => readFile(new URL(relative, root), 'utf8');
 
 const hub = await read('creditek/agentes/index.html');
+const redes = await read('creditek/agentes/creditek-agente-redes.html');
 const sofia = await read('creditek/agentes/creditek-agente-respuestas.html');
 const calendar = await read('creditek/agentes/creditek-agente-calendario.html');
 const googleBusiness = await read('creditek/agentes/creditek-gbp-fichas.html');
@@ -43,6 +44,21 @@ test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de 
   assert.match(hub, /data-lucide="layout-dashboard"/);
   assert.match(hub, /data-lucide="settings"/);
   assert.match(hub, /data-lucide="log-out"/);
+});
+
+test('el acceso y Redes Sociales usan iconos reales sin controles que oculten campos', () => {
+  assert.match(hub, /class="password-toggle"[^>]*><i data-lucide="eye"><\/i><\/button>/);
+  assert.match(hub, /body\.kora-product-page \.password-toggle\{[^}]*width:34px!important[^}]*background:transparent!important/);
+  assert.match(hub, /button\.innerHTML = visible \? '<i data-lucide="eye"><\/i>' : '<i data-lucide="eye-off"><\/i>'/);
+  for (const icon of ['building-2', 'sun', 'smile', 'square', 'pencil', 'refresh-cw', 'package', 'send', 'layout-grid', 'smartphone', 'download']) {
+    assert.match(redes, new RegExp(`data-lucide="${icon}"`));
+  }
+  assert.doesNotMatch(redes, /<button class="estilo-btn[^>]*>[🏢🎉😂◻✏]/u);
+  assert.doesNotMatch(redes, /id="refs-update-btn"[^>]*>🔄/u);
+  for (const icon of ['thumbs-up', 'camera', 'message-circle', 'music-2']) {
+    assert.match(calendar, new RegExp(`data-lucide="${icon}"`));
+  }
+  assert.match(sofia, /class="corr-btn-save"[^>]*><i data-lucide="save"><\/i>/);
 });
 
 test('el botón AURA vuelve al Panel general y Sofía usa su ruta canónica', () => {

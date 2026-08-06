@@ -802,11 +802,11 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   <div class="sidebar-section" style="padding-bottom:8px">
     <div class="sidebar-label">Estilo visual de imagen</div>
     <div class="estilo-grid">
-      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase.">🏢 Formal</button>
-      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa.">🎉 Alegre costeño</button>
-      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto.">😂 Chistoso</button>
-      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias.">◻ Minimalista</button>
-      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas.">✏️ Personalizar</button>
+      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase."><i data-lucide="building-2"></i> Formal</button>
+      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa."><i data-lucide="sun"></i> Alegre costeño</button>
+      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto."><i data-lucide="smile"></i> Chistoso</button>
+      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square"></i> Minimalista</button>
+      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil"></i> Personalizar</button>
     </div>
     <div class="detalle-dia-row" id="detalle-dia-row" style="display:none">
       <span>Detalle hoy: <span class="detalle-dia-val" id="detalle-dia-val">—</span></span>
@@ -820,7 +820,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       <span id="refs-status" class="refs-status-txt">Colores de marca activos — keywords sin obtener</span>
       <div style="display:flex;gap:5px;flex-shrink:0">
         <button class="refs-cancel-btn" id="refs-cancel-btn" style="display:none" onclick="cancelarReferencias()">✕ Cancelar</button>
-        <button class="refs-update-btn" id="refs-update-btn" onclick="actualizarReferencias()" title="Obtener keywords actuales de marcas del mercado colombiano">🔄 Actualizar</button>
+        <button class="refs-update-btn" id="refs-update-btn" onclick="actualizarReferencias()" title="Obtener keywords actuales de marcas del mercado colombiano"><i data-lucide="refresh-cw"></i> Actualizar</button>
       </div>
     </div>
     <div id="refs-brand-list" class="refs-brand-list"></div>
@@ -849,7 +849,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       </button>
       <button class="copy-all-btn" onclick="generarContenido()" id="regen-btn" style="display:none;background:#E8F4F8;color:#00C4CC;border:1px solid rgba(0,196,204,0.3)">↺ Regenerar</button>
       <button class="copy-all-btn" onclick="copiarTodo()" id="copy-all-btn" style="display:none">Copiar todo</button>
-      <button class="copy-all-btn" onclick="exportarPaquete()" id="export-btn" style="display:none;background:#E8F4F8;color:#00C4CC;border:1px solid rgba(0,196,204,0.3)" title="Descargar ZIP con todos los copies e imágenes">📦 Exportar</button>
+      <button class="copy-all-btn" onclick="exportarPaquete()" id="export-btn" style="display:none;background:#E8F4F8;color:#00C4CC;border:1px solid rgba(0,196,204,0.3)" title="Descargar ZIP con todos los copies e imágenes"><i data-lucide="package"></i> Exportar</button>
     </div>
   </div>
   <!-- ══ ACTION BUTTONS ROW ════════════════════════════════════════ -->
@@ -857,7 +857,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <button class="action-btn" id="canva-btn" onclick="toggleCanvaBrief()">◧ Prompt Canva</button>
     <button class="action-btn" onclick="abrirPomelli()">✦ Abrir en Pomelli</button>
     <button class="action-btn" id="action-gen-btn" onclick="showImgSection(); generarConModelos()">🖼 Generar imagen</button>
-    <button class="action-btn" id="cola-btn" onclick="enviarACola()">📤 Enviar a cola</button>
+    <button class="action-btn" id="cola-btn" onclick="enviarACola()"><i data-lucide="send"></i> Enviar a cola</button>
   </div>
   <!-- ══ CANVA BRIEF PANEL ══════════════════════════════════════════ -->
   <div id="canva-brief-panel" style="display:none">
@@ -899,8 +899,8 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <label class="model-chk-label"><input type="checkbox" id="chk-pipeline" onchange="updateImgKeyStatus()"> 🔗 Pipeline (mejor de ambos)</label>
       </div>
       <div class="fmt-toggle">
-        <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')">📱 Feed (1080×1080)</button>
-        <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')">📲 Stories (1080×1920)</button>
+        <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')"><i data-lucide="layout-grid"></i> Feed (1080×1080)</button>
+        <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')"><i data-lucide="smartphone"></i> Stories (1080×1920)</button>
       </div>
       <div class="img-key-row">
         <div class="img-key-status">
@@ -955,7 +955,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       <div class="img-result" id="img-result">
         <img class="img-output" id="img-output" src="" alt="Imagen generada">
         <span id="img-model-lbl" style="display:block;text-align:center;font-size:11px;color:#00C4CC;margin-top:6px;opacity:0.8"></span>
-        <button class="img-dl-btn" onclick="descargarImagen()">⬇ Descargar PNG</button>
+        <button class="img-dl-btn" onclick="descargarImagen()"><i data-lucide="download"></i> Descargar PNG</button>
       </div>
       <div class="img-err" id="img-err"></div>
       <div class="img-ab-result" id="img-ab-result">
@@ -964,14 +964,14 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
             <div class="img-ab-col-label" id="img-ab-label-a">📷 Foto producto</div>
             <img class="img-output" id="img-ab-a" src="" alt="Gemini" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-a" style="display:none"></div>
-            <button class="img-dl-btn" id="img-ab-dl-a" onclick="descargarImagenAB('a')" style="display:none">⬇ Descargar</button>
+            <button class="img-dl-btn" id="img-ab-dl-a" onclick="descargarImagenAB('a')" style="display:none"><i data-lucide="download"></i> Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-a" onclick="usarImagenDeAB('a')" style="display:none">✓ Usar en editor</button>
           </div>
           <div class="img-ab-col">
             <div class="img-ab-col-label">⬡ GPT Image 2</div>
             <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-b" style="display:none"></div>
-            <button class="img-dl-btn" id="img-ab-dl-b" onclick="descargarImagenAB('b')" style="display:none">⬇ Descargar</button>
+            <button class="img-dl-btn" id="img-ab-dl-b" onclick="descargarImagenAB('b')" style="display:none"><i data-lucide="download"></i> Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-b" onclick="usarImagenDeAB('b')" style="display:none">✓ Usar en editor</button>
           </div>
         </div>

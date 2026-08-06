@@ -83,6 +83,9 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);heig
 .login-field input:focus{background:#fff;border-color:var(--turq);box-shadow:0 0 0 4px rgba(0,196,204,.12)}
 .password-toggle{position:absolute;right:10px;bottom:8px;width:34px;height:34px;border:0;background:transparent;color:#64748B;border-radius:9px;cursor:pointer;font-size:17px}
 .password-toggle:hover{background:#EAF1F5;color:var(--navy)}
+body.kora-product-page .password-toggle{position:absolute!important;top:auto!important;right:10px!important;bottom:8px!important;left:auto!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;border:0!important;background:transparent!important;color:#64748B!important;box-shadow:none!important}
+body.kora-product-page .password-toggle:hover{background:#EAF1F5!important;color:var(--navy)!important;transform:none!important}
+body.kora-product-page .password-toggle svg{width:18px;height:18px}
 .login-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 1px 18px}
 .remember-option{display:flex;align-items:center;gap:8px;color:#64748B;font-size:12px;cursor:pointer}
 .remember-option input{accent-color:var(--turq);width:16px;height:16px}
@@ -320,7 +323,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <div class="login-field">
         <label for="login-password">Contraseña</label>
         <input type="password" id="login-password" placeholder="Tu contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('login-password',this)">◉</button>
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('login-password',this)"><i data-lucide="eye"></i></button>
       </div>
       <div class="login-options">
         <label class="remember-option"><input type="checkbox" id="remember-session" checked> Recordar sesión</label>
@@ -352,12 +355,12 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <div class="login-field">
         <label for="new-password">Nueva contraseña</label>
         <input type="password" id="new-password" placeholder="Mínimo 10 caracteres" autocomplete="new-password">
-        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('new-password',this)">◉</button>
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('new-password',this)"><i data-lucide="eye"></i></button>
       </div>
       <div class="login-field">
         <label for="confirm-password">Confirmar contraseña</label>
         <input type="password" id="confirm-password" placeholder="Repite la contraseña" autocomplete="new-password" onkeydown="if(event.key==='Enter')completeRecovery()">
-        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('confirm-password',this)">◉</button>
+        <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('confirm-password',this)"><i data-lucide="eye"></i></button>
       </div>
       <button class="login-btn" id="password-submit" onclick="completeRecovery()">Guardar contraseña</button>
       <div class="auth-status" id="password-status" role="status" aria-live="polite"></div>
@@ -684,7 +687,8 @@ function togglePassword(inputId, button) {
   const visible = input.type === 'text';
   input.type = visible ? 'password' : 'text';
   button.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
-  button.textContent = visible ? '◉' : '◎';
+  button.innerHTML = visible ? '<i data-lucide="eye"></i>' : '<i data-lucide="eye-off"></i>';
+  window.lucide?.createIcons?.();
   input.focus();
 }
 

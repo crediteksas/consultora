@@ -14,7 +14,7 @@ test('AURA Hub ejecuta un Worker antes de assets para retirar caché heredada', 
   assert.equal(config.routes.some(route => route.pattern === 'registro.crediteksas.com/creditek/agentes/agente3-meta-ads*'), true);
 });
 
-test('el documento principal de AURA siempre responde no-store', async () => {
+test('todas las entradas de AURA sirven directamente el mismo index canónico sin caché', async () => {
   const { default: worker } = await import('../../creditek/workers/aura-hub/src/index.js');
   const html = '<!doctype html><title>AURA | Creditek</title>';
   let requestedPath = '';
@@ -22,18 +22,27 @@ test('el documento principal de AURA siempre responde no-store', async () => {
     requestedPath = new URL(request.url).pathname;
     return new Response(html, { headers: { 'content-type': 'text/html' } });
   } } };
-  const response = await worker.fetch(new Request('https://registro.crediteksas.com/creditek/agentes/'), env);
-  assert.equal(requestedPath, '/creditek/agentes/aura-otp-20260802.html');
-  assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
-  assert.equal(response.headers.get('pragma'), 'no-cache');
-  assert.equal(response.headers.get('expires'), '0');
-  assert.equal(await response.text(), html);
+  for (const pathname of ['/creditek/agentes', '/creditek/agentes/', '/creditek/agentes/index.html']) {
+    const response = await worker.fetch(new Request(`https://registro.crediteksas.com${pathname}`), env);
+    assert.equal(requestedPath, '/creditek/agentes/index.html');
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
+    assert.equal(response.headers.get('cloudflare-cdn-cache-control'), 'no-store');
+    assert.equal(response.headers.get('cdn-cache-control'), 'no-store');
+    assert.equal(response.headers.get('pragma'), 'no-cache');
+    assert.equal(response.headers.get('expires'), '0');
+    assert.equal(await response.text(), html);
+  }
 });
 
 test('Redes Sociales no conserva una versión anterior del publicador', async () => {
   const worker = await read('creditek/workers/aura-hub/src/index.js');
   assert.match(worker, /'\/creditek\/agentes\/creditek-agente-redes\.html'/);
+});
+
+test('el build no crea un segundo documento principal versionado', async () => {
+  const build = await read('scripts/build-aura-hub.mjs');
+  assert.doesNotMatch(build, /aura-otp-20260802\.html/);
 });
 
 test('ninguna ruta o fallback de AURA sirve el HTML histórico', async () => {

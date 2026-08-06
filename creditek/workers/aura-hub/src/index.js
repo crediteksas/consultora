@@ -1,5 +1,5 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
-const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
+const CURRENT_DOCUMENT = '/creditek/agentes/index.html';
 const PUBLICADOR_PATH = '/creditek/agentes/api/publicador';
 const AURA_URL = 'https://ditiwpndvmyuqcagupea.supabase.co';
 const AURA_KEY = 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
@@ -67,6 +67,8 @@ export default {
     const headers = new Headers(response.headers);
     if (isDocument || MANAGED_PATHS.has(pathname) || CANONICAL_DOCUMENTS.has(pathname)) {
       headers.set('cache-control', NO_STORE);
+      headers.set('cloudflare-cdn-cache-control', 'no-store');
+      headers.set('cdn-cache-control', 'no-store');
       headers.set('pragma', 'no-cache');
       headers.set('expires', '0');
     }

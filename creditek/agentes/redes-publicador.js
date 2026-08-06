@@ -1,9 +1,7 @@
 (function (global) {
   'use strict';
 
-  const PIECES_URL = 'https://ditiwpndvmyuqcagupea.supabase.co/rest/v1/calendario_piezas?select=id,fecha,tipo,estado,plataformas&order=fecha.desc&limit=500';
-  const PIECES_KEY = 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
-  const ORIGINS_URL = 'https://creditek-clientes.comercial-853.workers.dev/api/origenes';
+  const PUBLICADOR_URL = '/creditek/agentes/api/publicador';
 
   const text = value => String(value ?? '').trim();
   const key = value => text(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-CO');
@@ -124,16 +122,19 @@
     const panel = document.getElementById('publisher-pending');
     if (!panel) return;
     try {
-      const [piecesResponse, originsResponse] = await Promise.all([
-        fetch(PIECES_URL, { headers: { apikey: PIECES_KEY }, cache: 'no-store' }),
-        fetch(ORIGINS_URL, { cache: 'no-store' }),
-      ]);
-      if (!piecesResponse.ok) throw new Error(`PENDIENTES_${piecesResponse.status}`);
-      if (!originsResponse.ok) throw new Error(`ALIADOS_${originsResponse.status}`);
-      const pieces = await piecesResponse.json();
-      const originsPayload = await originsResponse.json();
-      if (!originsPayload.ok) throw new Error('ALIADOS_NO_DISPONIBLES');
-      const data = normalizeOrigins(originsPayload.origenes);
+      const { auraAuth } = await import('./aura-auth-otp-20260802.mjs');
+      await auraAuth.restore();
+      const bearer = await auraAuth.token();
+      if (!bearer) throw new Error('SESION_REQUERIDA');
+      const response = await fetch(PUBLICADOR_URL, {
+        headers: { authorization: `Bearer ${bearer}` },
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error(`PUBLICADOR_${response.status}`);
+      const payload = await response.json();
+      if (!payload.ok) throw new Error('PUBLICADOR_NO_DISPONIBLE');
+      const pieces = payload.pendientes;
+      const data = normalizeOrigins(payload.origenes);
       renderPieces(pieces);
       renderOrigins(data);
       updateSelection(data);

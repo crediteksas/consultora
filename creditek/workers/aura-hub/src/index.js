@@ -1,5 +1,10 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
 const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
+const PUBLICADOR_PATH = '/creditek/agentes/api/publicador';
+const AURA_URL = 'https://ditiwpndvmyuqcagupea.supabase.co';
+const AURA_KEY = 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
+const PUBLICADOR_PIECES = `${AURA_URL}/rest/v1/calendario_piezas?select=id,fecha,tipo,estado,plataformas&order=fecha.desc&limit=500`;
+const PUBLICADOR_ORIGINS = 'https://creditek-clientes.comercial-853.workers.dev/api/origenes';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
@@ -21,6 +26,38 @@ const CANONICAL_DOCUMENTS = new Set([
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
+    if (pathname === PUBLICADOR_PATH && request.method === 'GET') {
+      const authorization = request.headers.get('authorization') || '';
+      if (!authorization.startsWith('Bearer ')) {
+        return Response.json({ ok: false, error: 'SESION_REQUERIDA' }, { status: 401, headers: { 'cache-control': NO_STORE } });
+      }
+      const accessResponse = await fetch(`${AURA_URL}/rest/v1/rpc/aura_my_access`, {
+        method: 'POST',
+        headers: { apikey: AURA_KEY, authorization, 'content-type': 'application/json' },
+        body: '{}',
+      });
+      if (!accessResponse.ok) {
+        return Response.json({ ok: false, error: 'SESION_INVALIDA' }, { status: 401, headers: { 'cache-control': NO_STORE } });
+      }
+      const access = await accessResponse.json();
+      const sofia = Array.isArray(access?.apps) ? access.apps.find(app => app?.app_id === 'sofia') : null;
+      if (!Array.isArray(sofia?.permissions) || !sofia.permissions.includes('sofia.use')) {
+        return Response.json({ ok: false, error: 'ACCESO_DENEGADO' }, { status: 403, headers: { 'cache-control': NO_STORE } });
+      }
+      try {
+        const [piecesResponse, originsResponse] = await Promise.all([
+          fetch(PUBLICADOR_PIECES, { headers: { apikey: AURA_KEY } }),
+          fetch(PUBLICADOR_ORIGINS),
+        ]);
+        if (!piecesResponse.ok || !originsResponse.ok) throw new Error('UPSTREAM');
+        const pendientes = await piecesResponse.json();
+        const originsPayload = await originsResponse.json();
+        if (!originsPayload?.ok || !Array.isArray(originsPayload.origenes)) throw new Error('ORIGINS');
+        return Response.json({ ok: true, pendientes, origenes: originsPayload.origenes }, { headers: { 'cache-control': NO_STORE } });
+      } catch {
+        return Response.json({ ok: false, error: 'PUBLICADOR_NO_DISPONIBLE' }, { status: 502, headers: { 'cache-control': NO_STORE } });
+      }
+    }
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';

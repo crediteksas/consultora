@@ -20,6 +20,8 @@ test('el iframe ocupa el área de contenido sin cubrir el shell AURA', () => {
 });
 
 test('el área principal conserva sidebar, topbar y scroll interno del módulo', () => {
+  assert.match(html, /#app\.visible\{display:flex\}/);
+  assert.doesNotMatch(html, /#app\.visible\{display:grid\}/);
   assert.match(html, /<div class="sidebar">/);
   assert.match(html, /<div class="topbar">/);
   assert.match(html, /<div class="iframe-view" id="iframe-view">/);

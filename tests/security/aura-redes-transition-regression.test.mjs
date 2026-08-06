@@ -21,3 +21,7 @@ test('el Hub no inicia el shell ERP antes de restaurar la sesión AURA', () => {
   assert.doesNotMatch(hub, /<script src="kora-agent-context\.js/);
   assert.match(hub, /import \{ auraAuth/);
 });
+
+test('el Hub invalida el iframe anterior de Redes Sociales', () => {
+  assert.match(hub, /creditek-agente-redes\.html\?v=20260805-3/g);
+});

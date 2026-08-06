@@ -132,6 +132,8 @@
   async function init() {
     const panel = document.getElementById('publisher-pending');
     if (!panel) return;
+    if (panel.dataset.state === 'initializing' || panel.dataset.state === 'ready') return;
+    panel.dataset.state = 'initializing';
     try {
       const bearer = sessionToken();
       if (!bearer) throw new Error('SESION_REQUERIDA');

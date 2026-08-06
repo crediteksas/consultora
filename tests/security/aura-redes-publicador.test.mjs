@@ -14,6 +14,7 @@ const domain = context.window.CreditekRedesPublicador;
 
 test('Redes Sociales integra el panel persistente del Agente Publicador', () => {
   assert.match(html, /redes-publicador\.js/);
+  assert.match(html, /CreditekRedesPublicador\?\.init\(\)/);
   assert.match(html, /id="publisher-pending"/);
   assert.match(html, /id="publisher-city-filter"[^>]*multiple/);
   assert.match(html, /id="publisher-ally-filter"[^>]*multiple/);

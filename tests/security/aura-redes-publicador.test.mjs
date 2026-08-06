@@ -9,6 +9,7 @@ const source = await readFile(new URL('redes-publicador.js', root), 'utf8');
 const originsWorker = await readFile(new URL('../../creditek/workers/creditek-clientes/src/index.ts', import.meta.url), 'utf8');
 const auraWorker = await readFile(new URL('../../creditek/workers/aura-hub/src/index.js', import.meta.url), 'utf8');
 const build = await readFile(new URL('../../scripts/build-aura-hub.mjs', import.meta.url), 'utf8');
+const hub = await readFile(new URL('index.html', root), 'utf8');
 const context = { window: {} };
 vm.runInNewContext(source, context);
 const domain = context.window.CreditekRedesPublicador;
@@ -34,6 +35,9 @@ test('el Publicador usa una lectura autenticada de AURA y no consulta servicios 
   assert.match(source, /\/creditek\/agentes\/api\/publicador/);
   assert.match(source, /aura_supabase_session_v1/);
   assert.match(source, /sessionToken\(\)/);
+  assert.match(source, /AURA_SESSION_REQUEST/);
+  assert.match(hub, /event\.source !== frame\.contentWindow/);
+  assert.match(hub, /AURA_SESSION_RESPONSE/);
   assert.doesNotMatch(source, /supabase\.co|workers\.dev|apikey/);
   assert.match(auraWorker, /aura_my_access/);
   assert.match(auraWorker, /sofia\.permissions[\s\S]*sofia\.use/);

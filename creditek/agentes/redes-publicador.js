@@ -17,6 +17,27 @@
     return '';
   }
 
+  function requestParentToken() {
+    if (global.parent === global) return Promise.resolve('');
+    const requestId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    return new Promise(resolve => {
+      const timeout = global.setTimeout(() => {
+        global.removeEventListener('message', onMessage);
+        resolve('');
+      }, 3000);
+      function onMessage(event) {
+        if (event.origin !== global.location.origin
+          || event.data?.type !== 'AURA_SESSION_RESPONSE'
+          || event.data?.requestId !== requestId) return;
+        global.clearTimeout(timeout);
+        global.removeEventListener('message', onMessage);
+        resolve(text(event.data.token));
+      }
+      global.addEventListener('message', onMessage);
+      global.parent.postMessage({ type: 'AURA_SESSION_REQUEST', requestId }, global.location.origin);
+    });
+  }
+
   function normalizeOrigins(rows) {
     const normalized = (Array.isArray(rows) ? rows : []).map(row => ({
       codigo: text(row.codigo),
@@ -135,7 +156,7 @@
     if (panel.dataset.state === 'initializing' || panel.dataset.state === 'ready') return;
     panel.dataset.state = 'initializing';
     try {
-      const bearer = sessionToken();
+      const bearer = sessionToken() || await requestParentToken();
       if (!bearer) throw new Error('SESION_REQUERIDA');
       const response = await fetch(PUBLICADOR_URL, {
         headers: { authorization: `Bearer ${bearer}` },

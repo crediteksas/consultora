@@ -631,6 +631,14 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 <script type="module">
 import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth-otp-20260802.mjs';
 
+window.addEventListener('message', async event => {
+  if (event.origin !== location.origin || event.data?.type !== 'AURA_SESSION_REQUEST') return;
+  const frame = document.getElementById('main-iframe');
+  if (!frame || event.source !== frame.contentWindow) return;
+  const token = await auraAuth.token();
+  event.source.postMessage({ type: 'AURA_SESSION_RESPONSE', requestId: event.data.requestId, token }, event.origin);
+});
+
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
 let recoveryEmail = '';

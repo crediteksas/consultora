@@ -404,7 +404,6 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     </div>
 
     <div class="content" id="main-content">
-
       <!-- DASHBOARD VIEW -->
       <div id="view-dashboard">
         <div class="dashboard-greeting">
@@ -573,7 +572,7 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
         <span class="iframe-title" id="iframe-title">—</span>
         <a class="iframe-open" id="iframe-link" target="_blank">↗ Abrir en pestaña</a>
       </div>
-      <iframe id="main-iframe" src="" allowfullscreen></iframe>
+      <iframe id="main-iframe" src="about:blank" allowfullscreen></iframe>
     </div>
   </div>
 
@@ -583,10 +582,20 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <script type="module">
 import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth-otp-20260802.mjs';
+import { createIframeController } from './aura-iframe-controller.mjs';
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
 let recoveryEmail = '';
+const moduleNavigator = createIframeController({
+  iframe: document.getElementById('main-iframe'),
+  iframeView: document.getElementById('iframe-view'),
+  mainContent: document.getElementById('main-content'),
+  titleElement: document.getElementById('iframe-title'),
+  linkElement: document.getElementById('iframe-link'),
+  baseUrl: location.href,
+  onError: message => showToast(message, '#EF4444'),
+});
 
 function setAuthStatus(id, message = '', kind = 'error') {
   const element = document.getElementById(id);
@@ -773,14 +782,10 @@ async function openModule(url, title, el, appId = '') {
     showToast('No tienes permiso para abrir Meta Ads.', '#EF4444');
     return;
   }
+  const loaded = await moduleNavigator.open(url, title);
+  if (!loaded) return;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
-  document.getElementById('main-content').style.display = 'none';
-  const iv = document.getElementById('iframe-view');
-  iv.classList.add('visible');
-  document.getElementById('iframe-title').textContent = title;
-  document.getElementById('main-iframe').src = url;
-  document.getElementById('iframe-link').href = url;
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-breadcrumb').textContent = 'Creditek · ' + title;
 }
@@ -790,15 +795,17 @@ function openModuleFromCard(url, title, appId = '') {
 }
 
 function closeIframe() {
-  document.getElementById('iframe-view').classList.remove('visible');
-  document.getElementById('main-iframe').src = '';
-  document.getElementById('main-content').style.display = 'block';
+  moduleNavigator.close();
   document.getElementById('view-dashboard').style.display = 'block';
   document.getElementById('view-configuracion').style.display = 'none';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
   document.getElementById('topbar-breadcrumb').textContent = 'Ecosistema AURA';
+}
+
+function retryModule() {
+  return moduleNavigator.retry();
 }
 
 window.addEventListener('message', event => {
@@ -853,7 +860,7 @@ if (document.readyState === 'loading') {
 }
 
 Object.assign(window, {
-  showSection, openModule, openModuleFromCard, closeIframe,
+  showSection, openModule, openModuleFromCard, closeIframe, retryModule,
   saveKey, showToast,
 });
 </script>

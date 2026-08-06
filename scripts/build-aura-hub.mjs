@@ -10,6 +10,7 @@ await mkdir(agentsOutput, { recursive: true });
 for (const file of [
   'index.html',
   'aura-auth.mjs',
+  'aura-iframe-controller.mjs',
   'creditek-agente-respuestas.html',
   'agente3-meta-ads.html',
   'agente3-aura-session.mjs',

@@ -35,6 +35,10 @@
       "zone_name": "crediteksas.com"
     },
     {
+      "pattern": "registro.crediteksas.com/creditek/agentes/aura-iframe-controller.mjs",
+      "zone_name": "crediteksas.com"
+    },
+    {
       "pattern": "registro.crediteksas.com/creditek/agentes/creditek-agente-respuestas.html",
       "zone_name": "crediteksas.com"
     },

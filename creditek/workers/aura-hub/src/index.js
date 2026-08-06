@@ -4,6 +4,7 @@ const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
   '/creditek/agentes/aura-auth-otp-20260802.mjs',
+  '/creditek/agentes/aura-iframe-controller.mjs',
   '/creditek/agentes/creditek-agente-respuestas.html',
   '/creditek/agentes/sofia-aura-20260803.html',
   '/creditek/agentes/sofia-aura-20260803b.html',

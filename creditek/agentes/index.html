@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="kora-agent-context.js" defer></script>
+<script src="aura-context-help.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons());</script>
 <style>
 :root {
@@ -40,6 +41,7 @@
   --mono:   'DM Mono', monospace;
   --r:      10px;
   --sidebar:220px;
+  --sidebar-collapsed:64px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);height:100dvh;min-height:0;overflow:hidden}
@@ -120,6 +122,7 @@ body.kora-product-page .password-toggle svg{width:18px;height:18px}
 /* ── APP SHELL ──────────────────────────────────────────────── */
 #app{display:none;height:100dvh;min-height:0;overflow:hidden}
 #app.visible{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}
+#app.sidebar-collapsed{--sidebar:var(--sidebar-collapsed)}
 #app:not(.visible){display:none!important}
 #app.visible.kora-shell-root{display:grid!important}
 
@@ -136,6 +139,9 @@ body.kora-product-page .password-toggle svg{width:18px;height:18px}
   border-bottom:1px solid #E2E8F0;
   display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:#fff;
 }
+.sidebar-toggle{position:absolute;right:8px;top:8px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid #E2E8F0;border-radius:8px;background:#fff;color:#64748B;cursor:pointer;z-index:3}
+.sidebar-toggle:hover,.sidebar-toggle:focus-visible{color:var(--navy);border-color:var(--turq);outline:none}
+.sidebar-toggle svg{width:15px;height:15px}
 .sidebar-home{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;border:0;background:#fff;cursor:pointer;border-radius:8px;padding:4px 2px 3px;text-align:left}
 body.kora-product-page .sidebar-home{background:#fff!important;color:var(--navy)!important;box-shadow:none!important}
 .sidebar-home:hover,.sidebar-home:focus-visible{background:#F0F4F8;outline:2px solid rgba(0,196,204,.28)}
@@ -157,6 +163,7 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .nav-item.active{background:rgba(0,196,204,.1);color:#0B1E3D;font-weight:600}
 .nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;display:grid;place-items:center}
 .nav-icon svg{width:17px;height:17px;stroke-width:1.9}
+.nav-label{min-width:0}
 .nav-badge{margin-left:auto;background:var(--turq);color:var(--navy);font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px}
 .nav-badge.new{background:var(--green)}
 
@@ -167,6 +174,17 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .logout-btn:hover{color:#0B1E3D}
 .logout-btn svg{width:16px;height:16px}
 .aura-version{display:block;max-width:100%;margin:0 8px 7px;padding:5px 7px;border:1px solid #E2E8F0;border-radius:7px;color:#64748B;font:500 9px/1.25 var(--mono);text-align:center;overflow-wrap:anywhere;white-space:normal}
+#app.sidebar-collapsed .sidebar-logo{min-height:74px;padding:11px 8px;justify-content:center}
+#app.sidebar-collapsed .sidebar-home{width:32px;align-items:center;padding:4px 0;margin-top:0}
+#app.sidebar-collapsed .sidebar-brand-name{font-size:0}
+#app.sidebar-collapsed .sidebar-brand-name::after{content:'A';font-size:18px;letter-spacing:0}
+#app.sidebar-collapsed .sidebar-brand-by,#app.sidebar-collapsed .sidebar-brand-logo,#app.sidebar-collapsed .sidebar-section,#app.sidebar-collapsed .nav-label,#app.sidebar-collapsed .nav-badge,#app.sidebar-collapsed .aura-version,#app.sidebar-collapsed .sidebar-owner{display:none}
+#app.sidebar-collapsed .sidebar-toggle{top:auto;right:18px;bottom:5px}
+#app.sidebar-collapsed .nav-item{justify-content:center;margin:4px 7px;padding:10px 0;gap:0}
+#app.sidebar-collapsed .nav-icon{width:20px}
+#app.sidebar-collapsed .sidebar-footer{padding:9px 0}
+#app.sidebar-collapsed .sidebar-footer-actions{justify-content:center;padding:0}
+#app.sidebar-collapsed .logout-btn{margin:0}
 
 /* ── MAIN AREA ──────────────────────────────────────────────── */
 .main-area{flex:1;display:flex;flex-direction:column;min-width:0;height:100dvh;min-height:0;overflow:hidden;background:var(--ctk-color-background,#F5F5F7)}
@@ -389,41 +407,42 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
         <span class="sidebar-brand-by">by</span>
         <img class="sidebar-brand-logo" src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="Creditek">
       </button>
+      <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Replegar barra lateral" aria-expanded="true" data-aura-help="Repliega la barra lateral y deja visibles únicamente los iconos." onclick="toggleAuraSidebar()"><i data-lucide="panel-left-close"></i></button>
     </div>
 
     <div class="sidebar-section">Principal</div>
     <a class="nav-item active" data-dashboard-nav onclick="showSection('dashboard',this)">
-      <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Panel general
+      <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span><span class="nav-label">Panel general</span>
     </a>
 
     <div class="sidebar-section" data-aura-app="sofia">Agentes IA</div>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-redes.html','Redes Sociales',this,'sofia')">
-      <span class="nav-icon"><i data-lucide="image-plus"></i></span> Redes Sociales
+      <span class="nav-icon"><i data-lucide="image-plus"></i></span><span class="nav-label">Redes Sociales</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-respuestas.html','Sofía',this,'sofia')">
-      <span class="nav-icon"><i data-lucide="messages-square"></i></span> Sofía
+      <span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Sofía</span>
     </a>
     <a class="nav-item" data-aura-app="meta_ads" onclick="openModule('agente3-meta-ads.html','Meta Ads Intelligence',this,'meta_ads')">
-      <span class="nav-icon"><i data-lucide="megaphone"></i></span> Meta Ads Intelligence
+      <span class="nav-icon"><i data-lucide="megaphone"></i></span><span class="nav-label">Meta Ads Intelligence</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-agente-calendario.html','Calendario de contenido',this,'sofia')">
-      <span class="nav-icon"><i data-lucide="calendar-days"></i></span> Calendario de contenido
+      <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
     </a>
 
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
-      <span class="nav-icon"><i data-lucide="shopping-bag"></i></span> Portal B2B
+      <span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Portal B2B</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this,'sofia')">
-      <span class="nav-icon"><i data-lucide="map-pin"></i></span> Google Business
+      <span class="nav-icon"><i data-lucide="map-pin"></i></span><span class="nav-label">Google Business</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
-      <span class="nav-icon"><i data-lucide="file-signature"></i></span> Convenios de Aliados
+      <span class="nav-icon"><i data-lucide="file-signature"></i></span><span class="nav-label">Convenios de Aliados</span>
     </a>
 
     <div class="sidebar-section" data-aura-app="sofia">Sistema</div>
     <a class="nav-item" data-aura-app="sofia" onclick="showSection('configuracion',this)">
-      <span class="nav-icon"><i data-lucide="settings"></i></span> Configuración
+      <span class="nav-icon"><i data-lucide="settings"></i></span><span class="nav-label">Configuración</span>
     </a>
 
     <div class="sidebar-footer">
@@ -480,7 +499,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
         </div>
 
         <div class="operations-strip" aria-label="Estado operativo y alertas">
-          <div class="operations-card">
+          <div class="operations-card" tabindex="0" data-aura-help="Indica si el Hub y los cuatro módulos principales de AURA están disponibles en este momento.">
             <div class="operations-icon"><i data-lucide="activity"></i></div>
             <div class="operations-copy">
               <div class="operations-title"><span class="live"></span>Estado operativo</div>
@@ -488,7 +507,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <span class="operations-badge">Operativo</span>
           </div>
-          <div class="operations-card">
+          <div class="operations-card" tabindex="0" data-aura-help="Resume alertas operativas de AURA. Abre cada módulo para consultar sus novedades específicas.">
             <div class="operations-icon alert"><i data-lucide="bell-ring"></i></div>
             <div class="operations-copy">
               <div class="operations-title">Alertas</div>
@@ -500,7 +519,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
 
         <div class="section-title">Agentes de inteligencia artificial</div>
         <div class="modules-grid">
-          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-redes.html','Redes Sociales','sofia')">
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Crea copies e imágenes publicitarias para las redes sociales de Creditek." data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-redes.html','Redes Sociales','sofia')">
             <div class="module-top">
               <div class="module-icon"><i data-lucide="image-plus"></i></div>
               <div class="module-status active">● Activo</div>
@@ -513,7 +532,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-respuestas.html','Sofía','sofia')">
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Abre el CRM conversacional de Sofía para consultar chats, clientes y derivaciones." data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-respuestas.html','Sofía','sofia')">
             <div class="module-top">
               <div class="module-icon"><i data-lucide="messages-square"></i></div>
               <div class="module-status active">● Activo</div>
@@ -526,7 +545,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" data-aura-app="meta_ads" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','meta_ads')">
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Consulta métricas, campañas y alertas de publicidad de Meta Ads." data-aura-app="meta_ads" onclick="openModuleFromCard('agente3-meta-ads.html','Meta Ads Intelligence','meta_ads')">
             <div class="module-top">
               <div class="module-icon"><i data-lucide="megaphone"></i></div>
               <div class="module-status active">● Activo</div>
@@ -539,7 +558,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de contenido','sofia')">
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Organiza y revisa el calendario mensual de publicaciones de Creditek." data-aura-app="sofia" onclick="openModuleFromCard('creditek-agente-calendario.html','Calendario de contenido','sofia')">
             <div class="module-top">
               <div class="module-icon"><i data-lucide="clapperboard"></i></div>
               <div class="module-status active">● Activo</div>
@@ -667,6 +686,35 @@ let moduleLoadTimer = null;
 let moduleLoadId = 0;
 let incidentReport = '';
 const auraTechnicalErrors = [];
+const SIDEBAR_STORAGE_KEY = 'aura_sidebar_collapsed';
+
+function applyAuraSidebar(collapsed, persist = false) {
+  const app = document.getElementById('app');
+  const button = document.getElementById('sidebar-toggle');
+  app.classList.toggle('sidebar-collapsed', collapsed);
+  button.setAttribute('aria-expanded', String(!collapsed));
+  button.setAttribute('aria-label', collapsed ? 'Expandir barra lateral' : 'Replegar barra lateral');
+  button.dataset.auraHelp = collapsed
+    ? 'Expande la barra lateral para mostrar los nombres de todos los módulos.'
+    : 'Repliega la barra lateral y deja visibles únicamente los iconos.';
+  button.innerHTML = collapsed
+    ? '<i data-lucide="panel-left-open"></i>'
+    : '<i data-lucide="panel-left-close"></i>';
+  if (persist) {
+    try { sessionStorage.setItem('aura_sidebar_collapsed', collapsed ? '1' : '0'); } catch (_) {}
+  }
+  window.lucide?.createIcons?.();
+}
+
+function toggleAuraSidebar() {
+  applyAuraSidebar(!document.getElementById('app').classList.contains('sidebar-collapsed'), true);
+}
+
+function restoreAuraSidebar() {
+  let collapsed = false;
+  try { collapsed = sessionStorage.getItem(SIDEBAR_STORAGE_KEY) === '1'; } catch (_) {}
+  applyAuraSidebar(collapsed);
+}
 
 function setAuthStatus(id, message = '', kind = 'error') {
   const element = document.getElementById(id);
@@ -797,12 +845,13 @@ function enterAura() {
 
 Object.assign(window, {
   doLogin, doLogout, requestRecovery, completeRecovery,
-  showAuthView, togglePassword, enterAura,
+  showAuthView, togglePassword, enterAura, toggleAuraSidebar,
 });
 
 // ── Init ─────────────────────────────────────────────────────────
 
 function initApp() {
+  restoreAuraSidebar();
   updateDate();
   setInterval(updateDate, 60000);
   updateIncidentMeta();

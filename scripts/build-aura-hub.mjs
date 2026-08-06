@@ -11,6 +11,8 @@ for (const file of [
   'index.html',
   'aura-auth.mjs',
   'aura-incident-report.mjs',
+  'aura-context-help.js',
+  'aura-image-client.mjs',
   'kora-agent-context.js',
   'creditek-agente-redes.html',
   'creditek-agente-respuestas.html',

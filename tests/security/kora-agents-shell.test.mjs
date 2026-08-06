@@ -47,9 +47,10 @@ test('la migración conserva los puntos funcionales de ambos agentes', async () 
     readFile(sofiaUrl, 'utf8'),
   ]);
 
-  for (const marker of ['generarContenido', 'generarImagen', 'buildImgPrompt', 'ck_gemini_key', 'ck_openai_key']) {
+  for (const marker of ['generarContenido', 'generarImagen', 'buildImgPrompt', 'aura-image-client.mjs', "llamarBackendImagen('/generate'", "llamarBackendImagen('/openai/responses'"]) {
     assert.ok(agent1.includes(marker), `Agente 1 perdió ${marker}`);
   }
+  assert.doesNotMatch(agent1, /ck_gemini_key|ck_openai_key|api\.openai\.com|WORKER_SHARED_SECRET/);
   for (const marker of ['generar()', 'renderCalendario', 'guardarCalendario', 'aprobarYGenerarImagen', 'generarImagenPipelineAgente4']) {
     assert.ok(agent4.includes(marker), `Agente 4 perdió ${marker}`);
   }

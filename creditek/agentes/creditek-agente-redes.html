@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="kora-agent-context.js" defer></script>
+<script src="aura-context-help.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root {
@@ -413,9 +414,6 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .copy-footer-btn.copied{border-color:var(--turquesa);color:var(--turquesa)}
 @keyframes imgFadeIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
 .img-output.fade-in{animation:imgFadeIn .35s ease}
-/* Modal keys imagen */
-#imgKeyModal{position:fixed;inset:0;background:rgba(11,30,61,.4);display:flex;align-items:center;justify-content:center;z-index:9998;backdrop-filter:blur(6px)}
-#imgKeyModal.hidden{display:none}
 /* Producto toggle texto/foto */
 .prod-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:9px;padding:3px;background:#EEF2F6;border:1px solid #E2E8F0;border-radius:10px}
 .prod-tab{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:transparent;border:1px solid transparent;border-radius:7px;color:#64748B;font-size:11px;font-weight:650;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif}
@@ -544,33 +542,6 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     </div>
   </div>
 </div>
-<!-- ══ MODAL API KEY IMAGEN ═══════════════════════════════════════ -->
-<div id="imgKeyModal" class="hidden">
-  <div class="m-card">
-    <div class="m-logo">
-      <span id="imgKeyIcon" style="font-size:22px;line-height:1">✦</span>
-      <span class="m-logo-name" id="imgKeyTitle">GEMINI API KEY</span>
-    </div>
-    <div class="m-title" id="imgKeyHeading">API Key de Google Gemini</div>
-    <div class="m-desc" id="imgKeyDesc">Necesitas una API key de Google AI Studio para generar fotos de producto con Gemini Flash 2.5.</div>
-    <div class="m-field">
-      <input class="m-input" id="imgModalKey" type="password" placeholder="AIzaSy..." autocomplete="off" onkeydown="if(event.key==='Enter')submitImgKey()">
-      <button class="m-eye" onclick="toggleImgKey(this)">Ver</button>
-    </div>
-    <div id="proxyUrlRow" style="display:none;margin-top:10px">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:5px">URL del Worker proxy <span style="color:var(--text3)">(opcional — resuelve CORS)</span></div>
-      <input class="m-input" id="imgProxyUrl" type="text" placeholder="https://creditek-gemini-proxy.tu-subdominio.workers.dev" autocomplete="off" style="font-size:12px">
-    </div>
-    <div class="m-error" id="imgModalError">Verifica el formato de la key e intenta de nuevo.</div>
-    <button class="m-submit" onclick="submitImgKey()">Guardar key →</button>
-    <div class="m-note">
-      Gemini: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a><br>
-      OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
-    </div>
-    <button onclick="cerrarImgKeyModal()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding-top:2px">Cancelar</button>
-  </div>
-</div>
-
 <div id="app" data-kora-shell-root>
 <div class="shell agent-workspace">
 <aside class="agent-workspace-panel" id="agent-form-panel">
@@ -639,9 +610,9 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     </div>
     <div class="field-group" id="fg-producto">
       <label class="field-label">Producto / equipo <span>opcional</span></label>
-      <div class="prod-toggle" aria-label="Forma de ingresar el producto">
-        <button class="prod-tab active" onclick="toggleProdMode('texto',this)"><i data-lucide="align-left" class="prod-tab-icon"></i>Descripción</button>
-        <button class="prod-tab" onclick="toggleProdMode('foto',this)"><i data-lucide="image-up" class="prod-tab-icon"></i>Foto</button>
+      <div class="prod-toggle" role="tablist" aria-label="Forma de ingresar el producto">
+        <button class="prod-tab active" type="button" aria-pressed="true" data-aura-help="Escribe la marca, el modelo y la capacidad del equipo. La IA usará esta descripción para crear la pieza." onclick="toggleProdMode('texto',this)"><i data-lucide="align-left" class="prod-tab-icon"></i>Descripción</button>
+        <button class="prod-tab" type="button" aria-pressed="false" data-aura-help="Sube una foto real del equipo. La IA la usará como referencia visual para crear la pieza." onclick="toggleProdMode('foto',this)"><i data-lucide="image-up" class="prod-tab-icon"></i>Foto</button>
       </div>
       <input type="text" id="producto" placeholder="Ej: Samsung Galaxy A17 5G 128GB">
       <div id="prod-foto-wrap" style="display:none;margin-top:6px">
@@ -781,7 +752,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Solo disponible con GPT Image 2 — Gemini no acepta imágenes de referencia.</div>
   </div>
   <div class="sidebar-section" style="padding-bottom:10px">
-    <div class="sidebar-label">API Key</div>
+    <div class="sidebar-label">Servicios de IA</div>
     <div class="key-status">
       <span style="font-size:12px;color:var(--text2)"><span class="key-dot"></span>Anthropic — configurada esta sesión</span>
       <button onclick="abrirModal()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Cambiar</button>
@@ -790,13 +761,13 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       <span style="font-size:12px;color:var(--text2)">
         <span class="img-key-dot" id="sidebar-gemini-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Vertex AI
       </span>
-      <button onclick="abrirImgKeyModal('gemini')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Configurar</button>
+      <span style="color:#059669;font-size:11px;font-weight:700">Backend AURA</span>
     </div>
     <div class="key-status" style="padding:3px 3px 4px">
       <span style="font-size:12px;color:var(--text2)">
         <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2
       </span>
-      <button onclick="abrirImgKeyModal('openai')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Configurar</button>
+      <span style="color:#059669;font-size:11px;font-weight:700">Backend AURA</span>
     </div>
   </div>
   <div class="sidebar-section" style="padding-bottom:8px">
@@ -907,7 +878,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
           <div class="img-key-dot" id="img-key-dot"></div>
           <span id="img-key-label">Key no configurada</span>
         </div>
-        <button class="img-key-btn" id="img-key-row-btn" onclick="updateImgKeyStatus()">Configurar key</button>
+        <button class="img-key-btn" id="img-key-row-btn" type="button" hidden disabled>Backend seguro</button>
       </div>
       <div class="img-preview-panel" id="img-preview-panel">
         <span class="img-preview-lbl-sec">Vista previa del aviso — revisa y edita antes de generar imagen</span>
@@ -2230,11 +2201,22 @@ function selectEngine(engine) {
 }
 
 function toggleProdMode(mode, btn) {
-  document.querySelectorAll('.prod-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('producto').style.display = mode === 'texto' ? 'block' : 'none';
-  document.getElementById('prod-foto-wrap').style.display = mode === 'foto' ? 'block' : 'none';
-  if (mode === 'texto') productoImgBase64 = null;
+  const producto = document.getElementById('producto');
+  const fotoWrap = document.getElementById('prod-foto-wrap');
+  const prodFile = document.getElementById('prod-file');
+  document.querySelectorAll('.prod-tab').forEach(tab => {
+    const selected = tab === btn;
+    tab.classList.toggle('active', selected);
+    tab.setAttribute('aria-pressed', String(selected));
+  });
+  producto.style.display = mode === 'texto' ? 'block' : 'none';
+  fotoWrap.style.display = mode === 'foto' ? 'block' : 'none';
+  if (mode === 'texto') {
+    productoImgBase64 = null;
+    producto.focus();
+  } else {
+    prodFile.focus();
+  }
 }
 
 function onProdFileChange(input) {
@@ -2396,30 +2378,16 @@ function updateImgKeyStatus() {
   syncModelUI();
   const useGemini = document.getElementById('chk-gemini')?.checked;
   const useDalle  = document.getElementById('chk-dalle')?.checked;
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  const geminiOk  = true; // Vertex AI via Worker — WIF auth, no key required
-  const dalleOk   = keyOpenAI.length > 10;
+  const geminiOk  = true;
+  const dalleOk   = true;
   const btn = document.getElementById('img-key-row-btn');
 
-  if (useGemini && !geminiOk) {
-    document.getElementById('img-key-dot').className = 'img-key-dot';
-    document.getElementById('img-key-label').textContent = 'Vertex AI configurado via Worker';
-    btn.textContent = 'Configurar key Gemini';
-    btn.onclick = () => abrirImgKeyModal('gemini');
-    btn.style.display = '';
-  } else if (useDalle && !dalleOk) {
-    document.getElementById('img-key-dot').className = 'img-key-dot';
-    document.getElementById('img-key-label').textContent = 'API key de GPT Image 2 requerida';
-    btn.textContent = 'Configurar key OpenAI';
-    btn.onclick = () => abrirImgKeyModal('openai');
-    btn.style.display = '';
-  } else if (useGemini || useDalle) {
+  if (useGemini || useDalle) {
     document.getElementById('img-key-dot').className = 'img-key-dot ok';
     const parts = [];
     if (useGemini && geminiOk) parts.push('Vertex AI');
     if (useDalle  && dalleOk)  parts.push('GPT Image 2');
-    document.getElementById('img-key-label').textContent = parts.join(' · ') + ' configurado';
+    document.getElementById('img-key-label').textContent = parts.join(' · ') + ' · backend AURA';
     btn.style.display = 'none';
   } else {
     document.getElementById('img-key-dot').className = 'img-key-dot';
@@ -3338,48 +3306,8 @@ function showImgSection() {
     .catch(() => {});
 }
 
-let _imgKeyTarget = 'openai';
-function abrirImgKeyModal(type = 'openai') {
-  _imgKeyTarget = type;
-  if (type === 'gemini') {
-    document.getElementById('imgKeyIcon').textContent    = '📷';
-    document.getElementById('imgKeyTitle').textContent   = 'GEMINI AI STUDIO KEY';
-    document.getElementById('imgKeyHeading').textContent = 'API Key de Google AI Studio';
-    document.getElementById('imgKeyDesc').textContent    = 'Necesitas una API key de Google AI Studio para generar fotos de producto con Gemini Flash.';
-    document.getElementById('imgModalKey').placeholder   = 'AIzaSy...';
-  } else {
-    document.getElementById('imgKeyIcon').textContent    = '⬡';
-    document.getElementById('imgKeyTitle').textContent   = 'OPENAI API KEY';
-    document.getElementById('imgKeyHeading').textContent = 'API Key de OpenAI';
-    document.getElementById('imgKeyDesc').textContent    = 'Necesitas una API key de OpenAI para generar imágenes con GPT Image 2.';
-    document.getElementById('imgModalKey').placeholder   = 'sk-proj-...';
-  }
-  document.getElementById('imgModalKey').value = '';
-  document.getElementById('imgModalError').style.display = 'none';
-  document.getElementById('proxyUrlRow').style.display = 'none';
-  document.getElementById('imgKeyModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('imgModalKey').focus(), 80);
-}
-
-function cerrarImgKeyModal() {
-  document.getElementById('imgKeyModal').classList.add('hidden');
-}
-
-function toggleImgKey(btn) {
-  const el = document.getElementById('imgModalKey');
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Ver';
-}
-
-function submitImgKey() {
-  const val = document.getElementById('imgModalKey').value.trim();
-  const err = document.getElementById('imgModalError');
-  if (val.length < 10) { err.style.display = 'block'; document.getElementById('imgModalKey').focus(); return; }
-  err.style.display = 'none';
-  localStorage.setItem(_imgKeyTarget === 'gemini' ? 'ck_gemini_key' : 'ck_openai_key', val);
-  cerrarImgKeyModal();
-  updateImgKeyStatus();
+function abrirImgKeyModal() {
+  showToast('Las credenciales son administradas de forma segura por AURA.', '#0B1E3D');
 }
 
 async function generarImagen(callerBtn = null) {
@@ -3403,16 +3331,7 @@ async function generarImagen(callerBtn = null) {
   label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
 
   const isWorkerEngine = currentEngine === 'gemini';
-  const keyName = isWorkerEngine ? 'ck_gemini_key' : 'ck_openai_key';
-  const key = localStorage.getItem(keyName) || '';
-  if (!isWorkerEngine && key.length < 10) {
-    // FIX v4e: si falta la key, hay que revertir el feedback visual que ya se activó arriba
-    visibleBtn.disabled = false;
-    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-    spinner.style.display = 'none';
-    abrirImgKeyModal('openai');
-    return;
-  }
+  const key = '';
 
   const prompt = document.getElementById('img-prompt-ta').value.trim();
   if (!prompt) {
@@ -3508,10 +3427,12 @@ async function componerLogoSobreImagen(dataUrlImagen) {
   });
 }
 
-// Fix v5 09-jul-2026 — secreto compartido para que el Worker rechace peticiones
-// que no vengan de este sitio. DEBE coincidir exacto con el valor configurado
-// en el Worker (wrangler secret put WORKER_SHARED_SECRET).
-const WORKER_SHARED_SECRET = '72c73c94244190777d08b12775b2dace13d26877a75367ec';
+const auraImageClientPromise = import('./aura-image-client.mjs');
+
+async function llamarBackendImagen(path, payload) {
+  const { requestAuraImage } = await auraImageClientPromise;
+  return requestAuraImage(path, payload);
+}
 
 async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl = null, esEdicion = false) {
   // FIX 03-jul-2026: relación de aspecto exacta para calzar con GPT
@@ -3522,17 +3443,7 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   const aspectRatioFallback = currentFormat === 'stories' ? '3:4' : '1:1';
 
   async function llamarWorker(reqBody) {
-    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Worker-Secret': WORKER_SHARED_SECRET },
-      body: JSON.stringify(reqBody),
-    });
-    const data = await res.json().catch(() => ({}));
-    console.log('[generarConGemini] Worker response:', { status: res.status, ok: res.ok, label: data.label, error: data.error });
-    if (!res.ok) {
-      const msg = data.error || `Error ${res.status}`;
-      throw new Error(msg);
-    }
+    const data = await llamarBackendImagen('/generate', reqBody);
     const pred = data.predictions?.[0];
     if (!pred?.bytesBase64Encoded) throw new Error('El Worker no devolvió imagen.');
     lastImgModelLabel = data.label || 'Gemini';
@@ -3542,7 +3453,6 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   }
 
   const reqBase = { prompt };
-  if (key?.length > 10) reqBase.apiKey = key;
 
   // FIX v16 12-jul-2026: imagen ACTUAL a editar (viene de aplicarCambioImagen,
   // currentSrc = data URL en memoria, nunca tuvo URL pública) — a diferencia
@@ -3626,24 +3536,11 @@ async function generarConDalle(key, prompt) {
   } else {
     inputPayload = prompt;
   }
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      input: inputPayload,
-      tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
-    })
+  const data = await llamarBackendImagen('/openai/responses', {
+    model: 'gpt-4o',
+    input: inputPayload,
+    tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(
-      res.status === 401 ? 'API key de OpenAI inválida.' :
-      res.status === 429 ? 'Límite de uso OpenAI alcanzado. Espera un momento.' :
-      e.error?.message || `Error OpenAI ${res.status}`
-    );
-  }
-  const data = await res.json();
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen. Revisa la consola para ver la respuesta completa.');
@@ -3675,20 +3572,11 @@ async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFot
   }
   content.push({ type: 'input_text', text: promptComposicionGPT });
 
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyOpenAI },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      input: [{ role: 'user', content }],
-      tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
-    })
+  const data = await llamarBackendImagen('/openai/responses', {
+    model: 'gpt-4o',
+    input: [{ role: 'user', content }],
+    tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e.error?.message || `Error OpenAI ${res.status}`);
-  }
-  const data = await res.json();
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen del pipeline.');
@@ -3737,7 +3625,7 @@ async function aplicarCambioImagen() {
     let newSrc;
 
     if (currentEngine === 'gemini') {
-      const key = localStorage.getItem('ck_gemini_key') || '';
+      const key = '';
       const promptBaseGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
       // FIX v16 12-jul-2026: antes no se mandaba currentSrc — Gemini regeneraba
       // toda la escena desde cero por texto, sin "ver" la imagen real (logo,
@@ -3747,8 +3635,6 @@ async function aplicarCambioImagen() {
       newSrc = await generarConGemini(key, editPrompt, false, currentSrc, /* esEdicion */ true);
       document.getElementById('img-model-lbl').textContent = `Generado con ${lastImgModelLabel}`;
     } else {
-      const key = localStorage.getItem('ck_openai_key');
-      if (!key || key.length < 10) throw new Error('Configura la API key de GPT Image 2 para editar.');
       // FIX v16 12-jul-2026: antes se mandaba SOLO texto (prompt original +
       // instrucción) — la IA nunca "veía" currentSrc, por eso regeneraba todo
       // desde cero (logo, colores, specs distintos en cada edición). Ahora se
@@ -3757,19 +3643,12 @@ async function aplicarCambioImagen() {
       // confirmado contra la documentación de OpenAI Responses API: input_image
       // + image_url acepta data URLs base64 directamente, no solo URLs remotas.
       const editPrompt = `${promptBase}\n\nMODIFICACIÓN SOLICITADA: ${instruccion}\n\nIMPORTANTE: la imagen adjunta es la pieza ACTUAL — edítala aplicando únicamente el cambio solicitado. Mantén exactamente igual todo lo demás (logo, colores de marca, textos, specs, composición). NO regeneres la pieza desde cero.`;
-      const res = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({ model: 'gpt-4o', input: [{ role: 'user', content: [
+      const data = await llamarBackendImagen('/openai/responses', {
+        model: 'gpt-4o', input: [{ role: 'user', content: [
           { type: 'input_text', text: editPrompt },
           { type: 'input_image', image_url: currentSrc },
-        ] }], tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }] })
+        ] }], tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(res.status === 401 ? 'API key de OpenAI inválida.' : e.error?.message || `Error OpenAI ${res.status}`);
-      }
-      const data = await res.json();
       const imageCall = data.output?.find(o => o.type === 'image_generation_call');
       const b64 = imageCall?.result;
       if (!b64) throw new Error('OpenAI no devolvió imagen editada.');
@@ -3793,9 +3672,8 @@ async function aplicarCambioImagen() {
 }
 
 async function generarAB() {
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  if (!keyOpenAI || keyOpenAI.length < 10) { abrirImgKeyModal('openai'); return; }
+  const keyGemini = '';
+  const keyOpenAI = '';
   const prompt = document.getElementById('img-prompt-ta').value.trim();
   if (!prompt) { showToast('Genera el copy primero para obtener el prompt de imagen', '#ef4444'); return; }
   const promptGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
@@ -3888,9 +3766,8 @@ async function generarConModelos() {
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
 
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  if ((useDalle || usePipeline) && keyOpenAI.length < 10) { abrirImgKeyModal('openai'); return; }
+  const keyGemini = '';
+  const keyOpenAI = '';
 
   const btn = document.getElementById('action-gen-btn');
   btn.disabled = true;

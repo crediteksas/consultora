@@ -10,12 +10,15 @@ await mkdir(agentsOutput, { recursive: true });
 for (const file of [
   'index.html',
   'aura-auth.mjs',
+  'aura-incident-report.mjs',
   'kora-agent-context.js',
   'creditek-agente-redes.html',
   'creditek-agente-respuestas.html',
   'agente3-meta-ads.html',
   'agente3-aura-session.mjs',
   'creditek-agente-calendario.html',
+  'creditek-gbp-fichas.html',
+  'logo.png',
 ]) {
   await cp(path.join(root, 'creditek', 'agentes', file), path.join(agentsOutput, file));
 }

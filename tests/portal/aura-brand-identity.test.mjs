@@ -23,20 +23,25 @@ test('el Portal B2B declara AURA como producto visible', () => {
   );
 });
 
-test('las superficies AURA no contienen referencias visibles a KORA', () => {
-  const visiblePortal = portal
+function visibleTextSource(source) {
+  return source
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script\b(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<link\b[^>]*kora[^>]*>/gi, '')
     .replace(/<script\b[^>]*kora[^>]*><\/script>/gi, '')
     .replace(/\bdata-kora-[\w-]+(?:="[^"]*")?/gi, '')
     .replace(/\bclass="[^"]*\bkora-[^"]*"/gi, '');
+}
+
+test('las superficies AURA no contienen referencias visibles a KORA', () => {
+  const visiblePortal = visibleTextSource(portal);
 
   assert.doesNotMatch(visiblePortal, />[^<]*\bKORA\b[^<]*</i);
   assert.doesNotMatch(visiblePortal, /(?:title|content|aria-label)="[^"]*\bKORA\b/i);
 
   for (const [file, source] of agentPages) {
-    assert.doesNotMatch(source, />[^<]*\bKORA\b[^<]*</i, file);
-    assert.doesNotMatch(source, /(?:title|content|aria-label)="[^"]*\bKORA\b/i, file);
+    const visibleSource = visibleTextSource(source);
+    assert.doesNotMatch(visibleSource, />[^<]*\bKORA\b[^<]*</i, file);
+    assert.doesNotMatch(visibleSource, /(?:title|content|aria-label)="[^"]*\bKORA\b/i, file);
   }
 });

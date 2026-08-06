@@ -3,12 +3,14 @@ const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
+  '/creditek/agentes/aura-incident-report.mjs',
   '/creditek/agentes/aura-auth-otp-20260802.mjs',
   '/creditek/agentes/creditek-agente-respuestas.html',
   '/creditek/agentes/sofia-aura-20260803.html',
   '/creditek/agentes/sofia-aura-20260803b.html',
   '/creditek/agentes/agente3-meta-ads.html',
   '/creditek/agentes/agente3-aura-session.mjs',
+  '/creditek/agentes/creditek-gbp-fichas.html',
 ]);
 const CANONICAL_DOCUMENTS = new Set([
   '/creditek/agentes/creditek-agente-respuestas',

@@ -12,11 +12,10 @@ const REQUIRED_KORA_ASSETS = [
   '/design-system/components/kora-dashboard.css',
   '/design-system/components/kora-shell.css?v=2.0.4',
   '/design-system/components/kora-product.css',
-  '/creditek/erp/sidebar.js?v=2.0.4',
   'lucide@1.27.0',
 ];
 
-test('los cuatro módulos montan directamente el shell real de KORA', async () => {
+test('los cuatro módulos conservan el sistema visual sin montar el menú de KORA', async () => {
   const [agent1, agent3, agent4, sofia, context] = await Promise.all([
     readFile(agent1Url, 'utf8'),
     readFile(agent3Url, 'utf8'),
@@ -27,6 +26,8 @@ test('los cuatro módulos montan directamente el shell real de KORA', async () =
 
   for (const html of [agent1, agent3, agent4, sofia]) {
     for (const asset of REQUIRED_KORA_ASSETS) assert.ok(html.includes(asset), `falta ${asset}`);
+    assert.doesNotMatch(html, /\/creditek\/erp\/sidebar\.js/);
+    assert.match(html, /kora-agent-context\.js/);
     assert.match(html, /data-kora-shell-root/);
     assert.match(html, /class="kora-product-page"/);
     assert.doesNotMatch(html, /aura-shell\.(?:css|js)/);
@@ -60,20 +61,21 @@ test('la migración conserva los puntos funcionales de ambos agentes', async () 
   }
 });
 
-test('el contexto compartido conserva navegación y páginas activas', async () => {
+test('el contexto compartido conserva únicamente la navegación autorizada de AURA', async () => {
   const context = await readFile(contextUrl, 'utf8');
   for (const destination of [
     'index.html',
-    'sofia-aura-20260803b.html',
+    'creditek-agente-respuestas.html',
     'creditek-agente-redes.html',
     'agente3-meta-ads.html',
     'creditek-agente-calendario.html',
     '../portal/index.html',
-    '../erp/reportes.html',
     'index.html#configuracion',
   ]) assert.ok(context.includes(destination), `falta ${destination}`);
   assert.match(context, /agent-1/);
   assert.match(context, /agent-3/);
   assert.match(context, /agent-4/);
   assert.match(context, /sofia/);
+  assert.match(context, /window\.self !== window\.top \|\| agentId === 'home'/);
+  assert.doesNotMatch(context, /\.\.\/erp\/reportes\.html|label:\s*'Reportes'|Agente [1-4]/);
 });

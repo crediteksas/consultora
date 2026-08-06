@@ -15,7 +15,6 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
-<script src="/creditek/erp/sidebar.js?v=2.0.4" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
 <script src="kora-agent-context.js" defer></script>
 <style>
 :root{--azul:var(--ctk-color-primary-900);--turquesa:var(--ctk-color-secondary-500);--bg:var(--ctk-color-background);--bg2:var(--ctk-color-surface);--bg3:var(--ctk-color-surface-subtle);--bord:var(--ctk-color-border);--bord2:var(--ctk-color-focus);--txt:var(--ctk-color-text);--txt2:var(--ctk-color-text-secondary);--txt3:var(--ctk-color-text-muted);--r:var(--ctk-radius-xl);--rs:var(--ctk-radius-sm)}
@@ -84,9 +83,9 @@ select option{background:var(--bg2)}
 
 /* CALENDAR GRID */
 .cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-.cal-header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.cal-header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:32px;margin-bottom:4px}
 .cal-title{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;color:var(--turquesa);letter-spacing:.04em;text-transform:uppercase}
-.cal-count{font-size:11px;color:var(--txt3)}
+.cal-count{font-size:11px;color:var(--txt3);display:inline-flex;align-items:center;align-self:center;min-height:24px;margin:0}
 
 /* DAY CARD */
 .dcard{background:var(--bg2);border:1px solid var(--bord);border-radius:var(--r);overflow:hidden;transition:border-color .2s;animation:fi .3s ease}

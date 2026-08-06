@@ -1,0 +1,95 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const root = new URL('../../', import.meta.url);
+const read = relative => readFile(new URL(relative, root), 'utf8');
+
+const hub = await read('creditek/agentes/index.html');
+const sofia = await read('creditek/agentes/creditek-agente-respuestas.html');
+const calendar = await read('creditek/agentes/creditek-agente-calendario.html');
+const googleBusiness = await read('creditek/agentes/creditek-gbp-fichas.html');
+const build = await read('scripts/build-aura-hub.mjs');
+const config = await read('wrangler.aura-hub.jsonc');
+const incidents = await import('../../creditek/agentes/aura-incident-report.mjs');
+
+test('el shell conserva encabezado y barra lateral mientras cada módulo ocupa el área de contenido', () => {
+  assert.match(hub, /#app\.visible\{display:grid/);
+  assert.match(hub, /grid-template-columns:var\(--sidebar\) minmax\(0,1fr\)/);
+  assert.match(hub, /\.content\{[^}]*overflow-y:auto/);
+  assert.match(hub, /\.iframe-view\{[^}]*position:relative[^}]*min-height:0[^}]*overflow:hidden/);
+  assert.doesNotMatch(hub, /\.iframe-view\{[^}]*position:fixed/);
+  assert.doesNotMatch(hub, /\.iframe-view\{[^}]*100vw/);
+  assert.doesNotMatch(hub, /\.iframe-view\{[^}]*100vh/);
+  assert.match(hub, /id="main-iframe" src="about:blank"/);
+});
+
+test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de KORA', () => {
+  assert.match(hub, /class="sidebar-logo"[\s\S]*creditek_logo_corregido_alta\.png/);
+  for (const name of ['Redes Sociales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {
+    assert.match(hub, new RegExp(`>${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<`, 'i'));
+  }
+  assert.doesNotMatch(hub, />\s*Agente [1234](?:\s|<|·)/);
+  assert.doesNotMatch(hub, />\s*Reportes\s*</i);
+  assert.doesNotMatch(hub, /Acerca de KORA|KORA ERP/);
+  assert.match(hub, /data-lucide="layout-dashboard"/);
+  assert.match(hub, /data-lucide="settings"/);
+  assert.match(hub, /data-lucide="log-out"/);
+});
+
+test('el botón AURA vuelve al Panel general y Sofía usa su ruta canónica', () => {
+  assert.match(hub, /data-aura-home[\s\S]*showSection\('dashboard'/);
+  assert.match(hub, /openModule\('creditek-agente-respuestas\.html','Sofía'/);
+  assert.doesNotMatch(hub, /openModule\('sofia-aura-20260803b\.html'/);
+  assert.match(sofia, /\.conv-scroll\{[^}]*overflow-y:auto/);
+  assert.match(sofia, /\.chat-msgs\{[^}]*overflow-y:auto/);
+});
+
+test('todos los indicadores del Panel general tienen ayuda accesible', () => {
+  const indicators = hub.match(/class="qstat"[^>]*tabindex="0"[^>]*data-help=/g) || [];
+  assert.equal(indicators.length, 4);
+  assert.match(hub, /\.qstat:is\(:hover,:focus-visible\)::after/);
+});
+
+test('la versión de AURA queda compacta y dentro del pie lateral', () => {
+  assert.match(hub, /class="aura-version"[^>]*>AURA v1\.1\.0</);
+  assert.match(hub, /\.aura-version\{[^}]*overflow-wrap:anywhere/);
+});
+
+test('Configuración abre un centro de incidencias sanitizado', () => {
+  assert.match(hub, /Centro de incidencias de AURA/);
+  assert.match(hub, /id="incident-error"/);
+  assert.match(hub, /id="incident-expected"/);
+  assert.match(hub, /id="incident-module"/);
+  assert.match(hub, /id="incident-evidence"[^>]*type="file"/);
+  assert.match(hub, /generateIncidentReport/);
+  assert.match(hub, /sanitizeIncidentText/);
+  assert.match(hub, /element\.replaceChildren/);
+  assert.doesNotMatch(hub, /id="cfg-(?:claude|vertex|openai)"/);
+});
+
+test('el reporte elimina secretos y datos sensibles antes de copiar o descargar', () => {
+  const report = incidents.buildIncidentReport({
+    module: 'Sofía',
+    error: 'token=abc123 password=secreta cliente 3002024083 externo@example.com',
+    expected: 'Debe responder sin Bearer eyJhbGciOiJIUzI1NiJ9.abc.def',
+    context: incidents.technicalContext({ route: '/creditek/agentes/', user: 'Oscar' }),
+    technicalErrors: ['api_key=AIza12345678901234567890'],
+  });
+  assert.doesNotMatch(report, /abc123|secreta|3002024083|externo@example\.com|AIza123|eyJhbGci/);
+  assert.match(report, /REDACTADO/);
+});
+
+test('Ciénaga de Oro conserva tarjetas uniformes y el calendario alinea Publicaciones', () => {
+  assert.match(googleBusiness, /\.store-card\s*\{[^}]*width:100%[^}]*min-width:0/);
+  assert.match(googleBusiness, /\.store-body\s*\{[^}]*grid-auto-rows:minmax\(0,auto\)/);
+  assert.match(calendar, /\.cal-header\{[^}]*min-height:/);
+  assert.match(calendar, /\.cal-count\{[^}]*display:inline-flex[^}]*align-items:center/);
+});
+
+test('el build aislado publica Google Business y el centro de incidencias mediante aura-hub', () => {
+  assert.match(build, /creditek-gbp-fichas\.html/);
+  assert.match(build, /aura-incident-report\.mjs/);
+  assert.match(config, /creditek\/agentes\/creditek-gbp-fichas\.html/);
+  assert.match(config, /creditek\/agentes\/aura-incident-report\.mjs/);
+});

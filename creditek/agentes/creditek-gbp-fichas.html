@@ -54,11 +54,13 @@
     .city-group { margin-bottom: 40px; }
     .city-label { font-size: 13px; font-weight: 700; color: var(--txt); background: var(--bg2); border-left: 3px solid var(--turquesa); padding: 8px 16px; border-radius: 0 6px 6px 0; display: inline-block; margin-bottom: 16px; }
 
-    .store-card { background: var(--bg2); border: 1px solid var(--bord); border-radius: var(--r); margin-bottom: 20px; overflow: hidden; }
+    .store-card { width:100%; min-width:0; background: var(--bg2); border: 1px solid var(--bord); border-radius: var(--r); margin-bottom: 20px; overflow: hidden; }
     .store-header { background: var(--bg3); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--bord); }
     .store-id { font-size: 10px; font-weight: 700; color: var(--turquesa); letter-spacing: .1em; background: rgba(0,196,204,.1); padding: 3px 10px; border-radius: 20px; border: 1px solid var(--bord2); }
     .store-name { font-size: 15px; font-weight: 700; }
-    .store-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .store-body { padding: 20px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); grid-auto-rows:minmax(0,auto); gap: 16px; }
+    .store-body > * { min-width:0; }
+    .store-name,.field-value { overflow-wrap:anywhere; }
     @media (max-width: 640px) { .store-body { grid-template-columns: 1fr; } }
 
     .field { margin-bottom: 14px; }

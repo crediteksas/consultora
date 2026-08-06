@@ -1,13 +1,18 @@
+import { createCorporateIncident } from './incidents.mjs';
+
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
 const CURRENT_DOCUMENT = '/creditek/agentes/index.html';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
+  '/creditek/agentes/aura-text-client.mjs',
   '/creditek/agentes/aura-incident-report.mjs',
   '/creditek/agentes/aura-module-config.js',
   '/creditek/agentes/aura-agent-bootstrap.js',
   '/creditek/agentes/aura-auth-otp-20260802.mjs',
   '/creditek/agentes/creditek-agente-respuestas.html',
+  '/creditek/agentes/creditek-agente-redes.html',
+  '/creditek/agentes/creditek-agente-calendario.html',
   '/creditek/agentes/sofia-aura-20260803.html',
   '/creditek/agentes/sofia-aura-20260803b.html',
   '/creditek/agentes/agente3-meta-ads.html',
@@ -23,6 +28,9 @@ const CANONICAL_DOCUMENTS = new Set([
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
+    if (pathname === '/creditek/agentes/api/incidents') {
+      return createCorporateIncident(request, env);
+    }
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';

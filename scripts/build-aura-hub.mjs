@@ -13,6 +13,7 @@ for (const file of [
   'aura-incident-report.mjs',
   'aura-context-help.js',
   'aura-image-client.mjs',
+  'aura-text-client.mjs',
   'aura-module-config.js',
   'aura-agent-bootstrap.js',
   'creditek-agente-redes.html',

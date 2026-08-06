@@ -10,7 +10,7 @@ const readOrEmpty = relative => read(relative).catch(() => '');
 const officialModules = [
   ['sofia', 'Sofía', '/creditek/agentes/creditek-agente-respuestas.html'],
   ['agent-1', 'Agente 1 · Piezas comerciales', '/creditek/agentes/creditek-agente-redes.html'],
-  ['agent-3', 'Agente 3 · Publicación y métricas', '/creditek/agentes/agente3-meta-ads.html'],
+  ['agent-3', 'Meta Ads Intelligence', '/creditek/agentes/agente3-meta-ads.html'],
   ['agent-4', 'Calendario de contenido', '/creditek/agentes/creditek-agente-calendario.html'],
 ];
 
@@ -95,6 +95,7 @@ test('los encabezados internos conservan los nombres funcionales aprobados', asy
     read('creditek/agentes/creditek-agente-calendario.html'),
   ]);
   assert.match(agent1, /Agente 1 · Piezas comerciales/);
-  assert.match(calendar, /src="logos\/creditek_logo_corregido_alta\.png"/);
-  assert.doesNotMatch(calendar, /src="\/logos\//);
+  assert.match(calendar, /Calendario de contenido/);
+  assert.doesNotMatch(calendar, />\s*Agente 4\s*</);
+  assert.doesNotMatch(calendar, /apiModal|ANTHROPIC_API_KEY/);
 });

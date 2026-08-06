@@ -35,7 +35,7 @@ test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de 
   assert.match(hub, /\.sidebar-brand-logo\{[^}]*border:1px solid #E2E8F0[^}]*border-radius:6px/);
   assert.doesNotMatch(hub, /id="aura-user-(?:initials|name|role)"/);
   assert.doesNotMatch(hub, /Propietario AURA/);
-  for (const name of ['Agente 1 · Piezas comerciales', 'Sofía', 'Agente 3 · Publicación y métricas', 'Calendario de contenido']) {
+  for (const name of ['Agente 1 · Piezas comerciales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {
     assert.match(hub, new RegExp(`>${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<`, 'i'));
   }
   assert.doesNotMatch(hub, />\s*Reportes\s*</i);

@@ -18,7 +18,7 @@
     }),
     agent3: Object.freeze({
       id: 'agent-3',
-      name: 'Agente 3 · Publicación y métricas',
+      name: 'Meta Ads Intelligence',
       path: '/creditek/agentes/agente3-meta-ads.html',
       appId: 'meta_ads',
       permission: 'meta_ads.read',

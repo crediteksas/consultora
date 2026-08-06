@@ -324,9 +324,6 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* ── MODAL API KEY ─────────────────────────────────────────────── */
-#apiModal{position:fixed;inset:0;background:rgba(11,30,61,.4);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
-#apiModal.hidden{display:none}
 .m-card{background:#FFFFFF;border:1px solid rgba(11,30,61,.12);border-radius:16px;padding:36px 32px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px;box-shadow:0 24px 64px rgba(11,30,61,.12)}
 .m-logo{display:flex;align-items:center;gap:12px}
 .m-logo img{height:34px;object-fit:contain}
@@ -519,30 +516,6 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
 <nav class="breadcrumb"><a href="index.html">AURA</a><span class="sep">›</span><span class="cur">Agente 1 · Piezas comerciales</span></nav>
 <div id="toast" class="toast"></div>
 
-<!-- ══ MODAL API KEY ══════════════════════════════════════════════ -->
-<div id="apiModal">
-  <div class="m-card">
-    <div class="m-logo">
-      <img style="display:none" src="logo.png" alt="Creditek">
-      <span class="m-logo-name" style="display:none"></span>
-    </div>
-    <div>
-      <div class="m-title">Ingresa tu API Key de Anthropic</div>
-      <div class="m-desc">Para usar este agente necesitas una API key de Anthropic. Se guarda de forma segura en este navegador y se comparte entre todos los agentes Creditek.</div>
-    </div>
-    <div class="m-field">
-      <input class="m-input" id="modalKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off"
-        onkeydown="if(event.key==='Enter')submitKey()">
-      <button class="m-eye" id="modalEye" onclick="toggleModalKey()">Ver</button>
-    </div>
-    <div class="m-error" id="modalError">La key debe comenzar con <strong>sk-ant-</strong>. Verifica e intenta de nuevo.</div>
-    <button class="m-submit" onclick="submitKey()">Continuar →</button>
-    <div class="m-note">
-      Obtén tu key en <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a><br>
-      Esta key nunca se sube al repositorio ni se comparte.
-    </div>
-  </div>
-</div>
 <div id="app" data-aura-agent-root>
 <div class="shell agent-workspace">
 <aside class="agent-workspace-panel" id="agent-form-panel">
@@ -755,8 +728,8 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   <div class="sidebar-section" style="padding-bottom:10px">
     <div class="sidebar-label">Servicios de IA</div>
     <div class="key-status">
-      <span style="font-size:12px;color:var(--text2)"><span class="key-dot"></span>Anthropic — configurada esta sesión</span>
-      <button onclick="abrirModal()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Cambiar</button>
+      <span style="font-size:12px;color:var(--text2)"><span class="key-dot"></span>Texto seguro</span>
+      <span style="color:#059669;font-size:11px;font-weight:700">Backend AURA</span>
     </div>
     <div class="key-status" style="padding:3px 3px 0">
       <span style="font-size:12px;color:var(--text2)">
@@ -971,6 +944,22 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
 <script>
 function showToast(msg, color='#22c55e'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 
+async function requestAuraTextCompat(options = {}) {
+  const legacy = JSON.parse(options.body || '{}');
+  const prompt = (legacy.messages || []).map(message => String(message?.content || '')).join('\n\n');
+  const { requestAuraText } = await import('./aura-text-client.mjs');
+  const result = await requestAuraText({
+    prompt,
+    system: legacy.system || '',
+    maxTokens: legacy.max_tokens,
+    temperature: legacy.temperature,
+  });
+  return new Response(JSON.stringify({ content: [{ type: 'text', text: result.text }] }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 // ── Cola batch (lote) recibida desde el Calendario (Agente 4) ──────
 let batchQueue = null; // { items:[{copy,tipo,producto,ciudad,titulo}], idx }
 
@@ -1143,8 +1132,6 @@ CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garan
 
 // ── Generar más titulares con Claude ────────────────────────────
 async function generarMasTitulares() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) { abrirModal(); return; }
   const btn = document.getElementById('mas-titulares-btn');
   btn.disabled = true; btn.textContent = '...';
   const modo = document.getElementById('modo').value;
@@ -1194,9 +1181,8 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
 5. {titular}
 6. {titular}`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:300,
@@ -1228,15 +1214,12 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
 
 // ── Corregir mensaje secundario con Claude antes de generar imagen ──
 async function corregirMensajeSecundario() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return;
   const el = document.getElementById('img-mensaje');
   if (!el || !el.value.trim()) return;
   const texto = el.value.trim();
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:150,messages:[{role:'user',content:'Corrige este texto en español colombiano. Aplica: primera letra en mayúscula, tildes correctas, corrige errores gramaticales y de redacción. Devuelve SOLO el texto corregido, sin explicaciones ni comillas:\n\n' + texto}]})
     });
     const data = await res.json();
@@ -1249,41 +1232,11 @@ async function corregirMensajeSecundario() {
   } catch(e) { /* silencioso — no bloquear generación */ }
 }
 
-// ── Modal API Key ───────────────────────────────────────────────
-function toggleModalKey() {
-  const el = document.getElementById('modalKey');
-  const btn = document.getElementById('modalEye');
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Ver';
-}
-function submitKey() {
-  const val = document.getElementById('modalKey').value.trim();
-  const err = document.getElementById('modalError');
-  if (!val.startsWith('sk-ant-')) { err.style.display = 'block'; document.getElementById('modalKey').focus(); return; }
-  err.style.display = 'none';
-  localStorage.setItem('ck_api_key', val);
-  sessionStorage.setItem('ck_api_key', val);
-  document.getElementById('apiModal').classList.add('hidden');
-}
-function abrirModal() {
-  document.getElementById('modalKey').value = '';
-  document.getElementById('modalError').style.display = 'none';
-  document.getElementById('apiModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modalKey').focus(), 80);
-}
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('canva-brief-panel').style.display = 'none';
   document.getElementById('canva-btn').classList.remove('active');
   populateCiudadDropdown();
   renderRefStatus();
-  const stored = localStorage.getItem('ck_api_key');
-  if (stored) sessionStorage.setItem('ck_api_key', stored);
-  if (!sessionStorage.getItem('ck_api_key')) {
-    setTimeout(() => document.getElementById('modalKey').focus(), 80);
-  } else {
-    document.getElementById('apiModal').classList.add('hidden');
-  }
   updateImgKeyStatus();
 
   // ── Precarga desde Calendario: cola batch (lote) o pieza única ───
@@ -1555,11 +1508,6 @@ function toggleKey(inputId, btn) {
 }
 
 async function generarContenido() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) {
-    abrirModal();
-    return;
-  }
   // FIX v12 09-jul-2026: variable de estilo activo a nivel de función — antes
   // "estilo" solo existía dentro del IIFE que arma el bloque de tono del prompt
   // (más abajo), un scope que se cierra antes de llegar al fetch. Sin esto,
@@ -1836,14 +1784,8 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
 3. ...`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await requestAuraTextCompat({
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': sessionStorage.getItem('ck_api_key') || '',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 6000,
@@ -1858,7 +1800,7 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
     });
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      const msg = response.status === 401 ? 'API key inválida. Presiona "Cambiar key" y verifica.' :
+      const msg = response.status === 401 ? 'Tu sesión AURA venció. Inicia sesión nuevamente.' :
                   response.status === 429 ? 'Límite de uso alcanzado. Espera un momento e intenta de nuevo.' :
                   errData.error?.message || `Error ${response.status}`;
       throw new Error(msg);
@@ -2074,13 +2016,10 @@ async function ajustarCopy(btn, platform, maxChars) {
   const contentEl = card.querySelector('.pieza-content');
   const copyBtn = card.querySelector('.copy-btn');
   const originalText = contentEl.innerText.trim();
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey) { showToast('Falta la API key', '#ef4444'); return; }
   btn.disabled = true; btn.textContent = '...';
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await requestAuraTextCompat({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400, messages: [{ role: 'user', content: `Acorta este copy de ${platform} para que tenga MÁXIMO ${maxChars} caracteres. Mantén el gancho, el beneficio principal y el CTA. Conserva el tono informal y colombiano. No agregues nada nuevo. Responde SOLO con el copy acortado, sin explicaciones ni comillas.\n\nCopy original:\n${originalText}` }] })
     });
     const data = await response.json();
@@ -2477,16 +2416,13 @@ function getDetalleDelDia(estilo) {
   return banco[idx];
 }
 
-// FIX v13 12-jul-2026: completa el procesador de un modelo cuando el catálogo
-// (STATIC del Worker o scraping en vivo) no lo tiene. Usa la misma API key
-// de Claude ya configurada en la interfaz (nunca la del Worker — este Worker
-// no tiene ni necesita su propia ANTHROPIC_API_KEY). Si Claude tampoco tiene
-// certeza, devuelve null — nunca se muestra un valor inventado.
-async function obtenerProcesadorConIA(nombreModelo, apiKey) {
+// Completa el procesador de un modelo cuando el catálogo no lo tiene mediante
+// el backend autenticado de AURA. Si el servicio no tiene certeza, devuelve
+// null: nunca se muestra un valor inventado.
+async function obtenerProcesadorConIA(nombreModelo) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 30,
@@ -2699,22 +2635,17 @@ async function buildImgPrompt() {
     // FIX v13 12-jul-2026: si el usuario pidió el badge de "Procesador" y el
     // modelo encontrado en el catálogo no lo tiene (caso confirmado: ninguno
     // de los 39 modelos de STATIC en el Worker tenía este campo), completar
-    // con una consulta ligera a Claude en vez de dejarlo vacío o dejar que la
-    // IA de imagen lo invente. Reutiliza la misma API key de Claude que ya
-    // está configurada en esta interfaz (sessionStorage) — el Worker nunca
-    // tuvo ni necesita su propia ANTHROPIC_API_KEY para esto. Se cachea en
+    // con una consulta ligera al backend en vez de dejarlo vacío o dejar que
+    // la IA de imagen lo invente. Se cachea en
     // el mismo localStorage.ck_referencias para no repetir la llamada la
     // próxima vez que se genere con el mismo modelo.
     const pideProcesador = checkedSpecs.some(s => s.id === 'spec-chip');
     if (pideProcesador && foundModelo && !foundSpecs.procesador) {
-      const apiKeyClaude = sessionStorage.getItem('ck_api_key') || '';
-      if (apiKeyClaude.startsWith('sk-ant-')) {
-        const procesadorIA = await obtenerProcesadorConIA(foundModelo.nombre, apiKeyClaude);
-        if (procesadorIA) {
-          foundModelo.specs = { ...(foundModelo.specs || {}), procesador: procesadorIA };
-          foundSpecs = foundModelo.specs;
-          localStorage.setItem('ck_referencias', JSON.stringify(storedRefs));
-        }
+      const procesadorIA = await obtenerProcesadorConIA(foundModelo.nombre);
+      if (procesadorIA) {
+        foundModelo.specs = { ...(foundModelo.specs || {}), procesador: procesadorIA };
+        foundSpecs = foundModelo.specs;
+        localStorage.setItem('ck_referencias', JSON.stringify(storedRefs));
       }
     }
   }
@@ -2927,9 +2858,6 @@ function buildImgPromptGeminiFallback() {
 // template estático de Fix 3 (buildImgPromptGeminiFallback) — nunca bloquea
 // la generación.
 async function buildImgPromptGemini() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return buildImgPromptGeminiFallback();
-
   const producto = document.getElementById('producto').value.trim() || 'smartphone';
   const modo     = document.getElementById('modo')?.value || 'credito';
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
@@ -2998,9 +2926,8 @@ ${jornadaHora  ? `Horario: ${jornadaHora}` : ''}
 Responde SOLO con el prompt final. Sin explicaciones, sin markdown.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens: 400, messages:[{role:'user', content: instruccion}]})
     });
     const data = await res.json();
@@ -3043,9 +2970,6 @@ async function buildImgPromptGeminiFotoLimpia() {
     return `Fotografía publicitaria realista de ${producto}, en ${colorDesc}. El producto se ve grande y bien iluminado, como en una vitrina de tienda. Composición fotográfica limpia, comercial, sin ningún texto, letra o logo en la imagen — solo la escena. Usar todo el lienzo de borde a borde, sin zonas vacías.`;
   };
 
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return fallbackEstatico();
-
   const instruccion = `Eres un Director de Arte experto en prompt engineering para modelos de difusión de Google (Imagen 4 / Gemini). Tu objetivo es describir SOLO una fotografía de escena — SIN NINGÚN TEXTO, SIN LOGO — en UN SOLO párrafo narrativo en español de máximo 60 palabras. El texto y el logo se agregan después con otro motor; tu escena debe quedar completamente limpia para eso.
 
 RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
@@ -3067,9 +2991,8 @@ Estilo/tono: ${estiloDesc}
 Responde SOLO con el prompt final. Sin explicaciones, sin markdown.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens: 300, messages:[{role:'user', content: instruccion}]})
     });
     const data = await res.json();

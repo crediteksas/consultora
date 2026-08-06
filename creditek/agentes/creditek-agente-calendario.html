@@ -162,9 +162,6 @@ select option{background:var(--bg2)}
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bord);border-radius:2px}
 
-/* ── MODAL API KEY ─────────────────────────────────────────────── */
-#apiModal{position:fixed;inset:0;background:var(--ctk-color-overlay);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
-#apiModal.hidden{display:none}
 .m-card{background:var(--ctk-color-surface);border:1px solid var(--ctk-color-border);border-radius:var(--ctk-radius-xl);padding:36px 32px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px;box-shadow:var(--ctk-shadow-4)}
 .m-logo{display:flex;align-items:center;gap:12px}
 .m-logo img{height:34px;object-fit:contain}
@@ -223,33 +220,9 @@ select option{background:var(--bg2)}
 </style>
 </head>
 <body class="kora-product-page" data-kora-agent-id="agent-4">
-<nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Calendario</span></nav>
+<nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Calendario de contenido</span></nav>
 <div id="toast" class="toast"></div>
 
-<!-- ══ MODAL API KEY ══════════════════════════════════════════════ -->
-<div id="apiModal">
-  <div class="m-card">
-    <div class="m-logo">
-      <img src="logos/creditek_logo_corregido_alta.png" alt="Creditek">
-      <span class="m-logo-name">CREDITEK</span>
-    </div>
-    <div>
-      <div class="m-title">Ingresa tu API Key de Anthropic</div>
-      <div class="m-desc">Para usar este agente necesitas una API key de Anthropic. Se guarda de forma segura en este navegador y se comparte entre todos los agentes Creditek.</div>
-    </div>
-    <div class="m-field">
-      <input class="m-input" id="modalKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off"
-        onkeydown="if(event.key==='Enter')submitKey()">
-      <button class="m-eye" id="modalEye" onclick="toggleModalKey()">Ver</button>
-    </div>
-    <div class="m-error" id="modalError">La key debe comenzar con <strong>sk-ant-</strong>. Verifica e intenta de nuevo.</div>
-    <button class="m-submit" onclick="submitKey()">Continuar →</button>
-    <div class="m-note">
-      Obtén tu key en <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a><br>
-      Esta key nunca se sube al repositorio ni se comparte.
-    </div>
-  </div>
-</div>
 <div id="app" data-aura-agent-root>
 <div class="shell agent4-workspace-shell">
 
@@ -324,10 +297,10 @@ select option{background:var(--bg2)}
   </div>
 
   <div class="sec" style="padding-bottom:10px">
-    <span class="lbl">API Key</span>
+    <span class="lbl">Servicio de IA</span>
     <div class="key-status">
-      <span style="font-size:12px;color:var(--txt2)"><span class="key-dot"></span>Configurada esta sesión</span>
-      <button onclick="abrirModal()" style="background:none;border:none;color:var(--txt3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Cambiar</button>
+      <span style="font-size:12px;color:var(--txt2)"><span class="key-dot"></span>Texto seguro</span>
+      <span style="color:#059669;font-size:11px;font-weight:700">Backend AURA</span>
     </div>
   </div>
 
@@ -346,7 +319,7 @@ select option{background:var(--bg2)}
 <div class="agent4-workspace">
   <div class="agent4-content-toolbar">
     <div>
-      <div class="ttl" id="topTitle">Calendario Mensual de Contenido</div>
+      <div class="ttl" id="topTitle">Calendario de contenido</div>
       <div class="tsub" id="topSub">Configura la tienda y el mes, luego genera</div>
     </div>
     <div class="topbar-actions">
@@ -400,11 +373,25 @@ select option{background:var(--bg2)}
 <script>
 function showToast(msg, color='#22c55e'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 
-const MODEL = 'claude-sonnet-4-6';
+async function requestAuraTextCompat(options = {}) {
+  const legacy = JSON.parse(options.body || '{}');
+  const prompt = (legacy.messages || []).map(message => String(message?.content || '')).join('\n\n');
+  const { requestAuraText } = await import('./aura-text-client.mjs');
+  const result = await requestAuraText({
+    prompt,
+    system: legacy.system || '',
+    maxTokens: legacy.max_tokens,
+    temperature: legacy.temperature,
+  });
+  return new Response(JSON.stringify({ content: [{ type: 'text', text: result.text }] }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 const SUPABASE_URL = 'https://ditiwpndvmyuqcagupea.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
 const MESES_NUM = { Enero:'01', Febrero:'02', Marzo:'03', Abril:'04', Mayo:'05', Junio:'06', Julio:'07', Agosto:'08', Septiembre:'09', Octubre:'10', Noviembre:'11', Diciembre:'12' };
-function getApiKey() { return sessionStorage.getItem('ck_api_key') || ''; }
 
 // FIX v32, 13-jul-2026 — Fase 1: referencia única al calendario actualmente
 // en pantalla (dias/ciudad/mes/anio). Antes las acciones (copiar, abrirDiseno)
@@ -413,39 +400,6 @@ function getApiKey() { return sessionStorage.getItem('ck_api_key') || ''; }
 // localStorage (guardarCalendario), para que el estado/texto sobrevivan un
 // refresh de página sin tener que regenerar el calendario completo.
 let calendarioActual = null;
-
-// ── Modal API Key ───────────────────────────────────────────────
-function toggleModalKey() {
-  const el = document.getElementById('modalKey');
-  const btn = document.getElementById('modalEye');
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Ver';
-}
-function submitKey() {
-  const val = document.getElementById('modalKey').value.trim();
-  const err = document.getElementById('modalError');
-  if (!val.startsWith('sk-ant-')) { err.style.display = 'block'; document.getElementById('modalKey').focus(); return; }
-  err.style.display = 'none';
-  localStorage.setItem('ck_api_key', val);
-  sessionStorage.setItem('ck_api_key', val);
-  document.getElementById('apiModal').classList.add('hidden');
-}
-function abrirModal() {
-  document.getElementById('modalKey').value = '';
-  document.getElementById('modalError').style.display = 'none';
-  document.getElementById('apiModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modalKey').focus(), 80);
-}
-window.addEventListener('DOMContentLoaded', () => {
-  const stored = localStorage.getItem('ck_api_key');
-  if (stored) sessionStorage.setItem('ck_api_key', stored);
-  if (!sessionStorage.getItem('ck_api_key')) {
-    setTimeout(() => document.getElementById('modalKey').focus(), 80);
-  } else {
-    document.getElementById('apiModal').classList.add('hidden');
-  }
-});
 
 // ── Plataformas toggle ──────────────────────────────────────────
 document.querySelectorAll('.pbtn').forEach(b => {
@@ -660,10 +614,6 @@ async function generar() {
   const diaInicio = quincena === '2' ? 16 : 1;
   const diaFin    = quincena === '2' ? ultimoDiaMes : 15;
 
-  if (!getApiKey().startsWith('sk-ant-')) {
-    abrirModal();
-    return;
-  }
   if (!plats.length) { alert('Selecciona al menos una plataforma.'); return; }
 
   const btn = document.getElementById('genBtn');
@@ -782,16 +732,9 @@ Varía los productos: Samsung, Xiaomi, Oppo, Honor, Infinix, Motorola, TCL, parl
 NUNCA uses "bacano".`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await requestAuraTextCompat({
       method: 'POST',
-      headers: {
-        'x-api-key': getApiKey(),
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json'
-      },
       body: JSON.stringify({
-        model: MODEL,
         max_tokens: 16000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
@@ -800,7 +743,7 @@ NUNCA uses "bacano".`;
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      const msg = res.status === 401 ? 'API key inválida. Presiona "Cambiar key" y verifica.' :
+      const msg = res.status === 401 ? 'Tu sesión AURA venció. Inicia sesión nuevamente.' :
                   res.status === 429 ? 'Límite de uso alcanzado. Espera un momento e intenta de nuevo.' :
                   errData.error?.message || `Error ${res.status}`;
       throw new Error(msg);
@@ -1298,7 +1241,7 @@ function nuevoCalendario() {
   document.getElementById('nuevoCalBtn').style.display = 'none';
   document.getElementById('printBtn').style.display = 'none';
 
-  document.getElementById('topTitle').textContent = 'Calendario Mensual de Contenido';
+  document.getElementById('topTitle').textContent = 'Calendario de contenido';
   document.getElementById('topSub').textContent = 'Configura la tienda y el mes, luego genera';
 
   showToast('Listo para generar un calendario nuevo — el anterior sigue guardado en Supabase');

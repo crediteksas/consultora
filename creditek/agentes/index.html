@@ -291,6 +291,9 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .config-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .incident-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px;padding:11px;border:1px solid var(--border2);border-radius:8px;background:#F8FAFC;color:var(--text2);font-size:10px}
 .incident-preview{margin-top:12px;min-height:120px;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.5 var(--mono);background:#F8FAFC;border:1px solid var(--border2);border-radius:8px;padding:12px;color:var(--text1)}
+.incident-launch{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--border2);border-radius:9px;background:#fff;color:var(--navy);cursor:pointer}
+.incident-launch:hover,.incident-launch:focus-visible{border-color:var(--turq);color:var(--turq);outline:none}
+.incident-launch svg{width:17px;height:17px}
 .config-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);margin-top:8px}
 .config-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
 .config-dot.ok{background:var(--green)}
@@ -422,8 +425,8 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('/creditek/agentes/creditek-agente-respuestas.html','Sofía',this,'sofia')">
       <span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Sofía</span>
     </a>
-    <a class="nav-item" data-aura-app="meta_ads" onclick="openModule('/creditek/agentes/agente3-meta-ads.html','Agente 3 · Publicación y métricas',this,'meta_ads')">
-      <span class="nav-icon"><i data-lucide="megaphone"></i></span><span class="nav-label">Agente 3 · Publicación y métricas</span>
+    <a class="nav-item" data-aura-app="meta_ads" onclick="openModule('/creditek/agentes/agente3-meta-ads.html','Meta Ads Intelligence',this,'meta_ads')">
+      <span class="nav-icon"><i data-lucide="megaphone"></i></span><span class="nav-label">Meta Ads Intelligence</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('/creditek/agentes/creditek-agente-calendario.html','Calendario de contenido',this,'sofia')">
       <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
@@ -460,6 +463,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="topbar-title" id="topbar-title">Panel general</span>
       <span class="topbar-breadcrumb" id="topbar-breadcrumb">Ecosistema AURA</span>
       <div class="topbar-right">
+        <button class="incident-launch" type="button" title="Centro de incidencias" aria-label="Centro de incidencias" onclick="showSection('configuracion',null)"><i data-lucide="bug"></i></button>
         <div class="status-dot"></div>
         <span class="status-text">Sistema activo</span>
         <span class="topbar-date" id="topbar-date"></span>
@@ -545,12 +549,12 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
           </div>
 
-          <div class="module-card" tabindex="0" role="button" data-aura-help="Consulta métricas, campañas y alertas de publicidad de Meta Ads." data-aura-app="meta_ads" onclick="openModuleFromCard('/creditek/agentes/agente3-meta-ads.html','Agente 3 · Publicación y métricas','meta_ads')">
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Consulta métricas, campañas y alertas de publicidad de Meta Ads." data-aura-app="meta_ads" onclick="openModuleFromCard('/creditek/agentes/agente3-meta-ads.html','Meta Ads Intelligence','meta_ads')">
             <div class="module-top">
               <div class="module-icon"><i data-lucide="megaphone"></i></div>
               <div class="module-status active">● Activo</div>
             </div>
-            <div class="module-name">Agente 3 · Publicación y métricas</div>
+            <div class="module-name">Meta Ads Intelligence</div>
             <div class="module-desc">Dashboard de pauta en tiempo real. 10 KPIs, análisis con Claude IA, ranking de campañas, alertas y tendencia de 4 semanas.</div>
             <div class="module-meta">
               <span class="module-tag">Publicación y métricas</span>
@@ -612,12 +616,35 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             <div class="config-title">Reportar un error</div>
             <div class="config-desc">El reporte incluye contexto técnico útil, pero excluye credenciales y datos sensibles.</div>
             <div class="config-field">
+              <label for="incident-title">Título</label>
+              <input id="incident-title" maxlength="160" placeholder="Resume el problema en una frase">
+            </div>
+            <div class="config-field">
+              <label for="incident-type">Tipo</label>
+              <select id="incident-type">
+                <option value="error">Error</option>
+                <option value="regresion">Regresión</option>
+                <option value="modificacion">Modificación</option>
+                <option value="mejora">Mejora</option>
+                <option value="seguridad">Seguridad</option>
+              </select>
+            </div>
+            <div class="config-field">
+              <label for="incident-priority">Prioridad</label>
+              <select id="incident-priority">
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+                <option value="alta">Alta</option>
+                <option value="critica">Crítica</option>
+              </select>
+            </div>
+            <div class="config-field">
               <label for="incident-module">Módulo afectado</label>
               <select id="incident-module">
                 <option>Panel general</option>
                 <option>Agente 1 · Piezas comerciales</option>
                 <option>Sofía</option>
-                <option>Agente 3 · Publicación y métricas</option>
+                <option>Meta Ads Intelligence</option>
                 <option>Calendario de contenido</option>
                 <option>Google Business</option>
                 <option>Portal B2B</option>
@@ -638,6 +665,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <div class="incident-meta" id="incident-meta" aria-label="Contexto técnico del incidente"></div>
             <div class="config-actions">
+              <button class="config-save" type="button" id="incident-submit" onclick="submitCorporateIncident()">Enviar a KORA</button>
               <button class="config-save" type="button" onclick="generateIncidentReport()">Generar reporte</button>
               <button class="config-save" type="button" onclick="copyIncidentReport()">Copiar para soporte</button>
               <button class="config-save" type="button" onclick="downloadIncidentReport()">Descargar</button>
@@ -1015,7 +1043,10 @@ window.addEventListener('message', event => {
 
 // ── Centro de incidencias ────────────────────────────────────────
 function incidentContext() {
-  return technicalContext({ user: auraAccess?.display_name || auraAccess?.email || 'Usuario AURA' });
+  return technicalContext({
+    route: activeModule?.url || location.pathname,
+    user: auraAccess?.display_name || auraAccess?.email || 'Usuario AURA',
+  });
 }
 
 function updateIncidentMeta() {
@@ -1049,6 +1080,70 @@ function generateIncidentReport() {
   document.getElementById('incident-preview').textContent = incidentReport;
   showToast('Reporte seguro generado.');
   return incidentReport;
+}
+
+function readEvidence(file) {
+  if (!file) return Promise.resolve(null);
+  if (file.size > 10 * 1024 * 1024) return Promise.reject(new Error('La evidencia supera el límite de 10 MB.'));
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, data: reader.result });
+    reader.onerror = () => reject(new Error('No fue posible leer la evidencia.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitCorporateIncident() {
+  const title = document.getElementById('incident-title').value.trim();
+  const description = document.getElementById('incident-error').value.trim();
+  const expected = document.getElementById('incident-expected').value.trim();
+  if (title.length < 5 || description.length < 10 || expected.length < 5) {
+    showToast('Completa título, problema y resultado esperado.', '#EF4444');
+    return;
+  }
+  const button = document.getElementById('incident-submit');
+  button.disabled = true;
+  button.textContent = 'Enviando…';
+  try {
+    const token = await auraAuth.token();
+    if (!token) throw new Error('La sesión AURA venció. Inicia sesión nuevamente.');
+    const context = incidentContext();
+    const evidence = await readEvidence(document.getElementById('incident-evidence').files[0]);
+    const response = await fetch('/creditek/agentes/api/incidents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        local_incident_id: crypto.randomUUID(),
+        title,
+        incident_type: document.getElementById('incident-type').value,
+        priority: document.getElementById('incident-priority').value,
+        module: document.getElementById('incident-module').value,
+        description,
+        expected,
+        additional_information: 'Origen corporativo: AURA',
+        page_name: activeModule?.title || document.getElementById('topbar-title').textContent,
+        page_url: activeModule?.url ? new URL(activeModule.url, location.origin).href : location.href,
+        aura_version: context.version,
+        deployment_version: window.AURA_BUILD?.deployment || window.AURA_BUILD?.commit || '',
+        browser: context.navegador,
+        operating_system: navigator.platform || '',
+        screen_resolution: `${screen.width} × ${screen.height}`,
+        viewport: context.viewport,
+        connection_status: navigator.onLine ? 'online' : 'offline',
+        console_errors: auraTechnicalErrors.slice(-10),
+        evidence,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.incident_code) throw new Error(data.error || 'No fue posible registrar la incidencia.');
+    document.getElementById('incident-preview').textContent = `Incidencia ${data.incident_code} registrada en KORA y dejada abierta.`;
+    showToast(`Incidencia ${data.incident_code} registrada.`);
+  } catch (error) {
+    showToast(sanitizeIncidentText(error.message), '#EF4444');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Enviar a KORA';
+  }
 }
 
 async function copyIncidentReport() {
@@ -1095,7 +1190,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
-  generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
+  generateIncidentReport, copyIncidentReport, downloadIncidentReport, submitCorporateIncident, showToast,
 });
 </script>
 </body>

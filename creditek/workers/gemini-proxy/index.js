@@ -31,6 +31,7 @@
  */
 
 import { authenticateAura } from './auth.mjs';
+import { generateAuraText } from './text.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': 'https://registro.crediteksas.com',
@@ -705,7 +706,7 @@ if (path === '/test-fetch') {
       });
     }
 
-    if (path !== '/generate' && path !== '/openai/responses') return err('Ruta no encontrada', 404);
+    if (path !== '/generate' && path !== '/openai/responses' && path !== '/generate-text') return err('Ruta no encontrada', 404);
     if (request.method !== 'POST') return err('Solo POST', 405);
 
     if (!await authenticateAura(request, env)) return err('Autenticación AURA requerida', 401);
@@ -715,6 +716,7 @@ if (path === '/test-fetch') {
     catch { return err('JSON inválido', 400); }
 
     if (path === '/openai/responses') return llamarOpenAI_(env, body);
+    if (path === '/generate-text') return generateAuraText(env, body);
 
     const { prompt, aspectRatio = '1:1', engine, imageUrl, imageBase64, imageMimeType } = body;
     if (!prompt) return err('Campo "prompt" requerido', 400);

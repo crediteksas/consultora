@@ -72,7 +72,7 @@ test('la configuración compartida conserva únicamente los cuatro agentes autor
     '/creditek/agentes/agente3-meta-ads.html',
     '/creditek/agentes/creditek-agente-calendario.html',
   ]) assert.ok(config.includes(destination), `falta ${destination}`);
-  for (const name of ['Agente 1 · Piezas comerciales', 'Sofía', 'Agente 3 · Publicación y métricas', 'Calendario de contenido']) {
+  for (const name of ['Agente 1 · Piezas comerciales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {
     assert.ok(config.includes(name), `falta ${name}`);
   }
   assert.doesNotMatch(config, /KORA|\/creditek\/erp\/|Reportes/);

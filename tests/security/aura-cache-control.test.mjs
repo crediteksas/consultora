@@ -31,6 +31,11 @@ test('el documento principal de AURA siempre responde no-store', async () => {
   assert.equal(await response.text(), html);
 });
 
+test('Redes Sociales no conserva una versión anterior del publicador', async () => {
+  const worker = await read('creditek/workers/aura-hub/src/index.js');
+  assert.match(worker, /'\/creditek\/agentes\/creditek-agente-redes\.html'/);
+});
+
 test('ninguna ruta o fallback de AURA sirve el HTML histórico', async () => {
   const { default: worker } = await import('../../creditek/workers/aura-hub/src/index.js');
   const env = { ASSETS: { fetch: async () => new Response('<h1>AURA</h1>', { headers: { 'content-type': 'text/html' } }) } };

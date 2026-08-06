@@ -1,4 +1,4 @@
-import { appendFile, cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { appendFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -20,6 +20,16 @@ for (const file of [
 ]) {
   await cp(path.join(root, 'creditek', 'agentes', file), path.join(agentsOutput, file));
 }
+const redesHtmlPath = path.join(agentsOutput, 'creditek-agente-redes.html');
+const publicadorSource = await readFile(path.join(root, 'creditek', 'agentes', 'redes-publicador.js'), 'utf8');
+const redesHtml = await readFile(redesHtmlPath, 'utf8');
+await writeFile(
+  redesHtmlPath,
+  redesHtml.replace(
+    /<script src="redes-publicador\.js\?v=[^"]+"><\/script>/,
+    `<script>\n${publicadorSource}\n</script>`,
+  ),
+);
 await cp(
   path.join(root, 'creditek', 'agentes', 'index.html'),
   path.join(agentsOutput, 'aura-otp-20260802.html'),

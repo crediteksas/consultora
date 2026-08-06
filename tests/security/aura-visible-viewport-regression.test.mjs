@@ -4,9 +4,10 @@ import { readFile } from 'node:fs/promises';
 
 const hub = await readFile(new URL('../../creditek/agentes/index.html', import.meta.url), 'utf8');
 const sofia = await readFile(new URL('../../creditek/agentes/creditek-agente-respuestas.html', import.meta.url), 'utf8');
+const bootstrap = await readFile(new URL('../../creditek/agentes/aura-agent-bootstrap.js', import.meta.url), 'utf8');
 
 test('Sofía se revela dentro del iframe de AURA', () => {
-  assert.match(sofia, /window\.self\s*!==\s*window\.top/);
+  assert.match(bootstrap, /global\.self\s*!==\s*global\.top/);
   assert.match(sofia, /aura-embedded/);
   assert.match(sofia, /html\.aura-embedded\s+#app\s*\{[^}]*display:flex!important/);
 });

@@ -11,7 +11,8 @@
  *
  * Fallback: GEMINI_API_KEY → AI Studio (Imagen 3 / Gemini)
  *
- * POST /generate  { prompt, aspectRatio?, apiKey? }
+ * POST /generate  { prompt, aspectRatio? }
+ * POST /openai/responses  { model, input, tools }
  * GET  /health
  * GET  /.well-known/openid-configuration   ← requerido por WIF
  * GET  /.well-known/jwks.json              ← requerido por WIF
@@ -20,6 +21,8 @@
  *   GCP_WIF_PRIVATE_KEY  — clave privada RSA del Worker (firma el JWT)
  *   GCP_WIF_PUBLIC_JWK   — JWK de la clave pública (JSON string)
  *   GEMINI_API_KEY       — API key AI Studio (fallback)
+ *   SUPABASE_ANON_KEY    — clave pública para validar la sesión AURA
+ *   OPENAI_API_KEY       — clave servidor-servidor de OpenAI
  *
  * Vars (wrangler.toml):
  *   GCP_WIF_AUDIENCE     — recurso completo del provider WIF en GCP
@@ -27,10 +30,12 @@
  *   GCP_SA_EMAIL         — SA con roles/aiplatform.user
  */
 
+import { authenticateAura } from './auth.mjs';
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://registro.crediteksas.com',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Worker-Secret',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
 };
 
 // Debe coincidir EXACTAMENTE con "allowed-audiences" configurado en el provider WIF.
@@ -47,6 +52,45 @@ const WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
 // Token cache — persiste dentro del mismo isolate
 let _saToken = null;
 let _saTokenExpiry = 0;
+
+async function llamarOpenAI_(env, payload) {
+  if (!env.OPENAI_API_KEY) return err('OpenAI no está configurado en el servidor', 503);
+  if (payload?.model !== 'gpt-5.6' || !Array.isArray(payload?.tools)
+    || !payload.tools.some(tool => tool?.type === 'image_generation')) {
+    return err('Solicitud de imagen OpenAI inválida', 400);
+  }
+  const started = Date.now();
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(120_000),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const providerError = data?.error || {};
+    const safe = value => String(value || '').replace(/[\r\n]+/g, ' ').slice(0, 240);
+    console.error('[OPENAI-IMAGE]', JSON.stringify({
+      status: response.status,
+      code: safe(providerError.code),
+      type: safe(providerError.type),
+      param: safe(providerError.param),
+      message: safe(providerError.message),
+      request_id: safe(response.headers.get('x-request-id')),
+      elapsed_ms: Date.now() - started,
+    }));
+    const message = response.status === 401
+      ? 'OpenAI no está autorizado en el servidor'
+      : response.status === 429
+        ? 'Límite de uso OpenAI alcanzado. Espera un momento.'
+        : 'OpenAI no pudo generar la imagen';
+    return err(message, response.status === 429 ? 429 : 502);
+  }
+  return ok(data);
+}
 
 // Codifica un objeto como base64url (JWT header/payload)
 function b64urlJson(obj) {
@@ -661,26 +705,18 @@ if (path === '/test-fetch') {
       });
     }
 
-    if (path !== '/generate') return err('Usa POST /generate', 404);
+    if (path !== '/generate' && path !== '/openai/responses') return err('Ruta no encontrada', 404);
     if (request.method !== 'POST') return err('Solo POST', 405);
 
-    // Fix v5 09-jul-2026 — hallazgo crítico: /generate estaba público sin
-    // ninguna autenticación (CORS abierto a '*', sin chequeo de Authorization/
-    // X-API-Key/origin). Esto permitió ~276.000 solicitudes en un día a costa
-    // de la cuenta de Google de Creditek, probablemente un bot escaneando
-    // subdominios *.workers.dev al azar. Este secreto compartido (idéntico al
-    // configurado en el frontend, WORKER_SHARED_SECRET) bloquea ese tráfico.
-    // No es seguridad perfecta (viaja en el JS fuente del sitio), pero corta
-    // por completo a bots automáticos sin este header.
-    if (!env.WORKER_SHARED_SECRET || request.headers.get('X-Worker-Secret') !== env.WORKER_SHARED_SECRET) {
-      return err('No autorizado', 401);
-    }
+    if (!await authenticateAura(request, env)) return err('Autenticación AURA requerida', 401);
 
     let body;
     try { body = await request.json(); }
     catch { return err('JSON inválido', 400); }
 
-    const { prompt, aspectRatio = '1:1', apiKey, engine, imageUrl, imageBase64, imageMimeType } = body;
+    if (path === '/openai/responses') return llamarOpenAI_(env, body);
+
+    const { prompt, aspectRatio = '1:1', engine, imageUrl, imageBase64, imageMimeType } = body;
     if (!prompt) return err('Campo "prompt" requerido', 400);
     let via0Skip = null; // razón por la que Vía 0 fue omitida (para debug)
 
@@ -692,7 +728,7 @@ if (path === '/test-fetch') {
     }
 
     // ── Vía 0: Nano Banana 2 — AI Studio gemini-3.1-flash-image-preview ────────
-    const nbKey = (env.GEMINI_API_KEY || apiKey || '').trim();
+    const nbKey = (env.GEMINI_API_KEY || '').trim();
     if (nbKey) {
       const nbUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${nbKey}`;
       try {

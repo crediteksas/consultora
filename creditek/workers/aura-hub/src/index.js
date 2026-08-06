@@ -1,9 +1,11 @@
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
-const CURRENT_DOCUMENT = '/creditek/agentes/aura-otp-20260802.html';
+const CURRENT_DOCUMENT = '/creditek/agentes/index.html';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
   '/creditek/agentes/aura-incident-report.mjs',
+  '/creditek/agentes/aura-module-config.js',
+  '/creditek/agentes/aura-agent-bootstrap.js',
   '/creditek/agentes/aura-auth-otp-20260802.mjs',
   '/creditek/agentes/creditek-agente-respuestas.html',
   '/creditek/agentes/sofia-aura-20260803.html',

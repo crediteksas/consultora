@@ -10,7 +10,7 @@ const redes = await read('creditek/agentes/creditek-agente-redes.html');
 const sofia = await read('creditek/agentes/creditek-agente-respuestas.html');
 const calendar = await read('creditek/agentes/creditek-agente-calendario.html');
 const googleBusiness = await read('creditek/agentes/creditek-gbp-fichas.html');
-const agentContext = await read('creditek/agentes/kora-agent-context.js');
+const agentBootstrap = await read('creditek/agentes/aura-agent-bootstrap.js');
 const build = await read('scripts/build-aura-hub.mjs');
 const config = await read('wrangler.aura-hub.jsonc');
 const incidents = await import('../../creditek/agentes/aura-incident-report.mjs');
@@ -35,10 +35,9 @@ test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de 
   assert.match(hub, /\.sidebar-brand-logo\{[^}]*border:1px solid #E2E8F0[^}]*border-radius:6px/);
   assert.doesNotMatch(hub, /id="aura-user-(?:initials|name|role)"/);
   assert.doesNotMatch(hub, /Propietario AURA/);
-  for (const name of ['Redes Sociales', 'Sofía', 'Meta Ads Intelligence', 'Calendario de contenido']) {
+  for (const name of ['Agente 1 · Piezas comerciales', 'Sofía', 'Agente 3 · Publicación y métricas', 'Calendario de contenido']) {
     assert.match(hub, new RegExp(`>${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<`, 'i'));
   }
-  assert.doesNotMatch(hub, />\s*Agente [1234](?:\s|<|·)/);
   assert.doesNotMatch(hub, />\s*Reportes\s*</i);
   assert.doesNotMatch(hub, /Acerca de KORA|KORA ERP/);
   assert.match(hub, /data-lucide="layout-dashboard"/);
@@ -63,15 +62,15 @@ test('el acceso y Redes Sociales usan iconos reales sin controles que oculten ca
 
 test('el botón AURA vuelve al Panel general y Sofía usa su ruta canónica', () => {
   assert.match(hub, /data-aura-home[\s\S]*showSection\('dashboard'/);
-  assert.match(hub, /openModule\('creditek-agente-respuestas\.html','Sofía'/);
+  assert.match(hub, /openModule\('\/creditek\/agentes\/creditek-agente-respuestas\.html','Sofía'/);
   assert.doesNotMatch(hub, /openModule\('sofia-aura-20260803b\.html'/);
   assert.match(sofia, /\.conv-scroll\{[^}]*overflow-y:auto/);
   assert.match(sofia, /\.chat-msgs\{[^}]*overflow-y:auto/);
 });
 
 test('los módulos internos revelan su contenido al cargarse dentro del iframe de AURA', () => {
-  assert.match(agentContext, /window\.self !== window\.top[\s\S]*root\.classList\.add\('show'\)/);
-  assert.match(agentContext, /root\.classList\.add\('show'\)[\s\S]*return/);
+  assert.match(agentBootstrap, /global\.self !== global\.top/);
+  assert.match(agentBootstrap, /root\?\.classList\.add\('show'\)/);
 });
 
 test('todos los indicadores del Panel general tienen ayuda accesible', () => {

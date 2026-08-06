@@ -16,7 +16,8 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
-<script src="kora-agent-context.js" defer></script>
+<script src="aura-module-config.js" defer></script>
+<script src="aura-agent-bootstrap.js" defer></script>
 <script src="aura-context-help.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
@@ -515,7 +516,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
 </style>
 </head>
 <body class="kora-product-page" data-kora-agent-id="agent-1">
-<nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Redes Sociales</span></nav>
+<nav class="breadcrumb"><a href="index.html">AURA</a><span class="sep">›</span><span class="cur">Agente 1 · Piezas comerciales</span></nav>
 <div id="toast" class="toast"></div>
 
 <!-- ══ MODAL API KEY ══════════════════════════════════════════════ -->
@@ -542,7 +543,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     </div>
   </div>
 </div>
-<div id="app" data-kora-shell-root>
+<div id="app" data-aura-agent-root>
 <div class="shell agent-workspace">
 <aside class="agent-workspace-panel" id="agent-form-panel">
   <div class="sidebar-section">
@@ -3537,9 +3538,9 @@ async function generarConDalle(key, prompt) {
     inputPayload = prompt;
   }
   const data = await llamarBackendImagen('/openai/responses', {
-    model: 'gpt-4o',
+    model: 'gpt-5.6',
     input: inputPayload,
-    tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
+    tools: [{ type: 'image_generation', action: 'generate', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
@@ -3573,9 +3574,9 @@ async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFot
   content.push({ type: 'input_text', text: promptComposicionGPT });
 
   const data = await llamarBackendImagen('/openai/responses', {
-    model: 'gpt-4o',
+    model: 'gpt-5.6',
     input: [{ role: 'user', content }],
-    tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
+    tools: [{ type: 'image_generation', action: 'generate', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
@@ -3644,10 +3645,10 @@ async function aplicarCambioImagen() {
       // + image_url acepta data URLs base64 directamente, no solo URLs remotas.
       const editPrompt = `${promptBase}\n\nMODIFICACIÓN SOLICITADA: ${instruccion}\n\nIMPORTANTE: la imagen adjunta es la pieza ACTUAL — edítala aplicando únicamente el cambio solicitado. Mantén exactamente igual todo lo demás (logo, colores de marca, textos, specs, composición). NO regeneres la pieza desde cero.`;
       const data = await llamarBackendImagen('/openai/responses', {
-        model: 'gpt-4o', input: [{ role: 'user', content: [
+        model: 'gpt-5.6', input: [{ role: 'user', content: [
           { type: 'input_text', text: editPrompt },
           { type: 'input_image', image_url: currentSrc },
-        ] }], tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
+        ] }], tools: [{ type: 'image_generation', action: 'edit', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
       });
       const imageCall = data.output?.find(o => o.type === 'image_generation_call');
       const b64 = imageCall?.result;

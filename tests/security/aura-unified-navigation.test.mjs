@@ -138,7 +138,9 @@ test('AURA hub owns only the complete AURA route and remains isolated from Porta
   assert.match(build, /creditek-agente-respuestas\.html/);
   assert.match(build, /agente3-meta-ads\.html/);
   assert.match(build, /agente3-aura-session\.mjs/);
-  assert.match(build, /kora-agent-context\.js/);
+  assert.match(build, /aura-module-config\.js/);
+  assert.match(build, /aura-agent-bootstrap\.js/);
+  assert.doesNotMatch(build, /kora-agent-context\.js/);
   assert.match(build, /creditek-agente-redes\.html/);
   assert.match(build, /creditek-agente-calendario\.html/);
   assert.match(build, /manifest\.json/);
@@ -154,7 +156,7 @@ test('AURA hub owns only the complete AURA route and remains isolated from Porta
   assert.match(worker, /creditek-agente-respuestas\.html/);
   assert.match(worker, /agente3-meta-ads\.html/);
   assert.match(worker, /CANONICAL_DOCUMENTS/);
-  assert.match(worker, /aura-otp-20260802\.html/);
+  assert.match(worker, /CURRENT_DOCUMENT\s*=\s*'\/creditek\/agentes\/index\.html'/);
   assert.doesNotMatch(build, /cp\([^;]+recursive:\s*true/);
   assert.doesNotMatch(build, /creditek['",\s]+['"](?:portal|erp)/i);
 });

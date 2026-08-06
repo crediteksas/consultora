@@ -11,7 +11,8 @@ test('Agente 3 no contiene tokens, claves ni llamadas directas a Meta o al backe
   assert.doesNotMatch(html, /KORA_API|kora[^'"\s]*\.workers\.dev|\/api\/kora/i);
   assert.match(html, /kora-shell\.css\?v=2\.0\.4/);
   assert.doesNotMatch(html, /\/creditek\/erp\/sidebar\.js/);
-  assert.match(html, /kora-agent-context\.js/);
+  assert.match(html, /aura-agent-bootstrap\.js/);
+  assert.doesNotMatch(html, /kora-agent-context\.js/);
 });
 
 test('el navegador usa el Worker dedicado y la sesión AURA', () => {

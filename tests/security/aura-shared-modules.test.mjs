@@ -15,7 +15,11 @@ test('Sofía consume exclusivamente la sesión AURA vigente sin expulsar el Hub'
 
 test('Sofía no publica secretos administrativos ni reactiva escritura insegura', () => {
   assert.doesNotMatch(sofia, /WORKER_SHARED_SECRET|X-Worker-Secret/);
-  assert.match(sofia, /Integración pausada: pendiente autenticación AURA en backend/);
+  assert.doesNotMatch(sofia, /Integración pausada: pendiente autenticación AURA en backend/);
+  assert.match(sofia, /supaFetch\('\/tiendas\?select=id,ciudad,nombre,nombre_comercial/);
+  assert.match(sofia, /countRows\('\/clientes\?select=id&estado_funnel=eq\.lead_caliente'\)/);
+  assert.match(sofia, /countRows\('\/clientes\?select=id&estado_funnel=eq\.transferido_asesor'\)/);
+  assert.match(sofia, /Prefer:'count=exact'/);
   assert.match(sofia, /Envío pausado: pendiente autenticación AURA en backend/);
 });
 

@@ -213,7 +213,6 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .qstat{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:13px 15px;position:relative;outline:none}
 .qstat:is(:hover,:focus-visible){border-color:var(--turq)}
-.qstat:is(:hover,:focus-visible)::after{content:attr(data-help);position:absolute;left:12px;right:12px;top:calc(100% + 7px);z-index:30;background:var(--navy);color:#fff;border-radius:8px;padding:9px 10px;font-size:11px;line-height:1.4;box-shadow:0 9px 24px rgba(11,30,61,.2)}
 .qstat-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .qstat-value{font-size:22px;font-weight:700;color:var(--text1)}
 .qstat-value.turq{color:var(--turq2)}
@@ -481,10 +480,10 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             <div class="qstat-value turq">11</div>
             <div class="qstat-sub">Caribe colombiano</div>
           </div>
-          <div class="qstat" tabindex="0" data-help="Mide los módulos de inteligencia artificial habilitados en AURA. Fuente: configuración de módulos. Periodo: estado actual. Interprétalo como capacidades disponibles.">
-            <div class="qstat-label">Agentes IA</div>
-            <div class="qstat-value">4</div>
-            <div class="qstat-sub">Disponibles ahora</div>
+          <div class="qstat" tabindex="0" data-help="Cuenta las piezas con imagen aprobada y estado lista para publicar. Fuente: publicador seguro de Meta Ads. Periodo: estado actual. Interprétalo como trabajo listo para programar o publicar.">
+            <div class="qstat-label">Pendientes de publicación</div>
+            <div class="qstat-value" id="pending-publications-value" aria-live="polite">—</div>
+            <div class="qstat-sub" id="pending-publications-sub">Consultando…</div>
           </div>
         </div>
 
@@ -674,6 +673,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
 <script type="module">
 import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth-otp-20260802.mjs';
 import { buildIncidentReport, downloadIncidentText, sanitizeIncidentText, technicalContext } from './aura-incident-report.mjs';
+import { fetchPendingPublications } from './aura-dashboard-kpis.mjs';
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
@@ -876,9 +876,30 @@ Object.assign(window, {
 function initApp() {
   restoreAuraSidebar();
   updateDate();
+  void updatePendingPublicationsKpi();
   setInterval(updateDate, 60000);
   updateIncidentMeta();
   window.lucide?.createIcons?.();
+}
+
+async function updatePendingPublicationsKpi() {
+  const value = document.getElementById('pending-publications-value');
+  const detail = document.getElementById('pending-publications-sub');
+  if (!value || !detail) return;
+  if (!hasPermission(auraAccess, 'meta_ads', 'meta_ads.read')) {
+    value.textContent = '—';
+    detail.textContent = 'Sin acceso a Meta Ads';
+    return;
+  }
+  try {
+    const token = await auraAuth.token();
+    const pending = await fetchPendingPublications({ token });
+    value.textContent = String(pending);
+    detail.textContent = 'Listas para publicar';
+  } catch (_) {
+    value.textContent = '—';
+    detail.textContent = 'No disponible';
+  }
 }
 
 function updateDate() {

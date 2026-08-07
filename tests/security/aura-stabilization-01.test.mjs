@@ -74,14 +74,18 @@ test('los módulos internos revelan su contenido al cargarse dentro del iframe d
   assert.match(agentBootstrap, /root\?\.classList\.add\('show'\)/);
 });
 
-test('el Panel general conserva únicamente los dos indicadores operativos con ayuda accesible', () => {
+test('el Panel general muestra el pendiente real y delega la ayuda al tooltip central', () => {
   const indicators = hub.match(/class="qstat"[^>]*tabindex="0"[^>]*data-help=/g) || [];
   assert.equal(indicators.length, 2);
   assert.match(hub, /class="qstat-label">Tiendas activas</);
-  assert.match(hub, /class="qstat-label">Agentes IA</);
+  assert.match(hub, /class="qstat-label">Pendientes de publicación</);
+  assert.match(hub, /id="pending-publications-value"/);
+  assert.match(hub, /id="pending-publications-sub"/);
+  assert.match(hub, /updatePendingPublicationsKpi/);
   assert.doesNotMatch(hub, /class="qstat-label">Plataformas</);
   assert.doesNotMatch(hub, /class="qstat-label">Meta target</);
-  assert.match(hub, /\.qstat:is\(:hover,:focus-visible\)::after/);
+  assert.doesNotMatch(hub, /\.qstat:is\(:hover,:focus-visible\)::after/);
+  assert.match(hub, /aura-context-help\.js/);
 });
 
 test('Herramientas comerciales muestra Registro de clientes como opción no activa y sin ruta KORA', () => {

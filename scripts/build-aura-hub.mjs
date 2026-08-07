@@ -12,6 +12,7 @@ for (const file of [
   'aura-auth.mjs',
   'aura-incident-report.mjs',
   'aura-context-help.js',
+  'aura-dashboard-kpis.mjs',
   'aura-image-client.mjs',
   'aura-module-config.js',
   'aura-agent-bootstrap.js',

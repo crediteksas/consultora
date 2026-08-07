@@ -11,14 +11,14 @@
     }),
     agent1: Object.freeze({
       id: 'agent-1',
-      name: 'Agente 1 · Piezas comerciales',
+      name: 'Piezas comerciales',
       path: '/creditek/agentes/creditek-agente-redes.html',
       appId: 'sofia',
       permission: 'sofia.use',
     }),
     agent3: Object.freeze({
       id: 'agent-3',
-      name: 'Agente 3 · Publicación y métricas',
+      name: 'Publicación y métricas',
       path: '/creditek/agentes/agente3-meta-ads.html',
       appId: 'meta_ads',
       permission: 'meta_ads.read',

@@ -12,6 +12,7 @@ test('el buscador de productos queda por encima de la tabla y mantiene opciones 
   assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*background:\s*var\(--ctk-color-surface\)/s);
   assert.match(html, /\.compra-producto-opcion[^{}]*\{[^}]*color:\s*var\(--ctk-color-text\)/s);
   assert.match(html, /class="[^"]*ctk-dropdown__item[^"]*secondary[^"]*compra-producto-opcion[^"]*"/);
+  assert.match(html, /\.compra-buscador-modal #search-results\s*\{[^}]*display:\s*block;[^}]*position:\s*static;[^}]*width:\s*100%/s);
   assert.match(html, /class="[^"]*secondary[^"]*compra-producto-seleccionado[^"]*"/);
   assert.match(html, /class="ctk-modal compra-buscador-modal" role="dialog" aria-modal="true"/);
 });

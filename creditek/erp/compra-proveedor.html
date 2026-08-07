@@ -39,8 +39,21 @@
       border-bottom: 1px solid var(--ctk-color-border);
       padding: var(--ctk-space-3);
     }
-    .compra-buscador-modal .ctk-modal__body { padding: var(--ctk-space-3); }
+    .compra-buscador-modal .ctk-modal__body {
+      overflow: visible;
+      padding: var(--ctk-space-3);
+    }
     .compra-buscador-modal .ctk-search-wrap { margin-bottom: var(--ctk-space-2); }
+    /* El componente compartido ctk-dropdown es absoluto por defecto. En este
+       modal los resultados forman parte del flujo para no quedar fuera del
+       panel ni recortarse por el overflow del modal. */
+    .compra-buscador-modal #search-results {
+      display: block;
+      max-height: min(260px, 40vh);
+      overflow-y: auto;
+      position: static;
+      width: 100%;
+    }
     #cerrar-modal { flex: 0 0 auto; }
     .compra-producto-opcion,
     .compra-producto-seleccionado {

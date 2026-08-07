@@ -74,10 +74,22 @@ test('los módulos internos revelan su contenido al cargarse dentro del iframe d
   assert.match(agentBootstrap, /root\?\.classList\.add\('show'\)/);
 });
 
-test('todos los indicadores del Panel general tienen ayuda accesible', () => {
+test('el Panel general conserva únicamente los dos indicadores operativos con ayuda accesible', () => {
   const indicators = hub.match(/class="qstat"[^>]*tabindex="0"[^>]*data-help=/g) || [];
-  assert.equal(indicators.length, 4);
+  assert.equal(indicators.length, 2);
+  assert.match(hub, /class="qstat-label">Tiendas activas</);
+  assert.match(hub, /class="qstat-label">Agentes IA</);
+  assert.doesNotMatch(hub, /class="qstat-label">Plataformas</);
+  assert.doesNotMatch(hub, /class="qstat-label">Meta target</);
   assert.match(hub, /\.qstat:is\(:hover,:focus-visible\)::after/);
+});
+
+test('Herramientas comerciales muestra Registro de clientes como opción no activa y sin ruta KORA', () => {
+  assert.match(hub, /class="tool-row[^"']*"[^>]*aria-disabled="true"[^>]*data-aura-help="Esta función requiere una ruta segura propia de AURA"/);
+  assert.match(hub, /data-lucide="users"/);
+  assert.match(hub, /class="tool-name">Registro de clientes</);
+  assert.match(hub, /class="tool-desc">Registro y consulta de clientes Creditek\.<\/div>/);
+  assert.doesNotMatch(hub, /(?:href|onclick)="[^"]*creditek\/erp\/registro/);
 });
 
 test('la versión de AURA queda compacta y dentro del pie lateral', () => {

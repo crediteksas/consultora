@@ -486,16 +486,6 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             <div class="qstat-value">4</div>
             <div class="qstat-sub">Disponibles ahora</div>
           </div>
-          <div class="qstat" tabindex="0" data-help="Mide las plataformas comerciales activas. Fuente: configuración comercial de Creditek. Periodo: estado actual. Interprétalo como opciones de financiación disponibles.">
-            <div class="qstat-label">Plataformas</div>
-            <div class="qstat-value">4</div>
-            <div class="qstat-sub">PayJoy · AloCredit · Krediya · Addi</div>
-          </div>
-          <div class="qstat" tabindex="0" data-help="Mide la meta mensual de unidades por tienda. Fuente: objetivo comercial definido. Periodo: mes actual. Interprétalo comparando ventas reales contra 25 unidades.">
-            <div class="qstat-label">Meta target</div>
-            <div class="qstat-value">25</div>
-            <div class="qstat-sub">Unidades / tienda / mes</div>
-          </div>
         </div>
 
         <div class="operations-strip" aria-label="Estado operativo y alertas">
@@ -590,6 +580,13 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </a>
+          <div class="tool-row" aria-disabled="true" data-aura-help="Esta función requiere una ruta segura propia de AURA">
+            <div class="tool-icon"><i data-lucide="users"></i></div>
+            <div>
+              <div class="tool-name">Registro de clientes</div>
+              <div class="tool-desc">Registro y consulta de clientes Creditek.</div>
+            </div>
+          </div>
           <a class="tool-row" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
             <div class="tool-icon"><i data-lucide="file-signature"></i></div>
             <div>

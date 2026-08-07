@@ -407,9 +407,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function buildSidebarHtml(perfil, tiendas) {
     const activa = paginaActual();
     const esCentral = perfil.rol === 'gerencia' || perfil.rol === 'auditoria';
+    const puedeVerB2B = esCentral || perfil.es_admin_b2b === true;
     const rolLabel = ROL_LABEL[perfil.rol] || perfil.rol;
 
-    const modulosHtml = MODULOS.filter(mod => (!mod.b2b || perfil.es_admin_b2b) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
+    const modulosHtml = MODULOS.filter(mod => (!mod.b2b || puedeVerB2B) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
       const items = mod.items.filter(it => it.roles.includes(perfil.rol));
       if (!items.length) return '';
       const abierto = items.some(it => it.href === activa);
@@ -545,7 +546,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   function modulesForProfile(profile) {
     const capabilities = {
-      b2b: profile.es_admin_b2b === true,
+      b2b: profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true,
       aliados: profile.es_operador_aliados === true,
     };
     return (window.KoraAccessControl?.navigationFor(profile, capabilities) || []).map(section => ({
@@ -562,7 +563,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   function koraNavigationHtml(modules, role, activeItem, profile) {
-    return modules.filter(module => (!module.b2b || profile.es_admin_b2b) && (!module.aliados || profile.es_operador_aliados)).map(module => {
+    const puedeVerB2B = profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true;
+    return modules.filter(module => (!module.b2b || puedeVerB2B) && (!module.aliados || profile.es_operador_aliados)).map(module => {
       const items = module.items.filter(item => !item.roles || item.roles.includes(role));
       if (!items.length) return '';
       const isActive = item => item === activeItem

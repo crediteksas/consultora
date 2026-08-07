@@ -50,10 +50,9 @@ test('asesor conserva solo las operaciones permitidas por su rol', () => {
   }
 });
 
-test('rutas B2B y Aliados requieren la capacidad vigente además del rol corporativo', () => {
+test('auditoría tiene lectura B2B y Aliados conserva su capacidad específica', () => {
   const profile = { rol: 'auditoria', activo: true };
-  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, false);
-  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: true }).allowed, true);
+  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, false);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: true }).allowed, true);
 });
@@ -99,8 +98,9 @@ test('matriz equivalente de Óscar conserva Corporativo, Retail, B2B, Aliados y 
 test('matriz equivalente de Maite conserva Corporativo y aplica capacidades existentes', () => {
   const profile = { rol: 'auditoria', activo: true };
   assert.equal(access.resolveExperience(profile), 'corporate');
+  assert.ok(Array.from(access.navigationFor(profile, { b2b: false }), section => section.title).includes('CREDITEK B2B'));
   assert.equal(access.authorize(profile, 'ventas.html').allowed, true);
-  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, false);
+  assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
 });
 
 test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tienda', () => {

@@ -13,6 +13,7 @@ const googleBusiness = await read('creditek/agentes/creditek-gbp-fichas.html');
 const agentBootstrap = await read('creditek/agentes/aura-agent-bootstrap.js');
 const build = await read('scripts/build-aura-hub.mjs');
 const config = await read('wrangler.aura-hub.jsonc');
+const dashboardKpis = await read('creditek/agentes/aura-dashboard-kpis.mjs');
 const incidents = await import('../../creditek/agentes/aura-incident-report.mjs');
 
 test('el shell conserva encabezado y barra lateral mientras cada módulo ocupa el área de contenido', () => {
@@ -74,14 +75,21 @@ test('los módulos internos revelan su contenido al cargarse dentro del iframe d
   assert.match(agentBootstrap, /root\?\.classList\.add\('show'\)/);
 });
 
-test('el Panel general muestra el pendiente real y delega la ayuda al tooltip central', () => {
+test('el Panel general muestra los KPI comerciales certificados y delega la ayuda al tooltip central', () => {
   const indicators = hub.match(/class="qstat"[^>]*tabindex="0"[^>]*data-help=/g) || [];
   assert.equal(indicators.length, 2);
-  assert.match(hub, /class="qstat-label">Tiendas activas</);
-  assert.match(hub, /class="qstat-label">Pendientes de publicación</);
-  assert.match(hub, /id="pending-publications-value"/);
-  assert.match(hub, /id="pending-publications-sub"/);
-  assert.match(hub, /updatePendingPublicationsKpi/);
+  assert.match(hub, /class="qstat-label">Clientes inscritos</);
+  assert.match(hub, /class="qstat-label">Leads enviados</);
+  assert.match(hub, /id="clientes-inscritos-hoy"/);
+  assert.match(hub, /id="clientes-inscritos-mes"/);
+  assert.match(hub, /id="leads-enviados-hoy"/);
+  assert.match(hub, /id="leads-enviados-mes"/);
+  assert.match(hub, /updateCommercialKpis/);
+  assert.match(dashboardKpis, /aura-commercial-kpis-api\.comercial-853\.workers\.dev\/api\/commercial-kpis/);
+  assert.doesNotMatch(hub, /pending-publications-(?:value|sub)/);
+  assert.doesNotMatch(hub, /updatePendingPublicationsKpi/);
+  assert.doesNotMatch(hub, /class="qstat-label">Tiendas activas</);
+  assert.doesNotMatch(hub, /class="qstat-label">Pendientes de publicación</);
   assert.doesNotMatch(hub, /class="qstat-label">Plataformas</);
   assert.doesNotMatch(hub, /class="qstat-label">Meta target</);
   assert.doesNotMatch(hub, /\.qstat:is\(:hover,:focus-visible\)::after/);

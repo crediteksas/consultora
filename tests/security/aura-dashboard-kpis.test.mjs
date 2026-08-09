@@ -2,36 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  countPendingPublications,
-  fetchPendingPublications,
+  fetchCommercialKpis,
 } from '../../creditek/agentes/aura-dashboard-kpis.mjs';
 
-test('cuenta solo piezas listas con imagen aprobada', () => {
-  assert.equal(countPendingPublications([
-    { id: '1', estado: 'lista_para_publicar', imagen_url: 'https://cdn.test/1.jpg' },
-    { id: '2', estado: 'borrador', imagen_url: 'https://cdn.test/2.jpg' },
-    { id: '3', estado: 'lista_para_publicar', imagen_url: '' },
-    { id: '4', estado: 'lista_para_publicar', imagen_url: 'https://cdn.test/4.jpg' },
-  ]), 2);
-});
-
-test('consulta únicamente el catálogo seguro con la sesión AURA', async () => {
+test('consulta exclusivamente el agregador comercial certificado con la sesión AURA', async () => {
   let request;
-  const count = await fetchPendingPublications({
+  const kpis = await fetchCommercialKpis({
     token: 'session-token',
     fetchImpl: async (url, options) => {
       request = { url, options };
       return new Response(JSON.stringify({
-        pieces: [
-          { id: '1', estado: 'lista_para_publicar', imagen_url: 'https://cdn.test/1.jpg' },
-          { id: '2', estado: 'lista_para_publicar', imagen_url: 'https://cdn.test/2.jpg' },
-        ],
+        clientes_inscritos: { hoy: 0, mes: 1 },
+        leads_enviados: {
+          hoy: { total: 0, tiendas: 0, aliados: 0 },
+          mes: { total: 0, tiendas: 0, aliados: 0 },
+          certified_from: '2026-08-07T05:00:00.000Z',
+        },
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     },
   });
 
-  assert.equal(count, 2);
-  assert.equal(request.url, 'https://aura-meta-ads-api.comercial-853.workers.dev/v1/publisher/options');
+  assert.deepEqual(kpis, {
+    clientesInscritos: { hoy: 0, mes: 1 },
+    leadsEnviados: {
+      hoy: 0, mes: 0, tiendas: 0, aliados: 0,
+    },
+  });
+  assert.equal(request.url, 'https://aura-commercial-kpis-api.comercial-853.workers.dev/api/commercial-kpis');
   assert.deepEqual(request.options, {
     method: 'GET',
     cache: 'no-store',
@@ -46,7 +43,7 @@ test('consulta únicamente el catálogo seguro con la sesión AURA', async () =>
 test('falla cerrado sin sesión y no realiza la consulta', async () => {
   let called = false;
   await assert.rejects(
-    fetchPendingPublications({
+    fetchCommercialKpis({
       token: '',
       fetchImpl: async () => {
         called = true;
@@ -58,12 +55,38 @@ test('falla cerrado sin sesión y no realiza la consulta', async () => {
   assert.equal(called, false);
 });
 
+test('acepta cero como dato real y rechaza contratos incompletos', async () => {
+  const zeroes = await fetchCommercialKpis({
+    token: 'session-token',
+    fetchImpl: async () => new Response(JSON.stringify({
+      clientes_inscritos: { hoy: 0, mes: 0 },
+      leads_enviados: {
+        hoy: { total: 0, tiendas: 0, aliados: 0 },
+        mes: { total: 0, tiendas: 0, aliados: 0 },
+      },
+    }), { status: 200 }),
+  });
+  assert.equal(zeroes.clientesInscritos.hoy, 0);
+  assert.equal(zeroes.leadsEnviados.mes, 0);
+
+  await assert.rejects(
+    fetchCommercialKpis({
+      token: 'session-token',
+      fetchImpl: async () => new Response(JSON.stringify({
+        clientes_inscritos: { hoy: 0, mes: 1 },
+        leads_enviados: { hoy: { total: 0 }, mes: { total: 0 } },
+      }), { status: 200 }),
+    }),
+    /COMMERCIAL_KPIS_UNAVAILABLE/,
+  );
+});
+
 test('no convierte respuestas fallidas en cifras falsas', async () => {
   await assert.rejects(
-    fetchPendingPublications({
+    fetchCommercialKpis({
       token: 'session-token',
-      fetchImpl: async () => new Response('{"error":"Forbidden"}', { status: 403 }),
+      fetchImpl: async () => new Response('{"error":"Unavailable"}', { status: 503 }),
     }),
-    /PUBLISHER_CATALOG_UNAVAILABLE/,
+    /COMMERCIAL_KPIS_UNAVAILABLE/,
   );
 });

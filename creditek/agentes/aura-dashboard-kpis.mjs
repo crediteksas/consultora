@@ -1,20 +1,38 @@
-const PUBLISHER_OPTIONS_URL = 'https://aura-meta-ads-api.comercial-853.workers.dev/v1/publisher/options';
+const COMMERCIAL_KPIS_URL = 'https://aura-commercial-kpis-api.comercial-853.workers.dev/api/commercial-kpis';
 
-export function countPendingPublications(pieces) {
-  if (!Array.isArray(pieces)) return 0;
-  return pieces.filter(piece => (
-    piece?.estado === 'lista_para_publicar'
-    && typeof piece?.imagen_url === 'string'
-    && piece.imagen_url.trim().length > 0
-  )).length;
+function nonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
 }
 
-export async function fetchPendingPublications({
+function readCounts(value) {
+  const hoy = nonNegativeInteger(value?.hoy);
+  const mes = nonNegativeInteger(value?.mes);
+  if (hoy === null || mes === null) return null;
+  return { hoy, mes };
+}
+
+export function normalizeCommercialKpis(payload) {
+  const clientesInscritos = readCounts(payload?.clientes_inscritos);
+  const leadsHoy = payload?.leads_enviados?.hoy;
+  const leadsMes = payload?.leads_enviados?.mes;
+  const leadsEnviados = {
+    hoy: nonNegativeInteger(leadsHoy?.total),
+    mes: nonNegativeInteger(leadsMes?.total),
+    tiendas: nonNegativeInteger(leadsMes?.tiendas),
+    aliados: nonNegativeInteger(leadsMes?.aliados),
+  };
+  if (!clientesInscritos || Object.values(leadsEnviados).some(value => value === null)) {
+    throw new Error('COMMERCIAL_KPIS_UNAVAILABLE');
+  }
+  return { clientesInscritos, leadsEnviados };
+}
+
+export async function fetchCommercialKpis({
   token,
   fetchImpl = globalThis.fetch,
 } = {}) {
   if (!token) throw new Error('AURA_SESSION_REQUIRED');
-  const response = await fetchImpl(PUBLISHER_OPTIONS_URL, {
+  const response = await fetchImpl(COMMERCIAL_KPIS_URL, {
     method: 'GET',
     cache: 'no-store',
     headers: {
@@ -22,9 +40,7 @@ export async function fetchPendingPublications({
       authorization: `Bearer ${token}`,
     },
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !Array.isArray(data.pieces)) {
-    throw new Error('PUBLISHER_CATALOG_UNAVAILABLE');
-  }
-  return countPendingPublications(data.pieces);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error('COMMERCIAL_KPIS_UNAVAILABLE');
+  return normalizeCommercialKpis(payload);
 }

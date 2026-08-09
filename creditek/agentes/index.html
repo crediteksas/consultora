@@ -475,15 +475,15 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
         </div>
 
         <div class="quick-stats">
-          <div class="qstat" tabindex="0" data-help="Mide las tiendas propias activas. Fuente: catálogo operativo de Creditek. Periodo: estado actual. Interprétalo como cobertura física disponible.">
-            <div class="qstat-label">Tiendas activas</div>
-            <div class="qstat-value turq">11</div>
-            <div class="qstat-sub">Caribe colombiano</div>
+          <div class="qstat" tabindex="0" data-help="Registros de clientes realizados para validación.">
+            <div class="qstat-label">Clientes inscritos</div>
+            <div class="qstat-value turq" id="clientes-inscritos-hoy" aria-live="polite">Hoy: —</div>
+            <div class="qstat-sub" id="clientes-inscritos-mes">Mes: Consultando…</div>
           </div>
-          <div class="qstat" tabindex="0" data-help="Cuenta las piezas con imagen aprobada y estado lista para publicar. Fuente: publicador seguro de Meta Ads. Periodo: estado actual. Interprétalo como trabajo listo para programar o publicar.">
-            <div class="qstat-label">Pendientes de publicación</div>
-            <div class="qstat-value" id="pending-publications-value" aria-live="polite">—</div>
-            <div class="qstat-sub" id="pending-publications-sub">Consultando…</div>
+          <div class="qstat" tabindex="0" data-help="Leads enviados por Sofía a tiendas o aliados y confirmados correctamente.">
+            <div class="qstat-label">Leads enviados</div>
+            <div class="qstat-value" id="leads-enviados-hoy" aria-live="polite">Hoy: —</div>
+            <div class="qstat-sub" id="leads-enviados-mes">Mes: Consultando…</div>
           </div>
         </div>
 
@@ -673,7 +673,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
 <script type="module">
 import { auraAuth, appGrant, hasPermission, sanitizeReturnTo } from './aura-auth-otp-20260802.mjs';
 import { buildIncidentReport, downloadIncidentText, sanitizeIncidentText, technicalContext } from './aura-incident-report.mjs';
-import { fetchPendingPublications } from './aura-dashboard-kpis.mjs';
+import { fetchCommercialKpis } from './aura-dashboard-kpis.mjs';
 
 let auraAccess = null;
 const requestedModule = sanitizeReturnTo(new URLSearchParams(location.search).get('return_to') || '');
@@ -876,29 +876,32 @@ Object.assign(window, {
 function initApp() {
   restoreAuraSidebar();
   updateDate();
-  void updatePendingPublicationsKpi();
+  void updateCommercialKpis();
   setInterval(updateDate, 60000);
   updateIncidentMeta();
   window.lucide?.createIcons?.();
 }
 
-async function updatePendingPublicationsKpi() {
-  const value = document.getElementById('pending-publications-value');
-  const detail = document.getElementById('pending-publications-sub');
-  if (!value || !detail) return;
-  if (!hasPermission(auraAccess, 'meta_ads', 'meta_ads.read')) {
-    value.textContent = '—';
-    detail.textContent = 'Sin acceso a Meta Ads';
-    return;
-  }
+function renderCommercialKpis(kpis) {
+  document.getElementById('clientes-inscritos-hoy').textContent = `Hoy: ${kpis.clientesInscritos.hoy}`;
+  document.getElementById('clientes-inscritos-mes').textContent = `Mes: ${kpis.clientesInscritos.mes}`;
+  document.getElementById('leads-enviados-hoy').textContent = `Hoy: ${kpis.leadsEnviados.hoy}`;
+  document.getElementById('leads-enviados-mes').textContent = `Mes: ${kpis.leadsEnviados.mes}`;
+}
+
+function renderCommercialKpisUnavailable() {
+  document.getElementById('clientes-inscritos-hoy').textContent = 'No disponible';
+  document.getElementById('clientes-inscritos-mes').textContent = '—';
+  document.getElementById('leads-enviados-hoy').textContent = 'No disponible';
+  document.getElementById('leads-enviados-mes').textContent = '—';
+}
+
+async function updateCommercialKpis() {
   try {
     const token = await auraAuth.token();
-    const pending = await fetchPendingPublications({ token });
-    value.textContent = String(pending);
-    detail.textContent = 'Listas para publicar';
+    renderCommercialKpis(await fetchCommercialKpis({ token }));
   } catch (_) {
-    value.textContent = '—';
-    detail.textContent = 'No disponible';
+    renderCommercialKpisUnavailable();
   }
 }
 

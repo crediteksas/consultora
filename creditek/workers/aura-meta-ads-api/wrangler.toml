@@ -9,7 +9,6 @@ META_GRAPH_VERSION = "v25.0"
 RATE_LIMIT_PER_MINUTE = "30"
 META_DESTINATION_URL = "https://registro.crediteksas.com/creditek/agentes/"
 META_PAGE_ID = "1191052130747281"
-META_CONTINUE_CAMPAIGN_ID = "120251244845590584"
 
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"

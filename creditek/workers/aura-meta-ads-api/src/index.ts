@@ -172,6 +172,7 @@ async function publisherOptions(env: Env, token: string) {
 type PublishPayload = {
   piece_id?: string; cities?: string[]; platforms?: string[]; objective?: string; budget_cop?: number;
   start_date?: string; end_date?: string; copy?: string; headline?: string; cta?: string; image_url?: string;
+  budget_type?: 'daily' | 'lifetime'; image_data?: { name?: string; mime_type?: string; bytes_base64?: string };
   campaign_name?: string; final_confirmation?: boolean;
 };
 
@@ -181,9 +182,12 @@ function validatePublishPayload(value: unknown): PublishPayload {
   if (!input.piece_id || !Array.isArray(input.cities) || !input.cities.length) throw new Error('INVALID_REQUEST');
   if (!Array.isArray(input.platforms) || !input.platforms.length || input.platforms.some(item => !['facebook','instagram'].includes(item))) throw new Error('INVALID_REQUEST');
   if (!OBJECTIVES.includes(String(input.objective)) || !CTAS.includes(String(input.cta))) throw new Error('INVALID_REQUEST');
-  if (!Number.isInteger(Number(input.budget_cop)) || Number(input.budget_cop) < 6000 || Number(input.budget_cop) > 10000000) throw new Error('INVALID_BUDGET');
+  if (!['daily','lifetime'].includes(String(input.budget_type)) || !Number.isInteger(Number(input.budget_cop)) || Number(input.budget_cop) < 6000 || Number(input.budget_cop) > 10000000) throw new Error('INVALID_BUDGET');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.start_date)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(input.end_date)) || String(input.end_date) < String(input.start_date)) throw new Error('INVALID_DATES');
-  if (!String(input.copy || '').trim() || !String(input.headline || '').trim() || !/^https:\/\//.test(String(input.image_url || ''))) throw new Error('INVALID_CREATIVE');
+  const image = input.image_data;
+  const manualImage = input.piece_id === 'manual' && image && ['image/jpeg','image/png','image/webp'].includes(String(image.mime_type))
+    && /^[A-Za-z0-9+/]+={0,2}$/.test(String(image.bytes_base64 || '')) && String(image.bytes_base64).length <= 7_000_000;
+  if (!String(input.copy || '').trim() || !String(input.headline || '').trim() || (!/^https:\/\//.test(String(input.image_url || '')) && !manualImage)) throw new Error('INVALID_CREATIVE');
   return input;
 }
 
@@ -240,10 +244,42 @@ async function resolveInstagramActor(env: Env) {
 async function recordPublish(env: Env, token: string, payload: PublishPayload, idempotencyKey: string, status: string, metaIds: Record<string, string>) {
   const response = await supabase(env, '/rest/v1/rpc/aura_meta_ads_record_publish', token, {
     p_piece_id: payload.piece_id, p_cities: payload.cities, p_platforms: payload.platforms,
-    p_objective: payload.objective, p_budget_cop: payload.budget_cop, p_start_date: payload.start_date,
+    p_objective: payload.objective, p_budget_type: payload.budget_type, p_budget_cop: payload.budget_cop, p_start_date: payload.start_date,
     p_end_date: payload.end_date, p_idempotency_key: idempotencyKey, p_status: status, p_meta_ids: metaIds,
   });
   if (!response.ok) throw new Error('AUDIT_UNAVAILABLE');
+}
+
+async function approvedCreative(env: Env, token: string, payload: PublishPayload) {
+  if (payload.piece_id === 'manual') return;
+  const pieces = await supabaseRows(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token);
+  const piece = pieces.find(item => String(item.id) === String(payload.piece_id));
+  if (!piece || String(piece.estado) !== 'lista_para_publicar'
+    || String(piece.copy || '') !== String(payload.copy || '')
+    || String(piece.headline || '') !== String(payload.headline || '')
+    || String(piece.imagen_url || '') !== String(payload.image_url || '')) throw new Error('CREATIVE_NOT_APPROVED');
+}
+
+async function creativeImage(env: Env, payload: PublishPayload) {
+  if (payload.piece_id !== 'manual') return { picture: String(payload.image_url) };
+  const image = payload.image_data!;
+  const uploaded = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/adimages`, { bytes: String(image.bytes_base64) }, 'POST');
+  const images = uploaded.images && typeof uploaded.images === 'object' ? uploaded.images as Record<string, MetaRow> : {};
+  const hash = Object.values(images).map(item => String(item?.hash || '')).find(Boolean) || String(uploaded.hash || '');
+  if (!hash) throw new Error('META_IMAGE_UPLOAD_FAILED');
+  return { image_hash: hash };
+}
+
+function adsetPayload(payload: PublishPayload, name: string, campaignId: string, cities: { key: string; radius: number; distance_unit: string }[]) {
+  const budget = payload.budget_type === 'lifetime'
+    ? { lifetime_budget: String(payload.budget_cop) }
+    : { daily_budget: String(payload.budget_cop) };
+  return {
+    name: `${name} · conjunto`, campaign_id: campaignId, ...budget,
+    start_time: `${payload.start_date}T00:05:00-0500`, end_time: `${payload.end_date}T23:55:00-0500`,
+    billing_event: 'IMPRESSIONS', optimization_goal: payload.objective === 'OUTCOME_AWARENESS' ? 'REACH' : 'LINK_CLICKS',
+    bid_strategy: 'LOWEST_COST_WITHOUT_CAP', targeting: JSON.stringify({ geo_locations: { cities }, publisher_platforms: payload.platforms }), status: 'PAUSED',
+  };
 }
 
 async function publicationStep<T>(code: string, operation: () => Promise<T>) {
@@ -259,19 +295,33 @@ function campaignPayload(payload: PublishPayload, name: string): Record<string, 
 
 async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
   await verifyMetaApp(env);
+  await approvedCreative(env, auth.token, payload);
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
-  const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
   const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(
     env,
     `${env.META_AD_ACCOUNT_ID}/campaigns`,
     campaignPayload(payload, name),
     'POST',
   ));
-  const metaIds = { campaign_id: String(campaign.id) };
+  const campaignId = String(campaign.id);
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId });
+  const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, adsetPayload(payload, name, campaignId, cities), 'POST'));
+  const adsetId = String(adset.id);
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId });
+  const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
+  const image = await publicationStep('META_IMAGE_UPLOAD_FAILED', () => creativeImage(env, payload));
+  const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
+  const linkData = { message: payload.copy, link: destination, name: payload.headline, ...image, call_to_action: { type: payload.cta, value: { link: destination } } };
+  const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
+  const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
+  const creativeId = String(creative.id);
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId });
+  const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'));
+  const metaIds = { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, ad_id: String(ad.id) };
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
-  console.info('meta_campaign_created', { campaign_id: metaIds.campaign_id, status: 'PAUSED' });
-  return { ok: true, status: 'PAUSED', meta_ids: metaIds };
+  console.info('meta_campaign_completed_paused', { ...metaIds, status: 'PAUSED' });
+  return { ok: true, status: 'PAUSED', statuses: { campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' }, meta_ids: metaIds };
 }
 
 async function continueCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string, campaignId: string) {
@@ -286,7 +336,7 @@ async function continueCampaign(env: Env, auth: { token: string }, payload: Publ
   }
   if (payload.objective !== 'OUTCOME_TRAFFIC' || Number(payload.budget_cop) !== 6000
     || payload.start_date !== '2026-08-05' || payload.end_date !== '2026-08-06'
-    || JSON.stringify([...(payload.cities || [])].sort()) !== JSON.stringify(['tolu'])
+    || JSON.stringify([...(payload.cities || [])].sort()) !== JSON.stringify(['retail-tolu'])
     || JSON.stringify([...(payload.platforms || [])].sort()) !== JSON.stringify(['facebook','instagram'])) {
     throw new Error('CONTROLLED_PAYLOAD_MISMATCH');
   }

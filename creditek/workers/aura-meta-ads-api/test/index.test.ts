@@ -58,7 +58,10 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_record_action')) return json(true);
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_record_publish')) return json({ ok: true });
     if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_pieces')) return json([{ id: 'piece-1', headline: 'Estrena hoy', copy: 'Sujeto a aprobación de crédito. Aplican términos y condiciones.', imagen_url: 'https://cdn.test/piece.jpg', plataformas: ['facebook', 'instagram'], estado: 'lista_para_publicar' }]);
-    if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities')) return json([{ id: 'tolu', name: 'Tolú', country_code: 'CO', active: true }]);
+    if (url.endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities')) return json([
+      { id: 'retail-tolu', name: 'Tolú', country_code: 'CO', origin: 'retail', active: true },
+      { id: 'aliado-apartado', name: 'Apartadó', country_code: 'CO', origin: 'aliado', active: true },
+    ]);
     if (url.includes('/debug_token')) return json({ data: { app_id: '123456789', is_valid: true, scopes: ['ads_management', 'business_management'] } });
     if (url.includes('/search?')) return json({ data: [{ key: '123', name: 'Tolú', type: 'city', country_code: 'CO' }] });
     if (url.includes('/page-1?')) return json({ id: 'page-1', name: 'Creditek', instagram_business_account: { id: '17841400000000000', username: 'creditek' } });
@@ -66,6 +69,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.includes('/campaign-existing/adsets?')) return json({ data: [{ id: 'adset-1', campaign_id: 'campaign-existing', name: 'Tolú · Tráfico · 5–6 agosto · conjunto', status: 'PAUSED', effective_status: 'PAUSED', daily_budget: '6000', start_time: '2026-08-05T12:00:00-0500', end_time: '2026-08-06T23:59:00-0500', targeting: { geo_locations: { cities: [{ key: '123' }] }, publisher_platforms: ['facebook','instagram'] } }] });
     if (url.includes('/campaign-existing?')) return json({ id: 'campaign-existing', account_id: '123', objective: 'OUTCOME_TRAFFIC', status: 'PAUSED', effective_status: 'PAUSED' });
     if (url.includes('/act_123/campaigns') && init?.method === 'POST') return json({ id: 'campaign-1' });
+    if (url.includes('/act_123/adimages')) return json({ images: { 'pieza.png': { hash: 'image-hash-1' } } });
     if (url.includes('/act_123/adsets')) return json({ id: 'adset-1' });
     if (url.includes('/act_123/adcreatives')) return json({ id: 'creative-1' });
     if (url.includes('/act_123/ads')) return json({ id: 'ad-1' });
@@ -175,8 +179,8 @@ describe('AURA Meta Ads read-only worker', () => {
 describe('AURA Meta Ads secure publisher', () => {
   const publishPermissions = ['meta_ads.access','meta_ads.read','meta_ads.publish','meta_ads.manage','meta_ads.budget.manage'];
   const payload = {
-    piece_id: 'piece-1', cities: ['tolu'], platforms: ['facebook','instagram'], objective: 'OUTCOME_TRAFFIC',
-    budget_cop: 6000, start_date: '2026-08-05', end_date: '2026-08-06', copy: 'Sujeto a aprobación de crédito. Aplican términos y condiciones.',
+    piece_id: 'piece-1', cities: ['retail-tolu'], platforms: ['facebook','instagram'], objective: 'OUTCOME_TRAFFIC',
+    budget_type: 'daily', budget_cop: 6000, start_date: '2026-08-05', end_date: '2026-08-06', copy: 'Sujeto a aprobación de crédito. Aplican términos y condiciones.',
     headline: 'Estrena hoy', cta: 'LEARN_MORE', image_url: 'https://cdn.test/piece.jpg', campaign_name: 'Tolú · Tráfico · 5–6 agosto', final_confirmation: true,
   };
 
@@ -186,7 +190,10 @@ describe('AURA Meta Ads secure publisher', () => {
     const body = await response.json() as any;
     expect(response.status).toBe(200);
     expect(body.pieces).toEqual([expect.objectContaining({ id: 'piece-1', estado: 'lista_para_publicar' })]);
-    expect(body.cities).toEqual([expect.objectContaining({ id: 'tolu', name: 'Tolú' })]);
+    expect(body.cities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'retail-tolu', name: 'Tolú', origin: 'retail' }),
+      expect.objectContaining({ id: 'aliado-apartado', name: 'Apartadó', origin: 'aliado' }),
+    ]));
     expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).endsWith('/rest/v1/rpc/aura_meta_ads_ready_cities'))).toBe(true);
     expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/debug_token'))).toBe(true);
   });
@@ -218,12 +225,12 @@ describe('AURA Meta Ads secure publisher', () => {
     expect((await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload), env())).status).toBe(400);
   });
 
-  it('crea únicamente la campaña controlada pausada y se detiene antes del conjunto', async () => {
+  it('crea campaña, conjunto, creativo y anuncio pausados en un solo flujo seguro', async () => {
     mockNetwork(publishPermissions);
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-1'), env());
     const body = await response.json() as any;
     expect(response.status).toBe(201);
-    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1' });
+    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
     expect(body.status).toBe('PAUSED');
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
     expect(metaCalls.every(([, init]: [unknown, RequestInit]) => !String(init?.body || '').includes('server-only-meta-token'))).toBe(true);
@@ -237,9 +244,34 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(campaignBody).toContain('buying_type=AUCTION');
     expect(campaignBody).toContain('special_ad_categories=%5B%5D');
     expect(campaignBody).toContain('is_adset_budget_sharing_enabled=false');
-    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adsets'))).toBe(false);
-    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(false);
-    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(false);
+    const adsetBody = String(metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/adsets'))?.[1]?.body);
+    expect(adsetBody).toContain('daily_budget=6000');
+    expect(adsetBody).not.toContain('lifetime_budget');
+    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(true);
+    expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(true);
+  });
+
+  it('alinea presupuesto total con lifetime_budget y fechas Meta', async () => {
+    mockNetwork(publishPermissions);
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', { ...payload, budget_type: 'lifetime', budget_cop: 120000 }, 'publish-total'), env());
+    expect(response.status).toBe(201);
+    const adsetCall = (globalThis.fetch as any).mock.calls.find(([url]: [unknown]) => String(url).includes('/act_123/adsets'));
+    const body = String(adsetCall?.[1]?.body);
+    expect(body).toContain('lifetime_budget=120000');
+    expect(body).not.toContain('daily_budget');
+    expect(body).toContain('start_time=');
+    expect(body).toContain('end_time=');
+  });
+
+  it('acepta imagen manual validada y la sube a Meta sin URL pública', async () => {
+    mockNetwork(publishPermissions);
+    const image = { name: 'pieza.png', mime_type: 'image/png', bytes_base64: 'iVBORw0KGgoAAAANSUhEUg==' };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', { ...payload, piece_id: 'manual', image_url: '', image_data: image }, 'publish-image'), env());
+    expect(response.status).toBe(201);
+    const upload = (globalThis.fetch as any).mock.calls.find(([url]: [unknown]) => String(url).includes('/act_123/adimages'));
+    expect(String(upload?.[1]?.body)).toContain('bytes=iVBORw0KGgoAAAANSUhEUg%3D%3D');
+    const creative = (globalThis.fetch as any).mock.calls.find(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'));
+    expect(String(creative?.[1]?.body)).toContain('image_hash');
   });
 
   it('continúa la campaña existente y crea conjunto, creativo y anuncio pausados sin crear otra campaña', async () => {

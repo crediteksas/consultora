@@ -385,4 +385,42 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(second.status).toBe(200);
     expect(callsAfterSecond).toBe(callsAfterFirst);
   });
+
+  it('devuelve la causa Meta sanitizada cuando falla la creación de campaña', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/campaigns') && init?.method === 'POST') return json({ error: {
+        code: 100, error_subcode: 4834011, type: 'OAuthException', message: 'Invalid parameter',
+        error_user_title: 'Campaña inválida', error_user_msg: 'El objetivo no es válido', fbtrace_id: 'trace-test',
+      } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'meta-detail'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(502);
+    expect(body.reason).toBe('META_CAMPAIGN_CREATE_FAILED');
+    expect(body.meta).toMatchObject({ code: '100', subcode: '4834011', error_user_msg: '"El objetivo no es válido"' });
+    expect(JSON.stringify(body)).not.toContain('server-only-meta-token');
+  });
+
+  it('crea dos anuncios A/B pausados bajo la misma campaña y conjunto', async () => {
+    mockNetwork(publishPermissions);
+    const image = { name: 'pieza.png', mime_type: 'image/png', bytes_base64: 'iVBORw0KGgoAAAANSUhEUg==' };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', {
+      ...payload, piece_id: 'manual', image_url: '', image_data: image,
+      variants: [
+        { piece_id: 'manual', copy: 'Copy A', headline: 'Titular A', cta: 'LEARN_MORE', image_url: '', image_data: image },
+        { piece_id: 'manual', copy: 'Copy B', headline: 'Titular B', cta: 'LEARN_MORE', image_url: '', image_data: image },
+      ],
+    }, 'publish-ab'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(201);
+    expect(body.comparison).toBe('A/B');
+    expect(body.status).toBe('PAUSED');
+    expect(body.variants).toHaveLength(2);
+    const ads = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/ads?'));
+    expect(ads).toHaveLength(2);
+    expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);
+  });
 });

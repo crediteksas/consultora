@@ -28,6 +28,26 @@ function reply(body: unknown, status = 200, origin?: string) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+type MetaFailureDetails = {
+  endpoint: string;
+  status: number;
+  code: string;
+  subcode: string;
+  type: string;
+  message: string;
+  error_user_title: string;
+  error_user_msg: string;
+  error_data: string;
+  fbtrace_id: string;
+};
+
+class MetaApiError extends Error {
+  constructor(public readonly stage: string, public readonly details: MetaFailureDetails) {
+    super(stage);
+    this.name = 'MetaApiError';
+  }
+}
+
 const number = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
 const actionValue = (row: MetaRow, names: string[]) => {
   const actions = Array.isArray(row.actions) ? row.actions as MetaRow[] : [];
@@ -134,14 +154,20 @@ async function metaObject(env: Env, path: string, params: Record<string, string>
     } : {};
     const safeMessage = String(metaError.message || 'UNKNOWN').replace(/[A-Za-z0-9_-]{80,}/g, '[redacted]').slice(0, 240);
     const safeDetail = (value: unknown) => JSON.stringify(value ?? null).replace(/[A-Za-z0-9_-]{80,}/g, '[redacted]').slice(0, 800);
-    console.warn('meta_write_failed', JSON.stringify({
-      path, status: response.status, code: String(metaError.code || 'UNKNOWN'),
-      subcode: String(metaError.error_subcode || 'NONE'), type: String(metaError.type || 'UNKNOWN'),
-      message: safeMessage, error_user_title: safeDetail(metaError.error_user_title),
-      error_user_msg: safeDetail(metaError.error_user_msg), error_data: safeDetail(metaError.error_data),
+    const details = {
+      endpoint: `/${path}`,
+      status: response.status,
+      code: String(metaError.code || 'UNKNOWN'),
+      subcode: String(metaError.error_subcode || 'NONE'),
+      type: String(metaError.type || 'UNKNOWN'),
+      message: safeMessage,
+      error_user_title: safeDetail(metaError.error_user_title),
+      error_user_msg: safeDetail(metaError.error_user_msg),
+      error_data: safeDetail(metaError.error_data),
       fbtrace_id: String(metaError.fbtrace_id || 'NONE').slice(0, 80),
-    }));
-    throw new Error('META_UPSTREAM');
+    } satisfies MetaFailureDetails;
+    console.warn('meta_write_failed', JSON.stringify({ ...details, path: details.endpoint }));
+    throw new MetaApiError('META_UPSTREAM', details);
   }
   return body;
 }
@@ -174,6 +200,7 @@ type PublishPayload = {
   start_date?: string; end_date?: string; copy?: string; headline?: string; cta?: string; image_url?: string;
   budget_type?: 'daily' | 'lifetime'; image_data?: { name?: string; mime_type?: string; bytes_base64?: string };
   campaign_name?: string; final_confirmation?: boolean;
+  variants?: Array<{ piece_id?: string; copy?: string; headline?: string; cta?: string; image_url?: string; image_data?: PublishPayload['image_data'] }>;
 };
 
 function validatePublishPayload(value: unknown): PublishPayload {
@@ -188,6 +215,15 @@ function validatePublishPayload(value: unknown): PublishPayload {
   const manualImage = input.piece_id === 'manual' && image && ['image/jpeg','image/png','image/webp'].includes(String(image.mime_type))
     && /^[A-Za-z0-9+/]+={0,2}$/.test(String(image.bytes_base64 || '')) && String(image.bytes_base64).length <= 7_000_000;
   if (!String(input.copy || '').trim() || !String(input.headline || '').trim() || (!/^https:\/\//.test(String(input.image_url || '')) && !manualImage)) throw new Error('INVALID_CREATIVE');
+  if (input.variants !== undefined) {
+    if (!Array.isArray(input.variants) || input.variants.length !== 2) throw new Error('INVALID_VARIANTS');
+    for (const variant of input.variants) {
+      if (!String(variant.copy || '').trim() || !String(variant.headline || '').trim() || !CTAS.includes(String(variant.cta))) throw new Error('INVALID_VARIANTS');
+      const variantManual = variant.piece_id === 'manual' && variant.image_data && ['image/jpeg','image/png','image/webp'].includes(String(variant.image_data.mime_type))
+        && /^[A-Za-z0-9+/]+={0,2}$/.test(String(variant.image_data.bytes_base64 || '')) && String(variant.image_data.bytes_base64).length <= 7_000_000;
+      if (!/^https:\/\//.test(String(variant.image_url || '')) && !variantManual) throw new Error('INVALID_VARIANTS');
+    }
+  }
   return input;
 }
 
@@ -250,7 +286,7 @@ async function recordPublish(env: Env, token: string, payload: PublishPayload, i
   if (!response.ok) throw new Error('AUDIT_UNAVAILABLE');
 }
 
-async function approvedCreative(env: Env, token: string, payload: PublishPayload) {
+async function approvedCreative(env: Env, token: string, payload: Pick<PublishPayload, 'piece_id' | 'copy' | 'headline' | 'image_url'>) {
   if (payload.piece_id === 'manual') return;
   const pieces = await supabaseRows(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token);
   const piece = pieces.find(item => String(item.id) === String(payload.piece_id));
@@ -260,7 +296,7 @@ async function approvedCreative(env: Env, token: string, payload: PublishPayload
     || String(piece.imagen_url || '') !== String(payload.image_url || '')) throw new Error('CREATIVE_NOT_APPROVED');
 }
 
-async function creativeImage(env: Env, payload: PublishPayload) {
+async function creativeImage(env: Env, payload: Pick<PublishPayload, 'piece_id' | 'image_url' | 'image_data'>) {
   if (payload.piece_id !== 'manual') return { picture: String(payload.image_url) };
   const image = payload.image_data!;
   const uploaded = await metaObject(env, `${env.META_AD_ACCOUNT_ID}/adimages`, { bytes: String(image.bytes_base64) }, 'POST');
@@ -271,7 +307,7 @@ async function creativeImage(env: Env, payload: PublishPayload) {
 }
 
 function adsetPayload(payload: PublishPayload, name: string, campaignId: string, cities: { key: string; radius: number; distance_unit: string }[]) {
-  const budget = payload.budget_type === 'lifetime'
+  const budget: Record<string, string> = payload.budget_type === 'lifetime'
     ? { lifetime_budget: String(payload.budget_cop) }
     : { daily_budget: String(payload.budget_cop) };
   return {
@@ -284,7 +320,10 @@ function adsetPayload(payload: PublishPayload, name: string, campaignId: string,
 
 async function publicationStep<T>(code: string, operation: () => Promise<T>) {
   try { return await operation(); }
-  catch { throw new Error(code); }
+  catch (error) {
+    if (error instanceof MetaApiError) throw new MetaApiError(code, error.details);
+    throw new Error(code);
+  }
 }
 
 function campaignPayload(payload: PublishPayload, name: string): Record<string, string> {
@@ -295,7 +334,11 @@ function campaignPayload(payload: PublishPayload, name: string): Record<string, 
 
 async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
   await verifyMetaApp(env);
-  await approvedCreative(env, auth.token, payload);
+  const variants = payload.variants?.length === 2 ? payload.variants : [{
+    piece_id: payload.piece_id, copy: payload.copy, headline: payload.headline,
+    cta: payload.cta, image_url: payload.image_url, image_data: payload.image_data,
+  }];
+  for (const variant of variants) await approvedCreative(env, auth.token, variant);
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const name = String(payload.campaign_name || `AURA ${payload.piece_id}`).slice(0, 120);
   const campaign = await publicationStep('META_CAMPAIGN_CREATE_FAILED', () => metaObject(
@@ -310,18 +353,26 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   const adsetId = String(adset.id);
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId });
   const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
-  const image = await publicationStep('META_IMAGE_UPLOAD_FAILED', () => creativeImage(env, payload));
   const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
-  const linkData = { message: payload.copy, link: destination, name: payload.headline, ...image, call_to_action: { type: payload.cta, value: { link: destination } } };
-  const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
-  const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
-  const creativeId = String(creative.id);
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId });
-  const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'));
-  const metaIds = { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, ad_id: String(ad.id) };
+  const variantIds: Array<{ label: string; creative_id: string; ad_id: string }> = [];
+  for (let index = 0; index < variants.length; index += 1) {
+    const variant = variants[index];
+    const label = variants.length === 2 ? `VARIANTE ${index === 0 ? 'A' : 'B'}` : '';
+    const image = await publicationStep('META_IMAGE_UPLOAD_FAILED', () => creativeImage(env, variant));
+    const linkData = { message: variant.copy, link: destination, name: variant.headline, ...image, call_to_action: { type: variant.cta, value: { link: destination } } };
+    const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
+    const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name}${label ? ` · ${label}` : ''} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'));
+    const creativeId = String(creative.id);
+    await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, variant: label || 'single' });
+    const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name}${label ? ` · ${label}` : ''} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'));
+    variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: String(ad.id) });
+  }
+  const metaIds: Record<string, string> = variants.length === 2
+    ? { campaign_id: campaignId, adset_id: adsetId, variant_a_creative_id: variantIds[0].creative_id, variant_a_ad_id: variantIds[0].ad_id, variant_b_creative_id: variantIds[1].creative_id, variant_b_ad_id: variantIds[1].ad_id }
+    : { campaign_id: campaignId, adset_id: adsetId, creative_id: variantIds[0].creative_id, ad_id: variantIds[0].ad_id };
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', metaIds);
   console.info('meta_campaign_completed_paused', { ...metaIds, status: 'PAUSED' });
-  return { ok: true, status: 'PAUSED', statuses: { campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' }, meta_ids: metaIds };
+  return { ok: true, status: 'PAUSED', comparison: variants.length === 2 ? 'A/B' : null, statuses: { campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' }, meta_ids: metaIds, variants: variantIds };
 }
 
 async function continueCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string, campaignId: string) {
@@ -480,8 +531,13 @@ async function handle(request: Request, env: Env, origin?: string) {
     } catch (error) {
       const code = error instanceof Error ? error.message : 'META_UPSTREAM';
       const status = code === 'META_PERMISSION_DENIED' ? 403 : code === 'AUDIT_UNAVAILABLE' ? 503 : 502;
-      const failure = { ok: false, error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely', reason: code };
-      console.error('publication_failed', code);
+      const failure = {
+        ok: false,
+        error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely',
+        reason: code,
+        ...(error instanceof MetaApiError ? { meta: error.details } : {}),
+      };
+      console.error('publication_failed', JSON.stringify({ reason: code, meta: error instanceof MetaApiError ? error.details : undefined }));
       await coordinate(env, coordinationKey, 'complete', failure);
       return reply(failure, status, origin);
     }

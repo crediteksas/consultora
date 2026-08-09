@@ -41,3 +41,18 @@ test('ninguna ruta o fallback de AURA sirve el HTML histórico', async () => {
     assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
   }
 });
+
+test('el alias de autenticación de la shell resuelve el módulo canónico', async () => {
+  const { default: worker } = await import('../../creditek/workers/aura-hub/src/index.js');
+  let requestedPath = '';
+  const env = { ASSETS: { fetch: async request => {
+    requestedPath = new URL(request.url).pathname;
+    return new Response('export const auraAuth = {};', { headers: { 'content-type': 'text/javascript' } });
+  } } };
+
+  const response = await worker.fetch(new Request('https://registro.crediteksas.com/creditek/agentes/aura-auth-otp-20260802.mjs'), env);
+
+  assert.equal(requestedPath, '/creditek/agentes/aura-auth.mjs');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
+});

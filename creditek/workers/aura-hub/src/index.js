@@ -2,6 +2,8 @@ import { createCorporateIncident } from './incidents.mjs';
 
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
 const CURRENT_DOCUMENT = '/creditek/agentes/index.html';
+const AUTH_ALIAS = '/creditek/agentes/aura-auth-otp-20260802.mjs';
+const AUTH_DOCUMENT = '/creditek/agentes/aura-auth.mjs';
 const MANAGED_PATHS = new Set([
   '/creditek/agentes/index.html',
   '/creditek/agentes/aura-auth.mjs',
@@ -31,7 +33,11 @@ export default {
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';
-    const assetPath = isDocument ? CURRENT_DOCUMENT : null;
+    const assetPath = isDocument
+      ? CURRENT_DOCUMENT
+      : pathname === AUTH_ALIAS
+        ? AUTH_DOCUMENT
+        : null;
     const assetRequest = assetPath ? new Request(new URL(assetPath, request.url), request) : request;
     const response = await env.ASSETS.fetch(assetRequest);
     const headers = new Headers(response.headers);

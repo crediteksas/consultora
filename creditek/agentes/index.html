@@ -199,6 +199,9 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .topbar-title{font-size:14px;font-weight:600;color:var(--text1)}
 .topbar-breadcrumb{font-size:12px;color:var(--text3)}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.global-incident-launch{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--border2);border-radius:9px;background:#fff;color:var(--navy);cursor:pointer;flex:0 0 auto}
+.global-incident-launch:hover,.global-incident-launch:focus-visible{border-color:var(--turq);color:var(--turq);outline:none}
+.global-incident-launch svg{width:17px;height:17px}
 .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
 .status-text{font-size:12px;color:var(--text2)}
 .topbar-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
@@ -278,6 +281,13 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 /* ── CONFIG PANEL ───────────────────────────────────────────── */
 .config-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;max-width:920px}
 .config-card{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:18px}
+.incident-overlay{position:fixed;inset:0;z-index:9000;display:grid!important;place-items:center;padding:20px;background:rgba(11,30,61,.45)}
+.incident-overlay .dashboard-greeting{display:none}
+.incident-overlay .config-grid{width:min(680px,100%);max-height:calc(100dvh - 40px);overflow:auto}
+.incident-overlay .config-card{box-shadow:0 24px 60px rgba(11,30,61,.25)}
+.incident-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.incident-dialog-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:#F1F5F9;color:var(--text2);cursor:pointer}
+.incident-dialog-close svg{width:16px;height:16px}
 .config-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:4px}
 .config-desc{font-size:12px;color:var(--text2);margin-bottom:14px}
 .config-field{margin-bottom:10px}
@@ -459,6 +469,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="topbar-title" id="topbar-title">Panel general</span>
       <span class="topbar-breadcrumb" id="topbar-breadcrumb">Ecosistema AURA</span>
       <div class="topbar-right">
+        <button class="global-incident-launch" data-aura-global-incident type="button" aria-label="Reportar incidencia" title="Reportar incidencia" onclick="openIncidentReporter()"><i data-lucide="bug"></i></button>
         <div class="status-dot"></div>
         <span class="status-text">Sistema activo</span>
         <span class="topbar-date" id="topbar-date"></span>
@@ -605,8 +616,14 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
         </div>
         <div class="config-grid">
           <div class="config-card">
-            <div class="config-title">Reportar un error</div>
-            <div class="config-desc">El reporte incluye contexto técnico útil, pero excluye credenciales y datos sensibles.</div>
+            <div class="incident-dialog-head">
+              <div><div class="config-title">Reportar un error</div><div class="config-desc">El reporte se enviará al Centro Corporativo de Incidencias KORA.</div></div>
+              <button class="incident-dialog-close" type="button" aria-label="Cerrar reporte" onclick="closeIncidentReporter()"><i data-lucide="x"></i></button>
+            </div>
+            <div class="config-field">
+              <label for="incident-title">Título o asunto</label>
+              <input id="incident-title" maxlength="160" placeholder="Resume el problema en una frase">
+            </div>
             <div class="config-field">
               <label for="incident-module">Módulo afectado</label>
               <select id="incident-module">
@@ -634,6 +651,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <div class="incident-meta" id="incident-meta" aria-label="Contexto técnico del incidente"></div>
             <div class="config-actions">
+              <button class="config-save" id="incident-submit" type="button" onclick="submitCorporateIncident()">Enviar a KORA</button>
               <button class="config-save" type="button" onclick="generateIncidentReport()">Generar reporte</button>
               <button class="config-save" type="button" onclick="copyIncidentReport()">Copiar para soporte</button>
               <button class="config-save" type="button" onclick="downloadIncidentReport()">Descargar</button>
@@ -682,6 +700,7 @@ let activeModule = null;
 let moduleLoadTimer = null;
 let moduleLoadId = 0;
 let incidentReport = '';
+let incidentRequestId = '';
 const auraTechnicalErrors = [];
 const SIDEBAR_STORAGE_KEY = 'aura_sidebar_collapsed';
 const AURA_MODULES = Object.values(window.AURA_MODULES || {});
@@ -1036,7 +1055,30 @@ window.addEventListener('message', event => {
 
 // ── Centro de incidencias ────────────────────────────────────────
 function incidentContext() {
-  return technicalContext({ user: auraAccess?.display_name || auraAccess?.email || 'Usuario AURA' });
+  return technicalContext({
+    route: activeModule?.url || location.pathname,
+    user: auraAccess?.display_name || auraAccess?.email || 'Usuario AURA',
+  });
+}
+
+function currentIncidentModule() {
+  return activeModule?.title || 'Panel general';
+}
+
+function openIncidentReporter() {
+  const view = document.getElementById('view-configuracion');
+  document.getElementById('incident-module').value = currentIncidentModule();
+  view.classList.add('incident-overlay');
+  view.style.display = 'grid';
+  updateIncidentMeta();
+  document.getElementById('incident-title').focus();
+  if (globalThis.lucide) lucide.createIcons();
+}
+
+function closeIncidentReporter() {
+  const view = document.getElementById('view-configuracion');
+  view.classList.remove('incident-overlay');
+  if (document.getElementById('topbar-title').textContent !== 'Centro de incidencias') view.style.display = 'none';
 }
 
 function updateIncidentMeta() {
@@ -1070,6 +1112,71 @@ function generateIncidentReport() {
   document.getElementById('incident-preview').textContent = incidentReport;
   showToast('Reporte seguro generado.');
   return incidentReport;
+}
+
+function readIncidentEvidence(file) {
+  if (!file) return Promise.resolve(null);
+  if (file.size > 10 * 1024 * 1024) return Promise.reject(new Error('La evidencia no puede superar 10 MB.'));
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: sanitizeIncidentText(file.name), type: file.type, size: file.size, data: reader.result });
+    reader.onerror = () => reject(new Error('No fue posible leer la evidencia.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitCorporateIncident() {
+  const title = document.getElementById('incident-title').value.trim();
+  const description = document.getElementById('incident-error').value.trim();
+  const expected = document.getElementById('incident-expected').value.trim() || 'Reportar el problema para diagnóstico y corrección.';
+  const preview = document.getElementById('incident-preview');
+  const button = document.getElementById('incident-submit');
+  if (title.length < 5 || description.length < 10) {
+    preview.textContent = 'Escribe un título de al menos 5 caracteres y una descripción de al menos 10.';
+    return;
+  }
+  const token = await auraAuth.token();
+  if (!token) {
+    preview.textContent = 'Tu sesión AURA venció. Inicia sesión nuevamente antes de enviar.';
+    return;
+  }
+  if (!incidentRequestId) incidentRequestId = crypto.randomUUID();
+  button.disabled = true;
+  preview.textContent = 'Enviando la incidencia al Centro Corporativo KORA…';
+  try {
+    const context = incidentContext();
+    const evidence = await readIncidentEvidence(document.getElementById('incident-evidence').files[0]);
+    const response = await fetch('/creditek/agentes/api/incidents', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        local_incident_id: incidentRequestId,
+        title: sanitizeIncidentText(title),
+        description: sanitizeIncidentText(description),
+        expected: sanitizeIncidentText(expected),
+        module: sanitizeIncidentText(currentIncidentModule()),
+        page_name: sanitizeIncidentText(currentIncidentModule()),
+        page_url: context.ruta,
+        aura_version: context.version,
+        browser: context.navegador,
+        operating_system: sanitizeIncidentText(navigator.platform || 'No disponible'),
+        screen_resolution: `${screen.width} × ${screen.height}`,
+        viewport: context.viewport,
+        connection_status: navigator.onLine ? 'online' : 'offline',
+        console_errors: auraTechnicalErrors.slice(-10).map(sanitizeIncidentText),
+        evidence,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.incident_code) throw new Error(data.error || 'KORA no pudo registrar la incidencia.');
+    preview.textContent = `Incidencia registrada:\n${data.incident_code}${data.warning ? `\n\n${data.warning}` : ''}`;
+    incidentRequestId = '';
+    showToast(`Incidencia ${data.incident_code} registrada.`);
+  } catch (error) {
+    preview.textContent = sanitizeIncidentText(error.message || 'No fue posible registrar la incidencia en KORA.');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function copyIncidentReport() {
@@ -1116,6 +1223,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
+  openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
 });
 </script>

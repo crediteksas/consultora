@@ -1,3 +1,5 @@
+import { createCorporateIncident } from './incidents.mjs';
+
 const NO_STORE = 'no-store, no-cache, must-revalidate, max-age=0';
 const CURRENT_DOCUMENT = '/creditek/agentes/index.html';
 const MANAGED_PATHS = new Set([
@@ -23,6 +25,9 @@ const CANONICAL_DOCUMENTS = new Set([
 export default {
   async fetch(request, env) {
     const pathname = new URL(request.url).pathname;
+    if (pathname === '/creditek/agentes/api/incidents') {
+      return createCorporateIncident(request, env);
+    }
     const isDocument = pathname === '/creditek/agentes'
       || pathname === '/creditek/agentes/'
       || pathname === '/creditek/agentes/index.html';

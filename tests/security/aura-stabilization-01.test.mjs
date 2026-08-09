@@ -43,7 +43,7 @@ test('AURA muestra identidad, nombres reales e iconos existentes sin accesos de 
   assert.doesNotMatch(hub, />\s*Reportes\s*</i);
   assert.doesNotMatch(hub, /Acerca de KORA|KORA ERP/);
   assert.match(hub, /data-lucide="layout-dashboard"/);
-  assert.match(hub, /data-lucide="settings"/);
+  assert.match(hub, /showSection\('configuracion',this\)[^>]*>[\s\S]*?data-lucide="bug"[\s\S]*?>Incidencias</);
   assert.match(hub, /data-lucide="log-out"/);
 });
 

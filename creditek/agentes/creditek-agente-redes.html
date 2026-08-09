@@ -828,7 +828,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   <div id="action-btns-row">
     <button class="action-btn" id="canva-btn" onclick="toggleCanvaBrief()">◧ Prompt Canva</button>
     <button class="action-btn" onclick="abrirPomelli()">✦ Abrir en Pomelli</button>
-    <button class="action-btn" id="action-gen-btn" onclick="showImgSection(); generarConModelos()">🖼 Generar imagen</button>
+    <button class="action-btn" id="action-gen-btn" onclick="iniciarGeneracionDesdeAccion()">🖼 Generar imagen</button>
     <button class="action-btn" id="cola-btn" onclick="enviarACola()"><i data-lucide="send"></i> Enviar a cola</button>
   </div>
   <!-- ══ CANVA BRIEF PANEL ══════════════════════════════════════════ -->
@@ -1055,90 +1055,49 @@ function enviarACola() {
 // Si esto fuera un objeto calculado una sola vez al cargar la página, pick()
 // solo se evaluaría una vez y el "azar" quedaría congelado toda la sesión —
 // por eso hay que llamarla como ESTILO_INSTRUCCIONES(), no usarla como valor.
-function ESTILO_INSTRUCCIONES() {
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-  return {
-    'alegre costeño': `Tono costeño COMERCIAL — calor humano del Caribe colombiano pero enfocado en la venta.
-Patrones de hook (gancho — la primera frase que para el scroll) que debes usar:
-- Identidad local + alivio: "${pick(['Llave, ese celular sí se puede.', 'Ombe, aquí empiezas tu trámite.', 'Mano, contigo sí hay solución.'])}"
-- Permiso/solución directa: "${pick(['Sin banco. Con la cédula alcanza.', 'Sin banco, sin codeudor, con cédula.', 'Sin fiador, sin vueltas, con cédula.'])}"
-- Objeción específica resuelta: "${pick(['Sin fiador y con la cédula alcanza.', 'Reportado también puede solicitar.', 'Sin codeudor, solo tu cédula.'])}"
-- Marca + acción concreta: "${pick(['Mija, ese Samsung solicítalo ya.', 'Ese Xiaomi, papi, ya casi es tuyo.', 'Llave, ese iPhone empieza tu trámite.'])}" (nunca solo listar marcas sin acción)
-Expresiones válidas: ombe, llave, mano, papi, mija, qué lo que, dale.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular que solo combine adjetivos genéricos ("las mejores marcas", "calidad garantizada", "lo mejor para ti") sin ninguno de los 3 elementos de arriba SE RECHAZA — no generar ese tipo de titular bajo ninguna circunstancia.
-
-PROHIBIDO: genérico ("tecnología", "las mejores marcas"), corporativo ("conecta tu futuro"), poético sin venta, listar marcas sin una acción concreta detrás, gramática forzada que suene poco natural en el habla real de la Costa, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, NO más de 2 deben usar la misma familia estructural. Los 4 patrones disponibles son: (1) identidad+alivio, (2) permiso/solución "Sin X", (3) objeción resuelta, (4) marca+acción. Distribuir el lote entre al menos 3 de estos 4 patrones — no repetir "Sin X. Sin Y." en más de 2 titulares del mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'chistoso': `Humor COMERCIAL colombiano — el chiste abre la puerta, la venta cierra.
-Patrones de hook que debes usar:
-- Contraste inesperado: "${pick(['Tu bolsillo dijo no. Creditek dijo: dale.', 'Tu billetera lloró. Tu celular sonrió.', 'El banco te ghosteó. Nosotros no.'])}"
-- Formato POV/meme: "${pick(['POV: entraste sin cupo y saliste con equipo nuevo.', 'POV: llegaste dudando y te vas solicitando.', 'POV: tu celular viejo viendo cómo lo reemplazan.'])}"
-- Comparación colombiana actual: "${pick(['El VAR revisó y confirmó: este precio sí es gol.', 'Como en el fútbol: aquí sí hay cambio de titular.', 'Esto tiene menos trampa que un partido de barrio.'])}"
-- Tensión cómica: "${pick(['Tu celular ya dijo adiós. Nosotros le decimos bienvenido al nuevo.', 'Tu pantalla rota ya no aguanta ni un meme más.', 'Ese celular ya jubilado necesita reemplazo urgente.'])}"
-REGLA: el humor debe estar en el texto — NO pedir "persona riendo" ni "cara de sorpresa".
-
-BÚSQUEDA OBLIGATORIA (usa la herramienta de búsqueda web ANTES de escribir los titulares): busca 1 referencia real y verificable de Colombia/Costa Caribe de los últimos 7 días — puede ser un resultado de fútbol, una canción sonando, una noticia viral, un meme real circulando. Usa esa referencia real en AL MENOS 1 de los 6 titulares del "Patrón de comparación colombiana actual". Si la búsqueda no arroja nada útil o falla, usa los ejemplos genéricos de respaldo de abajo — nunca inventes un evento como si fuera real.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos, además del chiste:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un chiste que no conecte con ninguno de los 3 elementos de arriba SE RECHAZA — el humor debe vender, no solo hacer reír.
-PROHIBIDO: chistes forzados, humor que no vende, punchlines sin beneficio claro, humor genérico sin conexión al producto/crédito, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (contraste inesperado, POV/meme, comparación colombiana actual, tensión cómica) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'formal': `Copywriting directo de conversión (conversion copywriting — texto diseñado para generar acción inmediata).
-Patrones de hook que debes usar:
-- Resultado específico: "${pick(['Solicítalo hoy. Samsung en tus manos.', 'Empieza tu trámite. Tecnología al día.', 'Da el paso. Tu celular nuevo te espera.'])}"
-- Problema + solución en 6 palabras: "${pick(['Sin historial. Con tu cédula alcanza.', 'Sin codeudor. Solo tu cédula basta.', 'Sin fiador. El trámite es simple.'])}"
-- Urgencia real con dato concreto: "${pick(['Solo 3 unidades. Solo esta semana.', 'Quedan 5 cupos. Solo hoy.', 'Últimas unidades disponibles esta semana.'])}"
-- Beneficio innegable: "${pick(['Sin banco. Sin rollo. Así de fácil.', 'Sin trámites complicados. Solo tu cédula.', 'Simple, directo, sin enredos bancarios.'])}"
-REGLA: cada titular debe funcionar solo, sin necesitar la siguiente frase.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco, sin historial)
-2. Un resultado tangible (solicítalo hoy, sin banco, sin fiador)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular aspiracional sin ninguno de los 3 elementos de arriba SE RECHAZA.
-PROHIBIDO: aspiracional genérico, corporativo ("potencia", "conecta", "descubre", "innovador"), frases motivacionales sin dato concreto de crédito/producto, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (resultado específico, problema+solución, urgencia con dato concreto, beneficio innegable) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'minimalista': `Una sola idea. Máximo impacto. Mínimas palabras.
-Patrones de hook que debes usar:
-- Fragmento directo: "${pick(['Sale hoy.', 'Con la cédula.', 'Sin banco.'])}"
-- Afirmación de resultado: "${pick(['Solicítalo. Hoy mismo.', 'Trámite simple.', 'Ya casi tuyo.'])}"
-REGLA ESTRICTA: máximo 4 palabras. Sin puntuación decorativa. Sin adjetivos innecesarios.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Dado el límite estricto de 4 palabras, el elemento concreto debe ser la PALABRA CLAVE central del fragmento:
-1. Una objeción resuelta en una palabra ("Sin banco", "Sin fiador", "Reportado")
-2. Un resultado en una palabra ("Solicítalo", "Hoy", "Ya")
-3. Una marca específica ("Samsung ya", "iPhone hoy")
-Un fragmento minimalista que solo use adjetivos vacíos ("Lo mejor.", "Calidad total.") SE RECHAZA — el minimalismo debe mantener un elemento concreto, no sacrificarlo por brevedad.
-PROHIBIDO: más de 4 palabras, cualquier palabra que no aporte conversión directa, fragmentos vacíos de contenido aunque sean cortos, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 2 patrones disponibles (fragmento directo, afirmación de resultado) — no más de 3 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
+function buildCreativeStyleDirection(estilo = currentEstilo) {
+  const directions = {
+    costeno: `Alegre costeño contemporáneo: energía cálida, comercio cuidado, plazas y arquitectura atractiva, luz natural, vegetación y vida urbana real del Caribe colombiano. Personas y familias contemporáneas, dignas y aspiracionales. No uses pobreza, deterioro, motos como atajo visual, disfraces folclóricos, caricaturas ni clichés socioeconómicos. Cambia composición, luz y ritmo; no uses una muletilla regional fija.`,
+    chistoso: `Humor comercial inteligente y breve: parte de una tensión real del producto o la compra, resuélvela con un giro original y respeta al cliente. El humor está en la idea, no en estereotipos, disfraces o expresiones repetidas.`,
+    formal: `Formal contemporáneo: claridad, confianza, jerarquía visual limpia, precisión comercial y tono respetuoso. Evita lenguaje corporativo genérico y promesas absolutas.`,
+    minimalista: `Minimalista: una sola idea comercial concreta, lenguaje corto, espacio visual y máxima claridad. Elimina adornos y adjetivos vacíos.`,
+    custom: (document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.'),
   };
+  return directions[estilo] || directions.formal;
+}
+
+function ESTILO_INSTRUCCIONES() {
+  const compliance = `\n\nREGLAS PARA TITULARES:\n- Crea ideas nuevas a partir del brief, producto, campaña y plataforma; no uses bancos, ejemplos ni muletillas fijas.\n- Cada titular debe aportar un detalle comercial verificable: producto/modelo, beneficio real, objeción real o acción concreta.\n- Varía la estructura entre pregunta, beneficio, contraste, urgencia real, solución y observación local natural.\n- Nunca prometas aprobación garantizada, velocidad de aprobación ni reversión de rechazos. Incluye condiciones de crédito en el copy cuando aplique.`;
+  return {
+    'alegre costeño': buildCreativeStyleDirection('costeno') + compliance,
+    'chistoso': buildCreativeStyleDirection('chistoso') + compliance,
+    'formal': buildCreativeStyleDirection('formal') + compliance,
+    'minimalista': buildCreativeStyleDirection('minimalista') + compliance,
+  };
+}
+
+function buildRecentHeadlinePenalty() {
+  try {
+    const recent = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]');
+    const titles = recent.filter(t => typeof t === 'string').slice(-24);
+    return titles.length ? `\nTITULARES RECIENTES — no repitas ni parafrasees estos:\n${titles.map(t => `- ${t}`).join('\n')}` : '';
+  } catch { return ''; }
+}
+
+function rememberRecentHeadlines(titulares) {
+  try {
+    const current = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]');
+    const next = [...current, ...titulares.map(t => limpiarMarkdownTitular(t)).filter(Boolean)].slice(-24);
+    sessionStorage.setItem('aura_recent_headlines', JSON.stringify(next));
+  } catch { /* La memoria de variedad es opcional y nunca bloquea la generación. */ }
+}
+
+function buildMandatoryUserBrief() {
+  const instruction = document.getElementById('instruccion-ia-extra')?.value.trim() || '';
+  const context = document.getElementById('modo-contexto')?.value.trim() || '';
+  const brief = [instruction, context].filter(Boolean).join(' · ');
+  if (!brief) return '';
+  return `USER BRIEF — HIGHEST PRIORITY:\n"${brief}"\nEvery explicit object, scene, location and constraint in this brief must be visibly present. Do not replace it with a generic street, person, motorcycle, store or preset scene. If it conflicts with a lower-priority style cue, preserve the user brief and adapt the style around it.`;
 }
 
 // ── Generar más titulares con Claude ────────────────────────────
@@ -1170,6 +1129,7 @@ CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramátic
 
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
+${buildRecentHeadlinePenalty()}
 
 GENERA 6 TITULARES de alto impacto para imagen publicitaria en redes sociales.
 
@@ -1184,7 +1144,7 @@ REGLAS:
 - TONO según estilo "${estilo}": ${estiloInstrucciones[estiloKey]}
 - PROHIBIDO: "Aquí te atendemos bien", frases genéricas de atención
 - Varía los enfoques: urgencia / emoción / beneficio directo / humor / aspiracional / costeño
-- Los ejemplos citados arriba en "TONO PARA ESTE ESTILO" son SOLO para mostrar la estructura del patrón — NUNCA los uses tal cual ni casi idénticos. Genera titulares 100% nuevos que sigan el patrón, no una copia de los ejemplos.
+- Los titulares deben ser 100% nuevos para este brief. No reutilices ni parafrasees titulares recientes.
 
 Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
 1. {titular}
@@ -1761,7 +1721,8 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
   const map = ESTILO_INSTRUCCIONES();
   const key = Object.keys(map).find(k => estilo.includes(k.split(' ')[0]));
   return key ? map[key] + '\n\n' : '';
-})()}LENGUAJE Y TONO OBLIGATORIO:
+})()}${buildRecentHeadlinePenalty()}
+LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
 ${culturaCtx && (culturaCtx.includes('tradicional') || culturaCtx.includes('ganadero')) ? '- Registro: usa "usted" si el contexto lo pide; cálido, de confianza, como alguien del mismo pueblo.' : '- Registro: tuteo natural y directo, como alguien que ya conoce al cliente.'}
 - Frases cortas y directas. Una idea por frase.
@@ -1819,6 +1780,7 @@ Extrae la emoción o beneficio central y exprésalo de forma nueva e inesperada.
 - Nivel: Nike, Coca-Cola, Claro Colombia
 - PROHIBIDO: copiar palabras del mensaje, frases genéricas
 - Uno emocional, uno directo con giro creativo, uno con sabor costeño
+- Los tres deben ser nuevos para esta campaña; no repitas ni parafrasees titulares recientes.
 Formato exacto:
 1. {titular}
 2. {titular}
@@ -2124,6 +2086,7 @@ function restoreHistory(idx) {
 function renderTitulares(titulares) {
   const wrap = document.getElementById('titulares-opts');
   if (!wrap || !titulares.length) return;
+  rememberRecentHeadlines(titulares);
   document.querySelectorAll('.titular-opt').forEach(b => b.classList.remove('selected'));
   wrap.innerHTML = titulares.map(t =>
     `<button class="titular-opt" onclick="selectTitular(this,'${t.replace(/'/g,"\\'")}')">${t}</button>`
@@ -2322,7 +2285,7 @@ function resetPreviewFields() {
     servicio:      'Te atendemos con gusto',
     captacion:     '¿A quién le ha pasado esto? 👇',
     jornada:       '¡Ven y estrena ese mismo día!',
-    institucional: 'Aquí te atendemos bien, siempre.',
+    institucional: '',
   };
   const precioDefaults = {
     credito:  cuota,   // vacío si el usuario no escribió precio — nunca inventar
@@ -2515,11 +2478,12 @@ async function buildImgPrompt() {
   const nombreCta      = esCiudad ? getCiudadNombre(ciudad) : (tiendaInfo?.nombre || getCiudadNombre(ciudad));
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
   const refBlock       = getRefBlock();
+  const userBrief      = buildMandatoryUserBrief();
 
   // ── MODOS SIN CELULAR (captacion, institucional, jornada) ────────
   if (['captacion','institucional','jornada'].includes(modo)) {
     const tipoPersonalizado = document.getElementById('tipo-personalizado')?.value.trim() || '';
-    const titularVal = document.getElementById('img-titular')?.value.trim() || 'Aquí te atendemos bien, siempre.';
+    const titularVal = document.getElementById('img-titular')?.value.trim() || '';
     const ctaVal     = document.getElementById('img-cta')?.value.trim() || `Escríbenos por WhatsApp`;
     const mensajeVal = document.getElementById('img-mensaje')?.value.trim() || '';
     const jornadaFecha = document.getElementById('jornada-fecha')?.value.trim() || '';
@@ -2581,6 +2545,8 @@ async function buildImgPrompt() {
       'ROLE: Senior advertising art director for Colombian Caribbean brand. Create a commercially compelling, visually rich image.',
       `FORMAT: ${formatSpec}`,
       '',
+      userBrief,
+      '',
       `CORE CONCEPT: ${conceptoPrincipal}`,
       tipoPersonalizado ? null : (
         { inst_apertura:'ADD: celebratory ribbon or confetti in turquoise.',
@@ -2597,7 +2563,7 @@ async function buildImgPrompt() {
       '',
       'BRAND IDENTITY:',
       '- Deep navy #0B1E3D | Turquoise #00C4CC | White #FFFFFF',
-      '- Creditek logo: circular turquoise checkmark + wordmark Montserrat Bold. Prominent, unmodified.',
+      '- Do not draw or reinterpret the Creditek logo; the official asset is composited after generation.',
       '- Typography: Montserrat ExtraBold headlines, DM Sans body.',
       '',
       'EXACT SPANISH TEXT TO RENDER IN IMAGE:',
@@ -2735,7 +2701,7 @@ async function buildImgPrompt() {
       ].filter(Boolean).join(' ')
     : `Sin especificaciones técnicas ni callout labels alrededor del producto. Diseño limpio centrado en el producto y el mensaje.`;
 
-  const detalleDiaMsg = getDetalleDelDia(currentEstilo);
+  const detalleDiaMsg = userBrief ? 'el brief explícito del usuario, sin sustituir ninguno de sus elementos' : getDetalleDelDia(currentEstilo);
   const mensajeMap = {
     formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual: ${detalleDiaMsg}. Mensaje directo, elegante y sin estridencias — que transmita solidez de marca y confianza al comprador.`,
     costeno:     `Tono caribeño colombiano auténtico y comercial — un cliente feliz disfrutando su celular nuevo como foco claro de la escena. Luz natural cálida, colores vivos, calidez humana genuina. Escena: ${detalleDiaMsg}. REGLA DE ORO: la escena debe ser PLAUSIBLE — un momento que de verdad podría pasar un día cualquiera en un pueblo de la costa (Corozal, Chinú, Ciénaga). Varios elementos costeños están bien SOLO si conviven de forma natural en un mismo momento real (ej: dos amigas en la plaza, una con un coco, mirando el celular). Lo PROHIBIDO es apilar elementos que no conviven en la vida real solo para "gritar Costa" (confeti + palmeras + flores + coco todos juntos = falso). Nada de confeti, disfraces ni máscaras de comparsa.`,
@@ -2780,6 +2746,7 @@ async function buildImgPrompt() {
 
   const lineas = [
     `ROL: Director de arte publicitario senior especializado en redes sociales, retail de celulares y crédito comercial colombiano.`,
+    userBrief,
     `FORMATO: ${formatoLabel}`, `LAYOUT: ${layoutGuide}`, ``,
     `PRODUCTO: ${producto}`,
     checkedSpecs.length > 0 && specsItems.length > 0 ? `SPECS: ${specsItems.join(', ')}` : null,
@@ -2805,7 +2772,7 @@ async function buildImgPrompt() {
     `- Fondo: ${bgSpec}`,
     `- Paleta: ${paletaEstilo.paleta}`,
     `- Dominio: ${paletaEstilo.dominio}`,
-    `- Logo Creditek: esquina superior derecha — check circular turquesa + wordmark Montserrat Bold. NO modificar.`,
+    `- Logo Creditek: no dibujarlo ni reinterpretarlo; el asset oficial se compone después de generar.`,
     `- Tipografía: Montserrat Bold titulares; DM Sans secundarios`,
     finStrip        ? `- ${finStrip}`     : null,
     finContextBlock ? finContextBlock      : null,
@@ -2846,16 +2813,17 @@ function buildImgPromptGeminiFallback() {
   const tiendaInfo = getTiendaInfo(ciudad);
   const nombreCta  = esCiudad ? getCiudadNombre(ciudad) : (tiendaInfo?.nombre || getCiudadNombre(ciudad));
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
+  const userBrief = buildMandatoryUserBrief();
 
   const colorMap = {
     formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
-    costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
+    costeno:     'Caribe colombiano contemporáneo: luz cálida, color, vegetación, comercio y espacios públicos cuidados, sin caricaturas ni estereotipos socioeconómicos',
     chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
     minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
     custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
   };
   const colorDesc = colorMap[currentEstilo] || colorMap.formal;
-  const detalleDiaGem = getDetalleDelDia(currentEstilo);
+  const detalleDiaGem = userBrief ? '' : getDetalleDelDia(currentEstilo);
   const toqueTropical = currentEstilo === 'costeno'
     ? `, con como mucho un detalle costeño sutil y natural (${detalleDiaGem}) — nunca varios combinados, para que se vea vida real y no una fiesta armada`
     : ` — incorporar este detalle visual, sutil: ${detalleDiaGem}`;
@@ -2863,7 +2831,7 @@ function buildImgPromptGeminiFallback() {
   // ── MODOS SIN CELULAR (captación, institucional, jornada) ──
   if (['captacion','institucional','jornada'].includes(modo)) {
     const tipoPersonalizado = document.getElementById('tipo-personalizado')?.value.trim() || '';
-    const titularVal   = document.getElementById('img-titular')?.value.trim() || 'Aquí te atendemos bien, siempre.';
+    const titularVal   = document.getElementById('img-titular')?.value.trim() || '';
     const mensajeVal   = document.getElementById('img-mensaje')?.value.trim() || '';
     const jornadaFecha = document.getElementById('jornada-fecha')?.value.trim() || '';
     const jornadaLugar = document.getElementById('jornada-lugar')?.value.trim() || '';
@@ -2871,6 +2839,7 @@ function buildImgPromptGeminiFallback() {
     const escena = tipoPersonalizado || 'una publicación de marca limpia y atractiva';
 
     return [
+      userBrief,
       `Anuncio publicitario en redes sociales sobre ${escena}${toqueTropical}.`,
       ` El fondo es en ${colorDesc}.`,
       ` En el centro está escrito en letras grandes y gruesas el texto "${titularVal}".`,
@@ -2909,6 +2878,7 @@ function buildImgPromptGeminiFallback() {
     : (esGenerico ? 'un teléfono celular moderno' : `un teléfono celular ${producto}`);
 
   return [
+    userBrief,
     `Fotografía publicitaria de ${productoDesc}${marcaTxt}, en ${colorDesc}${toqueTropical}.`,
     ` El teléfono se ve grande y bien iluminado, como en una vitrina de tienda.`,
     ` Escrito en letras grandes y gruesas está el texto "${titular}".`,
@@ -2933,10 +2903,11 @@ async function buildImgPromptGemini() {
   const producto = document.getElementById('producto').value.trim() || 'smartphone';
   const modo     = document.getElementById('modo')?.value || 'credito';
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
-  const detalleDiaClaude = getDetalleDelDia(currentEstilo);
+  const userBrief = buildMandatoryUserBrief();
+  const detalleDiaClaude = userBrief ? '' : getDetalleDelDia(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
-    costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
+    costeno:     `Caribe colombiano contemporáneo, alegre y auténtico: plazas cuidadas, comercio moderno, arquitectura atractiva, color, luz natural y vida urbana real. Sin pobreza, deterioro, motos recurrentes, disfraces, turismo de postal ni estereotipos socioeconómicos. ${detalleDiaClaude}`,
     chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -2945,7 +2916,7 @@ async function buildImgPromptGemini() {
 
   let titular, mensajeVal, precio, cta, jornadaFecha, jornadaLugar, jornadaHora;
   if (['captacion','institucional','jornada'].includes(modo)) {
-    titular      = document.getElementById('img-titular')?.value.trim() || 'Aquí te atendemos bien, siempre.';
+    titular      = document.getElementById('img-titular')?.value.trim() || '';
     mensajeVal   = document.getElementById('img-mensaje')?.value.trim() || '';
     precio       = '';
     jornadaFecha = document.getElementById('jornada-fecha')?.value.trim() || '';
@@ -2979,12 +2950,13 @@ RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 
 FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 1. ESCENA BASE: tipo de imagen y estética general
-2. SUJETO PRINCIPAL: persona o producto, posición y acción. IMPORTANTE: el sujeto debe ser una persona colombiana de clase media trabajadora, en ambiente comercial digno (local de tecnología surtido, vitrina iluminada, calle comercial). Vestuario: ropa casual cotidiana contemporánea real de la Costa Caribe colombiana de hoy — camisetas, blusas, jeans, ropa de trabajo o de calle normal, colores naturales sin exceso. NUNCA disfraz folclórico, NUNCA traje típico de carnaval, NUNCA estampados florales excesivos ni pañoletas/turbantes decorativos, NUNCA vestuario que parezca puesta en escena turística o de comedia caribeña — debe verse como una persona real yendo a comprar algo, no como una actuación. NUNCA pobreza, NUNCA tienda humilde, NUNCA ropa desgastada.
+2. SUJETO PRINCIPAL: sigue literalmente el brief del usuario cuando describa una escena, objeto o lugar; no lo sustituyas por una persona, una moto, una calle comercial ni una tienda genérica. Si incluye personas, deben verse contemporáneas y naturales, sin disfraces, caricaturas ni estereotipos socioeconómicos.
 3. ENTORNO: ambiente, colores, accesorios.
 4. TEXTOS: cada texto como objeto físico con ubicación exacta usando la fórmula: "en [ubicación] está escrito el texto [TEXTO ENTRE COMILLAS]"
 5. ILUMINACIÓN: calidad fotográfica, vibrante, profesional
 
 BRIEF DE LA PIEZA:
+${userBrief || 'No hay un brief visual adicional.'}
 Producto: ${producto}
 Estilo/tono: ${estiloDesc}
 Titular: ${titular}
@@ -3021,10 +2993,11 @@ Responde SOLO con el prompt final. Sin explicaciones, sin markdown.`;
 async function buildImgPromptGeminiFotoLimpia() {
   const producto = document.getElementById('producto').value.trim() || 'smartphone';
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
-  const detalleDiaClaude = getDetalleDelDia(currentEstilo);
+  const userBrief = buildMandatoryUserBrief();
+  const detalleDiaClaude = userBrief ? '' : getDetalleDelDia(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
-    costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
+    costeno:     `Caribe colombiano contemporáneo, alegre y auténtico: plazas cuidadas, comercio moderno, arquitectura atractiva, color, luz natural y vida urbana real. Sin pobreza, deterioro, motos recurrentes, disfraces, turismo de postal ni estereotipos socioeconómicos. ${detalleDiaClaude}`,
     chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -3034,13 +3007,13 @@ async function buildImgPromptGeminiFotoLimpia() {
   const fallbackEstatico = () => {
     const colorMap = {
       formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
-      costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
+      costeno:     'Caribe colombiano contemporáneo, luminoso, auténtico y cuidado; sin caricaturas ni estereotipos socioeconómicos',
       chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
       minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
       custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
     };
     const colorDesc = colorMap[currentEstilo] || colorMap.formal;
-    return `Fotografía publicitaria realista de ${producto}, en ${colorDesc}. El producto se ve grande y bien iluminado, como en una vitrina de tienda. Composición fotográfica limpia, comercial, sin ningún texto, letra o logo en la imagen — solo la escena. Usar todo el lienzo de borde a borde, sin zonas vacías.`;
+    return `${userBrief ? userBrief + ' ' : ''}Fotografía publicitaria realista de ${producto}, en ${colorDesc}. El producto se ve grande y bien iluminado, como en una vitrina de tienda. Composición fotográfica limpia, comercial, sin ningún texto, letra o logo en la imagen — solo la escena. Usar todo el lienzo de borde a borde, sin zonas vacías.`;
   };
 
   const apiKey = sessionStorage.getItem('ck_api_key') || '';
@@ -3057,10 +3030,11 @@ RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 
 FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 1. ESCENA BASE: tipo de fotografía y estética general
-2. SUJETO PRINCIPAL: persona o producto, posición y acción. IMPORTANTE: el sujeto debe ser una persona colombiana de clase media trabajadora, en ambiente comercial digno (local de tecnología surtido, vitrina iluminada, calle comercial). Vestuario: ropa casual cotidiana contemporánea real de la Costa Caribe colombiana de hoy — camisetas, blusas, jeans, ropa de trabajo o de calle normal, colores naturales sin exceso. NUNCA disfraz folclórico, NUNCA traje típico de carnaval, NUNCA estampados florales excesivos ni pañoletas/turbantes decorativos, NUNCA vestuario que parezca puesta en escena turística o de comedia caribeña — debe verse como una persona real yendo a comprar algo, no como una actuación. NUNCA pobreza, NUNCA tienda humilde, NUNCA ropa desgastada.
+2. SUJETO PRINCIPAL: sigue literalmente el brief del usuario cuando describa una escena, objeto o lugar; no lo sustituyas por una persona, una moto, una calle comercial ni una tienda genérica. Si incluye personas, deben verse contemporáneas y naturales, sin disfraces, caricaturas ni estereotipos socioeconómicos.
 3. ENTORNO E ILUMINACIÓN: ambiente, colores, accesorios, calidad fotográfica vibrante y profesional
 
 BRIEF DE LA PIEZA:
+${userBrief || 'No hay un brief visual adicional.'}
 Producto: ${producto}
 Estilo/tono: ${estiloDesc}
 
@@ -3173,7 +3147,7 @@ function getRefBlock() {
     }
   }
 
-  return `\n\nCOLOMBIAN PHONE MARKET VISUAL CONTEXT:\nBrand colors for reference (use as market context only):\n${colorLines}${kwBlock}${modelBlock}\nNOTA: Los colores de marca Creditek (#0B1E3D + #00C4CC) siempre tienen prioridad. TODOS los textos en la imagen deben estar en español colombiano, nunca en inglés.`;
+  return `\n\nMARKET REFERENCES — INFLUENCE, DO NOT COPY:\nUse these live Colombian-market references only to inform current product relevance, visual energy and category language. Never copy another brand's campaign, headline, layout, slogan or protected visual identity.\nBrand colors for reference (use as market context only):\n${colorLines}${kwBlock}${modelBlock}\nCreditek colors (#0B1E3D + #00C4CC) always take priority. All rendered text must be Spanish from Colombia.`;
 }
 
 function formatRefAge(ts) {
@@ -3307,11 +3281,58 @@ function showImgSection() {
     .catch(() => {});
 }
 
+let imageGenerationInFlight = false;
+
+function beginImageGeneration() {
+  if (imageGenerationInFlight) return false;
+  imageGenerationInFlight = true;
+  const actionBtn = document.getElementById('action-gen-btn');
+  const imageBtn = document.getElementById('img-gen-btn');
+  const spinner = document.getElementById('img-spinner');
+  const label = document.getElementById('img-gen-label');
+  if (actionBtn) { actionBtn.disabled = true; actionBtn.textContent = '⏳ Generando...'; }
+  if (imageBtn) imageBtn.disabled = true;
+  if (spinner) spinner.style.display = 'block';
+  if (label) label.textContent = 'Generando...';
+  return true;
+}
+
+function finishImageGeneration() {
+  imageGenerationInFlight = false;
+  const actionBtn = document.getElementById('action-gen-btn');
+  const imageBtn = document.getElementById('img-gen-btn');
+  const spinner = document.getElementById('img-spinner');
+  const label = document.getElementById('img-gen-label');
+  if (actionBtn) { actionBtn.disabled = false; actionBtn.textContent = '🖼 Generar imagen'; }
+  if (imageBtn) imageBtn.disabled = false;
+  if (spinner) spinner.style.display = 'none';
+  if (label) label.textContent = '🖼 Generar imagen';
+}
+
+function iniciarGeneracionDesdeAccion() {
+  if (!beginImageGeneration()) return;
+  showImgSection();
+  generarConModelos(true);
+}
+
 function abrirImgKeyModal() {
   showToast('Las credenciales son administradas de forma segura por AURA.', '#0B1E3D');
 }
 
 async function generarImagen(callerBtn = null) {
+  if (!beginImageGeneration()) return;
+  try {
+    return await generarImagenInterna(callerBtn);
+  } catch (err) {
+    const errDiv = document.getElementById('img-err');
+    if (errDiv) { errDiv.textContent = err?.message || 'No se pudo generar la imagen. Intenta nuevamente.'; errDiv.style.display = 'block'; }
+    showToast(err?.message || 'No se pudo generar la imagen', '#ef4444');
+  } finally {
+    finishImageGeneration();
+  }
+}
+
+async function generarImagenInterna(callerBtn = null) {
   // FIX v4e (06-jul-2026): feedback visual INMEDIATO al hacer clic —
   // antes, corregirMensajeSecundario() corría primero y dejaba el botón
   // "muerto" 2-5 segundos sin ninguna señal para el usuario.
@@ -3464,27 +3485,9 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
     if (m) { reqBase.imageMimeType = m[1]; reqBase.imageBase64 = m[2]; }
   }
 
-  // FIX v4o (07-jul-2026): revierte el FIX 4 (03-jul) — el logo real ahora
-  // se manda como imagen de referencia a Nano Banana Pro (gemini3pro), que
-  // sí soporta reference images de forma confiable. Reemplaza el enfoque de
-  // "zona reservada" (pegado después con Canvas) que Oscar confirmó que se
-  // veía como error de diseño.
-  // NO se manda en modo soloFoto (pipeline v4d): ahí Gemini debe entregar la
-  // foto limpia sin logo — GPT lo compone en el paso 2 del pipeline. Tampoco
-  // se manda a la vía de respaldo (fallback sin engine): esa ruta (Nano
-  // Banana 2 / Imagen 4-3) no soporta imagen de referencia.
-  const reqBaseGemini3Pro = { ...reqBase };
-  if (!soloFoto) {
-    reqBaseGemini3Pro.imageUrl = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
-    reqBaseGemini3Pro.prompt = `${prompt} Reference brand logo provided — integrate it naturally into the composition.`;
-  }
-
   let src;
-  let logoYaIntegrado = false;
   try {
-    src = await llamarWorker({ ...reqBaseGemini3Pro, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
-    // gemini3pro ya recibió el logo como imagen de referencia (salvo en modo soloFoto) — no hace falta pegarlo de nuevo.
-    logoYaIntegrado = !soloFoto;
+    src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
   } catch (errPrincipal) {
     // FIX v17 12-jul-2026: decisión de Oscar — para EDICIÓN específicamente,
     // si gemini3pro (el único motor con imagen de referencia) falla, NO caer
@@ -3504,26 +3507,18 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
     console.warn('[generarConGemini] gemini3pro falló, usando vía normal del Worker:', errPrincipal.message);
     src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioFallback });
   }
-  // FIX v4d (07-jul-2026): si es para el pipeline, devolver la foto CRUDA sin
-  // overlay de logo — GPT se encarga del logo y el texto en el paso 2.
+  // El pipeline necesita la foto sin marca; para las demás variantes se usa
+  // siempre el asset oficial compuesto después de generar, nunca un logo
+  // reinterpretado por el modelo.
   if (soloFoto) return src;
-  // FIX v4o (07-jul-2026): si gemini3pro ya integró el logo como imagen de
-  // referencia real, NO pegar otro logo encima por Canvas — duplicaría el
-  // logo. componerLogoSobreImagen() queda como respaldo SOLO para cuando el
-  // flujo cae al fallback (que no soporta imagen de referencia) — ahí sigue
-  // siendo necesario, si no la imagen saldría sin logo del todo.
-  return logoYaIntegrado ? src : await componerLogoSobreImagen(src);
+  return await componerLogoSobreImagen(src);
 }
 
 async function generarConDalle(key, prompt) {
-  const [logo, finLogos] = await Promise.all([loadLogoBase64(), loadAllSelectedFinancieras()]);
+  const finLogos = await loadAllSelectedFinancieras();
   let inputPayload;
-  if (logo || productoImgBase64 || finLogos.length) {
+  if (productoImgBase64 || finLogos.length) {
     const content = [];
-    if (logo) {
-      content.push({ type: 'input_text', text: 'Reference brand logo — reproduce exactly in top-right corner of the ad:' });
-      content.push({ type: 'input_image', image_url: logo });
-    }
     if (productoImgBase64) {
       content.push({ type: 'input_text', text: 'Reference product photo — feature this product prominently in the advertisement:' });
       content.push({ type: 'input_image', image_url: productoImgBase64 });
@@ -3545,7 +3540,7 @@ async function generarConDalle(key, prompt) {
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen. Revisa la consola para ver la respuesta completa.');
-  return 'data:image/png;base64,' + b64;
+  return await componerLogoSobreImagen('data:image/png;base64,' + b64);
 }
 
 // ── PIPELINE v4d (07-jul-2026): Gemini genera la foto, GPT compone encima ──
@@ -3561,16 +3556,12 @@ async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFot
   // Paso 1 — Gemini genera la foto limpia (sin texto, sin logo)
   const fotoBase = await generarConGemini(keyGemini, promptGeminiFoto, /* soloFoto */ true);
 
-  // Paso 2 — GPT recibe la foto como input_image + logo como input_image + el copy como input_text
-  const logo = await loadLogoBase64();
+  // Paso 2 — GPT recibe solo la foto y el copy. El logo oficial se compone
+  // después sobre el resultado final para evitar una reinterpretación por IA.
   const content = [
     { type: 'input_text', text: 'Base photograph — do not regenerate the scene, only add the following graphic elements on top as clean layers:' },
     { type: 'input_image', image_url: fotoBase },
   ];
-  if (logo) {
-    content.push({ type: 'input_text', text: 'Brand logo — place in top-right corner, small card with soft shadow:' });
-    content.push({ type: 'input_image', image_url: logo });
-  }
   content.push({ type: 'input_text', text: promptComposicionGPT });
 
   const data = await llamarBackendImagen('/openai/responses', {
@@ -3581,7 +3572,7 @@ async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFot
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen del pipeline.');
-  return 'data:image/png;base64,' + b64;
+  return await componerLogoSobreImagen('data:image/png;base64,' + b64);
 }
 
 function mostrarImgVersion(src) {
@@ -3738,7 +3729,9 @@ function descargarImagenAB(side) {
 }
 
 
-async function generarConModelos() {
+async function generarConModelos(alreadyStarted = false) {
+  if (!alreadyStarted && !beginImageGeneration()) return;
+  try {
   await corregirMensajeSecundario();
   // FIX v13 12-jul-2026: buildImgPrompt() ahora es async (puede consultar a
   // Claude el procesador faltante) — aquí SÍ hace falta esperarlo, porque la
@@ -3770,13 +3763,9 @@ async function generarConModelos() {
   const keyGemini = '';
   const keyOpenAI = '';
 
-  const btn = document.getElementById('action-gen-btn');
-  btn.disabled = true;
   document.getElementById('img-result').style.display     = 'none';
   document.getElementById('img-ab-result').style.display  = 'none';
   document.getElementById('img-err').style.display        = 'none';
-
-  btn.textContent = '⏳ Generando...';
 
   const callEngine = (id) => {
     const key = id === 'dalle' ? keyOpenAI : keyGemini;
@@ -3867,8 +3856,13 @@ async function generarConModelos() {
     else showToast('Error en todas las generaciones', '#ef4444');
   }
 
-  btn.disabled = false;
-  btn.textContent = '🖼 Generar imagen';
+  } catch (err) {
+    const errDiv = document.getElementById('img-err');
+    if (errDiv) { errDiv.textContent = err?.message || 'No se pudo generar la imagen. Intenta nuevamente.'; errDiv.style.display = 'block'; }
+    showToast(err?.message || 'No se pudo generar la imagen', '#ef4444');
+  } finally {
+    finishImageGeneration();
+  }
 }
 
 function descargarImagen() {

@@ -1573,6 +1573,9 @@ async function generarContenido() {
   document.getElementById('empty-state').style.display = 'none';
   document.getElementById('piezas-grid').innerHTML = '';
   document.getElementById('loading-card').style.display = 'block';
+  // El concepto visual no es un preset: se genera con IA antes de construir
+  // la pieza y queda disponible tanto para Gemini como para GPT Image.
+  await proponerDetalleCreativoConIA(currentEstilo, { force: true });
   document.getElementById('copy-all-btn').style.display = 'none';
 
   const platformsList = platforms.join(', ');
@@ -2220,25 +2223,18 @@ function selectEstilo(estilo, btn) {
   const detVal = document.getElementById('detalle-dia-val');
   if (detRow && detVal && estilo !== 'custom') {
     detRow.style.display = 'flex';
-    detVal.textContent = getDetalleDelDia(estilo);
+    detVal.textContent = 'Proponiendo concepto con IA…';
+    void proponerDetalleCreativoConIA(estilo);
   } else if (detRow) {
     detRow.style.display = 'none';
   }
   buildImgPrompt();
 }
 
-// Permite cambiar el detalle del día manualmente (05-jul-2026)
-let detalleOverride = {};
 function cambiarDetalleDia() {
-  const banco = window.BANCO_DETALLES_REF || {};
-  const lista = banco[currentEstilo] || [];
-  if (!lista.length) return;
-  const actual = document.getElementById('detalle-dia-val')?.textContent || '';
-  const siguiente = lista.find(d => d !== actual) || lista[0];
-  detalleOverride[currentEstilo] = siguiente;
   const detVal = document.getElementById('detalle-dia-val');
-  if (detVal) detVal.textContent = siguiente;
-  buildImgPrompt();
+  if (detVal) detVal.textContent = 'Proponiendo concepto con IA…';
+  void proponerDetalleCreativoConIA(currentEstilo, { force: true });
 }
 
 async function loadLogoBase64() {
@@ -2365,79 +2361,55 @@ function updateImgKeyStatus() {
   if (sod) sod.className = 'img-key-dot' + (dalleOk  ? ' ok' : '');
 }
 
-// ── Banco de detalles auténticos por estilo (04-jul-2026) ──────────────
-// Antes cada estilo tenía 3-4 ejemplos fijos → la IA siempre convergía en
-// los mismos ("persona + palmerita"). Con publicaciones a diario, todo el
-// mes, se necesita variedad real. Rotación por día del mes + contador de
-// sesión: sin estado persistente, sin repetir incluso generando el mes
-// completo en batch el mismo día.
-const BANCO_DETALLES = {
-  costeno: [
-    // Elementos sueltos de inspiración (no escenas literales) — la IA construye su propia escena alrededor de cada uno.
-    // Mezcla de culturales auténticos + comerciales reales de pueblo costeño.
-    'un carrito de raspado en la esquina del parque',
-    'una plaza de pueblo con palomas, estilo Corozal o Chinú',
-    'una iglesia colonial costera con su parque',
-    'alguien comiendo mango biche con sal',
-    'una calle comercial de pueblo costeño con locales abiertos',
-    'un local de tecnología con vitrinas iluminadas y celulares en exhibición',
-    'una vitrina de celulares y accesorios bien iluminada',
-    'un mercado de frutas tropicales colorido',
-    'una moto con parrillero en calle de pueblo',
-    'un local de tecnología con clientes siendo atendidos',
-    'casas de colores pastel con puertas abiertas',
-    'un guacamayo en un balcón de casa costeña',
-    'el atrio de una iglesia colonial un domingo',
-    'una cancha de microfútbol de barrio al atardecer',
-    'un ventilador de techo girando en un local comercial',
-    'una familia costeña viendo un celular juntos',
-    'una joven trabajadora usando su celular en el mostrador',
-    'un tambor vallenato apoyado en una pared de colores',
-  ],
-  chistoso: [
-    'una cara de sorpresa exagerada',
-    'un contraste "antes/después" con un celular viejo roto',
-    'un perrito con cara de aprobación',
-    'un gesto de "mente volada" (manos en la cabeza)',
-    'un globo de cómic con una frase graciosa',
-    'una celebración exagerada tipo gol',
-    'una cara de shock mirando el precio',
-    'un meme visual tipo "cuando por fin llega tu celular nuevo"',
-    'una selfie con un filtro exagerado',
-    'una mano deteniendo un celular viejo humeando',
-  ],
-  formal: [
-    'una oficina moderna minimalista',
-    'una persona en traje casual de negocios sonriendo',
-    'líneas geométricas turquesa sutiles',
-    'iluminación de estudio profesional',
-    'un escritorio limpio con laptop',
-    'un apretón de manos',
-    'una vista de ciudad de fondo, fuera de foco',
-    'una gráfica de crecimiento sutil en turquesa',
-  ],
-  minimalista: [
-    'un solo objeto centrado, mucho espacio en blanco',
-    'una sombra larga y limpia',
-    'una paleta de máximo 2 colores',
-    'una línea horizontal delgada como único acento',
-    'la tipografía como protagonista, sin imágenes de fondo',
-  ],
-};
+// ── Concepto visual dinámico por IA ────────────────────────────────────
+// No hay banco de escenas: cada propuesta se genera para la pieza actual y
+// se penalizan los conceptos ya usados en la sesión.
+const recentCreativeConcepts = [];
+const creativeDetailByStyle = {};
+let creativeConceptRequest = null;
 
-// Contador de sesión — se reinicia si se recarga la página, y eso está bien:
-// solo existe para que un batch de varias piezas seguidas no repita detalle.
-let _detalleContador = 0;
+function detalleCreativoActual(estilo) {
+  return creativeDetailByStyle[estilo] || 'dirección artística original definida para esta pieza';
+}
 
-// Exponer banco para que cambiarDetalleDia() pueda acceder (05-jul-2026)
-window.BANCO_DETALLES_REF = BANCO_DETALLES;
-function getDetalleDelDia(estilo) {
-  if (detalleOverride && detalleOverride[estilo]) return detalleOverride[estilo];
-  const banco = BANCO_DETALLES[estilo] || BANCO_DETALLES.formal;
-  const dia = new Date().getDate(); // 1-31, para que cada día del mes arranque en un punto distinto
-  const idx = (dia - 1 + _detalleContador) % banco.length;
-  _detalleContador++;
-  return banco[idx];
+async function proponerDetalleCreativoConIA(estilo, { force = false } = {}) {
+  if (estilo === 'custom') return '';
+  if (!force && creativeDetailByStyle[estilo]) return creativeDetailByStyle[estilo];
+  if (creativeConceptRequest) return creativeConceptRequest;
+  const apiKey = sessionStorage.getItem('ck_api_key') || '';
+  if (!apiKey.startsWith('sk-ant-')) return detalleCreativoActual(estilo);
+  const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
+  const brief = (document.getElementById('instruccion-ia-extra')?.value || '').trim();
+  const recientes = recentCreativeConcepts.slice(-12).join(' | ') || 'ninguno';
+  creativeConceptRequest = (async () => {
+    const prompt = `Propón UNA dirección visual breve y original para una pieza comercial de Creditek sobre ${producto}. Estilo: ${estilo}. Brief del usuario: ${brief || 'ninguno'}.
+Debe ser contemporánea, aspiracional, plausible en Colombia y distinta de conceptos recientes: ${recientes}.
+Para alegre costeño explora libremente parques, terrazas, comercio moderno, universidades, deporte, familias, amigos, eventos, arquitectura caribeña cuidada, naturaleza o playa solo cuando corresponda. No uses pobreza, deterioro, motocicletas recurrentes ni clichés. Devuelve solo una frase de máximo 16 palabras, sin comillas.`;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:80,messages:[{role:'user',content:prompt}]})
+      });
+      const data = await res.json();
+      const concepto = (data.content?.find(b => b.type === 'text')?.text || '').replace(/["\n]/g, ' ').trim();
+      if (!concepto || concepto.length < 8) throw new Error('concepto creativo vacío');
+      creativeDetailByStyle[estilo] = concepto;
+      recentCreativeConcepts.push(concepto);
+      if (recentCreativeConcepts.length > 24) recentCreativeConcepts.shift();
+      const detVal = document.getElementById('detalle-dia-val');
+      if (detVal && currentEstilo === estilo) detVal.textContent = concepto;
+      await buildImgPrompt();
+      return concepto;
+    } catch {
+      const detVal = document.getElementById('detalle-dia-val');
+      if (detVal && currentEstilo === estilo) detVal.textContent = 'Dirección creativa definida al generar';
+      return detalleCreativoActual(estilo);
+    } finally {
+      creativeConceptRequest = null;
+    }
+  })();
+  return creativeConceptRequest;
 }
 
 // FIX v13 12-jul-2026: completa el procesador de un modelo cuando el catálogo
@@ -2504,7 +2476,7 @@ async function buildImgPrompt() {
           ].join(''),
         }[modo] || 'Brand identity post. Creditek logo prominent. Clean, commercial, compelling.';
 
-    const detalleDia = getDetalleDelDia(currentEstilo);
+    const detalleDia = detalleCreativoActual(currentEstilo);
     const estiloRico = {
       formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Visual detail: ${detalleDia}.`,
       costeno:    `Authentic everyday Caribbean Colombian commercial life — a happy customer enjoying their new phone as the clear focus, warm natural light, genuine warmth. Scene: ${detalleDia}. RULE: the scene must be PLAUSIBLE — a real moment that could actually happen on any ordinary day in a coastal town (Corozal, Chinú, Ciénaga). Several Caribbean elements are fine ONLY if they naturally belong together in one real moment; NEVER stack unrelated tropical clichés (no confetti + palms + flowers + coconut piled together to "shout Coast"). No carnival costumes.`,
@@ -2613,8 +2585,8 @@ async function buildImgPrompt() {
   const modoLabel  = { credito:'Crédito de celular', promo:'Promoción', tienda:'Tienda', servicio:'Servicio' }[modo] || modo;
   const formatoLabel = isStories ? 'Stories / TikTok vertical 1080×1920 px' : 'Feed cuadrado 1080×1080 px';
   const layoutGuide = isStories
-    ? 'Composición VERTICAL 1080×1920 px: zona superior (0–20%) → logo Creditek centrado. Zona media (20–70%) → producto protagonista grande, bien iluminado, con iluminación de estudio. Zona inferior (70–100%) → titular en Montserrat Bold + precio en turquesa + botón CTA. Aprovechar toda la altura con espaciado generoso.'
-    : 'Composición CUADRADA 1080×1080 px: producto en primer plano a la derecha (55% del ancho), textos jerarquizados a la izquierda (titular → precio → CTA), logo Creditek esquina superior derecha. Equilibrio visual horizontal, punto focal central fuerte.';
+    ? 'DIRECCIÓN GRÁFICA VARIABLE para Stories: elige una jerarquía vertical editorial propia según escena, producto, brief y estilo. Alterna texto superior, lateral, inferior, sobre espacio negativo, banda pequeña o tarjeta discreta. El logo oficial se compone después.'
+    : 'DIRECCIÓN GRÁFICA VARIABLE para formato cuadrado: decide la ubicación de producto, titular, precio y CTA según el espacio negativo y el foco de la escena. Puede ser lateral, editorial, superior/inferior, banda pequeña, tarjeta discreta o texto directo sobre fotografía con contraste. El logo oficial se compone después.';
 
   const paletaPorEstilo_B = {
     formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
@@ -2626,7 +2598,7 @@ async function buildImgPrompt() {
   const paletaEstilo = paletaPorEstilo_B[currentEstilo] || paletaPorEstilo_B.formal;
   const tipoPersonalizadoVal = document.getElementById('tipo-personalizado')?.value.trim() || '';
   const tipoImgMap = {
-    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita, posición superior izquierda.` : ''} Titular en Montserrat Bold en la zona izquierda. Jerarquía visual clara: titular → precio → producto → CTA.`,
+    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita, ubicado donde la imagen tenga mejor espacio negativo.` : ''} El titular, precio, producto y CTA deben tener una jerarquía clara, pero su distribución cambia según la escena: nunca repitas una plantilla fija de lado izquierdo para texto y lado derecho para producto.`,
     showcase_producto:`Showcase del producto: ${producto} apoyado o sostenido de forma natural dentro de la escena (en una mano, sobre una mesa/vitrina, o en uso) — NUNCA flotando en el aire ni como recorte pegado. Debe verse como parte física real de la fotografía, con sombra de contacto realista donde toca la superficie. Bordes nítidos, fondo limpio. Texto mínimo. El producto ocupa el 60–65% de la composición. Etiquetas de specs flotantes si aplica (esto sí puede ser un elemento gráfico superpuesto, distinto al producto).`,
     testimonio:       `Testimonio: tono cálido y humano. Gran comilla de apertura en turquesa #00C4CC. Frase testimonial de cliente en texto blanco grande y centrado. Silueta o retrato de persona en un costado. Sin imagen del producto.`,
     educativo:        `Contenido educativo: diseño limpio e informativo. Íconos en turquesa #00C4CC (checks, números, flechas) sobre fondo azul marino. Jerarquía de lectura clara, aspecto de tarjeta útil — no aviso agresivo.`,
@@ -2701,7 +2673,7 @@ async function buildImgPrompt() {
       ].filter(Boolean).join(' ')
     : `Sin especificaciones técnicas ni callout labels alrededor del producto. Diseño limpio centrado en el producto y el mensaje.`;
 
-  const detalleDiaMsg = userBrief ? 'el brief explícito del usuario, sin sustituir ninguno de sus elementos' : getDetalleDelDia(currentEstilo);
+  const detalleDiaMsg = userBrief ? 'el brief explícito del usuario, sin sustituir ninguno de sus elementos' : detalleCreativoActual(currentEstilo);
   const mensajeMap = {
     formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual: ${detalleDiaMsg}. Mensaje directo, elegante y sin estridencias — que transmita solidez de marca y confianza al comprador.`,
     costeno:     `Tono caribeño colombiano auténtico y comercial — un cliente feliz disfrutando su celular nuevo como foco claro de la escena. Luz natural cálida, colores vivos, calidez humana genuina. Escena: ${detalleDiaMsg}. REGLA DE ORO: la escena debe ser PLAUSIBLE — un momento que de verdad podría pasar un día cualquiera en un pueblo de la costa (Corozal, Chinú, Ciénaga). Varios elementos costeños están bien SOLO si conviven de forma natural en un mismo momento real (ej: dos amigas en la plaza, una con un coco, mirando el celular). Lo PROHIBIDO es apilar elementos que no conviven en la vida real solo para "gritar Costa" (confeti + palmeras + flores + coco todos juntos = falso). Nada de confeti, disfraces ni máscaras de comparsa.`,
@@ -2720,7 +2692,11 @@ async function buildImgPrompt() {
     halloween:'fondo casi negro #0D0D0D', anonuevo:'fondo negro #050505',
     clases:'fondo blanco #FFFFFF con acentos azul cielo #87CEEB',
   };
-  const bgSpec = (fechaData && fechaBgMap[fechaKey]) ? fechaBgMap[fechaKey] : 'azul marino profundo #0B1E3D';
+  const bgSpec = (fechaData && fechaBgMap[fechaKey])
+    ? fechaBgMap[fechaKey]
+    : (['costeno','chistoso'].includes(currentEstilo)
+      ? 'fondo decidido por la dirección artística de esta escena; azul marino Creditek solo como acento, nunca como bloque dominante obligatorio'
+      : 'fondo decidido por la dirección artística de esta escena, con azul marino Creditek como identidad cuando aporte contraste');
   const fechaImgBlock = fechaData ? `Temática ${fechaData.label}: incorporar paleta secundaria (${fechaData.colores}) y elementos decorativos sutiles (${fechaData.elementos}). Estos acentos estacionales complementan la identidad Creditek, no la reemplazan.` : '';
 
   const selectedFins = getSelectedFinancieras();
@@ -2774,6 +2750,7 @@ async function buildImgPrompt() {
     `- Dominio: ${paletaEstilo.dominio}`,
     `- Logo Creditek: no dibujarlo ni reinterpretarlo; el asset oficial se compone después de generar.`,
     `- Tipografía: Montserrat Bold titulares; DM Sans secundarios`,
+    `- No uses un gran bloque o degradado azul como plantilla. El azul Creditek puede ser acento, banda pequeña, forma gráfica o contraste puntual; la solución debe cambiar con cada pieza.`,
     finStrip        ? `- ${finStrip}`     : null,
     finContextBlock ? finContextBlock      : null,
     fechaImgBlock   ? `- ${fechaImgBlock}` : null, ``,
@@ -2823,7 +2800,7 @@ function buildImgPromptGeminiFallback() {
     custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
   };
   const colorDesc = colorMap[currentEstilo] || colorMap.formal;
-  const detalleDiaGem = userBrief ? '' : getDetalleDelDia(currentEstilo);
+  const detalleDiaGem = userBrief ? '' : detalleCreativoActual(currentEstilo);
   const toqueTropical = currentEstilo === 'costeno'
     ? `, con como mucho un detalle costeño sutil y natural (${detalleDiaGem}) — nunca varios combinados, para que se vea vida real y no una fiesta armada`
     : ` — incorporar este detalle visual, sutil: ${detalleDiaGem}`;
@@ -2885,7 +2862,7 @@ function buildImgPromptGeminiFallback() {
     mensajeVal ? ` Debajo, en letras más pequeñas, dice "${mensajeVal}".` : '',
     precio ? ` En números grandes en color turquesa aparece "${precio}".` : '',
     ctaActivo ? ` En la parte inferior hay un botón turquesa que dice "${cta}".` : '',
-    ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo de borde a borde, sin zonas vacías.`,
+    ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo de borde a borde, sin zonas vacías. Reserva una zona limpia y sin texto en una esquina para la marca oficial que se añadirá después; no dibujes ningún logo ni tarjeta blanca.`,
   ].filter(Boolean).join('');
 }
 
@@ -2904,7 +2881,7 @@ async function buildImgPromptGemini() {
   const modo     = document.getElementById('modo')?.value || 'credito';
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
   const userBrief = buildMandatoryUserBrief();
-  const detalleDiaClaude = userBrief ? '' : getDetalleDelDia(currentEstilo);
+  const detalleDiaClaude = userBrief ? '' : detalleCreativoActual(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
     costeno:     `Caribe colombiano contemporáneo, alegre y auténtico: plazas cuidadas, comercio moderno, arquitectura atractiva, color, luz natural y vida urbana real. Sin pobreza, deterioro, motos recurrentes, disfraces, turismo de postal ni estereotipos socioeconómicos. ${detalleDiaClaude}`,
@@ -2954,6 +2931,7 @@ FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 3. ENTORNO: ambiente, colores, accesorios.
 4. TEXTOS: cada texto como objeto físico con ubicación exacta usando la fórmula: "en [ubicación] está escrito el texto [TEXTO ENTRE COMILLAS]"
 5. ILUMINACIÓN: calidad fotográfica, vibrante, profesional
+6. MARCA POSTERIOR: Reserva una zona limpia y sin texto en una esquina para la marca oficial que se añadirá después. No dibujes logo, etiqueta, tarjeta blanca ni nombre de Creditek.
 
 BRIEF DE LA PIEZA:
 ${userBrief || 'No hay un brief visual adicional.'}
@@ -2994,7 +2972,7 @@ async function buildImgPromptGeminiFotoLimpia() {
   const producto = document.getElementById('producto').value.trim() || 'smartphone';
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
   const userBrief = buildMandatoryUserBrief();
-  const detalleDiaClaude = userBrief ? '' : getDetalleDelDia(currentEstilo);
+  const detalleDiaClaude = userBrief ? '' : detalleCreativoActual(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
     costeno:     `Caribe colombiano contemporáneo, alegre y auténtico: plazas cuidadas, comercio moderno, arquitectura atractiva, color, luz natural y vida urbana real. Sin pobreza, deterioro, motos recurrentes, disfraces, turismo de postal ni estereotipos socioeconómicos. ${detalleDiaClaude}`,
@@ -3023,7 +3001,7 @@ async function buildImgPromptGeminiFotoLimpia() {
 
 RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 - Ningún texto a renderizar, ninguna palabra entre comillas, ningún titular ni CTA
-- Ninguna mención de logo, marca Creditek escrita, ni zona reservada para nada
+- Ninguna mención de logo, marca Creditek escrita, etiqueta ni tarjeta blanca. Reserva una zona limpia y sin texto en una esquina para la marca oficial que se añadirá después.
 - Palabras técnicas: "capa", "layout", "composición", "vector", "PNG", "feed", "1080px"
 - Códigos hex ni tamaños en puntos. Tradúcelos: azul marino oscuro
 - Nombres de tipografías
@@ -3394,7 +3372,48 @@ async function generarImagenInterna(callerBtn = null) {
   spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
 }
 
-// ── OVERLAY DE LOGO — RESPALDO si Nano Banana 2 falla (Fix 6, 02-jul-2026) ──
+// ── OVERLAY DEL LOGO OFICIAL — composición posterior, nunca generada por IA ──
+function quitarFondoBlancoDelLogo(ctx, width, height) {
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const max = Math.max(px[i], px[i + 1], px[i + 2]);
+    const min = Math.min(px[i], px[i + 1], px[i + 2]);
+    // El asset oficial tiene blanco horneado; este umbral conserva el check
+    // turquesa y la marca azul, pero elimina la tarjeta rectangular.
+    if (min > 238 && max - min < 14) px[i + 3] = 0;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function puntajeZonaLogo(ctx, x, y, width, height) {
+  const sample = ctx.getImageData(
+    Math.round(x), Math.round(y),
+    Math.max(1, Math.round(width)), Math.max(1, Math.round(height))
+  ).data;
+  let brightness = 0, variation = 0, previous = null;
+  for (let i = 0; i < sample.length; i += 16) {
+    const luminance = (sample[i] * 0.2126 + sample[i + 1] * 0.7152 + sample[i + 2] * 0.0722) / 255;
+    brightness += luminance;
+    if (previous !== null) variation += Math.abs(luminance - previous);
+    previous = luminance;
+  }
+  return variation + Math.abs((brightness / Math.max(1, sample.length / 16)) - 0.58) * 0.18;
+}
+
+function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
+  const margin = canvas.width * 0.032;
+  const candidates = [
+    [margin, margin],
+    [canvas.width - logoWidth - margin, margin],
+    [margin, canvas.height - logoHeight - margin],
+    [canvas.width - logoWidth - margin, canvas.height - logoHeight - margin],
+  ].filter(([x, y]) => x >= 0 && y >= 0);
+  return candidates
+    .map(([x, y]) => ({ x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) }))
+    .sort((a, b) => a.score - b.score)[0];
+}
+
 async function componerLogoSobreImagen(dataUrlImagen) {
   const logo = await loadLogoBase64();
   if (!logo) return dataUrlImagen;
@@ -3410,34 +3429,28 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 
       const imgLogo = new Image();
       imgLogo.onload = () => {
-        const margen    = canvas.width * 0.04;
-        const logoAncho = canvas.width * 0.16;
-        const logoAlto  = logoAncho * (imgLogo.height / imgLogo.width);
-        const x = canvas.width - logoAncho - margen;
-        const y = margen;
-        const radio = canvas.width * 0.012; // esquinas redondeadas — se lee como tarjeta de marca, no como pegado
+        const logoCanvas = document.createElement('canvas');
+        logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
+        const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
+        logoCtx.drawImage(imgLogo, 0, 0);
+        quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
 
-        // FIX 04-jul-2026: sombra suave detrás de la tarjeta del logo — el PNG
-        // real no tiene transparencia (fondo blanco sólido horneado en el
-        // archivo), así que sin esto se ve como pegado encima de la foto.
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur = canvas.width * 0.015;
-        ctx.shadowOffsetX = canvas.width * 0.004;
-        ctx.shadowOffsetY = canvas.width * 0.006;
-        ctx.beginPath();
-        ctx.roundRect(x, y, logoAncho, logoAlto, radio);
-        ctx.fillStyle = 'white'; // dispara la sombra; el logo real se dibuja encima
-        ctx.fill();
-        ctx.restore();
-
-        // Recortar el logo real a las mismas esquinas redondeadas
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(x, y, logoAncho, logoAlto, radio);
-        ctx.clip();
-        ctx.drawImage(imgLogo, x, y, logoAncho, logoAlto);
-        ctx.restore();
+        const logoAncho = canvas.width * 0.105;
+        const logoAlto = logoAncho * (logoCanvas.height / logoCanvas.width);
+        const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
+        const patch = ctx.getImageData(Math.round(pos.x), Math.round(pos.y), Math.max(1, Math.round(logoAncho)), Math.max(1, Math.round(logoAlto))).data;
+        let luminance = 0;
+        for (let i = 0; i < patch.length; i += 16) luminance += (patch[i] * 0.2126 + patch[i + 1] * 0.7152 + patch[i + 2] * 0.0722) / 255;
+        const isDark = luminance / Math.max(1, patch.length / 16) < 0.42;
+        if (isDark) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.beginPath();
+          ctx.roundRect(pos.x - canvas.width * 0.008, pos.y - canvas.width * 0.006, logoAncho + canvas.width * 0.016, logoAlto + canvas.width * 0.012, canvas.width * 0.008);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
 
         resolve(canvas.toDataURL('image/png'));
       };

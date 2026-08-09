@@ -33,3 +33,23 @@ test('el logo oficial se compone después de cada generación y no se delega al 
   assert.match(frontend, /return await componerLogoSobreImagen\('data:image\/png;base64,' \+ b64\);/);
   assert.doesNotMatch(frontend, /integrate it naturally into the composition/);
 });
+
+test('Detalle hoy se propone con IA y no queda dominado por un banco fijo de escenas', () => {
+  assert.match(frontend, /async function proponerDetalleCreativoConIA\(/);
+  assert.match(frontend, /recentCreativeConcepts/);
+  assert.doesNotMatch(frontend, /const BANCO_DETALLES\s*=/);
+  assert.doesNotMatch(frontend, /una plaza de pueblo con palomas, estilo Corozal o Chinú/);
+});
+
+test('el compositor usa un logo sin tarjeta blanca y busca una zona visual segura', () => {
+  assert.match(frontend, /function quitarFondoBlancoDelLogo\(/);
+  assert.match(frontend, /function elegirUbicacionLogo\(/);
+  assert.match(frontend, /Reserva una zona limpia y sin texto/);
+  assert.doesNotMatch(frontend, /ctx\.fillStyle = 'white'; \/\/ dispara la sombra/);
+});
+
+test('GPT Image recibe libertad de dirección gráfica y no una plantilla azul lateral fija', () => {
+  assert.match(frontend, /DIRECCIÓN GRÁFICA VARIABLE/);
+  assert.match(frontend, /No uses un gran bloque o degradado azul como plantilla/);
+  assert.doesNotMatch(frontend, /producto en primer plano a la derecha \(55% del ancho\), textos jerarquizados a la izquierda/);
+});

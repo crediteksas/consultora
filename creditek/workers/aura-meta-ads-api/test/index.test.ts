@@ -251,6 +251,8 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(adsetBody).not.toContain('lifetime_budget');
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/adcreatives'))).toBe(true);
     expect(metaCalls.some(([url]: [unknown]) => String(url).includes('/act_123/ads'))).toBe(true);
+    const activation = metaCalls.filter(([url, init]: [unknown, RequestInit]) => init?.method === 'POST' && String(init?.body).includes('status=ACTIVE'));
+    expect(activation.map(([url]: [unknown]) => String(url).split('?')[0].split('/').pop())).toEqual(['adset-1','ad-1','campaign-1']);
   });
 
   it('alinea presupuesto total con lifetime_budget y fechas Meta', async () => {
@@ -449,5 +451,56 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(body.meta).toMatchObject({ variant: 'VARIANTE B', code: '100', stage: 'META_CREATIVE_CREATE_FAILED' });
     expect(body.meta.error_user_msg).toContain('La imagen B no fue aceptada');
     expect((globalThis.fetch as any).mock.calls.some(([url, init]: [unknown, RequestInit]) => ['campaign-1','adset-1','ad-1'].some(id => String(url).includes(`/${id}?`)) && String(init?.body).includes('status=ACTIVE'))).toBe(false);
+  });
+
+  it('revierte a PAUSED si falla la activación del adset', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/adset-1?') && String(init?.body).includes('status=ACTIVE')) return json({ error: { code: 100, message: 'adset activation failed' } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'activation-adset-fail'), env());
+    expect(response.status).toBe(502);
+    expect((await response.json() as any).reason).toBe('META_ADSET_ACTIVATION_FAILED');
+  });
+
+  it('revierte el adset si falla la activación de un anuncio', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/ad-1?') && String(init?.body).includes('status=ACTIVE')) return json({ error: { code: 100, message: 'ad activation failed' } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'activation-ad-fail'), env());
+    expect(response.status).toBe(502);
+    expect((await response.json() as any).reason).toBe('META_AD_ACTIVATION_FAILED');
+    expect((globalThis.fetch as any).mock.calls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/adset-1?') && String(init?.body).includes('status=PAUSED'))).toBe(true);
+  });
+
+  it('revierte ads y adset si falla la activación de la campaña', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/campaign-1?') && String(init?.body).includes('status=ACTIVE')) return json({ error: { code: 100, message: 'campaign activation failed' } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'activation-campaign-fail'), env());
+    expect(response.status).toBe(502);
+    expect((await response.json() as any).reason).toBe('META_CAMPAIGN_ACTIVATION_FAILED');
+    const rollbacks = (globalThis.fetch as any).mock.calls.filter(([url, init]: [unknown, RequestInit]) => ['adset-1','ad-1'].some(id => String(url).includes(`/${id}?`)) && String(init?.body).includes('status=PAUSED'));
+    expect(rollbacks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('falla el preflight y no crea ningún objeto', async () => {
+    mockNetwork(publishPermissions);
+    const invalid = { ...payload, variants: [
+      { piece_id: 'piece-1', copy: 'Copy A', headline: 'Titular A', cta: 'LEARN_MORE', image_url: 'https://cdn.test/a.jpg' },
+      { piece_id: 'piece-1', copy: 'Copy B', headline: 'Titular B', cta: 'NOT_A_META_CTA', image_url: 'https://cdn.test/b.jpg' },
+    ] };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', invalid, 'preflight-fail'), env());
+    expect(response.status).toBe(400);
+    expect((await response.json() as any).error).toBe('INVALID_VARIANTS');
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/act_123/campaigns'))).toBe(false);
   });
 });

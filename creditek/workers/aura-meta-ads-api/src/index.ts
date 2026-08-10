@@ -333,6 +333,12 @@ function campaignPayload(payload: PublishPayload, name: string): Record<string, 
   return { name, objective, buying_type: 'AUCTION', status: 'PAUSED', special_ad_categories: '[]', is_adset_budget_sharing_enabled: 'false' };
 }
 
+function requireMetaId(value: MetaRow, code: string) {
+  const id = String(value?.id || '').trim();
+  if (!id || id === 'undefined' || id === 'null') throw new Error(code);
+  return id;
+}
+
 async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
   await verifyMetaApp(env);
   const variants = payload.variants?.length === 2 ? payload.variants : [{
@@ -350,7 +356,7 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   if (!/^https:\/\//i.test(destination)) throw new Error('INVALID_DESTINATION_URL');
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
-  const images = [] as Array<Record<string, string>>;
+  const images = [] as Array<{ picture?: string; image_hash?: string }>;
   for (let index = 0; index < variants.length; index += 1) {
     const label = variants.length === 2 ? (index === 0 ? 'A' : 'B') : 'A';
     images.push(await publicationStep('META_IMAGE_UPLOAD_FAILED', () => creativeImage(env, variants[index]), label));
@@ -362,10 +368,10 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     campaignPayload(payload, name),
     'POST',
   ));
-  const campaignId = String(campaign.id);
+  const campaignId = requireMetaId(campaign, 'META_CAMPAIGN_INVALID_RESPONSE');
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId });
   const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, adsetPayload(payload, name, campaignId, cities), 'POST'));
-  const adsetId = String(adset.id);
+  const adsetId = requireMetaId(adset, 'META_ADSET_INVALID_RESPONSE');
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId });
   const variantIds: Array<{ label: string; creative_id: string; ad_id: string }> = [];
   for (let index = 0; index < variants.length; index += 1) {
@@ -375,18 +381,18 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     const linkData = { message: variant.copy, link: destination, name: variant.headline, ...image, call_to_action: { type: variant.cta, value: { link: destination } } };
     const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
     const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name}${label ? ` · ${label}` : ''} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'), label || 'A');
-    const creativeId = String(creative.id);
+    const creativeId = requireMetaId(creative, 'META_CREATIVE_INVALID_RESPONSE');
     await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, variant: label || 'single' });
     const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name}${label ? ` · ${label}` : ''} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'), label || 'A');
-    variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: String(ad.id) });
+    variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: requireMetaId(ad, 'META_AD_INVALID_RESPONSE') });
   }
   const metaIds: Record<string, string> = variants.length === 2
     ? { campaign_id: campaignId, adset_id: adsetId, variant_a_creative_id: variantIds[0].creative_id, variant_a_ad_id: variantIds[0].ad_id, variant_b_creative_id: variantIds[1].creative_id, variant_b_ad_id: variantIds[1].ad_id }
     : { campaign_id: campaignId, adset_id: adsetId, creative_id: variantIds[0].creative_id, ad_id: variantIds[0].ad_id };
   const activated: string[] = [];
   try {
-    for (const variant of variantIds) { await publicationStep('META_AD_ACTIVATION_FAILED', () => metaObject(env, variant.ad_id, { status: 'ACTIVE' }, 'POST'), variant.label); activated.push(variant.ad_id); }
     await publicationStep('META_ADSET_ACTIVATION_FAILED', () => metaObject(env, adsetId, { status: 'ACTIVE' }, 'POST')); activated.push(adsetId);
+    for (const variant of variantIds) { await publicationStep('META_AD_ACTIVATION_FAILED', () => metaObject(env, variant.ad_id, { status: 'ACTIVE' }, 'POST'), variant.label); activated.push(variant.ad_id); }
     await publicationStep('META_CAMPAIGN_ACTIVATION_FAILED', () => metaObject(env, campaignId, { status: 'ACTIVE' }, 'POST')); activated.push(campaignId);
   } catch (error) {
     for (const id of activated.reverse()) await metaObject(env, id, { status: 'PAUSED' }, 'POST').catch(() => undefined);

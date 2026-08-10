@@ -49,6 +49,8 @@ test('Detalle hoy se propone con IA y no queda dominado por un banco fijo de esc
 test('el compositor usa un logo sin tarjeta blanca y busca una zona visual segura', () => {
   assert.match(frontend, /function quitarFondoBlancoDelLogo\(/);
   assert.match(frontend, /function elegirUbicacionLogo\(/);
+  assert.match(frontend, /function adaptarLogoAFondoOscuro\(/);
+  assert.match(frontend, /luminosidadZonaLogo\(ctx, pos\.x, pos\.y, logoAncho, logoAlto\) < 0\.54/);
   assert.match(frontend, /espacio negativo real/);
   assert.doesNotMatch(frontend, /ctx\.fillStyle = 'white'; \/\/ dispara la sombra/);
 });

@@ -3546,6 +3546,33 @@ function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
   return candidates.map(([x, y]) => ({ x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) })).sort((a, b) => a.score - b.score)[0];
 }
 
+function luminosidadZonaLogo(ctx, x, y, width, height) {
+  const data = ctx.getImageData(Math.round(x), Math.round(y), Math.max(1, Math.round(width)), Math.max(1, Math.round(height))).data;
+  let total = 0;
+  let samples = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    total += (data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722) / 255;
+    samples++;
+  }
+  return total / Math.max(1, samples);
+}
+
+function adaptarLogoAFondoOscuro(logoCtx, width, height) {
+  // Conserva el check turquesa oficial y convierte únicamente el wordmark
+  // azul marino a blanco. Es la misma marca para fondos oscuros, no una caja.
+  const imageData = logoCtx.getImageData(0, 0, width, height);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (!px[i + 3]) continue;
+    const max = Math.max(px[i], px[i + 1], px[i + 2]);
+    const min = Math.min(px[i], px[i + 1], px[i + 2]);
+    if (max < 118 && max - min < 84) {
+      px[i] = 255; px[i + 1] = 255; px[i + 2] = 255;
+    }
+  }
+  logoCtx.putImageData(imageData, 0, 0);
+}
+
 function calcularDimensionesLogo(ctx, canvas, logoCanvas) {
   const base = Math.min(canvas.width, canvas.height);
   const margin = Math.max(16, Math.round(base * 0.032));
@@ -3578,6 +3605,9 @@ async function componerLogoSobreImagen(dataUrlImagen) {
         quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
         const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
         const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
+        if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
+          adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+        }
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.32)';
         ctx.shadowBlur = Math.max(6, canvas.width * 0.009);

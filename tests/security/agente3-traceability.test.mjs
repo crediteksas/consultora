@@ -9,7 +9,7 @@ test('trazabilidad captura publicación simple y A/B con atomicidad de IDs', () 
   for (const marker of ['publication_id', 'published_at', 'published_by', 'campaign_name', 'assertCompleteMetaIds', 'META_PUBLICATION_INCOMPLETE']) {
     assert.match(worker, new RegExp(marker));
   }
-  for (const key of ['campaign_id', 'adset_id', 'creative_id', 'ad_id', 'variant_a_creative_id', 'variant_b_creative_id', 'variant_a_ad_id', 'variant_b_ad_id']) assert.match(worker, new RegExp(key));
+  for (const key of ['campaign_id', 'adset_id', 'creative_a_id', 'creative_b_id', 'ad_a_id', 'ad_b_id']) assert.match(worker, new RegExp(key));
   assert.match(html, /traceHasCompleteIds/);
   assert.match(html, /PUBLICACIÓN ENVIADA A META/);
 });

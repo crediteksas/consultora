@@ -231,7 +231,7 @@ describe('AURA Meta Ads secure publisher', () => {
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-1'), env());
     const body = await response.json() as any;
     expect(response.status).toBe(201);
-    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
+    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1', adset_id: 'adset-1', creative_a_id: 'creative-1', ad_a_id: 'ad-1' });
     expect(body.status).toBe('ACTIVE');
     expect(body.review_status).toBe('EN_REVISIÓN_DE_META');
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
@@ -283,7 +283,7 @@ describe('AURA Meta Ads secure publisher', () => {
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'complete-existing'), env({ META_CONTINUE_CAMPAIGN_ID: 'campaign-existing' }));
     const body = await response.json() as any;
     expect(response.status).toBe(201);
-    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
+    expect(body.meta_ids).toEqual({ campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_a_id: 'creative-1', ad_a_id: 'ad-1' });
     expect(body.statuses).toEqual({ campaign: 'PAUSED', adset: 'PAUSED', creative: 'PAUSED', ad: 'PAUSED' });
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
     expect(metaCalls.some(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/campaigns') && init?.method === 'POST')).toBe(false);
@@ -300,8 +300,8 @@ describe('AURA Meta Ads secure publisher', () => {
       .map(([, init]: [unknown, RequestInit]) => JSON.parse(String(init?.body || '{}')).p_meta_ids);
     expect(audits).toEqual([
       { campaign_id: 'campaign-existing', adset_id: 'adset-1' },
-      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1' },
-      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' },
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_a_id: 'creative-1' },
+      { campaign_id: 'campaign-existing', adset_id: 'adset-1', creative_a_id: 'creative-1', ad_a_id: 'ad-1' },
     ]);
   });
 
@@ -429,8 +429,8 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(body.campaign_name).toBe(payload.campaign_name);
     expect(body.meta_ids).toEqual({
       campaign_id: 'campaign-1', adset_id: 'adset-1',
-      variant_a_creative_id: 'creative-1', variant_a_ad_id: 'ad-1',
-      variant_b_creative_id: 'creative-1', variant_b_ad_id: 'ad-1',
+      creative_a_id: 'creative-1', ad_a_id: 'ad-1',
+      creative_b_id: 'creative-1', ad_b_id: 'ad-1',
     });
     const ads = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/ads?'));
     expect(ads).toHaveLength(2);

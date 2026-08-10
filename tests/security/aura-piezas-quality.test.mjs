@@ -14,9 +14,9 @@ test('Piezas comerciales usa reglas creativas, no bancos de titulares repetibles
 
 test('el brief explícito del usuario tiene prioridad y las referencias se usan sin copiar terceros', () => {
   assert.match(frontend, /function buildMandatoryUserBrief\(/);
-  assert.match(frontend, /USER BRIEF — HIGHEST PRIORITY/);
-  assert.match(frontend, /Every explicit object, scene, location and constraint in this brief must be visibly present/);
-  assert.match(frontend, /MARKET REFERENCES — INFLUENCE, DO NOT COPY/);
+  assert.match(frontend, /USER BRIEF — PRIORIDAD MÁXIMA/);
+  assert.match(frontend, /Conserva cada objeto, escena, ubicación y restricción explícita/);
+  assert.match(frontend, /COLOMBIAN PHONE MARKET VISUAL CONTEXT/);
   assert.match(frontend, /buildMandatoryUserBrief\(\)/);
 });
 
@@ -25,7 +25,12 @@ test('cada generación se bloquea desde el primer clic y todas las salidas resta
   assert.match(frontend, /function beginImageGeneration\(/);
   assert.match(frontend, /function finishImageGeneration\(/);
   assert.match(frontend, /if \(imageGenerationInFlight\) return false/);
-  assert.match(frontend, /finally \{\s*finishImageGeneration\(\);/);
+  assert.match(frontend, /requestAnimationFrame\(\(\) => requestAnimationFrame\(resolve\)\)/);
+  const start = frontend.indexOf('async function generarImagen');
+  const end = frontend.indexOf('// ── COMPOSICIÓN DEL LOGO OFICIAL', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  assert.match(frontend.slice(start, end), /finally \{[\s\S]*finishImageGeneration\(\);/);
 });
 
 test('el logo oficial se compone después de cada generación y no se delega al modelo', () => {
@@ -44,12 +49,12 @@ test('Detalle hoy se propone con IA y no queda dominado por un banco fijo de esc
 test('el compositor usa un logo sin tarjeta blanca y busca una zona visual segura', () => {
   assert.match(frontend, /function quitarFondoBlancoDelLogo\(/);
   assert.match(frontend, /function elegirUbicacionLogo\(/);
-  assert.match(frontend, /Reserva una zona limpia y sin texto/);
+  assert.match(frontend, /espacio negativo real/);
   assert.doesNotMatch(frontend, /ctx\.fillStyle = 'white'; \/\/ dispara la sombra/);
 });
 
 test('GPT Image recibe libertad de dirección gráfica y no una plantilla azul lateral fija', () => {
   assert.match(frontend, /DIRECCIÓN GRÁFICA VARIABLE/);
-  assert.match(frontend, /No uses un gran bloque o degradado azul como plantilla/);
+  assert.match(frontend, /PROHIBIDO usar un gran bloque o degradado azul como plantilla recurrente/);
   assert.doesNotMatch(frontend, /producto en primer plano a la derecha \(55% del ancho\), textos jerarquizados a la izquierda/);
 });

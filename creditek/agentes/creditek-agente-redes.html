@@ -3466,32 +3466,25 @@ async function generarImagen(callerBtn = null) {
   spinner.style.display = 'block'; label.textContent = '⏳ Generando…';
   resultDiv.style.display = 'none'; errDiv.style.display = 'none';
 
-  // El estado debe pintarse antes de cualquier corrección o llamada de red.
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  label.textContent = 'Corrigiendo texto...';
-  await corregirMensajeSecundario();
-  label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
-
-  const isWorkerEngine = currentEngine === 'gemini';
-  const key = '';
-
-  const prompt = document.getElementById('img-prompt-ta').value.trim();
-  if (!prompt) {
-    // FIX v4e: mismo caso — revertir feedback visual si no hay prompt
-    visibleBtn.disabled = false;
-    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-    spinner.style.display = 'none';
-    finishImageGeneration();
-    return;
-  }
-  // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
-  // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
-  // queda estático varios segundos dando sensación de que no está avanzando.
-  if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
-  const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
-  if (isWorkerEngine) label.textContent = 'Generando imagen...';
-
   try {
+    // El estado debe pintarse antes de cualquier corrección o llamada de red.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    label.textContent = 'Corrigiendo texto...';
+    await corregirMensajeSecundario();
+    label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
+
+    const isWorkerEngine = currentEngine === 'gemini';
+    const key = '';
+
+    const prompt = document.getElementById('img-prompt-ta').value.trim();
+    if (!prompt) return;
+    // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
+    // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
+    // queda estático varios segundos dando sensación de que no está avanzando.
+    if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
+    const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
+    if (isWorkerEngine) label.textContent = 'Generando imagen...';
+
     lastImgModelLabel = currentEngine === 'gemini' ? 'Imagen 4 (Vertex)' : 'GPT Image 2';
     const src = currentEngine === 'gemini'
       ? await generarConGemini(key, promptGemini)
@@ -3508,12 +3501,12 @@ async function generarImagen(callerBtn = null) {
     errDiv.textContent = err.message || 'Error al generar imagen. Verifica tu API key.';
     errDiv.style.display = 'block';
     showToast(err.message || 'Error al generar imagen', '#ef4444');
+  } finally {
+    visibleBtn.disabled = false;
+    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
+    spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
+    finishImageGeneration();
   }
-
-  visibleBtn.disabled = false;
-  if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-  spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
-  finishImageGeneration();
 }
 
 // ── COMPOSICIÓN DEL LOGO OFICIAL ────────────────────────────────────────

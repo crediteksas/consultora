@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const html = await readFile(new URL('../../creditek/agentes/agente3-meta-ads.html', import.meta.url), 'utf8');
+const worker = await readFile(new URL('../../creditek/workers/aura-meta-ads-api/src/index.ts', import.meta.url), 'utf8');
+
+test('trazabilidad captura publicación simple y A/B con atomicidad de IDs', () => {
+  for (const marker of ['publication_id', 'published_at', 'published_by', 'campaign_name', 'assertCompleteMetaIds', 'META_PUBLICATION_INCOMPLETE']) {
+    assert.match(worker, new RegExp(marker));
+  }
+  for (const key of ['campaign_id', 'adset_id', 'creative_id', 'ad_id', 'variant_a_creative_id', 'variant_b_creative_id', 'variant_a_ad_id', 'variant_b_ad_id']) assert.match(worker, new RegExp(key));
+  assert.match(html, /traceHasCompleteIds/);
+  assert.match(html, /PUBLICACIÓN ENVIADA A META/);
+});
+
+test('persistencia e historial sobreviven recarga y diferencian nombres repetidos', () => {
+  assert.match(html, /PUBLICATION_HISTORY_KEY/);
+  assert.match(html, /localStorage\.getItem\(PUBLICATION_HISTORY_KEY/);
+  assert.match(html, /localStorage\.setItem\(PUBLICATION_HISTORY_KEY/);
+  assert.match(html, /publication-history-list/);
+  assert.match(html, /publication_id/);
+});
+
+test('parser de errores es null-safe y conserva orden de Meta', () => {
+  assert.match(html, /meta\.error_user_msg,meta\.error_user_title,meta\.message,meta\.error_data/);
+  assert.match(html, /text==='null'\|\|text==='undefined'/);
+  assert.doesNotMatch(html, /detail=meta\.error_user_msg\|\|meta\.error_user_title\|\|meta\.message/);
+});
+
+test('preflight, activación, rollback, Intelligence y tabs permanecen presentes', () => {
+  for (const marker of ['META_PREFLIGHT_CREATIVE_FAILED', 'META_ADSET_ACTIVATION_FAILED', 'META_AD_ACTIVATION_FAILED', 'META_CAMPAIGN_ACTIVATION_FAILED', 'portfolioReading', 'class="agent3-tabs"']) {
+    assert.ok(worker.includes(marker) || html.includes(marker), `missing marker ${marker}`);
+  }
+});

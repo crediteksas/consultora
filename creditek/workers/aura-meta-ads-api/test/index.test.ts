@@ -423,6 +423,15 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(body.comparison).toBe('A/B');
     expect(body.status).toBe('ACTIVE');
     expect(body.variants).toHaveLength(2);
+    expect(body.publication_id).toEqual(expect.any(String));
+    expect(body.published_at).toEqual(expect.any(String));
+    expect(body.published_by).toBe('u1');
+    expect(body.campaign_name).toBe(payload.campaign_name);
+    expect(body.meta_ids).toEqual({
+      campaign_id: 'campaign-1', adset_id: 'adset-1',
+      variant_a_creative_id: 'creative-1', variant_a_ad_id: 'ad-1',
+      variant_b_creative_id: 'creative-1', variant_b_ad_id: 'ad-1',
+    });
     const ads = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/ads?'));
     expect(ads).toHaveLength(2);
     expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);

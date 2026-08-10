@@ -289,6 +289,13 @@ async function recordPublish(env: Env, token: string, payload: PublishPayload, i
   if (!response.ok) throw new Error('AUDIT_UNAVAILABLE');
 }
 
+function assertCompleteMetaIds(metaIds: Record<string, string>, comparison: boolean) {
+  const required = comparison
+    ? ['campaign_id', 'adset_id', 'variant_a_creative_id', 'variant_b_creative_id', 'variant_a_ad_id', 'variant_b_ad_id']
+    : ['campaign_id', 'adset_id', 'creative_id', 'ad_id'];
+  if (required.some(key => { const value = String(metaIds[key] || '').trim(); return !value || value === 'null' || value === 'undefined'; })) throw new Error('META_PUBLICATION_INCOMPLETE');
+}
+
 async function approvedCreative(env: Env, token: string, payload: Pick<PublishPayload, 'piece_id' | 'copy' | 'headline' | 'image_url'>) {
   if (payload.piece_id === 'manual') return;
   const pieces = await supabaseRows(env, '/rest/v1/rpc/aura_meta_ads_ready_pieces', token);
@@ -341,7 +348,7 @@ function requireMetaId(value: MetaRow, code: string) {
   return id;
 }
 
-async function publishCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string) {
+async function publishCampaign(env: Env, auth: { token: string; access: Access }, payload: PublishPayload, idempotencyKey: string) {
   await verifyMetaApp(env);
   const variants = payload.variants?.length === 2 ? payload.variants : [{
     piece_id: payload.piece_id, copy: payload.copy, headline: payload.headline,
@@ -356,6 +363,9 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
   }
   const destination = env.META_DESTINATION_URL || 'https://registro.crediteksas.com/creditek/agentes/';
   if (!/^https:\/\//i.test(destination)) throw new Error('INVALID_DESTINATION_URL');
+  const publicationId = crypto.randomUUID();
+  const publishedAt = new Date().toISOString();
+  const publishedBy = String(auth.access.user_id || '');
   const cities = await publicationStep('META_CITY_RESOLUTION_FAILED', () => resolveCities(env, auth.token, payload.cities || []));
   const instagram = await publicationStep('META_INSTAGRAM_ACTOR_RESOLUTION_FAILED', () => resolveInstagramActor(env));
   const images = [] as Array<{ picture?: string; image_hash?: string }>;
@@ -371,10 +381,11 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     'POST',
   ));
   const campaignId = requireMetaId(campaign, 'META_CAMPAIGN_INVALID_RESPONSE');
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId });
+  const trace = { publication_id: publicationId, published_at: publishedAt, published_by: publishedBy, campaign_name: name };
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId });
   const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, adsetPayload(payload, name, campaignId, cities), 'POST'));
   const adsetId = requireMetaId(adset, 'META_ADSET_INVALID_RESPONSE');
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId });
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId });
   const variantIds: Array<{ label: string; creative_id: string; ad_id: string }> = [];
   for (let index = 0; index < variants.length; index += 1) {
     const variant = variants[index];
@@ -384,13 +395,15 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
     const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name}${label ? ` · ${label}` : ''} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'), label || 'A');
     const creativeId = requireMetaId(creative, 'META_CREATIVE_INVALID_RESPONSE');
-    await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, variant: label || 'single' });
+    await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId, creative_id: creativeId, variant: label || 'single' });
     const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name}${label ? ` · ${label}` : ''} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'), label || 'A');
     variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: requireMetaId(ad, 'META_AD_INVALID_RESPONSE') });
   }
-  const metaIds: Record<string, string> = variants.length === 2
+  const comparison = variants.length === 2;
+  const metaIds: Record<string, string> = comparison
     ? { campaign_id: campaignId, adset_id: adsetId, variant_a_creative_id: variantIds[0].creative_id, variant_a_ad_id: variantIds[0].ad_id, variant_b_creative_id: variantIds[1].creative_id, variant_b_ad_id: variantIds[1].ad_id }
     : { campaign_id: campaignId, adset_id: adsetId, creative_id: variantIds[0].creative_id, ad_id: variantIds[0].ad_id };
+  assertCompleteMetaIds(metaIds, comparison);
   const activated: string[] = [];
   try {
     await publicationStep('META_ADSET_ACTIVATION_FAILED', () => metaObject(env, adsetId, { status: 'ACTIVE' }, 'POST')); activated.push(adsetId);
@@ -400,9 +413,9 @@ async function publishCampaign(env: Env, auth: { token: string }, payload: Publi
     for (const id of activated.reverse()) await metaObject(env, id, { status: 'PAUSED' }, 'POST').catch(() => undefined);
     throw error;
   }
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'ACTIVE', metaIds);
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'ACTIVE', { ...trace, ...metaIds });
   console.info('meta_campaign_published', { ...metaIds, status: 'ACTIVE', review_status: 'EN_REVISIÓN_DE_META' });
-  return { ok: true, status: 'ACTIVE', review_status: 'EN_REVISIÓN_DE_META', comparison: variants.length === 2 ? 'A/B' : null, statuses: { campaign: 'ACTIVE', adset: 'ACTIVE', creative: 'IN_REVIEW', ad: 'ACTIVE' }, meta_ids: metaIds, variants: variantIds };
+  return { ok: true, status: 'ACTIVE', review_status: 'EN_REVISIÓN_DE_META', comparison: comparison ? 'A/B' : null, publication_id: publicationId, published_at: publishedAt, published_by: publishedBy, campaign_name: name, statuses: { campaign: 'ACTIVE', adset: 'ACTIVE', creative: 'IN_REVIEW', ad: 'ACTIVE' }, meta_ids: metaIds, variants: variantIds };
 }
 
 async function continueCampaign(env: Env, auth: { token: string }, payload: PublishPayload, idempotencyKey: string, campaignId: string) {

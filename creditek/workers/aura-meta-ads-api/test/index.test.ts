@@ -73,6 +73,7 @@ function mockNetwork(permissions = ['meta_ads.access', 'meta_ads.read']) {
     if (url.includes('/act_123/adsets')) return json({ id: 'adset-1' });
     if (url.includes('/act_123/adcreatives')) return json({ id: 'creative-1' });
     if (url.includes('/act_123/ads')) return json({ id: 'ad-1' });
+    if (['campaign-1', 'adset-1', 'ad-1'].some(id => url.includes(`/${id}?`)) && init?.method === 'POST') return json({ success: true });
     if (url.includes('/act_123/insights')) return json({ data: [{ spend: '10000', impressions: '1000', clicks: '50', reach: '800', frequency: '1.25', ctr: '5', cpc: '200', cpm: '10000', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '4' }] }] });
     if (url.includes('/act_123/campaigns')) return json({ data: [{ id: 'c1', name: 'Campaña 1', effective_status: 'ACTIVE', daily_budget: '50000' }] });
     throw new Error(`unexpected ${url}`);
@@ -225,13 +226,14 @@ describe('AURA Meta Ads secure publisher', () => {
     expect((await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload), env())).status).toBe(400);
   });
 
-  it('crea campaña, conjunto, creativo y anuncio pausados en un solo flujo seguro', async () => {
+  it('crea y publica campaña, conjunto, creativo y anuncio en un solo flujo seguro', async () => {
     mockNetwork(publishPermissions);
     const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'publish-1'), env());
     const body = await response.json() as any;
     expect(response.status).toBe(201);
     expect(body.meta_ids).toEqual({ campaign_id: 'campaign-1', adset_id: 'adset-1', creative_id: 'creative-1', ad_id: 'ad-1' });
-    expect(body.status).toBe('PAUSED');
+    expect(body.status).toBe('ACTIVE');
+    expect(body.review_status).toBe('EN_REVISIÓN_DE_META');
     const metaCalls = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('graph.facebook.com'));
     expect(metaCalls.every(([, init]: [unknown, RequestInit]) => !String(init?.body || '').includes('server-only-meta-token'))).toBe(true);
     const campaignCall = metaCalls.find(([url]: [unknown]) => String(url).includes('/act_123/campaigns'));
@@ -417,10 +419,35 @@ describe('AURA Meta Ads secure publisher', () => {
     const body = await response.json() as any;
     expect(response.status).toBe(201);
     expect(body.comparison).toBe('A/B');
-    expect(body.status).toBe('PAUSED');
+    expect(body.status).toBe('ACTIVE');
     expect(body.variants).toHaveLength(2);
     const ads = (globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/ads?'));
     expect(ads).toHaveLength(2);
     expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);
+  });
+
+  it('detiene A/B con detalle sanitizado de Meta en la variante B antes de activar', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/adcreatives') && String(init?.body || '').includes('Titular+B')) {
+        return json({ error: { code: 100, error_subcode: 1815754, type: 'OAuthException', message: 'Invalid creative', error_user_title: 'Creatividad no válida', error_user_msg: 'La imagen B no fue aceptada', fbtrace_id: 'trace-b' } }, 400);
+      }
+      return base(input, init);
+    }) as any;
+    const image = { name: 'pieza.png', mime_type: 'image/png', bytes_base64: 'iVBORw0KGgoAAAANSUhEUg==' };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', {
+      ...payload, piece_id: 'manual', image_url: '', image_data: image,
+      variants: [
+        { piece_id: 'manual', copy: 'Copy A', headline: 'Titular A', cta: 'LEARN_MORE', image_url: '', image_data: image },
+        { piece_id: 'manual', copy: 'Copy B', headline: 'Titular B', cta: 'LEARN_MORE', image_url: '', image_data: image },
+      ],
+    }, 'publish-ab-failed'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(502);
+    expect(body.reason).toBe('META_CREATIVE_CREATE_FAILED');
+    expect(body.meta).toMatchObject({ variant: 'VARIANTE B', code: '100', stage: 'META_CREATIVE_CREATE_FAILED' });
+    expect(body.meta.error_user_msg).toContain('La imagen B no fue aceptada');
+    expect((globalThis.fetch as any).mock.calls.some(([url, init]: [unknown, RequestInit]) => ['campaign-1','adset-1','ad-1'].some(id => String(url).includes(`/${id}?`)) && String(init?.body).includes('status=ACTIVE'))).toBe(false);
   });
 });

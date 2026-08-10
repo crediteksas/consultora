@@ -56,3 +56,23 @@ test('el alias de autenticación de la shell resuelve el módulo canónico', asy
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
 });
+
+test('Piezas Comerciales queda fuera de la caché persistente', async () => {
+  const { default: worker } = await import('../../creditek/workers/aura-hub/src/index.js');
+  const html = '<!doctype html><title>Piezas Comerciales</title>';
+  const env = { ASSETS: { fetch: async request => {
+    assert.equal(new URL(request.url).pathname, '/creditek/agentes/creditek-agente-redes.html');
+    return new Response(html, { headers: { 'content-type': 'text/html' } });
+  } } };
+
+  const response = await worker.fetch(
+    new Request('https://registro.crediteksas.com/creditek/agentes/creditek-agente-redes.html'),
+    env,
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate, max-age=0');
+  assert.equal(response.headers.get('pragma'), 'no-cache');
+  assert.equal(response.headers.get('expires'), '0');
+  assert.equal(await response.text(), html);
+});

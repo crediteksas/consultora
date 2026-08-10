@@ -17,6 +17,7 @@ const MANAGED_PATHS = new Set([
   '/creditek/agentes/agente3-meta-ads.html',
   '/creditek/agentes/agente3-aura-session.mjs',
   '/creditek/agentes/creditek-gbp-fichas.html',
+  '/creditek/agentes/creditek-agente-redes.html',
 ]);
 const CANONICAL_DOCUMENTS = new Set([
   '/creditek/agentes/creditek-agente-respuestas',

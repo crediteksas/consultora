@@ -7,7 +7,7 @@
     { "type": "Text", "globs": ["**/*.html"], "fallthrough": true }
   ],
   "assets": {
-    "directory": "./public-aura-hub",
+    "directory": "./public-aura-hub-candidate",
     "binding": "ASSETS",
     "run_worker_first": true,
     "html_handling": "none",

@@ -3627,6 +3627,30 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
 const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
+const GPT_LAYOUT_PATTERNS = [
+  'editorial split: let the cleanest negative-space area carry the headline and place secondary copy or CTA in a separate, quieter zone',
+  'asymmetric composition: use the subject or product as the visual anchor and distribute headline, secondary copy and CTA across different areas of the canvas',
+  'photographic balance: keep text away from faces, hands and product, using contrasting negative space on opposite sides for the headline and CTA',
+  'structured contrast: create a clear reading path with the headline first, secondary copy in a calm supporting area and CTA separated by real breathing room',
+];
+
+function buildGptLayoutGuard() {
+  let recent = [];
+  try {
+    recent = JSON.parse(sessionStorage.getItem('aura_recent_gpt_layouts') || '[]')
+      .filter(value => Number.isInteger(value) && value >= 0 && value < GPT_LAYOUT_PATTERNS.length)
+      .slice(-3);
+  } catch { /* la memoria visual no bloquea una generación */ }
+  const patternIndex = GPT_LAYOUT_PATTERNS.findIndex((_, index) => !recent.includes(index));
+  const selectedIndex = patternIndex >= 0 ? patternIndex : recent.length % GPT_LAYOUT_PATTERNS.length;
+  try {
+    sessionStorage.setItem('aura_recent_gpt_layouts', JSON.stringify([...recent, selectedIndex].slice(-3)));
+  } catch { /* la memoria visual no bloquea una generación */ }
+  const recentText = recent.length
+    ? `Evita repetir estos enfoques recientes: ${recent.map(index => GPT_LAYOUT_PATTERNS[index]).join(' | ')}.`
+    : 'No existe un patrón reciente que debas repetir.';
+  return `${GPT_LAYOUT_GUARD} Antes de ubicar cualquier texto, analiza personas, rostros, manos, producto, dirección de mirada, contraste, zonas limpias, espacio negativo y equilibrio general. La siguiente dirección es una sugerencia creativa, no una plantilla fija: ${GPT_LAYOUT_PATTERNS[selectedIndex]}. ${recentText} Si la fotografía no la permite, elige otra solución profesional y segura. Nunca pongas texto sobre rostros, manos importantes, producto, bordes o zonas de bajo contraste.`;
+}
 
 async function llamarBackendImagen(path, payload) {
   return window.requestAuraImage(path, payload);
@@ -3696,6 +3720,7 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
 
 async function generarConDalle(key, prompt) {
   const finLogos = await loadAllSelectedFinancieras();
+  const layoutGuard = buildGptLayoutGuard();
   let inputPayload;
   if (productoImgBase64 || finLogos.length) {
     const content = [];
@@ -3707,10 +3732,10 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: `${GPT_BRANDING_GUARD}\n${GPT_LAYOUT_GUARD}\n${prompt}` });
+    content.push({ type: 'input_text', text: `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = `${GPT_BRANDING_GUARD}\n${GPT_LAYOUT_GUARD}\n${prompt}`;
+    inputPayload = `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',
@@ -3737,6 +3762,7 @@ async function generarConDalle(key, prompt) {
 async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFoto, promptComposicionGPT) {
   // Paso 1 — Gemini genera la foto limpia (sin texto, sin logo)
   const fotoBase = await generarConGemini(keyGemini, promptGeminiFoto, /* soloFoto */ true);
+  const layoutGuard = buildGptLayoutGuard();
 
   // Paso 2 — GPT recibe la foto como referencia + copy. El logo oficial se
   // compone una única vez después, nunca como segunda marca dentro de GPT.
@@ -3744,7 +3770,7 @@ async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFot
     { type: 'input_text', text: `${GPT_BRANDING_GUARD} Base photograph — do not regenerate the scene. Add clean graphic layers only:` },
     { type: 'input_image', image_url: fotoBase },
   ];
-  content.push({ type: 'input_text', text: `${promptComposicionGPT}\n\n${GPT_LAYOUT_GUARD}` });
+  content.push({ type: 'input_text', text: `${promptComposicionGPT}\n\n${layoutGuard}` });
 
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',

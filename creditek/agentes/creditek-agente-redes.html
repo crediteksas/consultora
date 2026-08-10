@@ -1120,6 +1120,27 @@ function buildMandatoryUserBrief() {
   return brief ? `USER BRIEF — PRIORIDAD MÁXIMA:\n"${brief}"\nConserva cada objeto, escena, ubicación y restricción explícita; no lo sustituyas por una escena genérica.` : '';
 }
 
+function buildExplicitCreativePriority() {
+  const additional = document.getElementById('instruccion-ia-extra')?.value.trim() || '';
+  const context = document.getElementById('modo-contexto')?.value.trim() || '';
+  const note = document.getElementById('nota')?.value.trim() || '';
+  const product = document.getElementById('producto')?.value.trim() || '';
+  const lines = [
+    additional && `1. INSTRUCCIÓN ADICIONAL DEL USUARIO (manda): "${additional}"`,
+    context && `2. CONTEXTO ESPECÍFICO DE LA PIEZA: "${context}"`,
+    note && `3. MENSAJE/COPY DEL USUARIO: "${note}"`,
+    product && `4. PRODUCTO SELECCIONADO: "${product}"`,
+  ].filter(Boolean);
+  return lines.length ? `JERARQUÍA DE CONTEXTO — NO ALTERAR:\n${lines.join('\n')}\nDetalle hoy es solo inspiración secundaria: no puede sustituir, contradecir ni dominar estos elementos.` : '';
+}
+
+function buildModeCopyGuard(modo) {
+  if (modo === 'promo') return `MODO PROMOCIÓN ESPECIAL — REGLA DE NEGOCIO:\n- Enfócate en ocasión, regalo, beneficio, producto, emoción y CTA.\n- No introduzcas por iniciativa propia fiador, codeudor, reportado, estudio, aprobación, crédito o financiación. Solo menciona condiciones financieras si el usuario las escribió explícitamente.\n- No inventes una marca o modelo cuando Producto esté vacío.`;
+  if (modo === 'tienda') return 'MODO TIENDA: habla de la experiencia, el producto y la visita; no inventes crédito ni condiciones financieras.';
+  if (modo === 'servicio') return 'MODO SERVICIO: explica únicamente el servicio indicado y una acción verificable; no inventes financiación.';
+  return '';
+}
+
 const COPY_QUALITY_GUARD = `
 CONTROL DE CALIDAD — PUBLICISTA SENIOR:
 - Escribe español colombiano natural, claro y comercial. “Alegre costeño” describe calidez y cercanía; no obliga a usar regionalismos.
@@ -1167,15 +1188,18 @@ async function generarMasTitulares() {
 MENSAJE DEL CLIENTE (corrígelo antes de usarlo):
 "${mensajeSecundario || nota || detalleHoy}"
 
-DETALLE HOY (contexto obligatorio del copy):
+${buildExplicitCreativePriority()}
+
+DETALLE HOY (contexto obligatorio del copy) — inspiración secundaria; nunca sustituye el brief:
 "${detalleHoy}"
-Los titulares deben relacionarse creativamente con esta escena, situación o humor sin describirla de forma literal ni volver a un banco genérico de frases.
+Los titulares deben partir primero del brief y relacionarse con el detalle solo si no cambia la escena principal.
 
 CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramática y redacción del mensaje anterior.
 
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
 ${COPY_QUALITY_GUARD}
+${buildModeCopyGuard(modo)}
 ${buildRecentHeadlinePenalty()}
 ${buildMandatoryUserBrief()}
 
@@ -1730,16 +1754,20 @@ ${producto ? '- Producto: ' + producto : ''}
 ${cuota && modo === 'credito' ? '- Precio cuota mensual: ' + cuota : ''}
 ${inicial && modo === 'credito' ? '- Cuota inicial: ' + inicial : ''}
 ${modoContexto ? '- CONTEXTO ESPECÍFICO DE ESTA PIEZA (base obligatoria del copy — construye todo alrededor de esta situación concreta): ' + modoContexto : ''}
-DETALLE HOY (contexto obligatorio del copy): ${detalleHoy}
-Los titulares, texto secundario y CTA deben sentirse escritos específicamente para esta escena; no uses frases genéricas de financiación desconectadas del concepto.
+${buildExplicitCreativePriority()}
+DETALLE HOY (contexto obligatorio del copy) — inspiración secundaria, nunca prioridad: ${detalleHoy}
+Los titulares, texto secundario y CTA deben respetar primero la instrucción adicional y el contexto específico; usa Detalle hoy únicamente para ambientar sin cambiar sujetos, acción ni producto.
 ${notaInstruccion ? '- INSTRUCCIÓN TÉCNICA PARA LA IA (no es el mensaje — aplícala al generar, no la menciones en el copy): ' + notaInstruccion : ''}
 ${direccion ? '- Dirección(es) de tienda: ' + direccion : ''}
 - Plataformas: ${platformsList}
 
-${['captacion','institucional','jornada'].includes(modo) ? `PERFIL DE AUDIENCIA — MODO ${modoLabel.toUpperCase()}:
+${['captacion','institucional','jornada','promo','tienda','servicio'].includes(modo) ? `PERFIL DE AUDIENCIA — MODO ${modoLabel.toUpperCase()}:
 ${modo === 'captacion' ? '- Audiencia general en redes sociales. Objetivo: engagement, likes, comentarios, seguidores nuevos. NO vender, NO mencionar crédito ni precios.' : ''}
 ${modo === 'institucional' ? '- Audiencia general e inversionistas sociales. Objetivo: construir confianza y reconocimiento de marca Creditek. NO mencionar precios ni condiciones de crédito.' : ''}
-${modo === 'jornada' ? '- Clientes potenciales de la zona que quieren crédito ese día. Objetivo: asistencia al evento presencial. Urgencia de fecha.' : ''}` :
+${modo === 'jornada' ? '- Clientes potenciales de la zona que quieren crédito ese día. Objetivo: asistencia al evento presencial. Urgencia de fecha.' : ''}
+${modo === 'promo' ? '- Personas interesadas en la ocasión, el regalo, el beneficio y el producto. No introducir condiciones de crédito no solicitadas.' : ''}
+${modo === 'tienda' ? '- Personas que quieren conocer la tienda y la experiencia de compra, sin financiación inventada.' : ''}
+${modo === 'servicio' ? '- Personas que necesitan el servicio descrito y una acción concreta para recibir orientación.' : ''}` :
 `PERFIL DEL CLIENTE REAL (habla DIRECTAMENTE a esta persona):
 - Hombre o mujer, 25-45 años, ingreso familiar $1.2M–$2.5M/mes
 - Usa Nequi o Daviplata, no tiene cuenta bancaria formal
@@ -1766,6 +1794,7 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
   return key ? map[key] + '\n\n' : '';
 })()}
 ${COPY_QUALITY_GUARD}
+${buildModeCopyGuard(modo)}
 LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
 ${culturaCtx && (culturaCtx.includes('tradicional') || culturaCtx.includes('ganadero')) ? '- Registro: usa "usted" si el contexto lo pide; cálido, de confianza, como alguien del mismo pueblo.' : '- Registro: tuteo natural y directo, como alguien que ya conoce al cliente.'}
@@ -2588,6 +2617,10 @@ async function buildImgPrompt() {
   const nombreCta      = esCiudad ? getCiudadNombre(ciudad) : (tiendaInfo?.nombre || getCiudadNombre(ciudad));
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
   const refBlock       = getRefBlock();
+  const explicitPriority = buildExplicitCreativePriority();
+  const visualBriefBlock = explicitPriority
+    ? `${explicitPriority}\nSUJETOS OBLIGATORIOS: deriva las personas, objetos y relaciones del brief; no los sustituyas por Detalle hoy.\nACCIÓN OBLIGATORIA: representa la acción central indicada por el usuario.\nELEMENTOS SECUNDARIOS: usa Detalle hoy solo como ambiente compatible.\nELEMENTOS A EVITAR: cualquier sujeto o acción que contradiga el brief, una escena de una sola persona cuando el brief pide interacción, o un ambiente secundario convertido en concepto principal.`
+    : 'SUJETOS Y ACCIÓN: deriva el foco de la escena del contexto específico; Detalle hoy solo puede ambientar y nunca debe convertirse en el sujeto principal.';
 
   // ── MODOS SIN CELULAR (captacion, institucional, jornada) ────────
   if (['captacion','institucional','jornada'].includes(modo)) {
@@ -2615,10 +2648,10 @@ async function buildImgPrompt() {
 
     const detalleDia = getDetalleDelDia(currentEstilo);
     const estiloRico = {
-      formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Visual detail: ${detalleDia}.`,
-      costeno:    `Authentic everyday Caribbean Colombian commercial life — a happy customer enjoying their new phone as the clear focus, warm natural light, genuine warmth. Scene: ${detalleDia}. RULE: the scene must be PLAUSIBLE — a real moment that could actually happen on any ordinary day in a coastal town (Corozal, Chinú, Ciénaga). Several Caribbean elements are fine ONLY if they naturally belong together in one real moment; NEVER stack unrelated tropical clichés (no confetti + palms + flowers + coconut piled together to "shout Coast"). No carnival costumes.`,
-      chistoso:   `Playful commercial humor. Fun graphic elements in turquoise. Brand that smiles. Visual detail: ${detalleDia}.`,
-      minimalista:`Ultra minimal. Maximum white space. One strong visual: ${detalleDia}. Elegant restraint.`,
+      formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
+      costeno:    `Authentic everyday Caribbean Colombian commercial life with warm natural light and genuine warmth. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Never stack unrelated tropical clichés.`,
+      chistoso:   `Playful commercial humor grounded in the user brief. Secondary detail only: ${detalleDia}.`,
+      minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
     }[currentEstilo] || 'Professional brand design.';
 
@@ -2651,6 +2684,7 @@ async function buildImgPrompt() {
     const prompt = [
       'ROLE: Senior advertising art director for Colombian Caribbean brand. Create a commercially compelling, visually rich image.',
       `FORMAT: ${formatSpec}`,
+      visualBriefBlock,
       '',
       `CORE CONCEPT: ${conceptoPrincipal}`,
       tipoPersonalizado ? null : (
@@ -2668,7 +2702,7 @@ async function buildImgPrompt() {
       '',
       'BRAND IDENTITY:',
       '- Deep navy #0B1E3D | Turquoise #00C4CC | White #FFFFFF',
-      '- Creditek logo: circular turquoise checkmark + wordmark Montserrat Bold. Prominent, unmodified.',
+      '- Do not render any logo, word Creditek, placeholder, rectangle, white panel, badge or empty frame. The official asset is composited after generation exactly once in natural negative space.',
       '- Typography: Montserrat ExtraBold headlines, DM Sans body.',
       '',
       'EXACT SPANISH TEXT TO RENDER IN IMAGE:',
@@ -2809,12 +2843,12 @@ async function buildImgPrompt() {
 
   const detalleDiaMsg = getDetalleDelDia(currentEstilo);
   const mensajeMap = {
-    formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual: ${detalleDiaMsg}. Mensaje directo, elegante y sin estridencias — que transmita solidez de marca y confianza al comprador.`,
+    formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual secundario: ${detalleDiaMsg}.`,
     costeno:     `Tono caribeño colombiano auténtico y comercial — un cliente feliz disfrutando su celular nuevo como foco claro de la escena. Luz natural cálida, colores vivos, calidez humana genuina. Escena: ${detalleDiaMsg}. REGLA DE ORO: la escena debe ser PLAUSIBLE — un momento que de verdad podría pasar un día cualquiera en un pueblo de la costa (Corozal, Chinú, Ciénaga). Varios elementos costeños están bien SOLO si conviven de forma natural en un mismo momento real (ej: dos amigas en la plaza, una con un coco, mirando el celular). Lo PROHIBIDO es apilar elementos que no conviven en la vida real solo para "gritar Costa" (confeti + palmeras + flores + coco todos juntos = falso). Nada de confeti, disfraces ni máscaras de comparsa.`,
     chistoso:    /lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'')
       ? `Tono de humor comercial ligero sobre ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares — el producto de esta pieza no es un celular.`
-      : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}.`,
-    minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual: ${detalleDiaMsg}. El producto habla solo. Mensaje único, breve y poderoso.`,
+      : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual secundario: ${detalleDiaMsg}.`,
+    minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual derivado del brief; detalle secundario: ${detalleDiaMsg}.`,
     custom:      estiloCustomVal || `Estilo libre. Aplicar criterio artístico según las instrucciones.`,
   };
   const mensajeEstilo = mensajeMap[currentEstilo] || mensajeMap.formal;
@@ -2838,7 +2872,7 @@ async function buildImgPrompt() {
     alocredit: { nombre:'Alo Credit', tagline:'Crédito fácil',               beneficios:'Inmediato · Sin historial crediticio requerido' },
   };
   const finStrip = selectedFins.length ? `Franja inferior: banda horizontal delgada (fondo blanco o semitransparente) con logos pequeños de: ${selectedFins.map(f=>f.label).join(', ')}. Logos limpios, legibles, alineados horizontalmente. Cada logo aparece UNA SOLA VEZ. NO duplicar logos.` : '';
-  const finContextBlock = selectedFins.length ? `\nFINANCIERAS ALIADAS:\n${selectedFins.map(f => { const stored2 = _refsForFin?.brands?.[FIN_CONTEXT_FALLBACK[f.id]?.nombre]?.finInfo; const ctx = stored2 || FIN_CONTEXT_FALLBACK[f.id]; return ctx ? `- ${ctx.nombre||f.label}: ${ctx.tagline}. ${ctx.beneficios}.` : `- ${f.label}`; }).join('\n')}` : '';
+  const finContextBlock = modo === 'credito' && selectedFins.length ? `\nFINANCIERAS ALIADAS:\n${selectedFins.map(f => { const stored2 = _refsForFin?.brands?.[FIN_CONTEXT_FALLBACK[f.id]?.nombre]?.finInfo; const ctx = stored2 || FIN_CONTEXT_FALLBACK[f.id]; return ctx ? `- ${ctx.nombre||f.label}: ${ctx.tagline}. ${ctx.beneficios}.` : `- ${f.label}`; }).join('\n')}` : '';
 
   const priceRule = (precio || inicial)
     ? `Mostrar ÚNICAMENTE estos valores exactos: ${[precio&&`cuota ${precio}`, inicial&&`inicial ${inicial}`].filter(Boolean).join(' / ')}. NO agregar, inventar ni modificar ningún otro monto.`
@@ -3428,12 +3462,13 @@ async function generarImagen(callerBtn = null) {
 
   visibleBtn.disabled = true;
   const originalLabel = callerBtn ? visibleBtn.textContent : null;
-  if (callerBtn) visibleBtn.textContent = '⏳ Generando...';
-  spinner.style.display = 'block'; label.textContent = 'Corrigiendo texto...';
+  if (callerBtn) visibleBtn.textContent = '⏳ Generando…';
+  spinner.style.display = 'block'; label.textContent = '⏳ Generando…';
   resultDiv.style.display = 'none'; errDiv.style.display = 'none';
 
   // El estado debe pintarse antes de cualquier corrección o llamada de red.
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  label.textContent = 'Corrigiendo texto...';
   await corregirMensajeSecundario();
   label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
 
@@ -3567,7 +3602,7 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 }
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
-const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Reserve one clean integrated brand zone only. The official asset is composited after generation exactly once.';
+const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 
 async function llamarBackendImagen(path, payload) {

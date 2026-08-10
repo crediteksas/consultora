@@ -7,6 +7,8 @@ const worker = await readFile(new URL('../../creditek/workers/gemini-proxy/index
 
 test('Agente 1 genera imágenes únicamente mediante Worker y sesión AURA', () => {
   assert.match(frontend, /aura-image-client\.mjs/);
+  assert.match(frontend, /import \{ requestAuraImage \} from '\.\/aura-image-client\.mjs'/);
+  assert.match(frontend, /return window\.requestAuraImage\(path, payload\)/);
   assert.match(frontend, /llamarBackendImagen\('\/generate'/);
   assert.match(frontend, /llamarBackendImagen\('\/openai\/responses'/);
   assert.match(frontend, /model:\s*'gpt-5\.6'/);

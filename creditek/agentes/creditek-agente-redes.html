@@ -20,8 +20,8 @@
 <script src="aura-agent-bootstrap.js" defer></script>
 <script src="aura-context-help.js" defer></script>
 <script type="module">
-import { auraSessionToken } from './agente3-aura-session.mjs';
-window.auraSessionToken = auraSessionToken;
+import { requestAuraImage } from './aura-image-client.mjs';
+window.requestAuraImage = requestAuraImage;
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
@@ -3629,16 +3629,7 @@ const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Credit
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 
 async function llamarBackendImagen(path, payload) {
-  const token = window.auraSessionToken?.() || '';
-  if (!token) throw new Error('La sesión AURA venció. Inicia sesión nuevamente.');
-  const res = await fetch(`${IMAGE_WORKER_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
-  return data;
+  return window.requestAuraImage(path, payload);
 }
 
 async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl = null, esEdicion = false) {

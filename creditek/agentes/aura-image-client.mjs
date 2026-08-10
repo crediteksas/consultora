@@ -1,3 +1,4 @@
+import { auraAuth } from './aura-auth.mjs';
 import { auraSessionToken } from './agente3-aura-session.mjs';
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
@@ -5,7 +6,9 @@ const ALLOWED_PATHS = new Set(['/generate', '/openai/responses']);
 
 export async function requestAuraImage(path, payload, fetcher = globalThis.fetch) {
   if (!ALLOWED_PATHS.has(path)) throw new Error('Operación de imagen no permitida.');
-  const token = auraSessionToken();
+  // Reutiliza la sesión actual de AURA y la renueva si su access token venció.
+  // No abre un login ni persiste el token fuera del cliente de autenticación.
+  const token = await auraAuth?.token?.() || auraSessionToken();
   if (!token) throw new Error('La sesión AURA venció. Inicia sesión nuevamente.');
   const response = await fetcher(`${IMAGE_WORKER_URL}${path}`, {
     method: 'POST',

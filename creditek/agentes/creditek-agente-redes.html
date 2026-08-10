@@ -2336,16 +2336,28 @@ function selectEstilo(estilo, btn) {
 
 // Permite cambiar el detalle del día manualmente (05-jul-2026)
 let detalleOverride = {};
+let detalleChangeInFlight = false;
 async function cambiarDetalleDia() {
   const btn = document.querySelector('.detalle-dia-btn');
+  if (detalleChangeInFlight) return;
+  detalleChangeInFlight = true;
   if (btn) { btn.disabled = true; btn.textContent = 'generando…'; }
   try {
-    const siguiente = await proponerDetalleCreativoConIA(currentEstilo, { force: true });
+    const actual = document.getElementById('detalle-dia-val')?.textContent?.trim() || detalleCreativoActual(currentEstilo);
+    let siguiente = await proponerDetalleCreativoConIA(currentEstilo, { force: true, avoid: actual });
+    if (conceptosSustancialmenteIguales(siguiente, actual)) {
+      siguiente = propuestaFallbackDiferente(currentEstilo, actual);
+    }
+    if (conceptosSustancialmenteIguales(siguiente, actual)) {
+      showToast('No se pudo obtener una idea nueva. Intenta nuevamente.', '#ef4444');
+      return;
+    }
     detalleOverride[currentEstilo] = siguiente;
     const detVal = document.getElementById('detalle-dia-val');
     if (detVal) detVal.textContent = siguiente;
     await buildImgPrompt();
   } finally {
+    detalleChangeInFlight = false;
     if (btn) { btn.disabled = false; btn.textContent = '↺ cambiar'; }
   }
 }
@@ -2480,29 +2492,102 @@ let _detalleContador = 0;
 const recentCreativeConcepts = [];
 const creativeDetailByStyle = {};
 let creativeConceptRequest = null;
+const creativeFallbackByStyle = {
+  formal: [
+    'Una asesora presenta el celular sobre una mesa limpia mientras el cliente revisa opciones con confianza.',
+    'Un comprador compara dos celulares en una vitrina luminosa y elige con tranquilidad el que mejor le conviene.',
+    'Una entrega elegante del celular convierte una decisión planeada en un momento de satisfacción familiar.'
+  ],
+  costeno: [
+    'Dos amigos prueban el celular nuevo en la terraza del barrio y celebran la compra con una sonrisa espontánea.',
+    'Una vendedora muestra el celular junto a una ventana abierta mientras la conversación avanza con calidez.',
+    'Una familia comparte fotos del celular nuevo en el parque del barrio durante una tarde luminosa.'
+  ],
+  chistoso: [
+    'El celular nuevo se vuelve el protagonista cuando todos en la mesa quieren ser los primeros en probarlo.',
+    'Un comprador mira su celular viejo con sorpresa mientras el nuevo resuelve la situación con naturalidad.',
+    'La primera foto con el celular nuevo provoca una competencia amistosa y muchas risas entre amigos.'
+  ],
+  minimalista: [
+    'El celular nuevo descansa sobre una superficie clara y concentra toda la atención en su diseño.',
+    'Una mano sostiene el celular frente a una pared luminosa, con una composición serena y precisa.',
+    'El reflejo limpio de la pantalla destaca el celular como la única decisión importante de la escena.'
+  ],
+  custom: [
+    'Una escena comercial concreta convierte la idea del brief en un momento claro y fácil de recordar.',
+    'El producto aparece en uso dentro de una situación cotidiana que conecta directamente con el brief.',
+    'Una acción sencilla del cliente transforma el brief en una escena comercial cercana y comprensible.'
+  ]
+};
+
+function normalizarConcepto(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function conceptosSustancialmenteIguales(a, b) {
+  const left = normalizarConcepto(a);
+  const right = normalizarConcepto(b);
+  if (!left || !right) return true;
+  if (left === right) return true;
+  const aWords = new Set(left.split(' '));
+  const bWords = new Set(right.split(' '));
+  const shared = [...aWords].filter(word => bWords.has(word)).length;
+  return shared / Math.max(aWords.size, bWords.size) >= 0.82;
+}
+
+function propuestaFallbackDiferente(estilo, avoid = '') {
+  const pool = creativeFallbackByStyle[estilo] || creativeFallbackByStyle.custom;
+  const usadas = new Set([...recentCreativeConcepts, avoid].map(normalizarConcepto));
+  const next = pool.find(candidate => !usadas.has(normalizarConcepto(candidate))
+    && ![...usadas].some(previous => conceptosSustancialmenteIguales(candidate, previous)));
+  if (next) return next;
+  const producto = document.getElementById('producto')?.value.trim() || 'el producto';
+  const brief = document.getElementById('instruccion-ia-extra')?.value.trim()
+    || document.getElementById('modo-contexto')?.value.trim() || '';
+  const base = brief || `una escena cotidiana con ${producto}`;
+  return `${base}. El producto aparece en una acción nueva, clara y comercialmente útil.`;
+}
 
 function detalleCreativoActual(estilo) {
   return creativeDetailByStyle[estilo] || getDetalleDelDia(estilo);
 }
 
-async function proponerDetalleCreativoConIA(estilo, { force = false } = {}) {
+async function proponerDetalleCreativoConIA(estilo, { force = false, avoid = '' } = {}) {
   if (!force && creativeDetailByStyle[estilo]) return creativeDetailByStyle[estilo];
   if (creativeConceptRequest) return creativeConceptRequest;
   const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return detalleCreativoActual(estilo);
+  const actual = avoid || detalleCreativoActual(estilo);
+  if (!apiKey.startsWith('sk-ant-')) {
+    const fallback = propuestaFallbackDiferente(estilo, actual);
+    creativeDetailByStyle[estilo] = fallback;
+    recentCreativeConcepts.push(fallback);
+    return fallback;
+  }
   const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
   const brief = document.getElementById('instruccion-ia-extra')?.value.trim() || document.getElementById('modo-contexto')?.value.trim() || '';
-  const recientes = recentCreativeConcepts.slice(-12).join(' | ') || 'ninguno';
   creativeConceptRequest = (async () => {
     try {
+      let retryForRepeated = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const recientes = recentCreativeConcepts.slice(-12).join(' | ') || 'ninguno';
+        const retryInstruction = attempt === 1
+          ? 'La respuesta anterior fue repetida. Cambia por completo la acción, el escenario y el recurso visual.'
+          : '';
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:100, messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. No repitas ni parafrasees estos conceptos recientes: ${recientes}. Devuelve solo una frase concreta, plausible y distinta, máximo 18 palabras.`}] })
+        body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:100, messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. No repitas ni parafrasees estos conceptos recientes: ${recientes}. ${retryInstruction} Devuelve solo una frase concreta, plausible y distinta, máximo 18 palabras.`}] })
       });
       const data = await res.json();
       const concepto = (data.content?.find(b => b.type === 'text')?.text || '').replace(/["\n]/g, ' ').trim();
-      if (!res.ok || concepto.length < 8 || recentCreativeConcepts.includes(concepto)) throw new Error('concepto no válido');
+      if (!res.ok || concepto.length < 8 || conceptosSustancialmenteIguales(concepto, actual)
+        || recentCreativeConcepts.some(previous => conceptosSustancialmenteIguales(concepto, previous))) {
+        retryForRepeated = true;
+        if (attempt === 0) continue;
+        throw new Error('concepto repetido o inválido');
+      }
       creativeDetailByStyle[estilo] = concepto;
       recentCreativeConcepts.push(concepto);
       if (recentCreativeConcepts.length > 24) recentCreativeConcepts.shift();
@@ -2510,8 +2595,18 @@ async function proponerDetalleCreativoConIA(estilo, { force = false } = {}) {
       if (detVal && currentEstilo === estilo) detVal.textContent = concepto;
       await buildImgPrompt();
       return concepto;
-    } catch { return detalleCreativoActual(estilo); }
-    finally { creativeConceptRequest = null; }
+      } catch {
+        if (retryForRepeated && attempt === 0) continue;
+        break;
+      }
+    }
+      const fallback = propuestaFallbackDiferente(estilo, actual);
+      creativeDetailByStyle[estilo] = fallback;
+      recentCreativeConcepts.push(fallback);
+      return fallback;
+    } finally {
+      creativeConceptRequest = null;
+    }
   })();
   return creativeConceptRequest;
 }

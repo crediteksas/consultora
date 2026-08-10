@@ -19,6 +19,7 @@
 @media(max-width:47.999rem){.creative-grid,.publisher-preview-comparison{grid-template-columns:1fr}.publisher-section-title{grid-column:auto}.publisher-section-note{grid-column:auto}}
 .intelligence-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}.intelligence-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}.intelligence-card h3{font-size:13px;margin:0 0 8px}.intelligence-card p{margin:5px 0;color:var(--muted);font-size:13px;line-height:1.45}.intelligence-card strong{font-size:22px}.intelligence-wide{grid-column:1/-1}.score-pill{display:inline-flex;padding:4px 9px;border-radius:999px;background:var(--ctk-color-secondary-50);font-weight:800}.score-good{background:#dcfce7;color:#166534}.score-warn{background:#fef3c7;color:#92400e}.score-bad{background:#fee2e2;color:#991b1b}.campaign-intelligence{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}.campaign-intelligence .recommendation{color:var(--navy);font-weight:700}.trend-chip{font-weight:800}.trend-up{color:#087f5b}.trend-down{color:#b42318}.trend-flat{color:#8a5a00}.alert-item{border-left:3px solid var(--ctk-color-warning-500);padding:8px 10px;margin:6px 0;background:var(--ctk-color-warning-50)}.evaluation-list{margin:8px 0 0;padding-left:18px}.evaluation-list li{margin:4px 0;font-size:13px}.opportunity-muted{color:var(--muted);font-size:12px}
 @media(max-width:70rem){.intelligence-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:47.999rem){.intelligence-grid{grid-template-columns:1fr}.intelligence-wide{grid-column:auto}}
+.agent3-content{width:100%;max-width:none;margin:0}.agent3-tabs{display:flex;gap:8px;margin:16px 0 0;border-bottom:1px solid var(--border);overflow-x:auto}.agent3-tab{border:1px solid transparent;border-bottom:3px solid transparent;background:transparent;color:var(--muted);padding:12px 16px;font:inherit;font-weight:800;white-space:nowrap;cursor:pointer}.agent3-tab[aria-selected=true]{color:var(--navy);border-color:var(--turq);background:var(--ctk-color-secondary-50)}.agent3-tab-panel{padding-top:4px}.agent3-tab-panel[hidden]{display:none}.agent3-tab-panel>#publisher,.agent3-tab-panel>#campaign-evaluation{margin-top:var(--ctk-space-3)}#campaigns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}#campaigns>.campaign-intelligence{margin:0}.publisher-grid{grid-template-columns:minmax(0,1fr) minmax(320px,.62fr);align-items:start}.publisher-preview{position:sticky;top:12px}.tab-hint{margin:12px 0 0;color:var(--muted);font-size:13px}@media(max-width:70rem){#campaigns{grid-template-columns:1fr}.publisher-grid{grid-template-columns:minmax(0,1fr) minmax(280px,.8fr)}}@media(max-width:47.999rem){.agent3-content{padding:var(--ctk-space-2)}.agent3-tabs{margin-left:calc(-1 * var(--ctk-space-2));margin-right:calc(-1 * var(--ctk-space-2));padding:0 var(--ctk-space-2)}#campaigns,.publisher-grid{grid-template-columns:1fr}.publisher-preview{position:static}}
 </style></head><body class="kora-product-page" data-kora-agent-id="agent-3">
 <div id="app" data-aura-agent-root>
 <main class="agent3-content">
@@ -32,11 +33,20 @@
   <div id="error" class="panel error hidden"></div>
   <section class="grid" id="metrics"></section>
   <section class="panel" id="portfolio-intelligence"><h2>Resumen ejecutivo</h2><div class="intelligence-grid" id="portfolio-summary">Cargando lectura de campañas…</div></section>
-  <section class="panel"><h2>Campañas actuales</h2><div id="campaigns">Cargando…</div></section>
-  <section class="panel"><div class="trend-summary"><div><h2>Tendencia diaria</h2><div id="trend-summary">Cargando resumen…</div></div><button id="trend-toggle" type="button" aria-expanded="false">Ver tendencia diaria</button></div><details id="trend-details"><summary class="hidden">Detalle</summary><div id="trends">Cargando…</div></details></section>
-  <section class="panel"><h2>Alertas</h2><div id="alerts">Sin alertas.</div></section>
-  <section class="panel" id="campaign-evaluation"><h2>Evaluación de campaña</h2><div id="evaluation-content"><p>Completa la configuración y las creatividades para obtener una nota operativa.</p></div></section>
-  <section class="panel" id="publisher">
+  <div class="agent3-tabs" role="tablist" aria-label="Secciones de Publicación y métricas">
+    <button class="agent3-tab" id="tab-campaigns" type="button" role="tab" aria-selected="true" aria-controls="agent3-campaigns-panel" data-agent3-tab="campaigns">CAMPAÑAS Y RESULTADOS</button>
+    <button class="agent3-tab" id="tab-create" type="button" role="tab" aria-selected="false" aria-controls="agent3-create-panel" data-agent3-tab="create">CREAR CAMPAÑA</button>
+  </div>
+  <section class="agent3-tab-panel" id="agent3-campaigns-panel" role="tabpanel" aria-labelledby="tab-campaigns">
+    <p class="tab-hint">Resultados reales, lectura inteligente y recomendaciones de tus campañas.</p>
+    <section class="panel"><h2>Campañas actuales</h2><div id="campaigns">Cargando…</div></section>
+    <section class="panel"><div class="trend-summary"><div><h2>Tendencia diaria</h2><div id="trend-summary">Cargando resumen…</div></div><button id="trend-toggle" type="button" aria-expanded="false">Ver tendencia diaria</button></div><details id="trend-details"><summary class="hidden">Detalle</summary><div id="trends">Cargando…</div></details></section>
+    <section class="panel"><h2>Alertas</h2><div id="alerts">Sin alertas.</div></section>
+  </section>
+  <section class="agent3-tab-panel" id="agent3-create-panel" role="tabpanel" aria-labelledby="tab-create" hidden>
+    <p class="tab-hint">Configura una campaña y revisa sus creatividades antes de publicarla.</p>
+    <section class="panel" id="campaign-evaluation"><h2>Evaluación de campaña</h2><div id="evaluation-content"><p>Completa la configuración y las creatividades para obtener una nota operativa.</p></div></section>
+    <section class="panel" id="publisher">
     <h2>Publicador profesional</h2>
     <p>Configura una campaña una sola vez y revisa sus creatividades antes de publicarla en Meta Ads. Si activas A/B, Ambas se crearán en PAUSED dentro del mismo conjunto y solo se activarán cuando A y B hayan sido aceptadas.</p>
     <div class="publisher-grid">
@@ -61,6 +71,7 @@
       </form>
       <aside id="publisher-preview" class="publisher-preview" aria-label="Comparación de creatividades"><div class="publisher-preview-body"><div id="publisher-preview-meta" class="publisher-preview-meta">Facebook + Instagram</div><div id="publisher-preview-plan" class="publisher-preview-meta"></div></div><div class="publisher-preview-comparison" id="publisher-preview-comparison" hidden><div class="publisher-preview-variant"><img id="publisher-preview-image-a" alt="Vista previa Variante A"><strong>VARIANTE A</strong><p id="publisher-preview-copy-a"></p></div><div class="publisher-preview-variant"><img id="publisher-preview-image-b" alt="Vista previa Variante B"><strong>VARIANTE B</strong><p id="publisher-preview-copy-b"></p></div></div><div class="publisher-preview-body" id="publisher-preview-single"><img id="publisher-preview-image" alt="Vista previa de la creatividad"><div id="publisher-preview-title" class="publisher-preview-title">Selecciona una pieza</div><div id="publisher-preview-copy"></div></div></aside>
     </div>
+    </section>
   </section>
 </main>
 </div>
@@ -214,4 +225,12 @@ async function load(){
   evaluatePublisher();
 }
 document.querySelector('#refresh').addEventListener('click',load);document.querySelector('#period').addEventListener('change',load);document.querySelector('#publisher-piece').addEventListener('change',selectPublisherPiece);document.querySelector('#publisher-piece-b').addEventListener('change',selectPublisherPieceB);document.querySelector('#publisher-ab-enabled').addEventListener('change',()=>{updateAbMode();evaluatePublisher()});document.querySelector('#publisher-city-search').addEventListener('input',renderPublisherCities);document.querySelector('#publisher-cities').addEventListener('change',event=>{if(event.target.matches('input[type="checkbox"]')){event.target.checked?selectedPublisherCities.add(event.target.value):selectedPublisherCities.delete(event.target.value);resetPublisherKey();updatePublisherPreview();evaluatePublisher()}});document.querySelector('#publisher-select-all').addEventListener('click',()=>{setAllCities(true);evaluatePublisher()});document.querySelector('#publisher-clear-all').addEventListener('click',()=>{setAllCities(false);evaluatePublisher()});document.querySelector('#publisher-budget-type').addEventListener('change',()=>{updateBudgetType();evaluatePublisher()});document.querySelector('#publisher-image-file').addEventListener('change',event=>loadPublisherImage(event.target.files?.[0],'a'));document.querySelector('#publisher-image-file-b').addEventListener('change',event=>loadPublisherImage(event.target.files?.[0],'b'));document.querySelector('#publisher-image-remove').addEventListener('click',()=>clearPublisherImage('a'));document.querySelector('#publisher-image-remove-b').addEventListener('click',()=>clearPublisherImage('b'));document.querySelector('#trend-toggle').addEventListener('click',()=>{const details=document.querySelector('#trend-details');details.open=!details.open;document.querySelector('#trend-toggle').textContent=details.open?'Ocultar tendencia diaria':'Ver tendencia diaria';document.querySelector('#trend-toggle').setAttribute('aria-expanded',String(details.open))});document.querySelector('#publisher-form').addEventListener('input',()=>{resetPublisherKey();updatePublisherPreview();evaluatePublisher()});document.querySelector('#publisher-form').addEventListener('submit',submitPublisher);const today=new Date();const tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);document.querySelector('#publisher-start').value=today.toISOString().slice(0,10);document.querySelector('#publisher-end').value=tomorrow.toISOString().slice(0,10);updateBudgetType();load();loadPublisher();updatePublisherPreview();evaluatePublisher();
+function setupAgent3Tabs(){
+  const tabs=[...document.querySelectorAll('[data-agent3-tab]')];
+  const panels={campaigns:document.querySelector('#agent3-campaigns-panel'),create:document.querySelector('#agent3-create-panel')};
+  const activate=key=>{tabs.forEach(tab=>{const selected=tab.dataset.agent3Tab===key;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;});Object.entries(panels).forEach(([name,panel])=>{if(panel)panel.hidden=name!==key;});};
+  tabs.forEach(tab=>tab.addEventListener('click',()=>activate(tab.dataset.agent3Tab)));
+  activate('campaigns');
+}
+setupAgent3Tabs();
 </script></body></html>

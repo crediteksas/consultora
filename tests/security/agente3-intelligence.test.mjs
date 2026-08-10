@@ -20,6 +20,18 @@ test('Agente 3 diferencia objetivos, tendencias y anomalías', () => {
   assert.match(html, /gasto sin resultados/);
 });
 
+test('Agente 3 separa resultados y creación sin recargar ni duplicar estado', () => {
+  assert.match(html, /class="agent3-tabs"/);
+  assert.match(html, /data-agent3-tab="campaigns"/);
+  assert.match(html, /data-agent3-tab="create"/);
+  assert.match(html, /id="agent3-campaigns-panel"/);
+  assert.match(html, /id="agent3-create-panel"[^>]*hidden/);
+  assert.match(html, /function setupAgent3Tabs\(\)/);
+  assert.equal((html.match(/id="publisher-form"/g) || []).length, 1);
+  assert.equal((html.match(/id="publisher-ab-enabled"/g) || []).length, 1);
+  assert.ok(html.indexOf('id="publisher"') > html.indexOf('id="agent3-create-panel"'));
+});
+
 test('Intelligence coexiste con preflight, publicación, activación y rollback', () => {
   for (const marker of [
     'META_PREFLIGHT_CREATIVE_FAILED',

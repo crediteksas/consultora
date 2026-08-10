@@ -1120,89 +1120,24 @@ function buildMandatoryUserBrief() {
   return brief ? `USER BRIEF — PRIORIDAD MÁXIMA:\n"${brief}"\nConserva cada objeto, escena, ubicación y restricción explícita; no lo sustituyas por una escena genérica.` : '';
 }
 
+const COPY_QUALITY_GUARD = `
+CONTROL DE CALIDAD — PUBLICISTA SENIOR:
+- Escribe español colombiano natural, claro y comercial. “Alegre costeño” describe calidez y cercanía; no obliga a usar regionalismos.
+- Cada texto debe conectar la escena concreta, un beneficio verificable y una acción útil. Rechaza titulares que servirían para cualquier negocio.
+- No uses muletillas ni caricaturas (“mija”, “llave”, “viejita”, “abuela”, “papi”, “ombe”, “mano”) salvo que el brief las pida expresamente y suenen naturales en contexto.
+- Corrige sintaxis, tildes, concordancia y cortes de línea. No dejes palabras huérfanas ni frases sin verbo o sentido comercial.
+- Evita clichés, promesas de aprobación, velocidad garantizada, presión artificial y frases poéticas desconectadas del producto.
+- El titular lidera; el texto secundario explica un beneficio; el CTA pide una acción concreta. No los amontones ni repitas la misma idea.
+- Antes de responder, descarta cualquier propuesta genérica, gramaticalmente extraña o desconectada del concepto y reemplázala por una nueva.
+- Cumplimiento Meta: “Sujeto a aprobación de crédito. Aplican términos y condiciones.” cuando aplique crédito.`;
+
 function ESTILO_INSTRUCCIONES() {
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   return {
-    'alegre costeño': `Tono costeño COMERCIAL — calor humano del Caribe colombiano pero enfocado en la venta.
-Patrones de hook (gancho — la primera frase que para el scroll) que debes usar:
-- Identidad local + alivio: "${pick(['Llave, ese celular sí se puede.', 'Ombe, aquí empiezas tu trámite.', 'Mano, contigo sí hay solución.'])}"
-- Permiso/solución directa: "${pick(['Sin banco. Con la cédula alcanza.', 'Sin banco, sin codeudor, con cédula.', 'Sin fiador, sin vueltas, con cédula.'])}"
-- Objeción específica resuelta: "${pick(['Sin fiador y con la cédula alcanza.', 'Reportado también puede solicitar.', 'Sin codeudor, solo tu cédula.'])}"
-- Marca + acción concreta: "${pick(['Mija, ese Samsung solicítalo ya.', 'Ese Xiaomi, papi, ya casi es tuyo.', 'Llave, ese iPhone empieza tu trámite.'])}" (nunca solo listar marcas sin acción)
-Expresiones válidas: ombe, llave, mano, papi, mija, qué lo que, dale.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular que solo combine adjetivos genéricos ("las mejores marcas", "calidad garantizada", "lo mejor para ti") sin ninguno de los 3 elementos de arriba SE RECHAZA — no generar ese tipo de titular bajo ninguna circunstancia.
-
-PROHIBIDO: genérico ("tecnología", "las mejores marcas"), corporativo ("conecta tu futuro"), poético sin venta, listar marcas sin una acción concreta detrás, gramática forzada que suene poco natural en el habla real de la Costa, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, NO más de 2 deben usar la misma familia estructural. Los 4 patrones disponibles son: (1) identidad+alivio, (2) permiso/solución "Sin X", (3) objeción resuelta, (4) marca+acción. Distribuir el lote entre al menos 3 de estos 4 patrones — no repetir "Sin X. Sin Y." en más de 2 titulares del mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'chistoso': `Humor COMERCIAL colombiano — el chiste abre la puerta, la venta cierra.
-Patrones de hook que debes usar:
-- Contraste inesperado: "${pick(['Tu bolsillo dijo no. Creditek dijo: dale.', 'Tu billetera lloró. Tu celular sonrió.', 'El banco te ghosteó. Nosotros no.'])}"
-- Formato POV/meme: "${pick(['POV: entraste sin cupo y saliste con equipo nuevo.', 'POV: llegaste dudando y te vas solicitando.', 'POV: tu celular viejo viendo cómo lo reemplazan.'])}"
-- Comparación colombiana actual: "${pick(['El VAR revisó y confirmó: este precio sí es gol.', 'Como en el fútbol: aquí sí hay cambio de titular.', 'Esto tiene menos trampa que un partido de barrio.'])}"
-- Tensión cómica: "${pick(['Tu celular ya dijo adiós. Nosotros le decimos bienvenido al nuevo.', 'Tu pantalla rota ya no aguanta ni un meme más.', 'Ese celular ya jubilado necesita reemplazo urgente.'])}"
-REGLA: el humor debe estar en el texto — NO pedir "persona riendo" ni "cara de sorpresa".
-
-BÚSQUEDA OBLIGATORIA (usa la herramienta de búsqueda web ANTES de escribir los titulares): busca 1 referencia real y verificable de Colombia/Costa Caribe de los últimos 7 días — puede ser un resultado de fútbol, una canción sonando, una noticia viral, un meme real circulando. Usa esa referencia real en AL MENOS 1 de los 6 titulares del "Patrón de comparación colombiana actual". Si la búsqueda no arroja nada útil o falla, usa los ejemplos genéricos de respaldo de abajo — nunca inventes un evento como si fuera real.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos, además del chiste:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un chiste que no conecte con ninguno de los 3 elementos de arriba SE RECHAZA — el humor debe vender, no solo hacer reír.
-PROHIBIDO: chistes forzados, humor que no vende, punchlines sin beneficio claro, humor genérico sin conexión al producto/crédito, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (contraste inesperado, POV/meme, comparación colombiana actual, tensión cómica) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'formal': `Copywriting directo de conversión (conversion copywriting — texto diseñado para generar acción inmediata).
-Patrones de hook que debes usar:
-- Resultado específico: "${pick(['Solicítalo hoy. Samsung en tus manos.', 'Empieza tu trámite. Tecnología al día.', 'Da el paso. Tu celular nuevo te espera.'])}"
-- Problema + solución en 6 palabras: "${pick(['Sin historial. Con tu cédula alcanza.', 'Sin codeudor. Solo tu cédula basta.', 'Sin fiador. El trámite es simple.'])}"
-- Urgencia real con dato concreto: "${pick(['Solo 3 unidades. Solo esta semana.', 'Quedan 5 cupos. Solo hoy.', 'Últimas unidades disponibles esta semana.'])}"
-- Beneficio innegable: "${pick(['Sin banco. Sin rollo. Así de fácil.', 'Sin trámites complicados. Solo tu cédula.', 'Simple, directo, sin enredos bancarios.'])}"
-REGLA: cada titular debe funcionar solo, sin necesitar la siguiente frase.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco, sin historial)
-2. Un resultado tangible (solicítalo hoy, sin banco, sin fiador)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular aspiracional sin ninguno de los 3 elementos de arriba SE RECHAZA.
-PROHIBIDO: aspiracional genérico, corporativo ("potencia", "conecta", "descubre", "innovador"), frases motivacionales sin dato concreto de crédito/producto, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (resultado específico, problema+solución, urgencia con dato concreto, beneficio innegable) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'minimalista': `Una sola idea. Máximo impacto. Mínimas palabras.
-Patrones de hook que debes usar:
-- Fragmento directo: "${pick(['Sale hoy.', 'Con la cédula.', 'Sin banco.'])}"
-- Afirmación de resultado: "${pick(['Solicítalo. Hoy mismo.', 'Trámite simple.', 'Ya casi tuyo.'])}"
-REGLA ESTRICTA: máximo 4 palabras. Sin puntuación decorativa. Sin adjetivos innecesarios.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Dado el límite estricto de 4 palabras, el elemento concreto debe ser la PALABRA CLAVE central del fragmento:
-1. Una objeción resuelta en una palabra ("Sin banco", "Sin fiador", "Reportado")
-2. Un resultado en una palabra ("Solicítalo", "Hoy", "Ya")
-3. Una marca específica ("Samsung ya", "iPhone hoy")
-Un fragmento minimalista que solo use adjetivos vacíos ("Lo mejor.", "Calidad total.") SE RECHAZA — el minimalismo debe mantener un elemento concreto, no sacrificarlo por brevedad.
-PROHIBIDO: más de 4 palabras, cualquier palabra que no aporte conversión directa, fragmentos vacíos de contenido aunque sean cortos, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 2 patrones disponibles (fragmento directo, afirmación de resultado) — no más de 3 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
+    'alegre costeño': 'Calidez contemporánea del Caribe colombiano: cercanía, optimismo y humor suave cuando nazca de la escena. Vende con claridad, sin estereotipos ni slang impuesto.',
+    'chistoso': 'Humor comercial inteligente: el giro nace de la situación y conduce a un beneficio o acción concreta. No uses memes aleatorios ni pidas personajes exagerados.',
+    'formal': 'Precisión, confianza y claridad de performance. Prioriza un beneficio demostrable y una acción concreta; evita frases corporativas o aspiracionales vacías.',
+    'minimalista': 'Una sola idea comercial con pocas palabras, pero completa y comprensible. Cada palabra debe aportar producto, beneficio o acción; no uses fragmentos vacíos.',
+    'custom': document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
   };
 }
 
@@ -1240,6 +1175,7 @@ CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramátic
 
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
+${COPY_QUALITY_GUARD}
 ${buildRecentHeadlinePenalty()}
 ${buildMandatoryUserBrief()}
 
@@ -1249,7 +1185,7 @@ REGLAS:
 - Máximo 6 palabras por titular
 - Sin emojis. Sin "Creditek" (está en el logo)
 - Basarse en el mensaje del cliente corregido
-- Nivel: el mejor vendedor costeño que conoce a su cliente — directo, sin rodeos, habla exactamente de lo que le duele y cómo resolverlo. NO aspiracional de marca global.
+- Nivel: publicista senior colombiano de performance — directo, natural y específico para este concepto. No uses regionalismos por obligación.
 - Cada titular debe funcionar SOLO en 1.5 segundos de scroll — si necesita la siguiente frase para tener sentido, está roto.
 - Varía los patrones de hook (gancho): urgencia / permiso-alivio / contraste / identidad local / resultado específico / humor comercial
 - PROHIBIDO en titulares: "conéctate", "potencia", "descubre", "tecnología", "innovador", cualquier frase que aplique a cualquier marca.
@@ -1276,7 +1212,8 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
         // FIX v12 09-jul-2026: mismo criterio que en generarContenido() — solo
         // "Chistoso" pide referencias a la actualidad, solo ahí se activa la
         // búsqueda (~$0.01 por búsqueda, hasta 2 por generación).
-        ...(estilo.toLowerCase().includes('chistoso') ? { tools: [{ type: 'web_search_20260318', name: 'web_search', max_uses: 2 }] } : {})
+        // Las referencias de actualidad no son obligatorias: evitamos una
+        // búsqueda externa por generación y mantenemos el humor anclado en la escena.
       })
     });
     const data = await res.json();
@@ -1716,13 +1653,11 @@ MODELO DE NEGOCIO:
 - Objeción central del cliente: "¿Me van a aprobar? / Tengo miedo al endeudamiento."
 - Argumento de cierre: "Estrena tu celular hoy y lo pagas cómodo — solo necesitas tu cédula."
 
-PATRONES DE COPY MODO CRÉDITO (cita textualmente o adapta mínimo):
-"Con una inicial de $50.000 pesitos ya es tuyo"
-"Tu celular nuevo desde $X al mes — sin banco, sin rollo"
-"Sin miedo, con la cédula es suficiente."
-"Llévalo hoy, págalo cómodo. Así de fácil."
-WhatsApp: "Ey, llegó el [modelo] a [nombre tienda]. Inicial de $50.000 pesitos y lo llevas hoy. ¿Cuándo nos visitas?"
-Para Chinú / registro usted: "Don Juan, en [nombre tienda] lo atendemos bien. Con la cédula alcanza — pase y lo miramos."`;
+    DIRECCIÓN DE COPY MODO CRÉDITO:
+- Presenta el celular como producto y el crédito como forma de pago, sin prometer aprobación.
+- Usa únicamente precio, inicial, plazo o modelo si están presentes en los datos de la pieza.
+- Conecta el beneficio con la situación de DETALLE HOY y cierra con una acción presencial concreta.
+- Añade el aviso: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`;
 
   } else if (modo === 'promo') {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
@@ -1731,13 +1666,9 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es para una PROMOCIÓN ESPECIAL. NO menciones crédito, cuotas ni financiamiento. El mensaje es 100% sobre la oferta.
 
-PATRONES DE COPY MODO PROMO (cita textualmente o adapta mínimo):
-"Solo [X] unidades. El que llega primero, lo lleva."
-"Esta semana en [nombre tienda]: [modelo] a [precio]. Antes de que se acaben."
-"[Modelo] bajó de precio esta semana. Solo en [ciudad]."
-"Sin rodeos: [precio]. Hasta el domingo."
-"Solo en [nombre tienda], [ciudad]. No lo vas a encontrar igual en otro lado."
-WhatsApp: "Oye, esta semana [modelo] está a [precio] en [tienda]. Si te interesa, ven antes del viernes que se acaba."`;
+    DIRECCIÓN DE COPY MODO PROMO:
+- Comunica solo la oferta y sus condiciones verificables; no agregues crédito ni urgencia inventada.
+- Haz que el beneficio y la acción estén ligados a la escena de DETALLE HOY.`;
   } else if (modo === 'tienda') {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
 
@@ -1745,12 +1676,8 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es CONTENIDO DE TIENDA. NO menciones crédito, cuotas ni financiamiento. Muestra la tienda, el equipo y la experiencia de compra.
 
-PATRONES DE COPY MODO TIENDA (cita textualmente o adapta mínimo):
-"Esto es [nombre tienda] por dentro. Pasa y conoce."
-"El equipo de [tienda] listo para atenderte. Ven hoy."
-"¿Cuándo fue la última vez que entraste a [nombre tienda]? Algo nuevo te espera."
-"En [nombre tienda] siempre hay alguien dispuesto a ayudarte. Sin compromiso."
-"[Tienda] en [ciudad]. Ya llevamos [tiempo] atendiéndolos a ustedes."`;
+    DIRECCIÓN DE COPY MODO TIENDA:
+- Muestra una experiencia concreta de esa tienda y termina con una invitación natural, sin frases intercambiables.`;
   } else {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
 
@@ -1758,11 +1685,8 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es sobre un SERVICIO O BENEFICIO. NO menciones crédito, cuotas ni financiamiento. Destaca el servicio o beneficio indicado.
 
-PATRONES DE COPY MODO SERVICIO (cita textualmente o adapta mínimo):
-"¿Tu celular se está poniendo lento? En [tienda] lo revisamos sin cobro."
-"Batería dañada, pantalla rota — en [tienda] te orientamos sin que tengas que comprar nada."
-"Llevamos años en [ciudad]. Si tienes dudas sobre tu celular, pregunta — te respondemos."
-WhatsApp: "¿Problema con tu equipo? Cuéntanos qué tiene. En [tienda] miramos qué se puede hacer."`;
+    DIRECCIÓN DE COPY MODO SERVICIO:
+- Explica el servicio o beneficio real con lenguaje sencillo, conectado a la situación y a una acción verificable.`;
   }
   const hashtagsCtx = modo === 'credito' ? 'ciudad, producto, crédito, Colombia' : modo === 'captacion' ? 'humor, colombiano, tecnología, comunidad, lifestyle' : modo === 'jornada' ? 'ciudad, crédito, evento, Colombia, oportunidad' : modo === 'institucional' ? 'marca, empresa, Colombia, Caribe, Creditek' : 'ciudad, producto, Colombia';
   const tipoEstructura = {
@@ -1840,7 +1764,9 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
   const map = ESTILO_INSTRUCCIONES();
   const key = Object.keys(map).find(k => estilo.includes(k.split(' ')[0]));
   return key ? map[key] + '\n\n' : '';
-})()}LENGUAJE Y TONO OBLIGATORIO:
+})()}
+${COPY_QUALITY_GUARD}
+LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
 ${culturaCtx && (culturaCtx.includes('tradicional') || culturaCtx.includes('ganadero')) ? '- Registro: usa "usted" si el contexto lo pide; cálido, de confianza, como alguien del mismo pueblo.' : '- Registro: tuteo natural y directo, como alguien que ya conoce al cliente.'}
 - Frases cortas y directas. Una idea por frase.
@@ -1932,7 +1858,7 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
         // conocer sin buscar — se activa la herramienta de búsqueda SOLO para
         // ese estilo (~$0.01 por búsqueda, hasta 2 por generación). Los otros
         // 3 estilos no la necesitan, no se les activa.
-        ...(estilo.toLowerCase().includes('chistoso') ? { tools: [{ type: 'web_search_20260318', name: 'web_search', max_uses: 2 }] } : {})
+        // Sin búsqueda externa por generación: el humor debe nacer del concepto.
       })
     });
     if (!response.ok) {
@@ -3506,6 +3432,8 @@ async function generarImagen(callerBtn = null) {
   spinner.style.display = 'block'; label.textContent = 'Corrigiendo texto...';
   resultDiv.style.display = 'none'; errDiv.style.display = 'none';
 
+  // El estado debe pintarse antes de cualquier corrección o llamada de red.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   await corregirMensajeSecundario();
   label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
 
@@ -3593,13 +3521,13 @@ function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
 function calcularDimensionesLogo(ctx, canvas, logoCanvas) {
   const base = Math.min(canvas.width, canvas.height);
   const margin = Math.max(16, Math.round(base * 0.032));
-  const initialWidth = Math.max(base * 0.20, Math.min(base * 0.24, canvas.width * 0.22));
+  const initialWidth = Math.max(base * 0.215, Math.min(base * 0.255, canvas.width * 0.235));
   const initialHeight = initialWidth * (logoCanvas.height / logoCanvas.width);
   const zone = elegirUbicacionLogo(ctx, canvas, initialWidth, initialHeight);
   const complexity = Math.min(1, Math.max(0, zone.score / 1.45));
-  const ratio = 0.24 - complexity * 0.04;
+  const ratio = 0.26 - complexity * 0.035;
   const maxWidth = Math.max(1, canvas.width - margin * 2);
-  const logoWidth = Math.min(maxWidth, Math.min(base * 0.27, Math.max(base * 0.20, canvas.width * ratio)));
+  const logoWidth = Math.min(maxWidth, Math.min(base * 0.29, Math.max(base * 0.215, canvas.width * ratio)));
   return { logoWidth, logoHeight: logoWidth * (logoCanvas.height / logoCanvas.width) };
 }
 
@@ -3937,6 +3865,14 @@ function descargarImagenAB(side) {
 
 
 async function generarConModelos() {
+  if (!beginImageGeneration()) return;
+  const btn = document.getElementById('action-gen-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando...';
+  // Ceder dos frames: el primero permite al navegador aplicar disabled/texto;
+  // el segundo garantiza que el usuario vea el estado antes del trabajo pesado.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  try {
   await corregirMensajeSecundario();
   // FIX v13 12-jul-2026: buildImgPrompt() ahora es async (puede consultar a
   // Claude el procesador faltante) — aquí SÍ hace falta esperarlo, porque la
@@ -3968,13 +3904,9 @@ async function generarConModelos() {
   const keyGemini = '';
   const keyOpenAI = '';
 
-  const btn = document.getElementById('action-gen-btn');
-  btn.disabled = true;
   document.getElementById('img-result').style.display     = 'none';
   document.getElementById('img-ab-result').style.display  = 'none';
   document.getElementById('img-err').style.display        = 'none';
-
-  btn.textContent = '⏳ Generando...';
 
   const callEngine = (id) => {
     const key = id === 'dalle' ? keyOpenAI : keyGemini;
@@ -4065,8 +3997,11 @@ async function generarConModelos() {
     else showToast('Error en todas las generaciones', '#ef4444');
   }
 
-  btn.disabled = false;
-  btn.textContent = '🖼 Generar imagen';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🖼 Generar imagen';
+    finishImageGeneration();
+  }
 }
 
 function descargarImagen() {

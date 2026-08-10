@@ -61,8 +61,10 @@ function normalizeMetrics(row: MetaRow = {}) {
   const impressions = number(row.impressions);
   const reach = number(row.reach);
   const conversions = actionValue(row, ['onsite_conversion.messaging_conversation_started_7d','lead','offsite_conversion.fb_pixel_lead']);
+  const conversations = actionValue(row, ['onsite_conversion.messaging_conversation_started_7d','messaging_conversation_started_7d']);
+  const leads = actionValue(row, ['lead','offsite_conversion.fb_pixel_lead']);
   return {
-    spend, impressions, clicks, reach, conversions,
+    spend, impressions, clicks, reach, conversions, conversations, leads,
     frequency: number(row.frequency), ctr: number(row.ctr),
     cpc: number(row.cpc) || (clicks ? spend / clicks : 0),
     cpm: number(row.cpm) || (impressions ? spend * 1000 / impressions : 0),
@@ -479,7 +481,7 @@ async function dashboard(env: Env, url: URL) {
       fields, time_range: timeRange,
     }),
     meta(env, `${env.META_AD_ACCOUNT_ID}/campaigns`, {
-      fields: 'id,name,effective_status,daily_budget,lifetime_budget,start_time,stop_time', limit: '100',
+      fields: 'id,name,objective,effective_status,daily_budget,lifetime_budget,start_time,stop_time', limit: '100',
     }),
     meta(env, `${env.META_AD_ACCOUNT_ID}/insights`, {
       fields: `campaign_id,campaign_name,${fields}`, level: 'campaign', time_range: timeRange, limit: '100',
@@ -499,6 +501,7 @@ async function dashboard(env: Env, url: URL) {
     const id = String(item.id || '');
     return {
     id, name: String(item.name || 'Sin nombre'),
+    objective: String(item.objective || 'UNKNOWN'),
     status: String(item.effective_status || 'UNKNOWN'),
     daily_budget: number(item.daily_budget), lifetime_budget: number(item.lifetime_budget),
     start_time: item.start_time || null, stop_time: item.stop_time || null,

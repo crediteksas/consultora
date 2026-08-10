@@ -7,6 +7,14 @@ const hub = await readFile(new URL('creditek/agentes/index.html', root), 'utf8')
 const sofia = await readFile(new URL('creditek/agentes/creditek-agente-respuestas.html', root), 'utf8');
 const meta = await readFile(new URL('creditek/agentes/agente3-meta-ads.html', root), 'utf8');
 
+test('AURA Hub publica exactamente el artefacto generado por el build', async () => {
+  const wrangler = await readFile(new URL('wrangler.aura-hub.jsonc', root), 'utf8');
+  const build = await readFile(new URL('scripts/build-aura-hub.mjs', root), 'utf8');
+  assert.match(wrangler, /"directory"\s*:\s*"\.\/public-aura-hub"/);
+  assert.doesNotMatch(wrangler, /public-aura-hub-candidate/);
+  assert.match(build, /path\.join\(root, 'public-aura-hub'\)/);
+});
+
 test('Sofía consume exclusivamente la sesión AURA vigente sin expulsar el Hub', () => {
   assert.match(sofia, /aura_supabase_session_v1/);
   assert.doesNotMatch(sofia, /ck_auth|ck_supa_session|top\.location\.href/);

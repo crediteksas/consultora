@@ -432,7 +432,8 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .prod-preview-img{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);margin-top:6px;display:none;max-height:120px;object-fit:contain}
 /* Selector estilo visual */
 .estilo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.estilo-btn{padding:8px 6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4}
+.estilo-btn{padding:8px 6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4;display:flex;align-items:center;justify-content:center;gap:4px}
+.estilo-btn svg{width:14px;height:14px;stroke-width:2;flex:0 0 auto}
 .estilo-btn.active{background:rgba(0,196,204,.1);border-color:var(--turquesa);color:var(--turquesa)}
 .estilo-custom-ta{width:100%;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);color:#0B1E3D;border-radius:var(--radius-sm);font-size:12px;padding:8px 12px;resize:vertical;min-height:60px;outline:none;font-family:'DM Sans',sans-serif;display:none;transition:border-color .2s,box-shadow .2s}
 .estilo-custom-ta:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.12)}
@@ -808,11 +809,11 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   <div class="sidebar-section" style="padding-bottom:8px">
     <div class="sidebar-label">Estilo visual de imagen</div>
     <div class="estilo-grid">
-      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase.">🏢 Formal</button>
-      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa.">🎉 Alegre costeño</button>
-      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto.">😂 Chistoso</button>
-      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias.">◻ Minimalista</button>
-      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas.">✏️ Personalizar</button>
+      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase."><i data-lucide="building-2" aria-hidden="true"></i> Formal</button>
+      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
+      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
+      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square" aria-hidden="true"></i> Minimalista</button>
+      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil" aria-hidden="true"></i> Personalizar</button>
     </div>
     <div class="detalle-dia-row" id="detalle-dia-row" style="display:none">
       <span>Detalle hoy: <span class="detalle-dia-val" id="detalle-dia-val">—</span></span>
@@ -1089,6 +1090,36 @@ function enviarACola() {
 // Si esto fuera un objeto calculado una sola vez al cargar la página, pick()
 // solo se evaluaría una vez y el "azar" quedaría congelado toda la sesión —
 // por eso hay que llamarla como ESTILO_INSTRUCCIONES(), no usarla como valor.
+function buildCreativeStyleDirection(estilo = currentEstilo) {
+  const directions = {
+    costeno: 'Alegre costeño contemporáneo: comercio cuidado, luz natural y vida real del Caribe colombiano; evita clichés y cambia composición y ritmo en cada pieza.',
+    chistoso: 'Humor comercial inteligente: parte de una tensión real y resuélvela con un giro original, sin estereotipos ni muletillas.',
+    formal: 'Formal contemporáneo: confianza, precisión comercial y jerarquía visual limpia; evita lenguaje corporativo genérico.',
+    minimalista: 'Minimalista: una sola idea comercial concreta, pocas palabras, espacio visual y máxima claridad.',
+    custom: document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
+  };
+  return directions[estilo] || directions.formal;
+}
+
+function buildRecentHeadlinePenalty() {
+  try {
+    const recent = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]').filter(t => typeof t === 'string').slice(-24);
+    return recent.length ? `\nTITULARES RECIENTES — no repitas ni parafrasees:\n${recent.map(t => `- ${t}`).join('\n')}` : '';
+  } catch { return ''; }
+}
+
+function rememberRecentHeadlines(titulares) {
+  try {
+    const current = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]');
+    sessionStorage.setItem('aura_recent_headlines', JSON.stringify([...current, ...titulares].slice(-24)));
+  } catch { /* la memoria de variedad nunca bloquea la generación */ }
+}
+
+function buildMandatoryUserBrief() {
+  const brief = [document.getElementById('instruccion-ia-extra')?.value.trim(), document.getElementById('modo-contexto')?.value.trim()].filter(Boolean).join(' · ');
+  return brief ? `USER BRIEF — PRIORIDAD MÁXIMA:\n"${brief}"\nConserva cada objeto, escena, ubicación y restricción explícita; no lo sustituyas por una escena genérica.` : '';
+}
+
 function ESTILO_INSTRUCCIONES() {
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   return {
@@ -1209,6 +1240,8 @@ CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramátic
 
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
+${buildRecentHeadlinePenalty()}
+${buildMandatoryUserBrief()}
 
 GENERA 6 TITULARES de alto impacto para imagen publicitaria en redes sociales.
 
@@ -1259,7 +1292,7 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
     // reales. Ahora solo se aceptan líneas que empiezan con "N." (el formato
     // exacto que pide el prompt) — cualquier otra línea de texto se descarta.
     const titulares = text.split('\n').map(l=>l.trim()).filter(l=>/^\d+\.\s/.test(l)).map(l=>limpiarMarkdownTitular(l.replace(/^\d+\.\s*/,''))).filter(Boolean).slice(0,6);
-    if (titulares.length > 0) { renderTitulares(titulares); showToast('✓ Nuevos titulares generados'); }
+    if (titulares.length > 0) { rememberRecentHeadlines(titulares); renderTitulares(titulares); showToast('✓ Nuevos titulares generados'); }
     else showToast('No se generaron titulares', '#f59e0b');
   } catch(e) { showToast('Error al generar titulares', '#ef4444'); }
   btn.disabled = false; btn.textContent = '✦ Más';
@@ -1593,6 +1626,7 @@ function toggleKey(inputId, btn) {
   btn.textContent = show ? 'Ocultar' : 'Ver';
 }
 
+let contentGenerationInFlight = false;
 async function generarContenido() {
   const apiKey = sessionStorage.getItem('ck_api_key') || '';
   if (!apiKey.startsWith('sk-ant-')) {
@@ -1646,6 +1680,8 @@ async function generarContenido() {
   }
   if (ciudad === 'todas las ciudades') showToast('Para mejor resultado selecciona una tienda específica', '#f59e0b');
   if (!platforms.length) { showToast('Selecciona al menos una plataforma.', '#f59e0b'); return; }
+  if (contentGenerationInFlight) return;
+  contentGenerationInFlight = true;
 
   const btn = document.getElementById('gen-btn');
   const spinner = document.getElementById('spinner');
@@ -1941,6 +1977,7 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
     console.error('API error:', err);
   }
   btn.disabled = false; spinner.style.display = 'none'; label.textContent = '✦ Generar piezas';
+  contentGenerationInFlight = false;
   document.getElementById('canva-brief-panel').style.display = 'none';
   document.getElementById('canva-btn').classList.remove('active');
 }
@@ -1991,6 +2028,7 @@ function renderPiezas(text, platforms, tipo, ciudad, inclHashtags, inclBrief) {
   if (tm) {
     const titLines = tm[1].trim().split('\n').filter(l => l.trim());
     const titulares = titLines.map(l => limpiarMarkdownTitular(l.replace(/^\d+\.\s*/, ''))).filter(Boolean).slice(0, 6);
+    rememberRecentHeadlines(titulares);
     renderTitulares(titulares);
   }
 
@@ -2298,13 +2336,18 @@ function selectEstilo(estilo, btn) {
 
 // Permite cambiar el detalle del día manualmente (05-jul-2026)
 let detalleOverride = {};
-function cambiarDetalleDia() {
-  const actual = document.getElementById('detalle-dia-val')?.textContent || '';
-  const siguiente = `${actual ? actual.split(', Variación')[0] : getDetalleDelDia(currentEstilo)}, Variación ${_detalleContador + 1}`;
-  detalleOverride[currentEstilo] = siguiente;
-  const detVal = document.getElementById('detalle-dia-val');
-  if (detVal) detVal.textContent = siguiente;
-  buildImgPrompt();
+async function cambiarDetalleDia() {
+  const btn = document.querySelector('.detalle-dia-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'generando…'; }
+  try {
+    const siguiente = await proponerDetalleCreativoConIA(currentEstilo, { force: true });
+    detalleOverride[currentEstilo] = siguiente;
+    const detVal = document.getElementById('detalle-dia-val');
+    if (detVal) detVal.textContent = siguiente;
+    await buildImgPrompt();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↺ cambiar'; }
+  }
 }
 
 async function loadLogoBase64() {
@@ -2431,9 +2474,48 @@ function updateImgKeyStatus() {
   if (sod) sod.className = 'img-key-dot' + (dalleOk  ? ' ok' : '');
 }
 
-// Detalle Hoy se construye con el contexto actual y no con un banco cerrado de
-// propuestas. Así el concepto cambia con el brief, producto, tienda y estilo.
+// Detalle Hoy se construye con el contexto actual y puede solicitar una nueva
+// dirección creativa a IA, sin recurrir a un banco cerrado de escenas.
 let _detalleContador = 0;
+const recentCreativeConcepts = [];
+const creativeDetailByStyle = {};
+let creativeConceptRequest = null;
+
+function detalleCreativoActual(estilo) {
+  return creativeDetailByStyle[estilo] || getDetalleDelDia(estilo);
+}
+
+async function proponerDetalleCreativoConIA(estilo, { force = false } = {}) {
+  if (!force && creativeDetailByStyle[estilo]) return creativeDetailByStyle[estilo];
+  if (creativeConceptRequest) return creativeConceptRequest;
+  const apiKey = sessionStorage.getItem('ck_api_key') || '';
+  if (!apiKey.startsWith('sk-ant-')) return detalleCreativoActual(estilo);
+  const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
+  const brief = document.getElementById('instruccion-ia-extra')?.value.trim() || document.getElementById('modo-contexto')?.value.trim() || '';
+  const recientes = recentCreativeConcepts.slice(-12).join(' | ') || 'ninguno';
+  creativeConceptRequest = (async () => {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:100, messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. No repitas ni parafrasees estos conceptos recientes: ${recientes}. Devuelve solo una frase concreta, plausible y distinta, máximo 18 palabras.`}] })
+      });
+      const data = await res.json();
+      const concepto = (data.content?.find(b => b.type === 'text')?.text || '').replace(/["\n]/g, ' ').trim();
+      if (!res.ok || concepto.length < 8 || recentCreativeConcepts.includes(concepto)) throw new Error('concepto no válido');
+      creativeDetailByStyle[estilo] = concepto;
+      recentCreativeConcepts.push(concepto);
+      if (recentCreativeConcepts.length > 24) recentCreativeConcepts.shift();
+      const detVal = document.getElementById('detalle-dia-val');
+      if (detVal && currentEstilo === estilo) detVal.textContent = concepto;
+      await buildImgPrompt();
+      return concepto;
+    } catch { return detalleCreativoActual(estilo); }
+    finally { creativeConceptRequest = null; }
+  })();
+  return creativeConceptRequest;
+}
+
 function getDetalleDelDia(estilo) {
   if (detalleOverride && detalleOverride[estilo]) return detalleOverride[estilo];
   const contexto = document.getElementById('modo-contexto')?.value.trim()
@@ -2614,9 +2696,10 @@ async function buildImgPrompt() {
   const cta        = ctaEl?.value.trim() || ctaFallback;
   const modoLabel  = { credito:'Crédito de celular', promo:'Promoción', tienda:'Tienda', servicio:'Servicio' }[modo] || modo;
   const formatoLabel = isStories ? 'Stories / TikTok vertical 1080×1920 px' : 'Feed cuadrado 1080×1080 px';
+  const variableGraphicDirection = 'DIRECCIÓN GRÁFICA VARIABLE: usa el lienzo completo y decide según escena y espacio negativo entre composición editorial, texto lateral, superior/inferior, banda pequeña, tarjeta discreta o texto sobre fotografía con contraste. Cambia la solución entre generaciones. PROHIBIDO usar un gran bloque o degradado azul como plantilla recurrente, concentrar todo el texto en una zona azul o dejar grandes vacíos sin intención.';
   const layoutGuide = isStories
-    ? 'Composición VERTICAL 1080×1920 px: producto protagonista y textos jerarquizados con aire. Reserva una zona de branding integrada que puede ser superior, inferior o lateral según el espacio negativo; no la fijes siempre en la misma esquina.'
-    : 'Composición CUADRADA 1080×1080 px: producto y textos jerarquizados con equilibrio visual. Reserva una zona de branding integrada en el área de espacio negativo; puede ser superior, inferior o lateral según la escena.';
+    ? `Composición VERTICAL 1080×1920 px: producto protagonista y textos jerarquizados con aire. ${variableGraphicDirection}`
+    : `Composición CUADRADA 1080×1080 px: producto y textos jerarquizados con equilibrio visual. ${variableGraphicDirection}`;
 
   const paletaPorEstilo_B = {
     formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
@@ -2756,6 +2839,8 @@ async function buildImgPrompt() {
     `MODALIDAD: ${modoLabel}`, ``,
     `COMPOSICIÓN: ${tipoDesc}`, specsBlock, ``,
     `ESTILO "${currentEstilo}": ${mensajeEstilo}`,
+    variableGraphicDirection,
+    buildMandatoryUserBrief(),
     notaInstruccion ? `INSTRUCCIÓN OPERADOR: ${notaInstruccion}` : null, ``,
     `TEXTOS EXACTOS EN LA IMAGEN (en español colombiano, sin traducir):`,
     `1. Titular: "${titular}" — Montserrat Bold, posición destacada, máx. 2 líneas`,
@@ -2845,7 +2930,7 @@ function buildImgPromptGeminiFallback() {
       jornadaFecha ? ` En números muy grandes y destacados aparece la fecha del evento: "${jornadaFecha}".` : '',
       jornadaLugar ? ` El nombre del lugar del evento aparece claramente: "${jornadaLugar}".` : '',
       jornadaHora  ? ` El horario del evento aparece visible: "${jornadaHora}".` : '',
-      ' Reserva una sola zona limpia e integrada para el asset oficial de marca, pero no escribas ni dibujes Creditek ni ningún logo.',
+      ' Reserva una sola zona de espacio negativo real para el asset oficial de marca, integrada en la escena; no crees una franja blanca o un encabezado artificial solo para alojarlo. No escribas ni dibujes Creditek ni ningún logo.',
       ` Composición limpia, comercial y llamativa, estilo publicidad moderna, usando todo el lienzo de borde a borde, sin zonas vacías.`,
     ].filter(Boolean).join('');
   }
@@ -2883,7 +2968,7 @@ function buildImgPromptGeminiFallback() {
     mensajeVal ? ` Debajo, en letras más pequeñas, dice "${mensajeVal}".` : '',
     precio ? ` En números grandes en color turquesa aparece "${precio}".` : '',
     ctaActivo ? ` En la parte inferior hay un botón turquesa que dice "${cta}".` : '',
-    ' Reserva una sola zona limpia e integrada para el asset oficial de marca, pero no escribas ni dibujes Creditek ni ningún logo.',
+    ' Reserva una sola zona de espacio negativo real para el asset oficial de marca, integrada en la escena (superior, inferior o lateral según el contenido). No crees una franja blanca o un encabezado artificial solo para alojarlo; no escribas ni dibujes Creditek ni ningún logo.',
     ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo de borde a borde, sin zonas vacías.`,
   ].filter(Boolean).join('');
 }
@@ -2940,7 +3025,7 @@ async function buildImgPromptGemini() {
 
   const instruccion = `Eres un Director de Arte experto en prompt engineering para modelos de difusión de Google (Imagen 4 / Gemini). Tu objetivo es recibir un brief de diseño y traducirlo a UN SOLO párrafo narrativo en español de máximo 80 palabras.
 
-REGLA DE MARCA: no renderices el logo ni escribas la palabra Creditek. Reserva una sola zona de branding integrada en el espacio negativo (superior, inferior o lateral según la escena); el asset oficial se añadirá después una única vez.
+REGLA DE MARCA: no renderices el logo ni escribas la palabra Creditek. Reserva una sola zona de branding integrada en espacio negativo real (superior, inferior o lateral según la escena); no crees una franja blanca o un encabezado artificial solo para alojarlo. El asset oficial se añadirá después una única vez.
 
 RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 - Palabras técnicas: "capa", "layout", "composición", "vector", "PNG", "feed", "1080px"
@@ -3304,6 +3389,9 @@ function beginImageGeneration() {
   imageGenerationInFlight = true;
   return true;
 }
+function finishImageGeneration() {
+  imageGenerationInFlight = false;
+}
 
 async function generarImagen(callerBtn = null) {
   if (!beginImageGeneration()) return;
@@ -3335,7 +3423,7 @@ async function generarImagen(callerBtn = null) {
     visibleBtn.disabled = false;
     if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
     spinner.style.display = 'none';
-    imageGenerationInFlight = false;
+    finishImageGeneration();
     return;
   }
   // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
@@ -3367,7 +3455,7 @@ async function generarImagen(callerBtn = null) {
   visibleBtn.disabled = false;
   if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
   spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
-  imageGenerationInFlight = false;
+  finishImageGeneration();
 }
 
 // ── COMPOSICIÓN DEL LOGO OFICIAL ────────────────────────────────────────
@@ -3391,12 +3479,19 @@ function puntajeZonaLogo(ctx, x, y, width, height) {
     if (previous !== null) variation += Math.abs(luminance - previous);
     previous = luminance;
   }
-  return variation + Math.abs((brightness / Math.max(1, sample.length / 16)) - 0.58) * 0.18;
+  const average = brightness / Math.max(1, sample.length / 16);
+  const flatLightPenalty = average > 0.9 && variation < 0.08 ? 0.8 : 0;
+  return variation + Math.abs(average - 0.58) * 0.18 + flatLightPenalty;
 }
 
 function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
   const margin = canvas.width * 0.032;
-  const candidates = [[margin, margin], [canvas.width - logoWidth - margin, margin], [margin, canvas.height - logoHeight - margin], [canvas.width - logoWidth - margin, canvas.height - logoHeight - margin]];
+  const candidates = [
+    [margin, margin], [canvas.width - logoWidth - margin, margin],
+    [margin, canvas.height - logoHeight - margin], [canvas.width - logoWidth - margin, canvas.height - logoHeight - margin],
+    [margin, (canvas.height - logoHeight) / 2], [canvas.width - logoWidth - margin, (canvas.height - logoHeight) / 2],
+    [(canvas.width - logoWidth) / 2, canvas.height - logoHeight - margin],
+  ];
   return candidates.map(([x, y]) => ({ x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) })).sort((a, b) => a.score - b.score)[0];
 }
 

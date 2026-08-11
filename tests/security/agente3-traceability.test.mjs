@@ -64,3 +64,16 @@ test('un fallo de trazabilidad no bloquea la sesión ni redirige a login', () =>
   assert.match(html, /function safeRenderPublicationHistory\(\)\{try\{renderPublicationHistory\(\)\}catch/);
   assert.match(bootstrap, /if\(!token\)\{location\.href=.*return\}/);
 });
+
+test('el publicador compacta configuración, cobertura y plataformas sin perder selección', () => {
+  assert.match(html, /class="publisher-campaign-config"/);
+  assert.match(html, /id="publisher-city-toggle"[^>]*aria-expanded="false"/);
+  assert.match(html, /id="publisher-city-summary"/);
+  assert.match(html, /id="publisher-cities" hidden/);
+  assert.match(html, /Retail: 0 seleccionadas · Aliados: 0 seleccionadas/);
+  assert.match(html, /function updatePublisherCitySummary\(\)/);
+  assert.match(html, /const open=cities\.hidden;cities\.hidden=!open/);
+  assert.match(html, /class="[^"]*publisher-platforms[^"]*"/);
+  assert.match(html, /\.publisher-campaign-config\{grid-column:1\/\-1;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(html, /\.publisher-form\{gap:8px\}/);
+});

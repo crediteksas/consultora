@@ -53,6 +53,17 @@
 .publisher-preview-comparison{padding:8px;gap:8px;}
 .publisher-preview-variant strong{padding:5px 8px 0;}
 .publisher-preview-variant p{padding:0 8px 8px;margin-top:3px;}
+/* Altura final efectiva: neutraliza cualquier regla heredada de 300px. */
+.creative-grid .creative-preview,
+.publisher-preview-comparison .publisher-preview-variant img,
+#publisher-preview-image-a,#publisher-preview-image-b{
+  width:100%!important;
+  height:220px!important;
+  max-height:220px!important;
+  min-height:0!important;
+  aspect-ratio:auto!important;
+  object-fit:contain!important;
+}
 /* Ajuste final sobre el HTML servido: jerarquía compacta sin perder información. */
 .grid#metrics{gap:8px;margin-top:0}
 .grid#metrics>.card{padding:8px 10px;border-radius:10px;box-shadow:none}

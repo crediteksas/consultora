@@ -60,3 +60,44 @@ test('GPT Image recibe libertad de dirección gráfica y no una plantilla azul l
   assert.match(frontend, /PROHIBIDO usar un gran bloque o degradado azul como plantilla recurrente/);
   assert.doesNotMatch(frontend, /producto en primer plano a la derecha \(55% del ancho\), textos jerarquizados a la izquierda/);
 });
+
+test('GPT distribuye el texto según la fotografía y rota cinco composiciones', () => {
+  for (const marker of [
+    'editorial-left-right',
+    'headline-top-support-separated',
+    'headline-lateral-cta-opposite',
+    'asymmetric-negative-space',
+    'headline-bottom-support-upper-lateral',
+  ]) assert.match(frontend, new RegExp(marker));
+  assert.match(frontend, /caras|rostros/);
+  assert.match(frontend, /producto/);
+  assert.match(frontend, /manos/);
+  assert.match(frontend, /direcci[oó]n de mirada/);
+  assert.match(frontend, /contraste/);
+  assert.match(frontend, /espacio negativo/);
+  assert.match(frontend, /headline[^\n]*secondary[^\n]*CTA[^\n]*logo/i);
+  assert.match(frontend, /Do not place secondary directly below headline by default/);
+  assert.match(frontend, /Do not place CTA directly below secondary by default/);
+  assert.match(frontend, /single vertical text column/i);
+  assert.match(frontend, /aura_recent_gpt_layouts/);
+  assert.match(frontend, /slice\(-3\)/);
+  assert.match(frontend, /1080x1350/);
+  assert.match(frontend, /1080x1080/);
+});
+
+test('la secuencia de cinco layouts GPT no repite patrón', () => {
+  const patternBlock = frontend.match(/const GPT_LAYOUT_PATTERNS = \[([\s\S]*?)\n\];/);
+  assert.ok(patternBlock, 'debe existir el catálogo de layouts GPT');
+  const patterns = [...patternBlock[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
+  assert.equal(patterns.length, 5);
+  const recent = [];
+  const selected = [];
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const index = patterns.findIndex((_, candidate) => !recent.includes(candidate));
+    selected.push(index);
+    recent.push(index);
+    while (recent.length > 5) recent.shift();
+  }
+  assert.deepEqual(new Set(selected).size, 5);
+  assert.match(frontend, /const recentForPrompt = recent\.slice\(-3\)/);
+});

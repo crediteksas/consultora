@@ -2707,7 +2707,7 @@ async function buildImgPrompt() {
       '',
       'EXACT SPANISH TEXT TO RENDER IN IMAGE:',
       `- HEADLINE (large, bold): "${titularVal}"`,
-      mensajeVal ? `- SECONDARY MESSAGE (smaller, below headline): "${mensajeVal}"` : null,
+      mensajeVal ? `- SECONDARY MESSAGE (smaller, independent zone): "${mensajeVal}" — place it separately from the headline when the image allows` : null,
       document.getElementById('chk-cta-activo')?.checked !== false ? `- CTA BUTTON: "${ctaVal}" — turquoise #00C4CC background, navy #0B1E3D text, rounded corners` : null,
       jornadaFecha ? `- EVENT DATE (VERY LARGE): "${jornadaFecha}"` : null,
       jornadaLugar ? `- LOCATION: "${jornadaLugar}"` : null,
@@ -2766,7 +2766,7 @@ async function buildImgPrompt() {
   const paletaEstilo = paletaPorEstilo_B[currentEstilo] || paletaPorEstilo_B.formal;
   const tipoPersonalizadoVal = document.getElementById('tipo-personalizado')?.value.trim() || '';
   const tipoImgMap = {
-    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita, posición superior izquierda.` : ''} Titular en Montserrat Bold en la zona izquierda. Jerarquía visual clara: titular → precio → producto → CTA.`,
+    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita.` : ''} Analiza el espacio negativo y distribuye titular, precio, producto y CTA en zonas independientes; no uses una columna vertical fija.`,
     showcase_producto:`Showcase del producto: ${producto} apoyado o sostenido de forma natural dentro de la escena (en una mano, sobre una mesa/vitrina, o en uso) — NUNCA flotando en el aire ni como recorte pegado. Debe verse como parte física real de la fotografía, con sombra de contacto realista donde toca la superficie. Bordes nítidos, fondo limpio. Texto mínimo. El producto ocupa el 60–65% de la composición. Etiquetas de specs flotantes si aplica (esto sí puede ser un elemento gráfico superpuesto, distinto al producto).`,
     testimonio:       `Testimonio: tono cálido y humano. Gran comilla de apertura en turquesa #00C4CC. Frase testimonial de cliente en texto blanco grande y centrado. Silueta o retrato de persona en un costado. Sin imagen del producto.`,
     educativo:        `Contenido educativo: diseño limpio e informativo. Íconos en turquesa #00C4CC (checks, números, flechas) sobre fondo azul marino. Jerarquía de lectura clara, aspecto de tarjeta útil — no aviso agresivo.`,
@@ -2899,10 +2899,10 @@ async function buildImgPrompt() {
     notaInstruccion ? `INSTRUCCIÓN OPERADOR: ${notaInstruccion}` : null, ``,
     `TEXTOS EXACTOS EN LA IMAGEN (en español colombiano, sin traducir):`,
     `1. Titular: "${titular}" — Montserrat Bold, posición destacada, máx. 2 líneas`,
-    mensajeVal ? `${2}. Mensaje secundario: "${mensajeVal}" — texto pequeño bajo el titular` : null,
+    mensajeVal ? `${2}. Mensaje secundario: "${mensajeVal}" — ubícalo en una zona propia, no debajo del titular por defecto` : null,
     precio  ? `${mensajeVal?3:2}. Cuota: "${precio}" — números grandes, turquesa #00C4CC, muy visible` : null,
     inicial ? `${[mensajeVal,precio].filter(Boolean).length+2}. Inicial: "Desde ${inicial}" — badge turquesa #00C4CC` : null,
-    document.getElementById('chk-cta-activo')?.checked !== false ? `${[mensajeVal,precio,inicial].filter(Boolean).length+2}. Botón CTA: "${cta}" — fondo turquesa, texto azul marino, esquinas redondeadas` : null,
+    document.getElementById('chk-cta-activo')?.checked !== false ? `${[mensajeVal,precio,inicial].filter(Boolean).length+2}. Botón CTA: "${cta}" — zona independiente con respiración propia; fondo turquesa, texto azul marino, esquinas redondeadas` : null,
     `${[mensajeVal,precio,inicial].filter(Boolean).length+3}. Tienda/Ciudad: "${nombreCta}"`, ``,
     `CORRECCIÓN ORTOGRÁFICA OBLIGATORIA — antes de renderizar cualquier texto:`,
     `- Primera letra de cada frase en mayúscula. "Creditek" siempre con C mayúscula.`,
@@ -3626,12 +3626,14 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
 const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
+const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 const GPT_LAYOUT_PATTERNS = [
-  'editorial split: let the cleanest negative-space area carry the headline and place secondary copy or CTA in a separate, quieter zone',
-  'asymmetric composition: use the subject or product as the visual anchor and distribute headline, secondary copy and CTA across different areas of the canvas',
-  'photographic balance: keep text away from faces, hands and product, using contrasting negative space on opposite sides for the headline and CTA',
-  'structured contrast: create a clear reading path with the headline first, secondary copy in a calm supporting area and CTA separated by real breathing room',
+  'editorial-left-right: place the headline in the cleanest left or right negative-space column, with secondary copy and CTA separated on the opposite side',
+  'headline-top-support-separated: use the upper zone for the headline, but move supporting copy to a lower or lateral calm zone and keep the CTA independently placed',
+  'headline-lateral-cta-opposite: anchor the headline laterally near the gaze direction and place the CTA on the opposite safe area, with secondary copy elsewhere',
+  'asymmetric-negative-space: use the subject or product as the visual anchor and distribute headline, secondary copy and CTA across three intentional negative-space zones',
+  'headline-bottom-support-upper-lateral: place the headline in a safe lower zone while secondary copy sits upper or lateral and the CTA occupies its own breathable area',
 ];
 
 function buildGptLayoutGuard() {
@@ -3639,17 +3641,18 @@ function buildGptLayoutGuard() {
   try {
     recent = JSON.parse(sessionStorage.getItem('aura_recent_gpt_layouts') || '[]')
       .filter(value => Number.isInteger(value) && value >= 0 && value < GPT_LAYOUT_PATTERNS.length)
-      .slice(-3);
+      .slice(-5);
   } catch { /* la memoria visual no bloquea una generación */ }
   const patternIndex = GPT_LAYOUT_PATTERNS.findIndex((_, index) => !recent.includes(index));
-  const selectedIndex = patternIndex >= 0 ? patternIndex : recent.length % GPT_LAYOUT_PATTERNS.length;
+  const selectedIndex = patternIndex >= 0 ? patternIndex : 0;
   try {
-    sessionStorage.setItem('aura_recent_gpt_layouts', JSON.stringify([...recent, selectedIndex].slice(-3)));
+    sessionStorage.setItem('aura_recent_gpt_layouts', JSON.stringify([...recent, selectedIndex].slice(-5)));
   } catch { /* la memoria visual no bloquea una generación */ }
-  const recentText = recent.length
-    ? `Evita repetir estos enfoques recientes: ${recent.map(index => GPT_LAYOUT_PATTERNS[index]).join(' | ')}.`
+  const recentForPrompt = recent.slice(-3);
+  const recentText = recentForPrompt.length
+    ? `Evita repetir estos enfoques recientes: ${recentForPrompt.map(index => GPT_LAYOUT_PATTERNS[index]).join(' | ')}.`
     : 'No existe un patrón reciente que debas repetir.';
-  return `${GPT_LAYOUT_GUARD} Antes de ubicar cualquier texto, analiza personas, rostros, manos, producto, dirección de mirada, contraste, zonas limpias, espacio negativo y equilibrio general. La siguiente dirección es una sugerencia creativa, no una plantilla fija: ${GPT_LAYOUT_PATTERNS[selectedIndex]}. ${recentText} Si la fotografía no la permite, elige otra solución profesional y segura. Nunca pongas texto sobre rostros, manos importantes, producto, bordes o zonas de bajo contraste.`;
+  return `${GPT_TEXT_LAYOUT_CONTRACT} ${GPT_LAYOUT_GUARD} Before composing, analyze faces, people, hands, product, gaze direction, contrast, clean zones, negative space and overall balance. Use the 1080x1350 or 1080x1080 canvas fully and choose an intentional composition, not a fixed template: ${GPT_LAYOUT_PATTERNS[selectedIndex]}. ${recentText} If the photograph does not support it, choose another professional safe arrangement. Never put text over faces, important hands, product, edges or low-contrast areas.`;
 }
 
 async function llamarBackendImagen(path, payload) {

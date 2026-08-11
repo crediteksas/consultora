@@ -348,7 +348,23 @@ function requireMetaId(value: MetaRow, code: string) {
   return id;
 }
 
+async function rollbackCreatedObjects(env: Env, created: string[]) {
+  for (const id of [...new Set(created)].reverse()) {
+    await metaObject(env, id, { status: 'PAUSED' }, 'POST').catch(() => undefined);
+  }
+}
+
 async function publishCampaign(env: Env, auth: { token: string; access: Access }, payload: PublishPayload, idempotencyKey: string) {
+  const created: string[] = [];
+  try {
+    return await publishCampaignUnsafe(env, auth, payload, idempotencyKey, created);
+  } catch (error) {
+    await rollbackCreatedObjects(env, created);
+    throw error;
+  }
+}
+
+async function publishCampaignUnsafe(env: Env, auth: { token: string; access: Access }, payload: PublishPayload, idempotencyKey: string, created: string[]) {
   await verifyMetaApp(env);
   const variants = payload.variants?.length === 2 ? payload.variants : [{
     piece_id: payload.piece_id, copy: payload.copy, headline: payload.headline,
@@ -380,11 +396,13 @@ async function publishCampaign(env: Env, auth: { token: string; access: Access }
     campaignPayload(payload, name),
     'POST',
   ));
-  const campaignId = requireMetaId(campaign, 'META_CAMPAIGN_INVALID_RESPONSE');
+  const campaignId = await publicationStep('META_CAMPAIGN_INVALID_RESPONSE', async () => requireMetaId(campaign, 'META_CAMPAIGN_INVALID_RESPONSE'));
+  created.push(campaignId);
   const trace = { publication_id: publicationId, published_at: publishedAt, published_by: publishedBy, campaign_name: name };
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId });
   const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, adsetPayload(payload, name, campaignId, cities), 'POST'));
-  const adsetId = requireMetaId(adset, 'META_ADSET_INVALID_RESPONSE');
+  const adsetId = await publicationStep('META_ADSET_INVALID_RESPONSE', async () => requireMetaId(adset, 'META_ADSET_INVALID_RESPONSE'));
+  created.push(adsetId);
   await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId });
   const variantIds: Array<{ label: string; creative_id: string; ad_id: string }> = [];
   for (let index = 0; index < variants.length; index += 1) {
@@ -394,11 +412,13 @@ async function publishCampaign(env: Env, auth: { token: string; access: Access }
     const linkData = { message: variant.copy, link: destination, name: variant.headline, ...image, call_to_action: { type: variant.cta, value: { link: destination } } };
     const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
     const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name}${label ? ` · ${label}` : ''} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'), label || 'A');
-    const creativeId = requireMetaId(creative, 'META_CREATIVE_INVALID_RESPONSE');
+    const creativeId = await publicationStep('META_CREATIVE_INVALID_RESPONSE', async () => requireMetaId(creative, 'META_CREATIVE_INVALID_RESPONSE'), label || 'A');
     const creativeTraceKey = variants.length === 2 ? (index === 0 ? 'creative_a_id' : 'creative_b_id') : 'creative_a_id';
     await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId, [creativeTraceKey]: creativeId, variant: label || 'single' });
     const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name}${label ? ` · ${label}` : ''} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'), label || 'A');
-    variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: requireMetaId(ad, 'META_AD_INVALID_RESPONSE') });
+    const adId = await publicationStep('META_AD_INVALID_RESPONSE', async () => requireMetaId(ad, 'META_AD_INVALID_RESPONSE'), label || 'A');
+    created.push(adId);
+    variantIds.push({ label: label || 'single', creative_id: creativeId, ad_id: adId });
   }
   const comparison = variants.length === 2;
   const metaIds: Record<string, string> = comparison
@@ -576,9 +596,10 @@ async function handle(request: Request, env: Env, origin?: string) {
     } catch (error) {
       const code = error instanceof Error ? error.message : 'META_UPSTREAM';
       const status = code === 'META_PERMISSION_DENIED' ? 403 : code === 'AUDIT_UNAVAILABLE' ? 503 : 502;
+      const incomplete = code.startsWith('META_') && !code.includes('ACTIVATION');
       const failure = {
         ok: false,
-        error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : 'Publication failed safely',
+        error: code === 'META_PERMISSION_DENIED' ? 'Meta permissions unavailable' : incomplete ? 'PUBLICACIÓN INCOMPLETA' : 'Publication failed safely',
         reason: code,
         ...(error instanceof MetaApiError ? { meta: { ...error.details, stage: error.stage } } : {}),
       };

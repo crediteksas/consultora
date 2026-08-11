@@ -437,6 +437,42 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);
   });
 
+  it('detiene y revierte si falla el creativo A, sin devolver éxito con cero anuncios', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/adcreatives') && init?.method === 'POST') return json({ error: { code: 100, message: 'creative A failed' } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'creative-a-fail'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(502);
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe('PUBLICACIÓN INCOMPLETA');
+    expect(body.reason).toBe('META_CREATIVE_CREATE_FAILED');
+    expect((globalThis.fetch as any).mock.calls.some(([url]: [unknown]) => String(url).includes('/act_123/ads?'))).toBe(false);
+    const rollback = (globalThis.fetch as any).mock.calls.filter(([url, init]: [unknown, RequestInit]) => ['campaign-1','adset-1'].some(id => String(url).includes(`/${id}?`)) && String(init?.body).includes('status=PAUSED'));
+    expect(rollback.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('detiene y revierte si falla el anuncio A, sin marcar publicación exitosa', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/act_123/ads?') && init?.method === 'POST') return json({ error: { code: 100, message: 'ad A failed' } }, 400);
+      return base(input, init);
+    }) as any;
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', payload, 'ad-a-fail'), env());
+    const body = await response.json() as any;
+    expect(response.status).toBe(502);
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe('PUBLICACIÓN INCOMPLETA');
+    expect(body.reason).toBe('META_AD_CREATE_FAILED');
+    expect((globalThis.fetch as any).mock.calls.filter(([url]: [unknown]) => String(url).includes('/act_123/ads?')).length).toBe(1);
+    const rollback = (globalThis.fetch as any).mock.calls.filter(([url, init]: [unknown, RequestInit]) => ['campaign-1','adset-1'].some(id => String(url).includes(`/${id}?`)) && String(init?.body).includes('status=PAUSED'));
+    expect(rollback.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('detiene A/B con detalle sanitizado de Meta en la variante B antes de activar', async () => {
     mockNetwork(publishPermissions);
     const base = globalThis.fetch as any;

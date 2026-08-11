@@ -77,3 +77,13 @@ test('el publicador compacta configuración, cobertura y plataformas sin perder 
   assert.match(html, /\.publisher-campaign-config\{grid-column:1\/\-1;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(html, /\.publisher-form\{gap:8px\}/);
 });
+
+test('el layout final limita previews y mantiene el flujo compacto', () => {
+  assert.match(html, /\.creative-card \.creative-preview\{width:100%;height:300px;max-height:300px;max-width:300px;aspect-ratio:auto;object-fit:contain/);
+  assert.match(html, /\.creative-card textarea\{min-height:52px;max-height:72px\}/);
+  assert.match(html, /\.publisher-preview-variant img\{width:100%;height:300px;max-height:300px;object-fit:contain/);
+  assert.match(html, /id="publisher-cities" hidden/);
+  assert.match(html, /id="publisher-city-toggle"/);
+  assert.match(html, /class="[^"]*publisher-platforms[^"]*"/);
+  assert.match(html, /\.creative-grid\.ab-enabled\{width:100%;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)\}/);
+});

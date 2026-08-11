@@ -41,3 +41,16 @@ test('el publicador usa A ancho completo y A/B en dos columnas', () => {
   assert.match(html, /@media\(max-width:47\.999rem\)\{\.creative-grid/);
   assert.match(html, /\.creative-grid\.ab-enabled\{grid-template-columns:1fr\}/);
 });
+
+test('un fallo de trazabilidad no bloquea la sesión ni redirige a login', () => {
+  const start = html.indexOf('async function load(){');
+  const end = html.indexOf('document.querySelector(\'#refresh\')', start);
+  assert.ok(start >= 0 && end > start, 'bootstrap de Agente 3 no encontrado');
+  const bootstrap = html.slice(start, end);
+  const sessionGuard = bootstrap.indexOf('const token=auraSessionToken();');
+  const historyRender = bootstrap.indexOf('safeRenderPublicationHistory();');
+  assert.ok(sessionGuard >= 0, 'la sesión debe leerse durante el bootstrap');
+  assert.ok(historyRender > sessionGuard, 'el historial debe ejecutarse después de validar la sesión');
+  assert.match(html, /function safeRenderPublicationHistory\(\)\{try\{renderPublicationHistory\(\)\}catch/);
+  assert.match(bootstrap, /if\(!token\)\{location\.href=.*return\}/);
+});

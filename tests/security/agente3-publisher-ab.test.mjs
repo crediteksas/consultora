@@ -18,3 +18,15 @@ test('la interfaz muestra el detalle Meta sanitizado en vez de ocultarlo', () =>
   assert.match(html, /data\.reason/);
   assert.doesNotMatch(html, /Meta no está disponible temporalmente/);
 });
+
+test('el layout final mantiene ciudades visibles y creatividades compactas', () => {
+  assert.doesNotMatch(html, /Ver ciudades|publisher-city-toggle|id="publisher-cities" hidden/);
+  assert.match(html, /#publisher-cities\{[^}]*display:block/);
+  assert.match(html, /\.city-toolbar\{[^}]*flex-wrap:nowrap/);
+  assert.match(html, /\.creative-grid\{grid-template-columns:1fr\}/);
+  assert.match(html, /\.creative-grid\.ab-enabled\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(html, /\.creative-card \.creative-preview\{[^}]*height:220px[^}]*max-height:220px/);
+  assert.match(html, /\.publisher-preview-variant img\{[^}]*height:220px[^}]*max-height:220px/);
+  assert.match(html, /\.publisher-preview-single img\{[^}]*max-height:220px/);
+  assert.match(html, /\.creative-card textarea\{[^}]*min-height:52px[^}]*max-height:72px/);
+});

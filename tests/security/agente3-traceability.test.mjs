@@ -67,23 +67,22 @@ test('un fallo de trazabilidad no bloquea la sesión ni redirige a login', () =>
 
 test('el publicador compacta configuración, cobertura y plataformas sin perder selección', () => {
   assert.match(html, /class="publisher-campaign-config"/);
-  assert.match(html, /id="publisher-city-toggle"[^>]*aria-expanded="false"/);
   assert.match(html, /id="publisher-city-summary"/);
-  assert.match(html, /id="publisher-cities" hidden/);
+  assert.match(html, /id="publisher-cities">/);
   assert.match(html, /Retail: 0 seleccionadas · Aliados: 0 seleccionadas/);
   assert.match(html, /function updatePublisherCitySummary\(\)/);
-  assert.match(html, /const open=cities\.hidden;cities\.hidden=!open/);
+  assert.doesNotMatch(html, /Ver ciudades|publisher-city-toggle|cities\.hidden/);
   assert.match(html, /class="[^"]*publisher-platforms[^"]*"/);
   assert.match(html, /\.publisher-campaign-config\{grid-column:1\/\-1;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(html, /\.publisher-form\{gap:8px\}/);
 });
 
 test('el layout final limita previews y mantiene el flujo compacto', () => {
-  assert.match(html, /\.creative-card \.creative-preview\{width:100%;height:300px;max-height:300px;max-width:300px;aspect-ratio:auto;object-fit:contain/);
+  assert.match(html, /\.creative-card \.creative-preview\{[^}]*height:220px[^}]*max-height:220px/);
   assert.match(html, /\.creative-card textarea\{min-height:52px;max-height:72px\}/);
-  assert.match(html, /\.publisher-preview-variant img\{width:100%;height:300px;max-height:300px;object-fit:contain/);
-  assert.match(html, /id="publisher-cities" hidden/);
-  assert.match(html, /id="publisher-city-toggle"/);
+  assert.match(html, /\.publisher-preview-variant img\{[^}]*height:220px[^}]*max-height:220px/);
+  assert.match(html, /id="publisher-cities">/);
+  assert.doesNotMatch(html, /id="publisher-city-toggle"|id="publisher-cities" hidden/);
   assert.match(html, /class="[^"]*publisher-platforms[^"]*"/);
   assert.match(html, /\.creative-grid\.ab-enabled\{width:100%;grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)\}/);
 });

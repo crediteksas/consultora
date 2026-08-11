@@ -43,10 +43,20 @@
 .publisher-submit{width:min(340px,100%);min-height:48px;padding:10px 16px;margin-left:auto;display:block;}
 .publisher-submit + .publisher-status{max-width:340px;margin-left:auto;text-align:right;}
 @media(max-width:47.999rem){.publisher-platforms{height:auto;min-height:56px}.publisher-submit{width:100%}.publisher-submit + .publisher-status{max-width:none;text-align:left}}
+/* Consolidación visual final del publicador: información auxiliar compacta. */
+.banner:not(.blocked){padding:4px 0;border:0;border-radius:0;background:transparent;margin-bottom:8px;color:var(--muted);font-size:12px;line-height:1.2;font-weight:700;}
+.kpi-help{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;margin-left:4px;border:1px solid color-mix(in srgb,var(--muted) 55%,transparent);border-radius:50%;background:transparent;color:var(--muted);font-size:11px;line-height:1;padding:0;vertical-align:middle;}
+.kpi-help:hover,.kpi-help:focus-visible{border-color:var(--turq);color:var(--turq);background:var(--ctk-color-secondary-50);}
+.publisher-preview-body{padding:8px 10px;}
+.publisher-preview-single{padding:8px 10px;}
+.publisher-preview-single img{width:auto!important;height:220px!important;max-width:100%;margin:0 auto;}
+.publisher-preview-comparison{padding:8px;gap:8px;}
+.publisher-preview-variant strong{padding:5px 8px 0;}
+.publisher-preview-variant p{padding:0 8px 8px;margin-top:3px;}
 </style></head><body class="kora-product-page" data-kora-agent-id="agent-3">
 <div id="app" data-aura-agent-root>
 <main class="agent3-content">
-  <div id="banner" class="banner">Conectando métricas y publicador seguro…</div>
+  <div id="banner" class="banner">● Meta Ads conectado</div>
   <div class="toolbar">
     <select id="period"><option value="7">7 días</option><option value="14">14 días</option><option value="30">30 días</option></select>
     <select disabled title="Disponible cuando exista clasificación backend"><option>Todos los municipios</option></select>
@@ -254,7 +264,7 @@ async function load(){
   try{response=await fetch(`${API}/v1/dashboard?period=${encodeURIComponent(document.querySelector('#period').value)}`,{headers:{authorization:`Bearer ${token}`}});data=await response.json().catch(()=>({}));}
   catch(error){fail('No fue posible conectar con Meta Ads. Intenta nuevamente.');return}
   if(!response.ok){fail(errors[response.status]||'Meta Ads no pudo completar la consulta.');return}
-  document.querySelector('#banner').className='banner';document.querySelector('#banner').textContent='Meta Ads conectado. Métricas y publicador seguro disponibles.';
+  document.querySelector('#banner').className='banner';document.querySelector('#banner').textContent='● Meta Ads conectado';
   const m=data.metrics||{};
   document.querySelector('#metrics').innerHTML=[metric('Gasto total',money.format(m.spend||0)),metric('Gasto semanal',money.format(m.spend_weekly||0)),metric('Gasto mensual',money.format(m.spend_monthly||0)),metric('Presupuesto semanal',money.format(m.budget_weekly||0)),metric('Impresiones',integer.format(m.impressions||0)),metric('Alcance',integer.format(m.reach||0)),metric('CTR',`${Number(m.ctr||0).toFixed(2)}%`),metric('CPC',money.format(m.cpc||0)),metric('CPM',money.format(m.cpm||0)),metric('Conversiones',integer.format(m.conversions||0)),metric('Costo por resultado',m.cost_per_result==null?'Sin datos':money.format(m.cost_per_result)),metric('Frecuencia',Number(m.frequency||0).toFixed(2)),metric('ROAS estimado','Sin atribución')].join('');
   portfolioReading(data);renderCampaigns(data);

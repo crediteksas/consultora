@@ -28,6 +28,16 @@ test('las proporciones reservan espacio a la creatividad y compactan controles a
   assert.doesNotMatch(html, /publisher-city-toggle|Ver ciudades/);
 });
 
+test('la consolidación visual mantiene franja e iconos KPI discretos', () => {
+  assert.match(html, /id="banner" class="banner">● Meta Ads conectado/);
+  assert.doesNotMatch(html, /Meta Ads conectado\. Métricas y publicador seguro disponibles\./);
+  assert.match(html, /\.banner:not\(\.blocked\)\{[^}]*padding:4px 0[^}]*border:0/);
+  assert.match(html, /\.kpi-help\{[^}]*width:16px;height:16px[^}]*border:1px solid/);
+  assert.match(html, /\.publisher-submit\{[^}]*width:min\(340px,100%\)/);
+  assert.match(html, /\.publisher-preview-single img\{[^}]*height:220px/);
+  assert.doesNotMatch(html, /Ver ciudades/);
+});
+
 test('el layout final mantiene ciudades visibles y creatividades compactas', () => {
   assert.doesNotMatch(html, /Ver ciudades|publisher-city-toggle|id="publisher-cities" hidden/);
   assert.match(html, /#publisher-cities\{[^}]*display:block/);

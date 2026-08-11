@@ -437,6 +437,28 @@ describe('AURA Meta Ads secure publisher', () => {
     expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);
   });
 
+  it('no deja cero anuncios si la auditoría falla entre Meta y la respuesta', async () => {
+    mockNetwork(publishPermissions);
+    const base = globalThis.fetch as any;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/rest/v1/rpc/aura_meta_ads_record_publish')) return json({}, 503);
+      return base(input, init);
+    }) as any;
+    const image = { name: 'pieza.png', mime_type: 'image/png', bytes_base64: 'iVBORw0KGgoAAAANSUhEUg==' };
+    const response = await worker.fetch(request('/v1/publisher/publish', token, 'POST', {
+      ...payload, piece_id: 'manual', image_url: '', image_data: image,
+      variants: [
+        { piece_id: 'manual', copy: 'Copy A', headline: 'Titular A', cta: 'LEARN_MORE', image_url: '', image_data: image },
+        { piece_id: 'manual', copy: 'Copy B', headline: 'Titular B', cta: 'LEARN_MORE', image_url: '', image_data: image },
+      ],
+    }, 'audit-after-meta'), env());
+    expect(response.status).toBe(503);
+    expect((await response.json() as any).reason).toBe('AUDIT_UNAVAILABLE');
+    const ads = (globalThis.fetch as any).mock.calls.filter(([url, init]: [unknown, RequestInit]) => String(url).includes('/act_123/ads?') && init?.method === 'POST');
+    expect(ads).toHaveLength(2);
+    expect(ads.every(([, init]: [unknown, RequestInit]) => String(init?.body).includes('status=PAUSED'))).toBe(true);
+  });
+
   it('detiene y revierte si falla el creativo A, sin devolver éxito con cero anuncios', async () => {
     mockNetwork(publishPermissions);
     const base = globalThis.fetch as any;

@@ -399,11 +399,9 @@ async function publishCampaignUnsafe(env: Env, auth: { token: string; access: Ac
   const campaignId = await publicationStep('META_CAMPAIGN_INVALID_RESPONSE', async () => requireMetaId(campaign, 'META_CAMPAIGN_INVALID_RESPONSE'));
   created.push(campaignId);
   const trace = { publication_id: publicationId, published_at: publishedAt, published_by: publishedBy, campaign_name: name };
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId });
   const adset = await publicationStep('META_ADSET_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adsets`, adsetPayload(payload, name, campaignId, cities), 'POST'));
   const adsetId = await publicationStep('META_ADSET_INVALID_RESPONSE', async () => requireMetaId(adset, 'META_ADSET_INVALID_RESPONSE'));
   created.push(adsetId);
-  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId });
   const variantIds: Array<{ label: string; creative_id: string; ad_id: string }> = [];
   for (let index = 0; index < variants.length; index += 1) {
     const variant = variants[index];
@@ -413,8 +411,6 @@ async function publishCampaignUnsafe(env: Env, auth: { token: string; access: Ac
     const story = { page_id: env.META_PAGE_ID, instagram_actor_id: instagram.actor_id, link_data: linkData };
     const creative = await publicationStep('META_CREATIVE_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/adcreatives`, { name: `${name}${label ? ` · ${label}` : ''} · creativo`, object_story_spec: JSON.stringify(story) }, 'POST'), label || 'A');
     const creativeId = await publicationStep('META_CREATIVE_INVALID_RESPONSE', async () => requireMetaId(creative, 'META_CREATIVE_INVALID_RESPONSE'), label || 'A');
-    const creativeTraceKey = variants.length === 2 ? (index === 0 ? 'creative_a_id' : 'creative_b_id') : 'creative_a_id';
-    await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, campaign_id: campaignId, adset_id: adsetId, [creativeTraceKey]: creativeId, variant: label || 'single' });
     const ad = await publicationStep('META_AD_CREATE_FAILED', () => metaObject(env, `${env.META_AD_ACCOUNT_ID}/ads`, { name: `${name}${label ? ` · ${label}` : ''} · anuncio`, adset_id: adsetId, creative: JSON.stringify({ creative_id: creativeId }), status: 'PAUSED' }, 'POST'), label || 'A');
     const adId = await publicationStep('META_AD_INVALID_RESPONSE', async () => requireMetaId(ad, 'META_AD_INVALID_RESPONSE'), label || 'A');
     created.push(adId);
@@ -425,6 +421,7 @@ async function publishCampaignUnsafe(env: Env, auth: { token: string; access: Ac
     ? { campaign_id: campaignId, adset_id: adsetId, creative_a_id: variantIds[0].creative_id, ad_a_id: variantIds[0].ad_id, creative_b_id: variantIds[1].creative_id, ad_b_id: variantIds[1].ad_id }
     : { campaign_id: campaignId, adset_id: adsetId, creative_a_id: variantIds[0].creative_id, ad_a_id: variantIds[0].ad_id };
   assertCompleteMetaIds(metaIds, comparison);
+  await recordPublish(env, auth.token, payload, idempotencyKey, 'PAUSED', { ...trace, ...metaIds });
   const activated: string[] = [];
   try {
     await publicationStep('META_ADSET_ACTIVATION_FAILED', () => metaObject(env, adsetId, { status: 'ACTIVE' }, 'POST')); activated.push(adsetId);

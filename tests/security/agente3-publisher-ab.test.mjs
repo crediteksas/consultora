@@ -19,6 +19,15 @@ test('la interfaz muestra el detalle Meta sanitizado en vez de ocultarlo', () =>
   assert.doesNotMatch(html, /Meta no está disponible temporalmente/);
 });
 
+test('las proporciones reservan espacio a la creatividad y compactan controles auxiliares', () => {
+  assert.match(html, /\.publisher-platforms\{[^}]*height:64px/);
+  assert.match(html, /\.publisher-submit\{[^}]*width:min\(340px,100%\)/);
+  assert.match(html, /\.publisher-coverage\{[^}]*min-height:0/);
+  assert.match(html, /\.publisher-coverage \.publisher-checks label\{[^}]*min-height:26px/);
+  assert.match(html, /publisher-platforms \+ \.publisher-section-title\{[^}]*margin-top:2px/);
+  assert.doesNotMatch(html, /publisher-city-toggle|Ver ciudades/);
+});
+
 test('el layout final mantiene ciudades visibles y creatividades compactas', () => {
   assert.doesNotMatch(html, /Ver ciudades|publisher-city-toggle|id="publisher-cities" hidden/);
   assert.match(html, /#publisher-cities\{[^}]*display:block/);

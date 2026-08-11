@@ -39,4 +39,5 @@ test('el publicador usa A ancho completo y A/B en dos columnas', () => {
   assert.match(html, /\.creative-grid\.ab-enabled\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
   assert.match(html, /classList\.toggle\('ab-enabled',enabled\)/);
   assert.match(html, /@media\(max-width:47\.999rem\)\{\.creative-grid/);
+  assert.match(html, /\.creative-grid\.ab-enabled\{grid-template-columns:1fr\}/);
 });

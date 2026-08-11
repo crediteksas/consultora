@@ -35,11 +35,17 @@ test('preflight, activación, rollback, Intelligence y tabs permanecen presentes
 });
 
 test('el publicador usa A ancho completo y A/B en dos columnas', () => {
+  assert.match(html, /\.publisher-grid\{grid-template-columns:minmax\(0,1fr\);align-items:start\}/);
+  assert.match(html, /\.publisher-preview\{position:static;display:grid/);
   assert.match(html, /\.creative-grid\{grid-template-columns:1fr\}/);
   assert.match(html, /\.creative-grid\.ab-enabled\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
   assert.match(html, /classList\.toggle\('ab-enabled',enabled\)/);
   assert.match(html, /@media\(max-width:47\.999rem\)\{\.creative-grid/);
   assert.match(html, /\.creative-grid\.ab-enabled\{grid-template-columns:1fr\}/);
+  const publisherGridStart = html.indexOf('<div class="publisher-grid">');
+  assert.ok(publisherGridStart >= 0);
+  assert.ok(html.indexOf('<form id="publisher-form" class="publisher-form">', publisherGridStart) > publisherGridStart);
+  assert.match(html, /<aside id="publisher-preview" class="publisher-preview"/);
 });
 
 test('un fallo de trazabilidad no bloquea la sesión ni redirige a login', () => {

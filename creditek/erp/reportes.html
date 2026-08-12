@@ -251,13 +251,15 @@
             <thead class="bg-gray-50 text-gray-700">
               <tr>
                 <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold">2025 real</th>
                 <th class="px-3 py-2 text-right font-semibold">Meta utilidad</th>
                 <th class="px-3 py-2 text-right font-semibold">Real ventas</th>
                 <th class="px-3 py-2 text-left font-semibold w-64">Cumplimiento</th>
                 <th class="px-3 py-2 text-right font-semibold">Run-rate</th>
+                <th class="px-3 py-2 text-right font-semibold">vs 2025</th>
               </tr>
             </thead>
-            <tbody id="tbody-presupuesto"><tr><td colspan="5" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+            <tbody id="tbody-presupuesto"><tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -359,11 +361,12 @@
             <thead class="bg-gray-50 text-gray-700">
               <tr>
                 <th class="px-3 py-2 text-left font-semibold">Mes</th>
-                <th class="px-3 py-2 text-right font-semibold">Ventas</th>
-                <th class="px-3 py-2 text-right font-semibold">Δ vs mes anterior</th>
+                <th class="px-3 py-2 text-right font-semibold">2025</th>
+                <th class="px-3 py-2 text-right font-semibold">2026</th>
+                <th class="px-3 py-2 text-right font-semibold">Δ 2026 vs 2025</th>
               </tr>
             </thead>
-            <tbody id="tbody-crecimiento"><tr><td colspan="3" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+            <tbody id="tbody-crecimiento"><tr><td colspan="4" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -606,8 +609,37 @@ async function cargarKPIs() {
 
   document.getElementById('kpi-ventas').textContent = money(totalV);
   document.getElementById('kpi-ticket').textContent = money(ticket);
-  document.getElementById('kpi-ventas-delta').textContent = `${ventas.length} operaciones`;
   document.getElementById('kpi-ticket-sub').textContent = '';
+
+  // Delta vs 2025 — usa historico_mensual cuando el rango coincide con un mes
+  // conocido o un solo día. Para períodos parciales usa proyección proporcional.
+  const deltaEl = document.getElementById('kpi-ventas-delta');
+  const dDesde = new Date(desde + 'T00:00:00');
+  const dHasta = new Date(hasta + 'T00:00:00');
+  const anio2025 = 2025;
+  const mismosMeses = dDesde.getFullYear() === dHasta.getFullYear() && dDesde.getMonth() === dHasta.getMonth();
+  const esUnDia = desde === hasta;
+  const diasRango = Math.round((dHasta - dDesde) / 86400000) + 1;
+  let ref2025 = 0;
+  if (esUnDia || mismosMeses) {
+    // Mismo mes: comparar contra venta del mes 2025 (proporcional al #días si es parcial)
+    const mesNum = dDesde.getMonth() + 1;
+    let qHist = sb.from('historico_mensual').select('venta_total, venta_total_dia, dias_mes').eq('anio', anio2025).eq('mes', mesNum);
+    qHist = aplicarFiltroTienda(qHist);
+    const { data: hist } = await qHist;
+    (hist || []).forEach(h => {
+      if (esUnDia) ref2025 += Number(h.venta_total_dia || 0);
+      else ref2025 += Number(h.venta_total_dia || 0) * diasRango;
+    });
+  }
+  let sub = `${ventas.length} operaciones`;
+  if (ref2025 > 0) {
+    const delta = ((totalV - ref2025) / ref2025) * 100;
+    const flecha = delta >= 0 ? '↑' : '↓';
+    const cls = delta >= 0 ? 'delta-up' : 'delta-down';
+    sub = `${ventas.length} ops · <span class="${cls}">${flecha} ${Math.abs(delta).toFixed(1)}% vs 2025</span>`;
+  }
+  deltaEl.innerHTML = sub;
 
   // Cartera (snapshot — no filtra por fecha)
   let qCC = sb.from('cuenta_corriente').select('tienda_codigo, tipo, monto');
@@ -792,22 +824,26 @@ async function cargarInventario() {
 async function cargarPresupuesto() {
   const hoy = new Date();
   const mesActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(hoy) + '-01';
-  const [pRes, vRes] = await Promise.all([
+  const mesActualNum = hoy.getMonth() + 1; // 1-12
+  const [pRes, vRes, h2025Res] = await Promise.all([
     sb.from('presupuestos').select('tienda_codigo, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
     sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
+    sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
   ]);
 
   const msgEl = document.getElementById('msg-presupuestos');
   if (!pRes.data || pRes.data.length === 0) {
     msgEl.textContent = `No hay presupuestos definidos para el mes ${mesActual.slice(0, 7)}. Configúralos desde presupuestos.html.`;
     msgEl.classList.remove('hidden');
-    document.getElementById('tbody-presupuesto').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-400">Sin presupuesto configurado.</td></tr>';
+    document.getElementById('tbody-presupuesto').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">Sin presupuesto configurado.</td></tr>';
     return;
   }
   msgEl.classList.add('hidden');
 
   const ventasPorTienda = {};
   (vRes.data || []).forEach(v => { ventasPorTienda[v.tienda_codigo] = (ventasPorTienda[v.tienda_codigo] || 0) + Number(v.total || 0); });
+  const hist2025 = {};
+  (h2025Res.data || []).forEach(h => { hist2025[h.tienda_codigo] = Number(h.venta_total || 0); });
 
   const diaMes = hoy.getDate();
   const diasTotal = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
@@ -816,11 +852,17 @@ async function cargarPresupuesto() {
   document.getElementById('tbody-presupuesto').innerHTML = filas.map(p => {
     const real = ventasPorTienda[p.tienda_codigo] || 0;
     const meta = Number(p.meta_utilidad || 0);
+    const real2025 = hist2025[p.tienda_codigo] || 0;
     const cumpl = meta ? (real / meta) * 100 : 0;
     const runRate = diaMes > 0 ? (real / diaMes) * diasTotal : 0;
+    const vs2025 = real2025 ? ((runRate - real2025) / real2025) * 100 : null;
     const barClass = cumpl >= 100 ? 'success' : cumpl >= 75 ? '' : cumpl >= 50 ? 'warning' : 'error';
+    const vsCell = vs2025 == null
+      ? '<span class="text-gray-400">—</span>'
+      : `<span class="${vs2025 >= 0 ? 'text-emerald-700' : 'text-red-700'}">${vs2025 >= 0 ? '↑' : '↓'} ${Math.abs(vs2025).toFixed(1)}%</span>`;
     return `<tr>
       <td class="px-3 py-2 font-medium">${esc(p.origen?.nombre || p.tienda_codigo)}</td>
+      <td class="px-3 py-2 text-right font-mono text-gray-600">${real2025 ? money(real2025) : '<span class="text-gray-400">—</span>'}</td>
       <td class="px-3 py-2 text-right font-mono">${money(meta)}</td>
       <td class="px-3 py-2 text-right font-mono">${money(real)}</td>
       <td class="px-3 py-2">
@@ -828,8 +870,9 @@ async function cargarPresupuesto() {
         <div class="text-xs text-gray-500 mt-1">${cumpl.toFixed(1)}%</div>
       </td>
       <td class="px-3 py-2 text-right font-mono text-gray-600">${money(runRate)}</td>
+      <td class="px-3 py-2 text-right text-xs">${vsCell}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="5" class="text-center py-4 text-gray-400">Sin datos para la tienda seleccionada.</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="text-center py-4 text-gray-400">Sin datos para la tienda seleccionada.</td></tr>';
 }
 
 // ============================================================================
@@ -918,37 +961,81 @@ async function cargarRentabilidadCategoria() {
 // ============================================================================
 async function cargarCrecimiento() {
   const hoy = new Date();
-  const desdeMes = new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1);
   const iso = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
-  let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(desdeMes)).neq('anulada', true);
+  // 2026 desde tablas operativas — todo el año
+  const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
+  let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(inicioAnio)).neq('anulada', true);
   q = aplicarFiltroTienda(q);
-  const { data, error } = await q;
-  if (error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+  // 2025 desde historico_mensual
+  let qHist = sb.from('historico_mensual').select('mes, venta_total, tienda_codigo').eq('anio', 2025);
+  qHist = aplicarFiltroTienda(qHist);
 
-  const porMes = {};
-  (data || []).forEach(v => {
-    const key = v.fecha.slice(0, 7);
-    porMes[key] = (porMes[key] || 0) + Number(v.total || 0);
+  const [ventasRes, histRes] = await Promise.all([q, qHist]);
+  if (ventasRes.error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(ventasRes.error.message)}</td></tr>`; return; }
+
+  // Serie 2026 por mes
+  const porMes2026 = {};
+  (ventasRes.data || []).forEach(v => {
+    const m = Number(v.fecha.slice(5, 7));
+    porMes2026[m] = (porMes2026[m] || 0) + Number(v.total || 0);
   });
-  const claves = Object.keys(porMes).sort();
-  const filas = claves.map((k, i) => {
-    const delta = i > 0 && porMes[claves[i-1]] > 0 ? ((porMes[k] - porMes[claves[i-1]]) / porMes[claves[i-1]]) * 100 : null;
-    return { mes: k, total: porMes[k], delta };
+  // Serie 2025 por mes
+  const porMes2025 = {};
+  (histRes.data || []).forEach(h => {
+    porMes2025[h.mes] = (porMes2025[h.mes] || 0) + Number(h.venta_total || 0);
   });
-  document.getElementById('tbody-crecimiento').innerHTML = filas.length ? filas.map(f => `<tr>
+
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const filas = meses.map((nombre, idx) => {
+    const m = idx + 1;
+    const v2025 = porMes2025[m] || null;
+    const v2026 = porMes2026[m] || null;
+    const delta = v2025 && v2026 ? ((v2026 - v2025) / v2025) * 100 : null;
+    return { mes: nombre, mesNum: m, v2025, v2026, delta };
+  });
+
+  document.getElementById('tbody-crecimiento').innerHTML = filas.map(f => `<tr>
     <td class="px-3 py-2 font-medium">${f.mes}</td>
-    <td class="px-3 py-2 text-right font-mono">${money(f.total)}</td>
+    <td class="px-3 py-2 text-right font-mono text-gray-500">${f.v2025 ? money(f.v2025) : '<span class="text-gray-400">—</span>'}</td>
+    <td class="px-3 py-2 text-right font-mono">${f.v2026 ? money(f.v2026) : '<span class="text-gray-400">—</span>'}</td>
     <td class="px-3 py-2 text-right ${f.delta == null ? 'text-gray-400' : f.delta >= 0 ? 'text-emerald-700' : 'text-red-700'}">${f.delta == null ? '—' : (f.delta >= 0 ? '↑' : '↓') + ' ' + Math.abs(f.delta).toFixed(1) + '%'}</td>
-  </tr>`).join('') : '<tr><td colspan="3" class="text-center py-6 text-gray-400">Sin datos de meses.</td></tr>';
+  </tr>`).join('');
 
   if (charts.crecimiento) charts.crecimiento.destroy();
-  if (filas.length > 0) {
-    charts.crecimiento = new Chart(document.getElementById('chart-crecimiento'), {
-      type: 'line',
-      data: { labels: filas.map(f => f.mes), datasets: [{ label: 'Ventas mensuales', data: filas.map(f => f.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => money(ctx.parsed.y) } } }, scales: { y: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(v) } } } },
-    });
-  }
+  charts.crecimiento = new Chart(document.getElementById('chart-crecimiento'), {
+    type: 'line',
+    data: {
+      labels: meses,
+      datasets: [
+        {
+          label: '2025',
+          data: filas.map(f => f.v2025),
+          borderColor: '#9ca3af',
+          backgroundColor: 'rgba(156,163,175,0.15)',
+          borderDash: [6, 4],
+          tension: 0.3,
+          spanGaps: true,
+        },
+        {
+          label: '2026',
+          data: filas.map(f => f.v2026),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.15)',
+          tension: 0.3,
+          fill: true,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.parsed.y)}` } },
+      },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(v) } } },
+    },
+  });
 }
 
 // ============================================================================

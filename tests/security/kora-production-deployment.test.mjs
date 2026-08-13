@@ -85,7 +85,7 @@ test('el manifiesto esperado documenta versión, commit, artefacto y Worker', as
   assert.equal(manifest.worker, 'consultora');
   assert.equal(manifest.productionUrl, 'https://registro.crediteksas.com/creditek/erp/app');
   assert.equal(manifest.supabaseProjectRef, 'jfkmiyvcdfbsbwchyvol');
-  assert.equal(manifest.authorizedBranch, 'codex/kora-shell-v2');
+  assert.equal(manifest.authorizedBranch, 'kora-final');
 });
 
 test('una validación productiva fallida revierte a la versión anterior', async () => {

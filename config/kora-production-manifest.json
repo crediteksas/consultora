@@ -6,8 +6,8 @@
   "productionUrl": "https://registro.crediteksas.com/creditek/erp/app",
   "supabaseProjectRef": "jfkmiyvcdfbsbwchyvol",
   "authorizedRepositoryGitDir": "/Users/oscarpacheco/consultora/.git",
-  "authorizedWorktreeRealPath": "/private/tmp/consultora-kora-shell-v2",
-  "authorizedBranch": "codex/kora-shell-v2",
+  "authorizedWorktreeRealPath": "/Users/oscarpacheco/consultora",
+  "authorizedBranch": "kora-final",
   "releaseKvNamespaceId": "c7b51079c44d43abbe035caf05b9938d",
   "ci": {
     "ready": true,

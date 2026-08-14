@@ -1,0 +1,41 @@
+/* Fix 1: Iconos KPI — SVG de Lucide demasiado grande */
+.kpi-help svg { width: 14px !important; height: 14px !important; }
+.kpi-help { width: 20px; height: 20px; min-width: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(100,116,139,.3); background: transparent; color: #64748b; cursor: help; padding: 0; font-size: 0; }
+.kpi-help:hover { border-color: #00C4CC; color: #00C4CC; background: rgba(0,196,204,.06); }
+
+/* Fix 2: KPI cards — más grandes y espaciosas */
+.grid#metrics { gap: 14px; }
+.grid#metrics > .card { padding: 20px; border-radius: 18px; box-shadow: 0 1px 3px rgba(11,30,61,.06); }
+.grid#metrics > .card .label { font-size: 11px; letter-spacing: .04em; }
+.grid#metrics > .card .value { font-family: Montserrat, sans-serif; font-size: 26px; font-weight: 800; margin-top: 8px; }
+
+/* Fix 3: Toolbar — bordes visibles y estilo KORA */
+.toolbar select { border: 1px solid rgba(11,30,61,.15) !important; border-radius: 12px; background: #fff; padding: 0 14px; min-height: 42px; }
+.toolbar select:focus { border-color: #00C4CC !important; box-shadow: 0 0 0 3px rgba(0,196,204,.12); outline: none; }
+.toolbar button { border-radius: 12px; box-shadow: 0 4px 12px -4px rgba(11,30,61,.3); }
+
+/* Fix 4: Publisher — campos más compactos */
+.publisher-field input:not([type="checkbox"]), .publisher-field select, .publisher-field textarea { border-radius: 12px; background: #f8f9fb; }
+.publisher-field input:focus, .publisher-field select:focus, .publisher-field textarea:focus { background: #fff; border-color: #00C4CC; box-shadow: 0 0 0 3px rgba(0,196,204,.12); outline: none; }
+.publisher-coverage .publisher-checks { max-height: 200px; overflow-y: auto; padding: 4px 0; }
+.publisher-coverage .publisher-checks label { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+.publisher-campaign-config { border-radius: 16px; }
+
+/* Fix 5: Preview visible */
+.publisher-preview { display: block !important; border-radius: 18px; }
+
+/* Fix 6: Tabs pill-style */
+.agent3-tabs { border-bottom: none; gap: 6px; }
+.agent3-tab { border: none; border-radius: 999px; padding: 10px 20px; font-size: 13px; }
+.agent3-tab[aria-selected="true"] { background: #0B1E3D; color: #fff; border-color: transparent; }
+
+/* Fix 7: Paneles más limpios */
+.panel { border-radius: 18px; }
+.panel h2 { font-family: Montserrat, sans-serif; font-weight: 800; }
+
+/* Fix 8: Intelligence cards */
+.intelligence-card { border-radius: 16px; padding: 18px; }
+.intelligence-card strong { font-family: Montserrat, sans-serif; font-size: 24px; font-weight: 800; }
+
+/* Fix 9: Submit button premium */
+.publisher-submit { border-radius: 13px; box-shadow: 0 8px 20px -8px rgba(11,30,61,.45); font-size: 15px; padding: 14px 20px; }

@@ -641,7 +641,9 @@ async function guardarCompra() {
       if (!it.cantidad || it.cantidad <= 0) throw new Error(`Cantidad inválida en "${it.producto_nombre}"`);
       if (it.costo_unitario == null || it.costo_unitario < 0) throw new Error(`Costo inválido en "${it.producto_nombre}"`);
       // SPEC v2 · precio_remision es obligatorio (lo pide el RPC).
-      if (it.precio_remision == null || it.precio_remision < 0) throw new Error(`Precio remisión inválido en "${it.producto_nombre}"`);
+      if (!Number.isFinite(Number(it.precio_remision)) || Number(it.precio_remision) <= 0) {
+        throw new Error(`Falta el precio de tienda para ${it.producto_nombre || 'este producto'}`);
+      }
       payload.push({
         producto_id: it.producto_id,
         cantidad: it.cantidad,

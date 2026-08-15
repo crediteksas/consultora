@@ -589,7 +589,13 @@ async function guardarRemision() {
     const producto_id = row.querySelector('.it-producto').value;
     const cantidad = Number(row.querySelector('.it-cantidad').value || 0);
     const precio_remision = Number(row.querySelector('.it-precio').value || 0);
-    if (!producto_id || cantidad <= 0 || precio_remision < 0) { err.textContent = 'Revisa cantidad y precio en cada producto.'; err.classList.add('show'); return; }
+    if (!producto_id || cantidad <= 0) { err.textContent = 'Revisa la cantidad en cada producto.'; err.classList.add('show'); return; }
+    if (!Number.isFinite(precio_remision) || precio_remision <= 0) {
+      const nombre = row.querySelector('.it-producto option:checked')?.textContent?.trim() || 'este producto';
+      err.textContent = `Falta el precio de tienda para ${nombre}`;
+      err.classList.add('show');
+      return;
+    }
     items.push({ producto_id, cantidad, precio_remision });
   }
 
@@ -787,6 +793,12 @@ async function confirmarRecepcion() {
   const payload = [];
   for (let idx = 0; idx < recepcionRemisionActual.items.length; idx++) {
     const it = recepcionRemisionActual.items[idx];
+    const precioRemision = Number(it.precio_remision);
+    if (!Number.isFinite(precioRemision) || precioRemision <= 0) {
+      err.textContent = `Falta el precio de tienda para ${it.productos?.nombre || 'este producto'}`;
+      err.classList.add('show');
+      return;
+    }
     if (it.productos.tipo === 'serializado') {
       const imeis = Array.from(document.querySelectorAll(`.imei-input[data-item="${idx}"]`)).map(i => i.value.trim());
       if (imeis.some(v => v.length < 6)) {

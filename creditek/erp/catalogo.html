@@ -7,8 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="sidebar.js"></script>
 <script src="producto-foto.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -76,7 +78,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .link-edit { color: var(--turquesa); font-weight: 700; font-size: 12.5px; cursor: pointer; background: none; border: none; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
 
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
 .modal-bg.show { display: flex; }
 .modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-md); }
 .modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 18px; }
@@ -99,6 +101,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 #preview-foto img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
 .foto-modal-preview img { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -197,6 +201,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <label>Foto del producto</label>
       <input type="file" id="input-foto" accept="image/jpeg,image/png,image/webp">
       <div id="preview-foto" style="margin-top:.5rem;"></div>
+      <button type="button" class="link-edit" id="btnEliminarFotoProducto" hidden>Eliminar foto</button>
     </div>
     <div class="modal-err" id="modalErr"></div>
     <div class="modal-ok" id="modalOk">Producto guardado.</div>
@@ -228,8 +233,9 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 </div>
 
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const productoFoto = window.CreditekProductoFoto;
 
@@ -328,6 +334,7 @@ function initPagina() {
   document.getElementById('btnNuevoProducto').addEventListener('click', () => abrirModalProducto(null));
   document.getElementById('btnCancelarModal').addEventListener('click', cerrarModalProducto);
   document.getElementById('btnGuardarProducto').addEventListener('click', guardarProducto);
+  document.getElementById('btnEliminarFotoProducto').addEventListener('click', eliminarFotoProducto);
   document.getElementById('prodCategoria').addEventListener('change', onCategoriaCambiada);
   document.getElementById('prodMargenTipo').addEventListener('change', actualizarLabelMargen);
   document.getElementById('btnCancelarFoto').addEventListener('click', cerrarModalFoto);
@@ -367,14 +374,14 @@ function fmtMargen(tipo, valor) {
   return tipo === 'porcentaje' ? `${valor}%` : `+${fmtCOP(valor)}`;
 }
 
-async function subirFotoProducto(codigoProducto, archivo) {
+async function subirFotoProducto(productoId, archivo) {
   const validacion = productoFoto.validarArchivo(archivo);
   if (validacion) throw new Error(validacion);
-  const nombreArchivo = productoFoto.crearRutaFoto(codigoProducto, archivo);
+  const nombreArchivo = `canonicas/${productoId}`;
 
   const { error } = await sb.storage
     .from('productos-fotos')
-    .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: false });
+    .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: true });
 
   if (error) throw error;
 
@@ -564,6 +571,7 @@ function abrirModalProducto(prod) {
   document.getElementById('preview-foto').innerHTML = prod && prod.foto_url
     ? `<img src="${escapeHtml(prod.foto_url)}" alt="foto actual">`
     : '';
+  document.getElementById('btnEliminarFotoProducto').hidden = !(prod && prod.foto_url);
   document.getElementById('modalErr').classList.remove('show');
   document.getElementById('modalOk').classList.remove('show');
   document.getElementById('modalProducto').classList.add('show');
@@ -590,21 +598,10 @@ async function guardarProducto() {
   const btn = document.getElementById('btnGuardarProducto');
   btn.disabled = true; btn.textContent = 'Guardando...';
 
-  let foto_url = document.getElementById('prodFotoActual').value || null;
   const archivo = document.getElementById('input-foto').files[0];
-  if (archivo) {
-    try {
-      foto_url = await subirFotoProducto(codigo, archivo);
-    } catch (e) {
-      btn.disabled = false; btn.textContent = 'Guardar';
-      err.textContent = 'No se pudo subir la foto: ' + e.message;
-      err.classList.add('show');
-      return;
-    }
-  }
 
   let resultado;
-  const payload = { codigo, nombre, categoria, tipo, precio_guia, foto_url, margen_tipo, margen_valor };
+  const payload = { codigo, nombre, categoria, tipo, precio_guia, margen_tipo, margen_valor };
   if (id) {
     resultado = await sb.from('productos').update(payload).eq('id', id).select().maybeSingle();
   } else {
@@ -621,10 +618,59 @@ async function guardarProducto() {
     return;
   }
 
+  if (archivo) {
+    try {
+      const productoId = resultado.data.id;
+      const fotoUrl = await subirFotoProducto(productoId, archivo);
+      const { error: fotoError } = await sb.rpc('gestionar_foto_producto_central', {
+        p_producto_id: productoId,
+        p_foto_url: fotoUrl,
+        p_motivo: id ? 'Reemplazo desde catálogo' : 'Carga inicial desde catálogo'
+      });
+      if (fotoError) throw fotoError;
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Guardar';
+      err.textContent = 'El producto se guardó, pero no se pudo registrar la foto: ' + e.message;
+      err.classList.add('show');
+      return;
+    }
+  }
+
   document.getElementById('modalOk').classList.add('show');
   await cargarCategorias();
   await cargarProductos();
   setTimeout(cerrarModalProducto, 700);
+}
+
+async function eliminarFotoProducto() {
+  const id = document.getElementById('prodId').value;
+  const fotoActual = document.getElementById('prodFotoActual').value;
+  if (!id || !fotoActual || !confirm('¿Eliminar la foto canónica de esta referencia?')) return;
+
+  const err = document.getElementById('modalErr');
+  err.classList.remove('show');
+  const { error } = await sb.rpc('gestionar_foto_producto_central', {
+    p_producto_id: id,
+    p_foto_url: null,
+    p_motivo: 'Eliminación desde catálogo'
+  });
+  if (error) {
+    err.textContent = 'No se pudo eliminar la foto: ' + error.message;
+    err.classList.add('show');
+    return;
+  }
+
+  const { error: storageError } = await sb.storage
+    .from('productos-fotos')
+    .remove([`canonicas/${id}`]);
+  if (storageError) {
+    err.textContent = 'La foto se retiró del catálogo, pero el archivo no pudo eliminarse: ' + storageError.message;
+    err.classList.add('show');
+  }
+  document.getElementById('prodFotoActual').value = '';
+  document.getElementById('preview-foto').innerHTML = '';
+  document.getElementById('btnEliminarFotoProducto').hidden = true;
+  await cargarProductos();
 }
 </script>
 </body>

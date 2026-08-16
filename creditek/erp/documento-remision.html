@@ -34,6 +34,7 @@
   <title>Remisión · Creditek</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -52,11 +53,16 @@
     /* FIX 23-jul-2026 · impresión limpia para Ctrl+P.
        Oculta header, botones y elementos UI; deja solo el documento. */
     @media print {
+      @page { size: letter; margin: 12mm; }
+      html, body { background: #fff !important; color: #000 !important; }
       .no-print { display: none !important; }
       body { background: white !important; margin: 0; padding: 0; }
       main#app { padding: 0 !important; margin: 0 auto !important; max-width: 100% !important; }
       .print-full { max-width: none !important; padding: 0 !important; }
       .print-shadow { box-shadow: none !important; border: none !important; }
+      thead { display: table-header-group; }
+      tr, img { break-inside: avoid; page-break-inside: avoid; }
+      .firma-grid { break-inside: avoid; page-break-inside: avoid; }
       /* Evitar cortes feos en la tabla de items */
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
@@ -64,6 +70,10 @@
       tfoot { display: table-footer-group; }
     }
   </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
@@ -136,6 +146,7 @@
               <th class="py-2 pr-2 pl-2 text-center font-medium w-8">#</th>
               <th class="py-2 pr-2"></th>
               <th class="py-2 pr-2 font-medium">Producto</th>
+              <th class="py-2 pr-2 font-medium">Código</th>
               <th class="py-2 pr-2 font-medium">Categoría</th>
               <th class="py-2 pr-2 text-right font-medium">Cantidad</th>
               <th class="py-2 pr-2 text-right font-medium">Precio unitario</th>
@@ -147,7 +158,7 @@
           </tbody>
           <tfoot>
             <tr class="border-t-2 border-gray-400 bg-gray-50">
-              <td colspan="6" class="pt-3 pb-2 pl-2 text-right font-semibold text-gray-700 text-base">TOTAL</td>
+              <td colspan="7" class="pt-3 pb-2 pl-2 text-right font-semibold text-gray-700 text-base">TOTAL</td>
               <td class="pt-3 pb-2 text-right font-bold text-xl font-mono text-gray-900" id="doc-total">—</td>
             </tr>
           </tfoot>
@@ -166,6 +177,19 @@
       <div id="doc-trazabilidad" class="text-gray-700"></div>
     </div>
 
+    <div class="firma-grid p-6 border-t border-gray-200 grid grid-cols-2 gap-10 text-sm">
+      <div>
+        <div class="h-14 border-b border-gray-500"></div>
+        <div class="mt-2 font-medium">Entrega — Bodega Central</div>
+        <div class="text-xs text-gray-500" id="doc-responsable-entrega">Responsable: —</div>
+      </div>
+      <div>
+        <div class="h-14 border-b border-gray-500"></div>
+        <div class="mt-2 font-medium">Recibe — Tienda destino</div>
+        <div class="text-xs text-gray-500">Nombre, documento, firma y fecha</div>
+      </div>
+    </div>
+
     <!-- Acciones (no imprime) -->
     <div class="no-print p-6 flex flex-wrap gap-2 justify-end border-t border-gray-100">
       <button id="btn-print" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
@@ -179,7 +203,7 @@
     <!-- FIX 23-jul-2026 · Pie legal — se imprime con el documento -->
     <div class="p-4 border-t border-gray-200 bg-white text-center text-xs text-gray-500">
       <div class="font-semibold text-gray-700">Creditek SAS · NIT 901.259.859-0</div>
-      <div>Documento generado electrónicamente por Creditek OS</div>
+      <div>Documento generado electrónicamente por KORA</div>
     </div>
   </div>
 
@@ -224,14 +248,11 @@
 <script>
 const SB = (function () {
   if (window.SB) return window.SB;
-  const env = window.CREDITEK_ENV || {
-    SUPABASE_URL: 'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ'
-  };
-  return window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  const env = window.__KORA_ENV__;
+  return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
 })();
 
-const SUPABASE_STORAGE_URL = (window.CREDITEK_ENV?.SUPABASE_URL || 'https://jfkmiyvcdfbsbwchyvol.supabase.co') + '/storage/v1/object/public';
+const SUPABASE_STORAGE_URL = window.__KORA_ENV__.KORA_ERP_SUPABASE_URL + '/storage/v1/object/public';
 
 // ============================================================
 // HELPERS
@@ -376,7 +397,7 @@ async function cargarRemision() {
 
   const { data: rem, error: rErr } = await SB
     .from('remisiones')
-    .select('id, consecutivo, tienda_codigo, estado, nota, despachada_at, recibida_at, created_at')
+    .select('id, consecutivo, tienda_codigo, estado, nota, creada_por, despachada_at, recibida_at, created_at')
     .eq('id', REMISION_ID).maybeSingle();
 
   if (rErr) { showError('Error cargando remisión: ' + rErr.message); return; }
@@ -385,7 +406,7 @@ async function cargarRemision() {
 
   const [{ data: rItems, error: iErr }, { data: origen }] = await Promise.all([
     SB.from('remision_items')
-      .select('id, producto_id, cantidad, precio_remision, productos(id, nombre, tipo, categoria, foto_url)')
+      .select('id, producto_id, cantidad, precio_remision, productos(id, codigo, nombre, tipo, categoria, foto_url)')
       .eq('remision_id', REMISION_ID),
     SB.from('origenes').select('codigo, nombre').eq('codigo', rem.tienda_codigo).neq('tipo', 'central').maybeSingle(),
   ]);
@@ -410,6 +431,8 @@ function renderDocumento() {
   document.getElementById('doc-tienda').textContent = tiendaNombre + ' (' + remision.tienda_codigo + ')';
   document.getElementById('doc-fecha').textContent =
     'Despachada: ' + fechaHora(remision.despachada_at || remision.created_at);
+  document.getElementById('doc-responsable-entrega').textContent =
+    'Responsable: ' + (remision.creada_por || usuario?.email || '—');
 
   // Estado visual
   const badge = document.getElementById('doc-estado');
@@ -432,7 +455,7 @@ function renderDocumento() {
   // Ítems
   const tbody = document.getElementById('tbody-items');
   if (items.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-gray-400">Sin ítems.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-gray-400">Sin ítems.</td></tr>';
   } else {
     let total = 0;
     tbody.innerHTML = items.map((it, idx) => {
@@ -441,11 +464,16 @@ function renderDocumento() {
       const p = it.productos || { id: it.producto_id, nombre: '(producto)', tipo: '', categoria: '', foto_url: null };
       // SPEC v2 · si el producto no tiene foto_url, mostrar botón "Subir foto" (global — se guarda en productos.foto_url).
       const tieneFoto = !!p.foto_url;
+      const puedeCargarFoto = !tieneFoto
+        && remision.estado === 'despachada'
+        && rolActual === 'admin_tienda'
+        && tiendaActual === remision.tienda_codigo;
       const thumbHtml = tieneFoto
         ? `<div class="thumb"><img src="${esc(p.foto_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" /></div>`
-        : `<button type="button" class="btn-subir-foto thumb no-print" data-prod-id="${esc(p.id)}"
+        : puedeCargarFoto ? `<button type="button" class="btn-subir-foto thumb no-print" data-prod-id="${esc(p.id)}"
               style="cursor:pointer; border:2px dashed #d1d5db; background:#f9fafb;"
-              title="Subir foto (queda global para todas las tiendas)">📷</button>`;
+              title="Subir foto (queda global para todas las tiendas)">📷</button>`
+          : '<div class="thumb">📷</div>';
       return `
         <tr class="border-b border-gray-100" data-prod-id="${esc(p.id)}">
           <td class="py-3 pl-2 pr-2 text-center text-gray-500 font-mono text-xs">${idx + 1}</td>
@@ -454,6 +482,7 @@ function renderDocumento() {
             <div class="font-medium text-gray-800">${esc(p.nombre)}</div>
             <div class="text-xs text-gray-500">${p.tipo === 'serializado' ? 'Con IMEI' : 'Stock por cantidad'}</div>
           </td>
+          <td class="py-3 pr-2 font-mono text-xs">${esc(p.codigo || '—')}</td>
           <td class="py-3 pr-2 text-xs text-gray-600 uppercase">${esc(p.categoria)}</td>
           <td class="py-3 pr-2 text-right font-mono">${it.cantidad}</td>
           <td class="py-3 pr-2 text-right font-mono">${money(it.precio_remision)}</td>
@@ -590,6 +619,10 @@ async function aceptarRecepcion() {
   btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Procesando...';
 
   try {
+    const sinFoto = items.find(it => !it.productos?.foto_url);
+    if (sinFoto && rolActual === 'admin_tienda') {
+      throw new Error('Carga la foto de "' + (sinFoto.productos?.nombre || 'la referencia') + '" antes de recibir.');
+    }
     const payload = [];
     for (const it of items) {
       const p = it.productos || {};
@@ -718,17 +751,27 @@ inputFotoHidden.addEventListener('change', async () => {
   if (btn) btn.textContent = '⏳';
 
   try {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `producto_${prodId}_${Date.now()}.${ext}`;
+    const path = `canonicas/${prodId}`;
     const { error: upErr } = await SB.storage.from('productos-fotos').upload(path, file, { cacheControl: '31536000', upsert: false });
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) {
+      const { data: actual } = await SB.from('productos').select('foto_url').eq('id', prodId).maybeSingle();
+      if (actual?.foto_url) {
+        items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = actual.foto_url; });
+        renderDocumento();
+        return;
+      }
+    }
     const { data: pub } = SB.storage.from('productos-fotos').getPublicUrl(path);
     const publicUrl = pub.publicUrl;
-    const { error: dbErr } = await SB.from('productos').update({ foto_url: publicUrl }).eq('id', prodId);
-    if (dbErr) throw new Error(dbErr.message);
+    const { data, error: dbErr } = await SB.rpc('registrar_foto_producto_recepcion', {
+      p_remision_id: REMISION_ID,
+      p_producto_id: prodId,
+      p_foto_url: publicUrl,
+    });
+    if (dbErr || !data?.ok) throw new Error(dbErr?.message || 'El servidor no confirmó la foto');
 
     // Actualiza en memoria y re-renderiza la tabla.
-    items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = publicUrl; });
+    items.forEach(it => { if (it.producto_id === prodId && it.productos) it.productos.foto_url = data.foto_url; });
     renderDocumento();
     toast('Foto guardada — todas las tiendas la ven ahora.');
   } catch (e) {

@@ -8,6 +8,10 @@ const source = await readFile(
   path.resolve(import.meta.dirname, '../../creditek/erp/sidebar.js'),
   'utf8',
 );
+const accessSource = await readFile(
+  path.resolve(import.meta.dirname, '../../creditek/erp/kora-access-control.js'),
+  'utf8',
+);
 
 function classList(initial = [], onChange = () => {}) {
   const values = new Set(initial);
@@ -28,10 +32,15 @@ function createHarness({
   profileError = false,
   sessionHangs = false,
   immediateTimers = false,
+  profileRole = 'admin_tienda',
+  storeCode = 'T-01',
+  pathname = '/creditek/erp/ventas.html',
 } = {}) {
   const events = [];
+  const errors = [];
   const listeners = {};
   const styles = [];
+  const sessionValues = new Map();
   let bootError = null;
   const rootClasses = classList([], (operation, name) => {
     events.push(`${operation}:${name}`);
@@ -67,6 +76,9 @@ function createHarness({
     body,
     addEventListener(name, callback) {
       listeners[name] = callback;
+    },
+    dispatchEvent(event) {
+      events.push(`dispatch:${event.type}`);
     },
     createElement(tag) {
       if (tag === 'style') return { id: '', textContent: '' };
@@ -116,6 +128,7 @@ function createHarness({
       signOut: async () => {},
     },
     from(table) {
+      events.push(`from:${table}`);
       if (table === 'perfiles') {
         if (profileError) {
           return {
@@ -131,8 +144,8 @@ function createHarness({
         return queryResult({
           id: session?.user?.id,
           nombre: 'Usuario sintético',
-          rol: 'admin_tienda',
-          tienda_codigo: 'T-01',
+          rol: profileRole,
+          tienda_codigo: storeCode,
           activo: true,
         });
       }
@@ -142,8 +155,15 @@ function createHarness({
 
   let clientCreations = 0;
   const context = {
+    console: {
+      error(...args) { errors.push(args); },
+    },
     document,
     window: {
+      __KORA_ENV__: {
+        KORA_ERP_SUPABASE_URL: 'https://erp.test.invalid',
+        KORA_ERP_SUPABASE_ANON_KEY: 'public-test-key',
+      },
       supabase: {
         createClient: () => {
           clientCreations += 1;
@@ -152,10 +172,18 @@ function createHarness({
       },
     },
     location: {
-      pathname: '/creditek/erp/ventas.html',
+      pathname,
       reload() { events.push('reload'); },
+      replace(target) { events.push(`replace:${target}`); },
+    },
+    CustomEvent: class {
+      constructor(type) { this.type = type; }
     },
     localStorage: { getItem: () => null, setItem() {} },
+    sessionStorage: {
+      getItem(key) { return sessionValues.get(key) || null; },
+      setItem(key, value) { sessionValues.set(key, value); },
+    },
     setTimeout: immediateTimers
       ? callback => {
           queueMicrotask(callback);
@@ -169,6 +197,7 @@ function createHarness({
     },
   };
 
+  vm.runInNewContext(accessSource, context, { filename: 'kora-access-control.js' });
   vm.runInNewContext(source, context, { filename: 'sidebar.js' });
   return {
     rootClasses,
@@ -176,11 +205,13 @@ function createHarness({
     listeners,
     events,
     createPageClient: () => context.window.supabase.createClient(
-      'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-      'anon-key',
+      context.window.__KORA_ENV__.KORA_ERP_SUPABASE_URL,
+      context.window.__KORA_ENV__.KORA_ERP_SUPABASE_ANON_KEY,
     ),
     getClientCreations: () => clientCreations,
     getBootError: () => bootError,
+    getErrors: () => errors,
+    getBootTrace: () => JSON.parse(sessionValues.get('kora_shell_boot_trace') || '[]'),
   };
 }
 
@@ -195,13 +226,13 @@ test('instala una cortina neutral antes de resolver la sesión', () => {
   );
 });
 
-test('el shell y la página reutilizan un único cliente Supabase', async () => {
+test('el arranque usa un cliente nativo separado del cliente bloqueado de la página', async () => {
   const harness = createHarness();
 
   harness.createPageClient();
   await harness.listeners.DOMContentLoaded();
 
-  assert.equal(harness.getClientCreations(), 1);
+  assert.equal(harness.getClientCreations(), 2);
 });
 
 test('sin sesión retira la cortina y permite mostrar el login real', async () => {
@@ -227,6 +258,70 @@ test('con sesión inyecta el sidebar antes de revelar el destino', async () => {
   );
 });
 
+test('una ruta corporativa bloqueada para tienda no libera la sesión ni consulta datos', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileRole: 'admin_tienda',
+    pathname: '/creditek/erp/utilidad-creditek.html',
+  });
+  const pageSession = harness.createPageClient().auth.getSession();
+
+  await harness.listeners.DOMContentLoaded();
+
+  assert.equal((await pageSession).data.session, null);
+  assert.equal(harness.events.includes('from:origenes'), false);
+  assert.match(harness.getBootError().innerHTML, /Acceso denegado/);
+  assert.equal(harness.events.includes('insert:sidebar'), false);
+});
+
+test('app autenticada redirige desde el coordinador sin montar ni consultar tiendas', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileRole: 'gerencia',
+    storeCode: null,
+    pathname: '/creditek/erp/app',
+  });
+  const pageSession = harness.createPageClient().auth.getSession();
+  let pageSessionSettled = false;
+  pageSession.then(() => { pageSessionSettled = true; });
+
+  await harness.listeners.DOMContentLoaded();
+  await Promise.resolve();
+
+  assert.equal(harness.events.includes('replace:tablero.html'), true);
+  assert.equal(harness.events.includes('from:origenes'), false);
+  assert.equal(harness.events.includes('insert:sidebar'), false);
+  assert.equal(pageSessionSettled, false);
+});
+
+test('la inicialización es idempotente aunque DOMContentLoaded se invoque dos veces', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    appReady: true,
+  });
+
+  await Promise.all([
+    harness.listeners.DOMContentLoaded(),
+    harness.listeners.DOMContentLoaded(),
+  ]);
+
+  assert.equal(harness.events.filter(event => event === 'from:perfiles').length, 1);
+  assert.equal(harness.events.filter(event => event === 'dispatch:kora-sidebar-ready').length, 1);
+});
+
+test('la traza persistente conserva etapas sin identidad ni credenciales', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    appReady: true,
+  });
+
+  await harness.listeners.DOMContentLoaded();
+
+  const serialized = JSON.stringify(harness.getBootTrace());
+  assert.match(serialized, /session|profile|authorization|ready/);
+  assert.doesNotMatch(serialized, /user-test|email|token|uuid/i);
+});
+
 test('un fallo de bootstrap no deja la interfaz oculta', async () => {
   const harness = createHarness({
     session: { user: { id: 'user-test' } },
@@ -237,6 +332,21 @@ test('un fallo de bootstrap no deja la interfaz oculta', async () => {
   assert.equal(harness.rootClasses.contains('creditek-shell-pending'), true);
   assert.equal(harness.rootClasses.contains('creditek-shell-authenticated'), true);
   assert.equal(harness.rootClasses.contains('creditek-shell-error'), true);
+});
+
+test('un fallo autenticado informa la etapa exacta sin exponer la sesión', async () => {
+  const harness = createHarness({
+    session: { user: { id: 'user-test' } },
+    profileError: true,
+  });
+
+  await harness.listeners.DOMContentLoaded();
+
+  assert.equal(harness.getErrors().length, 1);
+  const [message] = harness.getErrors()[0];
+  assert.match(message, /^\[KORA Shell\] Error de inicialización \| etapa=profile/);
+  assert.match(message, /mensaje=fallo sintético/);
+  assert.doesNotMatch(message, /user-test|session|userId/);
 });
 
 test('un getSession bloqueado muestra un error recuperable', async () => {

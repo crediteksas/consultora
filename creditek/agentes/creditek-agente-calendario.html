@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Calendario de Contenido</title>
+<title>KORA · Calendario de Contenido — Creditek</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--azul:#0B1E3D;--turquesa:#00C4CC;--bg:#0B1E3D;--bg2:#112444;--bg3:#172d54;--bord:rgba(0,196,204,0.15);--bord2:rgba(0,196,204,0.35);--txt:#F0EFEB;--txt2:#9BB8CC;--txt3:#567890;--r:12px;--rs:8px}
@@ -190,6 +190,8 @@ select option{background:var(--bg2)}
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;z-index:500;color:#fff}
 .toast.show{opacity:1;transform:translateY(0)}
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 <nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Calendario</span></nav>
@@ -199,8 +201,7 @@ select option{background:var(--bg2)}
 <div id="apiModal">
   <div class="m-card">
     <div class="m-logo">
-      <img src="/logos/creditek_logo_corregido_alta.png" alt="Creditek">
-      <span class="m-logo-name">CREDITEK</span>
+      <div data-kora-brand data-variant="login"></div>
     </div>
     <div>
       <div class="m-title">Ingresa tu API Key de Anthropic</div>
@@ -224,11 +225,7 @@ select option{background:var(--bg2)}
 <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
 <aside class="sidebar">
   <div class="logo-wrap">
-    <img class="logo-img" src="/logos/creditek_logo_corregido_alta.png" alt="Creditek">
-    <div>
-      <div class="logo-title">CREDITEK</div>
-      <div class="logo-sub">Agente 4 · Calendario</div>
-    </div>
+    <div data-kora-brand data-variant="sidebar"></div>
   </div>
 
   <div class="sec">

@@ -18,9 +18,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Proveedores · Creditek</title>
+  <title>Cartera de Proveedores · Creditek</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="proveedores-domain.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -31,6 +33,10 @@
     tbody tr:hover { background-color: #f9fafb; cursor: pointer; }
     tbody tr.seleccionado { background-color: #eff6ff; border-left: 3px solid #3b82f6; }
   </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -39,7 +45,7 @@
   <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
-      <h1 class="text-xl font-bold text-gray-800">Proveedores</h1>
+      <h1 class="text-xl font-bold text-gray-800">Cartera de Proveedores</h1>
       <span class="text-xs text-gray-500">Master data (datos maestros) de la cadena de compra</span>
     </div>
     <div id="usuario-info" class="text-sm text-gray-600"></div>
@@ -57,6 +63,29 @@
 
   <!-- Toast de notificación -->
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
+
+  <section aria-label="Resumen de cartera" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <article id="card-total-por-pagar" class="bg-white rounded-lg shadow-sm border-l-4 border-blue-600 p-4">
+      <p class="text-sm font-medium text-gray-600">Total por pagar</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-gray-900">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas pendientes</p>
+    </article>
+    <article id="card-por-vencer" class="bg-white rounded-lg shadow-sm border-l-4 border-yellow-400 p-4">
+      <p class="text-sm font-medium text-gray-600">Por vencer</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-yellow-700">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
+    </article>
+    <article id="card-vencidas" class="bg-white rounded-lg shadow-sm border-l-4 border-red-500 p-4">
+      <p class="text-sm font-medium text-gray-600">Vencidas</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-red-700">$ 0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
+    </article>
+    <article id="card-pagadas" class="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4">
+      <p class="text-sm font-medium text-gray-600">Pagadas</p>
+      <p data-valor class="mt-2 text-2xl font-bold text-green-700">0</p>
+      <p data-detalle class="mt-1 text-xs text-gray-500">$ 0 en facturas</p>
+    </article>
+  </section>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -132,7 +161,7 @@
       </div>
 
       <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        Para consultar compras anteriores, usa <b>Ver compras</b> en la fila del proveedor.
+        Consulta las compras, saldos y pagos desde <b>Ver compras</b>.
       </div>
 
       <!-- Tabla de proveedores -->
@@ -171,11 +200,100 @@
                 <th class="px-3 py-2 font-medium text-right">Saldo</th>
                 <th class="px-3 py-2 font-medium text-center">Estado</th>
                 <th class="px-3 py-2 font-medium">Nota</th>
+                <th class="px-3 py-2 font-medium text-center">Acciones</th>
               </tr>
             </thead>
             <tbody id="tbody-facturas"></tbody>
           </table>
         </div>
+      </div>
+
+      <div id="panel-detalle-factura" class="hidden bg-white rounded-lg shadow-sm border border-teal-200 p-5 fade-in">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 id="detalle-factura-titulo" class="text-lg font-semibold text-gray-800">Detalle de factura</h2>
+            <p id="detalle-factura-sub" class="text-xs text-gray-500"></p>
+          </div>
+          <button id="btn-cerrar-detalle-factura" class="text-sm text-gray-500 hover:text-gray-800">Cerrar</button>
+        </div>
+        <div id="detalle-factura-resumen" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
+
+        <h3 class="font-semibold text-sm text-gray-700 mb-2">Productos comprados</h3>
+        <div class="overflow-x-auto mb-5">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 text-left">
+              <tr>
+                <th class="px-3 py-2">Producto</th>
+                <th class="px-3 py-2 text-right">Cantidad</th>
+                <th class="px-3 py-2 text-right">Costo unitario</th>
+                <th class="px-3 py-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-detalle-lineas"></tbody>
+          </table>
+        </div>
+
+        <h3 class="font-semibold text-sm text-gray-700 mb-2">Pagos aplicados</h3>
+        <div class="overflow-x-auto mb-5">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 text-left">
+              <tr>
+                <th class="px-3 py-2">Fecha</th>
+                <th class="px-3 py-2 text-right">Monto</th>
+                <th class="px-3 py-2">Método / referencia</th>
+                <th class="px-3 py-2">Soporte</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-detalle-pagos"></tbody>
+          </table>
+        </div>
+
+        <h3 class="font-semibold text-sm text-gray-700 mb-2">Aplicación FIFO de consignaciones</h3>
+        <p class="text-xs text-gray-500 mb-2">Las consignaciones se aplican desde la factura más antigua hasta la más nueva.</p>
+        <div class="overflow-x-auto mb-5">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 text-left">
+              <tr>
+                <th class="px-3 py-2">Orden FIFO</th>
+                <th class="px-3 py-2">Fecha instrucción</th>
+                <th class="px-3 py-2">Tienda</th>
+                <th class="px-3 py-2">Banco / cuenta</th>
+                <th class="px-3 py-2 text-right">Monto aplicado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-aplicaciones-fifo"></tbody>
+          </table>
+        </div>
+
+        <form id="form-pago-proveedor" class="hidden border-t border-gray-200 pt-4 space-y-3">
+          <h3 class="font-semibold text-gray-800">Registrar pago</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-sm">Monto
+              <input id="pago-monto" type="number" min="1" step="1" required class="mt-1 w-full border rounded px-3 py-2" />
+            </label>
+            <label class="text-sm">Fecha
+              <input id="pago-fecha" type="date" required class="mt-1 w-full border rounded px-3 py-2" />
+            </label>
+            <label class="text-sm">Método
+              <input id="pago-metodo" type="text" maxlength="60" placeholder="Transferencia, efectivo..." class="mt-1 w-full border rounded px-3 py-2" />
+            </label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-sm">Referencia
+              <input id="pago-referencia" type="text" maxlength="120" class="mt-1 w-full border rounded px-3 py-2" />
+            </label>
+            <label class="text-sm">Soporte
+              <input id="pago-soporte" type="file" accept="image/*,application/pdf" class="mt-1 w-full border rounded px-3 py-2" />
+            </label>
+          </div>
+          <label class="block text-sm">Nota
+            <textarea id="pago-nota" maxlength="500" rows="2" class="mt-1 w-full border rounded px-3 py-2"></textarea>
+          </label>
+          <button id="btn-registrar-pago" type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded">
+            Registrar pago
+          </button>
+        </form>
+        <div id="detalle-factura-nota" class="mt-4 text-sm text-gray-600"></div>
       </div>
 
     </section>
@@ -189,13 +307,11 @@
 // ============================================================
 const SB = (function () {
   if (window.SB) return window.SB;
-  const env = window.CREDITEK_ENV || {
-    // ⚠️ Reemplaza estos dos valores en tu repo (o usa tu config.js compartido)
-    SUPABASE_URL: 'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ'
-  };
-  return window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  const env = window.__KORA_ENV__;
+  return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
 })();
+const proveedoresDomain = window.CreditekProveedoresDomain;
+const BUCKET_SOPORTES = 'productos-fotos';
 
 // ============================================================
 // HELPERS DE FORMATO — Colombia
@@ -204,7 +320,11 @@ const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: '
 const fmtFecha = new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 
 function money(n) { return n == null ? '—' : fmtMoney.format(Number(n)); }
-function fecha(iso) { return iso ? fmtFecha.format(new Date(iso)) : '—'; }
+function fecha(iso) {
+  return iso
+    ? fmtFecha.format(new Date(proveedoresDomain.normalizarFechaLocal(iso)))
+    : '—';
+}
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -256,7 +376,10 @@ async function verificarAuth() {
 // ============================================================
 let proveedores = [];
 let saldoPorProveedor = {};   // id -> saldo pendiente agregado
+let facturas = [];
 let proveedorSeleccionado = null;
+let detalleFacturaActual = null;
+let pagoIdempotencyKey = null;
 
 // ============================================================
 // CARGA DE DATOS
@@ -272,10 +395,11 @@ async function cargarProveedores() {
   // Saldos pendientes agregados
   const { data: fact, error: fErr } = await SB
     .from('facturas_proveedor')
-    .select('proveedor_id, saldo');
+    .select('id, proveedor_id, total, saldo, fecha_vencimiento');
   if (fErr) { toast('Error cargando facturas: ' + fErr.message, 'error'); return; }
+  facturas = fact || [];
   saldoPorProveedor = {};
-  (fact || []).forEach(f => {
+  facturas.forEach(f => {
     saldoPorProveedor[f.proveedor_id] = (saldoPorProveedor[f.proveedor_id] || 0) + Number(f.saldo || 0);
   });
 
@@ -302,6 +426,7 @@ function render() {
 
   document.getElementById('contador').textContent =
     filtrados.length + ' de ' + proveedores.length + ' proveedores';
+  renderResumen(filtrados);
 
   if (filtrados.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">Sin resultados</td></tr>';
@@ -333,6 +458,43 @@ function render() {
   }).join('');
 }
 
+function renderResumen(proveedoresFiltrados) {
+  const resumen = proveedoresDomain.resumirCartera({
+    facturas,
+    proveedorIds: proveedoresFiltrados.map(p => p.id),
+    hoy: proveedoresDomain.fechaCalendarioLocal(new Date()),
+  });
+  const actualizar = (id, valor, detalle) => {
+    const tarjeta = document.getElementById(id);
+    tarjeta.querySelector('[data-valor]').textContent = valor;
+    tarjeta.querySelector('[data-detalle]').textContent = detalle;
+  };
+  actualizar(
+    'card-total-por-pagar',
+    money(resumen.totalPorPagar.valor),
+    `${resumen.totalPorPagar.cantidad} facturas pendientes`
+  );
+  actualizar(
+    'card-por-vencer',
+    money(resumen.porVencer.valor),
+    `${resumen.porVencer.cantidad} facturas`
+  );
+  actualizar(
+    'card-vencidas',
+    money(resumen.vencidas.valor),
+    `${resumen.vencidas.cantidad} facturas`
+  );
+  actualizar(
+    'card-pagadas',
+    String(resumen.pagadas.cantidad),
+    `${money(resumen.pagadas.valor)} en facturas`
+  );
+  if (resumen.sinVencimiento.cantidad > 0) {
+    document.getElementById('card-total-por-pagar').querySelector('[data-detalle]').textContent +=
+      ` · ${resumen.sinVencimiento.cantidad} sin vencimiento`;
+  }
+}
+
 // ============================================================
 // FACTURAS DEL PROVEEDOR SELECCIONADO
 // ============================================================
@@ -342,18 +504,19 @@ async function mostrarFacturas(provId) {
 
   const prov = proveedores.find(p => p.id === provId);
   document.getElementById('facturas-prov-nombre').textContent = prov ? prov.nombre : '';
+  document.getElementById('panel-detalle-factura').classList.add('hidden');
 
   const { data, error } = await SB
     .from('facturas_proveedor')
-    .select('id, numero, fecha, total, saldo, nota')
+    .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota')
     .eq('proveedor_id', provId)
     .order('fecha', { ascending: false });
 
   const tbody = document.getElementById('tbody-facturas');
   if (error) {
-    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-red-600">Error: ' + esc(error.message) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-red-600">Error: ' + esc(error.message) + '</td></tr>';
   } else if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-gray-400 text-center">Este proveedor no tiene facturas registradas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-gray-400 text-center">Este proveedor no tiene facturas registradas.</td></tr>';
   } else {
     tbody.innerHTML = data.map(f => {
       const estado = Number(f.saldo) > 0 ? 'pendiente' : 'pagada';
@@ -368,6 +531,7 @@ async function mostrarFacturas(provId) {
           <td class="px-3 py-2 text-right font-mono ${Number(f.saldo) > 0 ? 'text-orange-600' : 'text-gray-400'}">${money(f.saldo)}</td>
           <td class="px-3 py-2 text-center">${badge}</td>
           <td class="px-3 py-2 text-gray-500 text-xs">${esc(f.nota) || '—'}</td>
+          <td class="px-3 py-2 text-center"><button data-detalle-factura="${f.id}" class="text-teal-600 hover:text-teal-800 text-xs font-semibold">Ver detalle</button></td>
         </tr>
       `;
     }).join('');
@@ -376,6 +540,158 @@ async function mostrarFacturas(provId) {
   const panel = document.getElementById('panel-facturas');
   panel.classList.remove('hidden');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function abrirSoporte(path) {
+  if (!path) return;
+  const ventana = window.open('about:blank', '_blank');
+  const { data, error } = await SB.storage.from(BUCKET_SOPORTES).createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    if (ventana) ventana.close();
+    toast('No se pudo abrir el soporte: ' + (error?.message || 'enlace no disponible'), 'error');
+    return;
+  }
+  if (ventana) ventana.location.href = data.signedUrl;
+}
+
+function renderDetalleFactura(datos) {
+  const detalle = proveedoresDomain.normalizarDetalle(datos);
+  detalleFacturaActual = detalle;
+  const f = detalle.factura;
+  document.getElementById('detalle-factura-titulo').textContent =
+    `${f.proveedor_nombre || 'Proveedor'} · ${f.numero || 'Sin número'}`;
+  document.getElementById('detalle-factura-sub').textContent = `Factura del ${fecha(f.fecha)}`;
+  document.getElementById('detalle-factura-resumen').innerHTML = `
+    <div class="rounded bg-gray-50 p-3"><div class="text-xs text-gray-500">Total factura</div><div class="font-semibold">${money(f.total)}</div></div>
+    <div class="rounded bg-green-50 p-3"><div class="text-xs text-green-700">Total pagado</div><div class="font-semibold text-green-800">${money(detalle.totalPagado)}</div></div>
+    <div class="rounded bg-orange-50 p-3"><div class="text-xs text-orange-700">Saldo pendiente</div><div class="font-semibold text-orange-800">${money(f.saldo)}</div></div>
+  `;
+  document.getElementById('tbody-detalle-lineas').innerHTML = detalle.lineas.length
+    ? detalle.lineas.map(linea => `
+      <tr>
+        <td class="px-3 py-2">${esc(linea.producto_nombre)}</td>
+        <td class="px-3 py-2 text-right">${linea.cantidad}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(linea.costo_unitario)}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(linea.subtotal)}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Sin líneas trazables.</td></tr>';
+  document.getElementById('tbody-detalle-pagos').innerHTML = detalle.pagos.length
+    ? detalle.pagos.map(pago => `
+      <tr>
+        <td class="px-3 py-2">${fecha(pago.fecha)}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(pago.monto)}</td>
+        <td class="px-3 py-2">${esc([pago.metodo, pago.referencia].filter(Boolean).join(' · ')) || '—'}</td>
+        <td class="px-3 py-2">${pago.soporte_path ? `<button data-soporte="${esc(pago.soporte_path)}" class="text-blue-600 text-xs font-semibold">Ver soporte</button>` : '—'}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Sin pagos aplicados.</td></tr>';
+  document.getElementById('detalle-factura-nota').innerHTML = `
+    <b>Nota:</b> ${esc(f.nota) || 'Sin nota.'}
+    ${f.soporte_path ? ` · <button data-soporte="${esc(f.soporte_path)}" class="text-blue-600 font-semibold">Ver soporte de factura</button>` : ''}
+  `;
+  const form = document.getElementById('form-pago-proveedor');
+  form.classList.toggle('hidden', f.saldo <= 0);
+  document.getElementById('pago-monto').max = String(f.saldo);
+  document.getElementById('pago-monto').value = f.saldo > 0 ? String(f.saldo) : '';
+  document.getElementById('pago-fecha').value =
+    proveedoresDomain.fechaCalendarioLocal(new Date());
+  pagoIdempotencyKey = crypto.randomUUID();
+}
+
+async function cargarAplicacionesFifo(facturaId) {
+  const tbody = document.getElementById('tbody-aplicaciones-fifo');
+  tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-400">Cargando...</td></tr>';
+  const { data, error } = await SB
+    .from('aplicaciones_consignacion_proveedor')
+    .select('monto_aplicado, orden_fifo, instruccion_id, instrucciones_consignacion(tienda_codigo, fecha, banco, numero_cuenta)')
+    .eq('factura_id', facturaId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-red-600">${esc(error.message)}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data?.length
+    ? data.map(aplicacion => {
+      const instruccion = aplicacion.instrucciones_consignacion || {};
+      return `<tr>
+        <td class="px-3 py-2">${aplicacion.orden_fifo}</td>
+        <td class="px-3 py-2">${fecha(instruccion.fecha)}</td>
+        <td class="px-3 py-2">${esc(instruccion.tienda_codigo) || '—'}</td>
+        <td class="px-3 py-2">${esc([instruccion.banco, instruccion.numero_cuenta].filter(Boolean).join(' · ')) || '—'}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(aplicacion.monto_aplicado)}</td>
+      </tr>`;
+    }).join('')
+    : '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-400">Sin aplicaciones de consignación.</td></tr>';
+}
+
+async function mostrarDetalleFactura(facturaId) {
+  const panel = document.getElementById('panel-detalle-factura');
+  panel.classList.remove('hidden');
+  document.getElementById('detalle-factura-titulo').textContent = 'Cargando detalle...';
+  document.getElementById('detalle-factura-sub').textContent = '';
+  const { data, error } = await SB.rpc('obtener_detalle_factura_proveedor', {
+    p_factura_id: facturaId,
+  });
+  if (error) {
+    document.getElementById('detalle-factura-titulo').textContent = 'No se pudo cargar la factura';
+    document.getElementById('detalle-factura-sub').textContent = error.message;
+    return;
+  }
+  renderDetalleFactura(data);
+  await cargarAplicacionesFifo(facturaId);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function subirSoportePago() {
+  const archivo = document.getElementById('pago-soporte').files?.[0];
+  if (!archivo) return null;
+  const extension = (archivo.name.split('.').pop() || 'bin').toLowerCase();
+  const path = `pagos-proveedores/${pagoIdempotencyKey}.${extension}`;
+  const { error } = await SB.storage.from(BUCKET_SOPORTES).upload(path, archivo, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw new Error('No se pudo subir el soporte: ' + error.message);
+  return path;
+}
+
+async function registrarPago(event) {
+  event.preventDefault();
+  if (!detalleFacturaActual) return;
+  const btn = document.getElementById('btn-registrar-pago');
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+  let soportePath = null;
+  try {
+    const pago = proveedoresDomain.validarPago({
+      monto: document.getElementById('pago-monto').value,
+      saldo: detalleFacturaActual.factura.saldo,
+      fecha: document.getElementById('pago-fecha').value,
+    });
+    soportePath = await subirSoportePago();
+    const { data, error } = await SB.rpc('registrar_pago_proveedor', {
+      p_factura_id: detalleFacturaActual.factura.id,
+      p_monto: pago.monto,
+      p_fecha: pago.fecha,
+      p_metodo: document.getElementById('pago-metodo').value.trim() || null,
+      p_referencia: document.getElementById('pago-referencia').value.trim() || null,
+      p_soporte_path: soportePath,
+      p_nota: document.getElementById('pago-nota').value.trim() || null,
+      p_idempotency_key: pagoIdempotencyKey,
+    });
+    if (error) throw new Error(error.message);
+    if (!data?.ok) throw new Error('El servidor no confirmó el pago');
+    toast(data.reutilizado ? 'El pago ya estaba registrado' : 'Pago registrado');
+    document.getElementById('pago-soporte').value = '';
+    await mostrarDetalleFactura(detalleFacturaActual.factura.id);
+    await cargarProveedores();
+  } catch (error) {
+    toast('No se pudo registrar el pago: ' + error.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrar pago';
+  }
 }
 
 // ============================================================
@@ -449,6 +765,18 @@ document.getElementById('form-proveedor').addEventListener('submit', guardar);
 document.getElementById('btn-cancelar').addEventListener('click', resetForm);
 document.getElementById('filtro-texto').addEventListener('input', render);
 document.getElementById('filtro-estado').addEventListener('change', render);
+document.getElementById('btn-cerrar-detalle-factura').addEventListener('click', () => {
+  document.getElementById('panel-detalle-factura').classList.add('hidden');
+});
+document.getElementById('tbody-facturas').addEventListener('click', event => {
+  const btn = event.target.closest('[data-detalle-factura]');
+  if (btn) mostrarDetalleFactura(btn.dataset.detalleFactura);
+});
+document.getElementById('panel-detalle-factura').addEventListener('click', event => {
+  const btn = event.target.closest('[data-soporte]');
+  if (btn) abrirSoporte(btn.dataset.soporte);
+});
+document.getElementById('form-pago-proveedor').addEventListener('submit', registrarPago);
 
 document.getElementById('tbody-proveedores').addEventListener('click', e => {
   const btnFacturas = e.target.closest('[data-facturas]');

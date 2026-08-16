@@ -1,15 +1,26 @@
 {
   "name": "consultora",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
-    "test": "node --test tests/security/*.test.mjs tests/erp/*.test.mjs",
+    "build": "npm run build:environment",
+    "build:public": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
+    "build:environment": "npm run config:check && npm run config:generate -- --output=config/generated/kora-environment.generated.js && npm run build:public && npm run config:verify-artifact",
+    "config:check": "node scripts/check-kora-config-security.mjs",
+    "config:generate": "node scripts/generate-kora-environment.mjs",
+    "config:verify-artifact": "node scripts/verify-kora-environment-artifact.mjs",
+    "health:kora": "node scripts/check-kora-supabase-health.mjs",
+    "test": "node --test tests/security/*.test.mjs tests/agentes/*.test.mjs tests/erp/*.test.mjs",
     "test:erp": "node --test tests/erp/*.test.mjs",
+    "test:local": "node scripts/run-kora-local-tests.mjs",
+    "test:config": "node --test tests/config/*.test.mjs",
+    "test:design-system": "node --test tests/design-system/*.test.mjs",
+    "test:e2e:aura": "node --test tests/e2e/aura-login-production.test.mjs",
     "test:live": "node --test tests/security/live-smoke.test.mjs",
-    "preview:upload": "npm run build && wrangler versions upload",
-    "deploy": "npm run build && wrangler deploy"
+    "preview:upload": "npm run build:environment && wrangler versions upload",
+    "deploy": "node scripts/deny-direct-kora-deploy.mjs",
+    "deploy:kora:production": "node scripts/deploy-kora-production.mjs"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +34,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "wrangler": "4.114.0"
   }
 }

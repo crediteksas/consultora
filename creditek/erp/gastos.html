@@ -7,7 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="sidebar.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -117,6 +119,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -190,7 +194,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 <div class="modal-bg" id="modalGasto">
   <div class="modal-box">
     <h2>Registrar gasto</h2>
-    <div class="modal-sub">La fecha y hora se registran automáticamente.</div>
+    <div class="modal-sub">Completa los datos soportados por el registro de gastos.</div>
+    <div class="campo">
+      <label for="gastoFecha">Fecha</label>
+      <input type="date" id="gastoFecha" required>
+    </div>
     <!-- FIX 22-jul-2026 · FEATURE_ReportesDiarios: gerencia/auditoria puede
          registrar gastos "generales" contra CENTRAL (ej. pago volanteo,
          insumos que no son de ninguna tienda). Admins de tienda no ven este
@@ -200,12 +208,16 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <select id="gastoTienda"></select>
     </div>
     <div class="campo">
-      <label>Concepto</label>
+      <label for="gastoConcepto">Categoría / concepto</label>
       <select id="gastoConcepto"></select>
     </div>
     <div class="aviso-adicional" id="avisoAdicional">Este concepto no está preautorizado — quedará en cola para que Mayte lo apruebe.</div>
     <div class="campo"><label>Monto</label><input type="number" id="gastoMonto" min="1" placeholder="0"></div>
     <div class="campo"><label id="labelDescripcion">Descripción (opcional)</label><textarea id="gastoDescripcion" rows="2" placeholder="Detalle del gasto..."></textarea></div>
+    <div class="campo">
+      <label for="gastoResponsable">Usuario responsable</label>
+      <input type="text" id="gastoResponsable" readonly aria-readonly="true">
+    </div>
     <div class="modal-err" id="modalGastoErr"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCancelarGasto">Cancelar</button>
@@ -229,8 +241,9 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 </div>
 
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
@@ -241,7 +254,9 @@ let tiendasCache = [];
 let gastoIdParaRechazar = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
-function puedeRegistrarGasto() { return !!currentPerfil && currentPerfil.rol === 'admin_tienda'; }
+function puedeRegistrarGasto() {
+  return !!currentPerfil && ['admin_tienda', 'gerencia', 'auditoria'].includes(currentPerfil.rol);
+}
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -288,6 +303,10 @@ function pintarNavUser() {
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
 function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function formatearFechaGasto(fecha) {
+  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })
+    .format(new Date(`${fecha}T12:00:00-05:00`));
+}
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -365,7 +384,7 @@ async function cargarGastos() {
 
 function renderColaAprobacion() {
   if (!esCentral()) return;
-  const pendientes = gastosCache.filter(g => g.estado === 'registrado' && g.conceptos_gasto && !g.conceptos_gasto.preautorizado);
+  const pendientes = gastosCache.filter(g => g.estado === 'registrado');
   const cont = document.getElementById('colaAprobacion');
   if (!pendientes.length) { cont.innerHTML = '<div class="empty-state">No hay gastos pendientes de aprobar.</div>'; return; }
   cont.innerHTML = pendientes.map(g => `
@@ -437,7 +456,7 @@ function renderTablaGastos() {
 
   tbody.innerHTML = filtrados.map(g => `
     <tr>
-      <td>${new Date(g.fecha).toLocaleDateString('es-CO')}</td>
+      <td>${formatearFechaGasto(g.fecha)}</td>
       <td>${escapeHtml(g.conceptos_gasto?.nombre || '—')}</td>
       <td>${fmtCOP(g.monto)}</td>
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>
@@ -449,8 +468,12 @@ function renderTablaGastos() {
 
 // ─── Registrar gasto ─────────────────────────────────────────────────
 function abrirModalGasto() {
+  document.getElementById('gastoFecha').value = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota',
+  }).format(new Date());
   document.getElementById('gastoMonto').value = '';
   document.getElementById('gastoDescripcion').value = '';
+  document.getElementById('gastoResponsable').value = currentPerfil.nombre || currentUser.email || '';
   document.getElementById('modalGastoErr').classList.remove('show');
   if (document.getElementById('gastoConcepto').options.length) onConceptoCambiado();
   document.getElementById('modalGasto').classList.add('show');
@@ -469,11 +492,14 @@ async function guardarGasto() {
   err.classList.remove('show');
 
   const concepto_id = document.getElementById('gastoConcepto').value;
+  const fechaSeleccionada = document.getElementById('gastoFecha').value;
   const monto = Number(document.getElementById('gastoMonto').value || 0);
   const descripcion = document.getElementById('gastoDescripcion').value.trim();
   const sel = document.getElementById('gastoConcepto');
   const preautorizado = sel.options[sel.selectedIndex]?.dataset.preautorizado === 'true';
 
+  if (!fechaSeleccionada) { err.textContent = 'Selecciona la fecha del gasto.'; err.classList.add('show'); return; }
+  if (!concepto_id) { err.textContent = 'Selecciona una categoría o concepto.'; err.classList.add('show'); return; }
   if (monto <= 0) { err.textContent = 'Ingresa un monto válido.'; err.classList.add('show'); return; }
   if (!preautorizado && !descripcion) { err.textContent = 'La descripción es obligatoria para gastos adicionales.'; err.classList.add('show'); return; }
 
@@ -491,6 +517,7 @@ async function guardarGasto() {
 
   const { error } = await sb.from('gastos').insert({
     tienda_codigo: tiendaSeleccionada,
+    fecha: fechaSeleccionada,
     concepto_id, monto, descripcion: descripcion || null,
     estado: 'registrado', registrado_por: currentUser.id,
   });

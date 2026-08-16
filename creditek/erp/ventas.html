@@ -7,8 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="sidebar.js"></script>
 <script src="ventas-domain.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+<script src="ventas-utilidad-domain.js"></script>
+<script src="caja-piloto-domain.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -88,7 +92,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
 
 /* ── Wizard ── */
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
 .modal-bg.show { display: flex; }
 .modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-md); }
 .modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 4px; }
@@ -154,7 +158,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
 
-.scanner-overlay { display: none; position: fixed; inset: 0; background: black; z-index: 100; align-items: center; justify-content: center; flex-direction: column; }
+.scanner-overlay { display: none; position: fixed; inset: 0; background: black; z-index: 1100; align-items: center; justify-content: center; flex-direction: column; }
 .scanner-overlay.show { display: flex; }
 .scanner-overlay video { width: 100%; max-width: 480px; border-radius: 12px; }
 .scanner-overlay button { margin-top: 16px; background: white; color: var(--azul); border: none; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; }
@@ -169,6 +173,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .detalle-actions button { border: none; border-radius: 999px; padding: 11px 20px; background: var(--azul); color: white; font-weight: 700; cursor: pointer; }
 @media (max-width: 560px) { .detalle-meta { grid-template-columns: 1fr; } }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -220,7 +226,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <div class="tabla-wrap">
       <table>
-        <thead><tr><th>#</th><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Productos</th><th>Total</th><th>Vendedor</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
         <tbody id="tbodyVentas"></tbody>
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando ventas...</div>
@@ -321,10 +327,13 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 </div>
 
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ventasDomain = window.CreditekVentasDomain;
+const ventasUtilidad = window.CreditekVentasUtilidad;
+const ventasPagos = window.CreditekCajaPiloto;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -438,7 +447,9 @@ async function cargarVentas() {
   const fecha = document.getElementById('filtroFecha').value;
   const tienda = document.getElementById('filtroTienda').value;
 
-  let q = sb.from('ventas').select(ventasDomain.columnasListaVentas()).order('created_at', { ascending: false });
+  let q = sb.from('ventas')
+    .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(cantidad, precio_venta, unidades(imei), productos(nombre))')
+    .order('created_at', { ascending: false });
   if (fecha) q = q.eq('fecha', fecha);
   if (tienda) q = q.eq('tienda_codigo', tienda);
 
@@ -457,21 +468,34 @@ function renderTablaVentas() {
   if (!filtradas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay ventas con estos filtros.'; return; }
   empty.style.display = 'none';
 
-  tbody.innerHTML = filtradas.map(v => {
-    const hora = v.created_at ? new Date(v.created_at).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : '—';
-    const cliente = v.clientes ? `${escapeHtml(v.clientes.nombre_completo)} (CC ${escapeHtml(v.clientes.cedula)})` : 'Cliente general';
-    const productos = (v.venta_items || []).map(it => `${escapeHtml(it.productos?.nombre || '—')}${it.cantidad > 1 ? ' ×' + it.cantidad : ''}`).join(', ');
-    return `
+  tbody.innerHTML = filtradas.flatMap(v => {
+    const fecha = v.fecha
+      ? new Date(`${v.fecha}T12:00:00`).toLocaleDateString('es-CO')
+      : '—';
+    const cliente = v.clientes
+      ? `${escapeHtml(v.clientes.nombre_completo || 'Cliente general')}${v.clientes?.cedula ? ` (CC ${escapeHtml(v.clientes.cedula)})` : ''}`
+      : 'Cliente general';
+    const tienda = escapeHtml(v.origen?.nombre || v.tienda_codigo || '—');
+    const credito = Array.isArray(v.creditos) ? v.creditos[0] : v.creditos;
+    const plataforma = escapeHtml(v.tipo === 'credito' ? (credito?.financiera || '—') : 'Contado');
+    const items = v.venta_items?.length ? v.venta_items : [null];
+    return items.map(it => {
+      const valorLinea = it
+        ? Number(it.precio_venta || 0) * Number(it.cantidad || 0)
+        : Number(v.total || 0);
+      return `
       <tr data-id="${v.id}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}">
-        <td><button class="link-detalle" type="button">#${v.consecutivo}</button></td>
-        <td>${hora}</td>
+        <td>${fecha}</td>
+        <td>${tienda}</td>
         <td>${cliente}</td>
-        <td><span class="tag ${v.tipo}">${v.tipo === 'credito' ? 'Crédito' : 'Contado'}</span></td>
-        <td>${productos}</td>
-        <td>${fmtCOP(v.total)}</td>
+        <td>${escapeHtml(it?.productos?.nombre || '—')}${Number(it?.cantidad || 0) > 1 ? ` ×${Number(it.cantidad)}` : ''}</td>
+        <td>${escapeHtml(it?.unidades?.imei || '—')}</td>
+        <td>${plataforma}</td>
+        <td>${fmtCOP(valorLinea)}</td>
         <td>${escapeHtml(v.vendedor_perfil?.nombre || '—')}</td>
       </tr>
-    `;
+      `;
+    });
   }).join('');
 
   tbody.querySelectorAll('tr[data-id]').forEach(row => {
@@ -638,6 +662,21 @@ function avanzarPaso() {
     const inicial = Number(document.getElementById('creditoInicial').value || 0);
     const esperado = Number(document.getElementById('creditoValorEsperado').value || 0);
     if (esperado <= 0) { err.textContent = 'Ingresa el valor esperado de la financiera.'; err.classList.add('show'); return; }
+    const totalVenta = venta.items.reduce(
+      (suma, item) => suma + Number(item.precio_venta || 0) * Number(item.cantidad || 1),
+      0
+    );
+    try {
+      ventasPagos.clasificarVentaCredito({
+        totalVenta,
+        cuotaInicial: inicial,
+        saldoPendiente: esperado,
+      });
+    } catch (error) {
+      err.textContent = error.message;
+      err.classList.add('show');
+      return;
+    }
     venta.credito = {
       financiera: document.getElementById('creditoFinanciera').value,
       cuota_inicial: inicial,
@@ -668,7 +707,7 @@ async function buscarClientePorCedula() {
   const { data: cliente, error } = await sb.from('clientes').select('*').eq('cedula', cedula).maybeSingle();
   if (error) { cont.innerHTML = 'Error: ' + error.message; return; }
   if (!cliente) {
-    const link = `registro.html?origen=${encodeURIComponent(currentPerfil.tienda_codigo || '')}&v=${encodeURIComponent(currentPerfil.nombre || '')}`;
+    const link = 'registro-interno.html';
     cont.innerHTML = `<div class="aviso-validacion">Este cliente no existe en la Base Maestra.<br><a class="link-registro" href="${link}" target="_blank" rel="noopener">Registrarlo ahora →</a></div>`;
     venta.cliente_id = null;
     venta.clienteInfo = null;
@@ -883,6 +922,14 @@ function actualizarTotalParcial() {
 
 function renderResumenFinal() {
   const total = venta.items.reduce((s, it) => s + (it.precio_venta || 0) * (it.cantidad || 1), 0);
+  const utilidades = venta.items.map(it => ventasUtilidad.calcular({
+    precioVenta: it.precio_venta,
+    costoRemisionCongelado: it.precio_minimo,
+    cantidad: it.cantidad,
+  }).utilidad);
+  const utilidadEstimada = utilidades.every(valor => valor !== null)
+    ? utilidades.reduce((totalUtilidad, valor) => totalUtilidad + valor, 0)
+    : null;
   const lineas = venta.items.map(it => `
     <div class="linea"><span>${escapeHtml(it.nombreProducto || 'Producto')}${it.cantidad > 1 ? ' ×' + it.cantidad : ''}</span><span>${fmtCOP((it.precio_venta || 0) * (it.cantidad || 1))}</span></div>
   `).join('');
@@ -900,6 +947,7 @@ function renderResumenFinal() {
     ${lineas}
     ${creditoHtml}
     <div class="linea total"><span>Total</span><span>${fmtCOP(total)}</span></div>
+    ${utilidadEstimada === null ? '' : `<div class="linea"><span>Utilidad bruta estimada</span><span>${fmtCOP(utilidadEstimada)}</span></div>`}
   `;
 }
 

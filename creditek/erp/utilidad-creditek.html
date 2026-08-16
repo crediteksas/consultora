@@ -1,496 +1,209 @@
 <!doctype html>
-<!--
-  utilidad-creditek.html · Creditek ERP · R4 pantalla 5/5 (ÚLTIMA)
-  Ubicación sugerida en repo: creditek/erp/pages/utilidad-creditek.html
-  Acceso: gerencia / auditoria (RLS de remision_margenes ya bloquea al resto)
-
-  Data sources:
-    - Vista `utilidad_creditek_por_periodo` (agregado mensual)
-    - Vista `utilidad_creditek_detalle` (fila por unidad — drill-down)
-
-  IMPORTANTE:
-    Esta pantalla nunca se comparte con tiendas. Es el consolidado interno
-    donde Oscar ve cuánto gana Creditek por vender su mercancía a la red.
-    Las tiendas nunca ven costo real ni utilidad — solo su precio de remisión.
-
-  INTEGRACIÓN:
-    1. Cliente Supabase: window.SB o CREDITEK_ENV.
-    2. Chart.js desde CDN — si tu repo ya lo carga, borra el <script>.
-    3. Sidebar: descomenta al final si aplica.
--->
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Utilidad Creditek · panel gerencia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="utilidad-creditek-domain.js"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .fade-in { animation: fadeIn 0.15s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-
-    .kpi-facturado { background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #3b82f6; }
-    .kpi-costo     { background: linear-gradient(135deg, #fff7ed, #fed7aa); border-color: #f97316; }
-    .kpi-utilidad  { background: linear-gradient(135deg, #ecfdf5, #a7f3d0); border-color: #10b981; }
-    .kpi-margen    { background: linear-gradient(135deg, #faf5ff, #e9d5ff); border-color: #a855f7; }
-
-    tbody tr:hover { background-color: #f9fafb; }
-
-    .toggle-btn { padding: 0.4rem 0.9rem; font-size: 0.875rem; }
-    .toggle-btn.active { background-color: #1e40af; color: white; }
-
-    #chart-container { position: relative; height: 320px; }
+    :root { --navy:#0B1E3D; --navy-2:#15345f; --teal:#00C4CC; --canvas:#f4f7fb; --line:#dfe7f1; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--canvas); color:#172033; font-family:"Montserrat",sans-serif; }
+    .page-shell { width:min(1540px, calc(100% - 40px)); margin:0 auto; }
+    .topbar { background:var(--navy); color:white; box-shadow:0 5px 20px rgba(11,30,61,.18); }
+    .topbar-inner { min-height:78px; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+    .brand-block { display:flex; align-items:center; gap:14px; min-width:0; }
+    .back-link { color:#a8c0df; font-size:13px; font-weight:600; white-space:nowrap; }
+    .back-link:hover { color:white; }
+    .brand-mark { width:42px; height:42px; border-radius:12px; background:linear-gradient(145deg,var(--teal),#65eef1); color:var(--navy); display:grid; place-items:center; font-weight:800; box-shadow:0 8px 22px rgba(0,196,204,.25); }
+    .page-title { margin:0; font-size:22px; line-height:1.15; font-weight:700; letter-spacing:-.02em; }
+    .page-description { margin:4px 0 0; color:#aac0dc; font-size:12px; }
+    .topbar-actions { display:flex; align-items:center; gap:12px; font-size:12px; color:#c6d4e6; }
+    .refresh-btn { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 14px; border:1px solid rgba(255,255,255,.2); border-radius:9px; background:rgba(255,255,255,.08); color:white; font-weight:600; }
+    .refresh-btn:hover { background:rgba(255,255,255,.14); }
+    .user-pill { max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:9px 12px; border-radius:9px; background:rgba(255,255,255,.08); }
+    .dashboard { padding:24px 0 34px; display:grid; gap:18px; }
+    .surface { background:white; border:1px solid var(--line); border-radius:14px; box-shadow:0 7px 22px rgba(25,45,75,.055); }
+    .filter-bar { padding:14px; display:grid; grid-template-columns:1.05fr 1.05fr 1.35fr 1fr 1fr 1fr auto auto; gap:10px; align-items:end; }
+    .field-label { display:block; margin:0 0 6px; color:#627089; font-size:10px; font-weight:700; letter-spacing:.035em; text-transform:uppercase; }
+    .control { width:100%; height:40px; border:1px solid #d7e0eb; border-radius:8px; background:#fff; padding:0 10px; color:#24324a; font-size:12px; outline:none; }
+    .control:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,196,204,.12); }
+    .filter-action { height:40px; border-radius:8px; padding:0 16px; font-size:12px; font-weight:700; white-space:nowrap; }
+    .apply-btn { background:var(--navy); color:white; }
+    .apply-btn:hover { background:var(--navy-2); }
+    .advanced-btn { border:1px solid #d7e0eb; background:#f8fafc; color:#43526b; }
+    .advanced-btn:hover, .advanced-btn.active { border-color:var(--teal); color:var(--navy); background:#ecfeff; }
+    .advanced-panel { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:7px; padding-top:2px; }
+    .quick { border:1px solid #d9e2ed; border-radius:20px; padding:7px 12px; background:#fff; color:#536179; font-size:11px; font-weight:600; }
+    .quick:hover, .quick.active { border-color:var(--teal); background:rgba(0,196,204,.09); color:var(--navy); }
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+    .kpi-card { position:relative; min-height:158px; overflow:hidden; padding:19px 20px 16px; border:1px solid var(--line); border-radius:14px; background:white; box-shadow:0 8px 24px rgba(27,50,82,.06); }
+    .kpi-card:after { content:""; position:absolute; width:110px; height:110px; right:-44px; top:-44px; border-radius:50%; background:var(--kpi-soft); }
+    .kpi-head { display:flex; align-items:center; gap:10px; position:relative; z-index:1; }
+    .kpi-icon { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:var(--kpi-soft); color:var(--kpi-color); font-size:17px; font-weight:700; }
+    .kpi-name { color:#68758b; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .kpi-value { position:relative; z-index:1; margin:15px 0 2px; color:var(--navy); font-size:27px; line-height:1; font-weight:700; letter-spacing:-.035em; }
+    .kpi-period { color:#8a95a7; font-size:10px; }
+    .kpi-delta { position:relative; z-index:1; min-height:18px; margin-top:13px; padding-top:10px; border-top:1px solid #edf1f6; font-size:10px; font-weight:600; color:#657289; }
+    .kpi-facturado { --kpi-color:#2476df; --kpi-soft:#eaf3ff; }
+    .kpi-costo { --kpi-color:#df7a22; --kpi-soft:#fff2e6; }
+    .kpi-utilidad { --kpi-color:#079f78; --kpi-soft:#e5fbf4; }
+    .kpi-margen { --kpi-color:#7459d9; --kpi-soft:#f0edff; }
+    .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:18px 20px 12px; }
+    .panel-title { margin:0; color:var(--navy); font-size:15px; font-weight:700; }
+    .panel-sub { margin:4px 0 0; color:#8290a4; font-size:10px; }
+    .chart-actions { display:flex; align-items:center; gap:8px; }
+    .segment { display:flex; padding:3px; border:1px solid #dce4ee; border-radius:9px; background:#f6f8fb; }
+    .granularidad { min-width:58px; padding:7px 11px; border-radius:6px; color:#69778d; font-size:11px; font-weight:700; }
+    .granularidad.active { background:var(--navy); color:#fff; box-shadow:0 3px 8px rgba(11,30,61,.18); }
+    .export-btn { display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 14px; border-radius:8px; background:var(--teal); color:var(--navy); font-size:11px; font-weight:800; }
+    .export-btn:hover { background:#30d7dd; }
+    #chart-container { position:relative; height:380px; padding:0 14px 14px; }
+    .summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .summary-panel { min-width:0; overflow:hidden; }
+    .summary-panel .panel-head { align-items:center; padding-bottom:13px; border-bottom:1px solid #edf1f6; }
+    .view-all { color:#008d94; font-size:10px; font-weight:700; white-space:nowrap; }
+    .view-all:hover { text-decoration:underline; }
+    .table-wrap { overflow-x:auto; }
+    .compact-table { width:100%; min-width:540px; border-collapse:collapse; font-size:9.5px; }
+    .compact-table th { padding:9px 10px; background:#f6f8fb; color:#6c798d; font-size:8.5px; font-weight:700; letter-spacing:.02em; white-space:nowrap; }
+    .compact-table td { padding:9px 10px; border-top:1px solid #f0f3f7; color:#344159; white-space:nowrap; }
+    .compact-table td:first-child { color:var(--navy); font-weight:600; }
+    .period-strip { display:grid; grid-template-columns:1.45fr repeat(5,1fr); align-items:stretch; overflow:hidden; }
+    .period-intro { padding:18px 20px; background:var(--navy); color:#fff; }
+    .period-intro .panel-title { color:#fff; }
+    .period-intro .panel-sub { color:#afc1d9; }
+    .period-stat { display:flex; flex-direction:column; justify-content:center; min-height:82px; padding:14px 18px; border-left:1px solid var(--line); }
+    .period-label { color:#7a879b; font-size:9px; font-weight:700; letter-spacing:.035em; text-transform:uppercase; }
+    .period-value { margin-top:7px; color:var(--navy); font-size:16px; font-weight:700; }
+    @media (max-width:1200px) {
+      .filter-bar { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .summary-grid { grid-template-columns:1fr 1fr; }
+      .summary-panel:last-child { grid-column:1 / -1; }
+      .period-strip { grid-template-columns:repeat(3,1fr); }
+      .period-intro { grid-column:1 / -1; }
+    }
+    @media (max-width:820px) {
+      .page-shell { width:min(100% - 24px,1540px); }
+      .topbar-inner { padding:13px 0; align-items:flex-start; }
+      .topbar-actions { flex-wrap:wrap; justify-content:flex-end; }
+      .page-description, .user-pill { display:none; }
+      .filter-bar { grid-template-columns:1fr 1fr; }
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+      .summary-grid { grid-template-columns:1fr; }
+      .summary-panel:last-child { grid-column:auto; }
+      .period-strip { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:560px) {
+      .page-shell { width:min(100% - 20px,1540px); }
+      .topbar-inner { min-height:70px; }
+      .brand-mark, .back-link, #ultima-actualizacion { display:none; }
+      .page-title { font-size:19px; }
+      .refresh-btn { padding:0 10px; }
+      .dashboard { padding-top:14px; gap:14px; }
+      .filter-bar, .kpi-grid, .period-strip { grid-template-columns:1fr; }
+      .advanced-panel { grid-column:auto; }
+      .filter-action { width:100%; }
+      .kpi-card { min-height:145px; }
+      .panel-head { flex-direction:column; align-items:stretch; }
+      .chart-actions { justify-content:space-between; }
+      #chart-container { height:310px; padding:0 4px 12px; }
+      .period-intro { grid-column:auto; }
+      .period-stat { min-height:68px; border-left:0; border-top:1px solid var(--line); }
+    }
   </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
-
-<!-- ============================================================ HEADER -->
-<header class="bg-white border-b border-gray-200 shadow-sm">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-    <div class="flex items-center gap-3">
-      <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
-      <h1 class="text-xl font-bold text-gray-800">Utilidad Creditek</h1>
-      <span class="text-xs text-gray-500">Margen (revenue − cost) sobre despachos a la red de tiendas</span>
+<body>
+<div data-kora-shell-root>
+<header class="topbar">
+  <div class="page-shell topbar-inner">
+    <div class="brand-block">
+      <a href="app.html" class="back-link">&larr; ERP</a>
+      <div class="brand-mark">C</div>
+      <div><h1 class="page-title">Utilidad Creditek</h1><p class="page-description">Facturado a tiendas menos costo real congelado de remisiones</p></div>
     </div>
-    <div class="flex items-center gap-3">
-      <span id="ultima-actualizacion" class="text-xs text-gray-500"></span>
-      <button id="btn-refresh"
-              class="px-3 py-1.5 border border-gray-300 rounded text-sm hover:bg-gray-50">↻ Actualizar</button>
-      <div id="usuario-info" class="text-sm text-gray-600"></div>
+    <div class="topbar-actions">
+      <span id="ultima-actualizacion"></span>
+      <button id="btn-refresh" class="refresh-btn"><span aria-hidden="true">↻</span> Actualizar</button>
+      <div id="usuario-info" class="user-pill"></div>
     </div>
   </div>
 </header>
 
-<!-- ============================================================ AUTH GUARD -->
-<div id="auth-guard" class="hidden max-w-7xl mx-auto mt-6 p-4 bg-red-50 border border-red-200 rounded">
+<div id="auth-guard" class="hidden page-shell mt-6 p-4 bg-red-50 border border-red-200 rounded">
   <p class="text-red-800 font-semibold">No autorizado.</p>
-  <p class="text-red-700 text-sm">Panel interno solo para <b>gerencia</b> o <b>auditoría</b>.</p>
+  <p class="text-red-700 text-sm">Panel interno solo para gerencia o auditoría.</p>
 </div>
 
-<!-- ============================================================ CONTENIDO -->
-<main id="app" class="hidden max-w-7xl mx-auto px-4 py-6 space-y-6">
-  <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
+<main id="app" class="hidden page-shell dashboard">
+  <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50"></div>
 
-  <!-- =========================== KPIs =========================== -->
-  <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="border-2 rounded-lg p-5 kpi-facturado">
-      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Facturado mes actual</div>
-      <div id="kpi-facturado-mes" class="text-2xl font-bold text-gray-800 font-mono">—</div>
-      <div id="kpi-facturado-delta" class="text-xs mt-1 text-gray-500">—</div>
-    </div>
-    <div class="border-2 rounded-lg p-5 kpi-costo">
-      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Costo real mes actual</div>
-      <div id="kpi-costo-mes" class="text-2xl font-bold text-gray-800 font-mono">—</div>
-      <div class="text-xs mt-1 text-gray-500">Lo pagado a proveedores</div>
-    </div>
-    <div class="border-2 rounded-lg p-5 kpi-utilidad">
-      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Utilidad mes actual</div>
-      <div id="kpi-utilidad-mes" class="text-2xl font-bold text-green-800 font-mono">—</div>
-      <div id="kpi-utilidad-ytd" class="text-xs mt-1 text-gray-500">YTD: —</div>
-    </div>
-    <div class="border-2 rounded-lg p-5 kpi-margen">
-      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Margen % mes actual</div>
-      <div id="kpi-margen-mes" class="text-2xl font-bold text-purple-800">—</div>
-      <div class="text-xs mt-1 text-gray-500">Utilidad ÷ facturado</div>
+  <section class="surface filter-bar" aria-label="Filtros de utilidad">
+    <details><summary>¿Cómo consultar el mes?</summary><p>Selecciona “Este mes” o define un rango personalizado y pulsa Actualizar. El consolidado y las tablas usan el mismo período.</p></details>
+    <label><span class="field-label">Fecha inicial</span><input id="fecha-desde" type="date" class="control" /></label>
+    <label><span class="field-label">Fecha final</span><input id="fecha-hasta" type="date" class="control" /></label>
+    <label><span class="field-label">Comparar con</span><select id="comparativo" class="control"><option value="sin">Sin comparación</option><option value="anterior">Período anterior equivalente</option><option value="mes_anterior">Mes anterior</option><option value="anio_anterior">Mismo período del año anterior</option></select></label>
+    <label><span class="field-label">Tienda</span><select id="filtro-tienda" class="control"><option value="">Todas</option></select></label>
+    <label><span class="field-label">Plataforma</span><select id="filtro-plataforma" class="control"><option value="">Todas</option></select></label>
+    <label><span class="field-label">Referencia</span><select id="filtro-referencia" class="control"><option value="">Todas</option></select></label>
+    <button id="btn-filtros-avanzados" class="filter-action advanced-btn" aria-expanded="false">Filtros avanzados</button>
+    <button id="btn-aplicar" class="filter-action apply-btn">Aplicar</button>
+    <div id="panel-filtros-avanzados" class="advanced-panel hidden" aria-label="Rangos rápidos">
+      <button class="quick" data-rapido="hoy">Hoy</button><button class="quick" data-rapido="semana">Esta semana</button><button class="quick active" data-rapido="mes">Este mes</button><button class="quick" data-rapido="mes_anterior">Mes anterior</button><button class="quick" data-rapido="30_dias">Últimos 30 días</button><button class="quick" data-rapido="personalizado">Personalizado</button>
     </div>
   </section>
-
-  <!-- =========================== CHART =========================== -->
-  <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-      <div>
-        <h2 class="text-lg font-semibold text-gray-800">Evolución mensual</h2>
-        <p class="text-xs text-gray-500">Facturado a tiendas vs costo real vs utilidad · últimos 12 meses</p>
-      </div>
-      <div class="flex gap-1 border border-gray-300 rounded overflow-hidden">
-        <button data-rango="3"  class="toggle-btn hover:bg-gray-100">3M</button>
-        <button data-rango="6"  class="toggle-btn hover:bg-gray-100 active">6M</button>
-        <button data-rango="12" class="toggle-btn hover:bg-gray-100">12M</button>
-      </div>
-    </div>
-    <div id="chart-container">
-      <canvas id="chart-mensual"></canvas>
-    </div>
+  <section id="error-utilidad" class="surface hidden" role="alert">
+    <strong>No fue posible cargar Utilidad Creditek.</strong>
+    <p data-error-mensaje>Comprueba la conexión e inténtalo nuevamente.</p>
+    <button type="button" onclick="location.reload()">Reintentar</button>
   </section>
 
-  <!-- =========================== TABLA MENSUAL =========================== -->
-  <section class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-      <div>
-        <h2 class="font-semibold text-gray-800">Detalle mensual</h2>
-        <p class="text-xs text-gray-500">Números exactos por período. Click para filtrar el drill-down abajo.</p>
-      </div>
-      <span id="periodo-seleccionado" class="text-xs text-gray-500"></span>
-    </div>
-    <table class="w-full text-sm">
-      <thead class="bg-gray-100 text-gray-700 text-left">
-        <tr>
-          <th class="px-4 py-2 font-semibold">Periodo</th>
-          <th class="px-4 py-2 font-semibold text-right">Facturado</th>
-          <th class="px-4 py-2 font-semibold text-right">Costo real</th>
-          <th class="px-4 py-2 font-semibold text-right">Utilidad</th>
-          <th class="px-4 py-2 font-semibold text-right">Margen %</th>
-          <th class="px-4 py-2 font-semibold text-right">Nº remisiones</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-mensual">
-        <tr><td colspan="6" class="text-center py-6 text-gray-400">Cargando...</td></tr>
-      </tbody>
-    </table>
+  <section class="kpi-grid">
+    <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><p id="kpi-facturado" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-costo"><div class="kpi-head"><span class="kpi-icon">⌁</span><span class="kpi-name">Costo real</span></div><p id="kpi-costo" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-costo" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad</span></div><p id="kpi-utilidad" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-margen"><div class="kpi-head"><span class="kpi-icon">%</span><span class="kpi-name">Margen %</span></div><p id="kpi-margen" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-margen" class="kpi-delta">Sin comparación</p></article>
   </section>
 
-  <!-- =========================== DRILL-DOWN =========================== -->
-  <section class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="p-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
-      <div>
-        <h2 class="font-semibold text-gray-800">Drill-down (desglose fino)</h2>
-        <p id="drill-sub" class="text-xs text-gray-500">Agrupado por: —</p>
-      </div>
-      <div class="flex gap-2">
-        <div class="flex gap-1 border border-gray-300 rounded overflow-hidden">
-          <button data-agrupar="categoria" class="toggle-btn hover:bg-gray-100 active">Por categoría</button>
-          <button data-agrupar="producto"  class="toggle-btn hover:bg-gray-100">Por producto</button>
-        </div>
-        <button id="btn-reset-periodo" class="hidden px-3 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50">
-          Ver todos los meses
-        </button>
+  <section class="surface">
+    <div class="panel-head">
+      <div><h2 class="panel-title">Evolución del período</h2><p id="chart-sub" class="panel-sub"></p></div>
+      <div class="chart-actions">
+        <div class="segment"><button class="granularidad" data-granularidad="dia">Día</button><button class="granularidad" data-granularidad="semana">Semana</button><button class="granularidad" data-granularidad="mes">Mes</button></div>
+        <button id="btn-exportar" class="export-btn"><span aria-hidden="true">⇩</span> Exportar</button>
       </div>
     </div>
-    <table class="w-full text-sm">
-      <thead class="bg-gray-100 text-gray-700 text-left">
-        <tr>
-          <th class="px-4 py-2 font-semibold" id="col-agrupacion">Categoría</th>
-          <th class="px-4 py-2 font-semibold text-right">Unidades</th>
-          <th class="px-4 py-2 font-semibold text-right">Facturado</th>
-          <th class="px-4 py-2 font-semibold text-right">Costo</th>
-          <th class="px-4 py-2 font-semibold text-right">Utilidad</th>
-          <th class="px-4 py-2 font-semibold text-right">Margen %</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-drill">
-        <tr><td colspan="6" class="text-center py-6 text-gray-400">Cargando...</td></tr>
-      </tbody>
-    </table>
+    <div id="chart-container"><canvas id="chart-utilidad"></canvas></div>
+  </section>
+
+  <section class="summary-grid">
+    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Resumen por tienda</h2><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Resumen por plataforma</h2><button class="view-all" data-ver-todas="plataforma">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-plataforma"></thead><tbody id="tbody-plataforma"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Top 5 referencias por utilidad</h2><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
+  </section>
+
+  <section class="surface period-strip" aria-label="Resumen del período">
+    <div class="period-intro"><h2 class="panel-title">Resumen del período</h2><p id="resumen-rango" class="panel-sub"></p></div>
+    <div class="period-stat"><span class="period-label">Días</span><span id="res-dias" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Tiendas activas</span><span id="res-tiendas" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Productos vendidos</span><span id="res-unidades" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Despachos</span><span id="res-despachos" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Ticket promedio</span><span id="res-ticket" class="period-value"></span></div>
   </section>
 </main>
-
-<!-- ============================================================ SCRIPT -->
-<script>
-const SB = (function () {
-  if (window.SB) return window.SB;
-  const env = window.CREDITEK_ENV || {
-    SUPABASE_URL: 'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ'
-  };
-  return window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-})();
-
-// ============================================================
-// HELPERS
-// ============================================================
-const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
-const fmtInt   = new Intl.NumberFormat('es-CO');
-function money(n) { return n == null ? '—' : fmtMoney.format(Number(n)); }
-function num(n) { return n == null ? '—' : fmtInt.format(Number(n)); }
-function pct(n, base) {
-  if (!base || base === 0) return '—';
-  return (100 * Number(n) / Number(base)).toFixed(1) + '%';
-}
-function nombreMes(periodo) {
-  const d = new Date(periodo);
-  return d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }).replace('.', '');
-}
-function nombreMesCompleto(periodo) {
-  return new Date(periodo).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-}
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function toast(msg, tipo = 'ok') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in ' +
-    (tipo === 'error' ? 'bg-red-600' : 'bg-green-600');
-  t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 3200);
-}
-
-// ============================================================
-// AUTH GATE
-// ============================================================
-let rolActual = null;
-async function verificarAuth() {
-  const { data: { session } } = await SB.auth.getSession();
-  if (!session) { location.href = 'app.html'; return false; }
-
-  const { data: rol } = await SB.rpc('rol_actual');
-  rolActual = rol;
-  document.getElementById('usuario-info').textContent =
-    (session.user.email || '') + ' · ' + (rolActual || 'sin rol');
-
-  if (rolActual !== 'gerencia' && rolActual !== 'auditoria') {
-    document.getElementById('auth-guard').classList.remove('hidden');
-    return false;
-  }
-  document.getElementById('app').classList.remove('hidden');
-  return true;
-}
-
-// ============================================================
-// ESTADO
-// ============================================================
-let dataMensual = [];       // [{periodo, total_facturado_tiendas, total_costo_real, utilidad_creditek, n_remisiones}]
-let dataDetalle = [];       // filas de utilidad_creditek_detalle
-let rangoMeses = 6;
-let agrupacion = 'categoria';   // 'categoria' | 'producto'
-let periodoFiltro = null;       // 'YYYY-MM-DD' o null (todos)
-let chart = null;
-
-// ============================================================
-// CARGA DE DATOS
-// ============================================================
-async function cargar() {
-  const [{ data: mensual, error: mErr }, { data: detalle, error: dErr }] = await Promise.all([
-    SB.from('utilidad_creditek_por_periodo').select('*'),
-    SB.from('utilidad_creditek_detalle').select('periodo, producto_id, producto_nombre, categoria, cantidad, facturado, costo, utilidad')
-  ]);
-
-  if (mErr) { toast('Error mensual: ' + mErr.message, 'error'); return; }
-  if (dErr) { toast('Error detalle: ' + dErr.message, 'error'); return; }
-
-  dataMensual = (mensual || []).map(r => ({
-    ...r,
-    total_facturado_tiendas: Number(r.total_facturado_tiendas),
-    total_costo_real: Number(r.total_costo_real),
-    utilidad_creditek: Number(r.utilidad_creditek),
-    n_remisiones: Number(r.n_remisiones)
-  })).sort((a, b) => new Date(b.periodo) - new Date(a.periodo));
-
-  dataDetalle = (detalle || []).map(r => ({
-    ...r,
-    facturado: Number(r.facturado),
-    costo: Number(r.costo),
-    utilidad: Number(r.utilidad),
-    cantidad: Number(r.cantidad)
-  }));
-
-  document.getElementById('ultima-actualizacion').textContent =
-    'Actualizado ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-
-  actualizarKPIs();
-  renderChart();
-  renderTablaMensual();
-  renderDrill();
-}
-
-// ============================================================
-// KPIs
-// ============================================================
-function actualizarKPIs() {
-  if (dataMensual.length === 0) {
-    document.getElementById('kpi-facturado-mes').textContent = money(0);
-    document.getElementById('kpi-costo-mes').textContent = money(0);
-    document.getElementById('kpi-utilidad-mes').textContent = money(0);
-    document.getElementById('kpi-margen-mes').textContent = '—';
-    document.getElementById('kpi-utilidad-ytd').textContent = 'YTD: ' + money(0);
-    document.getElementById('kpi-facturado-delta').textContent = 'Sin datos anteriores';
-    return;
-  }
-  const mesActual = dataMensual[0];
-  const mesPrev = dataMensual[1] || null;
-
-  document.getElementById('kpi-facturado-mes').textContent = money(mesActual.total_facturado_tiendas);
-  document.getElementById('kpi-costo-mes').textContent = money(mesActual.total_costo_real);
-  document.getElementById('kpi-utilidad-mes').textContent = money(mesActual.utilidad_creditek);
-  document.getElementById('kpi-margen-mes').textContent =
-    pct(mesActual.utilidad_creditek, mesActual.total_facturado_tiendas);
-
-  // Delta vs mes anterior
-  const deltaEl = document.getElementById('kpi-facturado-delta');
-  if (mesPrev) {
-    const delta = mesActual.total_facturado_tiendas - mesPrev.total_facturado_tiendas;
-    const pctDelta = mesPrev.total_facturado_tiendas ? (100 * delta / mesPrev.total_facturado_tiendas) : 0;
-    const flecha = delta >= 0 ? '↑' : '↓';
-    const clase = delta >= 0 ? 'text-green-700' : 'text-red-700';
-    deltaEl.innerHTML = `<span class="${clase}">${flecha} ${pctDelta.toFixed(1)}%</span> vs mes anterior`;
-  } else {
-    deltaEl.textContent = 'Sin mes anterior para comparar';
-  }
-
-  // YTD (year-to-date)
-  const anioActual = new Date().getFullYear();
-  const utilidadYTD = dataMensual
-    .filter(r => new Date(r.periodo).getFullYear() === anioActual)
-    .reduce((s, r) => s + r.utilidad_creditek, 0);
-  document.getElementById('kpi-utilidad-ytd').textContent = 'YTD ' + anioActual + ': ' + money(utilidadYTD);
-}
-
-// ============================================================
-// CHART (Chart.js)
-// ============================================================
-function renderChart() {
-  const ctx = document.getElementById('chart-mensual').getContext('2d');
-  const meses = dataMensual.slice(0, rangoMeses).reverse();   // más antiguo → reciente
-
-  const labels = meses.map(r => nombreMes(r.periodo));
-  const facturado = meses.map(r => r.total_facturado_tiendas);
-  const costo     = meses.map(r => r.total_costo_real);
-  const utilidad  = meses.map(r => r.utilidad_creditek);
-
-  const config = {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Facturado a tiendas', data: facturado, backgroundColor: '#3b82f6', borderRadius: 4 },
-        { label: 'Costo real',          data: costo,     backgroundColor: '#f97316', borderRadius: 4 },
-        { label: 'Utilidad',            data: utilidad,  backgroundColor: '#10b981', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10 } },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ctx.dataset.label + ': ' + money(ctx.parsed.y)
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: (v) => new Intl.NumberFormat('es-CO', { notation: 'compact', maximumFractionDigits: 1 }).format(v) }
-        }
-      }
-    }
-  };
-
-  if (chart) chart.destroy();
-  chart = new Chart(ctx, config);
-}
-
-// ============================================================
-// TABLA MENSUAL
-// ============================================================
-function renderTablaMensual() {
-  const tbody = document.getElementById('tbody-mensual');
-  if (dataMensual.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Sin datos. Aún no hay remisiones despachadas desde CENTRAL.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = dataMensual.map(r => {
-    const activo = periodoFiltro === r.periodo ? 'bg-blue-50 font-medium' : '';
-    return `
-      <tr data-periodo="${r.periodo}" class="cursor-pointer ${activo}">
-        <td class="px-4 py-2 text-gray-800 capitalize">${nombreMesCompleto(r.periodo)}</td>
-        <td class="px-4 py-2 text-right font-mono">${money(r.total_facturado_tiendas)}</td>
-        <td class="px-4 py-2 text-right font-mono text-orange-700">${money(r.total_costo_real)}</td>
-        <td class="px-4 py-2 text-right font-mono font-semibold text-green-700">${money(r.utilidad_creditek)}</td>
-        <td class="px-4 py-2 text-right font-mono text-purple-700">${pct(r.utilidad_creditek, r.total_facturado_tiendas)}</td>
-        <td class="px-4 py-2 text-right text-gray-600">${num(r.n_remisiones)}</td>
-      </tr>
-    `;
-  }).join('');
-}
-
-// ============================================================
-// DRILL-DOWN
-// ============================================================
-function renderDrill() {
-  document.getElementById('col-agrupacion').textContent = agrupacion === 'producto' ? 'Producto' : 'Categoría';
-  document.getElementById('drill-sub').textContent =
-    'Agrupado por: ' + (agrupacion === 'producto' ? 'producto' : 'categoría') +
-    (periodoFiltro ? ' · ' + nombreMesCompleto(periodoFiltro) : ' · todos los meses');
-
-  document.getElementById('btn-reset-periodo').classList.toggle('hidden', !periodoFiltro);
-  document.getElementById('periodo-seleccionado').textContent = periodoFiltro
-    ? 'Filtrando drill-down por ' + nombreMesCompleto(periodoFiltro)
-    : '';
-
-  const filas = dataDetalle.filter(r => !periodoFiltro || r.periodo === periodoFiltro);
-  const agrupado = {};
-  filas.forEach(r => {
-    const key = agrupacion === 'producto' ? r.producto_nombre : r.categoria;
-    if (!agrupado[key]) agrupado[key] = { key, cantidad: 0, facturado: 0, costo: 0, utilidad: 0 };
-    agrupado[key].cantidad += r.cantidad;
-    agrupado[key].facturado += r.facturado;
-    agrupado[key].costo += r.costo;
-    agrupado[key].utilidad += r.utilidad;
-  });
-
-  const rows = Object.values(agrupado).sort((a, b) => b.utilidad - a.utilidad);
-  const tbody = document.getElementById('tbody-drill');
-  if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Sin datos para el periodo seleccionado.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td class="px-4 py-2 text-gray-800">${esc(r.key)}</td>
-      <td class="px-4 py-2 text-right">${num(r.cantidad)}</td>
-      <td class="px-4 py-2 text-right font-mono">${money(r.facturado)}</td>
-      <td class="px-4 py-2 text-right font-mono text-orange-700">${money(r.costo)}</td>
-      <td class="px-4 py-2 text-right font-mono font-semibold text-green-700">${money(r.utilidad)}</td>
-      <td class="px-4 py-2 text-right font-mono text-purple-700">${pct(r.utilidad, r.facturado)}</td>
-    </tr>
-  `).join('');
-}
-
-// ============================================================
-// EVENT LISTENERS
-// ============================================================
-document.getElementById('btn-refresh').addEventListener('click', cargar);
-
-document.querySelectorAll('[data-rango]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-rango]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    rangoMeses = parseInt(btn.getAttribute('data-rango'), 10);
-    renderChart();
-  });
-});
-
-document.querySelectorAll('[data-agrupar]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-agrupar]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    agrupacion = btn.getAttribute('data-agrupar');
-    renderDrill();
-  });
-});
-
-document.getElementById('tbody-mensual').addEventListener('click', e => {
-  const tr = e.target.closest('tr[data-periodo]');
-  if (!tr) return;
-  const periodo = tr.getAttribute('data-periodo');
-  periodoFiltro = (periodoFiltro === periodo) ? null : periodo;
-  renderTablaMensual();
-  renderDrill();
-});
-
-document.getElementById('btn-reset-periodo').addEventListener('click', () => {
-  periodoFiltro = null;
-  renderTablaMensual();
-  renderDrill();
-});
-
-// ============================================================
-// BOOT
-// ============================================================
-(async function () {
-  const ok = await verificarAuth();
-  if (!ok) return;
-  await cargar();
-
-  // SIDEBAR OPCIONAL:
-  // if (window.renderSidebar) window.renderSidebar('utilidad-creditek');
-})();
-</script>
-
+</div>
+<script src="utilidad-creditek-app.js"></script>
 </body>
 </html>

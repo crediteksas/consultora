@@ -3,94 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Tablero</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<title>KORA · Dashboard ejecutivo</title>
+<link rel="stylesheet" href="/design-system/components/kora-dashboard.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="sidebar.js"></script>
-<style>
-:root {
-  --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
-  --border: rgba(11,30,61,0.08); --text2: #6E6E76; --verde: #16A34A; --amarillo: #D97706; --rojo: #DC2626;
-  --radius: 18px; --radius-sm: 11px;
-  --shadow-sm: 0 1px 2px rgba(11,30,61,0.04), 0 1px 1px rgba(11,30,61,0.03);
-  --shadow-md: 0 12px 28px -10px rgba(11,30,61,0.16);
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--azul); -webkit-font-smoothing: antialiased; }
-
-.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at 30% 20%, #EAFBFC 0%, var(--bg) 55%); }
-.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; width: 100%; max-width: 360px; box-shadow: var(--shadow-md); }
-.login-box img.logo { display: block; height: 40px; margin: 0 auto 22px; object-fit: contain; }
-.login-box input { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 15px; margin-bottom: 12px; font-family: inherit; transition: all .15s ease; }
-.login-box input:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 4px rgba(0,196,204,0.14); }
-.login-box button { width: 100%; background: var(--turquesa); color: white; border: none; border-radius: var(--radius-sm); padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); transition: transform .12s ease, box-shadow .12s ease; }
-.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -4px rgba(0,196,204,0.55); }
-.login-box button:disabled { background: #D2D2D7; box-shadow: none; }
-.login-err { color: var(--rojo); font-size: 12.5px; margin-top: 10px; display: none; }
-.login-err.show { display: block; }
-
-.sin-perfil-screen { min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-.sin-perfil-screen.show { display: flex; }
-.sin-perfil-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; max-width: 380px; box-shadow: var(--shadow-md); }
-.sin-perfil-box .icono { font-size: 34px; margin-bottom: 12px; }
-.sin-perfil-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 8px; }
-.sin-perfil-box p { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin-bottom: 18px; }
-.sin-perfil-box button { border: 1px solid var(--border); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; cursor: pointer; color: var(--azul); font-weight: 600; }
-
-#app { display: none; }
-#app.show { display: flex; }
-
-.page { max-width: 1280px; margin: 0 auto; padding: 32px 24px 60px; }
-.page-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-.page-top h1 { font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-.page-top .fecha { font-size: 13px; color: var(--text2); }
-.acceso-negado { text-align: center; padding: 80px 20px; color: var(--text2); }
-.acceso-negado .icono { font-size: 34px; margin-bottom: 12px; }
-
-.filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
-.campo { margin-bottom: 0; }
-.campo label { display: block; font-size: 11.5px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
-.campo select, .campo input { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13px; font-family: inherit; }
-
-.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin-bottom: 26px; }
-.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); }
-.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); margin-bottom: 10px; }
-.kpi-valor { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 25px; }
-.kpi-var { font-size: 12px; margin-top: 6px; font-weight: 700; }
-.kpi-var.up { color: var(--verde); }
-.kpi-var.down { color: var(--rojo); }
-.kpi-var.flat { color: var(--text2); }
-
-.seccion { margin-bottom: 28px; }
-.seccion h2 { font-family: 'Montserrat', sans-serif; font-size: 15.5px; margin-bottom: 12px; }
-
-.tabla-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-th { background: rgba(11,30,61,0.02); font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text2); font-weight: 700; }
-tr:last-child td { border-bottom: none; }
-tr.fila-total td { font-weight: 800; background: rgba(11,30,61,0.03); }
-td.num, th.num { text-align: right; }
-td.centro, th.centro { text-align: center; }
-.barra-pct { width: 90px; height: 7px; border-radius: 999px; background: var(--bg); overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
-.barra-pct div { height: 100%; }
-.empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
-
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
-.grafico-box { height: 320px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
-
-.alertas-lista { display: flex; flex-direction: column; gap: 8px; }
-.alerta { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; }
-.alerta.roja { background: #FEE2E2; color: #991B1B; }
-.alerta.amarilla { background: #FEF3C7; color: #92400E; }
-.alerta .icono { font-size: 15px; flex-shrink: 0; }
-</style>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
-<body>
+<body data-kora-dashboard="1.0.0">
 
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
@@ -104,7 +27,7 @@ td.centro, th.centro { text-align: center; }
 
 <div class="sin-perfil-screen" id="sinPerfilScreen">
   <div class="sin-perfil-box">
-    <div class="icono">🔒</div>
+    <div class="state-icon"><i data-lucide="lock-keyhole"></i></div>
     <h2>Sin perfil asignado</h2>
     <p>Tu usuario no tiene perfil asignado. Contacta al administrador.</p>
     <button id="btnSalirSinPerfil">Cerrar sesión</button>
@@ -112,7 +35,7 @@ td.centro, th.centro { text-align: center; }
 </div>
 
 <div id="app">
-  <div style="display:none;" aria-hidden="true">
+  <div class="legacy-shell-hooks" aria-hidden="true">
     <b id="navNombre"></b><span id="navRolTienda"></span><button id="btnLogout"></button>
   </div>
   <div class="main-content">
@@ -122,21 +45,31 @@ td.centro, th.centro { text-align: center; }
 
 <template id="tplAccesoNegado">
   <div class="acceso-negado">
-    <div class="icono">🔒</div>
+    <div class="state-icon"><i data-lucide="shield-alert"></i></div>
     <h2>Solo gerencia o auditoría</h2>
     <p>El tablero gerencial no está disponible para roles de tienda.</p>
   </div>
 </template>
 
 <template id="tplTablero">
-  <div class="page-top">
-    <h1>Tablero Creditek</h1>
-    <div class="fecha" id="fechaHoy"></div>
-  </div>
+  <header class="dashboard-hero">
+    <div>
+      <p class="dashboard-subtitle">El pulso comercial y operativo de Creditek, en una sola vista.</p>
+    </div>
+    <div class="dashboard-updated">
+      <span class="dashboard-updated__dot"></span>
+      <span>Actualizado</span>
+      <time id="fechaHoy"></time>
+    </div>
+  </header>
 
-  <div class="filtros">
+  <section class="dashboard-filterbar" aria-label="Filtros del tablero">
+    <div class="dashboard-filterbar__title">
+      <i data-lucide="sliders-horizontal"></i>
+      <span>Vista</span>
+    </div>
     <div class="campo">
-      <label>Periodo (KPIs superiores)</label>
+      <label for="filtroPeriodo">Período</label>
       <select id="filtroPeriodo">
         <option value="hoy">Hoy</option>
         <option value="semana">Esta semana</option>
@@ -144,84 +77,135 @@ td.centro, th.centro { text-align: center; }
         <option value="rango">Rango personalizado</option>
       </select>
     </div>
-    <div class="campo" id="campoRangoDesde" style="display:none;"><label>Desde</label><input type="date" id="rangoDesde"></div>
-    <div class="campo" id="campoRangoHasta" style="display:none;"><label>Hasta</label><input type="date" id="rangoHasta"></div>
+    <div class="campo campo-rango" id="campoRangoDesde"><label for="rangoDesde">Desde</label><input type="date" id="rangoDesde"></div>
+    <div class="campo campo-rango" id="campoRangoHasta"><label for="rangoHasta">Hasta</label><input type="date" id="rangoHasta"></div>
     <div class="campo">
-      <label>Tienda</label>
+      <label for="filtroTienda">Tienda</label>
       <select id="filtroTienda"><option value="">Consolidado (todas)</option></select>
     </div>
-  </div>
+  </section>
 
-  <div class="kpis">
-    <div class="kpi-card">
-      <div class="kpi-label">💰 Ventas</div>
+  <section class="dashboard-metrics" aria-label="Indicadores principales">
+    <article class="dashboard-metric">
+      <div class="dashboard-metric__header">
+        <span class="dashboard-metric__icon"><i data-lucide="badge-dollar-sign"></i></span>
+        <span class="kpi-label">Ventas totales</span>
+      </div>
       <div class="kpi-valor" id="kpiVentas">—</div>
       <div class="kpi-var" id="kpiVentasVar"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">💳 Créditos</div>
+    </article>
+    <article class="dashboard-metric">
+      <div class="dashboard-metric__header">
+        <span class="dashboard-metric__icon"><i data-lucide="credit-card"></i></span>
+        <span class="kpi-label">Créditos otorgados</span>
+      </div>
       <div class="kpi-valor" id="kpiCreditos">—</div>
       <div class="kpi-var" id="kpiCreditosVar"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">📈 Utilidad</div>
+    </article>
+    <article class="dashboard-metric">
+      <div class="dashboard-metric__header">
+        <span class="dashboard-metric__icon"><i data-lucide="chart-no-axes-combined"></i></span>
+        <span class="kpi-label">Utilidad estimada</span>
+      </div>
       <div class="kpi-valor" id="kpiUtilidad">—</div>
       <div class="kpi-var" id="kpiUtilidadVar"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">✅ Clientes pendientes</div>
+      <a href="utilidad-creditek.html" class="kpi-link">Consultar utilidad mensual</a>
+    </article>
+    <article class="dashboard-metric">
+      <div class="dashboard-metric__header">
+        <span class="dashboard-metric__icon"><i data-lucide="user-round-check"></i></span>
+        <span class="kpi-label">Clientes pendientes</span>
+      </div>
       <div class="kpi-valor" id="kpiPendientes">—</div>
-      <div class="kpi-var flat">a validar</div>
-    </div>
-  </div>
+      <div class="kpi-var flat">Pendientes de validación</div>
+    </article>
+  </section>
 
-  <div class="seccion">
-    <h2>Tiendas — cumplimiento del mes</h2>
-    <div class="tabla-wrap">
-      <table>
+  <div class="dashboard-primary-grid">
+    <section class="dashboard-panel dashboard-panel--table">
+      <div class="dashboard-section-heading">
+        <div>
+          <p class="dashboard-section-heading__eyebrow">Operación comercial</p>
+          <h2>Rendimiento por tienda</h2>
+        </div>
+        <span class="dashboard-section-heading__meta">Cumplimiento del mes</span>
+      </div>
+      <div class="tabla-wrap" tabindex="0" role="region" aria-label="Rendimiento por tienda; desplaza horizontalmente para ver todas las columnas">
+      <table class="dashboard-table">
         <thead><tr>
-          <th>Tienda</th><th class="num">Créd. mes</th><th class="num">Meta</th><th class="centro">%</th>
-          <th class="num">Run-rate</th><th class="num">Contado ($)</th><th class="num">Utilidad ($)</th>
+          <th>Tienda</th><th class="num">Créditos</th><th class="num">Meta</th><th class="centro">Avance</th>
+          <th class="num">Proyección</th><th class="num">Contado</th><th class="num">Utilidad</th>
           <th class="centro">Caja</th><th class="centro">Sem.</th>
         </tr></thead>
         <tbody id="tbodyTiendas"></tbody>
         <tfoot id="tfootTotal"></tfoot>
       </table>
       <div class="empty-state" id="emptyTiendas" style="display:none;"></div>
-    </div>
+      </div>
+    </section>
+
+    <aside class="dashboard-panel dashboard-alerts-panel">
+      <div class="dashboard-section-heading">
+        <div>
+          <p class="dashboard-section-heading__eyebrow">Atención requerida</p>
+          <h2>Alertas operativas</h2>
+        </div>
+        <span class="dashboard-alert-count" aria-hidden="true"></span>
+      </div>
+      <div class="alertas-lista" id="listaAlertas" aria-live="polite">
+        <div class="dashboard-loading-state" role="status">
+          <span class="ctk-spinner" aria-hidden="true"></span>
+          <span>Consultando alertas operativas…</span>
+        </div>
+      </div>
+    </aside>
   </div>
 
-  <div class="seccion">
-    <h2>Alertas</h2>
-    <div class="alertas-lista" id="listaAlertas"></div>
-  </div>
-
-  <div class="grid-2 seccion">
-    <div class="card">
-      <h2 style="margin-bottom:14px;">Créditos por tienda vs meta</h2>
+  <section class="dashboard-support-grid" aria-label="Análisis del mes">
+    <article class="dashboard-panel dashboard-chart-panel">
+      <div class="dashboard-section-heading">
+        <div>
+          <p class="dashboard-section-heading__eyebrow">Créditos</p>
+          <h2>Logrado frente a meta</h2>
+        </div>
+        <span class="dashboard-section-heading__icon"><i data-lucide="bar-chart-3"></i></span>
+      </div>
       <div class="grafico-box"><canvas id="chartCreditos"></canvas></div>
-    </div>
-    <div class="card">
-      <h2 style="margin-bottom:14px;">Utilidad acumulada del mes vs presupuesto</h2>
+    </article>
+    <article class="dashboard-panel dashboard-chart-panel dashboard-chart-panel--primary">
+      <div class="dashboard-section-heading">
+        <div>
+          <p class="dashboard-section-heading__eyebrow">Rentabilidad</p>
+          <h2>Utilidad acumulada vs. presupuesto</h2>
+        </div>
+        <span class="dashboard-section-heading__icon"><i data-lucide="trending-up"></i></span>
+      </div>
       <div class="grafico-box"><canvas id="chartUtilidad"></canvas></div>
-    </div>
-  </div>
+    </article>
+  </section>
 
-  <div class="seccion" id="ejecutivos">
-    <h2>Ejecutivos</h2>
-    <div class="tabla-wrap">
-      <table>
-        <thead><tr><th>Ejecutivo</th><th class="num">Aliadas activas</th><th class="num">Créditos del mes</th><th>Comisión estimada</th></tr></thead>
+  <section class="dashboard-panel dashboard-executives" id="ejecutivos">
+    <div class="dashboard-section-heading">
+      <div>
+        <p class="dashboard-section-heading__eyebrow">Red comercial</p>
+        <h2>Desempeño ejecutivo</h2>
+      </div>
+      <span class="dashboard-section-heading__meta">Mes en curso</span>
+    </div>
+    <div class="tabla-wrap" tabindex="0" role="region" aria-label="Desempeño ejecutivo; desplaza horizontalmente para ver todas las columnas">
+      <table class="dashboard-table">
+        <thead><tr><th>Ejecutivo</th><th class="num">Aliadas activas</th><th class="num">Créditos del mes</th><th>Comisión</th></tr></thead>
         <tbody id="tbodyEjecutivos"></tbody>
       </table>
       <div class="empty-state" id="emptyEjecutivos" style="display:none;">No hay ejecutivos registrados.</div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
@@ -292,8 +276,13 @@ function hoyISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function tokenColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function pintarIconos() { window.lucide?.createIcons(); }
 
 function initPagina() {
+  const sincronizarEncabezado = () => window.KoraNavigation?.setContext('Resumen ejecutivo', ['KORA', 'Tablero']);
+  sincronizarEncabezado();
+  document.addEventListener('kora-sidebar-ready', sincronizarEncabezado, { once: true });
   if (!esCentral()) {
     document.getElementById('pageContenido').innerHTML = '';
     document.getElementById('pageContenido').appendChild(document.getElementById('tplAccesoNegado').content.cloneNode(true));
@@ -302,6 +291,7 @@ function initPagina() {
   const cont = document.getElementById('pageContenido');
   cont.innerHTML = '';
   cont.appendChild(document.getElementById('tplTablero').content.cloneNode(true));
+  pintarIconos();
 
   document.getElementById('fechaHoy').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   document.getElementById('filtroPeriodo').addEventListener('change', onCambioFiltro);
@@ -448,8 +438,8 @@ async function cargarTiendas_Tabla() {
       if (!cerrada) cajaOk = false;
     });
 
-    let semaforo = '⚪';
-    if (pctRunRate !== null) semaforo = pctRunRate >= 90 ? '🟢' : pctRunRate >= 70 ? '🟡' : '🔴';
+    let semaforo = 'neutral';
+    if (pctRunRate !== null) semaforo = pctRunRate >= 90 ? 'success' : pctRunRate >= 70 ? 'warning' : 'danger';
 
     return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, utilidadMes, cajaOk, semaforo, pctRunRate };
   });
@@ -465,7 +455,13 @@ function renderTablaTiendas(filas) {
   if (!filas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay tiendas para mostrar.'; document.getElementById('tfootTotal').innerHTML = ''; return; }
   empty.style.display = 'none';
 
-  const colorBarra = (pct) => pct === null ? '#D2D2D7' : pct >= 90 ? 'var(--verde)' : pct >= 70 ? 'var(--amarillo)' : 'var(--rojo)';
+  const colorBarra = (pct) => pct === null
+    ? 'var(--ctk-color-neutral-300)'
+    : pct >= 90
+      ? 'var(--ctk-color-success-500)'
+      : pct >= 70
+        ? 'var(--ctk-color-warning-500)'
+        : 'var(--ctk-color-danger-500)';
 
   tbody.innerHTML = filas.map(f => `
     <tr>
@@ -479,8 +475,18 @@ function renderTablaTiendas(filas) {
       <td class="num">${Math.round(f.runRate)}</td>
       <td class="num">${fmtCorto(f.contadoMes)}</td>
       <td class="num">${fmtCorto(f.utilidadMes)}</td>
-      <td class="centro">${f.cajaOk ? '✅' : '⚠️'}</td>
-      <td class="centro">${f.semaforo}</td>
+      <td class="centro">
+        <span class="status-indicator status-indicator--${f.cajaOk ? 'success' : 'warning'}">
+          <i data-lucide="${f.cajaOk ? 'circle-check' : 'triangle-alert'}"></i>
+          ${f.cajaOk ? 'Al día' : 'Revisar'}
+        </span>
+      </td>
+      <td class="centro">
+        <span class="status-indicator status-indicator--${f.semaforo}">
+          <i data-lucide="circle"></i>
+          ${f.pctRunRate === null ? 'Sin meta' : Math.round(f.pctRunRate) + '%'}
+        </span>
+      </td>
     </tr>
   `).join('');
 
@@ -497,6 +503,7 @@ function renderTablaTiendas(filas) {
       <td class="centro">—</td><td class="centro">—</td>
     </tr>
   `;
+  pintarIconos();
 }
 
 // ─── Gráficos ─────────────────────────────────────────────────────────────
@@ -508,11 +515,22 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
     data: {
       labels: filas.map(f => f.tienda.nombre),
       datasets: [
-        { label: 'Logrado', data: filas.map(f => f.creditosMes), backgroundColor: '#00C4CC', stack: 's' },
-        { label: 'Faltante', data: filas.map(f => Math.max((f.metaMes || 0) - f.creditosMes, 0)), backgroundColor: '#E2E8F0', stack: 's' },
+        { label: 'Logrado', data: filas.map(f => f.creditosMes), backgroundColor: tokenColor('--ctk-color-secondary-500'), borderRadius: 6, stack: 's' },
+        { label: 'Faltante', data: filas.map(f => Math.max((f.metaMes || 0) - f.creditosMes, 0)), backgroundColor: tokenColor('--ctk-color-neutral-200'), borderRadius: 6, stack: 's' },
       ],
     },
-    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', align: 'start', labels: { usePointStyle: true, boxWidth: 8, padding: 18 } },
+      },
+      scales: {
+        x: { stacked: true, beginAtZero: true, grid: { color: tokenColor('--ctk-color-neutral-100') }, border: { display: false } },
+        y: { stacked: true, grid: { display: false }, border: { display: false } },
+      },
+    },
   });
 
   // Utilidad acumulada del mes (real) vs presupuesto acumulado, para la tienda filtrada o consolidado
@@ -562,11 +580,44 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
     data: {
       labels,
       datasets: [
-        { label: 'Utilidad real (acumulada)', data: real, borderColor: '#00C4CC', backgroundColor: 'rgba(0,196,204,0.1)', tension: 0.25, spanGaps: false },
-        { label: 'Presupuesto (acumulado)', data: meta, borderColor: '#0B1E3D', borderDash: [5, 4], tension: 0.25 },
+        {
+          label: 'Utilidad real (acumulada)',
+          data: real,
+          borderColor: tokenColor('--ctk-color-secondary-500'),
+          backgroundColor: tokenColor('--ctk-color-secondary-50'),
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.3,
+          fill: true,
+          spanGaps: false,
+        },
+        {
+          label: 'Presupuesto (acumulado)',
+          data: meta,
+          borderColor: tokenColor('--ctk-color-primary-900'),
+          borderDash: [5, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+        },
       ],
     },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => fmtCorto(v) } } } },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', align: 'start', labels: { usePointStyle: true, boxWidth: 8, padding: 18 } },
+      },
+      scales: {
+        x: { grid: { display: false }, border: { display: false } },
+        y: {
+          grid: { color: tokenColor('--ctk-color-neutral-100') },
+          border: { display: false },
+          ticks: { callback: v => fmtCorto(v) },
+        },
+      },
+    },
   });
 }
 
@@ -575,7 +626,7 @@ async function calcularAlertas(filas, ventasMes, hoy) {
   const alertas = [];
   const ayerStr = fechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1));
 
-  // 🔴 Cajas de ayer sin cerrar (solo tiendas con actividad ayer)
+  // Cajas de ayer sin cerrar (solo tiendas con actividad ayer)
   const { data: ventasAyer } = await sb.from('ventas').select('tienda_codigo').eq('fecha', ayerStr).eq('anulada', false);
   const { data: gastosAyer } = await sb.from('gastos').select('tienda_codigo').eq('fecha', ayerStr);
   const tiendasConActividadAyer = new Set([...(ventasAyer || []).map(v => v.tienda_codigo), ...(gastosAyer || []).map(g => g.tienda_codigo)]);
@@ -585,12 +636,12 @@ async function calcularAlertas(filas, ventasMes, hoy) {
     if (!cerrada) alertas.push({ nivel: 'roja', texto: `${nombreTienda(codigo)}: caja de ayer sin cerrar` });
   });
 
-  // 🔴 Clientes pendientes de validación > 24h
+  // Clientes pendientes de validación > 24h
   const hace24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { count: pendientes24h } = await sb.from('solicitudes').select('id', { count: 'exact', head: true }).eq('estado_validacion', 'pendiente').lt('created_at', hace24h);
   if (pendientes24h > 0) alertas.push({ nivel: 'roja', texto: `${pendientes24h} cliente(s) pendientes de validación hace más de 24h` });
 
-  // 🔴 Tiendas con 0 ventas hoy (después de mediodía)
+  // Tiendas con 0 ventas hoy (después de mediodía)
   if (hoy.getHours() >= 12) {
     const hoyStr = hoyISO();
     filas.forEach(f => {
@@ -599,19 +650,19 @@ async function calcularAlertas(filas, ventasMes, hoy) {
     });
   }
 
-  // 🟡 Stock bajo (< 3 unidades)
+  // Stock bajo (< 3 unidades)
   const { data: stockBajo } = await sb.from('stock_cantidad').select('tienda_codigo, cantidad, productos(nombre)').lt('cantidad', 3);
   (stockBajo || []).slice(0, 8).forEach(s => {
     alertas.push({ nivel: 'amarilla', texto: `${nombreTienda(s.tienda_codigo)}: stock de ${s.productos?.nombre || '—'} en ${s.cantidad} unidad(es)` });
   });
 
-  // 🟡 Créditos sin conciliar (simplificado: total pendiente, no solo el último corte —
+  // Créditos sin conciliar (simplificado: total pendiente, no solo el último corte —
   // el spec habla del "último corte" pero un crédito pendiente sigue siendo relevante
   // aunque no sea del corte más reciente, así que se muestra el total global)
   const { count: pendientesConciliar } = await sb.from('creditos').select('id', { count: 'exact', head: true }).eq('estado_conciliacion', 'pendiente');
   if (pendientesConciliar > 0) alertas.push({ nivel: 'amarilla', texto: `${pendientesConciliar} crédito(s) sin conciliar con la financiera` });
 
-  // 🟡 Abonos sin verificar
+  // Abonos sin verificar
   const { count: abonosSinVerificar } = await sb.from('abonos').select('id', { count: 'exact', head: true }).is('verificado_at', null);
   if (abonosSinVerificar > 0) alertas.push({ nivel: 'amarilla', texto: `${abonosSinVerificar} abono(s) sin verificar` });
 
@@ -620,10 +671,20 @@ async function calcularAlertas(filas, ventasMes, hoy) {
 
 function renderAlertas(alertas) {
   const cont = document.getElementById('listaAlertas');
-  if (!alertas.length) { cont.innerHTML = '<div class="alerta amarilla" style="background:#DCFCE7;color:#166534;"><span class="icono">✅</span>Sin alertas activas.</div>'; return; }
+  if (!alertas.length) {
+    cont.innerHTML = '<div class="alerta exitosa"><span class="icono"><i data-lucide="circle-check"></i></span><span>Sin alertas activas.</span></div>';
+    pintarIconos();
+    return;
+  }
   const orden = { roja: 0, amarilla: 1 };
   alertas.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
-  cont.innerHTML = alertas.map(a => `<div class="alerta ${a.nivel}"><span class="icono">${a.nivel === 'roja' ? '🔴' : '🟡'}</span>${escapeHtml(a.texto)}</div>`).join('');
+  cont.innerHTML = alertas.map(a => `
+    <div class="alerta ${a.nivel}">
+      <span class="icono"><i data-lucide="${a.nivel === 'roja' ? 'circle-alert' : 'triangle-alert'}"></i></span>
+      <span>${escapeHtml(a.texto)}</span>
+    </div>
+  `).join('');
+  pintarIconos();
 }
 
 // ─── Ejecutivos ────────────────────────────────────────────────────────

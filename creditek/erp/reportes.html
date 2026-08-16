@@ -26,8 +26,10 @@
 <title>Reportes · Creditek</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="reportes-query-cache.js"></script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
   .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -72,6 +74,195 @@
   .rango-personalizado button { background: #1e40af; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
   .rango-personalizado button:hover { background: #1e3a8a; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<style id="kora-report-filter-styles">
+  .kora-report-filters {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-lg);
+    box-shadow: var(--ctk-shadow-1);
+    display: grid;
+    gap: var(--ctk-space-2);
+    padding: var(--ctk-space-2);
+  }
+
+  .kora-report-filter-row {
+    align-items: center;
+    display: flex;
+    gap: var(--ctk-space-2);
+    min-width: 0;
+  }
+
+  .kora-filter-label {
+    color: var(--ctk-color-text-muted);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-label);
+    font-weight: var(--ctk-font-weight-semibold);
+    letter-spacing: var(--ctk-letter-spacing-label);
+    text-transform: uppercase;
+  }
+
+  .kora-period-viewport {
+    min-width: 0;
+  }
+
+  .kora-period-segments {
+    align-items: center;
+    background: var(--ctk-color-surface-subtle);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-md);
+    display: flex;
+    gap: var(--ctk-space-0-5);
+    padding: var(--ctk-space-0-5);
+    width: max-content;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text-secondary);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-caption);
+    font-weight: var(--ctk-font-weight-medium);
+    min-height: var(--ctk-height-control-sm);
+    padding: 0 0.75rem;
+    transform: none;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav:hover:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav.active {
+    background: var(--ctk-color-primary-900);
+    border-color: var(--ctk-color-primary-900);
+    box-shadow: var(--ctk-shadow-1);
+    color: var(--ctk-color-neutral-0);
+    font-weight: var(--ctk-font-weight-semibold);
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav[data-periodo="personalizado"]:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text-secondary);
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-md);
+    min-width: 13.5rem;
+    padding: 0 2.25rem 0 0.875rem;
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn:hover {
+    background: var(--ctk-color-hover);
+    border-color: var(--ctk-color-border-strong);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn.abierto {
+    border-color: var(--ctk-color-focus);
+    box-shadow: 0 0 0 3px var(--ctk-color-secondary-100);
+  }
+
+  .kora-store-filter-row {
+    border-top: 1px solid var(--ctk-color-border);
+    padding-top: var(--ctk-space-2);
+  }
+
+  .kora-report-filters #rango-visible {
+    color: var(--ctk-color-text-muted);
+    font-size: var(--ctk-font-size-caption);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado {
+    margin-left: var(--ctk-space-1);
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado input[type="date"] {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  body.kora-product-page .kora-report-filters #btnAplicarRango {
+    background: var(--ctk-color-primary-900);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-neutral-0);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  @media (max-width: 63.999rem) {
+    .kora-period-viewport {
+      -webkit-overflow-scrolling: touch;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      padding-bottom: var(--ctk-space-0-5);
+      scrollbar-width: thin;
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .kora-report-filters {
+      padding: var(--ctk-space-1);
+    }
+
+    .kora-report-filter-row {
+      align-items: stretch;
+      flex-direction: column;
+      gap: var(--ctk-space-1);
+    }
+
+    .kora-period-viewport,
+    .kora-report-filters .multi-select,
+    body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+      width: 100%;
+    }
+
+    .kora-report-filters #rango-visible {
+      margin-left: 0;
+      white-space: normal;
+    }
+
+    body.kora-product-page .kora-report-filters .rango-personalizado.abierto {
+      align-items: stretch;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      margin-left: 0;
+    }
+
+    body.kora-product-page .kora-report-filters #btnAplicarRango {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kora-report-filters *,
+    .kora-report-filters *::before,
+    .kora-report-filters *::after {
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -94,19 +285,23 @@
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
   <!-- FILTROS GLOBALES -->
-  <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-3">
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold mr-1">Período:</span>
-      <button class="btn-nav active" data-periodo="hoy">Hoy</button>
-      <button class="btn-nav" data-periodo="ayer">Ayer</button>
-      <button class="btn-nav" data-periodo="semana">Esta semana</button>
-      <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
-      <button class="btn-nav" data-periodo="mes">Este mes</button>
-      <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
-      <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
-      <button class="btn-nav" data-periodo="anio">Este año</button>
-      <button class="btn-nav" data-periodo="anio_pasado">Año pasado</button>
-      <button class="btn-nav" data-periodo="personalizado">Personalizado ▾</button>
+  <section class="kora-report-filters">
+    <div class="kora-report-filter-row">
+      <span class="kora-filter-label">Período</span>
+      <div class="kora-period-viewport">
+        <div class="kora-period-segments" aria-label="Seleccionar período">
+          <button class="btn-nav active" data-periodo="hoy">Hoy</button>
+          <button class="btn-nav" data-periodo="ayer">Ayer</button>
+          <button class="btn-nav" data-periodo="semana">Esta semana</button>
+          <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
+          <button class="btn-nav" data-periodo="mes">Este mes</button>
+          <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
+          <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
+          <button class="btn-nav" data-periodo="anio">Este año</button>
+          <button class="btn-nav" data-periodo="anio_pasado">Año pasado</button>
+          <button class="btn-nav" data-periodo="personalizado">Personalizado ▾</button>
+        </div>
+      </div>
       <div class="rango-personalizado" id="rangoPersonalizado">
         <label class="text-xs text-gray-500">Desde</label>
         <input type="date" id="fechaDesde">
@@ -115,8 +310,8 @@
         <button id="btnAplicarRango">Aplicar</button>
       </div>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs uppercase tracking-wider text-gray-500 font-semibold mr-1">Tiendas:</span>
+    <div class="kora-report-filter-row kora-store-filter-row">
+      <span class="kora-filter-label">Tiendas</span>
       <div class="multi-select" id="filtroTiendasWrap">
         <button type="button" class="multi-select-btn" id="btnTiendas">Todas las tiendas</button>
         <div class="multi-select-panel" id="panelTiendas">
@@ -447,9 +642,11 @@
 // ============================================================================
 // CONFIG
 // ============================================================================
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const queryCache = window.CreditekReportesQueryCache;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -469,6 +666,10 @@ function num(n) { return n == null ? '—' : fmtInt.format(Number(n)); }
 function pct(n, base) { if (!base) return '—'; return (100 * Number(n) / Number(base)).toFixed(1) + '%'; }
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+function exigirRespuestas(...respuestas) {
+  const fallida = respuestas.find(respuesta => respuesta?.error);
+  if (fallida) throw new Error(fallida.error.message);
+}
 function toast(msg, tipo = 'ok') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -551,6 +752,43 @@ function tiendaVisible(codigo) {
   return !tiendasFiltro || tiendasFiltro.length === 0 || tiendasFiltro.includes(codigo);
 }
 
+function crearCacheRefresco() {
+  const { desde, hasta } = getPeriodo();
+  const filtro = [...tiendasFiltro];
+  const filtrar = (query, col = 'tienda_codigo') => {
+    if (filtro.length === 0) return query;
+    if (filtro.length === 1) return query.eq(col, filtro[0]);
+    return query.in(col, filtro);
+  };
+
+  return queryCache.crear({
+    ventas: () => filtrar(
+      sb.from('ventas')
+        .select('id, total, tienda_codigo, origen:tienda_codigo(nombre), venta_items(cantidad, productos(tipo))')
+        .gte('fecha', desde)
+        .lte('fecha', hasta)
+        .neq('anulada', true),
+    ),
+    cartera: () => filtrar(
+      sb.from('cuenta_corriente')
+        .select('tienda_codigo, tipo, monto, created_at, origen:tienda_codigo(nombre)')
+        .order('created_at', { ascending: false }),
+    ),
+    inventario: () => Promise.all([
+      filtrar(
+        sb.from('unidades')
+          .select('producto_id, tienda_actual, precio_tienda, costo_remision, estado, origen:tienda_actual(nombre)')
+          .eq('estado', 'disponible'),
+        'tienda_actual',
+      ),
+      filtrar(
+        sb.from('stock_cantidad')
+          .select('producto_id, tienda_codigo, cantidad, precio_tienda, costo_promedio, origen:tienda_codigo(nombre)'),
+      ),
+    ]),
+  });
+}
+
 // ============================================================================
 // AUTH
 // ============================================================================
@@ -597,12 +835,16 @@ async function verificarAuth() {
 // ============================================================================
 // KPIs SUPERIORES
 // ============================================================================
-async function cargarKPIs() {
+async function cargarKPIs(cache) {
   const { desde, hasta } = getPeriodo();
-  let qVentas = sb.from('ventas').select('total, tienda_codigo', { count: 'exact' })
-    .gte('fecha', desde).lte('fecha', hasta).neq('anulada', true);
-  qVentas = aplicarFiltroTienda(qVentas);
-  const vRes = await qVentas;
+  const [vRes, ccRes, [unRes, stRes]] = await Promise.all([
+    cache.obtener('ventas'),
+    cache.obtener('cartera'),
+    cache.obtener('inventario'),
+  ]);
+  const error = vRes.error || ccRes.error || unRes.error || stRes.error;
+  if (error) throw new Error(error.message);
+
   const ventas = vRes.data || [];
   const totalV = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
   const ticket = ventas.length > 0 ? totalV / ventas.length : 0;
@@ -626,7 +868,9 @@ async function cargarKPIs() {
     const mesNum = dDesde.getMonth() + 1;
     let qHist = sb.from('historico_mensual').select('venta_total, venta_total_dia, dias_mes').eq('anio', anio2025).eq('mes', mesNum);
     qHist = aplicarFiltroTienda(qHist);
-    const { data: hist } = await qHist;
+    const histRes = await qHist;
+    exigirRespuestas(histRes);
+    const hist = histRes.data;
     (hist || []).forEach(h => {
       if (esUnDia) ref2025 += Number(h.venta_total_dia || 0);
       else ref2025 += Number(h.venta_total_dia || 0) * diasRango;
@@ -641,23 +885,13 @@ async function cargarKPIs() {
   }
   deltaEl.innerHTML = sub;
 
-  // Cartera (snapshot — no filtra por fecha)
-  let qCC = sb.from('cuenta_corriente').select('tienda_codigo, tipo, monto');
-  qCC = aplicarFiltroTienda(qCC);
-  const ccRes = await qCC;
+  // Cartera e inventario provienen del caché compartido de este refresco.
   const cc = ccRes.data || [];
   const saldo = cc.reduce((s, r) => s + (r.tipo === 'cargo' ? Number(r.monto) : -Number(r.monto)), 0);
   document.getElementById('kpi-cartera').textContent = money(saldo);
   document.getElementById('kpi-cartera-sub').textContent = cc.length + ' movimientos totales';
 
-  // Inventario (snapshot — no filtra por fecha)
-  let qUn = sb.from('unidades').select('precio_tienda, costo_remision, tienda_actual, estado').eq('estado', 'disponible');
-  qUn = aplicarFiltroTienda(qUn, 'tienda_actual');
-  const unRes = await qUn;
   const uns = unRes.data || [];
-  let qStock = sb.from('stock_cantidad').select('cantidad, precio_tienda, costo_promedio, tienda_codigo');
-  qStock = aplicarFiltroTienda(qStock);
-  const stRes = await qStock;
   const sts = stRes.data || [];
   const valorInv = uns.reduce((s, u) => s + Number(u.precio_tienda ?? u.costo_remision ?? 0), 0)
     + sts.reduce((s, r) => s + Number(r.cantidad || 0) * Number(r.precio_tienda ?? r.costo_promedio ?? 0), 0);
@@ -668,12 +902,8 @@ async function cargarKPIs() {
 // ============================================================================
 // 1.1 CUADRO DE VENTAS POR TIENDA
 // ============================================================================
-async function cargarVentas() {
-  const { desde, hasta } = getPeriodo();
-  let q = sb.from('ventas').select('id, total, tienda_codigo, origen:tienda_codigo(nombre), venta_items(cantidad, productos(tipo))')
-    .gte('fecha', desde).lte('fecha', hasta).neq('anulada', true);
-  q = aplicarFiltroTienda(q);
-  const { data, error } = await q;
+async function cargarVentas(cache) {
+  const { data, error } = await cache.obtener('ventas');
   if (error) { document.getElementById('tbody-ventas').innerHTML = `<tr><td colspan="7" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
 
   // Agrupar por tienda
@@ -731,10 +961,8 @@ async function cargarVentas() {
 // ============================================================================
 // 1.2 CARTERA POR TIENDA
 // ============================================================================
-async function cargarCartera() {
-  let q = sb.from('cuenta_corriente').select('tienda_codigo, tipo, monto, created_at, origen:tienda_codigo(nombre)').order('created_at', { ascending: false });
-  q = aplicarFiltroTienda(q);
-  const { data, error } = await q;
+async function cargarCartera(cache) {
+  const { data, error } = await cache.obtener('cartera');
   if (error) { document.getElementById('tbody-cartera').innerHTML = `<tr><td colspan="6" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
 
   const porTienda = {};
@@ -776,11 +1004,14 @@ async function cargarCartera() {
 // ============================================================================
 // 1.3 INVENTARIO VALORIZADO POR TIENDA
 // ============================================================================
-async function cargarInventario() {
-  const [uRes, sRes] = await Promise.all([
-    sb.from('unidades').select('producto_id, tienda_actual, precio_tienda, costo_remision, estado, origen:tienda_actual(nombre)').eq('estado', 'disponible'),
-    sb.from('stock_cantidad').select('producto_id, tienda_codigo, cantidad, precio_tienda, costo_promedio, origen:tienda_codigo(nombre)').gt('cantidad', 0),
-  ]);
+async function cargarInventario(cache) {
+  const [uRes, sRes] = await cache.obtener('inventario');
+  const error = uRes.error || sRes.error;
+  if (error) {
+    document.getElementById('tbody-inventario').innerHTML =
+      `<tr><td colspan="5" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`;
+    return;
+  }
 
   const porTienda = {};
   (uRes.data || []).forEach(u => {
@@ -793,6 +1024,7 @@ async function cargarInventario() {
     porTienda[cod].valorOscar += Number(u.costo_remision ?? 0);
   });
   (sRes.data || []).forEach(s => {
+    if (Number(s.cantidad || 0) <= 0) return;
     if (!tiendaVisible(s.tienda_codigo)) return;
     const cod = s.tienda_codigo;
     if (!porTienda[cod]) porTienda[cod] = { nombre: s.origen?.nombre || cod, skus: new Set(), unidades: 0, valorTienda: 0, valorOscar: 0 };
@@ -830,6 +1062,7 @@ async function cargarPresupuesto() {
     sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
     sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
   ]);
+  exigirRespuestas(pRes, vRes, h2025Res);
 
   const msgEl = document.getElementById('msg-presupuestos');
   if (!pRes.data || pRes.data.length === 0) {
@@ -886,6 +1119,7 @@ async function cargarRentabilidadTienda() {
     sb.from('venta_items').select('venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true),
     sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado'),
   ]);
+  exigirRespuestas(vRes, viRes, gRes);
   const porTienda = {};
   (vRes.data || []).forEach(v => {
     if (!tiendaVisible(v.tienda_codigo)) return;
@@ -971,6 +1205,7 @@ async function cargarCrecimiento() {
   qHist = aplicarFiltroTienda(qHist);
 
   const [ventasRes, histRes] = await Promise.all([q, qHist]);
+  exigirRespuestas(ventasRes, histRes);
   if (ventasRes.error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(ventasRes.error.message)}</td></tr>`; return; }
 
   // Serie 2026 por mes
@@ -1043,9 +1278,11 @@ async function cargarCrecimiento() {
 // ============================================================================
 async function cargarTopProductos() {
   const { desde, hasta } = getPeriodo();
-  const { data: vi } = await sb.from('venta_items')
+  const viRes = await sb.from('venta_items')
     .select('cantidad, precio_venta, producto_id, productos(nombre), ventas!inner(tienda_codigo, fecha, anulada)')
     .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
+  exigirRespuestas(viRes);
+  const vi = viRes.data;
   const porProd = {};
   (vi || []).forEach(v => {
     if (!tiendaVisible(v.ventas?.tienda_codigo)) return;
@@ -1067,7 +1304,9 @@ async function cargarTopProductos() {
   const iso = d => d.toISOString().slice(0, 10);
   let qUn = sb.from('unidades').select('producto_id, created_at, productos(nombre)').eq('estado', 'disponible').lte('created_at', iso(hace30));
   qUn = aplicarFiltroTienda(qUn, 'tienda_actual');
-  const { data: uns } = await qUn;
+  const unidadesRes = await qUn;
+  exigirRespuestas(unidadesRes);
+  const uns = unidadesRes.data;
   const slowMap = {};
   (uns || []).forEach(u => {
     const pid = u.producto_id;
@@ -1115,18 +1354,23 @@ async function cargarProveedores() {
 // ============================================================================
 async function refrescarTodo() {
   document.getElementById('rango-visible').textContent = labelPeriodo();
-  await Promise.all([
-    cargarKPIs(),
-    cargarVentas(),
-    cargarCartera(),
-    cargarInventario(),
-    cargarPresupuesto(),
-    cargarRentabilidadTienda(),
-    cargarRentabilidadCategoria(),
-    cargarCrecimiento(),
-    cargarTopProductos(),
-    cargarProveedores(),
-  ]);
+  const cache = crearCacheRefresco();
+  try {
+    await Promise.all([
+      cargarKPIs(cache),
+      cargarVentas(cache),
+      cargarCartera(cache),
+      cargarInventario(cache),
+      cargarPresupuesto(),
+      cargarRentabilidadTienda(),
+      cargarRentabilidadCategoria(),
+      cargarCrecimiento(),
+      cargarTopProductos(),
+      cargarProveedores(),
+    ]);
+  } catch (error) {
+    toast(`No fue posible actualizar todos los reportes: ${error.message}`, 'error');
+  }
 }
 
 // ============================================================================

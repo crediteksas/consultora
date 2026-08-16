@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Cambiar contraseña</title>
+<title>KORA · Cambiar contraseña — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/config/kora-environment.generated.js"></script>
 <style>
 :root {
   --azul: #0B1E3D;
@@ -63,13 +64,15 @@ body {
 
 .icono-check { font-size: 34px; text-align: center; margin-bottom: 12px; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
 <!-- Pantalla 1: login (si no hay sesión activa) -->
 <div class="login-screen pantalla show" id="loginScreen">
   <div class="login-box">
-    <img class="logo" src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="Creditek">
+    <div data-kora-brand data-variant="login"></div>
     <h2>Iniciar sesión</h2>
     <p class="sub">Ingresa con el correo y la contraseña temporal que te enviaron.</p>
     <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
@@ -92,7 +95,7 @@ body {
 <!-- Pantalla 3: cambio de contraseña obligatorio -->
 <div class="login-screen pantalla" id="cambioScreen">
   <div class="login-box">
-    <img class="logo" src="/creditek/agentes/logos/creditek_logo_corregido_alta.png" alt="Creditek">
+    <div data-kora-brand data-variant="login"></div>
     <h2>Crea tu contraseña</h2>
     <p class="sub" id="saludoCambio">Este es tu primer ingreso. Antes de continuar, crea una contraseña nueva.</p>
     <input type="password" id="clave1" placeholder="Contraseña nueva" autocomplete="new-password">
@@ -118,8 +121,9 @@ body {
 
 <script>
 // Proyecto Supabase "creditek-erp" — separado por completo del proyecto de Sofía.
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;

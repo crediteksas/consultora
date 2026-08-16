@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creditek · Panel de Validación</title>
+<title>KORA · Panel de Validación — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/config/kora-environment.generated.js"></script>
 <style>
 :root {
   --azul: #0B1E3D;
@@ -100,12 +101,16 @@ header.topbar {
 .actions button:disabled { background: #CBD5E1; cursor: not-allowed; }
 .resuelta-tag { font-size: 12px; color: var(--text2); margin-top: 10px; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 </head>
 <body>
 
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <div class="logo-title">Credi<span>tek</span> · Validación</div>
+    <div data-kora-brand data-variant="login"></div>
     <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Entrar</button>
@@ -115,7 +120,7 @@ header.topbar {
 
 <div id="app">
   <header class="topbar">
-    <div class="logo-title">Credi<span>tek</span> · Validación</div>
+    <div data-kora-brand data-variant="public"></div>
     <div class="right">
       <span id="userEmail"></span>
       <button class="logout" id="btnLogout">Salir</button>
@@ -145,8 +150,9 @@ header.topbar {
 <script>
 // ─── Config ─────────────────────────────────────────────────────────────
 // Proyecto Supabase "creditek-erp" — separado por completo del proyecto de Sofía.
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

@@ -7,8 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="sidebar.js"></script>
 <script src="cuenta-corriente-domain.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -79,9 +81,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .saldo-alto { color: var(--rojo); font-weight: 700; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
 
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1200; padding: 16px; overflow: hidden; }
 .modal-bg.show { display: flex; }
-.modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-box { position: relative; background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 560px; max-height: min(92vh, 760px); overflow-y: auto; overscroll-behavior: contain; box-shadow: var(--shadow-md); z-index: 1; }
+.modal-box table thead { position: static; }
+body.modal-open { overflow: hidden; }
 .modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 4px; }
 .modal-sub { font-size: 12.5px; color: var(--text2); margin-bottom: 16px; }
 .saldo-grande { font-family: 'Montserrat', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 16px; }
@@ -115,6 +119,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -150,6 +156,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
   <div class="page">
     <div class="page-top"><h1>Cuenta corriente</h1></div>
+    <details class="cuadrito-vacio"><summary>¿Cómo funcionan los abonos?</summary><p>El abono reduce la cuenta corriente. Solo descuenta Caja cuando seleccionas “Efectivo de la tienda”; las demás fuentes no alteran el efectivo.</p></details>
 
     <div class="tabla-wrap">
       <table>
@@ -157,6 +164,18 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
         <tbody id="tbodyTiendas"></tbody>
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando...</div>
+    </div>
+
+    <div class="page-top" style="margin-top:28px;">
+      <h1 style="font-size:18px;">Instrucciones de consignación</h1>
+      <button class="btn-primary" id="btnNuevaInstruccion" style="display:none;">+ Nueva instrucción</button>
+    </div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Tienda</th><th>Banco</th><th>Cuenta destino</th><th>Valor</th><th>Comprobante</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tbodyInstrucciones"></tbody>
+      </table>
+      <div class="empty-state" id="emptyInstrucciones" style="display:none;">No hay instrucciones.</div>
     </div>
   </div>
   </div>
@@ -194,10 +213,24 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 <!-- Modal: registrar abono -->
 <div class="modal-bg" id="modalAbono">
-  <div class="modal-box">
-    <h2>Registrar abono</h2>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="abonoTitulo">
+    <h2 id="abonoTitulo">Registrar abono</h2>
     <div class="modal-sub" id="abonoTiendaTexto"></div>
+    <div class="campo"><label>Fecha</label><input type="date" id="abonoFecha"></div>
+    <div class="campo"><label>Tipo de movimiento</label><select id="abonoTipo"><option value="abono_tienda">Abono de tienda</option><option value="pago_socio">Pago a socio</option></select></div>
+    <div class="campo"><label>Tercero o socio/proveedor</label><input type="text" id="abonoTercero" maxlength="120" placeholder="Nombre del tercero"></div>
+    <div class="campo"><label>Concepto</label><input type="text" id="abonoConcepto" maxlength="160" value="Consignación"></div>
     <div class="campo"><label>Monto</label><input type="number" id="abonoMonto" min="1" placeholder="0"></div>
+    <div class="campo">
+      <label>Fuente de fondos</label>
+      <select id="abonoFuente">
+        <option value="sin_afectar_caja">No afecta caja de la tienda</option>
+        <option value="efectivo_tienda">Efectivo de la tienda</option>
+      </select>
+      <small>Solo “Efectivo de la tienda” registra una salida en Caja.</small>
+    </div>
+    <div class="campo"><label>Observación</label><textarea id="abonoObservacion" rows="2" maxlength="500"></textarea></div>
+    <div class="campo"><label>Usuario responsable</label><input type="text" id="abonoResponsable" readonly></div>
     <div class="campo">
       <label>Foto del soporte de consignación (obligatoria)</label>
       <input type="file" id="abonoFoto" accept="image/*" capture="environment">
@@ -211,9 +244,48 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   </div>
 </div>
 
+<!-- Modal: instrucción creada por Maythe/Oscar -->
+<div class="modal-bg" id="modalInstruccion">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="instruccionTitulo">
+    <h2 id="instruccionTitulo">Nueva instrucción</h2>
+    <div class="modal-sub">La tienda recibirá estos datos como un snapshot inmutable.</div>
+    <div class="campo"><label>Tienda</label><select id="instruccionTienda"></select></div>
+    <div class="campo"><label>Fecha</label><input type="date" id="instruccionFecha"></div>
+    <div class="campo"><label>Efectivo disponible</label><input id="instruccionDisponible" readonly value="—"></div>
+    <div class="campo"><label>Banco</label><input id="instruccionBanco" maxlength="120"></div>
+    <div class="campo"><label>Número de cuenta</label><input id="instruccionCuenta" maxlength="120"></div>
+    <div class="campo"><label>Valor esperado</label><input type="number" id="instruccionValor" min="1"></div>
+    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR</option></select></div>
+    <div class="campo" id="campoInstruccionProveedor"><label>Proveedor</label><select id="instruccionProveedor"></select></div>
+    <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
+    <div class="modal-err" id="modalInstruccionErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarInstruccion">Cancelar</button>
+      <button class="btn-guardar" id="btnGuardarInstruccion">Crear instrucción</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: comprobante enviado por la tienda -->
+<div class="modal-bg" id="modalComprobante">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="comprobanteTitulo">
+    <h2 id="comprobanteTitulo">Enviar comprobante</h2>
+    <div class="modal-sub" id="comprobanteDestino"></div>
+    <div class="campo"><label>Valor consignado</label><input type="number" id="comprobanteValor" min="1"></div>
+    <div class="campo"><label>Foto del comprobante</label><input type="file" id="comprobanteFoto" accept="image/*" capture="environment"></div>
+    <img class="foto-preview" id="comprobantePreview">
+    <div class="modal-err" id="modalComprobanteErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarComprobante">Cancelar</button>
+      <button class="btn-guardar" id="btnEnviarComprobante">Enviar comprobante</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const cuentaDomain = window.CreditekCuentaCorrienteDomain;
 
@@ -224,6 +296,13 @@ let abonosCache = [];
 let tiendasCache = [];
 let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
+let modalAnteriorAbono = null;
+let abonoIdempotencyKey = null;
+let instrucciones = [];
+let proveedoresCache = [];
+let instruccionComprobanteActual = null;
+let fotoComprobanteBlob = null;
+let comprobanteIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function esGerencia() { return !!currentPerfil && currentPerfil.rol === 'gerencia'; }
@@ -308,22 +387,65 @@ async function comprimirImagen(file, maxSide = 1600, quality = 0.7) {
 
 // ─── Página: Cuenta corriente ───────────────────────────────────────────
 function initPagina() {
-  document.getElementById('btnCerrarDetalle').addEventListener('click', () => document.getElementById('modalDetalle').classList.remove('show'));
+  document.getElementById('btnCerrarDetalle').addEventListener('click', () => cerrarModal('modalDetalle'));
   document.getElementById('btnAbrirAbono').addEventListener('click', abrirModalAbono);
-  document.getElementById('btnCancelarAbono').addEventListener('click', () => document.getElementById('modalAbono').classList.remove('show'));
+  document.getElementById('btnCancelarAbono').addEventListener('click', cerrarModalAbono);
   document.getElementById('abonoFoto').addEventListener('change', onFotoAbonoSeleccionada);
   document.getElementById('btnGuardarAbono').addEventListener('click', guardarAbono);
   document.getElementById('historialDias').addEventListener('change', () => {
     if (tiendaDetalleActual) abrirDetalleTienda(tiendaDetalleActual.codigo, tiendaDetalleActual.nombre);
   });
+  document.getElementById('btnNuevaInstruccion').addEventListener('click', abrirNuevaInstruccion);
+  document.getElementById('btnCancelarInstruccion').addEventListener('click', () => cerrarModal('modalInstruccion'));
+  document.getElementById('btnGuardarInstruccion').addEventListener('click', guardarInstruccion);
+  document.getElementById('instruccionTipo').addEventListener('change', actualizarTipoInstruccion);
+  document.getElementById('instruccionTienda').addEventListener('change', cargarEfectivoDisponible);
+  document.getElementById('instruccionFecha').addEventListener('change', cargarEfectivoDisponible);
+  document.getElementById('btnCancelarComprobante').addEventListener('click', () => cerrarModal('modalComprobante'));
+  document.getElementById('comprobanteFoto').addEventListener('change', onFotoComprobanteSeleccionada);
+  document.getElementById('btnEnviarComprobante').addEventListener('click', enviarComprobante);
 
   cargarTodo();
 }
 
+function abrirModal(id, activador) {
+  const modal = document.getElementById(id);
+  modal._activador = activador || document.activeElement;
+  modal.classList.add('show');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => modal.querySelector('input, select, textarea, button')?.focus());
+}
+
+function cerrarModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('show');
+  if (!document.querySelector('.modal-bg.show')) document.body.classList.remove('modal-open');
+  modal._activador?.focus?.();
+}
+
+function cerrarModalAbono() {
+  cerrarModal('modalAbono');
+  if (modalAnteriorAbono) abrirModal('modalDetalle', modalAnteriorAbono);
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
+  else if (document.getElementById('modalInstruccion').classList.contains('show')) cerrarModal('modalInstruccion');
+  else if (document.getElementById('modalComprobante').classList.contains('show')) cerrarModal('modalComprobante');
+  else if (document.getElementById('modalDetalle').classList.contains('show')) cerrarModal('modalDetalle');
+});
+
 async function cargarTodo() {
   const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
   tiendasCache = tiendas || [];
+  if (esCentral()) {
+    const { data: proveedores } = await sb.from('proveedores').select('id, nombre').eq('activo', true).order('nombre');
+    proveedoresCache = proveedores || [];
+    document.getElementById('btnNuevaInstruccion').style.display = 'inline-block';
+  }
   await cargarMovimientosCC();
+  await cargarInstrucciones();
 }
 
 async function cargarMovimientosCC() {
@@ -382,9 +504,7 @@ function renderTablaTiendas() {
 function abrirDetalleTienda(codigo, nombre) {
   tiendaDetalleActual = { codigo, nombre };
   document.getElementById('detalleTitulo').textContent = nombre || codigo;
-  const puedeRegistrar = esGerencia() ||
-    (currentPerfil.rol === 'admin_tienda' && currentPerfil.tienda_codigo === codigo);
-  document.getElementById('btnAbrirAbono').style.display = puedeRegistrar ? 'inline-block' : 'none';
+  document.getElementById('btnAbrirAbono').style.display = esCentral() ? 'inline-block' : 'none';
 
   const movs = movimientosCC.filter(m => m.tienda_codigo === codigo);
   const historial = cuentaDomain.prepararHistorial({
@@ -409,7 +529,7 @@ function abrirDetalleTienda(codigo, nombre) {
     return `
     <tr>
       <td>${new Date(m.created_at).toLocaleDateString('es-CO')}</td>
-      <td>${escapeHtml(m.concepto)}${estadoHtml}</td>
+      <td>${escapeHtml(m.concepto)}${estadoHtml}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
       <td class="cargo">${m.tipo === 'cargo' ? fmtCOP(m.monto) : ''}</td>
       <td class="abono">${m.tipo === 'abono' ? fmtCOP(m.monto) : ''}</td>
       <td>${fmtCOP(m.saldoAcumulado)}</td>
@@ -450,7 +570,206 @@ function abrirDetalleTienda(codigo, nombre) {
     btn.addEventListener('click', () => abrirSoporteAbono(btn.dataset.path));
   });
 
-  document.getElementById('modalDetalle').classList.add('show');
+  abrirModal('modalDetalle');
+}
+
+function etiquetaEstadoInstruccion(estado) {
+  return {
+    pendiente: 'Pendiente',
+    en_validacion: 'Pendiente de validación',
+    validado: 'Validado',
+    rechazado: 'Rechazado',
+  }[estado] || estado;
+}
+
+async function cargarInstrucciones() {
+  const empty = document.getElementById('emptyInstrucciones');
+  const tbody = document.getElementById('tbodyInstrucciones');
+  const { data, error } = await sb.rpc('listar_instrucciones_consignacion');
+  if (error) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'No se pudieron cargar las instrucciones: ' + error.message;
+    return;
+  }
+  instrucciones = data || [];
+  empty.style.display = instrucciones.length ? 'none' : 'block';
+  tbody.innerHTML = instrucciones.map(i => {
+    const puedeEnviar = !esCentral() && ['pendiente', 'rechazado'].includes(i.estado);
+    const puedeDecidir = esCentral() && i.estado === 'en_validacion';
+    const destino = [i.banco, i.numero_cuenta].filter(Boolean).join(' · ');
+    const interno = esCentral()
+      ? `<br><small>${escapeHtml(i.tipo_destino || '')}${i.proveedor_nombre ? ` · ${escapeHtml(i.proveedor_nombre)}` : ''}</small>`
+      : '';
+    return `<tr>
+      <td>${escapeHtml(i.fecha)}</td>
+      <td>${escapeHtml(i.tienda_codigo)}</td>
+      <td>${escapeHtml(i.banco)}</td>
+      <td>${escapeHtml(destino || '—')}</td>
+      <td>${fmtCOP(i.valor_esperado)}</td>
+      <td>${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : '—'}</td>
+      <td>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</td>
+      <td>
+        ${puedeEnviar ? `<button class="link-chico" data-enviar="${i.id}">Enviar</button>` : ''}
+        ${puedeDecidir ? `<button class="link-chico" data-aprobar="${i.id}">Aprobar</button><button class="link-chico" data-rechazar="${i.id}">Rechazar</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-enviar]').forEach(btn => btn.addEventListener('click', () => abrirComprobante(btn.dataset.enviar)));
+  tbody.querySelectorAll('[data-aprobar]').forEach(btn => btn.addEventListener('click', () => decidirInstruccion(btn.dataset.aprobar, 'validado')));
+  tbody.querySelectorAll('[data-rechazar]').forEach(btn => btn.addEventListener('click', () => decidirInstruccion(btn.dataset.rechazar, 'rechazado')));
+  tbody.querySelectorAll('[data-soporte]').forEach(btn => btn.addEventListener('click', () => abrirSoporteInstruccion(btn.dataset.soporte)));
+}
+
+function abrirNuevaInstruccion() {
+  document.getElementById('instruccionTienda').innerHTML = tiendasCache
+    .map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
+  document.getElementById('instruccionProveedor').innerHTML = '<option value="">Selecciona proveedor</option>' +
+    proveedoresCache.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
+  document.getElementById('instruccionFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  document.getElementById('instruccionBanco').value = '';
+  document.getElementById('instruccionCuenta').value = '';
+  document.getElementById('instruccionValor').value = '';
+  document.getElementById('instruccionTipo').value = 'PROVEEDOR';
+  document.getElementById('instruccionObservacion').value = '';
+  document.getElementById('modalInstruccionErr').classList.remove('show');
+  actualizarTipoInstruccion();
+  abrirModal('modalInstruccion', document.getElementById('btnNuevaInstruccion'));
+  cargarEfectivoDisponible();
+}
+
+function actualizarTipoInstruccion() {
+  document.getElementById('campoInstruccionProveedor').style.display =
+    document.getElementById('instruccionTipo').value === 'PROVEEDOR' ? 'block' : 'none';
+}
+
+async function cargarEfectivoDisponible() {
+  const tienda = document.getElementById('instruccionTienda').value;
+  const fecha = document.getElementById('instruccionFecha').value;
+  const campo = document.getElementById('instruccionDisponible');
+  if (!tienda || !fecha) { campo.value = '—'; return; }
+  campo.value = 'Calculando...';
+  const { data, error } = await sb.rpc('calcular_efectivo_esperado_tienda', {
+    p_tienda_codigo: tienda,
+    p_fecha: fecha,
+  });
+  const reservado = instrucciones
+    .filter(i => i.tienda_codigo === tienda && i.fecha === fecha && ['pendiente', 'en_validacion'].includes(i.estado))
+    .reduce((total, i) => total + Number(i.valor_esperado || 0), 0);
+  campo.value = error ? 'No disponible' : fmtCOP(Number(data?.esperado || 0) - reservado);
+}
+
+async function guardarInstruccion() {
+  const err = document.getElementById('modalInstruccionErr');
+  err.classList.remove('show');
+  const tipo = document.getElementById('instruccionTipo').value;
+  const payload = {
+    p_tienda_codigo: document.getElementById('instruccionTienda').value,
+    p_fecha: document.getElementById('instruccionFecha').value,
+    p_banco: document.getElementById('instruccionBanco').value.trim(),
+    p_numero_cuenta: document.getElementById('instruccionCuenta').value.trim(),
+    p_valor_esperado: Number(document.getElementById('instruccionValor').value || 0),
+    p_tipo_destino: tipo,
+    p_proveedor_id: tipo === 'PROVEEDOR' ? document.getElementById('instruccionProveedor').value || null : null,
+    p_observacion: document.getElementById('instruccionObservacion').value.trim() || null,
+  };
+  const btn = document.getElementById('btnGuardarInstruccion');
+  btn.disabled = true;
+  const { data, error } = await sb.rpc('crear_instruccion_consignacion', payload);
+  btn.disabled = false;
+  if (error || !data?.ok) {
+    err.textContent = error?.message || 'El servidor no confirmó la instrucción.';
+    err.classList.add('show');
+    return;
+  }
+  cerrarModal('modalInstruccion');
+  mostrarBanner('✅ Instrucción creada correctamente.');
+  await cargarInstrucciones();
+}
+
+function abrirComprobante(id) {
+  instruccionComprobanteActual = instrucciones.find(i => i.id === id);
+  if (!instruccionComprobanteActual) return;
+  const destino = `${instruccionComprobanteActual.banco} · ${instruccionComprobanteActual.numero_cuenta}`;
+  document.getElementById('comprobanteDestino').textContent =
+    `${destino} · ${fmtCOP(instruccionComprobanteActual.valor_esperado)}`;
+  document.getElementById('comprobanteValor').value = instruccionComprobanteActual.valor_esperado;
+  document.getElementById('comprobanteFoto').value = '';
+  document.getElementById('comprobantePreview').style.display = 'none';
+  document.getElementById('modalComprobanteErr').classList.remove('show');
+  fotoComprobanteBlob = null;
+  comprobanteIdempotencyKey = crypto.randomUUID();
+  abrirModal('modalComprobante');
+}
+
+async function onFotoComprobanteSeleccionada(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  fotoComprobanteBlob = await comprimirImagen(file);
+  const preview = document.getElementById('comprobantePreview');
+  preview.src = URL.createObjectURL(fotoComprobanteBlob);
+  preview.style.display = 'block';
+}
+
+async function enviarComprobante() {
+  const err = document.getElementById('modalComprobanteErr');
+  err.classList.remove('show');
+  const valor = Number(document.getElementById('comprobanteValor').value || 0);
+  if (valor <= 0 || !fotoComprobanteBlob) {
+    err.textContent = 'Confirma el valor y adjunta la foto del comprobante.';
+    err.classList.add('show');
+    return;
+  }
+  const path = `${currentPerfil.tienda_codigo}/consignaciones/${instruccionComprobanteActual.id}/${comprobanteIdempotencyKey}.jpg`;
+  const subida = await sb.storage.from('soportes').upload(path, fotoComprobanteBlob, { contentType: 'image/jpeg' });
+  if (subida.error) {
+    err.textContent = 'No se pudo subir el comprobante: ' + subida.error.message;
+    err.classList.add('show');
+    return;
+  }
+  const { data, error } = await sb.rpc('enviar_comprobante_consignacion', {
+    p_instruccion_id: instruccionComprobanteActual.id,
+    p_valor_confirmado: valor,
+    p_soporte_path: path,
+    p_idempotency_key: comprobanteIdempotencyKey,
+  });
+  if (error || !data?.ok) {
+    err.textContent = error?.message || 'El servidor no confirmó el comprobante.';
+    err.classList.add('show');
+    return;
+  }
+  cerrarModal('modalComprobante');
+  mostrarBanner('✅ Comprobante enviado para validación.');
+  await cargarInstrucciones();
+}
+
+async function decidirInstruccion(id, decision) {
+  const motivo = decision === 'rechazado' ? prompt('Motivo del rechazo:') : null;
+  if (decision === 'rechazado' && !motivo?.trim()) return;
+  if (decision === 'validado' && !confirm('¿Aprobar y aplicar este movimiento?')) return;
+  const { data, error } = await sb.rpc('decidir_instruccion_consignacion', {
+    p_instruccion_id: id,
+    p_decision: decision,
+    p_motivo: motivo,
+    p_request_id: crypto.randomUUID(),
+  });
+  if (error || !data?.ok) {
+    alert('No se pudo procesar la decisión: ' + (error?.message || 'respuesta inválida'));
+    return;
+  }
+  mostrarBanner(decision === 'validado' ? '✅ Consignación validada.' : 'Consignación rechazada.');
+  await cargarMovimientosCC();
+  await cargarInstrucciones();
+}
+
+async function abrirSoporteInstruccion(path) {
+  if (!path) return;
+  const { data, error } = await sb.storage.from('soportes').createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    alert('No se pudo abrir el comprobante.');
+    return;
+  }
+  window.open(data.signedUrl, '_blank', 'noopener');
 }
 
 async function marcarAbonoVerificado(abonoId) {
@@ -477,15 +796,25 @@ async function abrirSoporteAbono(path) {
 
 // ─── Registrar abono ─────────────────────────────────────────────────
 function abrirModalAbono() {
+  modalAnteriorAbono = document.activeElement;
+  cerrarModal('modalDetalle');
   const codigo = esCentral() ? tiendaDetalleActual.codigo : currentPerfil.tienda_codigo;
   const nombre = esCentral() ? tiendaDetalleActual.nombre : (tiendasCache.find(t => t.codigo === codigo)?.nombre || codigo);
   document.getElementById('abonoTiendaTexto').textContent = 'Tienda: ' + nombre;
   document.getElementById('abonoMonto').value = '';
+  document.getElementById('abonoFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  document.getElementById('abonoTipo').value = 'abono_tienda';
+  document.getElementById('abonoTercero').value = '';
+  document.getElementById('abonoConcepto').value = 'Consignación';
+  document.getElementById('abonoFuente').value = 'sin_afectar_caja';
+  document.getElementById('abonoObservacion').value = '';
+  document.getElementById('abonoResponsable').value = currentPerfil?.nombre || currentUser?.email || currentUser?.id || '';
   document.getElementById('abonoFoto').value = '';
   document.getElementById('abonoFotoPreview').style.display = 'none';
   document.getElementById('modalAbonoErr').classList.remove('show');
   fotoAbonoBlob = null;
-  document.getElementById('modalAbono').classList.add('show');
+  abonoIdempotencyKey = crypto.randomUUID();
+  abrirModal('modalAbono', modalAnteriorAbono);
 }
 
 async function onFotoAbonoSeleccionada(e) {
@@ -502,8 +831,15 @@ async function guardarAbono() {
   err.classList.remove('show');
   const codigo = esCentral() ? tiendaDetalleActual.codigo : currentPerfil.tienda_codigo;
   const monto = Number(document.getElementById('abonoMonto').value || 0);
+  const fecha = document.getElementById('abonoFecha').value;
+  const tipo = document.getElementById('abonoTipo').value;
+  const tercero = document.getElementById('abonoTercero').value.trim();
+  const concepto = document.getElementById('abonoConcepto').value.trim();
+  const fuente = document.getElementById('abonoFuente').value;
+  const observacion = document.getElementById('abonoObservacion').value.trim();
 
   if (monto <= 0) { err.textContent = 'Ingresa un monto válido.'; err.classList.add('show'); return; }
+  if (!fecha || !concepto) { err.textContent = 'Fecha y concepto son obligatorios.'; err.classList.add('show'); return; }
   if (!fotoAbonoBlob) { err.textContent = 'La foto del soporte de consignación es obligatoria.'; err.classList.add('show'); return; }
 
   const btn = document.getElementById('btnGuardarAbono');
@@ -518,23 +854,29 @@ async function guardarAbono() {
     return;
   }
 
-  const { error: errAbono } = await sb.rpc('registrar_abono_pendiente', {
+  const { data: resultado, error: errAbono } = await sb.rpc('registrar_abono_cuenta_corriente', {
     p_tienda_codigo: codigo,
+    p_fecha: fecha,
+    p_tipo_movimiento: tipo,
+    p_tercero: tercero || null,
+    p_concepto: concepto,
     p_monto: monto,
+    p_fuente_fondos: fuente,
+    p_observacion: observacion || null,
     p_soporte_path: path,
+    p_idempotency_key: abonoIdempotencyKey,
   });
 
-  if (errAbono) {
+  if (errAbono || !resultado?.ok) {
     btn.disabled = false; btn.textContent = 'Guardar abono';
-    err.textContent = 'No se pudo registrar el abono: ' + errAbono.message;
+    err.textContent = 'No se pudo registrar el abono: ' + (errAbono?.message || 'respuesta inválida');
     err.classList.add('show');
     return;
   }
 
   btn.disabled = false; btn.textContent = 'Guardar abono';
-
-  document.getElementById('modalAbono').classList.remove('show');
-  mostrarBanner(`✅ Abono de ${fmtCOP(monto)} registrado. Queda pendiente de verificación y todavía no afecta el saldo.`);
+  cerrarModal('modalAbono');
+  mostrarBanner(`✅ Abono de ${fmtCOP(monto)} registrado correctamente.`);
   await cargarMovimientosCC();
   if (tiendaDetalleActual) abrirDetalleTienda(tiendaDetalleActual.codigo, tiendaDetalleActual.nombre);
 }

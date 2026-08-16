@@ -22,17 +22,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registrar compra a proveedor · Creditek</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-    .badge-serial { background-color: #ede9fe; color: #6d28d9; }
-    .badge-cantidad { background-color: #dbeafe; color: #1e40af; }
+    .badge-serial { background-color: var(--ctk-color-accent-100); color: var(--ctk-color-accent-700); }
+    .badge-cantidad { background-color: var(--ctk-color-info-100); color: var(--ctk-color-info-700); }
     .search-results { max-height: 260px; overflow-y: auto; }
-    .search-results button:hover { background-color: #eff6ff; }
+    #modal-buscar { z-index: var(--ctk-z-modal); }
+    #toast { z-index: var(--ctk-z-toast); }
+    .compra-buscador-modal { padding: 0; overflow: hidden; }
+    .compra-buscador-modal .ctk-modal__header {
+      border-bottom: 1px solid var(--ctk-color-border);
+      padding: var(--ctk-space-3);
+    }
+    .compra-buscador-modal .ctk-modal__body {
+      overflow: visible;
+      padding: var(--ctk-space-3);
+    }
+    .compra-buscador-modal .ctk-search-wrap { margin-bottom: var(--ctk-space-2); }
+    /* El componente compartido ctk-dropdown es absoluto por defecto. En este
+       modal los resultados forman parte del flujo para no quedar fuera del
+       panel ni recortarse por el overflow del modal. */
+    .compra-buscador-modal #search-results {
+      display: block;
+      max-height: min(260px, 40vh);
+      overflow-y: auto;
+      position: static;
+      width: 100%;
+    }
+    #cerrar-modal { flex: 0 0 auto; }
+    .compra-producto-opcion,
+    .compra-producto-seleccionado {
+      background: var(--ctk-color-surface);
+      color: var(--ctk-color-text);
+    }
+    .compra-producto-opcion:hover,
+    .compra-producto-seleccionado:hover { background: var(--ctk-color-hover); }
+    body.kora-product-page #search-results .compra-producto-opcion {
+      align-items: stretch;
+      border-bottom: 1px solid var(--ctk-color-border);
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: auto;
+      padding: var(--ctk-space-2);
+      text-align: left;
+      width: 100%;
+    }
+    body.kora-product-page #search-results .compra-producto-opcion:last-child { border-bottom: 0; }
+    .compra-items-table { min-width: 1180px; }
+    .compra-costo-input { min-width: 120px; }
+    .compra-margen-valor { min-width: 88px; }
     input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
+<script src="/design-system/components/kora-product.js?v=2.0.4" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -57,7 +107,7 @@
 <!-- ============================================================ CONTENIDO -->
 <main id="app" class="hidden max-w-6xl mx-auto px-4 py-6 space-y-5">
 
-  <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
+  <div id="toast" role="alert" aria-live="assertive" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
   <!-- Panel de éxito post-guardado -->
   <div id="panel-exito" class="hidden bg-green-50 border border-green-200 rounded-lg p-5 fade-in">
@@ -78,6 +128,7 @@
 
   <!-- =========================== 1. DATOS DE LA FACTURA =========================== -->
   <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <details class="mb-4 text-sm text-gray-600"><summary class="font-medium cursor-pointer">¿Cómo registrar una compra de contado?</summary><p class="mt-2">Selecciona “De contado” y la fuente de fondos. KORA ingresa el inventario, paga la factura y registra la salida en Tesorería Central.</p></details>
     <h2 class="text-lg font-semibold text-gray-800 mb-1">1. Datos de la factura</h2>
     <p class="text-xs text-gray-500 mb-4">Encabezado (header) del documento que emite el proveedor.</p>
 
@@ -114,6 +165,28 @@
         <span id="soporte-status" class="text-xs text-gray-500 mt-1 block"></span>
       </label>
 
+      <label class="block">
+        <span class="text-sm font-medium text-gray-700">Fecha de vencimiento <span class="text-red-500">*</span></span>
+        <input id="fecha-vencimiento" type="date" required
+               class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-gray-700">Tipo de compra <span class="text-red-500">*</span></span>
+        <select id="tipo-compra" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+          <option value="credito">A crédito</option>
+          <option value="contado">De contado</option>
+        </select>
+      </label>
+      <label class="block hidden" id="campo-fuente-fondos">
+        <span class="text-sm font-medium text-gray-700">Fuente de fondos <span class="text-red-500">*</span></span>
+        <select id="fuente-fondos" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+          <option value="">Selecciona una fuente</option>
+          <option value="caja_central">Caja central</option>
+          <option value="banco_corporativo">Banco corporativo</option>
+        </select>
+        <span class="text-xs text-gray-500">La compra de contado queda pagada y registra una salida en Tesorería Central.</span>
+      </label>
+
       <label class="block md:col-span-2">
         <span class="text-sm font-medium text-gray-700">Nota <span class="text-xs text-gray-500">(observaciones internas, opcional)</span></span>
         <textarea id="nota-factura" rows="2" maxlength="500"
@@ -137,7 +210,7 @@
     </div>
 
     <div class="overflow-x-auto mt-4">
-      <table class="w-full text-sm">
+      <table class="compra-items-table w-full text-sm">
         <thead class="bg-gray-100 text-gray-700 text-left">
           <tr>
             <th class="px-3 py-2 font-semibold w-[26%]">Producto</th>
@@ -181,7 +254,7 @@
   <!-- =========================== 3. GUARDAR =========================== -->
   <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-gray-600">
-      Esta acción entra la mercancía a <b>Bodega Central</b>, crea la factura de proveedor y deja el saldo pendiente por pagar.
+      Esta acción entra la mercancía a <b>Bodega Central</b>. A crédito deja saldo pendiente; de contado registra el pago y la salida de fondos.
     </p>
     <div class="flex gap-2">
       <button id="btn-limpiar" type="button"
@@ -197,19 +270,25 @@
 </main>
 
 <!-- ============================================================ MODAL: buscador de productos -->
-<div id="modal-buscar" class="hidden fixed inset-0 bg-black bg-opacity-40 z-40 flex items-start justify-center pt-20 px-4">
-  <div class="bg-white rounded-lg shadow-xl w-full max-w-xl">
-    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-      <h3 class="font-semibold text-gray-800">Buscar producto</h3>
-      <button id="cerrar-modal" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+<div id="modal-buscar" class="ctk-backdrop hidden">
+  <section class="ctk-modal compra-buscador-modal" role="dialog" aria-modal="true" aria-labelledby="titulo-buscar-producto">
+    <div class="ctk-modal__header">
+      <h3 id="titulo-buscar-producto">Buscar producto</h3>
+      <button id="cerrar-modal" type="button" class="ctk-icon-button secondary ghost"
+              aria-label="Cerrar buscador" title="Cerrar buscador">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
     </div>
-    <div class="p-4">
+    <div class="ctk-modal__body">
+      <label for="input-buscar" class="ctk-sr-only">Nombre, categoría o SKU</label>
+      <div class="ctk-search-wrap">
       <input id="input-buscar" type="text" autofocus
-             class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             class="ctk-search"
              placeholder="Nombre, categoría o SKU..." />
-      <div id="search-results" class="search-results mt-3 border border-gray-100 rounded"></div>
+      </div>
+      <div id="search-results" class="search-results ctk-dropdown" aria-label="Resultados de productos"></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <!-- ============================================================ SCRIPT -->
@@ -222,11 +301,8 @@ const SUBCARPETA_SOPORTES = 'compras/';
 
 const SB = (function () {
   if (window.SB) return window.SB;
-  const env = window.CREDITEK_ENV || {
-    SUPABASE_URL: 'https://jfkmiyvcdfbsbwchyvol.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ'
-  };
-  return window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  const env = window.__KORA_ENV__;
+  return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
 })();
 
 // ============================================================
@@ -279,6 +355,7 @@ let productos = [];     // [{id, nombre, categoria, tipo, margen_tipo, margen_va
 // SPEC v2 · items ahora incluye margen y precio_remision
 let items = [];         // [{tempId, producto_id, producto_nombre, producto_tipo, cantidad, costo_unitario, margen_tipo, margen_valor, precio_remision, precio_manual}]
 let indiceItemActivo = null;   // para el modal de búsqueda
+let compraIdempotencyKey = crypto.randomUUID();
 
 // ============================================================
 // CARGA INICIAL DE CATÁLOGOS
@@ -397,7 +474,7 @@ function renderItems() {
         ? `<span class="ml-2 px-2 py-0.5 rounded text-xs ${i.producto_tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${i.producto_tipo}</span>`
         : '';
       const productoBtn = i.producto_id
-        ? `<button type="button" data-buscar-idx="${idx}" class="text-left w-full hover:bg-blue-50 rounded px-2 py-1">
+        ? `<button type="button" data-buscar-idx="${idx}" class="secondary compra-producto-seleccionado text-left w-full hover:bg-blue-50 rounded px-2 py-1">
              <span class="font-medium text-gray-800">${esc(i.producto_nombre)}</span>${tipoBadge}
            </button>`
         : `<button type="button" data-buscar-idx="${idx}" class="text-blue-600 hover:text-blue-800 text-sm underline">
@@ -420,7 +497,7 @@ function renderItems() {
               <span class="text-gray-500">$</span>
               <input type="number" min="0" step="1" data-item="${i.tempId}" data-campo="costo_unitario"
                      value="${i.costo_unitario ?? ''}"
-                     class="w-full border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                     class="compra-costo-input w-full border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </td>
           <td class="px-3 py-2">
@@ -432,7 +509,7 @@ function renderItems() {
               </select>
               <input type="number" min="0" step="0.01" data-item="${i.tempId}" data-campo="margen_valor"
                      value="${i.margen_valor ?? ''}"
-                     class="w-full border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     class="compra-margen-valor w-full border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                      title="${margenSufijo === '%' ? 'Porcentaje sobre el costo' : 'Valor fijo a sumar sobre el costo'}" />
             </div>
           </td>
@@ -486,10 +563,10 @@ function renderBusqueda(q) {
   }
   res.innerHTML = hits.map(p => `
     <button type="button" data-prod-id="${esc(p.id)}"
-            class="w-full text-left px-3 py-2 border-b border-gray-100 last:border-0">
+            class="ctk-dropdown__item secondary compra-producto-opcion">
       <div class="flex items-center justify-between">
         <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
-        <span class="px-2 py-0.5 rounded text-xs ${p.tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${esc(p.tipo)}</span>
+        <span class="ctk-badge ${p.tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${esc(p.tipo)}</span>
       </div>
       <div class="text-xs text-gray-500">${esc(p.categoria)}</div>
     </button>
@@ -546,11 +623,16 @@ async function guardarCompra() {
     const provId = document.getElementById('sel-proveedor').value;
     const numero = document.getElementById('num-factura').value.trim();
     const fecha = document.getElementById('fecha-factura').value;
+    const tipoCompra = document.getElementById('tipo-compra').value;
+    const fechaVencimiento = document.getElementById('fecha-vencimiento').value;
+    const fuenteFondos = document.getElementById('fuente-fondos').value;
     const nota = document.getElementById('nota-factura').value.trim();
 
     if (!provId) throw new Error('Selecciona un proveedor');
     if (!numero) throw new Error('El número de factura es requerido');
     if (!fecha) throw new Error('La fecha de la factura es requerida');
+    if (tipoCompra === 'credito' && !fechaVencimiento) throw new Error('La fecha de vencimiento es requerida');
+    if (tipoCompra === 'contado' && !fuenteFondos) throw new Error('Selecciona la fuente de fondos');
     if (items.length === 0) throw new Error('Agrega al menos un producto');
 
     const payload = [];
@@ -559,7 +641,9 @@ async function guardarCompra() {
       if (!it.cantidad || it.cantidad <= 0) throw new Error(`Cantidad inválida en "${it.producto_nombre}"`);
       if (it.costo_unitario == null || it.costo_unitario < 0) throw new Error(`Costo inválido en "${it.producto_nombre}"`);
       // SPEC v2 · precio_remision es obligatorio (lo pide el RPC).
-      if (it.precio_remision == null || it.precio_remision < 0) throw new Error(`Precio remisión inválido en "${it.producto_nombre}"`);
+      if (!Number.isFinite(Number(it.precio_remision)) || Number(it.precio_remision) <= 0) {
+        throw new Error(`Falta el precio de tienda para ${it.producto_nombre || 'este producto'}`);
+      }
       payload.push({
         producto_id: it.producto_id,
         cantidad: it.cantidad,
@@ -581,13 +665,17 @@ async function guardarCompra() {
     }
 
     // RPC
-    const { data, error } = await SB.rpc('registrar_compra_proveedor', {
+    const { data, error } = await SB.rpc('registrar_compra_proveedor_operativa', {
       p_proveedor_id: provId,
       p_numero_factura: numero,
       p_fecha: fecha,
+      p_tipo_compra: tipoCompra,
+      p_fecha_vencimiento: tipoCompra === 'credito' ? fechaVencimiento : null,
+      p_fuente_fondos: tipoCompra === 'contado' ? fuenteFondos : null,
       p_items: payload,
       p_soporte_path: soportePath,
-      p_nota: nota || null
+      p_nota: nota || null,
+      p_idempotency_key: compraIdempotencyKey,
     });
 
     if (error) throw new Error(error.message);
@@ -611,11 +699,17 @@ function limpiarFormulario() {
   document.getElementById('sel-proveedor').value = '';
   document.getElementById('num-factura').value = '';
   document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fecha-vencimiento').value = '';
+  document.getElementById('tipo-compra').value = 'credito';
+  document.getElementById('fuente-fondos').value = '';
+  document.getElementById('campo-fuente-fondos').classList.add('hidden');
+  document.getElementById('fecha-vencimiento').required = true;
   document.getElementById('nota-factura').value = '';
   document.getElementById('file-soporte').value = '';
   document.getElementById('soporte-status').textContent = '';
   document.getElementById('panel-exito').classList.add('hidden');
   items = [];
+  compraIdempotencyKey = crypto.randomUUID();
   renderItems();
 }
 
@@ -624,6 +718,13 @@ function limpiarFormulario() {
 // ============================================================
 document.getElementById('btn-agregar-item').addEventListener('click', nuevoItem);
 document.getElementById('btn-guardar').addEventListener('click', guardarCompra);
+document.getElementById('tipo-compra').addEventListener('change', event => {
+  const contado = event.target.value === 'contado';
+  document.getElementById('campo-fuente-fondos').classList.toggle('hidden', !contado);
+  const vencimiento = document.getElementById('fecha-vencimiento');
+  vencimiento.required = !contado;
+  if (contado) vencimiento.value = '';
+});
 document.getElementById('btn-limpiar').addEventListener('click', () => {
   if (items.length > 0 && !confirm('¿Descartar todos los ítems y limpiar el formulario?')) return;
   limpiarFormulario();

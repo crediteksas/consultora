@@ -1,0 +1,20 @@
+.ctk-only-mobile,
+.ctk-only-tablet,
+.ctk-only-desktop {
+  display: none !important;
+}
+
+@media (max-width: 47.999rem) {
+  .ctk-only-mobile { display: revert !important; }
+  .ctk-hide-mobile { display: none !important; }
+}
+
+@media (min-width: 48rem) and (max-width: 63.999rem) {
+  .ctk-only-tablet { display: revert !important; }
+  .ctk-hide-tablet { display: none !important; }
+}
+
+@media (min-width: 64rem) {
+  .ctk-only-desktop { display: revert !important; }
+  .ctk-hide-desktop { display: none !important; }
+}

@@ -7,8 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="sidebar.js"></script>
-<script src="caja-domain.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+<script src="caja-piloto-domain.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -117,6 +119,8 @@ tr.fila-abierta { background: #FEF2F2; }
 .badge.abierta { background: #FEE2E2; color: #991B1B; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
 </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body>
 
@@ -152,6 +156,7 @@ tr.fila-abierta { background: #FEF2F2; }
 
   <div class="page">
     <div class="page-top"><h1>Caja diaria</h1></div>
+    <details class="cuadrito-vacio"><summary>¿Dónde veo el saldo y los movimientos?</summary><p>Selecciona la fecha y abre “Movimientos y saldo acumulado”. Allí verás apertura, entradas, salidas, saldo esperado y responsable.</p></details>
 
     <!-- Vista tienda -->
     <div id="vistaTienda" style="display:none;">
@@ -169,7 +174,7 @@ tr.fila-abierta { background: #FEF2F2; }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Tienda</th><th>Fecha</th><th>Contado</th><th>Iniciales</th><th>Gastos</th><th>Utilidad</th><th>Esperado</th><th>Contado real</th><th>Diferencia</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Tienda</th><th>Fecha</th><th>Contado</th><th>Financiado</th><th>Iniciales</th><th>Gastos</th><th>Utilidad</th><th>Salidas explícitas</th><th>Esperado</th><th>Contado real</th><th>Diferencia</th><th>Estado</th></tr></thead>
           <tbody id="tbodyConsolidado"></tbody>
         </table>
         <div class="empty-state" id="emptyConsolidado" style="display:none;">Cargando...</div>
@@ -180,10 +185,11 @@ tr.fila-abierta { background: #FEF2F2; }
 </div>
 
 <script>
-const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impma21peXZjZGZic2J3Y2h5dm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzA5NjgsImV4cCI6MjA5OTcwNjk2OH0.kpAjGLbDnycU-B1kc-AqOvj6X2xH-KHBiKB94V7prcQ';
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const cajaDomain = window.CreditekCajaDomain;
+const cajaPiloto = window.CreditekCajaPiloto;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -267,20 +273,103 @@ function initPagina() {
 
 // ─── Cálculo del cuadrito (compartido) ─────────────────────────────────
 async function calcularCuadrito(tienda, fecha) {
-  const [{ data: ventas }, { data: gastos }, { data: caja }] = await Promise.all([
-    sb.from('ventas').select(cajaDomain.columnasVentasCaja())
+  const [
+    { data: ventas, error: ventasError },
+    { data: gastos, error: gastosError },
+    { data: cuadre, error: cuadreError },
+    { data: movimientosCaja, error: movimientosCajaError },
+  ] = await Promise.all([
+    sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items(*, productos(nombre, tipo))')
       .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false),
     sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha),
-    sb.from('caja_diaria').select('*').eq('tienda_codigo', tienda).eq('fecha', fecha).maybeSingle(),
+    sb.rpc('calcular_efectivo_esperado_tienda', {
+      p_tienda_codigo: tienda,
+      p_fecha: fecha,
+    }),
+    sb.from('movimientos_caja_tienda')
+      .select('id, fecha, tipo, monto, observacion, creado_por, created_at')
+      .eq('tienda_codigo', tienda)
+      .eq('fecha', fecha)
+      .order('created_at', { ascending: true }),
   ]);
+  if (ventasError) throw ventasError;
+  if (gastosError) throw gastosError;
+  if (cuadreError) throw cuadreError;
+  if (movimientosCajaError) throw movimientosCajaError;
 
   const ventasList = ventas || [];
   const gastosValidos = (gastos || []).filter(g => g.conceptos_gasto?.preautorizado || g.estado === 'aprobado');
-  const resumenVentas = cajaDomain.resumirVentas(ventasList);
-  const totalGastos = gastosValidos.reduce((s, g) => s + Number(g.monto || 0), 0);
-  const esperado = resumenVentas.totalContado + resumenVentas.totalIniciales - totalGastos;
+  const telefonos = [];
+  const accesoriosMap = {};
+  let totalUtilidad = 0;
+  ventasList.forEach(v => {
+    (v.venta_items || []).forEach(it => {
+      if (it.utilidad === null || it.utilidad === undefined || it.utilidad === '' || !Number.isFinite(Number(it.utilidad))) {
+        throw new Error(`La venta ${v.id} tiene una línea sin utilidad calculada.`);
+      }
+      totalUtilidad += Number(it.utilidad);
+      if (it.productos?.tipo === 'serializado') {
+        telefonos.push({ nombre: it.productos.nombre, tipo: v.tipo, monto: v.tipo === 'credito' ? (v.creditos?.[0]?.cuota_inicial ?? v.creditos?.cuota_inicial ?? 0) : it.precio_venta });
+      } else {
+        const key = it.productos?.nombre || 'Producto';
+        if (!accesoriosMap[key]) accesoriosMap[key] = { nombre: key, cantidad: 0, total: 0 };
+        accesoriosMap[key].cantidad += it.cantidad;
+        accesoriosMap[key].total += it.cantidad * it.precio_venta;
+      }
+    });
+  });
 
-  return { ...resumenVentas, gastos: gastosValidos, totalGastos, esperado, caja };
+  const creditosDelDia = ventasList.filter(v => v.tipo === 'credito').map(v => {
+    const credito = Array.isArray(v.creditos) ? v.creditos[0] : v.creditos;
+    const celular = (v.venta_items || []).find(it => it.productos?.tipo === 'serializado');
+    return {
+      cliente: v.clientes?.nombre_completo || 'Cliente general',
+      producto: celular?.productos?.nombre || '—',
+      financiera: credito?.financiera || '—',
+      inicial: credito?.cuota_inicial || 0,
+      financiado: credito?.valor_esperado_financiera || 0,
+    };
+  });
+
+  const apertura = Number(cuadre.apertura || 0);
+  const totalContado = Number(cuadre.contado_ventas || 0);
+  const totalFinanciado = Number(cuadre.financiado_ventas || 0);
+  const saldoPorCobrar = Number(cuadre.saldo_por_cobrar || 0);
+  const totalIniciales = Number(cuadre.iniciales || 0);
+  const otrosIngresos = Number(cuadre.otros_ingresos || 0);
+  const totalGastos = Number(cuadre.gastos_efectivo || 0);
+  const salidasExplicitas = Number(cuadre.salidas_explicitas || 0);
+  const esperado = cajaPiloto.calcularEfectivoEsperado({
+    apertura,
+    ventasContado: totalContado,
+    financiadoRecibido: totalFinanciado,
+    iniciales: totalIniciales,
+    otrosIngresos,
+    gastosEfectivo: totalGastos,
+    salidasExplicitas,
+  });
+  if (esperado !== Number(cuadre.esperado || 0)) {
+    throw new Error('El cálculo de caja del servidor no coincide con sus componentes.');
+  }
+
+  return {
+    telefonos,
+    accesorios: Object.values(accesoriosMap),
+    creditosDelDia,
+    gastos: gastosValidos,
+    apertura,
+    totalContado,
+    totalFinanciado,
+    saldoPorCobrar,
+    totalIniciales,
+    otrosIngresos,
+    totalGastos,
+    salidasExplicitas,
+    totalUtilidad,
+    esperado,
+    caja: cuadre.caja || null,
+    movimientosCaja: movimientosCaja || [],
+  };
 }
 
 // ─── Vista tienda ───────────────────────────────────────────────────
@@ -327,11 +416,33 @@ async function cargarCuadrito(tienda, fecha) {
           `).join('') : '<div class="cuadrito-vacio">Sin gastos hoy.</div>'}
         </div>
         <div class="cuadrito-totales">
+          <div class="cuadrito-linea"><span class="izq">Apertura</span><span class="der">${fmtCOP(c.apertura)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total contado</span><span class="der">${fmtCOP(c.totalContado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Financiado recibido en tienda</span><span class="der">${fmtCOP(c.totalFinanciado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Saldo por cobrar</span><span class="der">${fmtCOP(c.saldoPorCobrar)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total iniciales</span><span class="der">${fmtCOP(c.totalIniciales)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Utilidad del día</span><span class="der">${fmtCOP(c.totalUtilidad)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Salidas explícitas</span><span class="der">-${fmtCOP(c.salidasExplicitas)}</span></div>
           <div class="cuadrito-linea esperado ${c.esperado < 0 ? 'negativo' : ''}"><span class="izq">Efectivo esperado</span><span class="der">${fmtCOP(c.esperado)}</span></div>
+        </div>
+
+        <div class="cuadrito-seccion" aria-labelledby="movimientosCajaTitulo">
+          <div class="page-top" style="margin-bottom:10px;">
+            <div>
+              <h3 id="movimientosCajaTitulo">Movimientos y saldo acumulado</h3>
+              <div class="meta">Incluye únicamente movimientos explícitos de caja de la fecha seleccionada.</div>
+            </div>
+            <input id="filtroMovimientosCaja" type="search" placeholder="Filtrar por tipo, usuario o concepto" aria-label="Filtrar movimientos de caja" style="max-width:280px;">
+          </div>
+          <div class="tabla-wrap" style="margin:0;">
+            <table class="detalle-tabla">
+              <thead><tr><th>Hora</th><th>Tipo</th><th>Concepto</th><th>Usuario</th><th>Entrada</th><th>Salida</th><th>Saldo</th></tr></thead>
+              <tbody id="tbodyMovimientosCaja"></tbody>
+            </table>
+          </div>
+          <div class="cuadrito-vacio" style="margin-top:8px;">Saldo inicial ${fmtCOP(c.apertura)} · Saldo actual esperado ${fmtCOP(c.esperado)}</div>
         </div>
 
         ${cerrada ? `
@@ -353,6 +464,32 @@ async function cargarCuadrito(tienda, fecha) {
       </div>
     </div>
   `;
+
+  const tiposSalida = new Set(['transferencia_central', 'pago_directo_central', 'retiro', 'consignacion', 'devolucion_efectivo']);
+  const renderMovimientosCaja = filtro => {
+    let saldo = c.apertura;
+    const filas = c.movimientosCaja.map(m => {
+      const salida = tiposSalida.has(m.tipo);
+      saldo += salida ? -Number(m.monto) : Number(m.monto);
+      return { ...m, salida, saldo };
+    }).filter(m => {
+      const texto = `${m.tipo} ${m.observacion || ''} ${m.creado_por || ''}`.toLowerCase();
+      return !filtro || texto.includes(filtro.toLowerCase());
+    });
+    document.getElementById('tbodyMovimientosCaja').innerHTML = filas.length ? filas.map(m => `
+      <tr>
+        <td>${new Date(m.created_at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}</td>
+        <td>${escapeHtml(m.tipo.replaceAll('_', ' '))}</td>
+        <td>${escapeHtml(m.observacion || '—')}</td>
+        <td class="font-mono">${escapeHtml(m.creado_por || '—')}</td>
+        <td>${m.salida ? '' : fmtCOP(m.monto)}</td>
+        <td>${m.salida ? fmtCOP(m.monto) : ''}</td>
+        <td>${fmtCOP(m.saldo)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text2);">Sin movimientos explícitos para esta fecha.</td></tr>';
+  };
+  renderMovimientosCaja('');
+  document.getElementById('filtroMovimientosCaja').addEventListener('input', event => renderMovimientosCaja(event.target.value));
 
   if (!cerrada && currentPerfil.rol === 'admin_tienda') {
     const inputContado = document.getElementById('efectivoContado');
@@ -381,33 +518,49 @@ async function cerrarCajaAccion(tienda, fecha, esperado) {
   if (document.getElementById('efectivoContado').value === '') {
     err.textContent = 'Ingresa el efectivo contado.'; err.classList.add('show'); return;
   }
-  const dif = efectivo - esperado;
-  if (dif !== 0 && !nota) {
-    err.textContent = 'La diferencia no es cero — agrega una nota explicando por qué.'; err.classList.add('show'); return;
+  const validacion = cajaPiloto.validarCierre({
+    efectivoContado: efectivo,
+    efectivoEsperado: esperado,
+  });
+  if (!validacion.ok) {
+    err.textContent = validacion.mensaje; err.classList.add('show'); return;
   }
   if (!confirm('¿Confirmas el cierre de caja? No se puede cerrar dos veces el mismo día.')) return;
 
   const btn = document.getElementById('btnCerrarCaja');
+  const idempotencyKey = btn.dataset.idempotencyKey || crypto.randomUUID();
+  btn.dataset.idempotencyKey = idempotencyKey;
   btn.disabled = true; btn.textContent = 'Cerrando...';
 
-  const { data, error } = await sb.rpc('cerrar_caja', { p_tienda_codigo: tienda, p_fecha: fecha, p_efectivo_contado: efectivo, p_nota: nota });
+  const { data, error } = await sb.rpc('cerrar_caja_piloto', {
+    p_tienda_codigo: tienda,
+    p_fecha: fecha,
+    p_efectivo_contado: efectivo,
+    p_idempotency_key: idempotencyKey,
+    p_nota: nota,
+  });
 
   btn.disabled = false; btn.textContent = 'Cerrar caja';
 
   if (error) { err.textContent = 'No se pudo cerrar: ' + error.message; err.classList.add('show'); return; }
 
+  delete btn.dataset.idempotencyKey;
   mostrarBanner(`✅ Caja cerrada — Diferencia: ${fmtCOP(data.diferencia)}`);
   cargarCuadrito(tienda, fecha);
 }
 
 function compartirCuadritoWA(tiendaNombre, fecha, c) {
   const fechaFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-CO');
-  const texto = cajaDomain.crearMensajeWhatsApp({
-    tiendaNombre,
-    fechaTexto: fechaFmt,
-    datos: c,
-    formatearMoneda: fmtCOP,
-  });
+  let texto = `*CAJA DIARIA — ${tiendaNombre} — ${fechaFmt}*\n\n`;
+  texto += `*TELÉFONOS*\n`;
+  texto += c.telefonos.length ? c.telefonos.map(t => `${t.nombre} (${t.tipo}) — ${t.tipo === 'credito' ? 'Inicial: ' : ''}${fmtCOP(t.monto)}`).join('\n') : 'Sin ventas.';
+  texto += `\n\n*ACCESORIOS*\n`;
+  texto += c.accesorios.length ? c.accesorios.map(a => `${a.nombre} ×${a.cantidad} — ${fmtCOP(a.total)}`).join('\n') : 'Sin ventas.';
+  texto += `\n\n*CRÉDITOS*\n`;
+  texto += c.creditosDelDia.length ? c.creditosDelDia.map(cr => `${cr.cliente} — ${cr.producto} — ${cr.financiera}\n  Inicial: ${fmtCOP(cr.inicial)} | Financiado: ${fmtCOP(cr.financiado)}`).join('\n') : 'Sin créditos.';
+  texto += `\n\n*GASTOS*\n`;
+  texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');
@@ -454,8 +607,13 @@ async function cargarConsolidado() {
       const cerrada = c.caja && c.caja.estado === 'cerrada';
       filas.push({
         tiendaNombre: tienda.nombre, fecha,
-        contado: c.totalContado, iniciales: c.totalIniciales, gastos: c.totalGastos, esperado: c.esperado,
+        contado: c.totalContado,
+        financiado: c.totalFinanciado,
+        iniciales: c.totalIniciales,
+        gastos: c.totalGastos,
         utilidad: c.totalUtilidad,
+        salidasExplicitas: c.salidasExplicitas,
+        esperado: c.esperado,
         contadoReal: cerrada ? c.caja.efectivo_contado : null,
         diferencia: cerrada ? c.caja.diferencia : null,
         cerrada,
@@ -471,9 +629,11 @@ async function cargarConsolidado() {
       <td>${escapeHtml(f.tiendaNombre)}</td>
       <td>${new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-CO')}</td>
       <td>${fmtCOP(f.contado)}</td>
+      <td>${fmtCOP(f.financiado)}</td>
       <td>${fmtCOP(f.iniciales)}</td>
       <td>${fmtCOP(f.gastos)}</td>
       <td>${fmtCOP(f.utilidad)}</td>
+      <td>${fmtCOP(f.salidasExplicitas)}</td>
       <td>${fmtCOP(f.esperado)}</td>
       <td>${f.contadoReal !== null ? fmtCOP(f.contadoReal) : '—'}</td>
       <td>${f.diferencia !== null ? fmtCOP(f.diferencia) : '—'}</td>

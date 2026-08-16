@@ -15,6 +15,7 @@ test('build keeps required public applications and excludes backend source', asy
 
   const required = [
     'creditek/agentes/index.html',
+    'creditek/agentes/aura-auth.js',
     'creditek/agentes/creditek-agente-redes.html',
     'creditek/agentes/creditek-agente-respuestas.html',
     'creditek/agentes/agente3-meta-ads.html',
@@ -24,6 +25,9 @@ test('build keeps required public applications and excludes backend source', asy
     'creditek/convenios/index.html',
     'creditek/erp/app.html',
     'creditek/legal/index.html',
+    'config/production-endpoints.js',
+    'config/kora-environment.js',
+    'design-system/components/kora-product.js',
   ];
 
   for (const relative of required) {
@@ -32,6 +36,14 @@ test('build keeps required public applications and excludes backend source', asy
 
   const portalHtml = await readFile(path.join(out, 'creditek/portal/index.html'), 'utf8');
   assert.match(portalHtml, /Portal de Pedidos/i);
+  const dashboardHtml = await readFile(path.join(out, 'creditek/erp/tablero.html'), 'utf8');
+  const agentsHtml = await readFile(path.join(out, 'creditek/agentes/index.html'), 'utf8');
+  assert.match(dashboardHtml, /src="sidebar\.js\?v=2\.0\.14"/);
+  assert.match(agentsHtml, /src="\.\.\/erp\/sidebar\.js\?v=2\.0\.14"/);
+  await assert.rejects(
+    stat(path.join(out, 'config/kora-environment.example.js')),
+    { code: 'ENOENT' },
+  );
 });
 
 test('build does not publish known server-only paths', async () => {

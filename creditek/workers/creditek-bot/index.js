@@ -836,8 +836,8 @@ var process_default = _process;
 globalThis.process = process_default;
 
 // src/claude.ts
-function buildSystemPrompt(ciudadesCubiertas) {
-  return `Eres SOF\xCDA, la mejor asesora comercial de Creditek, empresa colombiana que VENDE equipos electr\xF3nicos y art\xEDculos de belleza a cr\xE9dito en la Costa Caribe colombiana. Creditek NO es una entidad financiera: quien otorga el cr\xE9dito es la plataforma aliada (PayJoy, Alo Credit, Krediya o Addi), no Creditek. Nunca digas "financiamos" ni variantes donde Creditek aparezca como quien otorga el cr\xE9dito \u2014 di "vendemos a cr\xE9dito", "compra a cr\xE9dito en Creditek" o "te conectamos con financiaci\xF3n".
+function buildSystemPrompt(ciudadesCubiertas, correcciones = []) {
+  let prompt = `Eres SOF\xCDA, la mejor asesora comercial de Creditek, empresa colombiana que VENDE equipos electr\xF3nicos y art\xEDculos de belleza a cr\xE9dito en la Costa Caribe colombiana. Creditek NO es una entidad financiera: quien otorga el cr\xE9dito es la plataforma aliada (PayJoy, Alo Credit, Krediya o Addi), no Creditek. Nunca digas "financiamos" ni variantes donde Creditek aparezca como quien otorga el cr\xE9dito \u2014 di "vendemos a cr\xE9dito", "compra a cr\xE9dito en Creditek" o "te conectamos con financiaci\xF3n".
 
 IDENTIDAD:
 - Cordial, segura y eficiente. Hablas como una colombiana profesional y cercana \u2014 sin acento regional forzado ni jerga de relleno.
@@ -907,6 +907,17 @@ PROHIBIDO:
 - Confirmar o negar cobertura/tienda en una ciudad espec\xEDfica (eso lo decide el sistema con datos reales, no t\xFA)
 
 FORMATO: Mensaje real de WhatsApp. Corto (2-3 l\xEDneas m\xE1ximo). Natural. Sin t\xEDtulos, sin listas. M\xE1ximo 1 emoji.`;
+  if (correcciones && correcciones.length > 0) {
+    const ejemplos = correcciones.map((c) => {
+      let ejemplo = `- Si el cliente dice algo como: "${c.mensaje_cliente}"`;
+      if (c.respuesta_mala) ejemplo += `\n  NO responder: "${c.respuesta_mala}"`;
+      ejemplo += `\n  S\xCD responder: "${c.respuesta_correcta}"`;
+      if (c.contexto) ejemplo += `\n  Contexto: ${c.contexto}`;
+      return ejemplo;
+    }).join("\n\n");
+    prompt += `\n\nCORRECCIONES Y EJEMPLOS APROBADOS:\n${ejemplos}`;
+  }
+  return prompt;
 }
 __name(buildSystemPrompt, "buildSystemPrompt");
 async function generarRespuesta(estado, mensajeCliente, contexto, anthropicKey) {
@@ -939,7 +950,7 @@ Responde como Sof\xEDa: profesional, cercana, con seguridad comercial. Un solo o
       body: JSON.stringify({
         model: "claude-haiku-4-5",
         max_tokens: 200,
-        system: buildSystemPrompt(ciudadesCubiertas),
+        system: buildSystemPrompt(ciudadesCubiertas, contexto.correcciones || []),
         messages: [{ role: "user", content: userMessage }]
       })
     });
@@ -2201,6 +2212,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
       ...extraerDatosAnuncio(referral),
       tiendas_intentadas: []
     };
+    conv.correcciones = await cargarCorreccionesSofia(env2);
     if (refQr) {
       const t = await buscarTiendaQR(refQr, sk);
       if (t) {
@@ -2465,6 +2477,7 @@ ${siguiente}` : respuestaContinuidad;
         nombre: conv.nombre,
         modalidad: conv.modalidad,
         producto: conv.producto_interes,
+        correcciones: conv.correcciones || [],
         ciudadesCubiertas: await obtenerCiudadesCubiertas(sk)
         // FIX 04-jul-2026
       };
@@ -2561,7 +2574,8 @@ ${siguiente}` : respuestaContinuidad;
           tienda: conv.tienda_nombre,
           nombre: conv.nombre,
           modalidad: conv.modalidad,
-          producto: conv.producto_interes
+          producto: conv.producto_interes,
+          correcciones: conv.correcciones || []
         };
         const respClaude = await generarRespuesta("MODALIDAD_CIUDAD", texto, ctx, env2.ANTHROPIC_API_KEY);
         respuesta = respClaude + "\n\n\xBFLo quieres a cr\xE9dito o de contado? \xBFY en qu\xE9 ciudad est\xE1s? \u{1F60A}";
@@ -2654,6 +2668,7 @@ ${siguiente}` : respuestaContinuidad;
           nombre: conv.nombre,
           modalidad: conv.modalidad,
           producto: conv.producto_interes,
+          correcciones: conv.correcciones || [],
           soloResponderDuda: true
         };
         const respuestaDuda = fija || await generarRespuesta("DATOS_MIN", texto, ctx, env2.ANTHROPIC_API_KEY);
@@ -3133,6 +3148,25 @@ async function seguimientoLeadsMudos(env2) {
   }
 }
 __name(seguimientoLeadsMudos, "seguimientoLeadsMudos");
+async function cargarCorreccionesSofia(env2) {
+  try {
+    const url = `${env2.SUPABASE_URL}/rest/v1/correcciones_sofia` + `?activa=eq.true&select=mensaje_cliente,respuesta_mala,respuesta_correcta,contexto` + `&order=created_at.desc&limit=20`;
+    const res = await fetch(url, {
+      headers: {
+        apikey: env2.SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${env2.SUPABASE_SERVICE_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("[correcciones_sofia] error al cargar:", e.message);
+    return [];
+  }
+}
+__name(cargarCorreccionesSofia, "cargarCorreccionesSofia");
 async function buscarCliente(telefono, key) {
   try {
     const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=nombre,optin_datos,celular,fuente,canal_origen&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });

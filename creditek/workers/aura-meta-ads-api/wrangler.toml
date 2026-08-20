@@ -1,0 +1,32 @@
+name = "aura-meta-ads-api"
+main = "index.js"
+compatibility_date = "2026-08-02"
+
+[vars]
+ALLOWED_ORIGIN = "https://registro.crediteksas.com"
+META_DESTINATION_URL = "https://registro.crediteksas.com/creditek/agentes/"
+META_GRAPH_VERSION = "v25.0"
+META_PAGE_ID = "1191052130747281"
+RATE_LIMIT_PER_MINUTE = "30"
+SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[durable_objects.bindings]]
+name = "PUBLISH_COORDINATOR"
+class_name = "PublicationCoordinator"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["PublicationCoordinator"]
+
+# Secrets requeridos en producción (solo nombres; nunca valores):
+#   META_ACCESS_TOKEN
+#   META_AD_ACCOUNT_ID
+#   SUPABASE_ANON_KEY

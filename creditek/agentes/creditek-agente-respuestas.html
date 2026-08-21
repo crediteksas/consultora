@@ -307,11 +307,11 @@ async function loadStats(){
 const SUPA='https://ditiwpndvmyuqcagupea.supabase.co/rest/v1';
 const SUPA_KEY='sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
   const SUPA_BASE='https://ditiwpndvmyuqcagupea.supabase.co';
-  function getSession(){try{return JSON.parse(sessionStorage.getItem('aura_supa_session')||'null')}catch(e){return null}}
+  function getSession(){try{return JSON.parse(sessionStorage.getItem('aura_supabase_session_v1')||'null')}catch(e){return null}}
   function irAlHub(){top.location.href='index.html'}
-  async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,email:s.email};sessionStorage.setItem('aura_supa_session',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
+  async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,email:s.email};sessionStorage.setItem('aura_supabase_session_v1',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
   async function supaFetch(url,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}let res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+s.access_token})}));if(res.status===401){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error('401')}res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+nuevo.access_token})}))}return res}
-  function logoutPanel(){sessionStorage.removeItem('aura_supa_session');irAlHub()}
+  function logoutPanel(){sessionStorage.removeItem('aura_supabase_session_v1');irAlHub()}
 async function loadConvs(){
   try{
     const convResp=await(await supaFetch('/conversaciones?select=*&order=timestamp.desc&limit=1000')).json();

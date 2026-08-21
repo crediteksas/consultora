@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agente 3 · Meta Ads — AURA</title>
+<script type="module">
+import { auraSessionToken } from './agente3-aura-session.mjs';
+window.auraSessionToken = auraSessionToken;
+</script>
+<script>
+try {
+  localStorage.removeItem('ck_api_key');
+  sessionStorage.removeItem('ck_api_key');
+} catch(e) {}
+</script>
 <style>
 :root {
   --navy:    #0B1E3D;
@@ -2215,8 +2225,6 @@ Inmediatamente después, en la siguiente línea, escribe SOLO el JSON de exactam
 No repitas el separador ni el JSON en ningún otro lugar de la respuesta.`;
 
 async function analizarConIA(data, campañaIndividual) {
-  const key = localStorage.getItem('ck_claude_key');
-  if (!key) return;
   if (!campañaIndividual && !data.main) return;
 
   const weeklyBudget = getWeeklyBudgetCOP(); // FIX v33/v34 — ya en COP, con migración de valor legado
@@ -2309,13 +2317,11 @@ ${SEPARADOR_INSTRUCCION}`;
   }
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',

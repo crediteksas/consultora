@@ -24,7 +24,7 @@
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'incidencias.html',
+      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html', 'incidencias.html',
     ]),
     asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']),
   });
@@ -80,6 +80,7 @@
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users', roles: ['admin_tienda', 'asesor'] },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output', roles: ['admin_tienda'] },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },
       { label: 'Cartera', href: 'cuenta-corriente.html', icon: 'book-open-check', roles: ['admin_tienda'] },
       { label: 'Reportes', href: 'reportes.html#reportes', icon: 'file-chart-column-increasing', roles: ['admin_tienda', 'asesor'] },

@@ -28,12 +28,12 @@ test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const allowed = [
     'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-    'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'incidencias.html',
+    'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html', 'incidencias.html',
   ];
   const forbidden = [
     'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
     'utilidad-creditek.html', 'aliados-liquidaciones.html',
-    'tablero.html', 'remisiones.html', 'auditoria-cruzada.html',
+    'tablero.html', 'auditoria-cruzada.html',
   ];
 
   for (const route of allowed) assert.equal(access.authorize(profile, route).allowed, true, route);
@@ -45,7 +45,7 @@ test('asesor conserva solo las operaciones permitidas por su rol', () => {
   for (const route of ['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']) {
     assert.equal(access.authorize(profile, route).allowed, true, route);
   }
-  for (const route of ['caja.html', 'gastos.html', 'cuenta-corriente.html']) {
+  for (const route of ['caja.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html']) {
     assert.equal(access.authorize(profile, route).allowed, false, route);
   }
 });
@@ -120,7 +120,7 @@ test('toda página que monta el shell carga primero el control de acceso', async
     const html = await readFile(new URL(file, erpDir), 'utf8');
     const shell = html.indexOf('src="sidebar.js');
     if (shell < 0) continue;
-    const guard = html.indexOf('src="kora-access-control.js?v=2.0.11"');
+    const guard = html.indexOf('src="kora-access-control.js');
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });

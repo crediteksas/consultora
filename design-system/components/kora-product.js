@@ -5,8 +5,8 @@
 
   const KORA_BRAND_ASSETS = Object.freeze({
     appIcon: null,
-    corporateFavicon: '/creditek/agentes/logos/creditek_logo_corregido_alta.png',
-    creditekLogo: '/creditek/agentes/logos/creditek_logo_corregido_alta.png',
+    corporateFavicon: '/creditek/shared/branding/creditek-logo.png',
+    creditekLogo: '/creditek/shared/branding/creditek-logo.png',
     startupImage: null,
   });
   const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';

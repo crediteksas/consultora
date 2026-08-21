@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyKoraArtifact } from './verify-kora-artifact.mjs';
 
 const ERP_EXTENSIONS = new Set(['.html', '.js', '.css']);
+const EXCLUDED_ERP_FILES = new Set(['registro.html']);
 const DESIGN_FILES = [
   'design-system/components',
   'design-system/styles',
@@ -30,10 +31,11 @@ export async function buildKora(root, out = path.join(root, 'dist/kora')) {
   const erp = path.join(root, 'creditek/erp');
   for (const entry of await readdir(erp)) {
     const source = path.join(erp, entry);
-    if ((await stat(source)).isFile() && ERP_EXTENSIONS.has(path.extname(entry))) {
+    if ((await stat(source)).isFile() && ERP_EXTENSIONS.has(path.extname(entry)) && !EXCLUDED_ERP_FILES.has(entry)) {
       await copy(root, resolvedOut, `creditek/erp/${entry}`);
     }
   }
+  await copy(root, resolvedOut, 'creditek/erp/app.html', 'index.html');
   for (const relative of DESIGN_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'creditek/shared/branding/creditek-logo.png');
   await copy(root, resolvedOut, 'config/kora-environment.js');

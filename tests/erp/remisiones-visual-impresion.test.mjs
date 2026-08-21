@@ -24,7 +24,7 @@ test('la impresión excluye navegación y usa formato carta paginado', () => {
 });
 
 test('el documento contiene identidad, datos, productos, responsables y firmas', () => {
-  assert.match(documento, /creditek_logo_corregido_alta\.png/);
+  assert.match(documento, /\/creditek\/shared\/branding\/creditek-logo\.png/);
   for (const texto of ['REMISIÓN #', 'Origen', 'Destino', 'Estado', 'Producto', 'Código', 'Categoría', 'Cantidad', 'Precio unitario', 'TOTAL', 'Entrega — Bodega Central', 'Recibe — Tienda destino']) {
     assert.match(documento, new RegExp(texto));
   }

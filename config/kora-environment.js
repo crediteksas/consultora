@@ -9,13 +9,10 @@
     'KORA_ENV_LABEL',
     'KORA_ERP_SUPABASE_URL',
     'KORA_ERP_SUPABASE_ANON_KEY',
-    'KORA_AGENTS_SUPABASE_URL',
-    'KORA_AGENTS_SUPABASE_ANON_KEY',
     'KORA_CLIENTS_WORKER_URL',
     'KORA_GEMINI_WORKER_URL',
     'KORA_PDF_COMBINER_URL',
     'KORA_BOT_WORKER_URL',
-    'KORA_AGENTS_AUTH_URL',
   ]);
   const URL_KEYS = Object.freeze(PUBLIC_KEYS.filter(key => key.endsWith('_URL')));
   const ENVIRONMENTS = new Set(['development', 'staging', 'production']);
@@ -85,12 +82,6 @@
           throw configError(`${key} apunta a un destino productivo`);
         }
       }
-    }
-    if (
-      parsedUrls.KORA_ERP_SUPABASE_URL.origin.toLowerCase()
-      === parsedUrls.KORA_AGENTS_SUPABASE_URL.origin.toLowerCase()
-    ) {
-      throw configError('ERP y Agentes deben usar proyectos distintos');
     }
     return Object.freeze(output);
   }

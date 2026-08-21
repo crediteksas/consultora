@@ -16,13 +16,10 @@ const valid = {
   KORA_ENV_LABEL: 'STAGING',
   KORA_ERP_SUPABASE_URL: 'https://erp-staging.example.invalid',
   KORA_ERP_SUPABASE_ANON_KEY: 'public-anon-erp-staging',
-  KORA_AGENTS_SUPABASE_URL: 'https://agents-staging.example.invalid',
-  KORA_AGENTS_SUPABASE_ANON_KEY: 'public-anon-agents-staging',
   KORA_CLIENTS_WORKER_URL: 'https://clients-staging.example.invalid',
   KORA_GEMINI_WORKER_URL: 'https://gemini-staging.example.invalid',
   KORA_PDF_COMBINER_URL: 'https://pdf-staging.example.invalid',
   KORA_BOT_WORKER_URL: 'https://bot-staging.example.invalid',
-  KORA_AGENTS_AUTH_URL: 'https://auth-staging.example.invalid',
 };
 
 test('incluye todos los Workers públicos identificados', () => {
@@ -50,14 +47,14 @@ test('rechaza staging conectado a un host productivo', () => {
   );
 });
 
-test('mantiene separados los proyectos ERP y Agentes', () => {
-  assert.throws(
-    () => environment.validateEnvironment({
-      ...valid,
-      KORA_AGENTS_SUPABASE_URL: valid.KORA_ERP_SUPABASE_URL,
-    }, { productionEndpoints }),
-    /ERP y Agentes deben usar proyectos distintos/i,
-  );
+test('la configuración KORA no publica claves de Agentes', () => {
+  const output = environment.validateEnvironment({
+    ...valid,
+    KORA_AGENTS_SUPABASE_URL: 'https://agents-staging.example.invalid',
+    KORA_AGENTS_SUPABASE_ANON_KEY: 'public-anon-agents-staging',
+    KORA_AGENTS_AUTH_URL: 'https://auth-staging.example.invalid',
+  }, { productionEndpoints });
+  assert.equal(Object.keys(output).some(key => key.startsWith('KORA_AGENTS_')), false);
 });
 
 test('rechaza service role y claves administrativas en configuración pública', () => {

@@ -291,7 +291,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
   ];
 
-  const LOGO = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
+  const LOGO = '/creditek/shared/branding/creditek-logo.png';
   const ROL_LABEL = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' };
   const KORA_LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
   if (KORA_SHELL_ENABLED) installKoraAssets();

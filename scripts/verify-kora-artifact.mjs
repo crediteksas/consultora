@@ -33,12 +33,16 @@ function localReference(value) {
 }
 
 async function verifyHtmlReferences(root, file, source) {
+  const baseReference = source.match(/<base\s+[^>]*href=["']([^"']+)["']/i)?.[1];
+  const base = baseReference?.startsWith('/')
+    ? path.join(root, baseReference.slice(1))
+    : path.dirname(file);
   for (const match of source.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
     const reference = localReference(match[1]);
     if (!reference) continue;
     const target = reference.startsWith('/')
       ? path.join(root, reference.slice(1))
-      : path.resolve(path.dirname(file), reference);
+      : path.resolve(base, reference);
     try {
       await stat(target);
     } catch {

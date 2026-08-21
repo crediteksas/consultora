@@ -246,10 +246,14 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
     </div>
     <form id="login-form" autocomplete="on" novalidate>
       <div class="login-field">
-        <label for="login-pwd">Contraseña</label>
-        <input type="password" id="login-pwd" name="password" autocomplete="current-password" placeholder="Tu contraseña" aria-label="Contraseña">
+        <label for="login-email">Correo electrónico</label>
+        <input type="email" id="login-email" name="email" autocomplete="username" placeholder="nombre@crediteksas.com" aria-label="Correo electrónico" required>
       </div>
-      <button class="login-btn" id="login-submit" type="submit">Ingresar →</button>
+      <div class="login-field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Tu contraseña" aria-label="Contraseña" required>
+      </div>
+      <button class="login-btn" id="login-submit" type="submit">Iniciar sesión</button>
       <div class="login-error" id="login-error" role="alert" aria-live="polite"></div>
     </form>
     <div class="login-version">v4.1 · Caribe colombiano · 2026</div>
@@ -513,8 +517,10 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
 
 <div id="toast"></div>
 
-<script>
-const PWD = 'creditek2026';
+<script type="module">
+import { auraAuth } from './aura-auth-otp-20260802.mjs';
+
+let auraAccess = null;
 
 // ── Login ────────────────────────────────────────────────────────
 function showAuthenticatedApp() {
@@ -527,34 +533,23 @@ function showAuthenticatedApp() {
 }
 
 async function doLogin() {
-  const value = document.getElementById('login-pwd').value;
-  if (value === PWD) {
-    sessionStorage.setItem('ck_auth', '1');
-    try {
-      const response = await fetch('https://ditiwpndvmyuqcagupea.supabase.co/functions/v1/hub-login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({gate: PWD})
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const session = JSON.stringify({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          expires_at: data.expires_at,
-          email: data.email
-        });
-        sessionStorage.setItem('ck_supa_session', session);
-        sessionStorage.setItem('aura_supa_session', session);
-      }
-    } catch (loginError) {
-      console.error('SSO login error', loginError);
-    }
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const submit = document.getElementById('login-submit');
+  const error = document.getElementById('login-error');
+  error.textContent = '';
+  submit.disabled = true;
+  submit.textContent = 'Cargando...';
+  try {
+    auraAuth.setRememberSession(false);
+    auraAccess = await auraAuth.signIn(email, password);
     showAuthenticatedApp();
-  } else {
-    document.getElementById('login-error').textContent = 'Clave incorrecta';
-    document.getElementById('login-pwd').value = '';
-    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
+  } catch (loginError) {
+    error.textContent = loginError.message || 'No fue posible iniciar sesión';
+    document.getElementById('login-password').value = '';
+  } finally {
+    submit.disabled = false;
+    submit.textContent = 'Iniciar sesión';
   }
 }
 
@@ -563,11 +558,9 @@ document.getElementById('login-form').addEventListener('submit', event => {
   doLogin();
 });
 
-function doLogout() {
-  sessionStorage.removeItem('ck_auth');
-  sessionStorage.removeItem('ck_supa_session');
-  sessionStorage.removeItem('aura_supa_session');
-  location.reload();
+async function doLogout() {
+  await auraAuth.signOut();
+  location.replace('/creditek/agentes/');
 }
 
 // ── Init ─────────────────────────────────────────────────────────
@@ -687,15 +680,28 @@ function showToast(msg, color='#0B1E3D') {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── Auto-login si sesión activa ──────────────────────────────────
-window.addEventListener('load', () => {
-  if (sessionStorage.getItem('ck_auth') === '1') {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').classList.add('visible');
-    initApp();
-  } else {
-    setTimeout(() => document.getElementById('login-pwd').focus(), 100);
-  }
+// ── Restaurar sesión Supabase activa ─────────────────────────────
+async function initializeAura() {
+  auraAccess = await auraAuth.restore();
+  if (auraAccess) showAuthenticatedApp();
+  else setTimeout(() => document.getElementById('login-email').focus(), 100);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeAura, { once: true });
+} else {
+  queueMicrotask(initializeAura);
+}
+
+Object.assign(window, {
+  doLogout,
+  showSection,
+  openModule,
+  openModuleFromCard,
+  closeIframe,
+  saveKey,
+  saveMetaKeys,
+  showToast,
 });
 </script>
 </body>

@@ -436,13 +436,13 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     </a>
 
     <div class="sidebar-section">Comercial</div>
-    <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
+    <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('https://registro.crediteksas.com/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
       <span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Portal B2B</span>
     </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this,'sofia')">
       <span class="nav-icon"><i data-lucide="map-pin"></i></span><span class="nav-label">Google Business</span>
     </a>
-    <a class="nav-item" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados',this,'sofia')">
       <span class="nav-icon"><i data-lucide="file-signature"></i></span><span class="nav-label">Convenios de Aliados</span>
     </a>
 
@@ -572,7 +572,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
 
         <div class="section-title">Herramientas comerciales</div>
         <div class="tools-grid">
-          <a class="tool-row" data-aura-app="portal_b2b" onclick="openModuleFromCard('/creditek/portal/','Portal de Pedidos B2B','portal_b2b')">
+          <a class="tool-row" data-aura-app="portal_b2b" onclick="openModuleFromCard('https://registro.crediteksas.com/creditek/portal/','Portal de Pedidos B2B','portal_b2b')">
             <div class="tool-icon"><i data-lucide="shopping-bag"></i></div>
             <div>
               <div class="tool-name">Portal de Pedidos B2B</div>
@@ -595,7 +595,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
               <div class="tool-desc">Registro y consulta de clientes Creditek.</div>
             </div>
           </div>
-          <a class="tool-row" data-aura-app="sofia" onclick="window.open('../convenios/index.html','_blank')">
+          <a class="tool-row" data-aura-app="sofia" onclick="openModuleFromCard('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados','sofia')">
             <div class="tool-icon"><i data-lucide="file-signature"></i></div>
             <div>
               <div class="tool-name">Convenios de Aliados</div>
@@ -964,6 +964,11 @@ async function openModule(url, title, el, appId = '') {
     showToast('No tienes permiso para abrir Meta Ads.', '#EF4444');
     return;
   }
+  const destination = new URL(url, location.href);
+  if (appId === 'portal_b2b' || destination.pathname.startsWith('/creditek/convenios/')) {
+    window.open(destination.href, '_blank', 'noopener,noreferrer');
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
   const loadId = ++moduleLoadId;
@@ -980,12 +985,12 @@ async function openModule(url, title, el, appId = '') {
   showToast(`Cargando ${title}…`);
 
   try {
-    const destination = buildEmbeddedModuleUrl(url);
-    if (destination.origin !== location.origin) throw new Error('La URL del módulo no pertenece a AURA.');
-    const response = await fetch(destination.href, { cache:'no-store', credentials:'same-origin' });
+    const embeddedDestination = buildEmbeddedModuleUrl(url);
+    if (embeddedDestination.origin !== location.origin) throw new Error('La URL del módulo no pertenece a AURA.');
+    const response = await fetch(embeddedDestination.href, { cache:'no-store', credentials:'same-origin' });
     if (!response.ok) throw new Error(`No fue posible abrir ${title} (HTTP ${response.status}).`);
     if (loadId !== moduleLoadId) return;
-    iframe.src = destination.href;
+    iframe.src = embeddedDestination.href;
     moduleLoadTimer = setTimeout(() => showModuleError(`La carga de ${title} excedió el tiempo permitido.`), 15000);
   } catch (error) {
     if (loadId === moduleLoadId) showModuleError(error.message || `No fue posible abrir ${title}.`);

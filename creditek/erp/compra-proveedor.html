@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="producto-foto.js"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -291,6 +292,41 @@
   </section>
 </div>
 
+<!-- ============================================================ MODAL: crear referencia desde factura -->
+<div id="modal-crear-referencia" class="ctk-backdrop hidden">
+  <section class="ctk-modal" role="dialog" aria-modal="true" aria-labelledby="titulo-crear-referencia">
+    <div class="ctk-modal__header">
+      <h3 id="titulo-crear-referencia">Crear referencia nueva</h3>
+      <button id="cerrar-crear-referencia" type="button" class="ctk-icon-button secondary ghost" aria-label="Cerrar creación de referencia">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="ctk-modal__body space-y-3">
+      <label class="block">
+        <span class="ctk-label">Nombre del producto *</span>
+        <input id="referencia-nombre" type="text" maxlength="160" class="w-full" />
+      </label>
+      <label class="block">
+        <span class="ctk-label">Código/SKU *</span>
+        <input id="referencia-codigo" type="text" maxlength="80" class="w-full" />
+      </label>
+      <label class="block">
+        <span class="ctk-label">Categoría *</span>
+        <select id="referencia-categoria" class="w-full"></select>
+      </label>
+      <label class="block">
+        <span class="ctk-label">Precio de remisión sugerido *</span>
+        <input id="referencia-precio" type="number" min="1" step="1" class="w-full" inputmode="numeric" />
+      </label>
+      <p id="referencia-error" class="hidden text-sm text-red-600" role="alert"></p>
+    </div>
+    <div class="ctk-modal__footer">
+      <button id="cancelar-crear-referencia" type="button" class="secondary">Cancelar</button>
+      <button id="guardar-crear-referencia" type="button" class="primary">Crear referencia</button>
+    </div>
+  </section>
+</div>
+
 <!-- ============================================================ SCRIPT -->
 <script>
 // ============================================================
@@ -298,6 +334,7 @@
 // ============================================================
 const BUCKET_SOPORTES = 'productos-fotos';    // ajusta si tienes uno dedicado a facturas
 const SUBCARPETA_SOPORTES = 'compras/';
+const productoFoto = window.CreditekProductoFoto;
 
 const SB = (function () {
   if (window.SB) return window.SB;
@@ -352,6 +389,7 @@ async function verificarAuth() {
 // ============================================================
 let proveedores = [];   // [{id, nombre, nit}]
 let productos = [];     // [{id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor}]
+let categorias = [];    // [{codigo, nombre, margen_tipo, margen_valor}]
 // SPEC v2 · items ahora incluye margen y precio_remision
 let items = [];         // [{tempId, producto_id, producto_nombre, producto_tipo, cantidad, costo_unitario, margen_tipo, margen_valor, precio_remision, precio_manual}]
 let indiceItemActivo = null;   // para el modal de búsqueda
@@ -361,23 +399,30 @@ let compraIdempotencyKey = crypto.randomUUID();
 // CARGA INICIAL DE CATÁLOGOS
 // ============================================================
 async function cargarCatalogos() {
-  const [pv, pr] = await Promise.all([
+  const [pv, pr, cr] = await Promise.all([
     SB.from('proveedores').select('id, nombre, nit').eq('activo', true).order('nombre'),
     // SPEC v2 · traer margen_tipo, margen_valor por producto (default de la ficha).
-    SB.from('productos').select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor').eq('activo', true).order('categoria').order('nombre')
+    SB.from('productos').select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor').eq('activo', true).order('categoria').order('nombre'),
+    SB.from('categorias_producto').select('codigo, nombre, margen_tipo, margen_valor, orden').order('orden')
   ]);
 
   if (pv.error) { toast('Error cargando proveedores: ' + pv.error.message, 'error'); return; }
   if (pr.error) { toast('Error cargando productos: ' + pr.error.message, 'error'); return; }
+  if (cr.error) { toast('Error cargando categorías: ' + cr.error.message, 'error'); return; }
 
   proveedores = pv.data || [];
   productos = pr.data || [];
+  categorias = cr.data || [];
 
   const sel = document.getElementById('sel-proveedor');
   sel.innerHTML = '<option value="">— Selecciona un proveedor —</option>' +
     proveedores.map(p =>
       `<option value="${esc(p.id)}">${esc(p.nombre)}${p.nit ? ' · NIT ' + esc(p.nit) : ''}</option>`
     ).join('');
+
+  document.getElementById('referencia-categoria').innerHTML = categorias.map(c =>
+    `<option value="${esc(c.codigo)}">${esc(c.nombre)}</option>`
+  ).join('');
 
   document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
 }
@@ -558,7 +603,10 @@ function renderBusqueda(q) {
   }).slice(0, 30);
 
   if (hits.length === 0) {
-    res.innerHTML = '<p class="p-3 text-sm text-gray-400 text-center">Sin resultados</p>';
+    res.innerHTML = `
+      <p class="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
+      <button type="button" id="btn-crear-referencia" class="secondary w-full">+ Crear referencia nueva</button>
+    `;
     return;
   }
   res.innerHTML = hits.map(p => `
@@ -572,7 +620,7 @@ function renderBusqueda(q) {
     </button>
   `).join('');
 }
-function seleccionarProducto(prodId) {
+function seleccionarProducto(prodId, precioSugerido = null) {
   const p = productos.find(x => x.id === prodId);
   if (!p || indiceItemActivo == null) return;
   const it = items[indiceItemActivo];
@@ -582,10 +630,96 @@ function seleccionarProducto(prodId) {
   // SPEC v2 · pre-llenar margen desde la ficha del producto (que a su vez viene de la categoría).
   it.margen_tipo = p.margen_tipo || 'porcentaje';
   it.margen_valor = p.margen_valor != null ? p.margen_valor : 0;
-  it.precio_manual = false;
-  it.precio_remision = calcularPrecioRemision(it);
+  if (Number(precioSugerido) > 0) {
+    it.precio_manual = true;
+    it.precio_remision = Number(precioSugerido);
+  } else {
+    it.precio_manual = false;
+    it.precio_remision = calcularPrecioRemision(it);
+  }
   cerrarBuscador();
   renderItems();
+}
+
+function abrirCrearReferencia() {
+  if (rolActual !== 'gerencia' && rolActual !== 'auditoria') return;
+  const busqueda = document.getElementById('input-buscar').value.trim();
+  document.getElementById('referencia-nombre').value = busqueda;
+  document.getElementById('referencia-codigo').value = '';
+  document.getElementById('referencia-precio').value = '';
+  document.getElementById('referencia-categoria').value = categorias[0]?.codigo || '';
+  document.getElementById('referencia-error').classList.add('hidden');
+  document.getElementById('modal-buscar').classList.add('hidden');
+  document.getElementById('modal-crear-referencia').classList.remove('hidden');
+  setTimeout(() => document.getElementById('referencia-codigo').focus(), 50);
+}
+
+function cerrarCrearReferencia() {
+  document.getElementById('modal-crear-referencia').classList.add('hidden');
+  if (indiceItemActivo != null) {
+    document.getElementById('modal-buscar').classList.remove('hidden');
+    renderBusqueda(document.getElementById('input-buscar').value);
+  }
+}
+
+async function guardarCrearReferencia() {
+  const nombre = document.getElementById('referencia-nombre').value.trim();
+  const codigo = document.getElementById('referencia-codigo').value.trim();
+  const categoria = document.getElementById('referencia-categoria').value;
+  const precio = Number(document.getElementById('referencia-precio').value);
+  const errorEl = document.getElementById('referencia-error');
+  const btn = document.getElementById('guardar-crear-referencia');
+  errorEl.classList.add('hidden');
+
+  if (!nombre || !codigo || !categoria || !Number.isFinite(precio) || precio <= 0) {
+    errorEl.textContent = 'Nombre, código, categoría y precio de remisión son obligatorios.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  if (rolActual !== 'gerencia' && rolActual !== 'auditoria') {
+    errorEl.textContent = 'No tienes permiso para crear referencias.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+  try {
+    const duplicado = await productoFoto.buscarProductoPorCodigo({ sb: SB, codigo });
+    if (duplicado) throw new Error('Ya existe un producto con ese código.');
+
+    const categoriaActual = categorias.find(c => c.codigo === categoria);
+    const payload = {
+      codigo,
+      nombre,
+      categoria,
+      tipo: 'serializado',
+      precio_guia: precio,
+      margen_tipo: categoriaActual?.margen_tipo || 'porcentaje',
+      margen_valor: Number(categoriaActual?.margen_valor || 0),
+      foto_url: null,
+    };
+    const { data, error } = await SB.from('productos').insert(payload)
+      .select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor, foto_url')
+      .maybeSingle();
+    if (error) {
+      if (error.code === '23505' || String(error.message).includes('duplicate')) {
+        throw new Error('Ya existe un producto con ese código.');
+      }
+      throw error;
+    }
+
+    productos.push(data);
+    document.getElementById('modal-crear-referencia').classList.add('hidden');
+    seleccionarProducto(data.id, precio);
+    toast('Referencia creada y seleccionada');
+  } catch (error) {
+    errorEl.textContent = error.message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crear referencia';
+  }
 }
 
 // ============================================================
@@ -737,8 +871,15 @@ document.getElementById('modal-buscar').addEventListener('click', e => {
 document.getElementById('input-buscar').addEventListener('input', e => renderBusqueda(e.target.value));
 
 document.getElementById('search-results').addEventListener('click', e => {
+  if (e.target.closest('#btn-crear-referencia')) return abrirCrearReferencia();
   const btn = e.target.closest('[data-prod-id]');
   if (btn) seleccionarProducto(btn.getAttribute('data-prod-id'));
+});
+document.getElementById('cerrar-crear-referencia').addEventListener('click', cerrarCrearReferencia);
+document.getElementById('cancelar-crear-referencia').addEventListener('click', cerrarCrearReferencia);
+document.getElementById('guardar-crear-referencia').addEventListener('click', guardarCrearReferencia);
+document.getElementById('modal-crear-referencia').addEventListener('click', e => {
+  if (e.target.id === 'modal-crear-referencia') cerrarCrearReferencia();
 });
 
 document.getElementById('tbody-items').addEventListener('click', e => {
@@ -758,7 +899,9 @@ document.getElementById('tbody-items').addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') cerrarBuscador();
+  if (e.key !== 'Escape') return;
+  if (!document.getElementById('modal-crear-referencia').classList.contains('hidden')) cerrarCrearReferencia();
+  else cerrarBuscador();
 });
 
 // ============================================================

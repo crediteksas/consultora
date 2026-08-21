@@ -673,9 +673,10 @@ var PublicationCoordinator = class {
 var index_default = {
   async fetch(request, env) {
     const origin = request.headers.get("origin") || void 0;
-    if (origin && origin !== env.ALLOWED_ORIGIN) return reply({ ok: false, error: "Origin denied" }, 403);
+    const allowedOrigins = new Set([env.ALLOWED_ORIGIN, "https://aura.crediteksas.com"].filter(Boolean));
+    if (origin && !allowedOrigins.has(origin)) return reply({ ok: false, error: "Origin denied" }, 403);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: {
-      "access-control-allow-origin": env.ALLOWED_ORIGIN,
+      "access-control-allow-origin": origin || env.ALLOWED_ORIGIN,
       "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "authorization, content-type, idempotency-key",
       vary: "Origin"

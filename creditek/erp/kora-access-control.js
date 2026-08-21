@@ -24,7 +24,8 @@
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html', 'incidencias.html',
+      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
+      'documento-remision.html', 'incidencias.html',
     ]),
     asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']),
   });

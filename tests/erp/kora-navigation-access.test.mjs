@@ -28,7 +28,8 @@ test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const allowed = [
     'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-    'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html', 'incidencias.html',
+    'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
+    'documento-remision.html', 'incidencias.html',
   ];
   const forbidden = [
     'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
@@ -45,7 +46,10 @@ test('asesor conserva solo las operaciones permitidas por su rol', () => {
   for (const route of ['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']) {
     assert.equal(access.authorize(profile, route).allowed, true, route);
   }
-  for (const route of ['caja.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html']) {
+  for (const route of [
+    'caja.html', 'gastos.html', 'cuenta-corriente.html',
+    'remisiones.html', 'documento-remision.html',
+  ]) {
     assert.equal(access.authorize(profile, route).allowed, false, route);
   }
 });
@@ -55,6 +59,20 @@ test('auditoría tiene lectura B2B y Aliados conserva su capacidad específica',
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, false);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: true }).allowed, true);
+});
+
+test('el detalle de remisión conserva la matriz de roles de KORA-2026-000033', () => {
+  const profiles = {
+    admin_tienda: { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' },
+    gerencia: { rol: 'gerencia', activo: true },
+    auditoria: { rol: 'auditoria', activo: true },
+    asesor: { rol: 'asesor', activo: true, tienda_codigo: 'T-01' },
+  };
+
+  assert.equal(access.authorize(profiles.admin_tienda, 'documento-remision.html?remision_id=propia').allowed, true);
+  assert.equal(access.authorize(profiles.gerencia, 'documento-remision.html?remision_id=cualquiera').allowed, true);
+  assert.equal(access.authorize(profiles.auditoria, 'documento-remision.html?remision_id=cualquiera').allowed, true);
+  assert.equal(access.authorize(profiles.asesor, 'documento-remision.html?remision_id=propia').allowed, false);
 });
 
 test('un perfil inactivo, desconocido o sin tienda nunca obtiene una ruta protegida', () => {

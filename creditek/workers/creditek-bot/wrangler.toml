@@ -1,0 +1,38 @@
+name = "creditek-bot"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+LAYER = "1"
+BOT_VERSION = "0.1.0"
+
+[[kv_namespaces]]
+binding = "CONVERSATIONS"
+id = "4e7500adac4b46b290a015e10964a9c4"
+
+[triggers]
+# SPEC v5-CRM, 13-jul-2026 — Pieza 2: 3 crons nuevos para las rondas de
+# recordatorio a asesores (Colombia = UTC-5). El original (0 13 * * *) no se
+# toca, sigue siendo el briefing diario de marcarLeadsPerdidos.
+crons = [
+  "0 13 * * *",   # 8:00 AM Colombia — briefing diario (marcarLeadsPerdidos, sin cambios)
+  "0 18 * * *",   # 1:00 PM Colombia — ronda 1 de recordatorio a asesores
+  "0 22 * * *",   # 5:00 PM Colombia — ronda 2 de recordatorio a asesores
+  "0 14 * * 1-5", # 9:00 AM Colombia, lunes a viernes — ronda 3 (no corre sáb/dom)
+  "*/30 * * * *", # FIX v25, 16-jul-2026 — Hallazgo 8: cada 30 min, seguimiento
+                  # automático a leads mudos (60-240 min sin responder tras el
+                  # último mensaje del bot). El propio handler filtra por
+                  # horario Colombia 8am-8pm, así que corre las 24h sin problema.
+]
+
+# FIX 6, 03-jul-2026: Durable Object — una instancia por conversación, elimina
+# la condición de carrera al escribir varios mensajes seguidos.
+[[durable_objects.bindings]]
+name = "CONVERSACION_DO"
+class_name = "ConversacionDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ConversacionDO"]

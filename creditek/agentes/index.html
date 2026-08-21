@@ -6,7 +6,7 @@
 <title>AURA · Agentes — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="../erp/sidebar.js" data-kora-shell="1.0.0" data-kora-shell-mode="agents"></script>
+<script src="aura-shell.js"></script>
 <style>
 :root {
   --navy:   #0B1E3D;
@@ -573,7 +573,7 @@ function doLogout() {
 // ── Init ─────────────────────────────────────────────────────────
 
 function initApp() {
-  window.KoraNavigation?.mountPortal();
+  window.AuraNavigation?.mountPortal();
   updateDate();
   setInterval(updateDate, 60000);
   checkConfigStatus();
@@ -604,7 +604,7 @@ function showSection(id, el) {
   if (el) el.classList.add('active');
   document.getElementById('topbar-title').textContent =
     id === 'dashboard' ? 'Dashboard' : 'Configuración';
-  window.KoraNavigation?.setContext(
+  window.AuraNavigation?.setContext(
     id === 'dashboard' ? 'Dashboard' : 'Configuración',
     ['AURA', 'Agentes', id === 'dashboard' ? 'Dashboard' : 'Configuración'],
   );
@@ -621,7 +621,7 @@ function openModule(url, title, el) {
   document.getElementById('iframe-link').href = url;
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-breadcrumb').textContent = 'AURA · ' + title;
-  window.KoraNavigation?.setContext(title, ['AURA', 'Agentes', title]);
+  window.AuraNavigation?.setContext(title, ['AURA', 'Agentes', title]);
 }
 
 function openModuleFromCard(url, title) {
@@ -638,7 +638,7 @@ function closeIframe() {
   document.querySelector('.nav-item').classList.add('active');
   document.getElementById('topbar-title').textContent = 'Dashboard';
   document.getElementById('topbar-breadcrumb').textContent = 'AURA · Principal';
-  window.KoraNavigation?.setContext('Dashboard', ['AURA', 'Agentes', 'Dashboard']);
+  window.AuraNavigation?.setContext('Dashboard', ['AURA', 'Agentes', 'Dashboard']);
 }
 
 // ── Config ───────────────────────────────────────────────────────

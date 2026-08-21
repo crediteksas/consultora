@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Configuración local no operativa. Sin nombre, rutas, dominios ni bindings productivos.
+  "name": "creditek-kora",
+  "main": "src/kora-version-worker.mjs",
+  "compatibility_date": "2026-07-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/kora",
+    "binding": "ASSETS",
+    "run_worker_first": ["/kora-build-manifest.json"]
+  },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "kv_namespaces": [
+    { "binding": "KORA_RELEASES", "id": "184ac8b1585946e4b7d8a88f178292a1" }
+  ]
+}

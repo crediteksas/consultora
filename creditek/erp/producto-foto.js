@@ -44,6 +44,14 @@
     return `${limpiarCodigo(codigoProducto)}_${Number(ahora)}.${extensionArchivo(archivo)}`;
   }
 
+  async function buscarProductoPorCodigo({ sb, codigo, productoId }) {
+    let consulta = sb.from('productos').select('id').eq('codigo', codigo);
+    if (productoId) consulta = consulta.neq('id', productoId);
+    const { data, error } = await consulta.maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
   async function subirFotoSegura({ sb, productoId, codigoProducto, archivo, ahora = Date.now() }) {
     const errorArchivo = validarArchivo(archivo);
     if (errorArchivo) throw new Error(errorArchivo);
@@ -80,6 +88,7 @@
     columnasProductos,
     validarArchivo,
     crearRutaFoto,
+    buscarProductoPorCodigo,
     subirFotoSegura,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

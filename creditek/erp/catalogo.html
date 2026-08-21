@@ -600,6 +600,22 @@ async function guardarProducto() {
 
   const archivo = document.getElementById('input-foto').files[0];
 
+  let productoDuplicado;
+  try {
+    productoDuplicado = await productoFoto.buscarProductoPorCodigo({ sb, codigo, productoId: id });
+  } catch (errorCodigo) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    err.textContent = 'No se pudo validar el código: ' + errorCodigo.message;
+    err.classList.add('show');
+    return;
+  }
+  if (productoDuplicado) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    err.textContent = 'Ya existe un producto con ese código.';
+    err.classList.add('show');
+    return;
+  }
+
   let resultado;
   const payload = { codigo, nombre, categoria, tipo, precio_guia, margen_tipo, margen_valor };
   if (id) {

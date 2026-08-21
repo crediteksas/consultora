@@ -10,8 +10,10 @@ window.auraSessionToken = auraSessionToken;
 </script>
 <script>
 try {
-  localStorage.removeItem('ck_api_key');
-  sessionStorage.removeItem('ck_api_key');
+  ['ck_api_key', 'ck_claude_key'].forEach(key => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
 } catch(e) {}
 </script>
 <style>
@@ -483,10 +485,6 @@ tr:hover td{background:#F8FAFC}
     <div class="field">
       <label>ID de cuenta publicitaria</label>
       <input type="text" id="inp-account" placeholder="123456789012345">
-    </div>
-    <div class="field">
-      <label>API key Anthropic (para análisis IA)</label>
-      <input type="password" id="inp-claude" placeholder="sk-ant-api03-xxx">
     </div>
     <div class="field">
       <label>Presupuesto semanal (COP)</label>
@@ -1384,7 +1382,6 @@ function contarResultadosReales(actions) {
 function abrirConfig() {
   document.getElementById('inp-token').value   = localStorage.getItem('ck_meta_token') || '';
   document.getElementById('inp-account').value = localStorage.getItem('ck_meta_account') || '';
-  document.getElementById('inp-claude').value  = localStorage.getItem('ck_claude_key') || '';
   document.getElementById('inp-budget').value  = getWeeklyBudgetCOP();
   document.getElementById('inp-tasa').value    = localStorage.getItem('ck_cop_usd') || COP_TO_USD;
   document.getElementById('modal').classList.add('open');
@@ -1395,13 +1392,11 @@ function cerrarConfig() {
 function guardarConfig() {
   const t = document.getElementById('inp-token').value.trim();
   const a = document.getElementById('inp-account').value.trim();
-  const c = document.getElementById('inp-claude').value.trim();
   if (!t || !a) { showToast('Token e ID son obligatorios', '#EF4444'); return; }
   const b = document.getElementById('inp-budget').value.trim();
   const tasa = document.getElementById('inp-tasa').value.trim();
   localStorage.setItem('ck_meta_token',   t);
   localStorage.setItem('ck_meta_account', a);
-  if (c) localStorage.setItem('ck_claude_key', c);
   if (b) localStorage.setItem('ck_weekly_budget', b);
   if (tasa) { localStorage.setItem('ck_cop_usd', tasa); COP_TO_USD = parseFloat(tasa); }
   cerrarConfig();
@@ -1839,9 +1834,7 @@ function renderVista() {
   refrescarAlertas(modoIndividual ? [camp] : d.camps);
 
   // Análisis de IA — combinado o enfocado en la campaña seleccionada.
-  if (localStorage.getItem('ck_claude_key')) {
-    analizarConIA(d, modoIndividual ? camp : null);
-  }
+  analizarConIA(d, modoIndividual ? camp : null);
 }
 
 // FIX v26, 13-jul-2026 — Fase 3, Mejora 6: banner de alertas en el tablero.

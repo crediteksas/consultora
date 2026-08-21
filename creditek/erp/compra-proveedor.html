@@ -351,7 +351,7 @@ async function verificarAuth() {
 // ESTADO
 // ============================================================
 let proveedores = [];   // [{id, nombre, nit}]
-let productos = [];     // [{id, nombre, categoria, tipo, margen_tipo, margen_valor}]
+let productos = [];     // [{id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor}]
 // SPEC v2 · items ahora incluye margen y precio_remision
 let items = [];         // [{tempId, producto_id, producto_nombre, producto_tipo, cantidad, costo_unitario, margen_tipo, margen_valor, precio_remision, precio_manual}]
 let indiceItemActivo = null;   // para el modal de búsqueda
@@ -364,7 +364,7 @@ async function cargarCatalogos() {
   const [pv, pr] = await Promise.all([
     SB.from('proveedores').select('id, nombre, nit').eq('activo', true).order('nombre'),
     // SPEC v2 · traer margen_tipo, margen_valor por producto (default de la ficha).
-    SB.from('productos').select('id, nombre, categoria, tipo, margen_tipo, margen_valor').eq('activo', true).order('categoria').order('nombre')
+    SB.from('productos').select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor').eq('activo', true).order('categoria').order('nombre')
   ]);
 
   if (pv.error) { toast('Error cargando proveedores: ' + pv.error.message, 'error'); return; }
@@ -554,7 +554,7 @@ function renderBusqueda(q) {
   const res = document.getElementById('search-results');
   const hits = productos.filter(p => {
     if (!filtro) return true;
-    return (p.nombre + ' ' + p.categoria).toLowerCase().includes(filtro);
+    return (p.codigo + ' ' + p.nombre + ' ' + p.categoria).toLowerCase().includes(filtro);
   }).slice(0, 30);
 
   if (hits.length === 0) {
@@ -568,7 +568,7 @@ function renderBusqueda(q) {
         <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
         <span class="ctk-badge ${p.tipo === 'serializado' ? 'badge-serial' : 'badge-cantidad'}">${esc(p.tipo)}</span>
       </div>
-      <div class="text-xs text-gray-500">${esc(p.categoria)}</div>
+      <div class="text-xs text-gray-500">${esc(p.codigo)} · ${esc(p.categoria)}</div>
     </button>
   `).join('');
 }

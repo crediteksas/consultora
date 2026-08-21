@@ -1,11 +1,35 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-kora-product="1.0.0" data-kora-version="2.0.4">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agente 1 · Piezas comerciales — AURA</title>
+<title>AURA | Creditek</title>
+<link rel="icon" type="image/png" href="/creditek/shared/branding/creditek-logo.png">
+<link rel="apple-touch-icon" href="/creditek/shared/branding/creditek-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard.css">
+<link rel="stylesheet" href="/design-system/components/kora-shell.css?v=2.0.4">
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="aura-module-config.js" defer></script>
+<script src="aura-agent-bootstrap.js" defer></script>
+<script src="aura-context-help.js" defer></script>
+<script type="module">
+import { requestAuraImage } from './aura-image-client.mjs';
+import { auraSessionToken } from './agente3-aura-session.mjs';
+window.requestAuraImage = requestAuraImage;
+window.auraSessionToken = auraSessionToken;
+</script>
+<script>
+try {
+  ['ck_api_key', 'ck_openai_key', 'ck_meta_token', 'ck_gemini_key'].forEach(key => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+} catch(e) {}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root {
@@ -24,19 +48,20 @@
   --radius-sm: 8px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { min-height: 100%; overflow-y: auto; }
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--bg);
   color: var(--text);
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  min-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: clip;
+  display: block;
   font-size: 15px;
   line-height: 1.6;
 }
-.shell { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-.sidebar {
+.shell { display: flex; flex: 1; min-height: 0; overflow: visible; }
+.agent-workspace-panel {
   width: 300px; min-width: 300px;
   background: #E8F4F8;
   border-right: 1px solid rgba(11,30,61,0.10);
@@ -65,7 +90,7 @@ body {
 }
 .field-group { margin-bottom: 12px; }
 .field-label { font-size: 11px; color: var(--text2); margin-bottom: 5px; display: block; padding: 0 4px; }
-.field-label span { color: var(--turquesa); font-size: 10px; float: right; }
+.field-label > span:not(.ck-tooltip-wrap) { color: #64748B; font-size: 10px; float: right; font-weight: 500; }
 select, input[type=text], textarea {
   width: 100%; background: #FFFFFF;
   border: 1px solid rgba(11,30,61,0.15); color: #0B1E3D;
@@ -171,8 +196,8 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
   padding: 4px 0 2px; letter-spacing: 0.04em;
 }
 .flujo-indicador span { color: var(--turquesa); font-weight: 700; }
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.top-bar {
+.agent-workspace-main { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: visible; }
+.agent-workspace-header {
   padding: 18px 28px 14px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
 }
@@ -185,20 +210,25 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
   font-family: 'DM Sans', sans-serif; transition: all 0.15s;
 }
 .copy-all-btn:hover { border-color: var(--turquesa); color: var(--turquesa); }
-.content-area { flex: 1; overflow-y: auto; padding: 24px 28px; }
+.content-area { flex: 1; min-height: 0; overflow-y: auto; overflow-x: clip; padding: 24px 28px 40px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .empty-state {
-  height: 100%; display: flex; flex-direction: column;
+  min-height: 360px; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  text-align: center; gap: 12px; opacity: 0.45;
+  text-align: center; gap: 12px; padding: 36px;
+  background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 18px;
 }
 .empty-icon {
-  width: 64px; height: 64px; border-radius: 18px;
-  background: #F4FAFB; border: 1px solid rgba(11,30,61,0.10);
+  width: 72px; height: 72px; border-radius: 20px;
+  background: rgba(0,196,204,.10); border: 1px solid rgba(0,196,204,.25);
   display: flex; align-items: center; justify-content: center;
 }
+.empty-icon::before{content:'✦';font-family:'Montserrat',sans-serif;font-size:30px;font-weight:700;color:var(--turquesa)}
 .empty-icon img { height: 36px; object-fit: contain; }
-.empty-title { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 700; }
-.empty-desc { font-size: 13px; color: var(--text2); max-width: 280px; line-height: 1.5; }
+.empty-title { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; }
+.empty-desc { font-size: 13px; color: var(--text2); max-width: 390px; line-height: 1.55; }
+.empty-steps{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.empty-step{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:999px;color:#475569;font-size:11px;font-weight:600}
+.empty-step b{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--azul);color:#fff;font-size:9px}
 .piezas-grid { display: flex; flex-direction: column; gap: 16px; }
 .pieza-card {
   background: #FFFFFF; border: 1px solid rgba(11,30,61,0.10);
@@ -397,18 +427,18 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 @keyframes imgFadeIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
 .img-output.fade-in{animation:imgFadeIn .35s ease}
 /* Modal keys imagen */
-#imgKeyModal{position:fixed;inset:0;background:rgba(11,30,61,.4);display:flex;align-items:center;justify-content:center;z-index:9998;backdrop-filter:blur(6px)}
-#imgKeyModal.hidden{display:none}
 /* Producto toggle texto/foto */
-.prod-toggle{display:flex;gap:4px;margin-bottom:8px}
-.prod-tab{flex:1;padding:6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif}
-.prod-tab.active{background:rgba(0,196,204,.1);border-color:var(--turquesa);color:var(--turquesa)}
+.prod-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:9px;padding:3px;background:#EEF2F6;border:1px solid #E2E8F0;border-radius:10px}
+.prod-tab{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:transparent;border:1px solid transparent;border-radius:7px;color:#64748B;font-size:11px;font-weight:650;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif}
+.prod-tab.active{background:#FFFFFF;border-color:#D7E0E8;color:#0B1E3D;box-shadow:0 1px 3px rgba(11,30,61,.08)}
+.prod-tab-icon{width:14px;height:14px;stroke-width:2}
 .prod-file{width:100%;background:#FFFFFF;border:2px dashed rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:12px;padding:10px 12px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .prod-file:hover{border-color:var(--turquesa)}
 .prod-preview-img{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);margin-top:6px;display:none;max-height:120px;object-fit:contain}
 /* Selector estilo visual */
 .estilo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.estilo-btn{padding:8px 6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4}
+.estilo-btn{padding:8px 6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4;display:flex;align-items:center;justify-content:center;gap:4px}
+.estilo-btn svg{width:14px;height:14px;stroke-width:2;flex:0 0 auto}
 .estilo-btn.active{background:rgba(0,196,204,.1);border-color:var(--turquesa);color:var(--turquesa)}
 .estilo-custom-ta{width:100%;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);color:#0B1E3D;border-radius:var(--radius-sm);font-size:12px;padding:8px 12px;resize:vertical;min-height:60px;outline:none;font-family:'DM Sans',sans-serif;display:none;transition:border-color .2s,box-shadow .2s}
 .estilo-custom-ta:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.12)}
@@ -469,74 +499,42 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .img-prev-input:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.12)}
 .img-confirm-btn{width:calc(100% - 36px);margin:12px 18px 4px;background:#00C4CC;border:1px solid #00C4CC;color:#FFFFFF;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;padding:11px;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;letter-spacing:.02em;display:block}
 .img-confirm-btn:hover{background:#00A8B0;border-color:#00A8B0}
+
+/* El contenido funcional usa directamente los tokens y superficies KORA. */
+.agent-workspace{min-width:0;height:calc(100dvh - var(--ctk-height-topbar));min-height:36rem;background:var(--ctk-color-background)}
+.agent-workspace-panel{width:390px;min-width:390px;height:100%;max-height:100%;background:var(--ctk-color-surface);border-right-color:var(--ctk-color-border);overflow-y:auto;overflow-x:clip;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;transition:width .2s ease,min-width .2s ease,transform .2s ease}
+.agent-workspace-main{min-width:0;height:100%;background:var(--ctk-color-background)}
+.agent-workspace-header{background:var(--ctk-color-surface);border-bottom-color:var(--ctk-color-border);padding-top:12px;padding-bottom:10px}
+.content-area{background:var(--ctk-color-background)}
+.pieza-card,.img-card,.empty-icon{border-color:var(--ctk-color-border);border-radius:var(--ctk-radius-xl);box-shadow:var(--ctk-shadow-1)}
+.agent-workspace :where(select,input[type=text],textarea,button){border-radius:var(--ctk-radius-sm)}
+.workspace-collapse-btn{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--ctk-color-border);color:#475569;padding:7px 10px;font:600 11px 'DM Sans',sans-serif;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.workspace-collapse-btn:hover{background:#F8FAFC;color:#0B1E3D;border-color:#CBD5E1}
+.workspace-collapse-btn svg{width:15px;height:15px;transition:transform .2s}
+.agent-workspace.form-collapsed .agent-workspace-panel{display:none}
+.agent-workspace.form-collapsed .workspace-collapse-btn svg{transform:rotate(180deg)}
+.agent-workspace.form-collapsed .workspace-collapse-label::after{content:'Mostrar formulario'}
+.agent-workspace:not(.form-collapsed) .workspace-collapse-label::after{content:'Ocultar formulario'}
+body.kora-product-page .kora-topbar{min-height:48px;height:48px}
+body.kora-product-page .kora-breadcrumb{min-height:0}
+@media(max-width:63.999rem){
+  .agent-workspace{flex-direction:column;height:auto;min-height:calc(100dvh - var(--ctk-height-topbar));max-width:100%;overflow-x:clip;overflow-y:visible}
+  .agent-workspace-panel{width:100%;min-width:0;max-width:100%;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--ctk-color-border)}
+  .agent-workspace-panel :where(.prod-toggle,.platform-grid){grid-template-columns:repeat(2,minmax(0,1fr));max-width:100%}
+  .agent-workspace-panel :where(button,input,select,textarea){min-width:0;max-width:100%}
+  .agent-workspace-main{min-height:42rem;overflow:visible}
+  .content-area{overflow:visible}
+  .workspace-collapse-btn{display:none}
+}
 </style>
-<link rel="stylesheet" href="/design-system/components/kora-product.css">
-<script src="/design-system/components/kora-product.js" defer></script>
 </head>
-<body>
-<nav class="breadcrumb"><a href="index.html">Agentes</a><span class="sep">›</span><span class="cur">Redes Sociales</span></nav>
+<body class="kora-product-page" data-kora-agent-id="agent-1">
+<nav class="breadcrumb"><a href="/creditek/agentes/">AURA</a><span class="sep">›</span><span class="cur" data-aura-agent-title>Agente 1 · Piezas comerciales</span></nav>
 <div id="toast" class="toast"></div>
 
-<!-- ══ MODAL API KEY ══════════════════════════════════════════════ -->
-<div id="apiModal">
-  <div class="m-card">
-    <div class="m-logo">
-      <img style="display:none" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
-      <span class="m-logo-name" style="display:none"></span>
-    </div>
-    <div>
-      <div class="m-title">Ingresa tu API Key de Anthropic</div>
-      <div class="m-desc">Para usar este agente necesitas una API key de Anthropic. Se guarda de forma segura en este navegador y se comparte entre todos los agentes Creditek.</div>
-    </div>
-    <div class="m-field">
-      <input class="m-input" id="modalKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off"
-        onkeydown="if(event.key==='Enter')submitKey()">
-      <button class="m-eye" id="modalEye" onclick="toggleModalKey()">Ver</button>
-    </div>
-    <div class="m-error" id="modalError">La key debe comenzar con <strong>sk-ant-</strong>. Verifica e intenta de nuevo.</div>
-    <button class="m-submit" onclick="submitKey()">Continuar →</button>
-    <div class="m-note">
-      Obtén tu key en <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a><br>
-      Esta key nunca se sube al repositorio ni se comparte.
-    </div>
-  </div>
-</div>
-<!-- ══ MODAL API KEY IMAGEN ═══════════════════════════════════════ -->
-<div id="imgKeyModal" class="hidden">
-  <div class="m-card">
-    <div class="m-logo">
-      <span id="imgKeyIcon" style="font-size:22px;line-height:1">✦</span>
-      <span class="m-logo-name" id="imgKeyTitle">GEMINI API KEY</span>
-    </div>
-    <div class="m-title" id="imgKeyHeading">API Key de Google Gemini</div>
-    <div class="m-desc" id="imgKeyDesc">Necesitas una API key de Google AI Studio para generar fotos de producto con Gemini Flash 2.5.</div>
-    <div class="m-field">
-      <input class="m-input" id="imgModalKey" type="password" placeholder="AIzaSy..." autocomplete="off" onkeydown="if(event.key==='Enter')submitImgKey()">
-      <button class="m-eye" onclick="toggleImgKey(this)">Ver</button>
-    </div>
-    <div id="proxyUrlRow" style="display:none;margin-top:10px">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:5px">URL del Worker proxy <span style="color:var(--text3)">(opcional — resuelve CORS)</span></div>
-      <input class="m-input" id="imgProxyUrl" type="text" placeholder="https://creditek-gemini-proxy.tu-subdominio.workers.dev" autocomplete="off" style="font-size:12px">
-    </div>
-    <div class="m-error" id="imgModalError">Verifica el formato de la key e intenta de nuevo.</div>
-    <button class="m-submit" onclick="submitImgKey()">Guardar key →</button>
-    <div class="m-note">
-      Gemini: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a><br>
-      OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
-    </div>
-    <button onclick="cerrarImgKeyModal()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding-top:2px">Cancelar</button>
-  </div>
-</div>
-
-<div class="shell">
-<aside class="sidebar">
-  <div class="logo-wrap">
-    <img style="display:none" class="logo-img" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
-    <div class="logo-info">
-      <div class="logo-title" style="display:none"></div>
-      <div class="logo-sub">Agente 1 · Generador de contenido</div>
-    </div>
-  </div>
+<div id="app" data-kora-shell-root>
+<div class="shell agent-workspace">
+<aside class="agent-workspace-panel" id="agent-form-panel">
   <div class="sidebar-section">
     <div class="sidebar-label">Configurar pieza</div>
     <div class="field-group">
@@ -602,9 +600,9 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
     </div>
     <div class="field-group" id="fg-producto">
       <label class="field-label">Producto / equipo <span>opcional</span></label>
-      <div class="prod-toggle">
-        <button class="prod-tab active" onclick="toggleProdMode('texto',this)">✏️ Descripción</button>
-        <button class="prod-tab" onclick="toggleProdMode('foto',this)">📷 Foto</button>
+      <div class="prod-toggle" aria-label="Forma de ingresar el producto">
+        <button class="prod-tab active" onclick="toggleProdMode('texto',this)"><i data-lucide="align-left" class="prod-tab-icon"></i>Descripción</button>
+        <button class="prod-tab" onclick="toggleProdMode('foto',this)"><i data-lucide="image-up" class="prod-tab-icon"></i>Foto</button>
       </div>
       <input type="text" id="producto" placeholder="Ej: Samsung Galaxy A17 5G 128GB">
       <div id="prod-foto-wrap" style="display:none;margin-top:6px">
@@ -744,32 +742,28 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
     <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Solo disponible con GPT Image 2 — Gemini no acepta imágenes de referencia.</div>
   </div>
   <div class="sidebar-section" style="padding-bottom:10px">
-    <div class="sidebar-label">API Key</div>
-    <div class="key-status">
-      <span style="font-size:12px;color:var(--text2)"><span class="key-dot"></span>Anthropic — configurada esta sesión</span>
-      <button onclick="abrirModal()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Cambiar</button>
-    </div>
+    <div class="sidebar-label">Servicios IA</div>
     <div class="key-status" style="padding:3px 3px 0">
       <span style="font-size:12px;color:var(--text2)">
         <span class="img-key-dot" id="sidebar-gemini-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Vertex AI
       </span>
-      <button onclick="abrirImgKeyModal('gemini')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Configurar</button>
+      <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
     <div class="key-status" style="padding:3px 3px 4px">
       <span style="font-size:12px;color:var(--text2)">
         <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2
       </span>
-      <button onclick="abrirImgKeyModal('openai')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0">Configurar</button>
+      <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
   </div>
   <div class="sidebar-section" style="padding-bottom:8px">
     <div class="sidebar-label">Estilo visual de imagen</div>
     <div class="estilo-grid">
-      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase.">🏢 Formal</button>
-      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa.">🎉 Alegre costeño</button>
-      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto.">😂 Chistoso</button>
-      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias.">◻ Minimalista</button>
-      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas.">✏️ Personalizar</button>
+      <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase."><i data-lucide="building-2" aria-hidden="true"></i> Formal</button>
+      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
+      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
+      <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square" aria-hidden="true"></i> Minimalista</button>
+      <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil" aria-hidden="true"></i> Personalizar</button>
     </div>
     <div class="detalle-dia-row" id="detalle-dia-row" style="display:none">
       <span>Detalle hoy: <span class="detalle-dia-val" id="detalle-dia-val">—</span></span>
@@ -799,14 +793,17 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
   </div>
 </aside>
 
-<main class="main">
-  <div class="top-bar">
+<main class="agent-workspace-main">
+  <div class="agent-workspace-header">
     <div>
       <div class="top-title">Piezas generadas</div>
       <div class="top-sub" id="top-subtitle">Configura los parámetros y presiona generar</div>
       <div id="batch-badge" style="display:none;font-size:11px;color:#00C4CC;font-weight:700;margin-top:2px"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="workspace-collapse-btn" id="workspace-collapse-btn" type="button" aria-expanded="true" aria-controls="agent-form-panel">
+        <i data-lucide="panel-left-close"></i><span class="workspace-collapse-label"></span>
+      </button>
       <button class="copy-all-btn" onclick="generarContenido()" id="regen-btn" style="display:none;background:#E8F4F8;color:#00C4CC;border:1px solid rgba(0,196,204,0.3)">↺ Regenerar</button>
       <button class="copy-all-btn" onclick="copiarTodo()" id="copy-all-btn" style="display:none">Copiar todo</button>
       <button class="copy-all-btn" onclick="exportarPaquete()" id="export-btn" style="display:none;background:#E8F4F8;color:#00C4CC;border:1px solid rgba(0,196,204,0.3)" title="Descargar ZIP con todos los copies e imágenes">📦 Exportar</button>
@@ -829,8 +826,13 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
       <div class="empty-icon">
         <img style="display:none" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
       </div>
-      <div class="empty-title">Sin piezas aún</div>
-      <div class="empty-desc">Selecciona ciudad, tipo de contenido y producto. En 20 segundos tienes los copies listos para publicar.</div>
+      <div class="empty-title">Tu próxima pieza empieza aquí</div>
+      <div class="empty-desc">Completa la configuración del formulario y genera copies e imágenes listos para revisar.</div>
+      <div class="empty-steps" aria-label="Pasos para generar una pieza">
+        <span class="empty-step"><b>1</b>Configura</span>
+        <span class="empty-step"><b>2</b>Genera</span>
+        <span class="empty-step"><b>3</b>Revisa el resultado</span>
+      </div>
     </div>
     <div class="shimmer-card" id="loading-card">
       <div class="shimmer-line short"></div>
@@ -862,7 +864,7 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
           <div class="img-key-dot" id="img-key-dot"></div>
           <span id="img-key-label">Key no configurada</span>
         </div>
-        <button class="img-key-btn" id="img-key-row-btn" onclick="updateImgKeyStatus()">Configurar key</button>
+        <button class="img-key-btn" id="img-key-row-btn" style="display:none" disabled>Backend seguro</button>
       </div>
       <div class="img-preview-panel" id="img-preview-panel">
         <span class="img-preview-lbl-sec">Vista previa del aviso — revisa y edita antes de generar imagen</span>
@@ -948,6 +950,7 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
     </div>
   </div>
 </main>
+</div>
 </div>
 
 <script>
@@ -1037,96 +1040,80 @@ function enviarACola() {
 // Si esto fuera un objeto calculado una sola vez al cargar la página, pick()
 // solo se evaluaría una vez y el "azar" quedaría congelado toda la sesión —
 // por eso hay que llamarla como ESTILO_INSTRUCCIONES(), no usarla como valor.
+function buildCreativeStyleDirection(estilo = currentEstilo) {
+  const directions = {
+    costeno: 'Alegre costeño contemporáneo: comercio cuidado, luz natural y vida real del Caribe colombiano; evita clichés y cambia composición y ritmo en cada pieza.',
+    chistoso: 'Humor comercial inteligente: parte de una tensión real y resuélvela con un giro original, sin estereotipos ni muletillas.',
+    formal: 'Formal contemporáneo: confianza, precisión comercial y jerarquía visual limpia; evita lenguaje corporativo genérico.',
+    minimalista: 'Minimalista: una sola idea comercial concreta, pocas palabras, espacio visual y máxima claridad.',
+    custom: document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
+  };
+  return directions[estilo] || directions.formal;
+}
+
+function buildRecentHeadlinePenalty() {
+  try {
+    const recent = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]').filter(t => typeof t === 'string').slice(-24);
+    return recent.length ? `\nTITULARES RECIENTES — no repitas ni parafrasees:\n${recent.map(t => `- ${t}`).join('\n')}` : '';
+  } catch { return ''; }
+}
+
+function rememberRecentHeadlines(titulares) {
+  try {
+    const current = JSON.parse(sessionStorage.getItem('aura_recent_headlines') || '[]');
+    sessionStorage.setItem('aura_recent_headlines', JSON.stringify([...current, ...titulares].slice(-24)));
+  } catch { /* la memoria de variedad nunca bloquea la generación */ }
+}
+
+function buildMandatoryUserBrief() {
+  const brief = [document.getElementById('instruccion-ia-extra')?.value.trim(), document.getElementById('modo-contexto')?.value.trim()].filter(Boolean).join(' · ');
+  return brief ? `USER BRIEF — PRIORIDAD MÁXIMA:\n"${brief}"\nConserva cada objeto, escena, ubicación y restricción explícita; no lo sustituyas por una escena genérica.` : '';
+}
+
+function buildExplicitCreativePriority() {
+  const additional = document.getElementById('instruccion-ia-extra')?.value.trim() || '';
+  const context = document.getElementById('modo-contexto')?.value.trim() || '';
+  const note = document.getElementById('nota')?.value.trim() || '';
+  const product = document.getElementById('producto')?.value.trim() || '';
+  const lines = [
+    additional && `1. INSTRUCCIÓN ADICIONAL DEL USUARIO (manda): "${additional}"`,
+    context && `2. CONTEXTO ESPECÍFICO DE LA PIEZA: "${context}"`,
+    note && `3. MENSAJE/COPY DEL USUARIO: "${note}"`,
+    product && `4. PRODUCTO SELECCIONADO: "${product}"`,
+  ].filter(Boolean);
+  return lines.length ? `JERARQUÍA DE CONTEXTO — NO ALTERAR:\n${lines.join('\n')}\nDetalle hoy es solo inspiración secundaria: no puede sustituir, contradecir ni dominar estos elementos.` : '';
+}
+
+function buildModeCopyGuard(modo) {
+  if (modo === 'promo') return `MODO PROMOCIÓN ESPECIAL — REGLA DE NEGOCIO:\n- Enfócate en ocasión, regalo, beneficio, producto, emoción y CTA.\n- No introduzcas por iniciativa propia fiador, codeudor, reportado, estudio, aprobación, crédito o financiación. Solo menciona condiciones financieras si el usuario las escribió explícitamente.\n- No inventes una marca o modelo cuando Producto esté vacío.`;
+  if (modo === 'tienda') return 'MODO TIENDA: habla de la experiencia, el producto y la visita; no inventes crédito ni condiciones financieras.';
+  if (modo === 'servicio') return 'MODO SERVICIO: explica únicamente el servicio indicado y una acción verificable; no inventes financiación.';
+  return '';
+}
+
+const COPY_QUALITY_GUARD = `
+CONTROL DE CALIDAD — PUBLICISTA SENIOR:
+- Escribe español colombiano natural, claro y comercial. “Alegre costeño” describe calidez y cercanía; no obliga a usar regionalismos.
+- Cada texto debe conectar la escena concreta, un beneficio verificable y una acción útil. Rechaza titulares que servirían para cualquier negocio.
+- No uses muletillas ni caricaturas (“mija”, “llave”, “viejita”, “abuela”, “papi”, “ombe”, “mano”) salvo que el brief las pida expresamente y suenen naturales en contexto.
+- Corrige sintaxis, tildes, concordancia y cortes de línea. No dejes palabras huérfanas ni frases sin verbo o sentido comercial.
+- Evita clichés, promesas de aprobación, velocidad garantizada, presión artificial y frases poéticas desconectadas del producto.
+- El titular lidera; el texto secundario explica un beneficio; el CTA pide una acción concreta. No los amontones ni repitas la misma idea.
+- Antes de responder, descarta cualquier propuesta genérica, gramaticalmente extraña o desconectada del concepto y reemplázala por una nueva.
+- Cumplimiento Meta: “Sujeto a aprobación de crédito. Aplican términos y condiciones.” cuando aplique crédito.`;
+
 function ESTILO_INSTRUCCIONES() {
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   return {
-    'alegre costeño': `Tono costeño COMERCIAL — calor humano del Caribe colombiano pero enfocado en la venta.
-Patrones de hook (gancho — la primera frase que para el scroll) que debes usar:
-- Identidad local + alivio: "${pick(['Llave, ese celular sí se puede.', 'Ombe, aquí empiezas tu trámite.', 'Mano, contigo sí hay solución.'])}"
-- Permiso/solución directa: "${pick(['Sin banco. Con la cédula alcanza.', 'Sin banco, sin codeudor, con cédula.', 'Sin fiador, sin vueltas, con cédula.'])}"
-- Objeción específica resuelta: "${pick(['Sin fiador y con la cédula alcanza.', 'Reportado también puede solicitar.', 'Sin codeudor, solo tu cédula.'])}"
-- Marca + acción concreta: "${pick(['Mija, ese Samsung solicítalo ya.', 'Ese Xiaomi, papi, ya casi es tuyo.', 'Llave, ese iPhone empieza tu trámite.'])}" (nunca solo listar marcas sin acción)
-Expresiones válidas: ombe, llave, mano, papi, mija, qué lo que, dale.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular que solo combine adjetivos genéricos ("las mejores marcas", "calidad garantizada", "lo mejor para ti") sin ninguno de los 3 elementos de arriba SE RECHAZA — no generar ese tipo de titular bajo ninguna circunstancia.
-
-PROHIBIDO: genérico ("tecnología", "las mejores marcas"), corporativo ("conecta tu futuro"), poético sin venta, listar marcas sin una acción concreta detrás, gramática forzada que suene poco natural en el habla real de la Costa, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, NO más de 2 deben usar la misma familia estructural. Los 4 patrones disponibles son: (1) identidad+alivio, (2) permiso/solución "Sin X", (3) objeción resuelta, (4) marca+acción. Distribuir el lote entre al menos 3 de estos 4 patrones — no repetir "Sin X. Sin Y." en más de 2 titulares del mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'chistoso': `Humor COMERCIAL colombiano — el chiste abre la puerta, la venta cierra.
-Patrones de hook que debes usar:
-- Contraste inesperado: "${pick(['Tu bolsillo dijo no. Creditek dijo: dale.', 'Tu billetera lloró. Tu celular sonrió.', 'El banco te ghosteó. Nosotros no.'])}"
-- Formato POV/meme: "${pick(['POV: entraste sin cupo y saliste con equipo nuevo.', 'POV: llegaste dudando y te vas solicitando.', 'POV: tu celular viejo viendo cómo lo reemplazan.'])}"
-- Comparación colombiana actual: "${pick(['El VAR revisó y confirmó: este precio sí es gol.', 'Como en el fútbol: aquí sí hay cambio de titular.', 'Esto tiene menos trampa que un partido de barrio.'])}"
-- Tensión cómica: "${pick(['Tu celular ya dijo adiós. Nosotros le decimos bienvenido al nuevo.', 'Tu pantalla rota ya no aguanta ni un meme más.', 'Ese celular ya jubilado necesita reemplazo urgente.'])}"
-REGLA: el humor debe estar en el texto — NO pedir "persona riendo" ni "cara de sorpresa".
-
-BÚSQUEDA OBLIGATORIA (usa la herramienta de búsqueda web ANTES de escribir los titulares): busca 1 referencia real y verificable de Colombia/Costa Caribe de los últimos 7 días — puede ser un resultado de fútbol, una canción sonando, una noticia viral, un meme real circulando. Usa esa referencia real en AL MENOS 1 de los 6 titulares del "Patrón de comparación colombiana actual". Si la búsqueda no arroja nada útil o falla, usa los ejemplos genéricos de respaldo de abajo — nunca inventes un evento como si fuera real.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos, además del chiste:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco)
-2. Un resultado tangible (solicítalo, conoce si calificas, empieza tu trámite)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un chiste que no conecte con ninguno de los 3 elementos de arriba SE RECHAZA — el humor debe vender, no solo hacer reír.
-PROHIBIDO: chistes forzados, humor que no vende, punchlines sin beneficio claro, humor genérico sin conexión al producto/crédito, y cualquier promesa de aprobación garantizada o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (contraste inesperado, POV/meme, comparación colombiana actual, tensión cómica) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'formal': `Copywriting directo de conversión (conversion copywriting — texto diseñado para generar acción inmediata).
-Patrones de hook que debes usar:
-- Resultado específico: "${pick(['Solicítalo hoy. Samsung en tus manos.', 'Empieza tu trámite. Tecnología al día.', 'Da el paso. Tu celular nuevo te espera.'])}"
-- Problema + solución en 6 palabras: "${pick(['Sin historial. Con tu cédula alcanza.', 'Sin codeudor. Solo tu cédula basta.', 'Sin fiador. El trámite es simple.'])}"
-- Urgencia real con dato concreto: "${pick(['Solo 3 unidades. Solo esta semana.', 'Quedan 5 cupos. Solo hoy.', 'Últimas unidades disponibles esta semana.'])}"
-- Beneficio innegable: "${pick(['Sin banco. Sin rollo. Así de fácil.', 'Sin trámites complicados. Solo tu cédula.', 'Simple, directo, sin enredos bancarios.'])}"
-REGLA: cada titular debe funcionar solo, sin necesitar la siguiente frase.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Cada titular DEBE incluir al menos UNO de estos elementos concretos:
-1. Una objeción real resuelta (reportado, sin fiador, sin codeudor, sin banco, sin historial)
-2. Un resultado tangible (solicítalo hoy, sin banco, sin fiador)
-3. Una marca o modelo específico + una acción concreta sobre esa marca
-Un titular aspiracional sin ninguno de los 3 elementos de arriba SE RECHAZA.
-PROHIBIDO: aspiracional genérico, corporativo ("potencia", "conecta", "descubre", "innovador"), frases motivacionales sin dato concreto de crédito/producto, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 4 patrones disponibles (resultado específico, problema+solución, urgencia con dato concreto, beneficio innegable) — no más de 2 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
-
-    'minimalista': `Una sola idea. Máximo impacto. Mínimas palabras.
-Patrones de hook que debes usar:
-- Fragmento directo: "${pick(['Sale hoy.', 'Con la cédula.', 'Sin banco.'])}"
-- Afirmación de resultado: "${pick(['Solicítalo. Hoy mismo.', 'Trámite simple.', 'Ya casi tuyo.'])}"
-REGLA ESTRICTA: máximo 4 palabras. Sin puntuación decorativa. Sin adjetivos innecesarios.
-
-REGLA DE ESPECIFICIDAD (specificity check — obligatoria en TODOS los titulares, no solo en los ejemplos):
-Dado el límite estricto de 4 palabras, el elemento concreto debe ser la PALABRA CLAVE central del fragmento:
-1. Una objeción resuelta en una palabra ("Sin banco", "Sin fiador", "Reportado")
-2. Un resultado en una palabra ("Solicítalo", "Hoy", "Ya")
-3. Una marca específica ("Samsung ya", "iPhone hoy")
-Un fragmento minimalista que solo use adjetivos vacíos ("Lo mejor.", "Calidad total.") SE RECHAZA — el minimalismo debe mantener un elemento concreto, no sacrificarlo por brevedad.
-PROHIBIDO: más de 4 palabras, cualquier palabra que no aporte conversión directa, fragmentos vacíos de contenido aunque sean cortos, y cualquier promesa de aprobación garantizada, velocidad de aprobación o reversión de un rechazo previo (ver regla de cumplimiento Meta).
-
-REGLA DE ROTACIÓN (evitar monotonía estructural): de los 6 titulares generados por lote, distribuir entre los 2 patrones disponibles (fragmento directo, afirmación de resultado) — no más de 3 titulares del mismo patrón en un mismo lote.
-
-CUMPLIMIENTO META (obligatorio, no negociable): nunca prometas aprobación garantizada, velocidad de aprobación ("mismo día", "en minutos") ni reversión de un rechazo previo de otra entidad. Incluye siempre, en algún lugar del copy (no necesariamente en el titular principal), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`,
+    'alegre costeño': 'Calidez contemporánea del Caribe colombiano: cercanía, optimismo y humor suave cuando nazca de la escena. Vende con claridad, sin estereotipos ni slang impuesto.',
+    'chistoso': 'Humor comercial inteligente: el giro nace de la situación y conduce a un beneficio o acción concreta. No uses memes aleatorios ni pidas personajes exagerados.',
+    'formal': 'Precisión, confianza y claridad de performance. Prioriza un beneficio demostrable y una acción concreta; evita frases corporativas o aspiracionales vacías.',
+    'minimalista': 'Una sola idea comercial con pocas palabras, pero completa y comprensible. Cada palabra debe aportar producto, beneficio o acción; no uses fragmentos vacíos.',
+    'custom': document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
   };
 }
 
 // ── Generar más titulares con Claude ────────────────────────────
 async function generarMasTitulares() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) { abrirModal(); return; }
   const btn = document.getElementById('mas-titulares-btn');
   btn.disabled = true; btn.textContent = '...';
   const modo = document.getElementById('modo').value;
@@ -1143,15 +1130,26 @@ async function generarMasTitulares() {
   // copia incompleta (antes solo tenía 2 de 4 estilos, sin refuerzo).
   const estiloInstrucciones = ESTILO_INSTRUCCIONES();
   const estiloKey = Object.keys(estiloInstrucciones).find(k => estilo.toLowerCase().includes(k.split(' ')[0])) || 'formal';
+  const detalleHoy = getDetalleDelDia(estiloKey);
   const prompt = `Eres el mejor copywriter de Colombia especializado en publicidad comercial para el Caribe colombiano. Trabajas para Creditek, empresa de tecnología a crédito (celulares, electrodomésticos, electrónica).
 
 MENSAJE DEL CLIENTE (corrígelo antes de usarlo):
-"${mensajeSecundario || nota || 'Tecnología a crédito en el Caribe colombiano'}"
+"${mensajeSecundario || nota || detalleHoy}"
+
+${buildExplicitCreativePriority()}
+
+DETALLE HOY (contexto obligatorio del copy) — inspiración secundaria; nunca sustituye el brief:
+"${detalleHoy}"
+Los titulares deben partir primero del brief y relacionarse con el detalle solo si no cambia la escena principal.
 
 CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramática y redacción del mensaje anterior.
 
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
+${COPY_QUALITY_GUARD}
+${buildModeCopyGuard(modo)}
+${buildRecentHeadlinePenalty()}
+${buildMandatoryUserBrief()}
 
 GENERA 6 TITULARES de alto impacto para imagen publicitaria en redes sociales.
 
@@ -1159,7 +1157,7 @@ REGLAS:
 - Máximo 6 palabras por titular
 - Sin emojis. Sin "Creditek" (está en el logo)
 - Basarse en el mensaje del cliente corregido
-- Nivel: el mejor vendedor costeño que conoce a su cliente — directo, sin rodeos, habla exactamente de lo que le duele y cómo resolverlo. NO aspiracional de marca global.
+- Nivel: publicista senior colombiano de performance — directo, natural y específico para este concepto. No uses regionalismos por obligación.
 - Cada titular debe funcionar SOLO en 1.5 segundos de scroll — si necesita la siguiente frase para tener sentido, está roto.
 - Varía los patrones de hook (gancho): urgencia / permiso-alivio / contraste / identidad local / resultado específico / humor comercial
 - PROHIBIDO en titulares: "conéctate", "potencia", "descubre", "tecnología", "innovador", cualquier frase que aplique a cualquier marca.
@@ -1176,9 +1174,9 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
 5. {titular}
 6. {titular}`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
       body: JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:300,
@@ -1186,7 +1184,8 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
         // FIX v12 09-jul-2026: mismo criterio que en generarContenido() — solo
         // "Chistoso" pide referencias a la actualidad, solo ahí se activa la
         // búsqueda (~$0.01 por búsqueda, hasta 2 por generación).
-        ...(estilo.toLowerCase().includes('chistoso') ? { tools: [{ type: 'web_search_20260318', name: 'web_search', max_uses: 2 }] } : {})
+        // Las referencias de actualidad no son obligatorias: evitamos una
+        // búsqueda externa por generación y mantenemos el humor anclado en la escena.
       })
     });
     const data = await res.json();
@@ -1202,7 +1201,7 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
     // reales. Ahora solo se aceptan líneas que empiezan con "N." (el formato
     // exacto que pide el prompt) — cualquier otra línea de texto se descarta.
     const titulares = text.split('\n').map(l=>l.trim()).filter(l=>/^\d+\.\s/.test(l)).map(l=>limpiarMarkdownTitular(l.replace(/^\d+\.\s*/,''))).filter(Boolean).slice(0,6);
-    if (titulares.length > 0) { renderTitulares(titulares); showToast('✓ Nuevos titulares generados'); }
+    if (titulares.length > 0) { rememberRecentHeadlines(titulares); renderTitulares(titulares); showToast('✓ Nuevos titulares generados'); }
     else showToast('No se generaron titulares', '#f59e0b');
   } catch(e) { showToast('Error al generar titulares', '#ef4444'); }
   btn.disabled = false; btn.textContent = '✦ Más';
@@ -1210,15 +1209,13 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
 
 // ── Corregir mensaje secundario con Claude antes de generar imagen ──
 async function corregirMensajeSecundario() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return;
   const el = document.getElementById('img-mensaje');
   if (!el || !el.value.trim()) return;
   const texto = el.value.trim();
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
       body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:150,messages:[{role:'user',content:'Corrige este texto en español colombiano. Aplica: primera letra en mayúscula, tildes correctas, corrige errores gramaticales y de redacción. Devuelve SOLO el texto corregido, sin explicaciones ni comillas:\n\n' + texto}]})
     });
     const data = await res.json();
@@ -1231,41 +1228,11 @@ async function corregirMensajeSecundario() {
   } catch(e) { /* silencioso — no bloquear generación */ }
 }
 
-// ── Modal API Key ───────────────────────────────────────────────
-function toggleModalKey() {
-  const el = document.getElementById('modalKey');
-  const btn = document.getElementById('modalEye');
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Ver';
-}
-function submitKey() {
-  const val = document.getElementById('modalKey').value.trim();
-  const err = document.getElementById('modalError');
-  if (!val.startsWith('sk-ant-')) { err.style.display = 'block'; document.getElementById('modalKey').focus(); return; }
-  err.style.display = 'none';
-  localStorage.setItem('ck_api_key', val);
-  sessionStorage.setItem('ck_api_key', val);
-  document.getElementById('apiModal').classList.add('hidden');
-}
-function abrirModal() {
-  document.getElementById('modalKey').value = '';
-  document.getElementById('modalError').style.display = 'none';
-  document.getElementById('apiModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modalKey').focus(), 80);
-}
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('canva-brief-panel').style.display = 'none';
   document.getElementById('canva-btn').classList.remove('active');
   populateCiudadDropdown();
   renderRefStatus();
-  const stored = localStorage.getItem('ck_api_key');
-  if (stored) sessionStorage.setItem('ck_api_key', stored);
-  if (!sessionStorage.getItem('ck_api_key')) {
-    setTimeout(() => document.getElementById('modalKey').focus(), 80);
-  } else {
-    document.getElementById('apiModal').classList.add('hidden');
-  }
   updateImgKeyStatus();
 
   // ── Precarga desde Calendario: cola batch (lote) o pieza única ───
@@ -1536,12 +1503,8 @@ function toggleKey(inputId, btn) {
   btn.textContent = show ? 'Ocultar' : 'Ver';
 }
 
+let contentGenerationInFlight = false;
 async function generarContenido() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) {
-    abrirModal();
-    return;
-  }
   // FIX v12 09-jul-2026: variable de estilo activo a nivel de función — antes
   // "estilo" solo existía dentro del IIFE que arma el bloque de tono del prompt
   // (más abajo), un scope que se cierra antes de llegar al fetch. Sin esto,
@@ -1576,6 +1539,8 @@ async function generarContenido() {
   const culturaCtx = esCiudad
     ? (CIUDADES_META[ciudad.slice(7)]?.contexto || null)
     : (getTiendaInfo(ciudad)?.contexto || null);
+  const detalleEstilo = estilo.toLowerCase().includes('alegre') ? 'costeno' : estilo.toLowerCase().includes('chistoso') ? 'chistoso' : estilo.toLowerCase().includes('minimalista') ? 'minimalista' : 'formal';
+  const detalleHoy = getDetalleDelDia(detalleEstilo);
 
   if (!ciudad) {
     const sel = document.getElementById('ciudad');
@@ -1587,6 +1552,8 @@ async function generarContenido() {
   }
   if (ciudad === 'todas las ciudades') showToast('Para mejor resultado selecciona una tienda específica', '#f59e0b');
   if (!platforms.length) { showToast('Selecciona al menos una plataforma.', '#f59e0b'); return; }
+  if (contentGenerationInFlight) return;
+  contentGenerationInFlight = true;
 
   const btn = document.getElementById('gen-btn');
   const spinner = document.getElementById('spinner');
@@ -1621,13 +1588,11 @@ MODELO DE NEGOCIO:
 - Objeción central del cliente: "¿Me van a aprobar? / Tengo miedo al endeudamiento."
 - Argumento de cierre: "Estrena tu celular hoy y lo pagas cómodo — solo necesitas tu cédula."
 
-PATRONES DE COPY MODO CRÉDITO (cita textualmente o adapta mínimo):
-"Con una inicial de $50.000 pesitos ya es tuyo"
-"Tu celular nuevo desde $X al mes — sin banco, sin rollo"
-"Sin miedo, con la cédula es suficiente."
-"Llévalo hoy, págalo cómodo. Así de fácil."
-WhatsApp: "Ey, llegó el [modelo] a [nombre tienda]. Inicial de $50.000 pesitos y lo llevas hoy. ¿Cuándo nos visitas?"
-Para Chinú / registro usted: "Don Juan, en [nombre tienda] lo atendemos bien. Con la cédula alcanza — pase y lo miramos."`;
+    DIRECCIÓN DE COPY MODO CRÉDITO:
+- Presenta el celular como producto y el crédito como forma de pago, sin prometer aprobación.
+- Usa únicamente precio, inicial, plazo o modelo si están presentes en los datos de la pieza.
+- Conecta el beneficio con la situación de DETALLE HOY y cierra con una acción presencial concreta.
+- Añade el aviso: "Sujeto a aprobación de crédito. Aplican términos y condiciones."`;
 
   } else if (modo === 'promo') {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
@@ -1636,13 +1601,9 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es para una PROMOCIÓN ESPECIAL. NO menciones crédito, cuotas ni financiamiento. El mensaje es 100% sobre la oferta.
 
-PATRONES DE COPY MODO PROMO (cita textualmente o adapta mínimo):
-"Solo [X] unidades. El que llega primero, lo lleva."
-"Esta semana en [nombre tienda]: [modelo] a [precio]. Antes de que se acaben."
-"[Modelo] bajó de precio esta semana. Solo en [ciudad]."
-"Sin rodeos: [precio]. Hasta el domingo."
-"Solo en [nombre tienda], [ciudad]. No lo vas a encontrar igual en otro lado."
-WhatsApp: "Oye, esta semana [modelo] está a [precio] en [tienda]. Si te interesa, ven antes del viernes que se acaba."`;
+    DIRECCIÓN DE COPY MODO PROMO:
+- Comunica solo la oferta y sus condiciones verificables; no agregues crédito ni urgencia inventada.
+- Haz que el beneficio y la acción estén ligados a la escena de DETALLE HOY.`;
   } else if (modo === 'tienda') {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
 
@@ -1650,12 +1611,8 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es CONTENIDO DE TIENDA. NO menciones crédito, cuotas ni financiamiento. Muestra la tienda, el equipo y la experiencia de compra.
 
-PATRONES DE COPY MODO TIENDA (cita textualmente o adapta mínimo):
-"Esto es [nombre tienda] por dentro. Pasa y conoce."
-"El equipo de [tienda] listo para atenderte. Ven hoy."
-"¿Cuándo fue la última vez que entraste a [nombre tienda]? Algo nuevo te espera."
-"En [nombre tienda] siempre hay alguien dispuesto a ayudarte. Sin compromiso."
-"[Tienda] en [ciudad]. Ya llevamos [tiempo] atendiéndolos a ustedes."`;
+    DIRECCIÓN DE COPY MODO TIENDA:
+- Muestra una experiencia concreta de esa tienda y termina con una invitación natural, sin frases intercambiables.`;
   } else {
     contextoBlock = `Eres el Agente de Marketing de Creditek SAS, tienda colombiana de celulares con 11 locales propios en el Caribe colombiano (Tolú, Corozal, Chinú, Ciénaga de Oro, Coveñas).
 
@@ -1663,11 +1620,8 @@ ${brandBase}
 
 ⚠️ REGLA CRÍTICA: Este copy es sobre un SERVICIO O BENEFICIO. NO menciones crédito, cuotas ni financiamiento. Destaca el servicio o beneficio indicado.
 
-PATRONES DE COPY MODO SERVICIO (cita textualmente o adapta mínimo):
-"¿Tu celular se está poniendo lento? En [tienda] lo revisamos sin cobro."
-"Batería dañada, pantalla rota — en [tienda] te orientamos sin que tengas que comprar nada."
-"Llevamos años en [ciudad]. Si tienes dudas sobre tu celular, pregunta — te respondemos."
-WhatsApp: "¿Problema con tu equipo? Cuéntanos qué tiene. En [tienda] miramos qué se puede hacer."`;
+    DIRECCIÓN DE COPY MODO SERVICIO:
+- Explica el servicio o beneficio real con lenguaje sencillo, conectado a la situación y a una acción verificable.`;
   }
   const hashtagsCtx = modo === 'credito' ? 'ciudad, producto, crédito, Colombia' : modo === 'captacion' ? 'humor, colombiano, tecnología, comunidad, lifestyle' : modo === 'jornada' ? 'ciudad, crédito, evento, Colombia, oportunidad' : modo === 'institucional' ? 'marca, empresa, Colombia, Caribe, Creditek' : 'ciudad, producto, Colombia';
   const tipoEstructura = {
@@ -1711,14 +1665,20 @@ ${producto ? '- Producto: ' + producto : ''}
 ${cuota && modo === 'credito' ? '- Precio cuota mensual: ' + cuota : ''}
 ${inicial && modo === 'credito' ? '- Cuota inicial: ' + inicial : ''}
 ${modoContexto ? '- CONTEXTO ESPECÍFICO DE ESTA PIEZA (base obligatoria del copy — construye todo alrededor de esta situación concreta): ' + modoContexto : ''}
+${buildExplicitCreativePriority()}
+DETALLE HOY (contexto obligatorio del copy) — inspiración secundaria, nunca prioridad: ${detalleHoy}
+Los titulares, texto secundario y CTA deben respetar primero la instrucción adicional y el contexto específico; usa Detalle hoy únicamente para ambientar sin cambiar sujetos, acción ni producto.
 ${notaInstruccion ? '- INSTRUCCIÓN TÉCNICA PARA LA IA (no es el mensaje — aplícala al generar, no la menciones en el copy): ' + notaInstruccion : ''}
 ${direccion ? '- Dirección(es) de tienda: ' + direccion : ''}
 - Plataformas: ${platformsList}
 
-${['captacion','institucional','jornada'].includes(modo) ? `PERFIL DE AUDIENCIA — MODO ${modoLabel.toUpperCase()}:
+${['captacion','institucional','jornada','promo','tienda','servicio'].includes(modo) ? `PERFIL DE AUDIENCIA — MODO ${modoLabel.toUpperCase()}:
 ${modo === 'captacion' ? '- Audiencia general en redes sociales. Objetivo: engagement, likes, comentarios, seguidores nuevos. NO vender, NO mencionar crédito ni precios.' : ''}
 ${modo === 'institucional' ? '- Audiencia general e inversionistas sociales. Objetivo: construir confianza y reconocimiento de marca Creditek. NO mencionar precios ni condiciones de crédito.' : ''}
-${modo === 'jornada' ? '- Clientes potenciales de la zona que quieren crédito ese día. Objetivo: asistencia al evento presencial. Urgencia de fecha.' : ''}` :
+${modo === 'jornada' ? '- Clientes potenciales de la zona que quieren crédito ese día. Objetivo: asistencia al evento presencial. Urgencia de fecha.' : ''}
+${modo === 'promo' ? '- Personas interesadas en la ocasión, el regalo, el beneficio y el producto. No introducir condiciones de crédito no solicitadas.' : ''}
+${modo === 'tienda' ? '- Personas que quieren conocer la tienda y la experiencia de compra, sin financiación inventada.' : ''}
+${modo === 'servicio' ? '- Personas que necesitan el servicio descrito y una acción concreta para recibir orientación.' : ''}` :
 `PERFIL DEL CLIENTE REAL (habla DIRECTAMENTE a esta persona):
 - Hombre o mujer, 25-45 años, ingreso familiar $1.2M–$2.5M/mes
 - Usa Nequi o Daviplata, no tiene cuenta bancaria formal
@@ -1743,7 +1703,10 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
   const map = ESTILO_INSTRUCCIONES();
   const key = Object.keys(map).find(k => estilo.includes(k.split(' ')[0]));
   return key ? map[key] + '\n\n' : '';
-})()}LENGUAJE Y TONO OBLIGATORIO:
+})()}
+${COPY_QUALITY_GUARD}
+${buildModeCopyGuard(modo)}
+LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
 ${culturaCtx && (culturaCtx.includes('tradicional') || culturaCtx.includes('ganadero')) ? '- Registro: usa "usted" si el contexto lo pide; cálido, de confianza, como alguien del mismo pueblo.' : '- Registro: tuteo natural y directo, como alguien que ya conoce al cliente.'}
 - Frases cortas y directas. Una idea por frase.
@@ -1818,13 +1781,11 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
 3. ...`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': sessionStorage.getItem('ck_api_key') || '',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
@@ -1835,12 +1796,12 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
         // conocer sin buscar — se activa la herramienta de búsqueda SOLO para
         // ese estilo (~$0.01 por búsqueda, hasta 2 por generación). Los otros
         // 3 estilos no la necesitan, no se les activa.
-        ...(estilo.toLowerCase().includes('chistoso') ? { tools: [{ type: 'web_search_20260318', name: 'web_search', max_uses: 2 }] } : {})
+        // Sin búsqueda externa por generación: el humor debe nacer del concepto.
       })
     });
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      const msg = response.status === 401 ? 'API key inválida. Presiona "Cambiar key" y verifica.' :
+      const msg = response.status === 401 ? 'Sesión inválida o vencida. Inicia sesión nuevamente.' :
                   response.status === 429 ? 'Límite de uso alcanzado. Espera un momento e intenta de nuevo.' :
                   errData.error?.message || `Error ${response.status}`;
       throw new Error(msg);
@@ -1880,6 +1841,7 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
     console.error('API error:', err);
   }
   btn.disabled = false; spinner.style.display = 'none'; label.textContent = '✦ Generar piezas';
+  contentGenerationInFlight = false;
   document.getElementById('canva-brief-panel').style.display = 'none';
   document.getElementById('canva-btn').classList.remove('active');
 }
@@ -1930,6 +1892,7 @@ function renderPiezas(text, platforms, tipo, ciudad, inclHashtags, inclBrief) {
   if (tm) {
     const titLines = tm[1].trim().split('\n').filter(l => l.trim());
     const titulares = titLines.map(l => limpiarMarkdownTitular(l.replace(/^\d+\.\s*/, ''))).filter(Boolean).slice(0, 6);
+    rememberRecentHeadlines(titulares);
     renderTitulares(titulares);
   }
 
@@ -2056,13 +2019,11 @@ async function ajustarCopy(btn, platform, maxChars) {
   const contentEl = card.querySelector('.pieza-content');
   const copyBtn = card.querySelector('.copy-btn');
   const originalText = contentEl.innerText.trim();
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey) { showToast('Falta la API key', '#ef4444'); return; }
   btn.disabled = true; btn.textContent = '...';
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Authorization': 'Bearer ' + (auraSessionToken() || ''), 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400, messages: [{ role: 'user', content: `Acorta este copy de ${platform} para que tenga MÁXIMO ${maxChars} caracteres. Mantén el gancho, el beneficio principal y el CTA. Conserva el tono informal y colombiano. No agregues nada nuevo. Responde SOLO con el copy acortado, sin explicaciones ni comillas.\n\nCopy original:\n${originalText}` }] })
     });
     const data = await response.json();
@@ -2237,16 +2198,30 @@ function selectEstilo(estilo, btn) {
 
 // Permite cambiar el detalle del día manualmente (05-jul-2026)
 let detalleOverride = {};
-function cambiarDetalleDia() {
-  const banco = window.BANCO_DETALLES_REF || {};
-  const lista = banco[currentEstilo] || [];
-  if (!lista.length) return;
-  const actual = document.getElementById('detalle-dia-val')?.textContent || '';
-  const siguiente = lista.find(d => d !== actual) || lista[0];
-  detalleOverride[currentEstilo] = siguiente;
-  const detVal = document.getElementById('detalle-dia-val');
-  if (detVal) detVal.textContent = siguiente;
-  buildImgPrompt();
+let detalleChangeInFlight = false;
+async function cambiarDetalleDia() {
+  const btn = document.querySelector('.detalle-dia-btn');
+  if (detalleChangeInFlight) return;
+  detalleChangeInFlight = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'generando…'; }
+  try {
+    const actual = document.getElementById('detalle-dia-val')?.textContent?.trim() || detalleCreativoActual(currentEstilo);
+    let siguiente = await proponerDetalleCreativoConIA(currentEstilo, { force: true, avoid: actual });
+    if (conceptosSustancialmenteIguales(siguiente, actual)) {
+      siguiente = propuestaFallbackDiferente(currentEstilo, actual);
+    }
+    if (conceptosSustancialmenteIguales(siguiente, actual)) {
+      showToast('No se pudo obtener una idea nueva. Intenta nuevamente.', '#ef4444');
+      return;
+    }
+    detalleOverride[currentEstilo] = siguiente;
+    const detVal = document.getElementById('detalle-dia-val');
+    if (detVal) detVal.textContent = siguiente;
+    await buildImgPrompt();
+  } finally {
+    detalleChangeInFlight = false;
+    if (btn) { btn.disabled = false; btn.textContent = '↺ cambiar'; }
+  }
 }
 
 async function loadLogoBase64() {
@@ -2350,25 +2325,11 @@ function updateImgKeyStatus() {
   syncModelUI();
   const useGemini = document.getElementById('chk-gemini')?.checked;
   const useDalle  = document.getElementById('chk-dalle')?.checked;
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  const geminiOk  = true; // Vertex AI via Worker — WIF auth, no key required
-  const dalleOk   = keyOpenAI.length > 10;
+  const geminiOk  = true;
+  const dalleOk   = true;
   const btn = document.getElementById('img-key-row-btn');
 
-  if (useGemini && !geminiOk) {
-    document.getElementById('img-key-dot').className = 'img-key-dot';
-    document.getElementById('img-key-label').textContent = 'Vertex AI configurado via Worker';
-    btn.textContent = 'Configurar key Gemini';
-    btn.onclick = () => abrirImgKeyModal('gemini');
-    btn.style.display = '';
-  } else if (useDalle && !dalleOk) {
-    document.getElementById('img-key-dot').className = 'img-key-dot';
-    document.getElementById('img-key-label').textContent = 'API key de GPT Image 2 requerida';
-    btn.textContent = 'Configurar key OpenAI';
-    btn.onclick = () => abrirImgKeyModal('openai');
-    btn.style.display = '';
-  } else if (useGemini || useDalle) {
+  if (useGemini || useDalle) {
     document.getElementById('img-key-dot').className = 'img-key-dot ok';
     const parts = [];
     if (useGemini && geminiOk) parts.push('Vertex AI');
@@ -2387,91 +2348,146 @@ function updateImgKeyStatus() {
   if (sod) sod.className = 'img-key-dot' + (dalleOk  ? ' ok' : '');
 }
 
-// ── Banco de detalles auténticos por estilo (04-jul-2026) ──────────────
-// Antes cada estilo tenía 3-4 ejemplos fijos → la IA siempre convergía en
-// los mismos ("persona + palmerita"). Con publicaciones a diario, todo el
-// mes, se necesita variedad real. Rotación por día del mes + contador de
-// sesión: sin estado persistente, sin repetir incluso generando el mes
-// completo en batch el mismo día.
-const BANCO_DETALLES = {
+// Detalle Hoy se construye con el contexto actual y puede solicitar una nueva
+// dirección creativa a IA, sin recurrir a un banco cerrado de escenas.
+let _detalleContador = 0;
+const recentCreativeConcepts = [];
+const creativeDetailByStyle = {};
+let creativeConceptRequest = null;
+const creativeFallbackByStyle = {
+  formal: [
+    'Una asesora presenta el celular sobre una mesa limpia mientras el cliente revisa opciones con confianza.',
+    'Un comprador compara dos celulares en una vitrina luminosa y elige con tranquilidad el que mejor le conviene.',
+    'Una entrega elegante del celular convierte una decisión planeada en un momento de satisfacción familiar.'
+  ],
   costeno: [
-    // Elementos sueltos de inspiración (no escenas literales) — la IA construye su propia escena alrededor de cada uno.
-    // Mezcla de culturales auténticos + comerciales reales de pueblo costeño.
-    'un carrito de raspado en la esquina del parque',
-    'una plaza de pueblo con palomas, estilo Corozal o Chinú',
-    'una iglesia colonial costera con su parque',
-    'alguien comiendo mango biche con sal',
-    'una calle comercial de pueblo costeño con locales abiertos',
-    'un local de tecnología con vitrinas iluminadas y celulares en exhibición',
-    'una vitrina de celulares y accesorios bien iluminada',
-    'un mercado de frutas tropicales colorido',
-    'una moto con parrillero en calle de pueblo',
-    'un local de tecnología con clientes siendo atendidos',
-    'casas de colores pastel con puertas abiertas',
-    'un guacamayo en un balcón de casa costeña',
-    'el atrio de una iglesia colonial un domingo',
-    'una cancha de microfútbol de barrio al atardecer',
-    'un ventilador de techo girando en un local comercial',
-    'una familia costeña viendo un celular juntos',
-    'una joven trabajadora usando su celular en el mostrador',
-    'un tambor vallenato apoyado en una pared de colores',
+    'Dos amigos prueban el celular nuevo en la terraza del barrio y celebran la compra con una sonrisa espontánea.',
+    'Una vendedora muestra el celular junto a una ventana abierta mientras la conversación avanza con calidez.',
+    'Una familia comparte fotos del celular nuevo en el parque del barrio durante una tarde luminosa.'
   ],
   chistoso: [
-    'una cara de sorpresa exagerada',
-    'un contraste "antes/después" con un celular viejo roto',
-    'un perrito con cara de aprobación',
-    'un gesto de "mente volada" (manos en la cabeza)',
-    'un globo de cómic con una frase graciosa',
-    'una celebración exagerada tipo gol',
-    'una cara de shock mirando el precio',
-    'un meme visual tipo "cuando por fin llega tu celular nuevo"',
-    'una selfie con un filtro exagerado',
-    'una mano deteniendo un celular viejo humeando',
-  ],
-  formal: [
-    'una oficina moderna minimalista',
-    'una persona en traje casual de negocios sonriendo',
-    'líneas geométricas turquesa sutiles',
-    'iluminación de estudio profesional',
-    'un escritorio limpio con laptop',
-    'un apretón de manos',
-    'una vista de ciudad de fondo, fuera de foco',
-    'una gráfica de crecimiento sutil en turquesa',
+    'El celular nuevo se vuelve el protagonista cuando todos en la mesa quieren ser los primeros en probarlo.',
+    'Un comprador mira su celular viejo con sorpresa mientras el nuevo resuelve la situación con naturalidad.',
+    'La primera foto con el celular nuevo provoca una competencia amistosa y muchas risas entre amigos.'
   ],
   minimalista: [
-    'un solo objeto centrado, mucho espacio en blanco',
-    'una sombra larga y limpia',
-    'una paleta de máximo 2 colores',
-    'una línea horizontal delgada como único acento',
-    'la tipografía como protagonista, sin imágenes de fondo',
+    'El celular nuevo descansa sobre una superficie clara y concentra toda la atención en su diseño.',
+    'Una mano sostiene el celular frente a una pared luminosa, con una composición serena y precisa.',
+    'El reflejo limpio de la pantalla destaca el celular como la única decisión importante de la escena.'
   ],
+  custom: [
+    'Una escena comercial concreta convierte la idea del brief en un momento claro y fácil de recordar.',
+    'El producto aparece en uso dentro de una situación cotidiana que conecta directamente con el brief.',
+    'Una acción sencilla del cliente transforma el brief en una escena comercial cercana y comprensible.'
+  ]
 };
 
-// Contador de sesión — se reinicia si se recarga la página, y eso está bien:
-// solo existe para que un batch de varias piezas seguidas no repita detalle.
-let _detalleContador = 0;
+function normalizarConcepto(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
-// Exponer banco para que cambiarDetalleDia() pueda acceder (05-jul-2026)
-window.BANCO_DETALLES_REF = BANCO_DETALLES;
+function conceptosSustancialmenteIguales(a, b) {
+  const left = normalizarConcepto(a);
+  const right = normalizarConcepto(b);
+  if (!left || !right) return true;
+  if (left === right) return true;
+  const aWords = new Set(left.split(' '));
+  const bWords = new Set(right.split(' '));
+  const shared = [...aWords].filter(word => bWords.has(word)).length;
+  return shared / Math.max(aWords.size, bWords.size) >= 0.82;
+}
+
+function propuestaFallbackDiferente(estilo, avoid = '') {
+  const pool = creativeFallbackByStyle[estilo] || creativeFallbackByStyle.custom;
+  const usadas = new Set([...recentCreativeConcepts, avoid].map(normalizarConcepto));
+  const next = pool.find(candidate => !usadas.has(normalizarConcepto(candidate))
+    && ![...usadas].some(previous => conceptosSustancialmenteIguales(candidate, previous)));
+  if (next) return next;
+  const producto = document.getElementById('producto')?.value.trim() || 'el producto';
+  const brief = document.getElementById('instruccion-ia-extra')?.value.trim()
+    || document.getElementById('modo-contexto')?.value.trim() || '';
+  const base = brief || `una escena cotidiana con ${producto}`;
+  return `${base}. El producto aparece en una acción nueva, clara y comercialmente útil.`;
+}
+
+function detalleCreativoActual(estilo) {
+  return creativeDetailByStyle[estilo] || getDetalleDelDia(estilo);
+}
+
+async function proponerDetalleCreativoConIA(estilo, { force = false, avoid = '' } = {}) {
+  if (!force && creativeDetailByStyle[estilo]) return creativeDetailByStyle[estilo];
+  if (creativeConceptRequest) return creativeConceptRequest;
+  const actual = avoid || detalleCreativoActual(estilo);
+  const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
+  const brief = document.getElementById('instruccion-ia-extra')?.value.trim() || document.getElementById('modo-contexto')?.value.trim() || '';
+  creativeConceptRequest = (async () => {
+    try {
+      let retryForRepeated = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const recientes = recentCreativeConcepts.slice(-12).join(' | ') || 'ninguno';
+        const retryInstruction = attempt === 1
+          ? 'La respuesta anterior fue repetida. Cambia por completo la acción, el escenario y el recurso visual.'
+          : '';
+      const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
+        body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:100, messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. No repitas ni parafrasees estos conceptos recientes: ${recientes}. ${retryInstruction} Devuelve solo una frase concreta, plausible y distinta, máximo 18 palabras.`}] })
+      });
+      const data = await res.json();
+      const concepto = (data.content?.find(b => b.type === 'text')?.text || '').replace(/["\n]/g, ' ').trim();
+      if (!res.ok || concepto.length < 8 || conceptosSustancialmenteIguales(concepto, actual)
+        || recentCreativeConcepts.some(previous => conceptosSustancialmenteIguales(concepto, previous))) {
+        retryForRepeated = true;
+        if (attempt === 0) continue;
+        throw new Error('concepto repetido o inválido');
+      }
+      creativeDetailByStyle[estilo] = concepto;
+      recentCreativeConcepts.push(concepto);
+      if (recentCreativeConcepts.length > 24) recentCreativeConcepts.shift();
+      const detVal = document.getElementById('detalle-dia-val');
+      if (detVal && currentEstilo === estilo) detVal.textContent = concepto;
+      await buildImgPrompt();
+      return concepto;
+      } catch {
+        if (retryForRepeated && attempt === 0) continue;
+        break;
+      }
+    }
+      const fallback = propuestaFallbackDiferente(estilo, actual);
+      creativeDetailByStyle[estilo] = fallback;
+      recentCreativeConcepts.push(fallback);
+      return fallback;
+    } finally {
+      creativeConceptRequest = null;
+    }
+  })();
+  return creativeConceptRequest;
+}
+
 function getDetalleDelDia(estilo) {
   if (detalleOverride && detalleOverride[estilo]) return detalleOverride[estilo];
-  const banco = BANCO_DETALLES[estilo] || BANCO_DETALLES.formal;
-  const dia = new Date().getDate(); // 1-31, para que cada día del mes arranque en un punto distinto
-  const idx = (dia - 1 + _detalleContador) % banco.length;
+  const contexto = document.getElementById('modo-contexto')?.value.trim()
+    || document.getElementById('instruccion-ia-extra')?.value.trim()
+    || document.getElementById('nota')?.value.trim();
+  const producto = document.getElementById('producto')?.value.trim();
+  const ciudad = document.getElementById('ciudad')?.selectedOptions?.[0]?.textContent?.trim();
+  const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', month: 'long', day: 'numeric' });
   _detalleContador++;
-  return banco[idx];
+  if (contexto) return `${contexto}${producto ? `, con ${producto}` : ''}${ciudad ? ` en ${ciudad}` : ''}`;
+  return `Una escena ${estilo} de ${producto || 'tecnología nueva'}${ciudad ? ` en ${ciudad}` : ''}, con una acción comercial clara y un detalle visual inesperado de ${fecha}`;
 }
 
 // FIX v13 12-jul-2026: completa el procesador de un modelo cuando el catálogo
-// (STATIC del Worker o scraping en vivo) no lo tiene. Usa la misma API key
-// de Claude ya configurada en la interfaz (nunca la del Worker — este Worker
-// no tiene ni necesita su propia ANTHROPIC_API_KEY). Si Claude tampoco tiene
+// (STATIC del Worker o scraping en vivo) no lo tiene. Usa el proxy seguro
+// de Claude autenticado con la sesión de AURA. Si Claude tampoco tiene
 // certeza, devuelve null — nunca se muestra un valor inventado.
-async function obtenerProcesadorConIA(nombreModelo, apiKey) {
+async function obtenerProcesadorConIA(nombreModelo) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 30,
@@ -2500,6 +2516,10 @@ async function buildImgPrompt() {
   const nombreCta      = esCiudad ? getCiudadNombre(ciudad) : (tiendaInfo?.nombre || getCiudadNombre(ciudad));
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
   const refBlock       = getRefBlock();
+  const explicitPriority = buildExplicitCreativePriority();
+  const visualBriefBlock = explicitPriority
+    ? `${explicitPriority}\nSUJETOS OBLIGATORIOS: deriva las personas, objetos y relaciones del brief; no los sustituyas por Detalle hoy.\nACCIÓN OBLIGATORIA: representa la acción central indicada por el usuario.\nELEMENTOS SECUNDARIOS: usa Detalle hoy solo como ambiente compatible.\nELEMENTOS A EVITAR: cualquier sujeto o acción que contradiga el brief, una escena de una sola persona cuando el brief pide interacción, o un ambiente secundario convertido en concepto principal.`
+    : 'SUJETOS Y ACCIÓN: deriva el foco de la escena del contexto específico; Detalle hoy solo puede ambientar y nunca debe convertirse en el sujeto principal.';
 
   // ── MODOS SIN CELULAR (captacion, institucional, jornada) ────────
   if (['captacion','institucional','jornada'].includes(modo)) {
@@ -2527,10 +2547,10 @@ async function buildImgPrompt() {
 
     const detalleDia = getDetalleDelDia(currentEstilo);
     const estiloRico = {
-      formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Visual detail: ${detalleDia}.`,
-      costeno:    `Authentic everyday Caribbean Colombian commercial life — a happy customer enjoying their new phone as the clear focus, warm natural light, genuine warmth. Scene: ${detalleDia}. RULE: the scene must be PLAUSIBLE — a real moment that could actually happen on any ordinary day in a coastal town (Corozal, Chinú, Ciénaga). Several Caribbean elements are fine ONLY if they naturally belong together in one real moment; NEVER stack unrelated tropical clichés (no confetti + palms + flowers + coconut piled together to "shout Coast"). No carnival costumes.`,
-      chistoso:   `Playful commercial humor. Fun graphic elements in turquoise. Brand that smiles. Visual detail: ${detalleDia}.`,
-      minimalista:`Ultra minimal. Maximum white space. One strong visual: ${detalleDia}. Elegant restraint.`,
+      formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
+      costeno:    `Authentic everyday Caribbean Colombian commercial life with warm natural light and genuine warmth. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Never stack unrelated tropical clichés.`,
+      chistoso:   `Playful commercial humor grounded in the user brief. Secondary detail only: ${detalleDia}.`,
+      minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
     }[currentEstilo] || 'Professional brand design.';
 
@@ -2538,15 +2558,13 @@ async function buildImgPrompt() {
       ? [
           '- Interpret the operator message visually — show what it describes.',
           '- NO invented prices or specific financial amounts.',
-          '- ALL text in Spanish. Brand always "Creditek".',
-          '- Logo must be recognizable, unmodified.',
+          '- ALL text in Spanish. Do not render the word Creditek or any logo; reserve one clean brand zone for the official asset.',
           '- All text sharp and fully legible.',
         ]
       : [
           '- NO smartphones or device renders.',
           '- NO prices, NO peso signs, NO credit terms.',
-          '- ALL text in Spanish. Brand always "Creditek".',
-          '- Logo must be recognizable, unmodified.',
+          '- ALL text in Spanish. Do not render the word Creditek or any logo; reserve one clean brand zone for the official asset.',
           '- All text sharp and fully legible.',
         ];
 
@@ -2565,6 +2583,7 @@ async function buildImgPrompt() {
     const prompt = [
       'ROLE: Senior advertising art director for Colombian Caribbean brand. Create a commercially compelling, visually rich image.',
       `FORMAT: ${formatSpec}`,
+      visualBriefBlock,
       '',
       `CORE CONCEPT: ${conceptoPrincipal}`,
       tipoPersonalizado ? null : (
@@ -2582,12 +2601,12 @@ async function buildImgPrompt() {
       '',
       'BRAND IDENTITY:',
       '- Deep navy #0B1E3D | Turquoise #00C4CC | White #FFFFFF',
-      '- Creditek logo: circular turquoise checkmark + wordmark Montserrat Bold. Prominent, unmodified.',
+      '- Do not render any logo, word Creditek, placeholder, rectangle, white panel, badge or empty frame. The official asset is composited after generation exactly once in natural negative space.',
       '- Typography: Montserrat ExtraBold headlines, DM Sans body.',
       '',
       'EXACT SPANISH TEXT TO RENDER IN IMAGE:',
       `- HEADLINE (large, bold): "${titularVal}"`,
-      mensajeVal ? `- SECONDARY MESSAGE (smaller, below headline): "${mensajeVal}"` : null,
+      mensajeVal ? `- SECONDARY MESSAGE (smaller, independent zone): "${mensajeVal}" — place it separately from the headline when the image allows` : null,
       document.getElementById('chk-cta-activo')?.checked !== false ? `- CTA BUTTON: "${ctaVal}" — turquoise #00C4CC background, navy #0B1E3D text, rounded corners` : null,
       jornadaFecha ? `- EVENT DATE (VERY LARGE): "${jornadaFecha}"` : null,
       jornadaLugar ? `- LOCATION: "${jornadaLugar}"` : null,
@@ -2631,9 +2650,10 @@ async function buildImgPrompt() {
   const cta        = ctaEl?.value.trim() || ctaFallback;
   const modoLabel  = { credito:'Crédito de celular', promo:'Promoción', tienda:'Tienda', servicio:'Servicio' }[modo] || modo;
   const formatoLabel = isStories ? 'Stories / TikTok vertical 1080×1920 px' : 'Feed cuadrado 1080×1080 px';
+  const variableGraphicDirection = 'DIRECCIÓN GRÁFICA VARIABLE: usa el lienzo completo y decide según escena y espacio negativo entre composición editorial, texto lateral, superior/inferior, banda pequeña, tarjeta discreta o texto sobre fotografía con contraste. Cambia la solución entre generaciones. PROHIBIDO usar un gran bloque o degradado azul como plantilla recurrente, concentrar todo el texto en una zona azul o dejar grandes vacíos sin intención.';
   const layoutGuide = isStories
-    ? 'Composición VERTICAL 1080×1920 px: zona superior (0–20%) → logo Creditek centrado. Zona media (20–70%) → producto protagonista grande, bien iluminado, con iluminación de estudio. Zona inferior (70–100%) → titular en Montserrat Bold + precio en turquesa + botón CTA. Aprovechar toda la altura con espaciado generoso.'
-    : 'Composición CUADRADA 1080×1080 px: producto en primer plano a la derecha (55% del ancho), textos jerarquizados a la izquierda (titular → precio → CTA), logo Creditek esquina superior derecha. Equilibrio visual horizontal, punto focal central fuerte.';
+    ? `Composición VERTICAL 1080×1920 px: producto protagonista y textos jerarquizados con aire. ${variableGraphicDirection}`
+    : `Composición CUADRADA 1080×1080 px: producto y textos jerarquizados con equilibrio visual. ${variableGraphicDirection}`;
 
   const paletaPorEstilo_B = {
     formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
@@ -2645,7 +2665,7 @@ async function buildImgPrompt() {
   const paletaEstilo = paletaPorEstilo_B[currentEstilo] || paletaPorEstilo_B.formal;
   const tipoPersonalizadoVal = document.getElementById('tipo-personalizado')?.value.trim() || '';
   const tipoImgMap = {
-    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita, posición superior izquierda.` : ''} Titular en Montserrat Bold en la zona izquierda. Jerarquía visual clara: titular → precio → producto → CTA.`,
+    oferta_semana:    `Oferta de la semana: ${producto} protagonista grande y bien iluminado.${precio ? ` Badge de precio "${precio}" muy prominente en turquesa #00C4CC, números grandes y en negrita.` : ''} Analiza el espacio negativo y distribuye titular, precio, producto y CTA en zonas independientes; no uses una columna vertical fija.`,
     showcase_producto:`Showcase del producto: ${producto} apoyado o sostenido de forma natural dentro de la escena (en una mano, sobre una mesa/vitrina, o en uso) — NUNCA flotando en el aire ni como recorte pegado. Debe verse como parte física real de la fotografía, con sombra de contacto realista donde toca la superficie. Bordes nítidos, fondo limpio. Texto mínimo. El producto ocupa el 60–65% de la composición. Etiquetas de specs flotantes si aplica (esto sí puede ser un elemento gráfico superpuesto, distinto al producto).`,
     testimonio:       `Testimonio: tono cálido y humano. Gran comilla de apertura en turquesa #00C4CC. Frase testimonial de cliente en texto blanco grande y centrado. Silueta o retrato de persona en un costado. Sin imagen del producto.`,
     educativo:        `Contenido educativo: diseño limpio e informativo. Íconos en turquesa #00C4CC (checks, números, flechas) sobre fondo azul marino. Jerarquía de lectura clara, aspecto de tarjeta útil — no aviso agresivo.`,
@@ -2685,22 +2705,17 @@ async function buildImgPrompt() {
     // modelo encontrado en el catálogo no lo tiene (caso confirmado: ninguno
     // de los 39 modelos de STATIC en el Worker tenía este campo), completar
     // con una consulta ligera a Claude en vez de dejarlo vacío o dejar que la
-    // IA de imagen lo invente. Reutiliza la misma API key de Claude que ya
-    // está configurada en esta interfaz (sessionStorage) — el Worker nunca
-    // tuvo ni necesita su propia ANTHROPIC_API_KEY para esto. Se cachea en
+    // IA de imagen lo invente. Reutiliza el proxy seguro de Claude. Se cachea en
     // el mismo localStorage.ck_referencias para no repetir la llamada la
     // próxima vez que se genere con el mismo modelo.
     const pideProcesador = checkedSpecs.some(s => s.id === 'spec-chip');
     if (pideProcesador && foundModelo && !foundSpecs.procesador) {
-      const apiKeyClaude = sessionStorage.getItem('ck_api_key') || '';
-      if (apiKeyClaude.startsWith('sk-ant-')) {
-        const procesadorIA = await obtenerProcesadorConIA(foundModelo.nombre, apiKeyClaude);
+      const procesadorIA = await obtenerProcesadorConIA(foundModelo.nombre);
         if (procesadorIA) {
           foundModelo.specs = { ...(foundModelo.specs || {}), procesador: procesadorIA };
           foundSpecs = foundModelo.specs;
           localStorage.setItem('ck_referencias', JSON.stringify(storedRefs));
         }
-      }
     }
   }
   const specsItems = checkedSpecs.map(s => (!s.key ? '5G' : (foundSpecs[s.key] || s.label)));
@@ -2722,12 +2737,12 @@ async function buildImgPrompt() {
 
   const detalleDiaMsg = getDetalleDelDia(currentEstilo);
   const mensajeMap = {
-    formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual: ${detalleDiaMsg}. Mensaje directo, elegante y sin estridencias — que transmita solidez de marca y confianza al comprador.`,
+    formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual secundario: ${detalleDiaMsg}.`,
     costeno:     `Tono caribeño colombiano auténtico y comercial — un cliente feliz disfrutando su celular nuevo como foco claro de la escena. Luz natural cálida, colores vivos, calidez humana genuina. Escena: ${detalleDiaMsg}. REGLA DE ORO: la escena debe ser PLAUSIBLE — un momento que de verdad podría pasar un día cualquiera en un pueblo de la costa (Corozal, Chinú, Ciénaga). Varios elementos costeños están bien SOLO si conviven de forma natural en un mismo momento real (ej: dos amigas en la plaza, una con un coco, mirando el celular). Lo PROHIBIDO es apilar elementos que no conviven en la vida real solo para "gritar Costa" (confeti + palmeras + flores + coco todos juntos = falso). Nada de confeti, disfraces ni máscaras de comparsa.`,
     chistoso:    /lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'')
       ? `Tono de humor comercial ligero sobre ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares — el producto de esta pieza no es un celular.`
-      : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}.`,
-    minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual: ${detalleDiaMsg}. El producto habla solo. Mensaje único, breve y poderoso.`,
+      : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual secundario: ${detalleDiaMsg}.`,
+    minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual derivado del brief; detalle secundario: ${detalleDiaMsg}.`,
     custom:      estiloCustomVal || `Estilo libre. Aplicar criterio artístico según las instrucciones.`,
   };
   const mensajeEstilo = mensajeMap[currentEstilo] || mensajeMap.formal;
@@ -2751,7 +2766,7 @@ async function buildImgPrompt() {
     alocredit: { nombre:'Alo Credit', tagline:'Crédito fácil',               beneficios:'Inmediato · Sin historial crediticio requerido' },
   };
   const finStrip = selectedFins.length ? `Franja inferior: banda horizontal delgada (fondo blanco o semitransparente) con logos pequeños de: ${selectedFins.map(f=>f.label).join(', ')}. Logos limpios, legibles, alineados horizontalmente. Cada logo aparece UNA SOLA VEZ. NO duplicar logos.` : '';
-  const finContextBlock = selectedFins.length ? `\nFINANCIERAS ALIADAS:\n${selectedFins.map(f => { const stored2 = _refsForFin?.brands?.[FIN_CONTEXT_FALLBACK[f.id]?.nombre]?.finInfo; const ctx = stored2 || FIN_CONTEXT_FALLBACK[f.id]; return ctx ? `- ${ctx.nombre||f.label}: ${ctx.tagline}. ${ctx.beneficios}.` : `- ${f.label}`; }).join('\n')}` : '';
+  const finContextBlock = modo === 'credito' && selectedFins.length ? `\nFINANCIERAS ALIADAS:\n${selectedFins.map(f => { const stored2 = _refsForFin?.brands?.[FIN_CONTEXT_FALLBACK[f.id]?.nombre]?.finInfo; const ctx = stored2 || FIN_CONTEXT_FALLBACK[f.id]; return ctx ? `- ${ctx.nombre||f.label}: ${ctx.tagline}. ${ctx.beneficios}.` : `- ${f.label}`; }).join('\n')}` : '';
 
   const priceRule = (precio || inicial)
     ? `Mostrar ÚNICAMENTE estos valores exactos: ${[precio&&`cuota ${precio}`, inicial&&`inicial ${inicial}`].filter(Boolean).join(' / ')}. NO agregar, inventar ni modificar ningún otro monto.`
@@ -2773,13 +2788,15 @@ async function buildImgPrompt() {
     `MODALIDAD: ${modoLabel}`, ``,
     `COMPOSICIÓN: ${tipoDesc}`, specsBlock, ``,
     `ESTILO "${currentEstilo}": ${mensajeEstilo}`,
+    variableGraphicDirection,
+    buildMandatoryUserBrief(),
     notaInstruccion ? `INSTRUCCIÓN OPERADOR: ${notaInstruccion}` : null, ``,
     `TEXTOS EXACTOS EN LA IMAGEN (en español colombiano, sin traducir):`,
     `1. Titular: "${titular}" — Montserrat Bold, posición destacada, máx. 2 líneas`,
-    mensajeVal ? `${2}. Mensaje secundario: "${mensajeVal}" — texto pequeño bajo el titular` : null,
+    mensajeVal ? `${2}. Mensaje secundario: "${mensajeVal}" — ubícalo en una zona propia, no debajo del titular por defecto` : null,
     precio  ? `${mensajeVal?3:2}. Cuota: "${precio}" — números grandes, turquesa #00C4CC, muy visible` : null,
     inicial ? `${[mensajeVal,precio].filter(Boolean).length+2}. Inicial: "Desde ${inicial}" — badge turquesa #00C4CC` : null,
-    document.getElementById('chk-cta-activo')?.checked !== false ? `${[mensajeVal,precio,inicial].filter(Boolean).length+2}. Botón CTA: "${cta}" — fondo turquesa, texto azul marino, esquinas redondeadas` : null,
+    document.getElementById('chk-cta-activo')?.checked !== false ? `${[mensajeVal,precio,inicial].filter(Boolean).length+2}. Botón CTA: "${cta}" — zona independiente con respiración propia; fondo turquesa, texto azul marino, esquinas redondeadas` : null,
     `${[mensajeVal,precio,inicial].filter(Boolean).length+3}. Tienda/Ciudad: "${nombreCta}"`, ``,
     `CORRECCIÓN ORTOGRÁFICA OBLIGATORIA — antes de renderizar cualquier texto:`,
     `- Primera letra de cada frase en mayúscula. "Creditek" siempre con C mayúscula.`,
@@ -2790,16 +2807,15 @@ async function buildImgPrompt() {
     `- Fondo: ${bgSpec}`,
     `- Paleta: ${paletaEstilo.paleta}`,
     `- Dominio: ${paletaEstilo.dominio}`,
-    `- Logo Creditek: esquina superior derecha — check circular turquesa + wordmark Montserrat Bold. NO modificar.`,
+    `- BRAND ZONE: reserva una sola zona limpia e integrada para el asset oficial Creditek. No dibujes, escribas ni inventes el logo o la palabra Creditek; el asset se añadirá después en esa zona. No ubicarlo sobre rostros, producto o titular.`,
     `- Tipografía: Montserrat Bold titulares; DM Sans secundarios`,
     finStrip        ? `- ${finStrip}`     : null,
     finContextBlock ? finContextBlock      : null,
     fechaImgBlock   ? `- ${fechaImgBlock}` : null, ``,
     `RESTRICCIONES:`,
     `- IDIOMA: todos los textos en español colombiano. Nunca en inglés.`,
-    `- MARCA: siempre "Creditek" — sin variaciones ortográficas.`,
+    `- MARCA: no renderizar la palabra "Creditek" ni ningún logo generado por IA; solo se añadirá el asset oficial una vez.`,
     `- NO inventar specs, precios o modelos no especificados.`,
-    `- NO modificar el logo Creditek.`,
     `- Textos nítidos y completamente legibles.`,
     `- Proporciones reales del dispositivo, iluminación de estudio.`,
     `- ${/lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'') ? 'PRODUCTO EXACTO' : 'CELULAR EXACTO'}: debe ser ${producto}. No inventar modelos ni mezclar con otro tipo de producto — si el producto NO es un celular, NO incluir ningún celular en la imagen.`,
@@ -2863,6 +2879,7 @@ function buildImgPromptGeminiFallback() {
       jornadaFecha ? ` En números muy grandes y destacados aparece la fecha del evento: "${jornadaFecha}".` : '',
       jornadaLugar ? ` El nombre del lugar del evento aparece claramente: "${jornadaLugar}".` : '',
       jornadaHora  ? ` El horario del evento aparece visible: "${jornadaHora}".` : '',
+      ' Reserva una sola zona de espacio negativo real para el asset oficial de marca, integrada en la escena; no crees una franja blanca o un encabezado artificial solo para alojarlo. No escribas ni dibujes Creditek ni ningún logo.',
       ` Composición limpia, comercial y llamativa, estilo publicidad moderna, usando todo el lienzo de borde a borde, sin zonas vacías.`,
     ].filter(Boolean).join('');
   }
@@ -2900,6 +2917,7 @@ function buildImgPromptGeminiFallback() {
     mensajeVal ? ` Debajo, en letras más pequeñas, dice "${mensajeVal}".` : '',
     precio ? ` En números grandes en color turquesa aparece "${precio}".` : '',
     ctaActivo ? ` En la parte inferior hay un botón turquesa que dice "${cta}".` : '',
+    ' Reserva una sola zona de espacio negativo real para el asset oficial de marca, integrada en la escena (superior, inferior o lateral según el contenido). No crees una franja blanca o un encabezado artificial solo para alojarlo; no escribas ni dibujes Creditek ni ningún logo.',
     ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo de borde a borde, sin zonas vacías.`,
   ].filter(Boolean).join('');
 }
@@ -2908,12 +2926,10 @@ function buildImgPromptGeminiFallback() {
 // En vez de una plantilla fija, le pedimos a Claude Sonnet 4.6 (ya configurado
 // en este Hub — mismo patrón que corregirMensajeSecundario()) que redacte una
 // escena narrativa rica para Imagen 4, a partir de los mismos datos de negocio.
-// Si no hay API key de Claude o la llamada falla, cae automáticamente al
+// Si la llamada segura a Claude falla, cae automáticamente al
 // template estático de Fix 3 (buildImgPromptGeminiFallback) — nunca bloquea
 // la generación.
 async function buildImgPromptGemini() {
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return buildImgPromptGeminiFallback();
 
   const producto = document.getElementById('producto').value.trim() || 'smartphone';
   const modo     = document.getElementById('modo')?.value || 'credito';
@@ -2956,6 +2972,8 @@ async function buildImgPromptGemini() {
 
   const instruccion = `Eres un Director de Arte experto en prompt engineering para modelos de difusión de Google (Imagen 4 / Gemini). Tu objetivo es recibir un brief de diseño y traducirlo a UN SOLO párrafo narrativo en español de máximo 80 palabras.
 
+REGLA DE MARCA: no renderices el logo ni escribas la palabra Creditek. Reserva una sola zona de branding integrada en espacio negativo real (superior, inferior o lateral según la escena); no crees una franja blanca o un encabezado artificial solo para alojarlo. El asset oficial se añadirá después una única vez.
+
 RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 - Palabras técnicas: "capa", "layout", "composición", "vector", "PNG", "feed", "1080px"
 - Códigos hex ni tamaños en puntos. Tradúcelos: azul marino oscuro, letras muy grandes
@@ -2966,7 +2984,7 @@ FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 1. ESCENA BASE: tipo de imagen y estética general
 2. SUJETO PRINCIPAL: persona o producto, posición y acción. IMPORTANTE: el sujeto debe ser una persona colombiana de clase media trabajadora, en ambiente comercial digno (local de tecnología surtido, vitrina iluminada, calle comercial). Vestuario: ropa casual cotidiana contemporánea real de la Costa Caribe colombiana de hoy — camisetas, blusas, jeans, ropa de trabajo o de calle normal, colores naturales sin exceso. NUNCA disfraz folclórico, NUNCA traje típico de carnaval, NUNCA estampados florales excesivos ni pañoletas/turbantes decorativos, NUNCA vestuario que parezca puesta en escena turística o de comedia caribeña — debe verse como una persona real yendo a comprar algo, no como una actuación. NUNCA pobreza, NUNCA tienda humilde, NUNCA ropa desgastada.
 3. ENTORNO: ambiente, colores, accesorios.
-4. TEXTOS: cada texto como objeto físico con ubicación exacta usando la fórmula: "en [ubicación] está escrito el texto [TEXTO ENTRE COMILLAS]"
+4. TEXTOS: cada texto como objeto físico con ubicación exacta usando la fórmula: "en [ubicación] está escrito el texto [TEXTO ENTRE COMILLAS]". No incluyas logos ni nombres de marca.
 5. ILUMINACIÓN: calidad fotográfica, vibrante, profesional
 
 BRIEF DE LA PIEZA:
@@ -2983,9 +3001,9 @@ ${jornadaHora  ? `Horario: ${jornadaHora}` : ''}
 Responde SOLO con el prompt final. Sin explicaciones, sin markdown.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens: 400, messages:[{role:'user', content: instruccion}]})
     });
     const data = await res.json();
@@ -3028,8 +3046,6 @@ async function buildImgPromptGeminiFotoLimpia() {
     return `Fotografía publicitaria realista de ${producto}, en ${colorDesc}. El producto se ve grande y bien iluminado, como en una vitrina de tienda. Composición fotográfica limpia, comercial, sin ningún texto, letra o logo en la imagen — solo la escena. Usar todo el lienzo de borde a borde, sin zonas vacías.`;
   };
 
-  const apiKey = sessionStorage.getItem('ck_api_key') || '';
-  if (!apiKey.startsWith('sk-ant-')) return fallbackEstatico();
 
   const instruccion = `Eres un Director de Arte experto en prompt engineering para modelos de difusión de Google (Imagen 4 / Gemini). Tu objetivo es describir SOLO una fotografía de escena — SIN NINGÚN TEXTO, SIN LOGO — en UN SOLO párrafo narrativo en español de máximo 60 palabras. El texto y el logo se agregan después con otro motor; tu escena debe quedar completamente limpia para eso.
 
@@ -3052,9 +3068,9 @@ Estilo/tono: ${estiloDesc}
 Responde SOLO con el prompt final. Sin explicaciones, sin markdown.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers: {'Authorization':'Bearer ' + (auraSessionToken() || ''),'Content-Type':'application/json'},
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens: 300, messages:[{role:'user', content: instruccion}]})
     });
     const data = await res.json();
@@ -3292,51 +3308,18 @@ function showImgSection() {
     .catch(() => {});
 }
 
-let _imgKeyTarget = 'openai';
-function abrirImgKeyModal(type = 'openai') {
-  _imgKeyTarget = type;
-  if (type === 'gemini') {
-    document.getElementById('imgKeyIcon').textContent    = '📷';
-    document.getElementById('imgKeyTitle').textContent   = 'GEMINI AI STUDIO KEY';
-    document.getElementById('imgKeyHeading').textContent = 'API Key de Google AI Studio';
-    document.getElementById('imgKeyDesc').textContent    = 'Necesitas una API key de Google AI Studio para generar fotos de producto con Gemini Flash.';
-    document.getElementById('imgModalKey').placeholder   = 'AIzaSy...';
-  } else {
-    document.getElementById('imgKeyIcon').textContent    = '⬡';
-    document.getElementById('imgKeyTitle').textContent   = 'OPENAI API KEY';
-    document.getElementById('imgKeyHeading').textContent = 'API Key de OpenAI';
-    document.getElementById('imgKeyDesc').textContent    = 'Necesitas una API key de OpenAI para generar imágenes con GPT Image 2.';
-    document.getElementById('imgModalKey').placeholder   = 'sk-proj-...';
-  }
-  document.getElementById('imgModalKey').value = '';
-  document.getElementById('imgModalError').style.display = 'none';
-  document.getElementById('proxyUrlRow').style.display = 'none';
-  document.getElementById('imgKeyModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('imgModalKey').focus(), 80);
+let imageGenerationInFlight = false;
+function beginImageGeneration() {
+  if (imageGenerationInFlight) return false;
+  imageGenerationInFlight = true;
+  return true;
 }
-
-function cerrarImgKeyModal() {
-  document.getElementById('imgKeyModal').classList.add('hidden');
-}
-
-function toggleImgKey(btn) {
-  const el = document.getElementById('imgModalKey');
-  const show = el.type === 'password';
-  el.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Ver';
-}
-
-function submitImgKey() {
-  const val = document.getElementById('imgModalKey').value.trim();
-  const err = document.getElementById('imgModalError');
-  if (val.length < 10) { err.style.display = 'block'; document.getElementById('imgModalKey').focus(); return; }
-  err.style.display = 'none';
-  localStorage.setItem(_imgKeyTarget === 'gemini' ? 'ck_gemini_key' : 'ck_openai_key', val);
-  cerrarImgKeyModal();
-  updateImgKeyStatus();
+function finishImageGeneration() {
+  imageGenerationInFlight = false;
 }
 
 async function generarImagen(callerBtn = null) {
+  if (!beginImageGeneration()) return;
   // FIX v4e (06-jul-2026): feedback visual INMEDIATO al hacer clic —
   // antes, corregirMensajeSecundario() corría primero y dejaba el botón
   // "muerto" 2-5 segundos sin ninguna señal para el usuario.
@@ -3349,41 +3332,29 @@ async function generarImagen(callerBtn = null) {
 
   visibleBtn.disabled = true;
   const originalLabel = callerBtn ? visibleBtn.textContent : null;
-  if (callerBtn) visibleBtn.textContent = '⏳ Generando...';
-  spinner.style.display = 'block'; label.textContent = 'Corrigiendo texto...';
+  if (callerBtn) visibleBtn.textContent = '⏳ Generando…';
+  spinner.style.display = 'block'; label.textContent = '⏳ Generando…';
   resultDiv.style.display = 'none'; errDiv.style.display = 'none';
 
-  await corregirMensajeSecundario();
-  label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
-
-  const isWorkerEngine = currentEngine === 'gemini';
-  const keyName = isWorkerEngine ? 'ck_gemini_key' : 'ck_openai_key';
-  const key = localStorage.getItem(keyName) || '';
-  if (!isWorkerEngine && key.length < 10) {
-    // FIX v4e: si falta la key, hay que revertir el feedback visual que ya se activó arriba
-    visibleBtn.disabled = false;
-    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-    spinner.style.display = 'none';
-    abrirImgKeyModal('openai');
-    return;
-  }
-
-  const prompt = document.getElementById('img-prompt-ta').value.trim();
-  if (!prompt) {
-    // FIX v4e: mismo caso — revertir feedback visual si no hay prompt
-    visibleBtn.disabled = false;
-    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-    spinner.style.display = 'none';
-    return;
-  }
-  // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
-  // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
-  // queda estático varios segundos dando sensación de que no está avanzando.
-  if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
-  const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
-  if (isWorkerEngine) label.textContent = 'Generando imagen...';
-
   try {
+    // El estado debe pintarse antes de cualquier corrección o llamada de red.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    label.textContent = 'Corrigiendo texto...';
+    await corregirMensajeSecundario();
+    label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
+
+    const isWorkerEngine = currentEngine === 'gemini';
+    const key = '';
+
+    const prompt = document.getElementById('img-prompt-ta').value.trim();
+    if (!prompt) return;
+    // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
+    // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
+    // queda estático varios segundos dando sensación de que no está avanzando.
+    if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
+    const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
+    if (isWorkerEngine) label.textContent = 'Generando imagen...';
+
     lastImgModelLabel = currentEngine === 'gemini' ? 'Imagen 4 (Vertex)' : 'GPT Image 2';
     const src = currentEngine === 'gemini'
       ? await generarConGemini(key, promptGemini)
@@ -3397,61 +3368,122 @@ async function generarImagen(callerBtn = null) {
     renderImgHistoryNav();
     showToast('✓ Imagen generada correctamente');
   } catch(err) {
-    errDiv.textContent = err.message || 'Error al generar imagen. Verifica tu API key.';
+    errDiv.textContent = err.message || 'Error al generar imagen. Verifica tu sesión.';
     errDiv.style.display = 'block';
     showToast(err.message || 'Error al generar imagen', '#ef4444');
+  } finally {
+    visibleBtn.disabled = false;
+    if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
+    spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
+    finishImageGeneration();
   }
-
-  visibleBtn.disabled = false;
-  if (callerBtn && originalLabel) visibleBtn.textContent = originalLabel;
-  spinner.style.display = 'none'; label.textContent = '🖼 Generar imagen';
 }
 
-// ── OVERLAY DE LOGO — RESPALDO si Nano Banana 2 falla (Fix 6, 02-jul-2026) ──
+// ── COMPOSICIÓN DEL LOGO OFICIAL ────────────────────────────────────────
+function quitarFondoBlancoDelLogo(ctx, width, height) {
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const max = Math.max(px[i], px[i + 1], px[i + 2]);
+    const min = Math.min(px[i], px[i + 1], px[i + 2]);
+    if (min > 238 && max - min < 14) px[i + 3] = 0;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function puntajeZonaLogo(ctx, x, y, width, height) {
+  const sample = ctx.getImageData(Math.round(x), Math.round(y), Math.max(1, Math.round(width)), Math.max(1, Math.round(height))).data;
+  let brightness = 0, variation = 0, previous = null;
+  for (let i = 0; i < sample.length; i += 16) {
+    const luminance = (sample[i] * 0.2126 + sample[i + 1] * 0.7152 + sample[i + 2] * 0.0722) / 255;
+    brightness += luminance;
+    if (previous !== null) variation += Math.abs(luminance - previous);
+    previous = luminance;
+  }
+  const average = brightness / Math.max(1, sample.length / 16);
+  const flatLightPenalty = average > 0.9 && variation < 0.08 ? 0.8 : 0;
+  return variation + Math.abs(average - 0.58) * 0.18 + flatLightPenalty;
+}
+
+function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
+  const margin = canvas.width * 0.032;
+  const candidates = [
+    [margin, margin], [canvas.width - logoWidth - margin, margin],
+    [margin, canvas.height - logoHeight - margin], [canvas.width - logoWidth - margin, canvas.height - logoHeight - margin],
+    [margin, (canvas.height - logoHeight) / 2], [canvas.width - logoWidth - margin, (canvas.height - logoHeight) / 2],
+    [(canvas.width - logoWidth) / 2, canvas.height - logoHeight - margin],
+  ];
+  return candidates.map(([x, y]) => ({ x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) })).sort((a, b) => a.score - b.score)[0];
+}
+
+function luminosidadZonaLogo(ctx, x, y, width, height) {
+  const data = ctx.getImageData(Math.round(x), Math.round(y), Math.max(1, Math.round(width)), Math.max(1, Math.round(height))).data;
+  let total = 0;
+  let samples = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    total += (data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722) / 255;
+    samples++;
+  }
+  return total / Math.max(1, samples);
+}
+
+function adaptarLogoAFondoOscuro(logoCtx, width, height) {
+  // Conserva el check turquesa oficial y convierte únicamente el wordmark
+  // azul marino a blanco. Es la misma marca para fondos oscuros, no una caja.
+  const imageData = logoCtx.getImageData(0, 0, width, height);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (!px[i + 3]) continue;
+    const max = Math.max(px[i], px[i + 1], px[i + 2]);
+    const min = Math.min(px[i], px[i + 1], px[i + 2]);
+    if (max < 118 && max - min < 84) {
+      px[i] = 255; px[i + 1] = 255; px[i + 2] = 255;
+    }
+  }
+  logoCtx.putImageData(imageData, 0, 0);
+}
+
+function calcularDimensionesLogo(ctx, canvas, logoCanvas) {
+  const base = Math.min(canvas.width, canvas.height);
+  const margin = Math.max(16, Math.round(base * 0.032));
+  const initialWidth = Math.max(base * 0.215, Math.min(base * 0.255, canvas.width * 0.235));
+  const initialHeight = initialWidth * (logoCanvas.height / logoCanvas.width);
+  const zone = elegirUbicacionLogo(ctx, canvas, initialWidth, initialHeight);
+  const complexity = Math.min(1, Math.max(0, zone.score / 1.45));
+  const ratio = 0.26 - complexity * 0.035;
+  const maxWidth = Math.max(1, canvas.width - margin * 2);
+  const logoWidth = Math.min(maxWidth, Math.min(base * 0.29, Math.max(base * 0.215, canvas.width * ratio)));
+  return { logoWidth, logoHeight: logoWidth * (logoCanvas.height / logoCanvas.width) };
+}
+
 async function componerLogoSobreImagen(dataUrlImagen) {
   const logo = await loadLogoBase64();
   if (!logo) return dataUrlImagen;
-
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const imgBase = new Image();
     imgBase.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = imgBase.width;
-      canvas.height = imgBase.height;
+      canvas.width = imgBase.width; canvas.height = imgBase.height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(imgBase, 0, 0);
-
       const imgLogo = new Image();
       imgLogo.onload = () => {
-        const margen    = canvas.width * 0.04;
-        const logoAncho = canvas.width * 0.16;
-        const logoAlto  = logoAncho * (imgLogo.height / imgLogo.width);
-        const x = canvas.width - logoAncho - margen;
-        const y = margen;
-        const radio = canvas.width * 0.012; // esquinas redondeadas — se lee como tarjeta de marca, no como pegado
-
-        // FIX 04-jul-2026: sombra suave detrás de la tarjeta del logo — el PNG
-        // real no tiene transparencia (fondo blanco sólido horneado en el
-        // archivo), así que sin esto se ve como pegado encima de la foto.
+        const logoCanvas = document.createElement('canvas');
+        logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
+        const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
+        logoCtx.drawImage(imgLogo, 0, 0);
+        quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
+        const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
+        const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
+        if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
+          adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+        }
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur = canvas.width * 0.015;
-        ctx.shadowOffsetX = canvas.width * 0.004;
-        ctx.shadowOffsetY = canvas.width * 0.006;
-        ctx.beginPath();
-        ctx.roundRect(x, y, logoAncho, logoAlto, radio);
-        ctx.fillStyle = 'white'; // dispara la sombra; el logo real se dibuja encima
-        ctx.fill();
+        ctx.shadowColor = 'rgba(0,0,0,0.32)';
+        ctx.shadowBlur = Math.max(6, canvas.width * 0.009);
+        ctx.shadowOffsetY = Math.max(1, canvas.width * 0.002);
+        ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
         ctx.restore();
-
-        // Recortar el logo real a las mismas esquinas redondeadas
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(x, y, logoAncho, logoAlto, radio);
-        ctx.clip();
-        ctx.drawImage(imgLogo, x, y, logoAncho, logoAlto);
-        ctx.restore();
-
         resolve(canvas.toDataURL('image/png'));
       };
       imgLogo.onerror = () => resolve(dataUrlImagen);
@@ -3462,10 +3494,40 @@ async function componerLogoSobreImagen(dataUrlImagen) {
   });
 }
 
-// Fix v5 09-jul-2026 — secreto compartido para que el Worker rechace peticiones
-// que no vengan de este sitio. DEBE coincidir exacto con el valor configurado
-// en el Worker (wrangler secret put WORKER_SHARED_SECRET).
-const WORKER_SHARED_SECRET = '72c73c94244190777d08b12775b2dace13d26877a75367ec';
+const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
+const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
+const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
+const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
+const GPT_LAYOUT_PATTERNS = [
+  'editorial-left-right: place the headline in the cleanest left or right negative-space column, with secondary copy and CTA separated on the opposite side',
+  'headline-top-support-separated: use the upper zone for the headline, but move supporting copy to a lower or lateral calm zone and keep the CTA independently placed',
+  'headline-lateral-cta-opposite: anchor the headline laterally near the gaze direction and place the CTA on the opposite safe area, with secondary copy elsewhere',
+  'asymmetric-negative-space: use the subject or product as the visual anchor and distribute headline, secondary copy and CTA across three intentional negative-space zones',
+  'headline-bottom-support-upper-lateral: place the headline in a safe lower zone while secondary copy sits upper or lateral and the CTA occupies its own breathable area',
+];
+
+function buildGptLayoutGuard() {
+  let recent = [];
+  try {
+    recent = JSON.parse(sessionStorage.getItem('aura_recent_gpt_layouts') || '[]')
+      .filter(value => Number.isInteger(value) && value >= 0 && value < GPT_LAYOUT_PATTERNS.length)
+      .slice(-5);
+  } catch { /* la memoria visual no bloquea una generación */ }
+  const patternIndex = GPT_LAYOUT_PATTERNS.findIndex((_, index) => !recent.includes(index));
+  const selectedIndex = patternIndex >= 0 ? patternIndex : 0;
+  try {
+    sessionStorage.setItem('aura_recent_gpt_layouts', JSON.stringify([...recent, selectedIndex].slice(-5)));
+  } catch { /* la memoria visual no bloquea una generación */ }
+  const recentForPrompt = recent.slice(-3);
+  const recentText = recentForPrompt.length
+    ? `Evita repetir estos enfoques recientes: ${recentForPrompt.map(index => GPT_LAYOUT_PATTERNS[index]).join(' | ')}.`
+    : 'No existe un patrón reciente que debas repetir.';
+  return `${GPT_TEXT_LAYOUT_CONTRACT} ${GPT_LAYOUT_GUARD} Before composing, analyze faces, people, hands, product, gaze direction, contrast, clean zones, negative space and overall balance. Use the 1080x1350 or 1080x1080 canvas fully and choose an intentional composition, not a fixed template: ${GPT_LAYOUT_PATTERNS[selectedIndex]}. ${recentText} If the photograph does not support it, choose another professional safe arrangement. Never put text over faces, important hands, product, edges or low-contrast areas.`;
+}
+
+async function llamarBackendImagen(path, payload) {
+  return window.requestAuraImage(path, payload);
+}
 
 async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl = null, esEdicion = false) {
   // FIX 03-jul-2026: relación de aspecto exacta para calzar con GPT
@@ -3476,17 +3538,7 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   const aspectRatioFallback = currentFormat === 'stories' ? '3:4' : '1:1';
 
   async function llamarWorker(reqBody) {
-    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Worker-Secret': WORKER_SHARED_SECRET },
-      body: JSON.stringify(reqBody),
-    });
-    const data = await res.json().catch(() => ({}));
-    console.log('[generarConGemini] Worker response:', { status: res.status, ok: res.ok, label: data.label, error: data.error });
-    if (!res.ok) {
-      const msg = data.error || `Error ${res.status}`;
-      throw new Error(msg);
-    }
+    const data = await llamarBackendImagen('/generate', reqBody);
     const pred = data.predictions?.[0];
     if (!pred?.bytesBase64Encoded) throw new Error('El Worker no devolvió imagen.');
     lastImgModelLabel = data.label || 'Gemini';
@@ -3496,7 +3548,6 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   }
 
   const reqBase = { prompt };
-  if (key?.length > 10) reqBase.apiKey = key;
 
   // FIX v16 12-jul-2026: imagen ACTUAL a editar (viene de aplicarCambioImagen,
   // currentSrc = data URL en memoria, nunca tuvo URL pública) — a diferencia
@@ -3507,27 +3558,12 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
     if (m) { reqBase.imageMimeType = m[1]; reqBase.imageBase64 = m[2]; }
   }
 
-  // FIX v4o (07-jul-2026): revierte el FIX 4 (03-jul) — el logo real ahora
-  // se manda como imagen de referencia a Nano Banana Pro (gemini3pro), que
-  // sí soporta reference images de forma confiable. Reemplaza el enfoque de
-  // "zona reservada" (pegado después con Canvas) que Oscar confirmó que se
-  // veía como error de diseño.
-  // NO se manda en modo soloFoto (pipeline v4d): ahí Gemini debe entregar la
-  // foto limpia sin logo — GPT lo compone en el paso 2 del pipeline. Tampoco
-  // se manda a la vía de respaldo (fallback sin engine): esa ruta (Nano
-  // Banana 2 / Imagen 4-3) no soporta imagen de referencia.
-  const reqBaseGemini3Pro = { ...reqBase };
-  if (!soloFoto) {
-    reqBaseGemini3Pro.imageUrl = '/creditek/agentes/logos/creditek_logo_corregido_alta.png';
-    reqBaseGemini3Pro.prompt = `${prompt} Reference brand logo provided — integrate it naturally into the composition.`;
-  }
-
+  // Gemini solo genera la escena y deja la brand zone; el asset oficial se
+  // compone una única vez después. Nunca se envía el logo al modelo, evitando
+  // logo generado + logo oficial duplicado.
   let src;
-  let logoYaIntegrado = false;
   try {
-    src = await llamarWorker({ ...reqBaseGemini3Pro, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
-    // gemini3pro ya recibió el logo como imagen de referencia (salvo en modo soloFoto) — no hace falta pegarlo de nuevo.
-    logoYaIntegrado = !soloFoto;
+    src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
   } catch (errPrincipal) {
     // FIX v17 12-jul-2026: decisión de Oscar — para EDICIÓN específicamente,
     // si gemini3pro (el único motor con imagen de referencia) falla, NO caer
@@ -3549,24 +3585,18 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   }
   // FIX v4d (07-jul-2026): si es para el pipeline, devolver la foto CRUDA sin
   // overlay de logo — GPT se encarga del logo y el texto en el paso 2.
-  if (soloFoto) return src;
-  // FIX v4o (07-jul-2026): si gemini3pro ya integró el logo como imagen de
-  // referencia real, NO pegar otro logo encima por Canvas — duplicaría el
-  // logo. componerLogoSobreImagen() queda como respaldo SOLO para cuando el
-  // flujo cae al fallback (que no soporta imagen de referencia) — ahí sigue
-  // siendo necesario, si no la imagen saldría sin logo del todo.
-  return logoYaIntegrado ? src : await componerLogoSobreImagen(src);
+  // Una edición parte de una pieza que ya tiene el asset oficial: conservarlo
+  // evita sumar una segunda marca al resultado editado.
+  if (soloFoto || esEdicion) return src;
+  return await componerLogoSobreImagen(src);
 }
 
 async function generarConDalle(key, prompt) {
-  const [logo, finLogos] = await Promise.all([loadLogoBase64(), loadAllSelectedFinancieras()]);
+  const finLogos = await loadAllSelectedFinancieras();
+  const layoutGuard = buildGptLayoutGuard();
   let inputPayload;
-  if (logo || productoImgBase64 || finLogos.length) {
+  if (productoImgBase64 || finLogos.length) {
     const content = [];
-    if (logo) {
-      content.push({ type: 'input_text', text: 'Reference brand logo — reproduce exactly in top-right corner of the ad:' });
-      content.push({ type: 'input_image', image_url: logo });
-    }
     if (productoImgBase64) {
       content.push({ type: 'input_text', text: 'Reference product photo — feature this product prominently in the advertisement:' });
       content.push({ type: 'input_image', image_url: productoImgBase64 });
@@ -3575,33 +3605,22 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: prompt });
+    content.push({ type: 'input_text', text: `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = prompt;
+    inputPayload = `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      input: inputPayload,
-      tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
-    })
+  const data = await llamarBackendImagen('/openai/responses', {
+    model: 'gpt-5.6',
+    input: inputPayload,
+    tools: [{ type: 'image_generation', action: 'generate', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(
-      res.status === 401 ? 'API key de OpenAI inválida.' :
-      res.status === 429 ? 'Límite de uso OpenAI alcanzado. Espera un momento.' :
-      e.error?.message || `Error OpenAI ${res.status}`
-    );
-  }
-  const data = await res.json();
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen. Revisa la consola para ver la respuesta completa.');
-  return 'data:image/png;base64,' + b64;
+  // OpenAI recibe instrucciones de brand zone, pero nunca el logo ni el
+  // nombre Creditek. El asset oficial se compone una sola vez aquí.
+  return await componerLogoSobreImagen('data:image/png;base64,' + b64);
 }
 
 // ── PIPELINE v4d (07-jul-2026): Gemini genera la foto, GPT compone encima ──
@@ -3616,37 +3635,25 @@ async function generarConDalle(key, prompt) {
 async function generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFoto, promptComposicionGPT) {
   // Paso 1 — Gemini genera la foto limpia (sin texto, sin logo)
   const fotoBase = await generarConGemini(keyGemini, promptGeminiFoto, /* soloFoto */ true);
+  const layoutGuard = buildGptLayoutGuard();
 
-  // Paso 2 — GPT recibe la foto como input_image + logo como input_image + el copy como input_text
-  const logo = await loadLogoBase64();
+  // Paso 2 — GPT recibe la foto como referencia + copy. El logo oficial se
+  // compone una única vez después, nunca como segunda marca dentro de GPT.
   const content = [
-    { type: 'input_text', text: 'Base photograph — do not regenerate the scene, only add the following graphic elements on top as clean layers:' },
+    { type: 'input_text', text: `${GPT_BRANDING_GUARD} Base photograph — do not regenerate the scene. Add clean graphic layers only:` },
     { type: 'input_image', image_url: fotoBase },
   ];
-  if (logo) {
-    content.push({ type: 'input_text', text: 'Brand logo — place in top-right corner, small card with soft shadow:' });
-    content.push({ type: 'input_image', image_url: logo });
-  }
-  content.push({ type: 'input_text', text: promptComposicionGPT });
+  content.push({ type: 'input_text', text: `${promptComposicionGPT}\n\n${layoutGuard}` });
 
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyOpenAI },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      input: [{ role: 'user', content }],
-      tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
-    })
+  const data = await llamarBackendImagen('/openai/responses', {
+    model: 'gpt-5.6',
+    input: [{ role: 'user', content }],
+    tools: [{ type: 'image_generation', action: 'generate', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e.error?.message || `Error OpenAI ${res.status}`);
-  }
-  const data = await res.json();
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
   if (!b64) throw new Error('OpenAI no devolvió imagen del pipeline.');
-  return 'data:image/png;base64,' + b64;
+  return await componerLogoSobreImagen('data:image/png;base64,' + b64);
 }
 
 function mostrarImgVersion(src) {
@@ -3691,7 +3698,7 @@ async function aplicarCambioImagen() {
     let newSrc;
 
     if (currentEngine === 'gemini') {
-      const key = localStorage.getItem('ck_gemini_key') || '';
+      const key = '';
       const promptBaseGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
       // FIX v16 12-jul-2026: antes no se mandaba currentSrc — Gemini regeneraba
       // toda la escena desde cero por texto, sin "ver" la imagen real (logo,
@@ -3701,8 +3708,6 @@ async function aplicarCambioImagen() {
       newSrc = await generarConGemini(key, editPrompt, false, currentSrc, /* esEdicion */ true);
       document.getElementById('img-model-lbl').textContent = `Generado con ${lastImgModelLabel}`;
     } else {
-      const key = localStorage.getItem('ck_openai_key');
-      if (!key || key.length < 10) throw new Error('Configura la API key de GPT Image 2 para editar.');
       // FIX v16 12-jul-2026: antes se mandaba SOLO texto (prompt original +
       // instrucción) — la IA nunca "veía" currentSrc, por eso regeneraba todo
       // desde cero (logo, colores, specs distintos en cada edición). Ahora se
@@ -3711,19 +3716,12 @@ async function aplicarCambioImagen() {
       // confirmado contra la documentación de OpenAI Responses API: input_image
       // + image_url acepta data URLs base64 directamente, no solo URLs remotas.
       const editPrompt = `${promptBase}\n\nMODIFICACIÓN SOLICITADA: ${instruccion}\n\nIMPORTANTE: la imagen adjunta es la pieza ACTUAL — edítala aplicando únicamente el cambio solicitado. Mantén exactamente igual todo lo demás (logo, colores de marca, textos, specs, composición). NO regeneres la pieza desde cero.`;
-      const res = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({ model: 'gpt-4o', input: [{ role: 'user', content: [
+      const data = await llamarBackendImagen('/openai/responses', {
+        model: 'gpt-5.6', input: [{ role: 'user', content: [
           { type: 'input_text', text: editPrompt },
           { type: 'input_image', image_url: currentSrc },
-        ] }], tools: [{ type: 'image_generation', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }] })
+        ] }], tools: [{ type: 'image_generation', action: 'edit', size: currentFormat === 'stories' ? '1024x1536' : '1024x1024' }]
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(res.status === 401 ? 'API key de OpenAI inválida.' : e.error?.message || `Error OpenAI ${res.status}`);
-      }
-      const data = await res.json();
       const imageCall = data.output?.find(o => o.type === 'image_generation_call');
       const b64 = imageCall?.result;
       if (!b64) throw new Error('OpenAI no devolvió imagen editada.');
@@ -3747,11 +3745,11 @@ async function aplicarCambioImagen() {
 }
 
 async function generarAB() {
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  if (!keyOpenAI || keyOpenAI.length < 10) { abrirImgKeyModal('openai'); return; }
+  if (!beginImageGeneration()) return;
+  const keyGemini = '';
+  const keyOpenAI = '';
   const prompt = document.getElementById('img-prompt-ta').value.trim();
-  if (!prompt) { showToast('Genera el copy primero para obtener el prompt de imagen', '#ef4444'); return; }
+  if (!prompt) { imageGenerationInFlight = false; showToast('Genera el copy primero para obtener el prompt de imagen', '#ef4444'); return; }
   const promptGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
 
   const btn = document.getElementById('img-ab-btn');
@@ -3802,6 +3800,7 @@ async function generarAB() {
   if (ok === 2) showToast('✓ Ambas imágenes generadas');
   else if (ok === 1) showToast('Una imagen generada, la otra falló', '#f59e0b');
   else showToast('Error en ambas generaciones', '#ef4444');
+  imageGenerationInFlight = false;
 }
 
 function descargarImagenAB(side) {
@@ -3814,6 +3813,14 @@ function descargarImagenAB(side) {
 
 
 async function generarConModelos() {
+  if (!beginImageGeneration()) return;
+  const btn = document.getElementById('action-gen-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando...';
+  // Ceder dos frames: el primero permite al navegador aplicar disabled/texto;
+  // el segundo garantiza que el usuario vea el estado antes del trabajo pesado.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  try {
   await corregirMensajeSecundario();
   // FIX v13 12-jul-2026: buildImgPrompt() ahora es async (puede consultar a
   // Claude el procesador faltante) — aquí SÍ hace falta esperarlo, porque la
@@ -3842,17 +3849,12 @@ async function generarConModelos() {
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
 
-  const keyGemini = localStorage.getItem('ck_gemini_key') || '';
-  const keyOpenAI = localStorage.getItem('ck_openai_key') || '';
-  if ((useDalle || usePipeline) && keyOpenAI.length < 10) { abrirImgKeyModal('openai'); return; }
+  const keyGemini = '';
+  const keyOpenAI = '';
 
-  const btn = document.getElementById('action-gen-btn');
-  btn.disabled = true;
   document.getElementById('img-result').style.display     = 'none';
   document.getElementById('img-ab-result').style.display  = 'none';
   document.getElementById('img-err').style.display        = 'none';
-
-  btn.textContent = '⏳ Generando...';
 
   const callEngine = (id) => {
     const key = id === 'dalle' ? keyOpenAI : keyGemini;
@@ -3943,8 +3945,11 @@ async function generarConModelos() {
     else showToast('Error en todas las generaciones', '#ef4444');
   }
 
-  btn.disabled = false;
-  btn.textContent = '🖼 Generar imagen';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🖼 Generar imagen';
+    finishImageGeneration();
+  }
 }
 
 function descargarImagen() {
@@ -3997,7 +4002,7 @@ function toggleCanvaBrief() {
   function row(key, val) {
     return `<div class="canva-brief-row"><span class="canva-brief-key">${key}</span><span class="canva-brief-val">${val}</span></div>`;
   }
-  function swatch(hex, name) {
+function swatch(hex, name) {
     return `<span class="canva-brief-swatch"><span class="canva-brief-dot" style="background:${hex}"></span>${name} ${hex}</span>`;
   }
 
@@ -4023,6 +4028,15 @@ function toggleCanvaBrief() {
   panel.style.display = 'block';
   btn.classList.add('active');
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+const workspaceCollapseButton = document.getElementById('workspace-collapse-btn');
+if (workspaceCollapseButton) {
+  workspaceCollapseButton.addEventListener('click', () => {
+    const workspace = workspaceCollapseButton.closest('.agent-workspace');
+    const collapsed = workspace.classList.toggle('form-collapsed');
+    workspaceCollapseButton.setAttribute('aria-expanded', String(!collapsed));
+  });
 }
 
 </script>

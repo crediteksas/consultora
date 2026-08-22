@@ -566,6 +566,130 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   .content-area{overflow:visible}
   .workspace-collapse-btn{display:none}
 }
+
+/* Agente 1 · acabado visual premium 9.5/10 */
+.agent-workspace-panel{
+  background:linear-gradient(180deg,#EDF5F8 0%,#E4EFF4 100%);
+  border-right:1px solid rgba(11,30,61,.06);
+  box-shadow:1px 0 8px rgba(11,30,61,.04);
+}
+.sidebar-label{font-size:9px;font-weight:700;color:#94A3B8;letter-spacing:.12em;text-transform:uppercase;padding:0 4px 10px}
+.field-label{font-size:11px;font-weight:600;color:#334155;margin-bottom:6px;letter-spacing:.01em}
+.sidebar-section{padding:16px 16px 8px;border-bottom:1px solid rgba(11,30,61,.04)}
+.sidebar-section:last-child{border-bottom:0}
+.field-group{margin-bottom:14px}
+.agent-workspace-panel :where(select,input:not([type=checkbox]):not([type=radio]),textarea){
+  background:#FFF;border:1.5px solid rgba(11,30,61,.1);border-radius:10px;
+  font-size:13px;padding:11px 14px;min-height:44px;
+  transition:border-color .2s cubic-bezier(.25,.46,.45,.94),box-shadow .2s cubic-bezier(.25,.46,.45,.94),background-color .2s cubic-bezier(.25,.46,.45,.94);
+  box-shadow:0 1px 2px rgba(11,30,61,.03);
+}
+.agent-workspace-panel :where(select,input,textarea):focus{
+  border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.1),0 1px 2px rgba(11,30,61,.03);outline:0;
+}
+.agent-workspace-panel :where(select,input,textarea):hover:not(:focus){border-color:rgba(11,30,61,.2)}
+
+.gen-btn{
+  margin:12px 16px 24px;width:calc(100% - 32px);background:linear-gradient(135deg,#00C4CC 0%,#00B0B8 100%);
+  border:0;border-radius:14px;color:#FFF;font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:.02em;padding:16px 20px;cursor:pointer;transition:all .25s cubic-bezier(.25,.46,.45,.94);
+  display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(0,196,204,.3),0 1px 3px rgba(0,196,204,.2);
+  position:relative;overflow:hidden;
+}
+.gen-btn:hover:not(:disabled){background:linear-gradient(135deg,#00B0B8 0%,#009EA5 100%);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,196,204,.35),0 2px 6px rgba(0,196,204,.25)}
+.gen-btn:active:not(:disabled){transform:scale(.98);box-shadow:0 2px 8px rgba(0,196,204,.25);transition-duration:80ms}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.estilo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.estilo-btn{
+  padding:10px 8px;background:#FFF;border:1.5px solid rgba(11,30,61,.1);border-radius:10px;color:#64748B;
+  font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s cubic-bezier(.25,.46,.45,.94);
+  display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;box-shadow:0 1px 2px rgba(11,30,61,.03);
+}
+.estilo-btn:hover:not(.active){border-color:rgba(11,30,61,.2);background:rgba(11,30,61,.02);color:#0B1E3D}
+.estilo-btn.active{background:#0B1E3D;border-color:#0B1E3D;color:#FFF;box-shadow:0 4px 12px rgba(11,30,61,.25)}
+.estilo-btn:active{transform:scale(.97);transition-duration:80ms}
+
+.platform-btn{
+  background:#FFF;border:1.5px solid rgba(11,30,61,.1);border-radius:10px;padding:10px 12px;min-height:44px;
+  cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:#64748B;
+  transition:all .2s ease;box-shadow:0 1px 2px rgba(11,30,61,.03);
+}
+.platform-btn.active{border-color:#00C4CC;background:rgba(0,196,204,.06);color:#0B1E3D;font-weight:600;box-shadow:0 2px 8px rgba(0,196,204,.12)}
+.platform-btn:hover:not(.active){border-color:rgba(11,30,61,.2);color:#0B1E3D}
+.checkbox-row{min-height:40px;display:flex;align-items:center;gap:10px;padding:8px 4px;border-radius:8px;transition:background .15s ease}
+.checkbox-row:hover{background:rgba(11,30,61,.02)}
+
+.logo-wrap{padding:20px 20px 18px;border-bottom:1px solid rgba(11,30,61,.06);display:flex;align-items:center;gap:14px}
+.logo-info .logo-title{font-family:'Montserrat',sans-serif;font-weight:800;font-size:14px;color:#00C4CC;letter-spacing:.04em}
+.logo-info .logo-sub{font-size:9px;color:#94A3B8;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+
+.empty-state{
+  min-height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;
+  padding:48px;background:#FFF;border:1px dashed rgba(11,30,61,.1);border-radius:20px;
+}
+.empty-icon{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,rgba(0,196,204,.08),rgba(0,196,204,.15));border:1px solid rgba(0,196,204,.2);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.empty-title{font-family:'Montserrat',sans-serif;font-size:20px;font-weight:700;color:#0B1E3D;letter-spacing:-.01em}
+.empty-desc{font-size:14px;color:#64748B;max-width:400px;line-height:1.6}
+.empty-step{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#F8FAFC;border:1px solid rgba(11,30,61,.06);border-radius:999px;color:#475569;font-size:11px;font-weight:600;transition:border-color .15s ease}
+.empty-step:hover{border-color:rgba(0,196,204,.3)}
+.empty-step b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#0B1E3D;color:#FFF;font-size:10px}
+
+.pieza-card{background:#FFF;border:1px solid rgba(11,30,61,.06);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(11,30,61,.06);transition:all .3s cubic-bezier(.25,.46,.45,.94)}
+.pieza-card:hover{box-shadow:0 8px 24px rgba(11,30,61,.1);transform:translateY(-1px)}
+.pieza-header{padding:14px 20px;border-bottom:1px solid rgba(11,30,61,.04)}
+.pieza-body{padding:20px}
+
+.img-ab-col{background:#FAFBFC;border:1.5px solid rgba(11,30,61,.08);border-radius:14px;padding:16px;transition:all .25s ease}
+.img-ab-col:hover{border-color:rgba(0,196,204,.2);box-shadow:0 4px 16px rgba(11,30,61,.06)}
+.img-ab-placeholder{color:#94A3B8;font-size:13px;text-align:center;padding:32px 16px}
+.img-ab-label{font-size:11px;font-weight:700;color:#64748B;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.img-output{width:100%;border-radius:12px;border:1px solid rgba(11,30,61,.06);display:block;box-shadow:0 2px 8px rgba(11,30,61,.06)}
+.img-dl-btn{display:block;margin-top:12px;background:linear-gradient(135deg,#00C4CC,#00B0B8);color:#FFF;text-align:center;padding:12px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;border:0;width:100%;transition:all .2s ease;box-shadow:0 2px 8px rgba(0,196,204,.2)}
+.img-dl-btn:hover{background:linear-gradient(135deg,#00B0B8,#009EA5);box-shadow:0 4px 12px rgba(0,196,204,.3);transform:translateY(-1px)}
+.img-ab-use-btn{margin-top:8px;background:rgba(0,196,204,.05);border:1.5px solid rgba(0,196,204,.2);color:#00A8AF;padding:10px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;width:100%;transition:all .2s ease}
+.img-ab-use-btn:hover{background:rgba(0,196,204,.1);border-color:#00C4CC}
+
+.img-editor{padding:0 20px 20px;border-top:1px solid rgba(11,30,61,.04);margin-top:4px}
+.img-editor-hdr{font-size:11px;font-weight:700;color:#64748B;padding:16px 0 12px;letter-spacing:.06em;text-transform:uppercase}
+.img-nav-btn{background:#F1F5F9;border:1px solid rgba(11,30,61,.08);border-radius:8px;color:#64748B;font-size:11px;padding:7px 14px;cursor:pointer;transition:all .15s ease;min-height:36px}
+.img-nav-btn:hover:not(:disabled){border-color:#00C4CC;color:#00A8AF;background:rgba(0,196,204,.04)}
+.img-edit-btn{width:100%;background:linear-gradient(135deg,#00C4CC,#00B0B8);border:0;color:#FFF;font-weight:700;font-size:13px;padding:12px;border-radius:10px;cursor:pointer;transition:all .2s ease;box-shadow:0 2px 8px rgba(0,196,204,.2)}
+.img-edit-btn:hover:not(:disabled){background:linear-gradient(135deg,#00B0B8,#009EA5);transform:translateY(-1px)}
+
+.ck-tooltip{background:#0B1E3D;color:#FFF;font-size:13px;line-height:1.65;padding:14px 18px;border-radius:12px;box-shadow:0 8px 32px rgba(11,30,61,.35);width:280px}
+.ck-tooltip-icon{width:16px;height:16px;border-radius:50%;background:#00C4CC;color:#FFF;font-size:9px;font-weight:700}
+
+.agent-workspace-header{padding:20px 28px 16px;border-bottom:1px solid rgba(11,30,61,.04);background:rgba(255,255,255,.8);backdrop-filter:saturate(160%) blur(16px);-webkit-backdrop-filter:saturate(160%) blur(16px);position:sticky;top:0;z-index:10}
+.top-title{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:700;color:#0B1E3D;letter-spacing:-.01em}
+.top-sub{font-size:12px;color:#94A3B8;margin-top:2px}
+
+.action-btn{flex:1;min-width:140px;padding:12px 16px;border-radius:12px;font-weight:700;font-size:12px;cursor:pointer;border:1.5px solid rgba(11,30,61,.1);background:#FFF;color:#0B1E3D;transition:all .2s ease;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;box-shadow:0 1px 3px rgba(11,30,61,.04)}
+.action-btn:hover{border-color:#00C4CC;background:rgba(0,196,204,.04);box-shadow:0 4px 12px rgba(0,196,204,.1)}
+.action-btn.active{border-color:#00C4CC;background:rgba(0,196,204,.08)}
+
+.fin-item{padding:10px 8px;background:#FFF;border:1.5px solid rgba(11,30,61,.08);border-radius:12px;cursor:pointer;transition:all .2s ease;min-height:64px}
+.fin-item:has(input:checked){background:rgba(0,196,204,.06);border-color:#00C4CC;box-shadow:0 2px 8px rgba(0,196,204,.1)}
+.fin-item:hover:not(:has(input:checked)){border-color:rgba(11,30,61,.2)}
+
+.copy-btn,.copy-footer-btn{background:#FFF;border:1.5px solid rgba(11,30,61,.08);border-radius:8px;color:#64748B;font-size:11px;padding:6px 12px;cursor:pointer;transition:all .15s ease;min-height:32px}
+.copy-btn:hover,.copy-footer-btn:hover{border-color:#00C4CC;color:#00A8AF}
+.fmt-btn{flex:1;padding:10px 12px;background:#FFF;border:1.5px solid rgba(11,30,61,.08);border-radius:10px;color:#64748B;font-size:12px;font-weight:600;min-height:40px;transition:all .2s ease}
+.fmt-btn.active{background:rgba(0,196,204,.08);border-color:#00C4CC;color:#00A8AF}
+
+.content-area{animation:contentFadeIn .4s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes contentFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.agent-workspace-panel::-webkit-scrollbar,.content-area::-webkit-scrollbar{width:6px}
+.agent-workspace-panel::-webkit-scrollbar-track,.content-area::-webkit-scrollbar-track{background:transparent}
+.agent-workspace-panel::-webkit-scrollbar-thumb,.content-area::-webkit-scrollbar-thumb{background:rgba(11,30,61,.12);border-radius:3px}
+.agent-workspace-panel::-webkit-scrollbar-thumb:hover,.content-area::-webkit-scrollbar-thumb:hover{background:rgba(11,30,61,.2)}
+
+@media(prefers-reduced-motion:reduce){
+  .content-area{animation:none}
+  .gen-btn,.estilo-btn,.platform-btn,.pieza-card,.img-ab-col,.img-dl-btn,.img-ab-use-btn,.img-nav-btn,.img-edit-btn,.action-btn{transition-duration:0ms!important;transform:none!important}
+}
+@media(prefers-reduced-transparency:reduce){.agent-workspace-header{background:#FFF;backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media(prefers-contrast:more){.agent-workspace-header,.agent-workspace-panel{border-color:#64748B}.agent-workspace-panel :where(select,input,textarea){border-color:#475569}}
 </style>
 </head>
 <body class="kora-product-page" data-kora-agent-id="agent-1">
@@ -610,13 +734,13 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       </select>
       <div id="modo-desc" style="font-size:11px;color:var(--text3);padding:5px 4px 0;line-height:1.5;"></div>
       <div class="modo-contexto-wrap" id="modo-contexto-wrap">
-        <span class="modo-contexto-lbl">✦ Contexto específico de esta pieza
+        <span class="modo-contexto-lbl">✦ ¿Qué está pasando? (la situación)
           <span class="ck-tooltip-wrap" style="float:right;width:auto;margin-right:40px">
             <span class="ck-tooltip-icon">?</span>
             <span class="ck-tooltip">Brief interno para que la IA entienda el motivo u ocasión de esta pieza — <b>nunca aparece como texto en la imagen</b>.<br>Ejemplo: "Cumplimos 3 años atendiendo a Corozal" ayuda a que la escena tenga sentido con esa ocasión, pero esas palabras no se imprimen — para eso existe "Texto 2 de imagen" en Piezas generadas.</span>
           </span>
         </span>
-        <textarea id="modo-contexto" oninput="buildImgPrompt()" placeholder="Describe el contexto concreto — Ej: Esta semana tenemos 5 Samsung A16 a $599.000, solo hasta el viernes..."></textarea>
+        <textarea id="modo-contexto" oninput="buildImgPrompt()" placeholder="¿QUÉ está pasando? La situación comercial concreta.&#10;Ej: Llegaron 5 Samsung A16 a $599.000, solo hasta el viernes · Jornada de crédito este sábado en Chinú · Liquidación de Motorola por fin de temporada"></textarea>
       </div>
     </div>
     <div class="field-group">
@@ -697,13 +821,13 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     </div>
     <div class="field-group">
       <label class="field-label">
-        Instrucción adicional para la IA <span>opcional</span>
+        ¿Cómo debe verse? (dirección visual) <span>opcional</span>
         <span class="ck-tooltip-wrap" style="float:right;width:auto;margin-right:40px">
           <span class="ck-tooltip-icon">?</span>
           <span class="ck-tooltip">Guía de tono, variación o enfoque especial — <b>nunca aparece como texto en la imagen</b>.<br>Úsala para: "no mencionar precio", "tono más urgente", "solo para stories", "que se vea de noche", "recrear con más luz natural".</span>
         </span>
       </label>
-      <textarea id="instruccion-ia-extra" placeholder="Ej: Tono más urgente · Que se vea de noche · Recrear con más luz natural..." oninput="buildImgPrompt()"></textarea>
+      <textarea id="instruccion-ia-extra" placeholder="CÓMO quieres que se vea. Esta instrucción manda sobre todo lo demás.&#10;Ej: Que se vea de noche con luces de neón · Tono urgente de última oportunidad · Más luz natural y alegre · Fondo de playa real de Tolú" oninput="buildImgPrompt()"></textarea>
     </div>
     <div class="field-group">
       <label class="field-label">Fecha especial / Temporada <span>opcional</span></label>

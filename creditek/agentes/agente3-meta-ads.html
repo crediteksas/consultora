@@ -447,7 +447,7 @@ tr:hover td{background:#F8FAFC}
       <div class="empty-state">
         <div class="icon">📡</div>
         <h3>Sin datos aún</h3>
-        <p>Configura tu token de Meta Ads y haz clic en Actualizar para ver tus campañas.</p>
+        <p>Haz clic en Actualizar para consultar tus campañas de forma segura.</p>
       </div>
     </div>
   </div>
@@ -478,18 +478,18 @@ tr:hover td{background:#F8FAFC}
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-title">⚙ Configuración Meta Ads</div>
-    <div class="modal-sub">Tus credenciales se guardan solo en este navegador.</div>
+    <div class="modal-sub">El dashboard usa el Worker seguro. El token local es solo un override manual para el publicador legado.</div>
     <div class="field">
       <label>Token de acceso Meta Ads</label>
       <input type="password" id="inp-token" placeholder="EAAxxxxxxxxxxxxx">
     </div>
     <div class="field">
       <label>ID de cuenta publicitaria</label>
-      <input type="text" id="inp-account" placeholder="123456789012345">
+      <input type="text" id="inp-account" value="27446180201684830" readonly>
     </div>
     <div class="field">
       <label>Presupuesto semanal (COP)</label>
-      <input type="number" id="inp-budget" placeholder="160000" min="1" step="1">
+      <input type="number" id="inp-budget" value="160000" readonly>
     </div>
     <!-- FIX v32, 21-jul-2026 — dashboard 100% en COP (account_currency=COP
          confirmado), ya no se convierte nada. Se oculta el campo en vez de
@@ -1335,6 +1335,9 @@ let estadoReal = { semanaSpendCOP: null, mesSpendCOP: null };
 // clientes.
 const WORKER_API = 'https://creditek-bot.comercial-853.workers.dev';
 const WORKER_SHARED_SECRET = '73ef5474869b234c9d666476271a47fcf82b259d54ca3619';
+const META_ADS_WORKER_API = 'https://aura-meta-ads-api.comercial-853.workers.dev';
+const META_AD_ACCOUNT_ID = '27446180201684830';
+const DEFAULT_WEEKLY_BUDGET_COP = 160000;
 
 // ── Config ───────────────────────────────────────────────────────
 // FIX v32/v33, 21-jul-2026: dashboard 100% en COP (account_currency=COP
@@ -1357,13 +1360,7 @@ let COP_TO_USD = parseFloat(localStorage.getItem('ck_cop_usd')) || 3350;
 // 4 sitios lo usan, en vez de duplicar la lógica o depender de cuál corre
 // primero al cargar la página.
 function getWeeklyBudgetCOP() {
-  let budget = parseFloat(localStorage.getItem('ck_weekly_budget'));
-  if (!budget || budget < 1000) {
-    budget = 160000;
-    localStorage.setItem('ck_weekly_budget', budget);
-    showToast('Tu presupuesto semanal se reinició a $160.000 COP (el valor anterior estaba en dólares). Ajústalo en ⚙ Configurar si quieres otro monto.', '#F59E0B');
-  }
-  return budget;
+  return DEFAULT_WEEKLY_BUDGET_COP;
 }
 
 // Fix v1 — solo contar acciones que representan intención real (lead/conversación/clic),
@@ -1382,7 +1379,7 @@ function contarResultadosReales(actions) {
 
 function abrirConfig() {
   document.getElementById('inp-token').value   = localStorage.getItem('ck_meta_token') || '';
-  document.getElementById('inp-account').value = localStorage.getItem('ck_meta_account') || '';
+  document.getElementById('inp-account').value = META_AD_ACCOUNT_ID;
   document.getElementById('inp-budget').value  = getWeeklyBudgetCOP();
   document.getElementById('inp-tasa').value    = localStorage.getItem('ck_cop_usd') || COP_TO_USD;
   document.getElementById('modal').classList.add('open');
@@ -1392,13 +1389,11 @@ function cerrarConfig() {
 }
 function guardarConfig() {
   const t = document.getElementById('inp-token').value.trim();
-  const a = document.getElementById('inp-account').value.trim();
-  if (!t || !a) { showToast('Token e ID son obligatorios', '#EF4444'); return; }
-  const b = document.getElementById('inp-budget').value.trim();
   const tasa = document.getElementById('inp-tasa').value.trim();
-  localStorage.setItem('ck_meta_token',   t);
-  localStorage.setItem('ck_meta_account', a);
-  if (b) localStorage.setItem('ck_weekly_budget', b);
+  if (t) localStorage.setItem('ck_meta_token', t);
+  else localStorage.removeItem('ck_meta_token');
+  localStorage.removeItem('ck_meta_account');
+  localStorage.removeItem('ck_weekly_budget');
   if (tasa) { localStorage.setItem('ck_cop_usd', tasa); COP_TO_USD = parseFloat(tasa); }
   cerrarConfig();
   showToast('✓ Configuración guardada');
@@ -1410,7 +1405,7 @@ function setPeriod(days, btn) {
   currentDays = days;
   document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (localStorage.getItem('ck_meta_token')) cargarDatos();
+  cargarDatos();
 }
 
 // ── Fechas ───────────────────────────────────────────────────────
@@ -1517,16 +1512,81 @@ function refrescarAlertas(camps) {
 }
 
 // ── Cargar datos Meta API ─────────────────────────────────────────
+function workerMetricToLegacy(metric = {}) {
+  const results = Number(metric.conversions || metric.conversations || metric.leads || 0);
+  return {
+    spend: Number(metric.spend || 0),
+    impressions: Number(metric.impressions || 0),
+    clicks: Number(metric.clicks || 0),
+    reach: Number(metric.reach || 0),
+    frequency: Number(metric.frequency || 0),
+    ctr: Number(metric.ctr || 0),
+    cpc: Number(metric.cpc || 0),
+    cpm: Number(metric.cpm || 0),
+    actions: results ? [{ action_type: 'lead', value: String(results) }] : []
+  };
+}
+
+async function cargarDatosDesdeWorker(btn, icon) {
+  try {
+    const sessionToken = window.auraSessionToken?.();
+    if (!sessionToken) throw new Error('Autenticación AURA requerida');
+    const response = await fetch(`${META_ADS_WORKER_API}/v1/dashboard?period=${currentDays}`, {
+      headers: { Authorization: `Bearer ${sessionToken}` }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok !== true) throw new Error(payload.error || `Worker Meta Ads (${response.status})`);
+
+    const main = workerMetricToLegacy(payload.metrics);
+    const camps = (payload.campaigns || []).map(campaign => ({
+      campaign_id: campaign.id,
+      campaign_name: campaign.name,
+      effective_status: campaign.status,
+      ...workerMetricToLegacy(campaign.metrics)
+    }));
+    const dailyTrend = (payload.trends || []).slice(-8).map((item, index, rows) => ({
+      week: rows.length - index - 1,
+      data: workerMetricToLegacy(item)
+    }));
+
+    estadoReal.semanaSpendCOP = Number(payload.metrics?.spend_weekly || 0);
+    estadoReal.mesSpendCOP = Number(payload.metrics?.spend_monthly || 0);
+    renderEstadoActual();
+    const range = payload.range || {};
+    document.getElementById('period-label').textContent =
+      `${range.since || '—'} → ${range.until || '—'} (últimos ${currentDays} días)`;
+    lastData = {
+      main,
+      prev: null,
+      camps,
+      trend: dailyTrend,
+      trendMensual: [],
+      ads: [],
+      ventasPorCampaña: {},
+      pctSinAtribucion: null
+    };
+    renderDatos(lastData);
+    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO');
+  } catch (error) {
+    showToast('Error: ' + error.message, '#EF4444');
+    console.error('[META-ADS-WORKER]', error);
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
 async function cargarDatos() {
   const token   = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
-  if (!token || !account) { abrirConfig(); return; }
+  const account = META_AD_ACCOUNT_ID;
 
   const btn = document.getElementById('refresh-btn');
   const icon = document.getElementById('refresh-icon');
   btn.disabled = true;
   icon.style.animation = 'spin 1s linear infinite';
   icon.style.display = 'inline-block';
+
+  if (!token) return cargarDatosDesdeWorker(btn, icon);
 
   // FIX v29, 13-jul-2026: Sección A ("Tu estado actual") se refresca en
   // paralelo, sin esperar — es una consulta independiente con rango de
@@ -2380,11 +2440,7 @@ function showToast(msg, color = '#0B1E3D') {
 
 // ── Init ─────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  if (localStorage.getItem('ck_meta_token') && localStorage.getItem('ck_meta_account')) {
-    cargarDatos();
-  } else {
-    setTimeout(abrirConfig, 500);
-  }
+  cargarDatos();
 });
 
 // CSS spin animation

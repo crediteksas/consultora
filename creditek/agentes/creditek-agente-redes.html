@@ -1610,20 +1610,48 @@ Mood: professional, trustworthy, modern and aspirational.
 No people and no hands. Product-only showcase. Smooth movement with no abrupt cuts.`;
 }
 
-function reelVideoSource(video, format = 'mp4') {
-  if (/^(?:https?:|blob:|data:video\/)/.test(video)) return video;
+function reelBase64ToBlob(video, format = 'mp4') {
   const clean = String(video || '').replace(/^data:video\/[a-zA-Z0-9.+-]+;base64,/, '');
-  const bytes = Uint8Array.from(atob(clean), (character) => character.charCodeAt(0));
+  console.log('Reel: video base64 length', clean.length);
+  const chunks = [];
+  const chunkSize = 1024 * 1024;
+  for (let offset = 0; offset < clean.length; offset += chunkSize) {
+    const binary = atob(clean.slice(offset, offset + chunkSize));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    chunks.push(bytes);
+  }
+  return new Blob(chunks, { type: `video/${format}` });
+}
+
+async function reelVideoSource(video, format = 'mp4') {
+  if (String(video || '').startsWith('blob:')) return video;
+  let blob;
+  if (/^https?:/.test(String(video || ''))) {
+    const token = await auraSessionToken();
+    const response = await fetch(`https://creditek-gemini-proxy.comercial-853.workers.dev/veo/download?url=${encodeURIComponent(video)}`, {
+      headers: { Authorization: 'Bearer ' + (token || '') }
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `No se pudo descargar el Reel (${response.status})`);
+    }
+    blob = await response.blob();
+  } else {
+    blob = reelBase64ToBlob(video, format);
+  }
+  console.log('Reel: blob creado', blob.size);
   if (currentReelObjectUrl) URL.revokeObjectURL(currentReelObjectUrl);
-  currentReelObjectUrl = URL.createObjectURL(new Blob([bytes], { type: `video/${format}` }));
+  currentReelObjectUrl = URL.createObjectURL(blob);
+  console.log('Reel: URL creada', currentReelObjectUrl);
   return currentReelObjectUrl;
 }
 
-function displayReelResult(video, format = 'mp4') {
+async function displayReelResult(video, format = 'mp4') {
   const resultArea = document.getElementById('content-area');
   if (!resultArea) return;
   resultArea.querySelector('.reel-result')?.remove();
-  const videoUrl = reelVideoSource(video, format);
+  const videoUrl = await reelVideoSource(video, format);
   const wrapper = document.createElement('div');
   wrapper.className = 'reel-result';
   const player = document.createElement('video');
@@ -1681,13 +1709,19 @@ async function generateReel(imageBase64, config) {
       })
     });
     const data = await response.json().catch(() => ({}));
+    console.log('Reel: respuesta recibida', {
+      ...data,
+      video: typeof data.video === 'string'
+        ? (/^https?:/.test(data.video) ? data.video : `[base64:${data.video.length}]`)
+        : data.video
+    });
     if (response.status === 202 && data.pending) {
       setReelStatus('⏳ Veo continúa procesando el video. El endpoint de consulta se conectará en el siguiente paso.', 'processing');
       return;
     }
     if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
     if (!data.success || !data.video) throw new Error('Respuesta inesperada del servidor');
-    displayReelResult(data.video, data.format || 'mp4');
+    await displayReelResult(data.video, data.format || 'mp4');
     document.getElementById('empty-state').style.display = 'none';
     setReelStatus('✅ Reel generado exitosamente.', 'success');
     showToast('✓ Reel generado correctamente');

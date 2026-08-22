@@ -501,6 +501,33 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .img-confirm-btn{width:calc(100% - 36px);margin:12px 18px 4px;background:#00C4CC;border:1px solid #00C4CC;color:#FFFFFF;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;padding:11px;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;letter-spacing:.02em;display:block}
 .img-confirm-btn:hover{background:#00A8B0;border-color:#00A8B0}
 
+/* Selector de salida · Imagen / Reel / Carousel */
+.output-format-section{padding:12px 16px;border-top:1px solid var(--border)}
+.format-selector{display:flex;gap:8px;margin-top:8px}
+.format-btn{flex:1;min-height:44px;border-radius:12px;border:1.5px solid var(--border);background:#fff;color:var(--text);font:600 12px 'DM Sans',sans-serif;cursor:pointer;transition:background .2s ease,border-color .2s ease,color .2s ease,transform 80ms ease,box-shadow .2s ease}
+.format-btn.active{background:var(--azul)!important;color:#fff!important;border-color:var(--azul)!important;box-shadow:0 2px 8px rgba(11,30,61,.2)}
+.format-btn:hover:not(.active){border-color:var(--turquesa);background:rgba(0,196,204,.04)!important}
+.format-btn:active{transform:scale(.97)}
+.reel-options{display:none;margin-top:12px;padding:12px;background:rgba(0,196,204,.04);border:1px solid rgba(0,196,204,.15);border-radius:12px}
+.reel-options.visible{display:block}
+.reel-options label{display:block;margin:0 0 6px;font-size:11px;font-weight:600;color:var(--text2)}
+.reel-options select{width:100%;min-height:44px;border-radius:12px;border:1.5px solid var(--border);padding:0 12px;font-size:12px;background:#fff;color:var(--text)}
+.reel-options select+label{margin-top:12px}
+.reel-cost{margin-top:12px;padding:10px 12px;background:rgba(0,196,204,.06);border-radius:10px;color:var(--text2);font-size:11px;line-height:1.5}
+.generation-status{display:none;padding:16px;margin:0 0 16px;border-radius:12px;background:rgba(0,196,204,.06);border:1px solid rgba(0,196,204,.15);font-size:13px;color:var(--text2);text-align:center}
+.generation-status.processing{display:block;animation:reelStatusPulse 2s ease-in-out infinite}
+.generation-status.success{display:block;color:#166534;background:#DCFCE7;border-color:#86EFAC}
+.generation-status.error{display:block;color:#B91C1C;background:#FEE2E2;border-color:#FCA5A5}
+.reel-result{margin:0 auto 20px;padding:20px;max-width:560px;text-align:center;background:#fff;border:1px solid rgba(11,30,61,.08);border-radius:16px;box-shadow:0 8px 32px rgba(11,30,61,.10)}
+.reel-result video{display:block;max-width:100%;max-height:500px;margin:auto;border-radius:16px;box-shadow:0 8px 32px rgba(11,30,61,.15)}
+.reel-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.reel-actions a,.reel-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:12px;font-weight:600;text-decoration:none;cursor:pointer}
+.reel-download{background:var(--turquesa);color:#fff;box-shadow:0 2px 8px rgba(0,196,204,.25)}
+.reel-send{background:var(--azul);color:#fff;border:0;box-shadow:0 2px 8px rgba(11,30,61,.25)}
+.reel-actions :is(a,button):active{transform:scale(.985)}
+@keyframes reelStatusPulse{0%,100%{opacity:1}50%{opacity:.7}}
+@media(prefers-reduced-motion:reduce){.generation-status.processing{animation:none}.format-btn,.reel-actions :is(a,button){transition:none}}
+
 /* El contenido funcional usa directamente los tokens y superficies KORA. */
 .agent-workspace{min-width:0;height:calc(100dvh - var(--ctk-height-topbar));min-height:36rem;background:var(--ctk-color-background)}
 .agent-workspace-panel{width:390px;min-width:390px;height:100%;max-height:100%;background:var(--ctk-color-surface);border-right-color:var(--ctk-color-border);overflow-y:auto;overflow-x:clip;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;transition:width .2s ease,min-width .2s ease,transform .2s ease}
@@ -784,6 +811,30 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div id="refs-brand-list" class="refs-brand-list"></div>
     <div id="refs-images" class="refs-images-wrap" style="display:none"></div>
   </div>
+  <div class="output-format-section">
+    <div class="sidebar-label">Formato de salida</div>
+    <div class="format-selector" role="group" aria-label="Formato de salida">
+      <button type="button" class="format-btn active" data-output-format="image" onclick="selectOutputFormat('image',this)">🖼️ Imagen</button>
+      <button type="button" class="format-btn" data-output-format="reel" onclick="selectOutputFormat('reel',this)">🎬 Reel</button>
+      <button type="button" class="format-btn" data-output-format="carousel" onclick="selectOutputFormat('carousel',this)">📱 Carousel</button>
+    </div>
+    <div id="reel-options" class="reel-options">
+      <label for="reel-duration">Duración del Reel</label>
+      <select id="reel-duration">
+        <option value="4">4 segundos</option>
+        <option value="6">6 segundos</option>
+        <option value="8" selected>8 segundos</option>
+      </select>
+      <label for="reel-style">Estilo de animación</label>
+      <select id="reel-style">
+        <option value="rotate">Rotación suave del producto</option>
+        <option value="zoom">Zoom al producto</option>
+        <option value="slide">Entrada lateral con texto</option>
+        <option value="dynamic">Dinámico (IA decide)</option>
+      </select>
+      <div class="reel-cost">💡 La generación usa Veo 3.1 y puede tardar entre 30 y 120 segundos.</div>
+    </div>
+  </div>
   <button class="gen-btn" id="gen-btn" onclick="generarContenido()">
     <div class="spinner" id="spinner"></div>
     <span id="gen-label">✦ Generar piezas</span>
@@ -823,6 +874,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div id="canva-brief-content"></div>
   </div>
   <div class="content-area" id="content-area">
+    <div id="generation-status" class="generation-status" role="status" aria-live="polite"></div>
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">
         <img style="display:none" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
@@ -1505,7 +1557,155 @@ function toggleKey(inputId, btn) {
 }
 
 let contentGenerationInFlight = false;
+let reelGenerationInFlight = false;
+let currentReelObjectUrl = null;
+window._selectedOutputFormat = 'image';
+
+function selectOutputFormat(format, button) {
+  window._selectedOutputFormat = format;
+  document.querySelectorAll('.format-btn').forEach((item) => item.classList.toggle('active', item === button));
+  document.getElementById('reel-options')?.classList.toggle('visible', format === 'reel');
+  const label = document.getElementById('gen-label');
+  if (label) label.textContent = format === 'reel' ? '🎬 Generar Reel' : format === 'carousel' ? '📱 Generar Carousel' : '✦ Generar piezas';
+}
+
+function setReelStatus(message, state = 'processing') {
+  const status = document.getElementById('generation-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `generation-status ${state}`;
+}
+
+function buildReelPrompt(product, city, price, style) {
+  const styles = {
+    rotate: 'Gentle 360-degree rotation of the smartphone, smooth and elegant, professional product showcase',
+    zoom: 'Slow cinematic zoom into the smartphone screen, revealing details with professional lighting',
+    slide: 'Smartphone slides in from the right, with clean commercial typography appearing beside it',
+    dynamic: 'Dynamic product showcase with smooth camera movement, professional lighting and a modern technology advertisement feel'
+  };
+  const priceLine = price ? `Text overlay: "Desde ${price}/mes" in turquoise (#00C4CC). Include "Sujeto a estudio de crédito" as a legible disclaimer.` : 'Do not invent prices, installments or financing conditions.';
+  return `Professional smartphone advertisement video in vertical 9:16 format for Instagram Reels.
+Product: ${product || 'smartphone'}.
+Animation: ${styles[style] || styles.dynamic}.
+Background: clean gradient from Creditek dark navy (#0B1E3D) to a slightly lighter navy.
+${priceLine}
+Location: ${city || 'Creditek stores in the Colombian Caribbean'} appears subtly near the bottom.
+Brand treatment: Creditek colors, with a discreet logo-safe area in the bottom right.
+Mood: professional, trustworthy, modern and aspirational.
+No people and no hands. Product-only showcase. Smooth movement with no abrupt cuts.`;
+}
+
+function reelVideoSource(video, format = 'mp4') {
+  if (/^(?:https?:|blob:|data:video\/)/.test(video)) return video;
+  const clean = String(video || '').replace(/^data:video\/[a-zA-Z0-9.+-]+;base64,/, '');
+  const bytes = Uint8Array.from(atob(clean), (character) => character.charCodeAt(0));
+  if (currentReelObjectUrl) URL.revokeObjectURL(currentReelObjectUrl);
+  currentReelObjectUrl = URL.createObjectURL(new Blob([bytes], { type: `video/${format}` }));
+  return currentReelObjectUrl;
+}
+
+function displayReelResult(video, format = 'mp4') {
+  const resultArea = document.getElementById('content-area');
+  if (!resultArea) return;
+  resultArea.querySelector('.reel-result')?.remove();
+  const videoUrl = reelVideoSource(video, format);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'reel-result';
+  const player = document.createElement('video');
+  player.controls = true;
+  player.autoplay = true;
+  player.muted = true;
+  player.loop = true;
+  player.playsInline = true;
+  player.src = videoUrl;
+  wrapper.appendChild(player);
+  const actions = document.createElement('div');
+  actions.className = 'reel-actions';
+  const download = document.createElement('a');
+  download.className = 'reel-download';
+  download.href = videoUrl;
+  download.download = `creditek-reel-${Date.now()}.mp4`;
+  download.textContent = '⬇️ Descargar MP4';
+  const send = document.createElement('button');
+  send.type = 'button';
+  send.className = 'reel-send';
+  send.textContent = '📤 Enviar a Agente 3';
+  send.addEventListener('click', sendToAgent3);
+  actions.append(download, send);
+  wrapper.appendChild(actions);
+  resultArea.prepend(wrapper);
+  wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function sendToAgent3() {
+  showToast('La integración con Agente 3 estará disponible en el siguiente paso.', '#0B1E3D');
+}
+
+async function generateReel(imageBase64, config) {
+  if (reelGenerationInFlight) return;
+  reelGenerationInFlight = true;
+  const button = document.getElementById('gen-btn');
+  const spinner = document.getElementById('spinner');
+  const label = document.getElementById('gen-label');
+  button.disabled = true;
+  spinner.style.display = 'block';
+  label.textContent = 'Generando Reel...';
+  setReelStatus('🎬 Generando Reel… puede tardar entre 30 y 120 segundos. Mantén esta pestaña abierta.');
+  try {
+    const response = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/veo/generate', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt: buildReelPrompt(config.product, config.city, config.price, config.style),
+        image: imageBase64 || undefined,
+        duration: Number(config.duration) || 8,
+        aspect_ratio: '9:16'
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 202 && data.pending) {
+      setReelStatus('⏳ Veo continúa procesando el video. El endpoint de consulta se conectará en el siguiente paso.', 'processing');
+      return;
+    }
+    if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+    if (!data.success || !data.video) throw new Error('Respuesta inesperada del servidor');
+    displayReelResult(data.video, data.format || 'mp4');
+    document.getElementById('empty-state').style.display = 'none';
+    setReelStatus('✅ Reel generado exitosamente.', 'success');
+    showToast('✓ Reel generado correctamente');
+  } catch (error) {
+    console.error('Error generando Reel:', error);
+    setReelStatus(`❌ Error: ${error.message || 'No se pudo generar el Reel'}`, 'error');
+    showToast(error.message || 'No se pudo generar el Reel', '#ef4444');
+  } finally {
+    reelGenerationInFlight = false;
+    button.disabled = false;
+    spinner.style.display = 'none';
+    label.textContent = '🎬 Generar Reel';
+  }
+}
+
+async function generateReelFromCurrentForm() {
+  const source = imgHistory[imgHistoryIdx] || document.getElementById('img-output')?.src || '';
+  const imageBase64 = source.startsWith('data:image/') ? source.split(',')[1] : undefined;
+  return generateReel(imageBase64, {
+    product: document.getElementById('producto')?.value.trim(),
+    city: getCiudadNombre(document.getElementById('ciudad')?.value || ''),
+    price: document.getElementById('cuota')?.value.trim(),
+    duration: document.getElementById('reel-duration')?.value || '8',
+    style: document.getElementById('reel-style')?.value || 'dynamic'
+  });
+}
+
 async function generarContenido() {
+  if (window._selectedOutputFormat === 'reel') return generateReelFromCurrentForm();
+  if (window._selectedOutputFormat === 'carousel') {
+    showToast('Carousel estará disponible en una siguiente iteración. Usa Imagen o Reel por ahora.', '#f59e0b');
+    return;
+  }
   // FIX v12 09-jul-2026: variable de estilo activo a nivel de función — antes
   // "estilo" solo existía dentro del IIFE que arma el bloque de tono del prompt
   // (más abajo), un scope que se cierra antes de llegar al fetch. Sin esto,

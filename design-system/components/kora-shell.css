@@ -108,6 +108,7 @@ html.creditek-shell-pending body::after {
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-text,
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-group__label span,
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-group__label .lucide-chevron-down { display: none; }
+.kora-shell-root[data-sidebar-collapsed="true"] [data-kora-version] { display: none !important; }
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-group__label,
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-nav-link { justify-content: center; }
 .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand { align-items: center; justify-content: center; padding-inline: var(--ctk-space-1); }

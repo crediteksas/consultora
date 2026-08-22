@@ -373,7 +373,7 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;z-index:500;color:#fff}
 .toast.show{opacity:1;transform:translateY(0)}
 /* ── Módulo generador de imágenes ──────────────────────────────── */
-.img-section{margin-top:20px;background:#FFFFFF;border:1px solid rgba(11,30,61,.10);border-radius:var(--radius);overflow:hidden;display:none;animation:fadeIn .3s ease;box-shadow:0 2px 12px rgba(11,30,61,.08)}
+.img-section{margin-top:20px;background:#FFFFFF;border:1px solid rgba(11,30,61,.10);border-radius:var(--radius);overflow:hidden;display:block;animation:fadeIn .3s ease;box-shadow:0 2px 12px rgba(11,30,61,.08)}
 .img-section.visible{display:block}
 .img-hdr{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .img-hdr-title{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700}
@@ -404,10 +404,12 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .img-ab-btn:hover{background:rgba(0,196,204,.12);border-color:#00C4CC}
 .img-ab-btn:disabled{opacity:.4;cursor:not-allowed}
 .img-result{padding:0 18px 18px;display:none}
-.img-ab-result{padding:0 18px 18px;display:none}
+.img-ab-result{padding:0 18px 18px;display:block!important}
 .img-ab-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.img-ab-col{display:flex;flex-direction:column}
+.img-ab-col{display:flex;flex-direction:column;min-height:220px;padding:14px;background:#F8FAFC;border:1px solid rgba(11,30,61,.10);border-radius:12px;box-shadow:0 1px 3px rgba(11,30,61,.04)}
 .img-ab-col-label{text-align:center;font-size:10px;font-weight:700;color:var(--turquesa);letter-spacing:.05em;padding:0 0 7px;text-transform:uppercase}
+.img-ab-placeholder{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;color:#94A3B8;border:1.5px dashed rgba(11,30,61,.14);border-radius:10px;background:#FFFFFF;font-size:12px;line-height:1.5}
+.img-ab-col:has(.img-output[src]:not([src=""])) .img-ab-placeholder{display:none}
 .img-ab-col-err{font-size:11px;color:#ff6b6b;padding:10px 4px;text-align:center;line-height:1.5;border:1px solid rgba(255,107,107,.2);border-radius:8px;margin-top:4px}
 .img-output{width:100%;border-radius:10px;border:1px solid var(--border);display:block}
 .img-dl-btn{display:block;margin-top:10px;background:var(--turquesa);color:var(--azul);text-align:center;padding:10px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;cursor:pointer;border:none;width:100%;font-family:'Montserrat',sans-serif;letter-spacing:.02em;transition:opacity .2s}
@@ -447,6 +449,9 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
 .estilo-btn{padding:8px 6px;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);border-radius:var(--radius-sm);color:var(--text2);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4;display:flex;align-items:center;justify-content:center;gap:4px}
 .estilo-btn svg{width:14px;height:14px;stroke-width:2;flex:0 0 auto}
 .estilo-btn.active{background:rgba(0,196,204,.1);border-color:var(--turquesa);color:var(--turquesa)}
+body.kora-product-page .estilo-btn{background:#FFFFFF!important;color:#0B1E3D!important;border:1px solid rgba(11,30,61,.15)!important;box-shadow:none!important}
+body.kora-product-page .estilo-btn:hover:not(.active){background:rgba(11,30,61,.04)!important;color:#0B1E3D!important;border-color:rgba(11,30,61,.28)!important}
+body.kora-product-page .estilo-btn.active{background:#0B1E3D!important;color:#FFFFFF!important;border-color:#0B1E3D!important;box-shadow:0 2px 8px rgba(11,30,61,.24)!important}
 .estilo-custom-ta{width:100%;background:#FFFFFF;border:1px solid rgba(11,30,61,.15);color:#0B1E3D;border-radius:var(--radius-sm);font-size:12px;padding:8px 12px;resize:vertical;min-height:60px;outline:none;font-family:'DM Sans',sans-serif;display:none;transition:border-color .2s,box-shadow .2s}
 .estilo-custom-ta:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.12)}
 /* Referencias visuales del mercado */
@@ -979,6 +984,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <div class="img-ab-cols">
           <div class="img-ab-col">
             <div class="img-ab-col-label" id="img-ab-label-a">📷 Foto producto</div>
+            <div class="img-ab-placeholder">La vista previa de Gemini aparecerá aquí.</div>
             <img class="img-output" id="img-ab-a" src="" alt="Gemini" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-a" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-a" onclick="descargarImagenAB('a')" style="display:none">⬇ Descargar</button>
@@ -986,6 +992,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
           </div>
           <div class="img-ab-col">
             <div class="img-ab-col-label">⬡ GPT Image 2</div>
+            <div class="img-ab-placeholder">La vista previa de GPT Image 2 aparecerá aquí.</div>
             <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-b" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-b" onclick="descargarImagenAB('b')" style="display:none">⬇ Descargar</button>

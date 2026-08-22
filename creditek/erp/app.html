@@ -172,6 +172,136 @@ body {
   backdrop-filter: saturate(160%) blur(18px);
   -webkit-backdrop-filter: saturate(160%) blur(18px);
 }
+
+/* Login KORA 9/10 · capa visual, sin cambios de autenticación */
+@keyframes loginEnter {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes loginSpin { to { transform: rotate(360deg); } }
+.login-screen {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0,196,204,.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(11,30,61,.06) 0%, transparent 50%),
+    #F0F2F5;
+}
+.login-box {
+  background: rgba(255,255,255,.82);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(11,30,61,.12), 0 1px 3px rgba(11,30,61,.06);
+  animation: loginEnter .5s cubic-bezier(.16,1,.3,1) forwards;
+}
+.auth-brand { margin-bottom: 8px; }
+.auth-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0B1E3D;
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+}
+.auth-copy { font-size: 14px; color: #64748B; margin-bottom: 32px; }
+.login-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0B1E3D;
+  letter-spacing: .02em;
+  margin-bottom: 6px;
+}
+.login-field input:not([type="checkbox"]) {
+  min-height: 48px;
+  height: 48px;
+  border: 1.5px solid rgba(11,30,61,.12);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 15px;
+  background: rgba(255,255,255,.7);
+  transition: background .2s cubic-bezier(.25,.46,.45,.94), border-color .2s cubic-bezier(.25,.46,.45,.94), box-shadow .2s cubic-bezier(.25,.46,.45,.94);
+}
+.login-field input:focus {
+  border-color: #00C4CC;
+  box-shadow: 0 0 0 3px rgba(0,196,204,.15);
+  background: #FFFFFF;
+}
+.login-field input::placeholder { color: #94A3B8; font-size: 14px; }
+.login-btn {
+  min-height: 48px;
+  background: linear-gradient(135deg,#0B1E3D 0%,#142D54 100%);
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  box-shadow: 0 2px 8px rgba(11,30,61,.25);
+  transition: background .25s cubic-bezier(.25,.46,.45,.94), box-shadow .25s cubic-bezier(.25,.46,.45,.94), transform .25s cubic-bezier(.25,.46,.45,.94), opacity .15s ease;
+}
+.login-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg,#0D2347 0%,#1A3A6B 100%);
+  box-shadow: 0 4px 16px rgba(11,30,61,.35);
+  transform: translateY(-1px);
+}
+.login-btn:active:not(:disabled) {
+  transform: scale(.985);
+  box-shadow: 0 1px 4px rgba(11,30,61,.3);
+  transition-duration: 80ms;
+}
+.login-btn:disabled { opacity: .6; cursor: not-allowed; }
+.login-btn.loading { pointer-events: none; opacity: .8; }
+.login-btn.loading::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 8px;
+  animation: loginSpin .6s linear infinite;
+  vertical-align: middle;
+}
+.remember-option { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.login-box .auth-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: #008F96;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+  transition: color .15s ease;
+}
+.login-box .auth-link:hover { color: #00777D; }
+.login-box .password-toggle {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent !important;
+  color: #64748B !important;
+  box-shadow: none !important;
+  transition: background .15s ease, color .15s ease;
+}
+.login-box .password-toggle:hover { background: rgba(11,30,61,.04) !important; color: #475569 !important; }
+.login-version {
+  font-size: 11px;
+  color: #64748B;
+  letter-spacing: .05em;
+  font-family: 'SF Mono','Fira Code',monospace;
+}
+@media (max-width: 480px) {
+  .login-box { margin: 16px; padding: 32px 24px; border-radius: 16px; }
+  .auth-title { font-size: 24px; }
+  .login-options { gap: 8px; }
+  .remember-option,.login-box .auth-link { white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-box { animation: none; }
+  .login-btn,.login-field input { transition-duration: 0ms; }
+}
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -342,9 +472,11 @@ function setAuthStatus(id, message = '', kind = 'error') {
 async function runAuthAction(button, loadingLabel, action) {
   const originalLabel = button.textContent;
   button.disabled = true;
+  button.classList.add('loading');
   button.textContent = loadingLabel;
   try { await action(); } finally {
     button.disabled = false;
+    button.classList.remove('loading');
     button.textContent = originalLabel;
   }
 }

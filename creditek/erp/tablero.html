@@ -11,6 +11,320 @@
 <script src="kora-access-control.js?v=2.0.14"></script>
 <script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
+<style>
+/* KORA-visual: capa local del Resumen ejecutivo. No altera datos ni lógica. */
+body[data-kora-dashboard="1.0.0"] {
+  --dashboard-premium-border: rgba(11, 30, 61, 0.06);
+  --dashboard-premium-shadow: 0 1px 3px rgba(11, 30, 61, 0.04);
+  --dashboard-premium-shadow-hover: 0 8px 24px rgba(11, 30, 61, 0.10);
+}
+
+/* 1–2. KPI cards premium y jerarquía tipográfica. */
+.dashboard-metrics {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  gap: 16px;
+  overflow: visible;
+}
+
+.dashboard-metric {
+  background: #FFFFFF;
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: 16px;
+  box-shadow: var(--dashboard-premium-shadow);
+  min-height: 152px;
+  overflow: hidden;
+  padding: 24px;
+  position: relative;
+  transition: box-shadow 300ms cubic-bezier(.25,.46,.45,.94),
+              transform 300ms cubic-bezier(.25,.46,.45,.94),
+              border-color 300ms cubic-bezier(.25,.46,.45,.94);
+}
+
+.dashboard-metric::before {
+  background: linear-gradient(90deg, #00C4CC, #00D4DC);
+  border-radius: 0 0 3px 3px;
+  content: "";
+  height: 3px;
+  left: 24px;
+  position: absolute;
+  right: 24px;
+  top: 0;
+}
+
+.dashboard-metric:not(:last-child)::after {
+  display: none;
+}
+
+.dashboard-metric:hover {
+  background: #FFFFFF;
+  border-color: rgba(0, 196, 204, 0.20);
+  box-shadow: var(--dashboard-premium-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.kpi-valor {
+  color: #0B1E3D;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 8px 0 4px;
+}
+
+.kpi-label {
+  color: #64748B;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kpi-var {
+  color: #94A3B8;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* 3. Tablas con contraste institucional y lectura rápida. */
+.dashboard-panel--table .tabla-wrap,
+.dashboard-executives .tabla-wrap {
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.dashboard-table th {
+  background: #0B1E3D;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 14px 16px;
+  text-transform: uppercase;
+}
+
+.dashboard-table td {
+  color: #1E293B;
+  font-size: 14px;
+  padding: 14px 16px;
+}
+
+.dashboard-table tbody tr:hover {
+  background: rgba(0, 196, 204, 0.03);
+}
+
+.dashboard-table .fila-total td,
+.dashboard-table tfoot td {
+  background: rgba(11, 30, 61, 0.02);
+  border-top: 2px solid rgba(11, 30, 61, 0.08);
+}
+
+/* 4 y 7. Paneles y gráficas con profundidad contenida. */
+.dashboard-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: 16px;
+  box-shadow: var(--dashboard-premium-shadow);
+}
+
+.dashboard-alerts-panel {
+  padding: 24px;
+}
+
+.alerta {
+  color: #1E293B;
+  font-size: 13px;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.dashboard-chart-panel {
+  padding: 24px;
+  transition: box-shadow 300ms cubic-bezier(.25,.46,.45,.94);
+}
+
+.dashboard-chart-panel:hover {
+  box-shadow: 0 4px 16px rgba(11, 30, 61, 0.08);
+}
+
+/* 5. Filtros táctiles, claros y consistentes. */
+.dashboard-filterbar {
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: 16px;
+  box-shadow: var(--dashboard-premium-shadow);
+  gap: 12px;
+  padding: 16px;
+}
+
+.campo select,
+.campo input {
+  border: 1.5px solid rgba(11, 30, 61, 0.12);
+  border-radius: 12px;
+  color: #0B1E3D;
+  font-size: 14px;
+  min-height: 44px;
+  padding: 0 16px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.campo select:focus-visible,
+.campo input:focus-visible {
+  border-color: #00C4CC;
+  box-shadow: 0 0 0 3px rgba(0, 196, 204, 0.12);
+}
+
+/* 6. Títulos de sección refinados. */
+.dashboard-section-heading__eyebrow {
+  color: #64748B;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.dashboard-section-heading h2 {
+  color: #0B1E3D;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-section-heading {
+  margin-bottom: 20px;
+}
+
+/* 8–9. La capa local refina el shell solo mientras el tablero está abierto. */
+body[data-kora-dashboard="1.0.0"] .kora-topbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  border-bottom: 1px solid var(--dashboard-premium-border);
+}
+
+body[data-kora-dashboard="1.0.0"] .kora-sidebar {
+  background: #FAFBFC;
+  border-right: 1px solid var(--dashboard-premium-border);
+}
+
+body[data-kora-dashboard="1.0.0"] .kora-sidebar a[aria-current="page"],
+body[data-kora-dashboard="1.0.0"] .kora-sidebar .active {
+  background: rgba(0, 196, 204, 0.08);
+  border-radius: 10px;
+  color: #0B1E3D;
+  font-weight: 600;
+}
+
+/* 10–11. Progreso e indicador de actualización. */
+.barra-pct {
+  background: rgba(11, 30, 61, 0.06);
+  border-radius: 3px;
+  height: 6px;
+}
+
+.barra-pct div {
+  border-radius: 3px;
+  transition: width 600ms cubic-bezier(.25,.46,.45,.94);
+}
+
+.dashboard-updated {
+  color: #94A3B8;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.dashboard-updated__dot {
+  background: #22C55E;
+  height: 6px;
+  width: 6px;
+}
+
+/* 12. Entrada escalonada, sutil y no bloqueante. */
+@keyframes dashboardSectionEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-filterbar,
+.dashboard-metrics,
+.dashboard-primary-grid,
+.dashboard-support-grid,
+.dashboard-executives {
+  animation: dashboardSectionEnter 400ms cubic-bezier(.16,1,.3,1) backwards;
+}
+
+.dashboard-filterbar { animation-delay: 50ms; }
+.dashboard-metrics { animation-delay: 100ms; }
+.dashboard-primary-grid { animation-delay: 150ms; }
+.dashboard-support-grid { animation-delay: 200ms; }
+.dashboard-executives { animation-delay: 250ms; }
+
+/* Feedback inmediato en controles interactivos. */
+.dashboard-filterbar select:active,
+.dashboard-filterbar input:active,
+.kpi-link:active {
+  transform: scale(.985);
+}
+
+/* 13. Responsive. */
+@media (max-width: 768px) {
+  .dashboard-metrics {
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-metric {
+    min-height: 144px;
+    padding: 20px;
+  }
+
+  .kpi-valor {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-alerts-panel,
+  .dashboard-chart-panel,
+  .dashboard-panel--table,
+  .dashboard-executives {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-metric {
+    min-height: 136px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-filterbar,
+  .dashboard-metrics,
+  .dashboard-primary-grid,
+  .dashboard-support-grid,
+  .dashboard-executives {
+    animation: none;
+  }
+
+  .dashboard-metric,
+  .dashboard-chart-panel,
+  .barra-pct div {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body[data-kora-dashboard="1.0.0"] .kora-topbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #FFFFFF;
+  }
+}
+</style>
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body data-kora-dashboard="1.0.0">

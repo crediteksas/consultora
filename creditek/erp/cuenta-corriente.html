@@ -118,6 +118,55 @@ body.modal-open { overflow: hidden; }
 .modal-actions .btn-guardar { background: var(--turquesa); color: white; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
+
+/* Capa visual premium · Cartera Retail */
+.page > details.cuadrito-vacio {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(11,30,61,.08);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.page > details.cuadrito-vacio summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--azul);
+  font-weight: 600;
+  cursor: pointer;
+}
+.page > details.cuadrito-vacio p { padding: 2px 0 8px; color: var(--text2); line-height: 1.55; }
+.tabla-wrap {
+  border-radius: 16px;
+  border-color: rgba(11,30,61,.06);
+  box-shadow: 0 1px 3px rgba(11,30,61,.04), 0 10px 28px rgba(11,30,61,.04);
+}
+.tabla-wrap thead th {
+  background: var(--azul);
+  color: #fff;
+  padding: 14px 16px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+.tabla-wrap tbody td { padding: 14px 16px; transition: background-color .15s ease; }
+.tabla-wrap tbody tr:hover { background: rgba(0,196,204,.03); }
+.empty-state { padding: 48px 24px; line-height: 1.5; color: #64748B; }
+.btn-primary { min-height: 44px; border-radius: 12px; padding-inline: 18px; }
+.btn-primary:active, .tabla-wrap button:active, details summary:active { transform: scale(.985); }
+.historial-controles select, .campo input, .campo select { min-height: 44px; border-radius: 12px; }
+@keyframes carteraFadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page > * { animation: carteraFadeInUp .35s cubic-bezier(.16,1,.3,1) backwards; }
+.page > *:nth-child(2) { animation-delay: .05s; }
+.page > *:nth-child(3) { animation-delay: .1s; }
+.page > *:nth-child(4) { animation-delay: .15s; }
+@media (prefers-reduced-motion: reduce) {
+  .page > * { animation: none; }
+  .btn-primary, .tabla-wrap button, details summary { transition: none; }
+}
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>

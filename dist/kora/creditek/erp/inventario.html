@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creditek · Inventario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="inventario-domain.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+<script src="inventario-export.js"></script>
+<style>
+:root {
+  --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
+  --border: rgba(11,30,61,0.08); --text2: #6E6E76; --verde: #16A34A; --amarillo: #D97706; --rojo: #DC2626;
+  --radius: 18px; --radius-sm: 11px;
+  --shadow-sm: 0 1px 2px rgba(11,30,61,0.04), 0 1px 1px rgba(11,30,61,0.03);
+  --shadow-md: 0 12px 28px -10px rgba(11,30,61,0.16);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--azul); -webkit-font-smoothing: antialiased; }
+
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at 30% 20%, #EAFBFC 0%, var(--bg) 55%); }
+.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; width: 100%; max-width: 360px; box-shadow: var(--shadow-md); }
+.login-box img.logo { display: block; height: 40px; margin: 0 auto 22px; object-fit: contain; }
+.login-box input { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 15px; margin-bottom: 12px; font-family: inherit; transition: all .15s ease; }
+.login-box input:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 4px rgba(0,196,204,0.14); }
+.login-box button { width: 100%; background: var(--turquesa); color: white; border: none; border-radius: var(--radius-sm); padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); transition: transform .12s ease, box-shadow .12s ease; }
+.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -4px rgba(0,196,204,0.55); }
+.login-box button:disabled { background: #D2D2D7; box-shadow: none; }
+.login-err { color: var(--rojo); font-size: 12.5px; margin-top: 10px; display: none; }
+.login-err.show { display: block; }
+
+.sin-perfil-screen { min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.sin-perfil-screen.show { display: flex; }
+.sin-perfil-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; max-width: 380px; box-shadow: var(--shadow-md); }
+.sin-perfil-box .icono { font-size: 34px; margin-bottom: 12px; }
+.sin-perfil-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 8px; }
+.sin-perfil-box p { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin-bottom: 18px; }
+.sin-perfil-box button { border: 1px solid var(--border); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; cursor: pointer; color: var(--azul); font-weight: 600; }
+
+#app { display: none; }
+#app.show { display: flex; }
+.navbar { background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 18px; position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
+.navbar img.logo { height: 26px; object-fit: contain; flex-shrink: 0; }
+.nav-links { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-links a { white-space: nowrap; text-decoration: none; color: var(--text2); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; transition: background .15s ease, color .15s ease; }
+.nav-links a:hover { background: rgba(11,30,61,0.05); color: var(--azul); }
+.nav-links a.active { background: var(--azul); color: white; box-shadow: var(--shadow-sm); }
+.nav-user { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text2); flex-shrink: 0; }
+.nav-user .quien { text-align: right; line-height: 1.3; }
+.nav-user .quien b { color: var(--azul); font-size: 12.5px; }
+.nav-user button { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; color: var(--text2); font-weight: 600; transition: background .15s ease; }
+.nav-user button:hover { background: #EAEAEC; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
+.page-top { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.page-top h1 { font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.export-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-export { border: 1px solid var(--border); background: var(--surface); color: var(--azul); border-radius: 999px; min-height: 44px; padding: 0 16px; font: 700 12.5px 'DM Sans', sans-serif; cursor: pointer; transition: border-color 180ms ease, transform 80ms ease; }
+.btn-export:hover { border-color: var(--turquesa); }
+.btn-export:active { transform: scale(.985); }
+
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.resumen-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: var(--shadow-sm); transition: border-color 180ms ease, box-shadow 180ms ease; }
+.resumen-card:hover { border-color: rgba(11,30,61,.14); box-shadow: var(--shadow-md); }
+.resumen-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); font-weight: 700; margin-bottom: 6px; }
+.resumen-card .valor { font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 800; }
+
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; width: fit-content; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+.tabs button { border: none; background: none; min-height: 44px; padding: 0 16px; font-size: 13px; font-weight: 700; border-radius: 999px; cursor: pointer; color: var(--text2); transition: transform 80ms ease; }
+.tabs button.active { background: var(--azul); color: white; }
+.tabs button:active { transform: scale(.985); }
+
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.filters select, .filters input { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); min-height: 44px; padding: 0 16px; font-size: 13px; font-family: inherit; color: var(--azul); }
+.filters select:focus, .filters input:focus { outline: none; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
+.filters label.chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 13px; }
+
+.tabla-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { background: rgba(11,30,61,0.02); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); font-weight: 700; }
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .12s ease; cursor: pointer; }
+tbody tr:hover { background: rgba(11,30,61,0.02); }
+.badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
+.badge.disponible { background: #DCFCE7; color: #166534; }
+.badge.vendido { background: #E2E8F0; color: #475569; }
+.badge.en_traslado { background: #FEF3C7; color: #92400E; }
+.badge.garantia_proveedor { background: #FEE2E2; color: #991B1B; }
+.badge.en_oscar { background: #DBEAFE; color: #1E40AF; }
+.badge.anulado_reingreso { background: #FEE2E2; color: #991B1B; }
+.fila-bajo-stock { color: var(--rojo); font-weight: 700; }
+.empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
+
+/* Capa visual local de Inventario. */
+.resumen-card { background:#fff; border:1px solid rgba(11,30,61,.06); border-radius:16px; box-shadow:0 1px 3px rgba(11,30,61,.04); overflow:hidden; padding:24px; position:relative; transition:border-color .3s ease,box-shadow .3s ease,transform .3s cubic-bezier(.25,.46,.45,.94); }
+.resumen-card::before { background:linear-gradient(90deg,#00C4CC,#00D4DC); border-radius:0 0 3px 3px; content:""; height:3px; left:24px; position:absolute; right:24px; top:0; }
+.resumen-card:hover { border-color:rgba(0,196,204,.15); box-shadow:0 8px 24px rgba(11,30,61,.1); transform:translateY(-2px); }
+.resumen-card .valor { color:#0B1E3D; font-size:clamp(1.75rem,3vw,2.25rem); font-weight:700; letter-spacing:-.02em; }
+.resumen-card .label { color:#64748B; font-size:11px; font-weight:600; letter-spacing:.06em; }
+.tabs { border-radius:12px; gap:4px; padding:4px; }
+.tabs button { border:1.5px solid transparent; border-radius:10px; color:#64748B; min-height:44px; padding:0 20px; transition:background .2s ease,color .2s ease,transform 80ms ease; }
+.tabs button.active { background:#0B1E3D; border-color:#0B1E3D; box-shadow:0 2px 8px rgba(11,30,61,.2); color:#fff; }
+.tabs button:hover:not(.active){background:rgba(11,30,61,.04);color:#0B1E3D}.tabs button:active{transform:scale(.97)}
+.filters { background:#fff; border:1px solid rgba(11,30,61,.06); border-radius:16px; box-shadow:0 1px 3px rgba(11,30,61,.04); gap:12px; padding:16px; }
+.filters select,.filters input { border:1.5px solid rgba(11,30,61,.12); border-radius:12px; color:#0B1E3D; font-size:14px; min-height:44px; padding:0 16px; }
+.filters select:focus-visible,.filters input:focus-visible { border-color:#00C4CC; box-shadow:0 0 0 3px rgba(0,196,204,.12); outline:none; }
+.btn-export { background:linear-gradient(135deg,#0B1E3D,#142d54); border:0; border-radius:12px; box-shadow:0 2px 8px rgba(11,30,61,.2); color:#fff; font-size:14px; padding:0 20px; }
+.btn-export:hover { border-color:transparent; box-shadow:0 4px 16px rgba(11,30,61,.3); transform:translateY(-1px); }
+.tabla-wrap { border:1px solid rgba(11,30,61,.06); border-radius:16px; box-shadow:0 1px 3px rgba(11,30,61,.04); }
+.tabla-wrap th { background:#0B1E3D; color:#fff; font-size:11px; letter-spacing:.06em; padding:14px 16px; text-transform:uppercase; }
+.tabla-wrap td { border-bottom:1px solid rgba(11,30,61,.04); color:#1E293B; font-size:14px; padding:14px 16px; }
+.tabla-wrap tbody tr:hover td { background:rgba(0,196,204,.03); }
+.badge.disponible { background:rgba(34,197,94,.1); color:#16A34A; font-weight:600; }
+.empty-state { color:#94A3B8; padding:48px 24px; }
+@keyframes inventarioEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.page>*{animation:inventarioEnter .35s cubic-bezier(.16,1,.3,1) backwards}.page>*:nth-child(2){animation-delay:.05s}.page>*:nth-child(3){animation-delay:.1s}.page>*:nth-child(4){animation-delay:.15s}
+@media(prefers-reduced-motion:reduce){.page>*{animation:none}.resumen-card,.tabs button,.btn-export{transition:none}}
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal-bg.show { display: flex; }
+.modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 16px; margin-bottom: 4px; }
+.modal-sub { font-size: 12.5px; color: var(--text2); margin-bottom: 16px; }
+.hist-item { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.hist-item:last-child { border-bottom: none; }
+.hist-item .tipo { font-weight: 700; }
+.hist-item .fecha { color: var(--text2); }
+.modal-actions { margin-top: 16px; }
+.modal-actions button { width: 100%; border: none; border-radius: 999px; padding: 11px; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--bg); color: var(--text2); }
+</style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <img class="logo" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
+    <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btnLogin">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="sin-perfil-screen" id="sinPerfilScreen">
+  <div class="sin-perfil-box">
+    <div class="icono">🔒</div>
+    <h2>Sin perfil asignado</h2>
+    <p>Tu usuario no tiene perfil asignado. Contacta al administrador.</p>
+    <button id="btnSalirSinPerfil">Cerrar sesión</button>
+  </div>
+</div>
+
+<div id="app">
+  <div style="display:none;" aria-hidden="true">
+    <b id="navNombre"></b><span id="navRolTienda"></span><button id="btnLogout"></button>
+  </div>
+  <div class="main-content">
+
+  <div class="page">
+    <div class="page-top">
+      <h1>Inventario en vivo</h1>
+      <div class="export-actions">
+        <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
+        <button class="btn-export" id="btnExportarConteo">Descargar conteo ciego</button>
+      </div>
+    </div>
+
+    <div class="resumen" id="resumenCards"></div>
+
+    <div class="tabs">
+      <button class="active" id="tabCelulares">Celulares</button>
+      <button id="tabAccesorios">Accesorios</button>
+    </div>
+
+    <div id="vistaCelulares">
+      <div class="filters">
+        <select id="filtroTiendaCel" style="display:none;"><option value="">Todas las tiendas</option></select>
+        <!-- FIX 23-jul-2026 · "Inventario en vivo" default a solo disponibles — los vendidos
+             ya se convirtieron en caja/efectivo y no forman parte del inventario físico. -->
+        <select id="filtroEstadoCel">
+          <option value="disponible" selected>Disponible (en vivo)</option>
+          <option value="">Todos los estados</option>
+          <option value="vendido">Vendido</option>
+          <option value="en_traslado">En traslado</option>
+          <option value="garantia_proveedor">Garantía proveedor</option>
+          <option value="en_oscar">En Oscar</option>
+        </select>
+        <select id="filtroProductoCel"><option value="">Todos los productos</option></select>
+        <input type="text" id="filtroImei" placeholder="Buscar IMEI...">
+      </div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Mi costo</th><th>Fecha ingreso</th></tr></thead>
+          <tbody id="tbodyCelulares"></tbody>
+        </table>
+        <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
+      </div>
+    </div>
+
+    <div id="vistaAccesorios" style="display:none;">
+      <div class="filters">
+        <select id="filtroTiendaAcc" style="display:none;"><option value="">Todas las tiendas</option></select>
+        <select id="filtroCategoriaAcc"><option value="">Todas las categorías</option></select>
+        <label class="chk"><input type="checkbox" id="chkAgotados"> Solo agotados</label>
+      </div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Mi costo unitario</th><th>Valor total</th></tr></thead>
+          <tbody id="tbodyAccesorios"></tbody>
+        </table>
+        <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalHistorial">
+  <div class="modal-box">
+    <h2 id="histTitulo">Historial de la unidad</h2>
+    <div class="modal-sub" id="histSub"></div>
+    <div id="histLista"></div>
+    <div class="modal-actions"><button id="btnCerrarHistorial">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const inventarioDomain = window.CreditekInventarioDomain;
+const inventarioExport = window.CreditekInventarioExport;
+
+let currentUser = null;
+let currentPerfil = null;
+let unidadesCache = [];
+let stockCache = [];
+let productosCache = [];
+let tiendasCache = [];
+let tabActual = 'celulares';
+
+function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+
+document.getElementById('btnLogin').addEventListener('click', hacerLogin);
+document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
+
+async function hacerLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const btn = document.getElementById('btnLogin');
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if (!email || !password) return;
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) { err.textContent = 'Correo o contraseña incorrectos.'; err.classList.add('show'); return; }
+  entrarApp(data.user);
+}
+
+document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
+document.getElementById('btnSalirSinPerfil').addEventListener('click', cerrarSesion);
+async function cerrarSesion() { await sb.auth.signOut(); location.reload(); }
+
+async function entrarApp(user) {
+  currentUser = user;
+  const { data: perfil, error } = await sb.from('perfiles').select('*').eq('id', user.id).maybeSingle();
+  if (error || !perfil || !perfil.activo) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('sinPerfilScreen').classList.add('show');
+    return;
+  }
+  currentPerfil = perfil;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  pintarNavUser();
+  initPagina();
+}
+
+function pintarNavUser() {
+  document.getElementById('navNombre').textContent = currentPerfil.nombre || currentUser.email;
+  const rolLabel = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' }[currentPerfil.rol] || currentPerfil.rol;
+  document.getElementById('navRolTienda').textContent = currentPerfil.tienda_codigo ? `${rolLabel} · ${currentPerfil.tienda_codigo}` : rolLabel;
+}
+
+sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
+
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// ─── Página: Inventario ────────────────────────────────────────────────
+const CATEGORIAS = ['celular', 'accesorio', 'parlante', 'protector', 'cable', 'cargador', 'audifono', 'otro'];
+
+function initPagina() {
+  if (esCentral()) {
+    document.getElementById('filtroTiendaCel').style.display = '';
+    document.getElementById('filtroTiendaAcc').style.display = '';
+  }
+  actualizarEtiquetasCosto();
+
+  document.getElementById('tabCelulares').addEventListener('click', () => cambiarTab('celulares'));
+  document.getElementById('tabAccesorios').addEventListener('click', () => cambiarTab('accesorios'));
+
+  document.getElementById('filtroTiendaCel').addEventListener('change', cambiarTiendaDesdePantalla);
+  document.getElementById('filtroTiendaAcc').addEventListener('change', cambiarTiendaDesdePantalla);
+  ['filtroEstadoCel', 'filtroProductoCel'].forEach(id => document.getElementById(id).addEventListener('change', renderCelulares));
+  document.getElementById('filtroImei').addEventListener('input', renderCelulares);
+  document.getElementById('filtroCategoriaAcc').addEventListener('change', renderAccesorios);
+  document.getElementById('chkAgotados').addEventListener('change', renderAccesorios);
+  window.addEventListener('creditek:tienda-cambiada', aplicarTiendaSidebar);
+
+  document.getElementById('btnCerrarHistorial').addEventListener('click', () => document.getElementById('modalHistorial').classList.remove('show'));
+  document.getElementById('btnExportarInventario').addEventListener('click', () => descargarInventario(false));
+  document.getElementById('btnExportarConteo').addEventListener('click', () => descargarInventario(true));
+
+  cargarTodo();
+}
+
+function cambiarTab(tab) {
+  tabActual = tab;
+  document.getElementById('tabCelulares').classList.toggle('active', tab === 'celulares');
+  document.getElementById('tabAccesorios').classList.toggle('active', tab === 'accesorios');
+  document.getElementById('vistaCelulares').style.display = tab === 'celulares' ? 'block' : 'none';
+  document.getElementById('vistaAccesorios').style.display = tab === 'accesorios' ? 'block' : 'none';
+}
+
+function actualizarEtiquetasCosto() {
+  document.getElementById('thCostoCel').textContent = esCentral() ? 'Costo interno Creditek' : 'Mi costo';
+  document.getElementById('thCostoAcc').textContent = esCentral() ? 'Costo interno unitario' : 'Mi costo unitario';
+}
+
+function tiendaActiva() {
+  if (!esCentral()) return currentPerfil?.tienda_codigo || '';
+  return document.getElementById('filtroTiendaCel').value;
+}
+
+function fijarTiendaEnFiltros(tiendaCodigo) {
+  const codigo = tiendaCodigo || '';
+  const filtroCel = document.getElementById('filtroTiendaCel');
+  const filtroAcc = document.getElementById('filtroTiendaAcc');
+  const opcionExiste = [...filtroCel.options].some(opcion => opcion.value === codigo);
+  const valor = opcionExiste ? codigo : '';
+  filtroCel.value = valor;
+  filtroAcc.value = valor;
+  return valor;
+}
+
+function aplicarTiendaSidebar(evento) {
+  if (!esCentral()) return;
+  fijarTiendaEnFiltros(evento?.detail?.tiendaCodigo || '');
+  renderResumen();
+  renderCelulares();
+  renderAccesorios();
+}
+
+function cambiarTiendaDesdePantalla(evento) {
+  if (!esCentral()) return;
+  const valor = fijarTiendaEnFiltros(evento.target.value);
+  localStorage.setItem('creditek_sidebar_tienda', valor);
+  const selectorSidebar = document.getElementById('sidebarTiendaSel');
+  if (selectorSidebar) selectorSidebar.value = valor;
+  renderResumen();
+  renderCelulares();
+  renderAccesorios();
+}
+
+async function cargarTodo() {
+  const [productosRes, tiendasRes] = await Promise.all([
+    sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('nombre'),
+    sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+  ]);
+  const error = productosRes.error || tiendasRes.error;
+  if (error) {
+    ['emptyCelulares', 'emptyAccesorios'].forEach(id => {
+      const elemento = document.getElementById(id);
+      elemento.style.display = 'block';
+      elemento.textContent = `No fue posible cargar el inventario: ${error.message}`;
+    });
+    return;
+  }
+  productosCache = productosRes.data || [];
+  tiendasCache = tiendasRes.data || [];
+
+  const opcionesTienda = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  document.getElementById('filtroTiendaCel').innerHTML = opcionesTienda;
+  document.getElementById('filtroTiendaAcc').innerHTML = opcionesTienda;
+  document.getElementById('filtroProductoCel').innerHTML = '<option value="">Todos los productos</option>' + productosCache.filter(p => p.tipo === 'serializado').map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
+  document.getElementById('filtroCategoriaAcc').innerHTML = '<option value="">Todas las categorías</option>' + CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (esCentral()) fijarTiendaEnFiltros(localStorage.getItem('creditek_sidebar_tienda') || '');
+
+  await Promise.all([cargarCelulares(), cargarAccesorios()]);
+  renderResumen();
+}
+
+async function cargarCelulares() {
+  // FIX 23-jul-2026 · quitamos el join anidado remision_items(remision_margenes(costo_oscar))
+  // que retornaba null porque en SPEC v2 el costo_oscar vive en remision_margenes
+  // (accesible solo con RLS es_central) y el path no siempre resolvía. El costo
+  // real de Oscar ya está en unidades.costo_remision (guardado al momento de la
+  // compra), que se solicita solo para el rol central y funciona sin joins extra.
+  const columnas = [
+    'id', 'imei', 'estado', 'tienda_actual', 'precio_tienda',
+    'producto_id', 'created_at', 'productos(nombre, categoria)',
+    'tiendas:tienda_actual(nombre)',
+  ];
+  if (esCentral()) columnas.splice(5, 0, 'costo_remision');
+  const { data, error } = await sb.from('unidades')
+    .select(inventarioDomain.columnasUnidades(esCentral()))
+    .order('created_at', { ascending: false });
+  if (error) { document.getElementById('emptyCelulares').style.display = 'block'; document.getElementById('emptyCelulares').textContent = 'Error: ' + error.message; return; }
+  unidadesCache = data || [];
+  renderCelulares();
+}
+
+async function cargarAccesorios() {
+  const columnas = [
+    'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
+    'productos(nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
+  ];
+  if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
+  const { data, error } = await sb.from('stock_cantidad')
+    .select(inventarioDomain.columnasStock(esCentral()))
+    .order('updated_at', { ascending: false });
+  if (error) { document.getElementById('emptyAccesorios').style.display = 'block'; document.getElementById('emptyAccesorios').textContent = 'Error: ' + error.message; return; }
+  stockCache = data || [];
+  renderAccesorios();
+}
+
+function renderResumen() {
+  const resumen = inventarioDomain.resumirInventario({
+    unidades: unidadesCache,
+    stock: stockCache,
+    tiendaCodigo: tiendaActiva(),
+    esCentral: esCentral(),
+  });
+
+  let cards = `
+    <div class="resumen-card"><div class="label">Celulares disponibles</div><div class="valor">${resumen.celularesDisponibles}</div></div>
+    <div class="resumen-card"><div class="label">Accesorios disponibles</div><div class="valor">${resumen.accesoriosDisponibles}</div></div>
+    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Valor inventario (mi costo)'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
+  `;
+  if (esCentral()) {
+    cards += `<div class="resumen-card"><div class="label">Costo interno Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
+  }
+  if (resumen.preciosPendientes > 0) {
+    cards += `<div class="resumen-card"><div class="label">Precios de tienda pendientes</div><div class="valor">${resumen.preciosPendientes}</div></div>`;
+  }
+  document.getElementById('resumenCards').innerHTML = cards;
+}
+
+function renderCelulares() {
+  const tienda = document.getElementById('filtroTiendaCel').value;
+  const estado = document.getElementById('filtroEstadoCel').value;
+  const producto = document.getElementById('filtroProductoCel').value;
+  const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
+
+  const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
+  const filtradas = unidadesCache.filter(u => {
+    if (tiendaPermitida && u.tienda_actual !== tiendaPermitida) return false;
+    if (estado && u.estado !== estado) return false;
+    if (producto && u.producto_id !== producto) return false;
+    if (imei && !(u.imei || '').toLowerCase().includes(imei)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tbodyCelulares');
+  const empty = document.getElementById('emptyCelulares');
+  if (!filtradas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay unidades con estos filtros.'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtradas.map(u => `
+    <tr data-id="${u.id}">
+      <td>${escapeHtml(u.imei)}</td>
+      <td>${escapeHtml(u.productos?.nombre || '—')}</td>
+      <td><span class="badge ${u.estado}">${u.estado}</span></td>
+      <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
+      <td>${inventarioDomain.valorVisibleUnidad(u, esCentral()) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, esCentral()))}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirHistorial(tr.dataset.id)));
+}
+
+function renderAccesorios() {
+  const tienda = document.getElementById('filtroTiendaAcc').value;
+  const categoria = document.getElementById('filtroCategoriaAcc').value;
+  const soloAgotados = document.getElementById('chkAgotados').checked;
+
+  const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
+  const filtrados = stockCache.filter(r => {
+    if (tiendaPermitida && r.tienda_codigo !== tiendaPermitida) return false;
+    if (categoria && r.productos?.categoria !== categoria) return false;
+    if (soloAgotados && r.cantidad > 0) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tbodyAccesorios');
+  const empty = document.getElementById('emptyAccesorios');
+  if (!filtrados.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay accesorios con estos filtros.'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtrados.map(r => {
+    const bajoStock = r.cantidad < 3;
+    const costoVisible = inventarioDomain.valorVisibleStock(r, esCentral());
+    return `
+      <tr class="${bajoStock ? 'fila-bajo-stock' : ''}">
+        <td>${escapeHtml(r.productos?.nombre || '—')}</td>
+        <td>${escapeHtml(r.tiendas?.nombre || r.tienda_codigo || '—')}</td>
+        <td>${r.cantidad}${bajoStock ? ' ⚠️' : ''}</td>
+        <td>${costoVisible === null ? 'Pendiente' : fmtCOP(costoVisible)}</td>
+        <td>${costoVisible === null ? 'Pendiente' : fmtCOP(r.cantidad * costoVisible)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function abrirHistorial(unidadId) {
+  const unidad = unidadesCache.find(u => u.id === unidadId);
+  document.getElementById('histTitulo').textContent = 'Historial — ' + (unidad?.imei || '');
+  document.getElementById('histSub').textContent = unidad?.productos?.nombre || '';
+  document.getElementById('histLista').innerHTML = 'Cargando...';
+  document.getElementById('modalHistorial').classList.add('show');
+
+  const { data, error } = await sb.from('movimientos')
+    .select('tipo, nota, created_at')
+    .eq('unidad_id', unidadId)
+    .order('created_at', { ascending: false });
+  if (error) { document.getElementById('histLista').textContent = 'Error: ' + error.message; return; }
+  if (!data || !data.length) { document.getElementById('histLista').innerHTML = '<div class="empty-state">Sin movimientos registrados.</div>'; return; }
+
+  document.getElementById('histLista').innerHTML = data.map(m => `
+    <div class="hist-item">
+      <div><div class="tipo">${escapeHtml(m.tipo)}</div><div>${escapeHtml(m.nota || '')}</div></div>
+      <div class="fecha">${new Date(m.created_at).toLocaleString('es-CO')}</div>
+    </div>
+  `).join('');
+}
+
+function datosExportables() {
+  if (tabActual === 'celulares') {
+    const tienda = esCentral() ? document.getElementById('filtroTiendaCel').value : currentPerfil.tienda_codigo;
+    const estado = document.getElementById('filtroEstadoCel').value;
+    const producto = document.getElementById('filtroProductoCel').value;
+    const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
+    return unidadesCache.filter(unidad => {
+      if (tienda && unidad.tienda_actual !== tienda) return false;
+      if (estado && unidad.estado !== estado) return false;
+      if (producto && unidad.producto_id !== producto) return false;
+      if (imei && !(unidad.imei || '').toLowerCase().includes(imei)) return false;
+      return true;
+    });
+  }
+  const tienda = esCentral() ? document.getElementById('filtroTiendaAcc').value : currentPerfil.tienda_codigo;
+  const categoria = document.getElementById('filtroCategoriaAcc').value;
+  const soloAgotados = document.getElementById('chkAgotados').checked;
+  return stockCache.filter(registro => {
+    if (tienda && registro.tienda_codigo !== tienda) return false;
+    if (categoria && registro.productos?.categoria !== categoria) return false;
+    if (soloAgotados && Number(registro.cantidad || 0) > 0) return false;
+    return true;
+  });
+}
+
+function descargarInventario(conteoCiego) {
+  const corte = inventarioExport.fechaCorte();
+  const filas = datosExportables();
+  if (!conteoCiego) {
+    const libro = inventarioExport.crearLibroInventario({
+      XLSX,
+      tipo: tabActual,
+      registros: filas,
+      esCentral: esCentral(),
+      corte,
+    });
+    XLSX.writeFile(libro, `inventario-${tabActual}-${corte.slice(0, 10)}.xlsx`);
+    return;
+  }
+  const contenido = tabActual === 'celulares'
+    ? inventarioExport.exportarCelulares({ unidades: filas, esCentral: esCentral(), conteoCiego, corte })
+    : inventarioExport.exportarAccesorios({ stock: filas, esCentral: esCentral(), conteoCiego, corte });
+  const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8' });
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = `inventario-${tabActual}-${corte.slice(0, 10)}${conteoCiego ? '-ciego' : ''}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  const url = enlace.href;
+  enlace.remove();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+:root{--azul:#0B1E3D;--turquesa:#00C4CC;--fondo:#F5F5F7;--borde:rgba(11,30,61,.1);--muted:#6E6E76;--rojo:#B42318;--verde:#067647}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--azul);font-family:'DM Sans',sans-serif}
+.main-content{min-width:0;flex:1}
+.page{max-width:1440px;margin:auto;padding:32px 24px 60px}
+.head,.toolbar,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.head{justify-content:space-between;margin-bottom:20px}
+h1,h2{font-family:Montserrat,sans-serif;margin:0}
+h1{font-size:25px}
+.subtitle,.muted{color:var(--muted)}
+.subtitle{margin-top:5px}
+.card,.table-wrap{background:#fff;border:1px solid var(--borde);border-radius:12px;box-shadow:0 1px 3px rgba(11,30,61,.04)}
+.card{padding:20px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.metric{padding:17px;background:#fff;border:1px solid var(--borde);border-radius:12px}
+.metric small{display:block;color:var(--muted);margin-bottom:6px}
+.metric strong{font:700 21px Montserrat}
+.toolbar{padding:16px;margin-bottom:18px}
+.control{min-height:44px;border:1px solid var(--borde);border-radius:12px;background:#fff;padding:0 16px;font:inherit;color:inherit}
+.toolbar .control{flex:1;min-width:145px}
+.btn{min-height:44px;border:0;border-radius:12px;padding:0 16px;font:700 13px 'DM Sans';cursor:pointer;transition:transform 120ms ease}
+.btn:active:not(:disabled){transform:scale(.985)}
+.btn.primary{background:var(--turquesa);color:#0B1E3D}
+.btn.secondary{background:#fff;color:var(--azul);border:1px solid var(--borde)}
+.btn.danger{background:#FEE4E2;color:var(--rojo)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:12px 14px;border-bottom:1px solid var(--borde);text-align:left;white-space:nowrap}
+th{font-size:10.5px;color:var(--muted);text-transform:uppercase;background:#FAFAFB}
+.badge{display:inline-block;border-radius:999px;padding:4px 9px;background:#EEF2F6}
+.badge.activo,.badge.activa,.badge.aprobado,.badge.pagada{background:#DCFCE7;color:var(--verde)}
+.badge.suspendido,.badge.rechazado,.badge.vencido{background:#FEE4E2;color:var(--rojo)}
+.badge.futura,.badge.pendiente{background:#FEF0C7;color:#93370D}
+.empty{padding:42px 22px;text-align:center;color:var(--muted)}
+.hidden{display:none!important}
+.denied{min-height:70vh;display:grid;place-items:center;text-align:center}
+.notice{padding:12px 14px;border-radius:12px;background:#ECFDF3;color:var(--verde);margin-bottom:14px}
+.notice.error{background:#FEF3F2;color:var(--rojo)}
+.modal{position:fixed;inset:0;z-index:70;background:rgba(11,30,61,.42);display:none;place-items:center;padding:20px}
+.modal.show{display:grid}
+.modal-box{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:12px;padding:24px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form-grid label{display:grid;gap:6px;font-size:13px}
+.span-2{grid-column:1/-1}
+.section{margin-top:18px}
+.section h2{font-size:16px;margin-bottom:12px}
+@media(max-width:720px){.page{padding:76px 14px 40px}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}h1{font-size:21px}.toolbar .control{min-width:100%}}

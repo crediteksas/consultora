@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Registrar cliente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <style>
+    :root {
+      --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7;
+      --surface: #FFFFFF; --border: rgba(11,30,61,0.08);
+      --text2: #6E6E76; --rojo: #DC2626; --radius: 18px;
+      --radius-sm: 11px;
+      --shadow-sm: 0 1px 2px rgba(11,30,61,0.04), 0 1px 1px rgba(11,30,61,0.03);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--azul); -webkit-font-smoothing:antialiased; }
+    .registro-interno { width:100%; }
+    .page { max-width:960px; margin:0 auto; padding:32px 24px 60px; }
+    .page-header { margin-bottom:20px; }
+    .page-header .eyebrow { margin:0 0 5px; color:var(--turquesa); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    .page-header h1 { margin:0; font-family:'Montserrat',sans-serif; font-size:24px; font-weight:800; letter-spacing:-.02em; }
+    .page-header .subtitle { margin:7px 0 0; color:var(--text2); font-size:13.5px; }
+    .form-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow-sm); }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field.full { grid-column:1/-1; }
+    .field label { color:var(--text2); font-size:12px; font-weight:600; }
+    .field input,.field select { width:100%; min-height:43px; border:1px solid transparent; border-radius:var(--radius-sm); padding:10px 12px; background:var(--bg); color:var(--azul); font:inherit; transition:all .15s ease; }
+    .field input:focus,.field select:focus { outline:none; background:white; border-color:var(--turquesa); box-shadow:0 0 0 3px rgba(0,196,204,.12); }
+    .consentimiento { padding:13px 14px; border-radius:var(--radius-sm); background:var(--bg); color:var(--azul) !important; }
+    .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+    .actions a,.actions button { border:0; border-radius:999px; padding:11px 18px; font:inherit; font-size:13.5px; font-weight:700; text-decoration:none; cursor:pointer; }
+    .actions a { background:var(--bg); color:var(--text2); }
+    .actions button { background:var(--turquesa); color:white; box-shadow:0 6px 16px -4px rgba(0,196,204,.5); }
+    .actions button:disabled { background:#D2D2D7; box-shadow:none; cursor:not-allowed; }
+    .message { margin-top:16px; padding:12px; border-radius:10px; display:none; }
+    .message.show { display:block; }
+    .message.error { color:#991b1b; background:#fef2f2; }
+    .message.success { color:#166534; background:#f0fdf4; }
+    @media(max-width:720px){.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.page{padding:20px 16px 40px}.form-card{padding:18px}}
+  </style>
+</head>
+<body data-kora-requires-auth="true">
+<main id="app" class="registro-interno" hidden>
+ <div class="page">
+  <header class="page-header">
+    <p class="eyebrow">Clientes</p>
+    <h1>Registrar cliente</h1>
+    <p class="subtitle">Registro interno para personal autenticado de KORA.</p>
+  </header>
+  <form id="formCliente" class="form-card" novalidate>
+    <div class="form-grid">
+      <div class="field"><label for="cedula">Cédula</label><input id="cedula" inputmode="numeric" maxlength="12" required></div>
+      <div class="field"><label for="nombre">Nombre completo</label><input id="nombre" maxlength="160" required></div>
+      <div class="field"><label for="celular">Celular</label><input id="celular" inputmode="numeric" maxlength="10" required></div>
+      <div class="field"><label for="email">Correo (opcional)</label><input id="email" type="email" maxlength="180"></div>
+      <div class="field"><label for="ciudad">Ciudad</label><input id="ciudad" maxlength="120" required></div>
+      <div class="field"><label for="direccion">Dirección</label><input id="direccion" maxlength="220" required></div>
+      <div class="field"><label for="tienda">Tienda</label><select id="tienda" required></select></div>
+      <div class="field"><label for="producto">Producto de interés</label><input id="producto" maxlength="180"></div>
+      <div class="field"><label for="financiera">Financiera</label><select id="financiera"><option value="">No definida</option><option>PayJoy</option><option>Alo Credit</option><option>Addi</option><option>Krediya</option></select></div>
+      <label class="field full consentimiento"><span><input id="autorizacion" type="checkbox" required> El cliente autorizó el tratamiento de datos.</span></label>
+    </div>
+    <div id="mensaje" class="message" role="status" aria-live="polite"></div>
+    <div class="actions"><a href="ventas.html">Cancelar</a><button id="guardar" type="submit">Registrar cliente</button></div>
+  </form>
+ </div>
+</main>
+<script>
+let sb = null;
+let perfil = null;
+
+function mensaje(texto, tipo) {
+  const el = document.getElementById('mensaje');
+  el.textContent = texto;
+  el.className = `message show ${tipo}`;
+}
+
+function mensajeErrorRegistro(error) {
+  const codigo = String(error?.message || '');
+  if (codigo.includes('vendedor_deshabilitado')) {
+    return 'Tu usuario vendedor está deshabilitado. Solicita al administrador que lo habilite para registrar clientes.';
+  }
+  if (codigo.includes('ya_existe_cliente_cedula')) {
+    return 'Ya existe un cliente con esta cédula.';
+  }
+  if (codigo.includes('ya_existe_cliente_celular')) {
+    return 'Ya existe un cliente con este celular.';
+  }
+  if (codigo.includes('registro_cliente_tienda_no_autorizada')) {
+    return 'No tienes permiso para registrar clientes en esta tienda.';
+  }
+  return 'No se pudo registrar el cliente. Verifica la información e intenta de nuevo.';
+}
+
+function esperarContexto() {
+  if (window.creditekSidebar?.sb && window.creditekSidebar?.perfil) {
+    return Promise.resolve(window.creditekSidebar);
+  }
+  return new Promise(resolve => {
+    document.addEventListener('kora-sidebar-ready', () => resolve(window.creditekSidebar), { once: true });
+  });
+}
+
+async function iniciar() {
+  const contexto = await esperarContexto();
+  sb = contexto.sb;
+  perfil = contexto.perfil;
+  if (!perfil?.activo || !['gerencia','auditoria','admin_tienda','asesor'].includes(perfil.rol)) {
+    const app = document.getElementById('app');
+    app.hidden = false;
+    app.classList.add('show');
+    mensaje('No tienes permiso para registrar clientes.', 'error');
+    return;
+  }
+  const tienda = document.getElementById('tienda');
+  if (['gerencia','auditoria'].includes(perfil.rol)) {
+    const tiendas = contexto.tiendas || [];
+    tienda.innerHTML = '<option value="">Selecciona una tienda</option>' + (tiendas || []).map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('');
+  } else {
+    tienda.innerHTML = `<option value="${perfil.tienda_codigo}">${perfil.tienda_codigo}</option>`;
+    tienda.disabled = true;
+  }
+  const app = document.getElementById('app');
+  app.hidden = false;
+  app.classList.add('show');
+}
+
+document.getElementById('formCliente').addEventListener('submit', async event => {
+  event.preventDefault();
+  const cedula = document.getElementById('cedula').value.trim();
+  const celular = document.getElementById('celular').value.trim();
+  if (!/^[0-9]{5,12}$/.test(cedula)) return mensaje('Ingresa una cédula válida.', 'error');
+  if (!/^3[0-9]{9}$/.test(celular)) return mensaje('Ingresa un celular colombiano válido.', 'error');
+  if (!document.getElementById('autorizacion').checked) return mensaje('Confirma la autorización de tratamiento de datos.', 'error');
+  const boton = document.getElementById('guardar');
+  boton.disabled = true;
+  const { data, error } = await sb.rpc('crear_cliente_interno_seguro', {
+    p_cedula: cedula,
+    p_nombre_completo: document.getElementById('nombre').value.trim(),
+    p_celular: celular,
+    p_email: document.getElementById('email').value.trim() || null,
+    p_ciudad: document.getElementById('ciudad').value.trim(),
+    p_direccion: document.getElementById('direccion').value.trim(),
+    p_origen_codigo: document.getElementById('tienda').value,
+    p_producto_interes: document.getElementById('producto').value.trim() || null,
+    p_financiera: document.getElementById('financiera').value || null,
+  });
+  boton.disabled = false;
+  if (error || !data?.ok) return mensaje(mensajeErrorRegistro(error), 'error');
+  mensaje('Cliente registrado correctamente.', 'success');
+  event.target.reset();
+  if (!['gerencia','auditoria'].includes(perfil.rol)) document.getElementById('tienda').value = perfil.tienda_codigo;
+});
+
+iniciar().catch(error => {
+  const app = document.getElementById('app');
+  app.hidden = false;
+  app.classList.add('show');
+  mensaje(`No se pudo abrir el registro interno: ${error.message}`, 'error');
+});
+</script>
+</body>
+</html>

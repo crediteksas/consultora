@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creditek · Catálogo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="producto-foto.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+<style>
+:root {
+  --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
+  --border: rgba(11,30,61,0.08); --text2: #6E6E76; --verde: #16A34A; --amarillo: #D97706; --rojo: #DC2626;
+  --radius: 18px; --radius-sm: 11px;
+  --shadow-sm: 0 1px 2px rgba(11,30,61,0.04), 0 1px 1px rgba(11,30,61,0.03);
+  --shadow-md: 0 12px 28px -10px rgba(11,30,61,0.16);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--azul); -webkit-font-smoothing: antialiased; }
+
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at 30% 20%, #EAFBFC 0%, var(--bg) 55%); }
+.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; width: 100%; max-width: 360px; box-shadow: var(--shadow-md); }
+.login-box img.logo { display: block; height: 40px; margin: 0 auto 22px; object-fit: contain; }
+.login-box input { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 15px; margin-bottom: 12px; font-family: inherit; transition: all .15s ease; }
+.login-box input:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 4px rgba(0,196,204,0.14); }
+.login-box button { width: 100%; background: var(--turquesa); color: white; border: none; border-radius: var(--radius-sm); padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); transition: transform .12s ease, box-shadow .12s ease; }
+.login-box button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -4px rgba(0,196,204,0.55); }
+.login-box button:disabled { background: #D2D2D7; box-shadow: none; }
+.login-err { color: var(--rojo); font-size: 12.5px; margin-top: 10px; display: none; }
+.login-err.show { display: block; }
+
+.sin-perfil-screen { min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.sin-perfil-screen.show { display: flex; }
+.sin-perfil-box { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 40px 32px; max-width: 380px; box-shadow: var(--shadow-md); }
+.sin-perfil-box .icono { font-size: 34px; margin-bottom: 12px; }
+.sin-perfil-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 8px; }
+.sin-perfil-box p { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin-bottom: 18px; }
+.sin-perfil-box button { border: 1px solid var(--border); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; cursor: pointer; color: var(--azul); font-weight: 600; }
+
+#app { display: none; }
+#app.show { display: flex; }
+.navbar { background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 18px; position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
+.navbar img.logo { height: 26px; object-fit: contain; flex-shrink: 0; }
+.nav-links { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-links a { white-space: nowrap; text-decoration: none; color: var(--text2); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; transition: background .15s ease, color .15s ease; }
+.nav-links a:hover { background: rgba(11,30,61,0.05); color: var(--azul); }
+.nav-links a.active { background: var(--azul); color: white; box-shadow: var(--shadow-sm); }
+.nav-user { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text2); flex-shrink: 0; }
+.nav-user .quien { text-align: right; line-height: 1.3; }
+.nav-user .quien b { color: var(--azul); font-size: 12.5px; }
+.nav-user button { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; color: var(--text2); font-weight: 600; transition: background .15s ease; }
+.nav-user button:hover { background: #EAEAEC; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
+.page-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.page-top h1 { font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.btn-primary { background: var(--turquesa); color: white; border: none; border-radius: 999px; padding: 11px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); transition: transform .12s ease; }
+.btn-primary:hover { transform: translateY(-1px); }
+
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.filters select, .filters input { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); padding: 9px 13px; font-size: 13px; font-family: inherit; color: var(--azul); }
+.filters select:focus, .filters input:focus { outline: none; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
+
+.tabla-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+th { background: rgba(11,30,61,0.02); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); font-weight: 700; }
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .12s ease; }
+tbody tr:hover { background: rgba(11,30,61,0.02); }
+.tag { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #E8F4F8; color: var(--azul); }
+.tag.cantidad { background: #FEF3C7; color: #92400E; }
+.link-edit { color: var(--turquesa); font-weight: 700; font-size: 12.5px; cursor: pointer; background: none; border: none; }
+.empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 56px 0; }
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal-bg.show { display: flex; }
+.modal-box { background: var(--surface); border-radius: 20px; padding: 26px 24px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-box h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; margin-bottom: 18px; }
+.campo { margin-bottom: 13px; }
+.campo label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+.campo input, .campo select { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-family: inherit; transition: all .15s ease; }
+.campo input:focus, .campo select:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
+.modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+.modal-actions button { flex: 1; border: none; border-radius: 999px; padding: 12px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: transform .12s ease; }
+.modal-actions button:hover { transform: translateY(-1px); }
+.modal-actions .btn-cancelar { background: var(--bg); color: var(--text2); }
+.modal-actions .btn-guardar { background: var(--turquesa); color: white; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); }
+.modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
+.modal-err.show { display: block; }
+.modal-ok { color: var(--verde); font-size: 12.5px; margin-top: 8px; display: none; font-weight: 700; }
+.modal-ok.show { display: block; }
+.foto-cell img, .foto-cell .sin-foto { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; }
+.foto-cell .sin-foto { display: inline-flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text2); font-size: 15px; }
+.campo small { display: block; margin-top: 5px; font-size: 11.5px; color: var(--text2); }
+#preview-foto img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+.foto-modal-preview img { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); }
+</style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <img class="logo" src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
+    <input type="email" id="loginEmail" placeholder="Correo" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btnLogin">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="sin-perfil-screen" id="sinPerfilScreen">
+  <div class="sin-perfil-box">
+    <div class="icono">🔒</div>
+    <h2>Sin perfil asignado</h2>
+    <p>Tu usuario no tiene perfil asignado. Contacta al administrador.</p>
+    <button id="btnSalirSinPerfil">Cerrar sesión</button>
+  </div>
+</div>
+
+<div id="app">
+  <div style="display:none;" aria-hidden="true">
+    <b id="navNombre"></b><span id="navRolTienda"></span><button id="btnLogout"></button>
+  </div>
+  <div class="main-content">
+
+  <div class="page">
+    <div class="page-top">
+      <h1>Catálogo de productos</h1>
+      <button class="btn-primary" id="btnNuevoProducto" style="display:none;">+ Nuevo producto</button>
+    </div>
+
+    <div class="filters">
+      <input type="text" id="filtroBusqueda" placeholder="Buscar por nombre o código...">
+      <select id="filtroCategoria"><option value="">Todas las categorías</option></select>
+      <select id="filtroTipo">
+        <option value="">Todos los tipos</option>
+        <option value="serializado">Serializado (IMEI)</option>
+        <option value="cantidad">Cantidad</option>
+      </select>
+    </div>
+
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <!-- FIX 23-jul-2026 · "Margen" solo para gerencia/auditoria (clase solo-central).
+               "Precio guía" se renombra a "Mi costo" — para tienda muestra precio_tienda
+               (el precio de remisión que recibió); para central muestra precio_guia (referencial). -->
+          <tr><th>Foto</th><th>Código</th><th>Nombre</th><th>Categoría</th><th>Tipo</th><th class="solo-central">Margen</th><th id="thPrecio" class="solo-tienda">Mi costo</th><th id="thAcciones" style="display:none;">Acciones</th></tr>
+        </thead>
+        <tbody id="tbodyProductos"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">Cargando productos...</div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalProducto">
+  <div class="modal-box">
+    <h2 id="modalTitulo">Nuevo producto</h2>
+    <input type="hidden" id="prodId">
+    <input type="hidden" id="prodFotoActual">
+    <div class="campo"><label>Código</label><input type="text" id="prodCodigo" placeholder="Ej. SAM-A17"></div>
+    <div class="campo"><label>Nombre</label><input type="text" id="prodNombre" placeholder="Ej. Samsung Galaxy A17 4G"></div>
+    <div class="campo solo-central">
+      <label>Categoría *</label>
+      <select id="prodCategoria"></select>
+      <small>Determina el margen por defecto para nuevas compras. Se puede ajustar por producto abajo.</small>
+    </div>
+    <div class="campo">
+      <label>Tipo</label>
+      <select id="prodTipo">
+        <option value="serializado">serializado (tiene IMEI, ej. celulares)</option>
+        <option value="cantidad">cantidad (stock agregado, ej. accesorios)</option>
+      </select>
+    </div>
+    <!-- SPEC v2 23-jul-2026: margen por producto — se pre-llena desde la categoría al elegirla. Mayte puede cambiarlo. -->
+    <div class="campo solo-central" style="display:flex; gap:8px; align-items:end">
+      <div style="flex:0 0 90px">
+        <label>Margen</label>
+        <select id="prodMargenTipo">
+          <option value="porcentaje">%</option>
+          <option value="valor_fijo">$</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label id="prodMargenLabel">Valor (%)</label>
+        <input type="number" id="prodMargenValor" min="0" step="0.01" placeholder="0">
+      </div>
+    </div>
+    <div class="campo"><label>Precio guía</label><input type="number" id="prodPrecioGuia" placeholder="0" min="0"></div>
+    <div class="campo solo-central">
+      <label>Foto del producto</label>
+      <input type="file" id="input-foto" accept="image/jpeg,image/png,image/webp">
+      <div id="preview-foto" style="margin-top:.5rem;"></div>
+      <button type="button" class="link-edit" id="btnEliminarFotoProducto" hidden>Eliminar foto</button>
+    </div>
+    <div class="modal-err" id="modalErr"></div>
+    <div class="modal-ok" id="modalOk">Producto guardado.</div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarModal">Cancelar</button>
+      <button class="btn-guardar" id="btnGuardarProducto">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalFotoProducto">
+  <div class="modal-box">
+    <h2>Foto del producto</h2>
+    <input type="hidden" id="fotoProductoId">
+    <input type="hidden" id="fotoProductoCodigo">
+    <div class="campo">
+      <label id="fotoProductoNombre">Producto</label>
+      <input type="file" id="fotoProductoArchivo" accept="image/jpeg,image/png,image/webp">
+      <small>JPG, PNG o WEBP. Máximo 5 MB.</small>
+    </div>
+    <div class="foto-modal-preview" id="fotoProductoPreview"></div>
+    <div class="modal-err" id="fotoProductoErr"></div>
+    <div class="modal-ok" id="fotoProductoOk">Foto guardada.</div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarFoto">Cancelar</button>
+      <button class="btn-guardar" id="btnGuardarFoto">Guardar foto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const productoFoto = window.CreditekProductoFoto;
+
+let currentUser = null;
+let currentPerfil = null;
+let productosCache = [];
+let categoriasCache = []; // SPEC v2 — 7 categorías fijas con margen default
+
+function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+
+// SPEC v2 — helper para pintar la etiqueta del margen según el tipo.
+function actualizarLabelMargen() {
+  const tipo = document.getElementById('prodMargenTipo').value;
+  document.getElementById('prodMargenLabel').textContent = tipo === 'porcentaje' ? 'Valor (%)' : 'Valor ($)';
+}
+
+// SPEC v2 — al cambiar categoría, pre-llenar margen_tipo/margen_valor.
+function onCategoriaCambiada() {
+  const cod = document.getElementById('prodCategoria').value;
+  const cat = categoriasCache.find(c => c.codigo === cod);
+  if (!cat) return;
+  document.getElementById('prodMargenTipo').value = cat.margen_tipo;
+  document.getElementById('prodMargenValor').value = cat.margen_valor;
+  actualizarLabelMargen();
+}
+
+document.getElementById('btnLogin').addEventListener('click', hacerLogin);
+document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
+
+async function hacerLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const btn = document.getElementById('btnLogin');
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if (!email || !password) return;
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) { err.textContent = 'Correo o contraseña incorrectos.'; err.classList.add('show'); return; }
+  entrarApp(data.user);
+}
+
+document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
+document.getElementById('btnSalirSinPerfil').addEventListener('click', cerrarSesion);
+async function cerrarSesion() { await sb.auth.signOut(); location.reload(); }
+
+async function entrarApp(user) {
+  currentUser = user;
+  const { data: perfil, error } = await sb.from('perfiles').select('*').eq('id', user.id).maybeSingle();
+  if (error || !perfil || !perfil.activo) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('sinPerfilScreen').classList.add('show');
+    return;
+  }
+  currentPerfil = perfil;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  pintarNavUser();
+  initPagina();
+}
+
+function pintarNavUser() {
+  document.getElementById('navNombre').textContent = currentPerfil.nombre || currentUser.email;
+  const rolLabel = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' }[currentPerfil.rol] || currentPerfil.rol;
+  document.getElementById('navRolTienda').textContent = currentPerfil.tienda_codigo ? `${rolLabel} · ${currentPerfil.tienda_codigo}` : rolLabel;
+}
+
+sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
+
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// ─── Página: Catálogo ─────────────────────────────────────────────────
+function initPagina() {
+  const permisos = productoFoto.permisosCatalogo(currentPerfil.rol);
+  if (permisos.puedeEditarProducto) {
+    document.getElementById('btnNuevoProducto').style.display = 'inline-block';
+  } else {
+    document.querySelectorAll('.solo-central').forEach(el => el.style.display = 'none');
+  }
+  if (permisos.puedeGestionarFoto || permisos.puedeEditarProducto) {
+    document.getElementById('thAcciones').style.display = '';
+  }
+  if (esCentral()) {
+    document.querySelectorAll('.solo-tienda').forEach(el => el.style.display = 'none');
+  }
+
+  document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
+  document.getElementById('filtroCategoria').addEventListener('change', renderTabla);
+  document.getElementById('filtroTipo').addEventListener('change', renderTabla);
+
+  document.getElementById('btnNuevoProducto').addEventListener('click', () => abrirModalProducto(null));
+  document.getElementById('btnCancelarModal').addEventListener('click', cerrarModalProducto);
+  document.getElementById('btnGuardarProducto').addEventListener('click', guardarProducto);
+  document.getElementById('btnEliminarFotoProducto').addEventListener('click', eliminarFotoProducto);
+  document.getElementById('prodCategoria').addEventListener('change', onCategoriaCambiada);
+  document.getElementById('prodMargenTipo').addEventListener('change', actualizarLabelMargen);
+  document.getElementById('btnCancelarFoto').addEventListener('click', cerrarModalFoto);
+  document.getElementById('btnGuardarFoto').addEventListener('click', guardarFotoProducto);
+  document.getElementById('fotoProductoArchivo').addEventListener('change', previsualizarFotoTienda);
+
+  cargarCategorias();
+  cargarProductos();
+}
+
+// SPEC v2 · 23-jul-2026 — se reemplaza el datalist libre + view categorias_activas
+// (legacy) por la tabla categorias_producto (7 fijas con margen default).
+async function cargarCategorias() {
+  const { data, error } = await sb.from('categorias_producto')
+    .select('codigo, nombre, margen_tipo, margen_valor, orden')
+    .order('orden');
+  if (error) { console.error('categorias:', error); return; }
+  categoriasCache = data || [];
+
+  const selForm = document.getElementById('prodCategoria');
+  selForm.innerHTML = categoriasCache.map(c => `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.nombre)}</option>`).join('');
+
+  const selFiltro = document.getElementById('filtroCategoria');
+  const actual = selFiltro.value;
+  selFiltro.innerHTML = '<option value="">Todas las categorías</option>' +
+    categoriasCache.map(c => `<option value="${escapeHtml(c.codigo)}">${escapeHtml(c.nombre)}</option>`).join('');
+  if (categoriasCache.some(c => c.codigo === actual)) selFiltro.value = actual;
+}
+
+function nombreCategoria(codigo) {
+  const c = categoriasCache.find(x => x.codigo === codigo);
+  return c ? c.nombre : (codigo || '—');
+}
+
+function fmtMargen(tipo, valor) {
+  if (valor == null) return '—';
+  return tipo === 'porcentaje' ? `${valor}%` : `+${fmtCOP(valor)}`;
+}
+
+async function subirFotoProducto(productoId, archivo) {
+  const validacion = productoFoto.validarArchivo(archivo);
+  if (validacion) throw new Error(validacion);
+  const nombreArchivo = `canonicas/${productoId}`;
+
+  const { error } = await sb.storage
+    .from('productos-fotos')
+    .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: true });
+
+  if (error) throw error;
+
+  const { data: { publicUrl } } = sb.storage.from('productos-fotos').getPublicUrl(nombreArchivo);
+  return publicUrl;
+}
+
+async function cargarProductos() {
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('emptyState').textContent = 'Cargando productos...';
+  const { data, error } = await sb.from('productos')
+    .select(productoFoto.columnasProductos(currentPerfil.rol))
+    .eq('activo', true)
+    .order('nombre');
+  if (error) {
+    document.getElementById('emptyState').textContent = 'Error cargando productos: ' + error.message;
+    return;
+  }
+  productosCache = data || [];
+
+  // FIX 23-jul-2026 · para admin_tienda, mostrar el precio_tienda del stock de
+  // SU tienda (lo que Andrea le paga a Creditek al recibir la remisión), no el
+  // precio_guia del catálogo (que es solo referencial interno). Para gerencia/
+  // auditoría, se conserva precio_guia. El header dice "Mi costo" para tienda
+  // y "Precio guía" para central (se re-etiqueta abajo).
+  if (!esCentral() && currentPerfil?.tienda_codigo) {
+    const [stocks, unidades] = await Promise.all([
+      sb.from('stock_cantidad').select('producto_id, precio_tienda')
+        .eq('tienda_codigo', currentPerfil.tienda_codigo).not('precio_tienda', 'is', null),
+      sb.from('unidades').select('producto_id, precio_tienda')
+        .eq('tienda_actual', currentPerfil.tienda_codigo)
+        .eq('estado', 'disponible').not('precio_tienda', 'is', null),
+    ]);
+    const stockMap = {};
+    (stocks.data || []).forEach(s => { stockMap[s.producto_id] = s.precio_tienda; });
+    (unidades.data || []).forEach(u => {
+      if (!stockMap[u.producto_id]) stockMap[u.producto_id] = u.precio_tienda;
+    });
+    productosCache.forEach(p => { p._precio_mostrar = stockMap[p.id] || null; });
+  } else {
+    productosCache.forEach(p => { p._precio_mostrar = null; });
+  }
+
+  renderTabla();
+}
+
+function renderTabla() {
+  const q = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
+  const cat = document.getElementById('filtroCategoria').value;
+  const tipo = document.getElementById('filtroTipo').value;
+
+  let filtrados = productosCache.filter(p => {
+    if (cat && p.categoria !== cat) return false;
+    if (tipo && p.tipo !== tipo) return false;
+    if (q && !(p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tbodyProductos');
+  const empty = document.getElementById('emptyState');
+  if (!filtrados.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'No hay productos con estos filtros.';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtrados.map(p => `
+    <tr>
+      <td class="foto-cell">${p.foto_url ? `<img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nombre)}">` : `<span class="sin-foto">📷</span>`}</td>
+      <td>${escapeHtml(p.codigo)}</td>
+      <td>${escapeHtml(p.nombre)}</td>
+      <td><span class="tag">${escapeHtml(nombreCategoria(p.categoria))}</span></td>
+      <td><span class="tag ${p.tipo === 'cantidad' ? 'cantidad' : ''}">${p.tipo}</span></td>
+      ${esCentral() ? `<td>${fmtMargen(p.margen_tipo, p.margen_valor)}</td>` : ''}
+      ${esCentral() ? '' : `<td>${p._precio_mostrar == null ? 'Pendiente' : fmtCOP(p._precio_mostrar)}</td>`}
+      ${productoFoto.permisosCatalogo(currentPerfil.rol).puedeEditarProducto
+        ? `<td><button class="link-edit" data-id="${p.id}">Editar</button></td>`
+        : productoFoto.permisosCatalogo(currentPerfil.rol).puedeGestionarFoto
+          ? `<td><button class="link-edit btn-foto" data-id="${p.id}">${p.foto_url ? 'Cambiar foto' : 'Agregar foto'}</button></td>`
+          : ''}
+    </tr>
+  `).join('');
+
+  if (productoFoto.permisosCatalogo(currentPerfil.rol).puedeEditarProducto) {
+    tbody.querySelectorAll('.link-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prod = productosCache.find(p => p.id === btn.dataset.id);
+        if (prod) abrirModalProducto(prod);
+      });
+    });
+  }
+  tbody.querySelectorAll('.btn-foto').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prod = productosCache.find(p => p.id === btn.dataset.id);
+      if (prod) abrirModalFoto(prod);
+    });
+  });
+}
+
+function abrirModalFoto(prod) {
+  document.getElementById('fotoProductoId').value = prod.id;
+  document.getElementById('fotoProductoCodigo').value = prod.codigo;
+  document.getElementById('fotoProductoNombre').textContent = prod.nombre;
+  document.getElementById('fotoProductoArchivo').value = '';
+  document.getElementById('fotoProductoPreview').innerHTML = prod.foto_url
+    ? `<img src="${escapeHtml(prod.foto_url)}" alt="${escapeHtml(prod.nombre)}">`
+    : '';
+  document.getElementById('fotoProductoErr').classList.remove('show');
+  document.getElementById('fotoProductoOk').classList.remove('show');
+  document.getElementById('modalFotoProducto').classList.add('show');
+}
+
+function cerrarModalFoto() {
+  document.getElementById('modalFotoProducto').classList.remove('show');
+}
+
+function previsualizarFotoTienda() {
+  const archivo = document.getElementById('fotoProductoArchivo').files[0];
+  const error = productoFoto.validarArchivo(archivo);
+  const err = document.getElementById('fotoProductoErr');
+  err.classList.toggle('show', !!error);
+  err.textContent = error;
+  if (!error) {
+    document.getElementById('fotoProductoPreview').innerHTML =
+      `<img src="${URL.createObjectURL(archivo)}" alt="Vista previa">`;
+  }
+}
+
+async function guardarFotoProducto() {
+  const archivo = document.getElementById('fotoProductoArchivo').files[0];
+  const err = document.getElementById('fotoProductoErr');
+  const validacion = productoFoto.validarArchivo(archivo);
+  if (validacion) {
+    err.textContent = validacion;
+    err.classList.add('show');
+    return;
+  }
+
+  const productoId = document.getElementById('fotoProductoId').value;
+  const codigoProducto = document.getElementById('fotoProductoCodigo').value;
+  const btn = document.getElementById('btnGuardarFoto');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  err.classList.remove('show');
+
+  try {
+    const fotoUrl = await productoFoto.subirFotoSegura({
+      sb,
+      productoId,
+      codigoProducto,
+      archivo,
+    });
+    const producto = productosCache.find(p => p.id === productoId);
+    if (producto) producto.foto_url = fotoUrl;
+    renderTabla();
+    document.getElementById('fotoProductoOk').classList.add('show');
+    setTimeout(cerrarModalFoto, 700);
+  } catch (error) {
+    err.textContent = 'No se pudo guardar la foto: ' + error.message;
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar foto';
+  }
+}
+
+function abrirModalProducto(prod) {
+  document.getElementById('modalTitulo').textContent = prod ? 'Editar producto' : 'Nuevo producto';
+  document.getElementById('prodId').value = prod ? prod.id : '';
+  document.getElementById('prodCodigo').value = prod ? prod.codigo : '';
+  document.getElementById('prodNombre').value = prod ? prod.nombre : '';
+  // Categoría default: la del producto si estamos editando, si no la primera del listado.
+  document.getElementById('prodCategoria').value = prod ? prod.categoria : (categoriasCache[0]?.codigo || '');
+  document.getElementById('prodTipo').value = prod ? prod.tipo : 'serializado';
+  document.getElementById('prodPrecioGuia').value = prod ? prod.precio_guia : '';
+  // SPEC v2 — margen: si es edición usar los del producto; si es nuevo tomar los de la categoría.
+  if (prod) {
+    document.getElementById('prodMargenTipo').value = prod.margen_tipo || 'porcentaje';
+    document.getElementById('prodMargenValor').value = prod.margen_valor != null ? prod.margen_valor : '';
+  } else {
+    onCategoriaCambiada(); // pre-llena desde la categoría default
+  }
+  actualizarLabelMargen();
+  document.getElementById('prodFotoActual').value = prod && prod.foto_url ? prod.foto_url : '';
+  document.getElementById('input-foto').value = '';
+  document.getElementById('preview-foto').innerHTML = prod && prod.foto_url
+    ? `<img src="${escapeHtml(prod.foto_url)}" alt="foto actual">`
+    : '';
+  document.getElementById('btnEliminarFotoProducto').hidden = !(prod && prod.foto_url);
+  document.getElementById('modalErr').classList.remove('show');
+  document.getElementById('modalOk').classList.remove('show');
+  document.getElementById('modalProducto').classList.add('show');
+}
+function cerrarModalProducto() { document.getElementById('modalProducto').classList.remove('show'); }
+
+async function guardarProducto() {
+  const id = document.getElementById('prodId').value;
+  const codigo = document.getElementById('prodCodigo').value.trim();
+  const nombre = document.getElementById('prodNombre').value.trim();
+  const categoria = document.getElementById('prodCategoria').value.trim();
+  const tipo = document.getElementById('prodTipo').value;
+  const precio_guia = document.getElementById('prodPrecioGuia').value ? Number(document.getElementById('prodPrecioGuia').value) : null;
+  // SPEC v2 — margen por producto
+  const margen_tipo = document.getElementById('prodMargenTipo').value;
+  const margenRaw = document.getElementById('prodMargenValor').value;
+  const margen_valor = margenRaw === '' ? 0 : Number(margenRaw);
+  const err = document.getElementById('modalErr');
+  err.classList.remove('show');
+
+  if (!codigo || !nombre || !categoria) { err.textContent = 'Código, nombre y categoría son obligatorios.'; err.classList.add('show'); return; }
+  if (margen_valor < 0) { err.textContent = 'El margen no puede ser negativo.'; err.classList.add('show'); return; }
+
+  const btn = document.getElementById('btnGuardarProducto');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  const archivo = document.getElementById('input-foto').files[0];
+
+  let productoDuplicado;
+  try {
+    productoDuplicado = await productoFoto.buscarProductoPorCodigo({ sb, codigo, productoId: id });
+  } catch (errorCodigo) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    err.textContent = 'No se pudo validar el código: ' + errorCodigo.message;
+    err.classList.add('show');
+    return;
+  }
+  if (productoDuplicado) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    err.textContent = 'Ya existe un producto con ese código.';
+    err.classList.add('show');
+    return;
+  }
+
+  let resultado;
+  const payload = { codigo, nombre, categoria, tipo, precio_guia, margen_tipo, margen_valor };
+  if (id) {
+    resultado = await sb.from('productos').update(payload).eq('id', id).select().maybeSingle();
+  } else {
+    resultado = await sb.from('productos').insert(payload).select().maybeSingle();
+  }
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+
+  if (resultado.error) {
+    err.textContent = resultado.error.message.includes('duplicate') || resultado.error.code === '23505'
+      ? 'Ya existe un producto con ese código.'
+      : 'No se pudo guardar: ' + resultado.error.message;
+    err.classList.add('show');
+    return;
+  }
+
+  if (archivo) {
+    try {
+      const productoId = resultado.data.id;
+      const fotoUrl = await subirFotoProducto(productoId, archivo);
+      const { error: fotoError } = await sb.rpc('gestionar_foto_producto_central', {
+        p_producto_id: productoId,
+        p_foto_url: fotoUrl,
+        p_motivo: id ? 'Reemplazo desde catálogo' : 'Carga inicial desde catálogo'
+      });
+      if (fotoError) throw fotoError;
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Guardar';
+      err.textContent = 'El producto se guardó, pero no se pudo registrar la foto: ' + e.message;
+      err.classList.add('show');
+      return;
+    }
+  }
+
+  document.getElementById('modalOk').classList.add('show');
+  await cargarCategorias();
+  await cargarProductos();
+  setTimeout(cerrarModalProducto, 700);
+}
+
+async function eliminarFotoProducto() {
+  const id = document.getElementById('prodId').value;
+  const fotoActual = document.getElementById('prodFotoActual').value;
+  if (!id || !fotoActual || !confirm('¿Eliminar la foto canónica de esta referencia?')) return;
+
+  const err = document.getElementById('modalErr');
+  err.classList.remove('show');
+  const { error } = await sb.rpc('gestionar_foto_producto_central', {
+    p_producto_id: id,
+    p_foto_url: null,
+    p_motivo: 'Eliminación desde catálogo'
+  });
+  if (error) {
+    err.textContent = 'No se pudo eliminar la foto: ' + error.message;
+    err.classList.add('show');
+    return;
+  }
+
+  const { error: storageError } = await sb.storage
+    .from('productos-fotos')
+    .remove([`canonicas/${id}`]);
+  if (storageError) {
+    err.textContent = 'La foto se retiró del catálogo, pero el archivo no pudo eliminarse: ' + storageError.message;
+    err.classList.add('show');
+  }
+  document.getElementById('prodFotoActual').value = '';
+  document.getElementById('preview-foto').innerHTML = '';
+  document.getElementById('btnEliminarFotoProducto').hidden = true;
+  await cargarProductos();
+}
+</script>
+</body>
+</html>

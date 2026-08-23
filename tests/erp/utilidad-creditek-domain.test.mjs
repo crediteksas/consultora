@@ -31,6 +31,26 @@ test('aplica rango y todos los filtros sin duplicar filas', () => {
   assert.equal(resultado[0].remision_id, 'r1');
 });
 
+test('una tienda sin datos produce un resumen vacío sin error', () => {
+  const resultado = domain.filtrarFilas(filas, {
+    desde: '2026-07-01',
+    hasta: '2026-07-31',
+    tienda: 'MEICO',
+    plataforma: '',
+    referencia: '',
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(domain.resumir(resultado))), {
+    facturado: 0,
+    costo: 0,
+    utilidad: 0,
+    margen: null,
+    unidades: 0,
+    despachos: 0,
+    tiendas: 0,
+    ticketPromedio: null,
+  });
+});
+
 test('calcula utilidad y margen con facturado menos costo', () => {
   const resumen = domain.resumir(filas.slice(0, 3));
   assert.deepEqual(JSON.parse(JSON.stringify(resumen)), {
@@ -92,6 +112,14 @@ test('la pantalla existente integra rangos, filtros, comparación y exportación
   assert.match(app, /'Por tienda'/);
   assert.match(app, /'Por plataforma'/);
   assert.match(app, /'Por referencia'/);
+});
+
+test('el selector de tienda usa el catálogo de tiendas propias activas', () => {
+  assert.match(app, /SB\.from\('origenes'\)\.select\('codigo, nombre'\)\.eq\('tipo', 'propia'\)\.eq\('activo', true\)\.order\('nombre'\)/);
+  assert.match(app, /llenarSelectTiendas\(tiendas\)/);
+  assert.doesNotMatch(app, /llenarSelect\('filtro-tienda', estado\.filas\.map/);
+  assert.match(app, /llenarSelect\('filtro-plataforma', estado\.filas\.map\(f => f\.plataforma\)\)/);
+  assert.match(app, /llenarSelect\('filtro-referencia', estado\.filas\.map\(f => f\.referencia\)\)/);
 });
 
 test('la aplicación avisa al shell compartido cuando terminó de autenticar', () => {

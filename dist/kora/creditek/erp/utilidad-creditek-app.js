@@ -80,15 +80,6 @@
     if ([...select.options].some(o => o.value === actual)) select.value = actual;
   }
 
-  function llenarSelectTiendas(tiendas) {
-    const select = document.getElementById('filtro-tienda');
-    const actual = select.value;
-    const etiqueta = select.options[0].textContent;
-    select.innerHTML = `<option value="">${etiqueta}</option>` +
-      (tiendas || []).map(tienda => `<option value="${escapeHtml(tienda.codigo)}">${escapeHtml(tienda.nombre)}</option>`).join('');
-    if ([...select.options].some(option => option.value === actual)) select.value = actual;
-  }
-
   function escapeHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   }
@@ -99,21 +90,17 @@
     const rangoCmp = D.rangoComparacion(document.getElementById('comparativo').value, desde, hasta);
     const consultaDesde = rangoCmp && rangoCmp.desde < desde ? rangoCmp.desde : desde;
     const consultaHasta = rangoCmp && rangoCmp.hasta > hasta ? rangoCmp.hasta : hasta;
-    const [{ data, error }, { data: tiendas, error: tiendasError }] = await Promise.all([
-      SB.rpc('consultar_utilidad_creditek_rango', {
-        p_desde: consultaDesde,
-        p_hasta: consultaHasta,
-      }),
-      SB.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
-    ]);
+    const { data, error } = await SB.rpc('consultar_utilidad_creditek_rango', {
+      p_desde: consultaDesde,
+      p_hasta: consultaHasta,
+    });
     if (error) throw error;
-    if (tiendasError) throw tiendasError;
     estado.filas = (data || []).map(fila => ({
       ...fila,
       cantidad: Number(fila.cantidad), facturado: Number(fila.facturado),
       costo: Number(fila.costo), utilidad: Number(fila.facturado) - Number(fila.costo),
     }));
-    llenarSelectTiendas(tiendas);
+    llenarSelect('filtro-tienda', estado.filas.map(f => f.tienda_codigo));
     llenarSelect('filtro-plataforma', estado.filas.map(f => f.plataforma));
     llenarSelect('filtro-referencia', estado.filas.map(f => f.referencia));
     aplicar();

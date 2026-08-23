@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<!--
+  reportes.html · Creditek ERP · Módulo de Reportes e Informes
+  SPEC_Modulo_Reportes_ERP_v1_23jul2026 — Fase 1 completa + shell Fase 2-4.
+
+  Estructura:
+    - Header con selector de período (Hoy/Semana/Mes/Mes pasado/Personalizado)
+    - Selector de tienda (deshabilitado para admin_tienda — solo ve su tienda por RLS)
+    - Secciones plegables por reporte, cada una con su propio "Cargar" lazy
+    - Chart.js CDN para gráficas
+
+  RLS heredada:
+    - ventas / cuenta_corriente / unidades / stock_cantidad / gastos:
+      admin_tienda solo ve su tienda (policy tienda_codigo=tienda_actual())
+    - remision_margenes: es_central() only → costo_oscar oculto para tienda
+    - facturas_proveedor / pagos_proveedor: es_central() only
+
+  Decisiones de arquitectura:
+    - Se conserva `presupuestos` (tabla existente con meta_creditos + meta_unidades_contado + meta_utilidad),
+      NO se crea presupuestos_tienda propuesto por el SPEC.
+    - utilidad-creditek.html sigue existiendo como link — no se duplica aquí.
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reportes · Creditek</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="reportes-query-cache.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .fade-in { animation: fadeIn 0.15s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .semaforo-verde { background: #10b981; }
+  .semaforo-amarillo { background: #f59e0b; }
+  .semaforo-rojo { background: #ef4444; }
+  .barra { height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden; }
+  .barra > div { height: 100%; background: #0B1E3D; transition: width .3s ease; }
+  .barra.warning > div { background: #f59e0b; }
+  .barra.error > div { background: #ef4444; }
+  .barra.success > div { background: #10b981; }
+  section.reporte { transition: all .2s ease; }
+  section.reporte details[open] > summary { border-bottom: 1px solid #e5e7eb; }
+  section.reporte summary { cursor: pointer; user-select: none; min-height: 56px; padding: 16px; display: flex; align-items: center; }
+  section.reporte summary h2 { letter-spacing: -.015em; }
+  .chart-wrapper { position: relative; height: 260px; }
+  .kpi-card { padding: 16px 20px; border-radius: 12px; }
+  .kpi-card .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .kpi-card .valor { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .kpi-card .delta { font-size: 11px; margin-top: 4px; }
+  .delta-up { color: #059669; }
+  .delta-down { color: #dc2626; }
+  .btn-nav { min-height: 44px; padding: 0 16px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #e5e7eb; background: white; transition: transform 80ms ease; }
+  .btn-nav.active { background: #0B1E3D; color: white; border-color: #0B1E3D; }
+  .btn-nav:hover:not(.active) { background: #f3f4f6; }
+  /* Multi-select tiendas */
+  .multi-select { position: relative; display: inline-block; }
+  .multi-select-btn { background: white; border: 1px solid #d1d5db; border-radius: 12px; min-height: 44px; padding: 0 40px 0 16px; font-size: 13px; cursor: pointer; min-width: 180px; text-align: left; position: relative; transition: transform 80ms ease; }
+  .multi-select-btn::after { content: '▾'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #6b7280; }
+  .multi-select-btn:hover { border-color: #9ca3af; }
+  .multi-select-btn.abierto { border-color: #00C4CC; box-shadow: 0 0 0 3px rgba(0,196,204,.15); }
+  .multi-select-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; min-width: 240px; max-height: 320px; overflow-y: auto; background: white; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.15); padding: 6px; display: none; }
+  .multi-select-panel.abierto { display: block; }
+  .multi-select-panel label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+  .multi-select-panel label:hover { background: #f3f4f6; }
+  .multi-select-panel label.todas { border-bottom: 1px solid #e5e7eb; margin-bottom: 4px; padding-bottom: 8px; font-weight: 600; }
+  .multi-select-panel input[type=checkbox] { accent-color: #0B1E3D; }
+  /* Date range personalizado */
+  .rango-personalizado { display: none; align-items: center; gap: 8px; margin-left: 8px; }
+  .rango-personalizado.abierto { display: inline-flex; }
+  .rango-personalizado input[type=date] { border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: inherit; }
+  .rango-personalizado button { background: #0B1E3D; color: white; border: none; border-radius: 12px; min-height: 44px; padding: 0 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .rango-personalizado button:hover { background: #132D55; }
+  .btn-nav:active, .multi-select-btn:active, section.reporte summary:active { transform: scale(.985); transition: transform 80ms ease; }
+</style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<style id="kora-report-filter-styles">
+  .kora-report-filters {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-lg);
+    box-shadow: var(--ctk-shadow-1);
+    display: grid;
+    gap: var(--ctk-space-2);
+    padding: var(--ctk-space-2);
+  }
+
+  .kora-report-filter-row {
+    align-items: center;
+    display: flex;
+    gap: var(--ctk-space-2);
+    min-width: 0;
+  }
+
+  .kora-filter-label {
+    color: var(--ctk-color-text-muted);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-label);
+    font-weight: var(--ctk-font-weight-semibold);
+    letter-spacing: var(--ctk-letter-spacing-label);
+    text-transform: uppercase;
+  }
+
+  .kora-period-viewport {
+    min-width: 0;
+  }
+
+  .kora-period-segments {
+    align-items: center;
+    background: var(--ctk-color-surface-subtle);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-md);
+    display: flex;
+    gap: var(--ctk-space-0-5);
+    padding: var(--ctk-space-0-5);
+    width: max-content;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text-secondary);
+    flex: 0 0 auto;
+    font-size: var(--ctk-font-size-caption);
+    font-weight: var(--ctk-font-weight-medium);
+    min-height: 44px;
+    padding: 0 16px;
+    transform: none;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav:hover:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav.active {
+    background: var(--ctk-color-primary-900);
+    border-color: var(--ctk-color-primary-900);
+    box-shadow: var(--ctk-shadow-1);
+    color: var(--ctk-color-neutral-0);
+    font-weight: var(--ctk-font-weight-semibold);
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav[data-periodo="personalizado"]:not(.active) {
+    background: var(--ctk-color-surface);
+    border-color: var(--ctk-color-border);
+    color: var(--ctk-color-text-secondary);
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    box-shadow: none;
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-md);
+    min-width: 13.5rem;
+    padding: 0 2.25rem 0 0.875rem;
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn:hover {
+    background: var(--ctk-color-hover);
+    border-color: var(--ctk-color-border-strong);
+    transform: none;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn.abierto {
+    border-color: var(--ctk-color-focus);
+    box-shadow: 0 0 0 3px var(--ctk-color-secondary-100);
+  }
+
+  .kora-store-filter-row {
+    border-top: 1px solid var(--ctk-color-border);
+    padding-top: var(--ctk-space-2);
+  }
+
+  .kora-report-filters #rango-visible {
+    color: var(--ctk-color-text-muted);
+    font-size: var(--ctk-font-size-caption);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado {
+    margin-left: var(--ctk-space-1);
+  }
+
+  body.kora-product-page .kora-report-filters .rango-personalizado input[type="date"] {
+    background: var(--ctk-color-surface);
+    border: 1px solid var(--ctk-color-border);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-text);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  body.kora-product-page .kora-report-filters #btnAplicarRango {
+    background: var(--ctk-color-primary-900);
+    border-radius: var(--ctk-radius-sm);
+    color: var(--ctk-color-neutral-0);
+    min-height: var(--ctk-height-control-sm);
+  }
+
+  @media (max-width: 63.999rem) {
+    .kora-period-viewport {
+      -webkit-overflow-scrolling: touch;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      padding-bottom: var(--ctk-space-0-5);
+      scrollbar-width: thin;
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .kora-report-filters {
+      padding: var(--ctk-space-1);
+    }
+
+    .kora-report-filter-row {
+      align-items: stretch;
+      flex-direction: column;
+      gap: var(--ctk-space-1);
+    }
+
+    .kora-period-viewport,
+    .kora-report-filters .multi-select,
+    body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+      width: 100%;
+    }
+
+    .kora-report-filters #rango-visible {
+      margin-left: 0;
+      white-space: normal;
+    }
+
+    body.kora-product-page .kora-report-filters .rango-personalizado.abierto {
+      align-items: stretch;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      margin-left: 0;
+    }
+
+    body.kora-product-page .kora-report-filters #btnAplicarRango {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kora-report-filters *,
+    .kora-report-filters *::before,
+    .kora-report-filters *::after {
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+<style id="kora-retail-premium-styles">
+  /* Capa visual local del Dashboard Retail. No altera datos ni comportamiento. */
+  body.kora-product-page {
+    --retail-border: rgba(11, 30, 61, 0.06);
+    --retail-shadow: 0 1px 3px rgba(11, 30, 61, 0.04);
+    --retail-shadow-hover: 0 8px 24px rgba(11, 30, 61, 0.10);
+  }
+
+  /* 1. Tabs de período premium. */
+  body.kora-product-page .kora-report-filters .kora-period-segments {
+    border-color: var(--retail-border);
+    border-radius: 12px;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav {
+    border-radius: 10px;
+    color: #64748B;
+    font-size: 13px;
+    min-height: 40px;
+    transition: background-color 200ms cubic-bezier(.25,.46,.45,.94),
+                border-color 200ms cubic-bezier(.25,.46,.45,.94),
+                box-shadow 200ms cubic-bezier(.25,.46,.45,.94),
+                color 200ms cubic-bezier(.25,.46,.45,.94),
+                transform 80ms ease;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav:hover:not(.active) {
+    background: rgba(11, 30, 61, 0.04);
+    border-color: transparent;
+    color: #0B1E3D;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav.active {
+    background: #0B1E3D;
+    border-color: #0B1E3D;
+    box-shadow: 0 2px 8px rgba(11, 30, 61, 0.20);
+    color: #FFFFFF;
+  }
+
+  body.kora-product-page .kora-report-filters .kora-period-segments .btn-nav:active {
+    transform: scale(.97);
+  }
+
+  /* 2. KPI cards premium. */
+  body.kora-product-page .kpi-card {
+    background: #FFFFFF;
+    border: 1px solid var(--retail-border);
+    border-radius: 16px;
+    box-shadow: var(--retail-shadow);
+    min-height: 132px;
+    overflow: hidden;
+    padding: 24px;
+    position: relative;
+    transition: border-color 300ms cubic-bezier(.25,.46,.45,.94),
+                box-shadow 300ms cubic-bezier(.25,.46,.45,.94),
+                transform 300ms cubic-bezier(.25,.46,.45,.94);
+  }
+
+  body.kora-product-page .kpi-card::before {
+    background: linear-gradient(90deg, #00C4CC, #00D4DC);
+    border-radius: 0 0 3px 3px;
+    content: "";
+    height: 3px;
+    left: 24px;
+    position: absolute;
+    right: 24px;
+    top: 0;
+  }
+
+  body.kora-product-page .kpi-card:hover {
+    border-color: rgba(0, 196, 204, 0.15);
+    box-shadow: var(--retail-shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  body.kora-product-page .kpi-card .valor {
+    color: #0B1E3D;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 8px;
+  }
+
+  body.kora-product-page .kpi-card .label {
+    color: #64748B;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  body.kora-product-page .kpi-card .delta {
+    color: #94A3B8;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  body.kora-product-page .kpi-card .delta.delta-up { color: #16A34A; }
+  body.kora-product-page .kpi-card .delta.delta-down { color: #DC2626; }
+
+  /* 3. Acordeones organizados y con respuesta inmediata. */
+  body.kora-product-page section.reporte {
+    background: transparent;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  body.kora-product-page section.reporte summary {
+    background: #FFFFFF;
+    border: 1px solid var(--retail-border);
+    border-radius: 16px;
+    box-shadow: var(--retail-shadow);
+    gap: 12px;
+    list-style: none;
+    margin-bottom: 12px;
+    min-height: 56px;
+    padding: 16px 24px;
+    transition: border-color 200ms ease, box-shadow 200ms ease, transform 80ms ease;
+  }
+
+  body.kora-product-page section.reporte summary::-webkit-details-marker {
+    display: none;
+  }
+
+  body.kora-product-page section.reporte summary:hover {
+    border-color: rgba(0, 196, 204, 0.15);
+    box-shadow: 0 4px 12px rgba(11, 30, 61, 0.08);
+  }
+
+  body.kora-product-page section.reporte summary:active {
+    transform: scale(.995);
+  }
+
+  body.kora-product-page section.reporte details[open] > summary {
+    border-bottom-color: rgba(0, 196, 204, 0.20);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 4px 16px rgba(11, 30, 61, 0.08);
+    margin-bottom: 0;
+  }
+
+  body.kora-product-page section.reporte details[open] > summary + div {
+    animation: retailAccordionOpen 300ms cubic-bezier(.16,1,.3,1) forwards;
+    background: #FFFFFF;
+    border: 1px solid var(--retail-border);
+    border-radius: 0 0 16px 16px;
+    border-top: 0;
+  }
+
+  @keyframes retailAccordionOpen {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  body.kora-product-page section.reporte summary h2 {
+    color: #0B1E3D;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  body.kora-product-page section.reporte summary p {
+    color: #94A3B8;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* 4. Tablas densas, pero claras. */
+  body.kora-product-page section.reporte table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  body.kora-product-page section.reporte thead th {
+    background: #0B1E3D;
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 12px 16px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  body.kora-product-page section.reporte tbody td {
+    border-bottom: 1px solid rgba(11, 30, 61, 0.04);
+    color: #1E293B;
+    font-size: 13px;
+    padding: 12px 16px;
+    transition: background-color 150ms ease;
+  }
+
+  body.kora-product-page section.reporte tbody tr:hover td {
+    background: rgba(0, 196, 204, 0.03);
+  }
+
+  /* 5. Gráficas contenidas y redondeadas. */
+  body.kora-product-page section.reporte .chart-wrapper {
+    background: #FFFFFF;
+    border: 1px solid var(--retail-border);
+    border-radius: 16px;
+    margin: 16px 0;
+    padding: 20px;
+  }
+
+  body.kora-product-page section.reporte canvas {
+    border-radius: 12px;
+  }
+
+  /* 6–7. Selector de tiendas y contexto temporal. */
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn {
+    border: 1.5px solid rgba(11, 30, 61, 0.12);
+    border-radius: 12px;
+    color: #0B1E3D;
+    font-size: 14px;
+    min-height: 44px;
+    padding-left: 16px;
+    transition: border-color 200ms ease, box-shadow 200ms ease, transform 80ms ease;
+  }
+
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn:focus-visible,
+  body.kora-product-page .kora-report-filters .multi-select .multi-select-btn.abierto {
+    border-color: #00C4CC;
+    box-shadow: 0 0 0 3px rgba(0, 196, 204, 0.12);
+    outline: none;
+  }
+
+  body.kora-product-page .kora-report-filters #rango-visible {
+    color: #94A3B8;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 8. Próximamente comunica claramente un estado futuro. */
+  body.kora-product-page main#app > section.reporte:last-of-type {
+    background: rgba(11, 30, 61, 0.02);
+    border: 1px dashed rgba(11, 30, 61, 0.12);
+    border-radius: 16px;
+    color: #94A3B8;
+    padding: 8px;
+  }
+
+  body.kora-product-page main#app > section.reporte:last-of-type h2 {
+    color: #64748B;
+  }
+
+  /* 9. Entrada escalonada de bloques principales. */
+  @keyframes retailFadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  body.kora-product-page main#app > * {
+    animation: retailFadeInUp 400ms cubic-bezier(.16,1,.3,1) backwards;
+  }
+
+  body.kora-product-page main#app > *:nth-child(1) { animation-delay: 50ms; }
+  body.kora-product-page main#app > *:nth-child(2) { animation-delay: 100ms; }
+  body.kora-product-page main#app > *:nth-child(3) { animation-delay: 150ms; }
+  body.kora-product-page main#app > *:nth-child(4) { animation-delay: 200ms; }
+
+  @media (max-width: 768px) {
+    body.kora-product-page .kpi-card {
+      min-height: 124px;
+      padding: 20px;
+    }
+
+    body.kora-product-page section.reporte summary {
+      padding: 16px;
+    }
+
+    body.kora-product-page section.reporte details[open] > summary + div {
+      overflow: hidden;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.kora-product-page main#app > *,
+    body.kora-product-page section.reporte details[open] > summary + div {
+      animation: none;
+    }
+
+    body.kora-product-page .kpi-card,
+    body.kora-product-page section.reporte summary,
+    body.kora-product-page .kora-period-segments .btn-nav {
+      transition: none;
+    }
+  }
+</style>
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<header class="bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
+      <h1 class="text-xl font-bold text-gray-800">📊 Reportes e informes</h1>
+    </div>
+    <div id="usuario-info" class="text-sm text-gray-600"></div>
+  </div>
+</header>
+
+<div id="auth-guard" class="hidden max-w-7xl mx-auto mt-6 p-4 bg-red-50 border border-red-200 rounded">
+  <p class="text-red-800 font-semibold">No autorizado.</p>
+  <p class="text-red-700 text-sm">Debes iniciar sesión para ver reportes.</p>
+</div>
+
+<main id="app" class="hidden max-w-7xl mx-auto px-4 py-6 space-y-4">
+  <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
+
+  <!-- FILTROS GLOBALES -->
+  <section class="kora-report-filters">
+    <div class="kora-report-filter-row">
+      <span class="kora-filter-label">Período</span>
+      <div class="kora-period-viewport">
+        <div class="kora-period-segments" aria-label="Seleccionar período">
+          <button class="btn-nav active" data-periodo="hoy">Hoy</button>
+          <button class="btn-nav" data-periodo="ayer">Ayer</button>
+          <button class="btn-nav" data-periodo="semana">Esta semana</button>
+          <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
+          <button class="btn-nav" data-periodo="mes">Este mes</button>
+          <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
+          <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
+          <button class="btn-nav" data-periodo="anio">Este año</button>
+          <button class="btn-nav" data-periodo="anio_pasado">Año pasado</button>
+          <button class="btn-nav" data-periodo="personalizado">Personalizado ▾</button>
+        </div>
+      </div>
+      <div class="rango-personalizado" id="rangoPersonalizado">
+        <label class="text-xs text-gray-500">Desde</label>
+        <input type="date" id="fechaDesde">
+        <label class="text-xs text-gray-500">Hasta</label>
+        <input type="date" id="fechaHasta">
+        <button id="btnAplicarRango">Aplicar</button>
+      </div>
+    </div>
+    <div class="kora-report-filter-row kora-store-filter-row">
+      <span class="kora-filter-label">Tiendas</span>
+      <div class="multi-select" id="filtroTiendasWrap">
+        <button type="button" class="multi-select-btn" id="btnTiendas">Todas las tiendas</button>
+        <div class="multi-select-panel" id="panelTiendas">
+          <label class="todas"><input type="checkbox" id="chkTodasTiendas" checked> Todas las tiendas</label>
+          <div id="chkTiendasLista"></div>
+        </div>
+      </div>
+      <span id="rango-visible" class="text-xs text-gray-500 ml-auto"></span>
+    </div>
+  </section>
+
+  <!-- DASHBOARD KPIs -->
+  <section class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Ventas del período</div><div class="valor font-mono" id="kpi-ventas">—</div><div class="delta" id="kpi-ventas-delta">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Ticket promedio</div><div class="valor font-mono" id="kpi-ticket">—</div><div class="delta" id="kpi-ticket-sub">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Inventario (costo tienda)</div><div class="valor font-mono" id="kpi-inventario">—</div><div class="delta" id="kpi-inventario-sub">—</div></div>
+  </section>
+
+  <!-- ==================== 1.1 CUADRO DIARIO VENTAS ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details open>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">💰 1.1 Cuadro de ventas por tienda</h2>
+          <p class="text-xs text-gray-500">Ventas del período, agrupadas por tienda con comparación semanal.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="chart-wrapper mb-4"><canvas id="chart-ventas"></canvas></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold"># Ventas</th>
+                <th class="px-3 py-2 text-right font-semibold">Total vendido</th>
+                <th class="px-3 py-2 text-right font-semibold">Ticket promedio</th>
+                <th class="px-3 py-2 text-right font-semibold">Celulares</th>
+                <th class="px-3 py-2 text-right font-semibold">Accesorios</th>
+                <th class="px-3 py-2 text-right font-semibold">vs sem. pasada</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ventas"><tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 1.2 CARTERA POR TIENDA ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🏦 1.2 Cartera pendiente por tienda</h2>
+          <p class="text-xs text-gray-500">Cuánto debe cada tienda a Creditek + semáforo por días sin abonar.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold">Saldo actual</th>
+                <th class="px-3 py-2 text-right font-semibold">Último abono</th>
+                <th class="px-3 py-2 text-left font-semibold">Fecha</th>
+                <th class="px-3 py-2 text-right font-semibold">Días sin abonar</th>
+                <th class="px-3 py-2 text-center font-semibold">Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-cartera"><tr><td colspan="6" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+            <tfoot>
+              <tr class="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                <td class="px-3 py-2">TOTAL CARTERA</td>
+                <td class="px-3 py-2 text-right font-mono" id="cartera-total">—</td>
+                <td colspan="4"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 1.3 INVENTARIO VALORIZADO ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">📦 1.3 Inventario valorizado por tienda</h2>
+          <p class="text-xs text-gray-500">SKUs, unidades y valor a precio tienda (+ costo Oscar para gerencia).</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold"># SKUs</th>
+                <th class="px-3 py-2 text-right font-semibold"># Unidades</th>
+                <th class="px-3 py-2 text-right font-semibold">Valor (costo tienda)</th>
+                <th class="px-3 py-2 text-right font-semibold solo-central">Valor (costo Oscar)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-inventario"><tr><td colspan="5" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 2.1 CUMPLIMIENTO DE PRESUPUESTO ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🎯 2.1 Cumplimiento de presupuesto</h2>
+          <p class="text-xs text-gray-500">Real vs meta del mes por tienda (usa tabla `presupuestos` existente).</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div id="msg-presupuestos" class="hidden mb-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold">2025 real</th>
+                <th class="px-3 py-2 text-right font-semibold">Meta utilidad</th>
+                <th class="px-3 py-2 text-right font-semibold">Real ventas</th>
+                <th class="px-3 py-2 text-left font-semibold w-64">Cumplimiento</th>
+                <th class="px-3 py-2 text-right font-semibold">Run-rate</th>
+                <th class="px-3 py-2 text-right font-semibold">vs 2025</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-presupuesto"><tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 2.2 RENTABILIDAD POR TIENDA ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200 solo-central">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">💵 2.2 Rentabilidad por tienda (P&L)</h2>
+          <p class="text-xs text-gray-500">Ingresos − costo mercancía − gastos = utilidad. Solo gerencia/auditoría.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Tienda</th>
+                <th class="px-3 py-2 text-right font-semibold">Ingresos</th>
+                <th class="px-3 py-2 text-right font-semibold">Costo mercancía</th>
+                <th class="px-3 py-2 text-right font-semibold">Margen bruto</th>
+                <th class="px-3 py-2 text-right font-semibold">Gastos</th>
+                <th class="px-3 py-2 text-right font-semibold">Utilidad</th>
+                <th class="px-3 py-2 text-right font-semibold">% rent.</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-rent-tienda"><tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 2.3 RENTABILIDAD POR CATEGORÍA ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200 solo-central">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🏷️ 2.3 Rentabilidad por categoría</h2>
+          <p class="text-xs text-gray-500">Margen bruto por línea de producto. Solo gerencia/auditoría.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="chart-wrapper"><canvas id="chart-categorias"></canvas></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Categoría</th>
+                <th class="px-3 py-2 text-right font-semibold">Uds</th>
+                <th class="px-3 py-2 text-right font-semibold">Ingresos</th>
+                <th class="px-3 py-2 text-right font-semibold">Costo</th>
+                <th class="px-3 py-2 text-right font-semibold">Margen</th>
+                <th class="px-3 py-2 text-right font-semibold">%</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-rent-categoria"><tr><td colspan="6" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 2.4 UTILIDAD CREDITEK ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200 solo-central">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🏭 2.4 Utilidad Creditek — panel completo</h2>
+          <p class="text-xs text-gray-500">Ya existe una pantalla dedicada con desglose mensual + gráfica. Se enlaza para no duplicar.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <a href="utilidad-creditek.html" class="inline-block bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium text-sm">Ir al panel de utilidad Creditek →</a>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 3.1 CRECIMIENTO MES A MES ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">📈 3.1 Crecimiento mes a mes</h2>
+          <p class="text-xs text-gray-500">Tendencia de ventas por mes. Requiere al menos 2-3 meses de historial.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="chart-wrapper mb-4"><canvas id="chart-crecimiento"></canvas></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Mes</th>
+                <th class="px-3 py-2 text-right font-semibold">2025</th>
+                <th class="px-3 py-2 text-right font-semibold">2026</th>
+                <th class="px-3 py-2 text-right font-semibold">Δ 2026 vs 2025</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-crecimiento"><tr><td colspan="4" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 3.2 TOP PRODUCTOS ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🔥 3.2 Top productos y slow movers</h2>
+          <p class="text-xs text-gray-500">Los 10 más vendidos + los 10 con más días sin movimiento.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="font-semibold text-emerald-700 mb-2">🏆 Top 10 más vendidos</h3>
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 text-gray-700"><tr><th class="px-2 py-1.5 text-left">Producto</th><th class="px-2 py-1.5 text-right">Uds</th><th class="px-2 py-1.5 text-right">Total</th></tr></thead>
+            <tbody id="tbody-top-vendidos"><tr><td colspan="3" class="text-center py-4 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+        <div>
+          <h3 class="font-semibold text-red-700 mb-2">🐌 Slow movers (con stock &gt; 30 días sin venta)</h3>
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 text-gray-700"><tr><th class="px-2 py-1.5 text-left">Producto</th><th class="px-2 py-1.5 text-right">Uds en stock</th><th class="px-2 py-1.5 text-right">Días</th></tr></thead>
+            <tbody id="tbody-slow-movers"><tr><td colspan="3" class="text-center py-4 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== 3.4 ANÁLISIS PROVEEDORES ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200 solo-central">
+    <details>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🏢 3.4 Análisis de proveedores</h2>
+          <p class="text-xs text-gray-500">Facturas, saldos y compras acumuladas por proveedor. Solo gerencia/auditoría.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Proveedor</th>
+                <th class="px-3 py-2 text-right font-semibold"># Facturas</th>
+                <th class="px-3 py-2 text-right font-semibold">Total comprado</th>
+                <th class="px-3 py-2 text-right font-semibold">Saldo pendiente</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-proveedores"><tr><td colspan="4" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== FUTUROS ==================== -->
+  <section class="reporte bg-white rounded-lg shadow-sm border border-dashed border-gray-300">
+    <div class="p-4">
+      <h2 class="text-sm font-semibold text-gray-700">Próximamente</h2>
+      <p class="text-xs text-gray-500">Los siguientes reportes requieren más historial de datos (2-3 meses):</p>
+      <ul class="text-xs text-gray-500 mt-2 space-y-1 list-disc pl-4">
+        <li>3.3 Rotación de inventario (días promedio en inventario por categoría)</li>
+        <li>3.5 Comisiones — base de cálculo para admin (10%) y asesor (6%)</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+// ============================================================================
+// CONFIG
+// ============================================================================
+const KORA_ENV = window.__KORA_ENV__;
+const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
+const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const queryCache = window.CreditekReportesQueryCache;
+
+let currentUser = null;
+let currentPerfil = null;
+let periodoActual = 'hoy';
+let tiendasFiltro = [];        // vacío = "todas"; con códigos = filtro IN(...)
+let rangoPersonalizado = null; // {desde,hasta} cuando el usuario elige rango libre
+let tiendasCache = [];
+let charts = {}; // guardar referencias para destruir/recrear
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+const fmtCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const fmtInt = new Intl.NumberFormat('es-CO');
+function money(n) { return n == null ? '—' : fmtCOP.format(Number(n)); }
+function num(n) { return n == null ? '—' : fmtInt.format(Number(n)); }
+function pct(n, base) { if (!base) return '—'; return (100 * Number(n) / Number(base)).toFixed(1) + '%'; }
+function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+function exigirRespuestas(...respuestas) {
+  const fallida = respuestas.find(respuesta => respuesta?.error);
+  if (fallida) throw new Error(fallida.error.message);
+}
+function toast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in ' +
+    (tipo === 'error' ? 'bg-red-600' : 'bg-emerald-600');
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+// Rango del período seleccionado
+function getPeriodo() {
+  const isoDia = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
+  const hoy = new Date();
+  if (periodoActual === 'personalizado' && rangoPersonalizado) {
+    return { ...rangoPersonalizado };
+  }
+  if (periodoActual === 'hoy') {
+    const d = isoDia(new Date());
+    return { desde: d, hasta: d };
+  }
+  if (periodoActual === 'ayer') {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    const s = isoDia(d);
+    return { desde: s, hasta: s };
+  }
+  if (periodoActual === 'semana') {
+    // Lunes de la semana actual → hoy
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7; // 0=Lun ... 6=Dom
+    d.setDate(d.getDate() - dow);
+    return { desde: isoDia(d), hasta: isoDia(new Date()) };
+  }
+  if (periodoActual === 'semana_pasada') {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7;
+    const finSem = new Date(d); finSem.setDate(finSem.getDate() - dow - 1);
+    const iniSem = new Date(finSem); iniSem.setDate(iniSem.getDate() - 6);
+    return { desde: isoDia(iniSem), hasta: isoDia(finSem) };
+  }
+  if (periodoActual === 'mes') {
+    const d = new Date(); d.setDate(1);
+    return { desde: isoDia(d), hasta: isoDia(new Date()) };
+  }
+  if (periodoActual === 'mes_pasado') {
+    const d = new Date();
+    const fin = new Date(d.getFullYear(), d.getMonth(), 0);
+    const ini = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    return { desde: isoDia(ini), hasta: isoDia(fin) };
+  }
+  if (periodoActual === 'ult3m') {
+    const ini = new Date(); ini.setMonth(ini.getMonth() - 3); ini.setDate(ini.getDate() + 1);
+    return { desde: isoDia(ini), hasta: isoDia(new Date()) };
+  }
+  if (periodoActual === 'anio') {
+    const ini = new Date(hoy.getFullYear(), 0, 1);
+    return { desde: isoDia(ini), hasta: isoDia(new Date()) };
+  }
+  if (periodoActual === 'anio_pasado') {
+    const ini = new Date(hoy.getFullYear() - 1, 0, 1);
+    const fin = new Date(hoy.getFullYear() - 1, 11, 31);
+    return { desde: isoDia(ini), hasta: isoDia(fin) };
+  }
+  const d = isoDia(new Date());
+  return { desde: d, hasta: d };
+}
+
+function labelPeriodo() {
+  const { desde, hasta } = getPeriodo();
+  return desde === hasta ? desde : `${desde} → ${hasta}`;
+}
+
+// ---------- Filtro por tiendas (multi-select) ----------
+// tiendasFiltro vacío = "todas" (sin filtro). Con 1+ códigos = usar .in()
+function aplicarFiltroTienda(query, col = 'tienda_codigo') {
+  if (!tiendasFiltro || tiendasFiltro.length === 0) return query;
+  if (tiendasFiltro.length === 1) return query.eq(col, tiendasFiltro[0]);
+  return query.in(col, tiendasFiltro);
+}
+function tiendaVisible(codigo) {
+  return !tiendasFiltro || tiendasFiltro.length === 0 || tiendasFiltro.includes(codigo);
+}
+
+function crearCacheRefresco() {
+  const { desde, hasta } = getPeriodo();
+  const filtro = [...tiendasFiltro];
+  const filtrar = (query, col = 'tienda_codigo') => {
+    if (filtro.length === 0) return query;
+    if (filtro.length === 1) return query.eq(col, filtro[0]);
+    return query.in(col, filtro);
+  };
+
+  return queryCache.crear({
+    ventas: () => filtrar(
+      sb.from('ventas')
+        .select('id, total, tienda_codigo, origen:tienda_codigo(nombre), venta_items(cantidad, productos(tipo))')
+        .gte('fecha', desde)
+        .lte('fecha', hasta)
+        .neq('anulada', true),
+    ),
+    cartera: () => filtrar(
+      sb.from('cuenta_corriente')
+        .select('tienda_codigo, tipo, monto, created_at, origen:tienda_codigo(nombre)')
+        .order('created_at', { ascending: false }),
+    ),
+    inventario: () => Promise.all([
+      filtrar(
+        sb.from('unidades')
+          .select('producto_id, tienda_actual, precio_tienda, costo_remision, estado, origen:tienda_actual(nombre)')
+          .eq('estado', 'disponible'),
+        'tienda_actual',
+      ),
+      filtrar(
+        sb.from('stock_cantidad')
+          .select('producto_id, tienda_codigo, cantidad, precio_tienda, costo_promedio, origen:tienda_codigo(nombre)'),
+      ),
+    ]),
+  });
+}
+
+// ============================================================================
+// AUTH
+// ============================================================================
+async function verificarAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'app.html'; return false; }
+  currentUser = session.user;
+  const { data: perfil } = await sb.from('perfiles').select('*').eq('id', session.user.id).maybeSingle();
+  if (!perfil || !perfil.activo) {
+    document.getElementById('auth-guard').classList.remove('hidden');
+    document.getElementById('auth-guard').querySelector('p.text-red-700').textContent = 'Tu perfil no está activo. Contacta al administrador.';
+    return false;
+  }
+  currentPerfil = perfil;
+  document.getElementById('usuario-info').textContent = `${perfil.nombre || session.user.email} · ${perfil.rol}${perfil.tienda_codigo ? ' · ' + perfil.tienda_codigo : ''}`;
+  document.getElementById('app').classList.remove('hidden');
+
+  // Cargar tiendas para el multi-select — RLS filtra automáticamente
+  const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
+  tiendasCache = tiendas || [];
+  const lista = document.getElementById('chkTiendasLista');
+  lista.innerHTML = tiendasCache.map(t =>
+    `<label><input type="checkbox" class="chkTienda" value="${esc(t.codigo)}"> ${esc(t.nombre)}</label>`
+  ).join('');
+
+  if (!esCentral() && perfil.tienda_codigo) {
+    // admin_tienda / asesor: solo su tienda, multi-select bloqueado
+    tiendasFiltro = [perfil.tienda_codigo];
+    document.getElementById('chkTodasTiendas').checked = false;
+    lista.querySelectorAll('.chkTienda').forEach(chk => {
+      chk.checked = chk.value === perfil.tienda_codigo;
+      chk.disabled = true;
+    });
+    document.getElementById('chkTodasTiendas').disabled = true;
+    document.getElementById('filtroTiendasWrap').title = 'Solo tu tienda (por permisos)';
+    actualizarLabelTiendas();
+  }
+
+  // Ocultar bloques solo-central si no aplica
+  if (!esCentral()) document.querySelectorAll('.solo-central').forEach(el => el.style.display = 'none');
+  return true;
+}
+
+// ============================================================================
+// KPIs SUPERIORES
+// ============================================================================
+async function cargarKPIs(cache) {
+  const { desde, hasta } = getPeriodo();
+  const [vRes, ccRes, [unRes, stRes]] = await Promise.all([
+    cache.obtener('ventas'),
+    cache.obtener('cartera'),
+    cache.obtener('inventario'),
+  ]);
+  const error = vRes.error || ccRes.error || unRes.error || stRes.error;
+  if (error) throw new Error(error.message);
+
+  const ventas = vRes.data || [];
+  const totalV = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
+  const ticket = ventas.length > 0 ? totalV / ventas.length : 0;
+
+  document.getElementById('kpi-ventas').textContent = money(totalV);
+  document.getElementById('kpi-ticket').textContent = money(ticket);
+  document.getElementById('kpi-ticket-sub').textContent = '';
+
+  // Delta vs 2025 — usa historico_mensual cuando el rango coincide con un mes
+  // conocido o un solo día. Para períodos parciales usa proyección proporcional.
+  const deltaEl = document.getElementById('kpi-ventas-delta');
+  const dDesde = new Date(desde + 'T00:00:00');
+  const dHasta = new Date(hasta + 'T00:00:00');
+  const anio2025 = 2025;
+  const mismosMeses = dDesde.getFullYear() === dHasta.getFullYear() && dDesde.getMonth() === dHasta.getMonth();
+  const esUnDia = desde === hasta;
+  const diasRango = Math.round((dHasta - dDesde) / 86400000) + 1;
+  let ref2025 = 0;
+  if (esUnDia || mismosMeses) {
+    // Mismo mes: comparar contra venta del mes 2025 (proporcional al #días si es parcial)
+    const mesNum = dDesde.getMonth() + 1;
+    let qHist = sb.from('historico_mensual').select('venta_total, venta_total_dia, dias_mes').eq('anio', anio2025).eq('mes', mesNum);
+    qHist = aplicarFiltroTienda(qHist);
+    const histRes = await qHist;
+    exigirRespuestas(histRes);
+    const hist = histRes.data;
+    (hist || []).forEach(h => {
+      if (esUnDia) ref2025 += Number(h.venta_total_dia || 0);
+      else ref2025 += Number(h.venta_total_dia || 0) * diasRango;
+    });
+  }
+  let sub = `${ventas.length} operaciones`;
+  if (ref2025 > 0) {
+    const delta = ((totalV - ref2025) / ref2025) * 100;
+    const flecha = delta >= 0 ? '↑' : '↓';
+    const cls = delta >= 0 ? 'delta-up' : 'delta-down';
+    sub = `${ventas.length} ops · <span class="${cls}">${flecha} ${Math.abs(delta).toFixed(1)}% vs 2025</span>`;
+  }
+  deltaEl.innerHTML = sub;
+
+  // Cartera e inventario provienen del caché compartido de este refresco.
+  const cc = ccRes.data || [];
+  const saldo = cc.reduce((s, r) => s + (r.tipo === 'cargo' ? Number(r.monto) : -Number(r.monto)), 0);
+  document.getElementById('kpi-cartera').textContent = money(saldo);
+  document.getElementById('kpi-cartera-sub').textContent = cc.length + ' movimientos totales';
+
+  const uns = unRes.data || [];
+  const sts = stRes.data || [];
+  const valorInv = uns.reduce((s, u) => s + Number(u.precio_tienda ?? u.costo_remision ?? 0), 0)
+    + sts.reduce((s, r) => s + Number(r.cantidad || 0) * Number(r.precio_tienda ?? r.costo_promedio ?? 0), 0);
+  document.getElementById('kpi-inventario').textContent = money(valorInv);
+  document.getElementById('kpi-inventario-sub').textContent = uns.length + ' celulares + ' + sts.length + ' líneas de accesorios';
+}
+
+// ============================================================================
+// 1.1 CUADRO DE VENTAS POR TIENDA
+// ============================================================================
+async function cargarVentas(cache) {
+  const { data, error } = await cache.obtener('ventas');
+  if (error) { document.getElementById('tbody-ventas').innerHTML = `<tr><td colspan="7" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+
+  // Agrupar por tienda
+  const porTienda = {};
+  (data || []).forEach(v => {
+    const cod = v.tienda_codigo;
+    if (!porTienda[cod]) porTienda[cod] = { nombre: v.origen?.nombre || cod, ventas: 0, total: 0, celulares: 0, accesorios: 0 };
+    porTienda[cod].ventas += 1;
+    porTienda[cod].total += Number(v.total || 0);
+    (v.venta_items || []).forEach(vi => {
+      if (vi.productos?.tipo === 'serializado') porTienda[cod].celulares += Number(vi.cantidad || 0);
+      else porTienda[cod].accesorios += Number(vi.cantidad || 0);
+    });
+  });
+
+  const filas = Object.values(porTienda).sort((a, b) => b.total - a.total);
+  const tbody = document.getElementById('tbody-ventas');
+  if (filas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">Sin ventas en este período.</td></tr>';
+  } else {
+    tbody.innerHTML = filas.map(t => {
+      const ticket = t.ventas ? t.total / t.ventas : 0;
+      return `<tr>
+        <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
+        <td class="px-3 py-2 text-right">${num(t.ventas)}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(t.total)}</td>
+        <td class="px-3 py-2 text-right font-mono">${money(ticket)}</td>
+        <td class="px-3 py-2 text-right">${num(t.celulares)}</td>
+        <td class="px-3 py-2 text-right">${num(t.accesorios)}</td>
+        <td class="px-3 py-2 text-right text-gray-400 text-xs">—</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Chart
+  if (charts.ventas) charts.ventas.destroy();
+  const ctx = document.getElementById('chart-ventas');
+  charts.ventas = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: filas.map(f => f.nombre),
+      datasets: [{ label: 'Total vendido', data: filas.map(f => f.total), backgroundColor: '#3b82f6', borderRadius: 6 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => money(ctx.parsed.y) } },
+      },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(v) } } },
+    },
+  });
+}
+
+// ============================================================================
+// 1.2 CARTERA POR TIENDA
+// ============================================================================
+async function cargarCartera(cache) {
+  const { data, error } = await cache.obtener('cartera');
+  if (error) { document.getElementById('tbody-cartera').innerHTML = `<tr><td colspan="6" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+
+  const porTienda = {};
+  (data || []).forEach(m => {
+    const cod = m.tienda_codigo;
+    if (!porTienda[cod]) porTienda[cod] = { nombre: m.origen?.nombre || cod, saldo: 0, ultimoAbono: null, ultimoAbonoFecha: null };
+    porTienda[cod].saldo += (m.tipo === 'cargo' ? Number(m.monto) : -Number(m.monto));
+    if (m.tipo === 'abono' && !porTienda[cod].ultimoAbono) {
+      porTienda[cod].ultimoAbono = Number(m.monto);
+      porTienda[cod].ultimoAbonoFecha = m.created_at;
+    }
+  });
+
+  const ahora = Date.now();
+  const filas = Object.values(porTienda).filter(t => Math.abs(t.saldo) > 0.01).sort((a, b) => b.saldo - a.saldo);
+  let total = 0;
+  const tbody = document.getElementById('tbody-cartera');
+  if (filas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Cartera al día en todas las tiendas.</td></tr>';
+  } else {
+    tbody.innerHTML = filas.map(t => {
+      total += t.saldo;
+      const dias = t.ultimoAbonoFecha ? Math.floor((ahora - new Date(t.ultimoAbonoFecha).getTime()) / 86400000) : null;
+      const semaforo = dias == null ? 'semaforo-rojo' : dias <= 0 ? 'semaforo-verde' : dias <= 3 ? 'semaforo-amarillo' : 'semaforo-rojo';
+      const semLabel = dias == null ? 'Sin abonos' : dias <= 0 ? 'Al día' : dias <= 3 ? `${dias}d` : `${dias}d`;
+      return `<tr>
+        <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
+        <td class="px-3 py-2 text-right font-mono ${t.saldo > 0 ? 'text-red-700 font-semibold' : 'text-gray-500'}">${money(t.saldo)}</td>
+        <td class="px-3 py-2 text-right font-mono">${t.ultimoAbono ? money(t.ultimoAbono) : '<span class="text-gray-400">—</span>'}</td>
+        <td class="px-3 py-2 text-xs text-gray-500">${t.ultimoAbonoFecha ? new Date(t.ultimoAbonoFecha).toLocaleDateString('es-CO') : '—'}</td>
+        <td class="px-3 py-2 text-right">${dias != null ? dias : '—'}</td>
+        <td class="px-3 py-2 text-center"><span class="inline-block w-3 h-3 rounded-full ${semaforo}" title="${semLabel}"></span></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('cartera-total').textContent = money(total);
+}
+
+// ============================================================================
+// 1.3 INVENTARIO VALORIZADO POR TIENDA
+// ============================================================================
+async function cargarInventario(cache) {
+  const [uRes, sRes] = await cache.obtener('inventario');
+  const error = uRes.error || sRes.error;
+  if (error) {
+    document.getElementById('tbody-inventario').innerHTML =
+      `<tr><td colspan="5" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`;
+    return;
+  }
+
+  const porTienda = {};
+  (uRes.data || []).forEach(u => {
+    if (!tiendaVisible(u.tienda_actual)) return;
+    const cod = u.tienda_actual;
+    if (!porTienda[cod]) porTienda[cod] = { nombre: u.origen?.nombre || cod, skus: new Set(), unidades: 0, valorTienda: 0, valorOscar: 0 };
+    porTienda[cod].skus.add(u.producto_id);
+    porTienda[cod].unidades += 1;
+    porTienda[cod].valorTienda += Number(u.precio_tienda ?? u.costo_remision ?? 0);
+    porTienda[cod].valorOscar += Number(u.costo_remision ?? 0);
+  });
+  (sRes.data || []).forEach(s => {
+    if (Number(s.cantidad || 0) <= 0) return;
+    if (!tiendaVisible(s.tienda_codigo)) return;
+    const cod = s.tienda_codigo;
+    if (!porTienda[cod]) porTienda[cod] = { nombre: s.origen?.nombre || cod, skus: new Set(), unidades: 0, valorTienda: 0, valorOscar: 0 };
+    porTienda[cod].skus.add(s.producto_id);
+    porTienda[cod].unidades += Number(s.cantidad || 0);
+    porTienda[cod].valorTienda += Number(s.cantidad || 0) * Number(s.precio_tienda ?? s.costo_promedio ?? 0);
+    porTienda[cod].valorOscar += Number(s.cantidad || 0) * Number(s.costo_promedio ?? 0);
+  });
+
+  const filas = Object.values(porTienda).sort((a, b) => b.valorTienda - a.valorTienda);
+  const tbody = document.getElementById('tbody-inventario');
+  if (filas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400">Sin inventario disponible.</td></tr>';
+  } else {
+    tbody.innerHTML = filas.map(t => `<tr>
+      <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
+      <td class="px-3 py-2 text-right">${num(t.skus.size)}</td>
+      <td class="px-3 py-2 text-right">${num(t.unidades)}</td>
+      <td class="px-3 py-2 text-right font-mono">${money(t.valorTienda)}</td>
+      <td class="px-3 py-2 text-right font-mono solo-central">${money(t.valorOscar)}</td>
+    </tr>`).join('');
+    if (!esCentral()) tbody.querySelectorAll('.solo-central').forEach(el => el.style.display = 'none');
+  }
+}
+
+// ============================================================================
+// 2.1 CUMPLIMIENTO DE PRESUPUESTO (usa tabla `presupuestos` existente)
+// ============================================================================
+async function cargarPresupuesto() {
+  const hoy = new Date();
+  const mesActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(hoy) + '-01';
+  const mesActualNum = hoy.getMonth() + 1; // 1-12
+  const [pRes, vRes, h2025Res] = await Promise.all([
+    sb.from('presupuestos').select('tienda_codigo, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
+    sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
+    sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
+  ]);
+  exigirRespuestas(pRes, vRes, h2025Res);
+
+  const msgEl = document.getElementById('msg-presupuestos');
+  if (!pRes.data || pRes.data.length === 0) {
+    msgEl.textContent = `No hay presupuestos definidos para el mes ${mesActual.slice(0, 7)}. Configúralos desde presupuestos.html.`;
+    msgEl.classList.remove('hidden');
+    document.getElementById('tbody-presupuesto').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">Sin presupuesto configurado.</td></tr>';
+    return;
+  }
+  msgEl.classList.add('hidden');
+
+  const ventasPorTienda = {};
+  (vRes.data || []).forEach(v => { ventasPorTienda[v.tienda_codigo] = (ventasPorTienda[v.tienda_codigo] || 0) + Number(v.total || 0); });
+  const hist2025 = {};
+  (h2025Res.data || []).forEach(h => { hist2025[h.tienda_codigo] = Number(h.venta_total || 0); });
+
+  const diaMes = hoy.getDate();
+  const diasTotal = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+
+  const filas = pRes.data.filter(p => tiendaVisible(p.tienda_codigo));
+  document.getElementById('tbody-presupuesto').innerHTML = filas.map(p => {
+    const real = ventasPorTienda[p.tienda_codigo] || 0;
+    const meta = Number(p.meta_utilidad || 0);
+    const real2025 = hist2025[p.tienda_codigo] || 0;
+    const cumpl = meta ? (real / meta) * 100 : 0;
+    const runRate = diaMes > 0 ? (real / diaMes) * diasTotal : 0;
+    const vs2025 = real2025 ? ((runRate - real2025) / real2025) * 100 : null;
+    const barClass = cumpl >= 100 ? 'success' : cumpl >= 75 ? '' : cumpl >= 50 ? 'warning' : 'error';
+    const vsCell = vs2025 == null
+      ? '<span class="text-gray-400">—</span>'
+      : `<span class="${vs2025 >= 0 ? 'text-emerald-700' : 'text-red-700'}">${vs2025 >= 0 ? '↑' : '↓'} ${Math.abs(vs2025).toFixed(1)}%</span>`;
+    return `<tr>
+      <td class="px-3 py-2 font-medium">${esc(p.origen?.nombre || p.tienda_codigo)}</td>
+      <td class="px-3 py-2 text-right font-mono text-gray-600">${real2025 ? money(real2025) : '<span class="text-gray-400">—</span>'}</td>
+      <td class="px-3 py-2 text-right font-mono">${money(meta)}</td>
+      <td class="px-3 py-2 text-right font-mono">${money(real)}</td>
+      <td class="px-3 py-2">
+        <div class="barra ${barClass}"><div style="width:${Math.min(100, cumpl).toFixed(1)}%"></div></div>
+        <div class="text-xs text-gray-500 mt-1">${cumpl.toFixed(1)}%</div>
+      </td>
+      <td class="px-3 py-2 text-right font-mono text-gray-600">${money(runRate)}</td>
+      <td class="px-3 py-2 text-right text-xs">${vsCell}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="text-center py-4 text-gray-400">Sin datos para la tienda seleccionada.</td></tr>';
+}
+
+// ============================================================================
+// 2.2 RENTABILIDAD POR TIENDA
+// ============================================================================
+async function cargarRentabilidadTienda() {
+  if (!esCentral()) return;
+  const { desde, hasta } = getPeriodo();
+  const [vRes, viRes, gRes] = await Promise.all([
+    sb.from('ventas').select('id, tienda_codigo, total, origen:tienda_codigo(nombre)').gte('fecha', desde).lte('fecha', hasta).neq('anulada', true),
+    sb.from('venta_items').select('venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true),
+    sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado'),
+  ]);
+  exigirRespuestas(vRes, viRes, gRes);
+  const porTienda = {};
+  (vRes.data || []).forEach(v => {
+    if (!tiendaVisible(v.tienda_codigo)) return;
+    if (!porTienda[v.tienda_codigo]) porTienda[v.tienda_codigo] = { nombre: v.origen?.nombre || v.tienda_codigo, ingresos: 0, costo: 0, gastos: 0 };
+    porTienda[v.tienda_codigo].ingresos += Number(v.total || 0);
+  });
+  (viRes.data || []).forEach(vi => {
+    const tc = vi.ventas?.tienda_codigo;
+    if (!porTienda[tc]) return;
+    porTienda[tc].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado || 0);
+  });
+  (gRes.data || []).forEach(g => {
+    if (!porTienda[g.tienda_codigo]) return;
+    porTienda[g.tienda_codigo].gastos += Number(g.monto || 0);
+  });
+
+  const filas = Object.values(porTienda).map(t => ({ ...t, margen: t.ingresos - t.costo, utilidad: t.ingresos - t.costo - t.gastos })).sort((a, b) => b.utilidad - a.utilidad);
+  document.getElementById('tbody-rent-tienda').innerHTML = filas.length ? filas.map(t => `<tr>
+    <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
+    <td class="px-3 py-2 text-right font-mono">${money(t.ingresos)}</td>
+    <td class="px-3 py-2 text-right font-mono text-orange-700">${money(t.costo)}</td>
+    <td class="px-3 py-2 text-right font-mono">${money(t.margen)}</td>
+    <td class="px-3 py-2 text-right font-mono text-red-700">${money(t.gastos)}</td>
+    <td class="px-3 py-2 text-right font-mono font-semibold ${t.utilidad >= 0 ? 'text-emerald-700' : 'text-red-700'}">${money(t.utilidad)}</td>
+    <td class="px-3 py-2 text-right">${pct(t.utilidad, t.ingresos)}</td>
+  </tr>`).join('') : '<tr><td colspan="7" class="text-center py-6 text-gray-400">Sin datos en el período.</td></tr>';
+}
+
+// ============================================================================
+// 2.3 RENTABILIDAD POR CATEGORÍA
+// ============================================================================
+async function cargarRentabilidadCategoria() {
+  if (!esCentral()) return;
+  const { desde, hasta } = getPeriodo();
+  const { data, error } = await sb.from('venta_items')
+    .select('cantidad, precio_venta, costo_congelado, productos(categoria, categorias_producto:categoria(nombre)), ventas!inner(tienda_codigo, fecha, anulada)')
+    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
+  if (error) { document.getElementById('tbody-rent-categoria').innerHTML = `<tr><td colspan="6" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+
+  const porCat = {};
+  (data || []).forEach(vi => {
+    if (!tiendaVisible(vi.ventas?.tienda_codigo)) return;
+    const catCod = vi.productos?.categoria || 'SIN_CAT';
+    const catNombre = vi.productos?.categorias_producto?.nombre || catCod;
+    if (!porCat[catCod]) porCat[catCod] = { nombre: catNombre, uds: 0, ingresos: 0, costo: 0 };
+    porCat[catCod].uds += Number(vi.cantidad || 0);
+    porCat[catCod].ingresos += Number(vi.cantidad || 0) * Number(vi.precio_venta || 0);
+    porCat[catCod].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado || 0);
+  });
+
+  const filas = Object.values(porCat).map(c => ({ ...c, margen: c.ingresos - c.costo })).sort((a, b) => b.margen - a.margen);
+  document.getElementById('tbody-rent-categoria').innerHTML = filas.length ? filas.map(c => `<tr>
+    <td class="px-3 py-2 font-medium">${esc(c.nombre)}</td>
+    <td class="px-3 py-2 text-right">${num(c.uds)}</td>
+    <td class="px-3 py-2 text-right font-mono">${money(c.ingresos)}</td>
+    <td class="px-3 py-2 text-right font-mono text-orange-700">${money(c.costo)}</td>
+    <td class="px-3 py-2 text-right font-mono font-semibold text-emerald-700">${money(c.margen)}</td>
+    <td class="px-3 py-2 text-right">${pct(c.margen, c.ingresos)}</td>
+  </tr>`).join('') : '<tr><td colspan="6" class="text-center py-6 text-gray-400">Sin ventas en el período.</td></tr>';
+
+  if (charts.categorias) charts.categorias.destroy();
+  if (filas.length > 0) {
+    charts.categorias = new Chart(document.getElementById('chart-categorias'), {
+      type: 'doughnut',
+      data: { labels: filas.map(f => f.nombre), datasets: [{ data: filas.map(f => f.margen), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#84cc16'] }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + money(ctx.parsed) } } } },
+    });
+  }
+}
+
+// ============================================================================
+// 3.1 CRECIMIENTO MES A MES (últimos 12 meses)
+// ============================================================================
+async function cargarCrecimiento() {
+  const hoy = new Date();
+  const iso = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
+  // 2026 desde tablas operativas — todo el año
+  const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
+  let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(inicioAnio)).neq('anulada', true);
+  q = aplicarFiltroTienda(q);
+  // 2025 desde historico_mensual
+  let qHist = sb.from('historico_mensual').select('mes, venta_total, tienda_codigo').eq('anio', 2025);
+  qHist = aplicarFiltroTienda(qHist);
+
+  const [ventasRes, histRes] = await Promise.all([q, qHist]);
+  exigirRespuestas(ventasRes, histRes);
+  if (ventasRes.error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(ventasRes.error.message)}</td></tr>`; return; }
+
+  // Serie 2026 por mes
+  const porMes2026 = {};
+  (ventasRes.data || []).forEach(v => {
+    const m = Number(v.fecha.slice(5, 7));
+    porMes2026[m] = (porMes2026[m] || 0) + Number(v.total || 0);
+  });
+  // Serie 2025 por mes
+  const porMes2025 = {};
+  (histRes.data || []).forEach(h => {
+    porMes2025[h.mes] = (porMes2025[h.mes] || 0) + Number(h.venta_total || 0);
+  });
+
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const filas = meses.map((nombre, idx) => {
+    const m = idx + 1;
+    const v2025 = porMes2025[m] || null;
+    const v2026 = porMes2026[m] || null;
+    const delta = v2025 && v2026 ? ((v2026 - v2025) / v2025) * 100 : null;
+    return { mes: nombre, mesNum: m, v2025, v2026, delta };
+  });
+
+  document.getElementById('tbody-crecimiento').innerHTML = filas.map(f => `<tr>
+    <td class="px-3 py-2 font-medium">${f.mes}</td>
+    <td class="px-3 py-2 text-right font-mono text-gray-500">${f.v2025 ? money(f.v2025) : '<span class="text-gray-400">—</span>'}</td>
+    <td class="px-3 py-2 text-right font-mono">${f.v2026 ? money(f.v2026) : '<span class="text-gray-400">—</span>'}</td>
+    <td class="px-3 py-2 text-right ${f.delta == null ? 'text-gray-400' : f.delta >= 0 ? 'text-emerald-700' : 'text-red-700'}">${f.delta == null ? '—' : (f.delta >= 0 ? '↑' : '↓') + ' ' + Math.abs(f.delta).toFixed(1) + '%'}</td>
+  </tr>`).join('');
+
+  if (charts.crecimiento) charts.crecimiento.destroy();
+  charts.crecimiento = new Chart(document.getElementById('chart-crecimiento'), {
+    type: 'line',
+    data: {
+      labels: meses,
+      datasets: [
+        {
+          label: '2025',
+          data: filas.map(f => f.v2025),
+          borderColor: '#9ca3af',
+          backgroundColor: 'rgba(156,163,175,0.15)',
+          borderDash: [6, 4],
+          tension: 0.3,
+          spanGaps: true,
+        },
+        {
+          label: '2026',
+          data: filas.map(f => f.v2026),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.15)',
+          tension: 0.3,
+          fill: true,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.parsed.y)}` } },
+      },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(v) } } },
+    },
+  });
+}
+
+// ============================================================================
+// 3.2 TOP PRODUCTOS y SLOW MOVERS
+// ============================================================================
+async function cargarTopProductos() {
+  const { desde, hasta } = getPeriodo();
+  const viRes = await sb.from('venta_items')
+    .select('cantidad, precio_venta, producto_id, productos(nombre), ventas!inner(tienda_codigo, fecha, anulada)')
+    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
+  exigirRespuestas(viRes);
+  const vi = viRes.data;
+  const porProd = {};
+  (vi || []).forEach(v => {
+    if (!tiendaVisible(v.ventas?.tienda_codigo)) return;
+    const pid = v.producto_id;
+    if (!porProd[pid]) porProd[pid] = { nombre: v.productos?.nombre || pid, uds: 0, total: 0 };
+    porProd[pid].uds += Number(v.cantidad || 0);
+    porProd[pid].total += Number(v.cantidad || 0) * Number(v.precio_venta || 0);
+  });
+  const top = Object.values(porProd).sort((a, b) => b.uds - a.uds).slice(0, 10);
+  document.getElementById('tbody-top-vendidos').innerHTML = top.length ? top.map(p => `<tr>
+    <td class="px-2 py-1.5">${esc(p.nombre)}</td>
+    <td class="px-2 py-1.5 text-right font-mono">${num(p.uds)}</td>
+    <td class="px-2 py-1.5 text-right font-mono">${money(p.total)}</td>
+  </tr>`).join('') : '<tr><td colspan="3" class="text-center py-4 text-gray-400">Sin ventas.</td></tr>';
+
+  // Slow movers — unidades con created_at > 30 días sin venta.
+  // Simplificación: buscar unidades disponibles cuya created_at es mayor a 30 días.
+  const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  const iso = d => d.toISOString().slice(0, 10);
+  let qUn = sb.from('unidades').select('producto_id, created_at, productos(nombre)').eq('estado', 'disponible').lte('created_at', iso(hace30));
+  qUn = aplicarFiltroTienda(qUn, 'tienda_actual');
+  const unidadesRes = await qUn;
+  exigirRespuestas(unidadesRes);
+  const uns = unidadesRes.data;
+  const slowMap = {};
+  (uns || []).forEach(u => {
+    const pid = u.producto_id;
+    if (!slowMap[pid]) slowMap[pid] = { nombre: u.productos?.nombre || pid, uds: 0, mas_vieja: u.created_at };
+    slowMap[pid].uds += 1;
+    if (u.created_at < slowMap[pid].mas_vieja) slowMap[pid].mas_vieja = u.created_at;
+  });
+  const slows = Object.values(slowMap).map(s => ({ ...s, dias: Math.floor((Date.now() - new Date(s.mas_vieja).getTime()) / 86400000) })).sort((a, b) => b.dias - a.dias).slice(0, 10);
+  document.getElementById('tbody-slow-movers').innerHTML = slows.length ? slows.map(s => `<tr>
+    <td class="px-2 py-1.5">${esc(s.nombre)}</td>
+    <td class="px-2 py-1.5 text-right font-mono">${num(s.uds)}</td>
+    <td class="px-2 py-1.5 text-right font-mono">${s.dias}d</td>
+  </tr>`).join('') : '<tr><td colspan="3" class="text-center py-4 text-gray-400">Ningún producto con más de 30 días sin movimiento.</td></tr>';
+}
+
+// ============================================================================
+// 3.4 ANÁLISIS DE PROVEEDORES
+// ============================================================================
+async function cargarProveedores() {
+  if (!esCentral()) return;
+  const { data, error } = await sb.from('facturas_proveedor')
+    .select('proveedor_id, total, saldo, proveedores:proveedor_id(nombre)');
+  if (error) { document.getElementById('tbody-proveedores').innerHTML = `<tr><td colspan="4" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+
+  const porProv = {};
+  (data || []).forEach(f => {
+    const pid = f.proveedor_id;
+    if (!porProv[pid]) porProv[pid] = { nombre: f.proveedores?.nombre || pid, facturas: 0, total: 0, saldo: 0 };
+    porProv[pid].facturas += 1;
+    porProv[pid].total += Number(f.total || 0);
+    porProv[pid].saldo += Number(f.saldo || 0);
+  });
+
+  const filas = Object.values(porProv).sort((a, b) => b.total - a.total);
+  document.getElementById('tbody-proveedores').innerHTML = filas.length ? filas.map(p => `<tr>
+    <td class="px-3 py-2 font-medium">${esc(p.nombre)}</td>
+    <td class="px-3 py-2 text-right">${num(p.facturas)}</td>
+    <td class="px-3 py-2 text-right font-mono">${money(p.total)}</td>
+    <td class="px-3 py-2 text-right font-mono ${p.saldo > 0 ? 'text-orange-700 font-semibold' : 'text-gray-500'}">${money(p.saldo)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="text-center py-6 text-gray-400">Sin proveedores registrados.</td></tr>';
+}
+
+// ============================================================================
+// ORCHESTRACIÓN
+// ============================================================================
+async function refrescarTodo() {
+  document.getElementById('rango-visible').textContent = labelPeriodo();
+  const cache = crearCacheRefresco();
+  try {
+    await Promise.all([
+      cargarKPIs(cache),
+      cargarVentas(cache),
+      cargarCartera(cache),
+      cargarInventario(cache),
+      cargarPresupuesto(),
+      cargarRentabilidadTienda(),
+      cargarRentabilidadCategoria(),
+      cargarCrecimiento(),
+      cargarTopProductos(),
+      cargarProveedores(),
+    ]);
+  } catch (error) {
+    toast(`No fue posible actualizar todos los reportes: ${error.message}`, 'error');
+  }
+}
+
+// ============================================================================
+// MULTI-SELECT TIENDAS
+// ============================================================================
+function actualizarLabelTiendas() {
+  const btn = document.getElementById('btnTiendas');
+  if (!tiendasFiltro || tiendasFiltro.length === 0) {
+    btn.textContent = 'Todas las tiendas';
+  } else if (tiendasFiltro.length === 1) {
+    const t = tiendasCache.find(x => x.codigo === tiendasFiltro[0]);
+    btn.textContent = t ? t.nombre : tiendasFiltro[0];
+  } else {
+    btn.textContent = `${tiendasFiltro.length} tiendas seleccionadas`;
+  }
+}
+
+function inicializarMultiSelect() {
+  const btn = document.getElementById('btnTiendas');
+  const panel = document.getElementById('panelTiendas');
+  const chkTodas = document.getElementById('chkTodasTiendas');
+  const chkIndiv = document.querySelectorAll('.chkTienda');
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    panel.classList.toggle('abierto');
+    btn.classList.toggle('abierto');
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.contains(e.target) && e.target !== btn) {
+      panel.classList.remove('abierto');
+      btn.classList.remove('abierto');
+    }
+  });
+
+  chkTodas.addEventListener('change', () => {
+    if (chkTodas.checked) {
+      chkIndiv.forEach(c => { c.checked = false; });
+      tiendasFiltro = [];
+    } else {
+      // Sin ninguna marcada equivale a "Todas" — re-marca "Todas".
+      chkTodas.checked = true;
+      return;
+    }
+    actualizarLabelTiendas();
+    refrescarTodo();
+  });
+  chkIndiv.forEach(chk => {
+    chk.addEventListener('change', () => {
+      const marcadas = Array.from(chkIndiv).filter(c => c.checked).map(c => c.value);
+      if (marcadas.length === 0) {
+        chkTodas.checked = true;
+        tiendasFiltro = [];
+      } else {
+        chkTodas.checked = false;
+        tiendasFiltro = marcadas;
+      }
+      actualizarLabelTiendas();
+      refrescarTodo();
+    });
+  });
+}
+
+// ============================================================================
+// PERÍODO — presets + rango personalizado
+// ============================================================================
+function inicializarPeriodo() {
+  document.querySelectorAll('[data-periodo]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-periodo]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      periodoActual = btn.getAttribute('data-periodo');
+      const rangoDiv = document.getElementById('rangoPersonalizado');
+      if (periodoActual === 'personalizado') {
+        rangoDiv.classList.add('abierto');
+        // Precargar con el rango actual visible o mes actual
+        const { desde, hasta } = getPeriodo();
+        if (!document.getElementById('fechaDesde').value) document.getElementById('fechaDesde').value = desde;
+        if (!document.getElementById('fechaHasta').value) document.getElementById('fechaHasta').value = hasta;
+        return; // no refresca hasta que apliquen
+      }
+      rangoDiv.classList.remove('abierto');
+      rangoPersonalizado = null;
+      refrescarTodo();
+    });
+  });
+  document.getElementById('btnAplicarRango').addEventListener('click', () => {
+    const desde = document.getElementById('fechaDesde').value;
+    const hasta = document.getElementById('fechaHasta').value;
+    if (!desde || !hasta) { toast('Selecciona ambas fechas', 'error'); return; }
+    if (desde > hasta) { toast('La fecha "Desde" debe ser anterior o igual a "Hasta"', 'error'); return; }
+    rangoPersonalizado = { desde, hasta };
+    periodoActual = 'personalizado';
+    refrescarTodo();
+  });
+}
+
+// ============================================================================
+// BOOT
+// ============================================================================
+(async function () {
+  const ok = await verificarAuth();
+  if (!ok) return;
+  inicializarMultiSelect();
+  inicializarPeriodo();
+  await refrescarTodo();
+})();
+</script>
+</body>
+</html>

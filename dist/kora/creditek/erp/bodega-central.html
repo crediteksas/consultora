@@ -1,0 +1,1090 @@
+<!doctype html>
+<!--
+  bodega-central.html · Creditek ERP · R2 pantalla 3/5
+  Ubicación sugerida en repo: creditek/erp/pages/bodega-central.html
+  Acceso: gerencia / auditoria
+
+  Objetivo:
+    Monitor visual del stock de Bodega Central.
+    Idealmente CENTRAL siempre debe terminar en 0 (todo lo comprado se despacha).
+    Si hay stock > 0 en CENTRAL, es un descuadre → destacar visualmente + drill-down.
+
+  Data source:
+    - Vista `alerta_bodega_central` (R2.3 del paquete)
+    - `movimientos` filtrado por tienda_codigo='CENTRAL' (para el detalle)
+    - `unidades` con tienda_actual='CENTRAL' (para inventario serializado detallado)
+
+  INTEGRACIÓN — idéntico patrón que las anteriores:
+    1. Cliente Supabase: window.SB o CREDITEK_ENV.
+    2. Sidebar: descomenta al final si aplica.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bodega Central · Creditek</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="bodega-domain.js"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .fade-in { animation: fadeIn 0.15s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .badge-serial   { background-color: #ede9fe; color: #6d28d9; }
+    .badge-cantidad { background-color: #E8EEF6; color: #0B1E3D; }
+    tbody tr:hover { background-color: #f9fafb; cursor: pointer; }
+    tbody tr.expandida { background-color: #fff7ed; }
+    .card-verde { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #10b981; }
+    .card-rojo  { background: #FFF5F5; border: 1px solid #FCA5A5; box-shadow: 0 4px 14px rgba(220,38,38,.08); }
+    .card-azul  { background: #FFFFFF; border-color: rgba(11,30,61,.12); box-shadow: 0 4px 16px rgba(11,30,61,.06); }
+    .despacho-precio-input { flex: 1 0 8rem; min-width: 8rem; width: 8rem; }
+    .pulse-red { animation: pulseRed 2s infinite; }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      50%      { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    }
+    .bg-white.rounded-lg.shadow-sm.border-2.border-blue-200.p-5 {
+      border: 1px solid rgba(11,30,61,.12);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(11,30,61,.07);
+    }
+    #btn-agregar-despacho-item, #btn-despachar {
+      min-height: 44px;
+      background: #00C4CC;
+      color: #0B1E3D;
+      border-radius: 12px;
+      transition: background-color 150ms ease, transform 80ms ease;
+    }
+    #btn-agregar-despacho-item:hover, #btn-despachar:hover { background: #00ADB4; }
+    #btn-agregar-despacho-item:active, #btn-despachar:active,
+    #btn-despacho-limpiar:active, #btn-toggle-despacho:active { transform: scale(.985); }
+    #despacho-tienda, #despacho-nota, #filtro-buscar,
+    #filtro-descuadre, #filtro-tipo, #filtro-factura {
+      min-height: 44px;
+      border-radius: 12px;
+      padding: 0 16px;
+    }
+    tbody tr { transition: background-color 150ms ease; }
+
+    /* Capa visual premium · Bodega Central */
+    #app > section:first-of-type > div {
+      position: relative;
+      overflow: hidden;
+      background: #FFFFFF !important;
+      border: 1px solid rgba(11,30,61,.10) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 4px 16px rgba(11,30,61,.06);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    #app > section:first-of-type > div::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: #00C4CC;
+    }
+    #app > section:first-of-type > div:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(11,30,61,.09);
+    }
+    #app > section:first-of-type > .card-rojo {
+      background: #FFF5F5 !important;
+      border-color: #FCA5A5 !important;
+      box-shadow: 0 4px 14px rgba(220,38,38,.08);
+    }
+    #app > section:first-of-type > .card-rojo::before { background: #DC2626; }
+    #app section:has(#panel-despacho),
+    #app section:has(#filtro-texto),
+    #app section:has(#tbody-alerta) {
+      background: #FFFFFF !important;
+      border: 1px solid rgba(11,30,61,.10) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 8px 24px rgba(11,30,61,.06) !important;
+      overflow: hidden;
+    }
+    #app section:has(#panel-despacho) { padding: 24px !important; }
+    #despacho-tienda, #despacho-nota, #despacho-input-buscar,
+    #filtro-texto, #filtro-descuadre, #filtro-tipo, #filtro-factura {
+      min-height: 44px;
+      padding: 0 16px !important;
+      border: 1.5px solid rgba(11,30,61,.12) !important;
+      border-radius: 12px !important;
+      color: #0B1E3D;
+      background: #FFFFFF;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    #despacho-tienda:focus, #despacho-nota:focus, #despacho-input-buscar:focus,
+    #filtro-texto:focus, #filtro-descuadre:focus, #filtro-tipo:focus, #filtro-factura:focus {
+      border-color: #00C4CC !important;
+      box-shadow: 0 0 0 3px rgba(0,196,204,.12) !important;
+      outline: none;
+    }
+    #btn-agregar-despacho-item {
+      background: #00C4CC !important;
+      color: #FFFFFF !important;
+      border: 0 !important;
+      box-shadow: 0 2px 8px rgba(0,196,204,.25);
+    }
+    #btn-agregar-despacho-item:hover {
+      background: #00ADB4 !important;
+      box-shadow: 0 4px 16px rgba(0,196,204,.35);
+      transform: translateY(-1px);
+    }
+    #btn-despachar {
+      background: linear-gradient(135deg,#0B1E3D 0%,#142D54 100%) !important;
+      color: #FFFFFF !important;
+      border: 0 !important;
+      box-shadow: 0 2px 8px rgba(11,30,61,.25);
+    }
+    #btn-despacho-limpiar {
+      min-height: 44px;
+      background: transparent !important;
+      color: #64748B !important;
+      border: 1.5px solid rgba(11,30,61,.15) !important;
+      border-radius: 12px !important;
+    }
+    #btn-toggle-despacho, #btn-refresh {
+      min-height: 44px;
+      border-radius: 12px !important;
+      transition: transform 80ms ease, background-color .15s ease;
+    }
+    #btn-toggle-despacho:hover { background: rgba(11,30,61,.04) !important; color: #0B1E3D !important; }
+    #app section:has(#panel-despacho) thead th,
+    #app section:has(#tbody-alerta) thead th {
+      background: #0B1E3D !important;
+      color: #FFFFFF !important;
+      padding: 14px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    #app section:has(#panel-despacho) tbody td,
+    #app section:has(#tbody-alerta) tbody td { padding: 14px 16px; transition: background-color .15s ease; }
+    #app section:has(#panel-despacho) tbody tr:hover td,
+    #app section:has(#tbody-alerta) tbody tr:hover td { background: rgba(0,196,204,.03); }
+    .badge-serial, .badge-cantidad {
+      background: rgba(11,30,61,.06) !important;
+      color: #0B1E3D !important;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    #btn-agregar-despacho-item:active, #btn-despachar:active,
+    #btn-despacho-limpiar:active, #btn-toggle-despacho:active, #btn-refresh:active { transform: scale(.985); }
+    @keyframes bodegaFadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #app > section { animation: bodegaFadeInUp .35s cubic-bezier(.16,1,.3,1) backwards; }
+    #app > section:nth-of-type(2) { animation-delay: .05s; }
+    #app > section:nth-of-type(3) { animation-delay: .1s; }
+    #app > section:nth-of-type(4) { animation-delay: .15s; }
+    @media (prefers-reduced-motion: reduce) {
+      #app > section { animation: none; }
+      #app button, #app input, #app select { transition: none !important; }
+    }
+  </style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+<script src="kora-access-control.js?v=2.0.14"></script>
+<script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ============================================================ HEADER -->
+<header class="bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
+      <h1 class="text-xl font-bold text-gray-800">Bodega Central</h1>
+      <span class="text-xs text-gray-500">Monitor de descuadres · stock en tránsito hacia tiendas</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="ultima-actualizacion" class="text-xs text-gray-500"></span>
+      <button id="btn-refresh"
+              class="px-3 py-1.5 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-1">
+        <span>↻</span> Actualizar
+      </button>
+      <div id="usuario-info" class="text-sm text-gray-600"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================ AUTH GUARD -->
+<div id="auth-guard" class="hidden max-w-7xl mx-auto mt-6 p-4 bg-red-50 border border-red-200 rounded">
+  <p class="text-red-800 font-semibold">No autorizado.</p>
+  <p class="text-red-700 text-sm">Esta pantalla es solo para roles <b>gerencia</b> o <b>auditoría</b>.</p>
+</div>
+
+<!-- ============================================================ CONTENIDO -->
+<main id="app" class="hidden max-w-7xl mx-auto px-4 py-6 space-y-5">
+
+  <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
+
+  <!-- =========================== KPIs =========================== -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div id="card-estado" class="border-2 rounded-lg p-5 card-verde">
+      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Estado de la bodega</div>
+      <div class="flex items-baseline gap-2">
+        <span id="estado-icono" class="text-3xl">✅</span>
+        <span id="estado-titulo" class="text-2xl font-bold text-gray-800">Cuadrada</span>
+      </div>
+      <p id="estado-detalle" class="text-sm text-gray-700 mt-2">Todo lo comprado ha sido despachado.</p>
+    </div>
+
+    <div class="border-2 border-gray-200 rounded-lg p-5 card-azul">
+      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Productos descuadrados</div>
+      <div class="flex items-baseline gap-2">
+        <span id="kpi-descuadrados" class="text-4xl font-bold text-gray-800">0</span>
+        <span class="text-sm text-gray-500">de <span id="kpi-total-productos">0</span> monitoreados</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">Productos con stock &gt; 0 en CENTRAL.</p>
+    </div>
+
+    <div class="border-2 border-gray-200 rounded-lg p-5 card-azul">
+      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Unidades pendientes de despacho</div>
+      <div class="flex items-baseline gap-2">
+        <span id="kpi-unidades" class="text-4xl font-bold text-gray-800">0</span>
+        <span class="text-sm text-gray-500">unidades físicas</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">Suma total de todo el inventario en CENTRAL.</p>
+    </div>
+  </section>
+
+  <!-- =========================== SPEC v2 · SECCIÓN DE DESPACHO =========================== -->
+  <section class="bg-white rounded-lg shadow-sm border-2 border-blue-200 p-5">
+    <div class="flex justify-between items-start mb-3">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-800">🚚 Nuevo despacho</h2>
+        <p class="text-xs text-gray-500">Selecciona la tienda destino y agrega productos. El precio de remisión se lee de la unidad/stock (definido al comprar). Botón ✏️ permite modificarlo para este despacho puntual.</p>
+      </div>
+      <button id="btn-toggle-despacho" class="text-xs text-blue-600 hover:text-blue-800">Ocultar ▲</button>
+    </div>
+
+    <div id="panel-despacho">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <label class="block md:col-span-2">
+          <span class="text-sm font-medium text-gray-700">Tienda destino <span class="text-red-500">*</span></span>
+          <select id="despacho-tienda" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">— Selecciona una tienda —</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-gray-700">Nota (opcional)</span>
+          <input id="despacho-nota" type="text" maxlength="200"
+                 class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="Ej. Reparto factura FV-0123 · lote 1 de 3" />
+        </label>
+      </div>
+
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs text-gray-500">Ítems a despachar</p>
+        <button id="btn-agregar-despacho-item" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-medium">+ Agregar producto</button>
+      </div>
+
+      <div class="overflow-x-auto border border-gray-200 rounded">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-700 text-left">
+            <tr>
+              <th class="px-3 py-2 font-semibold w-[35%]">Producto</th>
+              <th class="px-3 py-2 font-semibold text-right w-24">Cantidad</th>
+              <th class="px-3 py-2 font-semibold text-right w-40">Precio remisión</th>
+              <th class="px-3 py-2 font-semibold text-right w-40">Subtotal</th>
+              <th class="px-3 py-2 font-semibold text-center w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-despacho">
+            <tr><td colspan="5" class="text-center py-6 text-gray-400 text-xs">Aún no agregas productos. Presiona <b>+ Agregar producto</b>.</td></tr>
+          </tbody>
+          <tfoot>
+            <tr class="border-t border-gray-200 bg-gray-50">
+              <td colspan="3" class="px-3 py-2 text-right font-semibold text-gray-700">Total remisión</td>
+              <td class="px-3 py-2 text-right font-bold font-mono text-blue-800" id="despacho-total">$ 0</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="btn-despacho-limpiar" type="button" class="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 text-sm">Limpiar</button>
+        <button id="btn-despachar" type="button" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold text-sm">Despachar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal buscador de productos disponibles para despacho -->
+  <div id="modal-despacho-buscar" class="hidden fixed inset-0 bg-black bg-opacity-40 z-40 flex items-start justify-center pt-20 px-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-xl">
+      <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="font-semibold text-gray-800">Buscar producto con stock en CENTRAL</h3>
+        <button id="cerrar-despacho-modal" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-4">
+        <input id="despacho-input-buscar" type="text" autofocus
+               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="Nombre, categoría o SKU..." />
+        <div id="despacho-search-results" style="max-height:260px; overflow-y:auto" class="mt-3 border border-gray-100 rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================== FILTROS =========================== -->
+  <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
+    <input id="filtro-texto" type="text" placeholder="Buscar por producto o categoría..."
+           class="flex-1 min-w-[240px] border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <select id="filtro-descuadre" class="border border-gray-300 rounded px-3 py-2 text-sm">
+      <option value="descuadrados" selected>Solo descuadrados</option>
+      <option value="todos">Todos</option>
+      <option value="cuadrados">Solo cuadrados (stock 0)</option>
+    </select>
+    <select id="filtro-tipo" class="border border-gray-300 rounded px-3 py-2 text-sm">
+      <option value="todos">Todos los tipos</option>
+      <option value="cantidad">Solo tipo cantidad</option>
+      <option value="serializado">Solo tipo serializado</option>
+    </select>
+    <!-- SPEC v2 · filtro por factura del proveedor. Se popula con las facturas que tengan stock aún en CENTRAL. -->
+    <select id="filtro-factura" class="border border-gray-300 rounded px-3 py-2 text-sm">
+      <option value="">Todas las facturas</option>
+    </select>
+    <span id="contador" class="text-xs text-gray-500 ml-auto"></span>
+  </section>
+
+  <!-- =========================== TABLA =========================== -->
+  <section class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-100 text-gray-700 text-left">
+        <tr>
+          <th class="px-4 py-3 font-semibold w-8"></th>
+          <th class="px-4 py-3 font-semibold">Producto</th>
+          <th class="px-4 py-3 font-semibold">Categoría</th>
+          <th class="px-4 py-3 font-semibold text-center">Tipo</th>
+          <th class="px-4 py-3 font-semibold text-right">Stock en CENTRAL</th>
+          <th class="px-4 py-3 font-semibold text-center">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-alerta">
+        <tr><td colspan="6" class="text-center py-8 text-gray-400">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<!-- ============================================================ MODAL DE DETALLE -->
+<div id="modal-detalle" class="hidden fixed inset-0 bg-black bg-opacity-40 z-40 flex items-start justify-center pt-10 px-4 pb-10 overflow-y-auto">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl">
+    <div class="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
+      <div>
+        <h3 id="detalle-titulo" class="font-semibold text-gray-800"></h3>
+        <p id="detalle-sub" class="text-xs text-gray-500"></p>
+      </div>
+      <button id="cerrar-detalle" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    </div>
+    <div class="p-4 space-y-5">
+
+      <!-- Resumen -->
+      <div id="detalle-resumen" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm"></div>
+
+      <!-- Movimientos -->
+      <div>
+        <h4 class="font-semibold text-gray-800 mb-2">Movimientos recientes en CENTRAL</h4>
+        <p class="text-xs text-gray-500 mb-2">Últimas 20 entradas y salidas registradas.</p>
+        <div class="overflow-x-auto border border-gray-200 rounded">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 text-gray-600">
+              <tr>
+                <th class="px-2 py-2 text-left font-medium">Fecha</th>
+                <th class="px-2 py-2 text-left font-medium">Tipo</th>
+                <th class="px-2 py-2 text-right font-medium">Cantidad</th>
+                <th class="px-2 py-2 text-right font-medium">Costo unit.</th>
+                <th class="px-2 py-2 text-left font-medium">Referencia</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-movimientos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Unidades pendientes (solo serializado) -->
+      <div id="unidades-panel" class="hidden">
+        <h4 class="font-semibold text-gray-800 mb-2">Unidades en CENTRAL (serializado)</h4>
+        <p class="text-xs text-gray-500 mb-2">
+          Filas con <b>imei=NULL</b> están pendientes de recibirse en tienda. Filas con IMEI ya fueron recibidas y trazan el histórico.
+        </p>
+        <div class="overflow-x-auto border border-gray-200 rounded">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 text-gray-600">
+              <tr>
+                <th class="px-2 py-2 text-left font-medium">Estado</th>
+                <th class="px-2 py-2 text-left font-medium">IMEI</th>
+                <th class="px-2 py-2 text-right font-medium">Costo real</th>
+                <th class="px-2 py-2 text-right font-medium">Precio remisión</th>
+                <th class="px-2 py-2 text-left font-medium">Factura proveedor</th>
+                <th class="px-2 py-2 text-left font-medium">Creada</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-unidades"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ SCRIPT -->
+<script>
+const SB = (function () {
+  if (window.SB) return window.SB;
+  const env = window.__KORA_ENV__;
+  return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
+})();
+const bodegaDomain = window.CreditekBodegaDomain;
+
+// ============================================================
+// HELPERS
+// ============================================================
+const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const fmtFecha = new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+const fmtDateTime = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
+});
+function money(n) { return n == null ? '—' : fmtMoney.format(Number(n)); }
+function fechaCorta(iso) { return iso ? fmtFecha.format(new Date(iso)) : '—'; }
+function fechaHora(iso) { return iso ? fmtDateTime.format(new Date(iso)) : '—'; }
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function toast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in ' +
+    (tipo === 'error' ? 'bg-red-600' : 'bg-green-600');
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+// ============================================================
+// AUTH GATE
+// ============================================================
+let rolActual = null;
+async function verificarAuth() {
+  const { data: { session } } = await SB.auth.getSession();
+  if (!session) { location.href = 'app.html'; return false; }
+
+  const { data: rol, error } = await SB.rpc('rol_actual');
+  if (error) { toast('Error verificando permisos', 'error'); return false; }
+  rolActual = rol;
+
+  document.getElementById('usuario-info').textContent =
+    (session.user.email || '') + ' · ' + (rolActual || 'sin rol');
+
+  if (rolActual !== 'gerencia' && rolActual !== 'auditoria') {
+    document.getElementById('auth-guard').classList.remove('hidden');
+    return false;
+  }
+  document.getElementById('app').classList.remove('hidden');
+  return true;
+}
+
+// ============================================================
+// ESTADO
+// ============================================================
+let alertaData = [];
+
+// ============================================================
+// CARGA DE ALERTA_BODEGA_CENTRAL
+// ============================================================
+// Mapa producto_id → facturas con stock vivo, tanto serializado como cantidad.
+// Se calcula en cargarAlerta y lo usa el filtro por factura.
+let facturasPorProducto = {};
+let facturasIndex = [];  // [{id, numero, fecha, proveedor_nombre}]
+
+async function cargarAlerta() {
+  const [alertaResp, unidadesFacturas, lotesResp, facturasResp] = await Promise.all([
+    SB.from('alerta_bodega_central')
+      .select('producto_id, nombre, categoria, tipo, stock_actual_central, descuadrado'),
+    // Solo unidades realmente disponibles en CENTRAL.
+    SB.from('unidades')
+      .select('producto_id, factura_proveedor_id')
+      .eq('tienda_actual', 'CENTRAL')
+      .eq('estado', 'disponible')
+      .is('imei', null)
+      .not('factura_proveedor_id', 'is', null),
+    SB.rpc('obtener_lotes_cantidad_central'),
+    SB.from('facturas_proveedor')
+      .select('id, numero, fecha, proveedor:proveedor_id(nombre)')
+      .order('fecha', { ascending: false }),
+  ]);
+  if (alertaResp.error) { toast('Error cargando alerta: ' + alertaResp.error.message, 'error'); return; }
+  if (unidadesFacturas.error) { toast('Error cargando facturas de equipos: ' + unidadesFacturas.error.message, 'error'); return; }
+  if (lotesResp.error) { toast('Error cargando lotes de accesorios: ' + lotesResp.error.message, 'error'); return; }
+  if (facturasResp.error) { toast('Error cargando facturas: ' + facturasResp.error.message, 'error'); return; }
+
+  alertaData = alertaResp.data || [];
+  alertaData.sort((a, b) => {
+    if (a.descuadrado !== b.descuadrado) return b.descuadrado - a.descuadrado;
+    if (a.stock_actual_central !== b.stock_actual_central) return b.stock_actual_central - a.stock_actual_central;
+    return a.nombre.localeCompare(b.nombre, 'es');
+  });
+
+  // Mapa producto → set(facturas)
+  facturasPorProducto = {};
+  const facturaIdsConStock = new Set();
+  (unidadesFacturas.data || []).forEach(u => {
+    if (!facturasPorProducto[u.producto_id]) facturasPorProducto[u.producto_id] = new Set();
+    facturasPorProducto[u.producto_id].add(u.factura_proveedor_id);
+    facturaIdsConStock.add(u.factura_proveedor_id);
+  });
+  (lotesResp.data || []).forEach(lote => {
+    if (!facturasPorProducto[lote.producto_id]) facturasPorProducto[lote.producto_id] = new Set();
+    facturasPorProducto[lote.producto_id].add(lote.factura_proveedor_id);
+    facturaIdsConStock.add(lote.factura_proveedor_id);
+  });
+
+  // Mostrar únicamente facturas que todavía tienen inventario disponible.
+  facturasIndex = (facturasResp.data || []).filter(f => facturaIdsConStock.has(f.id));
+  const selFactura = document.getElementById('filtro-factura');
+  const actual = selFactura.value;
+  selFactura.innerHTML = '<option value="">Todas las facturas</option>' +
+    facturasIndex.map(f => {
+      const prov = f.proveedor?.nombre ? f.proveedor.nombre + ' · ' : '';
+      return `<option value="${esc(f.id)}">${prov}${esc(f.numero)} · ${fechaCorta(f.fecha)}</option>`;
+    }).join('');
+  if (facturasIndex.some(f => f.id === actual)) selFactura.value = actual;
+
+  actualizarKPIs();
+  render();
+  document.getElementById('ultima-actualizacion').textContent = 'Actualizado ' + fechaHora(new Date().toISOString());
+}
+
+// ============================================================
+// KPIs
+// ============================================================
+function actualizarKPIs() {
+  const descuadrados = alertaData.filter(a => a.descuadrado);
+  const totalUnidades = alertaData.reduce((s, a) => s + (a.stock_actual_central || 0), 0);
+
+  document.getElementById('kpi-descuadrados').textContent = descuadrados.length;
+  document.getElementById('kpi-total-productos').textContent = alertaData.length;
+  document.getElementById('kpi-unidades').textContent = totalUnidades;
+
+  const card = document.getElementById('card-estado');
+  const icono = document.getElementById('estado-icono');
+  const titulo = document.getElementById('estado-titulo');
+  const detalle = document.getElementById('estado-detalle');
+
+  if (descuadrados.length === 0) {
+    card.className = 'border-2 rounded-lg p-5 card-verde';
+    icono.textContent = '✅';
+    titulo.textContent = 'Cuadrada';
+    detalle.textContent = 'Todo lo comprado ha sido despachado. Stock CENTRAL = 0 en todos los productos.';
+  } else {
+    card.className = 'border-2 rounded-lg p-5 card-rojo pulse-red';
+    icono.textContent = '⚠️';
+    titulo.textContent = descuadrados.length + ' descuadrados';
+    const worst = descuadrados[0];
+    detalle.innerHTML = 'Producto con más stock: <b>' + esc(worst.nombre) + '</b> · ' + worst.stock_actual_central + ' unidades.';
+  }
+}
+
+// ============================================================
+// TABLA
+// ============================================================
+function render() {
+  const q = document.getElementById('filtro-texto').value.trim().toLowerCase();
+  const descuadre = document.getElementById('filtro-descuadre').value;
+  const tipo = document.getElementById('filtro-tipo').value;
+  const factura = document.getElementById('filtro-factura').value;
+
+  const filtrados = alertaData.filter(a => {
+    if (descuadre === 'descuadrados' && !a.descuadrado) return false;
+    if (descuadre === 'cuadrados' && a.descuadrado) return false;
+    if (tipo !== 'todos' && a.tipo !== tipo) return false;
+    // SPEC v2 · filtro por factura — solo aplica a productos serializados (unidades tienen factura_proveedor_id).
+    if (factura) {
+      const facts = facturasPorProducto[a.producto_id];
+      if (!facts || !facts.has(factura)) return false;
+    }
+    if (q) {
+      const hay = (a.nombre + ' ' + a.categoria).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('contador').textContent = filtrados.length + ' de ' + alertaData.length + ' productos';
+
+  const tbody = document.getElementById('tbody-alerta');
+  if (filtrados.length === 0) {
+    const msg = descuadre === 'descuadrados' && alertaData.length > 0
+      ? '🎉 No hay descuadres. La bodega está cuadrada.'
+      : 'Sin resultados';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">' + msg + '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map(a => {
+    const semaforo = a.descuadrado
+      ? '<span class="inline-flex items-center gap-1 text-red-700 font-semibold"><span class="w-2 h-2 bg-red-500 rounded-full"></span>Descuadrado</span>'
+      : '<span class="inline-flex items-center gap-1 text-green-700"><span class="w-2 h-2 bg-green-500 rounded-full"></span>OK</span>';
+    const badgeTipo = a.tipo === 'serializado'
+      ? '<span class="px-2 py-0.5 rounded text-xs badge-serial">serializado</span>'
+      : '<span class="px-2 py-0.5 rounded text-xs badge-cantidad">cantidad</span>';
+    const stockClass = a.descuadrado ? 'text-red-700 font-bold' : 'text-gray-400';
+    return `
+      <tr data-producto="${esc(a.producto_id)}" data-nombre="${esc(a.nombre)}" data-tipo="${esc(a.tipo)}">
+        <td class="px-4 py-3 text-gray-400">›</td>
+        <td class="px-4 py-3 font-medium text-gray-800">${esc(a.nombre)}</td>
+        <td class="px-4 py-3 text-gray-600">${esc(a.categoria)}</td>
+        <td class="px-4 py-3 text-center">${badgeTipo}</td>
+        <td class="px-4 py-3 text-right font-mono ${stockClass}">${a.stock_actual_central}</td>
+        <td class="px-4 py-3 text-center">${semaforo}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// DETALLE — modal con movimientos + unidades
+// ============================================================
+async function abrirDetalle(prodId, nombre, tipo) {
+  document.getElementById('detalle-titulo').textContent = nombre;
+  document.getElementById('detalle-sub').textContent = 'Tipo: ' + tipo + ' · trazabilidad en Bodega Central';
+  document.getElementById('modal-detalle').classList.remove('hidden');
+  document.getElementById('tbody-movimientos').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-400">Cargando...</td></tr>';
+  document.getElementById('detalle-resumen').innerHTML = '';
+  document.getElementById('unidades-panel').classList.add('hidden');
+
+  // Movimientos
+  const { data: mov, error: mErr } = await SB
+    .from('movimientos')
+    .select('created_at, tipo, cantidad, costo, precio, referencia_tipo, referencia_id')
+    .eq('tienda_codigo', 'CENTRAL')
+    .eq('producto_id', prodId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const tbodyMov = document.getElementById('tbody-movimientos');
+  if (mErr) {
+    tbodyMov.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-600">Error: ' + esc(mErr.message) + '</td></tr>';
+  } else if (!mov || mov.length === 0) {
+    tbodyMov.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-400">Sin movimientos registrados.</td></tr>';
+  } else {
+    let totalEntrada = 0, totalSalida = 0;
+    mov.forEach(m => {
+      if (m.tipo === 'compra_entrada') totalEntrada += m.cantidad;
+      else if (m.tipo === 'remision_salida_central') totalSalida += m.cantidad;
+    });
+    document.getElementById('detalle-resumen').innerHTML = `
+      <div class="border rounded p-2 bg-blue-50"><div class="text-xs text-gray-500">Compras (últimas 20)</div><div class="font-bold text-lg">+${totalEntrada}</div></div>
+      <div class="border rounded p-2 bg-orange-50"><div class="text-xs text-gray-500">Despachos (últimas 20)</div><div class="font-bold text-lg">-${totalSalida}</div></div>
+      <div class="border rounded p-2 bg-gray-50"><div class="text-xs text-gray-500">Diferencia parcial</div><div class="font-bold text-lg">${totalEntrada - totalSalida}</div></div>
+      <div class="border rounded p-2 bg-gray-50"><div class="text-xs text-gray-500">Nº movimientos</div><div class="font-bold text-lg">${mov.length}</div></div>
+    `;
+    tbodyMov.innerHTML = mov.map(m => {
+      const tipoLabel = ({
+        compra_entrada: '<span class="text-green-700">↓ Compra entrada</span>',
+        remision_salida_central: '<span class="text-orange-700">↑ Despacho</span>'
+      })[m.tipo] || esc(m.tipo);
+      return `
+        <tr class="border-t border-gray-100">
+          <td class="px-2 py-2 whitespace-nowrap">${fechaHora(m.created_at)}</td>
+          <td class="px-2 py-2">${tipoLabel}</td>
+          <td class="px-2 py-2 text-right font-mono">${m.cantidad}</td>
+          <td class="px-2 py-2 text-right font-mono">${money(m.costo)}</td>
+          <td class="px-2 py-2 text-gray-500 text-xs">${esc(m.referencia_tipo) || '—'}${m.referencia_id ? ' · ' + esc(m.referencia_id.substring(0, 8)) : ''}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Unidades serializadas
+  if (tipo === 'serializado') {
+    document.getElementById('unidades-panel').classList.remove('hidden');
+    const { data: uns, error: uErr } = await SB
+      .from('unidades')
+      .select('id, imei, estado, costo_remision, precio_tienda, factura_proveedor_id, created_at')
+      .eq('producto_id', prodId)
+      .eq('tienda_actual', 'CENTRAL')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const tbodyU = document.getElementById('tbody-unidades');
+    if (uErr) {
+      tbodyU.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-600">Error: ' + esc(uErr.message) + '</td></tr>';
+    } else if (!uns || uns.length === 0) {
+      tbodyU.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Sin unidades en CENTRAL.</td></tr>';
+    } else {
+      // Enriquecer con número de factura
+      const facturaIds = [...new Set(uns.map(u => u.factura_proveedor_id).filter(Boolean))];
+      let facturaMap = {};
+      if (facturaIds.length > 0) {
+        const { data: fac } = await SB
+          .from('facturas_proveedor')
+          .select('id, numero, fecha')
+          .in('id', facturaIds);
+        (fac || []).forEach(f => { facturaMap[f.id] = f; });
+      }
+      tbodyU.innerHTML = uns.map(u => {
+        const estadoBadge = ({
+          disponible: '<span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">disponible</span>',
+          en_traslado: '<span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">en_traslado</span>',
+          en_oscar: '<span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">en_oscar</span>'
+        })[u.estado] || esc(u.estado);
+        const imeiTxt = u.imei
+          ? '<span class="font-mono">' + esc(u.imei) + '</span>'
+          : '<span class="text-gray-400 italic">(pendiente de recepción)</span>';
+        const fact = u.factura_proveedor_id ? facturaMap[u.factura_proveedor_id] : null;
+        const factTxt = fact
+          ? esc(fact.numero) + ' · ' + fechaCorta(fact.fecha)
+          : '<span class="text-gray-400">—</span>';
+        return `
+          <tr class="border-t border-gray-100">
+            <td class="px-2 py-2">${estadoBadge}</td>
+            <td class="px-2 py-2">${imeiTxt}</td>
+            <td class="px-2 py-2 text-right font-mono">${money(u.costo_remision)}</td>
+            <td class="px-2 py-2 text-right font-mono text-blue-800">${u.precio_tienda != null ? money(u.precio_tienda) : '<span class=\"text-gray-400\">—</span>'}</td>
+            <td class="px-2 py-2">${factTxt}</td>
+            <td class="px-2 py-2 text-gray-500 text-xs">${fechaCorta(u.created_at)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+}
+
+function cerrarDetalle() {
+  document.getElementById('modal-detalle').classList.add('hidden');
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.getElementById('btn-refresh').addEventListener('click', cargarAlerta);
+document.getElementById('filtro-texto').addEventListener('input', render);
+document.getElementById('filtro-descuadre').addEventListener('change', render);
+document.getElementById('filtro-tipo').addEventListener('change', render);
+document.getElementById('filtro-factura').addEventListener('change', render);
+document.getElementById('cerrar-detalle').addEventListener('click', cerrarDetalle);
+document.getElementById('modal-detalle').addEventListener('click', e => {
+  if (e.target.id === 'modal-detalle') cerrarDetalle();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetalle(); });
+
+document.getElementById('tbody-alerta').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-producto]');
+  if (!tr) return;
+  abrirDetalle(
+    tr.getAttribute('data-producto'),
+    tr.getAttribute('data-nombre'),
+    tr.getAttribute('data-tipo')
+  );
+});
+
+// ============================================================
+// SPEC v2 · SECCIÓN DE DESPACHO ACTIVO
+// ============================================================
+let tiendasDestino = [];       // [{codigo, nombre}] — tiendas propias activas
+let productosDisponibles = []; // [{id, nombre, categoria, tipo, disponible, precio_tienda}]
+let despachoItems = [];        // [{tempId, producto_id, producto_nombre, tipo, cantidad, precio_remision, precio_override, stock_disponible}]
+
+async function cargarDataDespacho() {
+  const [tRes, uRes, lotesRes, pRes] = await Promise.all([
+    SB.from('tiendas_operativas').select('codigo, nombre').order('codigo'),
+    // Unidades disponibles serializadas: agrupar por producto
+    SB.from('unidades')
+      .select('producto_id, precio_tienda, factura_proveedor_id')
+      .eq('tienda_actual', 'CENTRAL')
+      .eq('estado', 'disponible')
+      .is('imei', null),
+    // Lotes de productos por cantidad, conservando la factura.
+    SB.rpc('obtener_lotes_cantidad_central'),
+    SB.from('productos').select('id, nombre, categoria, tipo').eq('activo', true),
+  ]);
+  if (tRes.error) { toast('Error tiendas: ' + tRes.error.message, 'error'); return; }
+  if (uRes.error) { toast('Error unidades: ' + uRes.error.message, 'error'); return; }
+  if (lotesRes.error) { toast('Error lotes: ' + lotesRes.error.message, 'error'); return; }
+  if (pRes.error) { toast('Error productos: ' + pRes.error.message, 'error'); return; }
+
+  tiendasDestino = tRes.data || [];
+  const sel = document.getElementById('despacho-tienda');
+  sel.innerHTML = '<option value="">— Selecciona una tienda —</option>' +
+    tiendasDestino.map(t => `<option value="${esc(t.codigo)}">${esc(t.codigo)} · ${esc(t.nombre)}</option>`).join('');
+
+  // Consolidar disponibilidad por producto (respetando filtro de factura si aplica).
+  const facturaFiltro = document.getElementById('filtro-factura').value;
+  productosDisponibles = bodegaDomain.consolidarDisponibilidad({
+    productos: pRes.data || [],
+    unidades: uRes.data || [],
+    lotes: lotesRes.data || [],
+    facturaId: facturaFiltro || null,
+  });
+}
+
+function despachoNuevoTempId() { return crypto.randomUUID(); }
+
+function despachoActualizarTotal() {
+  let total = 0;
+  despachoItems.forEach(i => {
+    const sub = (Number(i.cantidad) || 0) * (Number(i.precio_remision) || 0);
+    total += sub;
+    const el = document.getElementById('desp-sub-' + i.tempId);
+    if (el) el.textContent = money(sub);
+  });
+  document.getElementById('despacho-total').textContent = money(total);
+}
+
+function despachoRender() {
+  const tbody = document.getElementById('tbody-despacho');
+  if (despachoItems.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400 text-xs">Aún no agregas productos. Presiona <b>+ Agregar producto</b>.</td></tr>';
+    despachoActualizarTotal();
+    return;
+  }
+  tbody.innerHTML = despachoItems.map(i => {
+    const sub = (Number(i.cantidad) || 0) * (Number(i.precio_remision) || 0);
+    const precioDisabled = !i.precio_override_active;
+    const badgeTipo = i.tipo === 'serializado'
+      ? '<span class="ml-2 px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-700">serializado</span>'
+      : '<span class="ml-2 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">cantidad</span>';
+    const lapiz = i.precio_override_active
+      ? `<button type="button" data-desp-lock="${i.tempId}" class="text-xs text-orange-600 hover:text-orange-800" title="Volver al precio automático">🔒</button>`
+      : `<button type="button" data-desp-unlock="${i.tempId}" class="text-xs text-gray-500 hover:text-gray-800" title="Modificar precio (override)">✏️</button>`;
+    return `
+      <tr>
+        <td class="px-3 py-2">
+          <div class="font-medium text-gray-800">${esc(i.producto_nombre)}</div>
+          <div class="text-xs text-gray-500">Disponible: ${i.stock_disponible}${badgeTipo}</div>
+        </td>
+        <td class="px-3 py-2">
+          <input type="number" min="1" max="${i.stock_disponible}" step="1" value="${i.cantidad ?? ''}"
+                 data-desp-cant="${i.tempId}"
+                 class="w-full border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </td>
+        <td class="px-3 py-2">
+          <div class="flex items-center gap-1">
+            <span class="text-gray-500 text-xs">$</span>
+            <input type="number" min="0" step="1" value="${i.precio_remision ?? ''}"
+                   data-desp-precio="${i.tempId}" ${precioDisabled ? 'disabled' : ''}
+                   class="despacho-precio-input border border-gray-300 rounded px-2 py-1 text-right ${precioDisabled ? 'bg-gray-100 text-gray-600' : 'bg-yellow-50 font-semibold'} focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            ${lapiz}
+          </div>
+        </td>
+        <td class="px-3 py-2 text-right font-mono" id="desp-sub-${i.tempId}">${money(sub)}</td>
+        <td class="px-3 py-2 text-center">
+          <button type="button" data-desp-rm="${i.tempId}" class="text-red-500 hover:text-red-700" title="Quitar">×</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  despachoActualizarTotal();
+}
+
+function despachoAgregarProducto(prodId) {
+  const p = productosDisponibles.find(x => x.id === prodId);
+  if (!p) return;
+  // Si ya está en la lista, no duplicar — enfocar.
+  if (despachoItems.some(i => i.producto_id === prodId)) {
+    toast('Ese producto ya está en la lista', 'warn');
+    return;
+  }
+  despachoItems.push({
+    tempId: despachoNuevoTempId(),
+    producto_id: p.id,
+    producto_nombre: p.nombre,
+    tipo: p.tipo,
+    stock_disponible: p.disponible,
+    cantidad: 1,
+    precio_remision: p.precio_tienda ?? 0,
+    precio_override_active: false,
+  });
+  despachoRender();
+}
+
+document.getElementById('btn-toggle-despacho').addEventListener('click', () => {
+  const panel = document.getElementById('panel-despacho');
+  const btn = document.getElementById('btn-toggle-despacho');
+  const hidden = panel.classList.toggle('hidden');
+  btn.textContent = hidden ? 'Mostrar ▼' : 'Ocultar ▲';
+});
+
+document.getElementById('btn-agregar-despacho-item').addEventListener('click', () => {
+  document.getElementById('despacho-input-buscar').value = '';
+  document.getElementById('modal-despacho-buscar').classList.remove('hidden');
+  renderDespachoBusqueda('');
+  setTimeout(() => document.getElementById('despacho-input-buscar').focus(), 50);
+});
+
+document.getElementById('cerrar-despacho-modal').addEventListener('click', () => {
+  document.getElementById('modal-despacho-buscar').classList.add('hidden');
+});
+document.getElementById('modal-despacho-buscar').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-despacho-buscar') document.getElementById('modal-despacho-buscar').classList.add('hidden');
+});
+document.getElementById('despacho-input-buscar').addEventListener('input', (e) => renderDespachoBusqueda(e.target.value));
+
+function renderDespachoBusqueda(q) {
+  const filtro = q.trim().toLowerCase();
+  const res = document.getElementById('despacho-search-results');
+  const hits = productosDisponibles.filter(p => {
+    if (!filtro) return true;
+    return (p.nombre + ' ' + p.categoria).toLowerCase().includes(filtro);
+  }).slice(0, 50);
+  if (hits.length === 0) {
+    res.innerHTML = '<p class="p-3 text-sm text-gray-400 text-center">Sin resultados o sin stock en CENTRAL.</p>';
+    return;
+  }
+  res.innerHTML = hits.map(p => `
+    <button type="button" data-desp-prod="${esc(p.id)}" class="w-full text-left px-3 py-2 border-b border-gray-100 last:border-0 hover:bg-blue-50">
+      <div class="flex items-center justify-between">
+        <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
+        <span class="text-xs text-gray-500">Disp: <b>${p.disponible}</b> · ${money(p.precio_tienda)}${p.precios_varian ? ' · varía por factura' : ''}</span>
+      </div>
+      <div class="text-xs text-gray-500">${esc(p.categoria)} · ${p.tipo}</div>
+    </button>
+  `).join('');
+}
+
+document.getElementById('despacho-search-results').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-desp-prod]');
+  if (!btn) return;
+  despachoAgregarProducto(btn.getAttribute('data-desp-prod'));
+  document.getElementById('modal-despacho-buscar').classList.add('hidden');
+});
+
+document.getElementById('tbody-despacho').addEventListener('click', (e) => {
+  const rm = e.target.closest('[data-desp-rm]');
+  if (rm) {
+    despachoItems = despachoItems.filter(i => i.tempId !== rm.getAttribute('data-desp-rm'));
+    despachoRender();
+    return;
+  }
+  const unlock = e.target.closest('[data-desp-unlock]');
+  if (unlock) {
+    // Verificar que el usuario es gerencia/auditoría (defensa; el input ya está deshabilitado)
+    if (rolActual !== 'gerencia' && rolActual !== 'auditoria') {
+      toast('Solo gerencia/auditoría puede modificar el precio.', 'error'); return;
+    }
+    const it = despachoItems.find(i => i.tempId === unlock.getAttribute('data-desp-unlock'));
+    if (it) { it.precio_override_active = true; despachoRender(); }
+    return;
+  }
+  const lock = e.target.closest('[data-desp-lock]');
+  if (lock) {
+    const it = despachoItems.find(i => i.tempId === lock.getAttribute('data-desp-lock'));
+    if (it) {
+      it.precio_override_active = false;
+      // Restablecer el precio original desde productosDisponibles
+      const orig = productosDisponibles.find(p => p.id === it.producto_id);
+      if (orig) it.precio_remision = orig.precio_tienda ?? 0;
+      despachoRender();
+    }
+    return;
+  }
+});
+
+document.getElementById('tbody-despacho').addEventListener('input', (e) => {
+  const inpCant = e.target.closest('[data-desp-cant]');
+  if (inpCant) {
+    const it = despachoItems.find(i => i.tempId === inpCant.getAttribute('data-desp-cant'));
+    if (!it) return;
+    let v = parseInt(inpCant.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > it.stock_disponible) { v = it.stock_disponible; inpCant.value = v; }
+    it.cantidad = v;
+    despachoActualizarTotal();
+    return;
+  }
+  const inpPrec = e.target.closest('[data-desp-precio]');
+  if (inpPrec) {
+    const it = despachoItems.find(i => i.tempId === inpPrec.getAttribute('data-desp-precio'));
+    if (!it || !it.precio_override_active) return;
+    it.precio_remision = inpPrec.value === '' ? 0 : Math.max(0, parseFloat(inpPrec.value) || 0);
+    despachoActualizarTotal();
+  }
+});
+
+document.getElementById('btn-despacho-limpiar').addEventListener('click', () => {
+  if (despachoItems.length > 0 && !confirm('¿Descartar el despacho en curso?')) return;
+  despachoItems = [];
+  document.getElementById('despacho-tienda').value = '';
+  document.getElementById('despacho-nota').value = '';
+  despachoRender();
+});
+
+document.getElementById('btn-despachar').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-despachar');
+  btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Despachando...';
+  try {
+    const tienda = document.getElementById('despacho-tienda').value;
+    const nota = document.getElementById('despacho-nota').value.trim();
+    if (!tienda) throw new Error('Selecciona la tienda destino');
+    if (despachoItems.length === 0) throw new Error('Agrega al menos un producto');
+
+    const payload = [];
+    const facturaFiltro = document.getElementById('filtro-factura').value || null;
+    for (const it of despachoItems) {
+      if (!it.cantidad || it.cantidad <= 0) throw new Error(`Cantidad inválida en "${it.producto_nombre}"`);
+      if (it.cantidad > it.stock_disponible) throw new Error(`No hay suficiente stock de "${it.producto_nombre}" (disp: ${it.stock_disponible})`);
+      payload.push(bodegaDomain.crearItemPayload(it, facturaFiltro));
+    }
+
+    const { data, error } = await SB.rpc('despachar_remision_desde_central', {
+      p_tienda_codigo: tienda,
+      p_items: payload,
+      p_nota: nota || null,
+    });
+    if (error) throw new Error(error.message);
+    if (!data || data.ok !== true) throw new Error('Respuesta inesperada del RPC');
+
+    toast(`Remisión #${data.consecutivo} despachada`);
+    despachoItems = [];
+    document.getElementById('despacho-tienda').value = '';
+    document.getElementById('despacho-nota').value = '';
+    despachoRender();
+    // Recargar monitor (stock cambió) y catálogo de disponibles
+    await cargarAlerta();
+    await cargarDataDespacho();
+    // Ofrecer ir al documento
+    if (confirm(`Remisión #${data.consecutivo} creada. ¿Abrir el documento para revisar/compartir?`)) {
+      location.href = `documento-remision.html?remision_id=${data.remision_id}`;
+    }
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = txt;
+  }
+});
+
+// Re-cargar productos disponibles cada vez que cambia el filtro-factura
+document.getElementById('filtro-factura').addEventListener('change', () => {
+  if (despachoItems.length) {
+    despachoItems = [];
+    despachoRender();
+    toast('Se limpió el despacho para respetar la factura elegida');
+  }
+  cargarDataDespacho();
+});
+
+// ============================================================
+// BOOT
+// ============================================================
+(async function () {
+  const ok = await verificarAuth();
+  if (!ok) return;
+  await cargarAlerta();
+  await cargarDataDespacho();
+
+  // SIDEBAR OPCIONAL:
+  // if (window.renderSidebar) window.renderSidebar('bodega-central');
+})();
+</script>
+
+</body>
+</html>

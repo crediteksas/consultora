@@ -63,10 +63,10 @@ const hashResponse = async url => {
   const crypto = await import('node:crypto');
   return crypto.createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
 };
-const previewUrl = `https://${previewAlias}-consultora.comercial-853.workers.dev/creditek/erp/app`;
+const previewUrl = `https://${previewAlias}-creditek-kora.comercial-853.workers.dev/creditek/erp/app`;
 const previewSha = await hashResponse(previewUrl);
 if (previewSha !== manifest.appSha256) throw new Error(`SHA de Worker Version distinto: ${previewSha}`);
-run('npm', ['run', 'test:local'], { env: { BASE_URL: `https://${previewAlias}-consultora.comercial-853.workers.dev` } });
+run('npm', ['run', 'test:local'], { env: { BASE_URL: `https://${previewAlias}-creditek-kora.comercial-853.workers.dev` } });
 
 const promote = version => run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
 const rollback = rollbackVersion => {

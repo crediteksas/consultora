@@ -40,19 +40,19 @@ const manifest = await verifyKoraProductionArtifact({ commit, writeManifest: tru
 // El manifiesto estático se publica como kora-build-manifest.static.json y el Worker agrega la release activa.
 await verifyKoraProductionArtifact({ commit });
 
-const deployments = JSON.parse(capture('npx', ['wrangler', 'deployments', 'list', '--json']));
+const deployments = JSON.parse(capture('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'deployments', 'list', '--json']));
 const previous = deployments.at(-1)?.versions?.find(version => version.percentage === 100)?.version_id;
 if (!previous) throw new Error('No se pudo determinar la versión de rollback');
 let previousRelease = '';
 try {
-  previousRelease = capture('npx', ['wrangler', 'kv', 'key', 'get', 'production', '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
+  previousRelease = capture('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'kv', 'key', 'get', 'production', '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
 } catch (_) {
   previousRelease = '';
 }
 const message = `${policy.displayVersion} commit ${commit} sha256 ${manifest.appSha256}`;
 const previewAlias = `kora-${commit.slice(0, 12)}`;
 // Solo el pipeline ejecuta versions upload y versions deploy con --message.
-const upload = captureCombined('npx', ['wrangler', 'versions', 'upload', '--message', message, '--preview-alias', previewAlias]);
+const upload = captureCombined('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'upload', '--message', message, '--preview-alias', previewAlias]);
 const candidate = upload.match(/Worker Version ID:\s*([0-9a-f-]{36})/i)?.[1]
   || upload.match(/Version ID:\s*([0-9a-f-]{36})/i)?.[1];
 if (!candidate) throw new Error('Cloudflare no devolvió la versión cargada');
@@ -68,14 +68,14 @@ const previewSha = await hashResponse(previewUrl);
 if (previewSha !== manifest.appSha256) throw new Error(`SHA de Worker Version distinto: ${previewSha}`);
 run('npm', ['run', 'test:local'], { env: { BASE_URL: `https://${previewAlias}-consultora.comercial-853.workers.dev` } });
 
-const promote = version => run('npx', ['wrangler', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
+const promote = version => run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
 const rollback = rollbackVersion => {
-  run('npx', ['wrangler', 'versions', 'deploy', `${rollbackVersion}@100`, '--message', `ROLLBACK automático ${policy.displayVersion} desde ${candidate}`, '--yes']);
-  if (previousRelease) run('npx', ['wrangler', 'kv', 'key', 'put', 'production', previousRelease, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
+  run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${rollbackVersion}@100`, '--message', `ROLLBACK automático ${policy.displayVersion} desde ${candidate}`, '--yes']);
+  if (previousRelease) run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'kv', 'key', 'put', 'production', previousRelease, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
 };
 let releaseRecord;
 const validate = async () => {
-  const activeDeployments = JSON.parse(capture('npx', ['wrangler', 'deployments', 'list', '--json']));
+  const activeDeployments = JSON.parse(capture('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'deployments', 'list', '--json']));
   const activeDeployment = [...activeDeployments].reverse().find(deployment => deployment.versions?.some(version => version.version_id === candidate && version.percentage === 100));
   if (!activeDeployment) throw new Error('No se encontró el Deployment ID de la versión promovida');
   releaseRecord = {
@@ -84,7 +84,7 @@ const validate = async () => {
   };
   const releasePath = `/tmp/kora-release-${candidate}.json`;
   await writeFile(releasePath, `${JSON.stringify(releaseRecord)}\n`);
-  run('npx', ['wrangler', 'kv', 'key', 'put', 'production', '--path', releasePath, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
+  run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'kv', 'key', 'put', 'production', '--path', releasePath, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
   let lastError;
   for (let attempt = 1; attempt <= 60; attempt += 1) {
     try {

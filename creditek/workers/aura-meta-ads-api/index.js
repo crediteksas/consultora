@@ -593,7 +593,7 @@ async function campaignInConfiguredAccount(env, campaignId) {
 __name(campaignInConfiguredAccount, "campaignInConfiguredAccount");
 async function adSetInConfiguredAccount(env, adSetId) {
   const adSet = await metaObject(env, adSetId, { fields: "id,account_id,campaign_id,name,targeting" });
-  if (String(adSet.id) !== adSetId || String(adSet.account_id) !== configuredAccountId(env)) throw new Error("ADSET_NOT_IN_ACCOUNT");
+  if (String(adSet.id) !== adSetId || String(adSet.account_id).replace(/^act_/, "") !== configuredAccountId(env)) throw new Error("ADSET_NOT_IN_ACCOUNT");
   return adSet;
 }
 __name(adSetInConfiguredAccount, "adSetInConfiguredAccount");

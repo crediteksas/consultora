@@ -101,7 +101,8 @@ const validate = async () => {
       if (attempt < 60) await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
-  console.warn("DIAGNÓSTICO: validación falló pero se omite rollback:", lastError?.message); return remoteSha;
+  console.warn("DIAGNÓSTICO: validación falló pero se omite rollback:", lastError?.message);
+  return "diagnostico-sin-validar";
 };
 const remoteSha = await promoteWithRollback({ candidateVersion: candidate, previousVersion: previous, promote, validate, rollback });
 const log = { ...manifest, ...releaseRecord, deploymentVersion: candidate, previousVersion: previous, previewUrl, previewSha, remoteSha };

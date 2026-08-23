@@ -8,5 +8,5 @@ window.__KORA_ENV__ = Object.freeze({
   "KORA_CLIENTS_WORKER_URL": "https://creditek-clientes.comercial-853.workers.dev",
   "KORA_GEMINI_WORKER_URL": "https://creditek-gemini-proxy.comercial-853.workers.dev",
   "KORA_PDF_COMBINER_URL": "https://creditek-pdf-combiner.comercial-853.workers.dev",
-  "KORA_BOT_WORKER_URL": "https://creditek-bot.comercial-853.workers.dev",
+  "KORA_BOT_WORKER_URL": "https://creditek-bot.comercial-853.workers.dev"
 });

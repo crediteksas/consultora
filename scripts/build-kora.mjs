@@ -28,14 +28,14 @@ export async function buildKora(root, out = path.join(root, 'dist/kora')) {
   await rm(resolvedOut, { recursive: true, force: true });
   await mkdir(resolvedOut, { recursive: true });
 
-  const erp = path.join(root, 'creditek/erp');
+  const erp = path.join(root, 'public/creditek/erp');
   for (const entry of await readdir(erp)) {
     const source = path.join(erp, entry);
     if ((await stat(source)).isFile() && ERP_EXTENSIONS.has(path.extname(entry)) && !EXCLUDED_ERP_FILES.has(entry)) {
-      await copy(root, resolvedOut, `creditek/erp/${entry}`);
+      await copy(root, resolvedOut, `public/creditek/erp/${entry}`, `creditek/erp/${entry}`);
     }
   }
-  await copy(root, resolvedOut, 'creditek/erp/app.html', 'index.html');
+  await copy(root, resolvedOut, 'public/creditek/erp/app.html', 'index.html');
   for (const relative of DESIGN_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'creditek/shared/branding/creditek-logo.png');
   await copy(root, resolvedOut, 'config/kora-environment.js');

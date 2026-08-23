@@ -68,7 +68,7 @@ test('el pipeline valida repositorio, rama, commit, limpieza, manifiesto, SHA y 
   for (const marker of [
     'git status --porcelain', 'git branch --show-current', 'KORA_PRODUCTION_COMMIT',
     'kora-build-manifest.json', 'versions upload', 'versions deploy', '--message',
-    'rollbackVersion', 'registro.crediteksas.com/creditek/erp/app',
+    'rollbackVersion', 'kora.crediteksas.com/creditek/erp/app',
   ]) assert.match(deploy, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(verifier, /sidebar\.js\?v=/);
   assert.match(verifier, /kora-access-control\.js\?v=/);

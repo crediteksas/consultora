@@ -7,7 +7,7 @@ import { verifyKoraProductionArtifact } from './verify-kora-production-artifact.
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const policy = JSON.parse(await readFile(path.join(root, 'config/kora-production-manifest.json'), 'utf8'));
-// Destino único validado: https://registro.crediteksas.com/creditek/erp/app
+// Destino único validado: https://kora.crediteksas.com/creditek/erp/app
 const env = { ...process.env, KORA_PRODUCTION_PIPELINE: 'authorized' };
 const generatedEnvironment = await readFile(path.join(root, 'config/generated/kora-environment.generated.js'), 'utf8');
 const generatedValues = JSON.parse(generatedEnvironment.match(/Object\.freeze\((\{[\s\S]*\})\);/)?.[1] || '{}');
@@ -86,11 +86,11 @@ const validate = async () => {
   await writeFile(releasePath, `${JSON.stringify(releaseRecord)}\n`);
   run('npx', ['wrangler', 'kv', 'key', 'put', 'production', '--path', releasePath, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);
   let lastError;
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
     try {
       const remoteSha = await hashResponse(`${policy.productionUrl}?deployment=${candidate}&attempt=${attempt}`);
       if (remoteSha !== manifest.appSha256) throw new Error(`SHA productivo distinto: ${remoteSha}`);
-      const runtimeResponse = await fetch('https://registro.crediteksas.com/kora-build-manifest.json', { cache: 'no-store' });
+      const runtimeResponse = await fetch(`${new URL(policy.productionUrl).origin}/kora-build-manifest.json`, { cache: 'no-store' });
       const runtimeManifest = runtimeResponse.ok ? await runtimeResponse.json() : {};
       if (runtimeManifest.deploymentId !== releaseRecord.deploymentId || runtimeManifest.workerVersion !== candidate || !runtimeManifest.runtimeMatchesRelease) {
         throw new Error('El manifiesto runtime no coincide con el deployment activo');
@@ -98,7 +98,7 @@ const validate = async () => {
       return remoteSha;
     } catch (error) {
       lastError = error;
-      if (attempt < 30) await new Promise(resolve => setTimeout(resolve, 2000));
+      if (attempt < 60) await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
   throw lastError;

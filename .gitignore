@@ -20,3 +20,4 @@ public/
 # Backups locales generados por `sed -i.bak` de scripts de migración.
 # Los archivos "reales" .bak no van al repo; si algún .bak legítimo hiciera falta versionar, agrégalo con `git add -f`.
 *.bak
+dist/

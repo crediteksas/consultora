@@ -755,6 +755,7 @@ async function handle(request, env, origin) {
         await audit(env, auth.token, "meta_ads.campaign.targeting_edit", { period: 0 }).catch(() => {});
         for (const adSet of adSets) {
           const current = adSet.targeting && typeof adSet.targeting === "object" ? structuredClone(adSet.targeting) : {};
+          delete current.targeting_automation;
           current.geo_locations = { ...current.geo_locations || {}, cities };
           const result = await metaObject(env, String(adSet.id), { targeting: JSON.stringify(current) }, "POST");
           updates.push({ adSetId: String(adSet.id), result });

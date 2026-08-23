@@ -2603,15 +2603,19 @@ async function editTargeting(campaignId) {
   const row = campaignRow(campaignId);
   if (!row) return;
   showToast('Consultando ciudades…');
+  let cities = [];
   try {
     const data = await metaWorkerRequest(`/campaign/targeting?id=${encodeURIComponent(campaignId)}`);
-    const cities = Array.isArray(data.cities) ? data.cities.map(city => typeof city === 'string' ? city : city.name).filter(Boolean) : [];
-    row.insertAdjacentHTML('afterend', `<tr id="${escapeHtml(id)}"><td colspan="11" class="inline-panel"><div class="inline-panel-grid">
-      <div class="inline-field" style="grid-column:span 2"><label for="target-cities-${escapeHtml(campaignId)}">Ciudades (separadas por coma)</label><input type="text" id="target-cities-${escapeHtml(campaignId)}" value="${escapeHtml(cities.join(', '))}" placeholder="Tolú, Corozal, Chinú"></div>
-      <button class="inline-btn primary" onclick="saveTargeting('${escapeJs(campaignId)}')">Guardar ciudades</button>
-      <button class="inline-btn" onclick="document.getElementById('${escapeJs(id)}').remove()">Cancelar</button>
-    </div></td></tr>`);
-  } catch (error) { showToast(`❌ ${error.message}`, '#EF4444'); }
+    cities = Array.isArray(data.cities) ? data.cities.map(city => typeof city === 'string' ? city : city.name).filter(Boolean) : [];
+  } catch (error) {
+    showToast(`⚠️ ${error.message}`, '#F59E0B');
+  }
+  const placeholder = cities.length ? 'Tolú, Corozal, Chinú' : 'No se pudieron cargar las ciudades actuales';
+  row.insertAdjacentHTML('afterend', `<tr id="${escapeHtml(id)}"><td colspan="11" class="inline-panel"><div class="inline-panel-grid">
+    <div class="inline-field" style="grid-column:span 2"><label for="target-cities-${escapeHtml(campaignId)}">Ciudades (separadas por coma)</label><input type="text" id="target-cities-${escapeHtml(campaignId)}" value="${escapeHtml(cities.join(', '))}" placeholder="${escapeHtml(placeholder)}"></div>
+    <button class="inline-btn primary" onclick="saveTargeting('${escapeJs(campaignId)}')">Guardar ciudades</button>
+    <button class="inline-btn" onclick="document.getElementById('${escapeJs(id)}').remove()">Cancelar</button>
+  </div></td></tr>`);
 }
 
 async function saveTargeting(campaignId) {
@@ -2675,7 +2679,7 @@ async function previewCreative(campaignId) {
     const videoUrl = /^https:\/\//i.test(String(data.videoUrl || '')) ? String(data.videoUrl) : '';
     const media = videoUrl
       ? `<video controls preload="metadata" src="${escapeHtml(videoUrl)}" style="max-width:300px;width:100%;border-radius:12px"></video>`
-      : imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="Creativo actual de la campaña" style="max-width:300px;width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(11,30,61,.1)">` : '<p>Sin preview disponible</p>';
+      : imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="Creativo actual de la campaña" style="max-width:300px;width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(11,30,61,.1)">` : `<div style="max-width:520px;margin:0 auto;color:#4A5568;font-size:13px;line-height:1.6"><p>Meta no comparte la imagen por API con los permisos actuales. Para ver el anuncio, ábrelo directamente en Meta Ads Manager.</p><a class="inline-btn primary" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=27446180201684830" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;margin-top:12px">Ver en Meta Ads Manager →</a></div>`;
     row.insertAdjacentHTML('afterend', `<tr id="${escapeHtml(id)}"><td colspan="11" class="inline-panel" style="text-align:center">${media}<button class="inline-btn" style="display:block;margin:12px auto 0" onclick="document.getElementById('${escapeJs(id)}').remove()">Cerrar</button></td></tr>`);
   } catch (error) { showToast(`❌ ${error.message}`, '#EF4444'); }
 }

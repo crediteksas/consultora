@@ -2171,7 +2171,6 @@ function renderCampañas(camps, ventasPorCampaña, pctSinAtribucion) {
         <button class="action-btn" onclick="toggleCampaign('${escapeJs(campaignId)}','${nextStatus}')" title="${nextStatus === 'PAUSED' ? 'Pausar' : 'Reactivar'} campaña" aria-label="${nextStatus === 'PAUSED' ? 'Pausar' : 'Reactivar'} campaña">${toggleIcon}</button>
         <button class="action-btn" onclick="editCampaign('${escapeJs(campaignId)}',${dailyBudget},'${escapeJs(endDate)}')" title="Editar presupuesto y fecha" aria-label="Editar presupuesto y fecha">✏️</button>
         <button class="action-btn" onclick="editTargeting('${escapeJs(campaignId)}')" title="Editar ciudades" aria-label="Editar ciudades">📍</button>
-        <button class="action-btn" onclick="previewCreative('${escapeJs(campaignId)}')" title="Ver anuncio" aria-label="Ver anuncio">👁</button>
         <button class="action-btn" onclick="duplicarCampaign('${escapeJs(campaignId)}','${escapeJs(String(c.campaign_name || ''))}')" title="Duplicar campaña" aria-label="Duplicar campaña">📋</button>
         ${status === 'ACTIVE' && spend === 0 ? `<button class="action-btn" onclick="diagnosticarEntrega('${escapeJs(campaignId)}')" title="Diagnosticar entrega" aria-label="Diagnosticar entrega">🔍</button>` : ''}
       </td>`;
@@ -2541,7 +2540,7 @@ function campaignRow(campaignId) {
 }
 
 function closeCampaignPanels(campaignId, exceptId = '') {
-  ['edit-', 'target-', 'diag-', 'preview-'].forEach(prefix => {
+  ['edit-', 'target-', 'diag-'].forEach(prefix => {
     const panel = document.getElementById(prefix + campaignId);
     if (panel && panel.id !== exceptId) panel.remove();
   });
@@ -2605,7 +2604,18 @@ async function editTargeting(campaignId) {
   showToast('Consultando ciudades…');
   let cities = [];
   try {
-    const data = await metaWorkerRequest(`/campaign/targeting?id=${encodeURIComponent(campaignId)}`);
+    const STORAGE_KEY = 'aura_supabase_session_v1';
+    const raw = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+    const session = raw ? JSON.parse(raw) : null;
+    const token = session?.access_token || '';
+    console.log('[TARGETING] token length:', token?.length);
+    if (!token) throw new Error('Autenticación AURA requerida');
+    const resp = await fetch(`https://aura-meta-ads-api.comercial-853.workers.dev/campaign/targeting?id=${encodeURIComponent(campaignId)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    console.log('[TARGETING] response status:', resp?.status);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `El Worker respondió HTTP ${resp.status}`);
     cities = Array.isArray(data.cities) ? data.cities.map(city => typeof city === 'string' ? city : city.name).filter(Boolean) : [];
   } catch (error) {
     showToast(`⚠️ ${error.message}`, '#F59E0B');
@@ -2662,25 +2672,6 @@ async function duplicarCampaign(campaignId, campaignName) {
     logAction('duplicate', { campaignId, targetCity });
     showToast('✅ Campaña duplicada');
     cargarDatos();
-  } catch (error) { showToast(`❌ ${error.message}`, '#EF4444'); }
-}
-
-async function previewCreative(campaignId) {
-  const id = `preview-${campaignId}`;
-  const existing = document.getElementById(id);
-  if (existing) { existing.remove(); return; }
-  closeCampaignPanels(campaignId, id);
-  const row = campaignRow(campaignId);
-  if (!row) return;
-  try {
-    showToast('Cargando anuncio…');
-    const data = await metaWorkerRequest(`/campaign/creative?id=${encodeURIComponent(campaignId)}`);
-    const imageUrl = /^https:\/\//i.test(String(data.imageUrl || '')) ? String(data.imageUrl) : '';
-    const videoUrl = /^https:\/\//i.test(String(data.videoUrl || '')) ? String(data.videoUrl) : '';
-    const media = videoUrl
-      ? `<video controls preload="metadata" src="${escapeHtml(videoUrl)}" style="max-width:300px;width:100%;border-radius:12px"></video>`
-      : imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="Creativo actual de la campaña" style="max-width:300px;width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(11,30,61,.1)">` : `<div style="max-width:520px;margin:0 auto;color:#4A5568;font-size:13px;line-height:1.6"><p>Meta no comparte la imagen por API con los permisos actuales. Para ver el anuncio, ábrelo directamente en Meta Ads Manager.</p><a class="inline-btn primary" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=27446180201684830" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;margin-top:12px">Ver en Meta Ads Manager →</a></div>`;
-    row.insertAdjacentHTML('afterend', `<tr id="${escapeHtml(id)}"><td colspan="11" class="inline-panel" style="text-align:center">${media}<button class="inline-btn" style="display:block;margin:12px auto 0" onclick="document.getElementById('${escapeJs(id)}').remove()">Cerrar</button></td></tr>`);
   } catch (error) { showToast(`❌ ${error.message}`, '#EF4444'); }
 }
 

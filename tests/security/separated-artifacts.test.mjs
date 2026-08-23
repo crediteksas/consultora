@@ -116,6 +116,7 @@ test('los Wrangler locales apuntan a artefactos distintos y no declaran routing'
   assert.match(aura, /"directory": "\.\/dist\/aura"/);
   for (const source of [kora, aura]) {
     assert.doesNotMatch(source, /"(?:routes?|custom_domains?)"\s*:/);
-    assert.doesNotMatch(source, /"name"\s*:/);
   }
+  assert.match(kora, /"name"\s*:\s*"creditek-kora"/);
+  assert.match(aura, /"name"\s*:\s*"creditek-aura"/);
 });

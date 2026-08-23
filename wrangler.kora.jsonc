@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  // Configuración local no operativa. Sin nombre, rutas, dominios ni bindings productivos.
+  // Config operativa de creditek-kora. Sin routes/custom_domains aquí (el dominio se gestiona en Cloudflare directamente).
   "name": "creditek-kora",
   "main": "src/kora-version-worker.mjs",
   "compatibility_date": "2026-07-23",

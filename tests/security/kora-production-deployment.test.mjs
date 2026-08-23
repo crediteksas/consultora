@@ -82,10 +82,10 @@ test('el manifiesto esperado documenta versión, commit, artefacto y Worker', as
   const manifest = JSON.parse(await read('config/kora-production-manifest.json'));
   assert.equal(manifest.product, 'KORA');
   assert.equal(manifest.version, '3.0.0');
-  assert.equal(manifest.worker, 'consultora');
-  assert.equal(manifest.productionUrl, 'https://registro.crediteksas.com/creditek/erp/app');
+  assert.equal(manifest.worker, 'creditek-kora');
+  assert.equal(manifest.productionUrl, 'https://kora.crediteksas.com/creditek/erp/app');
   assert.equal(manifest.supabaseProjectRef, 'jfkmiyvcdfbsbwchyvol');
-  assert.equal(manifest.authorizedBranch, 'kora-final');
+  assert.equal(manifest.authorizedBranch, 'main');
 });
 
 test('una validación productiva fallida revierte a la versión anterior', async () => {

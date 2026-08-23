@@ -520,6 +520,9 @@ body.kora-product-page .estilo-btn.active{background:#0B1E3D!important;color:#FF
 .format-btn:hover:not(.active){background:rgba(11,30,61,.06);color:#0B1E3D}
 .format-btn:active{transform:scale(.95);transition-duration:80ms}
 .format-btn svg,.format-btn i{width:20px;height:20px}
+body.kora-product-page .format-selector .format-btn:not(.active){background:#FFFFFF!important;color:#64748B!important;border:1px solid rgba(11,30,61,.12)!important;box-shadow:none!important}
+body.kora-product-page .format-selector .format-btn.active{background:#0B1E3D!important;color:#FFFFFF!important;border-color:transparent!important;box-shadow:0 2px 8px rgba(11,30,61,.30)!important}
+body.kora-product-page .format-selector .format-btn:hover:not(.active){background:rgba(11,30,61,.04)!important;color:#0B1E3D!important;border-color:rgba(11,30,61,.24)!important}
 .reel-options{display:none;margin-top:12px;padding:12px;background:rgba(0,196,204,.04);border:1px solid rgba(0,196,204,.15);border-radius:12px}
 .reel-options.visible{display:block}
 .reel-options label{display:block;margin:0 0 6px;font-size:11px;font-weight:600;color:var(--text2)}
@@ -950,9 +953,9 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
   <div class="output-format-section">
     <div class="sidebar-label">Formato de salida</div>
     <div class="format-selector" role="group" aria-label="Formato de salida">
-      <button type="button" class="format-btn active" data-format="image" onclick="selectOutputFormat('image',this)"><i data-lucide="image" class="format-icon" aria-hidden="true"></i><span>Imagen</span></button>
-      <button type="button" class="format-btn" data-format="reel" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel</span></button>
-      <button type="button" class="format-btn" data-format="carousel" onclick="selectOutputFormat('carousel',this)"><i data-lucide="layout-grid" class="format-icon" aria-hidden="true"></i><span>Multi-producto</span></button>
+      <button type="button" class="format-btn active" data-format="image" aria-pressed="true" onclick="selectOutputFormat('image',this)"><i data-lucide="image" class="format-icon" aria-hidden="true"></i><span>Imagen</span></button>
+      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel</span></button>
+      <button type="button" class="format-btn" data-format="carousel" aria-pressed="false" onclick="selectOutputFormat('carousel',this)"><i data-lucide="layout-grid" class="format-icon" aria-hidden="true"></i><span>Multi-producto</span></button>
     </div>
     <div id="reel-options" class="reel-options">
       <label for="reel-duration">Duración del Reel</label>
@@ -1702,7 +1705,11 @@ window._selectedOutputFormat = 'image';
 
 function selectOutputFormat(format, button) {
   window._selectedOutputFormat = format;
-  document.querySelectorAll('.format-btn').forEach((item) => item.classList.toggle('active', item === button));
+  document.querySelectorAll('.format-btn').forEach((item) => {
+    const isActive = item === button;
+    item.classList.toggle('active', isActive);
+    item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
   document.getElementById('reel-options')?.classList.toggle('visible', format === 'reel');
   const label = document.getElementById('gen-label');
   if (label) label.textContent = format === 'reel' ? '🎬 Generar Reel' : format === 'carousel' ? 'Generar Multi-producto' : '✦ Generar piezas';
@@ -1862,15 +1869,53 @@ async function generateReel(imageBase64, config) {
 }
 
 async function generateReelFromCurrentForm() {
-  const source = imgHistory[imgHistoryIdx] || document.getElementById('img-output')?.src || '';
-  const imageBase64 = source.startsWith('data:image/') ? source.split(',')[1] : undefined;
-  return generateReel(imageBase64, {
-    product: document.getElementById('producto')?.value.trim(),
-    city: getCiudadNombre(document.getElementById('ciudad')?.value || ''),
-    price: document.getElementById('cuota')?.value.trim(),
-    duration: document.getElementById('reel-duration')?.value || '8',
-    style: document.getElementById('reel-style')?.value || 'dynamic'
-  });
+  if (reelGenerationInFlight || imageGenerationInFlight) return;
+  const button = document.getElementById('gen-btn');
+  const spinner = document.getElementById('spinner');
+  const label = document.getElementById('gen-label');
+  const previousSources = new Set([
+    ...imgHistory,
+    ...Array.from(document.querySelectorAll('#img-ab-result .img-output')).map((image) => image.src)
+  ].filter(Boolean));
+
+  button.disabled = true;
+  spinner.style.display = 'block';
+  label.textContent = 'Generando imagen base…';
+  setReelStatus('🖼️ Generando primero la imagen base para animarla con Veo…');
+
+  try {
+    showImgSection();
+    await generarConModelos();
+    const candidates = [
+      imgHistory[imgHistoryIdx],
+      document.getElementById('img-output')?.src,
+      ...Array.from(document.querySelectorAll('#img-ab-result .img-output')).map((image) => image.src)
+    ].filter((source) => source && !previousSources.has(source));
+    const source = candidates.find((candidate) => candidate.startsWith('data:image/')) || '';
+    if (!source) throw new Error('No se pudo generar una imagen base nueva para el Reel');
+    const separator = source.indexOf(',');
+    if (separator < 0) throw new Error('La imagen base generada tiene un formato inválido');
+    const imageBase64 = source.slice(separator + 1);
+    if (!imageBase64) throw new Error('La imagen base generada está vacía');
+    setReelStatus('✅ Imagen base lista. Enviando a Veo para animación…');
+    return await generateReel(imageBase64, {
+      product: document.getElementById('producto')?.value.trim(),
+      city: getCiudadNombre(document.getElementById('ciudad')?.value || ''),
+      price: document.getElementById('cuota')?.value.trim(),
+      duration: document.getElementById('reel-duration')?.value || '8',
+      style: document.getElementById('reel-style')?.value || 'dynamic'
+    });
+  } catch (error) {
+    console.error('Error preparando imagen para Reel:', error);
+    setReelStatus(`❌ Error: ${error.message || 'No se pudo preparar el Reel'}`, 'error');
+    showToast(error.message || 'No se pudo preparar el Reel', '#ef4444');
+  } finally {
+    if (!reelGenerationInFlight) {
+      button.disabled = false;
+      spinner.style.display = 'none';
+      label.textContent = '🎬 Generar Reel';
+    }
+  }
 }
 
 async function generarContenido() {

@@ -64,10 +64,16 @@
   }
   function clasificarEstablecimiento(nombre, establecimientos) {
     const buscado = clave(nombre);
-    const matches = (establecimientos || []).filter(item => {
+    let matches = (establecimientos || []).filter(item => {
       const candidates = [item.nombre, item.codigo, ...(item.aliases || [])].map(clave);
       return candidates.includes(buscado);
     });
+    if (matches.length === 0 && buscado) {
+      matches = (establecimientos || []).filter(item => {
+        const candidates = [item.nombre, item.codigo, ...(item.aliases || [])].map(clave).filter(Boolean);
+        return candidates.some(candidate => candidate.length >= 4 && (buscado.includes(candidate) || candidate.includes(buscado)));
+      });
+    }
     if (matches.length !== 1) return { tipo: 'no_reconocido', establecimiento: null, incidencia: matches.length ? 'comercio_ambiguo' : 'comercio_no_reconocido' };
     const establecimiento = matches[0];
     return { tipo: establecimiento.tipo === 'aliado' ? 'aliado' : 'propia', establecimiento, incidencia: null };

@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <link rel="stylesheet" href="/creditek/agentes/aura-premium.css">
 <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="aura-module-config.js"></script>
 <script src="aura-context-help.js" defer></script>
@@ -288,6 +289,13 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .incident-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .incident-dialog-close{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:#F1F5F9;color:var(--text2);cursor:pointer}
 .incident-dialog-close svg{width:16px;height:16px}
+.links-modal{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(11,30,61,.58)}
+.links-modal.open{display:flex}.links-dialog{width:min(1080px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 28px 80px rgba(11,30,61,.28);padding:24px}
+.links-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}.links-head h2{font-size:22px;color:var(--navy)}.links-head p{margin-top:5px;color:var(--text2);font-size:13px}
+.links-close,.links-action{border:0;border-radius:9px;cursor:pointer;font:650 12px var(--font);min-height:40px;padding:9px 13px}.links-close{background:#F1F5F9;color:var(--navy)}.links-action{background:var(--navy);color:#fff}.links-action.danger{background:#FFF1F2;color:#BE123C}.links-action:disabled{opacity:.55;cursor:wait}
+.links-section{margin-top:22px}.links-section h3{font-size:15px;color:var(--navy);margin-bottom:9px}.links-table-wrap{overflow-x:auto;border:1px solid var(--border2);border-radius:12px}.links-table{width:100%;border-collapse:collapse;font-size:12px}.links-table th,.links-table td{padding:11px 12px;border-bottom:1px solid #E2E8F0;text-align:left;vertical-align:middle}.links-table th{background:#F8FAFC;color:#475569;font-weight:700}.links-table tr:last-child td{border-bottom:0}.links-state{font-weight:700;color:#047857}.links-state.empty{color:#64748B}.links-status{min-height:48px;display:grid;place-items:center;color:#64748B;font-size:13px}
+.generated-link{background:#F8FAFC;border:1px solid var(--border2);border-radius:10px;padding:12px;font:500 12px/1.5 var(--mono);overflow-wrap:anywhere;margin:14px 0}.one-time-warning{color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:11px;font-size:12px;line-height:1.5}.link-result-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}.qr-wrap{display:grid;place-items:center;min-height:220px;margin:16px auto 4px}.qr-wrap img,.qr-wrap canvas{max-width:220px;height:auto}
+button.tool-row{width:100%;border:0;text-align:left;font-family:var(--font)}
 .config-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:4px}
 .config-desc{font-size:12px;color:var(--text2);margin-bottom:14px}
 .config-field{margin-bottom:10px}
@@ -592,13 +600,14 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </a>
-          <div class="tool-row" aria-disabled="true" data-aura-help="Esta función requiere una ruta segura propia de AURA">
+          <button class="tool-row" type="button" data-aura-owner-only onclick="openRegistrationLinksPanel()" data-aura-help="Genera y administra enlaces seguros de registro por tienda o aliado">
             <div class="tool-icon"><i data-lucide="users"></i></div>
             <div>
               <div class="tool-name">Registro de clientes</div>
-              <div class="tool-desc">Registro y consulta de clientes Creditek.</div>
+              <div class="tool-desc">Genera, consulta y renueva enlaces seguros por origen.</div>
             </div>
-          </div>
+            <span class="tool-arrow">→</span>
+          </button>
           <a class="tool-row" data-aura-app="sofia" onclick="openModuleFromCard('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados','sofia')">
             <div class="tool-icon"><i data-lucide="file-signature"></i></div>
             <div>
@@ -686,6 +695,26 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     </div>
   </div>
 
+</div>
+
+<div class="links-modal" id="registration-links-modal" aria-hidden="true">
+  <section class="links-dialog" role="dialog" aria-modal="true" aria-labelledby="registration-links-title">
+    <header class="links-head">
+      <div><h2 id="registration-links-title">Enlaces de registro</h2><p>Administra enlaces seguros para tiendas propias y aliados.</p></div>
+      <button class="links-close" type="button" onclick="closeRegistrationLinksPanel()" aria-label="Cerrar panel"><i data-lucide="x"></i></button>
+    </header>
+    <div id="registration-links-content" class="links-status" aria-live="polite">Cargando enlaces…</div>
+  </section>
+</div>
+
+<div class="links-modal" id="generated-link-modal" aria-hidden="true">
+  <section class="links-dialog" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="generated-link-title">
+    <header class="links-head"><div><h2 id="generated-link-title">Enlace generado</h2><p id="generated-link-origin"></p></div><button class="links-close" type="button" onclick="closeGeneratedLink()" aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+    <p class="one-time-warning">Este link solo se muestra una vez. Cópialo o descarga el QR ahora — no podrás volver a verlo.</p>
+    <div class="generated-link" id="generated-link-value"></div>
+    <div class="qr-wrap" id="generated-link-qr"></div>
+    <div class="link-result-actions"><button class="links-action" type="button" onclick="copyGeneratedLink()">Copiar link</button><button class="links-action" type="button" onclick="downloadGeneratedQr()">Descargar QR</button></div>
+  </section>
 </div>
 
 <div id="toast"></div>
@@ -863,6 +892,13 @@ function renderAuthorizedModules() {
         : hasPermission(auraAccess, appId, 'sofia.use');
     element.hidden = !allowed;
   });
+  document.querySelectorAll('[data-aura-owner-only]').forEach(element => {
+    element.hidden = !isAuraOwner();
+  });
+}
+
+function isAuraOwner() {
+  return Array.isArray(auraAccess?.apps) && auraAccess.apps.some(grant => grant?.role_id === 'aura.owner');
 }
 
 function enterAura() {
@@ -924,6 +960,132 @@ async function updateCommercialKpis() {
   } catch (_) {
     renderCommercialKpisUnavailable();
   }
+}
+
+let generatedRegistrationLink = '';
+
+function safeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}
+
+function formatLinkDate(value) {
+  if (!value) return 'Nunca';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function auraLinksRequest(path, options = {}) {
+  const token = await auraAuth.token();
+  if (!token) throw new Error('La sesión de AURA venció. Inicia sesión nuevamente.');
+  const response = await fetch(`/api/aura/enlaces${path}`, {
+    ...options,
+    cache: 'no-store',
+    headers: {
+      authorization: `Bearer ${token}`,
+      accept: 'application/json',
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'No fue posible administrar los enlaces.');
+  return payload;
+}
+
+function linkGroupName(origin) {
+  if (origin.tipo === 'propia') return 'Tiendas propias';
+  return `Aliados ${origin.ejecutivo_responsable || 'sin ejecutivo'}`;
+}
+
+function renderRegistrationLinks(origins) {
+  const content = document.getElementById('registration-links-content');
+  const preferred = ['Tiendas propias', 'Aliados Luis', 'Aliados Alex', 'Aliados Yeimi'];
+  const groups = new Map();
+  origins.forEach(origin => {
+    const group = linkGroupName(origin);
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(origin);
+  });
+  const names = [...groups.keys()].sort((a, b) => {
+    const left = preferred.indexOf(a); const right = preferred.indexOf(b);
+    return (left < 0 ? 99 : left) - (right < 0 ? 99 : right) || a.localeCompare(b, 'es');
+  });
+  content.className = '';
+  content.innerHTML = names.map(name => `<section class="links-section"><h3>${safeHtml(name)}</h3><div class="links-table-wrap"><table class="links-table"><thead><tr><th>Origen</th><th>Estado</th><th>Usos</th><th>Último uso</th><th>Acción</th></tr></thead><tbody>${groups.get(name).map(origin => {
+    const link = origin.enlace_activo;
+    return `<tr><td><strong>${safeHtml(origin.nombre)}</strong><br><span>${safeHtml(origin.ciudad || origin.codigo)}</span></td><td><span class="links-state ${link ? '' : 'empty'}">${link ? `Activo desde ${safeHtml(formatLinkDate(link.created_at))}` : 'Sin enlace'}</span></td><td>${Number(origin.total_registros) || 0}</td><td>${safeHtml(formatLinkDate(link?.ultima_utilizacion_at))}</td><td><button class="links-action ${link ? 'danger' : ''}" type="button" data-origin="${safeHtml(origin.codigo)}" data-name="${safeHtml(origin.nombre)}" data-link-id="${safeHtml(link?.id || '')}">${link ? 'Revocar y generar nuevo' : 'Generar link'}</button></td></tr>`;
+  }).join('')}</tbody></table></div></section>`).join('') || '<div class="links-status">No hay orígenes activos.</div>';
+  content.querySelectorAll('[data-origin]').forEach(button => {
+    button.addEventListener('click', () => generateRegistrationLink(button.dataset.origin, button.dataset.name, button.dataset.linkId, button));
+  });
+}
+
+async function loadRegistrationLinks() {
+  const content = document.getElementById('registration-links-content');
+  content.className = 'links-status'; content.textContent = 'Cargando enlaces…';
+  try { renderRegistrationLinks(await auraLinksRequest('/origenes')); }
+  catch (error) { content.textContent = error.message; }
+}
+
+async function openRegistrationLinksPanel() {
+  if (!isAuraOwner()) return showToast('Solo el propietario de AURA puede administrar enlaces.', '#EF4444');
+  const modal = document.getElementById('registration-links-modal');
+  modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+  window.lucide?.createIcons?.();
+  await loadRegistrationLinks();
+}
+
+function closeRegistrationLinksPanel() {
+  const modal = document.getElementById('registration-links-modal');
+  modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+}
+
+async function generateRegistrationLink(originCode, originName, activeLinkId, button) {
+  if (activeLinkId && !confirm(`El enlace actual de ${originName} dejará de funcionar. ¿Deseas revocarlo y generar uno nuevo?`)) return;
+  button.disabled = true;
+  try {
+    if (activeLinkId) await auraLinksRequest(`/${encodeURIComponent(activeLinkId)}/revocar`, { method: 'POST', body: '{}' });
+    const result = await auraLinksRequest('', { method: 'POST', body: JSON.stringify({ origen_codigo: originCode }) });
+    showGeneratedLink(originName, result.url_completa);
+    await loadRegistrationLinks();
+  } catch (error) {
+    showToast(error.message, '#EF4444'); button.disabled = false;
+  }
+}
+
+function showGeneratedLink(originName, url) {
+  generatedRegistrationLink = String(url || '');
+  document.getElementById('generated-link-origin').textContent = originName;
+  document.getElementById('generated-link-value').textContent = generatedRegistrationLink;
+  const qr = document.getElementById('generated-link-qr'); qr.innerHTML = '';
+  if (typeof QRCode === 'function') new QRCode(qr, { text: generatedRegistrationLink, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  else qr.textContent = 'No fue posible generar el QR. Copia el enlace antes de cerrar.';
+  const modal = document.getElementById('generated-link-modal'); modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+  window.lucide?.createIcons?.();
+}
+
+function closeGeneratedLink() {
+  const modal = document.getElementById('generated-link-modal');
+  modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+  generatedRegistrationLink = ''; document.getElementById('generated-link-value').textContent = '';
+  document.getElementById('generated-link-qr').innerHTML = '';
+}
+
+async function copyGeneratedLink() {
+  if (!generatedRegistrationLink) return;
+  await navigator.clipboard.writeText(generatedRegistrationLink);
+  showToast('Link copiado.');
+}
+
+function downloadGeneratedQr() {
+  const qr = document.querySelector('#generated-link-qr canvas, #generated-link-qr img');
+  if (!qr) return showToast('QR no disponible.', '#EF4444');
+  const anchor = document.createElement('a');
+  anchor.download = 'enlace-registro-creditek.png';
+  anchor.href = qr.tagName === 'CANVAS' ? qr.toDataURL('image/png') : qr.src;
+  anchor.click();
 }
 
 function updateDate() {
@@ -1232,6 +1394,8 @@ Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
   openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
+  openRegistrationLinksPanel, closeRegistrationLinksPanel, closeGeneratedLink,
+  copyGeneratedLink, downloadGeneratedQr,
 });
 </script>
 </body>

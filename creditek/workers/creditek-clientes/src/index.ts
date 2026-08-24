@@ -23,13 +23,20 @@ import {
   uploadSecureDocument,
   type SecureDocumentsEnv,
 } from './registro-documents';
+import {
+  createOriginLink,
+  listOriginLinks,
+  revokeOriginLink,
+  type AdminEnlacesEnv,
+} from './admin-enlaces';
 
-interface Env extends SecureOtpEnv, SecureRegistrationEnv, SecureDocumentsEnv {
+interface Env extends SecureOtpEnv, SecureRegistrationEnv, SecureDocumentsEnv, AdminEnlacesEnv {
   WHATSAPP_TOKEN: string;
   PHONE_NUMBER_ID: string;
   TURNSTILE_SITE_KEY: string;
   ALLOWED_ORIGIN: string;
   ALLOW_LEGACY_REGISTRATION_LINKS: string;
+  ADMIN_ENLACES_TOKEN: string;
 }
 
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
@@ -54,7 +61,7 @@ function json(data: unknown, status = 200): Response {
 
 function corsHeaders(request: Request, env: Env): Headers {
   const headers = new Headers({
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     Vary: 'Origin',
   });
@@ -100,6 +107,34 @@ function codigoValido(v: unknown): v is string {
   return typeof v === 'string' && /^\d{6}$/.test(v);
 }
 
+async function tokenValido(token: string, esperado: string): Promise<boolean> {
+  if (!token || !esperado) return false;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode('creditek-clientes-token-compare'),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const [a, b] = await Promise.all([
+    crypto.subtle.sign('HMAC', key, encoder.encode(token)),
+    crypto.subtle.sign('HMAC', key, encoder.encode(esperado)),
+  ]);
+  const left = new Uint8Array(a);
+  const right = new Uint8Array(b);
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) difference |= left[index] ^ right[index];
+  return difference === 0;
+}
+
+async function adminAuthorized(request: Request, env: Env): Promise<boolean> {
+  const authorization = request.headers.get('Authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  return tokenValido(token, env.ADMIN_ENLACES_TOKEN);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
@@ -123,6 +158,19 @@ export default {
       }
       if (url.pathname === '/api/origenes' && request.method === 'GET') {
         return respond(await handleOrigenes(env));
+      }
+      if (url.pathname === '/api/admin/origenes-enlaces' && request.method === 'GET') {
+        if (!await adminAuthorized(request, env)) return respond(json({ ok: false, error: 'unauthorized' }, 401));
+        return respond(await listOriginLinks(env));
+      }
+      if (url.pathname === '/api/admin/enlaces' && request.method === 'POST') {
+        if (!await adminAuthorized(request, env)) return respond(json({ ok: false, error: 'unauthorized' }, 401));
+        return respond(await createOriginLink(request, env));
+      }
+      const revokeMatch = url.pathname.match(/^\/api\/admin\/enlaces\/([0-9a-f-]+)\/revocar$/i);
+      if (revokeMatch && request.method === 'POST') {
+        if (!await adminAuthorized(request, env)) return respond(json({ ok: false, error: 'unauthorized' }, 401));
+        return respond(await revokeOriginLink(revokeMatch[1], env));
       }
       if (url.pathname === '/api/otp/enviar' && request.method === 'POST') {
         return respond(await handleOtpEnviarRoute(request, env));

@@ -172,6 +172,22 @@ export async function submitSecureRegistration(
     return result(503, 'No se pudo guardar el registro');
   }
 
+  // Métrica de uso efectivo: solo después de que la transacción canónica creó
+  // exitosamente cliente/solicitud. Un fallo de esta marca no revierte el registro.
+  try {
+    const usageResponse = await dependencies.fetcher(
+      `${SUPABASE_URL}/rest/v1/enlaces_registro?id=eq.${encodeURIComponent(context.enlaceId)}`,
+      {
+        method: 'PATCH',
+        headers: { ...headers(env), Prefer: 'return=minimal' },
+        body: JSON.stringify({ ultima_utilizacion_at: new Date(now).toISOString() }),
+      },
+    );
+    if (!usageResponse.ok) console.error('[REGISTRO-SEGURO] No se pudo marcar el uso del enlace');
+  } catch {
+    console.error('[REGISTRO-SEGURO] No se pudo marcar el uso del enlace');
+  }
+
   try {
     const documentosSession = await signSession({
       purpose: 'documentos', cedula: session.cedula, celular: session.celular,

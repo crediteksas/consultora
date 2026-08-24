@@ -17,6 +17,7 @@ ALLOW_LEGACY_REGISTRATION_LINKS = "true"
 #   REGISTRATION_SIGNING_SECRET
 #   TURNSTILE_SECRET_KEY
 #   TURNSTILE_SITE_KEY
+#   ADMIN_ENLACES_TOKEN   — token servidor-servidor para administrar enlaces desde AURA
 
 # FEATURE 22-jul-2026 · Reportes diarios por WhatsApp a Oscar y Mayte.
 # Cron cada 5 min entre 11am y 7pm hora Colombia (UTC-5), traducido a UTC.

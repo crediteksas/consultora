@@ -1,6 +1,11 @@
+import { handleAuraEnlacesProxy } from './aura-enlaces-proxy.mjs';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/aura/enlaces')) {
+      return handleAuraEnlacesProxy(request, env);
+    }
     if (url.pathname !== '/kora-build-manifest.json') return env.ASSETS.fetch(request);
 
     const staticResponse = await env.ASSETS.fetch(new Request(new URL('/kora-build-manifest.static.json', url), request));

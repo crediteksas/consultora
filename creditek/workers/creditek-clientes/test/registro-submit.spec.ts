@@ -181,6 +181,60 @@ describe('secure registration submission', () => {
     expect(requests.some((request) => /\/rest\/v1\/(clientes|solicitudes|referencias|audit_log)/.test(request.url))).toBe(false);
   });
 
+  it('marks the link as used only after the transactional RPC succeeds', async () => {
+    const requests: Request[] = [];
+    const result = await submitSecureRegistration(
+      { ...input, registro_session: await registrationSession() },
+      ENV,
+      {
+        now: () => NOW,
+        fetcher: fetcherFrom((request) => {
+          const context = contextResponse(request);
+          if (context) return context;
+          if (request.url.includes('/rpc/crear_registro_cliente_seguro')) {
+            return Response.json([{ cliente_id: CLIENTE_ID, solicitud_id: SOLICITUD_ID }]);
+          }
+          if (request.url.includes('/rest/v1/enlaces_registro?id=eq.')) {
+            return new Response(null, { status: 204 });
+          }
+          return new Response(null, { status: 500 });
+        }, requests),
+      },
+    );
+
+    expect(result.status).toBe(200);
+    const rpcIndex = requests.findIndex((request) => request.url.includes('/rpc/crear_registro_cliente_seguro'));
+    const usageIndex = requests.findIndex((request) => request.url.includes('/rest/v1/enlaces_registro?id=eq.'));
+    expect(rpcIndex).toBeGreaterThanOrEqual(0);
+    expect(usageIndex).toBeGreaterThan(rpcIndex);
+    expect(requests[usageIndex].method).toBe('PATCH');
+    await expect(requests[usageIndex].json()).resolves.toEqual({
+      ultima_utilizacion_at: '2026-07-23T15:00:00.000Z',
+    });
+  });
+
+  it('does not mark the link as used when the transactional RPC fails', async () => {
+    const requests: Request[] = [];
+    const result = await submitSecureRegistration(
+      { ...input, registro_session: await registrationSession() },
+      ENV,
+      {
+        now: () => NOW,
+        fetcher: fetcherFrom((request) => {
+          const context = contextResponse(request);
+          if (context) return context;
+          if (request.url.includes('/rpc/crear_registro_cliente_seguro')) {
+            return new Response('database unavailable', { status: 503 });
+          }
+          return new Response(null, { status: 500 });
+        }, requests),
+      },
+    );
+
+    expect(result.status).toBe(503);
+    expect(requests.some((request) => request.url.includes('/rest/v1/enlaces_registro?id=eq.'))).toBe(false);
+  });
+
   it('leaves first-origin preservation and new-request creation to one transactional RPC', async () => {
     const requests: Request[] = [];
     await submitSecureRegistration(

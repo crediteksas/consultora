@@ -439,7 +439,7 @@ create trigger liquidation_immutable_after_approval before update on public.liqu
 
 create or replace function public.aliados_impedir_cambio_operacion_aprobada() returns trigger language plpgsql as $$
 begin
- if exists(select 1 from public.liquidations where id=old.liquidation_id and frozen_at is not null) then raise exception 'Liquidación aprobada inmutable; los snapshots no pueden cambiar';end if;return new;
+ if exists(select 1 from public.liquidations where id=old.liquidation_id and frozen_at is not null) then raise exception 'Liquidación aprobada inmutable; los snapshots no pueden cambiar';end if;if TG_OP = 'DELETE' then return old; else return new; end if;
 end; $$;
 drop trigger if exists liquidation_operation_immutable_after_approval on public.liquidation_operations;
 create trigger liquidation_operation_immutable_after_approval before update or delete on public.liquidation_operations for each row execute function public.aliados_impedir_cambio_operacion_aprobada();

@@ -1748,11 +1748,12 @@ function extraerCelular(texto) {
 }
 __name(extraerCelular, "extraerCelular");
 function extraerCedula(texto, sinCelular) {
-  const limpio = sinCelular.replace(/[.,]/g, "");
-  const m = limpio.match(/\b[0-9]{6,12}\b/);
+  const limpio = sinCelular.replace(/,/g, "");
+  const m = limpio.match(/(?<!\d)(\d(?:[\s.\-]?\d){7,9})(?!\d)/);
   if (!m) return null;
-  if (/^3\d{9}$/.test(m[0])) return null;
-  return m[0];
+  const cedula = m[1].replace(/[^\d]/g, "");
+  if (/^3\d{9}$/.test(cedula)) return null;
+  return cedula;
 }
 __name(extraerCedula, "extraerCedula");
 function pareceCelular(texto) {
@@ -2316,7 +2317,13 @@ ${siguiente}` : respuestaContinuidad;
         break;
       }
       if (conv.historial.length <= 1) {
-        respuesta = MSG.OPTIN;
+        if (esConsultaDuranteCaptura(texto) || /\b(requisit|cuot|preci|cr[eé]dit|proceso|financi)/i.test(texto)) {
+          const fija = respuestaConsultaFrecuenteDuranteCaptura(texto);
+          const respuestaBreve = fija || "El proceso es muy r\xE1pido: solo necesitas tu c\xE9dula y en minutos sabes si aplicas \u{1F60A}";
+          respuesta = `${respuestaBreve}\n\n${MSG.OPTIN}`;
+        } else {
+          respuesta = MSG.OPTIN;
+        }
         if (canal === "whatsapp") {
           botones = [
             { id: "optin_si", title: "\u2705 Acepto" },
@@ -2334,6 +2341,18 @@ ${siguiente}` : respuestaContinuidad;
           meta_ctwa_clid: referral?.ctwa_clid || null
           // FIX v1, 07-jul-2026: guardar dato crudo de Meta para auditar atribución
         }, sk);
+        break;
+      }
+      if (esConsultaDuranteCaptura(texto) || /\b(requisit|cuot|preci|cr[eé]dit|proceso|financi)/i.test(texto)) {
+        const fija = respuestaConsultaFrecuenteDuranteCaptura(texto);
+        const respuestaBreve = fija || "El proceso es muy r\xE1pido: solo necesitas tu c\xE9dula y en minutos sabes si aplicas \u{1F60A}";
+        respuesta = `${respuestaBreve}\n\n${MSG.OPTIN}`;
+        if (canal === "whatsapp") {
+          botones = [
+            { id: "optin_si", title: "\u2705 Acepto" },
+            { id: "optin_no", title: "\u274C No, gracias" }
+          ];
+        }
         break;
       }
       if (detectaRechaza(texto)) {
@@ -2672,7 +2691,11 @@ ${siguienteDato}` : respuestaDuda;
       const textoParaNombre = textoSinCelNiCedula.replace(/\bC\.?C\.?\b|\bc[eé]dula\b|\bcelular\b|\by\s+mi\b|\bmi\b/gi, "").replace(/[,.:;]/g, "").replace(/\s{2,}/g, " ").trim();
       const datosAgrupados = extraerDatosMinimos(texto);
       const nombre = extraerNombre(textoParaNombre) || extraerNombre(texto) || datosAgrupados.nombre;
-      const cedulaFinal = datosAgrupados.cedula && (!cedula || datosAgrupados.cedula.length > cedula.length) ? datosAgrupados.cedula : cedula;
+      let cedulaFinal = datosAgrupados.cedula && (!cedula || datosAgrupados.cedula.length > cedula.length) ? datosAgrupados.cedula : cedula;
+      const soloDigitos = texto.trim().replace(/[\s\-.]/g, "");
+      if (!cedulaFinal && /^\d{8,10}$/.test(soloDigitos) && !/^3\d{9}$/.test(soloDigitos)) {
+        cedulaFinal = soloDigitos;
+      }
       const celularFinal = celular || datosAgrupados.celular;
       const correoFinal = correo || datosAgrupados.correo;
       if (nombre && !conv.nombre) conv.nombre = nombre;
@@ -3272,7 +3295,7 @@ async function marcarLeadsPerdidos(env2) {
   try {
     const limite = new Date(Date.now() - 5 * 24 * 3600 * 1e3).toISOString();
     const rSel = await fetch(
-      `${supabaseUrl()}/rest/v1/clientes?estado_funnel=in.(${estadosPendientes})&fecha_estado_actualizado=lt.${limite}&select=telefono,nombre,producto_interes`,
+      `${supabaseUrl()}/rest/v1/clientes?estado_funnel=in.(${estadosPendientes})&fecha_estado_actualizado=lt.${limite}&or=(ciudad_original.is.null,tienda_id.not.is.null)&select=telefono,nombre,producto_interes,ciudad_original,tienda_id`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } }
     );
     if (!rSel.ok) {
@@ -3293,6 +3316,7 @@ async function marcarLeadsPerdidos(env2) {
       return;
     }
     for (const c of perdidos) {
+      if (c.ciudad_original && !c.tienda_id) continue;
       await enviarReenganche(c, env2);
     }
     console.log("[REENGANCHE] procesados:", perdidos.length);

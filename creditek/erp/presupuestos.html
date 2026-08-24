@@ -173,7 +173,8 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 
   <div class="tabs">
     <button class="activo" id="tabCreditos" data-metrica="meta_creditos">Créditos</button>
-    <button id="tabContado" data-metrica="meta_unidades_contado">Contado (unidades)</button>
+    <button id="tabCelulares" data-metrica="meta_uds_cel">Celulares (contado)</button>
+    <button id="tabAccesorios" data-metrica="meta_uds_acc">Accesorios</button>
     <button id="tabUtilidad" data-metrica="meta_utilidad">Utilidad</button>
   </div>
 
@@ -326,7 +327,7 @@ async function generarPresupuesto() {
   await cargarPresupuesto();
 }
 
-// ─── Importar histórico (CSV: tienda_codigo,fecha,creditos,contado,utilidad) ──
+// ─── Importar histórico (CSV: tienda_codigo,fecha,creditos,celulares_contado,accesorios,utilidad) ──
 async function importarHistorico(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -343,11 +344,12 @@ async function importarHistorico(e) {
         tienda_codigo: String(n['tienda_codigo'] || n['tienda'] || '').trim(),
         fecha: n['fecha'] ? new Date(n['fecha']).toISOString().slice(0, 10) : null,
         creditos: Number(n['creditos'] || 0),
-        contado: Number(n['contado'] || 0),
+        equipos_contado_cantidad: Number(n['celulares_contado'] || n['equipos_contado_cantidad'] || 0),
+        accesorios_cantidad: Number(n['accesorios'] || n['accesorios_cantidad'] || 0),
         utilidad: Number(n['utilidad'] || 0),
       };
     }).filter(r => r.tienda_codigo && r.fecha);
-    if (!normalizadas.length) { err.textContent = 'No se encontraron filas válidas (columnas esperadas: tienda_codigo, fecha, creditos, contado, utilidad).'; err.classList.add('show'); return; }
+    if (!normalizadas.length) { err.textContent = 'No se encontraron filas válidas (columnas esperadas: tienda_codigo, fecha, creditos, celulares_contado, accesorios, utilidad).'; err.classList.add('show'); return; }
     const { error } = await sb.from('historico_importado').upsert(normalizadas, { onConflict: 'tienda_codigo,fecha' });
     if (error) { err.textContent = 'No se pudo importar: ' + error.message; err.classList.add('show'); return; }
     mostrarBanner(`✅ ${normalizadas.length} fila(s) de histórico importadas. Ahora "Generar presupuesto" las usará como base.`);
@@ -431,7 +433,7 @@ function renderTabla() {
 
 function abrirModalCelda(td) {
   celdaEnEdicion = { tienda: td.dataset.tienda, fecha: td.dataset.fecha, nombre: td.dataset.nombre };
-  const labels = { meta_creditos: 'Meta de créditos', meta_unidades_contado: 'Meta de unidades contado', meta_utilidad: 'Meta de utilidad' };
+  const labels = { meta_creditos: 'Meta de créditos', meta_uds_cel: 'Meta de celulares (contado)', meta_uds_acc: 'Meta de accesorios', meta_utilidad: 'Meta de utilidad' };
   document.getElementById('celdaLabel').textContent = labels[metricaActual];
   document.getElementById('celdaContexto').textContent = `${celdaEnEdicion.nombre} · ${new Date(celdaEnEdicion.fecha + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}`;
   const reg = presupuestoCache.find(p => p.tienda_codigo === celdaEnEdicion.tienda && p.fecha === celdaEnEdicion.fecha);
@@ -452,7 +454,8 @@ async function guardarCelda() {
   const payload = {
     tienda_codigo: celdaEnEdicion.tienda, fecha: celdaEnEdicion.fecha,
     meta_creditos: reg ? reg.meta_creditos : 0,
-    meta_unidades_contado: reg ? reg.meta_unidades_contado : 0,
+    meta_uds_cel: reg ? reg.meta_uds_cel : 0,
+    meta_uds_acc: reg ? reg.meta_uds_acc : 0,
     meta_utilidad: reg ? reg.meta_utilidad : 0,
     generado_desde: 'manual',
   };

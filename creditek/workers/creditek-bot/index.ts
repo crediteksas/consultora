@@ -381,15 +381,19 @@ function extraerCedula(texto: string, sinCelular: string): string | null {
   // strip (Roberto Morelo "323 608 3392") ya lo cubre pareceCelular()
   // en DATOS_MIN, que dispara CEDULA_PARECE_CELULAR sin depender del
   // strip aquí.
-  const limpio = sinCelular.replace(/[.,]/g, '');
-  const m = limpio.match(/\b[0-9]{6,12}\b/);
+  const limpio = sinCelular.replace(/,/g, '');
+  // Acepta cédulas colombianas de 8–10 dígitos aunque haya texto pegado
+  // antes/después, y tolera espacios, puntos o guiones entre dígitos.
+  // Los lookarounds solo impiden tomar un fragmento de un número más largo.
+  const m = limpio.match(/(?<!\d)(\d(?:[\s.\-]?\d){7,9})(?!\d)/);
   if (!m) return null;
+  const cedula = m[1].replace(/[^\d]/g, '');
   // FIX v27, 22-jul-2026 — Bug 5: si el número tiene exactamente 10 dígitos
   // y empieza por 3, es UNAMBIGUAMENTE un celular colombiano (patrón
   // 3XX XXX XXXX), no una cédula. Se rechaza aquí para que DATOS_MIN
   // dispare el mensaje de reconfirmación en su lugar.
-  if (/^3\d{9}$/.test(m[0])) return null;
-  return m[0];
+  if (/^3\d{9}$/.test(cedula)) return null;
+  return cedula;
 }
 
 // FIX v27, 22-jul-2026 — Bug 5 del paquete FIX_Sofia_v27: helper puro que
@@ -952,7 +956,15 @@ async function procesarMensaje(
       }
       // Primer mensaje
       if (conv.historial.length <= 1) {
-        respuesta = MSG.OPTIN;
+        // Si el cliente pregunta sobre el proceso antes de autorizar,
+        // responder brevemente y luego pedir autorización.
+        if (esConsultaDuranteCaptura(texto) || /\b(requisit|cuot|preci|cr[eé]dit|proceso|financi)/i.test(texto)) {
+          const fija = respuestaConsultaFrecuenteDuranteCaptura(texto);
+          const respuestaBreve = fija || 'El proceso es muy rápido: solo necesitas tu cédula y en minutos sabes si aplicas 😊';
+          respuesta = `${respuestaBreve}\n\n${MSG.OPTIN}`;
+        } else {
+          respuesta = MSG.OPTIN;
+        }
         // FIX v21, 13-jul-2026: botones de respuesta rápida en WhatsApp — en
         // Facebook/Instagram se deja el texto libre igual que antes (Meta no
         // ofrece este mismo mecanismo de botones vía la API de Messenger que
@@ -968,6 +980,21 @@ async function procesarMensaje(
           anuncio_id: conv.anuncio_id, anuncio_titulo: conv.anuncio_titulo, ctwa_clid: conv.ctwa_clid,
           meta_source_url: referral?.source_url || null, meta_ctwa_clid: referral?.ctwa_clid || null, // FIX v1, 07-jul-2026: guardar dato crudo de Meta para auditar atribución
         }, sk);
+        break;
+      }
+      // El cliente puede insistir con una duda comercial sin haber dado una
+      // señal afirmativa de autorización. Se responde, pero el estado sigue
+      // en OPTIN y se vuelve a solicitar el consentimiento explícito.
+      if (esConsultaDuranteCaptura(texto) || /\b(requisit|cuot|preci|cr[eé]dit|proceso|financi)/i.test(texto)) {
+        const fija = respuestaConsultaFrecuenteDuranteCaptura(texto);
+        const respuestaBreve = fija || 'El proceso es muy rápido: solo necesitas tu cédula y en minutos sabes si aplicas 😊';
+        respuesta = `${respuestaBreve}\n\n${MSG.OPTIN}`;
+        if (canal === 'whatsapp') {
+          botones = [
+            { id: 'optin_si', title: '✅ Acepto' },
+            { id: 'optin_no', title: '❌ No, gracias' },
+          ];
+        }
         break;
       }
       // Respuesta al opt-in (rechazo se revisa primero para no confundir "no autorizo" con aceptación)
@@ -1495,9 +1522,14 @@ async function procesarMensaje(
         .trim();
       const datosAgrupados = extraerDatosMinimos(texto);
       const nombre = extraerNombre(textoParaNombre) || extraerNombre(texto) || datosAgrupados.nombre;
-      const cedulaFinal = datosAgrupados.cedula && (!cedula || datosAgrupados.cedula.length > cedula.length)
+      let cedulaFinal = datosAgrupados.cedula && (!cedula || datosAgrupados.cedula.length > cedula.length)
         ? datosAgrupados.cedula
         : cedula;
+      // Fallback: texto que es solo dígitos de longitud cédula.
+      const soloDigitos = texto.trim().replace(/[\s\-.]/g, '');
+      if (!cedulaFinal && /^\d{8,10}$/.test(soloDigitos) && !/^3\d{9}$/.test(soloDigitos)) {
+        cedulaFinal = soloDigitos;
+      }
       const celularFinal = celular || datosAgrupados.celular;
       const correoFinal = correo || datosAgrupados.correo;
 
@@ -2223,7 +2255,7 @@ async function marcarLeadsPerdidos(env: Env) {
     const limite = new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString();
 
     const rSel = await fetch(
-      `${SUPABASE_URL}/rest/v1/clientes?estado_funnel=in.(${estadosPendientes})&fecha_estado_actualizado=lt.${limite}&select=telefono,nombre,producto_interes`,
+      `${SUPABASE_URL}/rest/v1/clientes?estado_funnel=in.(${estadosPendientes})&fecha_estado_actualizado=lt.${limite}&or=(ciudad_original.is.null,tienda_id.not.is.null)&select=telefono,nombre,producto_interes,ciudad_original,tienda_id`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } }
     );
     if (!rSel.ok) { console.error('[SUPABASE-ERROR] marcarLeadsPerdidos (select) falló:', rSel.status, await rSel.text()); return; }
@@ -2240,6 +2272,9 @@ async function marcarLeadsPerdidos(env: Env) {
     if (!r.ok) { console.error('[SUPABASE-ERROR] marcarLeadsPerdidos falló:', r.status, await r.text()); return; }
 
     for (const c of perdidos) {
+      // Defensa adicional: una ciudad sin tienda asignada significa que el
+      // cliente ya fue descartado por cobertura; no enviarle reenganche.
+      if (c.ciudad_original && !c.tienda_id) continue;
       await enviarReenganche(c, env);
     }
     console.log('[REENGANCHE] procesados:', perdidos.length);

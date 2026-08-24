@@ -82,7 +82,7 @@
     ]) + metrics('Resumen Operaciones Retail', [
       ['Operaciones Retail', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad Creditek Retail', selected.total_utilidad_tiendas]
     ]) + metrics('Resumen Operaciones Aliados', [
-      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos]
+      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos], ['Utilidad Creditek Aliados', Number(selected.total_utilidad_creditek || 0) - Number(selected.total_utilidad_tiendas || 0)]
     ]);
   }
 

@@ -3410,7 +3410,6 @@ async function enviarReenganche(cliente, env2) {
       })
     });
     const resJson = await res.json();
-    console.log("[REENGANCHE-DEBUG]", cliente.telefono, res.status, JSON.stringify(resJson));
     if (res.ok) {
       await env2.CONVERSATIONS.delete(cliente.telefono);
     } else {

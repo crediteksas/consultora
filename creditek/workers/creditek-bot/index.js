@@ -906,6 +906,8 @@ PROHIBIDO:
 - Usar listas, vi\xF1etas o numeraci\xF3n
 - Confirmar o negar cobertura/tienda en una ciudad espec\xEDfica (eso lo decide el sistema con datos reales, no t\xFA)
 
+REGLA FINAL ABSOLUTA: NUNCA preguntes marca, modelo ni referencia. Aunque el cliente diga "celular", avanza sin pedir esos datos.
+
 FORMATO: Mensaje real de WhatsApp. Corto (2-3 l\xEDneas m\xE1ximo). Natural. Sin t\xEDtulos, sin listas. M\xE1ximo 1 emoji.`;
 }
 __name(buildSystemPrompt, "buildSystemPrompt");
@@ -946,6 +948,8 @@ Responde como Sof\xEDa: profesional, cercana, con seguridad comercial. Un solo o
     const data = await response.json();
     let texto = data?.content?.[0]?.text?.trim() || "\xBFEn qu\xE9 m\xE1s te puedo ayudar? \u{1F60A}";
     texto = texto.replace(/\bbacano\b/gi, "perfecto");
+    texto = texto.replace(/(?:^|\n)[^\n]*(?:\xBF|\?)[^\n]*(?:marca|modelo|referencia)[^\n]*\??/gi, "").trim();
+    if (!texto) texto = "\xA1Perfecto! Te ayudo a avanzar con tu compra \u{1F60A}";
     return texto;
   } catch {
     return "\xBFMe cuentas en qu\xE9 te puedo ayudar? \u{1F60A}";
@@ -1100,8 +1104,8 @@ __name(norm, "norm");
 function detectaSolicitudDinero(texto) {
   const t = norm(texto);
   if (/\b(pagar|pago|contado)\b.{0,20}\befectivo\b/.test(t)) return false;
-  const mencionaDinero = /\b(dinero|plata|prestamo|efectivo)\b/.test(t);
-  const expresaIntencion = /\b(pense|crei|busco|quiero|necesito|solicito|dan|prestan|era)\b/.test(t);
+  const mencionaDinero = /\b(dinero|plata|prestamo|efectivo|prestar|presten|presta)\b/.test(t);
+  const expresaIntencion = /\b(pense|crei|busco|quiero|necesito|solicito|dan|prestan|prestar|presten|presta|era|para)\b/.test(t);
   return mencionaDinero && expresaIntencion;
 }
 __name(detectaSolicitudDinero, "detectaSolicitudDinero");
@@ -1636,6 +1640,17 @@ function pareceCiudad(texto) {
   return true;
 }
 __name(pareceCiudad, "pareceCiudad");
+function pareceNombreCiudad(texto) {
+  const t = texto.trim().toLowerCase();
+  const rechazados = ["ok", "ninguna", "no", "si", "s\xED", "gracias", "ninguno", "ninguna de las anteriores", "no ninguna"];
+  if (rechazados.some((r) => t === r || t.startsWith(r + " "))) return false;
+  if (t.replace(/\s/g, "").length < 3) return false;
+  if (/\d/.test(t)) return false;
+  if (/tablet|celular|samsung|xiaomi|motorola|iphone|moto|redmi|huawei|telefono|tel\xE9fono|telfono/i.test(t)) return false;
+  if (/\?|\xBF|c\xF3mo|como|cuanto|cu\xE1l|cual|qu\xE9|que marca|que precio/i.test(t)) return false;
+  return true;
+}
+__name(pareceNombreCiudad, "pareceNombreCiudad");
 function tieneIntencionReal(texto) {
   const t = norm2(texto).trim();
   if (!t) return false;
@@ -2181,14 +2196,21 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
   if (esNueva) {
     const clienteExistente = conv;
     const db = await buscarCliente(clienteId, sk);
-    const optinYaAceptado = clienteExistente?.optin_aceptado ?? (db?.optin_datos ?? false);
+    const optinYaAceptado = clienteExistente?.optin_aceptado ?? (db?.optin_datos === true || !!db?.estado_funnel && db.estado_funnel !== "nuevo");
+    const ciudadOriginalValida = pareceNombreCiudad(db?.ciudad_original || "") ? db.ciudad_original : void 0;
+    const estadoRestaurado = !optinYaAceptado ? "OPTIN" : db?.tienda_id ? db?.estado_funnel === "transferido_asesor" ? "HANDOFF" : "DATOS_MIN" : ciudadOriginalValida ? "CIUDAD_MODAL" : "ESCUCHAR";
     conv = {
-      estado: optinYaAceptado ? "FIN" : "OPTIN",
+      estado: estadoRestaurado,
       canal,
       historial: [],
       ultimo_mensaje: ahora,
       nombre: db?.nombre ?? clienteExistente?.nombre ?? void 0,
-      celular: db?.celular ?? clienteExistente?.celular ?? void 0,
+      cedula: db?.cedula ?? clienteExistente?.cedula ?? void 0,
+      celular: db?.telefono_contacto ?? clienteExistente?.celular ?? (canal === "whatsapp" ? clienteId : void 0),
+      ciudad: db?.ciudad ?? clienteExistente?.ciudad ?? void 0,
+      ciudad_original: ciudadOriginalValida ?? (pareceNombreCiudad(clienteExistente?.ciudad_original || "") ? clienteExistente.ciudad_original : void 0),
+      tienda_id: db?.tienda_id ?? clienteExistente?.tienda_id ?? void 0,
+      modalidad: clienteExistente?.modalidad ?? (db?.tienda_id ? "credito" : void 0),
       optin_aceptado: optinYaAceptado,
       // FIX v20, 13-jul-2026: si el cliente ya existía (en esta conversación o
       // en Supabase), se conserva su fuente real ya registrada en vez de
@@ -2202,6 +2224,18 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
       ...extraerDatosAnuncio(referral),
       tiendas_intentadas: []
     };
+    if (conv.tienda_id) {
+      const tiendaExistente = await buscarTiendaPorId(conv.tienda_id, sk);
+      if (tiendaExistente) {
+        conv.tienda_nombre = tiendaExistente.nombre;
+        conv.tienda_nombre_comercial = tiendaExistente.nombre_comercial;
+        conv.tienda_genero = tiendaExistente.genero;
+        conv.tienda_tipo = tiendaExistente.tipo;
+        conv.tienda_contacto = tiendaExistente.contacto;
+        conv.tienda_telefono = tiendaExistente.telefono;
+        conv.ciudad = tiendaExistente.ciudad || conv.ciudad;
+      }
+    }
     if (refQr) {
       const t = await buscarTiendaQR(refQr, sk);
       if (t) {
@@ -2309,6 +2343,10 @@ ${siguiente}` : respuestaContinuidad;
   switch (conv.estado) {
     // ── OPTIN ────────────────────────────────────────────────────────────────
     case "OPTIN": {
+      if (detectaSolicitudDinero(texto)) {
+        respuesta = "Creditek no presta efectivo \u{1F60A} Somos una tienda de celulares \u2014 te ayudamos a estrenar tu celular nuevo hoy mismo a cr\xE9dito. \xBFTe interesa?";
+        break;
+      }
       if (conv.optin_aceptado) {
         const n = (conv.nombre || "").split(" ")[0];
         respuesta = n ? MSG.BIENVENIDA_CONOCIDO(n) : MSG.BIENVENIDA;
@@ -2431,7 +2469,7 @@ ${siguiente}` : respuestaContinuidad;
       let sinCobertura = false;
       const textoSinModalidadEscuchar = texto.replace(/cr[eé]d\w{0,3}to|acredit|financiad|cuota|plazo|mensual|abono|\bcontado\b|efectivo|de una|pago\s*(completo|total)/gi, "").replace(/[!¡?¿.,]+/g, "").trim();
       const posibleCiudadEscuchar = textoSinModalidadEscuchar;
-      const pareceIntentoCiudad = !ciudadMen && !conv.tienda_id && posibleCiudadEscuchar.length > 2 && posibleCiudadEscuchar.split(/\s+/).length <= 4 && pareceCiudad(posibleCiudadEscuchar) && !esPalabraReservadaEscuchar(posibleCiudadEscuchar) && !/^(de|del|para|con|sin)\b/i.test(posibleCiudadEscuchar) && !detectaAcepta(posibleCiudadEscuchar) && !detectaRechaza(posibleCiudadEscuchar);
+      const pareceIntentoCiudad = !ciudadMen && !conv.tienda_id && posibleCiudadEscuchar.length > 2 && posibleCiudadEscuchar.split(/\s+/).length <= 4 && pareceCiudad(posibleCiudadEscuchar) && pareceNombreCiudad(posibleCiudadEscuchar) && !esPalabraReservadaEscuchar(posibleCiudadEscuchar) && !/^(de|del|para|con|sin)\b/i.test(posibleCiudadEscuchar) && !detectaAcepta(posibleCiudadEscuchar) && !detectaRechaza(posibleCiudadEscuchar);
       if (pareceIntentoCiudad) {
         const intento = await buscarTiendaRandom(posibleCiudadEscuchar, [], sk);
         if (intento) {
@@ -2448,9 +2486,11 @@ ${siguiente}` : respuestaContinuidad;
           ciudadMen = intento.ciudad;
         } else {
           sinCobertura = true;
-          conv.ciudad_original = posibleCiudadEscuchar;
-          conv.municipio = posibleCiudadEscuchar;
-          await actualizarCliente(clienteId, { ciudad_original: posibleCiudadEscuchar }, sk);
+          if (!pareceNombreCiudad(conv.ciudad_original || "")) {
+            conv.ciudad_original = posibleCiudadEscuchar;
+            conv.municipio = posibleCiudadEscuchar;
+            await actualizarCliente(clienteId, { ciudad_original: posibleCiudadEscuchar }, sk);
+          }
         }
       }
       if (texto.length > 2 && !ciudadMen && !sinCobertura) conv.producto_interes = texto;
@@ -2612,6 +2652,10 @@ ${siguiente}` : respuestaContinuidad;
       }
       conv.modelo_pendiente = void 0;
       const ciudadTexto = texto.trim().replace(/[!¡?¿.,]+/g, "").trim();
+      if (!pareceNombreCiudad(ciudadTexto)) {
+        respuesta = MSG.CIUDAD_REPETIR;
+        break;
+      }
       const tNorm = norm2(ciudadTexto);
       const canonicasAlias = [
         { alias: /\btolu\b/, canonica: "Tol\xFA" },
@@ -2641,9 +2685,12 @@ ${siguiente}` : respuestaContinuidad;
         conv.estado = "DATOS_MIN";
         respuesta = conv.modalidad === "contado" ? MSG.DATOS_CONTADO : MSG.DATOS_CREDITO;
       } else {
-        const yaTeniaSinCobertura = !!conv.ciudad_original;
-        conv.ciudad_original = ciudadTexto;
-        conv.municipio = ciudadTexto;
+        const yaTeniaSinCobertura = pareceNombreCiudad(conv.ciudad_original || "");
+        if (!yaTeniaSinCobertura) {
+          conv.ciudad_original = ciudadTexto;
+          conv.municipio = ciudadTexto;
+          await actualizarCliente(clienteId, { ciudad_original: ciudadTexto }, sk);
+        }
         const yaMandoSinCobertura = yaTeniaSinCobertura || conv.historial.some((h) => h.startsWith("Sofia: ") && h.includes("no tenemos tienda en esa ciudad"));
         if (yaMandoSinCobertura) {
           conv.estado = "FIN";
@@ -2651,7 +2698,6 @@ ${siguiente}` : respuestaContinuidad;
         } else {
           respuesta = MSG.SIN_COBERTURA;
         }
-        await actualizarCliente(clienteId, { ciudad_original: ciudadTexto }, sk);
       }
       if (!respuesta) respuesta = MSG.CIUDAD_REPETIR;
       break;
@@ -2740,6 +2786,10 @@ ${siguienteDato}` : respuestaDuda;
     // ── CIUDAD ───────────────────────────────────────────────────────────────
     case "CIUDAD": {
       const ciudadTexto = texto.trim().replace(/[!¡?¿.,]+/g, "").trim();
+      if (!pareceNombreCiudad(ciudadTexto)) {
+        respuesta = MSG.CIUDAD_REPETIR;
+        break;
+      }
       const tienda = await buscarTiendaRandom(ciudadTexto, conv.tiendas_intentadas || [], sk);
       if (tienda) {
         conv.tienda_id = tienda.id;
@@ -2756,10 +2806,12 @@ ${siguienteDato}` : respuestaDuda;
         await save();
         return;
       } else {
-        const yaTeniaSinCobertura = !!conv.ciudad_original;
-        conv.ciudad_original = ciudadTexto;
-        conv.municipio = ciudadTexto;
-        await actualizarCliente(clienteId, { ciudad_original: ciudadTexto }, sk);
+        const yaTeniaSinCobertura = pareceNombreCiudad(conv.ciudad_original || "");
+        if (!yaTeniaSinCobertura) {
+          conv.ciudad_original = ciudadTexto;
+          conv.municipio = ciudadTexto;
+          await actualizarCliente(clienteId, { ciudad_original: ciudadTexto }, sk);
+        }
         const yaMandoSinCobertura = yaTeniaSinCobertura || conv.historial.some((h) => h.startsWith("Sofia: ") && h.includes("no tenemos tienda en esa ciudad"));
         if (yaMandoSinCobertura) {
           conv.estado = "FIN";
@@ -3158,7 +3210,7 @@ async function seguimientoLeadsMudos(env2) {
 __name(seguimientoLeadsMudos, "seguimientoLeadsMudos");
 async function buscarCliente(telefono, key) {
   try {
-    const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=nombre,optin_datos,celular,fuente,canal_origen&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=nombre,cedula,optin_datos,telefono_contacto,fuente,canal_origen,estado_funnel,ciudad,ciudad_original,tienda_id&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!r.ok) {
       console.error("[SUPABASE-ERROR] buscarCliente fall\xF3:", r.status, await r.text());
       return null;
@@ -3171,6 +3223,21 @@ async function buscarCliente(telefono, key) {
   }
 }
 __name(buscarCliente, "buscarCliente");
+async function buscarTiendaPorId(tiendaId, key) {
+  try {
+    const r = await fetch(`${supabaseUrl()}/rest/v1/tiendas?id=eq.${encodeURIComponent(tiendaId)}&select=id,nombre,nombre_comercial,genero,ciudad,contacto,telefono,tipo&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!r.ok) {
+      console.error("[SUPABASE-ERROR] buscarTiendaPorId fall\xF3:", r.status, await r.text());
+      return null;
+    }
+    const d = await r.json();
+    return d[0] ?? null;
+  } catch (e) {
+    console.error("[SUPABASE-EXCEPTION] buscarTiendaPorId:", e);
+    return null;
+  }
+}
+__name(buscarTiendaPorId, "buscarTiendaPorId");
 async function buscarTiendaQR(refQr, key) {
   try {
     const r = await fetch(`${supabaseUrl()}/rest/v1/tiendas?ref_qr=eq.${encodeURIComponent(refQr)}&select=id,nombre,nombre_comercial,genero,ciudad,contacto,telefono,tipo&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });

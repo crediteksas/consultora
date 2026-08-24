@@ -2738,7 +2738,7 @@ ${siguienteDato}` : respuestaDuda;
       const datosAgrupados = extraerDatosMinimos(texto);
       const nombre = extraerNombre(textoParaNombre) || extraerNombre(texto) || datosAgrupados.nombre;
       let cedulaFinal = datosAgrupados.cedula && (!cedula || datosAgrupados.cedula.length > cedula.length) ? datosAgrupados.cedula : cedula;
-      const soloDigitos = texto.trim().replace(/[\s\-.]/g, "");
+      const soloDigitos = texto.trim().replace(/[.\s-]/g, "");
       if (!cedulaFinal && /^\d{8,10}$/.test(soloDigitos) && !/^3\d{9}$/.test(soloDigitos)) {
         cedulaFinal = soloDigitos;
       }
@@ -2872,6 +2872,12 @@ ${siguienteDato}` : respuestaDuda;
     }
     // ── FIN ──────────────────────────────────────────────────────────────────
     case "FIN": {
+      const esRetorno = /^(hola|buenas|buenos|hey|hi|hello|hola de nuevo)\b/i.test(texto.trim());
+      if (esRetorno && conv.nombre) {
+        const nombreCorto = conv.nombre.split(" ")[0];
+        respuesta = `¡Hola ${nombreCorto}! ¿En qué te puedo ayudar? 😊`;
+        break;
+      }
       if (esMensajeCortoContextual(texto) || !tieneIntencionReal(texto)) {
         respuesta = MSG.FIN;
         break;

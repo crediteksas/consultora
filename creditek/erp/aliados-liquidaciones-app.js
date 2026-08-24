@@ -217,8 +217,10 @@
     if (!beneficiary_id || !banco || !numero_cuenta) { $('bankError').textContent = 'Completa todos los campos.'; return; }
     const { error } = await sb.rpc('aliados_guardar_cuenta_bancaria', { p_beneficiary_id: beneficiary_id, p_banco: banco, p_tipo_cuenta: tipo_cuenta, p_numero_cuenta: numero_cuenta, p_validar: true });
     if (error) { $('bankError').textContent = error.message; return; }
+    const { data: completados } = await sb.rpc('aliados_completar_pagos_beneficiario', { p_beneficiary_id: beneficiary_id });
     $('bankAccountModal').classList.remove('show');
-    alert('Cuenta guardada y validada.');
+    alert(`Cuenta guardada y validada.${completados ? ` ${completados} pago(s) pendiente(s) completado(s) automáticamente.` : ''}`);
+    if (selected) await openDetail(selected.id);
   };
   $('validate').onclick = () => stateRpc('validada');
   $('calculate').onclick = async () => { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); const { error } = await sb.rpc('aliados_calcular_liquidacion', { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };

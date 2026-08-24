@@ -207,7 +207,7 @@
   }
   $('saveReview').onclick = async () => { const { error } = await sb.rpc('aliados_resolver_operaciones_propias', { p_liquidation_id: selected.id }); if (error) alert(error.message); else await loadTab('operations'); };
   $('validate').onclick = () => stateRpc('validada');
-  $('calculate').onclick = async () => { const { error } = await sb.rpc('aliados_calcular_liquidacion', { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
+  $('calculate').onclick = async () => { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); const { error } = await sb.rpc('aliados_calcular_liquidacion', { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');
   $('reject').onclick = () => stateRpc('con_novedades', prompt('Motivo para devolver a revisión:') || 'Requiere corrección');
   $('reportIssue').onclick = async () => { const description = prompt('Describe la novedad:'); if (!description?.trim()) return; const { error } = await sb.rpc('aliados_reportar_novedad', { p_id: selected.id, p_operation_id: null, p_descripcion: description.trim() }); if (error) alert(error.message); else loadTab('incidents'); };

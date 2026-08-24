@@ -134,6 +134,15 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .hist-item .fecha { color: var(--text2); }
 .modal-actions { margin-top: 16px; }
 .modal-actions button { width: 100%; border: none; border-radius: 999px; padding: 11px; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--bg); color: var(--text2); }
+.inventario-form { display: grid; gap: 12px; }
+.inventario-form label { display: grid; gap: 5px; color: var(--text2); font-size: 12px; font-weight: 700; }
+.inventario-form input, .inventario-form select, .inventario-form textarea { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; font: 14px 'DM Sans', sans-serif; color: var(--azul); }
+.inventario-form textarea { min-height: 76px; resize: vertical; }
+.inventario-form .form-error { color: var(--rojo); font-size: 12px; min-height: 16px; }
+.inventario-form .form-actions { display: flex; gap: 8px; }
+.inventario-form .form-actions button { flex: 1; border: 0; border-radius: 999px; padding: 11px; font-weight: 700; cursor: pointer; }
+.inventario-form .form-actions .primary { background: var(--turquesa); color: white; }
+.inventario-form .form-actions .secondary { background: var(--bg); color: var(--text2); }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -308,6 +317,7 @@ function initPagina() {
   if (esCentral()) {
     document.getElementById('filtroTiendaCel').style.display = '';
     document.getElementById('filtroTiendaAcc').style.display = '';
+    crearControlesInventarioCentral();
   }
   actualizarEtiquetasCosto();
 
@@ -400,6 +410,7 @@ async function cargarTodo() {
   document.getElementById('filtroProductoCel').innerHTML = '<option value="">Todos los productos</option>' + productosCache.filter(p => p.tipo === 'serializado').map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
   document.getElementById('filtroCategoriaAcc').innerHTML = '<option value="">Todas las categorías</option>' + CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join('');
   if (esCentral()) fijarTiendaEnFiltros(localStorage.getItem('creditek_sidebar_tienda') || '');
+  if (esCentral()) poblarFormulariosInventario();
 
   await Promise.all([cargarCelulares(), cargarAccesorios()]);
   renderResumen();
@@ -599,6 +610,152 @@ function descargarInventario(conteoCiego) {
   const url = enlace.href;
   enlace.remove();
   URL.revokeObjectURL(url);
+}
+
+// Los controles sensibles se crean únicamente después de validar esCentral().
+// Para admin_tienda y asesor no existen botones ni modales en el DOM.
+function crearControlesInventarioCentral() {
+  if (!esCentral() || document.getElementById('btnAjustarInventario')) return;
+  const acciones = document.querySelector('.export-actions');
+  acciones.insertAdjacentHTML('beforeend', `
+    <button class="btn-export" id="btnAjustarInventario">Ajustar inventario</button>
+    <button class="btn-export" id="btnCargarInventarioInicial">Cargar inventario inicial</button>
+  `);
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="modalOperacionInventario" role="dialog" aria-modal="true" aria-labelledby="operacionInventarioTitulo">
+      <div class="modal-box">
+        <h2 id="operacionInventarioTitulo"></h2>
+        <div class="modal-sub" id="operacionInventarioSub"></div>
+        <form class="inventario-form" id="formOperacionInventario">
+          <label>Tienda<select id="operacionTienda" required></select></label>
+          <label>Producto<select id="operacionProducto" required></select></label>
+          <label id="campoOperacionImei">IMEI / unidad<select id="operacionUnidad"></select></label>
+          <label id="campoOperacionImeis">IMEIs reales (uno por línea)<textarea id="operacionImeis"></textarea></label>
+          <label id="campoOperacionCantidad">Cantidad<input id="operacionCantidad" type="number" step="1"></label>
+          <label id="campoOperacionCosto">Costo interno<input id="operacionCosto" type="number" min="0" step="0.01"></label>
+          <label id="campoOperacionPrecio">Precio de tienda<input id="operacionPrecio" type="number" min="0.01" step="0.01"></label>
+          <label id="campoOperacionEstado">Nuevo estado<select id="operacionEstado">
+            <option value="">Sin cambio</option><option value="disponible">Disponible</option>
+            <option value="vendido">Vendido</option><option value="en_traslado">En traslado</option>
+            <option value="garantia_proveedor">Garantía proveedor</option><option value="en_oscar">En Oscar</option>
+            <option value="anulado_reingreso">Anulado/reingreso</option>
+          </select></label>
+          <label id="campoOperacionDestino">Corregir tienda actual<select id="operacionDestino"></select></label>
+          <label>Motivo (mínimo 5 caracteres)<textarea id="operacionMotivo" minlength="5" required></textarea></label>
+          <div class="form-error" id="operacionError" role="alert"></div>
+          <div class="form-actions"><button type="button" class="secondary" id="btnCancelarOperacion">Cancelar</button><button type="submit" class="primary" id="btnGuardarOperacion">Guardar</button></div>
+        </form>
+      </div>
+    </div>
+  `);
+  document.getElementById('btnAjustarInventario').addEventListener('click', () => abrirOperacionInventario('ajuste'));
+  document.getElementById('btnCargarInventarioInicial').addEventListener('click', () => abrirOperacionInventario('inicial'));
+  document.getElementById('btnCancelarOperacion').addEventListener('click', cerrarOperacionInventario);
+  document.getElementById('operacionProducto').addEventListener('change', actualizarCamposOperacion);
+  document.getElementById('operacionTienda').addEventListener('change', actualizarCamposOperacion);
+  document.getElementById('formOperacionInventario').addEventListener('submit', guardarOperacionInventario);
+}
+
+let operacionInventarioActual = null;
+
+function poblarFormulariosInventario() {
+  const tiendas = tiendasCache.filter(t => t.codigo !== 'CENTRAL');
+  const opcionesTiendas = '<option value="">Selecciona una tienda</option>' + tiendas.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
+  document.getElementById('operacionTienda').innerHTML = opcionesTiendas;
+  document.getElementById('operacionDestino').innerHTML = '<option value="">Sin cambio</option>' + opcionesTiendas.replace('<option value="">Selecciona una tienda</option>', '');
+  document.getElementById('operacionProducto').innerHTML = '<option value="">Selecciona un producto</option>' + productosCache.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)} · ${p.tipo}</option>`).join('');
+}
+
+function abrirOperacionInventario(tipo) {
+  if (!esCentral()) return;
+  operacionInventarioActual = tipo;
+  document.getElementById('formOperacionInventario').reset();
+  document.getElementById('operacionError').textContent = '';
+  document.getElementById('operacionInventarioTitulo').textContent = tipo === 'ajuste' ? 'Ajustar inventario' : 'Cargar inventario inicial';
+  document.getElementById('operacionInventarioSub').textContent = 'Disponible únicamente para tiendas. Todos los cambios quedan registrados en Kardex.';
+  const tiendaPreferida = tiendaActiva();
+  if (tiendaPreferida && tiendaPreferida !== 'CENTRAL') document.getElementById('operacionTienda').value = tiendaPreferida;
+  actualizarCamposOperacion();
+  document.getElementById('modalOperacionInventario').classList.add('show');
+}
+
+function cerrarOperacionInventario() {
+  document.getElementById('modalOperacionInventario')?.classList.remove('show');
+  operacionInventarioActual = null;
+}
+
+function actualizarCamposOperacion() {
+  const producto = productosCache.find(p => p.id === document.getElementById('operacionProducto').value);
+  const serializado = producto?.tipo === 'serializado';
+  const inicial = operacionInventarioActual === 'inicial';
+  document.getElementById('campoOperacionCantidad').style.display = serializado ? 'none' : '';
+  document.getElementById('campoOperacionImei').style.display = serializado && !inicial ? '' : 'none';
+  document.getElementById('campoOperacionImeis').style.display = serializado && inicial ? '' : 'none';
+  document.getElementById('campoOperacionPrecio').style.display = inicial ? '' : 'none';
+  document.getElementById('campoOperacionEstado').style.display = serializado && !inicial ? '' : 'none';
+  document.getElementById('campoOperacionDestino').style.display = serializado && !inicial ? '' : 'none';
+  document.getElementById('operacionCantidad').required = !serializado;
+  document.getElementById('operacionPrecio').required = inicial;
+  document.getElementById('operacionCosto').required = inicial;
+  if (serializado && !inicial) {
+    const tienda = document.getElementById('operacionTienda').value;
+    const unidades = unidadesCache.filter(u => u.producto_id === producto.id && (!tienda || u.tienda_actual === tienda));
+    document.getElementById('operacionUnidad').innerHTML = '<option value="">Selecciona un IMEI</option>' + unidades.map(u => `<option value="${u.id}">${escapeHtml(u.imei || '(sin IMEI)')} · ${escapeHtml(u.estado)}</option>`).join('');
+  }
+}
+
+async function guardarOperacionInventario(evento) {
+  evento.preventDefault();
+  if (!esCentral()) return;
+  const tienda = document.getElementById('operacionTienda').value;
+  const producto = productosCache.find(p => p.id === document.getElementById('operacionProducto').value);
+  const motivo = document.getElementById('operacionMotivo').value.trim();
+  const costoTexto = document.getElementById('operacionCosto').value;
+  const costo = costoTexto === '' ? null : Number(costoTexto);
+  const errorEl = document.getElementById('operacionError');
+  const boton = document.getElementById('btnGuardarOperacion');
+  errorEl.textContent = '';
+  if (!tienda || !producto) { errorEl.textContent = 'Selecciona tienda y producto.'; return; }
+  if (motivo.length < 5) { errorEl.textContent = 'El motivo debe tener mínimo 5 caracteres.'; return; }
+  if (operacionInventarioActual === 'ajuste' && producto.tipo === 'serializado'
+      && !document.getElementById('operacionEstado').value
+      && !document.getElementById('operacionDestino').value) {
+    errorEl.textContent = 'Indica un nuevo estado o una tienda destino.';
+    return;
+  }
+
+  let nombreRpc;
+  let parametros;
+  if (operacionInventarioActual === 'ajuste') {
+    nombreRpc = 'inventario_registrar_ajuste';
+    const serializado = producto.tipo === 'serializado';
+    parametros = {
+      p_tienda_codigo: tienda, p_producto_id: producto.id,
+      p_cantidad: serializado ? 1 : Number(document.getElementById('operacionCantidad').value),
+      p_motivo: motivo, p_unidad_id: serializado ? document.getElementById('operacionUnidad').value || null : null,
+      p_costo: costo, p_estado: serializado ? document.getElementById('operacionEstado').value || null : null,
+      p_tienda_destino: serializado ? document.getElementById('operacionDestino').value || null : null,
+    };
+  } else {
+    nombreRpc = 'inventario_cargar_inicial';
+    const serializado = producto.tipo === 'serializado';
+    const imeis = document.getElementById('operacionImeis').value.split(/\r?\n|,/).map(v => v.trim()).filter(Boolean);
+    parametros = {
+      p_tienda_codigo: tienda, p_producto_id: producto.id, p_costo: costo,
+      p_precio_tienda: Number(document.getElementById('operacionPrecio').value), p_motivo: motivo,
+      p_cantidad: serializado ? null : Number(document.getElementById('operacionCantidad').value),
+      p_imeis: serializado ? imeis : null,
+    };
+  }
+
+  boton.disabled = true; boton.textContent = 'Guardando...';
+  const { data, error } = await sb.rpc(nombreRpc, parametros);
+  boton.disabled = false; boton.textContent = 'Guardar';
+  if (error) { errorEl.textContent = error.message; return; }
+  if (!data?.ok) { errorEl.textContent = 'El servidor no confirmó la operación.'; return; }
+  cerrarOperacionInventario();
+  await Promise.all([cargarCelulares(), cargarAccesorios()]);
+  renderResumen();
 }
 </script>
 </body>

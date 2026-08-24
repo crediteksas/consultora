@@ -1,0 +1,11 @@
+name = "aura-commercial-kpis-api"
+main = "index.js"
+compatibility_date = "2026-01-15"
+
+[vars]
+CERTIFIED_FROM = "2026-08-07T05:00:00.000Z"
+SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
+
+[[services]]
+binding = "CLIENTES_AGREGADOS_SERVICE"
+service = "creditek-clientes"

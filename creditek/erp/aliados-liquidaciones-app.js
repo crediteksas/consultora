@@ -206,6 +206,20 @@
     await loadTab('payments');
   }
   $('saveReview').onclick = async () => { const { error } = await sb.rpc('aliados_resolver_operaciones_propias', { p_liquidation_id: selected.id }); if (error) alert(error.message); else await loadTab('operations'); };
+  async function loadBankBeneficiaries() {
+    const { data } = await sb.from('liquidation_beneficiaries').select('id,nombre,tipo').eq('activo', true).order('nombre');
+    $('bankBeneficiary').innerHTML = (data || []).map(b => `<option value="${b.id}">${b.nombre} (${b.tipo})</option>`).join('');
+  }
+  $('addBankAccount').onclick = async () => { $('bankError').textContent = ''; await loadBankBeneficiaries(); $('bankAccountModal').classList.add('show'); };
+  $('closeBankAccount').onclick = () => $('bankAccountModal').classList.remove('show');
+  $('saveBankAccount').onclick = async () => {
+    const beneficiary_id = $('bankBeneficiary').value, banco = $('bankBanco').value.trim(), tipo_cuenta = $('bankTipo').value, numero_cuenta = $('bankNumero').value.trim();
+    if (!beneficiary_id || !banco || !numero_cuenta) { $('bankError').textContent = 'Completa todos los campos.'; return; }
+    const { error } = await sb.rpc('aliados_guardar_cuenta_bancaria', { p_beneficiary_id: beneficiary_id, p_banco: banco, p_tipo_cuenta: tipo_cuenta, p_numero_cuenta: numero_cuenta, p_validar: true });
+    if (error) { $('bankError').textContent = error.message; return; }
+    $('bankAccountModal').classList.remove('show');
+    alert('Cuenta guardada y validada.');
+  };
   $('validate').onclick = () => stateRpc('validada');
   $('calculate').onclick = async () => { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); const { error } = await sb.rpc('aliados_calcular_liquidacion', { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');

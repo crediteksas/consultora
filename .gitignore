@@ -21,3 +21,4 @@ public/
 # Los archivos "reales" .bak no van al repo; si algún .bak legítimo hiciera falta versionar, agrégalo con `git add -f`.
 *.bak
 dist/
+.DS_Store

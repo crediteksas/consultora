@@ -22,3 +22,4 @@ public/
 *.bak
 dist/
 .DS_Store
+config/generated/

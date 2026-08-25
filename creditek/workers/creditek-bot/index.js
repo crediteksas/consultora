@@ -3423,6 +3423,7 @@ var ConversacionDO = class {
     this.env = env2;
   }
   async fetch(request) {
+    configurarEntorno(this.env);
     const body = await request.json();
     const sendFn = body.canal === "whatsapp" ? (m, botones) => botones && botones.length ? enviarBotonesWA(body.clienteId, m, botones, this.env.PHONE_NUMBER_ID, this.env.WHATSAPP_TOKEN) : enviarMensajeWA(body.clienteId, m, this.env.PHONE_NUMBER_ID, this.env.WHATSAPP_TOKEN) : async (m) => {
       const senderId = body.clienteId.replace(/^fb_/, "");

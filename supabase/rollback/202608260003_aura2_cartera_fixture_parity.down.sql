@@ -1,0 +1,1 @@
+-- Roll back fixtures as a unit with 202608260002_aura2_cartera_fixtures.down.sql.

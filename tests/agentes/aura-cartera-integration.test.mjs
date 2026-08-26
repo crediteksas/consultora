@@ -14,11 +14,12 @@ test('Cartera ocupa una sección propia entre Agentes IA y Comercial', async () 
   }
 });
 
-test('el módulo Cartera conserva datos ficticios y no integra servicios externos', async () => {
+test('el módulo Cartera conserva datos ficticios y solo consulta el puente sandbox local', async () => {
   const source = await read('creditek/agentes/aura-cartera.js');
   const html = await read('creditek/agentes/aura-cartera.html');
   assert.match(html, /SANDBOX · DATOS FICTICIOS · SIN ENVÍOS/);
-  assert.doesNotMatch(source, /fetch\s*\(|supabase|graph\.facebook|PHONE_NUMBER_ID|WHATSAPP_TOKEN|wrangler/i);
+  assert.match(source, /fetch\('\/api\/cartera\/customers'\)/);
+  assert.doesNotMatch(source, /supabase\.co|graph\.facebook|PHONE_NUMBER_ID|WHATSAPP_TOKEN|wrangler|service_role|postgres(?:ql)?:\/\//i);
   assert.match(source, /únicamente en sandbox|solo en sandbox/);
 });
 

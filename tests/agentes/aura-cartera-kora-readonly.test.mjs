@@ -11,8 +11,14 @@ test('PayJoy y ALO conservan ID real con namespace y reportan campos faltantes',
   }
 });
 
-test('Addi y Krediya quedan INCOMPLETE sin inventar estructuras',()=>{
-  for(const adapter of [new AddiAdapterReal(),new KrediyaAdapterReal()]){const result=adapter.normalize({});assert.equal(result.status,'INCOMPLETE');assert.equal(result.record,null);}
+test('Addi conserva loan_id y monto confirmado pero sigue INCOMPLETE; Krediya no inventa estructura',()=>{
+  const addi=new AddiAdapterReal().normalize({loan_id:'LOAN-1',approved_amount:700000});assert.equal(addi.record.external_obligation_id,'addi:LOAN-1');assert.equal(addi.record.original_amount,700000);assert.equal(addi.status,'INCOMPLETE');
+  const krediya=new KrediyaAdapterReal().normalize({});assert.equal(krediya.status,'INCOMPLETE');assert.equal(krediya.record,null);
+});
+
+test('adaptadores aceptan encabezados exactos observados en Drive sin retener PII',()=>{
+  const payjoy=new PayJoyAdapterReal().normalize({device:'DEVICE-X','owed by PayJoy':500000,'national id':'PII-NO-COPIAR'});assert.equal(payjoy.record.external_obligation_id,'payjoy:DEVICE-X');assert.equal(payjoy.record.original_amount,500000);assert.equal(JSON.stringify(payjoy.record).includes('PII-NO-COPIAR'),false);
+  const alo=new AloAdapterReal().normalize({CONTRATO2:'CONTRACT-X',MONTO_CREDITO:600000,IDENTIFICACION:'PII-NO-COPIAR'});assert.equal(alo.record.external_obligation_id,'alo:CONTRACT-X');assert.equal(alo.record.original_amount,600000);assert.equal(JSON.stringify(alo.record).includes('PII-NO-COPIAR'),false);
 });
 
 test('fuente KORA solo expone lectura y el sync rechaza contratos incompletos',async()=>{

@@ -67,3 +67,54 @@ Cadencia inicial propuesta: cada 4 horas durante días/horarios de cobranza y un
 ## Decisión de ingesta
 
 No se ejecutó ingesta real. Los contratos PayJoy/ALO quedan incompletos y las filas disponibles contienen PII. AURA sandbox conserva exclusivamente sus 48 fixtures ficticios.
+
+## Validación de archivos Drive — Fase 7B
+
+Validación de solo lectura realizada el 26 de agosto de 2026 sobre siete libros `.xlsx`. Los archivos originales no fueron modificados ni convertidos. El conector de Drive no expone nombres internos de pestañas para archivos Office; se documentan los segmentos lógicos observados y no se inventan nombres de hojas.
+
+| Plataforma | Archivos inspeccionados | Segmentos lógicos | Encabezados estructurales confirmados | Clasificación |
+|---|---:|---:|---|---|
+| PayJoy | 3 | 2 por archivo | transaction time, merchant name, device, transaction type, device family, device model, imei, months, finance product, owed by PayJoy, owed by CREDITEK S.A.S., national id | ORIGINACIÓN + LIQUIDACIÓN |
+| ALO | 1 | 1 | FECHA, TIENDA, TIENDA_CREDITEK, MODELO, IDENTIFICACION, CONTRATO2, IMEI, MONTO_CREDITO, INICIAL_, PLATAFORMA | RESUMEN DE ORIGINACIÓN/LIQUIDACIÓN |
+| Addi | 3 | 4–7 por archivo | ownership, origination_date, loan_id, approved_amount, store_name, application_id, order_id, ally_mdf, requested_amount_without_discount | ORIGINACIÓN + LIQUIDACIÓN |
+| Krediya | 0 | 0 | — | SIN FUENTE COLOMBIA |
+
+Archivos PayJoy: `PAYJOY TER AGO 21 2026.xlsx`, `PAYJOY DEL 6 AL 9 AGOSTO 2026.xlsx`, `PAYJOY 4 Y 5 AGOSTO 2026.xlsx`. Archivo combinado ALO: `ALO Y PAYJOY COMPLETO resumen.xlsx`. Archivos Addi: `LIQ ADDI 26 sep.xlsx`, `addi 29 agosto.xlsx`, `ADDI DEL 22 DE AGOSTO.xlsx`.
+
+### Matriz normalizada actualizada
+
+| Campo normalizado | PayJoy | ALO | Addi | Krediya | Fuente | Confirmado | Gap |
+|---|---|---|---|---|---|---|---|
+| external_obligation_id | device | CONTRATO2 | loan_id | — | Archivos Drive | Sí, 3 plataformas | Krediya |
+| customer_external_id | national id (documento) | IDENTIFICACION (documento) | id_number (documento) | — | Archivos Drive | No como ID de plataforma | IDENTIFIER_GAP + PII |
+| platform | contexto PayJoy | PLATAFORMA | contexto Addi | — | archivo/campo | Sí, 3 plataformas | Krediya |
+| store_id | merchant name | TIENDA_CREDITEK | store_name | — | archivo | No como ID estable | STORE_ID_GAP |
+| currency | — | — | — | — | — | No | CURRENCY_GAP |
+| original_amount | owed by PayJoy | MONTO_CREDITO | approved_amount | — | archivo | Sí, 3 plataformas | semántica de monto |
+| outstanding_balance | — | — | — | — | — | No | BALANCE_GAP |
+| installment_amount | parcialidades agregadas, no obligación | — | — | — | — | No | INSTALLMENT_GAP |
+| due_date | — | — | — | — | — | No | DUE_DATE_GAP |
+| status | transaction type, no estado de deuda | — | ownership, no estado de deuda | — | archivo | No | STATUS_GAP |
+| days_past_due | — | — | — | — | — | No | DPD_GAP |
+| last_payment_at | — | — | — | — | — | No | PAYMENT_GAP |
+| last_payment_amount | — | — | — | — | — | No | PAYMENT_GAP |
+| reconciliation_status | — | — | — | — | — | No | RECONCILIATION_GAP |
+| source_updated_at | transaction time es evento | FECHA es evento | origination_date es evento | — | archivo | No como watermark | FRESHNESS_GAP |
+| payment_external_id (adicional) | — | — | — | — | — | No | PAYMENT_ID_GAP |
+
+### Tipos y sensibilidad
+
+- Fechas confirmadas: `transaction time`, `FECHA`, `origination_date`. Son fechas de transacción/originación, no vencimientos ni actualización de saldo.
+- Valores confirmados: montos financiados/originados, iniciales, comisiones, transferencias y gastos financieros. No se identificó saldo por obligación.
+- Estados observados: tipos de transacción/propiedad y estados internos de liquidación; ninguno prueba mora vigente.
+- PII presente: nombre, documento, teléfono/correo en algunos formatos, IMEI y vendedor. Ningún valor fue copiado a documentación, pruebas o sandbox.
+- `SALDO EQUIPOS` en Addi aparece en resúmenes internos agregados; no es `outstanding_balance` del cliente.
+
+### Conteo contractual
+
+- PayJoy: 3/15 campos confirmados para contrato de cartera.
+- ALO: 3/15 campos confirmados.
+- Addi: 3/15 campos confirmados.
+- Krediya: 0/15.
+
+Los tres adaptadores con fuente real quedan `INCOMPLETE`. Ninguna plataforma está lista para cobranza hasta aportar, como mínimo, saldo vigente, vencimiento, estado y pagos identificables con fecha e ID.

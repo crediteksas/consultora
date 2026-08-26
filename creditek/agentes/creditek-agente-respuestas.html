@@ -268,18 +268,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const API='https://creditek-bot.comercial-853.workers.dev';
-// SPEC v5-CRM, 13-jul-2026 — secreto compartido para /api/enviar-mensaje,
-// mismo patron que ya usa gemini-proxy (X-Worker-Secret). DEBE coincidir
-// exacto con el valor configurado en el Worker (wrangler secret put
-// WORKER_SHARED_SECRET en creditek-bot).
-const WORKER_SHARED_SECRET='73ef5474869b234c9d666476271a47fcf82b259d54ca3619';
 let cityMap={};let allTiendas=[];
 let allConvs=[],allClients=[],grouped={},currentTel=null;
 const colors=['#8b5cf6','#0ea5e9','#f59e0b','#ef4444','#22c55e','#ec4899','#6366f1','#14b8a6'];
 
 async function loadTiendas(){
   try{
-    allTiendas=await(await fetch(API+'/api/tiendas',{headers:{'X-Worker-Secret':WORKER_SHARED_SECRET}})).json();
+    allTiendas=await(await workerFetch('/api/tiendas')).json();
     cityMap={};
     const ciudades=new Set();
     allTiendas.forEach(t=>{cityMap[t.id]=t.ciudad;ciudades.add(t.ciudad)});
@@ -292,10 +287,9 @@ async function loadAll(){await loadTiendas();await Promise.all([loadStats(),load
 
 async function loadStats(){
   try{
-    // FIX v22, 13-jul-2026 — Hallazgo 1: /api/stats y /api/tiendas ahora
-    // exigen el secreto compartido en el Worker (mismo patron que ya usa
-    // /api/enviar-mensaje).
-    const d=await(await fetch(API+'/api/stats',{headers:{'X-Worker-Secret':WORKER_SHARED_SECRET}})).json();
+    // Los endpoints administrativos usan la sesión activa de AURA y solo
+    // aceptan usuarios con role_id aura.owner.
+    const d=await(await workerFetch('/api/stats')).json();
     document.getElementById('s-clientes').textContent=d.total_clientes||0;
     document.getElementById('s-convs').textContent=d.hoy||0;
     document.getElementById('s-optins').textContent=d.optins||0;
@@ -311,6 +305,7 @@ const SUPA_KEY='sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
   function irAlHub(){top.location.href='index.html'}
   async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,email:s.email};sessionStorage.setItem('aura_supabase_session_v1',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
   async function supaFetch(url,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}let res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+s.access_token})}));if(res.status===401){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error('401')}res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+nuevo.access_token})}))}return res}
+  async function workerFetch(path,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}const request=async(session)=>fetch(API+path,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{Authorization:'Bearer '+session.access_token})}));let res=await request(s);if(res.status===401||res.status===403){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error(String(res.status))}res=await request(nuevo)}return res}
   function logoutPanel(){sessionStorage.removeItem('aura_supabase_session_v1');localStorage.removeItem('aura_supabase_session_v1');irAlHub()}
 async function loadConvs(){
   try{
@@ -510,8 +505,8 @@ function openChat(tel){
 }
 
 // SPEC v5-CRM, 13-jul-2026 — Pieza 1: envia el mensaje al cliente usando el
-// mismo mecanismo que ya usa Sofia (enviarMensajeWA en creditek-bot), via el
-// nuevo endpoint /api/enviar-mensaje protegido con X-Worker-Secret. No hay
+// mismo mecanismo que ya usa Sofia (enviarMensajeWA en creditek-bot), vía el
+// endpoint /api/enviar-mensaje protegido por la sesión AURA owner. No hay
 // camino paralelo: el Worker es quien llama a la API de WhatsApp y guarda en
 // conversaciones (respondido_por:'admin'), igual que ya hace para Sofia.
 async function enviarDesdePanel(tel){
@@ -523,9 +518,9 @@ async function enviarDesdePanel(tel){
   if(btn)btn.disabled=true;
   if(statusEl)statusEl.textContent='Enviando...';
   try{
-    const res=await fetch(API+'/api/enviar-mensaje',{
+    const res=await workerFetch('/api/enviar-mensaje',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Worker-Secret':WORKER_SHARED_SECRET},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({telefono:tel,mensaje}),
     });
     const data=await res.json().catch(()=>({}));

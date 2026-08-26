@@ -450,9 +450,15 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     <div class="sidebar-section">Cartera</div>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Resumen</span></a>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('daily','Gestión del día',this)"><span class="nav-icon"><i data-lucide="list-checks"></i></span><span class="nav-label">Gestión del día</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('segments','Segmentos',this)"><span class="nav-icon"><i data-lucide="layers-3"></i></span><span class="nav-label">Segmentos</span></a>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('customers','Clientes',this)"><span class="nav-icon"><i data-lucide="users"></i></span><span class="nav-label">Clientes</span></a>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('reconciliation','Conciliaciones',this)"><span class="nav-icon"><i data-lucide="arrow-left-right"></i></span><span class="nav-label">Conciliaciones</span></a>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('promises','Promesas',this)"><span class="nav-icon"><i data-lucide="badge-check"></i></span><span class="nav-label">Promesas</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('reports','Pagos reportados',this)"><span class="nav-icon"><i data-lucide="receipt-text"></i></span><span class="nav-label">Pagos reportados</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('conversations','Conversaciones',this)"><span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Conversaciones</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('optouts','Opt-outs',this)"><span class="nav-icon"><i data-lucide="shield-x"></i></span><span class="nav-label">Opt-outs</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('kpis','KPIs',this)"><span class="nav-icon"><i data-lucide="chart-no-axes-combined"></i></span><span class="nav-label">KPIs</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('settings','Configuración',this)"><span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span><span class="nav-label">Configuración</span></a>
 
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('https://registro.crediteksas.com/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
@@ -1175,7 +1181,7 @@ function openModuleFromCard(url, title, appId = '') {
 }
 
 function openCarteraModule(route, title, element) {
-  const safeRoute = ['summary', 'daily', 'customers', 'reconciliation', 'promises'].includes(route) ? route : 'summary';
+  const safeRoute = ['summary', 'daily', 'segments', 'customers', 'reconciliation', 'promises', 'reports', 'conversations', 'optouts', 'kpis', 'settings'].includes(route) ? route : 'summary';
   openModule(`/creditek/agentes/aura-cartera.html#${safeRoute}`, `Cartera · ${title}`, element, 'cartera_sandbox');
 }
 

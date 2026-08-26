@@ -9,7 +9,7 @@ const read = relative => readFile(path.join(root, relative), 'utf8');
 test('Cartera ocupa una sección propia entre Agentes IA y Comercial', async () => {
   const shell = await read('creditek/agentes/index.html');
   assert.match(shell, /Agentes IA[\s\S]*<div class="sidebar-section">Cartera<\/div>[\s\S]*<div class="sidebar-section">Comercial<\/div>/);
-  for (const route of ['summary', 'daily', 'customers', 'reconciliation', 'promises']) {
+  for (const route of ['summary', 'daily', 'segments', 'customers', 'reconciliation', 'promises', 'reports', 'conversations', 'optouts', 'kpis', 'settings']) {
     assert.match(shell, new RegExp(`openCarteraModule\\('${route}'`));
   }
 });
@@ -18,8 +18,35 @@ test('el módulo Cartera conserva datos ficticios y no integra servicios externo
   const source = await read('creditek/agentes/aura-cartera.js');
   const html = await read('creditek/agentes/aura-cartera.html');
   assert.match(html, /SANDBOX · DATOS FICTICIOS · SIN ENVÍOS/);
-  assert.doesNotMatch(source, /fetch\s*\(|supabase|graph\.facebook|whatsapp|wrangler/i);
+  assert.doesNotMatch(source, /fetch\s*\(|supabase|graph\.facebook|PHONE_NUMBER_ID|WHATSAPP_TOKEN|wrangler/i);
   assert.match(source, /únicamente en sandbox|solo en sandbox/);
+});
+
+test('las seis vistas V2 están integradas con sus reglas de dominio visuales', async () => {
+  const source = await read('creditek/agentes/aura-cartera.js');
+  for (const marker of ['Segmentos', 'Pagos reportados', 'Conversaciones', 'Opt-outs', 'KPIs', 'Configuración']) {
+    assert.match(source, new RegExp(marker));
+  }
+  assert.match(source, /PENDIENTE DE VALIDACIÓN/);
+  assert.doesNotMatch(source, /PAGO CONFIRMADO/);
+  assert.match(source, /commercial_opt_out/);
+  assert.match(source, /collections_opt_out/);
+  assert.match(source, /CORRELACIÓN POSTERIOR AL CONTACTO/);
+  assert.match(source, /Disponible cuando exista grupo de control real/);
+  assert.match(source, /SANDBOX \/ NO PRODUCTIVO/);
+});
+
+test('el envío real permanece deshabilitado y todas las acciones son mock', async () => {
+  const source = await read('creditek/agentes/aura-cartera.js');
+  assert.match(source, /ENVIAR REAL — DESHABILITADO/);
+  assert.match(source, /class="send-real" disabled/);
+  assert.match(source, /Mensaje simulado localmente; transporte real: NO/);
+});
+
+test('los KPI explican medición, cálculo y uso mediante tooltips', async () => {
+  const source = await read('creditek/agentes/aura-cartera.js');
+  assert.match(source, /title="\$\{h\(help\)\}"/);
+  assert.match(source, /Correlación, no causalidad/);
 });
 
 test('Home, gestión, ficha, conciliaciones y promesas están disponibles', async () => {

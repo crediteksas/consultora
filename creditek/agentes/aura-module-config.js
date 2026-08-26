@@ -30,5 +30,12 @@
       appId: 'sofia',
       permission: 'sofia.use',
     }),
+    cartera: Object.freeze({
+      id: 'cartera-sandbox',
+      name: 'Cartera',
+      path: '/creditek/agentes/aura-cartera.html',
+      appId: 'cartera_sandbox',
+      permission: 'sandbox.local',
+    }),
   });
 })(typeof window !== 'undefined' ? window : globalThis);

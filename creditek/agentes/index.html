@@ -447,6 +447,13 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
     </a>
 
+    <div class="sidebar-section">Cartera</div>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Resumen</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('daily','Gestión del día',this)"><span class="nav-icon"><i data-lucide="list-checks"></i></span><span class="nav-label">Gestión del día</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('customers','Clientes',this)"><span class="nav-icon"><i data-lucide="users"></i></span><span class="nav-label">Clientes</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('reconciliation','Conciliaciones',this)"><span class="nav-icon"><i data-lucide="arrow-left-right"></i></span><span class="nav-label">Conciliaciones</span></a>
+    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('promises','Promesas',this)"><span class="nav-icon"><i data-lucide="badge-check"></i></span><span class="nav-label">Promesas</span></a>
+
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('https://registro.crediteksas.com/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
       <span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Portal B2B</span>
@@ -1167,6 +1174,11 @@ function openModuleFromCard(url, title, appId = '') {
   openModule(url, title, null, appId);
 }
 
+function openCarteraModule(route, title, element) {
+  const safeRoute = ['summary', 'daily', 'customers', 'reconciliation', 'promises'].includes(route) ? route : 'summary';
+  openModule(`/creditek/agentes/aura-cartera.html#${safeRoute}`, `Cartera · ${title}`, element, 'cartera_sandbox');
+}
+
 function closeIframe() {
   moduleLoadId += 1;
   clearTimeout(moduleLoadTimer);
@@ -1392,6 +1404,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
+  openCarteraModule,
   openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
   openRegistrationLinksPanel, closeRegistrationLinksPanel, closeGeneratedLink,

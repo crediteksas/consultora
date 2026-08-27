@@ -850,28 +850,45 @@ function formatearCaja(cierres: any[], fechaLarga: string): string {
   ].join('\n');
 }
 
-// ─── WhatsApp text send (mismo patrón que meta.ts del creditek-bot) ─────
+// ─── WhatsApp template send ─────────────────────────────────────────────
 
-async function enviarWhatsAppTexto(telefono: string, mensaje: string, env: Env): Promise<void> {
+const REPORT_TEMPLATE_LANGUAGE = 'es_CO';
+const REPORT_TEMPLATES = Object.freeze({
+  gastos: 'reporte_gastos_diario',
+  ventas: 'reporte_ventas_diario',
+  caja: 'reporte_caja_diario',
+});
+
+async function enviarWhatsAppPlantillaReporte(
+  telefono: string, plantilla: string, resumen: string, env: Env
+): Promise<void> {
   const r = await fetch(`https://graph.facebook.com/v21.0/${env.PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to: telefono.replace('+', ''),
-      type: 'text',
-      text: { body: mensaje, preview_url: false },
+      type: 'template',
+      template: {
+        name: plantilla,
+        language: { code: REPORT_TEMPLATE_LANGUAGE },
+        components: [{
+          type: 'body',
+          parameters: [{ type: 'text', text: resumen }],
+        }],
+      },
     }),
   });
   if (!r.ok) {
-    // 24h window cerrado → Meta responde 403/400. Log claro para poder migrar a plantilla si se vuelve recurrente.
-    console.error(`[REPORTES-WA] Error enviando a ${telefono}:`, r.status, await r.text());
+    const detail = await r.text();
+    console.error(`[REPORTES-WA] Meta rechazó ${plantilla} para ${telefono}:`, r.status, detail);
+    throw new Error(`meta_template_rejected:${plantilla}:${r.status}`);
   }
 }
 
-async function enviarReporteATodos(mensaje: string, env: Env): Promise<void> {
+async function enviarReporteATodos(plantilla: string, mensaje: string, env: Env): Promise<void> {
   for (const dest of DESTINATARIOS_REPORTES) {
-    await enviarWhatsAppTexto(dest, mensaje, env);
+    await enviarWhatsAppPlantillaReporte(dest, plantilla, mensaje, env);
   }
 }
 
@@ -935,10 +952,10 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   // Enviar con separación de 2 min. El scheduled event de Cloudflare permite
   // wall time > CPU time; los 4 minutos de esperas son sleep, no CPU.
   console.log('[REPORTES-DIARIOS] Enviando reporte del', hoy, 'completo=', debeMandarCompleto);
-  await enviarReporteATodos(msg1, env);
+  await enviarReporteATodos(REPORT_TEMPLATES.gastos, msg1, env);
   await esperar(SEPARACION_REPORTES_MS);
-  await enviarReporteATodos(msg2, env);
+  await enviarReporteATodos(REPORT_TEMPLATES.ventas, msg2, env);
   await esperar(SEPARACION_REPORTES_MS);
-  await enviarReporteATodos(msg3, env);
+  await enviarReporteATodos(REPORT_TEMPLATES.caja, msg3, env);
   console.log('[REPORTES-DIARIOS] Reporte del', hoy, 'enviado a los 2 destinatarios.');
 }

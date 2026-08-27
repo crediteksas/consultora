@@ -1602,10 +1602,25 @@ async function autenticarAuraOwner(request, fetcher = fetch) {
         body: "{}"
       })
     ]);
-    if (!userResponse.ok || !accessResponse.ok) return false;
+    if (!userResponse.ok || !accessResponse.ok) {
+      console.warn("[AURA-OWNER-AUTH] validacion upstream rechazada", {
+        userStatus: userResponse.status,
+        accessStatus: accessResponse.status
+      });
+      return false;
+    }
     const user = await userResponse.json();
     const access = normalizarAccesoAura(await accessResponse.json());
-    if (!user?.id || !user?.email || access.user_id !== user.id || access.email?.toLowerCase() !== user.email.toLowerCase() || access.active === false) return false;
+    if (!user?.id || !user?.email || access.user_id !== user.id || access.email?.toLowerCase() !== user.email.toLowerCase() || access.active === false) {
+      console.warn("[AURA-OWNER-AUTH] identidad o acceso inconsistente", {
+        userPresent: !!user?.id,
+        emailPresent: !!user?.email,
+        sameUser: access.user_id === user?.id,
+        sameEmail: access.email?.toLowerCase() === user?.email?.toLowerCase(),
+        active: access.active !== false
+      });
+      return false;
+    }
     if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return false;
     return Array.isArray(access.apps) && access.apps.some((grant) => grant?.role_id === "aura.owner");
   } catch {

@@ -488,7 +488,11 @@ function openChat(tel){
   rp.className='right-panel show';
   const ci=Math.abs(hashCode(tel))%colors.length;
   const init=(cl?.nombre||tel).substring(0,2).toUpperCase();
+  const recoveryHtml=cl?.estado_funnel==='lead_caliente'&&cl?.tienda_id
+    ?'<div class="client-detail"><button class="reply-btn" id="handoffRecoveryBtn" style="width:100%" onclick="reintentarHandoffSeguro(\''+tel+'\')">Enviar a asesor</button><div class="reply-status" id="handoffRecoveryStatus" style="display:block;margin-top:8px"></div></div>'
+    :'';
   rp.innerHTML='<div class="client-profile"><div class="client-avatar-lg" style="background:'+colors[ci]+'">'+init+'</div><div class="client-name">'+(cl?.nombre||'Sin nombre')+'</div><div class="client-phone">'+tel+'</div></div>'+
+    recoveryHtml+
     '<div class="section-head">Informacion</div><div class="client-detail">'+
     '<div class="detail-row"><span class="detail-label">Segmento</span><span class="detail-val">'+(cl?.segmento||'-')+'</span></div>'+
     '<div class="detail-row"><span class="detail-label">Estado</span><span class="detail-val">'+(cl?.estado_funnel||'-')+'</span></div>'+
@@ -502,6 +506,32 @@ function openChat(tel){
     '<div class="detail-row"><span class="detail-label">Total mensajes</span><span class="detail-val">'+msgs.length+'</span></div>'+
     '<div class="detail-row"><span class="detail-label">Ultimo contacto</span><span class="detail-val">'+(msgs[0]?timeAgo(msgs[0].timestamp):'-')+'</span></div></div>';
   applyFilters();
+}
+
+async function reintentarHandoffSeguro(tel){
+  const btn=document.getElementById('handoffRecoveryBtn');
+  const statusEl=document.getElementById('handoffRecoveryStatus');
+  if(btn)btn.disabled=true;
+  if(statusEl)statusEl.textContent='Enviando al asesor...';
+  try{
+    const res=await workerFetch('/api/reintentar-handoff',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefono:tel}),
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||data.error){
+      if(statusEl)statusEl.textContent='No se pudo transferir: '+(data.error||'error desconocido');
+      if(btn)btn.disabled=false;
+      return;
+    }
+    if(statusEl)statusEl.textContent=data.status==='ya_transferido'?'El cliente ya estaba transferido.':'Cliente enviado correctamente al asesor.';
+    await Promise.all([loadStats(),loadConvs(),loadClients()]);
+    openChat(tel);
+  }catch(e){
+    if(statusEl)statusEl.textContent='No se pudo transferir por un error de red.';
+    if(btn)btn.disabled=false;
+  }
 }
 
 // SPEC v5-CRM, 13-jul-2026 — Pieza 1: envia el mensaje al cliente usando el

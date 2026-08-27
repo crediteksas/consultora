@@ -14,6 +14,9 @@ test('el panel de Sofía no publica ni envía un secreto compartido', async () =
   assert.doesNotMatch(html, /X-Worker-Secret/);
   assert.match(html, /Authorization:'Bearer '\+session\.access_token/);
   assert.match(html, /workerFetch\('\/api\/enviar-mensaje'/);
+  assert.match(html, /workerFetch\('\/api\/reintentar-handoff'/);
+  assert.match(html, /estado_funnel==='lead_caliente'&&cl\?\.tienda_id/);
+  assert.match(html, />Enviar a asesor</);
 });
 
 test('el panel de Meta tampoco publica el secreto administrativo del bot', async () => {

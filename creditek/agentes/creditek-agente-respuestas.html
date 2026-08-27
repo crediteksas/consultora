@@ -488,7 +488,7 @@ function openChat(tel){
   rp.className='right-panel show';
   const ci=Math.abs(hashCode(tel))%colors.length;
   const init=(cl?.nombre||tel).substring(0,2).toUpperCase();
-  const recoveryHtml=cl?.estado_funnel==='lead_caliente'&&cl?.tienda_id
+  const recoveryHtml=cl?.estado_funnel==='lead_caliente'
     ?'<div class="client-detail"><button class="reply-btn" id="handoffRecoveryBtn" style="width:100%" onclick="reintentarHandoffSeguro(\''+tel+'\')">Enviar a asesor</button><div class="reply-status" id="handoffRecoveryStatus" style="display:block;margin-top:8px"></div></div>'
     :'';
   rp.innerHTML='<div class="client-profile"><div class="client-avatar-lg" style="background:'+colors[ci]+'">'+init+'</div><div class="client-name">'+(cl?.nombre||'Sin nombre')+'</div><div class="client-phone">'+tel+'</div></div>'+

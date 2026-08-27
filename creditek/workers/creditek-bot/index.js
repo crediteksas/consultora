@@ -2045,10 +2045,24 @@ var index_default = {
       if (cliente.estado_funnel === "transferido_asesor") {
         return new Response(JSON.stringify({ ok: true, status: "ya_transferido" }), { headers: cors });
       }
-      if (!cliente.tienda_id) {
-        return new Response(JSON.stringify({ error: "Cliente sin tienda asignada" }), { status: 409, headers: cors });
+      let tienda;
+      if (cliente.tienda_id) {
+        tienda = await buscarTiendaPorId(cliente.tienda_id, sk);
+      } else {
+        const ciudadRecuperada = String(cliente.ciudad_normalizada || cliente.ciudad || cliente.ciudad_original || "").trim();
+        if (!ciudadRecuperada) {
+          return new Response(JSON.stringify({ error: "Cliente sin ciudad recuperable" }), { status: 409, headers: cors });
+        }
+        tienda = await buscarTiendaRandom(ciudadRecuperada, [], sk);
+        if (!tienda) {
+          return new Response(JSON.stringify({ error: "No hay asesor activo para la ciudad registrada" }), { status: 409, headers: cors });
+        }
+        await actualizarCliente(telefono, {
+          tienda_id: tienda.id,
+          ciudad: tienda.ciudad,
+          ciudad_normalizada: tienda.ciudad
+        }, sk);
       }
-      const tienda = await buscarTiendaPorId(cliente.tienda_id, sk);
       if (!tienda?.contacto || !tienda?.telefono) {
         return new Response(JSON.stringify({ error: "Tienda sin datos de contacto" }), { status: 409, headers: cors });
       }
@@ -3312,7 +3326,7 @@ async function seguimientoLeadsMudos(env2) {
 __name(seguimientoLeadsMudos, "seguimientoLeadsMudos");
 async function buscarCliente(telefono, key) {
   try {
-    const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=nombre,cedula,optin_datos,telefono_contacto,fuente,canal_origen,estado_funnel,ciudad,ciudad_original,tienda_id&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=nombre,cedula,optin_datos,telefono_contacto,fuente,canal_origen,estado_funnel,ciudad,ciudad_original,ciudad_normalizada,tienda_id&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!r.ok) {
       console.error("[SUPABASE-ERROR] buscarCliente fall\xF3:", r.status, await r.text());
       return null;

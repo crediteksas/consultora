@@ -15,7 +15,7 @@ test('el panel de Sofía no publica ni envía un secreto compartido', async () =
   assert.match(html, /Authorization:'Bearer '\+session\.access_token/);
   assert.match(html, /workerFetch\('\/api\/enviar-mensaje'/);
   assert.match(html, /workerFetch\('\/api\/reintentar-handoff'/);
-  assert.match(html, /estado_funnel==='lead_caliente'&&cl\?\.tienda_id/);
+  assert.match(html, /estado_funnel==='lead_caliente'/);
   assert.match(html, />Enviar a asesor</);
 });
 
@@ -38,6 +38,13 @@ test('el handoff recupera los datos persistidos de la tienda antes de enviar', a
   assert.match(worker, /\(!conv\.tienda_telefono \|\| !conv\.tienda_contacto\) && conv\.tienda_id/);
   assert.match(worker, /await buscarTiendaPorId\(conv\.tienda_id, sk\)/);
   assert.match(worker, /url\.pathname === "\/api\/reintentar-handoff"/);
+});
+
+test('la recuperación asigna una tienda si el lead caliente quedó sin destino', async () => {
+  const worker = await read('creditek/workers/creditek-bot/index.js');
+  assert.match(worker, /cliente\.ciudad_normalizada \|\| cliente\.ciudad \|\| cliente\.ciudad_original/);
+  assert.match(worker, /await buscarTiendaRandom\(ciudadRecuperada, \[\], sk\)/);
+  assert.match(worker, /ciudad_normalizada: tienda\.ciudad/);
 });
 
 test('la recuperación owner conserva el canal real en la auditoría del handoff', async () => {

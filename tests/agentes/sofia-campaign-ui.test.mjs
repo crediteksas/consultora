@@ -10,9 +10,11 @@ test('la pantalla usa la sesión AURA y nunca el secreto compartido', () => {
   assert.doesNotMatch(source, /X-Worker-Secret|WORKER_SHARED_SECRET/);
 });
 
-test('la primera fase no ofrece ninguna acción de envío', () => {
-  assert.match(source, /No guarda, programa ni envía mensajes/);
-  assert.match(source, /Guardar borrador \(próxima fase\)/);
+test('la segunda fase permite borradores pero no ofrece ninguna acción de envío', () => {
+  assert.match(source, /permite guardar un borrador\. No programa ni envía mensajes/);
+  assert.match(source, /id="save"[^>]*>Guardar borrador/);
+  assert.match(source, /\/api\/campaigns\/templates/);
+  assert.match(source, /\/api\/campaigns\/drafts/);
   assert.doesNotMatch(source, /\/api\/enviar-mensaje|\/api\/campaigns\/send/);
 });
 

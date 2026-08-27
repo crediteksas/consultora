@@ -2043,6 +2043,54 @@ var index_default = {
         audience: summary
       }), { headers: cors });
     }
+    if (url.pathname === "/api/campaigns/templates" && request.method === "GET") {
+      const campaignAuth = await authorizeSofiaCampaign(request, { ...env2, SUPABASE_URL: supabaseUrl() }, "sofia.campaign.read");
+      if (!campaignAuth.ok) return new Response(JSON.stringify({ error: campaignAuth.code }), { status: campaignAuth.status, headers: cors });
+      if (!env2.WHATSAPP_BUSINESS_ACCOUNT_ID) return new Response(JSON.stringify({ error: "template_catalog_not_configured" }), { status: 503, headers: cors });
+      const metaResponse = await fetch(`https://graph.facebook.com/v25.0/${encodeURIComponent(env2.WHATSAPP_BUSINESS_ACCOUNT_ID)}/message_templates?fields=name,status,category,language&limit=100`, { headers: { Authorization: `Bearer ${env2.WHATSAPP_TOKEN}` } });
+      if (!metaResponse.ok) return new Response(JSON.stringify({ error: "template_catalog_unavailable" }), { status: 502, headers: cors });
+      const metaBody = await metaResponse.json();
+      const templates = (metaBody.data || []).filter((item) => item.status === "APPROVED" && item.category === "MARKETING" && item.name && item.language).map((item) => ({ name: item.name, language: item.language, category: item.category, status: "approved" }));
+      return new Response(JSON.stringify({ templates, sends_enabled: false }), { headers: cors });
+    }
+    if (url.pathname === "/api/campaigns/drafts" && request.method === "POST") {
+      const campaignAuth = await authorizeSofiaCampaign(request, { ...env2, SUPABASE_URL: supabaseUrl() }, "sofia.campaign.write");
+      if (!campaignAuth.ok) return new Response(JSON.stringify({ error: campaignAuth.code }), { status: campaignAuth.status, headers: cors });
+      const declaredLength = Number(request.headers.get("content-length") || 0);
+      if (declaredLength > 8192) return new Response(JSON.stringify({ error: "payload_too_large" }), { status: 413, headers: cors });
+      const rawBody = await request.text();
+      if (rawBody.length > 8192) return new Response(JSON.stringify({ error: "payload_too_large" }), { status: 413, headers: cors });
+      let body;
+      try {
+        body = JSON.parse(rawBody || "{}");
+      } catch {
+        return new Response(JSON.stringify({ error: "invalid_json" }), { status: 400, headers: cors });
+      }
+      const name = String(body.name || "").trim();
+      const templateName = String(body.template_name || "").trim();
+      const templateLanguage = String(body.template_language || "es_CO").trim();
+      if (name.length < 3 || name.length > 120 || !/^[a-z0-9_]{1,512}$/.test(templateName) || !/^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(templateLanguage)) return new Response(JSON.stringify({ error: "invalid_campaign_draft" }), { status: 400, headers: cors });
+      if (!env2.WHATSAPP_BUSINESS_ACCOUNT_ID) return new Response(JSON.stringify({ error: "template_catalog_not_configured" }), { status: 503, headers: cors });
+      const approvalResponse = await fetch(`https://graph.facebook.com/v25.0/${encodeURIComponent(env2.WHATSAPP_BUSINESS_ACCOUNT_ID)}/message_templates?fields=name,status,category,language&name=${encodeURIComponent(templateName)}&limit=20`, { headers: { Authorization: `Bearer ${env2.WHATSAPP_TOKEN}` } });
+      if (!approvalResponse.ok) return new Response(JSON.stringify({ error: "template_catalog_unavailable" }), { status: 502, headers: cors });
+      const approvalBody = await approvalResponse.json();
+      const approved = (approvalBody.data || []).some((item) => item.name === templateName && item.language === templateLanguage && item.status === "APPROVED" && item.category === "MARKETING");
+      if (!approved) return new Response(JSON.stringify({ error: "template_not_approved" }), { status: 409, headers: cors });
+      let headerMediaUrl = null;
+      if (body.header_media_url) {
+        try {
+          const parsed = new URL(body.header_media_url);
+          if (parsed.protocol !== "https:") throw new Error("invalid");
+          headerMediaUrl = parsed.toString();
+        } catch {
+          return new Response(JSON.stringify({ error: "invalid_header_media_url" }), { status: 400, headers: cors });
+        }
+      }
+      const insertResponse = await fetch(`${supabaseUrl()}/rest/v1/sofia_campaigns`, { method: "POST", headers: { apikey: sk, Authorization: `Bearer ${sk}`, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ name, status: "draft", template_name: templateName, template_language: templateLanguage, template_meta_status: "approved", header_media_url: headerMediaUrl, segment: { kind: body.segment || "all_eligible", pilot_limit: 5 }, created_by: campaignAuth.userId }) });
+      if (!insertResponse.ok) return new Response(JSON.stringify({ error: "campaign_draft_not_saved" }), { status: 502, headers: cors });
+      const [draft] = await insertResponse.json();
+      return new Response(JSON.stringify({ ok: true, draft, sends_enabled: false }), { status: 201, headers: cors });
+    }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
       const pc = /* @__PURE__ */ __name((r) => parseInt(r.headers.get("Content-Range")?.split("/")[1] ?? "0", 10), "pc");

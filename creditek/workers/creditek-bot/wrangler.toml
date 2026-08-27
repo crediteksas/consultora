@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 LAYER = "1"
 BOT_VERSION = "0.1.0"
+WHATSAPP_BUSINESS_ACCOUNT_ID = "27206918652305029"
 
 [[kv_namespaces]]
 binding = "CONVERSATIONS"

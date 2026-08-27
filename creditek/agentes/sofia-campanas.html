@@ -12,7 +12,7 @@
 <body>
   <header class="bar"><h1>Sofía · Campañas WhatsApp</h1><button onclick="location.href='creditek-agente-respuestas.html'">Volver al CRM</button></header>
   <main>
-    <div class="notice"><strong>Modo seguro:</strong> esta primera versión solo calcula audiencia y muestra la vista previa. No guarda, programa ni envía mensajes.</div>
+    <div class="notice"><strong>Modo seguro:</strong> calcula la audiencia, consulta las plantillas activas de Meta y permite guardar un borrador. No programa ni envía mensajes.</div>
     <div class="metrics">
       <div class="metric"><strong id="eligible">—</strong><span>Clientes elegibles</span></div>
       <div class="metric"><strong id="excluded">—</strong><span>Excluidos por protección</span></div>
@@ -23,13 +23,13 @@
         <h2>Preparar campaña</h2>
         <div class="fields">
           <div class="full"><label>Nombre interno</label><input id="name" placeholder="Ej. Regreso a clases · agosto"></div>
-          <div><label>Plantilla aprobada por Meta</label><select disabled><option>Pendiente de conectar catálogo de plantillas</option></select></div>
-          <div><label>Segmento</label><select id="segment"><option>Todos los elegibles</option><option>Leads sin asesor</option><option>Clientes por ciudad</option></select></div>
+          <div><label>Plantilla aprobada por Meta</label><select id="template" disabled><option value="">Consultando Meta…</option></select></div>
+          <div><label>Segmento</label><select id="segment"><option value="all_eligible">Todos los elegibles</option><option value="leads_without_advisor">Leads sin asesor</option><option value="by_city">Clientes por ciudad</option></select></div>
           <div class="full"><label>Imagen HTTPS</label><input id="image" type="url" placeholder="https://…" inputmode="url"></div>
           <div class="full"><label>Texto de vista previa</label><textarea id="copy">Tenemos opciones de celulares a crédito para ti. Conoce referencias y disponibilidad con un asesor Creditek.</textarea></div>
           <div class="full"><label>Enlace</label><input id="link" type="url" placeholder="https://crediteksas.com/…"></div>
         </div>
-        <div class="actions"><button class="button secondary" id="refresh">Recalcular audiencia</button><button class="button" disabled>Guardar borrador (próxima fase)</button></div>
+        <div class="actions"><button class="button secondary" id="refresh">Recalcular audiencia</button><button class="button" id="save" disabled>Guardar borrador</button></div>
         <div class="status" id="status">Esperando validación de audiencia…</div>
         <ul class="reasons" id="reasons"></ul>
       </section>
@@ -52,6 +52,23 @@
         const image=document.createElement('img');image.src=url;image.alt='Vista previa de campaña';$('media').append(image);
       }else{$('media').textContent='Imagen de campaña';}
     }
+    async function loadTemplates(){
+      const token=await auraAuth?.token?.();
+      if(!token){top.location.href='index.html';return;}
+      const select=$('template');
+      try{
+        const response=await fetch(API+'/api/campaigns/templates',{headers:{Authorization:`Bearer ${token}`}});
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.error||String(response.status));
+        select.replaceChildren();
+        const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Selecciona una plantilla';select.append(placeholder);
+        (data.templates||[]).forEach(template=>{const option=document.createElement('option');option.value=template.name;option.dataset.language=template.language;option.textContent=`${template.name} · ${template.language}`;select.append(option);});
+        select.disabled=(data.templates||[]).length===0;
+        $('save').disabled=select.disabled;
+      }catch{
+        select.replaceChildren();const option=document.createElement('option');option.textContent='No fue posible consultar Meta';select.append(option);select.disabled=true;$('save').disabled=true;
+      }
+    }
     async function preflight(){
       $('status').textContent='Validando autorizaciones y exclusiones…';
       const token=await auraAuth?.token?.();
@@ -65,13 +82,28 @@
         }
         $('eligible').textContent=data.audience?.eligible||0;
         $('excluded').textContent=data.audience?.excluded||0;
-        $('status').textContent='Audiencia calculada. Envíos bloqueados en esta fase.';
-        $('reasons').innerHTML=Object.entries(data.audience?.reasons||{}).map(([reason,total])=>`<li>${reason}: ${total}</li>`).join('');
+        $('status').textContent='Audiencia calculada. Puedes preparar un borrador; los envíos continúan bloqueados.';
+        $('reasons').replaceChildren();Object.entries(data.audience?.reasons||{}).forEach(([reason,total])=>{const item=document.createElement('li');item.textContent=`${reason}: ${total}`;$('reasons').append(item);});
       }catch{$('status').textContent='No se pudo conectar con Sofía. No se realizó ningún envío.';}
+    }
+    async function saveDraft(){
+      const name=$('name').value.trim();const option=$('template').selectedOptions[0];
+      if(name.length<3){$('status').textContent='Escribe un nombre interno para la campaña.';return;}
+      if(!option?.value){$('status').textContent='Selecciona una plantilla aprobada.';return;}
+      const token=await auraAuth?.token?.();if(!token){top.location.href='index.html';return;}
+      $('save').disabled=true;$('status').textContent='Guardando borrador seguro…';
+      try{
+        const response=await fetch(API+'/api/campaigns/drafts',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({name,template_name:option.value,template_language:option.dataset.language||'es_CO',segment:$('segment').value,header_media_url:$('image').value.trim()||null})});
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.error||String(response.status));
+        $('status').textContent='Borrador guardado. No se programó ni se envió ningún mensaje.';
+      }catch(error){$('status').textContent='No se pudo guardar el borrador ('+(error.message||'error')+'). No se realizó ningún envío.';}
+      finally{$('save').disabled=$('template').disabled;}
     }
     ['copy','image','link'].forEach(id=>$(id).addEventListener('input',renderPreview));
     $('refresh').addEventListener('click',preflight);
-    renderPreview();preflight();
+    $('save').addEventListener('click',saveDraft);
+    renderPreview();Promise.all([preflight(),loadTemplates()]);
   </script>
 </body>
 </html>

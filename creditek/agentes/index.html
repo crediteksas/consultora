@@ -454,7 +454,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this,'sofia')">
       <span class="nav-icon"><i data-lucide="map-pin"></i></span><span class="nav-label">Google Business</span>
     </a>
-    <a class="nav-item" data-aura-app="sofia" onclick="openModule('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados',this,'sofia')">
+    <a class="nav-item" data-aura-app="convenios" onclick="openModule('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados',this,'convenios')">
       <span class="nav-icon"><i data-lucide="file-signature"></i></span><span class="nav-label">Convenios de Aliados</span>
     </a>
 
@@ -600,7 +600,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </a>
-          <button class="tool-row" type="button" data-aura-owner-only onclick="openRegistrationLinksPanel()" data-aura-help="Genera y administra enlaces seguros de registro por tienda o aliado">
+          <button class="tool-row" type="button" data-aura-app="registro_links" onclick="openRegistrationLinksPanel()" data-aura-help="Genera y administra enlaces seguros de registro por tienda o aliado">
             <div class="tool-icon"><i data-lucide="users"></i></div>
             <div>
               <div class="tool-name">Registro de clientes</div>
@@ -608,7 +608,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             </div>
             <span class="tool-arrow">→</span>
           </button>
-          <a class="tool-row" data-aura-app="sofia" onclick="openModuleFromCard('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados','sofia')">
+          <a class="tool-row" data-aura-app="convenios" onclick="openModuleFromCard('https://registro.crediteksas.com/creditek/convenios/','Convenios de Aliados','convenios')">
             <div class="tool-icon"><i data-lucide="file-signature"></i></div>
             <div>
               <div class="tool-name">Convenios de Aliados</div>
@@ -883,13 +883,20 @@ async function doLogout() {
 }
 
 function renderAuthorizedModules() {
+  const permissionByApp = {
+    portal_b2b: 'portal.read',
+    meta_ads: 'meta_ads.read',
+    sofia: 'sofia.use',
+    convenios: 'convenios.use',
+    registro_links: 'registro_links.manage',
+    cartera: 'cartera.read',
+    consultas: 'consultas.read',
+  };
   document.querySelectorAll('[data-aura-app]').forEach(element => {
     const appId = element.dataset.auraApp;
-    const allowed = appId === 'portal_b2b'
-      ? hasPermission(auraAccess, appId, 'portal.read')
-      : appId === 'meta_ads'
-        ? hasPermission(auraAccess, appId, 'meta_ads.read')
-        : hasPermission(auraAccess, appId, 'sofia.use');
+    const allowed = appId === 'registro_links'
+      ? canManageRegistrationLinks()
+      : Boolean(permissionByApp[appId] && hasPermission(auraAccess, appId, permissionByApp[appId]));
     element.hidden = !allowed;
   });
   document.querySelectorAll('[data-aura-owner-only]').forEach(element => {
@@ -899,6 +906,10 @@ function renderAuthorizedModules() {
 
 function isAuraOwner() {
   return Array.isArray(auraAccess?.apps) && auraAccess.apps.some(grant => grant?.role_id === 'aura.owner');
+}
+
+function canManageRegistrationLinks() {
+  return isAuraOwner() || hasPermission(auraAccess, 'registro_links', 'registro_links.manage');
 }
 
 function enterAura() {
@@ -1030,7 +1041,7 @@ async function loadRegistrationLinks() {
 }
 
 async function openRegistrationLinksPanel() {
-  if (!isAuraOwner()) return showToast('Solo el propietario de AURA puede administrar enlaces.', '#EF4444');
+  if (!canManageRegistrationLinks()) return showToast('No tienes permiso para administrar enlaces.', '#EF4444');
   const modal = document.getElementById('registration-links-modal');
   modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
   window.lucide?.createIcons?.();
@@ -1128,6 +1139,10 @@ async function openModule(url, title, el, appId = '') {
   }
   if (appId === 'meta_ads' && !hasPermission(auraAccess, appId, 'meta_ads.read')) {
     showToast('No tienes permiso para abrir Meta Ads.', '#EF4444');
+    return;
+  }
+  if (appId === 'convenios' && !hasPermission(auraAccess, appId, 'convenios.use')) {
+    showToast('No tienes permiso para abrir Convenios.', '#EF4444');
     return;
   }
   const destination = new URL(url, location.href);

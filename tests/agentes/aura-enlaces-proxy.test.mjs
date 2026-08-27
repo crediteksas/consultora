@@ -9,7 +9,7 @@ import {
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const JWT = 'aura-jwt';
 
-function auraResponses({ roleId = 'aura.owner', email = 'owner@creditek.test' } = {}) {
+function auraResponses({ roleId = 'aura.owner', email = 'owner@creditek.test', appId = 'registro_links', permissions = ['registro_links.manage'] } = {}) {
   return async (input, init = {}) => {
     const request = new Request(input, init);
     if (request.url.includes('/auth/v1/user')) {
@@ -20,7 +20,7 @@ function auraResponses({ roleId = 'aura.owner', email = 'owner@creditek.test' } 
         user_id: USER_ID,
         email,
         active: true,
-        apps: [{ app_id: 'sofia', role_id: roleId, permissions: [] }],
+        apps: [{ app_id: appId, role_id: roleId, permissions }],
       });
     }
     throw new Error(`Unexpected request: ${request.url}`);
@@ -34,9 +34,12 @@ function auraRequest(path = '/api/aura/enlaces/origenes', init = {}) {
   });
 }
 
-test('accepts only a valid AURA owner session', async () => {
+test('accepts only a valid AURA session with registro_links.manage', async () => {
   assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses()));
-  assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'sofia.agent' })), null);
+  assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses({ appId: 'sofia', permissions: [] })));
+  assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'aura.andrea_limited' })));
+  assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'sofia.agent', permissions: [] })), null);
+  assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'sofia.agent', appId: 'sofia' })), null);
   assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ email: 'other@creditek.test' })), null);
 });
 
@@ -64,9 +67,9 @@ test('forwards the owner request with the server-only admin token', async () => 
   assert.notEqual(upstream.headers.get('authorization'), `Bearer ${JWT}`);
 });
 
-test('blocks a logged-in non-owner before contacting creditek-clientes', async () => {
+test('blocks a logged-in user without the registration-links permission before contacting creditek-clientes', async () => {
   const requests = [];
-  const base = auraResponses({ roleId: 'sofia.agent' });
+  const base = auraResponses({ roleId: 'sofia.agent', permissions: [] });
   const response = await handleAuraEnlacesProxy(
     auraRequest('/api/aura/enlaces', { method: 'POST', body: JSON.stringify({ origen_codigo: 'CK-01' }) }),
     { ADMIN_ENLACES_TOKEN: 'server-admin-token', CLIENTES_WORKER_URL: 'https://clientes.test' },

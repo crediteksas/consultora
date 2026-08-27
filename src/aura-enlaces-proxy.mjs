@@ -22,7 +22,7 @@ async function supabase(path, token, init = {}, fetcher = fetch) {
   });
 }
 
-export async function authenticateAuraOwner(request, fetcher = fetch) {
+export async function authenticateAuraRegistrationLinks(request, fetcher = fetch) {
   const authorization = request.headers.get('authorization') || '';
   if (!authorization.startsWith('Bearer ')) return null;
   const token = authorization.slice(7).trim();
@@ -49,9 +49,18 @@ export async function authenticateAuraOwner(request, fetcher = fetch) {
     access.active === false
   ) return null;
   if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return null;
-  const owner = Array.isArray(access.apps) && access.apps.some((grant) => grant?.role_id === 'aura.owner');
-  return owner ? { user, access } : null;
+  const allowed = Array.isArray(access.apps) && access.apps.some((grant) =>
+    grant?.role_id === 'aura.owner' || (
+      grant?.app_id === 'registro_links' &&
+      Array.isArray(grant?.permissions) &&
+      grant.permissions.includes('registro_links.manage')
+    )
+  );
+  return allowed ? { user, access } : null;
 }
+
+// Alias temporal para consumidores internos existentes.
+export const authenticateAuraOwner = authenticateAuraRegistrationLinks;
 
 function upstreamPath(pathname) {
   if (pathname === '/api/aura/enlaces/origenes') return '/api/admin/origenes-enlaces';
@@ -61,7 +70,7 @@ function upstreamPath(pathname) {
 }
 
 export async function handleAuraEnlacesProxy(request, env, fetcher = fetch) {
-  if (!await authenticateAuraOwner(request, fetcher)) {
+  if (!await authenticateAuraRegistrationLinks(request, fetcher)) {
     return reply({ ok: false, error: 'No autorizado' }, 403);
   }
   if (!env.ADMIN_ENLACES_TOKEN) return reply({ ok: false, error: 'Servicio no configurado' }, 503);

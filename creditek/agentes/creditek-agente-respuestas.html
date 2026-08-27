@@ -171,6 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="sidebar-tab" onclick="switchView('optins',this)"><i class="ti ti-shield-check" aria-hidden="true"></i> Legal <span class="tab-badge" id="b-optins">0</span></div>
       <div class="sidebar-tab" onclick="switchView('correcciones',this)"><i class="ti ti-pencil" aria-hidden="true"></i> IA <span class="tab-badge" id="b-correcciones">0</span></div>
       <div class="sidebar-tab" onclick="switchView('dashboard',this)"><i class="ti ti-chart-bar" aria-hidden="true"></i> CRM</div>
+      <div class="sidebar-tab" onclick="switchView('pending',this)"><i class="ti ti-user-exclamation" aria-hidden="true"></i> Pendientes <span class="tab-badge" id="b-pending">0</span></div>
     </div>
     <div class="sidebar-filters">
       <input type="text" class="search-box" id="searchInput" placeholder="Buscar nombre o telefono..." oninput="applyFilters()">
@@ -220,6 +221,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <thead><tr><th>Nombre</th><th>Telefono</th><th>Datos</th><th>Operativo</th><th>Comercial</th><th>Fecha autorizacion</th><th>Canal</th></tr></thead>
       <tbody id="optins-tbody"></tbody>
     </table>
+  </div>
+
+  <div class="table-view" id="view-pending">
+    <div style="padding:20px;max-width:1100px;margin:0 auto">
+      <h2 style="font-size:18px;margin-bottom:6px">Asignaciones pendientes</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Leads con datos y tienda identificada que todavía no figuran como transferidos.</p>
+      <table class="data-table">
+        <thead><tr><th>Cliente</th><th>Ciudad</th><th>Tienda</th><th>Asesor</th><th>Contacto</th><th>Acción</th></tr></thead>
+        <tbody id="pending-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- PANEL CORRECCIONES SOFIA IA -->
@@ -346,7 +358,28 @@ async function loadClients(){
     document.getElementById('b-optins').textContent=allClients.filter(c=>c.optin_datos).length;
     renderClients();
     renderOptins();
+    renderPendingHandoffs();
   }catch(e){console.error(e)}
+}
+
+function renderPendingHandoffs(){
+  const el=document.getElementById('pending-tbody');
+  const pending=allClients.filter(c=>c.estado_funnel==='lead_caliente'&&c.tienda_id);
+  document.getElementById('b-pending').textContent=pending.length;
+  if(!pending.length){el.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:28px">Sin asignaciones pendientes</td></tr>';return}
+  el.innerHTML=pending.map(c=>{
+    const t=allTiendas.find(x=>x.id===c.tienda_id)||{};
+    const safeTel=String(c.telefono||'').replace(/[^0-9_+-]/g,'');
+    return '<tr><td style="font-weight:600">'+(c.nombre||'Sin nombre')+'</td><td>'+(c.ciudad||c.ciudad_normalizada||t.ciudad||'-')+'</td><td>'+(t.nombre_comercial||t.nombre||c.tienda_id)+'</td><td>'+(t.contacto||'Por definir')+'</td><td>'+(t.telefono||'-')+'</td><td><button class="btn btn-outline" onclick="openPendingChat(\''+safeTel+'\')">Abrir chat</button></td></tr>';
+  }).join('');
+}
+
+function openPendingChat(tel){
+  const chatsTab=document.querySelector('.sidebar-tab');
+  switchView('chats',chatsTab);
+  document.getElementById('searchInput').value=tel;
+  applyFilters();
+  openChat(tel);
 }
 
 // ── CORRECCIONES SOFIA IA ─────────────────────────────────────────
@@ -614,6 +647,7 @@ function switchView(view,el){
   document.getElementById('center-chats').style.display=view==='chats'?'flex':'none';
   document.getElementById('center-clients').className=view==='clients'?'table-view active':'table-view';
   document.getElementById('center-optins').className=view==='optins'?'table-view active':'table-view';
+  document.getElementById('view-pending').className=view==='pending'?'table-view active':'table-view';
   document.getElementById('view-correcciones').className=view==='correcciones'?'table-view active':'table-view';
   document.getElementById('view-dashboard').className=view==='dashboard'?'table-view active':'table-view';
   document.getElementById('right-panel').className=view==='chats'&&currentTel?'right-panel show':'right-panel';

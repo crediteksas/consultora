@@ -30,3 +30,9 @@ test('401, 403 y payload no-array producen fallback sin ejecutar forEach', () =>
   assert.match(responses, /allTiendas=payload;/);
   assert.match(responses, /Servicio temporalmente no disponible/);
 });
+
+test('los filtros de Sofía usan dos columnas legibles en anchos productivos', () => {
+  assert.match(responses, /\.sidebar-filters\{[^}]*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(responses, /\.search-box\{grid-column:1\/-1;/);
+  assert.match(responses, /\.filter-sel\{width:100%;padding:6px 24px 6px 8px;/);
+});

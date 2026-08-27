@@ -11,6 +11,9 @@ alter table public.aura_sofia_outbox
   alter column payload drop not null;
 
 alter table public.aura_sofia_outbox
+  add column if not exists send_started_at timestamptz null;
+
+alter table public.aura_sofia_outbox
   drop constraint if exists aura_sofia_outbox_status_check;
 
 alter table public.aura_sofia_outbox

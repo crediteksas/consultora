@@ -1,4 +1,5 @@
 import { handleAuraEnlacesProxy } from './aura-enlaces-proxy.mjs';
+import { handleAuraSofiaProxy } from './aura-sofia-proxy.mjs';
 
 export default {
   async fetch(request, env) {
@@ -8,6 +9,9 @@ export default {
     }
     if (url.pathname.startsWith('/api/aura/enlaces')) {
       return handleAuraEnlacesProxy(request, env);
+    }
+    if (url.pathname.startsWith('/api/sofia/')) {
+      return handleAuraSofiaProxy(request, env);
     }
     return env.ASSETS.fetch(request);
   },

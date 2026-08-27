@@ -1837,6 +1837,7 @@ var MSG = {
   // Red de seguridad si en CIUDAD_MODAL ningún patrón conocido matchea.
   CIUDAD_REPETIR: "Disculpa, \xBFme confirmas cu\xE1l de estas te queda m\xE1s cerca: Tol\xFA, Corozal, Chin\xFA, Ci\xE9naga de Oro o Cove\xF1as?",
   HANDOFF_MSG: /* @__PURE__ */ __name((nombre, asesor, nombreComercial, tel) => `Perfecto, ${nombre} \u{1F60A} Tu solicitud qued\xF3 registrada correctamente y fue asignada a ${nombreComercial}. ${asesor} continuar\xE1 tu proceso lo antes posible; tambi\xE9n puedes escribirle al ${tel}.`, "HANDOFF_MSG"),
+  HANDOFF_PENDING: /* @__PURE__ */ __name((nombre) => `Gracias, ${nombre} \u{1F60A} Recib\xED tus datos correctamente. Estamos asign\xE1ndote un asesor y te contactaremos lo antes posible.`, "HANDOFF_PENDING"),
   ASESOR_NO_CONTESTA: /* @__PURE__ */ __name((asesor2, tel2) => `\xA1Qu\xE9 raro! Te paso con otro asesor \u{1F60A} Escr\xEDbele a ${asesor2} al ${tel2} y dile que te mand\xF3 Sof\xEDa de Creditek.`, "ASESOR_NO_CONTESTA"),
   SIN_ASESOR: "En este momento no tenemos asesor disponible en tu zona. Te contactaremos pronto \u{1F64F}",
   VOZ: "Por favor escr\xEDbeme, no puedo escuchar mensajes de voz \u{1F60A}",
@@ -2918,6 +2919,10 @@ ${siguienteDato}` : respuestaDuda;
       break;
     }
     // ── HANDOFF ──────────────────────────────────────────────────────────────
+    case "HANDOFF_PENDING": {
+      respuesta = MSG.HANDOFF_PENDING((conv.nombre || "").split(" ")[0] || "amigo");
+      break;
+    }
     case "HANDOFF": {
       const noContesto = /no.*contest|no.*respond|no.*llama|no.*escrib/i.test(texto);
       if (noContesto) {
@@ -3034,17 +3039,27 @@ async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal) {
   const tiendaId = conv.tienda_id;
   if (!tiendaId) throw new Error("handoff sin destination_id");
   const destinoTipo = conv.tienda_tipo === "aliado" ? "aliado" : "tienda";
-  await procesarHandoffCertificado({
-    supabaseUrl: supabaseUrl(),
-    serviceKey: sk,
-    input: {
-      idempotencyKey: `advisor_handoff:${clienteId}`,
-      destinationId: tiendaId,
-      destinationType: destinoTipo,
-      origin: canal
-    },
-    enviarMeta: /* @__PURE__ */ __name(() => notificarAsesor(conv, { id: tiendaId, nombre: conv.tienda_nombre || "", contacto: conv.tienda_contacto || "", telefono: tel, ciudad: conv.ciudad || "" }, env2), "enviarMeta")
-  });
+  try {
+    await procesarHandoffCertificado({
+      supabaseUrl: supabaseUrl(),
+      serviceKey: sk,
+      input: {
+        idempotencyKey: `advisor_handoff:${clienteId}`,
+        destinationId: tiendaId,
+        destinationType: destinoTipo,
+        origin: canal
+      },
+      enviarMeta: /* @__PURE__ */ __name(() => notificarAsesor(conv, { id: tiendaId, nombre: conv.tienda_nombre || "", contacto: conv.tienda_contacto || "", telefono: tel, ciudad: conv.ciudad || "" }, env2), "enviarMeta")
+    });
+  } catch (error) {
+    console.error("[HANDOFF-PENDING] notificaci\xF3n a asesor pendiente de recuperaci\xF3n");
+    conv.estado = "HANDOFF_PENDING";
+    conv.lead_creado = false;
+    const pendingMsg = MSG.HANDOFF_PENDING(nombreCorto);
+    await sendFn(pendingMsg);
+    await guardarConv({ telefono: clienteId, contenido: pendingMsg, respondido_por: "bot", canal }, sk);
+    return;
+  }
   await actualizarCliente(clienteId, { estado_funnel: "transferido_asesor", tienda_id: conv.tienda_id, ciudad_normalizada: conv.ciudad, fecha_transferido_asesor: (/* @__PURE__ */ new Date()).toISOString() }, sk);
   conv.lead_creado = true;
   conv.estado = "HANDOFF";

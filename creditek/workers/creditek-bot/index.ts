@@ -68,6 +68,7 @@ type Estado =
   | 'DATOS_MIN'
   | 'CIUDAD'
   | 'HANDOFF'
+  | 'HANDOFF_PENDING'
   | 'FIN';
 
 interface Conv {
@@ -476,6 +477,8 @@ const MSG = {
   CIUDAD_REPETIR: 'Disculpa, ¿me confirmas cuál de estas te queda más cerca: Tolú, Corozal, Chinú, Ciénaga de Oro o Coveñas?',
   HANDOFF_MSG: (nombre: string, asesor: string, nombreComercial: string, tel: string) =>
     `Perfecto, ${nombre} 😊 Tu solicitud quedó registrada correctamente y fue asignada a ${nombreComercial}. ${asesor} continuará tu proceso lo antes posible; también puedes escribirle al ${tel}.`,
+  HANDOFF_PENDING: (nombre: string) =>
+    `Gracias, ${nombre} 😊 Recibí tus datos correctamente. Estamos asignándote un asesor y te contactaremos lo antes posible.`,
   ASESOR_NO_CONTESTA: (asesor2: string, tel2: string) =>
     `¡Qué raro! Te paso con otro asesor 😊 Escríbele a ${asesor2} al ${tel2} y dile que te mandó Sofía de Creditek.`,
   SIN_ASESOR: 'En este momento no tenemos asesor disponible en tu zona. Te contactaremos pronto 🙏',
@@ -1745,6 +1748,11 @@ async function procesarMensaje(
     }
 
     // ── HANDOFF ──────────────────────────────────────────────────────────────
+    case 'HANDOFF_PENDING': {
+      respuesta = MSG.HANDOFF_PENDING((conv.nombre || '').split(' ')[0] || 'amigo');
+      break;
+    }
+
     case 'HANDOFF': {
       // Cliente dice que el asesor no contestó
       const noContesto = /no.*contest|no.*respond|no.*llama|no.*escrib/i.test(texto);
@@ -1865,28 +1873,30 @@ async function hacerHandoff(conv: Conv, clienteId: string, sendFn: (m: string) =
   const tiendaId = conv.tienda_id;
   if (!tiendaId) throw new Error('handoff sin destination_id');
   const destinoTipo = conv.tienda_tipo === 'aliado' ? 'aliado' : 'tienda';
-  const reserva = await reservarHandoff(SUPABASE_URL, sk, {
-    idempotencyKey: `advisor_handoff:${clienteId}`,
-    destinationId: tiendaId,
-    destinationType: destinoTipo,
-    origin: canal,
-  });
-  if (!reserva.permitido) {
-    // Una llave existente no vuelve a llamar a Meta. Si quedó una
-    // persistencia pendiente con meta_response_id, el coordinador puede
-    // completar esa persistencia en un flujo explícito; este camino no reabre
-    // el envío automático.
-    if (reserva.evidencia.status === 'sent') conv.lead_creado = true;
-    conv.estado = 'HANDOFF';
-    return;
-  }
-  let metaResponseId: string | undefined;
   try {
-    metaResponseId = reserva.evidencia.meta_response_id || await notificarAsesor(conv, { id: tiendaId, nombre: conv.tienda_nombre || '', contacto: conv.tienda_contacto, telefono: tel, ciudad: conv.ciudad || '' }, env);
-    await confirmarHandoff(SUPABASE_URL, sk, reserva.evidencia.id, metaResponseId);
+    const reserva = await reservarHandoff(SUPABASE_URL, sk, {
+      idempotencyKey: `advisor_handoff:${clienteId}`,
+      destinationId: tiendaId,
+      destinationType: destinoTipo,
+      origin: canal,
+    });
+    if (!reserva.permitido) throw new Error('handoff_requires_manual_review');
+    let metaResponseId: string | undefined;
+    try {
+      metaResponseId = reserva.evidencia.meta_response_id || await notificarAsesor(conv, { id: tiendaId, nombre: conv.tienda_nombre || '', contacto: conv.tienda_contacto, telefono: tel, ciudad: conv.ciudad || '' }, env);
+      await confirmarHandoff(SUPABASE_URL, sk, reserva.evidencia.id, metaResponseId);
+    } catch (error) {
+      await marcarHandoffError(SUPABASE_URL, sk, reserva.evidencia.id, error instanceof Error ? error.message : 'meta_handoff_failed', fetch, metaResponseId);
+      throw error;
+    }
   } catch (error) {
-    await marcarHandoffError(SUPABASE_URL, sk, reserva.evidencia.id, error instanceof Error ? error.message : 'meta_handoff_failed', fetch, metaResponseId);
-    throw error;
+    console.error('[HANDOFF-PENDING] notificación a asesor pendiente de recuperación');
+    conv.estado = 'HANDOFF_PENDING';
+    conv.lead_creado = false;
+    const pendingMsg = MSG.HANDOFF_PENDING(nombreCorto);
+    await sendFn(pendingMsg);
+    await guardarConv({ telefono: clienteId, contenido: pendingMsg, respondido_por: 'bot', canal }, sk);
+    return;
   }
 
   // La evidencia certificada ya existe; solo ahora se actualiza el embudo.

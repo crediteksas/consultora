@@ -2113,19 +2113,19 @@ var index_default = {
       const clienteId = String(telefono || "").replace(/\D/g, "");
       if (!clienteId) return new Response(JSON.stringify({ error: "Falta telefono" }), { status: 400, headers: cors });
       const clienteRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=*&limit=1`,
+        `${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=*&limit=1`,
         { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
       );
       const [cliente] = await clienteRes.json();
       if (!cliente?.tienda_id) return new Response(JSON.stringify({ error: "Cliente sin tienda asignada" }), { status: 409, headers: cors });
       if (!cliente.optin_datos) return new Response(JSON.stringify({ error: "Cliente sin autorizaci\xF3n de datos" }), { status: 409, headers: cors });
       const tiendaRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/tiendas?id=eq.${encodeURIComponent(cliente.tienda_id)}&select=*&limit=1`,
+        `${supabaseUrl()}/rest/v1/tiendas?id=eq.${encodeURIComponent(cliente.tienda_id)}&select=*&limit=1`,
         { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
       );
       const [tienda] = await tiendaRes.json();
       if (!tienda?.telefono || !tienda?.contacto) return new Response(JSON.stringify({ error: "Tienda sin asesor disponible" }), { status: 409, headers: cors });
-      const inicial = await buscarHandoffInicial(SUPABASE_URL, sk, clienteId);
+      const inicial = await buscarHandoffInicial(supabaseUrl(), sk, clienteId);
       if (inicial?.status === "sent" && inicial.meta_response_id) {
         return new Response(JSON.stringify({ ok: true, already_sent: true }), { headers: cors });
       }
@@ -2147,7 +2147,7 @@ var index_default = {
         tienda_telefono: tienda.telefono,
         tienda_tipo: tienda.tipo
       };
-      const reserva = await reservarHandoff(SUPABASE_URL, sk, {
+      const reserva = await reservarHandoff(supabaseUrl(), sk, {
         idempotencyKey: `advisor_handoff_manual:${clienteId}`,
         destinationId: tienda.id,
         destinationType: tienda.tipo === "aliado" ? "aliado" : "tienda",
@@ -2160,9 +2160,9 @@ var index_default = {
       }
       try {
         const metaId = await notificarAsesor(conv, tienda, env2);
-        await confirmarHandoff(SUPABASE_URL, sk, reserva.evidencia.id, metaId);
+        await confirmarHandoff(supabaseUrl(), sk, reserva.evidencia.id, metaId);
       } catch (error) {
-        await marcarHandoffError(SUPABASE_URL, sk, reserva.evidencia.id, error instanceof Error ? error.message : "manual_handoff_failed");
+        await marcarHandoffError(supabaseUrl(), sk, reserva.evidencia.id, error instanceof Error ? error.message : "manual_handoff_failed");
         return new Response(JSON.stringify({ error: "Meta no confirm\xF3 el aviso al asesor" }), { status: 502, headers: cors });
       }
       await actualizarCliente(clienteId, {
@@ -2876,7 +2876,7 @@ ${siguiente}` : respuestaContinuidad;
       if (!conv.nombre || conv.modalidad === "credito" && !conv.cedula) {
         try {
           const existenteRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=nombre,cedula,telefono_contacto,tienda_id,ciudad,ciudad_normalizada&limit=1`,
+            `${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=nombre,cedula,telefono_contacto,tienda_id,ciudad,ciudad_normalizada&limit=1`,
             { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
           );
           const [existente] = await existenteRes.json();

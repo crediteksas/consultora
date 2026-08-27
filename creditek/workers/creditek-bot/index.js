@@ -2057,7 +2057,9 @@ var index_default = {
       conv.ciudad = tienda.ciudad;
       const sendFn = (mensaje) => enviarMensajeWA(telefono, mensaje, env2.PHONE_NUMBER_ID, env2.WHATSAPP_TOKEN);
       try {
-        await hacerHandoff(conv, telefono, sendFn, env2, sk, "manual_recovery");
+        // El outbox audita canales comerciales reales; conservar el canal
+        // original evita rechazar la recuperación antes de avisar al asesor.
+        await hacerHandoff(conv, telefono, sendFn, env2, sk, conv.canal || "whatsapp");
         await env2.CONVERSATIONS.put(telefono, JSON.stringify(conv), { expirationTtl: 86400 * 7 });
         return new Response(JSON.stringify({ ok: true, status: "transferido", tienda_id: tienda.id }), { headers: cors });
       } catch (error) {

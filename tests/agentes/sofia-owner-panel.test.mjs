@@ -40,6 +40,18 @@ test('el handoff recupera los datos persistidos de la tienda antes de enviar', a
   assert.match(worker, /url\.pathname === "\/api\/reintentar-handoff"/);
 });
 
+test('la recuperación owner conserva el canal real en la auditoría del handoff', async () => {
+  const worker = await read('creditek/workers/creditek-bot/index.js');
+  assert.match(
+    worker,
+    /hacerHandoff\(conv, telefono, sendFn, env2, sk, conv\.canal \|\| "whatsapp"\)/,
+  );
+  assert.doesNotMatch(
+    worker,
+    /hacerHandoff\(conv, telefono, sendFn, env2, sk, "manual_recovery"\)/,
+  );
+});
+
 test('wrangler despliega el artefacto real del bot', async () => {
   const config = await read('creditek/workers/creditek-bot/wrangler.toml');
   assert.match(config, /^main = "index\.js"$/m);

@@ -51,7 +51,12 @@ export async function reservarHandoff(
     }),
   });
   if (!response.ok) {
-    const detail = (await response.text()).replace(/[\r\n]+/g, ' ').slice(0, 300);
+    const raw = await response.text();
+    let detail = raw.replace(/[\r\n]+/g, ' ').slice(0, 500);
+    try {
+      const parsed = JSON.parse(raw) as { code?: string; message?: string; hint?: string };
+      detail = [parsed.code, parsed.message, parsed.hint].filter(Boolean).join(' | ').slice(0, 500);
+    } catch {}
     throw new Error(`Supabase outbox respondió ${response.status}: ${detail}`);
   }
   const rows = await response.json() as HandoffEvidence[];

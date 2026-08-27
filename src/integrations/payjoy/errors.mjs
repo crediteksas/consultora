@@ -1,0 +1,3 @@
+export const PAYJOY_ERROR={AUTH:'PAYJOY_AUTH_ERROR',TIMEOUT:'PAYJOY_TIMEOUT',NOT_FOUND:'PAYJOY_NOT_FOUND',BAD_RESPONSE:'PAYJOY_BAD_RESPONSE',RATE_LIMIT:'PAYJOY_RATE_LIMIT',UNAVAILABLE:'PAYJOY_UNAVAILABLE'};
+export class PayJoyError extends Error{constructor(code,{status=0}={}){super(code);this.name='PayJoyError';this.code=code;this.status=status;}}
+export function classifyPayJoyError(status){if(status===401||status===403)return PAYJOY_ERROR.AUTH;if(status===404)return PAYJOY_ERROR.NOT_FOUND;if(status===429)return PAYJOY_ERROR.RATE_LIMIT;if(status>=500||status===0)return PAYJOY_ERROR.UNAVAILABLE;return PAYJOY_ERROR.BAD_RESPONSE;}

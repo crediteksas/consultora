@@ -1,0 +1,1 @@
+export class SearchClient{constructor({repository,normalizer}={}){this.repository=repository;this.normalizer=normalizer;}execute(query){return this.repository.findByDocumentOrPhone(this.normalizer(query));}}

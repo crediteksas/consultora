@@ -1,0 +1,1 @@
+export const createCustomer=value=>Object.freeze({id:value.id,name:value.name,document:value.document,phone:value.phone,city:value.city,store:value.store,authorization:Boolean(value.authorization),created_at:value.created_at});

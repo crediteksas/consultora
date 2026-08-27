@@ -643,6 +643,12 @@ function base64ToUint8Array(base64: string): Uint8Array {
 const DESTINATARIOS_REPORTES = ['573002024083', '573005516040']; // Oscar, Mayte
 const TZ_COL = 'America/Bogota';
 const SEPARACION_REPORTES_MS = 120_000; // 2 minutos entre reporte y reporte
+const IDIOMA_PLANTILLAS_REPORTES = 'es_CO';
+const PLANTILLAS_REPORTES = {
+  gastos: 'reporte_gastos_diario',
+  ventas: 'reporte_ventas_diario',
+  caja: 'reporte_caja_diario',
+} as const;
 
 // ─── Helpers de tiempo Colombia ────────────────────────────────────────
 
@@ -770,6 +776,16 @@ async function yaSeEnvioHoy(fechaISO: string, env: Env): Promise<boolean> {
   return arr.length > 0;
 }
 
+async function liberarReservaDelDia(fechaISO: string, env: Env): Promise<void> {
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}`,
+    { method: 'DELETE', headers: sbHeaders(env, { Prefer: 'return=minimal' }) }
+  );
+  if (!r.ok) {
+    throw new Error(`No se pudo liberar la reserva del reporte (${r.status}): ${await r.text()}`);
+  }
+}
+
 // ─── Formato de mensajes (WhatsApp texto plano) ──────────────────────────
 
 function fmtCOP(n: number): string {
@@ -850,29 +866,48 @@ function formatearCaja(cierres: any[], fechaLarga: string): string {
   ].join('\n');
 }
 
-// ─── WhatsApp text send (mismo patrón que meta.ts del creditek-bot) ─────
+// ─── WhatsApp template send ────────────────────────────────────────────
+// Los informes son iniciados por la empresa. Una plantilla aprobada permite
+// entregarlos aunque el destinatario no haya escrito durante las últimas 24 h.
 
-async function enviarWhatsAppTexto(telefono: string, mensaje: string, env: Env): Promise<void> {
+async function enviarPlantillaReporte(
+  telefono: string, plantilla: string, mensaje: string, env: Env
+): Promise<string> {
   const r = await fetch(`https://graph.facebook.com/v21.0/${env.PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to: telefono.replace('+', ''),
-      type: 'text',
-      text: { body: mensaje, preview_url: false },
+      type: 'template',
+      template: {
+        name: plantilla,
+        language: { code: IDIOMA_PLANTILLAS_REPORTES },
+        components: [{
+          type: 'body',
+          parameters: [{ type: 'text', text: mensaje }],
+        }],
+      },
     }),
   });
-  if (!r.ok) {
-    // 24h window cerrado → Meta responde 403/400. Log claro para poder migrar a plantilla si se vuelve recurrente.
-    console.error(`[REPORTES-WA] Error enviando a ${telefono}:`, r.status, await r.text());
+  const respuesta = await r.json().catch(() => ({})) as any;
+  const messageId = respuesta?.messages?.[0]?.id;
+  if (!r.ok || !messageId) {
+    throw new Error(
+      `Meta rechazó la plantilla ${plantilla} (${r.status}): ${JSON.stringify(respuesta)}`
+    );
   }
+  return messageId;
 }
 
-async function enviarReporteATodos(mensaje: string, env: Env): Promise<void> {
+async function enviarReporteATodos(
+  plantilla: string, mensaje: string, env: Env
+): Promise<string[]> {
+  const messageIds: string[] = [];
   for (const dest of DESTINATARIOS_REPORTES) {
-    await enviarWhatsAppTexto(dest, mensaje, env);
+    messageIds.push(await enviarPlantillaReporte(dest, plantilla, mensaje, env));
   }
+  return messageIds;
 }
 
 function esperar(ms: number): Promise<void> {
@@ -935,10 +970,21 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   // Enviar con separación de 2 min. El scheduled event de Cloudflare permite
   // wall time > CPU time; los 4 minutos de esperas son sleep, no CPU.
   console.log('[REPORTES-DIARIOS] Enviando reporte del', hoy, 'completo=', debeMandarCompleto);
-  await enviarReporteATodos(msg1, env);
-  await esperar(SEPARACION_REPORTES_MS);
-  await enviarReporteATodos(msg2, env);
-  await esperar(SEPARACION_REPORTES_MS);
-  await enviarReporteATodos(msg3, env);
-  console.log('[REPORTES-DIARIOS] Reporte del', hoy, 'enviado a los 2 destinatarios.');
+  try {
+    const idsGastos = await enviarReporteATodos(PLANTILLAS_REPORTES.gastos, msg1, env);
+    await esperar(SEPARACION_REPORTES_MS);
+    const idsVentas = await enviarReporteATodos(PLANTILLAS_REPORTES.ventas, msg2, env);
+    await esperar(SEPARACION_REPORTES_MS);
+    const idsCaja = await enviarReporteATodos(PLANTILLAS_REPORTES.caja, msg3, env);
+    console.log('[REPORTES-DIARIOS] Reporte del', hoy, 'aceptado por Meta.', {
+      cantidad: idsGastos.length + idsVentas.length + idsCaja.length,
+    });
+  } catch (e) {
+    console.error('[REPORTES-DIARIOS] Envío incompleto; se habilitará reintento:', e);
+    try {
+      await liberarReservaDelDia(hoy, env);
+    } catch (liberarError) {
+      console.error('[REPORTES-DIARIOS] No se pudo habilitar el reintento:', liberarError);
+    }
+  }
 }

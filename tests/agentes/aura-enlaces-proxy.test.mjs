@@ -36,6 +36,8 @@ function auraRequest(path = '/api/aura/enlaces/origenes', init = {}) {
 
 test('accepts only a valid AURA owner session', async () => {
   assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses()));
+  assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'aura.admin' })));
+  assert.ok(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'aura.andrea_limited' })));
   assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ roleId: 'sofia.agent' })), null);
   assert.equal(await authenticateAuraOwner(auraRequest(), auraResponses({ email: 'other@creditek.test' })), null);
 });

@@ -34,22 +34,22 @@
       id: 'cartera-sandbox',
       name: 'Cartera',
       path: '/creditek/agentes/aura-cartera.html',
-      appId: 'cartera_sandbox',
-      permission: 'owner.review',
+      appId: 'cartera',
+      permission: 'cartera.read',
     }),
     clientes: Object.freeze({
       id: 'clientes-sandbox',
       name: 'Clientes',
       path: '/creditek/agentes/aura-nova.html',
-      appId: 'clientes_sandbox',
-      permission: 'owner.review',
+      appId: 'clientes',
+      permission: 'clientes.read',
     }),
     nova: Object.freeze({
       id: 'nova-sandbox',
       name: 'NOVA Autorizaciones',
       path: '/creditek/agentes/aura-nova.html',
-      appId: 'nova_sandbox',
-      permission: 'owner.review',
+      appId: 'nova',
+      permission: 'nova.read',
     }),
   });
 })(typeof window !== 'undefined' ? window : globalThis);

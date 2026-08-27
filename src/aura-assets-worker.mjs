@@ -1,5 +1,6 @@
 import { handleAuraEnlacesProxy } from './aura-enlaces-proxy.mjs';
 import { handleAuraSofiaProxy } from './aura-sofia-proxy.mjs';
+import { handleAuraAccessCheck } from './aura-access-check.mjs';
 
 export default {
   async fetch(request, env) {
@@ -9,6 +10,9 @@ export default {
     }
     if (url.pathname.startsWith('/api/aura/enlaces')) {
       return handleAuraEnlacesProxy(request, env);
+    }
+    if (url.pathname === '/api/aura/access') {
+      return handleAuraAccessCheck(request);
     }
     if (url.pathname.startsWith('/api/sofia/')) {
       return handleAuraSofiaProxy(request, env);

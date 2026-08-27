@@ -1,6 +1,7 @@
 const AURA_SUPABASE_URL = 'https://ditiwpndvmyuqcagupea.supabase.co';
 const AURA_SUPABASE_ANON_KEY = 'sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
 const DEFAULT_CLIENTES_WORKER_URL = 'https://creditek-clientes.comercial-853.workers.dev';
+import { AURA_CAPABILITIES, hasAuraCapability } from './aura-access-policy.mjs';
 
 function reply(body, status = 200) {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
@@ -22,7 +23,7 @@ async function supabase(path, token, init = {}, fetcher = fetch) {
   });
 }
 
-export async function authenticateAuraOwner(request, fetcher = fetch) {
+export async function authenticateAuraCapability(request, capability, fetcher = fetch) {
   const authorization = request.headers.get('authorization') || '';
   if (!authorization.startsWith('Bearer ')) return null;
   const token = authorization.slice(7).trim();
@@ -49,8 +50,11 @@ export async function authenticateAuraOwner(request, fetcher = fetch) {
     access.active === false
   ) return null;
   if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return null;
-  const owner = Array.isArray(access.apps) && access.apps.some((grant) => grant?.role_id === 'aura.owner');
-  return owner ? { user, access } : null;
+  return hasAuraCapability(access, capability) ? { user, access } : null;
+}
+
+export async function authenticateAuraOwner(request, fetcher = fetch) {
+  return authenticateAuraCapability(request, AURA_CAPABILITIES.GENERAL_LINK, fetcher);
 }
 
 function upstreamPath(pathname) {

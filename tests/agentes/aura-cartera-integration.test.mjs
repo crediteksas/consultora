@@ -8,7 +8,7 @@ const read = relative => readFile(path.join(root, relative), 'utf8');
 
 test('Clientes, NOVA y Cartera ocupan secciones propias entre Agentes IA y Comercial', async () => {
   const shell = await read('creditek/agentes/index.html');
-  assert.match(shell, /Agentes IA[\s\S]*data-aura-owner-module>Clientes<\/div>[\s\S]*data-aura-owner-module>NOVA Autorizaciones<\/div>[\s\S]*data-aura-owner-module>Cartera<\/div>[\s\S]*<div class="sidebar-section">Comercial<\/div>/);
+  assert.match(shell, /Agentes IA[\s\S]*data-aura-capability="consultas\.read">Clientes<\/div>[\s\S]*data-aura-capability="nova\.read">NOVA Autorizaciones<\/div>[\s\S]*data-aura-capability="cartera\.read">Cartera<\/div>[\s\S]*<div class="sidebar-section">Comercial<\/div>/);
   for (const route of ['summary', 'daily', 'segments', 'customers', 'reconciliation', 'promises', 'reports', 'conversations', 'optouts', 'kpis', 'settings']) {
     assert.match(shell, new RegExp(`openCarteraModule\\('${route}'`));
   }
@@ -62,6 +62,6 @@ test('Home, gestión, ficha, conciliaciones y promesas están disponibles', asyn
 test('la configuración registra Cartera sin alterar permisos de Sofía', async () => {
   const config = await read('creditek/agentes/aura-module-config.js');
   assert.match(config, /sofia\.use/);
-  assert.match(config, /appId: 'cartera_sandbox'/);
-  assert.match(config, /permission: 'owner\.review'/);
+  assert.match(config, /appId: 'cartera'/);
+  assert.match(config, /permission: 'cartera\.read'/);
 });

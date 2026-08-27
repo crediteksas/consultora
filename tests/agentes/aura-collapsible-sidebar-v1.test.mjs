@@ -38,8 +38,8 @@ test('abre automáticamente el grupo del elemento activo y conserva estado de se
 });
 
 test('no altera rutas ni guardas de permisos de Clientes NOVA y Cartera', () => {
-  assert.match(shell, /OWNER_ONLY_APP_IDS = new Set\(\['clientes_sandbox', 'nova_sandbox', 'cartera_sandbox'\]\)/);
-  assert.match(shell, /if \(OWNER_ONLY_APP_IDS\.has\(appId\) && !isAuraOwner\(\)\)/);
+  assert.match(shell, /AURA_CAPABILITIES, hasAuraCapability, isAuraFunctionalAdmin/);
+  assert.match(shell, /data-aura-capability="cartera\.read"/);
   assert.match(shell, /openClientsModule\('search'/);
   assert.match(shell, /openNovaModule\('summary'/);
   assert.match(shell, /openCarteraModule\('summary'/);

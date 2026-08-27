@@ -4,10 +4,10 @@ import test from 'node:test';
 
 const htmlPath = new URL('../../creditek/agentes/index.html', import.meta.url);
 
-test('registration links panel uses the protected AURA proxy and owner gate', async () => {
+test('registration links panel uses the protected AURA proxy and explicit capability gate', async () => {
   const html = await readFile(htmlPath, 'utf8');
   assert.match(html, /data-aura-owner-only/);
-  assert.match(html, /grant\?\.role_id === 'aura\.owner'/);
+  assert.match(html, /AURA_CAPABILITIES\.GENERAL_LINK/);
   assert.match(html, /fetch\(`\/api\/aura\/enlaces\$\{path\}`/);
   assert.match(html, /auraAuth\.token\(\)/);
   assert.doesNotMatch(html, /ADMIN_ENLACES_TOKEN/);

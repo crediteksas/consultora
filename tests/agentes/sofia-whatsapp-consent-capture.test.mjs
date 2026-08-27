@@ -11,8 +11,11 @@ for (const [label, path] of [['deployable worker', workerPath], ['TypeScript sou
     assert.match(source, /OPTIN_MARKETING/);
     assert.match(source, /Es opcional/);
     assert.match(source, /escribiendo SALIR/);
-    assert.match(source, /marketing_si/);
-    assert.match(source, /marketing_no/);
+    assert.match(source, /consent_both/);
+    assert.match(source, /consent_service/);
+    assert.match(source, /consent_none/);
+    assert.match(source, /datos y promociones/);
+    assert.match(source, /aceptaPromociones/);
     assert.doesNotMatch(source, /optin_datos:\s*true,\s*optin_operativo:\s*true,\s*optin_comercial:\s*true/);
   });
 

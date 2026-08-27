@@ -421,7 +421,7 @@ function extraerCorreo(texto: string): string | null {
 // ── Mensajes fijos ────────────────────────────────────────────────────────────
 
 const MSG = {
-  OPTIN: 'Para atenderte, ¿autorizas a Creditek S.A.S. a usar los datos que compartas en este chat?',
+  OPTIN: 'Para atenderte, ¿autorizas a Creditek a usar los datos de este chat? También puedes aceptar promociones por WhatsApp; son opcionales y puedes cancelarlas escribiendo SALIR. Política: https://aura.crediteksas.com/creditek/legal/',
   OPTIN_NO: 'Entendido, no hay problema 🙏 Si cambias de opinión aquí estamos. ¡Que tengas un buen día!',
   OPTIN_MARKETING: '¿Quieres recibir promociones de Creditek por WhatsApp? Es opcional. Puedes dejar de recibirlas escribiendo SALIR. Política: https://aura.crediteksas.com/creditek/legal/',
   OPTIN_MARKETING_NO: 'Perfecto. No te enviaremos campañas por WhatsApp y continuaremos atendiendo tu solicitud 😊',
@@ -487,6 +487,14 @@ const MSG = {
   // celular ni asignación de tienda.
   MOTO_HANDOFF: 'Para motos manejamos un contacto especial 😊 Escríbele directo a Vanesa Montiel (Sonivox / Ofero) al 3112712447 y le cuentas qué buscas.',
 };
+
+function botonesConsentimientoUnico() {
+  return [
+    { id: 'consent_both', title: '✅ Acepto ambas' },
+    { id: 'consent_service', title: 'Solo atención' },
+    { id: 'consent_none', title: 'No autorizo' },
+  ];
+}
 
 // ── Worker ────────────────────────────────────────────────────────────────────
 
@@ -714,6 +722,7 @@ export default {
       // en vez de tocar) sigue funcionando exactamente igual que antes.
       const MAPA_BOTON_RAPIDO: Record<string, string> = {
         optin_si: 'acepto', optin_no: 'no, gracias',
+        consent_both: 'autorizo datos y promociones', consent_service: 'autorizo solo atencion', consent_none: 'no autorizo',
         marketing_si: 'acepto', marketing_no: 'no, gracias',
         credito: 'crédito', contado: 'contado',
       };
@@ -975,10 +984,7 @@ async function procesarMensaje(
         // ofrece este mismo mecanismo de botones vía la API de Messenger que
         // ya usa este Worker).
         if (canal === 'whatsapp') {
-          botones = [
-            { id: 'optin_si', title: '✅ Acepto' },
-            { id: 'optin_no', title: '❌ No, gracias' },
-          ];
+          botones = botonesConsentimientoUnico();
         }
         await upsertCliente({
           telefono: clienteId, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente),
@@ -995,10 +1001,7 @@ async function procesarMensaje(
         const respuestaBreve = fija || 'El proceso es muy rápido: solo necesitas tu cédula y en minutos sabes si aplicas 😊';
         respuesta = `${respuestaBreve}\n\n${MSG.OPTIN}`;
         if (canal === 'whatsapp') {
-          botones = [
-            { id: 'optin_si', title: '✅ Acepto' },
-            { id: 'optin_no', title: '❌ No, gracias' },
-          ];
+          botones = botonesConsentimientoUnico();
         }
         break;
       }
@@ -1016,16 +1019,34 @@ async function procesarMensaje(
         conv.estado = 'FIN'; respuesta = MSG.OPTIN_NO;
       } else if (detectaAcepta(texto)) {
         conv.optin_aceptado = true;
-        await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
-        await avanzarEstadoFunnel(clienteId, 'contactado', sk); // FIX 03-jul-2026
+        const aceptaPromociones = /datos y promociones/i.test(texto);
+        const consentAt = new Date().toISOString();
+        const consentVersion = 'whatsapp_marketing_v1_2026-08-27';
+        await upsertCliente({
+          telefono: clienteId,
+          optin_datos: true,
+          optin_operativo: true,
+          optin_comercial: canal === 'whatsapp' ? aceptaPromociones : false,
+          optin_whatsapp: canal === 'whatsapp' ? aceptaPromociones : false,
+          optin_fecha: canal === 'whatsapp' ? consentAt : null,
+          optin_canal: canal === 'whatsapp' ? 'whatsapp' : canal,
+          optin_version: canal === 'whatsapp' ? consentVersion : null,
+          optin_evidence_id: canal === 'whatsapp' ? (sourceMessageId || null) : null,
+          fuente: conv.fuente,
+          canal_origen: canalOrigenReal(conv.fuente),
+        }, sk);
         if (canal === 'whatsapp') {
-          conv.estado = 'OPTIN_MARKETING';
-          respuesta = MSG.OPTIN_MARKETING;
-          botones = [
-            { id: 'marketing_si', title: '✅ Sí, autorizo' },
-            { id: 'marketing_no', title: '❌ No, gracias' },
-          ];
-        } else if (canal === 'facebook_dm') {
+          await registrarConsentimientoWhatsapp({
+            telefono: clienteId,
+            decision: aceptaPromociones ? 'granted' : 'denied',
+            responseText: texto,
+            sourceMessageId: sourceMessageId || null,
+            consentAt,
+            policyVersion: consentVersion,
+          }, sk);
+        }
+        await avanzarEstadoFunnel(clienteId, 'contactado', sk); // FIX 03-jul-2026
+        if (canal === 'facebook_dm') {
           conv.estado = 'CELULAR_FB'; respuesta = MSG.CELULAR_FB;
         } else if (conv.tienda_id) {
           // FIX v27, 13-jul-2026: se asume "celular" como interés por defecto
@@ -1061,10 +1082,7 @@ async function procesarMensaje(
         }
         respuesta = MSG.OPTIN;
         if (canal === 'whatsapp') {
-          botones = [
-            { id: 'optin_si', title: '✅ Acepto' },
-            { id: 'optin_no', title: '❌ No, gracias' },
-          ];
+          botones = botonesConsentimientoUnico();
         }
       }
       break;

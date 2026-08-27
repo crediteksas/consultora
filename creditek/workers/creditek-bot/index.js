@@ -1,3 +1,4 @@
+import { summarizeEligibility } from "./campaign-policy.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -1992,6 +1993,32 @@ var index_default = {
       }), { headers: cors });
     }
     const autorizado = !!env2.WORKER_SHARED_SECRET && request.headers.get("X-Worker-Secret") === env2.WORKER_SHARED_SECRET;
+    if (url.pathname === "/api/campaigns/preflight" && request.method === "GET") {
+      if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
+      const clientFields = "id,telefono,optin_comercial,optin_whatsapp,optin_fecha,optin_canal,optin_version,optin_evidence_id";
+      const [clientsResponse, suppressionsResponse] = await Promise.all([
+        fetch(`${supabaseUrl()}/rest/v1/clientes?select=${clientFields}&order=created_at.desc&limit=1000`, { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }),
+        fetch(`${supabaseUrl()}/rest/v1/sofia_campaign_suppressions?active=eq.true&select=telefono,active&limit=1000`, { headers: { apikey: sk, Authorization: `Bearer ${sk}` } })
+      ]);
+      if (!clientsResponse.ok || !suppressionsResponse.ok) {
+        return new Response(JSON.stringify({
+          error: "campaign_schema_not_ready",
+          migration: "202608270001_sofia_whatsapp_campaigns_v1.sql"
+        }), { status: 409, headers: cors });
+      }
+      const clients = await clientsResponse.json();
+      const suppressions = await suppressionsResponse.json();
+      const suppressionByPhone = new Map(suppressions.map((row) => [String(row.telefono || "").replace(/\D/g, ""), row]));
+      const summary = summarizeEligibility(clients.map((customer) => ({
+        customer,
+        suppression: suppressionByPhone.get(String(customer.telefono || "").replace(/\D/g, "")) || null
+      })));
+      return new Response(JSON.stringify({
+        mode: "preflight_only",
+        sends_enabled: false,
+        audience: summary
+      }), { headers: cors });
+    }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
       const pc = /* @__PURE__ */ __name((r) => parseInt(r.headers.get("Content-Range")?.split("/")[1] ?? "0", 10), "pc");

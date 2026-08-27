@@ -1263,11 +1263,11 @@ async function openModule(url, title, el, appId = '', requiredCapability = '') {
     showToast('No tienes permiso para abrir Portal B2B.', '#EF4444');
     return;
   }
-  if (appId === 'sofia' && !hasPermission(auraAccess, appId, 'sofia.use')) {
+  if (appId === 'sofia' && !hasAuraCapability(auraAccess, AURA_CAPABILITIES.SOFIA)) {
     showToast('No tienes permiso para abrir este módulo.', '#EF4444');
     return;
   }
-  if (appId === 'meta_ads' && !hasPermission(auraAccess, appId, 'meta_ads.read')) {
+  if (appId === 'meta_ads' && !hasAuraCapability(auraAccess, AURA_CAPABILITIES.META_ADS)) {
     showToast('No tienes permiso para abrir Meta Ads.', '#EF4444');
     return;
   }

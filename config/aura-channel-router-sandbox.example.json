@@ -1,0 +1,20 @@
+{
+  "environment": "sandbox",
+  "channel": "AURA_NOVA_CARTERA_SANDBOX",
+  "ownership": "PENDING_META_VERIFICATION",
+  "phone_number": "PENDING",
+  "phone_number_id": "PENDING",
+  "waba_id": "PENDING",
+  "meta_business": "PENDING",
+  "display_name": "PENDING",
+  "verification": "PENDING",
+  "associated_app": "PENDING",
+  "webhook_handler": "SEPARATE_WORKER_REQUIRED",
+  "secret_bindings": [
+    "AURA_CHANNEL_VERIFY_TOKEN",
+    "AURA_CHANNEL_WHATSAPP_TOKEN"
+  ],
+  "logs_namespace": "aura_channel_router_sandbox",
+  "metrics_namespace": "aura_channel_router_sandbox_metrics",
+  "real_messages_enabled": false
+}

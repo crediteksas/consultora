@@ -1,0 +1,1 @@
+export class ChannelRouterSandboxTelemetry{constructor(){this.logs=[];this.metrics=new Map();}record(decision){const key=`route.${decision.destination.toLowerCase()}`;this.metrics.set(key,(this.metrics.get(key)||0)+1);this.logs.push(Object.freeze({destination:decision.destination,reason_code:decision.reason_code,pii:false,secret:false}));}}

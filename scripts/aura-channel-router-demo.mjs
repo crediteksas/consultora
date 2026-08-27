@@ -1,0 +1,6 @@
+import {AuraChannelRouter} from '../src/channel-router/aura-channel-router.mjs';
+import {createSandboxIdentityDirectory} from '../src/channel-router/identity-directory.mjs';
+import {ChannelRouterSandboxTelemetry} from '../src/channel-router/sandbox/telemetry.mjs';
+const router=new AuraChannelRouter({identities:createSandboxIdentityDirectory()}),telemetry=new ChannelRouterSandboxTelemetry();
+const scenarios=[['INTERNO_RETAIL',{channel:'AURA_NOVA_CARTERA_SANDBOX',sender:'SANDBOX_RETAIL_01',text:'Solicitar autorización'}],['INTERNO_ALIADO',{channel:'AURA_NOVA_CARTERA_SANDBOX',sender:'SANDBOX_ALLY_01',text:'Consultar cliente'}],['CLIENTE_CARTERA',{channel:'AURA_NOVA_CARTERA_SANDBOX',sender:'SANDBOX_CUSTOMER_01',sender_type:'external_customer',text:'Ya pagué'}],['CLIENTE_INTENTA_NOVA',{channel:'AURA_NOVA_CARTERA_SANDBOX',sender:'SANDBOX_CUSTOMER_02',sender_type:'external_customer',text:'Validar crédito'}],['NO_IDENTIFICADO',{channel:'AURA_NOVA_CARTERA_SANDBOX',sender:'SANDBOX_UNKNOWN_01',text:'Hola'}]];
+console.log('AURA CHANNEL ROUTER — SANDBOX · SIN WHATSAPP · SIN ENVÍOS');for(const[label,input]of scenarios){const decision=router.route(input);telemetry.record(decision);console.log(`${label}: ${decision.destination} · ${decision.reason_code}`);}console.log(`TOTAL: ${telemetry.logs.length} · PII: 0 · SECRETS: 0 · REAL MESSAGES: 0`);

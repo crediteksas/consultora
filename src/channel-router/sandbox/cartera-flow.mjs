@@ -1,0 +1,4 @@
+export class CarteraSandboxFlow{
+  constructor({findObligation,createPaymentReport,openReconciliation}={}){Object.assign(this,{findObligation,createPaymentReport,openReconciliation});}
+  async execute({customer_id,intent}){const obligation=await this.findObligation(customer_id);if(!obligation)return Object.freeze({status:'HUMAN_REQUIRED',reason_code:'OBLIGATION_NOT_FOUND'});if(intent==='PAYMENT_REPORTED'){const report=await this.createPaymentReport({customer_id,obligation_id:obligation.id,status:'PENDING_VALIDATION'});const reconciliation=await this.openReconciliation({payment_report_id:report.id,obligation_id:obligation.id});return Object.freeze({status:'PENDING_VALIDATION',payment_report_created:true,reconciliation_opened:Boolean(reconciliation),balance_modified:false});}return Object.freeze({status:'SIMULATED',obligation_found:true,eligibility:obligation.eligible,action:obligation.eligible?'CONTINUE_SANDBOX':'HUMAN_REVIEW',balance_modified:false});}
+}

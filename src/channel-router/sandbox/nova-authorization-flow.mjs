@@ -1,0 +1,4 @@
+export class NovaAuthorizationSandboxFlow{
+  constructor({searchCustomer,listSales,runPlatformCheck}={}){Object.assign(this,{searchCustomer,listSales,runPlatformCheck});}
+  async execute({query}){const customer=await this.searchCustomer(query);if(!customer)return Object.freeze({status:'REVIEW_REQUIRED',recommendation:'REVISIÓN REQUERIDA',reason_code:'CUSTOMER_NOT_FOUND'});const sales=await this.listSales(customer.id);try{const check=await this.runPlatformCheck(customer.id);return Object.freeze({status:'SIMULATED',customer_found:true,sales_count:sales.length,signal:check.signal,recommendation:check.recommendation,final_decision:null});}catch{return Object.freeze({status:'REVIEW_REQUIRED',customer_found:true,sales_count:sales.length,signal:'YELLOW',recommendation:'REVISIÓN REQUERIDA',reason_code:'PLATFORM_CHECK_UNAVAILABLE',final_decision:null});}}
+}

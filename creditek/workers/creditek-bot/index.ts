@@ -2319,7 +2319,8 @@ type TiendaPorTelefono = { id: string; nombre_comercial: string | null; contacto
 let _tiendaPorTelefonoCache: { valores: Map<string, TiendaPorTelefono>; expira: number } | null = null;
 
 async function buscarTiendaPorTelefono(telefono: string, key: string): Promise<TiendaPorTelefono | null> {
-  const limpio = telefono.replace(/^57/, '');
+  const limpio = String(telefono || '').replace(/^57/, '');
+  if (!limpio) return null;
   const ahora = Date.now();
   if (!_tiendaPorTelefonoCache || _tiendaPorTelefonoCache.expira <= ahora) {
     try {

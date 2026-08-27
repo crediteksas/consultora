@@ -41,6 +41,7 @@ export async function reservarHandoff(
     body: JSON.stringify({
       event_kind: 'advisor_handoff',
       idempotency_key: input.idempotencyKey,
+      response_key: input.idempotencyKey,
       destination_id: input.destinationId,
       destination_type: input.destinationType,
       origin: input.origin,

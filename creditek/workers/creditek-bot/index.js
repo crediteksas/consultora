@@ -1370,6 +1370,7 @@ async function reservarHandoff(supabaseUrl2, serviceKey, input, fetcher = fetch)
     body: JSON.stringify({
       event_kind: "advisor_handoff",
       idempotency_key: input.idempotencyKey,
+      response_key: input.idempotencyKey,
       destination_id: input.destinationId,
       destination_type: input.destinationType,
       origin: input.origin,
@@ -3472,7 +3473,8 @@ async function buscarTiendaQR(refQr, key) {
 __name(buscarTiendaQR, "buscarTiendaQR");
 var _tiendaPorTelefonoCache = null;
 async function buscarTiendaPorTelefono(telefono, key) {
-  const limpio = telefono.replace(/^57/, "");
+  const limpio = String(telefono || "").replace(/^57/, "");
+  if (!limpio) return null;
   const ahora = Date.now();
   if (!_tiendaPorTelefonoCache || _tiendaPorTelefonoCache.expira <= ahora) {
     try {

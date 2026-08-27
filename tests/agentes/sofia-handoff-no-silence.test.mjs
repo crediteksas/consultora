@@ -25,3 +25,14 @@ for (const [label, path] of [
     assert.ok(handoff.indexOf('HANDOFF_PENDING') < handoff.indexOf('transferido_asesor'));
   });
 }
+
+test('DATOS_MIN rehidrata nombre y cédula ya guardados antes de repreguntar', async () => {
+  for (const path of [
+    new URL('../../creditek/workers/creditek-bot/index.ts', import.meta.url),
+    new URL('../../creditek/workers/creditek-bot/index.js', import.meta.url),
+  ]) {
+    const source = await readFile(path, 'utf8');
+    assert.match(source, /select=nombre,cedula,telefono_contacto,tienda_id,ciudad,ciudad_normalizada/);
+    assert.match(source, /conv\.cedula \|\|= existente\.cedula/);
+  }
+});

@@ -29,6 +29,14 @@ test('un permiso explícito existente continúa siendo respetado', () => {
   assert.equal(hasAuraCapability(access('aura.user', ['cartera.read']), 'nova.read'), false);
 });
 
+test('Publicación y métricas forma parte de las capacidades validadas por el servidor', async () => {
+  assert.equal(AURA_CAPABILITIES.META_ADS, 'meta_ads.read');
+  assert.equal(hasAuraCapability(access('aura.owner'), AURA_CAPABILITIES.META_ADS), true);
+  assert.equal(hasAuraCapability(access('aura.andrea_limited'), AURA_CAPABILITIES.META_ADS), false);
+  const source = await readFile(new URL('../../src/aura-access-check.mjs', import.meta.url), 'utf8');
+  assert.match(source, /Object\.values\(AURA_CAPABILITIES\)/);
+});
+
 test('la guarda server-side responde DENY a rutas sin capacidad', async () => {
   const request = new Request('https://aura.test/api/aura/access', { headers: { authorization: 'Bearer test' } });
   const fetcher = async input => {

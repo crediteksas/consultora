@@ -106,3 +106,19 @@ test('reenvía mensajes válidos sin exponer el secreto en la respuesta', async 
   assert.deepEqual(await response.json(), { ok: true });
   assert.equal(requests.at(-1).headers.get('x-worker-secret'), 'server-only');
 });
+
+test('permite la recuperación manual de handoff únicamente por el proxy autenticado', async () => {
+  const { fetcher, requests } = authenticatedFetcher(Response.json({ ok: true, cliente_notificado: true }));
+  const response = await handleAuraSofiaProxy(
+    ownerRequest('/api/sofia/notificar-asesor', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ telefono: 'fixture' }),
+    }),
+    { WORKER_SHARED_SECRET: 'server-only', SOFIA_WORKER_URL: 'https://sofia.test' },
+    fetcher,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(requests.at(-1).url, 'https://sofia.test/api/notificar-asesor');
+  assert.equal(requests.at(-1).headers.get('x-worker-secret'), 'server-only');
+});

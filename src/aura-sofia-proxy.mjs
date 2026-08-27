@@ -8,6 +8,7 @@ const ROUTES = new Map([
   ['/api/sofia/stats', { method: 'GET', upstream: '/api/stats' }],
   ['/api/sofia/ventas-por-anuncio', { method: 'GET', upstream: '/api/ventas-por-anuncio' }],
   ['/api/sofia/enviar-mensaje', { method: 'POST', upstream: '/api/enviar-mensaje' }],
+  ['/api/sofia/notificar-asesor', { method: 'POST', upstream: '/api/notificar-asesor' }],
 ]);
 
 function reply(body, status = 200) {

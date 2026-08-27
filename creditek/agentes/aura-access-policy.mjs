@@ -1,5 +1,6 @@
 export const AURA_CAPABILITIES = Object.freeze({
   SOFIA: 'sofia.use',
+  META_ADS: 'meta_ads.read',
   CLIENTES: 'clientes.read',
   NOVA: 'nova.read',
   CARTERA: 'cartera.read',

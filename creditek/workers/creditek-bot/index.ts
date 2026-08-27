@@ -626,6 +626,83 @@ export default {
       return new Response(JSON.stringify({ ok: true }), { headers: cors });
     }
 
+    // Recuperación manual, exclusiva del panel AURA. Reutiliza la plantilla
+    // oficial de handoff, exige cliente+tienda existentes y usa una llave
+    // idempotente fija para que un doble clic nunca duplique el aviso.
+    if (url.pathname === '/api/notificar-asesor' && request.method === 'POST') {
+      if (!autorizado) return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401, headers: cors });
+      const { telefono } = await request.json() as { telefono?: string };
+      const clienteId = String(telefono || '').replace(/\D/g, '');
+      if (!clienteId) return new Response(JSON.stringify({ error: 'Falta telefono' }), { status: 400, headers: cors });
+
+      const clienteRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=*&limit=1`,
+        { headers: { apikey: sk, Authorization: `Bearer ${sk}` } },
+      );
+      const [cliente] = await clienteRes.json() as any[];
+      if (!cliente?.tienda_id) return new Response(JSON.stringify({ error: 'Cliente sin tienda asignada' }), { status: 409, headers: cors });
+      if (!cliente.optin_datos) return new Response(JSON.stringify({ error: 'Cliente sin autorización de datos' }), { status: 409, headers: cors });
+
+      const tiendaRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/tiendas?id=eq.${encodeURIComponent(cliente.tienda_id)}&select=*&limit=1`,
+        { headers: { apikey: sk, Authorization: `Bearer ${sk}` } },
+      );
+      const [tienda] = await tiendaRes.json() as any[];
+      if (!tienda?.telefono || !tienda?.contacto) return new Response(JSON.stringify({ error: 'Tienda sin asesor disponible' }), { status: 409, headers: cors });
+
+      const inicial = await buscarHandoffInicial(SUPABASE_URL, sk, clienteId);
+      if (inicial?.status === 'sent' && inicial.meta_response_id) {
+        return new Response(JSON.stringify({ ok: true, already_sent: true }), { headers: cors });
+      }
+
+      const conv: Conv = {
+        estado: 'HANDOFF_PENDING', canal: 'whatsapp', historial: [],
+        nombre: cliente.nombre, cedula: cliente.cedula,
+        celular: cliente.telefono_contacto || cliente.telefono,
+        correo: cliente.correo, ciudad: cliente.ciudad_normalizada || cliente.ciudad || tienda.ciudad,
+        modalidad: cliente.modalidad || 'credito', producto_interes: cliente.producto_interes,
+        tienda_id: tienda.id, tienda_nombre: tienda.nombre,
+        tienda_nombre_comercial: tienda.nombre_comercial,
+        tienda_contacto: tienda.contacto, tienda_telefono: tienda.telefono,
+        tienda_tipo: tienda.tipo,
+      };
+      const reserva = await reservarHandoff(SUPABASE_URL, sk, {
+        idempotencyKey: `advisor_handoff_manual:${clienteId}`,
+        destinationId: tienda.id,
+        destinationType: tienda.tipo === 'aliado' ? 'aliado' : 'tienda',
+        origin: 'aura_manual_recovery',
+        reassignmentOf: inicial?.id || null,
+      });
+      if (!reserva.permitido) {
+        if (reserva.evidencia.status === 'sent') return new Response(JSON.stringify({ ok: true, already_sent: true }), { headers: cors });
+        return new Response(JSON.stringify({ error: 'Notificación en revisión; no se duplicó el envío' }), { status: 409, headers: cors });
+      }
+
+      try {
+        const metaId = await notificarAsesor(conv, tienda, env);
+        await confirmarHandoff(SUPABASE_URL, sk, reserva.evidencia.id, metaId);
+      } catch (error) {
+        await marcarHandoffError(SUPABASE_URL, sk, reserva.evidencia.id, error instanceof Error ? error.message : 'manual_handoff_failed');
+        return new Response(JSON.stringify({ error: 'Meta no confirmó el aviso al asesor' }), { status: 502, headers: cors });
+      }
+
+      await actualizarCliente(clienteId, {
+        estado_funnel: 'transferido_asesor',
+        fecha_transferido_asesor: new Date().toISOString(),
+      }, sk);
+
+      const nombreCorto = String(cliente.nombre || 'amigo').split(' ')[0];
+      const avisoCliente = MSG.HANDOFF_MSG(nombreCorto, String(tienda.contacto).split(' ')[0], tienda.nombre_comercial || tienda.nombre, tienda.telefono);
+      let clienteNotificado = true;
+      try {
+        await enviarMensajeWA(clienteId, avisoCliente, env.PHONE_NUMBER_ID, env.WHATSAPP_TOKEN);
+        await guardarConv({ telefono: clienteId, contenido: avisoCliente, respondido_por: 'bot', canal: 'whatsapp' }, sk);
+      } catch {
+        clienteNotificado = false;
+      }
+      return new Response(JSON.stringify({ ok: true, cliente_notificado: clienteNotificado }), { headers: cors });
+    }
+
     if (request.method === 'GET') {
       const mode = url.searchParams.get('hub.mode');
       const token = url.searchParams.get('hub.verify_token');
@@ -1527,6 +1604,29 @@ async function procesarMensaje(
 
     // ── DATOS_MIN ────────────────────────────────────────────────────────────
     case 'DATOS_MIN': {
+      // La ficha en Supabase puede estar más adelantada que el estado de la
+      // conversación (por ejemplo, tras una recuperación manual desde AURA).
+      // Rehidratar antes de decidir qué preguntar evita volver a solicitar
+      // nombre o cédula que el cliente ya entregó.
+      if (!conv.nombre || (conv.modalidad === 'credito' && !conv.cedula)) {
+        try {
+          const existenteRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&select=nombre,cedula,telefono_contacto,tienda_id,ciudad,ciudad_normalizada&limit=1`,
+            { headers: { apikey: sk, Authorization: `Bearer ${sk}` } },
+          );
+          const [existente] = await existenteRes.json() as any[];
+          if (existente) {
+            conv.nombre ||= existente.nombre || undefined;
+            conv.cedula ||= existente.cedula || undefined;
+            conv.celular ||= existente.telefono_contacto || clienteId;
+            conv.tienda_id ||= existente.tienda_id || undefined;
+            conv.ciudad ||= existente.ciudad_normalizada || existente.ciudad || undefined;
+          }
+        } catch {
+          console.warn('[DATOS-MIN] no fue posible rehidratar la ficha existente');
+        }
+      }
+
       // Una intención de moto puede aparecer después de que ya preguntamos
       // los datos (caso real: el cliente aclaró "es para una moto"). Debe
       // salir al contacto especializado, no convertirse en nombre ni quedar

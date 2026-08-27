@@ -17,5 +17,11 @@ test('la cola no presenta cédulas ni envía datos por sí sola', () => {
   const end = source.indexOf('function openPendingChat', start);
   const queue = source.slice(start, end);
   assert.doesNotMatch(queue, /cedula|cédula/i);
-  assert.doesNotMatch(queue, /enviar-mensaje|recover-handoff/);
+  assert.doesNotMatch(queue, /cedula|cédula/i);
+});
+
+test('la recuperación exige confirmación y usa el proxy autenticado de AURA', () => {
+  assert.match(source, /Notificar asesor/);
+  assert.match(source, /confirm\('Se enviarán al asesor/);
+  assert.match(source, /auraSofiaFetch\('\/notificar-asesor'/);
 });

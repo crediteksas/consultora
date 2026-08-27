@@ -370,7 +370,7 @@ function renderPendingHandoffs(){
   el.innerHTML=pending.map(c=>{
     const t=allTiendas.find(x=>x.id===c.tienda_id)||{};
     const safeTel=String(c.telefono||'').replace(/[^0-9_+-]/g,'');
-    return '<tr><td style="font-weight:600">'+(c.nombre||'Sin nombre')+'</td><td>'+(c.ciudad||c.ciudad_normalizada||t.ciudad||'-')+'</td><td>'+(t.nombre_comercial||t.nombre||c.tienda_id)+'</td><td>'+(t.contacto||'Por definir')+'</td><td>'+(t.telefono||'-')+'</td><td><button class="btn btn-outline" onclick="openPendingChat(\''+safeTel+'\')">Abrir chat</button></td></tr>';
+    return '<tr><td style="font-weight:600">'+(c.nombre||'Sin nombre')+'</td><td>'+(c.ciudad||c.ciudad_normalizada||t.ciudad||'-')+'</td><td>'+(t.nombre_comercial||t.nombre||c.tienda_id)+'</td><td>'+(t.contacto||'Por definir')+'</td><td>'+(t.telefono||'-')+'</td><td><button class="btn btn-outline" onclick="openPendingChat(\''+safeTel+'\')">Abrir chat</button> <button class="btn btn-primary" id="notify-'+safeTel+'" onclick="notifyPendingAdvisor(\''+safeTel+'\')">Notificar asesor</button><div id="notify-status-'+safeTel+'" style="font-size:11px;margin-top:5px"></div></td></tr>';
   }).join('');
 }
 
@@ -380,6 +380,28 @@ function openPendingChat(tel){
   document.getElementById('searchInput').value=tel;
   applyFilters();
   openChat(tel);
+}
+
+async function notifyPendingAdvisor(tel){
+  const client=allClients.find(c=>String(c.telefono||'').replace(/\D/g,'')===String(tel).replace(/\D/g,''));
+  const tienda=allTiendas.find(t=>t.id===client?.tienda_id)||{};
+  if(!client||!tienda.contacto)return;
+  const ok=confirm('Se enviarán al asesor '+tienda.contacto+' los datos autorizados de '+(client.nombre||'este cliente')+' y Sofía informará al cliente el contacto asignado. ¿Continuar?');
+  if(!ok)return;
+  const btn=document.getElementById('notify-'+tel);
+  const status=document.getElementById('notify-status-'+tel);
+  if(btn)btn.disabled=true;
+  if(status)status.textContent='Notificando…';
+  try{
+    const res=await auraSofiaFetch('/notificar-asesor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefono:tel})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||data.error)throw new Error(data.error||'No se pudo notificar');
+    if(status)status.textContent=data.cliente_notificado===false?'Asesor notificado; falta avisar al cliente':'Asesor y cliente notificados';
+    await Promise.all([loadClients(),loadStats(),loadConvs()]);
+  }catch(e){
+    if(status)status.textContent='Error: '+e.message;
+    if(btn)btn.disabled=false;
+  }
 }
 
 // ── CORRECCIONES SOFIA IA ─────────────────────────────────────────

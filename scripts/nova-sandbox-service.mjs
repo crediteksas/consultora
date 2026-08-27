@@ -1,7 +1,7 @@
-import {createClientRegistry,PayJoyCustomerCheck,sandboxFixtures} from '../lib/client-registry/index.mjs';
-import {RunPreCreditPlatformCheck} from '../src/precredit/application/run-precredit-platform-check.mjs';
-import {MemoryCustomerRepository,MemorySaleRepository,MemorySnapshotRepository} from '../src/clients/repositories/memory-repositories.mjs';
-import {MemoryAudit} from '../src/clients/audit/memory-audit.mjs';
+import {createClientRegistry,PayJoyCustomerCheck,sandboxFixtures} from '../src/nova/sandbox/client-registry.mjs';
+import {RunPreCreditPlatformCheck} from '../src/nova/application/run-precredit-platform-check.mjs';
+import {MemoryCustomerRepository,MemorySaleRepository,MemorySnapshotRepository} from '../src/nova/repositories/memory-repositories.mjs';
+import {MemoryAudit} from '../src/nova/audit/memory-audit.mjs';
 const fixtures=sandboxFixtures();
 export const clientRegistry=createClientRegistry({...fixtures,payjoyService:new PayJoyCustomerCheck({gateway:fixtures.gateway})});
 const precredit=new RunPreCreditPlatformCheck({customers:new MemoryCustomerRepository(fixtures.customers),sales:new MemorySaleRepository(fixtures.sales),payjoyAdapter:{check:locator=>fixtures.gateway.lookup({value:locator.value})},snapshotRepository:new MemorySnapshotRepository(),audit:new MemoryAudit()});

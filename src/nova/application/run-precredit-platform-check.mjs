@@ -1,5 +1,5 @@
-import {resolvePayJoyLocator} from '../../clients/services/locator-resolver.mjs';
-import {createPayJoySignal} from '../signals/payjoy-signal.mjs';
+import {resolvePayJoyLocator} from '../platform-checks/locator-resolver.mjs';
+import {createPayJoySignal} from '../platform-checks/payjoy-signal.mjs';
 import {recommendationForSignal} from '../rules/recommendation.mjs';
 import {createPlatformFinancialSnapshot} from '../../shared/platform/platform-financial-snapshot.mjs';
 export class RunPreCreditPlatformCheck{

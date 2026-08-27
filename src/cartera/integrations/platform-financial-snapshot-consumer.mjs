@@ -1,0 +1,1 @@
+export const consumePlatformFinancialSnapshot=snapshot=>snapshot?Object.freeze({customer_id:snapshot.customer_id,platform:snapshot.platform,balance:snapshot.remaining_balance,last_payment_at:snapshot.last_payment_at,checked_at:snapshot.checked_at}):null;

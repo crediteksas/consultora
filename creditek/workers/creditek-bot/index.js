@@ -1379,8 +1379,18 @@ async function reservarHandoff(supabaseUrl2, serviceKey, input, fetcher = fetch)
       evidence_version: 1
     })
   });
-  if (!response.ok && response.status !== 409) throw new Error(`Supabase outbox respondi\xF3 ${response.status}`);
   const responseBody = await response.text();
+  if (!response.ok && response.status !== 409) {
+    let diagnostic = "unknown";
+    try {
+      const parsed = JSON.parse(responseBody);
+      diagnostic = [parsed.code, parsed.message, parsed.details, parsed.hint].filter(Boolean).join(" | ").slice(0, 500);
+    } catch {
+      diagnostic = responseBody.slice(0, 500);
+    }
+    console.error(`[OUTBOX-RESERVE] ${response.status} ${diagnostic}`);
+    throw new Error(`Supabase outbox respondi\xF3 ${response.status}`);
+  }
   let rows = [];
   if (response.status !== 409 && responseBody.trim()) {
     try {

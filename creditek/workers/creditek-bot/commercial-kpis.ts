@@ -50,8 +50,19 @@ export async function reservarHandoff(
       evidence_version: 1,
     }),
   });
-  if (!response.ok) throw new Error(`Supabase outbox respondió ${response.status}`);
-  const rows = await response.json() as HandoffEvidence[];
+  const responseBody = await response.text();
+  if (!response.ok) {
+    let diagnostic = 'unknown';
+    try {
+      const parsed = JSON.parse(responseBody) as { code?: string; message?: string; details?: string; hint?: string };
+      diagnostic = [parsed.code, parsed.message, parsed.details, parsed.hint].filter(Boolean).join(' | ').slice(0, 500);
+    } catch {
+      diagnostic = responseBody.slice(0, 500);
+    }
+    console.error(`[OUTBOX-RESERVE] ${response.status} ${diagnostic}`);
+    throw new Error(`Supabase outbox respondió ${response.status}`);
+  }
+  const rows = JSON.parse(responseBody) as HandoffEvidence[];
   if (rows[0]) return { permitido: true, evidencia: rows[0] };
 
   const existing = await fetcher(

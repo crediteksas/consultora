@@ -50,7 +50,10 @@ export async function reservarHandoff(
       evidence_version: 1,
     }),
   });
-  if (!response.ok) throw new Error(`Supabase outbox respondió ${response.status}`);
+  if (!response.ok) {
+    const detail = (await response.text()).replace(/[\r\n]+/g, ' ').slice(0, 300);
+    throw new Error(`Supabase outbox respondió ${response.status}: ${detail}`);
+  }
   const rows = await response.json() as HandoffEvidence[];
   if (rows[0]) return { permitido: true, evidencia: rows[0] };
 

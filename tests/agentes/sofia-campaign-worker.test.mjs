@@ -4,9 +4,13 @@ import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../../creditek/workers/creditek-bot/index.js', import.meta.url), 'utf8');
 
-test('expone preflight protegido y explícitamente sin envíos', () => {
+test('expone preflight protegido por sesión AURA y explícitamente sin envíos', () => {
   assert.match(source, /\/api\/campaigns\/preflight/);
-  assert.match(source, /if \(!autorizado\).*status: 401/);
+  assert.match(source, /authorizeSofiaCampaign\(request.*"sofia\.campaign\.read"/);
+  assert.doesNotMatch(source.slice(
+    source.indexOf('url.pathname === "/api/campaigns/preflight"'),
+    source.indexOf('url.pathname === "/api/stats"'),
+  ), /X-Worker-Secret/);
   assert.match(source, /sends_enabled: false/);
   assert.match(source, /mode: "preflight_only"/);
 });

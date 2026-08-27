@@ -7,7 +7,9 @@ alter table public.clientes
 
 create table if not exists public.sofia_consent_events (
   id uuid primary key default gen_random_uuid(),
-  cliente_id uuid references public.clientes(id) on delete cascade,
+  -- Se conserva como texto porque el tipo de clientes.id debe verificarse
+  -- en producción antes de agregar una llave foránea.
+  cliente_id text,
   telefono text not null,
   purpose text not null check (purpose in ('datos','operativo','comercial_whatsapp')),
   decision text not null check (decision in ('granted','denied','revoked')),
@@ -47,7 +49,7 @@ create table if not exists public.sofia_campaigns (
 create table if not exists public.sofia_campaign_recipients (
   id uuid primary key default gen_random_uuid(),
   campaign_id uuid not null references public.sofia_campaigns(id) on delete cascade,
-  cliente_id uuid references public.clientes(id) on delete set null,
+  cliente_id text,
   telefono text not null,
   eligibility_status text not null check (eligibility_status in ('eligible','excluded')),
   exclusion_reason text,

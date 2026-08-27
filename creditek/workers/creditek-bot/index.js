@@ -1,4 +1,5 @@
 import { summarizeEligibility } from "./campaign-policy.mjs";
+import { authorizeSofiaCampaign } from "./campaign-auth.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -1876,7 +1877,7 @@ var index_default = {
     }
     const url = new URL(request.url);
     const sk = env2.SUPABASE_SERVICE_KEY;
-    const cors = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json", "Access-Control-Allow-Headers": "Content-Type, X-Worker-Secret", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
+    const cors = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json", "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Worker-Secret", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (url.pathname === "/__staging/test-handoff") {
       if (env2.ENVIRONMENT !== "staging") return new Response("Not found", { status: 404 });
@@ -1994,7 +1995,8 @@ var index_default = {
     }
     const autorizado = !!env2.WORKER_SHARED_SECRET && request.headers.get("X-Worker-Secret") === env2.WORKER_SHARED_SECRET;
     if (url.pathname === "/api/campaigns/preflight" && request.method === "GET") {
-      if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
+      const campaignAuth = await authorizeSofiaCampaign(request, { ...env2, SUPABASE_URL: supabaseUrl() }, "sofia.campaign.read");
+      if (!campaignAuth.ok) return new Response(JSON.stringify({ error: campaignAuth.code }), { status: campaignAuth.status, headers: cors });
       const clientFields = "id,telefono,optin_comercial,optin_whatsapp,optin_fecha,optin_canal,optin_version,optin_evidence_id";
       const [clientsResponse, suppressionsResponse] = await Promise.all([
         fetch(`${supabaseUrl()}/rest/v1/clientes?select=${clientFields}&order=created_at.desc&limit=1000`, { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }),

@@ -930,6 +930,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
       <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
       <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square" aria-hidden="true"></i> Minimalista</button>
+      <button class="estilo-btn" onclick="selectEstilo('contemporaneo',this)" title="Dirección editorial actual: composiciones asimétricas, fotografía auténtica, tipografía protagonista y detalles gráficos de tendencia sin perder claridad comercial."><i data-lucide="sparkles" aria-hidden="true"></i> Contemporáneo</button>
       <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil" aria-hidden="true"></i> Personalizar</button>
     </div>
     <div class="detalle-dia-row" id="detalle-dia-row" style="display:none">
@@ -1240,6 +1241,7 @@ function buildCreativeStyleDirection(estilo = currentEstilo) {
     chistoso: 'Humor comercial inteligente: parte de una tensión real y resuélvela con un giro original, sin estereotipos ni muletillas.',
     formal: 'Formal contemporáneo: confianza, precisión comercial y jerarquía visual limpia; evita lenguaje corporativo genérico.',
     minimalista: 'Minimalista: una sola idea comercial concreta, pocas palabras, espacio visual y máxima claridad.',
+    contemporaneo: 'Contemporáneo editorial: composición asimétrica, fotografía auténtica, tipografía expresiva, ritmo visual actual y una sola idea comercial; evita plantillas, neones gratuitos y decoración tecnológica genérica.',
     custom: document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
   };
   return directions[estilo] || directions.formal;
@@ -1302,6 +1304,7 @@ function ESTILO_INSTRUCCIONES() {
     'chistoso': 'Humor comercial inteligente: el giro nace de la situación y conduce a un beneficio o acción concreta. No uses memes aleatorios ni pidas personajes exagerados.',
     'formal': 'Precisión, confianza y claridad de performance. Prioriza un beneficio demostrable y una acción concreta; evita frases corporativas o aspiracionales vacías.',
     'minimalista': 'Una sola idea comercial con pocas palabras, pero completa y comprensible. Cada palabra debe aportar producto, beneficio o acción; no uses fragmentos vacíos.',
+    'contemporáneo': 'Lenguaje actual, directo y editorial. Una frase memorable, un beneficio concreto y un CTA útil; evita anglicismos, frases de moda vacías y tono de marca juvenil forzado.',
     'custom': document.getElementById('estilo-custom')?.value.trim() || 'Dirección visual personalizada, concreta y respetuosa.',
   };
 }
@@ -1958,7 +1961,7 @@ async function generarContenido() {
   const culturaCtx = esCiudad
     ? (CIUDADES_META[ciudad.slice(7)]?.contexto || null)
     : (getTiendaInfo(ciudad)?.contexto || null);
-  const detalleEstilo = estilo.toLowerCase().includes('alegre') ? 'costeno' : estilo.toLowerCase().includes('chistoso') ? 'chistoso' : estilo.toLowerCase().includes('minimalista') ? 'minimalista' : 'formal';
+  const detalleEstilo = estilo.toLowerCase().includes('alegre') ? 'costeno' : estilo.toLowerCase().includes('chistoso') ? 'chistoso' : estilo.toLowerCase().includes('minimalista') ? 'minimalista' : estilo.toLowerCase().includes('contempor') ? 'contemporaneo' : 'formal';
   const detalleHoy = getDetalleDelDia(detalleEstilo);
 
   if (!ciudad) {
@@ -2794,6 +2797,11 @@ const creativeFallbackByStyle = {
     'Una mano sostiene el celular frente a una pared luminosa, con una composición serena y precisa.',
     'El reflejo limpio de la pantalla destaca el celular como la única decisión importante de la escena.'
   ],
+  contemporaneo: [
+    'Una escena editorial asimétrica en una tienda de tecnología actual: una persona compara el celular en primer plano y el espacio negativo organiza el mensaje con intención.',
+    'Un acercamiento documental de una entrega de celular, con gesto auténtico, encuadre inesperado y detalles gráficos discretos inspirados en diseño editorial actual.',
+    'El celular ocupa el primer plano mientras una interacción comercial real sucede detrás, con luz natural, recorte fotográfico audaz y ritmo visual contemporáneo.'
+  ],
   custom: [
     'Una escena comercial concreta convierte la idea del brief en un momento claro y fácil de recordar.',
     'El producto aparece en uso dentro de una situación cotidiana que conecta directamente con el brief.',
@@ -2970,6 +2978,7 @@ async function buildImgPrompt() {
       costeno:    `Authentic everyday Caribbean Colombian commercial life with warm natural light and genuine warmth. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Never stack unrelated tropical clichés.`,
       chistoso:   `Playful commercial humor grounded in the user brief. Secondary detail only: ${detalleDia}.`,
       minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
+      contemporaneo:`Contemporary editorial retail art direction: asymmetric composition, authentic documentary-style photography, bold scale contrast, restrained graphic accents and intentional negative space. The product and commercial action must remain unmistakable. Avoid template-like layouts, generic neon technology effects and decorative people. Secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
     }[currentEstilo] || 'Professional brand design.';
 
@@ -2995,6 +3004,7 @@ async function buildImgPrompt() {
       chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
       costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
       minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
+      contemporaneo:{ paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF | un neutral cálido controlado', dominio: 'base de marca dominante con un solo neutral editorial; contraste sofisticado, sin neones genéricos ni colores decorativos sin función.' },
       custom:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
     };
     const paletaEstilo = paletaPorEstilo[currentEstilo] || paletaPorEstilo.formal;
@@ -3079,6 +3089,7 @@ async function buildImgPrompt() {
     chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
     costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
     minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
+    contemporaneo:{ paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF | un neutral cálido controlado', dominio: 'base de marca dominante con un solo neutral editorial; contraste sofisticado, sin neones genéricos ni colores decorativos sin función.' },
     custom:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
   };
   const paletaEstilo = paletaPorEstilo_B[currentEstilo] || paletaPorEstilo_B.formal;
@@ -3162,6 +3173,7 @@ async function buildImgPrompt() {
       ? `Tono de humor comercial ligero sobre ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares — el producto de esta pieza no es un celular.`
       : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual secundario: ${detalleDiaMsg}.`,
     minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual derivado del brief; detalle secundario: ${detalleDiaMsg}.`,
+    contemporaneo:`Dirección editorial contemporánea, segura y comercial. Producto y acción real como protagonistas, encuadre asimétrico, tipografía con contraste de escala y máximo dos personas con función narrativa. Sin poses de celebración artificial, neones genéricos ni adornos sin propósito. Detalle secundario: ${detalleDiaMsg}.`,
     custom:      estiloCustomVal || `Estilo libre. Aplicar criterio artístico según las instrucciones.`,
   };
   const mensajeEstilo = mensajeMap[currentEstilo] || mensajeMap.formal;
@@ -3238,6 +3250,11 @@ async function buildImgPrompt() {
     `- Textos nítidos y completamente legibles.`,
     `- Proporciones reales del dispositivo, iluminación de estudio.`,
     `- ${/lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'') ? 'PRODUCTO EXACTO' : 'CELULAR EXACTO'}: debe ser ${producto}. No inventar modelos ni mezclar con otro tipo de producto — si el producto NO es un celular, NO incluir ningún celular en la imagen.`,
+    `- COHERENCIA PROMESA–IMAGEN: si el titular o mensaje menciona un celular/producto, debe verse inequívocamente y ocupar al menos 20% del área visual útil; no entregar una escena de personas felices donde el producto sea diminuto o inexistente.`,
+    `- ACCIÓN COMERCIAL CREÍBLE: las personas deben comparar, probar, recibir o mostrar el producto. Máximo dos protagonistas y ninguna persona decorativa sin función narrativa. Evitar celebración exagerada, poses de catálogo y sonrisas artificiales.`,
+    `- JERARQUÍA PREMIUM: máximo tres bloques textuales (titular, apoyo, CTA), cada uno en una zona distinta. Mantener margen seguro mínimo del 7% y una altura de logo de separación entre la zona de marca y el titular.`,
+    `- CTA COMPLETO: debe conservar exactamente el texto aprobado. Nunca acortarlo a "Visítanos" si el original incluye tienda/ciudad, ni agregar la palabra Creditek por iniciativa propia.`,
+    `- DIRECCIÓN DE ARTE: ningún color, tarjeta, diagonal, neón o adorno puede aparecer sin una función de jerarquía o lectura. Evitar estética tecnológica genérica y aspecto de plantilla repetida.`,
     `- PRECIOS: ${priceRule}`,
     `- NO agregar textos, frases promocionales, urgencia ("solo hoy", "última oportunidad", cuentas regresivas, etc.) ni llamados a la acción que NO estén listados explícitamente en "TEXTOS EXACTOS EN LA IMAGEN" arriba.`,
     brandBlock     ? `- ${brandBlock}`     : null,
@@ -3272,6 +3289,7 @@ function buildImgPromptGeminiFallback() {
     costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
     chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
     minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
+    contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; estética editorial actual, limpia y sofisticada, sin neones tecnológicos genéricos',
     custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
   };
   const colorDesc = colorMap[currentEstilo] || colorMap.formal;
@@ -3331,13 +3349,13 @@ function buildImgPromptGeminiFallback() {
 
   return [
     `Fotografía publicitaria de ${productoDesc}${marcaTxt}, en ${colorDesc}${toqueTropical}.`,
-    ` El teléfono se ve grande y bien iluminado, como en una vitrina de tienda.`,
+    ` El teléfono se ve inequívocamente, ocupa al menos una quinta parte de la imagen y está grande y bien iluminado, como en una vitrina de tienda. Si aparecen personas, máximo dos y deben comparar, probar, recibir o mostrar el producto con gestos naturales; nunca posar o celebrar sin motivo.`,
     ` Escrito en letras grandes y gruesas está el texto "${titular}".`,
     mensajeVal ? ` Debajo, en letras más pequeñas, dice "${mensajeVal}".` : '',
     precio ? ` En números grandes en color turquesa aparece "${precio}".` : '',
     ctaActivo ? ` En la parte inferior hay un botón turquesa que dice "${cta}".` : '',
     ' Reserva una sola zona de espacio negativo real para el asset oficial de marca, integrada en la escena (superior, inferior o lateral según el contenido). No crees una franja blanca o un encabezado artificial solo para alojarlo; no escribas ni dibujes Creditek ni ningún logo.',
-    ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo de borde a borde, sin zonas vacías.`,
+    ` Composición comercial, limpia y llamativa, estilo publicidad de retail, usando todo el lienzo con intención y manteniendo aire seguro alrededor de textos, rostros, producto y zona de marca.`,
   ].filter(Boolean).join('');
 }
 
@@ -3359,6 +3377,7 @@ async function buildImgPromptGemini() {
     costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
     chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
+    contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto inequívoco y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
   };
   const estiloDesc = estiloDescMap[currentEstilo] || estiloDescMap.formal;
@@ -3401,10 +3420,10 @@ RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 
 FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 1. ESCENA BASE: tipo de imagen y estética general
-2. SUJETO PRINCIPAL: persona o producto, posición y acción. IMPORTANTE: el sujeto debe ser una persona colombiana de clase media trabajadora, en ambiente comercial digno (local de tecnología surtido, vitrina iluminada, calle comercial). Vestuario: ropa casual cotidiana contemporánea real de la Costa Caribe colombiana de hoy — camisetas, blusas, jeans, ropa de trabajo o de calle normal, colores naturales sin exceso. NUNCA disfraz folclórico, NUNCA traje típico de carnaval, NUNCA estampados florales excesivos ni pañoletas/turbantes decorativos, NUNCA vestuario que parezca puesta en escena turística o de comedia caribeña — debe verse como una persona real yendo a comprar algo, no como una actuación. NUNCA pobreza, NUNCA tienda humilde, NUNCA ropa desgastada.
+2. SUJETO PRINCIPAL: cuando el brief mencione un celular o producto, debe verse inequívocamente y dominar el primer plano; la persona interactúa con él de forma comercial real (comparar, probar, recibir o mostrar), nunca como decoración. Máximo dos personas, ambas con función narrativa. Personas colombianas de clase media trabajadora en ambiente comercial digno. Vestuario casual contemporáneo real de la Costa Caribe colombiana. Gestos naturales, nunca celebración exagerada, disfraz folclórico, carnaval, estampados excesivos, pobreza ni tienda humilde.
 3. ENTORNO: ambiente, colores, accesorios.
 4. TEXTOS: cada texto como objeto físico con ubicación exacta usando la fórmula: "en [ubicación] está escrito el texto [TEXTO ENTRE COMILLAS]". No incluyas logos ni nombres de marca.
-5. ILUMINACIÓN: calidad fotográfica, vibrante, profesional
+5. ILUMINACIÓN: calidad fotográfica, vibrante, profesional. Conserva aire alrededor de textos, producto, rostros y futura marca; no pegues elementos a los bordes.
 
 BRIEF DE LA PIEZA:
 Producto: ${producto}
@@ -3449,6 +3468,7 @@ async function buildImgPromptGeminiFotoLimpia() {
     costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
     chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
+    contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto protagonista y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
   };
   const estiloDesc = estiloDescMap[currentEstilo] || estiloDescMap.formal;
@@ -3459,6 +3479,7 @@ async function buildImgPromptGeminiFotoLimpia() {
       costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
       chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
       minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
+      contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; fotografía editorial actual y sofisticada, sin neones tecnológicos genéricos',
       custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
     };
     const colorDesc = colorMap[currentEstilo] || colorMap.formal;
@@ -3477,7 +3498,7 @@ RESTRICCIONES ESTRICTAS — NUNCA incluyas en tu salida:
 
 FÓRMULA OBLIGATORIA — escribe en este orden exacto:
 1. ESCENA BASE: tipo de fotografía y estética general
-2. SUJETO PRINCIPAL: persona o producto, posición y acción. IMPORTANTE: el sujeto debe ser una persona colombiana de clase media trabajadora, en ambiente comercial digno (local de tecnología surtido, vitrina iluminada, calle comercial). Vestuario: ropa casual cotidiana contemporánea real de la Costa Caribe colombiana de hoy — camisetas, blusas, jeans, ropa de trabajo o de calle normal, colores naturales sin exceso. NUNCA disfraz folclórico, NUNCA traje típico de carnaval, NUNCA estampados florales excesivos ni pañoletas/turbantes decorativos, NUNCA vestuario que parezca puesta en escena turística o de comedia caribeña — debe verse como una persona real yendo a comprar algo, no como una actuación. NUNCA pobreza, NUNCA tienda humilde, NUNCA ropa desgastada.
+2. SUJETO PRINCIPAL: cuando el brief mencione un celular o producto, debe dominar el primer plano y verse inequívocamente. Máximo dos personas, ambas comparando, probando, recibiendo o mostrando el producto con gestos naturales. Personas colombianas de clase media trabajadora en ambiente comercial digno, con ropa casual contemporánea real de la Costa Caribe colombiana. NUNCA celebración exagerada, pose decorativa, disfraz folclórico, carnaval, pobreza, tienda humilde ni ropa desgastada.
 3. ENTORNO E ILUMINACIÓN: ambiente, colores, accesorios, calidad fotográfica vibrante y profesional
 
 BRIEF DE LA PIEZA:
@@ -4414,6 +4435,7 @@ function toggleCanvaBrief() {
     costeno:     'Caribeño colombiano — colores cálidos, energético, festivo',
     chistoso:    'Humor comercial ligero — mensajes ingeniosos, tono juguetón, llamada a la acción divertida',
     minimalista: 'Minimalista — espacio generoso, producto héroe, tipografía elegante',
+    contemporaneo:'Editorial contemporáneo — fotografía auténtica, composición asimétrica, tipografía expresiva y producto protagonista',
     custom:      document.getElementById('estilo-custom')?.value.trim() || 'Personalizado'
   };
   const estiloDesc = estiloMap[currentEstilo] || estiloMap.formal;

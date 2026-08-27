@@ -1381,12 +1381,9 @@ let lastData = null;
 // de lastData/currentDays. null hasta que cargarEstadoActual() resuelva.
 let estadoReal = { semanaSpendCOP: null, mesSpendCOP: null };
 
-// FIX v26, 13-jul-2026 — Fase 3, Mejora 5: mismo Worker y mismo secreto
-// compartido (X-Worker-Secret) ya usados por creditek-agente-respuestas.html
-// (FIX v22) — solo lectura agregada (conteos), nunca datos individuales de
-// clientes.
+// Métricas agregadas del bot protegidas por la misma sesión AURA owner que
+// ya usa el Worker de Meta Ads. Nunca se publica un secreto administrativo.
 const WORKER_API = 'https://creditek-bot.comercial-853.workers.dev';
-const WORKER_SHARED_SECRET = '73ef5474869b234c9d666476271a47fcf82b259d54ca3619';
 const META_ADS_WORKER_API = 'https://aura-meta-ads-api.comercial-853.workers.dev';
 const META_AD_ACCOUNT_ID = '27446180201684830';
 const DEFAULT_WEEKLY_BUDGET_COP = 160000;
@@ -1731,7 +1728,9 @@ async function cargarDatos() {
     let ventasPorCampaña = {};
     let pctSinAtribucion = null;
     try {
-      const resVentas = await fetch(`${WORKER_API}/api/ventas-por-anuncio`, { headers: { 'X-Worker-Secret': WORKER_SHARED_SECRET } });
+      const auraToken = window.auraSessionToken?.();
+      if (!auraToken) throw new Error('Autenticación AURA requerida');
+      const resVentas = await fetch(`${WORKER_API}/api/ventas-por-anuncio`, { headers: { Authorization: `Bearer ${auraToken}` } });
       if (resVentas.ok) {
         const ventasInfo = await resVentas.json();
         const adIdToCampaignId = {};

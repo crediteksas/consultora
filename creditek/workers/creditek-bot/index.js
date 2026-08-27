@@ -1572,6 +1572,37 @@ function supabaseUrl() {
   return configuredSupabaseUrl;
 }
 __name(supabaseUrl, "supabaseUrl");
+var AURA_SUPABASE_ANON_KEY = "sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW";
+function normalizarAccesoAura(value) {
+  return Array.isArray(value) ? value[0] || {} : value && typeof value === "object" ? value : {};
+}
+__name(normalizarAccesoAura, "normalizarAccesoAura");
+async function autenticarAuraOwner(request, fetcher = fetch) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return false;
+  const token = authorization.slice(7).trim();
+  if (!token) return false;
+  const headers2 = { apikey: AURA_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` };
+  try {
+    const [userResponse, accessResponse] = await Promise.all([
+      fetcher(`${supabaseUrl()}/auth/v1/user`, { headers: headers2 }),
+      fetcher(`${supabaseUrl()}/rest/v1/rpc/aura_my_access`, {
+        method: "POST",
+        headers: { ...headers2, "Content-Type": "application/json" },
+        body: "{}"
+      })
+    ]);
+    if (!userResponse.ok || !accessResponse.ok) return false;
+    const user = await userResponse.json();
+    const access = normalizarAccesoAura(await accessResponse.json());
+    if (!user?.id || !user?.email || access.user_id !== user.id || access.email?.toLowerCase() !== user.email.toLowerCase() || access.active === false) return false;
+    if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return false;
+    return Array.isArray(access.apps) && access.apps.some((grant) => grant?.role_id === "aura.owner");
+  } catch {
+    return false;
+  }
+}
+__name(autenticarAuraOwner, "autenticarAuraOwner");
 function norm2(s) {
   return s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -1875,7 +1906,7 @@ var index_default = {
     }
     const url = new URL(request.url);
     const sk = env2.SUPABASE_SERVICE_KEY;
-    const cors = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json", "Access-Control-Allow-Headers": "Content-Type, X-Worker-Secret", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
+    const cors = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json", "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Worker-Secret", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (url.pathname === "/__staging/test-handoff") {
       if (env2.ENVIRONMENT !== "staging") return new Response("Not found", { status: 404 });
@@ -1991,7 +2022,49 @@ var index_default = {
         ...body2.scenario === "post_confirm_failure" ? { trace } : {}
       }), { headers: cors });
     }
-    const autorizado = !!env2.WORKER_SHARED_SECRET && request.headers.get("X-Worker-Secret") === env2.WORKER_SHARED_SECRET;
+    const autorizado = await autenticarAuraOwner(request) || !!env2.WORKER_SHARED_SECRET && request.headers.get("X-Worker-Secret") === env2.WORKER_SHARED_SECRET;
+    if (url.pathname === "/api/reintentar-handoff" && request.method === "POST") {
+      if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
+      const body2 = await request.json().catch(() => ({}));
+      const telefono = String(body2.telefono || "").replace(/\D/g, "");
+      if (!/^57\d{10}$/.test(telefono)) {
+        return new Response(JSON.stringify({ error: "Teléfono inválido" }), { status: 400, headers: cors });
+      }
+      const cliente = await buscarCliente(telefono, sk);
+      if (!cliente) return new Response(JSON.stringify({ error: "Cliente no encontrado" }), { status: 404, headers: cors });
+      if (cliente.estado_funnel === "transferido_asesor") {
+        return new Response(JSON.stringify({ ok: true, status: "ya_transferido" }), { headers: cors });
+      }
+      if (!cliente.tienda_id) {
+        return new Response(JSON.stringify({ error: "Cliente sin tienda asignada" }), { status: 409, headers: cors });
+      }
+      const tienda = await buscarTiendaPorId(cliente.tienda_id, sk);
+      if (!tienda?.contacto || !tienda?.telefono) {
+        return new Response(JSON.stringify({ error: "Tienda sin datos de contacto" }), { status: 409, headers: cors });
+      }
+      const raw = await env2.CONVERSATIONS.get(telefono);
+      const conv = raw ? JSON.parse(raw) : { estado: "DATOS_MIN", canal: "whatsapp", historial: [], ultimo_mensaje: Date.now(), tiendas_intentadas: [] };
+      conv.nombre = conv.nombre || cliente.nombre;
+      conv.cedula = conv.cedula || cliente.cedula;
+      conv.celular = conv.celular || cliente.telefono_contacto || telefono;
+      conv.tienda_id = tienda.id;
+      conv.tienda_nombre = tienda.nombre;
+      conv.tienda_nombre_comercial = tienda.nombre_comercial;
+      conv.tienda_genero = tienda.genero;
+      conv.tienda_tipo = tienda.tipo;
+      conv.tienda_contacto = tienda.contacto;
+      conv.tienda_telefono = tienda.telefono;
+      conv.ciudad = tienda.ciudad;
+      const sendFn = (mensaje) => enviarMensajeWA(telefono, mensaje, env2.PHONE_NUMBER_ID, env2.WHATSAPP_TOKEN);
+      try {
+        await hacerHandoff(conv, telefono, sendFn, env2, sk, "manual_recovery");
+        await env2.CONVERSATIONS.put(telefono, JSON.stringify(conv), { expirationTtl: 86400 * 7 });
+        return new Response(JSON.stringify({ ok: true, status: "transferido", tienda_id: tienda.id }), { headers: cors });
+      } catch (error) {
+        console.error("[HANDOFF-RECOVERY] fallo", { telefono, tiendaId: tienda.id, error: error instanceof Error ? error.message : "unknown" });
+        return new Response(JSON.stringify({ error: "No se pudo completar el handoff" }), { status: 502, headers: cors });
+      }
+    }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
       const pc = /* @__PURE__ */ __name((r) => parseInt(r.headers.get("Content-Range")?.split("/")[1] ?? "0", 10), "pc");
@@ -2918,10 +2991,21 @@ ${siguienteDato}` : respuestaDuda;
 }
 __name(procesarMensaje, "procesarMensaje");
 async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal) {
+  if ((!conv.tienda_telefono || !conv.tienda_contacto) && conv.tienda_id) {
+    const tiendaPersistida = await buscarTiendaPorId(conv.tienda_id, sk);
+    if (tiendaPersistida) {
+      conv.tienda_nombre = tiendaPersistida.nombre;
+      conv.tienda_nombre_comercial = tiendaPersistida.nombre_comercial;
+      conv.tienda_genero = tiendaPersistida.genero;
+      conv.tienda_tipo = tiendaPersistida.tipo;
+      conv.tienda_contacto = tiendaPersistida.contacto;
+      conv.tienda_telefono = tiendaPersistida.telefono;
+      conv.ciudad = tiendaPersistida.ciudad;
+    }
+  }
   if (!conv.tienda_telefono || !conv.tienda_contacto) {
-    await sendFn(MSG.CIUDAD_PREGUNTA);
-    conv.estado = "CIUDAD";
-    return;
+    console.error("[HANDOFF] destino incompleto", { clienteId, tiendaId: conv.tienda_id || null });
+    throw new Error("handoff_destination_incomplete");
   }
   if (!conv.nombre) {
     console.warn("[HANDOFF-WARN] conv.nombre vac\xEDo al hacer handoff", {

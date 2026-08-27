@@ -447,6 +447,13 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
     </a>
 
+    <div class="sidebar-section">Clientes</div>
+    <a class="nav-item" data-aura-clientes onclick="openClientesModule('search','Buscar / Registrar',this)"><span class="nav-icon"><i data-lucide="user-round-search"></i></span><span class="nav-label">Buscar / Registrar</span></a>
+    <a class="nav-item" data-aura-clientes onclick="openClientesModule('profile','Perfil cliente',this)"><span class="nav-icon"><i data-lucide="contact-round"></i></span><span class="nav-label">Perfil cliente</span></a>
+    <a class="nav-item" data-aura-clientes onclick="openClientesModule('sales','Ventas asociadas',this)"><span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Ventas asociadas</span></a>
+    <a class="nav-item" data-aura-clientes onclick="openClientesModule('validations','Validaciones',this)"><span class="nav-icon"><i data-lucide="shield-check"></i></span><span class="nav-label">Validaciones</span></a>
+    <a class="nav-item" data-aura-clientes onclick="openClientesModule('portfolio','Cartera',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Cartera</span></a>
+
     <div class="sidebar-section">Cartera</div>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Resumen</span></a>
     <a class="nav-item" data-aura-cartera onclick="openCarteraModule('daily','Gestión del día',this)"><span class="nav-icon"><i data-lucide="list-checks"></i></span><span class="nav-label">Gestión del día</span></a>
@@ -1185,6 +1192,11 @@ function openCarteraModule(route, title, element) {
   openModule(`/creditek/agentes/aura-cartera.html#${safeRoute}`, `Cartera · ${title}`, element, 'cartera_sandbox');
 }
 
+function openClientesModule(route, title, element) {
+  const safeRoute = ['search', 'profile', 'sales', 'validations', 'portfolio'].includes(route) ? route : 'search';
+  openModule(`/creditek/agentes/aura-clientes.html#${safeRoute}`, `Clientes · ${title}`, element, 'client_registry_sandbox');
+}
+
 function closeIframe() {
   moduleLoadId += 1;
   clearTimeout(moduleLoadTimer);
@@ -1410,7 +1422,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
-  openCarteraModule,
+  openCarteraModule, openClientesModule,
   openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
   openRegistrationLinksPanel, closeRegistrationLinksPanel, closeGeneratedLink,

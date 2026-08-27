@@ -37,5 +37,12 @@
       appId: 'cartera_sandbox',
       permission: 'sandbox.local',
     }),
+    clientes: Object.freeze({
+      id: 'client-registry-sandbox',
+      name: 'Clientes',
+      path: '/creditek/agentes/aura-clientes.html',
+      appId: 'client_registry_sandbox',
+      permission: 'sandbox.local',
+    }),
   });
 })(typeof window !== 'undefined' ? window : globalThis);

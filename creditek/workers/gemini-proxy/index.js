@@ -324,7 +324,17 @@ async function llamarGemini3Pro_(env, { prompt, imageUrl, imageBase64, imageMime
   if (!env.GCP_WIF_PRIVATE_KEY || !env.GCP_WIF_AUDIENCE) {
     return err("Falta GCP_WIF_PRIVATE_KEY para gemini3pro", 401);
   }
-  const token = await getVertexToken(env);
+  let token;
+  try {
+    token = await getVertexToken(env);
+  } catch (error) {
+    console.error("[GEMINI-WIF]", JSON.stringify({
+      error: String(error?.message || error || "Error desconocido")
+        .replace(/[\r\n]+/g, " ")
+        .slice(0, 240)
+    }));
+    return err("No se pudo autenticar Vertex AI. Revisa la configuración WIF.", 502);
+  }
   const g3url = `https://aiplatform.googleapis.com/v1/projects/${env.GCP_PROJECT_ID}/locations/global/publishers/google/models/gemini-3-pro-image:generateContent`;
   const parts = [];
   if (imageUrl) {

@@ -3,8 +3,7 @@ main               = "index.js"
 compatibility_date = "2024-09-23"
 
 [vars]
-# Recurso completo del WIF provider. El nombre del pool es "creditek-cloudflare"
-# (sin guión extra al inicio — el original tenía un typo: "-creditek-cloudflare").
+# Recurso completo del WIF provider existente en GCP.
 GCP_WIF_AUDIENCE = "//iam.googleapis.com/projects/564444450181/locations/global/workloadIdentityPools/-creditek-cloudflare/providers/cloudflare-workers"
 GCP_PROJECT_ID   = "creditek-imagen"
 GCP_SA_EMAIL     = "creditek-vertex-sa@creditek-imagen.iam.gserviceaccount.com"

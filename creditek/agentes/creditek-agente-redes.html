@@ -2646,7 +2646,7 @@ async function cambiarDetalleDia() {
 async function loadLogoBase64() {
   if (logoBase64) return logoBase64;
   try {
-    const resp = await fetch('logos/creditek_logo_corregido_alta.png');
+    const resp = await fetch('/creditek/shared/branding/creditek-logo.png');
     if (!resp.ok) return null;
     const blob = await resp.blob();
     return new Promise(resolve => {

@@ -6,9 +6,9 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '../..');
 const read = relative => readFile(path.join(root, relative), 'utf8');
 
-test('Cartera ocupa una sección propia entre Agentes IA y Comercial', async () => {
+test('Clientes, NOVA y Cartera ocupan secciones propias entre Agentes IA y Comercial', async () => {
   const shell = await read('creditek/agentes/index.html');
-  assert.match(shell, /Agentes IA[\s\S]*<div class="sidebar-section">Cartera<\/div>[\s\S]*<div class="sidebar-section">Comercial<\/div>/);
+  assert.match(shell, /Agentes IA[\s\S]*data-aura-owner-module>Clientes<\/div>[\s\S]*data-aura-owner-module>NOVA Autorizaciones<\/div>[\s\S]*data-aura-owner-module>Cartera<\/div>[\s\S]*<div class="sidebar-section">Comercial<\/div>/);
   for (const route of ['summary', 'daily', 'segments', 'customers', 'reconciliation', 'promises', 'reports', 'conversations', 'optouts', 'kpis', 'settings']) {
     assert.match(shell, new RegExp(`openCarteraModule\\('${route}'`));
   }
@@ -17,7 +17,7 @@ test('Cartera ocupa una sección propia entre Agentes IA y Comercial', async () 
 test('el módulo Cartera conserva datos ficticios y solo consulta el puente sandbox local', async () => {
   const source = await read('creditek/agentes/aura-cartera.js');
   const html = await read('creditek/agentes/aura-cartera.html');
-  assert.match(html, /SANDBOX · DATOS FICTICIOS · SIN ENVÍOS/);
+  assert.match(html, /Canal Creditek Pagos pendiente de activación Meta · DATOS FICTICIOS · SIN ENVÍOS/);
   assert.match(source, /fetch\('\/api\/cartera\/customers'\)/);
   assert.doesNotMatch(source, /supabase\.co|graph\.facebook|PHONE_NUMBER_ID|WHATSAPP_TOKEN|wrangler|service_role|postgres(?:ql)?:\/\//i);
   assert.match(source, /únicamente en sandbox|solo en sandbox/);
@@ -63,5 +63,5 @@ test('la configuración registra Cartera sin alterar permisos de Sofía', async 
   const config = await read('creditek/agentes/aura-module-config.js');
   assert.match(config, /sofia\.use/);
   assert.match(config, /appId: 'cartera_sandbox'/);
-  assert.match(config, /permission: 'sandbox\.local'/);
+  assert.match(config, /permission: 'owner\.review'/);
 });

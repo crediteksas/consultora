@@ -447,25 +447,33 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
     </a>
 
-    <div class="sidebar-section">NOVA Autorizaciones</div>
-    <a class="nav-item" data-aura-nova onclick="openNovaModule('search','Buscar / Registrar',this)"><span class="nav-icon"><i data-lucide="user-round-search"></i></span><span class="nav-label">Buscar / Registrar</span></a>
-    <a class="nav-item" data-aura-nova onclick="openNovaModule('profile','Perfil cliente',this)"><span class="nav-icon"><i data-lucide="contact-round"></i></span><span class="nav-label">Perfil cliente</span></a>
-    <a class="nav-item" data-aura-nova onclick="openNovaModule('sales','Ventas asociadas',this)"><span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Ventas asociadas</span></a>
-    <a class="nav-item" data-aura-nova onclick="openNovaModule('validations','Validaciones',this)"><span class="nav-icon"><i data-lucide="shield-check"></i></span><span class="nav-label">Validaciones</span></a>
-    <a class="nav-item" data-aura-nova onclick="openNovaModule('portfolio','Cartera',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Cartera</span></a>
+    <div class="sidebar-section" data-aura-owner-module>Clientes</div>
+    <a class="nav-item" data-aura-owner-module onclick="openClientsModule('search','Buscar / Registrar',this)"><span class="nav-icon"><i data-lucide="user-round-search"></i></span><span class="nav-label">Buscar / Registrar</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openClientsModule('profile','Perfil',this)"><span class="nav-icon"><i data-lucide="contact-round"></i></span><span class="nav-label">Perfil</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openClientsModule('sales','Ventas asociadas',this)"><span class="nav-icon"><i data-lucide="shopping-bag"></i></span><span class="nav-label">Ventas asociadas</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openClientsModule('validations','Validaciones',this)"><span class="nav-icon"><i data-lucide="shield-check"></i></span><span class="nav-label">Validaciones</span></a>
 
-    <div class="sidebar-section">Cartera</div>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Resumen</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('daily','Gestión del día',this)"><span class="nav-icon"><i data-lucide="list-checks"></i></span><span class="nav-label">Gestión del día</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('segments','Segmentos',this)"><span class="nav-icon"><i data-lucide="layers-3"></i></span><span class="nav-label">Segmentos</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('customers','Clientes',this)"><span class="nav-icon"><i data-lucide="users"></i></span><span class="nav-label">Clientes</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('reconciliation','Conciliaciones',this)"><span class="nav-icon"><i data-lucide="arrow-left-right"></i></span><span class="nav-label">Conciliaciones</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('promises','Promesas',this)"><span class="nav-icon"><i data-lucide="badge-check"></i></span><span class="nav-label">Promesas</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('reports','Pagos reportados',this)"><span class="nav-icon"><i data-lucide="receipt-text"></i></span><span class="nav-label">Pagos reportados</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('conversations','Conversaciones',this)"><span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Conversaciones</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('optouts','Opt-outs',this)"><span class="nav-icon"><i data-lucide="shield-x"></i></span><span class="nav-label">Opt-outs</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('kpis','KPIs',this)"><span class="nav-icon"><i data-lucide="chart-no-axes-combined"></i></span><span class="nav-label">KPIs</span></a>
-    <a class="nav-item" data-aura-cartera onclick="openCarteraModule('settings','Configuración',this)"><span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span><span class="nav-label">Configuración</span></a>
+    <div class="sidebar-section" data-aura-owner-module>NOVA Autorizaciones</div>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="layout-dashboard"></i></span><span class="nav-label">Resumen</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('requests','Solicitudes',this)"><span class="nav-icon"><i data-lucide="clipboard-list"></i></span><span class="nav-label">Solicitudes</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('reviews','Pendientes',this)"><span class="nav-icon"><i data-lucide="user-round-check"></i></span><span class="nav-label">Pendientes</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('customers','Clientes',this)"><span class="nav-icon"><i data-lucide="users"></i></span><span class="nav-label">Clientes</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('validations','Validaciones',this)"><span class="nav-icon"><i data-lucide="shield-check"></i></span><span class="nav-label">Validaciones</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('history','Historial',this)"><span class="nav-icon"><i data-lucide="history"></i></span><span class="nav-label">Historial</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openNovaModule('settings','Configuración',this)"><span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span><span class="nav-label">Configuración</span></a>
+
+    <div class="sidebar-section" data-aura-owner-module>Cartera</div>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('summary','Resumen',this)"><span class="nav-icon"><i data-lucide="wallet-cards"></i></span><span class="nav-label">Resumen</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('daily','Gestión del día',this)"><span class="nav-icon"><i data-lucide="list-checks"></i></span><span class="nav-label">Gestión del día</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('segments','Segmentos',this)"><span class="nav-icon"><i data-lucide="layers-3"></i></span><span class="nav-label">Segmentos</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('customers','Clientes',this)"><span class="nav-icon"><i data-lucide="users"></i></span><span class="nav-label">Clientes</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('reconciliation','Conciliaciones',this)"><span class="nav-icon"><i data-lucide="arrow-left-right"></i></span><span class="nav-label">Conciliaciones</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('promises','Promesas',this)"><span class="nav-icon"><i data-lucide="badge-check"></i></span><span class="nav-label">Promesas</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('reports','Pagos reportados',this)"><span class="nav-icon"><i data-lucide="receipt-text"></i></span><span class="nav-label">Pagos reportados</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('conversations','Conversaciones',this)"><span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Conversaciones</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('optouts','Opt-outs',this)"><span class="nav-icon"><i data-lucide="shield-x"></i></span><span class="nav-label">Opt-outs</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('kpis','KPIs',this)"><span class="nav-icon"><i data-lucide="chart-no-axes-combined"></i></span><span class="nav-label">KPIs</span></a>
+    <a class="nav-item" data-aura-owner-module onclick="openCarteraModule('settings','Configuración',this)"><span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span><span class="nav-label">Configuración</span></a>
 
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" data-aura-app="portal_b2b" onclick="openModule('https://registro.crediteksas.com/creditek/portal/','Portal de Pedidos B2B',this,'portal_b2b')">
@@ -755,6 +763,7 @@ let incidentRequestId = '';
 const auraTechnicalErrors = [];
 const SIDEBAR_STORAGE_KEY = 'aura_sidebar_collapsed';
 const AURA_MODULES = Object.values(window.AURA_MODULES || {});
+const OWNER_ONLY_APP_IDS = new Set(['clientes_sandbox', 'nova_sandbox', 'cartera_sandbox']);
 
 function moduleForPath(value) {
   if (!value) return null;
@@ -773,7 +782,9 @@ function buildEmbeddedModuleUrl(value) {
 }
 
 function canOpenModule(module) {
-  return Boolean(module && hasPermission(auraAccess, module.appId, module.permission));
+  if (!module) return false;
+  if (OWNER_ONLY_APP_IDS.has(module.appId)) return isAuraOwner();
+  return hasPermission(auraAccess, module.appId, module.permission);
 }
 
 function applyAuraSidebar(collapsed, persist = false) {
@@ -913,6 +924,9 @@ function renderAuthorizedModules() {
     element.hidden = !allowed;
   });
   document.querySelectorAll('[data-aura-owner-only]').forEach(element => {
+    element.hidden = !isAuraOwner();
+  });
+  document.querySelectorAll('[data-aura-owner-module]').forEach(element => {
     element.hidden = !isAuraOwner();
   });
 }
@@ -1138,6 +1152,10 @@ function showSection(id, el) {
 }
 
 async function openModule(url, title, el, appId = '') {
+  if (OWNER_ONLY_APP_IDS.has(appId) && !isAuraOwner()) {
+    showToast('Módulo habilitado únicamente para revisión de Oscar.', '#EF4444');
+    return;
+  }
   if (appId === 'portal_b2b' && !hasPermission(auraAccess, appId, 'portal.read')) {
     showToast('No tienes permiso para abrir Portal B2B.', '#EF4444');
     return;
@@ -1192,8 +1210,13 @@ function openCarteraModule(route, title, element) {
   openModule(`/creditek/agentes/aura-cartera.html#${safeRoute}`, `Cartera · ${title}`, element, 'cartera_sandbox');
 }
 
+function openClientsModule(route, title, element) {
+  const safeRoute = ['search', 'profile', 'sales', 'validations'].includes(route) ? route : 'search';
+  openModule(`/creditek/agentes/aura-nova.html#${safeRoute}`, `Clientes · ${title}`, element, 'clientes_sandbox');
+}
+
 function openNovaModule(route, title, element) {
-  const safeRoute = ['search', 'profile', 'sales', 'validations', 'portfolio'].includes(route) ? route : 'search';
+  const safeRoute = ['summary', 'requests', 'reviews', 'customers', 'validations', 'history', 'settings'].includes(route) ? route : 'summary';
   openModule(`/creditek/agentes/aura-nova.html#${safeRoute}`, `NOVA · ${title}`, element, 'nova_sandbox');
 }
 
@@ -1422,7 +1445,7 @@ if (document.readyState === 'loading') {
 
 Object.assign(window, {
   showSection, openModule, openModuleFromCard, closeIframe, retryModule,
-  openCarteraModule, openNovaModule,
+  openCarteraModule, openClientsModule, openNovaModule,
   openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
   openRegistrationLinksPanel, closeRegistrationLinksPanel, closeGeneratedLink,

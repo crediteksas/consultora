@@ -52,6 +52,11 @@ test('la recuperación owner conserva el canal real en la auditoría del handoff
   );
 });
 
+test('la reserva mantiene compatibilidad con response_key obligatorio', async () => {
+  const worker = await read('creditek/workers/creditek-bot/index.js');
+  assert.match(worker, /response_key: input\.idempotencyKey/);
+});
+
 test('wrangler despliega el artefacto real del bot', async () => {
   const config = await read('creditek/workers/creditek-bot/wrangler.toml');
   assert.match(config, /^main = "index\.js"$/m);

@@ -39,6 +39,7 @@ export async function reservarHandoff(
     method: 'POST',
     headers: { ...headers(serviceKey, true), Prefer: 'resolution=ignore-duplicates,return=representation' },
     body: JSON.stringify({
+      response_key: input.idempotencyKey,
       event_kind: 'advisor_handoff',
       idempotency_key: input.idempotencyKey,
       destination_id: input.destinationId,

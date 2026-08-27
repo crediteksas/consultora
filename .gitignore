@@ -5,6 +5,8 @@ credentials.json
 .dev.vars
 !.dev.vars.example
 config/generated/
+wif-private.pem
+*.pem
 config/kora-environment.local.js
 node_modules/
 token.json

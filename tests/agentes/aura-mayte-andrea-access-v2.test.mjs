@@ -56,3 +56,15 @@ test('shell consume permisos explícitos de Convenios, Cartera y Sistema', async
   assert.match(html, /data-aura-capability="cartera\.read"/);
   assert.match(html, /data-aura-capability="aura\.config"/);
 });
+
+test('las páginas compartidas vuelven a validar la ruta directa', async () => {
+  const [nova, cartera] = await Promise.all([
+    readFile(new URL('../../creditek/agentes/aura-nova.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../creditek/agentes/aura-cartera.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(nova, /routeAllowed\(requestedRoute\)\?requestedRoute:'denied'/);
+  assert.match(nova, /AURA_CAPABILITIES\.CONSULTAS/);
+  assert.match(nova, /AURA_CAPABILITIES\.NOVA/);
+  assert.match(cartera, /hasAuraCapability\(carteraAccess,AURA_CAPABILITIES\.CARTERA\)/);
+  assert.match(`${nova}\n${cartera}`, /HTTP 403/);
+});

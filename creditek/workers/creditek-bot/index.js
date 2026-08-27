@@ -1784,8 +1784,10 @@ function extraerCorreo(texto) {
 }
 __name(extraerCorreo, "extraerCorreo");
 var MSG = {
-  OPTIN: "\xA1Hola! Soy Sof\xEDa, de Creditek \u{1F60A} Te ayudo a llevarte tu celular nuevo hoy mismo. Antes de seguir, \xBFme autorizas guardar tus datos para contarte de nuestras promos?",
+  OPTIN: "\xA1Hola! Soy Sof\xEDa, de Creditek \u{1F60A} Te ayudo a llevarte tu celular nuevo hoy mismo. Para atender tu solicitud, \xBFautorizas a Creditek S.A.S. a usar los datos que compartas durante esta conversaci\xF3n?",
   OPTIN_NO: "Entendido, no hay problema \u{1F64F} Si cambias de opini\xF3n aqu\xED estamos. \xA1Que tengas un buen d\xEDa!",
+  OPTIN_MARKETING: "\xBFTambi\xE9n autorizas a Creditek S.A.S. a enviarte por WhatsApp promociones, productos y ofertas? Es opcional y tu respuesta no afecta esta atenci\xF3n. Puedes retirar la autorizaci\xF3n en cualquier momento escribiendo SALIR. Pol\xEDtica: https://aura.crediteksas.com/creditek/legal/",
+  OPTIN_MARKETING_NO: "Perfecto. No te enviaremos campa\xF1as por WhatsApp y continuaremos atendiendo tu solicitud \u{1F60A}",
   CIERRE_INTERES: "Entendido, no hay problema \u{1F64F} No te escribir\xE9 nuevamente sobre esta solicitud.",
   SOLO_PRODUCTOS: "Entiendo \u{1F60A} En Creditek no manejamos pr\xE9stamos de dinero en efectivo; te ayudamos a comprar celulares y otros equipos a cr\xE9dito.",
   // FIX v27, 13-jul-2026: antes preguntaba genérico "¿En qué te puedo ayudar
@@ -2161,6 +2163,8 @@ Gu\xE1rdalo en favoritos \u{1F60A} \xBFNecesitas algo m\xE1s?`;
       const MAPA_BOTON_RAPIDO = {
         optin_si: "acepto",
         optin_no: "no, gracias",
+        marketing_si: "acepto",
+        marketing_no: "no, gracias",
         credito: "cr\xE9dito",
         contado: "contado"
       };
@@ -2215,7 +2219,7 @@ Gu\xE1rdalo en favoritos \u{1F60A} \xBFNecesitas algo m\xE1s?`;
     return new Response("OK", { status: 200 });
   }
 };
-async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn, env2, sk) {
+async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn, env2, sk, sourceMessageId) {
   const raw = await env2.CONVERSATIONS.get(clienteId);
   let conv = raw ? JSON.parse(raw) : null;
   const ahora = Date.now();
@@ -2294,7 +2298,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
   push("Cliente", texto);
   let respuesta = "";
   let botones;
-  if (conv.estado !== "OPTIN" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto)) {
+  if (conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto)) {
     conv.estado = "FIN";
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -2335,7 +2339,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     await save();
     return;
   }
-  if (conv.optin_aceptado && conv.estado !== "OPTIN") {
+  if (conv.optin_aceptado && conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING") {
     const respuestaContinuidad = resolverPreguntaDeContinuidad(texto, {
       optinAceptado: conv.optin_aceptado,
       nombre: conv.nombre,
@@ -2436,9 +2440,16 @@ ${siguiente}` : respuestaContinuidad;
         respuesta = MSG.OPTIN_NO;
       } else if (detectaAcepta(texto)) {
         conv.optin_aceptado = true;
-        await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, optin_comercial: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
+        await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
         await avanzarEstadoFunnel(clienteId, "contactado", sk);
-        if (canal === "facebook_dm") {
+        if (canal === "whatsapp") {
+          conv.estado = "OPTIN_MARKETING";
+          respuesta = MSG.OPTIN_MARKETING;
+          botones = [
+            { id: "marketing_si", title: "\u2705 S\xED, autorizo" },
+            { id: "marketing_no", title: "\u274C No, gracias" }
+          ];
+        } else if (canal === "facebook_dm") {
           conv.estado = "CELULAR_FB";
           respuesta = MSG.CELULAR_FB;
         } else if (conv.tienda_id) {
@@ -2465,6 +2476,41 @@ ${siguiente}` : respuestaContinuidad;
           ];
         }
       }
+      break;
+    }
+    case "OPTIN_MARKETING": {
+      const granted = detectaAcepta(texto);
+      const denied = detectaRechaza(texto);
+      if (!granted && !denied) {
+        respuesta = MSG.OPTIN_MARKETING;
+        botones = [
+          { id: "marketing_si", title: "\u2705 S\xED, autorizo" },
+          { id: "marketing_no", title: "\u274C No, gracias" }
+        ];
+        break;
+      }
+      const consentAt = (/* @__PURE__ */ new Date()).toISOString();
+      const consentVersion = "whatsapp_marketing_v1_2026-08-27";
+      await upsertCliente({
+        telefono: clienteId,
+        optin_comercial: granted,
+        optin_whatsapp: granted,
+        optin_fecha: consentAt,
+        optin_canal: "whatsapp",
+        optin_version: consentVersion,
+        optin_evidence_id: sourceMessageId || null
+      }, sk);
+      await registrarConsentimientoWhatsapp({
+        telefono: clienteId,
+        decision: granted ? "granted" : "denied",
+        responseText: texto,
+        sourceMessageId: sourceMessageId || null,
+        consentAt,
+        policyVersion: consentVersion
+      }, sk);
+      if (!conv.producto_interes) conv.producto_interes = "celular (asumido)";
+      conv.estado = "ESCUCHAR";
+      respuesta = granted ? MSG.BIENVENIDA : `${MSG.OPTIN_MARKETING_NO}\n\n${MSG.BIENVENIDA}`;
       break;
     }
     // ── CELULAR_FB ───────────────────────────────────────────────────────────
@@ -3382,6 +3428,31 @@ async function upsertCliente(data, key) {
   }
 }
 __name(upsertCliente, "upsertCliente");
+async function registrarConsentimientoWhatsapp(data, key) {
+  const payload = {
+    telefono: data.telefono,
+    purpose: "comercial_whatsapp",
+    decision: data.decision,
+    policy_version: data.policyVersion,
+    prompt_text: MSG.OPTIN_MARKETING,
+    response_text: data.responseText.trim().slice(0, 240),
+    channel: "whatsapp",
+    source_message_id: data.sourceMessageId,
+    occurred_at: data.consentAt,
+    created_at: data.consentAt
+  };
+  try {
+    const r = await fetch(`${supabaseUrl()}/rest/v1/sofia_consent_events`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok && r.status !== 409) console.error("[SUPABASE-ERROR] registrarConsentimientoWhatsapp fall\xF3:", r.status, await r.text());
+  } catch (e) {
+    console.error("[SUPABASE-EXCEPTION] registrarConsentimientoWhatsapp:", e);
+  }
+}
+__name(registrarConsentimientoWhatsapp, "registrarConsentimientoWhatsapp");
 async function actualizarCliente(telefono, data, key) {
   try {
     const r = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}`, { method: "PATCH", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(data) });
@@ -3547,7 +3618,8 @@ var ConversacionDO = class {
           body.referral,
           sendFn,
           this.env,
-          this.env.SUPABASE_SERVICE_KEY
+          this.env.SUPABASE_SERVICE_KEY,
+          auditoria?.metaId || null
         );
         if (auditoria) {
           await finalizarEventoEnDurable(this.state.storage, auditoria, "respondido", "procesamiento finalizado");

@@ -59,6 +59,7 @@ interface Env {
 
 type Estado =
   | 'OPTIN'
+  | 'OPTIN_MARKETING'
   | 'CELULAR_FB'
   | 'ESCUCHAR'
   | 'MODALIDAD_CIUDAD' // se mantiene por compatibilidad con conversaciones ya en curso al desplegar — ninguna conversación nueva cae aquí desde el Fix 7
@@ -420,8 +421,10 @@ function extraerCorreo(texto: string): string | null {
 // ── Mensajes fijos ────────────────────────────────────────────────────────────
 
 const MSG = {
-  OPTIN: '¡Hola! Soy Sofía, de Creditek 😊 Te ayudo a llevarte tu celular nuevo hoy mismo. Antes de seguir, ¿me autorizas guardar tus datos para contarte de nuestras promos?',
+  OPTIN: '¡Hola! Soy Sofía, de Creditek 😊 Te ayudo a llevarte tu celular nuevo hoy mismo. Para atender tu solicitud, ¿autorizas a Creditek S.A.S. a usar los datos que compartas durante esta conversación?',
   OPTIN_NO: 'Entendido, no hay problema 🙏 Si cambias de opinión aquí estamos. ¡Que tengas un buen día!',
+  OPTIN_MARKETING: '¿También autorizas a Creditek S.A.S. a enviarte por WhatsApp promociones, productos y ofertas? Es opcional y tu respuesta no afecta esta atención. Puedes retirar la autorización en cualquier momento escribiendo SALIR. Política: https://aura.crediteksas.com/creditek/legal/',
+  OPTIN_MARKETING_NO: 'Perfecto. No te enviaremos campañas por WhatsApp y continuaremos atendiendo tu solicitud 😊',
   CIERRE_INTERES: 'Entendido, no hay problema 🙏 No te escribiré nuevamente sobre esta solicitud.',
   SOLO_PRODUCTOS: 'Entiendo 😊 En Creditek no manejamos préstamos de dinero en efectivo; te ayudamos a comprar celulares y otros equipos a crédito.',
   // FIX v27, 13-jul-2026: antes preguntaba genérico "¿En qué te puedo ayudar
@@ -711,6 +714,7 @@ export default {
       // en vez de tocar) sigue funcionando exactamente igual que antes.
       const MAPA_BOTON_RAPIDO: Record<string, string> = {
         optin_si: 'acepto', optin_no: 'no, gracias',
+        marketing_si: 'acepto', marketing_no: 'no, gracias',
         credito: 'crédito', contado: 'contado',
       };
       const esBotonRapido = msg.type === 'interactive' && msg.interactive?.type === 'button_reply';
@@ -779,7 +783,8 @@ async function procesarMensaje(
   clienteId: string, texto: string, canal: string, refQr: string | null, referral: any,
   // FIX v21, 13-jul-2026: sendFn acepta botones opcionales (Quick Reply) —
   // solo se usan en WhatsApp; el wrapper de Facebook en ConversacionDO los ignora.
-  sendFn: (msg: string, botones?: { id: string; title: string }[]) => Promise<void>, env: Env, sk: string
+  sendFn: (msg: string, botones?: { id: string; title: string }[]) => Promise<void>, env: Env, sk: string,
+  sourceMessageId?: string | null
 ) {
   const raw = await env.CONVERSATIONS.get(clienteId);
   let conv: Conv = raw ? JSON.parse(raw) : null;
@@ -850,7 +855,7 @@ async function procesarMensaje(
 
   // Un rechazo comercial explícito cierra cualquier flujo previo al handoff.
   // Al marcarlo perdido, el cron de seguimiento deja de incluirlo.
-  if (conv.estado !== 'OPTIN' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto)) {
+  if (conv.estado !== 'OPTIN' && conv.estado !== 'OPTIN_MARKETING' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto)) {
     conv.estado = 'FIN';
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -904,7 +909,7 @@ async function procesarMensaje(
     return;
   }
 
-  if (conv.optin_aceptado && conv.estado !== 'OPTIN') {
+  if (conv.optin_aceptado && conv.estado !== 'OPTIN' && conv.estado !== 'OPTIN_MARKETING') {
     const respuestaContinuidad = resolverPreguntaDeContinuidad(texto, {
       optinAceptado: conv.optin_aceptado,
       nombre: conv.nombre,
@@ -1011,9 +1016,16 @@ async function procesarMensaje(
         conv.estado = 'FIN'; respuesta = MSG.OPTIN_NO;
       } else if (detectaAcepta(texto)) {
         conv.optin_aceptado = true;
-        await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, optin_comercial: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
+        await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
         await avanzarEstadoFunnel(clienteId, 'contactado', sk); // FIX 03-jul-2026
-        if (canal === 'facebook_dm') {
+        if (canal === 'whatsapp') {
+          conv.estado = 'OPTIN_MARKETING';
+          respuesta = MSG.OPTIN_MARKETING;
+          botones = [
+            { id: 'marketing_si', title: '✅ Sí, autorizo' },
+            { id: 'marketing_no', title: '❌ No, gracias' },
+          ];
+        } else if (canal === 'facebook_dm') {
           conv.estado = 'CELULAR_FB'; respuesta = MSG.CELULAR_FB;
         } else if (conv.tienda_id) {
           // FIX v27, 13-jul-2026: se asume "celular" como interés por defecto
@@ -1055,6 +1067,46 @@ async function procesarMensaje(
           ];
         }
       }
+      break;
+    }
+
+    // Consentimiento comercial independiente: rechazarlo nunca impide que
+    // Sofía continúe atendiendo la solicitud iniciada por el cliente.
+    case 'OPTIN_MARKETING': {
+      const granted = detectaAcepta(texto);
+      const denied = detectaRechaza(texto);
+      if (!granted && !denied) {
+        respuesta = MSG.OPTIN_MARKETING;
+        botones = [
+          { id: 'marketing_si', title: '✅ Sí, autorizo' },
+          { id: 'marketing_no', title: '❌ No, gracias' },
+        ];
+        break;
+      }
+
+      const consentAt = new Date().toISOString();
+      const consentVersion = 'whatsapp_marketing_v1_2026-08-27';
+      await upsertCliente({
+        telefono: clienteId,
+        optin_comercial: granted,
+        optin_whatsapp: granted,
+        optin_fecha: consentAt,
+        optin_canal: 'whatsapp',
+        optin_version: consentVersion,
+        optin_evidence_id: sourceMessageId || null,
+      }, sk);
+      await registrarConsentimientoWhatsapp({
+        telefono: clienteId,
+        decision: granted ? 'granted' : 'denied',
+        responseText: texto,
+        sourceMessageId: sourceMessageId || null,
+        consentAt,
+        policyVersion: consentVersion,
+      }, sk);
+
+      if (!conv.producto_interes) conv.producto_interes = 'celular (asumido)';
+      conv.estado = 'ESCUCHAR';
+      respuesta = granted ? MSG.BIENVENIDA : `${MSG.OPTIN_MARKETING_NO}\n\n${MSG.BIENVENIDA}`;
       break;
     }
 
@@ -2233,6 +2285,38 @@ async function upsertCliente(data: Record<string,any>, key: string) {
   }
 }
 
+async function registrarConsentimientoWhatsapp(data: {
+  telefono: string;
+  decision: 'granted' | 'denied';
+  responseText: string;
+  sourceMessageId: string | null;
+  consentAt: string;
+  policyVersion: string;
+}, key: string) {
+  const payload = {
+    telefono: data.telefono,
+    purpose: 'comercial_whatsapp',
+    decision: data.decision,
+    policy_version: data.policyVersion,
+    prompt_text: MSG.OPTIN_MARKETING,
+    response_text: data.responseText.trim().slice(0, 240),
+    channel: 'whatsapp',
+    source_message_id: data.sourceMessageId,
+    occurred_at: data.consentAt,
+    created_at: data.consentAt,
+  };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/sofia_consent_events`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok && r.status !== 409) console.error('[SUPABASE-ERROR] registrarConsentimientoWhatsapp falló:', r.status, await r.text());
+  } catch (e) {
+    console.error('[SUPABASE-EXCEPTION] registrarConsentimientoWhatsapp:', e);
+  }
+}
+
 async function actualizarCliente(telefono: string, data: Record<string,any>, key: string) {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}`, { method: 'PATCH', headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(data) });
@@ -2452,7 +2536,7 @@ export class ConversacionDO {
       try {
         await procesarMensaje(
           body.clienteId, body.texto, body.canal, body.refQr, body.referral,
-          sendFn, this.env, this.env.SUPABASE_SERVICE_KEY
+          sendFn, this.env, this.env.SUPABASE_SERVICE_KEY, auditoria?.metaId || null
         );
         if (auditoria) {
           await finalizarEventoEnDurable(this.state.storage, auditoria, 'respondido', 'procesamiento finalizado');

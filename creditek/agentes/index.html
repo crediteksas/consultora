@@ -152,6 +152,15 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .sidebar-brand-logo{display:block;width:82px;height:26px;object-fit:contain;background:#fff;border:1px solid #E2E8F0;border-radius:6px;padding:3px 6px;box-sizing:border-box}
 
 .sidebar-section{padding:20px 12px 8px;font-size:10px;font-weight:600;color:#94A3B8;letter-spacing:1.5px;text-transform:uppercase}
+.sidebar-section[data-sidebar-group]{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:transparent;text-align:left;cursor:pointer;font-family:inherit}
+.sidebar [hidden]{display:none!important}
+.sidebar-section[data-sidebar-group]:hover,.sidebar-section[data-sidebar-group]:focus-visible{color:var(--navy);outline:none}
+.sidebar-group-chevron{display:grid;place-items:center;width:18px;height:18px;transition:transform .18s ease;color:#64748B}
+.sidebar-group-chevron svg{width:14px;height:14px}
+.sidebar-section[aria-expanded="true"] .sidebar-group-chevron{transform:rotate(180deg);color:var(--turq2)}
+.sidebar-group-items{display:grid;grid-template-rows:0fr;transition:grid-template-rows .2s ease}
+.sidebar-group-items.open{grid-template-rows:1fr}
+.sidebar-group-items-inner{min-height:0;overflow:hidden}
 .nav-item{
   display:flex;align-items:center;gap:10px;
   padding:9px 12px;margin:1px 4px;
@@ -180,6 +189,8 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 #app.sidebar-collapsed .sidebar-brand-name{font-size:0}
 #app.sidebar-collapsed .sidebar-brand-name::after{content:'A';font-size:18px;letter-spacing:0}
 #app.sidebar-collapsed .sidebar-brand-by,#app.sidebar-collapsed .sidebar-brand-logo,#app.sidebar-collapsed .sidebar-section,#app.sidebar-collapsed .nav-label,#app.sidebar-collapsed .nav-badge,#app.sidebar-collapsed .aura-version,#app.sidebar-collapsed .sidebar-owner{display:none}
+#app.sidebar-collapsed .sidebar-group-items{grid-template-rows:1fr}
+#app.sidebar-collapsed .sidebar-group-items-inner{overflow:visible}
 #app.sidebar-collapsed .sidebar-toggle{top:auto;right:18px;bottom:5px}
 #app.sidebar-collapsed .nav-item{justify-content:center;margin:4px 7px;padding:10px 0;gap:0}
 #app.sidebar-collapsed .nav-icon{width:20px}
@@ -762,6 +773,7 @@ let incidentReport = '';
 let incidentRequestId = '';
 const auraTechnicalErrors = [];
 const SIDEBAR_STORAGE_KEY = 'aura_sidebar_collapsed';
+const SIDEBAR_GROUP_STORAGE_KEY = 'aura_sidebar_open_group';
 const AURA_MODULES = Object.values(window.AURA_MODULES || {});
 const OWNER_ONLY_APP_IDS = new Set(['clientes_sandbox', 'nova_sandbox', 'cartera_sandbox']);
 
@@ -813,6 +825,81 @@ function restoreAuraSidebar() {
   let collapsed = false;
   try { collapsed = sessionStorage.getItem(SIDEBAR_STORAGE_KEY) === '1'; } catch (_) {}
   applyAuraSidebar(collapsed);
+}
+
+function sidebarGroupKey(label) {
+  return String(label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-');
+}
+
+function setOpenSidebarGroup(groupKey = '', persist = true) {
+  document.querySelectorAll('[data-sidebar-group]').forEach(header => {
+    const open = header.dataset.sidebarGroup === groupKey;
+    header.setAttribute('aria-expanded', String(open));
+    document.getElementById(header.getAttribute('aria-controls'))?.classList.toggle('open', open);
+  });
+  if (persist) {
+    try { sessionStorage.setItem(SIDEBAR_GROUP_STORAGE_KEY, groupKey); } catch (_) {}
+  }
+}
+
+function toggleSidebarGroup(groupKey) {
+  const header = document.querySelector(`[data-sidebar-group="${groupKey}"]`);
+  setOpenSidebarGroup(header?.getAttribute('aria-expanded') === 'true' ? '' : groupKey);
+}
+
+function openSidebarGroupForItem(item) {
+  const group = item?.closest?.('.sidebar-group-items');
+  if (group?.dataset.sidebarGroupItems) setOpenSidebarGroup(group.dataset.sidebarGroupItems);
+}
+
+function activateNavigationItem(item) {
+  document.querySelectorAll('.nav-item').forEach(node => node.classList.remove('active'));
+  if (item) {
+    item.classList.add('active');
+    openSidebarGroupForItem(item);
+  }
+}
+
+function initializeSidebarGroups() {
+  document.querySelectorAll('.sidebar > .sidebar-section').forEach(section => {
+    const label = section.textContent.trim();
+    if (label === 'Principal' || section.dataset.sidebarGroup) return;
+    const groupKey = sidebarGroupKey(label);
+    const items = [];
+    let sibling = section.nextElementSibling;
+    while (sibling?.classList.contains('nav-item')) {
+      items.push(sibling);
+      sibling = sibling.nextElementSibling;
+    }
+    if (!items.length) return;
+    const group = document.createElement('div');
+    const inner = document.createElement('div');
+    group.className = 'sidebar-group-items';
+    group.id = `sidebar-group-${groupKey}`;
+    group.dataset.sidebarGroupItems = groupKey;
+    inner.className = 'sidebar-group-items-inner';
+    group.append(inner);
+    section.after(group);
+    items.forEach(item => inner.append(item));
+    section.dataset.sidebarGroup = groupKey;
+    section.setAttribute('role', 'button');
+    section.setAttribute('tabindex', '0');
+    section.setAttribute('aria-controls', group.id);
+    section.setAttribute('aria-expanded', 'false');
+    section.innerHTML = `<span>${label}</span><span class="sidebar-group-chevron" aria-hidden="true"><i data-lucide="chevron-down"></i></span>`;
+    section.addEventListener('click', () => toggleSidebarGroup(groupKey));
+    section.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleSidebarGroup(groupKey);
+      }
+    });
+  });
+  let savedGroup = '';
+  try { savedGroup = sessionStorage.getItem(SIDEBAR_GROUP_STORAGE_KEY) || ''; } catch (_) {}
+  const activeItem = document.querySelector('.nav-item.active');
+  const activeGroup = activeItem?.closest?.('.sidebar-group-items')?.dataset.sidebarGroupItems || '';
+  setOpenSidebarGroup(activeGroup || savedGroup, false);
 }
 
 function setAuthStatus(id, message = '', kind = 'error') {
@@ -959,12 +1046,13 @@ function enterAura() {
 
 Object.assign(window, {
   doLogin, doLogout, requestRecovery, completeRecovery,
-  showAuthView, togglePassword, enterAura, toggleAuraSidebar,
+  showAuthView, togglePassword, enterAura, toggleAuraSidebar, toggleSidebarGroup,
 });
 
 // ── Init ─────────────────────────────────────────────────────────
 
 function initApp() {
+  initializeSidebarGroups();
   restoreAuraSidebar();
   updateDate();
   void updateCommercialKpis();
@@ -1143,8 +1231,7 @@ function showSection(id, el) {
   document.querySelectorAll('#view-dashboard,#view-configuracion').forEach(v => v.style.display = 'none');
   document.getElementById('view-' + id).style.display = 'block';
   document.getElementById('main-content').style.display = 'block';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (el) el.classList.add('active');
+  activateNavigationItem(el);
   document.getElementById('topbar-title').textContent =
     id === 'dashboard' ? 'Panel general' : 'Centro de incidencias';
   document.getElementById('topbar-breadcrumb').textContent = id === 'dashboard' ? 'Ecosistema AURA' : 'AURA · Soporte';
@@ -1173,8 +1260,7 @@ async function openModule(url, title, el, appId = '') {
     window.open(destination.href, '_blank', 'noopener,noreferrer');
     return;
   }
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (el) el.classList.add('active');
+  activateNavigationItem(el);
   const loadId = ++moduleLoadId;
   activeModule = { url, title, appId, el };
   clearTimeout(moduleLoadTimer);
@@ -1230,8 +1316,7 @@ function closeIframe() {
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('view-dashboard').style.display = 'block';
   document.getElementById('view-configuracion').style.display = 'none';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelector('[data-dashboard-nav]')?.classList.add('active');
+  activateNavigationItem(document.querySelector('[data-dashboard-nav]'));
   document.getElementById('topbar-title').textContent = 'Panel general';
   document.getElementById('topbar-breadcrumb').textContent = 'Ecosistema AURA';
 }

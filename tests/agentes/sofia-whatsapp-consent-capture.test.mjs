@@ -9,7 +9,8 @@ for (const [label, path] of [['deployable worker', workerPath], ['TypeScript sou
   test(`${label}: separa consentimiento operativo y marketing de WhatsApp`, async () => {
     const source = await readFile(path, 'utf8');
     assert.match(source, /OPTIN_MARKETING/);
-    assert.match(source, /Es opcional y tu respuesta no afecta esta atenci/);
+    assert.match(source, /Es opcional/);
+    assert.match(source, /escribiendo SALIR/);
     assert.match(source, /marketing_si/);
     assert.match(source, /marketing_no/);
     assert.doesNotMatch(source, /optin_datos:\s*true,\s*optin_operativo:\s*true,\s*optin_comercial:\s*true/);

@@ -421,9 +421,9 @@ function extraerCorreo(texto: string): string | null {
 // ── Mensajes fijos ────────────────────────────────────────────────────────────
 
 const MSG = {
-  OPTIN: '¡Hola! Soy Sofía, de Creditek 😊 Te ayudo a llevarte tu celular nuevo hoy mismo. Para atender tu solicitud, ¿autorizas a Creditek S.A.S. a usar los datos que compartas durante esta conversación?',
+  OPTIN: 'Para atenderte, ¿autorizas a Creditek S.A.S. a usar los datos que compartas en este chat?',
   OPTIN_NO: 'Entendido, no hay problema 🙏 Si cambias de opinión aquí estamos. ¡Que tengas un buen día!',
-  OPTIN_MARKETING: '¿También autorizas a Creditek S.A.S. a enviarte por WhatsApp promociones, productos y ofertas? Es opcional y tu respuesta no afecta esta atención. Puedes retirar la autorización en cualquier momento escribiendo SALIR. Política: https://aura.crediteksas.com/creditek/legal/',
+  OPTIN_MARKETING: '¿Quieres recibir promociones de Creditek por WhatsApp? Es opcional. Puedes dejar de recibirlas escribiendo SALIR. Política: https://aura.crediteksas.com/creditek/legal/',
   OPTIN_MARKETING_NO: 'Perfecto. No te enviaremos campañas por WhatsApp y continuaremos atendiendo tu solicitud 😊',
   CIERRE_INTERES: 'Entendido, no hay problema 🙏 No te escribiré nuevamente sobre esta solicitud.',
   SOLO_PRODUCTOS: 'Entiendo 😊 En Creditek no manejamos préstamos de dinero en efectivo; te ayudamos a comprar celulares y otros equipos a crédito.',

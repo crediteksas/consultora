@@ -4000,6 +4000,20 @@ const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
 const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: propose a bold, photographic, human-centered art direction with energetic Caribbean color, cinematic natural light, believable product interaction and contemporary editorial graphics. Do not imitate a generic blue corporate poster.`;
 const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: propose an independent premium retail art direction with sophisticated typography, dynamic composition, modern color blocking and a conversion-focused product story. It must be visibly different from Designer A.`;
+const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY WHEN A STORE OR IN-STORE CUSTOMERS ARE REQUESTED:
+- The setting must be unmistakably the interior of a modern Colombian cellphone retail store, not a generic social venue.
+- Use an establishing wide shot at eye level with a 24–28 mm wide-angle lens. Place the camera 3–4 meters from the nearest customer.
+- At least 45% of the frame must visibly describe the store environment: glass cellphone display counters, wall-mounted phones or accessories, a service counter, commercial lighting and sales advisers helping customers.
+- Distribute 8–12 customers naturally in small groups across foreground, middle ground and background. Prefer full-body or three-quarter figures and believable interaction with advisers and devices.
+- Preserve clear spatial depth and enough architecture to identify the location even if all advertising copy is hidden.
+- No close-up, tight crop, bust portrait, single face dominating the frame or shallow depth of field that erases the store.
+- Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Do not invent readable prices, offers or third-party brand marks inside the store.`;
+
+function buildRetailStoreSceneContract(prompt = '') {
+  const normalized = String(prompt).toLowerCase();
+  const requestsStoreScene = /\b(tienda|local|punto de venta|almac[eé]n|vitrina|mostrador|jornada|clientes comprando|in[- ]?store|retail store|shop)\b/.test(normalized);
+  return requestsStoreScene ? RETAIL_STORE_SCENE_CONTRACT : '';
+}
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 const GPT_LAYOUT_PATTERNS = [
@@ -4034,8 +4048,9 @@ async function llamarBackendImagen(path, payload) {
 }
 
 async function generarConRecraft(prompt) {
+  const storeSceneContract = buildRetailStoreSceneContract(prompt);
   const data = await llamarBackendImagen('/recraft/images', {
-    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${prompt}`,
+    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${storeSceneContract}\n\n${prompt}`,
     format: currentFormat === 'stories' ? 'stories' : 'feed',
     images: 1
   });
@@ -4100,6 +4115,7 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
 async function generarConDalle(key, prompt) {
   const finLogos = await loadAllSelectedFinancieras();
   const layoutGuard = buildGptLayoutGuard();
+  const storeSceneContract = buildRetailStoreSceneContract(prompt);
   let inputPayload;
   if (productoImgBase64 || finLogos.length) {
     const content = [];
@@ -4111,10 +4127,10 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
+    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${storeSceneContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
+    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${storeSceneContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',

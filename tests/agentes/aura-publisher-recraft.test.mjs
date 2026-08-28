@@ -38,6 +38,17 @@ test('Ambos diseñadores reciben un contrato comercial y el logo oficial se comp
   assert.match(publisher, /La imagen no se entregará sin marca/);
 });
 
+test('Las escenas de tienda exigen plano abierto y señales inequívocas del local', () => {
+  assert.match(publisher, /RETAIL STORE SCENE CONTRACT — MANDATORY/);
+  assert.match(publisher, /24–28 mm wide-angle lens/);
+  assert.match(publisher, /At least 45% of the frame/);
+  assert.match(publisher, /glass cellphone display counters/);
+  assert.match(publisher, /No close-up, tight crop/);
+  assert.match(publisher, /buildRetailStoreSceneContract\(prompt\)/);
+  assert.match(publisher, /RECRAFT_ART_DIRECTION}\\n\\n\$\{storeSceneContract}/);
+  assert.match(publisher, /GPT_ART_DIRECTION}\\n\$\{storeSceneContract}/);
+});
+
 test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {
   assert.match(worker, /path !== "\/recraft\/images"/);
   assert.match(worker, /model: "recraftv4_1", size, n: 1/);

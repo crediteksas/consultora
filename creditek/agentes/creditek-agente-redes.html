@@ -1293,23 +1293,34 @@ function parseEventDateText(value = '') {
   const text = String(value).trim();
   const normalized = normalizeSpanishToken(text);
   const monthEntry = Object.entries(EVENT_MONTHS_ES).find(([month]) => normalized.includes(normalizeSpanishToken(month)));
-  const dayMatch = normalized.match(/\b([12]?\d|3[01])\b/);
-  if (!monthEntry || !dayMatch) return null;
+  const weekdayPattern = 'domingo|lunes|martes|miercoles|jueves|viernes|sabado';
+  const mentionedWeekdays = [...normalized.matchAll(new RegExp(`\\b(${weekdayPattern})\\b`, 'g'))];
+  const datedWeekdays = [...normalized.matchAll(new RegExp(`\\b(${weekdayPattern})\\s+([12]?\\d|3[01])\\b`, 'g'))];
+  const standaloneDay = normalized.match(/\b([12]?\d|3[01])\b/);
+  if (!monthEntry || !standaloneDay) return null;
+  if (mentionedWeekdays.length > 1 && datedWeekdays.length !== mentionedWeekdays.length) {
+    return { error: 'Escribe el número de fecha después de cada día. Ejemplo: SÁBADO 29 Y DOMINGO 30 DE AGOSTO DE 2026.' };
+  }
   const yearMatch = normalized.match(/\b(20\d{2})\b/);
   const year = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
-  const day = Number(dayMatch[1]);
   const month = monthEntry[1];
-  const date = new Date(year, month, day, 12, 0, 0);
-  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return null;
-  const statedWeekday = EVENT_WEEKDAYS_ES.find(weekday => normalized.includes(normalizeSpanishToken(weekday))) || '';
-  return { date, statedWeekday, actualWeekday: EVENT_WEEKDAYS_ES[date.getDay()] };
+  const entries = datedWeekdays.length
+    ? datedWeekdays.map(match => ({ statedWeekday: match[1], day: Number(match[2]) }))
+    : [{ statedWeekday: '', day: Number(standaloneDay[1]) }];
+  const dates = entries.map(entry => {
+    const date = new Date(year, month, entry.day, 12, 0, 0);
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== entry.day) return null;
+    return { ...entry, date, actualWeekday: normalizeSpanishToken(EVENT_WEEKDAYS_ES[date.getDay()]) };
+  });
+  return dates.some(date => !date) ? null : { dates };
 }
 
 function validateEventDateConsistency({ notify = true } = {}) {
   if ((document.getElementById('modo')?.value || '') !== 'jornada') return true;
   const input = document.getElementById('jornada-fecha');
   const parsed = parseEventDateText(input?.value || '');
-  if (!parsed?.statedWeekday || parsed.statedWeekday === parsed.actualWeekday) return true;
+  const mismatch = parsed?.dates?.find(item => item.statedWeekday && item.statedWeekday !== item.actualWeekday);
+  if (!parsed?.error && !mismatch) return true;
   if (input) {
     input.style.borderColor = '#ef4444';
     input.style.boxShadow = '0 0 0 3px rgba(239,68,68,.16)';
@@ -1317,8 +1328,8 @@ function validateEventDateConsistency({ notify = true } = {}) {
     setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 3500);
   }
   if (notify) {
-    const actual = parsed.actualWeekday.charAt(0).toUpperCase() + parsed.actualWeekday.slice(1);
-    showToast(`La fecha no coincide: ese día es ${actual}. Corrígela antes de generar.`, '#ef4444');
+    const message = parsed?.error || `La fecha no coincide: ese día es ${mismatch.actualWeekday.charAt(0).toUpperCase() + mismatch.actualWeekday.slice(1)}. Corrígela antes de generar.`;
+    showToast(message, '#ef4444');
   }
   return false;
 }
@@ -4168,6 +4179,22 @@ function buildAdCreativeQualityPrompt(prompt = '') {
     buildExactTextAllowlist(),
   ].filter(Boolean).join('\n\n');
 }
+
+function buildRecraftRequestPrompt(prompt = '') {
+  const promptWithoutMarketAppendix = String(prompt).replace(/\n\nCOLOMBIAN PHONE MARKET VISUAL CONTEXT:[\s\S]*$/i, '');
+  const compactContract = [
+    RECRAFT_ART_DIRECTION,
+    buildRetailStoreSceneContract(promptWithoutMarketAppendix),
+    buildAdaptiveTextHierarchyContract(),
+    buildProductProminenceContract(),
+    buildExactTextAllowlist(),
+    promptWithoutMarketAppendix,
+  ].filter(Boolean).join('\n\n');
+  if (compactContract.length > 9800) {
+    throw new Error('El brief contiene demasiado texto para Recraft. Reduce instrucciones secundarias o textos impresos.');
+  }
+  return compactContract;
+}
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 const GPT_LAYOUT_PATTERNS = [
@@ -4202,9 +4229,9 @@ async function llamarBackendImagen(path, payload) {
 }
 
 async function generarConRecraft(prompt) {
-  const qualityContract = buildAdCreativeQualityPrompt(prompt);
+  const recraftPrompt = buildRecraftRequestPrompt(prompt);
   const data = await llamarBackendImagen('/recraft/images', {
-    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${qualityContract}\n\n${prompt}`,
+    prompt: recraftPrompt,
     format: currentFormat === 'stories' ? 'stories' : 'feed',
     images: 1
   });

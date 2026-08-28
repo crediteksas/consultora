@@ -48,7 +48,7 @@ test('Las escenas de tienda se adaptan a locales reales de municipios del Caribe
   assert.match(publisher, /glass display counters/);
   assert.match(publisher, /No close-up, tight crop/);
   assert.match(publisher, /buildRetailStoreSceneContract\(prompt\)/);
-  assert.match(publisher, /RECRAFT_ART_DIRECTION}\\n\\n\$\{qualityContract}/);
+  assert.match(publisher, /buildRecraftRequestPrompt\(prompt\)/);
   assert.match(publisher, /GPT_ART_DIRECTION}\\n\$\{qualityContract}/);
 });
 
@@ -68,6 +68,13 @@ test('La jornada valida que el día de la semana coincida con la fecha', () => {
   assert.match(publisher, /La fecha no coincide: ese día es/);
   assert.match(publisher, /if \(!validateEventDateConsistency\(\)\) return;/);
   assert.match(publisher, /EVENT_WEEKDAYS_ES/);
+  assert.match(publisher, /Escribe el número de fecha después de cada día/);
+});
+
+test('Recraft recibe un prompt compacto por debajo del límite interno', () => {
+  assert.match(publisher, /function buildRecraftRequestPrompt/);
+  assert.match(publisher, /compactContract\.length > 9800/);
+  assert.match(publisher, /prompt: recraftPrompt/);
 });
 
 test('La dirección publicitaria evita productos pegados y textos inventados', () => {

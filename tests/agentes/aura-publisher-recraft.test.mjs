@@ -6,23 +6,35 @@ const publisher = await readFile(new URL('../../creditek/agentes/creditek-agente
 const worker = await readFile(new URL('../../creditek/workers/gemini-proxy/index.js', import.meta.url), 'utf8');
 const config = await readFile(new URL('../../creditek/workers/gemini-proxy/wrangler.toml', import.meta.url), 'utf8');
 
-test('Piezas comerciales ofrece Recraft V4.1 y conserva GPT como predeterminado', () => {
-  assert.match(publisher, /id="chk-recraft"/);
-  assert.match(publisher, /Recraft V4\.1 · fotografía humana/);
+test('Piezas comerciales activa dos diseñadores para comparación A/B', () => {
+  assert.match(publisher, /id="chk-recraft" checked/);
+  assert.match(publisher, /Diseñador A · Recraft V4\.1/);
   assert.match(publisher, /id="chk-dalle" checked/);
+  assert.match(publisher, /Diseñador B · GPT Image 2/);
+  assert.match(publisher, /Comparación A\/B: 1 imagen Recraft/);
   assert.doesNotMatch(publisher, /id="chk-gemini"/);
   assert.doesNotMatch(publisher, /id="chk-pipeline"/);
   assert.match(publisher, /id="sidebar-recraft-dot"/);
   assert.doesNotMatch(publisher, /Vertex AI/);
 });
 
-test('Recraft exige confirmación visible y nunca activa reintentos automáticos', () => {
+test('La comparación exige confirmación visible y nunca activa reintentos automáticos', () => {
+  assert.match(publisher, /Se generarán 2 conceptos de diseño/);
   assert.match(publisher, /1 imagen pagada por USD 0,035/);
-  assert.match(publisher, /No habrá reintentos ni mejoras automáticas/);
+  assert.match(publisher, /No habrá reintentos automáticos/);
   assert.match(publisher, /generarConRecraft\(prompt\)/);
   assert.match(publisher, /id="img-ab-result" hidden aria-hidden="true"/);
   assert.doesNotMatch(publisher, /onclick="generarAB\(\)"/);
   assert.doesNotMatch(publisher, /generarConRecraft[\s\S]{0,500}catch[\s\S]{0,500}generarCon(?:Dalle|Gemini|Recraft)/);
+});
+
+test('Ambos diseñadores reciben un contrato comercial y el logo oficial se compone obligatoriamente', () => {
+  assert.match(publisher, /COMMERCIAL DESIGN CONTRACT — MANDATORY/);
+  assert.match(publisher, /DESIGNER A — RECRAFT/);
+  assert.match(publisher, /DESIGNER B — GPT IMAGE/);
+  assert.match(publisher, /primary purpose is to stop the scroll and sell/);
+  assert.match(publisher, /\/creditek\/shared\/branding\/creditek-logo\.png/);
+  assert.match(publisher, /La imagen no se entregará sin marca/);
 });
 
 test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {

@@ -1043,10 +1043,10 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <span class="img-hdr-badge">Beta</span>
       </div>
       <div class="engine-row">
-        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-recraft" onchange="selectEngine('recraft');updateGenerationEstimate()"> 📷 Recraft V4.1 · fotografía humana</label>
-        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-dalle" checked onchange="selectEngine('dalle');updateGenerationEstimate()"> ⬡ GPT Image 2 · predeterminado</label>
+        <label class="model-chk-label"><input type="checkbox" id="chk-recraft" checked onchange="updateGenerationEstimate()"> 📷 Diseñador A · Recraft V4.1</label>
+        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ Diseñador B · GPT Image 2</label>
       </div>
-      <div class="reel-cost" id="image-cost-estimate">Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.</div>
+      <div class="reel-cost" id="image-cost-estimate">Comparación A/B: 1 imagen Recraft (USD 0,035) + 1 imagen GPT. Sin reintentos automáticos.</div>
       <div class="fmt-toggle">
         <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')">📱 Feed (1080×1080)</button>
         <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')">📲 Stories (1080×1920)</button>
@@ -1721,11 +1721,16 @@ function formatCop(value) {
 
 function updateGenerationEstimate() {
   const recraft = document.getElementById('chk-recraft')?.checked;
+  const gpt = document.getElementById('chk-dalle')?.checked;
   const estimate = document.getElementById('image-cost-estimate');
   if (estimate) {
-    estimate.textContent = recraft
-      ? 'Estimado: 1 imagen Recraft V4.1 · USD 0,035. Sin reintentos ni mejoras automáticas.'
-      : 'Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.';
+    estimate.textContent = recraft && gpt
+      ? 'Comparación A/B: 1 imagen Recraft (USD 0,035) + 1 imagen GPT. Sin reintentos automáticos.'
+      : recraft
+        ? 'Estimado: 1 imagen Recraft V4.1 · USD 0,035. Sin reintentos automáticos.'
+        : gpt
+          ? 'Estimado: 1 imagen GPT. Sin reintentos automáticos.'
+          : 'Selecciona al menos un diseñador.';
   }
   updateImgKeyStatus();
 }
@@ -2691,15 +2696,15 @@ async function cambiarDetalleDia() {
 async function loadLogoBase64() {
   if (logoBase64) return logoBase64;
   try {
-    const resp = await fetch('logos/creditek_logo_corregido_alta.png');
-    if (!resp.ok) return null;
+    const resp = await fetch('/creditek/shared/branding/creditek-logo.png', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('No se pudo cargar el logo oficial de Creditek.');
     const blob = await resp.blob();
     return new Promise(resolve => {
       const reader = new FileReader();
       reader.onload = e => { logoBase64 = e.target.result; resolve(logoBase64); };
       reader.readAsDataURL(blob);
     });
-  } catch(e) { return null; }
+  } catch(e) { throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.'); }
 }
 
 function confirmarPreviewYGenerar() {
@@ -3036,7 +3041,7 @@ async function buildImgPrompt() {
     // 80% de navy+turquesa incluso en Chistoso/Costeno, donde no aplica - ahi la
     // marca solo necesita estar presente en el CTA y el logo, no dominar el fondo.
     const paletaPorEstilo = {
-      formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
+      formal:      { paleta: 'azul marino #0B1E3D y turquesa #00C4CC como anclas de marca, blanco luminoso y uno o dos acentos contemporáneos derivados de la escena', dominio: 'marca reconocible sin convertir el lienzo en un bloque azul; ningún color plano debe ocupar más del 55%.' },
       chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
       costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
       minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
@@ -3120,7 +3125,7 @@ async function buildImgPrompt() {
     : `Composición CUADRADA 1080×1080 px: producto y textos jerarquizados con equilibrio visual. ${variableGraphicDirection}`;
 
   const paletaPorEstilo_B = {
-    formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
+    formal:      { paleta: 'azul marino #0B1E3D y turquesa #00C4CC como anclas de marca, blanco luminoso y uno o dos acentos contemporáneos derivados de la escena', dominio: 'marca reconocible sin convertir el lienzo en un bloque azul; ningún color plano debe ocupar más del 55%.' },
     chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
     costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
     minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
@@ -3218,7 +3223,7 @@ async function buildImgPrompt() {
     halloween:'fondo casi negro #0D0D0D', anonuevo:'fondo negro #050505',
     clases:'fondo blanco #FFFFFF con acentos azul cielo #87CEEB',
   };
-  const bgSpec = (fechaData && fechaBgMap[fechaKey]) ? fechaBgMap[fechaKey] : 'azul marino profundo #0B1E3D';
+  const bgSpec = (fechaData && fechaBgMap[fechaKey]) ? fechaBgMap[fechaKey] : 'escena fotográfica o fondo editorial contemporáneo; azul marino solo como ancla, nunca como bloque plano dominante';
   const fechaImgBlock = fechaData ? `Temática ${fechaData.label}: incorporar paleta secundaria (${fechaData.colores}) y elementos decorativos sutiles (${fechaData.elementos}). Estos acentos estacionales complementan la identidad Creditek, no la reemplazan.` : '';
 
   const selectedFins = getSelectedFinancieras();
@@ -3958,6 +3963,18 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
 const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
+const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
+- This is a paid social advertisement whose primary purpose is to stop the scroll and sell the specified product or offer.
+- Deliver a contemporary 2026 retail campaign concept, not a generic corporate flyer, presentation slide or rigid template.
+- Establish an immediate visual hook, a clear product/people focal point, strong hierarchy and a CTA readable on a mobile screen.
+- Use intentional contrast, depth, scale, asymmetry and controlled color accents. Avoid a flat navy background occupying most of the canvas.
+- Preserve generous but purposeful breathing room. Never stack every text element in one centered column.
+- Show authentic Colombian Caribbean customers naturally interacting with the product when people are requested; avoid stock-photo poses and empty streets.
+- Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
+- Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
+- The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
+const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: propose a bold, photographic, human-centered art direction with energetic Caribbean color, cinematic natural light, believable product interaction and contemporary editorial graphics. Do not imitate a generic blue corporate poster.`;
+const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: propose an independent premium retail art direction with sophisticated typography, dynamic composition, modern color blocking and a conversion-focused product story. It must be visibly different from Designer A.`;
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 const GPT_LAYOUT_PATTERNS = [
@@ -3993,7 +4010,7 @@ async function llamarBackendImagen(path, payload) {
 
 async function generarConRecraft(prompt) {
   const data = await llamarBackendImagen('/recraft/images', {
-    prompt,
+    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${prompt}`,
     format: currentFormat === 'stories' ? 'stories' : 'feed',
     images: 1
   });
@@ -4069,10 +4086,10 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
+    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
+    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',
@@ -4302,8 +4319,12 @@ async function generarConModelos() {
   const selected = MODELS.filter(m => m.checked);
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
-  if (selected.length > 1) { showToast('Selecciona un solo motor para controlar el costo', '#f59e0b'); return; }
-  if (useRecraft && !window.confirm('Recraft generará 1 imagen pagada por USD 0,035. No habrá reintentos ni mejoras automáticas. ¿Autorizar esta llamada?')) {
+  const confirmationText = useRecraft && useDalle
+    ? 'Se generarán 2 conceptos de diseño: 1 con Recraft (USD 0,035) y 1 con GPT Image. No habrá reintentos automáticos. ¿Autorizar ambas llamadas?'
+    : useRecraft
+      ? 'Recraft generará 1 imagen pagada por USD 0,035. No habrá reintentos automáticos. ¿Autorizar esta llamada?'
+      : 'GPT Image generará 1 concepto de diseño. No habrá reintentos automáticos. ¿Autorizar esta llamada?';
+  if (!window.confirm(confirmationText)) {
     showToast('Generación cancelada. No se realizó ninguna llamada.', '#f59e0b');
     return;
   }

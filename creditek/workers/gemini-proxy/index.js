@@ -173,6 +173,75 @@ async function llamarOpenAI_(env, payload) {
 }
 __name(llamarOpenAI_, "llamarOpenAI_");
 __name2(llamarOpenAI_, "llamarOpenAI_");
+async function llamarRecraft_(env, payload) {
+  if (!env.RECRAFT_API_TOKEN) return err("Recraft no est\xE1 configurado en el servidor", 503);
+  const prompt = typeof payload?.prompt === "string" ? payload.prompt.trim() : "";
+  if (!prompt || prompt.length > 1e4) return err("Solicitud Recraft inv\xE1lida", 400);
+  const size = payload?.format === "stories" ? "832x1280" : "1024x1024";
+  const started = Date.now();
+  let response;
+  try {
+    response = await fetch("https://external.api.recraft.ai/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${env.RECRAFT_API_TOKEN}`
+      },
+      body: JSON.stringify({ prompt, model: "recraftv4_1", size, n: 1 }),
+      signal: AbortSignal.timeout(9e4)
+    });
+  } catch (error) {
+    console.error("[RECRAFT-IMAGE-NETWORK]", JSON.stringify({
+      error_name: String(error?.name || "").slice(0, 80),
+      elapsed_ms: Date.now() - started
+    }));
+    return err("No se pudo conectar con Recraft. No se realiz\xF3 un segundo intento.", 502);
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("[RECRAFT-IMAGE]", JSON.stringify({
+      status: response.status,
+      request_id: String(response.headers.get("x-request-id") || "").slice(0, 120),
+      elapsed_ms: Date.now() - started,
+      error: String(data?.detail || data?.error?.message || "").replace(/[\r\n]+/g, " ").slice(0, 240)
+    }));
+    const message = response.status === 401 ? "Recraft no est\xE1 autorizado en el servidor" : response.status === 429 ? "L\xEDmite de Recraft alcanzado" : "Recraft no pudo generar la imagen";
+    return err(message, response.status === 429 ? 429 : 502);
+  }
+  const imageUrl = data?.data?.[0]?.url;
+  if (!imageUrl) return err("Recraft no devolvi\xF3 una imagen", 502);
+  let imageResponse;
+  try {
+    imageResponse = await fetch(imageUrl, { signal: AbortSignal.timeout(2e4) });
+  } catch {
+    return err("Recraft gener\xF3 la imagen, pero no pudo recuperarse", 502);
+  }
+  const contentLength = Number(imageResponse.headers.get("content-length") || 0);
+  if (!imageResponse.ok || contentLength > 8 * 1024 * 1024) return err("La imagen de Recraft no pudo recuperarse de forma segura", 502);
+  const bytes = new Uint8Array(await imageResponse.arrayBuffer());
+  if (bytes.length > 8 * 1024 * 1024) return err("La imagen de Recraft supera el tama\xF1o permitido", 502);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const mimeType = imageResponse.headers.get("content-type")?.split(";")[0] || "image/png";
+  console.log("[RECRAFT-IMAGE]", JSON.stringify({
+    status: response.status,
+    request_id: String(response.headers.get("x-request-id") || "").slice(0, 120),
+    model: "recraftv4_1",
+    images_requested: 1,
+    estimated_api_units: 35,
+    estimated_cost_usd: 0.035,
+    output_bytes: bytes.length,
+    elapsed_ms: Date.now() - started
+  }));
+  return ok({
+    predictions: [{ bytesBase64Encoded: btoa(binary), mimeType }],
+    model: "recraftv4_1",
+    label: "Recraft V4.1",
+    billing: { images: 1, api_units: 35, estimated_usd: 0.035 }
+  });
+}
+__name(llamarRecraft_, "llamarRecraft_");
+__name2(llamarRecraft_, "llamarRecraft_");
 async function llamarAnthropic_(env, payload) {
   if (!env.ANTHROPIC_API_KEY) return err("Anthropic no est\xE1 configurado en el servidor", 503);
   if (!payload?.model || !Array.isArray(payload?.messages) || payload.messages.length === 0) {
@@ -781,7 +850,7 @@ var index_default = {
         jwt_audience: WORKER_URL
       });
     }
-    if (path !== "/generate" && path !== "/openai/responses" && path !== "/anthropic/messages") return err("Ruta no encontrada", 404);
+    if (path !== "/generate" && path !== "/openai/responses" && path !== "/recraft/images" && path !== "/anthropic/messages") return err("Ruta no encontrada", 404);
     if (request.method !== "POST") return err("Solo POST", 405);
     if (!await authenticateAura(request, env)) return err("Autenticaci\xF3n AURA requerida", 401);
     let body;
@@ -791,6 +860,7 @@ var index_default = {
       return err("JSON inv\xE1lido", 400);
     }
     if (path === "/openai/responses") return llamarOpenAI_(env, body);
+    if (path === "/recraft/images") return llamarRecraft_(env, body);
     if (path === "/anthropic/messages") return llamarAnthropic_(env, body);
     const { prompt, aspectRatio = "1:1", engine, imageUrl, imageBase64, imageMimeType } = body;
     if (!prompt) return err('Campo "prompt" requerido', 400);

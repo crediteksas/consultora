@@ -13,6 +13,7 @@ GCP_SA_EMAIL     = "creditek-vertex-sa@creditek-imagen.iam.gserviceaccount.com"
 #   GCP_WIF_PRIVATE_KEY   — clave privada RSA del Worker (firma el JWT)
 #   GCP_WIF_PUBLIC_JWK    — JWK de la clave pública (sirve en /.well-known/jwks.json)
 #   GEMINI_API_KEY        — API key de AI Studio (fallback)
+#   RECRAFT_API_TOKEN     — token API de Recraft (V4.1; una imagen por solicitud)
 #   WORKER_SHARED_SECRET  — Fix v5 09-jul-2026: secreto compartido con el frontend
 #                           (creditek-agente-redes.html, header X-Worker-Secret).
 #                           Sin esto, /generate rechaza la petición con 401.

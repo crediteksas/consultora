@@ -906,13 +906,13 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       </label>
     </div>
     <div class="fin-note">Aparecerán en la franja inferior de la imagen, alineados horizontalmente</div>
-    <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Solo disponible con GPT Image 2 — Gemini no acepta imágenes de referencia.</div>
+    <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Los logos de financieras se componen al final, sin consumir una generación adicional.</div>
   </div>
   <div class="sidebar-section" style="padding-bottom:10px">
     <div class="sidebar-label">Servicios IA</div>
     <div class="key-status" style="padding:3px 3px 0">
       <span style="font-size:12px;color:var(--text2)">
-        <span class="img-key-dot" id="sidebar-gemini-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Vertex AI
+        <span class="img-key-dot" id="sidebar-recraft-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Recraft V4.1
       </span>
       <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
@@ -1043,9 +1043,8 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <span class="img-hdr-badge">Beta</span>
       </div>
       <div class="engine-row">
-        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-gemini" onchange="updateGenerationEstimate()"> 📷 Gemini premium</label>
-        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ GPT Image 2 · predeterminado</label>
-        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-pipeline" onchange="updateGenerationEstimate()"> 🔗 Pipeline premium · 2 llamadas</label>
+        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-recraft" onchange="selectEngine('recraft');updateGenerationEstimate()"> 📷 Recraft V4.1 · fotografía humana</label>
+        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-dalle" checked onchange="selectEngine('dalle');updateGenerationEstimate()"> ⬡ GPT Image 2 · predeterminado</label>
       </div>
       <div class="reel-cost" id="image-cost-estimate">Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.</div>
       <div class="fmt-toggle">
@@ -1108,12 +1107,12 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <button class="img-dl-btn" onclick="descargarImagen()">⬇ Descargar PNG</button>
       </div>
       <div class="img-err" id="img-err"></div>
-      <div class="img-ab-result" id="img-ab-result">
+      <div class="img-ab-result" id="img-ab-result" hidden aria-hidden="true">
         <div class="img-ab-cols">
           <div class="img-ab-col">
             <div class="img-ab-col-label" id="img-ab-label-a">📷 Foto producto</div>
-            <div class="img-ab-placeholder">La vista previa de Gemini aparecerá aquí.</div>
-            <img class="img-output" id="img-ab-a" src="" alt="Gemini" style="display:none">
+            <div class="img-ab-placeholder">Comparación automática desactivada para controlar costos.</div>
+            <img class="img-output" id="img-ab-a" src="" alt="Comparación desactivada" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-a" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-a" onclick="descargarImagenAB('a')" style="display:none">⬇ Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-a" onclick="usarImagenDeAB('a')" style="display:none">✓ Usar en editor</button>
@@ -1721,15 +1720,12 @@ function formatCop(value) {
 }
 
 function updateGenerationEstimate() {
-  const pipeline = document.getElementById('chk-pipeline')?.checked;
-  const premium = document.getElementById('chk-gemini')?.checked;
+  const recraft = document.getElementById('chk-recraft')?.checked;
   const estimate = document.getElementById('image-cost-estimate');
   if (estimate) {
-    estimate.textContent = pipeline
-      ? '⚠️ Estimado: 2 llamadas de imagen (Gemini + GPT). Opción premium manual.'
-      : premium
-        ? '⚠️ Estimado: 1 llamada a Gemini premium. No se ejecutará respaldo automático.'
-        : 'Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.';
+    estimate.textContent = recraft
+      ? 'Estimado: 1 imagen Recraft V4.1 · USD 0,035. Sin reintentos ni mejoras automáticas.'
+      : 'Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.';
   }
   updateImgKeyStatus();
 }
@@ -2548,7 +2544,7 @@ function selectTitular(btn, text) {
 }
 
 // ── Módulo generador de imágenes ────────────────────────────────
-let currentEngine = 'gemini';
+let currentEngine = 'dalle';
 let currentEstilo = 'formal';
 let currentFormat = 'feed';
 let productoImgBase64 = null;
@@ -2782,7 +2778,7 @@ function resetPreviewFields() {
 }
 
 function syncModelUI() {
-  ['chk-gemini', 'chk-dalle'].forEach(id => {
+  ['chk-recraft', 'chk-dalle'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.closest('label')?.classList.toggle('model-chk-active', !!el.checked);
@@ -2791,16 +2787,16 @@ function syncModelUI() {
 
 function updateImgKeyStatus() {
   syncModelUI();
-  const useGemini = document.getElementById('chk-gemini')?.checked;
+  const useRecraft = document.getElementById('chk-recraft')?.checked;
   const useDalle  = document.getElementById('chk-dalle')?.checked;
-  const geminiOk  = true;
+  const recraftOk = true;
   const dalleOk   = true;
   const btn = document.getElementById('img-key-row-btn');
 
-  if (useGemini || useDalle) {
+  if (useRecraft || useDalle) {
     document.getElementById('img-key-dot').className = 'img-key-dot ok';
     const parts = [];
-    if (useGemini && geminiOk) parts.push('Vertex AI');
+    if (useRecraft && recraftOk) parts.push('Recraft V4.1');
     if (useDalle  && dalleOk)  parts.push('GPT Image 2');
     document.getElementById('img-key-label').textContent = parts.join(' · ') + ' configurado';
     btn.style.display = 'none';
@@ -2810,9 +2806,9 @@ function updateImgKeyStatus() {
     btn.style.display = 'none';
   }
   // Update sidebar key dots
-  const sgd = document.getElementById('sidebar-gemini-dot');
+  const sgd = document.getElementById('sidebar-recraft-dot');
   const sod = document.getElementById('sidebar-openai-dot');
-  if (sgd) sgd.className = 'img-key-dot' + (geminiOk ? ' ok' : '');
+  if (sgd) sgd.className = 'img-key-dot' + (recraftOk ? ' ok' : '');
   if (sod) sod.className = 'img-key-dot' + (dalleOk  ? ' ok' : '');
 }
 
@@ -3811,7 +3807,7 @@ async function generarImagen(callerBtn = null) {
     await corregirMensajeSecundario();
     label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
 
-    const isWorkerEngine = currentEngine === 'gemini';
+    const isWorkerEngine = currentEngine === 'recraft';
     const key = '';
 
     const prompt = document.getElementById('img-prompt-ta').value.trim();
@@ -3819,13 +3815,11 @@ async function generarImagen(callerBtn = null) {
     // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
     // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
     // queda estático varios segundos dando sensación de que no está avanzando.
-    if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
-    const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
-    if (isWorkerEngine) label.textContent = 'Generando imagen...';
+    if (isWorkerEngine) label.textContent = 'Preparando fotografía humana...';
 
-    lastImgModelLabel = currentEngine === 'gemini' ? 'Imagen 4 (Vertex)' : 'GPT Image 2';
-    const src = currentEngine === 'gemini'
-      ? await generarConGemini(key, promptGemini)
+    lastImgModelLabel = currentEngine === 'recraft' ? 'Recraft V4.1' : 'GPT Image 2';
+    const src = currentEngine === 'recraft'
+      ? await generarConRecraft(prompt)
       : await generarConDalle(key, prompt);
     imgHistory = [src];
     imgHistoryIdx = 0;
@@ -3997,6 +3991,20 @@ async function llamarBackendImagen(path, payload) {
   return window.requestAuraImage(path, payload);
 }
 
+async function generarConRecraft(prompt) {
+  const data = await llamarBackendImagen('/recraft/images', {
+    prompt,
+    format: currentFormat === 'stories' ? 'stories' : 'feed',
+    images: 1
+  });
+  const pred = data.predictions?.[0];
+  if (!pred?.bytesBase64Encoded) throw new Error('Recraft no devolvió imagen.');
+  lastImgModelLabel = data.label || 'Recraft V4.1';
+  const mime = pred.mimeType || 'image/png';
+  const b64 = pred.bytesBase64Encoded.replace(/\s/g, '');
+  return await componerLogoSobreImagen(`data:${mime};base64,${b64}`);
+}
+
 async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl = null, esEdicion = false) {
   // FIX 03-jul-2026: relación de aspecto exacta para calzar con GPT
   // (GPT: 1024x1024 = 1:1 · 1024x1536 = 2:3).
@@ -4153,16 +4161,8 @@ async function aplicarCambioImagen() {
     const promptBase = document.getElementById('img-prompt-ta').value.trim();
     let newSrc;
 
-    if (currentEngine === 'gemini') {
-      const key = '';
-      const promptBaseGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
-      // FIX v16 12-jul-2026: antes no se mandaba currentSrc — Gemini regeneraba
-      // toda la escena desde cero por texto, sin "ver" la imagen real (logo,
-      // colores y specs cambiaban). Ahora se manda como imagen de referencia
-      // adicional junto al logo (ver generarConGemini/llamarGemini3Pro_ en el Worker).
-      const editPrompt = `${promptBaseGemini} Además: ${instruccion}. La imagen de referencia adjunta es la pieza ACTUAL — mantén exactamente igual todo lo demás (logo, colores de marca, composición, specs) y aplica únicamente este cambio.`;
-      newSrc = await generarConGemini(key, editPrompt, false, currentSrc, /* esEdicion */ true);
-      document.getElementById('img-model-lbl').textContent = `Generado con ${lastImgModelLabel}`;
+    if (currentEngine === 'recraft') {
+      throw new Error('La edición automática de Recraft está deshabilitada para evitar cobros inesperados. Genera una nueva versión con confirmación.');
     } else {
       // FIX v16 12-jul-2026: antes se mandaba SOLO texto (prompt original +
       // instrucción) — la IA nunca "veía" currentSrc, por eso regeneraba todo
@@ -4292,30 +4292,21 @@ async function generarConModelos() {
   await buildImgPrompt();
   const prompt = document.getElementById('img-prompt-ta').value.trim();
   if (!prompt) { showToast('Genera el copy primero para obtener el prompt de imagen', '#ef4444'); return; }
-  const promptGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
-
-  const useGemini   = document.getElementById('chk-gemini')?.checked;
+  const useRecraft  = document.getElementById('chk-recraft')?.checked;
   const useDalle    = document.getElementById('chk-dalle')?.checked;
-  const usePipeline = document.getElementById('chk-pipeline')?.checked; // FIX v4d, 07-jul-2026
 
   const MODELS = [
-    { id: 'gemini',   label: '📷 Foto producto',           checked: useGemini },
+    { id: 'recraft',  label: '📷 Recraft V4.1',            checked: useRecraft },
     { id: 'dalle',    label: '⬡ GPT Image 2',              checked: useDalle },
-    { id: 'pipeline', label: '🔗 Pipeline (mejor de ambos)', checked: usePipeline },
   ];
   const selected = MODELS.filter(m => m.checked);
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
   if (selected.length > 1) { showToast('Selecciona un solo motor para controlar el costo', '#f59e0b'); return; }
-  if (usePipeline && !window.confirm('El pipeline premium genera 2 imágenes pagadas (Gemini + GPT). ¿Autorizar las 2 llamadas?')) {
-    showToast('Pipeline cancelado. No se realizaron llamadas de imagen.', '#f59e0b');
+  if (useRecraft && !window.confirm('Recraft generará 1 imagen pagada por USD 0,035. No habrá reintentos ni mejoras automáticas. ¿Autorizar esta llamada?')) {
+    showToast('Generación cancelada. No se realizó ninguna llamada.', '#f59e0b');
     return;
   }
-
-  // El prompt especial solo se prepara después de la autorización premium.
-  const promptGeminiFotoLimpia = usePipeline ? await buildImgPromptGeminiFotoLimpia() : null;
-
-  const keyGemini = '';
   const keyOpenAI = '';
 
   document.getElementById('img-result').style.display     = 'none';
@@ -4323,10 +4314,8 @@ async function generarConModelos() {
   document.getElementById('img-err').style.display        = 'none';
 
   const callEngine = (id) => {
-    const key = id === 'dalle' ? keyOpenAI : keyGemini;
-    if (id === 'gemini') return generarConGemini(key, promptGemini);
-    if (id === 'pipeline') return generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFotoLimpia, prompt);
-    return generarConDalle(key, prompt);
+    if (id === 'recraft') return generarConRecraft(prompt);
+    return generarConDalle(keyOpenAI, prompt);
   };
 
   if (selected.length === 1) {

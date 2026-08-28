@@ -38,15 +38,36 @@ test('Ambos diseñadores reciben un contrato comercial y el logo oficial se comp
   assert.match(publisher, /La imagen no se entregará sin marca/);
 });
 
-test('Las escenas de tienda exigen plano abierto y señales inequívocas del local', () => {
+test('Las escenas de tienda se adaptan a locales reales de municipios del Caribe', () => {
   assert.match(publisher, /RETAIL STORE SCENE CONTRACT — MANDATORY/);
-  assert.match(publisher, /24–28 mm wide-angle lens/);
-  assert.match(publisher, /At least 45% of the frame/);
-  assert.match(publisher, /glass cellphone display counters/);
+  assert.match(publisher, /SMALL-TOWN LOCATION REALISM/);
+  assert.match(publisher, /35–80 m²/);
+  assert.match(publisher, /Use 5–9 customers/);
+  assert.match(publisher, /Corozal, Chinú, Tolú and Ciénaga de Oro/);
+  assert.match(publisher, /luxury flagship or capital-city megastore/);
+  assert.match(publisher, /glass display counters/);
   assert.match(publisher, /No close-up, tight crop/);
   assert.match(publisher, /buildRetailStoreSceneContract\(prompt\)/);
   assert.match(publisher, /RECRAFT_ART_DIRECTION}\\n\\n\$\{qualityContract}/);
   assert.match(publisher, /GPT_ART_DIRECTION}\\n\$\{qualityContract}/);
+});
+
+test('El prompt adapta reglas al contexto y no impone recursos de urgencia', () => {
+  assert.match(publisher, /CONTEXT ADAPTATION CONTRACT — MANDATORY/);
+  assert.match(publisher, /buildAdaptiveContextContract\(\)/);
+  assert.match(publisher, /countdown clock is optional, never mandatory/);
+  assert.match(publisher, /ADAPTIVE TEXT HIERARCHY — INFORMATION-DENSE PIECE/);
+  assert.match(publisher, /\['captacion','institucional','jornada'\]\.includes\(modo\) \? '' : getRefBlock\(\)/);
+  assert.doesNotMatch(publisher, /countdown clock in turquoise\. Maximum urgency/);
+  assert.doesNotMatch(publisher, /Badge "SOLO HOY" o elemento de cuenta regresiva/);
+  assert.doesNotMatch(publisher, /EVENT DATE \(VERY LARGE\)/);
+});
+
+test('La jornada valida que el día de la semana coincida con la fecha', () => {
+  assert.match(publisher, /function validateEventDateConsistency/);
+  assert.match(publisher, /La fecha no coincide: ese día es/);
+  assert.match(publisher, /if \(!validateEventDateConsistency\(\)\) return;/);
+  assert.match(publisher, /EVENT_WEEKDAYS_ES/);
 });
 
 test('La dirección publicitaria evita productos pegados y textos inventados', () => {

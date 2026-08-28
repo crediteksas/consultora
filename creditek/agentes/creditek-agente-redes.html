@@ -1278,6 +1278,69 @@ function buildExplicitCreativePriority() {
   return lines.length ? `JERARQUÍA DE CONTEXTO — NO ALTERAR:\n${lines.join('\n')}\nDetalle hoy es solo inspiración secundaria: no puede sustituir, contradecir ni dominar estos elementos.` : '';
 }
 
+const EVENT_MONTHS_ES = {
+  enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+  julio: 6, agosto: 7, septiembre: 8, setiembre: 8, octubre: 9,
+  noviembre: 10, diciembre: 11,
+};
+const EVENT_WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function normalizeSpanishToken(value = '') {
+  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function parseEventDateText(value = '') {
+  const text = String(value).trim();
+  const normalized = normalizeSpanishToken(text);
+  const monthEntry = Object.entries(EVENT_MONTHS_ES).find(([month]) => normalized.includes(normalizeSpanishToken(month)));
+  const dayMatch = normalized.match(/\b([12]?\d|3[01])\b/);
+  if (!monthEntry || !dayMatch) return null;
+  const yearMatch = normalized.match(/\b(20\d{2})\b/);
+  const year = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+  const day = Number(dayMatch[1]);
+  const month = monthEntry[1];
+  const date = new Date(year, month, day, 12, 0, 0);
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return null;
+  const statedWeekday = EVENT_WEEKDAYS_ES.find(weekday => normalized.includes(normalizeSpanishToken(weekday))) || '';
+  return { date, statedWeekday, actualWeekday: EVENT_WEEKDAYS_ES[date.getDay()] };
+}
+
+function validateEventDateConsistency({ notify = true } = {}) {
+  if ((document.getElementById('modo')?.value || '') !== 'jornada') return true;
+  const input = document.getElementById('jornada-fecha');
+  const parsed = parseEventDateText(input?.value || '');
+  if (!parsed?.statedWeekday || parsed.statedWeekday === parsed.actualWeekday) return true;
+  if (input) {
+    input.style.borderColor = '#ef4444';
+    input.style.boxShadow = '0 0 0 3px rgba(239,68,68,.16)';
+    input.focus();
+    setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 3500);
+  }
+  if (notify) {
+    const actual = parsed.actualWeekday.charAt(0).toUpperCase() + parsed.actualWeekday.slice(1);
+    showToast(`La fecha no coincide: ese día es ${actual}. Corrígela antes de generar.`, '#ef4444');
+  }
+  return false;
+}
+
+function buildAdaptiveContextContract() {
+  const mode = document.getElementById('modo')?.value || 'credito';
+  const type = document.getElementById('tipo')?.value || '';
+  const context = document.getElementById('modo-contexto')?.value.trim() || '';
+  const direction = document.getElementById('instruccion-ia-extra')?.value.trim() || '';
+  const product = document.getElementById('producto')?.value.trim() || '';
+  const combined = normalizeSpanishToken([context, direction, product].join(' '));
+  const asksForPhones = /\b(celular|celulares|smartphone|smartphones|telefono|telefonos|movil|moviles)\b/.test(combined);
+  const asksForCredit = /\b(credito|creditos|cuota|cuotas|financia|financiacion|paga|pagalo)\b/.test(combined);
+  const urgency = type === 'jornada_urgencia' || type === 'promo_urgencia';
+  return `CONTEXT ADAPTATION CONTRACT — MANDATORY:
+- The operator's situation and visual direction define the scene. Mode and subtype provide structure only; they must never replace or contradict the operator's context.
+- ${asksForPhones ? 'Cellphones are contextually required: show them only in believable customer, adviser, shelf or display interactions; never as an unrelated giant floating render.' : 'Do not introduce a hero cellphone unless the operator requested one or selected a specific product.'}
+- ${asksForCredit ? 'Credit or installment language explicitly provided by the operator is allowed; do not invent rates, approval promises, prices or conditions.' : 'Do not invent credit language, financing conditions or approval claims.'}
+- ${urgency ? 'Communicate urgency through hierarchy and concise copy. A countdown clock, giant date or urgency badge is optional and may be used only if it improves this specific composition.' : 'Do not introduce artificial urgency devices.'}
+- Adapt subject count, architecture, camera distance, visual density and hierarchy to the real location and event—not to a generic metropolitan campaign template.`;
+}
+
 function buildModeCopyGuard(modo) {
   if (modo === 'promo') return `MODO PROMOCIÓN ESPECIAL — REGLA DE NEGOCIO:\n- Enfócate en ocasión, regalo, beneficio, producto, emoción y CTA.\n- No introduzcas por iniciativa propia fiador, codeudor, reportado, estudio, aprobación, crédito o financiación. Solo menciona condiciones financieras si el usuario las escribió explícitamente.\n- No inventes una marca o modelo cuando Producto esté vacío.`;
   if (modo === 'tienda') return 'MODO TIENDA: habla de la experiencia, el producto y la visita; no inventes crédito ni condiciones financieras.';
@@ -2044,6 +2107,7 @@ async function generarContenido() {
     setTimeout(() => { sel.style.borderColor = ''; sel.style.boxShadow = ''; }, 2500);
     return;
   }
+  if (!validateEventDateConsistency()) return;
   if (ciudad === 'todas las ciudades') showToast('Para mejor resultado selecciona una tienda específica', '#f59e0b');
   if (!platforms.length) { showToast('Selecciona al menos una plataforma.', '#f59e0b'); return; }
   if (contentGenerationInFlight) return;
@@ -3009,8 +3073,9 @@ async function buildImgPrompt() {
   const tiendaInfo     = getTiendaInfo(ciudad);
   const nombreCta      = esCiudad ? getCiudadNombre(ciudad) : (tiendaInfo?.nombre || getCiudadNombre(ciudad));
   const estiloCustomVal = document.getElementById('estilo-custom')?.value.trim();
-  const refBlock       = getRefBlock();
+  const refBlock       = ['captacion','institucional','jornada'].includes(modo) ? '' : getRefBlock();
   const explicitPriority = buildExplicitCreativePriority();
+  const adaptiveContextContract = buildAdaptiveContextContract();
   const visualBriefBlock = explicitPriority
     ? `${explicitPriority}\nSUJETOS OBLIGATORIOS: deriva las personas, objetos y relaciones del brief; no los sustituyas por Detalle hoy.\nACCIÓN OBLIGATORIA: representa la acción central indicada por el usuario.\nELEMENTOS SECUNDARIOS: usa Detalle hoy solo como ambiente compatible.\nELEMENTOS A EVITAR: cualquier sujeto o acción que contradiga el brief, una escena de una sola persona cuando el brief pide interacción, o un ambiente secundario convertido en concepto principal.`
     : 'SUJETOS Y ACCIÓN: deriva el foco de la escena del contexto específico; Detalle hoy solo puede ambientar y nunca debe convertirse en el sujeto principal.';
@@ -3033,7 +3098,7 @@ async function buildImgPrompt() {
           captacion:     'Community engagement post. Bold large typography as visual hero. Caribbean Colombian energy. Fun turquoise graphic elements.',
           jornada: [
             'Credit event poster.',
-            jornadaFecha ? ` EVENT DATE "${jornadaFecha}" as visual hero in large turquoise numbers.` : ' Do NOT invent or render any specific date — none was provided, omit it completely.',
+            jornadaFecha ? ` Event date: "${jornadaFecha}". Treat it as an important factual anchor whose scale must adapt to the total copy density.` : ' Do NOT invent or render any specific date — none was provided, omit it completely.',
             jornadaLugar ? ` Location: "${jornadaLugar}".` : ' Do NOT invent or render any specific address or location — none was provided, omit it completely.',
             jornadaHora  ? ` Time: "${jornadaHora}".` : ' Do NOT invent or render any specific time — none was provided, omit it completely.',
           ].join(''),
@@ -3041,13 +3106,16 @@ async function buildImgPrompt() {
 
     const detalleDia = getDetalleDelDia(currentEstilo);
     const estiloRico = {
-      formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
+      formal:     `Professional, trustworthy and commercially polished at the believable scale of the selected Caribbean municipality. Geometric accents in turquoise at low opacity. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
       costeno:    `Authentic everyday Caribbean Colombian commercial life with warm natural light and genuine warmth. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Never stack unrelated tropical clichés.`,
       chistoso:   `Playful commercial humor grounded in the user brief. Secondary detail only: ${detalleDia}.`,
       minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
     }[currentEstilo] || 'Professional brand design.';
 
+    const contextoOperador = normalizeSpanishToken([notaInstruccion, document.getElementById('modo-contexto')?.value || '', mensajeVal, titularVal].join(' '));
+    const contextoPideCelulares = /\b(celular|celulares|smartphone|smartphones|telefono|telefonos|movil|moviles)\b/.test(contextoOperador);
+    const contextoPideCredito = /\b(credito|creditos|cuota|cuotas|financia|financiacion|paga|pagalo)\b/.test(contextoOperador);
     const reglas = tipoPersonalizado
       ? [
           '- Interpret the operator message visually — show what it describes.',
@@ -3056,8 +3124,12 @@ async function buildImgPrompt() {
           '- All text sharp and fully legible.',
         ]
       : [
-          '- NO smartphones or device renders.',
-          '- NO prices, NO peso signs, NO credit terms.',
+          contextoPideCelulares
+            ? '- Cellphones may appear naturally in customers’ hands, advisers’ hands, counters or shelves. No giant, floating or isolated device render.'
+            : '- Do not introduce smartphones or device renders unless the brief requires them.',
+          contextoPideCredito
+            ? '- Use only the credit/installment wording explicitly supplied by the operator. NO invented prices, rates, approval promises or financial conditions.'
+            : '- NO prices, NO peso signs, NO invented credit terms.',
           '- ALL text in Spanish. Do not render the word Creditek or any logo; reserve one clean brand zone for the official asset.',
           '- All text sharp and fully legible.',
         ];
@@ -3078,6 +3150,7 @@ async function buildImgPrompt() {
       'ROLE: Senior advertising art director for Colombian Caribbean brand. Create a commercially compelling, visually rich image.',
       `FORMAT: ${formatSpec}`,
       visualBriefBlock,
+      adaptiveContextContract,
       '',
       `CORE CONCEPT: ${conceptoPrincipal}`,
       tipoPersonalizado ? null : (
@@ -3087,7 +3160,7 @@ async function buildImgPrompt() {
           inst_logro:'ADD: trophy or star graphic.',
           captacion_pregunta:'ADD: oversized question mark in turquoise as background element.',
           captacion_humor:'ADD: ONE genuine Caribbean commercial moment — a real everyday scene, never a stack of tropical clichés (no piling palms + confetti + flowers + coconut together).',
-          jornada_urgencia:'ADD: countdown clock in turquoise. Maximum urgency.',
+          jornada_urgencia:'ADD: communicate date urgency with strong hierarchy suited to this specific scene. A countdown clock is optional, never mandatory.',
         }[tipo] || null
       ),
       '',
@@ -3102,9 +3175,9 @@ async function buildImgPrompt() {
       `- HEADLINE (large, bold): "${titularVal}"`,
       mensajeVal ? `- SECONDARY MESSAGE (smaller, independent zone): "${mensajeVal}" — place it separately from the headline when the image allows` : null,
       document.getElementById('chk-cta-activo')?.checked !== false ? `- CTA BUTTON: "${ctaVal}" — turquoise #00C4CC background, navy #0B1E3D text, rounded corners` : null,
-      jornadaFecha ? `- EVENT DATE (VERY LARGE): "${jornadaFecha}"` : null,
+      jornadaFecha ? `- EVENT DATE (prominent but proportional to the scene and total copy): "${jornadaFecha}"` : null,
       jornadaLugar ? `- LOCATION: "${jornadaLugar}"` : null,
-      jornadaHora  ? `- TIME: "${jornadaHora}"` : null,
+      jornadaHora  ? `- ${/fin de semana|todo el d[ií]a|varios d[ií]as/i.test(jornadaHora) ? 'EVENT DURATION' : 'TIME'}: "${jornadaHora}"` : null,
       '',
       'SPANISH PROOFREADING — CRITICAL before rendering any text:',
       '- Capitalize first letter of every sentence and "Creditek"',
@@ -3163,7 +3236,7 @@ async function buildImgPrompt() {
     showcase_producto:`Showcase del producto: ${producto} apoyado o sostenido de forma natural dentro de la escena (en una mano, sobre una mesa/vitrina, o en uso) — NUNCA flotando en el aire ni como recorte pegado. Debe verse como parte física real de la fotografía, con sombra de contacto realista donde toca la superficie. Bordes nítidos, fondo limpio. Texto mínimo. El producto ocupa el 60–65% de la composición. Etiquetas de specs flotantes si aplica (esto sí puede ser un elemento gráfico superpuesto, distinto al producto).`,
     testimonio:       `Testimonio: tono cálido y humano. Gran comilla de apertura en turquesa #00C4CC. Frase testimonial de cliente en texto blanco grande y centrado. Silueta o retrato de persona en un costado. Sin imagen del producto.`,
     educativo:        `Contenido educativo: diseño limpio e informativo. Íconos en turquesa #00C4CC (checks, números, flechas) sobre fondo azul marino. Jerarquía de lectura clara, aspecto de tarjeta útil — no aviso agresivo.`,
-    promo_urgencia:   `Promo con urgencia: composición de alta energía. Badge "SOLO HOY" o elemento de cuenta regresiva en turquesa #00C4CC. Producto ${producto} con cinta o elemento diagonal de destaque.${precio ? ` Precio "${precio}" en números muy grandes y en negrita.` : ''} Alto contraste, lectura visual inmediata.`,
+    promo_urgencia:   `Promo con urgencia: comunica la vigencia real mediante jerarquía y alto contraste. Usa badge o cuenta regresiva únicamente cuando ese texto haya sido escrito por el operador y mejore la composición.${precio ? ` Precio "${precio}" visible sin competir con el titular.` : ''} Lectura visual inmediata sin cintas ni diagonales obligatorias.`,
     detras_camara:    `Detrás de cámara: atmósfera auténtica del interior de una tienda Creditek. Iluminación natural, vitrina con celulares visibles, personas en ambiente real de tienda. Estilo documental — sin overlays gráficos pesados.`,
   };
   const tipoDesc = (tipo === 'personalizado' && tipoPersonalizadoVal)
@@ -3283,6 +3356,7 @@ async function buildImgPrompt() {
     `COMPOSICIÓN: ${tipoDesc}`, specsBlock, ``,
     `ESTILO "${currentEstilo}": ${mensajeEstilo}`,
     variableGraphicDirection,
+    adaptiveContextContract,
     buildMandatoryUserBrief(),
     notaInstruccion ? `INSTRUCCIÓN OPERADOR: ${notaInstruccion}` : null, ``,
     `TEXTOS EXACTOS EN LA IMAGEN (en español colombiano, sin traducir):`,
@@ -3831,6 +3905,7 @@ async function generarImagen(callerBtn = null) {
   resultDiv.style.display = 'none'; errDiv.style.display = 'none';
 
   try {
+    if (!validateEventDateConsistency()) return;
     // El estado debe pintarse antes de cualquier corrección o llamada de red.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     label.textContent = 'Corrigiendo texto...';
@@ -3998,16 +4073,22 @@ const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
 - Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
 - The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
-const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: propose a bold, photographic, human-centered art direction with energetic Caribbean color, cinematic natural light, believable product interaction and contemporary editorial graphics. Do not imitate a generic blue corporate poster.`;
-const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: propose an independent premium retail art direction with sophisticated typography, dynamic composition, modern color blocking and a conversion-focused product story. It must be visibly different from Designer A.`;
+const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: propose a bold, photographic, human-centered art direction with energetic Caribbean color, cinematic natural light, believable product interaction and contemporary editorial graphics. Keep the place authentic to the selected Colombian municipality; do not upscale it into a metropolitan flagship or imitate a generic blue corporate poster.`;
+const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: propose an independent, polished small-town Colombian retail art direction with sophisticated typography, dynamic composition, modern color blocking and a conversion-focused product story. It must be visibly different from Designer A without turning the store into a luxury mall or metropolitan flagship.`;
 const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY WHEN A STORE OR IN-STORE CUSTOMERS ARE REQUESTED:
-- The setting must be unmistakably the interior of a modern Colombian cellphone retail store, not a generic social venue.
-- Use an establishing wide shot at eye level with a 24–28 mm wide-angle lens. Place the camera 3–4 meters from the nearest customer.
-- At least 45% of the frame must visibly describe the store environment: glass cellphone display counters, wall-mounted phones or accessories, a service counter, commercial lighting and sales advisers helping customers.
-- Distribute 8–12 customers naturally in small groups across foreground, middle ground and background. Prefer full-body or three-quarter figures and believable interaction with advisers and devices.
+- The setting must be unmistakably a clean, attractive small or medium cellphone shop in a Caribbean Colombian municipality, not a generic social venue, luxury flagship or capital-city megastore.
+- Use an eye-level environmental view wide enough to establish the real shop without exaggerating its dimensions. Avoid ultra-wide distortion, monumental ceilings and impossible depth.
+- At least 40% of the frame must describe a compact store environment: nearby glass display counters, modest wall displays of phones or accessories, a practical service counter, normal commercial lighting and advisers helping customers.
+- Use 5–9 customers unless the operator explicitly requests another amount. Arrange them naturally in the limited space, with believable proximity and varied interactions.
 - Preserve clear spatial depth and enough architecture to identify the location even if all advertising copy is hidden.
 - No close-up, tight crop, bust portrait, single face dominating the frame or shallow depth of field that erases the store.
-- Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Do not invent readable prices, offers or third-party brand marks inside the store.`;
+- Never resemble a shopping mall, airport store, international luxury showroom, warehouse, restaurant, café, bar, party, event hall, residential interior or empty street. Do not invent readable prices, offers or third-party brand marks inside the store.`;
+
+const SMALL_TOWN_LOCATION_CONTRACT = `SMALL-TOWN LOCATION REALISM — CREDITEK OPERATING CONTEXT:
+- Creditek operates in smaller Caribbean Colombian municipalities such as Corozal, Chinú, Tolú and Ciénaga de Oro. The location must feel locally plausible, commercially dignified and contemporary without looking metropolitan.
+- Show a compact street-level shop of approximately 35–80 m², ordinary ceiling height, close counters, practical merchandising and personalized adviser attention.
+- Architecture, clothing and customers must reflect everyday present-day Caribbean Colombia: warm, authentic and diverse, never folkloric, impoverished, rustic, tourist-staged or artificially glamorous.
+- Beauty means clean, welcoming, colorful and well cared for—not huge, luxurious, futuristic or populated only by fashion models.`;
 
 const AD_CREATIVE_QUALITY_CONTRACT = `9.5/10 AD CREATIVE QUALITY GATE — SELF-CHECK BEFORE RENDERING:
 - Use one dominant visual idea. People, product, headline and decorative graphics must not compete for equal attention.
@@ -4021,7 +4102,28 @@ const AD_CREATIVE_QUALITY_CONTRACT = `9.5/10 AD CREATIVE QUALITY GATE — SELF-C
 function buildRetailStoreSceneContract(prompt = '') {
   const normalized = String(prompt).toLowerCase();
   const requestsStoreScene = /\b(tienda|local|punto de venta|almac[eé]n|vitrina|mostrador|jornada|clientes comprando|in[- ]?store|retail store|shop)\b/.test(normalized);
-  return requestsStoreScene ? RETAIL_STORE_SCENE_CONTRACT : '';
+  return requestsStoreScene ? `${RETAIL_STORE_SCENE_CONTRACT}\n${SMALL_TOWN_LOCATION_CONTRACT}` : '';
+}
+
+function buildAdaptiveTextHierarchyContract() {
+  const isEvent = (document.getElementById('modo')?.value || '') === 'jornada';
+  const textItems = [
+    document.getElementById('img-titular')?.value.trim(),
+    document.getElementById('img-mensaje')?.value.trim(),
+    document.getElementById('chk-cta-activo')?.checked !== false ? document.getElementById('img-cta')?.value.trim() : '',
+    isEvent ? document.getElementById('jornada-fecha')?.value.trim() : '',
+    isEvent ? document.getElementById('jornada-lugar')?.value.trim() : '',
+    isEvent ? document.getElementById('jornada-hora')?.value.trim() : '',
+  ].filter(Boolean);
+  const totalCharacters = textItems.reduce((sum, value) => sum + value.length, 0);
+  const dense = textItems.length >= 5 || totalCharacters > 145;
+  return dense
+    ? `ADAPTIVE TEXT HIERARCHY — INFORMATION-DENSE PIECE:
+- Do not make every text item large. Use at most two dominant elements: the headline and the most decision-relevant event fact.
+- Keep secondary message, location and duration in a compact, high-contrast information footer or two calm support zones; preserve mobile legibility without covering the scene.
+- The CTA remains visible but must not compete with the event date or headline. Do not add a countdown graphic unless explicitly requested by the operator.`
+    : `ADAPTIVE TEXT HIERARCHY — LIGHT-COPY PIECE:
+- Let the scene lead. Use one dominant headline, one supporting message and one clear CTA in separate safe zones; do not manufacture extra badges or information blocks.`;
 }
 
 function buildProductProminenceContract() {
@@ -4041,13 +4143,14 @@ function buildProductProminenceContract() {
 }
 
 function buildExactTextAllowlist() {
+  const isEvent = (document.getElementById('modo')?.value || '') === 'jornada';
   const allowed = [
     document.getElementById('img-titular')?.value.trim(),
     document.getElementById('img-mensaje')?.value.trim(),
     document.getElementById('chk-cta-activo')?.checked !== false ? document.getElementById('img-cta')?.value.trim() : '',
-    document.getElementById('jornada-fecha')?.value.trim(),
-    document.getElementById('jornada-lugar')?.value.trim(),
-    document.getElementById('jornada-hora')?.value.trim(),
+    isEvent ? document.getElementById('jornada-fecha')?.value.trim() : '',
+    isEvent ? document.getElementById('jornada-lugar')?.value.trim() : '',
+    isEvent ? document.getElementById('jornada-hora')?.value.trim() : '',
   ].filter(Boolean);
   const list = allowed.length ? allowed.map(value => `- "${value}"`).join('\n') : '- No generated text is authorized.';
   return `EXACT TEXT ALLOWLIST — ZERO EXCEPTIONS:
@@ -4060,6 +4163,7 @@ function buildAdCreativeQualityPrompt(prompt = '') {
   return [
     AD_CREATIVE_QUALITY_CONTRACT,
     buildRetailStoreSceneContract(prompt),
+    buildAdaptiveTextHierarchyContract(),
     buildProductProminenceContract(),
     buildExactTextAllowlist(),
   ].filter(Boolean).join('\n\n');

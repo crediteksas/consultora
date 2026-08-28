@@ -137,7 +137,9 @@ async function llamarOpenAI_(env, payload) {
         "Authorization": `Bearer ${env.OPENAI_API_KEY}`
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(12e4)
+      // GPT Image puede tardar más de dos minutos en composiciones complejas.
+      // Se espera una sola llamada hasta cuatro minutos; nunca se reintenta.
+      signal: AbortSignal.timeout(24e4)
     });
   } catch (error) {
     const safe = /* @__PURE__ */ __name2((value) => String(value || "").replace(/[\r\n]+/g, " ").slice(0, 180), "safe");
@@ -145,7 +147,10 @@ async function llamarOpenAI_(env, payload) {
       error_name: safe(error?.name),
       error_message: safe(error?.message)
     }));
-    return err("No se pudo conectar con OpenAI. Intenta nuevamente.", 502);
+    const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    return err(timedOut
+      ? "GPT Image excedi\xF3 el tiempo de generaci\xF3n. No se realiz\xF3 un segundo intento."
+      : "No se pudo conectar con OpenAI. No se realiz\xF3 un segundo intento.", 502);
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {

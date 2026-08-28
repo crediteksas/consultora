@@ -49,6 +49,12 @@ test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {
   assert.match(publisher, /canvas\.toDataURL\('image\/png'\)/);
 });
 
+test('GPT Image permite composiciones largas sin reintentos automáticos', () => {
+  assert.match(worker, /AbortSignal\.timeout\(24e4\)/);
+  assert.match(worker, /GPT Image excedi\\xF3 el tiempo de generaci\\xF3n/);
+  assert.match(worker, /No se realiz\\xF3 un segundo intento/);
+});
+
 test('Worker autoriza el dominio productivo separado de AURA', () => {
   assert.match(worker, /"Access-Control-Allow-Origin": "https:\/\/aura\.crediteksas\.com"/);
   assert.doesNotMatch(worker, /"Access-Control-Allow-Origin": "https:\/\/registro\.crediteksas\.com"/);

@@ -954,15 +954,15 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="sidebar-label">Formato de salida</div>
     <div class="format-selector" role="group" aria-label="Formato de salida">
       <button type="button" class="format-btn active" data-format="image" aria-pressed="true" onclick="selectOutputFormat('image',this)"><i data-lucide="image" class="format-icon" aria-hidden="true"></i><span>Imagen</span></button>
-      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel · costo alto</span></button>
+      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" disabled title="En rediseño: los formatos actuales de 4 a 8 segundos no cumplen la necesidad comercial"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel · en rediseño</span></button>
       <button type="button" class="format-btn" data-format="carousel" aria-pressed="false" onclick="selectOutputFormat('carousel',this)"><i data-lucide="layout-grid" class="format-icon" aria-hidden="true"></i><span>Multi-producto</span></button>
     </div>
     <div id="reel-options" class="reel-options">
       <label for="reel-duration">Duración del Reel</label>
       <select id="reel-duration" onchange="updateReelEstimate()">
-        <option value="4" selected>4 segundos</option>
+        <option value="4">4 segundos</option>
         <option value="6">6 segundos</option>
-        <option value="8">8 segundos</option>
+        <option value="8" selected>8 segundos</option>
       </select>
       <label for="reel-style">Estilo de animación</label>
       <select id="reel-style">
@@ -971,7 +971,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <option value="slide">Entrada lateral con texto</option>
         <option value="dynamic">Dinámico (IA decide)</option>
       </select>
-      <div class="reel-cost" id="reel-cost">⚠️ Operación premium: 2 llamadas previstas (imagen base + Veo 3.1). Se mostrará el costo estimado y se pedirá confirmación antes de generar.</div>
+      <div class="reel-cost" id="reel-cost">Reel temporalmente no disponible mientras se define una alternativa de más de 8 segundos con costo controlado.</div>
     </div>
   </div>
   <button class="gen-btn" id="gen-btn" onclick="generarContenido()">

@@ -39,6 +39,13 @@ import {
 import { buscarHandoffInicial, confirmarHandoff, marcarHandoffError, reservarHandoff } from './commercial-kpis';
 import { summarizeEligibility } from './campaign-policy.mjs';
 import { authorizeSofiaCampaign } from './campaign-auth.mjs';
+import {
+  isAdvisorContactQuestion,
+  isAllianceRequest,
+  isExplicitRejection,
+  isExplicitServiceConsent,
+  isPublicStoreInfoRequest,
+} from './conversation-audit-policy.mjs';
 
 const SUPABASE_URL = 'https://ditiwpndvmyuqcagupea.supabase.co';
 
@@ -265,6 +272,20 @@ function esPalabraReservadaEscuchar(texto: string): boolean {
 function detectaAcepta(texto: string): boolean {
   if (detectaRechaza(texto)) return false;
   return /\bsi\b|\bsí\b|dale|\bok\b|claro|listo|acepto|autoriz|permiso|de\s*acuerdo|adelante|\bpuede\b|esta\s*bien|está\s*bien|\bva\b|perfecto|bueno/i.test(texto);
+}
+
+async function respuestaPublicaTiendas(texto: string, key: string): Promise<string> {
+  const ciudades = await obtenerCiudadesCubiertas(key);
+  const ciudad = detectaCiudad(texto);
+  if (ciudad) {
+    const tienda = await buscarTiendaRandom(ciudad, [], key);
+    if (tienda) {
+      const nombre = tienda.nombre_comercial || tienda.nombre || `Creditek ${tienda.ciudad}`;
+      const telefono = tienda.telefono ? ` Puedes comunicarte al ${tienda.telefono}.` : '';
+      return `Sí tenemos atención en ${tienda.ciudad}: ${nombre}.${telefono} Puedes acercarte o escribir directamente; para darte esta información no necesitas registrarte.`;
+    }
+  }
+  return `Claro 😊 Tenemos atención en ${ciudades}. Dime cuál ciudad te interesa y te comparto la información pública de la tienda. No necesitas darme datos personales para esta consulta.`;
 }
 
 function detectaRechaza(texto: string): boolean {
@@ -1009,9 +1030,29 @@ async function procesarMensaje(
   // si aplica (OPTIN y pregunta de modalidad, solo en WhatsApp).
   let botones: { id: string; title: string }[] | undefined;
 
+  // Información pública y alianzas no requieren consentimiento ni captura de
+  // datos. Se atienden antes del embudo para no convertir una consulta simple
+  // en una solicitud de crédito.
+  if (isPublicStoreInfoRequest(texto)) {
+    respuesta = await respuestaPublicaTiendas(texto, sk);
+    await sendFn(respuesta);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: 'bot', canal }, sk);
+    push('Sofia', respuesta);
+    await save();
+    return;
+  }
+  if (isAllianceRequest(texto)) {
+    respuesta = 'Gracias por pensar en Creditek para una alianza. Este contacto de Sofía atiende compras de clientes; para convenios comerciales puedes escribir a comercial@crediteksas.com. No necesitas compartir datos personales por aquí.';
+    await sendFn(respuesta);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: 'bot', canal }, sk);
+    push('Sofia', respuesta);
+    await save();
+    return;
+  }
+
   // Un rechazo comercial explícito cierra cualquier flujo previo al handoff.
   // Al marcarlo perdido, el cron de seguimiento deja de incluirlo.
-  if (conv.estado !== 'OPTIN' && conv.estado !== 'OPTIN_MARKETING' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto)) {
+  if (conv.estado !== 'OPTIN' && conv.estado !== 'OPTIN_MARKETING' && (isExplicitRejection(texto) || detectaCierreComercial(texto))) {
     conv.estado = 'FIN';
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -1153,7 +1194,7 @@ async function procesarMensaje(
         break;
       }
       // Respuesta al opt-in (rechazo se revisa primero para no confundir "no autorizo" con aceptación)
-      if (detectaRechaza(texto)) {
+      if (isExplicitRejection(texto)) {
         await upsertCliente({
           telefono: clienteId,
           optin_datos: false,
@@ -1164,7 +1205,7 @@ async function procesarMensaje(
           recordatorio_enviado_at: new Date().toISOString(),
         }, sk);
         conv.estado = 'FIN'; respuesta = MSG.OPTIN_NO;
-      } else if (detectaAcepta(texto)) {
+      } else if (isExplicitServiceConsent(texto)) {
         conv.optin_aceptado = true;
         const aceptaPromociones = /datos y promociones/i.test(texto);
         const consentAt = new Date().toISOString();
@@ -1956,6 +1997,9 @@ async function procesarMensaje(
         } else {
           respuesta = MSG.SIN_ASESOR;
         }
+      } else if (isAdvisorContactQuestion(texto)) {
+        const nombreAsesor = (conv.tienda_contacto || '').split(' ')[0] || 'El asesor asignado';
+        respuesta = `${nombreAsesor} te escribirá o llamará para continuar. Si ya pasó un tiempo prudente y no te contacta, avísame aquí y busco otra opción.`;
       } else if (tieneIntencionReal(texto)) {
         // Sofía ya cumplió su función: no reinicia el embudo ni intenta cerrar
         // la venta. Cualquier condición comercial posterior (cuota inicial,

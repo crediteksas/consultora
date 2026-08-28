@@ -1,5 +1,6 @@
 import { summarizeEligibility } from "./campaign-policy.mjs";
 import { authorizeSofiaCampaign } from "./campaign-auth.mjs";
+import { isAdvisorContactQuestion, isAllianceRequest, isExplicitRejection, isExplicitServiceConsent, isPublicStoreInfoRequest } from "./conversation-audit-policy.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -1727,6 +1728,20 @@ function detectaAcepta(texto) {
   return /\bsi\b|\bsí\b|dale|\bok\b|claro|listo|acepto|autoriz|permiso|de\s*acuerdo|adelante|\bpuede\b|esta\s*bien|está\s*bien|\bva\b|perfecto|bueno/i.test(texto);
 }
 __name(detectaAcepta, "detectaAcepta");
+async function respuestaPublicaTiendas(texto, key) {
+  const ciudades = await obtenerCiudadesCubiertas(key);
+  const ciudad = detectaCiudad(texto);
+  if (ciudad) {
+    const tienda = await buscarTiendaRandom(ciudad, [], key);
+    if (tienda) {
+      const nombre = tienda.nombre_comercial || tienda.nombre || `Creditek ${tienda.ciudad}`;
+      const telefono = tienda.telefono ? ` Puedes comunicarte al ${tienda.telefono}.` : "";
+      return `Sí tenemos atención en ${tienda.ciudad}: ${nombre}.${telefono} Puedes acercarte o escribir directamente; para darte esta información no necesitas registrarte.`;
+    }
+  }
+  return `Claro 😊 Tenemos atención en ${ciudades}. Dime cuál ciudad te interesa y te comparto la información pública de la tienda. No necesitas darme datos personales para esta consulta.`;
+}
+__name(respuestaPublicaTiendas, "respuestaPublicaTiendas");
 function detectaRechaza(texto) {
   return /^no$|^no[,. ]|no\s+quiero|no\s+acepto|no\s+autoriz|no\s+permiso|no\s+puede/i.test(texto);
 }
@@ -2442,7 +2457,23 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
   push("Cliente", texto);
   let respuesta = "";
   let botones;
-  if (conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto)) {
+  if (isPublicStoreInfoRequest(texto)) {
+    respuesta = await respuestaPublicaTiendas(texto, sk);
+    await sendFn(respuesta);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    push("Sofia", respuesta);
+    await save();
+    return;
+  }
+  if (isAllianceRequest(texto)) {
+    respuesta = "Gracias por pensar en Creditek para una alianza. Este contacto de Sofía atiende compras de clientes; para convenios comerciales puedes escribir a comercial@crediteksas.com. No necesitas compartir datos personales por aquí.";
+    await sendFn(respuesta);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    push("Sofia", respuesta);
+    await save();
+    return;
+  }
+  if (conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING" && (isExplicitRejection(texto) || detectaCierreComercial(texto))) {
     conv.estado = "FIN";
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -2564,7 +2595,7 @@ ${siguiente}` : respuestaContinuidad;
         }
         break;
       }
-      if (detectaRechaza(texto)) {
+      if (isExplicitRejection(texto)) {
         await upsertCliente({
           telefono: clienteId,
           optin_datos: false,
@@ -2576,7 +2607,7 @@ ${siguiente}` : respuestaContinuidad;
         }, sk);
         conv.estado = "FIN";
         respuesta = MSG.OPTIN_NO;
-      } else if (detectaAcepta(texto)) {
+      } else if (isExplicitServiceConsent(texto)) {
         conv.optin_aceptado = true;
         const aceptaPromociones = /datos y promociones/i.test(texto);
         const consentAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -3112,6 +3143,9 @@ ${siguienteDato}` : respuestaDuda;
         } else {
           respuesta = MSG.SIN_ASESOR;
         }
+      } else if (isAdvisorContactQuestion(texto)) {
+        const nombreAsesor = (conv.tienda_contacto || "").split(" ")[0] || "El asesor asignado";
+        respuesta = `${nombreAsesor} te escribirá o llamará para continuar. Si ya pasó un tiempo prudente y no te contacta, avísame aquí y busco otra opción.`;
       } else if (tieneIntencionReal(texto)) {
         const nombreAsesor = (conv.tienda_contacto || "").split(" ")[0] || "tu asesor";
         respuesta = mensajeConsultaAsesor(texto, nombreAsesor, conv.tienda_telefono || "");

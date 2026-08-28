@@ -1046,7 +1046,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <label class="model-chk-label"><input type="checkbox" id="chk-recraft" checked onchange="updateGenerationEstimate()"> 📷 Diseñador A · Recraft V4.1</label>
         <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ Diseñador B · GPT Image 2</label>
       </div>
-      <div class="reel-cost" id="image-cost-estimate">Comparación A/B: 1 imagen Recraft (USD 0,035) + 1 imagen GPT. Sin reintentos automáticos.</div>
+      <div class="reel-cost" id="image-cost-estimate">Control de uso de hoy: cargando…</div>
       <div class="fmt-toggle">
         <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')">📱 Feed (1080×1080)</button>
         <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')">📲 Stories (1080×1920)</button>
@@ -1429,6 +1429,7 @@ window.addEventListener('DOMContentLoaded', () => {
   populateCiudadDropdown();
   renderRefStatus();
   updateImgKeyStatus();
+  renderImageUsageControl();
 
   // ── Precarga desde Calendario: cola batch (lote) o pieza única ───
   const p = new URLSearchParams(location.search);
@@ -1720,19 +1721,43 @@ function formatCop(value) {
 }
 
 function updateGenerationEstimate() {
-  const recraft = document.getElementById('chk-recraft')?.checked;
-  const gpt = document.getElementById('chk-dalle')?.checked;
-  const estimate = document.getElementById('image-cost-estimate');
-  if (estimate) {
-    estimate.textContent = recraft && gpt
-      ? 'Comparación A/B: 1 imagen Recraft (USD 0,035) + 1 imagen GPT. Sin reintentos automáticos.'
-      : recraft
-        ? 'Estimado: 1 imagen Recraft V4.1 · USD 0,035. Sin reintentos automáticos.'
-        : gpt
-          ? 'Estimado: 1 imagen GPT. Sin reintentos automáticos.'
-          : 'Selecciona al menos un diseñador.';
-  }
+  renderImageUsageControl();
   updateImgKeyStatus();
+}
+
+const IMAGE_USAGE_KEY = 'ck_image_usage_v1';
+
+function imageUsageTodayKey() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
+function readImageUsage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(IMAGE_USAGE_KEY) || '{}');
+    return saved.day === imageUsageTodayKey() ? saved : { day: imageUsageTodayKey(), recraft: { attempts: 0, success: 0, failed: 0, units: 0 }, gpt: { attempts: 0, success: 0, failed: 0 } };
+  } catch {
+    return { day: imageUsageTodayKey(), recraft: { attempts: 0, success: 0, failed: 0, units: 0 }, gpt: { attempts: 0, success: 0, failed: 0 } };
+  }
+}
+
+function recordImageUsage(engine, status, billing = {}) {
+  const usage = readImageUsage();
+  const bucket = engine === 'recraft' ? usage.recraft : usage.gpt;
+  if (status === 'attempt') bucket.attempts += 1;
+  if (status === 'success') {
+    bucket.success += 1;
+    if (engine === 'recraft') bucket.units += Number(billing.api_units || 0);
+  }
+  if (status === 'failed') bucket.failed += 1;
+  localStorage.setItem(IMAGE_USAGE_KEY, JSON.stringify(usage));
+  renderImageUsageControl();
+}
+
+function renderImageUsageControl() {
+  const el = document.getElementById('image-cost-estimate');
+  if (!el) return;
+  const usage = readImageUsage();
+  el.textContent = `Control de hoy · Recraft: ${usage.recraft.success} imágenes / ${usage.recraft.units} unidades · GPT: ${usage.gpt.success} imágenes · Fallidas: ${usage.recraft.failed + usage.gpt.failed}`;
 }
 
 function updateReelEstimate() {
@@ -4319,24 +4344,24 @@ async function generarConModelos() {
   const selected = MODELS.filter(m => m.checked);
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
-  const confirmationText = useRecraft && useDalle
-    ? 'Se generarán 2 conceptos de diseño: 1 con Recraft (USD 0,035) y 1 con GPT Image. No habrá reintentos automáticos. ¿Autorizar ambas llamadas?'
-    : useRecraft
-      ? 'Recraft generará 1 imagen pagada por USD 0,035. No habrá reintentos automáticos. ¿Autorizar esta llamada?'
-      : 'GPT Image generará 1 concepto de diseño. No habrá reintentos automáticos. ¿Autorizar esta llamada?';
-  if (!window.confirm(confirmationText)) {
-    showToast('Generación cancelada. No se realizó ninguna llamada.', '#f59e0b');
-    return;
-  }
   const keyOpenAI = '';
 
   document.getElementById('img-result').style.display     = 'none';
   document.getElementById('img-ab-result').style.display  = 'none';
   document.getElementById('img-err').style.display        = 'none';
 
-  const callEngine = (id) => {
-    if (id === 'recraft') return generarConRecraft(prompt);
-    return generarConDalle(keyOpenAI, prompt);
+  const callEngine = async (id) => {
+    recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'attempt');
+    try {
+      const result = id === 'recraft'
+        ? await generarConRecraft(prompt)
+        : await generarConDalle(keyOpenAI, prompt);
+      recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'success', id === 'recraft' ? { api_units: 35 } : {});
+      return result;
+    } catch (error) {
+      recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'failed');
+      throw error;
+    }
   };
 
   if (selected.length === 1) {

@@ -11,17 +11,18 @@ test('Piezas comerciales activa dos diseñadores para comparación A/B', () => {
   assert.match(publisher, /Diseñador A · Recraft V4\.1/);
   assert.match(publisher, /id="chk-dalle" checked/);
   assert.match(publisher, /Diseñador B · GPT Image 2/);
-  assert.match(publisher, /Comparación A\/B: 1 imagen Recraft/);
+  assert.match(publisher, /Control de uso de hoy/);
   assert.doesNotMatch(publisher, /id="chk-gemini"/);
   assert.doesNotMatch(publisher, /id="chk-pipeline"/);
   assert.match(publisher, /id="sidebar-recraft-dot"/);
   assert.doesNotMatch(publisher, /Vertex AI/);
 });
 
-test('La comparación exige confirmación visible y nunca activa reintentos automáticos', () => {
-  assert.match(publisher, /Se generarán 2 conceptos de diseño/);
-  assert.match(publisher, /1 imagen pagada por USD 0,035/);
-  assert.match(publisher, /No habrá reintentos automáticos/);
+test('La comparación registra consumo sin alertas y nunca activa reintentos automáticos', () => {
+  assert.doesNotMatch(publisher, /Se generarán 2 conceptos de diseño/);
+  assert.match(publisher, /Control de hoy/);
+  assert.match(publisher, /IMAGE_USAGE_KEY = 'ck_image_usage_v1'/);
+  assert.match(publisher, /recordImageUsage\(id === 'recraft'/);
   assert.match(publisher, /generarConRecraft\(prompt\)/);
   assert.match(publisher, /id="img-ab-result" hidden aria-hidden="true"/);
   assert.doesNotMatch(publisher, /onclick="generarAB\(\)"/);

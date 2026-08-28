@@ -59,5 +59,14 @@ test('el Worker productivo consume las guardas nuevas', async () => {
   assert.match(bundle, /isAllianceRequest\(texto\)/);
   assert.match(bundle, /isAdvisorContactQuestion\(texto\)/);
   assert.doesNotMatch(bundle, /conv\.estado !== "HANDOFF" && detectaCierreComercial/);
-  assert.match(bundle, /conv\.estado !== "OPTIN" && conv\.estado !== "OPTIN_MARKETING" && \(isExplicitRejection\(texto\)/);
+  assert.match(bundle, /conv\.estado !== "OPTIN" && conv\.estado !== "OPTIN_MARKETING" && conv\.estado !== "ALIANZA_CONSENT"/);
+});
+
+test('las alianzas se enrutan al supervisor canónico con consentimiento y sin número fijo', async () => {
+  const bundle = await readFile(new URL('../../creditek/workers/creditek-bot/index.js', import.meta.url), 'utf8');
+  assert.match(bundle, /ATTENTION_SUPERVISOR_PHONE/);
+  assert.match(bundle, /case "ALIANZA_CONSENT"/);
+  assert.match(bundle, /aviso_asesor_creditek/);
+  assert.match(bundle, /conv\.alianza_notificada/);
+  assert.doesNotMatch(bundle, /comercial@crediteksas\.com/);
 });

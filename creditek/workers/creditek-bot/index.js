@@ -2465,15 +2465,16 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     await save();
     return;
   }
-  if (isAllianceRequest(texto)) {
-    respuesta = "Gracias por pensar en Creditek para una alianza. Este contacto de Sofía atiende compras de clientes; para convenios comerciales puedes escribir a comercial@crediteksas.com. No necesitas compartir datos personales por aquí.";
+  if (conv.estado !== "ALIANZA_CONSENT" && isAllianceRequest(texto)) {
+    conv.estado = "ALIANZA_CONSENT";
+    respuesta = "¡Claro! Puedo enviar tu solicitud de alianza directamente a Oscar, responsable de cierres comerciales. ¿Autorizas que le comparta el número desde el que nos escribes para que pueda contactarte?";
     await sendFn(respuesta);
     await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
     push("Sofia", respuesta);
     await save();
     return;
   }
-  if (conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING" && (isExplicitRejection(texto) || detectaCierreComercial(texto))) {
+  if (conv.estado !== "OPTIN" && conv.estado !== "OPTIN_MARKETING" && conv.estado !== "ALIANZA_CONSENT" && (isExplicitRejection(texto) || detectaCierreComercial(texto))) {
     conv.estado = "FIN";
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -2549,6 +2550,24 @@ ${siguiente}` : respuestaContinuidad;
     }
   }
   switch (conv.estado) {
+    case "ALIANZA_CONSENT": {
+      if (isExplicitRejection(texto)) {
+        conv.estado = "FIN";
+        respuesta = "Entendido. No compartiré tu número. Si luego quieres retomar la alianza, escríbeme por aquí.";
+        break;
+      }
+      if (!isExplicitServiceConsent(`autorizo datos para atencion ${texto}`) || !/\b(si|sí|acepto|autorizo|de acuerdo)\b/i.test(texto)) {
+        respuesta = "Para enviárselo a Oscar necesito tu autorización expresa. Puedes responder: “Autorizo compartir mi número con Oscar”.";
+        break;
+      }
+      if (!conv.alianza_notificada) {
+        await notificarAlianzaSupervisor(clienteId, env2);
+        conv.alianza_notificada = true;
+      }
+      conv.estado = "FIN";
+      respuesta = "¡Listo! Ya envié tu solicitud de alianza a Oscar. Él podrá contactarte directamente por este número.";
+      break;
+    }
     // ── OPTIN ────────────────────────────────────────────────────────────────
     case "OPTIN": {
       if (detectaSolicitudDinero(texto)) {
@@ -3357,6 +3376,35 @@ async function notificarAsesor(conv, tienda, env2) {
   return messageId;
 }
 __name(notificarAsesor, "notificarAsesor");
+async function notificarAlianzaSupervisor(clienteId, env2) {
+  const destinoRaw = String(env2.ATTENTION_SUPERVISOR_PHONE || "").replace(/\D/g, "");
+  if (!destinoRaw) throw new Error("ATTENTION_SUPERVISOR_PHONE no configurado");
+  const destino = destinoRaw.length === 10 ? `57${destinoRaw}` : destinoRaw;
+  const contactoRaw = String(clienteId || "").replace(/\D/g, "");
+  const contacto = contactoRaw.startsWith("57") && contactoRaw.length === 12 ? contactoRaw.slice(2) : contactoRaw;
+  const res = await fetch(`https://graph.facebook.com/v19.0/${env2.PHONE_NUMBER_ID}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env2.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: destino,
+      type: "template",
+      template: {
+        name: "aviso_asesor_creditek",
+        language: { code: "es_CO" },
+        components: [{
+          type: "body",
+          parameters: [
+            { type: "text", text: "Oscar" },
+            { type: "text", text: `Solicitud de alianza comercial | Contacto autorizado: ${contacto}` }
+          ]
+        }]
+      }
+    })
+  });
+  if (!res.ok) throw new Error(`Meta alianza respondió ${res.status}`);
+}
+__name(notificarAlianzaSupervisor, "notificarAlianzaSupervisor");
 async function enviarRecordatorioAsesor(tienda, resumen, env2) {
   const digits = tienda.telefono.replace(/\D/g, "");
   const destino = digits.length === 10 ? "57" + digits : digits;

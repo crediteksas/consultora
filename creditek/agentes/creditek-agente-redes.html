@@ -4009,10 +4009,60 @@ const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY W
 - No close-up, tight crop, bust portrait, single face dominating the frame or shallow depth of field that erases the store.
 - Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Do not invent readable prices, offers or third-party brand marks inside the store.`;
 
+const AD_CREATIVE_QUALITY_CONTRACT = `9.5/10 AD CREATIVE QUALITY GATE — SELF-CHECK BEFORE RENDERING:
+- Use one dominant visual idea. People, product, headline and decorative graphics must not compete for equal attention.
+- Preserve a clear mobile-feed hierarchy: visual story first, headline second, CTA third, official logo zone fourth.
+- Use Creditek navy and turquoise as recognizable anchors. Warm scene colors may support the photograph but must not replace the brand identity.
+- Keep overlays purposeful and restrained. Avoid giant diagonal bands, excessive dark filters, crowded badges, duplicated frames or decorative elements that cut through faces, hands, devices or the store.
+- People must perform varied believable actions: asking an adviser, comparing devices, viewing a display or receiving assistance. Do not make everyone pose, smile at the same phone or face the camera.
+- Every approved text element must remain readable at phone-feed size with safe margins and sufficient contrast.
+- Before rendering, reject and recompute any composition containing invented copy, a dominant floating device, an ambiguous venue, obstructed people/product, weak hierarchy or an unbalanced brand palette.`;
+
 function buildRetailStoreSceneContract(prompt = '') {
   const normalized = String(prompt).toLowerCase();
   const requestsStoreScene = /\b(tienda|local|punto de venta|almac[eé]n|vitrina|mostrador|jornada|clientes comprando|in[- ]?store|retail store|shop)\b/.test(normalized);
   return requestsStoreScene ? RETAIL_STORE_SCENE_CONTRACT : '';
+}
+
+function buildProductProminenceContract() {
+  const product = document.getElementById('producto')?.value.trim() || '';
+  const genericProduct = !product || /^(smartphone|celular|tel[eé]fono|cualquier)/i.test(product);
+  const hasSpecificProduct = Boolean(productoImgBase64) || !genericProduct;
+  if (!hasSpecificProduct) {
+    return `PRODUCT DISCIPLINE — NO SPECIFIC MODEL PROVIDED:
+- Do not add any floating, oversized, cut-out or hero smartphone/device.
+- The visible store displays already communicate the category; people and the retail experience are the visual story.
+- Background phones may appear only naturally inside display counters, shelves or customers' hands.`;
+  }
+  return `PRODUCT DISCIPLINE — SPECIFIC PRODUCT PROVIDED:
+- Feature only the selected/reference product. Never substitute or invent another model.
+- The product may occupy at most 20% of the full canvas and must be naturally integrated in a hand, display counter or believable retail setting.
+- No giant floating cut-out, no edge crop and no product covering customers, store depth, headline, CTA or official logo zone.`;
+}
+
+function buildExactTextAllowlist() {
+  const allowed = [
+    document.getElementById('img-titular')?.value.trim(),
+    document.getElementById('img-mensaje')?.value.trim(),
+    document.getElementById('chk-cta-activo')?.checked !== false ? document.getElementById('img-cta')?.value.trim() : '',
+    document.getElementById('jornada-fecha')?.value.trim(),
+    document.getElementById('jornada-lugar')?.value.trim(),
+    document.getElementById('jornada-hora')?.value.trim(),
+  ].filter(Boolean);
+  const list = allowed.length ? allowed.map(value => `- "${value}"`).join('\n') : '- No generated text is authorized.';
+  return `EXACT TEXT ALLOWLIST — ZERO EXCEPTIONS:
+The image may contain only these exact strings:
+${list}
+Do not add SOLO HOY, urgency badges, prices, discounts, dates, slogans, store signs, product labels, legal claims or any other readable words. If a text is not listed above, it must not appear.`;
+}
+
+function buildAdCreativeQualityPrompt(prompt = '') {
+  return [
+    AD_CREATIVE_QUALITY_CONTRACT,
+    buildRetailStoreSceneContract(prompt),
+    buildProductProminenceContract(),
+    buildExactTextAllowlist(),
+  ].filter(Boolean).join('\n\n');
 }
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
@@ -4048,9 +4098,9 @@ async function llamarBackendImagen(path, payload) {
 }
 
 async function generarConRecraft(prompt) {
-  const storeSceneContract = buildRetailStoreSceneContract(prompt);
+  const qualityContract = buildAdCreativeQualityPrompt(prompt);
   const data = await llamarBackendImagen('/recraft/images', {
-    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${storeSceneContract}\n\n${prompt}`,
+    prompt: `${COMMERCIAL_DESIGN_CONTRACT}\n\n${RECRAFT_ART_DIRECTION}\n\n${qualityContract}\n\n${prompt}`,
     format: currentFormat === 'stories' ? 'stories' : 'feed',
     images: 1
   });
@@ -4115,7 +4165,7 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
 async function generarConDalle(key, prompt) {
   const finLogos = await loadAllSelectedFinancieras();
   const layoutGuard = buildGptLayoutGuard();
-  const storeSceneContract = buildRetailStoreSceneContract(prompt);
+  const qualityContract = buildAdCreativeQualityPrompt(prompt);
   let inputPayload;
   if (productoImgBase64 || finLogos.length) {
     const content = [];
@@ -4127,10 +4177,10 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${storeSceneContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
+    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${qualityContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${storeSceneContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
+    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${qualityContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',

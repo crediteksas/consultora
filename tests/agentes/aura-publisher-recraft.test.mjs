@@ -45,8 +45,18 @@ test('Las escenas de tienda exigen plano abierto y señales inequívocas del loc
   assert.match(publisher, /glass cellphone display counters/);
   assert.match(publisher, /No close-up, tight crop/);
   assert.match(publisher, /buildRetailStoreSceneContract\(prompt\)/);
-  assert.match(publisher, /RECRAFT_ART_DIRECTION}\\n\\n\$\{storeSceneContract}/);
-  assert.match(publisher, /GPT_ART_DIRECTION}\\n\$\{storeSceneContract}/);
+  assert.match(publisher, /RECRAFT_ART_DIRECTION}\\n\\n\$\{qualityContract}/);
+  assert.match(publisher, /GPT_ART_DIRECTION}\\n\$\{qualityContract}/);
+});
+
+test('La dirección publicitaria evita productos pegados y textos inventados', () => {
+  assert.match(publisher, /9\.5\/10 AD CREATIVE QUALITY GATE/);
+  assert.match(publisher, /Do not add any floating, oversized, cut-out or hero smartphone/);
+  assert.match(publisher, /at most 20% of the full canvas/);
+  assert.match(publisher, /EXACT TEXT ALLOWLIST — ZERO EXCEPTIONS/);
+  assert.match(publisher, /Do not add SOLO HOY/);
+  assert.match(publisher, /varied believable actions/);
+  assert.match(publisher, /buildAdCreativeQualityPrompt\(prompt\)/);
 });
 
 test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {

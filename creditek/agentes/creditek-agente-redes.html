@@ -954,15 +954,15 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="sidebar-label">Formato de salida</div>
     <div class="format-selector" role="group" aria-label="Formato de salida">
       <button type="button" class="format-btn active" data-format="image" aria-pressed="true" onclick="selectOutputFormat('image',this)"><i data-lucide="image" class="format-icon" aria-hidden="true"></i><span>Imagen</span></button>
-      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel</span></button>
+      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel · costo alto</span></button>
       <button type="button" class="format-btn" data-format="carousel" aria-pressed="false" onclick="selectOutputFormat('carousel',this)"><i data-lucide="layout-grid" class="format-icon" aria-hidden="true"></i><span>Multi-producto</span></button>
     </div>
     <div id="reel-options" class="reel-options">
       <label for="reel-duration">Duración del Reel</label>
-      <select id="reel-duration">
-        <option value="4">4 segundos</option>
+      <select id="reel-duration" onchange="updateReelEstimate()">
+        <option value="4" selected>4 segundos</option>
         <option value="6">6 segundos</option>
-        <option value="8" selected>8 segundos</option>
+        <option value="8">8 segundos</option>
       </select>
       <label for="reel-style">Estilo de animación</label>
       <select id="reel-style">
@@ -971,7 +971,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <option value="slide">Entrada lateral con texto</option>
         <option value="dynamic">Dinámico (IA decide)</option>
       </select>
-      <div class="reel-cost">💡 La generación usa Veo 3.1 y puede tardar entre 30 y 120 segundos.</div>
+      <div class="reel-cost" id="reel-cost">⚠️ Operación premium: 2 llamadas previstas (imagen base + Veo 3.1). Se mostrará el costo estimado y se pedirá confirmación antes de generar.</div>
     </div>
   </div>
   <button class="gen-btn" id="gen-btn" onclick="generarContenido()">
@@ -1043,10 +1043,11 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <span class="img-hdr-badge">Beta</span>
       </div>
       <div class="engine-row">
-        <label class="model-chk-label"><input type="checkbox" id="chk-gemini" checked onchange="updateImgKeyStatus()"> 📷 Foto producto</label>
-        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateImgKeyStatus()"> ⬡ GPT Image 2</label>
-        <label class="model-chk-label"><input type="checkbox" id="chk-pipeline" onchange="updateImgKeyStatus()"> 🔗 Pipeline (mejor de ambos)</label>
+        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-gemini" onchange="updateGenerationEstimate()"> 📷 Gemini premium</label>
+        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ GPT Image 2 · predeterminado</label>
+        <label class="model-chk-label"><input type="radio" name="image-engine" id="chk-pipeline" onchange="updateGenerationEstimate()"> 🔗 Pipeline premium · 2 llamadas</label>
       </div>
+      <div class="reel-cost" id="image-cost-estimate">Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.</div>
       <div class="fmt-toggle">
         <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')">📱 Feed (1080×1080)</button>
         <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')">📲 Stories (1080×1920)</button>
@@ -1703,6 +1704,42 @@ let reelGenerationInFlight = false;
 let currentReelObjectUrl = null;
 window._selectedOutputFormat = 'image';
 
+const REEL_ESTIMATED_COP_PER_SECOND = { min: 170, max: 1375 };
+
+function reelCostEstimate(duration) {
+  const seconds = Number(duration) || 4;
+  return {
+    seconds,
+    min: seconds * REEL_ESTIMATED_COP_PER_SECOND.min,
+    max: seconds * REEL_ESTIMATED_COP_PER_SECOND.max,
+    calls: 2
+  };
+}
+
+function formatCop(value) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+}
+
+function updateGenerationEstimate() {
+  const pipeline = document.getElementById('chk-pipeline')?.checked;
+  const premium = document.getElementById('chk-gemini')?.checked;
+  const estimate = document.getElementById('image-cost-estimate');
+  if (estimate) {
+    estimate.textContent = pipeline
+      ? '⚠️ Estimado: 2 llamadas de imagen (Gemini + GPT). Opción premium manual.'
+      : premium
+        ? '⚠️ Estimado: 1 llamada a Gemini premium. No se ejecutará respaldo automático.'
+        : 'Estimado: 1 llamada de imagen con GPT. No se ejecutarán otros motores.';
+  }
+  updateImgKeyStatus();
+}
+
+function updateReelEstimate() {
+  const estimate = reelCostEstimate(document.getElementById('reel-duration')?.value);
+  const cost = document.getElementById('reel-cost');
+  if (cost) cost.textContent = `⚠️ ${estimate.calls} llamadas previstas: imagen base + video Veo de ${estimate.seconds}s. Estimado del video: ${formatCop(estimate.min)}–${formatCop(estimate.max)}. Requiere confirmación.`;
+}
+
 function selectOutputFormat(format, button) {
   window._selectedOutputFormat = format;
   document.querySelectorAll('.format-btn').forEach((item) => {
@@ -1711,6 +1748,7 @@ function selectOutputFormat(format, button) {
     item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   document.getElementById('reel-options')?.classList.toggle('visible', format === 'reel');
+  if (format === 'reel') updateReelEstimate();
   const label = document.getElementById('gen-label');
   if (label) label.textContent = format === 'reel' ? '🎬 Generar Reel' : format === 'carousel' ? 'Generar Multi-producto' : '✦ Generar piezas';
 }
@@ -1870,6 +1908,17 @@ async function generateReel(imageBase64, config) {
 
 async function generateReelFromCurrentForm() {
   if (reelGenerationInFlight || imageGenerationInFlight) return;
+  const estimate = reelCostEstimate(document.getElementById('reel-duration')?.value);
+  const approved = window.confirm(
+    `Vas a generar un Reel premium de ${estimate.seconds} segundos.\n\n` +
+    `Llamadas previstas: ${estimate.calls} (imagen base + video Veo).\n` +
+    `Costo estimado del video: ${formatCop(estimate.min)} a ${formatCop(estimate.max)} COP.\n\n` +
+    'El valor real puede variar. ¿Autorizar esta generación?'
+  );
+  if (!approved) {
+    setReelStatus('Generación cancelada. No se realizó ninguna llamada.', 'error');
+    return;
+  }
   const button = document.getElementById('gen-btn');
   const spinner = document.getElementById('spinner');
   const label = document.getElementById('gen-label');
@@ -3954,7 +4003,6 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   // gemini3pro SÍ admite 2:3 exacto. El respaldo Imagen 4 :predict NO admite
   // 2:3 (solo 1:1/3:4/4:3/9:16/16:9) — usa 3:4 como la más cercana si se cae ahí.
   const aspectRatioG3       = currentFormat === 'stories' ? '2:3' : '1:1';
-  const aspectRatioFallback = currentFormat === 'stories' ? '3:4' : '1:1';
 
   async function llamarWorker(reqBody) {
     const data = await llamarBackendImagen('/generate', reqBody);
@@ -3984,23 +4032,12 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   try {
     src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
   } catch (errPrincipal) {
-    // FIX v17 12-jul-2026: decisión de Oscar — para EDICIÓN específicamente,
-    // si gemini3pro (el único motor con imagen de referencia) falla, NO caer
-    // a la vía normal del Worker (Nano Banana 2 / Vía 0), porque esa vía no
-    // manda ninguna imagen de referencia y el resultado sería una regeneración
-    // completa disfrazada de "edición" — el mismo problema que v16 resolvió.
-    // Nota: el "fallback a Vía 0" no ocurre dentro del Worker en una sola
-    // llamada — son 2 peticiones HTTP separadas orquestadas aquí en el
-    // frontend (el intento con engine=gemini3pro, y este segundo intento sin
-    // engine). Por eso el fix va aquí y no como un parámetro que el Worker
-    // deba respetar: si nunca se hace la segunda llamada, no hay nada que el
-    // Worker necesite bloquear.
-    if (esEdicion) {
-      console.warn('[generarConGemini] gemini3pro falló durante edición — NO se intenta Vía 0 (sin imagen de referencia):', errPrincipal.message);
-      throw new Error('No se pudo editar la imagen, intenta de nuevo.');
-    }
-    console.warn('[generarConGemini] gemini3pro falló, usando vía normal del Worker:', errPrincipal.message);
-    src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioFallback });
+    // Control de costo: una acción del usuario equivale a una sola llamada.
+    // Nunca se cobra un segundo intento automático con otro motor.
+    console.warn('[generarConGemini] falló el intento único; respaldo automático deshabilitado:', errPrincipal.message);
+    throw new Error(esEdicion
+      ? 'No se pudo editar la imagen. No se realizó un segundo intento automático.'
+      : 'No se pudo generar la imagen con Gemini. No se realizó un respaldo automático.');
   }
   // FIX v4d (07-jul-2026): si es para el pipeline, devolver la foto CRUDA sin
   // overlay de logo — GPT se encarga del logo y el texto en el paso 2.
@@ -4165,6 +4202,12 @@ async function aplicarCambioImagen() {
 
 async function generarAB() {
   if (!beginImageGeneration()) return;
+  const approved = window.confirm('La comparación A/B genera 2 imágenes pagadas (Gemini + GPT). ¿Autorizar las 2 llamadas?');
+  if (!approved) {
+    finishImageGeneration();
+    showToast('Comparación cancelada. No se realizó ninguna llamada.', '#f59e0b');
+    return;
+  }
   const keyGemini = '';
   const keyOpenAI = '';
   const prompt = document.getElementById('img-prompt-ta').value.trim();
@@ -4255,10 +4298,6 @@ async function generarConModelos() {
   const useDalle    = document.getElementById('chk-dalle')?.checked;
   const usePipeline = document.getElementById('chk-pipeline')?.checked; // FIX v4d, 07-jul-2026
 
-  // FIX v4d (07-jul-2026): el prompt "solo foto" solo se calcula si el pipeline
-  // está seleccionado — evita una llamada extra a Claude cuando nadie lo usa.
-  const promptGeminiFotoLimpia = usePipeline ? await buildImgPromptGeminiFotoLimpia() : null;
-
   const MODELS = [
     { id: 'gemini',   label: '📷 Foto producto',           checked: useGemini },
     { id: 'dalle',    label: '⬡ GPT Image 2',              checked: useDalle },
@@ -4267,6 +4306,14 @@ async function generarConModelos() {
   const selected = MODELS.filter(m => m.checked);
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
+  if (selected.length > 1) { showToast('Selecciona un solo motor para controlar el costo', '#f59e0b'); return; }
+  if (usePipeline && !window.confirm('El pipeline premium genera 2 imágenes pagadas (Gemini + GPT). ¿Autorizar las 2 llamadas?')) {
+    showToast('Pipeline cancelado. No se realizaron llamadas de imagen.', '#f59e0b');
+    return;
+  }
+
+  // El prompt especial solo se prepara después de la autorización premium.
+  const promptGeminiFotoLimpia = usePipeline ? await buildImgPromptGeminiFotoLimpia() : null;
 
   const keyGemini = '';
   const keyOpenAI = '';

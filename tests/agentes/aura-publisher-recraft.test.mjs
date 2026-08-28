@@ -36,6 +36,11 @@ test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {
   assert.match(publisher, /canvas\.toDataURL\('image\/png'\)/);
 });
 
+test('Worker autoriza el dominio productivo separado de AURA', () => {
+  assert.match(worker, /"Access-Control-Allow-Origin": "https:\/\/aura\.crediteksas\.com"/);
+  assert.doesNotMatch(worker, /"Access-Control-Allow-Origin": "https:\/\/registro\.crediteksas\.com"/);
+});
+
 test('Token Recraft queda documentado únicamente como secreto', () => {
   assert.match(config, /RECRAFT_API_TOKEN/);
   assert.doesNotMatch(config, /RECRAFT_API_TOKEN\s*=/);

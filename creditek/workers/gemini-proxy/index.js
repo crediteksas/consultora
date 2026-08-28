@@ -115,7 +115,7 @@ async function authenticateAura(request, env, fetcher = fetch, logger = console)
 __name(authenticateAura, "authenticateAura");
 __name2(authenticateAura, "authenticateAura");
 var CORS = {
-  "Access-Control-Allow-Origin": "https://registro.crediteksas.com",
+  "Access-Control-Allow-Origin": "https://aura.crediteksas.com",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type"
 };

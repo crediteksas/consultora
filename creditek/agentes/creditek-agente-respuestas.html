@@ -478,7 +478,7 @@ function applyFilters(){
   // facebook_ads, sin prefijo fb_, invisible para este filtro antes de hoy).
   // Se mantiene t.startsWith('fb_') con || por retrocompatibilidad con
   // clientes viejos que sí tengan ese prefijo.
-  if(chf!=='all')entries=entries.filter(([t])=>{const c=allClients.find(x=>x.telefono===t);if(!c)return false;if(chf==='facebook')return t.startsWith('fb_')||c.fuente==='facebook_ads'||c.fuente==='instagram_ads';return !(t.startsWith('fb_')||c.fuente==='facebook_ads'||c.fuente==='instagram_ads')});
+  if(chf!=='all')entries=entries.filter(([t])=>{const c=allClients.find(x=>x.telefono===t);if(!c)return false;const esMeta=t.startsWith('fb_')||c.fuente==='facebook_ads'||c.fuente==='instagram_ads'||c.fuente==='meta_ads_sin_clasificar';if(chf==='facebook')return esMeta;return !esMeta});
   if(s)entries=entries.filter(([t])=>{const c=allClients.find(x=>x.telefono===t);return t.includes(s)||(c?.nombre||'').toLowerCase().includes(s)});
   if(df!=='all'){const now=new Date();let since;
     if(df==='today')since=new Date(now.getFullYear(),now.getMonth(),now.getDate());

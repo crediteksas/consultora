@@ -283,7 +283,9 @@ function detectaConfirmacionCelular(texto: string): boolean {
 
 // FIX 5, 03-jul-2026: determina la fuente real usando el objeto "referral" que
 // Meta manda cuando el cliente llega por un anuncio "Clic a WhatsApp" (Facebook
-// o Instagram). Sin esto, todo caía en whatsapp_organico sin distinción.
+// o Instagram). En Creditek el número de captación no se usa como fuente
+// orgánica: si Meta omite referral, conservamos la verdad conocida (Meta Ads)
+// sin inventar Facebook o Instagram.
 function determinarFuente(referral: any, refQr: string | null, canal: string): string {
   if (refQr) return 'qr_' + refQr;
   if (referral?.source_type) {
@@ -292,7 +294,7 @@ function determinarFuente(referral: any, refQr: string | null, canal: string): s
     return 'facebook_ads';
   }
   if (canal === 'facebook_dm') return 'facebook_dm';
-  return 'whatsapp_organico';
+  return 'meta_ads_sin_clasificar';
 }
 
 // Fix v1 09-jul-2026: evidencia real (Supabase, tabla clientes, últimos 3 días)
@@ -311,7 +313,7 @@ function determinarFuente(referral: any, refQr: string | null, canal: string): s
 // default 'whatsapp', perdiendo el origen Facebook real (evidencia: Jennifer
 // Acevedo, 573006034500).
 function canalOrigenReal(fuente: string | undefined): string {
-  if (fuente === 'facebook_ads' || fuente === 'instagram_ads' || fuente === 'facebook_dm') return fuente;
+  if (fuente === 'facebook_ads' || fuente === 'instagram_ads' || fuente === 'facebook_dm' || fuente === 'meta_ads_sin_clasificar') return fuente;
   return 'whatsapp';
 }
 

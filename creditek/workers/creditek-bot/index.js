@@ -1739,11 +1739,11 @@ function determinarFuente(referral, refQr, canal) {
     return "facebook_ads";
   }
   if (canal === "facebook_dm") return "facebook_dm";
-  return "whatsapp_organico";
+  return "meta_ads_sin_clasificar";
 }
 __name(determinarFuente, "determinarFuente");
 function canalOrigenReal(fuente) {
-  if (fuente === "facebook_ads" || fuente === "instagram_ads" || fuente === "facebook_dm") return fuente;
+  if (fuente === "facebook_ads" || fuente === "instagram_ads" || fuente === "facebook_dm" || fuente === "meta_ads_sin_clasificar") return fuente;
   return "whatsapp";
 }
 __name(canalOrigenReal, "canalOrigenReal");

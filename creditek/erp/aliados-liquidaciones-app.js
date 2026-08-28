@@ -3,6 +3,7 @@
 
   const D = CreditekAliadosLiquidaciones;
   const UX = CreditekAliadosUX;
+  const Accounts = CreditekAliadosCuentas;
   let sb;
   let operator;
   let profile;
@@ -207,15 +208,50 @@
   }
   $('saveReview').onclick = async () => { const { error } = await sb.rpc('aliados_resolver_operaciones_propias', { p_liquidation_id: selected.id }); if (error) alert(error.message); else await loadTab('operations'); };
   async function loadBankBeneficiaries() {
-    const { data } = await sb.from('liquidation_beneficiaries').select('id,nombre,tipo').eq('activo', true).order('nombre');
-    $('bankBeneficiary').innerHTML = (data || []).map(b => `<option value="${b.id}">${b.nombre} (${b.tipo})</option>`).join('');
+    const [{ data: beneficiaries, error: beneficiariesError }, { data: allies, error: alliesError }] = await Promise.all([
+      sb.from('liquidation_beneficiaries').select('id,nombre,tipo,origen_codigo').eq('activo', true).order('nombre'),
+      sb.from('origenes').select('codigo,nombre').eq('activo', true).eq('tipo', 'aliado').order('nombre')
+    ]);
+    if (beneficiariesError || alliesError) throw beneficiariesError || alliesError;
+    $('bankBeneficiary').innerHTML = '<option value="">Selecciona un beneficiario</option>' + (beneficiaries || []).map(b => `<option value="${b.id}">${esc(b.nombre)} (${esc(b.tipo)})</option>`).join('');
+    $('bankAllyOrigin').innerHTML = '<option value="">Selecciona un aliado</option>' + (allies || []).map(a => `<option value="${esc(a.codigo)}">${esc(a.nombre)} · ${esc(a.codigo)}</option>`).join('');
   }
-  $('addBankAccount').onclick = async () => { $('bankError').textContent = ''; await loadBankBeneficiaries(); $('bankAccountModal').classList.add('show'); };
+  function updateBankBeneficiaryMode() {
+    const isNew = $('bankBeneficiaryMode').value === 'new';
+    $('bankExistingField').classList.toggle('hidden', isNew);
+    $('bankNewBeneficiaryFields').classList.toggle('hidden', !isNew);
+  }
+  $('bankBeneficiaryMode').onchange = updateBankBeneficiaryMode;
+  $('addBankAccount').onclick = async () => {
+    $('bankError').textContent = '';
+    $('bankBeneficiaryMode').value = 'existing';
+    updateBankBeneficiaryMode();
+    try { await loadBankBeneficiaries(); $('bankAccountModal').classList.add('show'); }
+    catch (error) { alert(`No fue posible cargar los beneficiarios: ${error.message}`); }
+  };
   $('closeBankAccount').onclick = () => $('bankAccountModal').classList.remove('show');
   $('saveBankAccount').onclick = async () => {
-    const beneficiary_id = $('bankBeneficiary').value, banco = $('bankBanco').value.trim(), tipo_cuenta = $('bankTipo').value, numero_cuenta = $('bankNumero').value.trim();
-    if (!beneficiary_id || !banco || !numero_cuenta) { $('bankError').textContent = 'Completa todos los campos.'; return; }
-    const { error } = await sb.rpc('aliados_guardar_cuenta_bancaria', { p_beneficiary_id: beneficiary_id, p_banco: banco, p_tipo_cuenta: tipo_cuenta, p_numero_cuenta: numero_cuenta, p_validar: true });
+    const isNew = $('bankBeneficiaryMode').value === 'new';
+    let beneficiary_id = $('bankBeneficiary').value;
+    let error;
+    $('bankError').textContent = '';
+    $('saveBankAccount').disabled = true;
+    if (isNew) {
+      const validation = Accounts.validateNewBeneficiary({ originCode: $('bankAllyOrigin').value, name: $('bankHolderName').value, identification: $('bankHolderIdentification').value, bank: $('bankBanco').value, accountType: $('bankTipo').value, accountNumber: $('bankNumero').value });
+      if (!validation.ok) { $('bankError').textContent = validation.errors[0]; $('saveBankAccount').disabled = false; return; }
+      const result = await sb.rpc('aliados_crear_tercero_con_cuenta', {
+        p_origen_codigo: validation.value.originCode, p_identificacion: validation.value.identification,
+        p_nombre: validation.value.name, p_banco: validation.value.bank,
+        p_tipo_cuenta: validation.value.accountType, p_numero_cuenta: validation.value.accountNumber
+      });
+      error = result.error;
+      beneficiary_id = result.data?.beneficiary_id;
+    } else {
+      const banco = Accounts.clean($('bankBanco').value), tipo_cuenta = $('bankTipo').value, numero_cuenta = Accounts.digits($('bankNumero').value);
+      if (!beneficiary_id || !banco || numero_cuenta.length < 5) { $('bankError').textContent = 'Selecciona el beneficiario y completa los datos de la cuenta.'; $('saveBankAccount').disabled = false; return; }
+      ({ error } = await sb.rpc('aliados_guardar_cuenta_bancaria', { p_beneficiary_id: beneficiary_id, p_banco: banco, p_tipo_cuenta: tipo_cuenta, p_numero_cuenta: numero_cuenta, p_validar: true }));
+    }
+    $('saveBankAccount').disabled = false;
     if (error) { $('bankError').textContent = error.message; return; }
     const { data: completados } = await sb.rpc('aliados_completar_pagos_beneficiario', { p_beneficiary_id: beneficiary_id });
     $('bankAccountModal').classList.remove('show');

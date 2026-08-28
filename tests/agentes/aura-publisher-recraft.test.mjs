@@ -6,7 +6,7 @@ const publisher = await readFile(new URL('../../creditek/agentes/creditek-agente
 const worker = await readFile(new URL('../../creditek/workers/gemini-proxy/index.js', import.meta.url), 'utf8');
 const config = await readFile(new URL('../../creditek/workers/gemini-proxy/wrangler.toml', import.meta.url), 'utf8');
 
-test('Publicador ofrece Recraft V4.1 y conserva GPT como predeterminado', () => {
+test('Piezas comerciales ofrece Recraft V4.1 y conserva GPT como predeterminado', () => {
   assert.match(publisher, /id="chk-recraft"/);
   assert.match(publisher, /Recraft V4\.1 · fotografía humana/);
   assert.match(publisher, /id="chk-dalle" checked/);

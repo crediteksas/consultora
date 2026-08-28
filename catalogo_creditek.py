@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""
-CREDITEK · Generador de catálogo enriquecido v2
-- Specs vía Gemini API (reemplaza scraping GSMArena)
-- Modo incremental: solo procesa referencias nuevas
-- Sync automático: genera catalogo.json + commit + push al final
-"""
+"""Flujo heredado de catálogo, pausado hasta completar su rediseño sin IA."""
+
+if __name__ == '__main__':
+    print("CREDITEK · CATÁLOGO")
+    print("Enriquecimiento heredado pausado de forma segura.")
+    print("No se realizaron llamadas de IA, descargas, escrituras ni publicaciones.")
+    print("Pendiente: diseñar el catálogo desde fuentes verificables y datos de KORA.")
+    raise SystemExit(0)
 
 import os
 import re
@@ -54,6 +56,7 @@ MARCAS_SOLO_SPECS = {'CORN', 'KRONO', 'FLY', 'HYUNDAI', 'NET', 'XKIM', 'TABLET',
 
 GEMINI_MODEL  = 'gemini-2.5-flash'
 GEMINI_DELAY  = 5   # segundos entre llamadas (free tier: 15 RPM)
+CATALOGO_ENRIQUECIMIENTO_HABILITADO = False
 
 # === ENV ===
 def cargar_env():
@@ -333,6 +336,12 @@ def sincronizar_github_pages(svc, id_specs, id_imgs, indice_actual):
 
 # === MAIN ===
 def main():
+    if not CATALOGO_ENRIQUECIMIENTO_HABILITADO:
+        print("CREDITEK · CATÁLOGO")
+        print("Enriquecimiento heredado pausado de forma segura.")
+        print("No se realizaron llamadas de IA, descargas, escrituras ni publicaciones.")
+        print("Pendiente: diseñar el catálogo desde fuentes verificables y datos de KORA.")
+        return
     print("\n" + "="*70)
     print("  CREDITEK · CATÁLOGO ENRIQUECIDO v2 (Gemini + Incremental)")
     print("="*70 + "\n")

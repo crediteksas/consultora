@@ -22,7 +22,7 @@ window.auraSessionToken = auraSessionToken;
 </script>
 <script>
 try {
-  ['ck_api_key', 'ck_openai_key', 'ck_meta_token', 'ck_gemini_key'].forEach(key => {
+  ['ck_api_key', 'ck_openai_key', 'ck_meta_token'].forEach(key => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
   });
@@ -868,21 +868,14 @@ async function guardarEdicion(el, campo, idx) {
 }
 
 // ── FIX v32, 13-jul-2026 — Fase 1, Parte B: aprobar + generar imagen ────
-// Toma el texto YA EDITADO de la tarjeta (no el original), genera la imagen
-// con GPT Image (única opción de esta fase, confirmado por Oscar), la sube al
+// Toma el texto YA EDITADO de la tarjeta (no el original), solicita una sola
+// fotografía Recraft y compone texto/logo localmente antes de subirla al
 // bucket de Supabase Storage "calendario-imagenes" (ya existente y con RLS
 // de lectura pública/subida configurado) y actualiza calendario_piezas
 // (imagen_url + estado → 'lista_para_publicar').
 //
-// AVISO DE COSTO (obligatorio según el documento): cada clic en este botón
-// dispara 1 llamada real de generación de imagen a la API de OpenAI (GPT
-// Image, vía el mismo mecanismo `gpt-4o` + tool `image_generation` que ya
-// usa Agente 1) — no es gratis. Con ~8-10 piezas por quincena, aprobar todo
-// el lote de una sesión son ~8-10 generaciones. Precio de referencia (fuente:
-// documentación/agregadores públicos de OpenAI, jul-2026): GPT Image 2 a
-// calidad estándar/1024x1024 ronda los $0.04-$0.05 USD por imagen — confirma
-// el número exacto vigente en tu dashboard de OpenAI, los agregadores pueden
-// no reflejar cambios de precio recientes.
+// AVISO DE COSTO: cada aprobación requiere confirmación y consume exactamente
+// una generación Recraft estándar estimada en 35 unidades (USD 0,035).
 async function aprobarYGenerarImagen(idx) {
   const card = document.querySelectorAll('.dcard')[idx];
   if (!card) return;
@@ -891,6 +884,8 @@ async function aprobarYGenerarImagen(idx) {
     showToast('Esta pieza no tiene ID de Supabase — genera el calendario de nuevo', '#f59e0b');
     return;
   }
+  const approved = window.confirm('Se generará 1 imagen Recraft (35 unidades, estimado USD 0,035). No habrá Gemini, GPT ni reintentos automáticos. ¿Continuar?');
+  if (!approved) return;
 
   const titulo = card.querySelector('.dcard-title')?.textContent.trim() || '';
   const copy   = document.getElementById('copy-' + idx)?.textContent.trim() || '';
@@ -1045,11 +1040,9 @@ function inferirProductoAgente4(titulo, copy) {
   return 'smartphone moderno';
 }
 
-// FIX v37 — prompt de escena para Gemini (paso 1 del pipeline), armado de
-// forma programática (sin llamada extra a Claude, a diferencia de Agente 1)
-// para mantener el costo y tiempo bajos. Estilo costeño fijo, ya es el tono
-// de marca establecido en el systemPrompt de este mismo archivo.
-function construirPromptGeminiFotoLimpiaAgente4(tipo, titulo, copy) {
+// Prompt de escena para Recraft, armado de forma programática sin otra
+// llamada de IA. Estilo costeño fijo y sin texto generado dentro de la foto.
+function construirPromptRecraftFotoLimpiaAgente4(tipo, titulo, copy) {
   const producto = inferirProductoAgente4(titulo, copy);
   return `Fotografía publicitaria realista de ${producto}, en un ambiente comercial caribeño colombiano cálido y auténtico — una tienda de tecnología surtida y digna, luz natural cálida, colores vivos. El producto se ve grande, bien iluminado, como en una vitrina de tienda. Composición fotográfica limpia, profesional, sin ningún texto, letra o logo en la imagen — solo la escena. Usar todo el lienzo de borde a borde, sin zonas vacías. Nunca ambiente pobre o descuidado.`;
 }
@@ -1088,25 +1081,25 @@ async function cargarLogoBase64Agente4() {
   } catch(e) { return null; }
 }
 
-// FIX v37 — paso 1 del pipeline: Gemini genera la foto limpia (sin texto ni
-// logo) vía el mismo Worker que usa Agente 1 en producción. No requiere key
-// personal de Gemini del usuario.
-async function generarFotoGeminiAgente4(prompt) {
-  const data = await llamarImagenWorkerAgente4('/generate', { prompt });
+// Recraft genera una sola fotografía base. El texto y el logo se componen
+// localmente para evitar una segunda generación pagada.
+async function generarFotoRecraftAgente4(prompt) {
+  const data = await llamarImagenWorkerAgente4('/recraft/images', {
+    prompt,
+    format: 'feed',
+    images: 1,
+  });
   const pred = data.predictions?.[0];
-  if (!pred?.bytesBase64Encoded) throw new Error('El Worker de Gemini no devolvió imagen.');
+  if (!pred?.bytesBase64Encoded) throw new Error('Recraft no devolvió imagen.');
   const mime = pred.mimeType || 'image/png';
   const b64 = pred.bytesBase64Encoded.replace(/\s/g, '');
   return `data:${mime};base64,${b64}`;
 }
 
-// FIX v37 — pipeline completo de 2 pasos: Gemini (foto limpia) → GPT (compone
-// titular + logo encima, usando la foto como imagen de referencia real).
-// Reemplaza la llamada única a GPT que usaba antes construirPromptImagenPost.
 async function llamarImagenWorkerAgente4(path, payload) {
   const token = typeof window.auraSessionToken === 'function' ? window.auraSessionToken() : '';
   if (!token) throw new Error('La sesión AURA venció. Inicia sesión nuevamente.');
-  const allowedPaths = new Set(['/generate', '/openai/responses']);
+  const allowedPaths = new Set(['/recraft/images']);
   if (!allowedPaths.has(path)) throw new Error('Operación de imagen no permitida.');
   const response = await fetch(`https://creditek-gemini-proxy.comercial-853.workers.dev${path}`, {
     method: 'POST',
@@ -1118,62 +1111,82 @@ async function llamarImagenWorkerAgente4(path, payload) {
   return data;
 }
 
-async function generarImagenPipelineAgente4(tipo, titulo, copy) {
-  const promptFoto = construirPromptGeminiFotoLimpiaAgente4(tipo, titulo, copy);
-  const fotoBase = await generarFotoGeminiAgente4(promptFoto);
-
-  const logo = await cargarLogoBase64Agente4();
-  const content = [
-    { type: 'input_text', text: 'Base photograph — do not regenerate the scene, only add the following graphic elements on top as clean layers:' },
-    { type: 'input_image', image_url: fotoBase },
-  ];
-  if (logo) {
-    content.push({ type: 'input_text', text: 'Brand logo — place in top-right corner, small card with soft shadow:' });
-    content.push({ type: 'input_image', image_url: logo });
-  }
-  content.push({ type: 'input_text', text: `Add these clean graphic layers on top of the base photograph, square format for social media (1024x1024):
-Headline text prominently placed and legible: "${titulo}"
-Short call-to-action phrase inferred from this context (do NOT render the full text below, just a short CTA of a few words): "${copy}"
-Turquoise #00C4CC and navy blue #0B1E3D as accent colors for text/CTA elements.
-Do not invent or display specific prices, discounts, or monthly payment amounts on the image.
-Post type: ${tipo}. Keep on-image text minimal — this is a social media ad, not an article.` });
-
-  const data = await llamarImagenWorkerAgente4('/openai/responses', {
-    model: 'gpt-5.6',
-    input: [{ role: 'user', content }],
-    tools: [{ type: 'image_generation', action: 'generate', size: '1024x1024' }],
+function cargarImagenAgente4(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('No se pudo preparar la imagen generada.'));
+    image.src = src;
   });
-  const imageCall = data.output?.find(o => o.type === 'image_generation_call');
-  const b64 = imageCall?.result;
-  if (!b64) throw new Error('OpenAI no devolvió imagen. Revisa la consola.');
-  return b64; // base64 puro, mismo formato que ya espera subirImagenASupabase
 }
 
-async function generarImagenGPTAgente4(_key, prompt) {
-  const logo = await cargarLogoBase64Agente4();
-  let inputPayload;
-  if (logo) {
-    inputPayload = [{
-      role: 'user',
-      content: [
-        { type: 'input_text', text: 'Reference brand logo — reproduce exactly, small and unobtrusive:' },
-        { type: 'input_image', image_url: logo },
-        { type: 'input_text', text: prompt },
-      ]
-    }];
-  } else {
-    inputPayload = prompt;
+function lineasTitularAgente4(ctx, texto, maxWidth, maxLines = 3) {
+  const words = String(texto || '').trim().split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (ctx.measureText(candidate).width <= maxWidth || !current) current = candidate;
+    else {
+      lines.push(current);
+      current = word;
+      if (lines.length === maxLines - 1) break;
+    }
   }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines;
+}
 
-  const data = await llamarImagenWorkerAgente4('/openai/responses', {
-    model: 'gpt-5.6',
-    input: inputPayload,
-    tools: [{ type: 'image_generation', action: 'generate', size: '1024x1024' }],
-  });
-  const imageCall = data.output?.find(o => o.type === 'image_generation_call');
-  const b64 = imageCall?.result;
-  if (!b64) throw new Error('OpenAI no devolvió imagen. Revisa la consola.');
-  return b64; // base64 puro, sin el prefijo data:image/png;base64,
+async function componerPiezaCalendarioAgente4(fotoBase, titulo) {
+  const base = await cargarImagenAgente4(fotoBase);
+  const logo = await cargarLogoBase64Agente4();
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.max(canvas.width / base.width, canvas.height / base.height);
+  const width = base.width * scale;
+  const height = base.height * scale;
+  ctx.drawImage(base, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+
+  const gradient = ctx.createLinearGradient(0, 570, 0, 1024);
+  gradient.addColorStop(0, 'rgba(11,30,61,0)');
+  gradient.addColorStop(0.34, 'rgba(11,30,61,.78)');
+  gradient.addColorStop(1, 'rgba(11,30,61,.97)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 540, 1024, 484);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 64px Montserrat, Arial, sans-serif';
+  ctx.textBaseline = 'top';
+  const lines = lineasTitularAgente4(ctx, titulo, 880, 3);
+  lines.forEach((line, index) => ctx.fillText(line, 72, 690 + index * 74));
+
+  ctx.fillStyle = '#00C4CC';
+  ctx.beginPath();
+  ctx.roundRect(72, 916, 250, 62, 31);
+  ctx.fill();
+  ctx.fillStyle = '#0B1E3D';
+  ctx.font = '700 26px Montserrat, Arial, sans-serif';
+  ctx.fillText('Conoce más', 116, 932);
+
+  if (logo) {
+    const logoImage = await cargarImagenAgente4(logo);
+    const logoWidth = 220;
+    const logoHeight = logoWidth * (logoImage.height / logoImage.width);
+    ctx.fillStyle = 'rgba(255,255,255,.94)';
+    ctx.beginPath();
+    ctx.roundRect(752, 54, 226, logoHeight + 20, 18);
+    ctx.fill();
+    ctx.drawImage(logoImage, 755, 64, logoWidth, logoHeight);
+  }
+  return canvas.toDataURL('image/png').split(',')[1];
+}
+
+async function generarImagenPipelineAgente4(tipo, titulo, copy) {
+  const promptFoto = construirPromptRecraftFotoLimpiaAgente4(tipo, titulo, copy);
+  const fotoBase = await generarFotoRecraftAgente4(promptFoto);
+  return componerPiezaCalendarioAgente4(fotoBase, titulo);
 }
 
 // FIX v32, 13-jul-2026 — sube la imagen al bucket "calendario-imagenes" de

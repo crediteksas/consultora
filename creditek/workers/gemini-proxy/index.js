@@ -850,7 +850,7 @@ var index_default = {
         jwt_audience: WORKER_URL
       });
     }
-    if (path !== "/generate" && path !== "/openai/responses" && path !== "/recraft/images" && path !== "/anthropic/messages") return err("Ruta no encontrada", 404);
+    if (path !== "/openai/responses" && path !== "/recraft/images" && path !== "/anthropic/messages") return err("Ruta no encontrada", 404);
     if (request.method !== "POST") return err("Solo POST", 405);
     if (!await authenticateAura(request, env)) return err("Autenticaci\xF3n AURA requerida", 401);
     let body;

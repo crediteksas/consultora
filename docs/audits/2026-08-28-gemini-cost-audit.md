@@ -6,7 +6,7 @@ Estado: solo auditoría; no se eliminaron claves, APIs ni versiones productivas.
 
 ## Resumen ejecutivo
 
-La causa de gasto más clara está en el Publicador que hoy sigue en producción: Gemini y GPT Image 2 aparecen seleccionados simultáneamente. Cada clic normal en generar puede ejecutar dos generaciones pagadas en paralelo. La candidata Recraft ya preparada corrige ese comportamiento, pero todavía no tiene tráfico.
+La causa de gasto más clara está en **Piezas comerciales**, que hoy sigue en producción: Gemini y GPT Image 2 aparecen seleccionados simultáneamente. Cada clic normal en generar puede ejecutar dos generaciones pagadas en paralelo. Este hallazgo no corresponde a **Publicación y métricas**, cuyo trabajo es publicar y analizar, no crear imágenes. La candidata Recraft ya preparada corrige ese comportamiento, pero todavía no tiene tráfico.
 
 El Calendario de contenido conserva un segundo flujo activo de dos pasos: una imagen Gemini para crear la fotografía y una imagen GPT para componer texto y logo. Cada clic en “Aprobar y generar imagen” consume ambos motores.
 
@@ -14,7 +14,7 @@ No se encontró una automatización programada que genere imágenes Gemini por s
 
 ## Hallazgos
 
-### P0 — Publicador productivo genera con dos motores por defecto
+### P0 — Piezas comerciales genera con dos motores por defecto
 
 - Pantalla: `creditek/agentes/creditek-agente-redes.html` actualmente publicada.
 - `chk-gemini` y `chk-dalle` están ambos marcados por defecto.
@@ -53,8 +53,8 @@ No se encontró una automatización programada que genere imágenes Gemini por s
 
 ## Plan seguro de apagado
 
-1. Desplegar las candidatas ya verificadas del Publicador y del proxy. Esto elimina Gemini del flujo visible del Publicador y deja GPT como opción predeterminada y Recraft como alternativa explícita.
-2. Modificar Calendario para usar un solo motor por pieza: Recraft o GPT, con confirmación y costo visible. No dejar una cadena automática de dos motores.
+1. Desplegar las candidatas ya verificadas de Piezas comerciales y del proxy. Esto elimina Gemini del generador y deja GPT como opción predeterminada y Recraft como alternativa explícita. Publicación y métricas no cambia.
+2. Modificar Calendario para usar una sola generación Recraft por pieza y componer texto/logo localmente, con confirmación y costo visible. No dejar una cadena automática de dos motores.
 3. Bloquear `/generate` en el Worker con respuesta controlada y retirar esa ruta de los clientes AURA. Este es el cortacircuito técnico que impide nuevas imágenes Google aunque sobreviva un botón antiguo en caché.
 4. Observar registros durante 24–48 horas y confirmar cero eventos `GEMINI-IMAGE`.
 5. Crear una nueva versión sin `GEMINI_API_KEY`, `GCP_WIF_PRIVATE_KEY`, `GCP_WIF_PUBLIC_JWK` y `GCP_WIF_KEY_ID`. No eliminar secretos de una versión productiva antes de completar los pasos 1–4.
@@ -70,4 +70,4 @@ No se encontró una automatización programada que genere imágenes Gemini por s
 
 ## Conclusión
 
-La evidencia del código permite explicar gasto elevado sin asumir una filtración de credenciales: el diseño productivo actual multiplica generaciones por clic. El apagado debe hacerse primero en los consumidores (Publicador y Calendario), después en el endpoint, y por último en las claves y APIs de Google.
+La evidencia del código permite explicar gasto elevado sin asumir una filtración de credenciales: el diseño productivo actual multiplica generaciones por clic. El apagado debe hacerse primero en los consumidores (Piezas comerciales y Calendario), después en el endpoint, y por último en las claves y APIs de Google.

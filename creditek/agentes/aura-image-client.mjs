@@ -2,7 +2,7 @@ import { auraAuth } from './aura-auth.mjs';
 import { auraSessionToken } from './agente3-aura-session.mjs';
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
-const ALLOWED_PATHS = new Set(['/generate', '/openai/responses']);
+const ALLOWED_PATHS = new Set(['/recraft/images', '/openai/responses']);
 
 export async function requestAuraImage(path, payload, fetcher = globalThis.fetch) {
   if (!ALLOWED_PATHS.has(path)) throw new Error('Operación de imagen no permitida.');

@@ -4141,7 +4141,7 @@ const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
 - Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
 - The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
-const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: propose a bold, photographic, human-centered art direction with energetic Caribbean color, cinematic natural light, believable product interaction and contemporary editorial graphics. Keep the place authentic to the selected Colombian municipality; do not upscale it into a metropolitan flagship or imitate a generic blue corporate poster.`;
+const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: create a bright, high-conversion editorial retail advertisement—not a beige flyer or a darkened stock photograph. Use energetic Caribbean color, clean natural light, believable customer interactions and strong Creditek navy/turquoise graphic anchors. Keep the shop authentic to the selected Colombian municipality; do not upscale it into a metropolitan flagship. The photograph must stay vivid and readable: no sepia cast, muddy shadows, heavy full-image tint or low-contrast text.`;
 const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: propose an independent, polished small-town Colombian retail art direction with sophisticated typography, dynamic composition, modern color blocking and a conversion-focused product story. It must be visibly different from Designer A without turning the store into a luxury mall or metropolitan flagship.`;
 const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY WHEN A STORE OR IN-STORE CUSTOMERS ARE REQUESTED:
 - The setting must be unmistakably a clean, attractive small or medium cellphone shop in a Caribbean Colombian municipality, not a generic social venue, luxury flagship or capital-city megastore.
@@ -4237,10 +4237,35 @@ function buildAdCreativeQualityPrompt(prompt = '') {
   ].filter(Boolean).join('\n\n');
 }
 
+const RECRAFT_COMPOSITION_CONTRACT = `RECRAFT COMPOSITION GATE — MANDATORY:
+- Build an intentional advertising system, not text placed above a photograph. Connect photography, headline, event facts and CTA through alignment, scale and Creditek color.
+- Preserve 55–70% of the canvas for a bright, clearly identifiable store scene. Never crush the photograph under a dark overlay or large empty beige area.
+- The headline is dominant but must not occupy more than 25% of the canvas. Break lines naturally; never leave a single orphan word.
+- For an event, date and day are decision-critical: render them as the second visual priority in a concise navy or turquoise information module, clearly readable on a phone. Location and time may be smaller but not legal-footnote size.
+- Place the CTA in its own high-contrast turquoise action zone. Do not make it look like a decorative caption.
+- Use one official-logo negative-space zone only. Do not invent or duplicate the logo.
+- Reject before rendering if the result looks sepia, dim, generic, centered like a school flyer, visually empty, or if event details cannot be read at feed size.`;
+
+const RECRAFT_LAYOUT_PATTERNS = [
+  'editorial split: bright store scene across the lower two-thirds, concise headline in an upper lateral zone, date module opposite it and CTA at the lower edge',
+  'asymmetric magazine cover: full bright store scene, headline in natural negative space, date in a strong lateral color tab and CTA independently anchored',
+  'event-led frame: compact date module first, wide human store scene second, headline integrated over a calm edge and CTA in a separate bottom corner',
+];
+
+function buildRecraftLayoutGuard() {
+  let index = 0;
+  try {
+    index = Number(sessionStorage.getItem('aura_recraft_layout_index') || 0) % RECRAFT_LAYOUT_PATTERNS.length;
+    sessionStorage.setItem('aura_recraft_layout_index', String((index + 1) % RECRAFT_LAYOUT_PATTERNS.length));
+  } catch { /* la variedad visual no bloquea una generación */ }
+  return `${RECRAFT_COMPOSITION_CONTRACT}\nDIRECTION FOR THIS GENERATION: ${RECRAFT_LAYOUT_PATTERNS[index]}. Adapt it to the actual scene and text; do not force it when it would cover people, hands or products.`;
+}
+
 function buildRecraftRequestPrompt(prompt = '') {
   const promptWithoutMarketAppendix = String(prompt).replace(/\n\nCOLOMBIAN PHONE MARKET VISUAL CONTEXT:[\s\S]*$/i, '');
   const compactContract = [
     RECRAFT_ART_DIRECTION,
+    buildRecraftLayoutGuard(),
     buildRetailStoreSceneContract(promptWithoutMarketAppendix),
     buildAdaptiveTextHierarchyContract(),
     buildProductProminenceContract(),

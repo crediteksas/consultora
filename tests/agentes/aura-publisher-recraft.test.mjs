@@ -73,6 +73,12 @@ test('La jornada valida que el día de la semana coincida con la fecha', () => {
 
 test('Recraft recibe un prompt compacto por debajo del límite interno', () => {
   assert.match(publisher, /function buildRecraftRequestPrompt/);
+  assert.match(publisher, /RECRAFT COMPOSITION GATE — MANDATORY/);
+  assert.match(publisher, /function buildRecraftLayoutGuard/);
+  assert.match(publisher, /Preserve 55–70% of the canvas for a bright/);
+  assert.match(publisher, /date and day are decision-critical/);
+  assert.match(publisher, /no sepia cast, muddy shadows/);
+  assert.match(publisher, /buildRecraftLayoutGuard\(\)/);
   assert.match(publisher, /compactContract\.length > 9800/);
   assert.match(publisher, /prompt: recraftPrompt/);
 });

@@ -1370,6 +1370,62 @@ CONTROL DE CALIDAD — PUBLICISTA SENIOR:
 - Antes de responder, descarta cualquier propuesta genérica, gramaticalmente extraña o desconectada del concepto y reemplázala por una nueva.
 - Cumplimiento Meta: “Sujeto a aprobación de crédito. Aplican términos y condiciones.” cuando aplique crédito.`;
 
+const HEADLINE_QUALITY_CONTRACT = `
+CONTRATO DE TITULARES — CLARIDAD ANTES QUE INGENIO:
+- El titular debe entenderse de inmediato, aislado y en español colombiano natural. Debe sonar como publicidad que una persona real leería, no como un juego de palabras generado por IA.
+- Prioriza, en este orden: evento o motivo real, beneficio verificable y acción concreta. Si no existe una oferta comprobada, invita a visitar, elegir o conocer; no inventes resultados.
+- PROHIBIDO: rimas forzadas, paralelismos vacíos, inversiones gramaticales, personificar “la cuota”, “el mes” o “la tienda”, y frases abstractas que necesitan explicación.
+- PROHIBIDO convertir instrucciones visuales en copy: “gente bonita”, “tienda llena”, tamaño del local, rasgos físicos o cantidad de personas describen la escena, no son una promesa comercial.
+- PROHIBIDO garantizar resultados universales o aprobación: “todos estrenan”, “nadie espera”, “el último también estrena”, “aprobado para todos” y equivalentes.
+- No compitas por ser poético. Compite por ser claro, específico, creíble y útil.
+- Entre 3 y 9 palabras. Sin emojis, sin signos repetidos y sin “Creditek” porque ya aparece en el logo.
+- Antes de entregar cada opción, pregúntate: ¿se entiende en 1.5 segundos?, ¿describe esta campaña?, ¿es verificable?, ¿lo diría un buen vendedor colombiano? Si alguna respuesta es no, reemplázala.`;
+
+function headlineFallbacks(modo) {
+  const lugar = document.getElementById('jornada-lugar')?.value.trim() || '';
+  const tienda = lugar.split(',')[0].split('·')[0].trim();
+  if (modo === 'jornada') return [
+    'Este fin de semana, ven a estrenar',
+    tienda ? `Jornada de crédito en ${tienda}` : 'Ven a nuestra jornada de crédito',
+    'Elige tu celular y págalo a cuotas',
+    tienda ? `Tu próximo celular está en ${tienda}` : 'Tu próximo celular te espera',
+    'Visítanos y elige tu próximo celular',
+    'Celulares a cuotas este fin de semana',
+  ];
+  return [
+    'Elige el celular que quieres',
+    'Tu próximo celular te espera',
+    'Encuentra una opción para ti',
+    'Visítanos y conoce las opciones',
+    'Estrena el celular que buscas',
+    'Conoce nuestros celulares disponibles',
+  ];
+}
+
+function isHeadlineAcceptable(value) {
+  const text = limpiarMarkdownTitular(value).replace(/\s+/g, ' ').trim();
+  const normalized = normalizeSpanishToken(text);
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 3 || words.length > 9) return false;
+  const forbidden = [
+    /\bgente bonita\b/, /\btienda entera\b/, /\bsobraron sonrisas\b/, /\bvacio el estres\b/,
+    /\btodos?\b.*\bestren/, /\bnadie\b.*\besper/, /\bultimo\b.*\bestren/,
+    /\baprob(?:ado|acion) (?:para )?todos\b/, /\bla cuota (?:manda|llego|cupo)\b/,
+    /\bmes que .* celular que\b/, /\bbonita gente\b/,
+  ];
+  return !forbidden.some(pattern => pattern.test(normalized));
+}
+
+function curateHeadlines(candidates, modo, limit = 6) {
+  const unique = [];
+  [...candidates, ...headlineFallbacks(modo)].forEach(candidate => {
+    const clean = limpiarMarkdownTitular(candidate).replace(/\s+/g, ' ').trim();
+    const key = normalizeSpanishToken(clean).replace(/[^a-z0-9 ]/g, '');
+    if (clean && isHeadlineAcceptable(clean) && !unique.some(item => item.key === key)) unique.push({ key, text: clean });
+  });
+  return unique.slice(0, limit).map(item => item.text);
+}
+
 function ESTILO_INSTRUCCIONES() {
   return {
     'alegre costeño': 'Calidez contemporánea del Caribe colombiano: cercanía, optimismo y humor suave cuando nazca de la escena. Vende con claridad, sin estereotipos ni slang impuesto.',
@@ -1415,23 +1471,24 @@ CORRECCIÓN OBLIGATORIA: Antes de usarlo, corrige ortografía, tildes, gramátic
 MODO: ${modoLabel} | ESTILO: ${estilo}
 TONO PARA ESTE ESTILO: ${estiloInstrucciones[estiloKey]}
 ${COPY_QUALITY_GUARD}
+${HEADLINE_QUALITY_CONTRACT}
 ${buildModeCopyGuard(modo)}
 ${buildRecentHeadlinePenalty()}
 ${buildMandatoryUserBrief()}
 
-GENERA 6 TITULARES de alto impacto para imagen publicitaria en redes sociales.
+GENERA 6 TITULARES claros y comerciales para imagen publicitaria en redes sociales.
 
 REGLAS:
-- Máximo 6 palabras por titular
+- Entre 3 y 9 palabras por titular
 - Sin emojis. Sin "Creditek" (está en el logo)
 - Basarse en el mensaje del cliente corregido
 - Nivel: publicista senior colombiano de performance — directo, natural y específico para este concepto. No uses regionalismos por obligación.
 - Cada titular debe funcionar SOLO en 1.5 segundos de scroll — si necesita la siguiente frase para tener sentido, está roto.
-- Varía los patrones de hook (gancho): urgencia / permiso-alivio / contraste / identidad local / resultado específico / humor comercial
+- Varía únicamente entre: invitación al evento, beneficio verificable y acción concreta.
 - PROHIBIDO en titulares: "conéctate", "potencia", "descubre", "tecnología", "innovador", cualquier frase que aplique a cualquier marca.
 - TONO según estilo "${estilo}": ${estiloInstrucciones[estiloKey]}
 - PROHIBIDO: "Aquí te atendemos bien", frases genéricas de atención
-- Varía los enfoques: urgencia / emoción / beneficio directo / humor / aspiracional / costeño
+- No fuerces humor, rimas, aspiración ni regionalismos. La situación real manda.
 - Los ejemplos citados arriba en "TONO PARA ESTE ESTILO" son SOLO para mostrar la estructura del patrón — NUNCA los uses tal cual ni casi idénticos. Genera titulares 100% nuevos que sigan el patrón, no una copia de los ejemplos.
 
 Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
@@ -1468,7 +1525,7 @@ Responde ÚNICAMENTE con los 6 titulares numerados, sin explicaciones:
     // así que antes se colaba como si fuera un titular más y desplazaba a los
     // reales. Ahora solo se aceptan líneas que empiezan con "N." (el formato
     // exacto que pide el prompt) — cualquier otra línea de texto se descarta.
-    const titulares = text.split('\n').map(l=>l.trim()).filter(l=>/^\d+\.\s/.test(l)).map(l=>limpiarMarkdownTitular(l.replace(/^\d+\.\s*/,''))).filter(Boolean).slice(0,6);
+    const titulares = curateHeadlines(text.split('\n').map(l=>l.trim()).filter(l=>/^\d+\.\s/.test(l)).map(l=>l.replace(/^\d+\.\s*/,'')), modo, 6);
     if (titulares.length > 0) { rememberRecentHeadlines(titulares); renderTitulares(titulares); showToast('✓ Nuevos titulares generados'); }
     else showToast('No se generaron titulares', '#f59e0b');
   } catch(e) { showToast('Error al generar titulares', '#ef4444'); }
@@ -2274,6 +2331,7 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
   return key ? map[key] + '\n\n' : '';
 })()}
 ${COPY_QUALITY_GUARD}
+${HEADLINE_QUALITY_CONTRACT}
 ${buildModeCopyGuard(modo)}
 LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
@@ -2327,12 +2385,12 @@ ${briefBlock}
 
 Después añade:
 [TITULARES]
-3 titulares de ALTO IMPACTO para imagen publicitaria. TRANSFORMA el mensaje — NO lo copies.
-Extrae la emoción o beneficio central y exprésalo de forma nueva e inesperada.
-- Máximo 6 palabras cada uno. Sin emojis. Sin "Creditek".
-- Nivel: Nike, Coca-Cola, Claro Colombia
-- PROHIBIDO: copiar palabras del mensaje, frases genéricas
-- Uno emocional, uno directo con giro creativo, uno con sabor costeño
+3 titulares claros y comerciales para imagen publicitaria.
+Resume el evento, beneficio o acción central sin copiar errores del usuario ni inventar promesas.
+- Entre 3 y 9 palabras cada uno. Sin emojis. Sin "Creditek".
+- Deben entenderse sin leer el texto secundario.
+- Uno invita al evento, uno expresa el beneficio verificable y uno pide una acción concreta.
+- No uses juegos de palabras, rimas, personificaciones, regionalismos forzados ni promesas de aprobación.
 Formato exacto:
 1. {titular}
 2. {titular}
@@ -2398,7 +2456,6 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
     showToast('✓ Piezas generadas correctamente');
     showImgSection();
     setTimeout(() => generarMasTitulares(), 500);
-    setTimeout(() => generarMasTitulares(), 500);
     setTimeout(() => {
       const firstBtn = document.querySelector('.titular-opt');
       if (firstBtn) firstBtn.click();
@@ -2460,7 +2517,7 @@ function renderPiezas(text, platforms, tipo, ciudad, inclHashtags, inclBrief) {
   const tm = text.match(/\[TITULARES\]([\s\S]*?)$/i);
   if (tm) {
     const titLines = tm[1].trim().split('\n').filter(l => l.trim());
-    const titulares = titLines.map(l => limpiarMarkdownTitular(l.replace(/^\d+\.\s*/, ''))).filter(Boolean).slice(0, 6);
+    const titulares = curateHeadlines(titLines.map(l => l.replace(/^\d+\.\s*/, '')), document.getElementById('modo')?.value || '', 6);
     rememberRecentHeadlines(titulares);
     renderTitulares(titulares);
   }

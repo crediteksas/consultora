@@ -87,6 +87,18 @@ test('La dirección publicitaria evita productos pegados y textos inventados', (
   assert.match(publisher, /buildAdCreativeQualityPrompt\(prompt\)/);
 });
 
+test('Los titulares priorizan claridad comercial y bloquean frases artificiales', () => {
+  assert.match(publisher, /CONTRATO DE TITULARES — CLARIDAD ANTES QUE INGENIO/);
+  assert.match(publisher, /function isHeadlineAcceptable/);
+  assert.match(publisher, /function curateHeadlines/);
+  assert.match(publisher, /PROHIBIDO garantizar resultados universales o aprobación/);
+  assert.match(publisher, /No fuerces humor, rimas, aspiración ni regionalismos/);
+  assert.match(publisher, /Uno invita al evento, uno expresa el beneficio verificable/);
+  assert.doesNotMatch(publisher, /exprésalo de forma nueva e inesperada/);
+  assert.doesNotMatch(publisher, /Nivel: Nike, Coca-Cola, Claro Colombia/);
+  assert.equal((publisher.match(/setTimeout\(\(\) => generarMasTitulares\(\), 500\);/g) || []).length, 1);
+});
+
 test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {
   assert.match(worker, /path !== "\/recraft\/images"/);
   assert.match(worker, /model: "recraftv4_1", size, n: 1/);

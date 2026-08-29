@@ -24,7 +24,7 @@
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
-      'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
+      'inventario.html', 'catalogo.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
       'documento-remision.html', 'incidencias.html',
     ]),
     asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']),
@@ -39,6 +39,7 @@
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart' },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users' },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards' },
+      { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2' },
       { label: 'Inventario Retail', href: 'inventario.html', icon: 'package' },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt' },
       { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },
@@ -80,6 +81,7 @@
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart', roles: ['admin_tienda', 'asesor'] },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users', roles: ['admin_tienda', 'asesor'] },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
+      { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output', roles: ['admin_tienda'] },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },

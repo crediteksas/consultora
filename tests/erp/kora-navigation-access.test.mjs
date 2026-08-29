@@ -115,9 +115,13 @@ test('matriz equivalente de Óscar conserva Corporativo, Retail, B2B, Aliados y 
 
 test('matriz equivalente de Maite conserva Corporativo y aplica capacidades existentes', () => {
   const profile = { rol: 'auditoria', activo: true };
+  const navigation = access.navigationFor(profile, { b2b: false });
+  const retail = Array.from(navigation).find(section => section.title === 'CREDITEK RETAIL');
   assert.equal(access.resolveExperience(profile), 'corporate');
-  assert.ok(Array.from(access.navigationFor(profile, { b2b: false }), section => section.title).includes('CREDITEK B2B'));
+  assert.ok(Array.from(navigation, section => section.title).includes('CREDITEK B2B'));
+  assert.ok(Array.from(retail.items, item => item.href).includes('catalogo.html'));
   assert.equal(access.authorize(profile, 'ventas.html').allowed, true);
+  assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
 });
 
@@ -125,6 +129,8 @@ test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tien
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const navigation = access.navigationFor(profile);
   assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
+  assert.ok(Array.from(navigation[0].items, item => item.href).includes('catalogo.html'));
+  assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
   assert.equal(access.authorize(profile, 'incidencias.html').allowed, true);
   for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html']) {
     assert.equal(access.authorize(profile, route).allowed, false, route);

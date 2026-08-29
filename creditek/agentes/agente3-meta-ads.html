@@ -696,13 +696,13 @@ body::-webkit-scrollbar{width:6px}body::-webkit-scrollbar-track{background:trans
       <div class="field">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="wiz-activar-ya" checked style="width:auto">
-          Activar la campaña inmediatamente (si no, queda pausada para revisarla en Meta)
+          Confirmo que revisé imagen, texto, presupuesto y ciudades antes de publicar
         </label>
       </div>
       <div class="wiz-progress" id="wiz-progress">Publicando...</div>
       <div class="wiz-nav">
         <button class="btn-secondary" onclick="wizGoStep(3)">← Atrás</button>
-        <button class="btn-primary" style="flex:none;padding:10px 20px" id="wiz-publish-btn" onclick="publicarCampana()">🚀 Publicar en Meta</button>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" id="wiz-publish-btn" onclick="publicarCampanaSegura()">🚀 Publicar en Meta</button>
       </div>
     </div>
 
@@ -776,18 +776,34 @@ let wizCustomZones = {};
 let wizDuration = 7;
 let wizImageBase64 = null;
 let wizImageBaseB = null; // A/B testing — imagen de la Variante B
+let wizImageMime = 'image/png';
+let wizImageMimeB = 'image/png';
 let wizABTest = false;    // A/B testing — activado/desactivado
+let securePublisherCities = [];
 
-function abrirWizard() {
-  if (!localStorage.getItem('ck_meta_token') || !localStorage.getItem('ck_meta_account')) {
-    showToast('Primero configura tu token y cuenta de Meta', '#EF4444');
-    abrirConfig();
-    return;
+function normalizeCityName(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+function secureCityName(city) { return city?.name || city?.city_name || city?.nombre || ''; }
+function secureCityId(city) { return city?.id || city?.city_id || city?.slug || ''; }
+
+async function abrirWizard() {
+  try {
+    showToast('Validando conexión segura con Meta…');
+    const options = await metaWorkerRequest('/v1/publisher/options');
+    securePublisherCities = Array.isArray(options.cities) ? options.cities : [];
+    Object.values(WIZ_ZONES).forEach(zone => {
+      const match = securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name));
+      zone.secureId = secureCityId(match) ? String(secureCityId(match)) : '';
+    });
+    renderWizZones();
+    renderWizDuration();
+    wizGoStep(1);
+    document.getElementById('modal-wizard').classList.add('open');
+    showToast('✓ Conexión segura lista', '#10B981');
+  } catch (error) {
+    showToast(`No se pudo abrir el publicador seguro: ${error.message}`, '#EF4444');
   }
-  renderWizZones();
-  renderWizDuration();
-  wizGoStep(1);
-  document.getElementById('modal-wizard').classList.add('open');
 }
 
 function cerrarWizard() {
@@ -848,13 +864,8 @@ async function wizSearchCity() {
   const resultsDiv = document.getElementById('wiz-search-results');
   if (!q) return;
   resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Buscando...</div>';
-  const token = localStorage.getItem('ck_meta_token');
   try {
-    const url = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=${encodeURIComponent('["city"]')}&q=${encodeURIComponent(q)}&country_code=CO&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) { resultsDiv.innerHTML = `<div style="font-size:12px;color:#EF4444;padding:6px 0">${data.error.message}</div>`; return; }
-    const cities = (data.data || []).filter(c => c.type === 'city');
+    const cities = securePublisherCities.filter(city => normalizeCityName(secureCityName(city)).includes(normalizeCityName(q)));
     if (cities.length === 0) { resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Sin resultados</div>'; return; }
     resultsDiv.innerHTML = '';
     cities.slice(0, 8).forEach(c => {
@@ -862,10 +873,10 @@ async function wizSearchCity() {
       item.style.cssText = 'padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between';
       item.onmouseenter = () => item.style.background = 'rgba(0,196,204,.1)';
       item.onmouseleave = () => item.style.background = 'transparent';
-      item.innerHTML = `<span>${c.name}</span><span style="color:var(--text3);font-size:11px">${c.region || ''}</span>`;
+      item.innerHTML = `<span>${secureCityName(c)}</span><span style="color:var(--text3);font-size:11px">${c.region || ''}</span>`;
       item.onclick = () => {
-        const id = 'custom_' + c.key;
-        wizCustomZones[id] = { name: c.name, key: c.key, region: c.region, region_id: String(c.region_id), sub: 'Personalizada' };
+        const id = 'custom_' + secureCityId(c);
+        wizCustomZones[id] = { name: secureCityName(c), secureId: String(secureCityId(c)), sub: 'Personalizada' };
         wizSelectedZones.add(id);
         renderWizZones();
         document.getElementById('wiz-search-input').value = '';
@@ -1060,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
+      wizImageMime = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
       const reader = new FileReader();
       reader.onload = ev => {
         wizImageBase64 = ev.target.result.split(',')[1];
@@ -1075,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInputB.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
+      wizImageMimeB = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
       const reader = new FileReader();
       reader.onload = ev => {
         wizImageBaseB = ev.target.result.split(',')[1];
@@ -1100,39 +1113,9 @@ async function actualizarAudienciaEstimada() {
   el.textContent = 'Calculando...';
   if (bar) bar.style.width = '0%';
 
-  const token = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
-  if (!token || !account || wizSelectedZones.size === 0) { el.textContent = 'Elige al menos una zona'; return; }
-
-  try {
-    const excludedCities = await resolverCiudadesExcluidas(token);
-    const targetingSpec = {
-      age_min: 18, age_max: 65,
-      geo_locations: {
-        cities: [...wizSelectedZones].map(id => ({
-          key: wizAllZones()[id].key, radius: 20, distance_unit: 'kilometer',
-          region: wizAllZones()[id].region, region_id: wizAllZones()[id].region_id, country: 'CO'
-        })),
-        location_types: ['home', 'recent']
-      },
-      ...(excludedCities.length > 0 ? { excluded_geo_locations: { cities: excludedCities, location_types: ['home', 'recent'] } } : {})
-    };
-    const url = `https://graph.facebook.com/v25.0/act_${account}/delivery_estimate?optimization_goal=REACH&targeting_spec=${encodeURIComponent(JSON.stringify(targetingSpec))}&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) { el.textContent = 'No se pudo calcular — revisa tu token'; return; }
-
-    const est = data.data && data.data[0];
-    if (!est || !est.estimate_ready) { el.textContent = 'Estimación no disponible para esta selección'; return; }
-
-    const lower = est.estimate_mau_lower_bound || 0;
-    const upper = est.estimate_mau_upper_bound || 0;
-    el.innerHTML = `${fmtNum(lower)} - ${fmtNum(upper)} personas <span style="color:var(--text3)">(${clasificarAudiencia(upper)})</span>`;
-    if (bar) bar.style.width = Math.min(100, Math.round((upper / 500000) * 100)) + '%';
-  } catch (err) {
-    console.warn('Error calculando audiencia estimada:', err);
-    el.textContent = 'Error al calcular audiencia';
-  }
+  if (wizSelectedZones.size === 0) { el.textContent = 'Elige al menos una zona'; return; }
+  el.textContent = 'La segmentación se validará de forma segura al publicar';
+  if (bar) bar.style.width = '100%';
 }
 
 function wizGoStep(n) {
@@ -1375,6 +1358,89 @@ async function publicarCampana() {
     showToast(err.message, '#EF4444');
   }
   btn.disabled = false;
+}
+
+function localIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function publicarCampanaSegura() {
+  const progress = document.getElementById('wiz-progress');
+  const btn = document.getElementById('wiz-publish-btn');
+  progress.style.display = 'block';
+  progress.style.color = '';
+  btn.disabled = true;
+  try {
+    if (!document.getElementById('wiz-activar-ya').checked) throw new Error('Confirma la revisión final antes de publicar');
+    const zones = [...wizSelectedZones].map(id => wizAllZones()[id]).filter(Boolean);
+    const cityIds = zones.map(zone => zone.secureId || secureCityId(securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name)))).filter(Boolean).map(String);
+    if (!cityIds.length || cityIds.length !== zones.length) throw new Error('Una ciudad seleccionada no está habilitada en el catálogo seguro');
+    if (!wizImageBase64) throw new Error('Sube la imagen del anuncio');
+    if (wizABTest && !wizImageBaseB) throw new Error('Sube la imagen de la variante B');
+
+    const weeklyBudget = Number(document.getElementById('wiz-budget-slider').value);
+    const dailyBudget = Math.round(weeklyBudget / 7);
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + wizDuration);
+    const objectiveChoice = document.getElementById('wiz-objective').value;
+    const headline = document.getElementById('wiz-headline').value.trim();
+    const copy = document.getElementById('wiz-ad-text').value.trim();
+    const campaignName = document.getElementById('wiz-campaign-name').value.trim();
+    const cta = objectiveChoice === 'mensajes' ? 'SEND_MESSAGE' : 'LEARN_MORE';
+    const objective = objectiveChoice === 'mensajes' ? 'OUTCOME_ENGAGEMENT' : 'OUTCOME_TRAFFIC';
+    const baseCreative = {
+      piece_id: 'manual', copy, headline, cta, image_url: '',
+      image_data: { mime_type: wizImageMime, bytes_base64: wizImageBase64 }
+    };
+    const payload = {
+      ...baseCreative,
+      campaign_name: campaignName,
+      cities: cityIds,
+      platforms: ['facebook', 'instagram'],
+      objective,
+      budget_type: 'daily',
+      budget_cop: dailyBudget,
+      start_date: localIsoDate(start),
+      end_date: localIsoDate(end),
+      final_confirmation: true,
+      ...(wizABTest ? { variants: [baseCreative, {
+        piece_id: 'manual', copy, headline, cta, image_url: '',
+        image_data: { mime_type: wizImageMimeB, bytes_base64: wizImageBaseB }
+      }] } : {})
+    };
+
+    progress.textContent = 'Publicando mediante conexión segura…';
+    const idempotencyKey = `aura_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const result = await metaWorkerRequest('/v1/publisher/publish', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(payload)
+    });
+    if (!result.ok) throw new Error(result.error || 'Meta no confirmó la publicación');
+    progress.textContent = '✓ Campaña enviada a revisión de Meta';
+    progress.style.color = '#10B981';
+    showToast('✓ Campaña publicada mediante el Worker seguro', '#10B981');
+    setTimeout(() => {
+      cerrarWizard();
+      wizSelectedZones = new Set();
+      wizCustomZones = {};
+      wizImageBase64 = null;
+      wizImageBaseB = null;
+      wizABTest = false;
+      progress.style.display = 'none';
+      cargarDatos();
+    }, 1800);
+  } catch (error) {
+    progress.textContent = `✗ ${error.message}`;
+    progress.style.color = '#EF4444';
+    showToast(error.message, '#EF4444');
+  } finally {
+    btn.disabled = false;
+  }
 }
 let lastData = null;
 // FIX v29, 13-jul-2026: estado real de calendario (Sección A) — independiente

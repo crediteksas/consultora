@@ -1377,6 +1377,7 @@ CONTRATO DE TITULARES — CLARIDAD ANTES QUE INGENIO:
 - PROHIBIDO: rimas forzadas, paralelismos vacíos, inversiones gramaticales, personificar “la cuota”, “el mes” o “la tienda”, y frases abstractas que necesitan explicación.
 - PROHIBIDO convertir instrucciones visuales en copy: “gente bonita”, “tienda llena”, tamaño del local, rasgos físicos o cantidad de personas describen la escena, no son una promesa comercial.
 - PROHIBIDO garantizar resultados universales o aprobación: “todos estrenan”, “nadie espera”, “el último también estrena”, “aprobado para todos” y equivalentes.
+- PROHIBIDO explotar vulnerabilidad económica o insinuar falta de dinero: “esperar el sueldo”, “sin plata”, “aunque no tengas dinero” y equivalentes, salvo que el operador lo solicite expresamente y cumplimiento lo permita.
 - No compitas por ser poético. Compite por ser claro, específico, creíble y útil.
 - Entre 3 y 9 palabras. Sin emojis, sin signos repetidos y sin “Creditek” porque ya aparece en el logo.
 - Antes de entregar cada opción, pregúntate: ¿se entiende en 1.5 segundos?, ¿describe esta campaña?, ¿es verificable?, ¿lo diría un buen vendedor colombiano? Si alguna respuesta es no, reemplázala.`;
@@ -1411,7 +1412,7 @@ function isHeadlineAcceptable(value) {
     /\bgente bonita\b/, /\btienda entera\b/, /\bsobraron sonrisas\b/, /\bvacio el estres\b/,
     /\btodos?\b.*\bestren/, /\bnadie\b.*\besper/, /\bultimo\b.*\bestren/,
     /\baprob(?:ado|acion) (?:para )?todos\b/, /\bla cuota (?:manda|llego|cupo)\b/,
-    /\bmes que .* celular que\b/, /\bbonita gente\b/,
+    /\bmes que .* celular que\b/, /\bbonita gente\b/, /\besperar el sueldo\b/, /\bsin plata\b/,
   ];
   return !forbidden.some(pattern => pattern.test(normalized));
 }
@@ -3236,7 +3237,7 @@ async function buildImgPrompt() {
       '',
       'BRAND IDENTITY:',
       '- Deep navy #0B1E3D | Turquoise #00C4CC | White #FFFFFF',
-      '- Do not render any logo, word Creditek, placeholder, rectangle, white panel, badge or empty frame. The official asset is composited after generation exactly once in natural negative space.',
+      '- TOP-RIGHT BRAND SAFE ZONE: keep the upper-right area free of all text, faces, hands and graphics. Do not render any logo, brand name, interpreted mark, placeholder, rectangle, panel, badge or frame there. The official asset is composited exactly once afterward.',
       '- Typography: Montserrat ExtraBold headlines, DM Sans body.',
       '',
       'EXACT SPANISH TEXT TO RENDER IN IMAGE:',
@@ -3246,6 +3247,12 @@ async function buildImgPrompt() {
       jornadaFecha ? `- EVENT DATE (prominent but proportional to the scene and total copy): "${jornadaFecha}"` : null,
       jornadaLugar ? `- LOCATION: "${jornadaLugar}"` : null,
       jornadaHora  ? `- ${/fin de semana|todo el d[ií]a|varios d[ií]as/i.test(jornadaHora) ? 'EVENT DURATION' : 'TIME'}: "${jornadaHora}"` : null,
+      '',
+      'TEXT ROLE LOCK — ZERO EXCEPTIONS:',
+      `- The exact HEADLINE "${titularVal}" is the largest promotional text and the only headline. Never reduce it to a caption, eyebrow, corner note or secondary line.`,
+      mensajeVal ? `- The exact SECONDARY MESSAGE "${mensajeVal}" must remain visibly smaller than the headline. Never promote it into the headline or make it larger.` : null,
+      '- Never swap, merge, rewrite or duplicate headline and secondary message. Headline hierarchy remains first; event date remains second; CTA remains third; secondary message remains supporting copy.',
+      '- Keep date, location and duration readable on a phone without competing with the headline.',
       '',
       'SPANISH PROOFREADING — CRITICAL before rendering any text:',
       '- Capitalize first letter of every sentence and "Creditek"',
@@ -4042,13 +4049,12 @@ function puntajeZonaLogo(ctx, x, y, width, height) {
 
 function elegirUbicacionLogo(ctx, canvas, logoWidth, logoHeight) {
   const margin = canvas.width * 0.032;
-  const candidates = [
-    [margin, margin], [canvas.width - logoWidth - margin, margin],
-    [margin, canvas.height - logoHeight - margin], [canvas.width - logoWidth - margin, canvas.height - logoHeight - margin],
-    [margin, (canvas.height - logoHeight) / 2], [canvas.width - logoWidth - margin, (canvas.height - logoHeight) / 2],
-    [(canvas.width - logoWidth) / 2, canvas.height - logoHeight - margin],
-  ];
-  return candidates.map(([x, y]) => ({ x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) })).sort((a, b) => a.score - b.score)[0];
+  // La IA reserva siempre esta misma zona. Una ubicación determinista evita
+  // que un logo interpretado por el modelo quede visible en una esquina y el
+  // asset oficial sea compuesto en otra, produciendo una marca duplicada.
+  const x = canvas.width - logoWidth - margin;
+  const y = margin;
+  return { x, y, score: puntajeZonaLogo(ctx, x, y, logoWidth, logoHeight) };
 }
 
 function luminosidadZonaLogo(ctx, x, y, width, height) {
@@ -4130,7 +4136,7 @@ async function componerLogoSobreImagen(dataUrlImagen) {
 }
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
-const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
+const GPT_BRANDING_GUARD = 'BRANDING LOCK: reserve the TOP-RIGHT safe zone for post-composition. Keep it free of text, faces, hands and graphics. Generate NO logo, NO brand name and NO interpreted mark anywhere. Do not draw a placeholder, rectangle, panel, badge or frame. The official asset is composited exactly once afterward in that top-right zone.';
 const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - This is a paid social advertisement whose primary purpose is to stop the scroll and sell the specified product or offer.
 - Deliver a contemporary 2026 retail campaign concept, not a generic corporate flyer, presentation slide or rigid template.
@@ -4187,10 +4193,12 @@ function buildAdaptiveTextHierarchyContract() {
   const dense = textItems.length >= 5 || totalCharacters > 145;
   return dense
     ? `ADAPTIVE TEXT HIERARCHY — INFORMATION-DENSE PIECE:
+- TEXT ROLE LOCK: HEADLINE is always the largest promotional text. SECONDARY MESSAGE is always smaller supporting copy. Never swap their wording, scale or roles.
 - Do not make every text item large. Use at most two dominant elements: the headline and the most decision-relevant event fact.
 - Keep secondary message, location and duration in a compact, high-contrast information footer or two calm support zones; preserve mobile legibility without covering the scene.
 - The CTA remains visible but must not compete with the event date or headline. Do not add a countdown graphic unless explicitly requested by the operator.`
     : `ADAPTIVE TEXT HIERARCHY — LIGHT-COPY PIECE:
+- TEXT ROLE LOCK: HEADLINE is always the largest promotional text. SECONDARY MESSAGE is always smaller supporting copy. Never swap their wording, scale or roles.
 - Let the scene lead. Use one dominant headline, one supporting message and one clear CTA in separate safe zones; do not manufacture extra badges or information blocks.`;
 }
 
@@ -4241,9 +4249,10 @@ const RECRAFT_COMPOSITION_CONTRACT = `RECRAFT COMPOSITION GATE — MANDATORY:
 - Build an intentional advertising system, not text placed above a photograph. Connect photography, headline, event facts and CTA through alignment, scale and Creditek color.
 - Preserve 55–70% of the canvas for a bright, clearly identifiable store scene. Never crush the photograph under a dark overlay or large empty beige area.
 - The headline is dominant but must not occupy more than 25% of the canvas. Break lines naturally; never leave a single orphan word.
+- Never exchange typography roles: the field labeled HEADLINE is always the largest promotional text; SECONDARY MESSAGE is always supporting copy and visibly smaller.
 - For an event, date and day are decision-critical: render them as the second visual priority in a concise navy or turquoise information module, clearly readable on a phone. Location and time may be smaller but not legal-footnote size.
 - Place the CTA in its own high-contrast turquoise action zone. Do not make it look like a decorative caption.
-- Use one official-logo negative-space zone only. Do not invent or duplicate the logo.
+- Reserve one clean TOP-RIGHT official-logo safe zone only. Keep every generated mark, word, face, hand and text out of that zone; do not invent or duplicate a logo.
 - Reject before rendering if the result looks sepia, dim, generic, centered like a school flyer, visually empty, or if event details cannot be read at feed size.`;
 
 const RECRAFT_LAYOUT_PATTERNS = [

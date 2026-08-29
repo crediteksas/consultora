@@ -36,6 +36,9 @@ test('Ambos diseñadores reciben un contrato comercial y el logo oficial se comp
   assert.match(publisher, /primary purpose is to stop the scroll and sell/);
   assert.match(publisher, /\/creditek\/shared\/branding\/creditek-logo\.png/);
   assert.match(publisher, /La imagen no se entregará sin marca/);
+  assert.match(publisher, /TOP-RIGHT BRAND SAFE ZONE/);
+  assert.match(publisher, /reserve the TOP-RIGHT safe zone for post-composition/);
+  assert.match(publisher, /const x = canvas\.width - logoWidth - margin/);
 });
 
 test('Las escenas de tienda se adaptan a locales reales de municipios del Caribe', () => {
@@ -102,7 +105,15 @@ test('Los titulares priorizan claridad comercial y bloquean frases artificiales'
   assert.match(publisher, /Uno invita al evento, uno expresa el beneficio verificable/);
   assert.doesNotMatch(publisher, /exprésalo de forma nueva e inesperada/);
   assert.doesNotMatch(publisher, /Nivel: Nike, Coca-Cola, Claro Colombia/);
+  assert.match(publisher, /esperar el sueldo/);
   assert.equal((publisher.match(/setTimeout\(\(\) => generarMasTitulares\(\), 500\);/g) || []).length, 1);
+});
+
+test('La imagen conserva los roles tipográficos del titular y mensaje secundario', () => {
+  assert.match(publisher, /TEXT ROLE LOCK — ZERO EXCEPTIONS/);
+  assert.match(publisher, /HEADLINE .* is the largest promotional text and the only headline/);
+  assert.match(publisher, /SECONDARY MESSAGE .* must remain visibly smaller than the headline/);
+  assert.match(publisher, /Never swap, merge, rewrite or duplicate headline and secondary message/);
 });
 
 test('Worker fija una imagen Recraft V4.1 estándar y registra costo', () => {

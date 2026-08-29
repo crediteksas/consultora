@@ -28,6 +28,10 @@
   .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--turq);background:#fff;}
   .field textarea{resize:vertical;min-height:60px;}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .check-row{display:flex;align-items:flex-start;gap:9px;margin:4px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:#FAFBFC;font-size:12.5px;color:var(--text-secondary);}
+  .check-row input{margin-top:2px;accent-color:var(--turq);}
+  .conditional-fields{border-left:3px solid var(--turq);padding-left:12px;margin:0 0 14px;}
+  .conditional-fields[hidden]{display:none;}
   .upload-item{display:flex;align-items:center;gap:10px;border:1.5px dashed var(--border);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;}
   .upload-item:last-child{margin-bottom:0;}
   .upload-item.filled{border-style:solid;border-color:var(--success);background:#F0FBF6;}
@@ -96,9 +100,15 @@
   <!-- 1. REP LEGAL -->
   <div class="card">
     <h2><span class="num">1</span>Datos del representante legal</h2>
-    <div class="field">
-      <label>Nombre completo</label>
-      <input type="text" id="nombre" required placeholder="Ej: Luisa Fernanda Salgado Rada">
+    <div class="field-row">
+      <div class="field" style="margin-bottom:0;">
+        <label>Nombres</label>
+        <input type="text" id="nombresRepresentante" required placeholder="Ej: Luisa Fernanda">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Apellidos</label>
+        <input type="text" id="apellidosRepresentante" required placeholder="Ej: Salgado Rada">
+      </div>
     </div>
     <div class="field">
       <label>Cédula de ciudadanía</label>
@@ -140,14 +150,58 @@
       </div>
     </div>
     <div class="field" style="margin-top:14px;">
+      <label>Código postal de la tienda</label>
+      <input type="text" id="codigoPostal" required inputmode="numeric" placeholder="Ej: 700001">
+    </div>
+    <label class="check-row">
+      <input type="checkbox" id="contactoTiendaIgual" checked>
+      <span>La tienda usa el mismo teléfono y correo del representante legal.</span>
+    </label>
+    <div class="conditional-fields" id="contactoTienda" hidden>
+      <div class="field-row">
+        <div class="field"><label>Teléfono de la tienda</label><input type="tel" id="telefonoTienda" inputmode="tel"></div>
+        <div class="field"><label>Correo de la tienda</label><input type="email" id="correoTienda" inputmode="email"></div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:14px;">
       <label>Número total de vendedores</label>
       <input type="text" id="numVendedores" required inputmode="numeric" placeholder="Ej: 2">
     </div>
   </div>
 
+  <!-- 3. CUENTA BANCARIA DEL ALIADO -->
+  <div class="card">
+    <h2><span class="num">3</span>Cuenta bancaria del aliado</h2>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">Esta cuenta se registrará como destino de los pagos del aliado en KORA.</p>
+    <label class="check-row">
+      <input type="checkbox" id="titularCuentaEsRepresentante" checked>
+      <span>La cuenta bancaria está a nombre del representante legal.</span>
+    </label>
+    <div class="conditional-fields" id="datosTitularCuenta" hidden>
+      <div class="field"><label>Nombre completo del titular</label><input type="text" id="titularCuentaNombre"></div>
+      <div class="field"><label>NIT o cédula del titular</label><input type="text" id="titularCuentaIdentificacion" inputmode="numeric"></div>
+    </div>
+    <div class="field">
+      <label>Banco</label>
+      <input type="text" id="bancoAliado" required placeholder="Ej: Bancolombia">
+    </div>
+    <div class="field">
+      <label>Tipo de cuenta</label>
+      <select id="tipoCuentaAliado" required>
+        <option value="">Selecciona...</option>
+        <option value="ahorros">Ahorros</option>
+        <option value="corriente">Corriente</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Número de cuenta</label>
+      <input type="text" id="numeroCuentaAliado" required inputmode="numeric" pattern="[0-9]{4,30}" placeholder="Solo números">
+    </div>
+  </div>
+
   <!-- 3. DOCUMENTOS -->
   <div class="card">
-    <h2><span class="num">3</span>Documentos requeridos</h2>
+    <h2><span class="num">4</span>Documentos requeridos</h2>
 
     <!-- Cámara de comercio dinámica (Parte C, SPEC v8, 10-jul-2026) — hasta
          10 páginas, mismo patrón visual de "+ Agregar vendedor" para no
@@ -164,31 +218,31 @@
       <span class="icon">👤</span>
       <span class="label-text">Cédula rep. legal — lado frontal<small>Foto clara y legible</small></span>
       <span class="status" style="display:none;">✓ Listo</span>
-      <input type="file" accept="image/*,.pdf" capture="environment" data-key="cedulaFrontal">
+      <input type="file" accept="image/*,.pdf" data-key="cedulaFrontal">
     </div>
     <div class="upload-item" id="up_cedtrasera">
       <span class="icon">👤</span>
       <span class="label-text">Cédula rep. legal — lado trasero<small>Foto clara y legible</small></span>
       <span class="status" style="display:none;">✓ Listo</span>
-      <input type="file" accept="image/*,.pdf" capture="environment" data-key="cedulaTrasera">
+      <input type="file" accept="image/*,.pdf" data-key="cedulaTrasera">
     </div>
     <div class="upload-item" id="up_fachada">
       <span class="icon">🏠</span>
       <span class="label-text">Foto fachada de la tienda<small>Vista exterior del negocio</small></span>
       <span class="status" style="display:none;">✓ Listo</span>
-      <input type="file" accept="image/*,.pdf" capture="environment" data-key="fotoFachada">
+      <input type="file" accept="image/*,.pdf" data-key="fotoFachada">
     </div>
     <div class="upload-item" id="up_interior">
       <span class="icon">📷</span>
       <span class="label-text">Foto interior de la tienda<small>Vista general del espacio</small></span>
       <span class="status" style="display:none;">✓ Listo</span>
-      <input type="file" accept="image/*,.pdf" capture="environment" data-key="fotoInterior">
+      <input type="file" accept="image/*,.pdf" data-key="fotoInterior">
     </div>
     <div class="upload-item" id="up_vitrinas">
       <span class="icon">📺</span>
       <span class="label-text">Foto vitrinas<small>Exhibición de productos</small></span>
       <span class="status" style="display:none;">✓ Listo</span>
-      <input type="file" accept="image/*,.pdf" capture="environment" data-key="fotoVitrinas">
+      <input type="file" accept="image/*,.pdf" data-key="fotoVitrinas">
     </div>
 
     <!-- VIDEO 360 — sube directo a Drive -->
@@ -206,7 +260,7 @@
 
   <!-- 4. VENDEDORES M3 -->
   <div class="card">
-    <h2><span class="num">4</span>Vendedores — Formato M3 PayJoy</h2>
+    <h2><span class="num">5</span>Vendedores — Formato M3 PayJoy</h2>
     <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">Registra los datos de cada vendedor que operará en PayJoy. Adjunta la cédula PDF de cada uno.</p>
     <div id="vendedoresContainer"></div>
     <button type="button" class="btn-add" id="btnAddVendedor">+ Agregar vendedor</button>
@@ -215,7 +269,7 @@
 
   <!-- 5. VISTA PREVIA -->
   <div class="card">
-    <h2><span class="num">5</span>Vista previa del convenio</h2>
+    <h2><span class="num">6</span>Vista previa del convenio</h2>
     <div class="preview-doc">
       <div class="radicado-badge" id="prevRadicado">CK-2026-####</div><br>
       <b>CONVENIO DE ALIANZA COMERCIAL</b><br>
@@ -264,8 +318,16 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYrPbQ4hdb5KVa
       opt.value = nombre; opt.textContent = nombre;
       select.appendChild(opt);
     });
+    if(!Array.from(select.options).some(opt=>opt.value==='Marco Marín')){
+      const opt=document.createElement('option');
+      opt.value='Marco Marín'; opt.textContent='Marco Marín';
+      select.appendChild(opt);
+    }
   } catch(e) {
     console.error('No se pudo cargar la lista de gestores:', e);
+    const opt=document.createElement('option');
+    opt.value='Marco Marín'; opt.textContent='Marco Marín';
+    select.appendChild(opt);
   }
 })();
 
@@ -282,15 +344,30 @@ document.getElementById('prevRadicado').textContent = radicado;
 document.getElementById('prevFecha').textContent = fechaStr;
 
 // ── VISTA PREVIA EN VIVO ─────────────────────────────────────
-[['nombre','prevNombre','[tu nombre]'],
+function nombreRepresentanteCompleto(){
+  return [document.getElementById('nombresRepresentante').value.trim(),document.getElementById('apellidosRepresentante').value.trim()].filter(Boolean).join(' ');
+}
+[['nombresRepresentante','prevNombre','[tu nombre]'],
+ ['apellidosRepresentante','prevNombre','[tu nombre]'],
  ['cedula','prevCedula','[tu cédula]'],
  ['comercial','prevComercial','[tu negocio]'],
  ['municipio','prevMunicipio','[ciudad/municipio]'],
  ['departamento','prevDepartamento','[departamento]']
 ].forEach(([id,pid,ph]) => {
   const el = document.getElementById(id);
-  if(el) el.addEventListener('input',()=>{ document.getElementById(pid).textContent = el.value.trim()||ph; });
+  if(el) el.addEventListener('input',()=>{ document.getElementById(pid).textContent = pid==='prevNombre'?(nombreRepresentanteCompleto()||ph):(el.value.trim()||ph); });
 });
+
+function configurarBloqueCondicional(checkId,blockId,requiredIds){
+  const check=document.getElementById(checkId),block=document.getElementById(blockId);
+  const sync=()=>{
+    block.hidden=check.checked;
+    requiredIds.forEach(id=>{document.getElementById(id).required=!check.checked;});
+  };
+  check.addEventListener('change',sync); sync();
+}
+configurarBloqueCondicional('contactoTiendaIgual','contactoTienda',['telefonoTienda','correoTienda']);
+configurarBloqueCondicional('titularCuentaEsRepresentante','datosTitularCuenta',['titularCuentaNombre','titularCuentaIdentificacion']);
 
 
 // ── ARCHIVOS ─────────────────────────────────────────────────
@@ -392,13 +469,13 @@ function agregarVendedor(){
         <span class="icon">👤</span>
         <span class="label-text">Foto cédula — cara frontal <span style="color:var(--turq);font-size:11px;">(si no tiene PDF)</span><small>Foto clara y legible</small></span>
         <span class="status" style="display:none;">✓ Listo</span>
-        <input type="file" accept="image/*" capture="environment" onchange="handleCedVendedor(this,${idx},'frontal')">
+        <input type="file" accept="image/*" onchange="handleCedVendedor(this,${idx},'frontal')">
       </div>
       <div class="upload-item" id="up_cv${idx}_trasera">
         <span class="icon">👤</span>
         <span class="label-text">Foto cédula — cara trasera <span style="color:var(--turq);font-size:11px;">(si no tiene PDF)</span><small>Foto clara y legible</small></span>
         <span class="status" style="display:none;">✓ Listo</span>
-        <input type="file" accept="image/*" capture="environment" onchange="handleCedVendedor(this,${idx},'trasera')">
+        <input type="file" accept="image/*" onchange="handleCedVendedor(this,${idx},'trasera')">
       </div>
     </div>`;
   vContainer.appendChild(div);
@@ -548,7 +625,9 @@ document.getElementById('formAliado').addEventListener('submit',async e=>{
   const payload={
     radicado, fecha:fechaStr,
     vendedorCreador,
-    nombre:document.getElementById('nombre').value.trim(),
+    nombre:nombreRepresentanteCompleto(),
+    representanteNombres:document.getElementById('nombresRepresentante').value.trim(),
+    representanteApellidos:document.getElementById('apellidosRepresentante').value.trim(),
     cedula:document.getElementById('cedula').value.trim(),
     telefono:document.getElementById('telefono').value.trim(),
     correo:document.getElementById('correo').value.trim(),
@@ -557,6 +636,16 @@ document.getElementById('formAliado').addEventListener('submit',async e=>{
     direccion:document.getElementById('direccion').value.trim(),
     municipio:document.getElementById('municipio').value.trim(),
     departamento:document.getElementById('departamento').value.trim(),
+    codigoPostal:document.getElementById('codigoPostal').value.trim(),
+    telefonoTienda:document.getElementById('contactoTiendaIgual').checked?document.getElementById('telefono').value.trim():document.getElementById('telefonoTienda').value.trim(),
+    correoTienda:document.getElementById('contactoTiendaIgual').checked?document.getElementById('correo').value.trim():document.getElementById('correoTienda').value.trim(),
+    cuentaBancaria:{
+      beneficiario:document.getElementById('titularCuentaEsRepresentante').checked?nombreRepresentanteCompleto():document.getElementById('titularCuentaNombre').value.trim(),
+      identificacion:document.getElementById('titularCuentaEsRepresentante').checked?document.getElementById('cedula').value.trim():document.getElementById('titularCuentaIdentificacion').value.trim(),
+      banco:document.getElementById('bancoAliado').value.trim(),
+      tipoCuenta:document.getElementById('tipoCuentaAliado').value,
+      numeroCuenta:document.getElementById('numeroCuentaAliado').value.trim()
+    },
     numVendedores:document.getElementById('numVendedores').value.trim(),
     fechaCamara:document.getElementById('fechaCamara').value,
     documentos:docsPayload,

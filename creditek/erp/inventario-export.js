@@ -138,6 +138,44 @@
     return libro;
   }
 
+  function crearPlantillaCargaInicial({ XLSX, tiendaCodigo = '', tiendaNombre = '' }) {
+    if (!XLSX?.utils?.aoa_to_sheet || !XLSX?.utils?.book_new) {
+      throw new Error('La biblioteca de Excel no está disponible.');
+    }
+    const encabezados = [
+      'Tienda código', 'Tienda nombre', 'Tipo', 'Referencia o producto',
+      'IMEI o serial', 'Cantidad', 'Costo unitario', 'Precio de tienda', 'Observación',
+    ];
+    const ejemploCelular = [tiendaCodigo, tiendaNombre, 'CELULAR', 'EJEMPLO — BORRAR', '000000000000000', 1, 0, 0, 'Borra esta fila antes de entregar'];
+    const ejemploAccesorio = [tiendaCodigo, tiendaNombre, 'ACCESORIO', 'EJEMPLO — BORRAR', '', 1, 0, 0, 'Borra esta fila antes de entregar'];
+    const hoja = XLSX.utils.aoa_to_sheet([encabezados, ejemploCelular, ejemploAccesorio]);
+    hoja['!autofilter'] = { ref: 'A1:I3' };
+    hoja['!freeze'] = { xSplit: 0, ySplit: 1 };
+    hoja['!cols'] = [
+      { wch: 18 }, { wch: 24 }, { wch: 14 }, { wch: 34 }, { wch: 22 },
+      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 38 },
+    ];
+    for (const columna of ['G', 'H']) {
+      for (let fila = 2; fila <= 3; fila += 1) hoja[`${columna}${fila}`].z = '$#,##0.00';
+    }
+
+    const instrucciones = XLSX.utils.aoa_to_sheet([
+      ['PLANTILLA DE INVENTARIO INICIAL — KORA'],
+      ['1', 'No cambies los nombres de las columnas.'],
+      ['2', 'Usa una fila por cada celular; el IMEI o serial es obligatorio.'],
+      ['3', 'Para accesorios, deja vacío IMEI o serial e indica la cantidad total.'],
+      ['4', 'Completa costo unitario y precio de tienda en pesos, sin símbolos ni puntos.'],
+      ['5', 'Borra las dos filas de ejemplo antes de entregar el archivo.'],
+      ['6', 'La descarga no carga datos automáticamente: entrega el archivo a Administración para validación e importación.'],
+    ]);
+    instrucciones['!cols'] = [{ wch: 8 }, { wch: 105 }];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, instrucciones, 'Instrucciones');
+    XLSX.utils.book_append_sheet(libro, hoja, 'Inventario inicial');
+    return libro;
+  }
+
   global.CreditekInventarioExport = Object.freeze({
     protegerCelda,
     fechaCorte,
@@ -146,5 +184,6 @@
     filasCelulares,
     filasAccesorios,
     crearLibroInventario,
+    crearPlantillaCargaInicial,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

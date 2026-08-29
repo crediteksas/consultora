@@ -178,6 +178,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="page-top">
       <h1>Inventario en vivo</h1>
       <div class="export-actions">
+        <button class="btn-export" id="btnDescargarPlantilla">Descargar plantilla de carga inicial</button>
         <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
         <button class="btn-export" id="btnExportarConteo">Descargar conteo ciego</button>
       </div>
@@ -335,6 +336,7 @@ function initPagina() {
   document.getElementById('btnCerrarHistorial').addEventListener('click', () => document.getElementById('modalHistorial').classList.remove('show'));
   document.getElementById('btnExportarInventario').addEventListener('click', () => descargarInventario(false));
   document.getElementById('btnExportarConteo').addEventListener('click', () => descargarInventario(true));
+  document.getElementById('btnDescargarPlantilla').addEventListener('click', descargarPlantillaCargaInicial);
 
   cargarTodo();
 }
@@ -610,6 +612,20 @@ function descargarInventario(conteoCiego) {
   const url = enlace.href;
   enlace.remove();
   URL.revokeObjectURL(url);
+}
+
+function descargarPlantillaCargaInicial() {
+  try {
+    const tienda = tiendasCache.find(item => item.codigo === tiendaActiva());
+    const libro = CreditekInventarioExport.crearPlantillaCargaInicial({
+      XLSX,
+      tiendaCodigo: tienda?.codigo || tiendaActiva() || '',
+      tiendaNombre: tienda?.nombre || '',
+    });
+    XLSX.writeFile(libro, `plantilla-inventario-inicial-${tiendaActiva() || 'tienda'}.xlsx`);
+  } catch (error) {
+    window.alert('No se pudo generar la plantilla: ' + (error?.message || 'error desconocido'));
+  }
 }
 
 // Los controles sensibles se crean únicamente después de validar esCentral().

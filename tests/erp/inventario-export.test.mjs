@@ -55,6 +55,18 @@ test('la pantalla fuerza la tienda del perfil para usuarios no centrales', () =>
   );
   assert.match(html, /btnExportarInventario/);
   assert.match(html, /btnExportarConteo/);
+  assert.match(html, /btnDescargarPlantilla/);
+  assert.match(html, /Descargar plantilla de carga inicial/);
+});
+
+test('genera una plantilla de carga inicial separada del importador', () => {
+  const libro = exportador.crearPlantillaCargaInicial({ XLSX, tiendaCodigo: 'STORE-1', tiendaNombre: 'Tienda prueba' });
+  assert.deepEqual(libro.SheetNames, ['Instrucciones', 'Inventario inicial']);
+  const filas = XLSX.utils.sheet_to_json(libro.Sheets['Inventario inicial'], { header: 1 });
+  const instrucciones = XLSX.utils.sheet_to_json(libro.Sheets.Instrucciones, { header: 1 });
+  assert.equal(filas[1][0], 'STORE-1');
+  assert.equal(filas[1][1], 'Tienda prueba');
+  assert.match(instrucciones.at(-1)[1], /no carga datos automáticamente/i);
 });
 
 test('la tienda no solicita costos internos en las consultas de inventario', () => {

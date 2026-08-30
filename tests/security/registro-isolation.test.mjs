@@ -26,6 +26,7 @@ test('el Worker de registro no tiene acceso a KORA, AURA, KV ni secretos', async
   const worker = await readFile(path.join(root, 'src/registro-assets-worker.mjs'), 'utf8');
   assert.match(config, /"name": "creditek-registro"/);
   assert.match(config, /"directory": "\.\/dist\/registro"/);
+  assert.match(config, /"run_worker_first": true/);
   assert.match(config, /"pattern": "registro\.crediteksas\.com"/);
   assert.match(config, /"custom_domain": true/);
   assert.doesNotMatch(config, /kv_namespaces|d1_databases|vars|service/);

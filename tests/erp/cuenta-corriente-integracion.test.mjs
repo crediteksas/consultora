@@ -10,7 +10,7 @@ const html = await readFile(
 test('cuenta corriente integra el dominio anterior con el shell KORA', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="cuenta-corriente-domain\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.14"><\/script>/);
+  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.15"><\/script>/);
   assert.match(html, /cuentaDomain\.calcularResumenPorTienda/);
   assert.match(html, /cuentaDomain\.prepararHistorial/);
   assert.match(html, /cuentaDomain\.estadoAbono/);

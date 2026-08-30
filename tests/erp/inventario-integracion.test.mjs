@@ -11,8 +11,8 @@ test('inventario integra dominio, shell KORA y exportación', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="inventario-domain\.js"><\/script>/);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.14"><\/script>/);
-  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.14" data-kora-shell="1\.0\.0"><\/script>/);
+  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.15"><\/script>/);
+  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"><\/script>/);
   assert.match(html, /xlsx@0\.18\.5/);
   assert.match(html, /<script src="inventario-export\.js"><\/script>/);
   assert.match(html, /const inventarioDomain = window\.CreditekInventarioDomain/);

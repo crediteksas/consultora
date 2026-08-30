@@ -514,6 +514,19 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       link.href = '/design-system/components/kora-incident-center.css?v=1.1.1';
       document.head.appendChild(link);
     }
+    if (!document.getElementById('koraContextHelpStyles')) {
+      const link = document.createElement('link');
+      link.id = 'koraContextHelpStyles';
+      link.rel = 'stylesheet';
+      link.href = '/design-system/components/kora-context-help.css?v=1.0.0';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('koraContextHelp')) {
+      const help = document.createElement('script');
+      help.id = 'koraContextHelp';
+      help.src = '/creditek/erp/kora-context-help.js?v=1.0.0';
+      document.head.appendChild(help);
+    }
     if (!document.getElementById('koraNotifications')) {
       const notifications = document.createElement('script');
       notifications.id = 'koraNotifications';
@@ -705,6 +718,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         ${koraStoreHtml(profile, stores)}
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
         <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia" title="Configuración de experiencia">${koraStaticIcon('sliders-horizontal')}</button>
+        <button class="kora-icon-button ghost" type="button" data-kora-help aria-label="Guía de esta pantalla" title="Guía de esta pantalla" data-kora-tooltip="Guía de esta pantalla"><i data-lucide="circle-help"></i></button>
         <button class="kora-icon-button ghost" type="button" data-kora-notifications aria-label="Notificaciones" title="Notificaciones">${koraStaticIcon('bell')}</button>
         <div class="kora-profile"><span class="ctk-avatar">${escapeHtml((profile.nombre || 'K').slice(0, 1).toUpperCase())}</span>
           <span class="kora-profile__copy"><span class="kora-profile__name">${escapeHtml(profile.nombre)}</span><span class="kora-profile__role">${escapeHtml(roleLabel)}</span></span>
@@ -891,6 +905,15 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     mountNotifications();
     if (!window.KoraNotifications) {
       document.addEventListener('kora-notifications-ready', mountNotifications, { once: true });
+    }
+    const mountContextHelp = () => window.KoraContextHelp?.mount?.({
+      button: main.querySelector('[data-kora-help]'),
+      title: current?.label,
+      description: current?.description,
+    });
+    mountContextHelp();
+    if (!window.KoraContextHelp) {
+      document.addEventListener('kora-context-help-ready', mountContextHelp, { once: true });
     }
   }
 

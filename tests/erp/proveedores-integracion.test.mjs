@@ -11,8 +11,8 @@ test('proveedores resuelve el conflicto con configuración y shell KORA', () => 
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
   assert.match(html, /<script src="proveedores-domain\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.14"><\/script>/);
-  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.14" data-kora-shell="1\.0\.0"><\/script>/);
+  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.15"><\/script>/);
+  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"><\/script>/);
   assert.match(html, /Consulta las compras, saldos y pagos desde <b>Ver compras<\/b>\./);
 });
 

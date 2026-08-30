@@ -6,19 +6,16 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '../..');
 const read = relative => readFile(path.join(root, relative), 'utf8');
 
-test('el shell KORA se activa únicamente en las tres pantallas piloto', async () => {
-  const [tablero, utilidad, agentes] = await Promise.all([
+test('el shell KORA se activa en las pantallas principales autenticadas', async () => {
+  const [tablero, utilidad, catalogo] = await Promise.all([
     read('creditek/erp/tablero.html'),
     read('creditek/erp/utilidad-creditek.html'),
-    read('creditek/agentes/index.html'),
+    read('creditek/erp/catalogo.html'),
   ]);
 
-  assert.match(tablero, /sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"/);
-  assert.match(utilidad, /sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"/);
-  assert.match(
-    agentes,
-    /\.\.\/erp\/sidebar\.js" data-kora-shell="1\.0\.0" data-kora-shell-mode="agents"/,
-  );
+  assert.match(tablero, /sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"/);
+  assert.match(utilidad, /sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"/);
+  assert.match(catalogo, /sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"/);
 });
 
 test('la navegación KORA usa Design System, Lucide fijado y no estilos inline', async () => {
@@ -43,7 +40,7 @@ test('preserva rutas y roles verificables del ERP', async () => {
     /Stock', href: 'inventario\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
     /Ventas', href: 'ventas\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
     /Cartera de Proveedores', href: 'proveedores\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
-    /Utilidad Creditek', href: 'utilidad-creditek\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
+    /Resultado B2B', href: 'utilidad-creditek\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Análisis e informes', href: 'reportes\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
   ];
   contracts.forEach(contract => assert.match(source, contract));

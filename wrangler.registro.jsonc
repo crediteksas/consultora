@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "creditek-registro",
+  "main": "src/registro-assets-worker.mjs",
+  "compatibility_date": "2026-08-29",
+  "assets": {
+    "directory": "./dist/registro",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash"
+  },
+  "observability": { "enabled": true },
+  "workers_dev": true
+}

@@ -7,6 +7,7 @@
     "build": "npm run build:environment",
     "build:public": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
     "build:kora": "node scripts/build-kora.mjs",
+    "build:registro": "node scripts/build-registro.mjs",
     "build:environment": "npm run config:check && npm run config:generate -- --output=config/generated/kora-environment.generated.js && npm run build:public && npm run build:kora && npm run config:verify-artifact",
     "config:check": "node scripts/check-kora-config-security.mjs",
     "config:generate": "node scripts/generate-kora-environment.mjs",

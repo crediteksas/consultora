@@ -9,5 +9,8 @@
     "html_handling": "auto-trailing-slash"
   },
   "observability": { "enabled": true },
-  "workers_dev": true
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "registro.crediteksas.com", "custom_domain": true }
+  ]
 }

@@ -77,7 +77,7 @@ test('todas las superficies públicas de KORA consumen la transformación compar
     );
     assert.match(
       source,
-      /<script src="\/design-system\/components\/kora-product\.js" defer><\/script>/,
+      /<script src="\/design-system\/components\/kora-product\.js(?:\?v=[^"]+)?" defer><\/script>/,
       `${path} no carga kora-product.js`,
     );
   }
@@ -88,7 +88,7 @@ test('todas las pantallas ERP autenticadas consumen una única navegación KORA'
     const source = await read(path);
     assert.match(
       source,
-      /<script src="sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"><\/script>/,
+      /<script src="sidebar\.js\?v=2\.0\.14" data-kora-shell="1\.0\.0"><\/script>/,
       `${path} no activa el shell compartido`,
     );
   }
@@ -150,7 +150,7 @@ test('el acceso al portal de agentes identifica el producto AURA y la empresa Cr
   assert.match(source, /data-kora-brand data-variant="login" data-product-name="AURA"/);
   assert.match(brand, /root\.dataset\.productName \|\| 'KORA'/);
   assert.match(brand, /`\$\{productName\} — Creditek`/);
-  assert.match(brand, /creditek_logo_corregido_alta\.png/);
+  assert.match(brand, /creditekLogo: '\/creditek\/shared\/branding\/creditek-logo\.png'/);
 });
 
 test('la transformación visual queda versionada como KORA Ecosystem Design v2.0.0', async () => {

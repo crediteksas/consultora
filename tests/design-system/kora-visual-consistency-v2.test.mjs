@@ -37,8 +37,8 @@ test('Dashboard y Catálogo consumen la misma variante clara del shell', async (
     read('design-system/components/kora-shell.css'),
   ]);
 
-  assert.match(dashboard, /sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"/);
-  assert.match(catalogo, /sidebar\.js\?v=2\.0\.9" data-kora-shell="1\.0\.0"/);
+  assert.match(dashboard, /sidebar\.js\?v=2\.0\.14" data-kora-shell="1\.0\.0"/);
+  assert.match(catalogo, /sidebar\.js\?v=2\.0\.14" data-kora-shell="1\.0\.0"/);
   assert.match(shellCss, /\.kora-sidebar\s*\{[^}]*background:\s*var\(--ctk-color-neutral-50\)/s);
   assert.doesNotMatch(dashboardCss, /body\[data-kora-dashboard="1\.0\.0"\]\s+\.kora-(?:shell|sidebar|topbar|nav|icon|store|profile|wordmark|company)/);
   assert.doesNotMatch(dashboardCss, /background:\s*var\(--ctk-color-primary-950\)/);

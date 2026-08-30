@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AURA | Creditek</title>
+<title>AURA · Agentes — Creditek</title>
 <link rel="icon" type="image/png" href="/creditek/shared/branding/creditek-logo.png">
 <link rel="apple-touch-icon" href="/creditek/shared/branding/creditek-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,6 +75,7 @@ body{font-family:var(--font);background:var(--ctk-color-background,#F5F5F7);heig
 .login-field{position:relative;margin-bottom:14px}
 .login-field label{display:block;font-size:12px;font-weight:650;color:#334155;margin:0 0 7px 2px}
 .login-field input{
+  pointer-events:auto;
   width:100%;padding:13px 45px 13px 14px;background:#F8FAFC;
   border:1.5px solid #DCE4EC;border-radius:12px;color:var(--navy);
   font-size:14px;font-family:var(--font);
@@ -343,31 +344,27 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-brand">
-      <img src="/creditek/shared/branding/creditek-logo.png" alt="Creditek">
-      <h1>AURA</h1>
-      <p>by Creditek</p>
-    </div>
+    <div class="login-brand" data-kora-brand data-variant="login" data-product-name="AURA"></div>
 
-    <div class="auth-view active" id="auth-view-login">
+    <form class="auth-view active" id="auth-view-login" autocomplete="on" onsubmit="doLogin(); return false;">
       <h2 class="auth-title">Bienvenido</h2>
       <p class="auth-copy">Ingresa con tu cuenta individual para acceder a tus módulos autorizados.</p>
       <div class="login-field">
         <label for="login-email">Correo electrónico</label>
-        <input type="email" id="login-email" placeholder="nombre@crediteksas.com" autocomplete="username">
+        <input type="email" id="login-email" name="email" placeholder="nombre@crediteksas.com" autocomplete="username">
       </div>
       <div class="login-field">
         <label for="login-password">Contraseña</label>
-        <input type="password" id="login-password" placeholder="Tu contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" id="login-password" name="password" placeholder="Tu contraseña" autocomplete="current-password">
         <button class="password-toggle" type="button" aria-label="Mostrar contraseña" onclick="togglePassword('login-password',this)"><i data-lucide="eye"></i></button>
       </div>
       <div class="login-options">
         <label class="remember-option"><input type="checkbox" id="remember-session" checked> Recordar sesión</label>
         <button class="auth-link" type="button" onclick="showAuthView('forgot')">Olvidé mi contraseña</button>
       </div>
-      <button class="login-btn" id="login-submit" onclick="doLogin()">Iniciar sesión</button>
+      <button class="login-btn" id="login-submit" type="submit">Iniciar sesión</button>
       <div class="auth-status" id="login-error" role="status" aria-live="polite"></div>
-    </div>
+    </form>
 
     <div class="auth-view" id="auth-view-forgot">
       <h2 class="auth-title">Recupera tu acceso</h2>

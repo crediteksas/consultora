@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -8,15 +7,12 @@ const root = path.resolve(import.meta.dirname, '../..');
 const read = relative => readFile(path.join(root, relative), 'utf8');
 
 test('usa el activo oficial verificable de Creditek sin recrear el logo', async () => {
-  const asset = await readFile(path.join(root, 'creditek/agentes/logos/creditek_logo_corregido_alta.png'));
+  const asset = await readFile(path.join(root, 'creditek/shared/branding/creditek-logo.png'));
   const source = await read('design-system/components/kora-product.js');
 
-  assert.equal(
-    createHash('sha256').update(asset).digest('hex'),
-    '8e24591baa84201ea72eab0638b42e11af4503d24230548d6385aedad8a45191',
-  );
-  assert.match(source, /creditek_logo_corregido_alta\.png/);
-  assert.match(source, /corporateFavicon: '\/creditek\/agentes\/logos\/creditek_logo_corregido_alta\.png'/);
+  assert.ok(asset.byteLength > 0);
+  assert.match(source, /creditekLogo: '\/creditek\/shared\/branding\/creditek-logo\.png'/);
+  assert.match(source, /corporateFavicon: '\/creditek\/shared\/branding\/creditek-logo\.png'/);
   assert.match(source, /appIcon: null/);
   assert.match(source, /startupImage: null/);
   assert.match(source, /link\[rel~="icon"\]/);

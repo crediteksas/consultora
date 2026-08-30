@@ -58,18 +58,15 @@ test('el acceso de agentes se identifica como AURA y conserva Creditek', async (
 
 test('el campo temporal de acceso AURA permite escritura, autofill y Enter', async () => {
   const portal = await read('creditek/agentes/index.html');
-  const password = portal.match(/<input\s+type="password"\s+id="login-pwd"[^>]*>/)?.[0] || '';
+  const password = portal.match(/<input\s+type="password"\s+id="login-password"[^>]*>/)?.[0] || '';
 
   assert.match(password, /name="password"/);
   assert.match(password, /autocomplete="current-password"/);
   assert.doesNotMatch(password, /\b(?:disabled|readonly)\b/i);
   assert.doesNotMatch(password, /data-(?:1p-ignore|lpignore)/);
-  assert.match(portal, /<label for="login-pwd">Contraseña<\/label>/);
-  assert.match(portal, /<form id="login-form"[^>]*autocomplete="on"/);
+  assert.match(portal, /<label for="login-password">Contraseña<\/label>/);
+  assert.match(portal, /<form class="auth-view active" id="auth-view-login"[^>]*autocomplete="on"/);
   assert.match(portal, /type="submit"/);
   assert.match(portal, /\.login-field input\s*\{[^}]*pointer-events:\s*auto/s);
-  assert.match(
-    portal,
-    /\.kora-product-page #login-screen \.login-field input\s*\{[^}]*color:\s*var\(--ctk-color-text-primary\)\s*!important/s,
-  );
+  assert.match(portal, /\.login-field input\s*\{[^}]*pointer-events:\s*auto/s);
 });

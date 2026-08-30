@@ -11,7 +11,7 @@ test('la navegación distingue resumen ejecutivo, análisis e incidencias sin ca
 
   assert.match(source, /label: 'Resumen ejecutivo', href: 'tablero\.html', lucide: 'gauge'/);
   assert.match(source, /label: 'Análisis e informes', href: 'reportes\.html'/);
-  assert.match(source, /label: 'Mis incidencias', href: 'mis-reportes\.html'/);
+  assert.match(source, /label: 'Mis incidencias', href: 'incidencias.html#ver'/);
   assert.doesNotMatch(source, /label: 'Dashboard', href: '(?:tablero|reportes)\.html'/);
 });
 
@@ -25,8 +25,8 @@ test('cada opción operativa repetitiva tiene icono y descripción semánticos',
     ['Conciliación', 'scale'],
     ['Cartera de Proveedores', 'hand-coins'],
     ['Compra proveedor', 'package-plus'],
-    ['Bodega Central', 'warehouse'],
-    ['Utilidad Creditek', 'chart-no-axes-column-increasing'],
+    ['Inventario Central', 'warehouse'],
+    ['Resultado B2B', 'chart-no-axes-column-increasing'],
     ['Registrar cliente', 'user-plus'],
     ['Validación', 'badge-check'],
   ];
@@ -89,6 +89,6 @@ test('el build invalida la caché del shell y la marca corregidos', async () => 
   ]);
 
   assert.match(source, /kora-shell\.css\?v=2\.0\.4/);
-  assert.match(build, /KORA_SHELL_ASSET_VERSION = '2\.0\.9'/);
+  assert.match(build, /KORA_SHELL_ASSET_VERSION = '2\.0\.14'/);
   assert.match(build, /KORA_PRODUCT_ASSET_VERSION = '2\.0\.4'/);
 });

@@ -66,7 +66,7 @@ test('las reglas específicas aparecen antes de las categorías genéricas', () 
 
 test('el build invalida la caché del adaptador visual actualizado', () => {
   assert.match(buildScript, /const KORA_PRODUCT_ASSET_VERSION = '2\.0\.4'/);
-  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2\.0\.9'/);
+  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2\.0\.14'/);
   assert.match(buildScript, /kora-product\\\.js/);
   assert.match(buildScript, /KORA_PRODUCT_ASSET_VERSION/);
 });
@@ -77,7 +77,7 @@ test('cada sección principal explica su propósito mediante tooltip tardío', (
     'ANÁLISIS',
     'INVENTARIO',
     'CAJA',
-    'BODEGA CENTRAL',
+    'CREDITEK B2B',
     'CLIENTES',
     'ADMINISTRACIÓN',
   ];

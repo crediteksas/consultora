@@ -4,6 +4,7 @@ import { mkdtemp, readFile, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { buildRegistro } from '../../scripts/build-registro.mjs';
+import registroWorker from '../../src/registro-assets-worker.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 
@@ -28,7 +29,7 @@ test('el Worker de registro no tiene acceso a KORA, AURA, KV ni secretos', async
   assert.match(config, /"pattern": "registro\.crediteksas\.com"/);
   assert.match(config, /"custom_domain": true/);
   assert.doesNotMatch(config, /kv_namespaces|d1_databases|vars|service/);
-  assert.doesNotMatch(worker, /KORA|AURA|SUPABASE|secret/i);
+  assert.doesNotMatch(worker, /env\.(?:KORA|AURA|SUPABASE)|service_role|API_KEY|SECRET/i);
 });
 
 test('el formulario publicado conserva acceso público y captura completa', async () => {
@@ -37,4 +38,17 @@ test('el formulario publicado conserva acceso público y captura completa', asyn
   assert.match(html, /Marco Marín/);
   assert.match(html, /cuentaBancaria:\{/);
   assert.doesNotMatch(html, /capture="environment"/);
+});
+
+test('rechaza rutas de AURA, KORA y portal aunque Static Assets tenga fallback', async () => {
+  let assetCalls = 0;
+  const env = { ASSETS: { fetch: async () => { assetCalls += 1; return new Response('asset'); } } };
+  for (const pathname of ['/creditek/agentes/', '/creditek/erp/app', '/creditek/portal/']) {
+    const response = await registroWorker.fetch(new Request(`https://registro.crediteksas.com${pathname}`), env);
+    assert.equal(response.status, 404, pathname);
+  }
+  assert.equal(assetCalls, 0);
+  const allowed = await registroWorker.fetch(new Request('https://registro.crediteksas.com/creditek/convenios/'), env);
+  assert.equal(allowed.status, 200);
+  assert.equal(assetCalls, 1);
 });

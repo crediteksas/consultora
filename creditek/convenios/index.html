@@ -32,6 +32,10 @@
   .check-row input{margin-top:2px;accent-color:var(--turq);}
   .conditional-fields{border-left:3px solid var(--turq);padding-left:12px;margin:0 0 14px;}
   .conditional-fields[hidden]{display:none;}
+  .platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .platform-option{display:flex;align-items:center;gap:9px;padding:12px;border:1px solid var(--border);border-radius:10px;background:#FAFBFC;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);}
+  .platform-option:has(input:checked){border-color:var(--turq);background:#ECFEFF;box-shadow:0 0 0 1px var(--turq);}
+  .platform-option input{accent-color:var(--turq);width:17px;height:17px;}
   .upload-item{display:flex;align-items:center;gap:10px;border:1.5px dashed var(--border);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;}
   .upload-item:last-child{margin-bottom:0;}
   .upload-item.filled{border-style:solid;border-color:var(--success);background:#F0FBF6;}
@@ -169,9 +173,22 @@
     </div>
   </div>
 
-  <!-- 3. CUENTA BANCARIA DEL ALIADO -->
+  <!-- 3. PLATAFORMAS SOLICITADAS -->
   <div class="card">
-    <h2><span class="num">3</span>Cuenta bancaria del aliado</h2>
+    <h2><span class="num">3</span>Plataformas con las que desea trabajar</h2>
+    <p style="font-size:12px;color:var(--text-secondary);">Selecciona una o varias. Esta solicitud inicia el proceso de creación; la aprobación final depende de cada plataforma.</p>
+    <div class="platform-grid" id="plataformasSolicitadas">
+      <label class="platform-option"><input type="checkbox" value="payjoy"> PayJoy</label>
+      <label class="platform-option"><input type="checkbox" value="alo_credit"> Alo Credit</label>
+      <label class="platform-option"><input type="checkbox" value="addi"> Addi</label>
+      <label class="platform-option"><input type="checkbox" value="krediya"> Krediya</label>
+    </div>
+    <p class="error-msg" id="plataformasError">Selecciona al menos una plataforma.</p>
+  </div>
+
+  <!-- 4. CUENTA BANCARIA DEL ALIADO -->
+  <div class="card">
+    <h2><span class="num">4</span>Cuenta bancaria del aliado</h2>
     <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">Esta cuenta se registrará como destino de los pagos del aliado en KORA.</p>
     <label class="check-row">
       <input type="checkbox" id="titularCuentaEsRepresentante" checked>
@@ -199,9 +216,9 @@
     </div>
   </div>
 
-  <!-- 3. DOCUMENTOS -->
+  <!-- 5. DOCUMENTOS -->
   <div class="card">
-    <h2><span class="num">4</span>Documentos requeridos</h2>
+    <h2><span class="num">5</span>Documentos requeridos</h2>
 
     <!-- Cámara de comercio dinámica (Parte C, SPEC v8, 10-jul-2026) — hasta
          10 páginas, mismo patrón visual de "+ Agregar vendedor" para no
@@ -260,8 +277,8 @@
 
   <!-- 4. VENDEDORES M3 -->
   <div class="card">
-    <h2><span class="num">5</span>Vendedores — Formato M3 PayJoy</h2>
-    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">Registra los datos de cada vendedor que operará en PayJoy. Adjunta la cédula PDF de cada uno.</p>
+    <h2><span class="num">6</span>Personal de la tienda</h2>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">Registra los vendedores que operarán en las plataformas seleccionadas. Si eliges PayJoy, estos datos se usarán para su formato M3.</p>
     <div id="vendedoresContainer"></div>
     <button type="button" class="btn-add" id="btnAddVendedor">+ Agregar vendedor</button>
     <p style="font-size:11px;color:var(--text-secondary);margin-top:6px;text-align:center;">Máximo 5 vendedores</p>
@@ -269,7 +286,7 @@
 
   <!-- 5. VISTA PREVIA -->
   <div class="card">
-    <h2><span class="num">6</span>Vista previa del convenio</h2>
+    <h2><span class="num">7</span>Vista previa del convenio</h2>
     <div class="preview-doc">
       <div class="radicado-badge" id="prevRadicado">CK-2026-####</div><br>
       <b>CONVENIO DE ALIANZA COMERCIAL</b><br>
@@ -576,6 +593,14 @@ document.getElementById('formAliado').addEventListener('submit',async e=>{
   const vendedorCreador=document.getElementById('vendedorCreador').value;
   if(!vendedorCreador){ alert('Selecciona quién de nuestro equipo gestiona este convenio.'); return; }
 
+  const plataformasSolicitadas=Array.from(document.querySelectorAll('#plataformasSolicitadas input:checked')).map(input=>input.value);
+  const plataformasError=document.getElementById('plataformasError');
+  plataformasError.style.display=plataformasSolicitadas.length?'none':'block';
+  if(!plataformasSolicitadas.length){
+    document.getElementById('plataformasSolicitadas').scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
   // Validar docs obligatorios
   const requeridos=[
     {key:'camaraComercio1',label:'Cámara de comercio (pág. 1)'},
@@ -625,6 +650,7 @@ document.getElementById('formAliado').addEventListener('submit',async e=>{
   const payload={
     radicado, fecha:fechaStr,
     vendedorCreador,
+    plataformasSolicitadas,
     nombre:nombreRepresentanteCompleto(),
     representanteNombres:document.getElementById('nombresRepresentante').value.trim(),
     representanteApellidos:document.getElementById('apellidosRepresentante').value.trim(),
@@ -662,8 +688,8 @@ document.getElementById('formAliado').addEventListener('submit',async e=>{
     const data=await resp.json();
     if(data.ok){
       overlay.classList.add('success');
-      overlayText.textContent='¡Listo! Revisa tu correo';
-      overlaySub.textContent='Te enviamos el convenio '+radicado+' para firmarlo digitalmente.';
+      overlayText.textContent='¡Información enviada!';
+      overlaySub.textContent='Creditek recibió el registro '+radicado+' y continuará el proceso de vinculación.';
     } else {
       overlay.classList.remove('show');
       alert('Error: '+(data.error||'Intenta de nuevo'));

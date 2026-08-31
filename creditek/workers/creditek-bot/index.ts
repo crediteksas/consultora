@@ -7,10 +7,12 @@ import { generarRespuesta } from './claude';
 import { enviarMensajeWA, enviarMensajeFB, enviarBotonesWA } from './meta';
 import {
   ESTADOS_PENDIENTES,
+  detectaReservaDatosConInteres,
   esConsultaDuranteCaptura,
   esIntencionMoto,
   esNombreDescartable,
   mensajeConsultaAsesor,
+  mensajeSeguimientoPorEstado,
   respuestaConsultaFrecuenteDuranteCaptura,
 } from './lead-policy';
 import {
@@ -473,6 +475,8 @@ const MSG = {
   CIUDAD_REPETIR: 'Disculpa, ¿me confirmas cuál de estas te queda más cerca: Tolú, Corozal, Chinú, Ciénaga de Oro o Coveñas?',
   HANDOFF_MSG: (nombre: string, asesor: string, nombreComercial: string, tel: string) =>
     `Perfecto, ${nombre} 😊 Tu solicitud quedó registrada correctamente y fue asignada a ${nombreComercial}. ${asesor} continuará tu proceso lo antes posible; también puedes escribirle al ${tel}.`,
+  HANDOFF_INFORMATIVO: (asesor: string, nombreComercial: string, tel: string) =>
+    `Perfecto 😊 Te conecto con ${asesor} de ${nombreComercial} para que primero resuelva tus dudas. Puedes escribirle al ${tel}. Si luego decides solicitar el crédito, completas el registro y la autorización.`,
   ASESOR_NO_CONTESTA: (asesor2: string, tel2: string) =>
     `¡Qué raro! Te paso con otro asesor 😊 Escríbele a ${asesor2} al ${tel2} y dile que te mandó Sofía de Creditek.`,
   SIN_ASESOR: 'En este momento no tenemos asesor disponible en tu zona. Te contactaremos pronto 🙏',
@@ -503,7 +507,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const sk = env.SUPABASE_SERVICE_KEY;
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json', 'Access-Control-Allow-Headers': 'Content-Type, X-Worker-Secret', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Worker-Secret', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
 
@@ -513,6 +517,38 @@ export default {
     // clientes. Se protegen con el mismo secreto compartido que ya usa
     // /api/enviar-mensaje (Pieza 1 del SPEC v5-CRM).
     const autorizado = !!env.WORKER_SHARED_SECRET && request.headers.get('X-Worker-Secret') === env.WORKER_SHARED_SECRET;
+
+    if (url.pathname === '/api/seguimiento-asesor' && request.method === 'POST') {
+      if (!autorizado) return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401, headers: cors });
+      const body = await request.json().catch(() => ({})) as { telefono?: string; estado?: string };
+      const telefono = String(body.telefono || '').replace(/\D/g, '');
+      const estado = String(body.estado || '');
+      const permitidos = new Set(['contactado', 'no_contactado', 'venta_cerrada']);
+      if (!/^\d{10,12}$/.test(telefono) || !permitidos.has(estado)) {
+        return new Response(JSON.stringify({ error: 'Solicitud inválida' }), { status: 400, headers: cors });
+      }
+      const rCliente = await fetch(
+        `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=telefono,tienda_id,estado_funnel,confirmacion_asesor&limit=1`,
+        { headers: { apikey: sk, Authorization: `Bearer ${sk}` } },
+      );
+      if (!rCliente.ok) return new Response(JSON.stringify({ error: 'No se pudo validar el cliente' }), { status: 502, headers: cors });
+      const [cliente] = await rCliente.json() as Array<ClienteConfirmacionAsesor & { tienda_id?: string; estado_funnel?: string }>;
+      if (!cliente) return new Response(JSON.stringify({ error: 'Cliente no encontrado' }), { status: 404, headers: cors });
+      if (!cliente.tienda_id || cliente.estado_funnel !== 'transferido_asesor') {
+        return new Response(JSON.stringify({ error: 'Cliente sin asignación activa' }), { status: 409, headers: cors });
+      }
+      if (!transicionConfirmacionPermitida(cliente.confirmacion_asesor, estado)) {
+        return new Response(JSON.stringify({ error: 'No se permiten regresiones de estado' }), { status: 409, headers: cors });
+      }
+      const rUpdate = await fetch(`${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}`, {
+        method: 'PATCH',
+        headers: { apikey: sk, Authorization: `Bearer ${sk}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ confirmacion_asesor: estado }),
+      });
+      if (!rUpdate.ok) return new Response(JSON.stringify({ error: 'No se pudo guardar el seguimiento' }), { status: 502, headers: cors });
+      console.log('[SEGUIMIENTO-ASESOR] estado actualizado de forma manual:', estado);
+      return new Response(JSON.stringify({ ok: true, estado }), { headers: cors });
+    }
 
     if (url.pathname === '/api/stats' && request.method === 'GET') {
       if (!autorizado) return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401, headers: cors });
@@ -850,7 +886,7 @@ async function procesarMensaje(
 
   // Un rechazo comercial explícito cierra cualquier flujo previo al handoff.
   // Al marcarlo perdido, el cron de seguimiento deja de incluirlo.
-  if (conv.estado !== 'OPTIN' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto)) {
+  if (conv.estado !== 'OPTIN' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto) && !detectaReservaDatosConInteres(texto)) {
     conv.estado = 'FIN';
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -1464,6 +1500,13 @@ async function procesarMensaje(
         break;
       }
 
+      if (detectaReservaDatosConInteres(texto) || (detectaAcepta(texto) && !conv.nombre && !conv.cedula)) {
+        if (!conv.celular && canal === 'whatsapp') conv.celular = clienteId;
+        await hacerHandoff(conv, clienteId, sendFn, env, sk, canal, true);
+        await save();
+        return;
+      }
+
       // Si el cliente interrumpe la captura con una duda, se responde primero
       // y luego se pide solamente el dato que falta. Antes este manejo solo
       // existía cuando faltaba el nombre: al esperar cédula, cualquier pregunta
@@ -1481,10 +1524,7 @@ async function procesarMensaje(
           soloResponderDuda: true,
         };
         const respuestaDuda = fija || await generarRespuesta('DATOS_MIN', texto, ctx, env.ANTHROPIC_API_KEY);
-        const siguienteDato = !conv.nombre
-          ? MSG.FALTA_NOMBRE
-          : (conv.modalidad === 'credito' && !conv.cedula ? MSG.FALTA_CEDULA : '');
-        respuesta = siguienteDato ? `${respuestaDuda}\n\n${siguienteDato}` : respuestaDuda;
+        respuesta = `${respuestaDuda}\n\nSi quieres, te comunico con un asesor para que primero resuelva tus dudas.`;
         break;
       }
 
@@ -1772,7 +1812,7 @@ async function procesarMensaje(
 
 // ── Handoff ───────────────────────────────────────────────────────────────────
 
-async function hacerHandoff(conv: Conv, clienteId: string, sendFn: (m: string) => Promise<void>, env: Env, sk: string, canal: string) {
+async function hacerHandoff(conv: Conv, clienteId: string, sendFn: (m: string) => Promise<void>, env: Env, sk: string, canal: string, informativo = false) {
   if (!conv.tienda_telefono || !conv.tienda_contacto) {
     await sendFn(MSG.CIUDAD_PREGUNTA);
     conv.estado = 'CIUDAD';
@@ -1824,7 +1864,9 @@ async function hacerHandoff(conv: Conv, clienteId: string, sendFn: (m: string) =
   conv.lead_creado = true;
   conv.estado = 'HANDOFF';
 
-  const msg = MSG.HANDOFF_MSG(nombreCorto, nombreAsesor, nombreComercial, tel);
+  const msg = informativo
+    ? MSG.HANDOFF_INFORMATIVO(nombreAsesor, nombreComercial, tel)
+    : MSG.HANDOFF_MSG(nombreCorto, nombreAsesor, nombreComercial, tel);
   await sendFn(msg);
   await guardarConv({ telefono: clienteId, contenido: msg, respondido_por: 'bot', canal }, sk);
 
@@ -1835,6 +1877,57 @@ async function hacerHandoff(conv: Conv, clienteId: string, sendFn: (m: string) =
 
 // FIX 04-jul-2026: el asesor confirma con botones de WhatsApp (Quick Reply)
 // en vez de contestar por su cuenta sin dejar rastro en el sistema.
+type ClienteConfirmacionAsesor = { telefono: string; confirmacion_asesor?: string | null };
+
+function transicionConfirmacionPermitida(actual: string | null | undefined, siguiente: string): boolean {
+  if (!actual || actual === siguiente) return true;
+  if (actual === 'no_contactado') return siguiente === 'contactado' || siguiente === 'venta_cerrada';
+  if (actual === 'contactado') return siguiente === 'venta_cerrada';
+  return false;
+}
+
+async function resolverClienteConfirmacionAsesor(msg: any, tiendaId: string, sk: string): Promise<ClienteConfirmacionAsesor | null> {
+  const contextId = String(msg.context?.id || '').trim();
+
+  // Meta incluye en context.id el wamid del aviso al que responde el asesor.
+  // Esa referencia ya está certificada en la outbox con la llave
+  // advisor_handoff:<cliente>. Así evitamos aplicar el botón al cliente más
+  // reciente cuando una tienda tiene varios handoffs pendientes.
+  if (contextId) {
+    const rEvidencia = await fetch(
+      `${SUPABASE_URL}/rest/v1/aura_sofia_outbox?meta_response_id=eq.${encodeURIComponent(contextId)}&destination_id=eq.${encodeURIComponent(tiendaId)}&event_kind=eq.advisor_handoff&status=eq.sent&select=response_key&limit=2`,
+      { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+    );
+    if (rEvidencia.ok) {
+      const evidencias = await rEvidencia.json() as Array<{ response_key?: string }>;
+      const match = evidencias.length === 1
+        ? String(evidencias[0]?.response_key || '').match(/^advisor_handoff:(.+)$/)
+        : null;
+      const clienteId = match?.[1] || null;
+      if (clienteId) {
+        const rCliente = await fetch(
+          `${SUPABASE_URL}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&tienda_id=eq.${encodeURIComponent(tiendaId)}&estado_funnel=eq.transferido_asesor&select=telefono,confirmacion_asesor&limit=1`,
+          { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+        );
+        if (rCliente.ok) {
+          const clientes = await rCliente.json() as ClienteConfirmacionAsesor[];
+          if (clientes.length === 1 && clientes[0]?.telefono) return clientes[0];
+        }
+      }
+    }
+  }
+
+  // Compatibilidad segura con avisos antiguos que no traigan context.id:
+  // solo se permite resolver si existe exactamente un pendiente en la tienda.
+  const rPendientes = await fetch(
+    `${SUPABASE_URL}/rest/v1/clientes?tienda_id=eq.${encodeURIComponent(tiendaId)}&estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&order=fecha_estado_actualizado.desc&limit=2&select=telefono`,
+    { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+  );
+  if (!rPendientes.ok) return null;
+  const pendientes = await rPendientes.json() as ClienteConfirmacionAsesor[];
+  return pendientes.length === 1 && pendientes[0]?.telefono ? pendientes[0] : null;
+}
+
 async function manejarConfirmacionAsesor(msg: any, sk: string) {
   const telefonoAsesorRaw = msg.from as string;
   const telefonoAsesor = telefonoAsesorRaw.replace(/^57(?=\d{10}$)/, ''); // normalizar igual que en notificarAsesor()
@@ -1865,18 +1958,21 @@ async function manejarConfirmacionAsesor(msg: any, sk: string) {
     const tiendaId = tiendas[0]?.id;
     if (!tiendaId) { console.warn('[ASESOR-BOTON] no se encontró tienda para', telefonoAsesor); return; }
 
-    // 2. Cliente más reciente de esa tienda, transferido y aún sin confirmar
-    const rCliente = await fetch(
-      `${SUPABASE_URL}/rest/v1/clientes?tienda_id=eq.${tiendaId}&estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&order=fecha_estado_actualizado.desc&limit=1&select=telefono`,
-      { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
-    );
-    const clientes = await rCliente.json() as any[];
-    const clienteTelefono = clientes[0]?.telefono;
-    if (!clienteTelefono) { console.warn('[ASESOR-BOTON] no hay cliente pendiente para tienda', tiendaId); return; }
+    // 2. Resolver el cliente exacto por la referencia del mensaje. Si el
+    // aviso es antiguo, aceptar solo cuando exista un único pendiente.
+    const cliente = await resolverClienteConfirmacionAsesor(msg, tiendaId, sk);
+    if (!cliente) {
+      console.warn('[ASESOR-BOTON] confirmación ambigua; requiere revisión manual');
+      return;
+    }
+    if (!transicionConfirmacionPermitida(cliente.confirmacion_asesor, estadoConfirmacion)) {
+      console.warn('[ASESOR-BOTON] transición regresiva ignorada');
+      return;
+    }
 
     // 3. Guardar la confirmación real
-    await actualizarCliente(clienteTelefono, { confirmacion_asesor: estadoConfirmacion }, sk);
-    console.log('[ASESOR-BOTON] confirmado:', clienteTelefono, '->', estadoConfirmacion);
+    await actualizarCliente(cliente.telefono, { confirmacion_asesor: estadoConfirmacion }, sk);
+    console.log('[ASESOR-BOTON] confirmación asociada de forma segura:', estadoConfirmacion);
   } catch (e) {
     console.error('[ASESOR-BOTON-EXCEPTION]', e);
   }
@@ -2040,12 +2136,6 @@ async function recordatorioAsesores(env: Env, ronda: string): Promise<void> {
 // toca marcarLeadsPerdidos — esta es una pieza nueva y aparte, con su propio
 // campo de control (recordatorio_enviado_at) para no pisarse con ese cron.
 // Variantes fijas, sin llamada a Claude — costo cero y tono controlado.
-const VARIANTES_SEGUIMIENTO_LEAD = [
-  '¿Sigues por ahí? 😊 Quedé pendiente de ayudarte con tu celular nuevo',
-  'Hola, ¿aún te interesa? Te ayudo a encontrar tu equipo en un momentico 😊',
-  '¡Hola de nuevo! Cualquier cosa que necesites para tu celular nuevo, aquí estoy 😊',
-];
-
 async function seguimientoLeadsMudos(env: Env): Promise<void> {
   const sk = env.SUPABASE_SERVICE_KEY;
   const estadosPendientes = ESTADOS_PENDIENTES.join(',');
@@ -2089,7 +2179,12 @@ async function seguimientoLeadsMudos(env: Env): Promise<void> {
       const antiguedadMin = (ahoraMs - new Date(ultimo.timestamp).getTime()) / 60000;
       if (antiguedadMin < 60 || antiguedadMin > 240) continue;
 
-      const variante = VARIANTES_SEGUIMIENTO_LEAD[Math.floor(Math.random() * VARIANTES_SEGUIMIENTO_LEAD.length)];
+      const estadoGuardado = await env.CONVERSATIONS.get(c.telefono);
+      let estadoConversacion: string | undefined;
+      if (estadoGuardado) {
+        try { estadoConversacion = (JSON.parse(estadoGuardado) as { estado?: string }).estado; } catch { /* fallback general */ }
+      }
+      const variante = mensajeSeguimientoPorEstado(estadoConversacion);
       await enviarMensajeWA(c.telefono, variante, env.PHONE_NUMBER_ID, env.WHATSAPP_TOKEN);
       await guardarConv({ telefono: c.telefono, contenido: variante, respondido_por: 'bot', canal: 'whatsapp' }, sk);
       // Máximo 1 recordatorio automático por lead — nunca se repite.

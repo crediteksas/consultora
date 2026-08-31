@@ -58,6 +58,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tag-optin{background:#dcfce7;color:#15803d}
 .tag-lead{background:#fef3c7;color:#92400e}
 .tag-baja{background:#fee2e2;color:#991b1b}
+.tag-attention{background:#ffedd5;color:#9a3412;border:1px solid #fed7aa}
+.attention-box{margin:12px 20px 0;padding:10px 12px;border:1px solid #fed7aa;border-radius:9px;background:#fff7ed;color:#9a3412;font-size:11px;line-height:1.45}
+.attention-box strong{display:block;color:#7c2d12;margin-bottom:3px}
+.stage-list{display:flex;flex-direction:column;gap:6px}
+.stage-step{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px}
+.stage-step::before{content:'';width:9px;height:9px;border-radius:50%;background:#cbd5e1;flex-shrink:0}
+.stage-step.done{color:var(--text2);font-weight:500}
+.stage-step.done::before{background:var(--green)}
+.stage-step.current{color:var(--accent2);font-weight:700}
+.stage-step.current::before{background:var(--accent);box-shadow:0 0 0 3px #e0f2fe}
 .unread-dot{position:absolute;top:14px;left:6px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
 
 .center-panel{flex:1;display:flex;flex-direction:column;background:#f8fafc;min-width:0}
@@ -118,6 +128,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .db-label{width:150px;font-size:11.5px;color:var(--text2);flex-shrink:0}
 .db-track{flex:1;background:var(--bg);border-radius:6px;height:22px;position:relative}
 .db-fill{height:100%;border-radius:6px;background:var(--accent);display:flex;align-items:center;padding-left:8px;color:#fff;font-size:11px;font-weight:600;min-width:24px;transition:width .4s ease}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.kpi-value{font-size:24px;font-weight:700;color:var(--text);line-height:1.1}
+.kpi-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:5px}
+.tracking-control{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:10px}
+.tracking-control select{min-width:0;border:1px solid var(--border);border-radius:7px;padding:7px;background:#fff;color:var(--text);font-size:11px}
+.tracking-message{font-size:10px;color:var(--text3);margin-top:6px;min-height:14px}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .chart-container{padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card)}
 .chart-title{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:8px}
@@ -152,6 +170,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="top-stat"><div class="top-stat-val" id="s-convs">-</div><div class="top-stat-label">Clientes nuevos hoy</div></div>
     <div class="top-stat"><div class="top-stat-val" id="s-optins">-</div><div class="top-stat-label">Opt-ins</div></div>
     <div class="top-stat"><div class="top-stat-val" id="s-leads">-</div><div class="top-stat-label">Leads pendientes</div></div>
+    <div class="top-stat"><div class="top-stat-val" id="s-intervention">-</div><div class="top-stat-label">Necesitan intervención</div></div>
     <div class="top-stat"><div class="top-stat-val" id="s-transferidos">-</div><div class="top-stat-label">Transferidos a asesor</div></div>
   </div>
   <div class="topbar-actions">
@@ -165,6 +184,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="sidebar">
     <div class="sidebar-tabs">
       <div class="sidebar-tab active" onclick="switchView('chats',this)"><i class="ti ti-messages" aria-hidden="true"></i> Chats <span class="tab-badge" id="b-chats">0</span></div>
+      <div class="sidebar-tab" onclick="switchView('intervention',this)"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Interv. <span class="tab-badge" id="b-intervention">0</span></div>
       <div class="sidebar-tab" onclick="switchView('clients',this)"><i class="ti ti-users" aria-hidden="true"></i> Clientes <span class="tab-badge" id="b-clients">0</span></div>
       <div class="sidebar-tab" onclick="switchView('optins',this)"><i class="ti ti-shield-check" aria-hidden="true"></i> Legal <span class="tab-badge" id="b-optins">0</span></div>
       <div class="sidebar-tab" onclick="switchView('correcciones',this)"><i class="ti ti-pencil" aria-hidden="true"></i> IA <span class="tab-badge" id="b-correcciones">0</span></div>
@@ -248,6 +268,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- FIX v1, 04-jul-2026: Dashboard ejecutivo (Fase 3 del CRM) -->
   <div class="table-view" id="view-dashboard">
     <div style="max-width:960px;margin:0 auto;padding:16px 0;">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-label">Pendientes tienda</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-sla">0</div><div class="kpi-label">SLA vencidos</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-contacted">0</div><div class="kpi-label">Contactados</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-closed">0</div><div class="kpi-label">Ventas cerradas</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-conversion">0%</div><div class="kpi-label">Conversión</div></div>
+      </div>
       <div class="db-grid">
         <div class="db-panel"><h3>Embudo de conversion</h3><div id="db-embudo"></div></div>
         <div class="db-panel"><h3>Fuente de clientes</h3><div id="db-fuente"></div></div>
@@ -255,7 +282,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="db-panel" style="margin-top:14px">
         <h3>Ranking por tienda</h3>
         <table class="data-table">
-          <tr><th>Tienda</th><th>Ciudad</th><th>Clientes</th><th>Transferidos</th><th>Conversion</th></tr>
+          <tr><th>Tienda</th><th>Ciudad</th><th>Asignados</th><th>Contactados</th><th>Ventas</th><th>SLA vencido</th><th>Conversión</th></tr>
           <tbody id="db-tiendas"></tbody>
         </table>
       </div>
@@ -269,7 +296,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 const API='https://creditek-bot.comercial-853.workers.dev';
 let cityMap={};let allTiendas=[];
-let allConvs=[],allClients=[],grouped={},currentTel=null;
+let allConvs=[],allClients=[],grouped={},currentTel=null,currentInbox='all',interventionMap={};
 const colors=['#8b5cf6','#0ea5e9','#f59e0b','#ef4444','#22c55e','#ec4899','#6366f1','#14b8a6'];
 
 async function loadTiendas(){
@@ -283,7 +310,7 @@ async function loadTiendas(){
     [...ciudades].sort().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
   }catch(e){console.error(e)}
 }
-async function loadAll(){await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()])}
+async function loadAll(){await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()]);recomputeInterventions();applyFilters()}
 
 async function loadStats(){
   try{
@@ -326,6 +353,51 @@ async function loadClients(){
     renderClients();
     renderOptins();
   }catch(e){console.error(e)}
+}
+
+const INTERVENTION_WINDOW_MS=7*24*60*60*1000;
+function normalizeConversationText(value){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function interventionReasons(messages,client){
+  const ordered=[...(messages||[])].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const recent=ordered.filter(m=>Date.now()-new Date(m.timestamp).getTime()<=INTERVENTION_WINDOW_MS);
+  const reasons=[];
+  const last=ordered[ordered.length-1];
+  if(last&&last.direccion==='entrada'&&Date.now()-new Date(last.timestamp).getTime()<=72*60*60*1000) reasons.push('Cliente sin respuesta');
+
+  const outgoing=recent.filter(m=>m.direccion==='salida');
+  for(let i=1;i<outgoing.length;i++){
+    const previous=normalizeConversationText(outgoing[i-1].contenido);
+    const current=normalizeConversationText(outgoing[i].contenido);
+    const minutes=(new Date(outgoing[i].timestamp)-new Date(outgoing[i-1].timestamp))/60000;
+    if(previous&&previous===current&&minutes<=30){reasons.push('Sofía repitió una pregunta');break;}
+  }
+
+  const promisedHandoff=outgoing.some(m=>/te conecto|conectarte con un asesor|enviar(?:te)? (?:con|a) (?:un )?asesor/.test(normalizeConversationText(m.contenido)));
+  if(promisedHandoff&&client?.estado_funnel!=='transferido_asesor') reasons.push('Traslado prometido sin completar');
+  const transferTime=client?.fecha_transferido_asesor?new Date(client.fecha_transferido_asesor).getTime():0;
+  if(client?.estado_funnel==='transferido_asesor'&&!client?.confirmacion_asesor&&transferTime&&Date.now()-transferTime>2*60*60*1000) reasons.push('Tienda no confirmó contacto dentro del SLA');
+  if(client?.confirmacion_asesor==='no_contactado') reasons.push('Tienda no pudo contactar al cliente');
+
+  const askedForInfo=recent.some(m=>m.direccion==='entrada'&&/requis|informacion|como es|como funciona|precio|interes/.test(normalizeConversationText(m.contenido)));
+  const closedAfterInterest=outgoing.some(m=>/no te escribire|si cambias de opinion|no hay problema/.test(normalizeConversationText(m.contenido)));
+  if(client?.estado_funnel==='perdido'&&askedForInfo&&closedAfterInterest) reasons.push('Interés cerrado incorrectamente');
+
+  return [...new Set(reasons)];
+}
+function recomputeInterventions(){
+  interventionMap={};
+  Object.entries(grouped).forEach(([telefono,messages])=>{
+    const client=allClients.find(c=>c.telefono===telefono);
+    const reasons=interventionReasons(messages,client);
+    if(reasons.length)interventionMap[telefono]=reasons;
+  });
+  const total=Object.keys(interventionMap).length;
+  const badge=document.getElementById('b-intervention');
+  const stat=document.getElementById('s-intervention');
+  if(badge)badge.textContent=total;
+  if(stat)stat.textContent=total;
 }
 
 // ── CORRECCIONES SOFIA IA ─────────────────────────────────────────
@@ -394,6 +466,7 @@ function applyFilters(){
   const chf=document.getElementById('filterChannel').value;
   const sf=document.getElementById('filterStatus').value;
   let entries=Object.entries(grouped);
+  if(currentInbox==='intervention')entries=entries.filter(([telefono])=>interventionMap[telefono]?.length);
   // Fix v4 09-jul-2026 — BUG A: el filtro solo miraba el prefijo "fb_" del
   // teléfono (convención vieja de cuando Facebook Messenger DM no exponía el
   // número real). Hoy los clientes de Meta Ads (Click-to-WhatsApp) llegan con
@@ -453,6 +526,7 @@ function renderConvList(entries){
       if(cl.optin_datos)tags+='<span class="tag tag-optin">Opt-in</span>';
       if(cl.estado_funnel==='baja')tags+='<span class="tag tag-baja">Baja</span>';
     }
+    if(interventionMap[tel]?.length)tags+='<span class="tag tag-attention">Revisar · '+interventionMap[tel].length+'</span>';
     return '<div class="conv-item'+(currentTel===tel?' active':'')+'" onclick="openChat(\''+tel+'\')">'+(hasUnread?'<div class="unread-dot"></div>':'')+'<div class="conv-avatar" style="background:'+colors[ci]+'">'+init+'</div><div class="conv-info"><div class="conv-row"><span class="conv-name">'+name+'</span><span class="conv-time">'+t+'</span></div><div class="conv-preview">'+(last.direccion==='salida'?'Sofia: ':'')+prev+'</div><div class="conv-tags">'+tags+'</div></div></div>'
   }).join('');
 }
@@ -483,7 +557,9 @@ function openChat(tel){
   const replyHtml=dentro24h
     ?'<div class="chat-reply"><textarea class="reply-input" id="replyInput" placeholder="Escribe un mensaje..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();enviarDesdePanel(\''+tel+'\')}"></textarea><button class="reply-btn" id="replyBtn" onclick="enviarDesdePanel(\''+tel+'\')">Enviar</button><span class="reply-status" id="replyStatus"></span></div>'
     :'<div class="chat-reply-disabled"><i class="ti ti-lock" aria-hidden="true"></i> Fuera de la ventana de 24h — no se puede responder libremente. Usa una plantilla aprobada.</div>';
-  area.innerHTML='<div class="chat-header"><div class="chat-header-left"><h3>'+(cl?.nombre||tel)+'</h3><p>'+tel+' · '+(cl?.segmento||'sin clasificar')+'</p></div><div class="chat-badges">'+badges+'</div></div><div class="chat-msgs" id="chat-msgs-inner" style="max-height:calc(100vh - 190px)">'+msgsHtml+'</div>'+replyHtml;
+  const attentionReasons=interventionMap[tel]||[];
+  const attentionHtml=attentionReasons.length?'<div class="attention-box"><strong><i class="ti ti-alert-triangle" aria-hidden="true"></i> Necesita intervención</strong>'+attentionReasons.join(' · ')+'</div>':'';
+  area.innerHTML='<div class="chat-header"><div class="chat-header-left"><h3>'+(cl?.nombre||tel)+'</h3><p>'+tel+' · '+(cl?.segmento||'sin clasificar')+'</p></div><div class="chat-badges">'+badges+'</div></div>'+attentionHtml+'<div class="chat-msgs" id="chat-msgs-inner" style="max-height:calc(100vh - 190px)">'+msgsHtml+'</div>'+replyHtml;
   setTimeout(()=>{const cm=document.getElementById('chat-msgs-inner');if(cm)cm.scrollTop=cm.scrollHeight;},50);
   rp.className='right-panel show';
   const ci=Math.abs(hashCode(tel))%colors.length;
@@ -491,8 +567,34 @@ function openChat(tel){
   const recoveryHtml=cl?.estado_funnel==='lead_caliente'
     ?'<div class="client-detail"><button class="reply-btn" id="handoffRecoveryBtn" style="width:100%" onclick="reintentarHandoffSeguro(\''+tel+'\')">Enviar a asesor</button><div class="reply-status" id="handoffRecoveryStatus" style="display:block;margin-top:8px"></div></div>'
     :'';
+  const funnelOrder=['nuevo','contactado','ciudad_identificada','lead_caliente','transferido_asesor'];
+  const funnelLabels={nuevo:'Nuevo',contactado:'Informándose',ciudad_identificada:'Tienda seleccionada',lead_caliente:'Listo para asesor',transferido_asesor:'Asesor asignado'};
+  const currentStage=cl?.estado_funnel||'nuevo';
+  const currentRank=funnelOrder.indexOf(currentStage);
+  const funnelHtml='<div class="section-head">Embudo comercial</div><div class="client-detail"><div class="stage-list">'+funnelOrder.map((stage,index)=>'<div class="stage-step '+(stage===currentStage?'current':(currentRank>=0&&index<currentRank?'done':''))+'">'+funnelLabels[stage]+'</div>').join('')+(currentStage==='perdido'?'<div class="stage-step current">Perdido</div>':'')+'</div></div>';
+  const assignedStore=(allTiendas||[]).find(t=>String(t.id)===String(cl?.tienda_id))||null;
+  const confirmationLabels={contactado:'Cliente contactado',no_contactado:'No fue posible contactar',venta_cerrada:'Venta cerrada'};
+  const transferDate=cl?.fecha_transferido_asesor?new Date(cl.fecha_transferido_asesor):null;
+  const elapsedHours=transferDate?Math.max(0,(Date.now()-transferDate.getTime())/3600000):null;
+  let slaStatus='Sin asignación';
+  if(cl?.confirmacion_asesor==='venta_cerrada')slaStatus='Cerrado';
+  else if(cl?.confirmacion_asesor==='contactado')slaStatus='Atendido';
+  else if(cl?.confirmacion_asesor==='no_contactado')slaStatus='Requiere reintento';
+  else if(transferDate)slaStatus=elapsedHours>2?'SLA vencido':'Dentro de SLA';
+  const trackingHtml=(assignedStore||transferDate||cl?.confirmacion_asesor)
+    ?'<div class="section-head">Seguimiento de tienda</div><div class="client-detail">'+
+      '<div class="detail-row"><span class="detail-label">Tienda responsable</span><span class="detail-val">'+(assignedStore?.nombre_comercial||assignedStore?.nombre||cl?.tienda_id||'-')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">Asesor responsable</span><span class="detail-val">'+(assignedStore?.contacto||'Pendiente de identificar')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">Estado de atención</span><span class="detail-val">'+(confirmationLabels[cl?.confirmacion_asesor]||'Enviado a tienda')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">Control SLA</span><span class="detail-val">'+slaStatus+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">Asignado</span><span class="detail-val">'+(transferDate?timeAgo(transferDate.toISOString()):'-')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">Recordatorio</span><span class="detail-val">'+(cl?.recordatorio_asesor_enviado_en?'Enviado':'No enviado')+'</span></div>'+
+      (cl?.estado_funnel==='transferido_asesor'?seguimientoControlHtml(tel,cl?.confirmacion_asesor):'')+'</div>'
+    :'';
   rp.innerHTML='<div class="client-profile"><div class="client-avatar-lg" style="background:'+colors[ci]+'">'+init+'</div><div class="client-name">'+(cl?.nombre||'Sin nombre')+'</div><div class="client-phone">'+tel+'</div></div>'+
     recoveryHtml+
+    funnelHtml+
+    trackingHtml+
     '<div class="section-head">Informacion</div><div class="client-detail">'+
     '<div class="detail-row"><span class="detail-label">Segmento</span><span class="detail-val">'+(cl?.segmento||'-')+'</span></div>'+
     '<div class="detail-row"><span class="detail-label">Estado</span><span class="detail-val">'+(cl?.estado_funnel||'-')+'</span></div>'+
@@ -506,6 +608,30 @@ function openChat(tel){
     '<div class="detail-row"><span class="detail-label">Total mensajes</span><span class="detail-val">'+msgs.length+'</span></div>'+
     '<div class="detail-row"><span class="detail-label">Ultimo contacto</span><span class="detail-val">'+(msgs[0]?timeAgo(msgs[0].timestamp):'-')+'</span></div></div>';
   applyFilters();
+}
+
+function seguimientoControlHtml(tel,actual){
+  const options=actual==='venta_cerrada'
+    ?[['venta_cerrada','Venta cerrada']]
+    :actual==='contactado'
+      ?[['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada']]
+      :[['no_contactado','No fue posible contactar'],['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada']];
+  return '<div class="tracking-control"><select id="trackingStatus">'+options.map(([value,label])=>'<option value="'+value+'" '+(value===actual?'selected':'')+'>'+label+'</option>').join('')+'</select><button class="reply-btn" id="trackingSave" onclick="actualizarSeguimientoAsesor(\''+tel+'\')">Guardar</button></div><div class="tracking-message" id="trackingMessage"></div>';
+}
+
+async function actualizarSeguimientoAsesor(tel){
+  const select=document.getElementById('trackingStatus');
+  const button=document.getElementById('trackingSave');
+  const message=document.getElementById('trackingMessage');
+  if(!select||!button)return;
+  button.disabled=true;if(message)message.textContent='Guardando seguimiento...';
+  try{
+    const res=await workerFetch('/api/seguimiento-asesor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefono:tel,estado:select.value})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||'No se pudo guardar');
+    const client=allClients.find(c=>c.telefono===tel);if(client)client.confirmacion_asesor=data.estado;
+    recomputeInterventions();cargarDashboard();openChat(tel);
+  }catch(error){if(message)message.textContent=error.message||'No se pudo guardar';button.disabled=false}
 }
 
 async function reintentarHandoffSeguro(tel){
@@ -576,7 +702,7 @@ function renderClients(){
 // FIX v1, 04-jul-2026: Dashboard ejecutivo (Fase 3 del CRM) — usa allClients
 // y allTiendas ya cargados en memoria, sin pedir nada nuevo a Supabase.
 function cargarDashboard(){
-  const labelsEstado={nuevo:'Nuevo',contactado:'Contactado',ciudad_identificada:'Ciudad identificada',lead_caliente:'Lead caliente',transferido_asesor:'Transferido asesor',perdido:'Perdido'};
+  const labelsEstado={nuevo:'Nuevo',contactado:'Informándose',ciudad_identificada:'Tienda seleccionada',lead_caliente:'Listo para asesor',transferido_asesor:'Asesor asignado',perdido:'Perdido'};
   const porEstado={};
   Object.keys(labelsEstado).forEach(e=>porEstado[e]=0);
   allClients.forEach(c=>{const e=c.estado_funnel||'nuevo';if(porEstado[e]!==undefined)porEstado[e]++});
@@ -592,21 +718,35 @@ function cargarDashboard(){
     `<div class="db-row"><div class="db-label">${k}</div><div class="db-track"><div class="db-fill" style="width:${Math.round(v/maxFuente*100)}%">${v}</div></div></div>`
   ).join('');
 
+  const transferidos=allClients.filter(c=>c.estado_funnel==='transferido_asesor');
+  const pendientes=transferidos.filter(c=>!c.confirmacion_asesor);
+  const slaVencidos=pendientes.filter(c=>c.fecha_transferido_asesor&&Date.now()-new Date(c.fecha_transferido_asesor).getTime()>2*60*60*1000);
+  const contactados=transferidos.filter(c=>c.confirmacion_asesor==='contactado'||c.confirmacion_asesor==='venta_cerrada');
+  const cerrados=transferidos.filter(c=>c.confirmacion_asesor==='venta_cerrada');
+  document.getElementById('kpi-pending').textContent=pendientes.length;
+  document.getElementById('kpi-sla').textContent=slaVencidos.length;
+  document.getElementById('kpi-contacted').textContent=contactados.length;
+  document.getElementById('kpi-closed').textContent=cerrados.length;
+  document.getElementById('kpi-conversion').textContent=(transferidos.length?Math.round(cerrados.length/transferidos.length*100):0)+'%';
+
   const porTienda={};
   allClients.forEach(c=>{
     if(!c.tienda_id) return;
-    if(!porTienda[c.tienda_id]) porTienda[c.tienda_id]={total:0,transferidos:0};
-    porTienda[c.tienda_id].total++;
-    if(c.estado_funnel==='transferido_asesor') porTienda[c.tienda_id].transferidos++;
+    if(!porTienda[c.tienda_id]) porTienda[c.tienda_id]={asignados:0,contactados:0,cerradas:0,slaVencidos:0};
+    if(c.estado_funnel!=='transferido_asesor')return;
+    const d=porTienda[c.tienda_id];d.asignados++;
+    if(c.confirmacion_asesor==='contactado'||c.confirmacion_asesor==='venta_cerrada')d.contactados++;
+    if(c.confirmacion_asesor==='venta_cerrada')d.cerradas++;
+    if(!c.confirmacion_asesor&&c.fecha_transferido_asesor&&Date.now()-new Date(c.fecha_transferido_asesor).getTime()>2*60*60*1000)d.slaVencidos++;
   });
   const tiendaMap={};
   (allTiendas||[]).forEach(t=>tiendaMap[t.id]=t);
   document.getElementById('db-tiendas').innerHTML=Object.entries(porTienda)
-    .sort((a,b)=>b[1].total-a[1].total)
+    .sort((a,b)=>b[1].asignados-a[1].asignados)
     .map(([id,d])=>{
       const t=tiendaMap[id]||{};
-      const pct=d.total?Math.round(d.transferidos/d.total*100):0;
-      return `<tr><td style="font-weight:500">${t.nombre_comercial||t.nombre||id}</td><td>${t.ciudad||'-'}</td><td>${d.total}</td><td>${d.transferidos}</td><td>${pct}%</td></tr>`;
+      const pct=d.asignados?Math.round(d.cerradas/d.asignados*100):0;
+      return `<tr><td style="font-weight:500">${t.nombre_comercial||t.nombre||id}</td><td>${t.ciudad||'-'}</td><td>${d.asignados}</td><td>${d.contactados}</td><td>${d.cerradas}</td><td>${d.slaVencidos}</td><td>${pct}%</td></tr>`;
     }).join('');
 }
 
@@ -620,14 +760,16 @@ function renderOptins(){
 function switchView(view,el){
   document.querySelectorAll('.sidebar-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('center-chats').style.display=view==='chats'?'flex':'none';
+  currentInbox=view==='intervention'?'intervention':'all';
+  document.getElementById('center-chats').style.display=(view==='chats'||view==='intervention')?'flex':'none';
   document.getElementById('center-clients').className=view==='clients'?'table-view active':'table-view';
   document.getElementById('center-optins').className=view==='optins'?'table-view active':'table-view';
   document.getElementById('view-correcciones').className=view==='correcciones'?'table-view active':'table-view';
   document.getElementById('view-dashboard').className=view==='dashboard'?'table-view active':'table-view';
-  document.getElementById('right-panel').className=view==='chats'&&currentTel?'right-panel show':'right-panel';
+  document.getElementById('right-panel').className=(view==='chats'||view==='intervention')&&currentTel?'right-panel show':'right-panel';
   if(view==='correcciones') cargarCorrecciones();
   if(view==='dashboard') cargarDashboard();
+  if(view==='chats'||view==='intervention')applyFilters();
 }
 
 function exportCSV(){

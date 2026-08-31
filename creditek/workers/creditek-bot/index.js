@@ -1047,7 +1047,7 @@ function esConsultaDuranteCaptura(texto) {
   if (!t || /^\d[\d\s.,-]{5,}$/.test(t)) return false;
   if (texto.includes("?") || texto.includes("\xBF")) return true;
   if (/^(que|cual|como|donde|cuando|cuanto|quien|por que)\b/.test(t)) return true;
-  return /\b(cuota|precio|entidad|financieras?|proceso|presencial|personal|segur[oa]|garantia|reportad[oa]|documentos?|requisitos?|artefactos?|productos?|parlantes?|accesorios?|distribuyen|manejan|venden|puedo ir)\b/.test(t);
+  return /\b(cuota|precio|entidad|financieras?|proceso|tramite|presencial|personal|segur[oa]|garantia|reportad[oa]|documentos?|requisitos?|condiciones?|artefactos?|productos?|parlantes?|accesorios?|distribuyen|manejan|venden|puedo ir)\b/.test(t);
 }
 __name(esConsultaDuranteCaptura, "esConsultaDuranteCaptura");
 function respuestaConsultaFrecuenteDuranteCaptura(texto) {
@@ -1061,6 +1061,9 @@ function respuestaConsultaFrecuenteDuranteCaptura(texto) {
   if (/\b(proceso|presencial|personal|puedo ir)\b/.test(t)) {
     return "El asesor te explica el proceso y te confirma c\xF3mo continuar de forma presencial.";
   }
+  if (/\b(requisitos?|documentos?|tramite|condiciones?)\b/.test(t)) {
+    return "Para solicitar el cr\xE9dito necesitar\xE1s tu documento, un celular activo y completar el registro con autorizaci\xF3n. No tienes que darme la c\xE9dula ahora para recibir informaci\xF3n.";
+  }
   if (/\bsegur[oa]\b/.test(t)) {
     return "S\xED, est\xE1s hablando con el canal de atenci\xF3n de Creditek; el asesor contin\xFAa contigo el tr\xE1mite.";
   }
@@ -1070,6 +1073,19 @@ function respuestaConsultaFrecuenteDuranteCaptura(texto) {
   return null;
 }
 __name(respuestaConsultaFrecuenteDuranteCaptura, "respuestaConsultaFrecuenteDuranteCaptura");
+function detectaReservaDatosConInteres(texto) {
+  const t = normalizar(texto);
+  const reservaDatos = /\b(no (quiero|voy a|puedo) (dar|compartir|enviar)|sin dar|antes de dar|primero quiero saber)\b/.test(t) && /\b(cedula|documento|datos?|informacion)\b/.test(t);
+  const mantieneInteres = /\b(interes|quiero (saber|informacion)|asesor|requisitos?|credito|equipo|celular|comprar)\b/.test(t);
+  return reservaDatos && mantieneInteres;
+}
+__name(detectaReservaDatosConInteres, "detectaReservaDatosConInteres");
+function mensajeSeguimientoPorEstado(estado) {
+  if (estado === "DATOS_MIN") return "Si a\xFAn te interesa, puedo conectarte con un asesor para que primero resuelva tus dudas. No necesitas compartir tu c\xE9dula para recibir esa orientaci\xF3n \u{1F60A}";
+  if (estado === "CIUDAD" || estado === "CIUDAD_MODAL") return "Si a\xFAn te interesa, dime cu\xE1l ciudad te queda m\xE1s cerca y te conecto con un asesor \u{1F60A}";
+  return "\xBFSigues por ah\xED? \u{1F60A} Si a\xFAn te interesa, te ayudo a continuar con tu compra.";
+}
+__name(mensajeSeguimientoPorEstado, "mensajeSeguimientoPorEstado");
 function esIntencionMoto(texto) {
   const t = normalizar(texto);
   const mencionaMoto = /\bmotos?\b|\bmotocicletas?\b|\bnkd\b/.test(t);
@@ -1889,6 +1905,7 @@ var MSG = {
   // Red de seguridad si en CIUDAD_MODAL ningún patrón conocido matchea.
   CIUDAD_REPETIR: "Disculpa, \xBFme confirmas cu\xE1l de estas te queda m\xE1s cerca: Tol\xFA, Corozal, Chin\xFA, Ci\xE9naga de Oro o Cove\xF1as?",
   HANDOFF_MSG: /* @__PURE__ */ __name((nombre, asesor, nombreComercial, tel) => `Perfecto, ${nombre} \u{1F60A} Tu solicitud qued\xF3 registrada correctamente y fue asignada a ${nombreComercial}. ${asesor} continuar\xE1 tu proceso lo antes posible; tambi\xE9n puedes escribirle al ${tel}.`, "HANDOFF_MSG"),
+  HANDOFF_INFORMATIVO: /* @__PURE__ */ __name((asesor, nombreComercial, tel) => `Perfecto \u{1F60A} Te conecto con ${asesor} de ${nombreComercial} para que primero resuelva tus dudas. Puedes escribirle al ${tel}. Si luego decides solicitar el cr\xE9dito, completas el registro y la autorizaci\xF3n.`, "HANDOFF_INFORMATIVO"),
   ASESOR_NO_CONTESTA: /* @__PURE__ */ __name((asesor2, tel2) => `\xA1Qu\xE9 raro! Te paso con otro asesor \u{1F60A} Escr\xEDbele a ${asesor2} al ${tel2} y dile que te mand\xF3 Sof\xEDa de Creditek.`, "ASESOR_NO_CONTESTA"),
   SIN_ASESOR: "En este momento no tenemos asesor disponible en tu zona. Te contactaremos pronto \u{1F64F}",
   VOZ: "Por favor escr\xEDbeme, no puedo escuchar mensajes de voz \u{1F60A}",
@@ -2048,6 +2065,37 @@ var index_default = {
       }), { headers: cors });
     }
     const autorizado = await autenticarAuraOwner(request) || !!env2.WORKER_SHARED_SECRET && request.headers.get("X-Worker-Secret") === env2.WORKER_SHARED_SECRET;
+    if (url.pathname === "/api/seguimiento-asesor" && request.method === "POST") {
+      if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
+      const body2 = await request.json().catch(() => ({}));
+      const telefono = String(body2.telefono || "").replace(/\D/g, "");
+      const estado = String(body2.estado || "");
+      const permitidos = /* @__PURE__ */ new Set(["contactado", "no_contactado", "venta_cerrada"]);
+      if (!/^\d{10,12}$/.test(telefono) || !permitidos.has(estado)) {
+        return new Response(JSON.stringify({ error: "Solicitud inv\xE1lida" }), { status: 400, headers: cors });
+      }
+      const rCliente = await fetch(
+        `${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}&select=telefono,tienda_id,estado_funnel,confirmacion_asesor&limit=1`,
+        { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+      );
+      if (!rCliente.ok) return new Response(JSON.stringify({ error: "No se pudo validar el cliente" }), { status: 502, headers: cors });
+      const [cliente] = await rCliente.json();
+      if (!cliente) return new Response(JSON.stringify({ error: "Cliente no encontrado" }), { status: 404, headers: cors });
+      if (!cliente.tienda_id || cliente.estado_funnel !== "transferido_asesor") {
+        return new Response(JSON.stringify({ error: "Cliente sin asignaci\xF3n activa" }), { status: 409, headers: cors });
+      }
+      if (!transicionConfirmacionPermitida(cliente.confirmacion_asesor, estado)) {
+        return new Response(JSON.stringify({ error: "No se permiten regresiones de estado" }), { status: 409, headers: cors });
+      }
+      const rUpdate = await fetch(`${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(telefono)}`, {
+        method: "PATCH",
+        headers: { apikey: sk, Authorization: `Bearer ${sk}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ confirmacion_asesor: estado })
+      });
+      if (!rUpdate.ok) return new Response(JSON.stringify({ error: "No se pudo guardar el seguimiento" }), { status: 502, headers: cors });
+      console.log("[SEGUIMIENTO-ASESOR] estado actualizado de forma manual:", estado);
+      return new Response(JSON.stringify({ ok: true, estado }), { headers: cors });
+    }
     if (url.pathname === "/api/reintentar-handoff" && request.method === "POST") {
       if (!autorizado) return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: cors });
       const body2 = await request.json().catch(() => ({}));
@@ -2379,7 +2427,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
   push("Cliente", texto);
   let respuesta = "";
   let botones;
-  if (conv.estado !== "OPTIN" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto)) {
+  if (conv.estado !== "OPTIN" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto) && !detectaReservaDatosConInteres(texto)) {
     conv.estado = "FIN";
     respuesta = MSG.CIERRE_INTERES;
     await actualizarCliente(clienteId, {
@@ -2823,6 +2871,12 @@ ${siguiente}` : respuestaContinuidad;
         conv.estado = "FIN";
         break;
       }
+      if (detectaReservaDatosConInteres(texto) || detectaAcepta(texto) && !conv.nombre && !conv.cedula) {
+        if (!conv.celular && canal === "whatsapp") conv.celular = clienteId;
+        await hacerHandoff(conv, clienteId, sendFn, env2, sk, canal, true);
+        await save();
+        return;
+      }
       if (esConsultaDuranteCaptura(texto)) {
         const fija = respuestaConsultaFrecuenteDuranteCaptura(texto);
         const ctx = {
@@ -2836,10 +2890,9 @@ ${siguiente}` : respuestaContinuidad;
           soloResponderDuda: true
         };
         const respuestaDuda = fija || await generarRespuesta("DATOS_MIN", texto, ctx, env2.ANTHROPIC_API_KEY);
-        const siguienteDato = !conv.nombre ? MSG.FALTA_NOMBRE : conv.modalidad === "credito" && !conv.cedula ? MSG.FALTA_CEDULA : "";
-        respuesta = siguienteDato ? `${respuestaDuda}
+        respuesta = `${respuestaDuda}
 
-${siguienteDato}` : respuestaDuda;
+Si quieres, te comunico con un asesor para que primero resuelva tus dudas.`;
         break;
       }
       const correo = extraerCorreo(texto);
@@ -3031,7 +3084,7 @@ ${siguienteDato}` : respuestaDuda;
   await save();
 }
 __name(procesarMensaje, "procesarMensaje");
-async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal) {
+async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal, informativo = false) {
   if ((!conv.tienda_telefono || !conv.tienda_contacto) && conv.tienda_id) {
     const tiendaPersistida = await buscarTiendaPorId(conv.tienda_id, sk);
     if (tiendaPersistida) {
@@ -3078,13 +3131,52 @@ async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal) {
   await actualizarCliente(clienteId, { estado_funnel: "transferido_asesor", tienda_id: conv.tienda_id, ciudad_normalizada: conv.ciudad, fecha_transferido_asesor: (/* @__PURE__ */ new Date()).toISOString() }, sk);
   conv.lead_creado = true;
   conv.estado = "HANDOFF";
-  const msg = MSG.HANDOFF_MSG(nombreCorto, nombreAsesor, nombreComercial, tel);
+  const msg = informativo ? MSG.HANDOFF_INFORMATIVO(nombreAsesor, nombreComercial, tel) : MSG.HANDOFF_MSG(nombreCorto, nombreAsesor, nombreComercial, tel);
   await sendFn(msg);
   await guardarConv({ telefono: clienteId, contenido: msg, respondido_por: "bot", canal }, sk);
   if (!conv.tiendas_intentadas) conv.tiendas_intentadas = [];
   conv.tiendas_intentadas.push(conv.tienda_id || "");
 }
 __name(hacerHandoff, "hacerHandoff");
+function transicionConfirmacionPermitida(actual, siguiente) {
+  if (!actual || actual === siguiente) return true;
+  if (actual === "no_contactado") return siguiente === "contactado" || siguiente === "venta_cerrada";
+  if (actual === "contactado") return siguiente === "venta_cerrada";
+  return false;
+}
+__name(transicionConfirmacionPermitida, "transicionConfirmacionPermitida");
+async function resolverClienteConfirmacionAsesor(msg, tiendaId, sk) {
+  const contextId = String(msg.context?.id || "").trim();
+  if (contextId) {
+    const rEvidencia = await fetch(
+      `${supabaseUrl()}/rest/v1/aura_sofia_outbox?meta_response_id=eq.${encodeURIComponent(contextId)}&destination_id=eq.${encodeURIComponent(tiendaId)}&event_kind=eq.advisor_handoff&status=eq.sent&select=response_key&limit=2`,
+      { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+    );
+    if (rEvidencia.ok) {
+      const evidencias = await rEvidencia.json();
+      const match = evidencias.length === 1 ? String(evidencias[0]?.response_key || "").match(/^advisor_handoff:(.+)$/) : null;
+      const clienteId = match?.[1] || null;
+      if (clienteId) {
+        const rCliente = await fetch(
+          `${supabaseUrl()}/rest/v1/clientes?telefono=eq.${encodeURIComponent(clienteId)}&tienda_id=eq.${encodeURIComponent(tiendaId)}&estado_funnel=eq.transferido_asesor&select=telefono,confirmacion_asesor&limit=1`,
+          { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+        );
+        if (rCliente.ok) {
+          const clientes = await rCliente.json();
+          if (clientes.length === 1 && clientes[0]?.telefono) return clientes[0];
+        }
+      }
+    }
+  }
+  const rPendientes = await fetch(
+    `${supabaseUrl()}/rest/v1/clientes?tienda_id=eq.${encodeURIComponent(tiendaId)}&estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&order=fecha_estado_actualizado.desc&limit=2&select=telefono`,
+    { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
+  );
+  if (!rPendientes.ok) return null;
+  const pendientes = await rPendientes.json();
+  return pendientes.length === 1 && pendientes[0]?.telefono ? pendientes[0] : null;
+}
+__name(resolverClienteConfirmacionAsesor, "resolverClienteConfirmacionAsesor");
 async function manejarConfirmacionAsesor(msg, sk) {
   const telefonoAsesorRaw = msg.from;
   const telefonoAsesor = telefonoAsesorRaw.replace(/^57(?=\d{10}$)/, "");
@@ -3110,18 +3202,17 @@ async function manejarConfirmacionAsesor(msg, sk) {
       console.warn("[ASESOR-BOTON] no se encontr\xF3 tienda para", telefonoAsesor);
       return;
     }
-    const rCliente = await fetch(
-      `${supabaseUrl()}/rest/v1/clientes?tienda_id=eq.${tiendaId}&estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&order=fecha_estado_actualizado.desc&limit=1&select=telefono`,
-      { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
-    );
-    const clientes = await rCliente.json();
-    const clienteTelefono = clientes[0]?.telefono;
-    if (!clienteTelefono) {
-      console.warn("[ASESOR-BOTON] no hay cliente pendiente para tienda", tiendaId);
+    const cliente = await resolverClienteConfirmacionAsesor(msg, tiendaId, sk);
+    if (!cliente) {
+      console.warn("[ASESOR-BOTON] confirmaci\xF3n ambigua; requiere revisi\xF3n manual");
       return;
     }
-    await actualizarCliente(clienteTelefono, { confirmacion_asesor: estadoConfirmacion }, sk);
-    console.log("[ASESOR-BOTON] confirmado:", clienteTelefono, "->", estadoConfirmacion);
+    if (!transicionConfirmacionPermitida(cliente.confirmacion_asesor, estadoConfirmacion)) {
+      console.warn("[ASESOR-BOTON] transici\xF3n regresiva ignorada");
+      return;
+    }
+    await actualizarCliente(cliente.telefono, { confirmacion_asesor: estadoConfirmacion }, sk);
+    console.log("[ASESOR-BOTON] confirmaci\xF3n asociada de forma segura:", estadoConfirmacion);
   } catch (e) {
     console.error("[ASESOR-BOTON-EXCEPTION]", e);
   }
@@ -3280,11 +3371,6 @@ async function recordatorioAsesores(env2, ronda) {
   }
 }
 __name(recordatorioAsesores, "recordatorioAsesores");
-var VARIANTES_SEGUIMIENTO_LEAD = [
-  "\xBFSigues por ah\xED? \u{1F60A} Qued\xE9 pendiente de ayudarte con tu celular nuevo",
-  "Hola, \xBFa\xFAn te interesa? Te ayudo a encontrar tu equipo en un momentico \u{1F60A}",
-  "\xA1Hola de nuevo! Cualquier cosa que necesites para tu celular nuevo, aqu\xED estoy \u{1F60A}"
-];
 async function seguimientoLeadsMudos(env2) {
   const sk = env2.SUPABASE_SERVICE_KEY;
   const estadosPendientes = ESTADOS_PENDIENTES.join(",");
@@ -3327,7 +3413,15 @@ async function seguimientoLeadsMudos(env2) {
       if (!ultimo || ultimo.respondido_por !== "bot") continue;
       const antiguedadMin = (ahoraMs - new Date(ultimo.timestamp).getTime()) / 6e4;
       if (antiguedadMin < 60 || antiguedadMin > 240) continue;
-      const variante = VARIANTES_SEGUIMIENTO_LEAD[Math.floor(Math.random() * VARIANTES_SEGUIMIENTO_LEAD.length)];
+      const estadoGuardado = await env2.CONVERSATIONS.get(c.telefono);
+      let estadoConversacion;
+      if (estadoGuardado) {
+        try {
+          estadoConversacion = JSON.parse(estadoGuardado).estado;
+        } catch {
+        }
+      }
+      const variante = mensajeSeguimientoPorEstado(estadoConversacion);
       await enviarMensajeWA(c.telefono, variante, env2.PHONE_NUMBER_ID, env2.WHATSAPP_TOKEN);
       await guardarConv({ telefono: c.telefono, contenido: variante, respondido_por: "bot", canal: "whatsapp" }, sk);
       await actualizarCliente(c.telefono, { recordatorio_enviado_at: (/* @__PURE__ */ new Date()).toISOString() }, sk);

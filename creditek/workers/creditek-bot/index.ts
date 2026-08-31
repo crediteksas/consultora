@@ -57,6 +57,7 @@ interface Env {
   // este Worker (no el mismo que gemini-proxy). Configurar con:
   // wrangler secret put WORKER_SHARED_SECRET
   WORKER_SHARED_SECRET: string;
+  ATTENTION_SUPERVISOR_PHONE: string;
 }
 
 type Estado =
@@ -68,6 +69,7 @@ type Estado =
   | 'CIUDAD_MODAL'
   | 'DATOS_MIN'
   | 'CIUDAD'
+  | 'ALIANZA'
   | 'HANDOFF'
   | 'FIN';
 
@@ -112,6 +114,14 @@ interface Conv {
   ultimo_paso?: Estado;
   ultima_pregunta?: string;
   ultima_respuesta_cliente?: string;
+  tipo_solicitud?: 'alianza_comercial';
+  alianza_paso?: 'nombre' | 'negocio' | 'ciudad' | 'correo' | 'descripcion';
+  alianza_nombre?: string;
+  alianza_negocio?: string;
+  alianza_ciudad?: string;
+  alianza_correo?: string;
+  alianza_descripcion?: string;
+  alianza_notificada?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -417,6 +427,19 @@ function pareceCelular(texto: string): boolean {
 function extraerCorreo(texto: string): string | null {
   const m = texto.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
   return m ? m[0] : null;
+}
+
+function detectaInteresAlianzaComercial(texto: string): boolean {
+  const t = norm(texto);
+  return /\b(quiero|quisiera|deseo|gustaria|interesa|puedo|como)\b.{0,45}\b(ser|hacerme|convertirme|trabajar)\b.{0,35}\b(aliad[oa]|distribuidor[a]?)\b/.test(t)
+    || /\b(ser|hacerme|convertirme)\b.{0,20}\btienda\s+aliada\b/.test(t)
+    || /\balianza\s+comercial\b/.test(t)
+    || /\bquiero\s+vender\s+(con|para)\s+ustedes\b/.test(t);
+}
+
+function nombreComercialValido(texto: string): boolean {
+  const valor = texto.trim().replace(/\s+/g, ' ');
+  return valor.length >= 3 && valor.length <= 120 && /[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/.test(valor) && !/^\d+$/.test(valor);
 }
 
 // ── Mensajes fijos ────────────────────────────────────────────────────────────
@@ -884,6 +907,40 @@ async function procesarMensaje(
   // si aplica (OPTIN y pregunta de modalidad, solo en WhatsApp).
   let botones: { id: string; title: string }[] | undefined;
 
+  // Las solicitudes para convertirse en tienda aliada son oportunidades B2B,
+  // no solicitudes de crédito. Se separan antes de cualquier lógica de ciudad,
+  // tienda o captura de cédula. Si falta consentimiento, se conserva la intención
+  // y se solicita autorización antes de recopilar datos comerciales de contacto.
+  if (conv.estado !== 'ALIANZA' && conv.estado !== 'HANDOFF' && detectaInteresAlianzaComercial(texto)) {
+    conv.tipo_solicitud = 'alianza_comercial';
+    conv.producto_interes = 'alianza comercial';
+    if (!conv.optin_aceptado) {
+      conv.estado = 'OPTIN';
+      respuesta = `¡Claro! Podemos evaluar tu negocio para ser tienda aliada de Creditek 😊\n\nPara recopilar tus datos y enviarlos a Oscar, responsable de nuevas alianzas, ${MSG.OPTIN}`;
+      if (canal === 'whatsapp') {
+        botones = [
+          { id: 'optin_si', title: '✅ Acepto' },
+          { id: 'optin_no', title: '❌ No, gracias' },
+        ];
+      }
+    } else {
+      conv.estado = 'ALIANZA';
+      conv.alianza_paso = 'nombre';
+      respuesta = '¡Claro! Oscar es el responsable de evaluar nuevas tiendas aliadas. Para enviarte con él, ¿me confirmas tu nombre completo? 😊';
+    }
+    await upsertCliente({
+      telefono: clienteId,
+      producto_interes: 'alianza comercial',
+      fuente: conv.fuente,
+      canal_origen: canalOrigenReal(conv.fuente),
+    }, sk);
+    await sendFn(respuesta, botones);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: 'bot', canal }, sk);
+    push('Sofia', respuesta);
+    await save();
+    return;
+  }
+
   // Un rechazo comercial explícito cierra cualquier flujo previo al handoff.
   // Al marcarlo perdido, el cron de seguimiento deja de incluirlo.
   if (conv.estado !== 'OPTIN' && conv.estado !== 'HANDOFF' && detectaCierreComercial(texto) && !detectaReservaDatosConInteres(texto)) {
@@ -940,7 +997,7 @@ async function procesarMensaje(
     return;
   }
 
-  if (conv.optin_aceptado && conv.estado !== 'OPTIN') {
+  if (conv.optin_aceptado && conv.estado !== 'OPTIN' && conv.estado !== 'ALIANZA') {
     const respuestaContinuidad = resolverPreguntaDeContinuidad(texto, {
       optinAceptado: conv.optin_aceptado,
       nombre: conv.nombre,
@@ -1049,7 +1106,11 @@ async function procesarMensaje(
         conv.optin_aceptado = true;
         await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, optin_comercial: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
         await avanzarEstadoFunnel(clienteId, 'contactado', sk); // FIX 03-jul-2026
-        if (canal === 'facebook_dm') {
+        if (conv.tipo_solicitud === 'alianza_comercial') {
+          conv.estado = 'ALIANZA';
+          conv.alianza_paso = 'nombre';
+          respuesta = 'Gracias 😊 Oscar es el responsable de evaluar nuevas tiendas aliadas. ¿Me confirmas tu nombre completo?';
+        } else if (canal === 'facebook_dm') {
           conv.estado = 'CELULAR_FB'; respuesta = MSG.CELULAR_FB;
         } else if (conv.tienda_id) {
           // FIX v27, 13-jul-2026: se asume "celular" como interés por defecto
@@ -1090,6 +1151,77 @@ async function procesarMensaje(
             { id: 'optin_no', title: '❌ No, gracias' },
           ];
         }
+      }
+      break;
+    }
+
+    // ── ALIANZA COMERCIAL ──────────────────────────────────────────────────
+    case 'ALIANZA': {
+      const valor = texto.trim().replace(/\s+/g, ' ');
+      switch (conv.alianza_paso || 'nombre') {
+        case 'nombre':
+          if (!nombreComercialValido(valor)) {
+            respuesta = 'Por favor escribe tu nombre completo (mínimo 3 letras) para que Oscar pueda identificar tu solicitud.';
+            break;
+          }
+          conv.alianza_nombre = valor;
+          conv.nombre = valor;
+          conv.alianza_paso = 'negocio';
+          respuesta = 'Gracias. ¿Cuál es el nombre de tu negocio o tienda?';
+          break;
+        case 'negocio':
+          if (!nombreComercialValido(valor)) {
+            respuesta = 'Escribe el nombre de tu negocio o tienda, por favor.';
+            break;
+          }
+          conv.alianza_negocio = valor;
+          conv.alianza_paso = 'ciudad';
+          respuesta = '¿En qué ciudad está ubicado tu negocio?';
+          break;
+        case 'ciudad':
+          if (!nombreComercialValido(valor)) {
+            respuesta = 'Escribe la ciudad donde está ubicado tu negocio, por favor.';
+            break;
+          }
+          conv.alianza_ciudad = valor;
+          conv.ciudad = valor;
+          conv.alianza_paso = 'correo';
+          respuesta = '¿Tienes un correo de contacto? Si no tienes, responde “no tengo”.';
+          break;
+        case 'correo': {
+          const correo = extraerCorreo(valor);
+          if (!correo && !/\b(no|ninguno|no tengo|sin correo)\b/i.test(valor)) {
+            respuesta = 'Escribe un correo válido o responde “no tengo”.';
+            break;
+          }
+          conv.alianza_correo = correo || undefined;
+          conv.correo = correo || undefined;
+          conv.alianza_paso = 'descripcion';
+          respuesta = 'Para terminar, cuéntame brevemente qué vende tu negocio y cuántos años lleva funcionando.';
+          break;
+        }
+        case 'descripcion':
+          if (valor.length < 5 || valor.length > 500) {
+            respuesta = 'Cuéntame brevemente qué vende tu negocio y cuánto tiempo lleva funcionando.';
+            break;
+          }
+          conv.alianza_descripcion = valor;
+          if (!conv.alianza_notificada) {
+            await notificarAlianzaOscar(conv, clienteId, env);
+            conv.alianza_notificada = true;
+          }
+          await upsertCliente({
+            telefono: clienteId,
+            nombre: conv.alianza_nombre,
+            ciudad: conv.alianza_ciudad,
+            producto_interes: 'alianza comercial',
+            fuente: conv.fuente,
+            canal_origen: canalOrigenReal(conv.fuente),
+          }, sk);
+          await avanzarEstadoFunnel(clienteId, 'transferido', sk);
+          conv.estado = 'FIN';
+          respuesta = `Gracias, ${(conv.alianza_nombre || '').split(' ')[0]} 😊 Ya envié tus datos a Oscar, responsable de evaluar nuevas alianzas comerciales. Él revisará la información y continuará contigo.`;
+          break;
       }
       break;
     }
@@ -2030,6 +2162,49 @@ async function notificarAsesor(conv: Conv, tienda: { id: string; nombre: string;
     console.error('[HANDOFF] envío no confirmado');
     throw e;
   }
+}
+
+async function notificarAlianzaOscar(conv: Conv, clienteId: string, env: Env): Promise<string> {
+  const destinoRaw = (env.ATTENTION_SUPERVISOR_PHONE || '').replace(/\D/g, '');
+  if (!destinoRaw) throw new Error('ATTENTION_SUPERVISOR_PHONE no configurado');
+  const destino = destinoRaw.length === 10 ? `57${destinoRaw}` : destinoRaw;
+  const celularLocal = clienteId.replace(/^57(?=\d{10}$)/, '');
+  const partes = [
+    'Nueva alianza comercial',
+    `Nombre: ${conv.alianza_nombre || 'N/D'}`,
+    `Negocio: ${conv.alianza_negocio || 'N/D'}`,
+    `Ciudad: ${conv.alianza_ciudad || 'N/D'}`,
+    `Celular: ${celularLocal || 'N/D'}`,
+  ];
+  if (conv.alianza_correo) partes.push(`Correo: ${conv.alianza_correo}`);
+  if (conv.alianza_descripcion) partes.push(`Actividad: ${conv.alianza_descripcion}`);
+
+  const res = await fetch(`https://graph.facebook.com/v19.0/${env.PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: destino,
+      type: 'template',
+      template: {
+        name: 'aviso_asesor_creditek',
+        language: { code: 'es_CO' },
+        components: [{
+          type: 'body',
+          parameters: [
+            { type: 'text', text: 'Oscar' },
+            { type: 'text', text: partes.join(' | ') },
+          ],
+        }],
+      },
+    }),
+  });
+  const payload = await res.json() as { messages?: Array<{ id?: string }> };
+  if (!res.ok) throw new Error(`Meta alianza respondió ${res.status}`);
+  const messageId = payload.messages?.[0]?.id;
+  if (!messageId) throw new Error('Meta alianza no devolvió messages[0].id');
+  console.log('[ALIANZA] notificación a responsable confirmada');
+  return messageId;
 }
 
 // SPEC v5-CRM, 13-jul-2026 — Pieza 2 (opción confirmada por Oscar: NO se toca

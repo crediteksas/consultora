@@ -1853,6 +1853,16 @@ function extraerCorreo(texto) {
   return m ? m[0] : null;
 }
 __name(extraerCorreo, "extraerCorreo");
+function detectaInteresAlianzaComercial(texto) {
+  const t = norm(texto);
+  return /\b(quiero|quisiera|deseo|gustaria|interesa|puedo|como)\b.{0,45}\b(ser|hacerme|convertirme|trabajar)\b.{0,35}\b(aliad[oa]|distribuidor[a]?)\b/.test(t) || /\b(ser|hacerme|convertirme)\b.{0,20}\btienda\s+aliada\b/.test(t) || /\balianza\s+comercial\b/.test(t) || /\bquiero\s+vender\s+(con|para)\s+ustedes\b/.test(t);
+}
+__name(detectaInteresAlianzaComercial, "detectaInteresAlianzaComercial");
+function nombreComercialValido(texto) {
+  const valor = texto.trim().replace(/\s+/g, " ");
+  return valor.length >= 3 && valor.length <= 120 && /[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/.test(valor) && !/^\d+$/.test(valor);
+}
+__name(nombreComercialValido, "nombreComercialValido");
 var MSG = {
   OPTIN: "\xA1Hola! Soy Sof\xEDa, de Creditek \u{1F60A} Te ayudo a llevarte tu celular nuevo hoy mismo. Antes de seguir, \xBFme autorizas guardar tus datos para contarte de nuestras promos?",
   OPTIN_NO: "Entendido, no hay problema \u{1F64F} Si cambias de opini\xF3n aqu\xED estamos. \xA1Que tengas un buen d\xEDa!",
@@ -2427,6 +2437,35 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
   push("Cliente", texto);
   let respuesta = "";
   let botones;
+  if (conv.estado !== "ALIANZA" && conv.estado !== "HANDOFF" && detectaInteresAlianzaComercial(texto)) {
+    conv.tipo_solicitud = "alianza_comercial";
+    conv.producto_interes = "alianza comercial";
+    if (!conv.optin_aceptado) {
+      conv.estado = "OPTIN";
+      respuesta = `¡Claro! Podemos evaluar tu negocio para ser tienda aliada de Creditek 😊\n\nPara recopilar tus datos y enviarlos a Oscar, responsable de nuevas alianzas, ${MSG.OPTIN}`;
+      if (canal === "whatsapp") {
+        botones = [
+          { id: "optin_si", title: "✅ Acepto" },
+          { id: "optin_no", title: "❌ No, gracias" }
+        ];
+      }
+    } else {
+      conv.estado = "ALIANZA";
+      conv.alianza_paso = "nombre";
+      respuesta = "¡Claro! Oscar es el responsable de evaluar nuevas tiendas aliadas. Para enviarte con él, ¿me confirmas tu nombre completo? 😊";
+    }
+    await upsertCliente({
+      telefono: clienteId,
+      producto_interes: "alianza comercial",
+      fuente: conv.fuente,
+      canal_origen: canalOrigenReal(conv.fuente)
+    }, sk);
+    await sendFn(respuesta, botones);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    push("Sofia", respuesta);
+    await save();
+    return;
+  }
   if (conv.estado !== "OPTIN" && conv.estado !== "HANDOFF" && detectaCierreComercial(texto) && !detectaReservaDatosConInteres(texto)) {
     conv.estado = "FIN";
     respuesta = MSG.CIERRE_INTERES;
@@ -2468,7 +2507,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     await save();
     return;
   }
-  if (conv.optin_aceptado && conv.estado !== "OPTIN") {
+  if (conv.optin_aceptado && conv.estado !== "OPTIN" && conv.estado !== "ALIANZA") {
     const respuestaContinuidad = resolverPreguntaDeContinuidad(texto, {
       optinAceptado: conv.optin_aceptado,
       nombre: conv.nombre,
@@ -2571,7 +2610,11 @@ ${siguiente}` : respuestaContinuidad;
         conv.optin_aceptado = true;
         await upsertCliente({ telefono: clienteId, optin_datos: true, optin_operativo: true, optin_comercial: true, fuente: conv.fuente, canal_origen: canalOrigenReal(conv.fuente) }, sk);
         await avanzarEstadoFunnel(clienteId, "contactado", sk);
-        if (canal === "facebook_dm") {
+        if (conv.tipo_solicitud === "alianza_comercial") {
+          conv.estado = "ALIANZA";
+          conv.alianza_paso = "nombre";
+          respuesta = "Gracias 😊 Oscar es el responsable de evaluar nuevas tiendas aliadas. ¿Me confirmas tu nombre completo?";
+        } else if (canal === "facebook_dm") {
           conv.estado = "CELULAR_FB";
           respuesta = MSG.CELULAR_FB;
         } else if (conv.tienda_id) {
@@ -2597,6 +2640,75 @@ ${siguiente}` : respuestaContinuidad;
             { id: "optin_no", title: "\u274C No, gracias" }
           ];
         }
+      }
+      break;
+    }
+    case "ALIANZA": {
+      const valor = texto.trim().replace(/\s+/g, " ");
+      switch (conv.alianza_paso || "nombre") {
+        case "nombre":
+          if (!nombreComercialValido(valor)) {
+            respuesta = "Por favor escribe tu nombre completo (mínimo 3 letras) para que Oscar pueda identificar tu solicitud.";
+            break;
+          }
+          conv.alianza_nombre = valor;
+          conv.nombre = valor;
+          conv.alianza_paso = "negocio";
+          respuesta = "Gracias. ¿Cuál es el nombre de tu negocio o tienda?";
+          break;
+        case "negocio":
+          if (!nombreComercialValido(valor)) {
+            respuesta = "Escribe el nombre de tu negocio o tienda, por favor.";
+            break;
+          }
+          conv.alianza_negocio = valor;
+          conv.alianza_paso = "ciudad";
+          respuesta = "¿En qué ciudad está ubicado tu negocio?";
+          break;
+        case "ciudad":
+          if (!nombreComercialValido(valor)) {
+            respuesta = "Escribe la ciudad donde está ubicado tu negocio, por favor.";
+            break;
+          }
+          conv.alianza_ciudad = valor;
+          conv.ciudad = valor;
+          conv.alianza_paso = "correo";
+          respuesta = "¿Tienes un correo de contacto? Si no tienes, responde “no tengo”.";
+          break;
+        case "correo": {
+          const correo = extraerCorreo(valor);
+          if (!correo && !/\b(no|ninguno|no tengo|sin correo)\b/i.test(valor)) {
+            respuesta = "Escribe un correo válido o responde “no tengo”.";
+            break;
+          }
+          conv.alianza_correo = correo || void 0;
+          conv.correo = correo || void 0;
+          conv.alianza_paso = "descripcion";
+          respuesta = "Para terminar, cuéntame brevemente qué vende tu negocio y cuántos años lleva funcionando.";
+          break;
+        }
+        case "descripcion":
+          if (valor.length < 5 || valor.length > 500) {
+            respuesta = "Cuéntame brevemente qué vende tu negocio y cuánto tiempo lleva funcionando.";
+            break;
+          }
+          conv.alianza_descripcion = valor;
+          if (!conv.alianza_notificada) {
+            await notificarAlianzaOscar(conv, clienteId, env2);
+            conv.alianza_notificada = true;
+          }
+          await upsertCliente({
+            telefono: clienteId,
+            nombre: conv.alianza_nombre,
+            ciudad: conv.alianza_ciudad,
+            producto_interes: "alianza comercial",
+            fuente: conv.fuente,
+            canal_origen: canalOrigenReal(conv.fuente)
+          }, sk);
+          await avanzarEstadoFunnel(clienteId, "transferido", sk);
+          conv.estado = "FIN";
+          respuesta = `Gracias, ${(conv.alianza_nombre || "").split(" ")[0]} 😊 Ya envié tus datos a Oscar, responsable de evaluar nuevas alianzas comerciales. Él revisará la información y continuará contigo.`;
+          break;
       }
       break;
     }
@@ -3279,6 +3391,52 @@ async function notificarAsesor(conv, tienda, env2) {
   return messageId;
 }
 __name(notificarAsesor, "notificarAsesor");
+async function notificarAlianzaOscar(conv, clienteId, env2) {
+  if (env2.ENVIRONMENT === "staging") {
+    if (env2.MOCK_META_SCENARIO === "reject") throw new Error("Meta staging rechazó el envío");
+    return `mock-alliance-${crypto.randomUUID()}`;
+  }
+  const destinoRaw = (env2.ATTENTION_SUPERVISOR_PHONE || "").replace(/\D/g, "");
+  if (!destinoRaw) throw new Error("ATTENTION_SUPERVISOR_PHONE no configurado");
+  const destino = destinoRaw.length === 10 ? `57${destinoRaw}` : destinoRaw;
+  const celularLocal = clienteId.replace(/^57(?=\d{10}$)/, "");
+  const partes = [
+    "Nueva alianza comercial",
+    `Nombre: ${conv.alianza_nombre || "N/D"}`,
+    `Negocio: ${conv.alianza_negocio || "N/D"}`,
+    `Ciudad: ${conv.alianza_ciudad || "N/D"}`,
+    `Celular: ${celularLocal || "N/D"}`
+  ];
+  if (conv.alianza_correo) partes.push(`Correo: ${conv.alianza_correo}`);
+  if (conv.alianza_descripcion) partes.push(`Actividad: ${conv.alianza_descripcion}`);
+  const res = await fetch(`https://graph.facebook.com/v19.0/${env2.PHONE_NUMBER_ID}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env2.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: destino,
+      type: "template",
+      template: {
+        name: "aviso_asesor_creditek",
+        language: { code: "es_CO" },
+        components: [{
+          type: "body",
+          parameters: [
+            { type: "text", text: "Oscar" },
+            { type: "text", text: partes.join(" | ") }
+          ]
+        }]
+      }
+    })
+  });
+  const payload = await res.json();
+  if (!res.ok) throw new Error(`Meta alianza respondió ${res.status}`);
+  const messageId = payload.messages?.[0]?.id;
+  if (!messageId) throw new Error("Meta alianza no devolvió messages[0].id");
+  console.log("[ALIANZA] notificación a responsable confirmada");
+  return messageId;
+}
+__name(notificarAlianzaOscar, "notificarAlianzaOscar");
 async function enviarRecordatorioAsesor(tienda, resumen, env2) {
   const digits = tienda.telefono.replace(/\D/g, "");
   const destino = digits.length === 10 ? "57" + digits : digits;

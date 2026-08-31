@@ -546,7 +546,7 @@ export default {
       const body = await request.json().catch(() => ({})) as { telefono?: string; estado?: string };
       const telefono = String(body.telefono || '').replace(/\D/g, '');
       const estado = String(body.estado || '');
-      const permitidos = new Set(['contactado', 'no_contactado', 'venta_cerrada']);
+      const permitidos = new Set(['contactado', 'no_contactado', 'venta_cerrada', 'cerrado_sin_venta']);
       if (!/^\d{10,12}$/.test(telefono) || !permitidos.has(estado)) {
         return new Response(JSON.stringify({ error: 'Solicitud inválida' }), { status: 400, headers: cors });
       }
@@ -2032,8 +2032,8 @@ type ClienteConfirmacionAsesor = { telefono: string; confirmacion_asesor?: strin
 
 function transicionConfirmacionPermitida(actual: string | null | undefined, siguiente: string): boolean {
   if (!actual || actual === siguiente) return true;
-  if (actual === 'no_contactado') return siguiente === 'contactado' || siguiente === 'venta_cerrada';
-  if (actual === 'contactado') return siguiente === 'venta_cerrada';
+  if (actual === 'no_contactado') return siguiente === 'contactado' || siguiente === 'venta_cerrada' || siguiente === 'cerrado_sin_venta';
+  if (actual === 'contactado') return siguiente === 'venta_cerrada' || siguiente === 'cerrado_sin_venta';
   return false;
 }
 
@@ -2229,9 +2229,8 @@ async function notificarAlianzaOscar(conv: Conv, clienteId: string, env: Env): P
 // SPEC v5-CRM, 13-jul-2026 — Pieza 2 (opción confirmada por Oscar: NO se toca
 // el aviso inmediato de notificarAsesor()/manejarConfirmacionAsesor() de
 // arriba, que sigue funcionando exactamente igual). Esto es un RECORDATORIO
-// aparte, en 3 rondas fijas al día, SOLO para los asesores que nunca tocaron
-// ninguno de los 3 botones del aviso inmediato (confirmacion_asesor sigue en
-// null). Reutiliza la MISMA plantilla ya aprobada por Meta
+// aparte, en 3 rondas fijas al día, para los casos que todavía no tienen un
+// cierre definitivo. Reutiliza la MISMA plantilla ya aprobada por Meta
 // (aviso_asesor_creditek) — evita depender de una plantilla nueva pendiente
 // de aprobación, que hubiera bloqueado esta pieza por horas o días.
 async function enviarRecordatorioAsesor(tienda: { contacto: string; telefono: string }, resumen: string, env: Env): Promise<void> {
@@ -2264,22 +2263,19 @@ async function enviarRecordatorioAsesor(tienda: { contacto: string; telefono: st
   } catch (e) { console.error('[RECORDATORIO-ASESOR-EXCEPTION]', e); }
 }
 
-// Regla de negocio (SPEC v5-CRM): cada handoff se recuerda una sola vez, con
-// un colchón de 2h desde el handoff antes del primer recordatorio (para no
-// molestar a un asesor que apenas recibió el aviso inmediato). Esta misma
-// regla, aplicada igual en las 3 rondas, ya cumple sola las 3 franjas de la
-// tabla del SPEC (1pm cubre handoffs de antes de 11am, 5pm cubre antes de
-// 3pm, 9am del día hábil siguiente cubre lo que quedó pendiente de la tarde
-// anterior) sin necesitar una franja horaria distinta hardcodeada por ronda
-// — y como el cron de las 9am solo corre lunes a viernes (ver wrangler.toml),
-// lo del viernes en la tarde se acumula solo hasta el lunes, tal como pide
-// el documento.
+// Regla de negocio aprobada por Oscar: primer recordatorio después de 2h y,
+// mientras el caso siga abierto, máximo uno adicional por cada 24h. Las tres
+// rondas diarias solo buscan la siguiente oportunidad válida; el filtro por
+// `recordatorio_asesor_enviado_en` impide insistir varias veces el mismo día.
+// El seguimiento al CLIENTE es distinto y conserva su máximo de un único
+// recontacto automático.
 async function recordatorioAsesores(env: Env, ronda: string): Promise<void> {
   const sk = env.SUPABASE_SERVICE_KEY;
-  const corte = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const cortePrimerAviso = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const corteDiario = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/clientes?estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&recordatorio_asesor_enviado_en=is.null&fecha_transferido_asesor=lte.${corte}&select=telefono,nombre,tienda_id,ciudad,producto_interes,cedula,telefono_contacto`,
+      `${SUPABASE_URL}/rest/v1/clientes?estado_funnel=eq.transferido_asesor&or=(confirmacion_asesor.is.null,confirmacion_asesor.eq.contactado,confirmacion_asesor.eq.no_contactado)&or=(recordatorio_asesor_enviado_en.is.null,recordatorio_asesor_enviado_en.lte.${corteDiario})&fecha_transferido_asesor=lte.${cortePrimerAviso}&select=telefono,nombre,tienda_id,ciudad,producto_interes,cedula,telefono_contacto`,
       { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
     );
     if (!r.ok) { console.error('[RECORDATORIO-ASESOR] error consultando clientes:', r.status, await r.text()); return; }

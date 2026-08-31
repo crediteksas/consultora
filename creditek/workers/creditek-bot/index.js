@@ -2080,7 +2080,7 @@ var index_default = {
       const body2 = await request.json().catch(() => ({}));
       const telefono = String(body2.telefono || "").replace(/\D/g, "");
       const estado = String(body2.estado || "");
-      const permitidos = /* @__PURE__ */ new Set(["contactado", "no_contactado", "venta_cerrada"]);
+      const permitidos = /* @__PURE__ */ new Set(["contactado", "no_contactado", "venta_cerrada", "cerrado_sin_venta"]);
       if (!/^\d{10,12}$/.test(telefono) || !permitidos.has(estado)) {
         return new Response(JSON.stringify({ error: "Solicitud inv\xE1lida" }), { status: 400, headers: cors });
       }
@@ -3259,8 +3259,8 @@ async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal, informativ
 __name(hacerHandoff, "hacerHandoff");
 function transicionConfirmacionPermitida(actual, siguiente) {
   if (!actual || actual === siguiente) return true;
-  if (actual === "no_contactado") return siguiente === "contactado" || siguiente === "venta_cerrada";
-  if (actual === "contactado") return siguiente === "venta_cerrada";
+  if (actual === "no_contactado") return siguiente === "contactado" || siguiente === "venta_cerrada" || siguiente === "cerrado_sin_venta";
+  if (actual === "contactado") return siguiente === "venta_cerrada" || siguiente === "cerrado_sin_venta";
   return false;
 }
 __name(transicionConfirmacionPermitida, "transicionConfirmacionPermitida");
@@ -3478,10 +3478,11 @@ async function enviarRecordatorioAsesor(tienda, resumen, env2) {
 __name(enviarRecordatorioAsesor, "enviarRecordatorioAsesor");
 async function recordatorioAsesores(env2, ronda) {
   const sk = env2.SUPABASE_SERVICE_KEY;
-  const corte = new Date(Date.now() - 2 * 60 * 60 * 1e3).toISOString();
+  const cortePrimerAviso = new Date(Date.now() - 2 * 60 * 60 * 1e3).toISOString();
+  const corteDiario = new Date(Date.now() - 24 * 60 * 60 * 1e3).toISOString();
   try {
     const r = await fetch(
-      `${supabaseUrl()}/rest/v1/clientes?estado_funnel=eq.transferido_asesor&confirmacion_asesor=is.null&recordatorio_asesor_enviado_en=is.null&fecha_transferido_asesor=lte.${corte}&select=telefono,nombre,tienda_id,ciudad,producto_interes,cedula,telefono_contacto`,
+      `${supabaseUrl()}/rest/v1/clientes?estado_funnel=eq.transferido_asesor&or=(confirmacion_asesor.is.null,confirmacion_asesor.eq.contactado,confirmacion_asesor.eq.no_contactado)&or=(recordatorio_asesor_enviado_en.is.null,recordatorio_asesor_enviado_en.lte.${corteDiario})&fecha_transferido_asesor=lte.${cortePrimerAviso}&select=telefono,nombre,tienda_id,ciudad,producto_interes,cedula,telefono_contacto`,
       { headers: { apikey: sk, Authorization: `Bearer ${sk}` } }
     );
     if (!r.ok) {

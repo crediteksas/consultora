@@ -38,6 +38,7 @@ for (const [name, source] of [['TypeScript', ts], ['runtime', runtime]]) {
     assert.match(source, /actual === ['"]no_contactado['"][\s\S]*?contactado[\s\S]*?venta_cerrada/);
     assert.match(source, /actual === ['"]contactado['"][\s\S]*?venta_cerrada/);
     assert.match(source, /regresiva ignorada/);
+    assert.match(source, /cerrado_sin_venta/);
   });
 }
 
@@ -51,4 +52,26 @@ test('AURA muestra responsable, estado, SLA y recordatorio del seguimiento', () 
   assert.match(panel, /recordatorio_asesor_enviado_en/);
   assert.match(panel, /Tienda no confirmó contacto dentro del SLA/);
   assert.match(panel, /Tienda no pudo contactar al cliente/);
+});
+
+for (const [name, source] of [['TypeScript', ts], ['runtime', runtime]]) {
+  test(`${name}: insiste al asesor cada 24 horas mientras el caso siga abierto`, () => {
+    assert.match(source, /24 \* 60 \* 60/);
+    assert.match(source, /confirmacion_asesor\.eq\.contactado/);
+    assert.match(source, /confirmacion_asesor\.eq\.no_contactado/);
+    assert.match(source, /recordatorio_asesor_enviado_en\.lte/);
+    assert.doesNotMatch(source, /confirmacion_asesor\.eq\.venta_cerrada[^\n]+recordatorio_asesor_enviado_en/);
+  });
+}
+
+test('el recontacto automático al cliente permanece limitado a una sola vez', () => {
+  assert.match(ts, /Máximo 1 recordatorio automático por lead/);
+  assert.match(runtime, /recordatorio_enviado_at/);
+});
+
+test('AURA permite cerrar el caso sin venta y detener la insistencia al asesor', () => {
+  assert.match(panel, /Cerrar sin venta/);
+  assert.match(panel, /Cerrado sin venta/);
+  assert.match(ts, /cerrado_sin_venta/);
+  assert.doesNotMatch(ts, /confirmacion_asesor\.eq\.cerrado_sin_venta[^\n]+recordatorio_asesor_enviado_en/);
 });

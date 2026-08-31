@@ -573,11 +573,12 @@ function openChat(tel){
   const currentRank=funnelOrder.indexOf(currentStage);
   const funnelHtml='<div class="section-head">Embudo comercial</div><div class="client-detail"><div class="stage-list">'+funnelOrder.map((stage,index)=>'<div class="stage-step '+(stage===currentStage?'current':(currentRank>=0&&index<currentRank?'done':''))+'">'+funnelLabels[stage]+'</div>').join('')+(currentStage==='perdido'?'<div class="stage-step current">Perdido</div>':'')+'</div></div>';
   const assignedStore=(allTiendas||[]).find(t=>String(t.id)===String(cl?.tienda_id))||null;
-  const confirmationLabels={contactado:'Cliente contactado',no_contactado:'No fue posible contactar',venta_cerrada:'Venta cerrada'};
+  const confirmationLabels={contactado:'Cliente contactado',no_contactado:'No fue posible contactar',venta_cerrada:'Venta cerrada',cerrado_sin_venta:'Cerrado sin venta'};
   const transferDate=cl?.fecha_transferido_asesor?new Date(cl.fecha_transferido_asesor):null;
   const elapsedHours=transferDate?Math.max(0,(Date.now()-transferDate.getTime())/3600000):null;
   let slaStatus='Sin asignación';
   if(cl?.confirmacion_asesor==='venta_cerrada')slaStatus='Cerrado';
+  else if(cl?.confirmacion_asesor==='cerrado_sin_venta')slaStatus='Cerrado sin venta';
   else if(cl?.confirmacion_asesor==='contactado')slaStatus='Atendido';
   else if(cl?.confirmacion_asesor==='no_contactado')slaStatus='Requiere reintento';
   else if(transferDate)slaStatus=elapsedHours>2?'SLA vencido':'Dentro de SLA';
@@ -611,11 +612,11 @@ function openChat(tel){
 }
 
 function seguimientoControlHtml(tel,actual){
-  const options=actual==='venta_cerrada'
-    ?[['venta_cerrada','Venta cerrada']]
+  const options=actual==='venta_cerrada'||actual==='cerrado_sin_venta'
+    ?[[actual,actual==='venta_cerrada'?'Venta cerrada':'Cerrado sin venta']]
     :actual==='contactado'
-      ?[['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada']]
-      :[['no_contactado','No fue posible contactar'],['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada']];
+      ?[['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada'],['cerrado_sin_venta','Cerrar sin venta']]
+      :[['no_contactado','No fue posible contactar'],['contactado','Cliente contactado'],['venta_cerrada','Venta cerrada'],['cerrado_sin_venta','Cerrar sin venta']];
   return '<div class="tracking-control"><select id="trackingStatus">'+options.map(([value,label])=>'<option value="'+value+'" '+(value===actual?'selected':'')+'>'+label+'</option>').join('')+'</select><button class="reply-btn" id="trackingSave" onclick="actualizarSeguimientoAsesor(\''+tel+'\')">Guardar</button></div><div class="tracking-message" id="trackingMessage"></div>';
 }
 

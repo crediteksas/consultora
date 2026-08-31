@@ -2434,9 +2434,16 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     conv.historial.push(quien + ": " + msg.substring(0, 200));
     if (conv.historial.length > 12) conv.historial = conv.historial.slice(-12);
   }, "push");
+  const alianzaPendientePrevia = conv.historial.some((linea) => linea.startsWith("Cliente:") && detectaInteresAlianzaComercial(linea.slice(8))) && !conv.alianza_notificada;
   push("Cliente", texto);
   let respuesta = "";
   let botones;
+  if (alianzaPendientePrevia && conv.optin_aceptado && conv.estado !== "ALIANZA" && conv.estado !== "HANDOFF" && !detectaInteresAlianzaComercial(texto)) {
+    conv.tipo_solicitud = "alianza_comercial";
+    conv.producto_interes = "alianza comercial";
+    conv.estado = "ALIANZA";
+    conv.alianza_paso = "nombre";
+  }
   if (conv.estado !== "ALIANZA" && conv.estado !== "HANDOFF" && detectaInteresAlianzaComercial(texto)) {
     conv.tipo_solicitud = "alianza_comercial";
     conv.producto_interes = "alianza comercial";

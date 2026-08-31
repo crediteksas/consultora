@@ -33,3 +33,9 @@ test('el cierre es idempotente y confirma el siguiente responsable al prospecto'
   assert.match(worker, /conv\.alianza_notificada = true/);
   assert.match(worker, /responsable de evaluar nuevas alianzas comerciales/);
 });
+
+test('una conversación antigua de alianza se recupera desde su historial', () => {
+  assert.match(worker, /const alianzaPendientePrevia = conv\.historial\.some/);
+  assert.match(worker, /alianzaPendientePrevia && conv\.optin_aceptado/);
+  assert.match(worker, /conv\.alianza_paso = "nombre"/);
+});

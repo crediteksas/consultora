@@ -900,12 +900,31 @@ async function procesarMensaje(
     conv.historial.push(quien+': '+msg.substring(0,200));
     if (conv.historial.length > 12) conv.historial = conv.historial.slice(-12);
   };
+  const alianzaPendientePrevia = conv.historial.some((linea) =>
+    linea.startsWith('Cliente:') && detectaInteresAlianzaComercial(linea.slice(8)),
+  ) && !conv.alianza_notificada;
   push('Cliente', texto);
 
   let respuesta = '';
   // FIX v21, 13-jul-2026: botones de respuesta rápida para el mensaje actual,
   // si aplica (OPTIN y pregunta de modalidad, solo en WhatsApp).
   let botones: { id: string; title: string }[] | undefined;
+
+  // Recupera conversaciones abiertas antes de este despliegue: si el cliente
+  // ya había expresado en el historial que quería ser aliado y luego aceptó el
+  // consentimiento, su siguiente respuesta entra directamente como el nombre.
+  if (
+    alianzaPendientePrevia
+    && conv.optin_aceptado
+    && conv.estado !== 'ALIANZA'
+    && conv.estado !== 'HANDOFF'
+    && !detectaInteresAlianzaComercial(texto)
+  ) {
+    conv.tipo_solicitud = 'alianza_comercial';
+    conv.producto_interes = 'alianza comercial';
+    conv.estado = 'ALIANZA';
+    conv.alianza_paso = 'nombre';
+  }
 
   // Las solicitudes para convertirse en tienda aliada son oportunidades B2B,
   // no solicitudes de crédito. Se separan antes de cualquier lógica de ciudad,

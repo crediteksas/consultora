@@ -14,7 +14,7 @@ test('normaliza y valida el tercero y su cuenta sin conservar separadores', () =
   });
   assert.equal(result.ok, true);
   assert.deepEqual(result.value, {
-    originCode: 'ALIADO-01', name: 'Distribuciones del Caribe', identification: '9001234567',
+    originCode: 'aliado-01', name: 'Distribuciones del Caribe', identification: '9001234567',
     bank: 'Bancolombia', accountType: 'ahorros', accountNumber: '123456789'
   });
 });
@@ -41,4 +41,28 @@ test('el RPC es atómico, auditado y no queda expuesto a anónimos', async () =>
   assert.match(sql, /aliados_tercero_cuenta_creada/);
   assert.match(sql, /revoke all on function public\.aliados_crear_tercero_con_cuenta[\s\S]*from public, anon/);
   assert.match(sql, /grant execute[\s\S]*to authenticated/);
+});
+
+test('conserva códigos reales en minúsculas como Distritoys y Artesanías Eileen', () => {
+  for (const originCode of ['distritoys', 'artesanias-eileen']) {
+    const result = domain.validateNewBeneficiary({
+      originCode, name: 'Titular de prueba', identification: '12345678',
+      bank: 'Nequi', accountType: 'ahorros', accountNumber: '3001234567'
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.value.originCode, originCode);
+  }
+});
+
+test('la migración correctiva compara el código sin depender de mayúsculas', async () => {
+  const sql = await read('supabase/migrations/20260831161650_kora_2026_000046_case_insensitive_ally_code.sql');
+  assert.match(sql, /lower\(btrim\(codigo\)\) = lower\(btrim\(p_origen_codigo\)\)/);
+  assert.match(sql, /tipo = 'aliado' and activo = true/);
+  assert.match(sql, /revoke all[\s\S]*from public, anon/);
+});
+
+test('el artefacto productivo conserva el código seleccionado del aliado', async () => {
+  const source = await read('public/creditek/erp/aliados-cuentas-domain.js');
+  assert.doesNotMatch(source, /originCode:[^\n]*toUpperCase/);
+  assert.match(source, /originCode: clean\(input\.originCode\)/);
 });

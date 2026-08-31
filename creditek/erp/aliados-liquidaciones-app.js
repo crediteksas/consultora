@@ -17,6 +17,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = UX.formatoCOP;
+  const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
   const state = (value) => `<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`;
 
   $('filterState').innerHTML = '<option value="">Todos los estados</option>' + D.ESTADOS.map((s) => `<option value="${s}">${UX.traducirEstado(s)}</option>`).join('');
@@ -57,7 +58,7 @@
     const search = $('filterSearch').value.trim().toLowerCase();
     const rows = batches.filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
     $('batches').innerHTML = rows.map((b) => `<tr>
-      <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${b.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
+      <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.estado)}</td><td>${Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
       <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(b.total_utilidad_creditek)}</td><td>${money(b.total_pagar)}</td>
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || '<tr><td colspan="10">No hay liquidaciones.</td></tr>';
@@ -90,7 +91,7 @@
   async function openDetail(id) {
     selected = batches.find((batch) => batch.id === id) || selected;
     $('detail').classList.remove('hidden');
-    $('detailTitle').textContent = `${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'} · ${UX.fechaCorta(selected.fecha_corte)}`;
+    $('detailTitle').textContent = `${platformName(selected.plataforma)} · ${UX.fechaCorta(selected.fecha_corte)}`;
     renderMetrics();
     updateActions();
     await loadTab(activeTab);
@@ -126,8 +127,8 @@
     const { data, error } = await sb.from('liquidation_incidents').select('*').eq('liquidation_id', selected.id).order('created_at');
     if (error) throw error;
     $('detailHead').innerHTML = '<tr><th>Novedad</th><th>Descripción</th><th>Estado</th><th>Decisión</th><th>Acción</th></tr>';
-    $('detailBody').innerHTML = (data || []).map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="5">Sin novedades.</td></tr>';
-    document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve); });
+    $('detailBody').innerHTML = (data || []).map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="5">Sin novedades.</td></tr>';
+    document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
   }
 
   async function loadPayments() {
@@ -167,7 +168,7 @@
     const heads = kind === 'allies' ? ['Aliado', 'Sede', 'Plataforma', 'Operaciones', 'Monto liquidado', 'Inicial', 'Pago al aliado', 'Novedades', 'Estado del pago'] : ['Ejecutivo', 'Aliados incluidos', 'Operaciones', 'Ventas', 'Bonos', 'Total a recibir', 'Estado del pago', 'Novedades'];
     $('detailHead').innerHTML = `<tr>${heads.map((h) => `<th>${h}</th>`).join('')}</tr>`;
     $('detailBody').innerHTML = groups.map((group) => kind === 'allies'
-      ? `<tr><td>${esc(group.label)}</td><td>${esc([...group.establishments].join(', '))}</td><td>${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(group.initial)}</td><td>${group.issues}</td><td>Pendiente</td></tr>`
+      ? `<tr><td>${esc(group.label)}</td><td>${esc([...group.establishments].join(', '))}</td><td>${platformName(selected.plataforma)}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(group.initial)}</td><td>${group.issues}</td><td>Pendiente</td></tr>`
       : `<tr><td>Ejecutivo asignado</td><td>${group.establishments.size}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(0)}</td><td>${money(0)}</td><td>Pendiente</td><td>${group.issues}</td></tr>`).join('') || `<tr><td colspan="${heads.length}">Sin registros.</td></tr>`;
   }
 
@@ -189,7 +190,26 @@
     if (error) return alert(error.message);
     await loadTab('operations');
   }
-  async function resolveIncident(id) {
+  async function resolveIncident(id, operationId, incidentType) {
+    if (selected.plataforma === 'krediya' && incidentType?.startsWith('krediya_')) {
+      const decision = prompt('Decisión de Mayte: escribe USAR para tomar Precio/Pagamos del archivo, CORREGIR para guardar valores corregidos o ERROR si el archivo está equivocado.');
+      if (!decision) return;
+      const normalized = decision.trim().toLowerCase();
+      const map = { usar:'usar_archivo', corregir:'corregir_configuracion', error:'error_archivo' };
+      if (!map[normalized]) return alert('Decisión inválida. Usa USAR, CORREGIR o ERROR.');
+      let precio = null, pagamos = null;
+      if (normalized === 'corregir') {
+        precio = Number((prompt('Precio de venta correcto:') || '').replace(/[^0-9.-]/g,''));
+        pagamos = Number((prompt('Pagamos correcto:') || '').replace(/[^0-9.-]/g,''));
+        if (!(precio > 0 && pagamos > 0)) return alert('Precio de venta y Pagamos deben ser mayores que cero.');
+      }
+      const justification = prompt('Justificación de la decisión:');
+      if (!justification?.trim()) return;
+      const { error } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId, p_decision:map[normalized], p_precio_venta:precio, p_pagamos:pagamos, p_justificacion:justification.trim() });
+      if (error) return alert(error.message);
+      await loadTab('incidents');
+      return;
+    }
     const justification = prompt('Escribe la justificación de la diferencia o novedad:');
     if (!justification?.trim()) return;
     const { error } = await sb.rpc('aliados_resolver_novedad', { p_incident_id: id, p_justificacion: justification.trim() });
@@ -259,7 +279,7 @@
     if (selected) await openDetail(selected.id);
   };
   $('validate').onclick = () => stateRpc('validada');
-  $('calculate').onclick = async () => { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); const { error } = await sb.rpc('aliados_calcular_liquidacion', { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
+  $('calculate').onclick = async () => { if (selected.plataforma !== 'krediya') { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); } const rpc = selected.plataforma === 'krediya' ? 'aliados_calcular_liquidacion_krediya' : 'aliados_calcular_liquidacion'; const { error } = await sb.rpc(rpc, { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');
   $('reject').onclick = () => stateRpc('con_novedades', prompt('Motivo para devolver a revisión:') || 'Requiere corrección');
   $('reportIssue').onclick = async () => { const description = prompt('Describe la novedad:'); if (!description?.trim()) return; const { error } = await sb.rpc('aliados_reportar_novedad', { p_id: selected.id, p_operation_id: null, p_descripcion: description.trim() }); if (error) alert(error.message); else loadTab('incidents'); };
@@ -274,4 +294,26 @@
   $('validateImport').onclick = async () => { try { const file = $('file').files[0]; if (!file) throw new Error('Selecciona un archivo Excel.'); fileBuffer = await file.arrayBuffer(); const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true }); const platform = $('importPlatform').value; const sheet = platform === 'payjoy' ? (workbook.Sheets.Transacciones || workbook.Sheets[workbook.SheetNames[1]]) : (workbook.Sheets.Worksheet || workbook.Sheets[workbook.SheetNames[0]]); const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true }); preview = platform === 'payjoy' ? D.importarPayjoy(rows, await establishments()) : D.importarAlo(rows, await establishments()); $('preview').classList.remove('hidden'); $('previewMetrics').innerHTML = `<div class="metric"><small>Filas fuente</small><strong>${preview.filasOriginales.length}</strong></div><div class="metric"><small>Operaciones</small><strong>${preview.operaciones.length}</strong></div><div class="metric"><small>Novedades</small><strong>${preview.incidencias.length}</strong></div>`; $('previewIssues').innerHTML = preview.incidencias.map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.sourceKey)}</td></tr>`).join('') || '<tr><td colspan="2">Sin novedades estructurales.</td></tr>'; $('saveImport').disabled = false; $('importError').textContent = ''; } catch (error) { $('importError').textContent = error.message; $('saveImport').disabled = true; } };
   async function sha256(buffer) { const digest = await crypto.subtle.digest('SHA-256', buffer); return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
   $('saveImport').onclick = async () => { const button = $('saveImport'); button.disabled = true; try { const file = $('file').files[0]; const key = crypto.randomUUID(); const extension = file.name.toLowerCase().endsWith('.xls') ? 'xls' : 'xlsx'; const path = `aliados/originales/${key}.${extension}`; const hash = await sha256(fileBuffer); const duplicate = await sb.from('liquidation_imported_files').select('id', { head: true, count: 'exact' }).eq('sha256', hash); if (duplicate.count) throw new Error('Este archivo ya fue importado.'); const upload = await sb.storage.from('soportes').upload(path, file, { contentType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', upsert: false }); if (upload.error) throw upload.error; const rows = preview.operaciones.flatMap((operation) => operation.movimientos.map((movement) => ({ sheet: $('importPlatform').value === 'payjoy' ? 'Transacciones' : 'Worksheet', row_number: movement.fila, movement_type: movement.tipo, source_key: operation.sourceKey, original: movement.original }))); const { error } = await sb.rpc('aliados_importar_liquidacion', { p_plataforma: $('importPlatform').value, p_nombre: file.name, p_sha256: hash, p_storage_path: path, p_size: file.size, p_mime: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', p_periodo_desde: $('periodFrom').value || null, p_periodo_hasta: $('periodTo').value || null, p_fecha_corte: $('cutoff').value || null, p_rows: rows, p_operations: preview.operaciones, p_incidents: preview.incidencias, p_idempotency_key: key }); if (error) throw error; $('importModal').classList.remove('show'); await loadBatches(); } catch (error) { $('importError').textContent = error.message; button.disabled = false; } };
+  const validateLegacyImport = $('validateImport').onclick;
+  $('validateImport').onclick = async () => {
+    if ($('importPlatform').value !== 'krediya') return validateLegacyImport();
+    try {
+      const file = $('file').files[0];
+      if (!file) throw new Error('Selecciona un archivo Excel.');
+      fileBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(fileBuffer, { type:'array', cellDates:true });
+      const sheet = workbook.Sheets.LIQUIDACION || workbook.Sheets[workbook.SheetNames[1]];
+      if (!sheet) throw new Error('El archivo de Krediya no contiene la hoja LIQUIDACION.');
+      const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:null, raw:true });
+      preview = D.importarKrediya(rows, await establishments());
+      $('preview').classList.remove('hidden');
+      $('previewMetrics').innerHTML = `<div class="metric"><small>Filas fuente</small><strong>${preview.filasOriginales.length}</strong></div><div class="metric"><small>Operaciones</small><strong>${preview.operaciones.length}</strong></div><div class="metric"><small>Novedades</small><strong>${preview.incidencias.length}</strong></div>`;
+      $('previewIssues').innerHTML = preview.incidencias.map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.sourceKey)}</td></tr>`).join('') || '<tr><td colspan="2">Sin novedades estructurales.</td></tr>';
+      $('saveImport').disabled = false;
+      $('importError').textContent = '';
+    } catch (error) {
+      $('importError').textContent = error.message;
+      $('saveImport').disabled = true;
+    }
+  };
 }());

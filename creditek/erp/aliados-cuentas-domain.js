@@ -10,7 +10,9 @@
 
   function validateNewBeneficiary(input) {
     const normalized = {
-      originCode: clean(input.originCode).toUpperCase(),
+      // El codigo es una clave opaca del maestro. Debe viajar exactamente como
+      // fue seleccionado; algunos aliados historicos usan codigos minusculos.
+      originCode: clean(input.originCode),
       name: clean(input.name),
       identification: digits(input.identification),
       bank: clean(input.bank),

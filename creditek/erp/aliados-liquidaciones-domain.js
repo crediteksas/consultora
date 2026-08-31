@@ -33,6 +33,21 @@
     const result = Number(normalized);
     return Number.isFinite(result) ? result : 0;
   }
+  function dineroColombia(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    let raw = texto(value).replace(/\((.*)\)/, '-$1').replace(/[^0-9,.-]/g, '');
+    if (!raw) return 0;
+    const lastComma = raw.lastIndexOf(',');
+    const lastDot = raw.lastIndexOf('.');
+    if (lastComma > lastDot) raw = raw.replace(/\./g, '').replace(',', '.');
+    else if (lastDot > lastComma && lastComma >= 0) raw = raw.replace(/,/g, '');
+    else if ((raw.match(/\./g) || []).length > 1) raw = raw.replace(/\./g, '');
+    else if ((raw.match(/,/g) || []).length > 1) raw = raw.replace(/,/g, '');
+    else if (/[,\.]\d{3}$/.test(raw)) raw = raw.replace(/[,\.]/g, '');
+    else raw = raw.replace(',', '.');
+    const result = Number(raw);
+    return Number.isFinite(result) ? result : 0;
+  }
   function filaObjeto(headers, row) {
     const out = {}, original = {};
     headers.forEach((header, index) => { out[clave(header)] = row[index] ?? null; original[texto(header)] = row[index] ?? null; });
@@ -162,6 +177,49 @@
       return operacion;
     });
     return { plataforma: 'alo', filasOriginales: originales, operaciones, incidencias };
+  }
+  function importarKrediya(rows, establecimientos) {
+    const originales = filasObjetos(rows);
+    const vistos = new Set();
+    const incidencias = [];
+    const operaciones = originales.map((row, index) => {
+      const externalId = texto(valor(row, '# Crédito', 'Credito', 'Crédito'));
+      const sourceKey = `krediya|${externalId}`;
+      const clasificacion = clasificarEstablecimiento(valor(row, 'Tienda', 'Aliado'), establecimientos);
+      const problemas = [];
+      if (!externalId || vistos.has(externalId)) problemas.push('operacion_duplicada');
+      vistos.add(externalId);
+      if (!texto(valor(row, 'IMEI'))) problemas.push('imei_vacio');
+      if (!texto(valor(row, 'Cédula', 'Cedula'))) problemas.push('documento_vacio');
+      if (clasificacion.incidencia) problemas.push(clasificacion.incidencia);
+      const estadoContrato = clave(valor(row, 'Estado del contrato'));
+      if (estadoContrato && estadoContrato !== 'firmado') problemas.push('operacion_no_reconocida');
+      const montoCredito = dineroColombia(valor(row, 'Monto a Financiar', 'Monto a Financiar.1'));
+      const inicial = dineroColombia(valor(row, 'Abono (moneda)', 'Abono (moneda).1'));
+      const pagamosArchivo = dineroColombia(valor(row, 'PAGAMOS'));
+      const pagoNetoArchivo = dineroColombia(valor(row, 'COMI PAGO'));
+      const bonoArchivo = dineroColombia(valor(row, 'BONO alex', 'BONO'));
+      const utilidadArchivo = dineroColombia(valor(row, 'UTILIDAD OSCAR'));
+      if (montoCredito <= 0 || pagamosArchivo <= 0 || pagoNetoArchivo < 0) problemas.push('valor_negativo_imposible');
+      const operacion = {
+        plataforma:'krediya', sourceKey, externalId, fecha:fecha(valor(row, 'Fecha')),
+        establecimientoNombre:texto(valor(row, 'Tienda', 'Aliado')), establecimiento:clasificacion.establecimiento,
+        tipoEstablecimiento:clasificacion.tipo, ejecutivo:clasificacion.establecimiento?.ejecutivo || null,
+        imei:texto(valor(row, 'IMEI')), clienteDocumento:texto(valor(row, 'Cédula', 'Cedula')),
+        clienteNombre:[valor(row, 'Nombres'), valor(row, 'Apellidos')].map(texto).filter(Boolean).join(' '),
+        clienteCelular:texto(valor(row, 'Teléfono', 'Telefono')), clienteEmail:texto(valor(row, 'Email')),
+        referencia:texto(valor(row, 'Descripción', 'Descripcion')), modelo:texto(valor(row, 'Modelo')),
+        montoCredito, montoBase:montoCredito, inicial, valorCredito:montoCredito,
+        inicialPlataforma:inicial, valorComercial:montoCredito + inicial,
+        pagamosArchivo, pagoNetoArchivo, bonoArchivo, utilidadArchivo,
+        vendedorNombre:[valor(row, 'Nombre Vendedor'), valor(row, 'Apellido vendedor')].map(texto).filter(Boolean).join(' '),
+        reconocida:estadoContrato === 'firmado' && problemas.length === 0,
+        movimientos:[{ fila:index + 2, tipo:'credito_krediya', original:row }], incidencias:[...new Set(problemas)],
+      };
+      operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));
+      return operacion;
+    });
+    return { plataforma:'krediya', filasOriginales:originales, operaciones, incidencias };
   }
   function resolverPolitica(policies, operationDate, plataforma, tipoEstablecimiento) {
     const day = String(operationDate || '').slice(0, 10);
@@ -316,5 +374,5 @@
     if (!/^(liquidation|payment)\./.test(tipo)) throw new Error('evento_invalido');
     return { type: tipo, aggregate_type: tipo.startsWith('payment.') ? 'payment' : 'liquidation', aggregate_id: liquidacionId, occurred_at: new Date().toISOString(), data: { liquidation_id: liquidacionId, ...extras } };
   }
-  return { ESTADOS, TRANSICIONES, clave, dinero, fecha, importarPayjoy, importarAlo, clasificarEstablecimiento, resolverPolitica, normalizarOperacion, calcularOperaciones, resumirUnificado, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
+  return { ESTADOS, TRANSICIONES, clave, dinero, dineroColombia, fecha, importarPayjoy, importarAlo, importarKrediya, clasificarEstablecimiento, resolverPolitica, normalizarOperacion, calcularOperaciones, resumirUnificado, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
 });

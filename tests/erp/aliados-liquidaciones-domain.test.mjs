@@ -28,6 +28,25 @@ test('normaliza dinero ALO aunque llegue como texto monetario', () => {
   assert.equal(domain.dinero('$60,000.00'), 60000);
 });
 
+test('normaliza valores colombianos de Krediya sin alterar el lector legado', () => {
+  assert.equal(domain.dineroColombia('$ 1.199.000,00'), 1199000);
+  assert.equal(domain.dineroColombia('$890.000'), 890000);
+  assert.equal(domain.dineroColombia('770100'), 770100);
+  assert.equal(domain.dinero('$3,257,600.00'), 3257600);
+});
+
+test('Krediya deduplica por número de crédito y conserva su fórmula de archivo', () => {
+  const headers = ['Fecha','# Crédito','Cédula','Nombres','Apellidos','IMEI','Modelo','Descripción','Monto a Financiar','Abono (moneda)','PAGAMOS','COMI PAGO','BONO alex','UTILIDAD OSCAR','Tienda','Estado del contrato'];
+  const row = ['24/08/2026','cob6uk5','73271437','Cesar','Vargas','12345','A16','Samsung A16',1079100,119900,890000,770100,30000,279000,'CREDITEK CIENAGA DE ORO 1','FIRMADO'];
+  const result = domain.importarKrediya([headers,row,row], establecimientos);
+  assert.equal(result.operaciones[0].sourceKey, 'krediya|cob6uk5');
+  assert.equal(result.operaciones[0].pagamosArchivo, 890000);
+  assert.equal(result.operaciones[0].pagoNetoArchivo, 770100);
+  assert.equal(result.operaciones[0].tipoEstablecimiento, 'propia');
+  assert.ok(result.operaciones[1].incidencias.includes('operacion_duplicada'));
+  assert.equal(result.operaciones[0].pagoNetoArchivo + result.operaciones[0].bonoArchivo + result.operaciones[0].utilidadArchivo, result.operaciones[0].montoCredito);
+});
+
 test('PayJoy une purchaseAmount y purchaseOutOfPocket en una operación', () => {
   const rows = [[
     'transaction time','merchant name','device','transaction type','device family','device model','imei','sales clerk id','sales clerk name','months','finance product','owed by PayJoy','owed by CREDITEK S.A.S.','national id',

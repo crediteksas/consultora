@@ -31,7 +31,7 @@ begin
   if length(v_account_number) < 5 then raise exception 'El número de cuenta debe tener al menos 5 números'; end if;
 
   select * into v_origin from public.origenes
-  where codigo = upper(btrim(p_origen_codigo)) and tipo = 'aliado' and activo = true;
+  where lower(btrim(codigo)) = lower(btrim(p_origen_codigo)) and tipo = 'aliado' and activo = true;
   if not found then raise exception 'El aliado no existe o está inactivo'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('beneficiary:' || v_origin.codigo, 0));

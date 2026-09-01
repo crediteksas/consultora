@@ -13,6 +13,7 @@
 <script src="kora-access-control.js?v=2.0.14"></script>
 <script src="sidebar.js?v=2.0.14" data-kora-shell="1.0.0"></script>
 <script src="inventario-export.js"></script>
+<script src="inventario-import.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -250,6 +251,7 @@ const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const inventarioDomain = window.CreditekInventarioDomain;
 const inventarioExport = window.CreditekInventarioExport;
+const inventarioImport = window.CreditekInventarioImport;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -622,7 +624,8 @@ function descargarPlantillaCargaInicial() {
       tiendaCodigo: tienda?.codigo || tiendaActiva() || '',
       tiendaNombre: tienda?.nombre || '',
     });
-    XLSX.writeFile(libro, `plantilla-inventario-inicial-${tiendaActiva() || 'tienda'}.xlsx`);
+    const nombreArchivo = (tienda?.nombre || 'tienda').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+    XLSX.writeFile(libro, `plantilla-inventario-inicial-${nombreArchivo}.xlsx`);
   } catch (error) {
     window.alert('No se pudo generar la plantilla: ' + (error?.message || 'error desconocido'));
   }
@@ -636,6 +639,23 @@ function crearControlesInventarioCentral() {
   acciones.insertAdjacentHTML('beforeend', `
     <button class="btn-export" id="btnAjustarInventario">Ajustar inventario</button>
     <button class="btn-export" id="btnCargarInventarioInicial">Cargar inventario inicial</button>
+    <button class="btn-export" id="btnImportarInventarioExcel">Subir plantilla Excel</button>
+  `);
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-bg" id="modalImportarInventario" role="dialog" aria-modal="true" aria-labelledby="importarInventarioTitulo">
+      <div class="modal-box">
+        <h2 id="importarInventarioTitulo">Subir inventario inicial desde Excel</h2>
+        <div class="modal-sub">Selecciona la tienda por su nombre. El código técnico queda como referencia secundaria.</div>
+        <form class="inventario-form" id="formImportarInventario">
+          <label>Tienda<select id="importarInventarioTienda" required></select></label>
+          <label>Archivo Excel<input id="importarInventarioArchivo" type="file" accept=".xlsx" required></label>
+          <label>Motivo<textarea id="importarInventarioMotivo" minlength="5" required>Inventario inicial importado desde plantilla Excel</textarea></label>
+          <div class="modal-sub" id="importarInventarioResumen"></div>
+          <div class="form-error" id="importarInventarioError" role="alert"></div>
+          <div class="form-actions"><button type="button" class="secondary" id="btnCancelarImportacion">Cancelar</button><button type="submit" class="primary" id="btnConfirmarImportacion">Validar y cargar</button></div>
+        </form>
+      </div>
+    </div>
   `);
   document.body.insertAdjacentHTML('beforeend', `
     <div class="modal-bg" id="modalOperacionInventario" role="dialog" aria-modal="true" aria-labelledby="operacionInventarioTitulo">
@@ -666,10 +686,55 @@ function crearControlesInventarioCentral() {
   `);
   document.getElementById('btnAjustarInventario').addEventListener('click', () => abrirOperacionInventario('ajuste'));
   document.getElementById('btnCargarInventarioInicial').addEventListener('click', () => abrirOperacionInventario('inicial'));
+  document.getElementById('btnImportarInventarioExcel').addEventListener('click', abrirImportacionInventario);
+  document.getElementById('btnCancelarImportacion').addEventListener('click', cerrarImportacionInventario);
+  document.getElementById('formImportarInventario').addEventListener('submit', importarInventarioExcel);
   document.getElementById('btnCancelarOperacion').addEventListener('click', cerrarOperacionInventario);
   document.getElementById('operacionProducto').addEventListener('change', actualizarCamposOperacion);
   document.getElementById('operacionTienda').addEventListener('change', actualizarCamposOperacion);
   document.getElementById('formOperacionInventario').addEventListener('submit', guardarOperacionInventario);
+}
+
+function abrirImportacionInventario() {
+  const tiendas = tiendasCache.filter(t => t.codigo !== 'CENTRAL');
+  document.getElementById('formImportarInventario').reset();
+  document.getElementById('importarInventarioMotivo').value = 'Inventario inicial importado desde plantilla Excel';
+  document.getElementById('importarInventarioTienda').innerHTML = '<option value="">Selecciona una tienda</option>' + tiendas.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)} · código ${escapeHtml(t.codigo)}</option>`).join('');
+  const preferida = tiendaActiva();
+  if (preferida && preferida !== 'CENTRAL') document.getElementById('importarInventarioTienda').value = preferida;
+  document.getElementById('importarInventarioError').textContent = '';
+  document.getElementById('importarInventarioResumen').textContent = '';
+  document.getElementById('modalImportarInventario').classList.add('show');
+}
+
+function cerrarImportacionInventario() { document.getElementById('modalImportarInventario')?.classList.remove('show'); }
+
+async function importarInventarioExcel(evento) {
+  evento.preventDefault();
+  const errorEl = document.getElementById('importarInventarioError');
+  const boton = document.getElementById('btnConfirmarImportacion');
+  errorEl.textContent = '';
+  try {
+    const tienda = document.getElementById('importarInventarioTienda').value;
+    const archivo = document.getElementById('importarInventarioArchivo').files[0];
+    const motivo = document.getElementById('importarInventarioMotivo').value.trim();
+    if (!tienda || !archivo || motivo.length < 5) throw new Error('Selecciona tienda, archivo y escribe un motivo de mínimo 5 caracteres.');
+    const filas = inventarioImport.leerLibro(XLSX, await archivo.arrayBuffer());
+    const cantidad = filas.reduce((total, fila) => total + fila.cantidad, 0);
+    document.getElementById('importarInventarioResumen').textContent = `${filas.length} filas validadas · ${cantidad} unidades en total.`;
+    boton.disabled = true; boton.textContent = 'Cargando...';
+    const { data, error } = await sb.rpc('inventario_importar_inicial_excel', { p_tienda_codigo: tienda, p_filas: filas, p_motivo: motivo });
+    if (error) throw error;
+    if (!data?.ok) throw new Error('El servidor no confirmó la importación.');
+    cerrarImportacionInventario();
+    await Promise.all([cargarCelulares(), cargarAccesorios()]);
+    renderResumen();
+    window.alert(`Inventario cargado: ${data.cantidad} unidades y ${data.productos_creados} productos nuevos.`);
+  } catch (error) {
+    errorEl.textContent = error?.message || 'No fue posible importar el archivo.';
+  } finally {
+    boton.disabled = false; boton.textContent = 'Validar y cargar';
+  }
 }
 
 let operacionInventarioActual = null;

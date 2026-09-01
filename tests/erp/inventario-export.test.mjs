@@ -64,9 +64,9 @@ test('genera una plantilla de carga inicial separada del importador', () => {
   assert.deepEqual(libro.SheetNames, ['Instrucciones', 'Inventario inicial']);
   const filas = XLSX.utils.sheet_to_json(libro.Sheets['Inventario inicial'], { header: 1 });
   const instrucciones = XLSX.utils.sheet_to_json(libro.Sheets.Instrucciones, { header: 1 });
-  assert.equal(filas[1][0], 'STORE-1');
+  assert.equal(filas[1][0], 'EJ-CEL-001');
   assert.equal(filas[1][1], 'Tienda prueba');
-  assert.match(instrucciones.at(-1)[1], /no carga datos automáticamente/i);
+  assert.match(instrucciones.at(-1)[1], /validar e importar/i);
 });
 
 test('la tienda no solicita costos internos en las consultas de inventario', () => {

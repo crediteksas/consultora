@@ -143,11 +143,11 @@
       throw new Error('La biblioteca de Excel no está disponible.');
     }
     const encabezados = [
-      'Tienda código', 'Tienda nombre', 'Tipo', 'Referencia o producto',
+      'Código de producto', 'Tienda nombre', 'Tipo', 'Referencia o producto',
       'IMEI o serial', 'Cantidad', 'Costo unitario', 'Precio de tienda', 'Observación',
     ];
-    const ejemploCelular = [tiendaCodigo, tiendaNombre, 'CELULAR', 'EJEMPLO — BORRAR', '000000000000000', 1, 0, 0, 'Borra esta fila antes de entregar'];
-    const ejemploAccesorio = [tiendaCodigo, tiendaNombre, 'ACCESORIO', 'EJEMPLO — BORRAR', '', 1, 0, 0, 'Borra esta fila antes de entregar'];
+    const ejemploCelular = ['EJ-CEL-001', tiendaNombre, 'CELULAR', 'EJEMPLO — BORRAR', '000000000000000', 1, 0, 0, 'Borra esta fila antes de entregar'];
+    const ejemploAccesorio = ['EJ-ACC-001', tiendaNombre, 'ACCESORIO', 'EJEMPLO — BORRAR', '', 1, 0, 0, 'Borra esta fila antes de entregar'];
     const hoja = XLSX.utils.aoa_to_sheet([encabezados, ejemploCelular, ejemploAccesorio]);
     hoja['!autofilter'] = { ref: 'A1:I3' };
     hoja['!freeze'] = { xSplit: 0, ySplit: 1 };
@@ -161,12 +161,12 @@
 
     const instrucciones = XLSX.utils.aoa_to_sheet([
       ['PLANTILLA DE INVENTARIO INICIAL — KORA'],
-      ['1', 'No cambies los nombres de las columnas.'],
+      ['1', 'No cambies los nombres de las columnas. El código de tienda se selecciona al importar y no debe escribirse como nombre principal.'],
       ['2', 'Usa una fila por cada celular; el IMEI o serial es obligatorio.'],
       ['3', 'Para accesorios, deja vacío IMEI o serial e indica la cantidad total.'],
       ['4', 'Completa costo unitario y precio de tienda en pesos, sin símbolos ni puntos.'],
       ['5', 'Borra las dos filas de ejemplo antes de entregar el archivo.'],
-      ['6', 'La descarga no carga datos automáticamente: entrega el archivo a Administración para validación e importación.'],
+      ['6', 'Administración puede validar e importar este archivo desde Inventario Retail. La carga completa es atómica: si una fila falla, no se carga ninguna.'],
     ]);
     instrucciones['!cols'] = [{ wch: 8 }, { wch: 105 }];
 

@@ -331,7 +331,33 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     style.id = 'sidebarStyles';
     style.textContent = `
 #app.show { display: flex !important; align-items: flex-start; }
-.main-content { flex: 1; min-width: 0; }
+.main-content { flex: 1; min-width: 0; max-width: 100%; overflow-x: hidden; }
+.main-content .page,
+.main-content .page-shell,
+.main-content .container,
+.main-content .dashboard { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.main-content img,
+.main-content video,
+.main-content canvas,
+.main-content svg { max-width: 100%; }
+.main-content input,
+.main-content select,
+.main-content textarea { max-width: 100%; min-width: 0; }
+.main-content h1,
+.main-content h2,
+.main-content h3,
+.main-content p,
+.main-content td,
+.main-content th { overflow-wrap: anywhere; }
+.main-content .tabla-wrap,
+.main-content .table-wrap,
+.main-content .table-shell,
+.main-content .kora-incidents-table-wrap,
+.main-content [role="region"][aria-label*="columnas"] {
+  max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.main-content .modal-box,
+.main-content dialog { max-width: calc(100vw - 32px); }
 
 .sidebar {
   width: 220px; flex-shrink: 0; background: var(--azul, #0B1E3D); color: white;
@@ -394,6 +420,45 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   .sidebar.abierto { transform: translateX(0); }
   .sidebar-hamburguesa { display: flex; align-items: center; justify-content: center; }
   .main-content { padding-top: 54px; }
+  .main-content .page,
+  .main-content .page-shell,
+  .main-content .dashboard { width: 100%; padding-left: 16px; padding-right: 16px; }
+  .main-content .head,
+  .main-content .page-top,
+  .main-content .section-head,
+  .main-content .panel-head,
+  .main-content .actions,
+  .main-content .modal-actions { flex-wrap: wrap; }
+  .main-content .metrics,
+  .main-content .kpis,
+  .main-content .resumen,
+  .main-content .resumen-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content .page,
+  .main-content .page-shell,
+  .main-content .dashboard { padding-left: 12px; padding-right: 12px; }
+  .main-content .form-grid,
+  .main-content .grid2,
+  .main-content .filters,
+  .main-content .movement-form,
+  .main-content .item-row,
+  .main-content .item-row.sin-central { grid-template-columns: minmax(0, 1fr); }
+  .main-content .span-2,
+  .main-content .field.full { grid-column: auto; }
+  .main-content .toolbar > input,
+  .main-content .toolbar > select,
+  .main-content .toolbar > button,
+  .main-content .filters > input,
+  .main-content .filters > select,
+  .main-content .filters > button { width: 100%; flex: 1 1 100%; }
+  .main-content .modal,
+  .main-content .modal-bg { padding: 10px; }
+  .main-content .modal-box { padding: 18px 14px; max-width: calc(100vw - 20px); }
+  .main-content .modal-actions > button { flex: 1 1 100%; }
 }
     `;
     document.head.appendChild(style);

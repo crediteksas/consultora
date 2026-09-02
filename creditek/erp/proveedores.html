@@ -300,6 +300,25 @@
   </div>
 </main>
 
+<div id="modal-saldo-inicial" class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-50 p-4 items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="saldo-inicial-titulo">
+  <section class="w-full max-w-lg max-h-full overflow-y-auto bg-white rounded-xl shadow-2xl p-6">
+    <h2 id="saldo-inicial-titulo" class="text-lg font-semibold text-gray-800">Saldo inicial con proveedor</h2>
+    <p id="saldo-inicial-proveedor" class="mt-1 text-sm text-gray-500"></p>
+    <p class="mt-3 rounded bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900">Registra una sola vez la deuda existente antes de comenzar en KORA. No crea compras, mercancía, remisiones, inventario ni movimientos de caja.</p>
+    <form id="form-saldo-inicial" class="mt-4 space-y-3">
+      <input type="hidden" id="saldo-inicial-proveedor-id">
+      <label class="block text-sm">Fecha de corte <span class="text-red-500">*</span><input id="saldo-inicial-fecha" type="date" required class="mt-1 w-full border rounded px-3 py-2"></label>
+      <label class="block text-sm">Fecha de vencimiento <span class="text-xs text-gray-500">(opcional)</span><input id="saldo-inicial-vencimiento" type="date" class="mt-1 w-full border rounded px-3 py-2"></label>
+      <label class="block text-sm">Valor pendiente <span class="text-red-500">*</span><input id="saldo-inicial-monto" type="number" min="1" step="1" required placeholder="0" class="mt-1 w-full border rounded px-3 py-2"></label>
+      <label class="block text-sm">Factura o referencia <span class="text-xs text-gray-500">(opcional)</span><input id="saldo-inicial-referencia" type="text" maxlength="120" placeholder="Número del estado de cuenta" class="mt-1 w-full border rounded px-3 py-2"></label>
+      <label class="block text-sm">Observación<textarea id="saldo-inicial-observacion" maxlength="500" rows="3" placeholder="Detalle de lo que compone el saldo" class="mt-1 w-full border rounded px-3 py-2"></textarea></label>
+      <label class="block text-sm">Soporte <span class="text-red-500">*</span><input id="saldo-inicial-soporte" type="file" required accept="image/*,application/pdf" class="mt-1 w-full border rounded px-3 py-2"><span class="block mt-1 text-xs text-gray-500">Estado de cuenta, factura o relación enviada por el proveedor.</span></label>
+      <label class="block text-sm">Responsable<input id="saldo-inicial-responsable" type="text" readonly class="mt-1 w-full border rounded px-3 py-2 bg-gray-100"></label>
+      <div class="flex gap-2 pt-2"><button id="btn-cancelar-saldo-inicial" type="button" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Cancelar</button><button id="btn-guardar-saldo-inicial" type="submit" class="flex-1 px-4 py-2 rounded bg-teal-600 hover:bg-teal-700 text-white font-semibold">Registrar saldo inicial</button></div>
+    </form>
+  </section>
+</div>
+
 <!-- ============================================================ SCRIPT -->
 <script>
 // ============================================================
@@ -380,6 +399,7 @@ let facturas = [];
 let proveedorSeleccionado = null;
 let detalleFacturaActual = null;
 let pagoIdempotencyKey = null;
+let saldoInicialIdempotencyKey = null;
 
 // ============================================================
 // CARGA DE DATOS
@@ -395,7 +415,7 @@ async function cargarProveedores() {
   // Saldos pendientes agregados
   const { data: fact, error: fErr } = await SB
     .from('facturas_proveedor')
-    .select('id, proveedor_id, total, saldo, fecha_vencimiento');
+    .select('id, proveedor_id, total, saldo, fecha_vencimiento, origen_registro');
   if (fErr) { toast('Error cargando facturas: ' + fErr.message, 'error'); return; }
   facturas = fact || [];
   saldoPorProveedor = {};
@@ -437,6 +457,7 @@ function render() {
     const saldo = saldoPorProveedor[p.id] || 0;
     const semaforo = p.activo ? 'semaforo-verde' : 'semaforo-gris';
     const seleccionado = proveedorSeleccionado === p.id ? 'seleccionado' : '';
+    const tieneSaldoInicial = facturas.some(f => f.proveedor_id === p.id && f.origen_registro === 'saldo_inicial');
     return `
       <tr class="${seleccionado}" data-id="${p.id}">
         <td class="px-4 py-3 font-medium text-gray-800">${esc(p.nombre)}</td>
@@ -451,6 +472,7 @@ function render() {
         </td>
         <td class="px-4 py-3 text-center whitespace-nowrap">
           <button data-facturas="${p.id}" class="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-3">Ver compras</button>
+          ${tieneSaldoInicial ? '<span class="text-xs text-gray-400 mr-3">Saldo inicial cargado</span>' : `<button data-saldo-inicial="${p.id}" class="text-teal-600 hover:text-teal-800 text-xs font-semibold mr-3">Saldo inicial</button>`}
           <button data-editar="${p.id}" class="text-gray-600 hover:text-gray-800 text-xs">Editar</button>
         </td>
       </tr>
@@ -508,7 +530,7 @@ async function mostrarFacturas(provId) {
 
   const { data, error } = await SB
     .from('facturas_proveedor')
-    .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota')
+    .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota, origen_registro')
     .eq('proveedor_id', provId)
     .order('fecha', { ascending: false });
 
@@ -523,9 +545,10 @@ async function mostrarFacturas(provId) {
       const badge = estado === 'pendiente'
         ? '<span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">Pendiente</span>'
         : '<span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">Pagada</span>';
+      const origen = f.origen_registro === 'saldo_inicial' ? '<span class="ml-1 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">Saldo inicial</span>' : '';
       return `
         <tr>
-          <td class="px-3 py-2 font-mono text-xs">${esc(f.numero) || '—'}</td>
+          <td class="px-3 py-2 font-mono text-xs">${esc(f.numero) || '—'}${origen}</td>
           <td class="px-3 py-2">${fecha(f.fecha)}</td>
           <td class="px-3 py-2 text-right font-mono">${money(f.total)}</td>
           <td class="px-3 py-2 text-right font-mono ${Number(f.saldo) > 0 ? 'text-orange-600' : 'text-gray-400'}">${money(f.saldo)}</td>
@@ -694,6 +717,56 @@ async function registrarPago(event) {
   }
 }
 
+function abrirSaldoInicial(proveedorId) {
+  const proveedor = proveedores.find(item => item.id === proveedorId);
+  if (!proveedor) return;
+  if (facturas.some(f => f.proveedor_id === proveedorId && f.origen_registro === 'saldo_inicial')) { toast('Este proveedor ya tiene un saldo inicial registrado', 'warn'); return; }
+  document.getElementById('saldo-inicial-proveedor-id').value = proveedor.id;
+  document.getElementById('saldo-inicial-proveedor').textContent = proveedor.nombre;
+  document.getElementById('saldo-inicial-fecha').value = proveedoresDomain.fechaCalendarioLocal(new Date());
+  document.getElementById('saldo-inicial-vencimiento').value = '';
+  document.getElementById('saldo-inicial-monto').value = '';
+  document.getElementById('saldo-inicial-referencia').value = '';
+  document.getElementById('saldo-inicial-observacion').value = '';
+  document.getElementById('saldo-inicial-soporte').value = '';
+  document.getElementById('saldo-inicial-responsable').value = usuarioActual?.email || '';
+  saldoInicialIdempotencyKey = crypto.randomUUID();
+  const modal = document.getElementById('modal-saldo-inicial');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+  document.getElementById('saldo-inicial-fecha').focus();
+}
+
+function cerrarSaldoInicial() { const modal = document.getElementById('modal-saldo-inicial'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+
+async function registrarSaldoInicial(event) {
+  event.preventDefault();
+  const proveedorId = document.getElementById('saldo-inicial-proveedor-id').value;
+  const fechaCorte = document.getElementById('saldo-inicial-fecha').value;
+  const fechaVencimiento = document.getElementById('saldo-inicial-vencimiento').value || null;
+  const monto = Number(document.getElementById('saldo-inicial-monto').value || 0);
+  const archivo = document.getElementById('saldo-inicial-soporte').files?.[0];
+  if (!proveedorId || !fechaCorte || monto <= 0 || !archivo) { toast('Completa fecha, valor y soporte del saldo inicial', 'error'); return; }
+  if (fechaVencimiento && fechaVencimiento < fechaCorte) { toast('El vencimiento no puede ser anterior a la fecha de corte', 'error'); return; }
+  const btn = document.getElementById('btn-guardar-saldo-inicial'); btn.disabled = true; btn.textContent = 'Registrando...';
+  try {
+    const extension = (archivo.name.split('.').pop() || 'bin').toLowerCase();
+    const soportePath = `saldos-iniciales-proveedores/${saldoInicialIdempotencyKey}.${extension}`;
+    const { error: uploadError } = await SB.storage.from(BUCKET_SOPORTES).upload(soportePath, archivo, { cacheControl: '3600', upsert: false });
+    if (uploadError) throw new Error('No se pudo subir el soporte: ' + uploadError.message);
+    const { data, error } = await SB.rpc('registrar_saldo_inicial_proveedor', {
+      p_proveedor_id: proveedorId, p_fecha_corte: fechaCorte, p_fecha_vencimiento: fechaVencimiento,
+      p_monto: monto, p_referencia: document.getElementById('saldo-inicial-referencia').value.trim() || null,
+      p_observacion: document.getElementById('saldo-inicial-observacion').value.trim() || null,
+      p_soporte_path: soportePath, p_idempotency_key: saldoInicialIdempotencyKey,
+    });
+    if (error) throw new Error(error.message);
+    if (!data?.ok) throw new Error('El servidor no confirmó el saldo inicial');
+    cerrarSaldoInicial(); toast(data.reutilizado ? 'El saldo inicial ya estaba registrado' : 'Saldo inicial registrado correctamente');
+    await cargarProveedores(); await mostrarFacturas(proveedorId);
+  } catch (error) { toast('No se pudo registrar el saldo inicial: ' + error.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Registrar saldo inicial'; }
+}
+
 // ============================================================
 // FORMULARIO — crear / editar / cancelar
 // ============================================================
@@ -777,8 +850,12 @@ document.getElementById('panel-detalle-factura').addEventListener('click', event
   if (btn) abrirSoporte(btn.dataset.soporte);
 });
 document.getElementById('form-pago-proveedor').addEventListener('submit', registrarPago);
+document.getElementById('form-saldo-inicial').addEventListener('submit', registrarSaldoInicial);
+document.getElementById('btn-cancelar-saldo-inicial').addEventListener('click', cerrarSaldoInicial);
 
 document.getElementById('tbody-proveedores').addEventListener('click', e => {
+  const btnSaldoInicial = e.target.closest('[data-saldo-inicial]');
+  if (btnSaldoInicial) { abrirSaldoInicial(btnSaldoInicial.getAttribute('data-saldo-inicial')); return; }
   const btnFacturas = e.target.closest('[data-facturas]');
   if (btnFacturas) {
     mostrarFacturas(btnFacturas.getAttribute('data-facturas'));

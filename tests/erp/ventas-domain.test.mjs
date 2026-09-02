@@ -47,7 +47,8 @@ test('consultas de venta omiten costo, utilidad y comodines', () => {
   assert.match(ventas.columnasDetalleItems(), /precio_venta/);
 });
 
-test('consulta de unidad para vender omite costo interno', () => {
-  assert.doesNotMatch(ventas.columnasUnidadVenta(), /costo_remision|precio_guia|\*/);
+test('consulta de unidad trae costo real y precio sugerido por separado', () => {
+  assert.match(ventas.columnasUnidadVenta(), /costo_remision/);
+  assert.doesNotMatch(ventas.columnasUnidadVenta(), /precio_guia|\*/);
   assert.match(ventas.columnasUnidadVenta(), /precio_tienda/);
 });

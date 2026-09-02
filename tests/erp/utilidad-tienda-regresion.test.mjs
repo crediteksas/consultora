@@ -9,7 +9,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const domainPath = path.join(root, 'creditek/erp/ventas-utilidad-domain.js');
 const migrationPath = path.join(
   root,
-  'creditek/erp/migrations/20260727_utilidad_tienda_costo_remision.sql'
+  'supabase/migrations/20260902190000_kora_utilidad_sobre_costo_real.sql'
 );
 
 test('calcula utilidad con precio negociado y costo de remisión congelado', async () => {
@@ -29,15 +29,15 @@ test('calcula utilidad con precio negociado y costo de remisión congelado', asy
   assert.equal(resultado.totalCostoRemision, 520000);
 });
 
-test('la persistencia congela precio_tienda y no usa costos centrales', async () => {
-  assert.equal(existsSync(migrationPath), true, 'falta la migración mínima de utilidad');
+test('la persistencia congela el costo real y nunca el precio sugerido', async () => {
+  assert.equal(existsSync(migrationPath), true, 'falta la migración correctiva de utilidad');
   const sql = (await readFile(migrationPath, 'utf8')).toLowerCase();
 
   assert.match(sql, /costo_remision_congelado/);
-  assert.match(sql, /u\.precio_tienda/);
-  assert.match(sql, /sc\.precio_tienda/);
+  assert.match(sql, /u\.costo_remision/);
+  assert.match(sql, /sc\.costo_promedio/);
   assert.match(sql, /new\.utilidad/);
-  assert.doesNotMatch(sql, /u\.costo_remision|costo_promedio|costo_proveedor|costo_real/);
+  assert.doesNotMatch(sql, /v_costo\s*:=\s*v_unidad\.precio_tienda|v_costo\s*:=\s*v_stock\.precio_tienda/);
 });
 
 test('la pantalla conserva el precio real negociado en el payload', async () => {
@@ -47,4 +47,14 @@ test('la pantalla conserva el precio real negociado en el payload', async () => 
   assert.match(html, /ventasUtilidad\.calcular/);
   assert.match(html, /precio_venta:\s*it\.precio_venta/);
   assert.doesNotMatch(html, /precio_venta:\s*it\.precio_minimo/);
+  assert.match(html, /costoRemisionCongelado:\s*it\.costo_unitario/);
+});
+
+test('reportes separa precio sugerido de costo real y valoriza inventario al costo', async () => {
+  const reportes = await readFile(path.join(root, 'creditek/erp/reportes.html'), 'utf8');
+
+  assert.match(reportes, /Inventario \(costo real\)/);
+  assert.match(reportes, /Valor a precio sugerido/);
+  assert.match(reportes, /uns\.reduce\(\(s, u\) => s \+ Number\(u\.costo_remision \?\? 0\)/);
+  assert.match(reportes, /Number\(r\.cantidad \|\| 0\) \* Number\(r\.costo_promedio \?\? 0\)/);
 });

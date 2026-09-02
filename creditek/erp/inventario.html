@@ -466,10 +466,10 @@ function renderResumen() {
   let cards = `
     <div class="resumen-card"><div class="label">Celulares disponibles</div><div class="valor">${resumen.celularesDisponibles}</div></div>
     <div class="resumen-card"><div class="label">Accesorios disponibles</div><div class="valor">${resumen.accesoriosDisponibles}</div></div>
-    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Valor inventario al costo'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
+    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor a precio sugerido' : 'Valor inventario al costo'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
   `;
   if (esCentral()) {
-    cards += `<div class="resumen-card"><div class="label">Costo interno Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
+    cards += `<div class="resumen-card"><div class="label">Costo real Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
   }
   if (resumen.preciosPendientes > 0) {
     cards += `<div class="resumen-card"><div class="label">Precios de tienda pendientes</div><div class="valor">${resumen.preciosPendientes}</div></div>`;

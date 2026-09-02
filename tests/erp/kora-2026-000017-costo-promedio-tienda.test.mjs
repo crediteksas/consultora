@@ -55,10 +55,10 @@ test('la correccion excluye serializados sin tocar ventas ni movimientos histori
 });
 
 test('la venta posterior conserva el costo promedio vigente como snapshot', async () => {
-  const utilidad = await source(new URL('../../creditek/erp/migrations/20260727_utilidad_tienda_costo_remision.sql', import.meta.url));
+  const utilidad = await source(new URL('../../supabase/migrations/20260902190000_kora_utilidad_sobre_costo_real.sql', import.meta.url));
 
-  assert.match(utilidad, /select\s+u\.precio_tienda/i);
+  assert.match(utilidad, /select\s+u\.costo_remision/i);
   assert.match(utilidad, /where u\.id = new\.unidad_id/i);
-  assert.match(utilidad, /select\s+sc\.precio_tienda/i);
+  assert.match(utilidad, /select\s+sc\.costo_promedio/i);
   assert.match(utilidad, /new\.costo_remision_congelado\s*:=\s*v_costo_remision/i);
 });

@@ -875,7 +875,7 @@ async function buscarClientePorCedula() {
 // ─── Paso 3: productos ──────────────────────────────────────────────────
 function agregarItemCelular() {
   const idx = venta.items.length;
-  venta.items.push({ tipoProducto: 'serializado', producto_id: null, unidad_id: null, cantidad: 1, precio_venta: null, nombreProducto: null, imei: '' });
+  venta.items.push({ tipoProducto: 'serializado', producto_id: null, unidad_id: null, cantidad: 1, precio_venta: null, precio_sugerido: null, costo_unitario: null, nombreProducto: null, imei: '' });
   renderItemsVenta();
 }
 
@@ -905,7 +905,7 @@ function agregarItemAccesorio() {
         div.remove();
         // El precio configurado en la tienda se usa como sugerencia editable.
         const { data: stockTienda } = await sb.from('stock_cantidad')
-          .select('precio_tienda')
+          .select('precio_tienda,costo_promedio')
           .eq('producto_id', prod.id)
           .eq('tienda_codigo', currentPerfil.tienda_codigo)
           .maybeSingle();
@@ -913,7 +913,8 @@ function agregarItemAccesorio() {
         venta.items.push({
           tipoProducto: 'cantidad', producto_id: prod.id, unidad_id: null,
           cantidad: 1, precio_venta: precioAcc, nombreProducto: prod.nombre,
-          precio_minimo: stockTienda?.precio_tienda || 0,
+          precio_sugerido: stockTienda?.precio_tienda || 0,
+          costo_unitario: stockTienda?.costo_promedio ?? null,
         });
         renderItemsVenta();
       });
@@ -1027,7 +1028,8 @@ async function validarImei(idx, imei, silencioso) {
   // precio_tienda es el precio sugerido; el vendedor puede modificarlo por promoción.
   const precioSugerido = unidad.precio_tienda || null;
   if (!venta.items[idx].precio_venta) venta.items[idx].precio_venta = precioSugerido;
-  venta.items[idx].precio_minimo = unidad.precio_tienda || 0;
+  venta.items[idx].precio_sugerido = unidad.precio_tienda || 0;
+  venta.items[idx].costo_unitario = unidad.costo_remision ?? null;
   if (estadoDiv) { estadoDiv.textContent = `✓ ${unidad.productos?.nombre || 'Producto'} — disponible`; estadoDiv.className = 'imei-estado ok'; }
   if (!silencioso) renderItemsVenta();
   else actualizarTotalParcial();
@@ -1043,7 +1045,7 @@ function renderResumenFinal() {
   const total = venta.items.reduce((s, it) => s + (it.precio_venta || 0) * (it.cantidad || 1), 0);
   const utilidades = venta.items.map(it => ventasUtilidad.calcular({
     precioVenta: it.precio_venta,
-    costoRemisionCongelado: it.precio_minimo,
+    costoRemisionCongelado: it.costo_unitario,
     cantidad: it.cantidad,
   }).utilidad);
   const utilidadEstimada = utilidades.every(valor => valor !== null)

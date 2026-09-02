@@ -48,6 +48,7 @@
       'imei',
       'estado',
       'tienda_actual',
+      'costo_remision',
       'precio_tienda',
       'productos(nombre)',
     ].join(',');

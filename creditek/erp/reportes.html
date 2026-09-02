@@ -621,7 +621,7 @@
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ventas del período</div><div class="valor font-mono" id="kpi-ventas">—</div><div class="delta" id="kpi-ventas-delta">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ticket promedio</div><div class="valor font-mono" id="kpi-ticket">—</div><div class="delta" id="kpi-ticket-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>
-    <div class="kpi-card bg-white border border-gray-200"><div class="label">Inventario (costo tienda)</div><div class="valor font-mono" id="kpi-inventario">—</div><div class="delta" id="kpi-inventario-sub">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Inventario (costo real)</div><div class="valor font-mono" id="kpi-inventario">—</div><div class="delta" id="kpi-inventario-sub">—</div></div>
   </section>
 
   <!-- ==================== 1.1 CUADRO DIARIO VENTAS ==================== -->
@@ -699,7 +699,7 @@
       <summary class="p-4 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">📦 1.3 Inventario valorizado por tienda</h2>
-          <p class="text-xs text-gray-500">SKUs, unidades y valor a precio tienda (+ costo Oscar para gerencia).</p>
+          <p class="text-xs text-gray-500">SKUs, unidades, valor a precio sugerido y costo real del inventario.</p>
         </div>
         <span class="text-xs text-gray-400">▾</span>
       </summary>
@@ -711,8 +711,8 @@
                 <th class="px-3 py-2 text-left font-semibold">Tienda</th>
                 <th class="px-3 py-2 text-right font-semibold"># SKUs</th>
                 <th class="px-3 py-2 text-right font-semibold"># Unidades</th>
-                <th class="px-3 py-2 text-right font-semibold">Valor (costo tienda)</th>
-                <th class="px-3 py-2 text-right font-semibold solo-central">Valor (costo Oscar)</th>
+                <th class="px-3 py-2 text-right font-semibold">Valor a precio sugerido</th>
+                <th class="px-3 py-2 text-right font-semibold solo-central">Costo real</th>
               </tr>
             </thead>
             <tbody id="tbody-inventario"><tr><td colspan="5" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
@@ -1186,8 +1186,8 @@ async function cargarKPIs(cache) {
 
   const uns = unRes.data || [];
   const sts = stRes.data || [];
-  const valorInv = uns.reduce((s, u) => s + Number(u.precio_tienda ?? u.costo_remision ?? 0), 0)
-    + sts.reduce((s, r) => s + Number(r.cantidad || 0) * Number(r.precio_tienda ?? r.costo_promedio ?? 0), 0);
+  const valorInv = uns.reduce((s, u) => s + Number(u.costo_remision ?? 0), 0)
+    + sts.reduce((s, r) => s + Number(r.cantidad || 0) * Number(r.costo_promedio ?? 0), 0);
   document.getElementById('kpi-inventario').textContent = money(valorInv);
   document.getElementById('kpi-inventario-sub').textContent = uns.length + ' celulares + ' + sts.length + ' líneas de accesorios';
 }

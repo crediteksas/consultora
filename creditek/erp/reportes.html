@@ -341,11 +341,12 @@
 
   body.kora-product-page .kpi-card .valor {
     color: #0B1E3D;
-    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-size: clamp(1.5rem, 2vw, 2.25rem);
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.1;
     margin-top: 8px;
+    white-space: nowrap;
   }
 
   body.kora-product-page .kpi-card .label {
@@ -525,6 +526,16 @@
   body.kora-product-page main#app > *:nth-child(3) { animation-delay: 150ms; }
   body.kora-product-page main#app > *:nth-child(4) { animation-delay: 200ms; }
 
+  body.kora-product-page .kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 1200px) {
+    body.kora-product-page .kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
   @media (max-width: 768px) {
     body.kora-product-page .kpi-card {
       min-height: 124px;
@@ -537,6 +548,16 @@
 
     body.kora-product-page section.reporte details[open] > summary + div {
       overflow: hidden;
+    }
+  }
+
+  @media (max-width: 520px) {
+    body.kora-product-page .kpi-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.kora-product-page .kpi-card .valor {
+      font-size: clamp(1.4rem, 8vw, 2rem);
     }
   }
 
@@ -617,7 +638,7 @@
   </section>
 
   <!-- DASHBOARD KPIs -->
-  <section class="grid grid-cols-1 md:grid-cols-4 gap-3">
+  <section class="kpi-grid grid gap-3">
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ventas del período</div><div class="valor font-mono" id="kpi-ventas">—</div><div class="delta" id="kpi-ventas-delta">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ticket promedio</div><div class="valor font-mono" id="kpi-ticket">—</div><div class="delta" id="kpi-ticket-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>

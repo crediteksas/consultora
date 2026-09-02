@@ -42,4 +42,7 @@ test('consultas financieras no usan comodines', () => {
   assert.doesNotMatch(cuenta.columnasMovimientos(), /\*/);
   assert.doesNotMatch(cuenta.columnasAbonos(), /\*/);
   assert.match(cuenta.columnasAbonos(), /verificado_at/);
+  assert.doesNotMatch(cuenta.columnasSaldosIniciales(), /\*/);
+  assert.match(cuenta.columnasSaldosIniciales(), /fecha_corte/);
+  assert.match(cuenta.columnasSaldosIniciales(), /soporte_path/);
 });

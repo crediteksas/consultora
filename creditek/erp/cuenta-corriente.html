@@ -107,8 +107,10 @@ body.modal-open { overflow: hidden; }
 
 .campo { margin-bottom: 13px; }
 .campo label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
-.campo input, .campo select { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-family: inherit; transition: all .15s ease; }
-.campo input:focus, .campo select:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
+.campo input, .campo select, .campo textarea { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-family: inherit; transition: all .15s ease; }
+.campo textarea { resize: vertical; }
+.campo small { display: block; margin-top: 6px; color: var(--text2); font-size: 11.5px; line-height: 1.4; }
+.campo input:focus, .campo select:focus, .campo textarea:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
 .foto-preview { max-width: 160px; border-radius: 10px; margin-top: 8px; display: none; border: 1px solid var(--border); }
 
 .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
@@ -204,7 +206,10 @@ body.modal-open { overflow: hidden; }
   </div>
 
   <div class="page">
-    <div class="page-top"><h1>Cuenta corriente</h1></div>
+    <div class="page-top">
+      <h1>Cuenta corriente</h1>
+      <button class="btn-primary" id="btnSaldoInicial" style="display:none;">+ Registrar saldo inicial</button>
+    </div>
     <details class="cuadrito-vacio"><summary>¿Cómo funcionan los abonos?</summary><p>El abono reduce la cuenta corriente. Solo descuenta Caja cuando seleccionas “Efectivo de la tienda”; las demás fuentes no alteran el efectivo.</p></details>
 
     <div class="tabla-wrap">
@@ -227,6 +232,31 @@ body.modal-open { overflow: hidden; }
       <div class="empty-state" id="emptyInstrucciones" style="display:none;">No hay instrucciones.</div>
     </div>
   </div>
+  </div>
+</div>
+
+<!-- Modal: saldo inicial de cartera existente -->
+<div class="modal-bg" id="modalSaldoInicial">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="saldoInicialTitulo">
+    <h2 id="saldoInicialTitulo">Registrar saldo inicial de cartera</h2>
+    <div class="modal-sub">Carga única para una deuda anterior al inicio de operación en KORA. No modifica caja, ventas ni inventario.</div>
+    <div class="campo"><label>Tienda</label><select id="saldoInicialTienda"></select></div>
+    <div class="campo"><label>Fecha de corte de la deuda</label><input type="date" id="saldoInicialFecha"></div>
+    <div class="campo"><label>Valor total adeudado</label><input type="number" id="saldoInicialMonto" min="1" placeholder="0"></div>
+    <div class="campo"><label>Concepto</label><input type="text" id="saldoInicialConcepto" maxlength="160" value="Saldo inicial de cartera"></div>
+    <div class="campo"><label>Observación</label><textarea id="saldoInicialObservacion" rows="3" maxlength="500" placeholder="Origen y detalle del saldo"></textarea></div>
+    <div class="campo"><label>Responsable</label><input type="text" id="saldoInicialResponsable" readonly></div>
+    <div class="campo">
+      <label>Soporte del saldo (obligatorio)</label>
+      <input type="file" id="saldoInicialSoporte" accept="image/*,application/pdf">
+      <small>Adjunta el estado de cuenta, relación de mercancía o documento que respalda la deuda.</small>
+      <img class="foto-preview" id="saldoInicialPreview" alt="Vista previa del soporte">
+    </div>
+    <div class="modal-err" id="modalSaldoInicialErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" id="btnCancelarSaldoInicial">Cancelar</button>
+      <button class="btn-guardar" id="btnGuardarSaldoInicial">Registrar cargo inicial</button>
+    </div>
   </div>
 </div>
 
@@ -342,6 +372,7 @@ let currentUser = null;
 let currentPerfil = null;
 let movimientosCC = [];
 let abonosCache = [];
+let saldosInicialesCache = [];
 let tiendasCache = [];
 let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
@@ -352,6 +383,8 @@ let proveedoresCache = [];
 let instruccionComprobanteActual = null;
 let fotoComprobanteBlob = null;
 let comprobanteIdempotencyKey = null;
+let soporteSaldoInicial = null;
+let saldoInicialIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function esGerencia() { return !!currentPerfil && currentPerfil.rol === 'gerencia'; }
@@ -436,6 +469,10 @@ async function comprimirImagen(file, maxSide = 1600, quality = 0.7) {
 
 // ─── Página: Cuenta corriente ───────────────────────────────────────────
 function initPagina() {
+  document.getElementById('btnSaldoInicial').addEventListener('click', abrirSaldoInicial);
+  document.getElementById('btnCancelarSaldoInicial').addEventListener('click', () => cerrarModal('modalSaldoInicial'));
+  document.getElementById('saldoInicialSoporte').addEventListener('change', onSoporteSaldoInicial);
+  document.getElementById('btnGuardarSaldoInicial').addEventListener('click', guardarSaldoInicial);
   document.getElementById('btnCerrarDetalle').addEventListener('click', () => cerrarModal('modalDetalle'));
   document.getElementById('btnAbrirAbono').addEventListener('click', abrirModalAbono);
   document.getElementById('btnCancelarAbono').addEventListener('click', cerrarModalAbono);
@@ -479,7 +516,8 @@ function cerrarModalAbono() {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
+  if (document.getElementById('modalSaldoInicial').classList.contains('show')) cerrarModal('modalSaldoInicial');
+  else if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
   else if (document.getElementById('modalInstruccion').classList.contains('show')) cerrarModal('modalInstruccion');
   else if (document.getElementById('modalComprobante').classList.contains('show')) cerrarModal('modalComprobante');
   else if (document.getElementById('modalDetalle').classList.contains('show')) cerrarModal('modalDetalle');
@@ -492,6 +530,7 @@ async function cargarTodo() {
     const { data: proveedores } = await sb.from('proveedores').select('id, nombre').eq('activo', true).order('nombre');
     proveedoresCache = proveedores || [];
     document.getElementById('btnNuevaInstruccion').style.display = 'inline-block';
+    document.getElementById('btnSaldoInicial').style.display = 'inline-block';
   }
   await cargarMovimientosCC();
   await cargarInstrucciones();
@@ -502,21 +541,27 @@ async function cargarMovimientosCC() {
   empty.style.display = 'block';
   empty.textContent = 'Cargando...';
 
-  const [resultadoMovimientos, resultadoAbonos] = await Promise.all([
+  const [resultadoMovimientos, resultadoAbonos, resultadoSaldosIniciales] = await Promise.all([
     sb.from('cuenta_corriente')
       .select(cuentaDomain.columnasMovimientos())
       .order('created_at', { ascending: true }),
     sb.from('abonos')
       .select(cuentaDomain.columnasAbonos())
       .order('created_at', { ascending: false }),
+    esCentral()
+      ? sb.from('saldos_iniciales_cartera')
+        .select(cuentaDomain.columnasSaldosIniciales())
+        .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  if (resultadoMovimientos.error || resultadoAbonos.error) {
+  if (resultadoMovimientos.error || resultadoAbonos.error || resultadoSaldosIniciales.error) {
     empty.textContent = 'Error cargando cuenta corriente: ' +
-      (resultadoMovimientos.error?.message || resultadoAbonos.error?.message);
+      (resultadoMovimientos.error?.message || resultadoAbonos.error?.message || resultadoSaldosIniciales.error?.message);
     return;
   }
   movimientosCC = resultadoMovimientos.data || [];
   abonosCache = resultadoAbonos.data || [];
+  saldosInicialesCache = resultadoSaldosIniciales.data || [];
   renderTablaTiendas();
 }
 
@@ -575,10 +620,16 @@ function abrirDetalleTienda(codigo, nombre) {
       : estado === 'legacy_pendiente'
         ? `<span class="tag-legacy">Aplicado antes del control</span>${esGerencia() ? `<button class="link-chico btn-verificar-abono" data-abono="${abono.id}">Verificar</button>` : ''}`
         : '';
+    const saldoInicial = m.referencia_tipo === 'saldo_inicial'
+      ? saldosInicialesCache.find(registro => registro.id === m.referencia_id)
+      : null;
+    const saldoInicialHtml = saldoInicial
+      ? `<span class="tag-legacy">Saldo inicial · corte ${escapeHtml(saldoInicial.fecha_corte)}</span><button class="link-chico btn-ver-saldo-inicial" data-path="${escapeHtml(saldoInicial.soporte_path)}">Ver soporte</button>`
+      : '';
     return `
     <tr>
       <td>${new Date(m.created_at).toLocaleDateString('es-CO')}</td>
-      <td>${escapeHtml(m.concepto)}${estadoHtml}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
+      <td>${escapeHtml(m.concepto)}${estadoHtml}${saldoInicialHtml}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
       <td class="cargo">${m.tipo === 'cargo' ? fmtCOP(m.monto) : ''}</td>
       <td class="abono">${m.tipo === 'abono' ? fmtCOP(m.monto) : ''}</td>
       <td>${fmtCOP(m.saldoAcumulado)}</td>
@@ -618,8 +669,98 @@ function abrirDetalleTienda(codigo, nombre) {
   document.getElementById('tbodyAbonosPendientes').querySelectorAll('.btn-ver-soporte').forEach(btn => {
     btn.addEventListener('click', () => abrirSoporteAbono(btn.dataset.path));
   });
+  document.getElementById('tbodyDetalle').querySelectorAll('.btn-ver-saldo-inicial').forEach(btn => {
+    btn.addEventListener('click', () => abrirSoporteAbono(btn.dataset.path));
+  });
 
   abrirModal('modalDetalle');
+}
+
+function abrirSaldoInicial() {
+  const tiendasConSaldo = new Set(saldosInicialesCache.map(registro => registro.tienda_codigo));
+  const disponibles = tiendasCache.filter(tienda => !tiendasConSaldo.has(tienda.codigo));
+  const err = document.getElementById('modalSaldoInicialErr');
+  err.classList.remove('show');
+  if (!disponibles.length) {
+    alert('Todas las tiendas ya tienen un saldo inicial registrado.');
+    return;
+  }
+  document.getElementById('saldoInicialTienda').innerHTML = disponibles
+    .map(tienda => `<option value="${escapeHtml(tienda.codigo)}">${escapeHtml(tienda.nombre)}</option>`).join('');
+  document.getElementById('saldoInicialFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  document.getElementById('saldoInicialMonto').value = '';
+  document.getElementById('saldoInicialConcepto').value = 'Saldo inicial de cartera';
+  document.getElementById('saldoInicialObservacion').value = '';
+  document.getElementById('saldoInicialResponsable').value = currentPerfil?.nombre || currentUser?.email || '';
+  document.getElementById('saldoInicialSoporte').value = '';
+  document.getElementById('saldoInicialPreview').style.display = 'none';
+  soporteSaldoInicial = null;
+  saldoInicialIdempotencyKey = crypto.randomUUID();
+  abrirModal('modalSaldoInicial', document.getElementById('btnSaldoInicial'));
+}
+
+async function onSoporteSaldoInicial(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  soporteSaldoInicial = file.type === 'application/pdf' ? file : await comprimirImagen(file);
+  const preview = document.getElementById('saldoInicialPreview');
+  if (file.type.startsWith('image/')) {
+    preview.src = URL.createObjectURL(soporteSaldoInicial);
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function guardarSaldoInicial() {
+  const err = document.getElementById('modalSaldoInicialErr');
+  err.classList.remove('show');
+  const tienda = document.getElementById('saldoInicialTienda').value;
+  const fecha = document.getElementById('saldoInicialFecha').value;
+  const monto = Number(document.getElementById('saldoInicialMonto').value || 0);
+  const concepto = document.getElementById('saldoInicialConcepto').value.trim();
+  const observacion = document.getElementById('saldoInicialObservacion').value.trim();
+  if (!tienda || !fecha || monto <= 0 || !concepto || !soporteSaldoInicial) {
+    err.textContent = 'Completa tienda, fecha de corte, valor, concepto y soporte.';
+    err.classList.add('show');
+    return;
+  }
+
+  const btn = document.getElementById('btnGuardarSaldoInicial');
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+  const extension = soporteSaldoInicial.type === 'application/pdf' ? 'pdf' : 'jpg';
+  const path = `${tienda}/saldo-inicial_${saldoInicialIdempotencyKey}.${extension}`;
+  const subida = await sb.storage.from('soportes').upload(path, soporteSaldoInicial, {
+    contentType: soporteSaldoInicial.type || (extension === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+  });
+  if (subida.error) {
+    btn.disabled = false;
+    btn.textContent = 'Registrar cargo inicial';
+    err.textContent = 'No se pudo subir el soporte: ' + subida.error.message;
+    err.classList.add('show');
+    return;
+  }
+
+  const { data, error } = await sb.rpc('registrar_saldo_inicial_cartera', {
+    p_tienda_codigo: tienda,
+    p_fecha_corte: fecha,
+    p_monto: monto,
+    p_concepto: concepto,
+    p_observacion: observacion || null,
+    p_soporte_path: path,
+    p_idempotency_key: saldoInicialIdempotencyKey,
+  });
+  btn.disabled = false;
+  btn.textContent = 'Registrar cargo inicial';
+  if (error || !data?.ok) {
+    err.textContent = error?.message || 'El servidor no confirmó el saldo inicial.';
+    err.classList.add('show');
+    return;
+  }
+  cerrarModal('modalSaldoInicial');
+  mostrarBanner(`✅ Saldo inicial de ${fmtCOP(monto)} registrado. No se modificaron caja, ventas ni inventario.`);
+  await cargarMovimientosCC();
 }
 
 function etiquetaEstadoInstruccion(estado) {

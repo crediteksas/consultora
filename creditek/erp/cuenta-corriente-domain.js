@@ -35,6 +35,20 @@
     ].join(',');
   }
 
+  function columnasSaldosIniciales() {
+    return [
+      'id',
+      'tienda_codigo',
+      'fecha_corte',
+      'monto',
+      'concepto',
+      'observacion',
+      'soporte_path',
+      'registrado_por',
+      'created_at',
+    ].join(',');
+  }
+
   function calcularResumenPorTienda(movimientos) {
     const mapa = {};
     (movimientos || []).forEach(movimiento => {
@@ -84,6 +98,7 @@
   global.CreditekCuentaCorrienteDomain = Object.freeze({
     columnasMovimientos,
     columnasAbonos,
+    columnasSaldosIniciales,
     calcularResumenPorTienda,
     prepararHistorial,
     estadoAbono,

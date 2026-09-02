@@ -66,7 +66,7 @@
       <div class="field"><label for="direccion">Dirección</label><input id="direccion" maxlength="220" required></div>
       <div class="field"><label for="tienda">Tienda</label><select id="tienda" required></select></div>
       <div class="field"><label for="producto">Producto de interés</label><input id="producto" maxlength="180"></div>
-      <div class="field"><label for="financiera">Financiera</label><select id="financiera"><option value="">No definida</option><option>PayJoy</option><option>Alo Credit</option><option>Addi</option><option>Krediya</option></select></div>
+      <div class="field"><label for="financiera">Financiera</label><select id="financiera"><option value="">No definida</option><option value="payjoy">PayJoy</option><option value="alocredit">Alo Credit</option><option value="addi">Addi</option><option value="krediya">Krediya</option></select></div>
       <label class="field full consentimiento"><span><input id="autorizacion" type="checkbox" required> El cliente autorizó el tratamiento de datos.</span></label>
     </div>
     <div id="mensaje" class="message" role="status" aria-live="polite"></div>
@@ -97,6 +97,12 @@ function mensajeErrorRegistro(error) {
   }
   if (codigo.includes('registro_cliente_tienda_no_autorizada')) {
     return 'No tienes permiso para registrar clientes en esta tienda.';
+  }
+  if (codigo.includes('datos_cliente_invalidos')) {
+    return 'Revisa los datos obligatorios del cliente: nombre, cédula, celular, ciudad, dirección y tienda.';
+  }
+  if (codigo.includes('solicitudes_financiera_check') || codigo.includes('financiera_cliente_invalida')) {
+    return 'La plataforma de crédito seleccionada no es válida. Selecciónala nuevamente.';
   }
   return 'No se pudo registrar el cliente. Verifica la información e intenta de nuevo.';
 }
@@ -155,7 +161,11 @@ document.getElementById('formCliente').addEventListener('submit', async event =>
     p_financiera: document.getElementById('financiera').value || null,
   });
   boton.disabled = false;
-  if (error || !data?.ok) return mensaje(mensajeErrorRegistro(error), 'error');
+  if (error || !data?.ok) {
+    const causa = error || { message: data?.error || data?.codigo || '' };
+    console.error('No se pudo registrar el cliente', causa);
+    return mensaje(mensajeErrorRegistro(causa), 'error');
+  }
   mensaje('Cliente registrado correctamente.', 'success');
   event.target.reset();
   if (!['gerencia','auditoria'].includes(perfil.rol)) document.getElementById('tienda').value = perfil.tienda_codigo;

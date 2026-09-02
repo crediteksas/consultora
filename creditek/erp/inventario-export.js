@@ -70,9 +70,9 @@
 
   function filasCelulares(unidades, esCentral) {
     return (unidades || []).map(unidad => {
-      const valorUnitario = numero(esCentral ? unidad.costo_remision : unidad.precio_tienda);
-      const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Precio de venta unitario';
-      const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total a precio de venta';
+      const valorUnitario = numero(unidad.costo_remision);
+      const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
+      const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {
         Tienda: textoSeguro(unidad.tienda_actual),
         Categoría: textoSeguro(unidad.productos?.categoria || 'Celulares'),
@@ -88,9 +88,9 @@
   function filasAccesorios(stock, esCentral) {
     return (stock || []).map(registro => {
       const cantidad = numero(registro.cantidad);
-      const valorUnitario = numero(esCentral ? registro.costo_promedio : registro.precio_tienda);
-      const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Precio de venta unitario';
-      const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total a precio de venta';
+      const valorUnitario = numero(registro.costo_promedio);
+      const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
+      const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {
         Tienda: textoSeguro(registro.tienda_codigo),
         Categoría: textoSeguro(registro.productos?.categoria || 'Accesorios'),

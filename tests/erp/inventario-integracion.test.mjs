@@ -29,8 +29,8 @@ test('consultas y resumen usan exclusivamente el contrato aprobado del dominio',
 });
 
 test('costos faltantes permanecen pendientes y nunca se presentan como cero', () => {
-  assert.match(html, /inventarioDomain\.valorVisibleUnidad\(u, esCentral\(\)\) === null \? 'Pendiente'/);
-  assert.match(html, /const costoVisible = inventarioDomain\.valorVisibleStock\(r, esCentral\(\)\)/);
+  assert.match(html, /inventarioDomain\.valorVisibleUnidad\(u\) === null \? 'Pendiente'/);
+  assert.match(html, /const costoVisible = inventarioDomain\.valorVisibleStock\(r\)/);
   assert.match(html, /costoVisible === null \? 'Pendiente' : fmtCOP\(costoVisible\)/);
   assert.match(html, /costoVisible === null \? 'Pendiente' : fmtCOP\(r\.cantidad \* costoVisible\)/);
 });

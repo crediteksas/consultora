@@ -69,11 +69,11 @@ test('genera una plantilla de carga inicial separada del importador', () => {
   assert.match(instrucciones.at(-1)[1], /validar e importar/i);
 });
 
-test('la tienda no solicita costos internos en las consultas de inventario', () => {
+test('la tienda solicita el costo real en las consultas de inventario', () => {
   assert.doesNotMatch(html, /from\('unidades'\)[\s\S]{0,120}\.select\('\*'/);
   assert.doesNotMatch(html, /from\('stock_cantidad'\)[\s\S]{0,120}\.select\('\*'/);
-  assert.match(html, /if \(esCentral\(\)\) columnas\.splice\(5, 0, 'costo_remision'\)/);
-  assert.match(html, /if \(esCentral\(\)\) columnas\.splice\(4, 0, 'costo_promedio'\)/);
+  assert.match(html, /columnas\.splice\(5, 0, 'costo_remision'\)/);
+  assert.match(html, /columnas\.splice\(4, 0, 'costo_promedio'\)/);
   assert.match(html, /select\('tipo, nota, created_at'\)/);
   assert.match(html, /No fue posible cargar el inventario/);
 });
@@ -94,12 +94,12 @@ test('el Excel de accesorios contiene columnas separadas y valores numéricos', 
       Categoría: 'Accesorios',
       'Referencia o producto': 'Silicona',
       Cantidad: 8,
-      'Precio de venta unitario': 7011,
-      'Valor total a precio de venta': 56088,
+      'Costo unitario': 9120,
+      'Valor total al costo': 72960,
     }]
   );
   assert.equal(typeof filas[0].Cantidad, 'number');
-  assert.equal(typeof filas[0]['Precio de venta unitario'], 'number');
+  assert.equal(typeof filas[0]['Costo unitario'], 'number');
 });
 
 test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
@@ -113,19 +113,19 @@ test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
 
   assert.deepEqual(Object.keys(filas[0]), [
     'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'IMEI',
-    'Precio de venta unitario', 'Valor total a precio de venta',
+    'Costo unitario', 'Valor total al costo',
   ]);
   assert.equal(filas[0].Cantidad, 1);
   assert.equal(filas[0].IMEI, '000000000000001');
-  assert.equal(filas[0]['Precio de venta unitario'], 500000);
+  assert.equal(filas[0]['Costo unitario'], 450000);
 });
 
-test('la pantalla distingue precio de venta de costo interno', () => {
-  assert.match(html, /Precio de venta unitario/);
-  assert.match(html, /Valor total a precio de venta/);
+test('la pantalla muestra costo y no precio de venta', () => {
+  assert.match(html, /Costo unitario/);
+  assert.match(html, /Valor total al costo/);
   assert.match(html, /Costo interno de compra \(no visible para la tienda\)/);
   assert.match(html, /Precio de venta al cliente en la tienda/);
-  assert.doesNotMatch(html, /Valor inventario \(mi costo\)/);
+  assert.doesNotMatch(html, /Precio de venta unitario/);
 });
 
 test('genera un libro con filtros, anchos y formato monetario sin mutar datos', () => {
@@ -133,6 +133,7 @@ test('genera un libro con filtros, anchos y formato monetario sin mutar datos', 
     tienda_codigo: 'TIENDA-PRUEBA',
     cantidad: 8,
     precio_tienda: 7011,
+    costo_promedio: 4200,
     productos: { nombre: 'Silicona', categoria: 'Accesorios' },
   }];
   const original = structuredClone(stock);

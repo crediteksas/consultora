@@ -210,7 +210,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Precio de venta</th><th>Fecha ingreso</th></tr></thead>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Costo unitario</th><th>Fecha ingreso</th></tr></thead>
           <tbody id="tbodyCelulares"></tbody>
         </table>
         <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
@@ -225,7 +225,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Precio de venta unitario</th><th id="thValorTotalAcc">Valor total a precio de venta</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Costo unitario</th><th id="thValorTotalAcc">Valor total al costo</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -352,9 +352,9 @@ function cambiarTab(tab) {
 }
 
 function actualizarEtiquetasCosto() {
-  document.getElementById('thCostoCel').textContent = esCentral() ? 'Costo interno Creditek' : 'Precio de venta';
-  document.getElementById('thCostoAcc').textContent = esCentral() ? 'Costo interno unitario' : 'Precio de venta unitario';
-  document.getElementById('thValorTotalAcc').textContent = esCentral() ? 'Valor total al costo interno' : 'Valor total a precio de venta';
+  document.getElementById('thCostoCel').textContent = esCentral() ? 'Costo interno Creditek' : 'Costo unitario';
+  document.getElementById('thCostoAcc').textContent = esCentral() ? 'Costo interno unitario' : 'Costo unitario';
+  document.getElementById('thValorTotalAcc').textContent = esCentral() ? 'Valor total al costo interno' : 'Valor total al costo';
 }
 
 function tiendaActiva() {
@@ -432,7 +432,7 @@ async function cargarCelulares() {
     'producto_id', 'created_at', 'productos(nombre, categoria)',
     'tiendas:tienda_actual(nombre)',
   ];
-  if (esCentral()) columnas.splice(5, 0, 'costo_remision');
+  columnas.splice(5, 0, 'costo_remision');
   const { data, error } = await sb.from('unidades')
     .select(inventarioDomain.columnasUnidades(esCentral()))
     .order('created_at', { ascending: false });
@@ -446,7 +446,7 @@ async function cargarAccesorios() {
     'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
     'productos(nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
   ];
-  if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
+  columnas.splice(4, 0, 'costo_promedio');
   const { data, error } = await sb.from('stock_cantidad')
     .select(inventarioDomain.columnasStock(esCentral()))
     .order('updated_at', { ascending: false });
@@ -466,7 +466,7 @@ function renderResumen() {
   let cards = `
     <div class="resumen-card"><div class="label">Celulares disponibles</div><div class="valor">${resumen.celularesDisponibles}</div></div>
     <div class="resumen-card"><div class="label">Accesorios disponibles</div><div class="valor">${resumen.accesoriosDisponibles}</div></div>
-    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Inventario a precio de venta'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
+    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Valor inventario al costo'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
   `;
   if (esCentral()) {
     cards += `<div class="resumen-card"><div class="label">Costo interno Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
@@ -502,7 +502,7 @@ function renderCelulares() {
       <td>${escapeHtml(u.productos?.nombre || '—')}</td>
       <td><span class="badge ${u.estado}">${u.estado}</span></td>
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
-      <td>${inventarioDomain.valorVisibleUnidad(u, esCentral()) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, esCentral()))}</td>
+      <td>${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
     </tr>
   `).join('');
@@ -529,7 +529,7 @@ function renderAccesorios() {
   empty.style.display = 'none';
   tbody.innerHTML = filtrados.map(r => {
     const bajoStock = r.cantidad < 3;
-    const costoVisible = inventarioDomain.valorVisibleStock(r, esCentral());
+    const costoVisible = inventarioDomain.valorVisibleStock(r);
     return `
       <tr class="${bajoStock ? 'fila-bajo-stock' : ''}">
         <td>${escapeHtml(r.productos?.nombre || '—')}</td>

@@ -25,12 +25,12 @@
     );
   }
 
-  function valorVisibleUnidad(unidad, esCentral) {
-    return esCentral ? numero(unidad?.costo_remision) : numero(unidad?.precio_tienda);
+  function valorVisibleUnidad(unidad) {
+    return numero(unidad?.costo_remision);
   }
 
-  function valorVisibleStock(registro, esCentral) {
-    return esCentral ? numero(registro?.costo_promedio) : numero(registro?.precio_tienda);
+  function valorVisibleStock(registro) {
+    return numero(registro?.costo_promedio);
   }
 
   function resumirInventario({ unidades, stock, tiendaCodigo = '', esCentral = false }) {
@@ -38,12 +38,12 @@
     const accesorios = stockDisponible(stock, tiendaCodigo);
 
     const valorTiendaCelulares = celulares.reduce(
-      (total, unidad) => total + (numero(unidad.precio_tienda) || 0),
+      (total, unidad) => total + (numero(esCentral ? unidad.precio_tienda : unidad.costo_remision) || 0),
       0
     );
     const valorTiendaAccesorios = accesorios.reduce(
       (total, registro) =>
-        total + Number(registro.cantidad || 0) * (numero(registro.precio_tienda) || 0),
+        total + Number(registro.cantidad || 0) * (numero(esCentral ? registro.precio_tienda : registro.costo_promedio) || 0),
       0
     );
 
@@ -55,8 +55,8 @@
       ),
       valorTienda: valorTiendaCelulares + valorTiendaAccesorios,
       preciosPendientes:
-        celulares.filter(unidad => numero(unidad.precio_tienda) === null).length +
-        accesorios.filter(registro => numero(registro.precio_tienda) === null).length,
+        celulares.filter(unidad => numero(esCentral ? unidad.precio_tienda : unidad.costo_remision) === null).length +
+        accesorios.filter(registro => numero(esCentral ? registro.precio_tienda : registro.costo_promedio) === null).length,
     };
 
     if (esCentral) {
@@ -85,7 +85,7 @@
       'precio_tienda',
       'created_at',
     ];
-    if (esCentral) visibles.push('costo_remision');
+    visibles.push('costo_remision');
     visibles.push('productos(nombre,categoria)', 'tiendas:tienda_actual(nombre)');
     return visibles.join(',');
   }
@@ -98,7 +98,7 @@
       'precio_tienda',
       'updated_at',
     ];
-    if (esCentral) visibles.push('costo_promedio');
+    visibles.push('costo_promedio');
     visibles.push('productos(nombre,categoria)', 'tiendas:tienda_codigo(nombre)');
     return visibles.join(',');
   }

@@ -25,7 +25,7 @@ test('resumen cuenta solo unidades disponibles de la tienda elegida', () => {
   const resumen = domain.resumirInventario({ unidades, stock, tiendaCodigo: 'CK-02', esCentral: false });
   assert.equal(resumen.celularesDisponibles, 1);
   assert.equal(resumen.accesoriosDisponibles, 7);
-  assert.equal(Math.round(resumen.valorTienda), 472800);
+  assert.equal(Math.round(resumen.valorTienda), 432900);
 });
 
 test('resumen central consolida todas las tiendas y separa costo interno', () => {
@@ -36,20 +36,20 @@ test('resumen central consolida todas las tiendas y separa costo interno', () =>
   assert.equal(resumen.valorInterno, 930900);
 });
 
-test('una tienda nunca recibe costo interno como sustituto de su precio', () => {
-  assert.equal(domain.valorVisibleUnidad({ precio_tienda: 120000, costo_remision: 90000 }, false), 120000);
-  assert.equal(domain.valorVisibleUnidad({ precio_tienda: null, costo_remision: 90000 }, false), null);
-  assert.equal(domain.valorVisibleStock({ precio_tienda: null, costo_promedio: 12000 }, false), null);
+test('una tienda ve el costo real y no el precio de venta', () => {
+  assert.equal(domain.valorVisibleUnidad({ precio_tienda: 120000, costo_remision: 90000 }), 90000);
+  assert.equal(domain.valorVisibleUnidad({ precio_tienda: null, costo_remision: 90000 }), 90000);
+  assert.equal(domain.valorVisibleStock({ precio_tienda: 15000, costo_promedio: 12000 }), 12000);
 });
 
 test('central sí puede ver costos internos', () => {
-  assert.equal(domain.valorVisibleUnidad({ precio_tienda: 120000, costo_remision: 90000 }, true), 90000);
-  assert.equal(domain.valorVisibleStock({ precio_tienda: 15000, costo_promedio: 12000 }, true), 12000);
+  assert.equal(domain.valorVisibleUnidad({ precio_tienda: 120000, costo_remision: 90000 }), 90000);
+  assert.equal(domain.valorVisibleStock({ precio_tienda: 15000, costo_promedio: 12000 }), 12000);
 });
 
-test('consultas de tienda omiten columnas internas', () => {
-  assert.doesNotMatch(domain.columnasUnidades(false), /costo_remision/);
-  assert.doesNotMatch(domain.columnasStock(false), /costo_promedio/);
+test('consultas de tienda incluyen los costos que muestra inventario', () => {
+  assert.match(domain.columnasUnidades(false), /costo_remision/);
+  assert.match(domain.columnasStock(false), /costo_promedio/);
   assert.match(domain.columnasUnidades(true), /costo_remision/);
   assert.match(domain.columnasStock(true), /costo_promedio/);
 });

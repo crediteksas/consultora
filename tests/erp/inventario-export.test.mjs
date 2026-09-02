@@ -94,12 +94,12 @@ test('el Excel de accesorios contiene columnas separadas y valores numéricos', 
       Categoría: 'Accesorios',
       'Referencia o producto': 'Silicona',
       Cantidad: 8,
-      'Costo promedio unitario': 7011,
-      'Costo total': 56088,
+      'Precio de venta unitario': 7011,
+      'Valor total a precio de venta': 56088,
     }]
   );
   assert.equal(typeof filas[0].Cantidad, 'number');
-  assert.equal(typeof filas[0]['Costo promedio unitario'], 'number');
+  assert.equal(typeof filas[0]['Precio de venta unitario'], 'number');
 });
 
 test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
@@ -112,11 +112,20 @@ test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
   }], false);
 
   assert.deepEqual(Object.keys(filas[0]), [
-    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'IMEI', 'Costo', 'Costo total',
+    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'IMEI',
+    'Precio de venta unitario', 'Valor total a precio de venta',
   ]);
   assert.equal(filas[0].Cantidad, 1);
   assert.equal(filas[0].IMEI, '000000000000001');
-  assert.equal(filas[0].Costo, 500000);
+  assert.equal(filas[0]['Precio de venta unitario'], 500000);
+});
+
+test('la pantalla distingue precio de venta de costo interno', () => {
+  assert.match(html, /Precio de venta unitario/);
+  assert.match(html, /Valor total a precio de venta/);
+  assert.match(html, /Costo interno de compra \(no visible para la tienda\)/);
+  assert.match(html, /Precio de venta al cliente en la tienda/);
+  assert.doesNotMatch(html, /Valor inventario \(mi costo\)/);
 });
 
 test('genera un libro con filtros, anchos y formato monetario sin mutar datos', () => {

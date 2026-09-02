@@ -210,7 +210,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Mi costo</th><th>Fecha ingreso</th></tr></thead>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Precio de venta</th><th>Fecha ingreso</th></tr></thead>
           <tbody id="tbodyCelulares"></tbody>
         </table>
         <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
@@ -225,7 +225,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Mi costo unitario</th><th>Valor total</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Precio de venta unitario</th><th id="thValorTotalAcc">Valor total a precio de venta</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -352,8 +352,9 @@ function cambiarTab(tab) {
 }
 
 function actualizarEtiquetasCosto() {
-  document.getElementById('thCostoCel').textContent = esCentral() ? 'Costo interno Creditek' : 'Mi costo';
-  document.getElementById('thCostoAcc').textContent = esCentral() ? 'Costo interno unitario' : 'Mi costo unitario';
+  document.getElementById('thCostoCel').textContent = esCentral() ? 'Costo interno Creditek' : 'Precio de venta';
+  document.getElementById('thCostoAcc').textContent = esCentral() ? 'Costo interno unitario' : 'Precio de venta unitario';
+  document.getElementById('thValorTotalAcc').textContent = esCentral() ? 'Valor total al costo interno' : 'Valor total a precio de venta';
 }
 
 function tiendaActiva() {
@@ -465,7 +466,7 @@ function renderResumen() {
   let cards = `
     <div class="resumen-card"><div class="label">Celulares disponibles</div><div class="valor">${resumen.celularesDisponibles}</div></div>
     <div class="resumen-card"><div class="label">Accesorios disponibles</div><div class="valor">${resumen.accesoriosDisponibles}</div></div>
-    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Valor inventario (mi costo)'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
+    <div class="resumen-card"><div class="label">${esCentral() ? 'Valor asignado a tienda' : 'Inventario a precio de venta'}</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
   `;
   if (esCentral()) {
     cards += `<div class="resumen-card"><div class="label">Costo interno Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
@@ -668,8 +669,8 @@ function crearControlesInventarioCentral() {
           <label id="campoOperacionImei">IMEI / unidad<select id="operacionUnidad"></select></label>
           <label id="campoOperacionImeis">IMEIs reales (uno por línea)<textarea id="operacionImeis"></textarea></label>
           <label id="campoOperacionCantidad">Cantidad<input id="operacionCantidad" type="number" step="1"></label>
-          <label id="campoOperacionCosto">Costo interno<input id="operacionCosto" type="number" min="0" step="0.01"></label>
-          <label id="campoOperacionPrecio">Precio de tienda<input id="operacionPrecio" type="number" min="0.01" step="0.01"></label>
+          <label id="campoOperacionCosto">Costo interno de compra (no visible para la tienda)<input id="operacionCosto" type="number" min="0" step="0.01"></label>
+          <label id="campoOperacionPrecio">Precio de venta al cliente en la tienda<input id="operacionPrecio" type="number" min="0.01" step="0.01"></label>
           <label id="campoOperacionEstado">Nuevo estado<select id="operacionEstado">
             <option value="">Sin cambio</option><option value="disponible">Disponible</option>
             <option value="vendido">Vendido</option><option value="en_traslado">En traslado</option>

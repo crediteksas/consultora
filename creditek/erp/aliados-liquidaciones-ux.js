@@ -33,7 +33,11 @@
   };
 
   function formatoCOP(value) { return moneyFormatter.format(Number(value || 0)).replace(/\u00a0/g,' '); }
-  function dateValue(value) { const date=new Date(value); return Number.isNaN(date.getTime())?null:date; }
+  function dateValue(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?null:date;
+  }
   function fechaCorta(value) { const date=dateValue(value); return date?dateFormatter.format(date):'—'; }
   function fechaAuditoria(value) { const date=dateValue(value); return date?auditDateFormatter.format(date).replace(',', ''):'—'; }
   function traducirEstado(value) { return states[value] || String(value || '—').replaceAll('_',' '); }

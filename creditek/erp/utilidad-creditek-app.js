@@ -214,8 +214,11 @@
 
   function hojaResumen(base) {
     const r = D.resumir(estado.filtradas);
+    const ahora = new Intl.DateTimeFormat('es-CO', { dateStyle:'long', timeStyle:'short', timeZone:'America/Bogota' }).format(new Date());
+    const id = `UTIL-${base.desde.replaceAll('-','')}-${base.hasta.replaceAll('-','')}-${String(estado.filtradas.length).padStart(4,'0')}`;
     return [
-      ['Utilidad Creditek'], ['Rango', `${base.desde} a ${base.hasta}`],
+      ['CREDITEK S.A.S.'], ['Informe de utilidad'], ['Código de trazabilidad', id], ['Generado desde', 'KORA'], ['Fecha de generación', ahora],
+      [], ['Rango', `${base.desde} a ${base.hasta}`],
       ['Tienda', base.tienda || 'Todas'], ['Plataforma', base.plataforma || 'Todas'], ['Referencia', base.referencia || 'Todas'],
       [], ['Indicador', 'Valor'], ['Facturado', r.facturado], ['Costo real', r.costo], ['Utilidad', r.utilidad],
       ['Margen %', r.margen], ['Días', D.dias(base.desde, base.hasta)], ['Tiendas', r.tiendas], ['Unidades', r.unidades],

@@ -29,5 +29,8 @@ test('el documento contiene identidad, datos, productos, responsables y firmas',
     assert.match(documento, new RegExp(texto));
   }
   assert.match(documento, /Documento generado electrónicamente por KORA/);
+  assert.match(documento, /doc-trace-id/);
+  assert.match(documento, /doc-audit-footer/);
+  assert.match(documento, /print-color-adjust:\s*exact/);
   assert.match(documento, /productos\(id, codigo, nombre/);
 });

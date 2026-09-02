@@ -16,6 +16,19 @@
 <section class="card"><div class="section-head"><h2>Compensaciones Retail hacia B2B</h2><span id="compensationCount" class="badge">0</span></div><div id="compensations"></div></section>
 <section class="card"><div class="section-head"><h2>Disponibilidad y movimientos de Tesorería</h2><button id="newMovement" class="btn primary">Registrar movimiento</button></div><div id="movements"></div></section>
 </div></div></main></div>
+<div id="paymentSupportModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="paymentSupportTitle">
+  <div class="modal-box" style="max-width:560px">
+    <div class="section-head"><div><h2 id="paymentSupportTitle">Registrar soporte de pago</h2><p class="muted" id="paymentSupportSummary">Selecciona el comprobante del pago.</p></div><button type="button" id="closePaymentSupport" class="btn secondary">Cerrar</button></div>
+    <form id="paymentSupportForm">
+      <label style="display:grid;gap:8px;font-size:13px;font-weight:700">Comprobante del pago <span class="muted">Imagen o PDF · máximo 10 MB</span>
+        <input id="paymentSupportFile" name="support" type="file" required accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" style="width:100%;min-height:48px;border:1px solid #d8e2ea;border-radius:12px;padding:10px;background:#fff">
+      </label>
+      <div id="paymentSupportSelected" class="notice hidden" style="margin-top:12px"></div>
+      <div id="paymentSupportError" class="notice error hidden" style="margin-top:12px"></div>
+      <div class="actions" style="justify-content:flex-end;margin-top:18px"><button type="submit" id="savePaymentSupport" class="btn primary">Subir soporte y registrar pago</button></div>
+    </form>
+  </div>
+</div>
 <dialog id="movementDialog"><form id="movementForm" method="dialog" class="card movement-form"><div class="span-2"><h2>Nuevo movimiento</h2><p class="muted">El movimiento respetará el saldo y la unidad económica seleccionada.</p></div><button type="button" id="closeDialog" class="btn secondary">Cerrar</button>
 <label>Unidad<select name="unit" required><option value="b2b">B2B</option><option value="tercerizacion">Tercerización</option></select></label><label>Tipo<select name="type" required></select></label><label>Valor<input name="amount" type="number" min="1" step="1" required></label><label>Beneficiario<input name="beneficiary" required></label><label class="span-2">Concepto<input name="concept" required></label><label>Cuenta destino<input name="destination_account" required></label><label>Fecha<input name="movement_date" type="date" required></label><label>Soporte privado<input name="support" type="file" accept=".pdf,.jpg,.jpeg,.png"></label><label id="supplierWrap" class="hidden">Proveedor<select name="supplier_id"></select></label><label id="invoiceWrap" class="hidden">Factura<select name="supplier_invoice_id"></select></label><div class="span-2 actions"><button class="btn primary" type="submit">Guardar movimiento</button></div></form></dialog>
 <script src="aliados-tesoreria-domain.js?v=1.1.0"></script><script src="aliados-tesoreria-app.js?v=1.1.0"></script></body></html>

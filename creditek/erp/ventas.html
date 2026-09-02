@@ -87,6 +87,10 @@ tbody tr { transition: background-color 150ms ease; }
 tbody tr:hover { background: rgba(11,30,61,0.02); }
 #tbodyVentas tr { cursor: pointer; }
 #tbodyVentas tr:focus { outline: 2px solid var(--turquesa); outline-offset: -2px; }
+#tbodyVentas tr + tr[data-venta-nueva="true"] { border-top: 3px solid rgba(0,196,204,.28); }
+.venta-ref { display:flex; flex-direction:column; gap:3px; }
+.venta-ref strong { color:var(--azul); font-size:12px; }
+.venta-ref small,.trace-id { color:var(--text2); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; }
 .link-detalle { color: var(--turquesa); font-weight: 800; background: none; border: none; cursor: pointer; font-family: inherit; }
 .tag { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 .tag.contado { background: #DCFCE7; color: #166534; }
@@ -359,7 +363,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <div class="tabla-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
+        <thead><tr><th>Venta #</th><th>Línea</th><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
         <tbody id="tbodyVentas"></tbody>
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando ventas...</div>
@@ -581,7 +585,7 @@ async function cargarVentas() {
   const tienda = document.getElementById('filtroTienda').value;
 
   let q = sb.from('ventas')
-    .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(cantidad, precio_venta, unidades(imei), productos(nombre))')
+    .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
     .order('created_at', { ascending: false });
   if (fecha) q = q.eq('fecha', fecha);
   if (tienda) q = q.eq('tienda_codigo', tienda);
@@ -612,12 +616,14 @@ function renderTablaVentas() {
     const credito = Array.isArray(v.creditos) ? v.creditos[0] : v.creditos;
     const plataforma = escapeHtml(v.tipo === 'credito' ? (credito?.financiera || '—') : 'Contado');
     const items = v.venta_items?.length ? v.venta_items : [null];
-    return items.map(it => {
+    return items.map((it,itemIndex) => {
       const valorLinea = it
         ? Number(it.precio_venta || 0) * Number(it.cantidad || 0)
         : Number(v.total || 0);
       return `
-      <tr data-id="${v.id}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}">
+      <tr data-id="${v.id}" data-line-id="${it?.id || ''}" data-venta-nueva="${itemIndex===0}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}, línea ${itemIndex+1}">
+        <td><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
+        <td>${itemIndex+1}/${items.length}${it?.id ? `<br><span class="trace-id">${escapeHtml(String(it.id).slice(0,8).toUpperCase())}</span>` : ''}</td>
         <td>${fecha}</td>
         <td>${tienda}</td>
         <td>${cliente}</td>
@@ -655,7 +661,7 @@ async function abrirDetalleVenta(ventaId) {
   err.classList.remove('show');
   modal.classList.add('show');
 
-  const [resultadoItems, resultadoCredito] = await Promise.all([
+  const [resultadoItems, resultadoCredito, resultadoMovimientos] = await Promise.all([
     sb.from('venta_items')
       .select(ventasDomain.columnasDetalleItems())
       .eq('venta_id', ventaId)
@@ -664,6 +670,11 @@ async function abrirDetalleVenta(ventaId) {
       .select('financiera,cuota_inicial,valor_esperado_financiera,plazo_meses,estado_conciliacion')
       .eq('venta_id', ventaId)
       .maybeSingle(),
+    sb.from('movimientos')
+      .select('id,tipo,producto_id,unidad_id,cantidad,created_at,referencia_tipo,referencia_id')
+      .eq('referencia_tipo', 'venta')
+      .eq('referencia_id', ventaId)
+      .order('created_at'),
   ]);
 
   if (resultadoItems.error) {
@@ -701,6 +712,20 @@ async function abrirDetalleVenta(ventaId) {
       Plazo: ${detalle.credito.plazoMeses || '—'} cuotas
     </div>
   ` : '';
+  const movimientos = resultadoMovimientos.data || [];
+  const estadoMovimientos = resultadoMovimientos.error
+    ? 'Consulta no disponible para este perfil.'
+    : movimientos.length
+      ? movimientos.map((m,i) => `Movimiento ${i+1}: <span class="trace-id">${escapeHtml(m.id.toUpperCase())}</span>${m.unidad_id ? ` · Unidad <span class="trace-id">${escapeHtml(m.unidad_id.toUpperCase())}</span>` : ''}`).join('<br>')
+      : 'No se encontró un movimiento de inventario relacionado; requiere revisión.';
+  const movimientosHtml = `
+    <div class="detalle-credito">
+      <b>Trazabilidad KORA</b><br>
+      Venta: <span class="trace-id">${escapeHtml(ventaSeleccionada.id.toUpperCase())}</span> ·
+      Líneas: ${detalle.items.length} · Movimientos de inventario: ${movimientos.length}<br>
+      ${estadoMovimientos}<br>
+      Caja: calculada directamente desde esta venta; no crea un movimiento de caja duplicado.
+    </div>`;
 
   contenido.className = '';
   contenido.innerHTML = `
@@ -717,6 +742,7 @@ async function abrirDetalleVenta(ventaId) {
       </table>
     </div>
     ${creditoHtml}
+    ${movimientosHtml}
     <div class="detalle-total"><span>Total</span><span>${fmtCOP(ventaSeleccionada.total)}</span></div>
   `;
 }

@@ -61,6 +61,8 @@
       const cantidad = Math.max(0, numero(item.cantidad));
       const precioUnitario = Math.max(0, numero(item.precio_venta));
       return {
+        id: item.id || null,
+        unidadId: item.unidad_id || null,
         productoId: item.producto_id || null,
         codigo: producto?.codigo || '',
         nombre: producto?.nombre || 'Producto',

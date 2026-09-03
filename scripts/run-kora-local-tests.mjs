@@ -17,5 +17,6 @@ const erp = [
   'tests/erp/aliados-ejecutivos-periodo.test.mjs',
   'tests/erp/aliados-plataformas-periodo.test.mjs',
   'tests/erp/aliados-bonificaciones-periodo.test.mjs',
+  'tests/erp/aliados-reportes-mes-vigente.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...erp], { stdio: 'inherit' });

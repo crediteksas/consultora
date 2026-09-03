@@ -29,5 +29,5 @@ test('la pantalla operativa no repite el histórico cerrado', () => {
   assert.match(render, /Fecha de venta/);
   assert.doesNotMatch(render, /Histórico inicial — pagado/);
   assert.doesNotMatch(render, /<h2>Operación nueva<\/h2>/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.16/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.17/);
 });

@@ -1180,9 +1180,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       }
 
       startBootStage('stores');
-      const { data: tiendas } = await withBootTimeout(
+      const { data: tiendasData } = await withBootTimeout(
         sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
       );
+      const codigosClientesB2B = new Set(['CK-12', 'CK-13', 'CK-14']);
+      const tiendas = (tiendasData || []).filter(tienda => !codigosClientesB2B.has(tienda.codigo));
       completeBootStage('stores', { loaded: true });
 
       startBootStage('mount');

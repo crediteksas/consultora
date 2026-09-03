@@ -75,6 +75,8 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .banner-ok button { background: none; border: none; color: #166534; font-weight: 700; cursor: pointer; font-size: 16px; }
 
 .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.filter-field { display:flex; flex-direction:column; gap:5px; min-width:170px; }
+.filter-field label { color:var(--text2); font-size:11px; font-weight:700; letter-spacing:.03em; }
 .filters select, .filters input { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); min-height: 44px; padding: 0 16px; font-size: 13px; font-family: inherit; color: var(--azul); }
 .filters select:focus, .filters input:focus { outline: none; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
 
@@ -98,6 +100,10 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .tag.anulada { background: #FEE2E2; color: #991B1B; }
 #tbodyVentas tr.venta-anulada { opacity: .66; background: #FFF7F7; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 32px 16px; }
+.ventas-resumen { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+.ventas-kpi { background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--turquesa); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow-sm); }
+.ventas-kpi span { display:block; color:var(--text2); font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+.ventas-kpi strong { display:block; font-family:'Montserrat',sans-serif; font-size:21px; margin-top:6px; }
 
 /* ── Wizard ── */
 .modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
@@ -308,6 +314,12 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   .filters select,
   .filters input[type="date"] { flex: 1 1 100%; width: 100%; }
   .tabla-wrap > .empty-state { padding: 40px 20px; }
+  .ventas-resumen { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #tablaVentas thead { display:none; }
+  #tablaVentas, #tablaVentas tbody, #tablaVentas tr, #tablaVentas td { display:block; width:100%; }
+  #tablaVentas tr { padding:12px 14px; border-bottom:1px solid var(--border); }
+  #tablaVentas td { display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; padding:5px 0; border:0; white-space:normal; }
+  #tablaVentas td::before { content:attr(data-label); color:var(--text2); font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -358,18 +370,26 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <button class="btn-primary" id="btnNuevaVenta" style="display:none;">+ Nueva venta</button>
     </div>
 
-    <div class="filters">
-      <input type="date" id="filtroFecha">
-      <select id="filtroTipo">
+    <div class="filters" aria-label="Filtros de ventas">
+      <div class="filter-field"><label for="filtroDesde">Desde</label><input type="date" id="filtroDesde"></div>
+      <div class="filter-field"><label for="filtroHasta">Hasta</label><input type="date" id="filtroHasta"></div>
+      <div class="filter-field"><label for="filtroTipo">Tipo de venta</label><select id="filtroTipo">
         <option value="">Todos los tipos</option>
         <option value="contado">Contado</option>
         <option value="credito">Crédito</option>
-      </select>
-      <select id="filtroTienda" style="display:none;"><option value="">Todas las tiendas</option></select>
+      </select></div>
+      <div class="filter-field" id="campoFiltroTienda" style="display:none;"><label for="filtroTienda">Tienda Retail</label><select id="filtroTienda"><option value="">Todas las tiendas</option></select></div>
     </div>
 
+    <section class="ventas-resumen" aria-label="Resumen del periodo">
+      <div class="ventas-kpi"><span>Ventas</span><strong id="resumenCantidad">0</strong></div>
+      <div class="ventas-kpi"><span>Valor vendido</span><strong id="resumenTotal">$ 0</strong></div>
+      <div class="ventas-kpi"><span>Contado</span><strong id="resumenContado">$ 0</strong></div>
+      <div class="ventas-kpi"><span>Crédito</span><strong id="resumenCredito">$ 0</strong></div>
+    </section>
+
     <div class="tabla-wrap">
-      <table>
+      <table id="tablaVentas">
         <thead><tr><th>Venta #</th><th>Línea</th><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
         <tbody id="tbodyVentas"></tbody>
       </table>
@@ -564,11 +584,19 @@ document.getElementById('btnCerrarBanner').addEventListener('click', () => docum
 
 // ─── Página: Ventas ─────────────────────────────────────────────────
 function initPagina() {
-  document.getElementById('filtroFecha').value = new Date().toISOString().slice(0, 10);
-  if (esCentral()) document.getElementById('filtroTienda').style.display = '';
+  const fechaHoy = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+  document.getElementById('filtroDesde').value = fechaHoy.slice(0, 7) + '-01';
+  document.getElementById('filtroHasta').value = fechaHoy;
+  if (esCentral()) document.getElementById('campoFiltroTienda').style.display = '';
   if (puedeVender()) document.getElementById('btnNuevaVenta').style.display = 'inline-block';
 
-  document.getElementById('filtroFecha').addEventListener('change', cargarVentas);
+  document.getElementById('filtroDesde').addEventListener('change', cargarVentas);
+  document.getElementById('filtroHasta').addEventListener('change', cargarVentas);
   document.getElementById('filtroTipo').addEventListener('change', renderTablaVentas);
   document.getElementById('filtroTienda').addEventListener('change', cargarVentas);
 
@@ -598,7 +626,7 @@ function initPagina() {
 async function cargarDatosBase() {
   const [{ data: productos }, { data: tiendas }] = await Promise.all([
     sb.from('productos').select('id,codigo,nombre,categoria,tipo,activo').eq('activo', true).order('nombre'),
-    sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+    sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).not('codigo', 'in', '(CK-12,CK-13,CK-14)').order('nombre'),
   ]);
   productosCache = productos || [];
   tiendasCache = tiendas || [];
@@ -611,13 +639,15 @@ async function cargarVentas() {
   empty.style.display = 'block';
   empty.textContent = 'Cargando ventas...';
 
-  const fecha = document.getElementById('filtroFecha').value;
+  const desde = document.getElementById('filtroDesde').value;
+  const hasta = document.getElementById('filtroHasta').value;
   const tienda = document.getElementById('filtroTienda').value;
 
   let q = sb.from('ventas')
     .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
     .order('created_at', { ascending: false });
-  if (fecha) q = q.eq('fecha', fecha);
+  if (desde) q = q.gte('fecha', desde);
+  if (hasta) q = q.lte('fecha', hasta);
   if (tienda) q = q.eq('tienda_codigo', tienda);
 
   const { data, error } = await q;
@@ -629,6 +659,12 @@ async function cargarVentas() {
 function renderTablaVentas() {
   const tipo = document.getElementById('filtroTipo').value;
   const filtradas = ventasCache.filter(v => !tipo || v.tipo === tipo);
+  const activas = filtradas.filter(v => !v.anulada);
+  const total = activas.reduce((s,v) => s + Number(v.total || 0), 0);
+  document.getElementById('resumenCantidad').textContent = new Set(activas.map(v => v.id)).size;
+  document.getElementById('resumenTotal').textContent = fmtCOP(total);
+  document.getElementById('resumenContado').textContent = fmtCOP(activas.filter(v => v.tipo === 'contado').reduce((s,v) => s + Number(v.total || 0), 0));
+  document.getElementById('resumenCredito').textContent = fmtCOP(activas.filter(v => v.tipo === 'credito').reduce((s,v) => s + Number(v.total || 0), 0));
 
   const tbody = document.getElementById('tbodyVentas');
   const empty = document.getElementById('emptyState');
@@ -652,16 +688,16 @@ function renderTablaVentas() {
         : Number(v.total || 0);
       return `
       <tr data-id="${v.id}" data-line-id="${it?.id || ''}" class="${v.anulada ? 'venta-anulada' : ''}" data-venta-nueva="${itemIndex===0}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}, línea ${itemIndex+1}">
-        <td><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')} ${v.anulada ? '<span class="tag anulada">Anulada</span>' : ''}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
-        <td>${itemIndex+1}/${items.length}${it?.id ? `<br><span class="trace-id">${escapeHtml(String(it.id).slice(0,8).toUpperCase())}</span>` : ''}</td>
-        <td>${fecha}</td>
-        <td>${tienda}</td>
-        <td>${cliente}</td>
-        <td>${escapeHtml(it?.productos?.nombre || '—')}${Number(it?.cantidad || 0) > 1 ? ` ×${Number(it.cantidad)}` : ''}</td>
-        <td>${escapeHtml(it?.unidades?.imei || '—')}</td>
-        <td>${plataforma}</td>
-        <td>${fmtCOP(valorLinea)}</td>
-        <td>${escapeHtml(v.vendedor_perfil?.nombre || '—')}</td>
+        <td data-label="Venta"><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')} ${v.anulada ? '<span class="tag anulada">Anulada</span>' : ''}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
+        <td data-label="Línea">${itemIndex+1}/${items.length}${it?.id ? `<br><span class="trace-id">${escapeHtml(String(it.id).slice(0,8).toUpperCase())}</span>` : ''}</td>
+        <td data-label="Fecha">${fecha}</td>
+        <td data-label="Tienda">${tienda}</td>
+        <td data-label="Cliente">${cliente}</td>
+        <td data-label="Referencia">${escapeHtml(it?.productos?.nombre || '—')}${Number(it?.cantidad || 0) > 1 ? ` ×${Number(it.cantidad)}` : ''}</td>
+        <td data-label="IMEI">${escapeHtml(it?.unidades?.imei || '—')}</td>
+        <td data-label="Plataforma">${plataforma}</td>
+        <td data-label="Valor">${fmtCOP(valorLinea)}</td>
+        <td data-label="Vendedor">${escapeHtml(v.vendedor_perfil?.nombre || '—')}</td>
       </tr>
       `;
     });
@@ -748,12 +784,12 @@ async function abrirDetalleVenta(ventaId) {
   const estadoMovimientos = resultadoMovimientos.error
     ? 'Consulta no disponible para este perfil.'
     : movimientos.length
-      ? movimientos.map((m,i) => `Movimiento ${i+1}: <span class="trace-id">${escapeHtml(m.id.toUpperCase())}</span>${m.unidad_id ? ` · Unidad <span class="trace-id">${escapeHtml(m.unidad_id.toUpperCase())}</span>` : ''}`).join('<br>')
+      ? movimientos.map((m,i) => `Movimiento ${i+1}: <span class="trace-id">${escapeHtml(String(m.id).toUpperCase())}</span>${m.unidad_id ? ` · Unidad <span class="trace-id">${escapeHtml(String(m.unidad_id).toUpperCase())}</span>` : ''}`).join('<br>')
       : 'No se encontró un movimiento de inventario relacionado; requiere revisión.';
   const movimientosHtml = `
     <div class="detalle-credito">
       <b>Trazabilidad KORA</b><br>
-      Venta: <span class="trace-id">${escapeHtml(ventaSeleccionada.id.toUpperCase())}</span> ·
+      Venta: <span class="trace-id">${escapeHtml(String(ventaSeleccionada.id).toUpperCase())}</span> ·
       Líneas: ${detalle.items.length} · Movimientos de inventario: ${movimientos.length}<br>
       ${estadoMovimientos}<br>
       Caja: calculada directamente desde esta venta; no crea un movimiento de caja duplicado.
@@ -761,7 +797,7 @@ async function abrirDetalleVenta(ventaId) {
   const { data: ajustes } = await sb.from('venta_ajustes_administrativos')
     .select('id,tipo,motivo,created_at,perfiles:usuario_id(nombre)')
     .eq('venta_id',ventaId).order('created_at',{ascending:false});
-  const historialHtml = ajustes?.length ? `<div class="ajuste-historial"><strong>Historial de ajustes</strong>${ajustes.map(a => `${new Date(a.created_at).toLocaleString('es-CO')} · ${a.tipo === 'anulacion' ? 'Anulación' : 'Corrección'} · ${escapeHtml(a.perfiles?.nombre || 'Usuario')}<br>${escapeHtml(a.motivo)} · ID ${escapeHtml(a.id.toUpperCase())}`).join('<hr style="border:0;border-top:1px solid var(--border);margin:8px 0">')}</div>` : '';
+  const historialHtml = ajustes?.length ? `<div class="ajuste-historial"><strong>Historial de ajustes</strong>${ajustes.map(a => `${new Date(a.created_at).toLocaleString('es-CO')} · ${a.tipo === 'anulacion' ? 'Anulación' : 'Corrección'} · ${escapeHtml(a.perfiles?.nombre || 'Usuario')}<br>${escapeHtml(a.motivo)} · ID ${escapeHtml(String(a.id).toUpperCase())}`).join('<hr style="border:0;border-top:1px solid var(--border);margin:8px 0">')}</div>` : '';
 
   contenido.className = '';
   contenido.innerHTML = `

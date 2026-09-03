@@ -29,6 +29,16 @@ test('los gastos de aliados tienen aprobación, soporte y auditoría', async () 
   assert.match(correctionMigration, /audit_log/);
 });
 
+test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendientes', async () => {
+  const reconciliation = await readFile(new URL('../../supabase/migrations/20260903012427_reconciliar_krediya_y_asociacion_historica.sql', import.meta.url), 'utf8');
+  const quality = await readFile(new URL('../../creditek/erp/aliados-calidad.html', import.meta.url), 'utf8');
+  assert.match(reconciliation, /tipo_establecimiento='aliado' then 30000/i);
+  assert.match(reconciliation, /aliados_asociar_historico/);
+  assert.match(app, /Pendientes de asociación histórica/);
+  assert.match(app, /data-historical-associate/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.5/);
+});
+
 test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
   assert.match(utilityMigration, /politica_actual_aplicada_retroactivamente/);
   assert.match(utilityMigration, /when tipo_establecimiento='propia' then 0\.76 else 0\.77/);

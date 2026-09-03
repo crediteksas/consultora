@@ -14,7 +14,7 @@ function table(head,body){return `<div class="table-wrap"><table><thead><tr>${he
 function metrics(items){$('#metrics').innerHTML=items.map(([label,value])=>`<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}
 function execName(id){return db.executives.find(x=>x.id===id)?.nombre||'Pendiente de asociación'}
 function allyName(id){return db.allies.find(x=>x.id===id)?.nombre_comercial||'Pendiente de asociación'}
-function platformName(v){return v==='alo'?'ALO Credit':v==='payjoy'?'PayJoy':v==='krediya'?'Krediya':v||'—'}
+function platformName(v){return v==='alo'?'ALO Credit':v==='payjoy'?'PayJoy':v==='krediya'?'Krediya':v==='ecredit'?'eCredit':v||'—'}
 function relationshipCount(xs,key,id){return xs.filter(x=>x[key]===id).length}
 function operationsForAlly(a){const origins=new Set(db.sites.filter(s=>s.aliado_id===a.id&&s.origen_codigo).map(s=>s.origen_codigo));return db.operations.filter(o=>origins.has(o.origen_codigo))}
 function filters(){const q=($('#q')?.value||'').toLowerCase();const state=$('#state')?.value||'';return {q,state}}

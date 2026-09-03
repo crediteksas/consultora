@@ -43,3 +43,16 @@ test('Tesorería muestra pagos completos sin tablas partidas', async () => {
   assert.match(app, /aliados_autorizar_pago/);
   assert.doesNotMatch(app, /table\(\['Aliado','Plataforma','Corte'/);
 });
+
+test('el detalle de pago queda por encima de encabezados fijos y bloquea el fondo', async () => {
+  const [html, app] = await Promise.all([
+    readFile('creditek/erp/aliados-tesoreria.html', 'utf8'),
+    readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
+  ]);
+  assert.match(html, /body>\.modal\{[^}]*z-index:2147483000!important/);
+  assert.match(html, /html\.kora-payment-modal-open,body\.kora-payment-modal-open\{overflow:hidden!important/);
+  assert.match(html, /body>\.modal>\.modal-box\{[^}]*position:relative;z-index:1/);
+  assert.match(app, /function syncPaymentModalState\(\)/);
+  assert.match(app, /showPaymentModal\(\$\('#paymentDetailModal'\)\)/);
+  assert.match(app, /event\.key!=='Escape'/);
+});

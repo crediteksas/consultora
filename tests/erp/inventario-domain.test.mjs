@@ -52,4 +52,8 @@ test('consultas de tienda incluyen los costos que muestra inventario', () => {
   assert.match(domain.columnasStock(false), /costo_promedio/);
   assert.match(domain.columnasUnidades(true), /costo_remision/);
   assert.match(domain.columnasStock(true), /costo_promedio/);
+  assert.match(domain.columnasUnidades(true), /productos\(codigo,nombre,categoria\)/);
+  assert.match(domain.columnasStock(true), /productos\(codigo,nombre,categoria\)/);
+  assert.match(domain.columnasUnidades(true), /tiendas:tienda_actual\(nombre\)/);
+  assert.match(domain.columnasStock(true), /tiendas:tienda_codigo\(nombre\)/);
 });

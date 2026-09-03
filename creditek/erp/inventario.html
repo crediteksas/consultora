@@ -429,7 +429,7 @@ async function cargarCelulares() {
   // compra), que se solicita solo para el rol central y funciona sin joins extra.
   const columnas = [
     'id', 'imei', 'estado', 'tienda_actual', 'precio_tienda',
-    'producto_id', 'created_at', 'productos(nombre, categoria)',
+    'producto_id', 'created_at', 'productos(codigo, nombre, categoria)',
     'tiendas:tienda_actual(nombre)',
   ];
   columnas.splice(5, 0, 'costo_remision');
@@ -444,7 +444,7 @@ async function cargarCelulares() {
 async function cargarAccesorios() {
   const columnas = [
     'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
-    'productos(nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
+    'productos(codigo, nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
   ];
   columnas.splice(4, 0, 'costo_promedio');
   const { data, error } = await sb.from('stock_cantidad')

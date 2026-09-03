@@ -16,9 +16,10 @@ const XLSX = require('xlsx');
 
 const unidad = {
   tienda_actual: 'TIENDA-PRUEBA',
+  tiendas: { nombre: 'Tienda Prueba Centro' },
   imei: '000000000000001',
   costo_remision: 100000,
-  productos: { nombre: '=MODELO', categoria: 'celular' },
+  productos: { codigo: 'CEL-001', nombre: '=MODELO', categoria: 'celular' },
 };
 
 test('una tienda exporta inventario sin costos internos', () => {
@@ -81,16 +82,19 @@ test('la tienda solicita el costo real en las consultas de inventario', () => {
 test('el Excel de accesorios contiene columnas separadas y valores numéricos', () => {
   const filas = exportador.filasAccesorios([{
     tienda_codigo: 'TIENDA-PRUEBA',
+    tiendas: { nombre: 'Tienda Prueba Centro' },
     cantidad: '8',
     precio_tienda: '7011',
     costo_promedio: '9120',
-    productos: { nombre: 'Silicona', categoria: 'Accesorios' },
+    productos: { codigo: 'ACC-001', nombre: 'Silicona', categoria: 'Accesorios' },
   }], false);
 
   assert.deepEqual(
     JSON.parse(JSON.stringify(filas)),
     [{
-      Tienda: 'TIENDA-PRUEBA',
+      Tienda: 'Tienda Prueba Centro',
+      'Código tienda': 'TIENDA-PRUEBA',
+      'Código producto': 'ACC-001',
       Categoría: 'Accesorios',
       'Referencia o producto': 'Silicona',
       Cantidad: 8,
@@ -105,16 +109,20 @@ test('el Excel de accesorios contiene columnas separadas y valores numéricos', 
 test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
   const filas = exportador.filasCelulares([{
     tienda_actual: 'TIENDA-PRUEBA',
+    tiendas: { nombre: 'Tienda Prueba Centro' },
     imei: '000000000000001',
     precio_tienda: '500000',
     costo_remision: '450000',
-    productos: { nombre: 'Equipo A', categoria: 'Celulares' },
+    productos: { codigo: 'CEL-001', nombre: 'Equipo A', categoria: 'Celulares' },
   }], false);
 
   assert.deepEqual(Object.keys(filas[0]), [
-    'Tienda', 'Categoría', 'Referencia', 'Cantidad', 'IMEI',
+    'Tienda', 'Código tienda', 'Código producto', 'Categoría', 'Referencia', 'Cantidad', 'IMEI',
     'Costo unitario', 'Valor total al costo',
   ]);
+  assert.equal(filas[0].Tienda, 'Tienda Prueba Centro');
+  assert.equal(filas[0]['Código tienda'], 'TIENDA-PRUEBA');
+  assert.equal(filas[0]['Código producto'], 'CEL-001');
   assert.equal(filas[0].Cantidad, 1);
   assert.equal(filas[0].IMEI, '000000000000001');
   assert.equal(filas[0]['Costo unitario'], 450000);
@@ -131,10 +139,11 @@ test('la pantalla muestra costo y no precio de venta', () => {
 test('genera un libro con filtros, anchos y formato monetario sin mutar datos', () => {
   const stock = [{
     tienda_codigo: 'TIENDA-PRUEBA',
+    tiendas: { nombre: 'Tienda Prueba Centro' },
     cantidad: 8,
     precio_tienda: 7011,
     costo_promedio: 4200,
-    productos: { nombre: 'Silicona', categoria: 'Accesorios' },
+    productos: { codigo: 'ACC-001', nombre: 'Silicona', categoria: 'Accesorios' },
   }];
   const original = structuredClone(stock);
   const libro = exportador.crearLibroInventario({
@@ -149,8 +158,18 @@ test('genera un libro con filtros, anchos y formato monetario sin mutar datos', 
     { ref: hoja['!ref'] }
   );
   assert.ok(hoja['!cols'].every(columna => columna.wch >= 10));
-  assert.equal(hoja.E2.t, 'n');
-  assert.equal(hoja.E2.z, '$#,##0.00');
+  assert.equal(hoja.G2.t, 'n');
+  assert.equal(hoja.G2.z, '$#,##0.00');
+});
+
+test('CSV de conteo incluye nombre, código de tienda y código de producto', () => {
+  const contenido = exportador.exportarCelulares({
+    unidades: [unidad], esCentral: true, conteoCiego: true,
+    corte: '2026-07-26 08:00:00',
+  });
+
+  assert.match(contenido, /"Tienda","Código tienda","Código producto"/);
+  assert.match(contenido, /"Tienda Prueba Centro","TIENDA-PRUEBA","CEL-001"/);
 });
 
 test('la pantalla descarga inventario normal como xlsx', () => {

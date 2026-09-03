@@ -86,7 +86,7 @@
       'created_at',
     ];
     visibles.push('costo_remision');
-    visibles.push('productos(nombre,categoria)', 'tiendas:tienda_actual(nombre)');
+    visibles.push('productos(codigo,nombre,categoria)', 'tiendas:tienda_actual(nombre)');
     return visibles.join(',');
   }
 
@@ -99,7 +99,7 @@
       'updated_at',
     ];
     visibles.push('costo_promedio');
-    visibles.push('productos(nombre,categoria)', 'tiendas:tienda_codigo(nombre)');
+    visibles.push('productos(codigo,nombre,categoria)', 'tiendas:tienda_codigo(nombre)');
     return visibles.join(',');
   }
 

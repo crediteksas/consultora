@@ -23,14 +23,19 @@
   }
 
   function exportarCelulares({ unidades, esCentral, conteoCiego, corte }) {
-    const encabezados = ['Fecha de corte', 'Tienda', 'Categoría', 'Referencia', 'IMEI o serial'];
+    const encabezados = [
+      'Fecha de corte', 'Tienda', 'Código tienda', 'Código producto',
+      'Categoría', 'Referencia', 'IMEI o serial',
+    ];
     if (!conteoCiego) encabezados.push('Cantidad sistema');
     encabezados.push('Cantidad física');
     if (esCentral && !conteoCiego) encabezados.push('Costo interno autorizado');
     const filas = (unidades || []).map(unidad => {
       const fila = [
-        corte, unidad.tienda_actual || '', unidad.productos?.categoria || 'celular',
-        unidad.productos?.nombre || '', unidad.imei || '',
+        corte, unidad.tiendas?.nombre || unidad.tienda_actual || '',
+        unidad.tienda_actual || '', unidad.productos?.codigo || '',
+        unidad.productos?.categoria || 'celular', unidad.productos?.nombre || '',
+        unidad.imei || '',
       ];
       if (!conteoCiego) fila.push(1);
       fila.push('');
@@ -41,14 +46,18 @@
   }
 
   function exportarAccesorios({ stock, esCentral, conteoCiego, corte }) {
-    const encabezados = ['Fecha de corte', 'Tienda', 'Categoría', 'Referencia'];
+    const encabezados = [
+      'Fecha de corte', 'Tienda', 'Código tienda', 'Código producto',
+      'Categoría', 'Referencia',
+    ];
     if (!conteoCiego) encabezados.push('Cantidad sistema');
     encabezados.push('Cantidad física');
     if (esCentral && !conteoCiego) encabezados.push('Costo interno autorizado');
     const filas = (stock || []).map(registro => {
       const fila = [
-        corte, registro.tienda_codigo || '', registro.productos?.categoria || 'accesorio',
-        registro.productos?.nombre || '',
+        corte, registro.tiendas?.nombre || registro.tienda_codigo || '',
+        registro.tienda_codigo || '', registro.productos?.codigo || '',
+        registro.productos?.categoria || 'accesorio', registro.productos?.nombre || '',
       ];
       if (!conteoCiego) fila.push(Number(registro.cantidad || 0));
       fila.push('');
@@ -74,7 +83,9 @@
       const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
       const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {
-        Tienda: textoSeguro(unidad.tienda_actual),
+        Tienda: textoSeguro(unidad.tiendas?.nombre || unidad.tienda_actual),
+        'Código tienda': textoSeguro(unidad.tienda_actual),
+        'Código producto': textoSeguro(unidad.productos?.codigo),
         Categoría: textoSeguro(unidad.productos?.categoria || 'Celulares'),
         Referencia: textoSeguro(unidad.productos?.nombre),
         Cantidad: 1,
@@ -92,7 +103,9 @@
       const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
       const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {
-        Tienda: textoSeguro(registro.tienda_codigo),
+        Tienda: textoSeguro(registro.tiendas?.nombre || registro.tienda_codigo),
+        'Código tienda': textoSeguro(registro.tienda_codigo),
+        'Código producto': textoSeguro(registro.productos?.codigo),
         Categoría: textoSeguro(registro.productos?.categoria || 'Accesorios'),
         'Referencia o producto': textoSeguro(registro.productos?.nombre),
         Cantidad: cantidad,
@@ -113,14 +126,14 @@
     hoja['!autofilter'] = { ref: hoja['!ref'] || 'A1:F1' };
     hoja['!cols'] = tipo === 'celulares'
       ? [
-        { wch: 18 }, { wch: 18 }, { wch: 32 }, { wch: 12 },
-        { wch: 20 }, { wch: 18 }, { wch: 18 },
+        { wch: 26 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 32 },
+        { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
       ]
       : [
-        { wch: 18 }, { wch: 18 }, { wch: 32 },
-        { wch: 12 }, { wch: 22 }, { wch: 18 },
+        { wch: 26 }, { wch: 16 }, { wch: 18 }, { wch: 18 },
+        { wch: 32 }, { wch: 12 }, { wch: 22 }, { wch: 18 },
       ];
-    const columnasMoneda = tipo === 'celulares' ? ['F', 'G'] : ['E', 'F'];
+    const columnasMoneda = tipo === 'celulares' ? ['H', 'I'] : ['G', 'H'];
     for (let fila = 2; fila <= filas.length + 1; fila += 1) {
       for (const columna of columnasMoneda) {
         const celda = hoja[`${columna}${fila}`];

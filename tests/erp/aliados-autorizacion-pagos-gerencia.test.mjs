@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = 'supabase/migrations/20260903161914_restringir_autorizacion_pagos_oscar.sql';
+const eventMigration = 'supabase/migrations/20260903165524_permitir_evento_autorizacion_pago.sql';
 
 test('solo el aprobador activo de Gerencia puede autorizar pagos', async () => {
   const sql = await readFile(migration, 'utf8');
@@ -55,4 +56,12 @@ test('el detalle de pago queda por encima de encabezados fijos y bloquea el fond
   assert.match(app, /function syncPaymentModalState\(\)/);
   assert.match(app, /showPaymentModal\(\$\('#paymentDetailModal'\)\)/);
   assert.match(app, /event\.key!=='Escape'/);
+});
+
+test('la auditoría admite el evento de autorización sin revertir el pago', async () => {
+  const sql = await readFile(eventMigration, 'utf8');
+  assert.match(sql, /drop constraint if exists liquidation_domain_events_event_type_check/);
+  assert.match(sql, /'payment\.authorized'::text/);
+  assert.match(sql, /'payment\.scheduled'::text/);
+  assert.match(sql, /'treasury\.movement_completed'::text/);
 });

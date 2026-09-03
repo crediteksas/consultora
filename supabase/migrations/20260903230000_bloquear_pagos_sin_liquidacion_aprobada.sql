@@ -43,3 +43,6 @@ before update of estado on public.payment_orders
 for each row
 execute function public.aliados_exigir_liquidacion_aprobada_para_pago();
 
+revoke all on function public.aliados_exigir_liquidacion_aprobada_para_pago()
+from public, anon, authenticated;
+

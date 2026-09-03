@@ -188,7 +188,8 @@ body[data-kora-dashboard="1.0.0"] {
   height: 6px;
 }
 
-.barra-pct div {
+.barra-pct div,
+.barra-pct > span {
   border-radius: 3px;
   transition: width 600ms cubic-bezier(.25,.46,.45,.94);
 }
@@ -277,7 +278,8 @@ body[data-kora-dashboard="1.0.0"] {
 
   .dashboard-metric,
   .dashboard-chart-panel,
-  .barra-pct div {
+  .barra-pct div,
+  .barra-pct > span {
     transition: none;
   }
 }

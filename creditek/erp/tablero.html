@@ -131,12 +131,11 @@
         </div>
         <span class="dashboard-section-heading__meta">Cumplimiento del mes</span>
       </div>
-      <div class="tabla-wrap" tabindex="0" role="region" aria-label="Rendimiento por tienda; desplaza horizontalmente para ver todas las columnas">
-      <table class="dashboard-table">
+      <div class="tabla-wrap tabla-wrap--tiendas" role="region" aria-label="Rendimiento por tienda del mes vigente">
+      <table class="dashboard-table dashboard-store-table">
         <thead><tr>
-          <th>Tienda</th><th class="num">Créditos</th><th class="num">Meta</th><th class="centro">Avance</th>
-          <th class="num">Proyección</th><th class="num">Contado</th><th class="num">Utilidad</th>
-          <th class="centro">Caja</th><th class="centro">Sem.</th>
+          <th>Tienda</th><th class="centro">Créditos / meta</th><th>Avance y proyección</th>
+          <th class="num">Contado</th><th class="num">Utilidad</th><th class="centro">Caja</th>
         </tr></thead>
         <tbody id="tbodyTiendas"></tbody>
         <tfoot id="tfootTotal"></tfoot>
@@ -466,26 +465,27 @@ function renderTablaTiendas(filas) {
 
   tbody.innerHTML = filas.map(f => `
     <tr>
-      <td>${escapeHtml(f.tienda.nombre)}</td>
-      <td class="num">${f.creditosMes}</td>
-      <td class="num">${f.metaMes || '—'}</td>
-      <td class="centro">
-        <span class="barra-pct"><div style="width:${Math.min(f.pct || 0, 100)}%; background:${colorBarra(f.pct)};"></div></span>
-        ${f.pct === null ? '—' : Math.round(f.pct) + '%'}
+      <td class="store-name">${escapeHtml(f.tienda.nombre)}</td>
+      <td class="centro store-goal"><strong>${f.creditosMes}</strong><span>/ ${f.metaMes || '—'}</span></td>
+      <td class="store-progress">
+        <div class="store-progress__main">
+          <span class="barra-pct"><span style="width:${Math.min(f.pct || 0, 100)}%; background:${colorBarra(f.pct)};"></span></span>
+          <strong>${f.pct === null ? '—' : Math.round(f.pct) + '%'}</strong>
+        </div>
+        <div class="store-progress__detail">
+          <span>Proy. ${Math.round(f.runRate)}</span>
+          <span class="status-indicator status-indicator--${f.semaforo}">
+            <i data-lucide="circle"></i>
+            ${f.pctRunRate === null ? 'Sin meta' : Math.round(f.pctRunRate) + '% ritmo'}
+          </span>
+        </div>
       </td>
-      <td class="num">${Math.round(f.runRate)}</td>
       <td class="num">${fmtCorto(f.contadoMes)}</td>
       <td class="num">${fmtCorto(f.utilidadMes)}</td>
       <td class="centro">
         <span class="status-indicator status-indicator--${f.cajaOk ? 'success' : 'warning'}">
           <i data-lucide="${f.cajaOk ? 'circle-check' : 'triangle-alert'}"></i>
           ${f.cajaOk ? 'Al día' : 'Revisar'}
-        </span>
-      </td>
-      <td class="centro">
-        <span class="status-indicator status-indicator--${f.semaforo}">
-          <i data-lucide="circle"></i>
-          ${f.pctRunRate === null ? 'Sin meta' : Math.round(f.pctRunRate) + '%'}
         </span>
       </td>
     </tr>
@@ -498,10 +498,9 @@ function renderTablaTiendas(filas) {
   const totalPct = totalMeta > 0 ? Math.round((totalCreditos / totalMeta) * 100) : 0;
   document.getElementById('tfootTotal').innerHTML = `
     <tr class="fila-total">
-      <td>TOTAL</td><td class="num">${totalCreditos}</td><td class="num">${totalMeta}</td>
-      <td class="centro">${totalPct}%</td><td class="num">—</td>
-      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${fmtCorto(totalUtilidad)}</td>
-      <td class="centro">—</td><td class="centro">—</td>
+      <td>TOTAL</td><td class="centro store-goal"><strong>${totalCreditos}</strong><span>/ ${totalMeta || '—'}</span></td>
+      <td class="store-progress"><strong>${totalMeta > 0 ? totalPct + '%' : '—'}</strong></td>
+      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${fmtCorto(totalUtilidad)}</td><td class="centro">—</td>
     </tr>
   `;
   pintarIconos();

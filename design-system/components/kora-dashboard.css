@@ -536,8 +536,58 @@ body[data-kora-dashboard="1.0.0"] {
   width: 4.5rem;
 }
 
-.barra-pct div {
+.barra-pct div,
+.barra-pct > span {
+  display: block;
   height: 100%;
+}
+
+.dashboard-store-table {
+  table-layout: fixed;
+}
+
+.dashboard-store-table th:nth-child(1) { width: 22%; }
+.dashboard-store-table th:nth-child(2) { width: 13%; }
+.dashboard-store-table th:nth-child(3) { width: 25%; }
+.dashboard-store-table th:nth-child(4),
+.dashboard-store-table th:nth-child(5) { width: 13%; }
+.dashboard-store-table th:nth-child(6) { width: 14%; }
+
+.dashboard-store-table .store-name {
+  font-weight: var(--ctk-font-weight-semibold);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.store-goal strong,
+.store-goal span {
+  display: inline-block;
+}
+
+.store-goal span {
+  color: var(--ctk-color-text-muted);
+  margin-left: .2rem;
+}
+
+.store-progress__main,
+.store-progress__detail {
+  align-items: center;
+  display: flex;
+}
+
+.store-progress__main {
+  gap: var(--ctk-space-0-5);
+}
+
+.store-progress__detail {
+  color: var(--ctk-color-text-muted);
+  font-size: var(--ctk-font-size-small);
+  gap: var(--ctk-space-1);
+  margin-top: .35rem;
+}
+
+.store-progress__detail .status-indicator {
+  font-size: inherit;
 }
 
 .status-indicator {
@@ -695,6 +745,26 @@ body[data-kora-dashboard="1.0.0"] {
   .dashboard-primary-grid,
   .dashboard-support-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tabla-wrap--tiendas {
+    overflow-x: hidden;
+  }
+
+  .dashboard-store-table th,
+  .dashboard-store-table td {
+    padding-inline: .625rem;
+  }
+
+  .dashboard-store-table th:nth-child(1) { width: 24%; }
+  .dashboard-store-table th:nth-child(2) { width: 13%; }
+  .dashboard-store-table th:nth-child(3) { width: 25%; }
+  .dashboard-store-table th:nth-child(4),
+  .dashboard-store-table th:nth-child(5) { width: 13%; }
+  .dashboard-store-table th:nth-child(6) { width: 12%; }
+
+  .dashboard-store-table .barra-pct {
+    width: clamp(2.5rem, 6vw, 4.5rem);
   }
 
 }

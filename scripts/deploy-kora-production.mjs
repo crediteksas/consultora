@@ -68,7 +68,18 @@ const previewSha = await hashResponse(previewUrl);
 if (previewSha !== manifest.appSha256) throw new Error(`SHA de Worker Version distinto: ${previewSha}`);
 run('npm', ['run', 'test:local'], { env: { BASE_URL: `https://${previewAlias}-creditek-kora.comercial-853.workers.dev` } });
 
-const promote = version => run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
+const promote = async version => {
+  let lastError;
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    try {
+      return run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${version}@100`, '--message', message, '--yes']);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 6) await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+    }
+  }
+  throw lastError;
+};
 const rollback = rollbackVersion => {
   run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'versions', 'deploy', `${rollbackVersion}@100`, '--message', `ROLLBACK automático ${policy.displayVersion} desde ${candidate}`, '--yes']);
   if (previousRelease) run('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'kv', 'key', 'put', 'production', previousRelease, '--namespace-id', policy.releaseKvNamespaceId, '--remote']);

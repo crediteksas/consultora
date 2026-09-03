@@ -76,6 +76,8 @@ test('el pipeline valida repositorio, rama, commit, limpieza, manifiesto, SHA y 
   assert.match(verifier, /KORA · ERP — Creditek/);
   assert.match(verifier, /jfkmiyvcdfbsbwchyvol\.supabase\.co/);
   assert.match(verifier, /sha256/i);
+  assert.match(deploy, /attempt <= 6/);
+  assert.match(deploy, /attempt \* 2000/);
 });
 
 test('el manifiesto esperado documenta versión, commit, artefacto y Worker', async () => {

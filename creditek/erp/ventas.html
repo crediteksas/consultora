@@ -95,6 +95,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .tag { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 .tag.contado { background: #DCFCE7; color: #166534; }
 .tag.credito { background: #DBEAFE; color: #1E40AF; }
+.tag.anulada { background: #FEE2E2; color: #991B1B; }
+#tbodyVentas tr.venta-anulada { opacity: .66; background: #FFF7F7; }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 32px 16px; }
 
 /* ── Wizard ── */
@@ -177,6 +179,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .detalle-credito { margin-top: 14px; padding: 12px; background: #EFF6FF; border-radius: var(--radius-sm); font-size: 12.5px; line-height: 1.7; }
 .detalle-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
 .detalle-actions button { border: none; border-radius: 999px; padding: 11px 20px; background: var(--azul); color: white; font-weight: 700; cursor: pointer; }
+.detalle-actions { gap: 8px; flex-wrap: wrap; }
+.detalle-actions button.danger { background: var(--rojo); }
+.detalle-actions button.secondary { background: var(--bg); color: var(--azul); border: 1px solid var(--border); }
+.ajuste-historial { margin-top:14px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; line-height:1.55; }
+.ajuste-historial strong { display:block; margin-bottom:5px; }
 @media (max-width: 560px) { .detalle-meta { grid-template-columns: 1fr; } }
 
 /* Capa visual local de Ventas. No altera datos, cálculos ni comportamiento. */
@@ -377,7 +384,23 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <h2 id="detalleVentaTitulo">Detalle de venta</h2>
     <div id="detalleVentaContenido" class="empty-state">Cargando...</div>
     <div class="modal-err" id="detalleVentaErr"></div>
-    <div class="detalle-actions"><button id="btnCerrarDetalleVenta">Cerrar</button></div>
+    <div class="detalle-actions"><button class="secondary" id="btnGestionarVenta" style="display:none;">Corregir o anular</button><button id="btnCerrarDetalleVenta">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalAjusteVenta">
+  <div class="modal-box">
+    <h2>Corrección administrativa</h2>
+    <p class="empty-state" style="padding:6px 0 16px;text-align:left;">La venta original nunca se elimina. Los cambios quedan identificados y auditados.</p>
+    <div class="campo"><label>Acción</label><select id="ajusteTipo"><option value="correccion_datos">Corregir datos administrativos</option><option value="anulacion">Anular venta y devolver inventario</option></select></div>
+    <div id="camposCorreccion">
+      <div class="campo"><label>Nota administrativa</label><input id="ajusteNota" maxlength="500" placeholder="Dato corregido o aclaración"></div>
+      <div class="campo"><label>Referencia del contrato (si aplica)</label><input id="ajusteContrato" maxlength="120" placeholder="Número o referencia"></div>
+      <div class="campo"><label>Plazo (si aplica)</label><input id="ajustePlazo" type="number" min="1" max="120" placeholder="Número de cuotas"></div>
+    </div>
+    <div class="campo"><label>Motivo obligatorio (mínimo 10 caracteres)</label><input id="ajusteMotivo" maxlength="500" placeholder="Explica por qué se realiza el ajuste"></div>
+    <div class="modal-err" id="ajusteVentaErr"></div>
+    <div class="detalle-actions"><button class="secondary" id="btnCancelarAjuste">Cancelar</button><button id="btnAplicarAjuste">Aplicar con trazabilidad</button></div>
   </div>
 </div>
 
@@ -477,8 +500,11 @@ let currentPerfil = null;
 let ventasCache = [];
 let productosCache = [];
 let tiendasCache = [];
+let detalleVentaActiva = null;
+let detalleCreditoActivo = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+function puedeAjustarVentas() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function puedeVender() { return !!currentPerfil && (currentPerfil.rol === 'admin_tienda' || currentPerfil.rol === 'asesor'); }
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
@@ -561,6 +587,10 @@ function initPagina() {
   document.getElementById('btnCerrarDetalleVenta').addEventListener('click', () => {
     document.getElementById('modalDetalleVenta').classList.remove('show');
   });
+  document.getElementById('btnGestionarVenta').addEventListener('click', abrirAjusteVenta);
+  document.getElementById('btnCancelarAjuste').addEventListener('click', cerrarAjusteVenta);
+  document.getElementById('btnAplicarAjuste').addEventListener('click', aplicarAjusteVenta);
+  document.getElementById('ajusteTipo').addEventListener('change', actualizarCamposAjuste);
 
   cargarDatosBase();
 }
@@ -621,8 +651,8 @@ function renderTablaVentas() {
         ? Number(it.precio_venta || 0) * Number(it.cantidad || 0)
         : Number(v.total || 0);
       return `
-      <tr data-id="${v.id}" data-line-id="${it?.id || ''}" data-venta-nueva="${itemIndex===0}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}, línea ${itemIndex+1}">
-        <td><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
+      <tr data-id="${v.id}" data-line-id="${it?.id || ''}" class="${v.anulada ? 'venta-anulada' : ''}" data-venta-nueva="${itemIndex===0}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}, línea ${itemIndex+1}">
+        <td><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')} ${v.anulada ? '<span class="tag anulada">Anulada</span>' : ''}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
         <td>${itemIndex+1}/${items.length}${it?.id ? `<br><span class="trace-id">${escapeHtml(String(it.id).slice(0,8).toUpperCase())}</span>` : ''}</td>
         <td>${fecha}</td>
         <td>${tienda}</td>
@@ -667,7 +697,7 @@ async function abrirDetalleVenta(ventaId) {
       .eq('venta_id', ventaId)
       .order('id'),
     sb.from('creditos')
-      .select('financiera,cuota_inicial,valor_esperado_financiera,plazo_meses,estado_conciliacion')
+      .select('financiera,cuota_inicial,valor_esperado_financiera,contrato_ref,plazo_meses,estado_conciliacion')
       .eq('venta_id', ventaId)
       .maybeSingle(),
     sb.from('movimientos')
@@ -676,6 +706,8 @@ async function abrirDetalleVenta(ventaId) {
       .eq('referencia_id', ventaId)
       .order('created_at'),
   ]);
+  detalleVentaActiva = ventaSeleccionada;
+  detalleCreditoActivo = resultadoCredito.data || null;
 
   if (resultadoItems.error) {
     contenido.textContent = '';
@@ -726,6 +758,10 @@ async function abrirDetalleVenta(ventaId) {
       ${estadoMovimientos}<br>
       Caja: calculada directamente desde esta venta; no crea un movimiento de caja duplicado.
     </div>`;
+  const { data: ajustes } = await sb.from('venta_ajustes_administrativos')
+    .select('id,tipo,motivo,created_at,perfiles:usuario_id(nombre)')
+    .eq('venta_id',ventaId).order('created_at',{ascending:false});
+  const historialHtml = ajustes?.length ? `<div class="ajuste-historial"><strong>Historial de ajustes</strong>${ajustes.map(a => `${new Date(a.created_at).toLocaleString('es-CO')} · ${a.tipo === 'anulacion' ? 'Anulación' : 'Corrección'} · ${escapeHtml(a.perfiles?.nombre || 'Usuario')}<br>${escapeHtml(a.motivo)} · ID ${escapeHtml(a.id.toUpperCase())}`).join('<hr style="border:0;border-top:1px solid var(--border);margin:8px 0">')}</div>` : '';
 
   contenido.className = '';
   contenido.innerHTML = `
@@ -743,8 +779,47 @@ async function abrirDetalleVenta(ventaId) {
     </div>
     ${creditoHtml}
     ${movimientosHtml}
+    ${historialHtml}
     <div class="detalle-total"><span>Total</span><span>${fmtCOP(ventaSeleccionada.total)}</span></div>
   `;
+  const btnGestionar = document.getElementById('btnGestionarVenta');
+  btnGestionar.style.display = puedeAjustarVentas() && !ventaSeleccionada.anulada ? '' : 'none';
+}
+
+function abrirAjusteVenta() {
+  if (!detalleVentaActiva || detalleVentaActiva.anulada || !puedeAjustarVentas()) return;
+  document.getElementById('ajusteTipo').value='correccion_datos';
+  document.getElementById('ajusteNota').value=detalleVentaActiva.nota || '';
+  document.getElementById('ajusteContrato').value=detalleCreditoActivo?.contrato_ref || '';
+  document.getElementById('ajustePlazo').value=detalleCreditoActivo?.plazo_meses || '';
+  document.getElementById('ajusteMotivo').value='';
+  document.getElementById('ajusteVentaErr').classList.remove('show');
+  actualizarCamposAjuste();
+  document.getElementById('modalAjusteVenta').classList.add('show');
+}
+function cerrarAjusteVenta(){ document.getElementById('modalAjusteVenta').classList.remove('show'); }
+function actualizarCamposAjuste(){ document.getElementById('camposCorreccion').style.display=document.getElementById('ajusteTipo').value==='correccion_datos'?'':'none'; }
+async function aplicarAjusteVenta(){
+  const tipo=document.getElementById('ajusteTipo').value;
+  const motivo=document.getElementById('ajusteMotivo').value.trim();
+  const err=document.getElementById('ajusteVentaErr');
+  err.classList.remove('show');
+  if(motivo.length<10){err.textContent='El motivo debe tener mínimo 10 caracteres.';err.classList.add('show');return;}
+  if(tipo==='anulacion'&&!confirm('¿Confirmas la anulación? El inventario regresará a la tienda y la venta dejará de sumar en caja y utilidad.'))return;
+  const btn=document.getElementById('btnAplicarAjuste');btn.disabled=true;
+  let resultado;
+  if(tipo==='anulacion') resultado=await sb.rpc('anular_venta_administrativa',{p_venta_id:detalleVentaActiva.id,p_motivo:motivo});
+  else {
+    const credito={}; const contrato=document.getElementById('ajusteContrato').value.trim(); const plazo=document.getElementById('ajustePlazo').value;
+    if(detalleCreditoActivo){credito.contrato_ref=contrato||null;if(plazo)credito.plazo_meses=Number(plazo);}
+    resultado=await sb.rpc('corregir_venta_administrativa',{p_venta_id:detalleVentaActiva.id,p_motivo:motivo,p_cambios:{nota:document.getElementById('ajusteNota').value.trim()||null,...(detalleCreditoActivo?{credito}:{})}});
+  }
+  btn.disabled=false;
+  if(resultado.error){err.textContent=resultado.error.message;err.classList.add('show');return;}
+  const ajusteId=resultado.data?.ajuste_id;
+  cerrarAjusteVenta();document.getElementById('modalDetalleVenta').classList.remove('show');
+  mostrarBanner(`${tipo==='anulacion'?'Venta anulada e inventario restituido':'Datos administrativos corregidos'} · Ajuste ${String(ajusteId||'').slice(0,8).toUpperCase()}`);
+  await cargarVentas();
 }
 
 // ─── Wizard de nueva venta ──────────────────────────────────────────────

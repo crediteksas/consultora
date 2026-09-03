@@ -5,11 +5,28 @@ import { readFile } from 'node:fs/promises';
 const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
 const migration = await readFile('supabase/migrations/20260902235302_marcar_creditos_historicos_inicio_operacion.sql', 'utf8');
 const utilityMigration = await readFile('supabase/migrations/20260903003000_calcular_resultado_historico_creditos.sql', 'utf8');
+const correctionMigration = await readFile('supabase/migrations/20260903003358_corregir_utilidad_y_gastos_aliados.sql', 'utf8');
 
 test('el dashboard separa el histórico inicial pagado de la operación nueva', () => {
   assert.match(app, /Histórico inicial — ya pagado/);
-  assert.match(app, /No genera órdenes de pago ni exige fotografías o soportes/);
+  assert.match(app, /No genera órdenes de pago ni exige soportes/);
   assert.match(app, /allRows\('creditos_historicos_plataforma'/);
+});
+
+test('no duplica la cuota inicial y descuenta bonos del resultado histórico', () => {
+  assert.match(correctionMigration, /valor_comercial_historico-h\.pagamos_historico/);
+  assert.match(correctionMigration, /utilidad_neta_historica/);
+  assert.match(correctionMigration, /bono_universal',5000/);
+  assert.match(app, /Utilidad histórica neta parcial/);
+});
+
+test('los gastos de aliados tienen aprobación, soporte y auditoría', async () => {
+  const html = await readFile('creditek/erp/aliados-gastos.html', 'utf8');
+  assert.match(html, /id="expenseForm"/);
+  assert.match(html, /id="expenseSupport"/);
+  assert.match(correctionMigration, /create table if not exists public\.aliados_gastos_operativos/);
+  assert.match(correctionMigration, /aliados_decidir_gasto/);
+  assert.match(correctionMigration, /audit_log/);
 });
 
 test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
@@ -17,9 +34,9 @@ test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
   assert.match(utilityMigration, /when tipo_establecimiento='propia' then 0\.76 else 0\.77/);
   assert.match(utilityMigration, /krediya_archivo_historico/);
   assert.doesNotMatch(utilityMigration, /insert into public\.(payment_orders|payment_items|liquidation_bonuses|movimientos_caja)/i);
-  assert.match(app, /Utilidad histórica antes de bonos/);
+  assert.match(app, /Utilidad histórica bruta/);
   assert.match(app, /Utilidad visible acumulada/);
-  assert.match(app, /Pago neto histórico/);
+  assert.match(app, /Bonos históricos/);
 });
 
 test('la carga inicial queda pagada, sin soporte y con corte operativo', () => {

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">KORA</title>
+  <desc id="description">Ícono de KORA, el sistema operativo de Creditek</desc>
+  <defs>
+    <linearGradient id="background" x1="72" y1="56" x2="440" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102A52"/><stop offset="1" stop-color="#07162E"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="118" y1="118" x2="396" y2="396" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22DDE3"/><stop offset="1" stop-color="#00AEB7"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#001027" flood-opacity=".42"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)"/>
+  <path d="M48 160C98 83 167 44 256 44c89 0 158 39 208 116" fill="none" stroke="#FFFFFF" stroke-opacity=".055" stroke-width="26" stroke-linecap="round"/>
+  <g filter="url(#shadow)">
+    <circle cx="256" cy="242" r="143" fill="#FFFFFF"/>
+    <circle cx="256" cy="242" r="124" fill="#F7FCFC" stroke="url(#accent)" stroke-width="16"/>
+    <path d="M188 250l42 42 98-111" fill="none" stroke="url(#accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="256" y="432" fill="#FFFFFF" font-family="Montserrat,Arial,sans-serif" font-size="52" font-weight="800" letter-spacing="10" text-anchor="middle">KORA</text>
+</svg>

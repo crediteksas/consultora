@@ -12,7 +12,7 @@ const FORBIDDEN_PATHS = [
 const FORBIDDEN_NAMES = new Set(['package.json', 'package-lock.json', 'wrangler.jsonc', 'wrangler.toml']);
 const FORBIDDEN_EXTENSIONS = new Set(['.sql', '.pem', '.toml', '.bak', '.log']);
 const FORBIDDEN_CONTENT = [/\/?creditek\/agentes\//, /\.\.\/agentes\//, /KORA_AGENTS_SUPABASE_/];
-const TEXT_EXTENSIONS = new Set(['.css', '.html', '.js', '.json', '.mjs', '.txt']);
+const TEXT_EXTENSIONS = new Set(['.css', '.html', '.js', '.json', '.mjs', '.txt', '.webmanifest', '.svg']);
 
 async function walk(root, current = root) {
   const files = [];
@@ -55,6 +55,12 @@ export async function verifyKoraArtifact(root) {
   const required = [
     'creditek/erp/app.html',
     'creditek/erp/sidebar.js',
+    'creditek/erp/kora.webmanifest',
+    'creditek/erp/kora-icon-192.png',
+    'creditek/erp/kora-icon-512.png',
+    'creditek/erp/kora-icon-maskable-512.png',
+    'creditek/erp/kora-install.js',
+    'creditek/erp/kora-service-worker.js',
     'creditek/shared/branding/creditek-logo.png',
     'config/kora-environment.js',
     'config/kora-environment.generated.js',

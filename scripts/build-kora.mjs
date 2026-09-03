@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { verifyKoraArtifact } from './verify-kora-artifact.mjs';
 
 const ERP_EXTENSIONS = new Set(['.html', '.js', '.css']);
+const KORA_PWA_FILES = [
+  'creditek/erp/kora.webmanifest',
+  'creditek/erp/kora-icon-192.png',
+  'creditek/erp/kora-icon-512.png',
+  'creditek/erp/kora-icon-maskable-512.png',
+  'creditek/erp/kora-install.js',
+  'creditek/erp/kora-service-worker.js',
+];
 const EXCLUDED_ERP_FILES = new Set(['registro.html']);
 const DESIGN_FILES = [
   'design-system/components',
@@ -35,6 +43,7 @@ export async function buildKora(root, out = path.join(root, 'dist/kora')) {
       await copy(root, resolvedOut, `public/creditek/erp/${entry}`, `creditek/erp/${entry}`);
     }
   }
+  for (const relative of KORA_PWA_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'public/creditek/erp/app.html', 'index.html');
   for (const relative of DESIGN_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'creditek/shared/branding/creditek-logo.png');

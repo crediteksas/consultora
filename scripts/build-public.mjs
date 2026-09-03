@@ -20,6 +20,14 @@ const PUBLIC_FILES = [
 ];
 
 const ERP_EXTENSIONS = new Set(['.html', '.js', '.css']);
+const KORA_PWA_FILES = [
+  'creditek/erp/kora.webmanifest',
+  'creditek/erp/kora-icon-192.png',
+  'creditek/erp/kora-icon-512.png',
+  'creditek/erp/kora-icon-maskable-512.png',
+  'creditek/erp/kora-install.js',
+  'creditek/erp/kora-service-worker.js',
+];
 const KORA_SHELL_ASSET_VERSION = '2.0.15';
 const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.15';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.4';
@@ -82,6 +90,8 @@ export async function buildPublic(rootDir, outDir) {
       filter: source => !path.basename(source).startsWith('.'),
     });
   }
+
+  for (const relative of KORA_PWA_FILES) await copyFileFromRoot(rootDir, outDir, relative);
 
   await cp(
     path.join(rootDir, 'design-system'),

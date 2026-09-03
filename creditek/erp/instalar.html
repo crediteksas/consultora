@@ -53,6 +53,7 @@
       const q = selector => document.querySelector(selector);
       const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
       const ua = navigator.userAgent || '';
+      const isSafari = /safari/i.test(ua) && !/chrome|chromium|crios|edg|opr|android/i.test(ua);
       const platform = /iphone|ipad|ipod/i.test(ua) ? 'ios' : /android/i.test(ua) ? 'android' : /macintosh|mac os/i.test(ua) ? 'mac' : /windows/i.test(ua) ? 'windows' : 'desktop';
       const labels = {ios:'iPhone o iPad',android:'Android',mac:'Mac',windows:'Windows',desktop:'este dispositivo'};
       q('[data-device]').textContent = labels[platform];
@@ -72,8 +73,13 @@
         }
         install.hidden = true; list.classList.add('show');
         if (platform === 'ios') {
-          q('[data-status]').textContent = 'Apple requiere agregarla desde Safari.';
-          list.innerHTML = '<li>Abre este enlace en <strong>Safari</strong>.</li><li>Pulsa <strong>Compartir</strong> y luego <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma pulsando <strong>Agregar</strong>.</li>';
+          q('[data-title]').textContent = 'Instala KORA desde Safari';
+          q('[data-status]').textContent = isSafari ? 'Usa el botón Compartir de Safari.' : 'Primero abre este enlace en Safari.';
+          list.innerHTML = '<li>Abre este enlace en <strong>Safari</strong>.</li><li>Pulsa el botón <strong>Compartir</strong> (cuadrado con flecha hacia arriba).</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong> y confirma con <strong>Agregar</strong>.</li>';
+        } else if (platform === 'mac' && isSafari) {
+          q('[data-title]').textContent = 'Instala KORA en tu Mac';
+          q('[data-status]').textContent = 'Safari instala la aplicación desde el menú Archivo.';
+          list.innerHTML = '<li>En la barra superior de Safari, abre <strong>Archivo</strong>.</li><li>Selecciona <strong>Añadir al Dock…</strong>.</li><li>Confirma con <strong>Añadir</strong>. KORA quedará en el Dock y en Aplicaciones.</li>';
         } else {
           q('[data-status]').textContent = 'Tu navegador requiere confirmar desde su menú.';
           list.innerHTML = '<li>Abre el menú de Chrome o Edge.</li><li>Selecciona <strong>Instalar KORA</strong> o <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma la instalación.</li>';

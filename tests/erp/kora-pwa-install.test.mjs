@@ -43,6 +43,8 @@ test('KORA ofrece un enlace público y adaptable para distribuir la instalación
   assert.match(page, /Instala KORA en este dispositivo/);
   assert.match(page, /beforeinstallprompt/);
   assert.match(page, /Agregar a pantalla de inicio/);
+  assert.match(page, /Añadir al Dock/);
+  assert.match(page, /Safari instala la aplicación desde el menú Archivo/);
   assert.doesNotMatch(page, /navigator\.share/);
   assert.doesNotMatch(page, /Compartir enlace de instalación/);
   assert.match(page, /kora-service-worker\.js/);
@@ -59,6 +61,8 @@ test('compartir la instalación queda dentro de Administración y solo para perf
   assert.match(page, /data-kora-requires-auth="true"/);
   assert.match(page, /Compartir instalación de KORA/);
   assert.match(page, /navigator\.share/);
+  assert.match(page, /instalar\?v=1\.0\.1/);
+  assert.match(page, /Chrome no puede ordenar que Safari abra una página/);
   assert.match(sidebar, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);
   assert.match(access, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);
   const storeRoutes = access.match(/const STORE_ROUTES_BY_ROLE[\s\S]*?\n  \}\);/)?.[0] || '';

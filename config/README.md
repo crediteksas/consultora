@@ -1,10 +1,10 @@
-# KORA Environment Configuration — KORA v3.0
+# KORA Environment Configuration — KORA v3.1
 
 Producto: KORA
 
 Empresa: Creditek
 
-Versión productiva oficial: `3.0.0`. El único despliegue autorizado se ejecuta
+Versión productiva oficial: `3.1.0`. El único despliegue autorizado se ejecuta
 con `npm run deploy:kora:production`.
 
 Esta infraestructura prepara configuraciones separadas para `development`,

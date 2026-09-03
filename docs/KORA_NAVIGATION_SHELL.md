@@ -6,7 +6,7 @@ Empresa: Creditek
 
 Design System: Creditek Design System para KORA v1.0.0
 
-Versión de producto: KORA v3.0
+Versión de producto: KORA v3.1
 
 Versión: 1.0.0
 

@@ -1,6 +1,6 @@
-# KORA v3.0 — Producción
+# KORA v3.1 — Producción
 
-KORA v3.0 es el punto base oficial del ERP Creditek: Shell V2, Creditek Retail,
+KORA v3.1 es la versión productiva oficial del ERP Creditek: Shell V2, Creditek Retail,
 Creditek B2B, Creditek Aliados, Motor de Liquidaciones unificado, Tesorería y
 Centro de Incidencias. La arquitectura permanece preparada para AURA, sin
 compartir autenticación ni proyecto Supabase.
@@ -29,7 +29,7 @@ operativa de cada resultado se guarda fuera del repositorio en `/tmp`.
 
 ## Identificación visible y manifiesto
 
-Todas las pantallas ERP muestran `KORA ERP v3.0`, el build corto y el ambiente.
+Todas las pantallas ERP muestran `KORA ERP v3.1`, el build corto y el ambiente.
 El modal **Acerca de KORA** consume exclusivamente
 `/kora-build-manifest.json`. El Worker combina el manifiesto inmutable del
 artefacto con `CF_VERSION_METADATA` y el registro técnico `KORA_RELEASES`; así

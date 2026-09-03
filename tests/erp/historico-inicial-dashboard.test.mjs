@@ -17,7 +17,7 @@ test('no duplica la cuota inicial y descuenta bonos del resultado histórico', (
   assert.match(correctionMigration, /valor_comercial_historico-h\.pagamos_historico/);
   assert.match(correctionMigration, /utilidad_neta_historica/);
   assert.match(correctionMigration, /bono_universal',5000/);
-  assert.match(app, /Utilidad histórica neta parcial/);
+  assert.match(app, /Resultado histórico final/);
 });
 
 test('los gastos de aliados tienen aprobación, soporte y auditoría', async () => {
@@ -36,7 +36,7 @@ test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendi
   assert.match(reconciliation, /aliados_asociar_historico/);
   assert.match(app, /Pendientes de asociación histórica/);
   assert.match(app, /data-historical-associate/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.7/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.8/);
 });
 
 test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin catálogos inventados', () => {
@@ -58,9 +58,9 @@ test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
   assert.match(utilityMigration, /when tipo_establecimiento='propia' then 0\.76 else 0\.77/);
   assert.match(utilityMigration, /krediya_archivo_historico/);
   assert.doesNotMatch(utilityMigration, /insert into public\.(payment_orders|payment_items|liquidation_bonuses|movimientos_caja)/i);
-  assert.match(app, /Utilidad histórica bruta/);
-  assert.match(app, /Utilidad visible acumulada/);
-  assert.match(app, /Bonos históricos/);
+  assert.match(app, /Resultado antes de provisión/);
+  assert.match(app, /Resultado visible acumulado/);
+  assert.match(app, /Gasto financiero histórico/);
 });
 
 test('la carga inicial queda pagada, sin soporte y con corte operativo', () => {

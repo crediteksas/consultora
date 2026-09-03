@@ -5,18 +5,18 @@ import { promoteWithRollback } from '../../scripts/kora-production-deploy-lib.mj
 
 const read = path => readFile(path, 'utf8');
 
-test('KORA v3.0 queda registrada en configuración, shell y documentación', async () => {
+test('KORA v3.1 queda registrada en configuración, shell y documentación', async () => {
   const [version, sidebar, documentation] = await Promise.all([
     read('config/version.json'),
     read('creditek/erp/sidebar.js'),
     read('docs/KORA_PRODUCTION_DEPLOYMENT.md'),
   ]);
-  assert.equal(JSON.parse(version).version, '3.0.0');
-  assert.match(sidebar, /KORA v3\.0/);
+  assert.equal(JSON.parse(version).version, '3.1.0');
+  assert.match(sidebar, /KORA v3\.1/);
   assert.match(sidebar, /Acerca de KORA/);
-  assert.match(sidebar, /KORA ERP v3\.0/);
+  assert.match(sidebar, /KORA ERP v3\.1/);
   assert.match(sidebar, /Versión (?:no )?verificada/);
-  assert.match(documentation, /KORA v3\.0/);
+  assert.match(documentation, /KORA v3\.1/);
   assert.match(documentation, /3\.0\.x[\s\S]*3\.1[\s\S]*4\.0/);
 });
 
@@ -37,7 +37,7 @@ test('el manifiesto runtime combina build, deployment y versión sin secretos en
 test('el endpoint runtime entrega la release activa y confirma coincidencia', async () => {
   const worker = (await import('../../src/kora-version-worker.mjs')).default;
   const response = await worker.fetch(new Request('https://registro.crediteksas.com/kora-build-manifest.json'), {
-    ASSETS: { fetch: async () => Response.json({ displayVersion: 'KORA v3.0', commit: 'abc1234' }) },
+    ASSETS: { fetch: async () => Response.json({ displayVersion: 'KORA v3.1', commit: 'abc1234' }) },
     KORA_RELEASES: { get: async () => ({ deploymentId: 'deployment', workerVersion: 'version', buildStatus: 'Aprobado' }) },
     CF_VERSION_METADATA: { id: 'version', timestamp: '2026-08-05T00:00:00Z' },
   });
@@ -81,7 +81,7 @@ test('el pipeline valida repositorio, rama, commit, limpieza, manifiesto, SHA y 
 test('el manifiesto esperado documenta versión, commit, artefacto y Worker', async () => {
   const manifest = JSON.parse(await read('config/kora-production-manifest.json'));
   assert.equal(manifest.product, 'KORA');
-  assert.equal(manifest.version, '3.0.0');
+  assert.equal(manifest.version, '3.1.0');
   assert.equal(manifest.worker, 'creditek-kora');
   assert.equal(manifest.productionUrl, 'https://kora.crediteksas.com/creditek/erp/app');
   assert.equal(manifest.supabaseProjectRef, 'jfkmiyvcdfbsbwchyvol');

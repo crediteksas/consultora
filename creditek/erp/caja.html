@@ -399,8 +399,11 @@ async function calcularCuadrito(tienda, fecha) {
 async function cargarCuadrito(tienda, fecha) {
   const cont = document.getElementById('cuadritoCont');
   cont.innerHTML = '<div class="empty-state">Cargando...</div>';
-  const c = await calcularCuadrito(tienda, fecha);
-  const tiendaNombre = currentPerfil.tienda_codigo || tienda;
+  const [c, origenResult] = await Promise.all([
+    calcularCuadrito(tienda, fecha),
+    sb.from('origenes').select('nombre').eq('codigo', tienda).maybeSingle(),
+  ]);
+  const tiendaNombre = origenResult.data?.nombre || tienda;
   const cerrada = c.caja && c.caja.estado === 'cerrada';
 
   cont.innerHTML = `
@@ -578,7 +581,9 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += `*TELÉFONOS*\n`;
   texto += c.telefonos.length ? c.telefonos.map(t => `${t.nombre} (${t.tipo}) — ${t.tipo === 'credito' ? 'Inicial: ' : ''}${fmtCOP(t.monto)}`).join('\n') : 'Sin ventas.';
   texto += `\n\n*ACCESORIOS*\n`;
-  texto += c.accesorios.length ? c.accesorios.map(a => `${a.nombre} ×${a.cantidad} — ${fmtCOP(a.total)}`).join('\n') : 'Sin ventas.';
+  const accesoriosUnidades = c.accesorios.reduce((total, accesorio) => total + Number(accesorio.cantidad || 0), 0);
+  const accesoriosTotal = c.accesorios.reduce((total, accesorio) => total + Number(accesorio.total || 0), 0);
+  texto += accesoriosUnidades ? `${accesoriosUnidades} unidades — ${fmtCOP(accesoriosTotal)}` : 'Sin ventas.';
   texto += `\n\n*CRÉDITOS*\n`;
   texto += c.creditosDelDia.length ? c.creditosDelDia.map(cr => `${cr.cliente} — ${cr.producto} — ${cr.financiera}\n  Inicial: ${fmtCOP(cr.inicial)} | Financiado: ${fmtCOP(cr.financiado)}`).join('\n') : 'Sin créditos.';
   texto += `\n\n*GASTOS*\n`;

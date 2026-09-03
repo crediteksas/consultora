@@ -29,8 +29,8 @@ const KORA_PWA_FILES = [
   'creditek/erp/kora-install.js',
   'creditek/erp/kora-service-worker.js',
 ];
-const KORA_SHELL_ASSET_VERSION = '2.0.16';
-const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.16';
+const KORA_SHELL_ASSET_VERSION = '2.0.17';
+const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.17';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.4';
 
 async function copyFileFromRoot(rootDir, outDir, relative) {

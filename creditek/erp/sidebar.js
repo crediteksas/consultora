@@ -274,6 +274,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Cartera de Proveedores', href: 'proveedores.html', lucide: 'hand-coins', description: 'Consulta obligaciones, pagos y saldos pendientes con proveedores.', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
       { label: 'Inventario Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de Creditek B2B.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', lucide: 'book-open-check', description: 'Consulta cargos, abonos, saldos y soportes de clientes comerciales B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Resultado B2B', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza facturación, costo congelado, gastos y retiros B2B.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [

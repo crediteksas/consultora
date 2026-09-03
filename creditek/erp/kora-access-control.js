@@ -6,7 +6,7 @@
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
-    'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html',
+    'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html', 'cartera-b2b.html',
     'utilidad-creditek.html',
   ]);
   const ALLIES_ROUTES = new Set([
@@ -52,7 +52,7 @@
       { label: 'Proveedores', href: 'proveedores.html', icon: 'contact-round' },
       { label: 'Inventario Central', href: 'bodega-central.html', icon: 'warehouse' },
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output' },
-      { label: 'Cuenta Corriente', href: 'cuenta-corriente.html', icon: 'book-open-check' },
+      { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', icon: 'book-open-check' },
       { label: 'Consignaciones', href: 'cuenta-corriente.html#consignaciones', icon: 'landmark' },
       { label: 'Cartera de Proveedores', href: 'proveedores.html#cartera', icon: 'hand-coins' },
       { label: 'Resultado B2B', href: 'utilidad-creditek.html', icon: 'chart-no-axes-column-increasing' },

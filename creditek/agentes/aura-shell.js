@@ -15,7 +15,6 @@
       { label: 'Calendario', action: 'module', href: 'creditek-agente-calendario.html', icon: 'calendar-days' },
     ] },
     { title: 'COMERCIAL', icon: 'briefcase-business', items: [
-      { label: 'Portal B2B', action: 'configured', target: 'portal', icon: 'shopping-bag' },
       { label: 'Google Business', action: 'module', href: 'creditek-gbp-fichas.html', icon: 'map-pin' },
       { label: 'Convenios de Aliados', action: 'external', target: 'convenios', icon: 'handshake' },
     ] },

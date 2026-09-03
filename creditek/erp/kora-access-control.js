@@ -5,7 +5,7 @@
   const STORE_ROLES = new Set(['admin_tienda', 'asesor']);
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
-    'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
+    'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
     'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html',
     'utilidad-creditek.html',
   ]);
@@ -25,9 +25,9 @@
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
       'inventario.html', 'catalogo.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
-      'documento-remision.html', 'incidencias.html',
+      'documento-remision.html', 'pedidos-b2b.html', 'incidencias.html',
     ]),
-    asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']),
+    asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html', 'pedidos-b2b.html']),
   });
 
   const CORPORATE_NAVIGATION = Object.freeze([
@@ -47,6 +47,7 @@
     ] },
     { title: 'CREDITEK B2B', icon: 'warehouse', capability: 'b2b', items: [
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', icon: 'layout-dashboard' },
+      { label: 'Pedidos y abastecimiento', href: 'pedidos-b2b.html', icon: 'shopping-bag' },
       { label: 'Compras', href: 'compra-proveedor.html', icon: 'package-plus' },
       { label: 'Proveedores', href: 'proveedores.html', icon: 'contact-round' },
       { label: 'Inventario Central', href: 'bodega-central.html', icon: 'warehouse' },
@@ -85,6 +86,7 @@
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Pedidos B2B', href: 'pedidos-b2b.html', icon: 'shopping-bag', roles: ['admin_tienda', 'asesor'] },
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output', roles: ['admin_tienda'] },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },
       { label: 'Cartera', href: 'cuenta-corriente.html', icon: 'book-open-check', roles: ['admin_tienda'] },

@@ -8,8 +8,9 @@ test('Ejecutivos abre con el mes vigente y muestra fechas en cada indicador', ()
   assert.match(app, /executiveFrom/);
   assert.match(app, /executiveTo/);
   assert.match(app, /Mes vigente/);
-  assert.match(app, /Periodo operativo visible/);
-  assert.match(app, /day>=OPERATION_CUTOFF/);
+  assert.match(app, /operationReportingDay/);
+  assert.match(app, /Periodo de liquidación visible/);
+  assert.match(app, /aunque la venta se haya realizado un día anterior/);
 });
 
 test('separa el periodo actual del histórico cerrado y traduce políticas', () => {

@@ -12,5 +12,6 @@ const security = readdirSync('tests/security')
 const erp = [
   'tests/erp/utilidad-creditek-domain.test.mjs', // KORA-2026-000034
   'tests/erp/aliados-utilidad-corte.test.mjs',
+  'tests/erp/aliados-asociacion-historica.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...erp], { stdio: 'inherit' });

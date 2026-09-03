@@ -34,9 +34,9 @@ test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendi
   const quality = await readFile(new URL('../../creditek/erp/aliados-calidad.html', import.meta.url), 'utf8');
   assert.match(reconciliation, /tipo_establecimiento='aliado' then 30000/i);
   assert.match(reconciliation, /aliados_asociar_historico/);
-  assert.match(app, /Pendientes de asociación histórica/);
+  assert.match(app, /Históricos sin ejecutivo Creditek/);
   assert.match(app, /data-historical-associate/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.9/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.10/);
 });
 
 test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin catálogos inventados', () => {

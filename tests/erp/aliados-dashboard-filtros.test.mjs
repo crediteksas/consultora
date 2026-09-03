@@ -20,5 +20,5 @@ test('usa las columnas productivas y muestra datos cargados de ambos modelos', a
   assert.match(app,/o\.pago_neto_beneficiario/);
   assert.match(app,/businessType\(o\)==='propia'/);
   assert.match(app,/businessType\(o\)==='aliado'/);
-  assert.match(app,/Mostrando \$\{ops\.length\} de \$\{db\.operations\.length\} operaciones cargadas/);
+  assert.match(app,/Operación nueva: \$\{ops\.length\} de \$\{db\.operations\.length\}/);
 });

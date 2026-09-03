@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const migration = 'supabase/migrations/20260903161914_restringir_autorizacion_pagos_oscar.sql';
 const eventMigration = 'supabase/migrations/20260903165524_permitir_evento_autorizacion_pago.sql';
+const approvalGateMigration = 'supabase/migrations/20260903230000_bloquear_pagos_sin_liquidacion_aprobada.sql';
 
 test('solo el aprobador activo de Gerencia puede autorizar pagos', async () => {
   const sql = await readFile(migration, 'utf8');
@@ -64,4 +65,18 @@ test('la auditoría admite el evento de autorización sin revertir el pago', asy
   assert.match(sql, /'payment\.authorized'::text/);
   assert.match(sql, /'payment\.scheduled'::text/);
   assert.match(sql, /'treasury\.movement_completed'::text/);
+});
+
+test('no permite autorizar ni pagar antes de aprobar y fondear la liquidación', async () => {
+  const [sql, app] = await Promise.all([
+    readFile(approvalGateMigration, 'utf8'),
+    readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
+  ]);
+  assert.match(sql, /before update of estado on public\.payment_orders/);
+  assert.match(sql, /v_liquidation\.frozen_at is null/);
+  assert.match(sql, /liquidation_treasury_destinations/);
+  assert.match(sql, /Primero Mayte debe revisar y Oscar aprobar la liquidación/);
+  assert.match(app, /liquidations\(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by\)/);
+  assert.match(app, /Primero: Mayte revisa y Oscar aprueba la liquidación/);
+  assert.match(app, /storage\.from\('soportes'\)\.remove\(\[support\]\)/);
 });

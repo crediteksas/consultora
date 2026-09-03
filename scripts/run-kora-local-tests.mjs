@@ -11,5 +11,6 @@ const security = readdirSync('tests/security')
 // se incluye puntualmente el test de regresión de cada fix ya validado.
 const erp = [
   'tests/erp/utilidad-creditek-domain.test.mjs', // KORA-2026-000034
+  'tests/erp/aliados-utilidad-corte.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...erp], { stdio: 'inherit' });

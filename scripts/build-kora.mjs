@@ -50,7 +50,7 @@ export async function buildKora(root, out = path.join(root, 'dist/kora')) {
 
   const version = JSON.parse(await readFile(path.join(root, 'config/version.json'), 'utf8'));
   await writeFile(path.join(resolvedOut, 'kora-build-manifest.static.json'), `${JSON.stringify({
-    product: 'KORA', version: version.version || '3.1.0', buildStatus: 'local', artifact: 'dist/kora',
+    product: 'KORA', version: version.version || '3.2.0', buildStatus: 'local', artifact: 'dist/kora',
   }, null, 2)}\n`);
   await verifyKoraArtifact(resolvedOut);
   return resolvedOut;

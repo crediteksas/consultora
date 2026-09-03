@@ -36,7 +36,7 @@ test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendi
   assert.match(reconciliation, /aliados_asociar_historico/);
   assert.match(app, /Pendientes de asociación histórica/);
   assert.match(app, /data-historical-associate/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.8/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.9/);
 });
 
 test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin catálogos inventados', () => {
@@ -44,7 +44,7 @@ test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin cat
   assert.match(app, /Plataformas reales/);
   assert.match(app, /Créditos históricos asociados/);
   assert.match(app, /Históricos pendientes/);
-  assert.match(app, /Utilidad histórica neta/);
+  assert.match(app, /Resultado histórico/);
 });
 
 test('eCredit figura como plataforma activa real', async () => {
@@ -59,7 +59,7 @@ test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
   assert.match(utilityMigration, /krediya_archivo_historico/);
   assert.doesNotMatch(utilityMigration, /insert into public\.(payment_orders|payment_items|liquidation_bonuses|movimientos_caja)/i);
   assert.match(app, /Resultado antes de provisión/);
-  assert.match(app, /Resultado visible acumulado/);
+  assert.match(app, /Utilidad disponible/);
   assert.match(app, /Gasto financiero histórico/);
 });
 

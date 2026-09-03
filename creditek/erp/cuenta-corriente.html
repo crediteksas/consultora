@@ -333,7 +333,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label>Efectivo disponible</label><input id="instruccionDisponible" readonly value="—"></div>
     <div class="campo"><label>Banco</label><input id="instruccionBanco" maxlength="120"></div>
     <div class="campo"><label>Número de cuenta</label><input id="instruccionCuenta" maxlength="120"></div>
-    <div class="campo"><label>Valor esperado</label><input type="number" id="instruccionValor" min="1"></div>
+    <div class="campo"><label for="instruccionValor">Valor esperado</label><input type="text" id="instruccionValor" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="Ej: 1556000"></div>
     <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR</option></select></div>
     <div class="campo" id="campoInstruccionProveedor"><label>Proveedor</label><select id="instruccionProveedor"></select></div>
     <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
@@ -487,6 +487,9 @@ function initPagina() {
   document.getElementById('instruccionTipo').addEventListener('change', actualizarTipoInstruccion);
   document.getElementById('instruccionTienda').addEventListener('change', cargarEfectivoDisponible);
   document.getElementById('instruccionFecha').addEventListener('change', cargarEfectivoDisponible);
+  document.getElementById('instruccionValor').addEventListener('input', event => {
+    event.target.value = event.target.value.replace(/\D/g, '').slice(0, 12);
+  });
   document.getElementById('btnCancelarComprobante').addEventListener('click', () => cerrarModal('modalComprobante'));
   document.getElementById('comprobanteFoto').addEventListener('change', onFotoComprobanteSeleccionada);
   document.getElementById('btnEnviarComprobante').addEventListener('click', enviarComprobante);

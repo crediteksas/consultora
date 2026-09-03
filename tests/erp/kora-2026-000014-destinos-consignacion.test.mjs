@@ -92,6 +92,16 @@ test('Cuenta Corriente conserva históricos y muestra banco, cuenta, comprobante
   assert.match(html, /rechazado/);
 });
 
+test('Valor esperado permite escritura numérica confiable en móviles', async () => {
+  const html = await source('creditek/erp/cuenta-corriente.html');
+
+  assert.match(html, /<input type="text" id="instruccionValor" inputmode="numeric"/);
+  assert.match(html, /id="instruccionValor"[^>]*pattern="\[0-9\]\*"[^>]*autocomplete="off"/);
+  assert.doesNotMatch(html, /id="instruccionValor"[^>]*(?:readonly|disabled)/);
+  assert.match(html, /getElementById\('instruccionValor'\)\.addEventListener\('input'/);
+  assert.match(html, /event\.target\.value\.replace\(\/\\D\/g, ''\)\.slice\(0, 12\)/);
+});
+
 test('Cartera de Proveedores explica y muestra la aplicación FIFO', async () => {
   const html = await source('creditek/erp/proveedores.html');
 

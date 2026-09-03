@@ -604,11 +604,11 @@
       <span class="kora-filter-label">Período</span>
       <div class="kora-period-viewport">
         <div class="kora-period-segments" aria-label="Seleccionar período">
-          <button class="btn-nav active" data-periodo="hoy">Hoy</button>
+          <button class="btn-nav" data-periodo="hoy">Hoy</button>
           <button class="btn-nav" data-periodo="ayer">Ayer</button>
           <button class="btn-nav" data-periodo="semana">Esta semana</button>
           <button class="btn-nav" data-periodo="semana_pasada">Semana pasada</button>
-          <button class="btn-nav" data-periodo="mes">Este mes</button>
+          <button class="btn-nav active" data-periodo="mes">Este mes</button>
           <button class="btn-nav" data-periodo="mes_pasado">Mes pasado</button>
           <button class="btn-nav" data-periodo="ult3m">Últimos 3 meses</button>
           <button class="btn-nav" data-periodo="anio">Este año</button>
@@ -964,7 +964,7 @@ const queryCache = window.CreditekReportesQueryCache;
 
 let currentUser = null;
 let currentPerfil = null;
-let periodoActual = 'hoy';
+let periodoActual = 'mes';
 let tiendasFiltro = [];        // vacío = "todas"; con códigos = filtro IN(...)
 let rangoPersonalizado = null; // {desde,hasta} cuando el usuario elige rango libre
 let tiendasCache = [];

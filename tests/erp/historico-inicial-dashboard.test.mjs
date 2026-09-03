@@ -36,14 +36,14 @@ test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendi
   assert.match(reconciliation, /aliados_asociar_historico/);
   assert.match(app, /Históricos sin ejecutivo Creditek/);
   assert.match(app, /data-historical-associate/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.13/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.14/);
 });
 
 test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin catálogos inventados', () => {
   assert.doesNotMatch(app, /Credilla|Plataforma iPhone/);
   assert.match(app, /Plataformas activas/);
-  assert.match(app, /Créditos históricos cerrados hasta 01\/09\/2026/);
-  assert.match(app, /Históricos por revisar/);
+  assert.match(app, /Créditos anteriores ya pagados \(4 jul–1 sep\)/);
+  assert.match(app, /Créditos anteriores pendientes de asociar/);
   assert.match(app, /Resultado histórico/);
 });
 

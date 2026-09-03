@@ -8,14 +8,18 @@ test('Ejecutivos abre con el mes vigente y muestra fechas en cada indicador', ()
   assert.match(app, /executiveFrom/);
   assert.match(app, /executiveTo/);
   assert.match(app, /Mes vigente/);
-  assert.match(app, /operationReportingDay/);
-  assert.match(app, /Periodo de liquidación visible/);
-  assert.match(app, /aunque la venta se haya realizado un día anterior/);
+  assert.match(app, /operationSaleDay/);
+  assert.match(app, /operationIsCurrent/);
+  assert.match(app, /Periodo de ventas visible/);
+  assert.match(app, /fecha real de venta/);
+  assert.match(app, /Sin ejecutivo asignado/);
+  assert.match(app, /periodOps\.length/);
 });
 
 test('separa el periodo actual del histórico cerrado y traduce políticas', () => {
-  assert.match(app, /Histórico cerrado al 1 sep 2026/);
-  assert.match(app, /histórico cerrado del 4 de julio al 1 de septiembre de 2026/);
+  assert.match(app, /Referencia: créditos anteriores ya pagados/);
+  assert.match(app, /Créditos anteriores ya pagados \(4 jul–1 sep\)/);
   assert.match(app, /Bono fijo con ajuste autorizado/);
   assert.match(app, /Bonos históricos ya pagados/);
+  assert.match(app, /no son ventas actuales ni utilidad disponible/);
 });

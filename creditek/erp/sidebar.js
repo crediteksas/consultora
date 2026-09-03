@@ -815,7 +815,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     </div>
     <nav class="kora-sidebar__nav">${koraNavigationHtml(modules, profile.rol, current, profile)}</nav>
     <div class="kora-sidebar__footer">
-      <button class="kora-nav-link kora-install-nav ghost" type="button" data-kora-install><i data-lucide="download"></i><span class="kora-nav-text">Instalar KORA</span></button>
       <button class="kora-nav-link ghost" type="button" data-kora-about><i data-lucide="info"></i><span class="kora-nav-text">Acerca de KORA</span></button>
       <button class="ghost kora-nav-text" type="button" data-kora-version style="display:block;width:100%;padding:4px 16px 10px;text-align:left;font-size:11px;line-height:1.45;opacity:.78">
         <span style="display:block">KORA ERP v3.2</span><span style="display:block">Build: <span data-kora-build>—</span></span><span style="display:block">Ambiente: Producción</span>
@@ -953,10 +952,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       closeDrawer();
     }));
     aside.querySelector('.kora-logout')?.addEventListener('click', onLogout);
-    aside.querySelector('[data-kora-install]')?.addEventListener('click', () => {
-      if (window.KoraInstall) window.KoraInstall.open();
-      else document.addEventListener('kora-install-ready', () => window.KoraInstall?.open(), { once: true });
-    });
     const openAbout = () => aboutDialog.showModal();
     aside.querySelector('[data-kora-about]')?.addEventListener('click', openAbout);
     aside.querySelector('[data-kora-version]')?.addEventListener('click', openAbout);

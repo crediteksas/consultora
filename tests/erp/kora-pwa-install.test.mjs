@@ -16,9 +16,9 @@ test('KORA declara una aplicación instalable con identidad Creditek', async () 
   assert.ok(manifest.icons.some(icon => icon.purpose === 'maskable'));
 });
 
-test('el shell ofrece un botón visual para instalar KORA', async () => {
+test('el shell no expone la instalación a todos los perfiles', async () => {
   const [sidebar, installer] = await Promise.all([read('creditek/erp/sidebar.js'), read('creditek/erp/kora-install.js')]);
-  assert.match(sidebar, /data-kora-install/); assert.match(sidebar, />Instalar KORA</); assert.match(sidebar, /kora-install\.js\?v=1\.0\.0/);
+  assert.doesNotMatch(sidebar, /data-kora-install/); assert.doesNotMatch(sidebar, />Instalar KORA</); assert.match(sidebar, /kora-install\.js\?v=1\.0\.0/);
   assert.match(installer, /beforeinstallprompt/); assert.match(installer, /Agregar a pantalla de inicio/); assert.match(installer, /serviceWorker\?\.register/);
 });
 

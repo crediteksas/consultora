@@ -33,3 +33,18 @@ test('el login enlaza manifiesto e icono de pantalla principal', async () => {
   assert.match(app, /rel="apple-touch-icon" href="\/creditek\/erp\/kora-icon-192\.png"/);
   assert.match(app, /name="theme-color" content="#0B1E3D"/);
 });
+
+test('KORA ofrece un enlace público y adaptable para distribuir la instalación', async () => {
+  const [page, worker, config] = await Promise.all([
+    read('creditek/erp/instalar.html'),
+    read('src/kora-version-worker.mjs'),
+    read('wrangler.kora.jsonc'),
+  ]);
+  assert.match(page, /Instala KORA en este dispositivo/);
+  assert.match(page, /beforeinstallprompt/);
+  assert.match(page, /Agregar a pantalla de inicio/);
+  assert.match(page, /navigator\.share/);
+  assert.match(page, /kora-service-worker\.js/);
+  assert.match(worker, /url\.pathname === '\/instalar'/);
+  assert.match(config, /"\/instalar"/);
+});

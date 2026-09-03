@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0B1E3D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="KORA">
+  <meta name="description" content="Instala KORA de Creditek en tu computador o celular.">
+  <link rel="manifest" href="/creditek/erp/kora.webmanifest">
+  <link rel="icon" href="/creditek/erp/kora-icon-192.png">
+  <link rel="apple-touch-icon" href="/creditek/erp/kora-icon-192.png">
+  <title>Instalar KORA · Creditek</title>
+  <style>
+    :root{color-scheme:light;--navy:#0B1E3D;--cyan:#00C4CC;--ink:#17243b;--muted:#667085;--paper:#fff}
+    *{box-sizing:border-box}body{margin:0;min-height:100svh;background:radial-gradient(circle at 12% 5%,rgba(0,196,204,.22),transparent 32%),linear-gradient(145deg,#07162e,#0b1e3d 62%,#12385a);font-family:Inter,"DM Sans",Arial,sans-serif;color:var(--ink);display:grid;place-items:center;padding:24px}
+    main{width:min(100%,960px);display:grid;grid-template-columns:minmax(280px,.9fr) minmax(310px,1.1fr);overflow:hidden;border-radius:32px;background:var(--paper);box-shadow:0 30px 90px rgba(0,0,0,.35)}
+    .brand{position:relative;display:grid;align-content:center;justify-items:center;min-height:620px;padding:54px;background:linear-gradient(155deg,#0b1e3d,#102d52);color:#fff;text-align:center;overflow:hidden}
+    .brand:after{content:"";position:absolute;width:330px;height:330px;border:70px solid rgba(0,196,204,.12);border-radius:50%;right:-210px;bottom:-180px}
+    .brand img{width:154px;height:154px;border-radius:34px;box-shadow:0 20px 45px rgba(0,0,0,.35);position:relative;z-index:1}
+    .brand h1{font-size:clamp(38px,6vw,60px);letter-spacing:-.055em;margin:28px 0 8px}.brand p{max-width:300px;color:#c9d5e5;line-height:1.55;margin:0}
+    .panel{padding:clamp(34px,6vw,70px);display:flex;flex-direction:column;justify-content:center}
+    .eyebrow{color:#008f96;font-size:12px;font-weight:900;letter-spacing:.15em;text-transform:uppercase}.panel h2{font-size:clamp(28px,4vw,42px);line-height:1.07;letter-spacing:-.045em;margin:12px 0}.lead{color:var(--muted);line-height:1.55;margin:0 0 24px}
+    .status{display:flex;gap:12px;align-items:flex-start;background:#f3fbfb;border:1px solid #c8f0f2;border-radius:16px;padding:15px;margin-bottom:18px}.status b{display:block;color:var(--navy);margin-bottom:3px}.status span{color:#5e6c7e;font-size:14px;line-height:1.4}.dot{width:12px;height:12px;flex:0 0 auto;border-radius:50%;background:var(--cyan);margin-top:4px;box-shadow:0 0 0 5px rgba(0,196,204,.14)}
+    ol{display:none;margin:0 0 18px;padding:18px 18px 18px 42px;border-radius:16px;background:#f5f7fa;color:#465267;line-height:1.6}ol.show{display:block}
+    button,a.action{appearance:none;border:0;border-radius:15px;min-height:54px;padding:15px 20px;font:800 16px inherit;text-align:center;text-decoration:none;cursor:pointer}.primary{background:var(--cyan);color:var(--navy);box-shadow:0 12px 26px rgba(0,196,204,.24)}.secondary{margin-top:10px;background:#edf2f7;color:var(--navy)}.tertiary{margin-top:10px;background:transparent;color:#526075;border:1px solid #dbe2ea!important}
+    .fine{font-size:12px;line-height:1.5;color:#8b95a5;text-align:center;margin:18px 0 0}.installed{display:none}.installed.show{display:block}
+    @media(max-width:720px){body{padding:0;background:#fff}main{min-height:100svh;border-radius:0;display:block}.brand{min-height:auto;padding:34px 24px 28px}.brand img{width:92px;height:92px;border-radius:22px}.brand h1{font-size:35px;margin:18px 0 4px}.brand p{font-size:14px}.panel{padding:34px 24px 42px}.panel h2{font-size:31px}}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="brand" aria-label="KORA de Creditek">
+      <img src="/creditek/erp/kora-icon-192.png" alt="Ícono de KORA" width="154" height="154">
+      <h1>KORA</h1>
+      <p>Ventas, inventario, caja, clientes y cartera de Creditek en un solo lugar.</p>
+    </section>
+    <section class="panel">
+      <div class="eyebrow">Aplicación oficial de Creditek</div>
+      <h2 data-title>Instala KORA en este dispositivo</h2>
+      <p class="lead" data-lead>Quedará con su propio ícono y abrirá como una aplicación, sin buscar direcciones ni enlaces.</p>
+      <div class="status"><i class="dot"></i><div><b data-device>Detectando dispositivo…</b><span data-status>Preparando la instalación segura.</span></div></div>
+      <ol data-steps></ol>
+      <button class="primary" type="button" data-install>Instalar KORA</button>
+      <a class="action secondary installed" href="/creditek/erp/app.html?source=installer">Abrir KORA</a>
+      <button class="tertiary" type="button" data-share>Compartir enlace de instalación</button>
+      <p class="fine">KORA se instala desde el dominio oficial de Creditek. El sistema solicitará una confirmación final por seguridad.</p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      let promptEvent = null;
+      const q = selector => document.querySelector(selector);
+      const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      const ua = navigator.userAgent || '';
+      const platform = /iphone|ipad|ipod/i.test(ua) ? 'ios' : /android/i.test(ua) ? 'android' : /macintosh|mac os/i.test(ua) ? 'mac' : /windows/i.test(ua) ? 'windows' : 'desktop';
+      const labels = {ios:'iPhone o iPad',android:'Android',mac:'Mac',windows:'Windows',desktop:'este dispositivo'};
+      q('[data-device]').textContent = labels[platform];
+
+      function stepsForDevice() {
+        const list = q('[data-steps]');
+        const install = q('[data-install]');
+        if (isStandalone()) {
+          q('[data-title]').textContent = 'KORA ya está instalada';
+          q('[data-lead]').textContent = 'El ícono está disponible en este dispositivo.';
+          q('[data-status]').textContent = 'Instalación completada.';
+          install.hidden = true; q('.installed').classList.add('show'); return;
+        }
+        if (promptEvent) {
+          q('[data-status]').textContent = 'Lista para instalar con un toque.';
+          install.hidden = false; list.classList.remove('show'); return;
+        }
+        install.hidden = true; list.classList.add('show');
+        if (platform === 'ios') {
+          q('[data-status]').textContent = 'Apple requiere agregarla desde Safari.';
+          list.innerHTML = '<li>Abre este enlace en <strong>Safari</strong>.</li><li>Pulsa <strong>Compartir</strong> y luego <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma pulsando <strong>Agregar</strong>.</li>';
+        } else {
+          q('[data-status]').textContent = 'Tu navegador requiere confirmar desde su menú.';
+          list.innerHTML = '<li>Abre el menú de Chrome o Edge.</li><li>Selecciona <strong>Instalar KORA</strong> o <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma la instalación.</li>';
+        }
+      }
+
+      addEventListener('beforeinstallprompt', event => { event.preventDefault(); promptEvent = event; stepsForDevice(); });
+      addEventListener('appinstalled', () => { promptEvent = null; stepsForDevice(); });
+      q('[data-install]').addEventListener('click', async () => {
+        if (!promptEvent) return stepsForDevice();
+        const current = promptEvent; promptEvent = null; await current.prompt(); await current.userChoice; stepsForDevice();
+      });
+      q('[data-share]').addEventListener('click', async event => {
+        const data = {title:'Instalar KORA',text:'Instala la aplicación oficial KORA de Creditek:',url:location.href};
+        if (navigator.share) { try { await navigator.share(data); return; } catch (_) {} }
+        await navigator.clipboard.writeText(location.href);
+        event.currentTarget.textContent = 'Enlace copiado ✓';
+      });
+      navigator.serviceWorker?.register('/creditek/erp/kora-service-worker.js', {scope:'/creditek/erp/'}).catch(() => {});
+      stepsForDevice();
+      setTimeout(stepsForDevice, 1200);
+    })();
+  </script>
+</body>
+</html>

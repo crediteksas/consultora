@@ -3,6 +3,9 @@ import { handleAuraEnlacesProxy } from './aura-enlaces-proxy.mjs';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/instalar' || url.pathname === '/instalar/') {
+      return env.ASSETS.fetch(new Request(new URL('/creditek/erp/instalar.html', url), request));
+    }
     if (url.pathname.startsWith('/api/aura/enlaces')) {
       return handleAuraEnlacesProxy(request, env);
     }

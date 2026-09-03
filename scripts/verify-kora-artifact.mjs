@@ -54,6 +54,7 @@ async function verifyHtmlReferences(root, file, source) {
 export async function verifyKoraArtifact(root) {
   const required = [
     'creditek/erp/app.html',
+    'creditek/erp/instalar.html',
     'creditek/erp/sidebar.js',
     'creditek/erp/kora.webmanifest',
     'creditek/erp/kora-icon-192.png',

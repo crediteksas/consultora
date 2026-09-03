@@ -24,7 +24,7 @@
     .eyebrow{color:#008f96;font-size:12px;font-weight:900;letter-spacing:.15em;text-transform:uppercase}.panel h2{font-size:clamp(28px,4vw,42px);line-height:1.07;letter-spacing:-.045em;margin:12px 0}.lead{color:var(--muted);line-height:1.55;margin:0 0 24px}
     .status{display:flex;gap:12px;align-items:flex-start;background:#f3fbfb;border:1px solid #c8f0f2;border-radius:16px;padding:15px;margin-bottom:18px}.status b{display:block;color:var(--navy);margin-bottom:3px}.status span{color:#5e6c7e;font-size:14px;line-height:1.4}.dot{width:12px;height:12px;flex:0 0 auto;border-radius:50%;background:var(--cyan);margin-top:4px;box-shadow:0 0 0 5px rgba(0,196,204,.14)}
     ol{display:none;margin:0 0 18px;padding:18px 18px 18px 42px;border-radius:16px;background:#f5f7fa;color:#465267;line-height:1.6}ol.show{display:block}
-    button,a.action{appearance:none;border:0;border-radius:15px;min-height:54px;padding:15px 20px;font:800 16px inherit;text-align:center;text-decoration:none;cursor:pointer}.primary{background:var(--cyan);color:var(--navy);box-shadow:0 12px 26px rgba(0,196,204,.24)}.secondary{margin-top:10px;background:#edf2f7;color:var(--navy)}.tertiary{margin-top:10px;background:transparent;color:#526075;border:1px solid #dbe2ea!important}
+    button,a.action{appearance:none;border:0;border-radius:15px;min-height:54px;padding:15px 20px;font:800 16px inherit;text-align:center;text-decoration:none;cursor:pointer}.primary{background:var(--cyan);color:var(--navy);box-shadow:0 12px 26px rgba(0,196,204,.24)}.secondary{margin-top:10px;background:#edf2f7;color:var(--navy)}
     .fine{font-size:12px;line-height:1.5;color:#8b95a5;text-align:center;margin:18px 0 0}.installed{display:none}.installed.show{display:block}
     @media(max-width:720px){body{padding:0;background:#fff}main{min-height:100svh;border-radius:0;display:block}.brand{min-height:auto;padding:34px 24px 28px}.brand img{width:92px;height:92px;border-radius:22px}.brand h1{font-size:35px;margin:18px 0 4px}.brand p{font-size:14px}.panel{padding:34px 24px 42px}.panel h2{font-size:31px}}
   </style>
@@ -44,7 +44,6 @@
       <ol data-steps></ol>
       <button class="primary" type="button" data-install>Instalar KORA</button>
       <a class="action secondary installed" href="/creditek/erp/app.html?source=installer">Abrir KORA</a>
-      <button class="tertiary" type="button" data-share>Compartir enlace de instalación</button>
       <p class="fine">KORA se instala desde el dominio oficial de Creditek. El sistema solicitará una confirmación final por seguridad.</p>
     </section>
   </main>
@@ -86,12 +85,6 @@
       q('[data-install]').addEventListener('click', async () => {
         if (!promptEvent) return stepsForDevice();
         const current = promptEvent; promptEvent = null; await current.prompt(); await current.userChoice; stepsForDevice();
-      });
-      q('[data-share]').addEventListener('click', async event => {
-        const data = {title:'Instalar KORA',text:'Instala la aplicación oficial KORA de Creditek:',url:location.href};
-        if (navigator.share) { try { await navigator.share(data); return; } catch (_) {} }
-        await navigator.clipboard.writeText(location.href);
-        event.currentTarget.textContent = 'Enlace copiado ✓';
       });
       navigator.serviceWorker?.register('/creditek/erp/kora-service-worker.js', {scope:'/creditek/erp/'}).catch(() => {});
       stepsForDevice();

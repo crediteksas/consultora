@@ -19,7 +19,7 @@
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
-    'incidencias.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
+    'incidencias.html', 'compartir-instalacion.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
   ]);
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
@@ -70,6 +70,7 @@
       { label: 'Reportes Aliados', href: 'aliados-reportes.html', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Compartir instalación', href: 'compartir-instalacion.html', icon: 'share-2', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', icon: 'bug', roles: ['gerencia'] },
       { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['auditoria'] },
       { label: 'Ver incidencias', href: 'incidencias.html#ver', icon: 'bug', roles: ['auditoria'] },

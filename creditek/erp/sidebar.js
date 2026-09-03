@@ -284,6 +284,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Compartir instalación', href: 'compartir-instalacion.html', lucide: 'share-2', description: 'Comparte el acceso oficial para instalar KORA en un dispositivo autorizado.', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona responsables, prioridades, estados y soluciones.', roles: ['gerencia'] },
       { label: 'Reportar incidencia', href: 'incidencias.html#reportar', lucide: 'bug', description: 'Registra una incidencia para seguimiento.', roles: ['auditoria', 'admin_tienda'] },
       { label: 'Ver incidencias', href: 'incidencias.html#ver', lucide: 'bug', description: 'Consulta incidencias, respuestas, historial y cierre.', roles: ['auditoria'] },

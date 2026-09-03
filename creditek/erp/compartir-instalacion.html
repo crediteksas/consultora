@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0B1E3D">
+  <title>KORA · Compartir instalación</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.16"></script>
+  <script src="sidebar.js?v=2.0.16" data-kora-shell="1.0.0"></script>
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <style>
+    :root{--navy:#0B1E3D;--cyan:#00C4CC;--bg:#F5F5F7;--muted:#667085;--line:rgba(11,30,61,.10)}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:'DM Sans',Arial,sans-serif}.main-content{min-height:100vh}.page{max-width:980px;margin:0 auto;padding:38px 28px 80px}.eyebrow{margin:0 0 7px;color:#008e96;font:800 11px Montserrat,Arial,sans-serif;letter-spacing:.15em}.page h1{margin:0;font:800 clamp(25px,4vw,38px) Montserrat,Arial,sans-serif;letter-spacing:-.04em}.intro{max-width:680px;margin:10px 0 28px;color:var(--muted);line-height:1.55}.card{display:grid;grid-template-columns:190px 1fr;gap:32px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:24px;padding:30px;box-shadow:0 14px 34px rgba(11,30,61,.08)}.visual{text-align:center}.visual img{width:132px;height:132px;border-radius:28px;box-shadow:0 16px 32px rgba(11,30,61,.20)}.visual b{display:block;margin-top:14px;font:800 23px Montserrat,Arial,sans-serif}.label{display:block;margin-bottom:7px;font-weight:700}.link-row{display:flex;gap:9px}.link-row input{width:100%;min-height:50px;padding:12px 14px;border:1px solid #d9e0e8;border-radius:12px;background:#f8fafc;color:#344054;font:500 14px 'DM Sans',Arial,sans-serif}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.button{border:0;border-radius:13px;min-height:50px;padding:12px 16px;font:800 14px 'DM Sans',Arial,sans-serif;cursor:pointer}.primary{background:var(--cyan);color:var(--navy)}.secondary{background:var(--navy);color:#fff}.notice{min-height:22px;margin-top:10px;color:#087f5b;font-weight:700;font-size:13px}.security{margin-top:22px;padding:16px 18px;border-radius:14px;background:#eaf8f8;color:#385066;font-size:13px;line-height:1.5}.security b{color:var(--navy)}
+    @media(max-width:680px){.page{padding:28px 18px 60px}.card{grid-template-columns:1fr;padding:24px}.actions{grid-template-columns:1fr}.visual img{width:104px;height:104px}.link-row{display:block}.link-row input{font-size:12px}}
+  </style>
+</head>
+<body data-kora-requires-auth="true">
+  <div id="app" class="show">
+    <main class="main-content">
+      <section class="page">
+        <p class="eyebrow">ADMINISTRACIÓN</p>
+        <h1>Compartir instalación de KORA</h1>
+        <p class="intro">Esta herramienta está reservada para Gerencia y Auditoría. Envía el acceso oficial a las personas autorizadas para que instalen KORA en su equipo.</p>
+        <article class="card">
+          <div class="visual"><img src="/creditek/erp/kora-icon-192.png" alt="Ícono oficial de KORA"><b>KORA</b></div>
+          <div>
+            <label class="label" for="installationLink">Enlace oficial de instalación</label>
+            <div class="link-row"><input id="installationLink" value="https://kora.crediteksas.com/instalar" readonly></div>
+            <div class="actions">
+              <button class="button primary" type="button" data-copy>Copiar enlace</button>
+              <button class="button secondary" type="button" data-share>Compartir desde este dispositivo</button>
+            </div>
+            <div class="notice" data-notice role="status" aria-live="polite"></div>
+            <div class="security"><b>Control de distribución:</b> la pantalla pública únicamente permite instalar. No contiene botones para copiar o volver a compartir el enlace.</div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const input = document.getElementById('installationLink');
+      const notice = document.querySelector('[data-notice]');
+      const copy = async () => {
+        await navigator.clipboard.writeText(input.value);
+        notice.textContent = 'Enlace copiado. Ya puedes pegarlo en WhatsApp o correo.';
+      };
+      document.querySelector('[data-copy]').addEventListener('click', copy);
+      document.querySelector('[data-share]').addEventListener('click', async () => {
+        const data = {title:'Instalar KORA',text:'Instala la aplicación oficial KORA de Creditek:',url:input.value};
+        if (navigator.share) { try { await navigator.share(data); notice.textContent = 'Enlace compartido.'; return; } catch (_) { return; } }
+        await copy();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -43,8 +43,24 @@ test('KORA ofrece un enlace público y adaptable para distribuir la instalación
   assert.match(page, /Instala KORA en este dispositivo/);
   assert.match(page, /beforeinstallprompt/);
   assert.match(page, /Agregar a pantalla de inicio/);
-  assert.match(page, /navigator\.share/);
+  assert.doesNotMatch(page, /navigator\.share/);
+  assert.doesNotMatch(page, /Compartir enlace de instalación/);
   assert.match(page, /kora-service-worker\.js/);
   assert.match(worker, /url\.pathname === '\/instalar'/);
   assert.match(config, /"\/instalar"/);
+});
+
+test('compartir la instalación queda dentro de Administración y solo para perfiles corporativos', async () => {
+  const [page, sidebar, access] = await Promise.all([
+    read('creditek/erp/compartir-instalacion.html'),
+    read('creditek/erp/sidebar.js'),
+    read('creditek/erp/kora-access-control.js'),
+  ]);
+  assert.match(page, /data-kora-requires-auth="true"/);
+  assert.match(page, /Compartir instalación de KORA/);
+  assert.match(page, /navigator\.share/);
+  assert.match(sidebar, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);
+  assert.match(access, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);
+  const storeRoutes = access.match(/const STORE_ROUTES_BY_ROLE[\s\S]*?\n  \}\);/)?.[0] || '';
+  assert.doesNotMatch(storeRoutes, /compartir-instalacion/);
 });

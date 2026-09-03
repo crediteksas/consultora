@@ -9,7 +9,7 @@ const TYPES={b2b:[['pago_proveedor','Pago a proveedor'],['otra_obligacion_b2b','
 let sb,profile,data={},initialized=false,pendingPaymentId=null;
 const canAuthorize=()=>profile?.rol==='gerencia'&&profile?.activo!==false;
 function notice(message,error=false){const n=$('#notice');n.textContent=message;n.className=`notice${error?' error':''}`;n.classList.remove('hidden');setTimeout(()=>n.classList.add('hidden'),5000)}
-function badge(v){return `<span class="badge ${esc(v)}">${esc(String(v||'—').replaceAll('_',' '))}</span>`}
+function badge(v,label){return `<span class="badge ${esc(v)}">${esc(label||String(v||'—').replaceAll('_',' '))}</span>`}
 function table(head,rows){return `<div class="table-wrap"><table><thead><tr>${head.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.join(''):'<tr><td colspan="12"><div class="empty">No hay información para los filtros seleccionados.</div></td></tr>'}</tbody></table></div>`}
 function mask(snapshot){const value=snapshot?.account_number||'';return value?`${esc(snapshot.bank||'Cuenta')} · •••• ${esc(value.slice(-4))}`:'Cuenta pendiente de validar'}
 function missingPaymentData(p){const missing=[];if(!p.beneficiary_name||p.beneficiary_name==='Sin nombre')missing.push('titular');if(!p.beneficiary_identification||p.beneficiary_identification==='—')missing.push('identificación');if(!p.bank_snapshot?.bank)missing.push('banco');if(!p.bank_snapshot?.account_type)missing.push('tipo de cuenta');if(!p.bank_snapshot?.account_number)missing.push('número de cuenta');return missing}
@@ -36,6 +36,7 @@ async function load(){
 function filtered(items){const platform=$('#platform').value,cutoff=$('#cutoff').value,status=$('#status').value,q=$('#search').value.trim().toLowerCase();return items.filter(x=>(!platform||x.platform_snapshot===platform||x.platform===platform)&&(!cutoff||x.cutoff_snapshot===cutoff||x.cutoff_date===cutoff)&&(!status||x.status===status||x.estado===status)&&(!q||JSON.stringify([x.concept,x.concepto,x.beneficiary,x.store_code,data.beneficiaries.find(b=>b.id===x.beneficiary_id)?.nombre]).toLowerCase().includes(q)))}
 function approverName(p){return data.profiles?.find(x=>x.id===p.authorized_by)?.nombre||'Oscar Pacheco'}
 function paymentAction(p,missing){
+ if(p.historico_inicial)return '';
  if(missing.length)return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
  if((p.estado==='pendiente'||(p.estado==='programado'&&!p.authorized_by))&&canAuthorize())return `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`;
  if(p.estado==='programado'&&!p.authorized_by)return '<span class="approval-pending">Esperando autorización de Oscar</span>';
@@ -47,9 +48,9 @@ function paymentCards(kind){
  const items=filtered(data.payments.filter(x=>x.payment_kind===kind));
  if(!items.length)return '<div class="empty">No hay información para los filtros seleccionados.</div>';
  return `<div class="payment-list">${items.map(p=>{const missing=missingPaymentData(p),action=paymentAction(p,missing),authorized=p.authorized_by&&p.authorized_at;return `<article class="payment-card">
-  <div class="payment-card__top"><div><div class="payment-card__title">${esc(p.beneficiary_name)}</div><div class="payment-card__ref">Orden PO-${shortId(p.id)} · ${esc(platformName(p.platform_snapshot))}</div></div>${badge(p.estado)}</div>
+  <div class="payment-card__top"><div><div class="payment-card__title">${esc(p.beneficiary_name)}</div><div class="payment-card__ref">Orden PO-${shortId(p.id)} · ${esc(platformName(p.platform_snapshot))}</div></div>${p.historico_inicial?badge('pagado','Histórico pagado'):badge(p.estado)}</div>
   <div class="payment-card__grid"><div class="payment-field"><small>${kind==='ejecutivo'?'Bonificación':'Valor a girar'}</small><strong>${cop(p.valor)}</strong></div><div class="payment-field"><small>${kind==='ejecutivo'?'Periodo':'Corte'}</small><strong>${date(p.cutoff_snapshot)}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${p.operations_count}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length?`<span class="approval-pending">Falta: ${esc(missing.join(', '))}</span>`:''}</div></div>
-  <div class="payment-card__actions"><div class="${authorized?'approval-ok':'approval-pending'}">${authorized?`Autorizado por ${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}`:'Sin autorización de Gerencia'}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
+  <div class="payment-card__actions"><div class="${p.historico_inicial||authorized?'approval-ok':'approval-pending'}">${p.historico_inicial?'Cerrado antes del inicio operativo · no requiere soporte':authorized?`Autorizado por ${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}`:'Sin autorización de Gerencia'}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
  </article>`}).join('')}</div>`;
 }
 function render(){
@@ -69,7 +70,7 @@ function showPaymentModal(modal){modal.classList.add('show');modal.setAttribute(
 function hidePaymentModal(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');syncPaymentModalState()}
 function closePaymentDetail(){hidePaymentModal($('#paymentDetailModal'))}
 function openPaymentDetail(id){const p=data.payments.find(x=>x.id===id);if(!p)return;const bank=p.bank_snapshot||{},authorized=p.authorized_by&&p.authorized_at;$('#paymentDetailBody').innerHTML=`<div class="payment-detail-grid">
- <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${esc(String(p.estado||'—').replaceAll('_',' '))}</strong></div>
+ <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial?'Histórico pagado · sin soporte requerido':esc(String(p.estado||'—').replaceAll('_',' '))}</strong></div>
  <div><small>Beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div><div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div>
  <div><small>Plataforma</small><strong>${esc(platformName(p.platform_snapshot))}</strong></div><div><small>Fecha de corte</small><strong>${date(p.cutoff_snapshot)}</strong></div>
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>

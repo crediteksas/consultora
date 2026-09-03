@@ -16,5 +16,6 @@ const erp = [
   'tests/erp/aliados-prefijo-a-alexander.test.mjs',
   'tests/erp/aliados-ejecutivos-periodo.test.mjs',
   'tests/erp/aliados-plataformas-periodo.test.mjs',
+  'tests/erp/aliados-bonificaciones-periodo.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...erp], { stdio: 'inherit' });

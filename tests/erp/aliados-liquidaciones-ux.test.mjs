@@ -5,6 +5,8 @@ import ux from '../../creditek/erp/aliados-liquidaciones-ux.js';
 test('formatea dinero y fechas para administración sin ISO completo', () => {
   assert.equal(ux.formatoCOP(1693952),'$ 1.693.952');
   assert.equal(ux.formatoCOP(100000),'$ 100.000');
+  assert.equal(ux.fechaCorta('2026-09-02'),'2026-09-02');
+  assert.equal(ux.fechaCorta('2026-09-01'),'2026-09-01');
   assert.equal(ux.fechaCorta('2026-08-03T15:20:30.000Z'),'2026-08-03');
   assert.equal(ux.fechaAuditoria('2026-08-03T15:20:30.000Z'),'2026-08-03 10:20');
 });

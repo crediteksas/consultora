@@ -35,7 +35,14 @@
   function formatoCOP(value) { return moneyFormatter.format(Number(value || 0)).replace(/\u00a0/g,' '); }
   function dateValue(value) {
     if (value === null || value === undefined || value === '') return null;
-    const date=new Date(value);
+    const raw=String(value).trim();
+    const dateOnly=/^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    // PostgreSQL `date` has no timezone.  Parsing YYYY-MM-DD directly makes
+    // JavaScript assume UTC midnight, which displays as the previous day in
+    // Colombia.  Noon UTC keeps the same calendar day in America/Bogota.
+    const date=dateOnly
+      ? new Date(`${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T12:00:00.000Z`)
+      : new Date(value);
     return Number.isNaN(date.getTime())?null:date;
   }
   function fechaCorta(value) { const date=dateValue(value); return date?dateFormatter.format(date):'—'; }

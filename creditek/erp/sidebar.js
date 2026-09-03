@@ -598,6 +598,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       notifications.src = '/creditek/erp/kora-notifications.js?v=1.1.2';
       document.head.appendChild(notifications);
     }
+    if (!document.getElementById('koraReportExport')) {
+      const reports = document.createElement('script');
+      reports.id = 'koraReportExport';
+      reports.src = '/creditek/erp/kora-report-export.js?v=1.0.0';
+      document.head.appendChild(reports);
+    }
     const installIncidentCenter = () => {
       if (document.getElementById('koraIncidentCenter')) return;
       const center = document.createElement('script');
@@ -979,6 +985,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     mountContextHelp();
     if (!window.KoraContextHelp) {
       document.addEventListener('kora-context-help-ready', mountContextHelp, { once: true });
+    }
+    const mountReportExport = () => window.KoraReportExport?.mount?.({ profile, sb: supabaseClient });
+    mountReportExport();
+    if (!window.KoraReportExport) {
+      document.addEventListener('kora-report-export-ready', mountReportExport, { once: true });
     }
   }
 

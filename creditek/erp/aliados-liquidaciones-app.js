@@ -20,7 +20,9 @@
   const money = UX.formatoCOP;
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
   const state = (value) => `<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`;
-  const allyUtility = (liquidation) => Math.max(0, Number(liquidation.total_utilidad_creditek || 0) - Number(liquidation.total_utilidad_tiendas || 0));
+  const ownStoreUtility = (liquidation) => Number(liquidation.total_utilidad_tiendas || 0);
+  const allyUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0) - ownStoreUtility(liquidation);
+  const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);
 
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
   const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
@@ -81,7 +83,7 @@
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.estado)}</td><td>${Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
-      <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(allyUtility(b))}</td><td>${money(b.total_pagar)}</td>
+      <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(businessUtility(b))}</td><td>${money(b.total_pagar)}</td>
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
   }
@@ -108,11 +110,11 @@
     const metrics = (title, values) => `<section class="card"><h2>${title}</h2><div class="grid">${values.map(([label, value, format]) => `<div class="metric"><small>${label}</small><strong>${format === 'text' ? esc(value) : format ? Number(value || 0) : money(value)}</strong></div>`).join('')}</div></section>`;
     $('metrics').innerHTML = metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
-      ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad Aliados confirmada', allyUtility(selected)], ['Total a girar', selected.total_pagar]
-    ]) + metrics('Resumen Operaciones Retail', [
-      ['Operaciones Retail', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Resultado Retail', 'Se calcula en Retail con costo real', 'text']
-    ]) + metrics('Resumen Operaciones Aliados', [
-      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos], ['Utilidad Creditek Aliados', allyUtility(selected)]
+      ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad total del negocio', businessUtility(selected)], ['Total a girar', selected.total_pagar]
+    ]) + metrics('Operaciones originadas en tiendas propias', [
+      ['Operaciones', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad del negocio', ownStoreUtility(selected)]
+    ]) + metrics('Operaciones originadas en aliados', [
+      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos], ['Utilidad del negocio', allyUtility(selected)]
     ]);
   }
 
@@ -146,10 +148,9 @@
       const percent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
-      const utility = isOwn ? row.utilidad_tienda : (row.utilidad_creditek ?? calculation?.utilidad_creditek);
+      const utility = row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
       const issues = !row.reconocida ? '<span class="badge con_novedades">Operación no reconocida</span>' : isOwn && difference ? '<span class="badge con_novedades">Diferencia por revisar</span>' : 'Sin novedades';
-      const utilityDisplay = isOwn && utility == null ? 'Pendiente de costo real en Retail' : money(utility);
-      return `<tr><td>${isOwn ? 'Retail' : 'Aliados'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${utilityDisplay}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
+      return `<tr><td>${isOwn ? 'Tienda propia' : 'Aliado'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
   }
@@ -338,7 +339,7 @@
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');
   $('reject').onclick = () => stateRpc('con_novedades', prompt('Motivo para devolver a revisión:') || 'Requiere corrección');
   $('reportIssue').onclick = async () => { const description = prompt('Describe la novedad:'); if (!description?.trim()) return; const { error } = await sb.rpc('aliados_reportar_novedad', { p_id: selected.id, p_operation_id: null, p_descripcion: description.trim() }); if (error) alert(error.message); else loadTab('incidents'); };
-  $('approve').onclick = () => { const message = `Confirma la aprobación de ${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nTiendas: ${selected.operaciones_tiendas || 0}\nAliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad Aliados confirmada: ${money(allyUtility(selected))}\nEl resultado Retail se calcula con su costo real.\nTotal: ${money(selected.total_pagar)}`; if (confirm(message)) stateRpc('aprobada'); };
+  $('approve').onclick = () => { const message = `Confirma la aprobación de ${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nOperaciones de tiendas propias: ${selected.operaciones_tiendas || 0}\nOperaciones de aliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad total del negocio: ${money(businessUtility(selected))}\nTotal a girar: ${money(selected.total_pagar)}`; if (confirm(message)) stateRpc('aprobada'); };
   document.querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => loadTab(button.dataset.tab); });
   document.querySelectorAll('[data-model]').forEach((button) => { button.onclick = () => { activeModel = button.dataset.model; document.querySelectorAll('[data-model]').forEach((item) => item.classList.toggle('active', item === button)); loadTab('operations'); }; });
   $('filterPlatform').onchange = loadBatches;

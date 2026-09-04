@@ -86,6 +86,8 @@ test('Liquidaciones guía el orden revisión, aprobación y autorización', asyn
   assert.match(app, /payment\.estado === 'pendiente'[\s\S]*selected\.frozen_at[\s\S]*selected\.estado === 'aprobada'/);
   assert.match(app, /await sb\.rpc\('aliados_autorizar_pago'/);
   assert.match(app, /Pendiente de revisión administrativa/);
-  assert.match(app, /Utilidad Aliados confirmada/);
-  assert.match(app, /Pendiente de costo real en Retail/);
+  assert.match(app, /Utilidad total del negocio/);
+  assert.match(app, /Operaciones originadas en tiendas propias/);
+  assert.match(app, /Operaciones originadas en aliados/);
+  assert.doesNotMatch(app, /Pendiente de costo real en Retail/);
 });

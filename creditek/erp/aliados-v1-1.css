@@ -27,6 +27,14 @@ h1{font-size:25px}
 .goal-manager{margin-bottom:18px}
 .goal-manager summary{cursor:pointer;font:700 15px Montserrat;list-style-position:inside}
 .goal-manager textarea.control{padding:12px 16px;resize:vertical}
+.executive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.executive-card{border-top:3px solid var(--turquesa)}
+.executive-card h2{font-size:18px}.executive-card h3{font:700 12px Montserrat;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 10px}
+.executive-total{padding:7px 11px;border-radius:999px;background:#EAFBFC;color:var(--azul);font-weight:700;font-variant-numeric:tabular-nums}
+.executive-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.executive-summary>div{display:flex;min-height:76px;flex-direction:column;justify-content:space-between;padding:12px;border:1px solid var(--borde);border-radius:10px;background:#FAFAFB}
+.executive-summary small,.executive-platform small{color:var(--muted)}.executive-summary strong{font:700 18px Montserrat;font-variant-numeric:tabular-nums}
+.executive-platforms{display:grid;gap:8px}.executive-platform{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center;padding:11px 12px;border:1px solid var(--borde);border-radius:10px}.executive-platform span{font-weight:700}.executive-platform strong{font-variant-numeric:tabular-nums}.executive-platform small{grid-column:1/-1}.empty.compact{padding:18px}
 body[data-aliados-view="reports"] .metrics{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}
 body[data-aliados-view="reports"] .metric{display:flex;min-width:0;min-height:112px;flex-direction:column;justify-content:flex-start;padding:16px 18px}
 body[data-aliados-view="reports"] .metric small{min-height:2.8em;line-height:1.4;margin-bottom:10px}
@@ -62,6 +70,7 @@ th{font-size:10.5px;color:var(--muted);text-transform:uppercase;background:#FAFA
 .section{margin-top:18px}
 .section h2{font-size:16px;margin-bottom:12px}
 @media(max-width:720px){.page{padding:76px 14px 40px}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}h1{font-size:21px}.toolbar .control{min-width:100%}}
+@media(max-width:760px){.executive-grid{grid-template-columns:1fr}}
 @media(max-width:900px){body[data-aliados-view="reports"] .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){.goal-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){body[data-aliados-view="reports"] .metrics{grid-template-columns:1fr}}

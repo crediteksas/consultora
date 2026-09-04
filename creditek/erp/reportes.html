@@ -1547,9 +1547,11 @@ async function cargarInventario(cache) {
 async function cargarPresupuesto() {
   const hoy = new Date();
   const mesActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(hoy) + '-01';
+  const [anioActual, mesActualParte] = mesActual.slice(0, 7).split('-').map(Number);
+  const finMesActual = new Date(Date.UTC(anioActual, mesActualParte, 1)).toISOString().slice(0, 10);
   const mesActualNum = hoy.getMonth() + 1; // 1-12
   const [pRes, vRes, h2025Res] = await Promise.all([
-    sb.from('presupuestos').select('tienda_codigo, meta_venta_total, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
+    sb.from('presupuestos').select('tienda_codigo, meta_venta_total, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').gte('fecha', mesActual).lt('fecha', finMesActual),
     sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
     sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
   ]);
@@ -1572,7 +1574,15 @@ async function cargarPresupuesto() {
   const diaMes = hoy.getDate();
   const diasTotal = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
 
-  const filas = pRes.data.filter(p => tiendaVisible(p.tienda_codigo));
+  const presupuestoPorTienda = Object.values(pRes.data.reduce((acc, p) => {
+    if (!acc[p.tienda_codigo]) acc[p.tienda_codigo] = { ...p, meta_venta_total: 0, meta_utilidad: 0, meta_creditos: 0, meta_unidades_contado: 0 };
+    acc[p.tienda_codigo].meta_venta_total += Number(p.meta_venta_total || 0);
+    acc[p.tienda_codigo].meta_utilidad += Number(p.meta_utilidad || 0);
+    acc[p.tienda_codigo].meta_creditos += Number(p.meta_creditos || 0);
+    acc[p.tienda_codigo].meta_unidades_contado += Number(p.meta_unidades_contado || 0);
+    return acc;
+  }, {}));
+  const filas = presupuestoPorTienda.filter(p => tiendaVisible(p.tienda_codigo));
   document.getElementById('tbody-presupuesto').innerHTML = filas.map(p => {
     const real = ventasPorTienda[p.tienda_codigo] || 0;
     const meta = Number(p.meta_venta_total || 0);

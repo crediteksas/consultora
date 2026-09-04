@@ -27,4 +27,6 @@ test('cumplimiento usa la meta de venta y no cruza ventas contra meta de utilida
   assert.match(html, /Meta de venta/);
   assert.match(html, /const meta = Number\(p\.meta_venta_total \|\| 0\)/);
   assert.doesNotMatch(html, /const meta = Number\(p\.meta_utilidad \|\| 0\)/);
+  assert.match(html, /presupuestoPorTienda/);
+  assert.match(html, /\.gte\('fecha', mesActual\)\.lt\('fecha', finMesActual\)/);
 });

@@ -159,12 +159,15 @@ td.manual { color: var(--turquesa); font-weight: 700; }
   </div>
 
   <div class="card">
-    <h2>Generar presupuesto automático</h2>
-    <div class="sub">Toma el histórico del mismo mes del año anterior (o el histórico importado, si existe) y lo distribuye por día respetando estacionalidad (lunes/martes más, domingo menos, quincenas pico). Si una tienda no tiene histórico, usa la meta base de 25 créditos/mes ya confirmada. Los días editados a mano no se sobrescriben.</div>
+    <h2>Planificar presupuesto por tienda</h2>
+    <div class="sub">Selecciona la tienda y la categoría en las pestañas. KORA conserva el comportamiento diario cuando existe; si el histórico solo trae un total mensual, lo prorratea entre los días. El porcentaje se aplica únicamente como propuesta y nada se guarda hasta que lo apruebes.</div>
     <div class="form-inline">
+      <div class="campo"><label>Tienda</label><select id="genTienda"><option value="">Selecciona una tienda</option></select></div>
       <div class="campo"><label>Mes</label><input type="month" id="genMes"></div>
       <div class="campo"><label>% de crecimiento</label><input type="number" id="genPct" value="0" step="1" style="width:90px;"></div>
-      <button class="btn-primary" id="btnGenerar">Generar presupuesto</button>
+      <button class="btn-primary" id="btnGenerar">Calcular propuesta</button>
+      <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar y guardar</button>
+      <button class="btn-secundario" id="btnCancelarPropuesta" style="display:none;">Descartar</button>
       <button class="btn-secundario" id="btnImportarHistorico">Importar histórico (CSV)</button>
       <input type="file" id="inputHistorico" accept=".csv,.xlsx,.xls" style="display:none;">
     </div>
@@ -218,6 +221,7 @@ let tiendasCache = [];
 let presupuestoCache = [];
 let metricaActual = 'meta_creditos';
 let celdaEnEdicion = null;
+let propuestaActual = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -292,6 +296,8 @@ function initPagina() {
   document.getElementById('verMes').value = mesActual;
 
   document.getElementById('btnGenerar').addEventListener('click', generarPresupuesto);
+  document.getElementById('btnAprobarPropuesta').addEventListener('click', guardarPropuesta);
+  document.getElementById('btnCancelarPropuesta').addEventListener('click', descartarPropuesta);
   document.getElementById('btnImportarHistorico').addEventListener('click', () => document.getElementById('inputHistorico').click());
   document.getElementById('inputHistorico').addEventListener('change', importarHistorico);
   document.getElementById('verMes').addEventListener('change', cargarPresupuesto);
@@ -303,9 +309,12 @@ function initPagina() {
 async function cargarTiendas() {
   const { data } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
   tiendasCache = data || [];
+  const selector = document.getElementById('genTienda');
+  if (selector) selector.innerHTML = '<option value="">Selecciona una tienda</option>' + tiendasCache.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
 }
 
 function cambiarTab(btn) {
+  if (propuestaActual) descartarPropuesta();
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('activo'));
   btn.classList.add('activo');
   metricaActual = btn.dataset.metrica;
@@ -316,15 +325,66 @@ async function generarPresupuesto() {
   const err = document.getElementById('genErr');
   err.classList.remove('show');
   const mesStr = document.getElementById('genMes').value;
+  const tienda = document.getElementById('genTienda').value;
   const pct = Number(document.getElementById('genPct').value || 0);
-  if (!mesStr) { err.textContent = 'Selecciona un mes.'; err.classList.add('show'); return; }
+  if (!tienda || !mesStr) { err.textContent = 'Selecciona una tienda y un mes.'; err.classList.add('show'); return; }
   const btn = document.getElementById('btnGenerar');
-  btn.disabled = true; btn.textContent = 'Generando...';
-  const { data, error } = await sb.rpc('generar_presupuesto', { p_mes: mesStr + '-01', p_pct_crecimiento: pct });
-  btn.disabled = false; btn.textContent = 'Generar presupuesto';
-  if (error) { err.textContent = 'No se pudo generar: ' + error.message; err.classList.add('show'); return; }
-  mostrarBanner(`✅ Presupuesto generado para ${data.tiendas} tienda(s). Los días editados a mano no se tocaron.`);
+  btn.disabled = true; btn.textContent = 'Calculando...';
+  const { data, error } = await sb.rpc('proponer_presupuesto_manual', {
+    p_tienda: tienda, p_mes: mesStr + '-01', p_metrica: metricaActual, p_pct_crecimiento: pct
+  });
+  btn.disabled = false; btn.textContent = 'Calcular propuesta';
+  if (error) { err.textContent = 'No se pudo calcular: ' + error.message; err.classList.add('show'); return; }
+  propuestaActual = { tienda, mesStr, pct, metrica: metricaActual, filas: data || [] };
   document.getElementById('verMes').value = mesStr;
+  await cargarPresupuesto();
+  aplicarPropuestaEnVista();
+  document.getElementById('btnAprobarPropuesta').style.display = currentPerfil.rol === 'gerencia' ? '' : 'none';
+  document.getElementById('btnCancelarPropuesta').style.display = '';
+  const fuente = propuestaActual.filas[0]?.fuente || 'sin histórico';
+  const siguiente = currentPerfil.rol === 'gerencia' ? 'Revisa los días y pulsa “Aprobar y guardar”.' : 'Vista previa: la aprobación corresponde a Gerencia.';
+  mostrarBanner(`Propuesta sin guardar: ${fuente}, crecimiento ${pct}%. ${siguiente}`);
+}
+
+function aplicarPropuestaEnVista() {
+  if (!propuestaActual) return;
+  propuestaActual.filas.forEach(f => {
+    let reg = presupuestoCache.find(p => p.tienda_codigo === propuestaActual.tienda && p.fecha === f.fecha);
+    if (!reg) {
+      reg = { tienda_codigo: propuestaActual.tienda, fecha: f.fecha, meta_creditos: 0, meta_uds_cel: 0, meta_uds_acc: 0, meta_utilidad: 0, meta_venta_total: 0 };
+      presupuestoCache.push(reg);
+    }
+    reg[propuestaActual.metrica] = Number(f.meta_propuesta || 0);
+    reg.generado_desde = 'propuesta_sin_guardar';
+  });
+  renderTabla();
+}
+
+async function guardarPropuesta() {
+  if (!propuestaActual) return;
+  const btn = document.getElementById('btnAprobarPropuesta');
+  const err = document.getElementById('genErr');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { error } = await sb.rpc('guardar_presupuesto_manual', {
+    p_tienda: propuestaActual.tienda, p_mes: propuestaActual.mesStr + '-01',
+    p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
+  });
+  btn.disabled = false; btn.textContent = 'Aprobar y guardar';
+  if (error) { err.textContent = 'No se pudo guardar: ' + error.message; err.classList.add('show'); return; }
+  const tiendaNombre = tiendasCache.find(t => t.codigo === propuestaActual.tienda)?.nombre || propuestaActual.tienda;
+  propuestaActual = null;
+  document.getElementById('btnAprobarPropuesta').style.display = 'none';
+  document.getElementById('btnCancelarPropuesta').style.display = 'none';
+  await cargarPresupuesto();
+  mostrarBanner(`✅ Presupuesto aprobado y guardado para ${tiendaNombre}.`);
+}
+
+async function descartarPropuesta() {
+  propuestaActual = null;
+  const aprobar = document.getElementById('btnAprobarPropuesta');
+  const cancelar = document.getElementById('btnCancelarPropuesta');
+  if (aprobar) aprobar.style.display = 'none';
+  if (cancelar) cancelar.style.display = 'none';
   await cargarPresupuesto();
 }
 

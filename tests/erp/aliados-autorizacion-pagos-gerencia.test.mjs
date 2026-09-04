@@ -91,3 +91,18 @@ test('Liquidaciones guía el orden revisión, aprobación y autorización', asyn
   assert.match(app, /Operaciones originadas en aliados/);
   assert.doesNotMatch(app, /Pendiente de costo real en Retail/);
 });
+
+test('Tesorería separa los pagos vigentes del historial cerrado', async () => {
+  const [html, app, sql] = await Promise.all([
+    readFile('creditek/erp/aliados-tesoreria.html', 'utf8'),
+    readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
+    readFile('supabase/migrations/20260904041238_corregir_destinos_tesoreria_y_separar_historial.sql', 'utf8'),
+  ]);
+  assert.match(html, /Pagos por gestionar/);
+  assert.match(html, /Consultar historial/);
+  assert.match(app, /function isClosedPayment\(p\)/);
+  assert.match(app, /treasuryView==='history'\?isClosedPayment\(p\):!isClosedPayment\(p\)/);
+  assert.match(sql, /liq_op\.valor_comercial/);
+  assert.match(sql, /v_fixed := replace/);
+  assert.match(sql, /if v_fixed = v_definition then/);
+});

@@ -30,6 +30,12 @@ test('Gerencia puede cargar metas futuras sin inventar valores de PayJoy o Kredi
   const hardenedMigration = await readFile('supabase/migrations/20260904144249_endurecer_auditoria_metas_plataformas.sql', 'utf8');
   assert.match(app, /Cargar o actualizar meta/);
   assert.match(app, /function renderBudget/);
+  assert.match(app, /Crecimiento interanual/);
+  assert.match(app, /Mismo periodo año anterior/);
+  assert.match(app, /previousYearDay/);
+  assert.match(app, /Crecimiento interanual/);
+  assert.match(app, /Mismo periodo año anterior/);
+  assert.match(app, /previousYearDay/);
   assert.match(budgetHtml, /data-aliados-view="budget"/);
   assert.match(budgetHtml, /Presupuesto de Aliados/);
   assert.match(app, /aliados_guardar_meta_plataforma/);

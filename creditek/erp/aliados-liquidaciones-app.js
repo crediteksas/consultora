@@ -182,10 +182,33 @@
   async function loadIncidents(focusOperationId) {
     const { data, error } = await sb.from('liquidation_incidents').select('*,liquidation_operations(establishment_name,imei)').eq('liquidation_id', selected.id).order('created_at');
     if (error) throw error;
-    $('detailHead').innerHTML = '<tr><th>Novedad</th><th>Tienda</th><th>IMEI</th><th>Descripción</th><th>Estado</th><th>Decisión</th><th>Acción</th></tr>';
-    $('detailBody').innerHTML = (data || []).map((item) => `<tr${focusOperationId && item.operation_id === focusOperationId ? ' class="focused-incident"' : ''}><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.liquidation_operations?.establishment_name || 'General')}</td><td>${esc(item.liquidation_operations?.imei || '—')}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="7">Sin novedades.</td></tr>';
-    document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
-    document.querySelector('.focused-incident')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const pending = (data || []).filter((item) => item.estado === 'abierta');
+    const history = (data || []).filter((item) => item.estado !== 'abierta');
+    let showHistory = false, page = 0;
+    const pageSize = 8;
+    const render = () => {
+      const source = showHistory ? history : pending;
+      const visible = focusOperationId ? source.filter((item) => item.operation_id === focusOperationId) : source;
+      const pages = Math.max(1, Math.ceil(visible.length / pageSize));
+      page = Math.min(page, pages - 1);
+      $('detailHead').innerHTML = '';
+      $('detailBody').innerHTML = `<tr><td><div class="incident-toolbar"><button class="btn secondary" id="pendingIssues">Pendientes (${pending.length})</button><button class="btn secondary" id="historyIssues">Consultar historial (${history.length})</button>${focusOperationId ? '<button class="btn secondary" id="allIssues">Ver todo el lote</button>' : ''}<strong>${showHistory ? 'Historial: no requiere gestión' : 'Pendientes de resolver'}</strong></div>${visible.slice(page * pageSize, (page + 1) * pageSize).map((item) => {
+        const bonus = item.tipo === 'krediya_bono_sin_configurar';
+        const price = item.tipo === 'krediya_regla_precio_ausente';
+        const title = bonus ? 'Validación de bonos Krediya' : price ? 'Precio de venta y Pagamos' : UX.traducirEstado(item.tipo);
+        const explanation = bonus ? 'Los bonos ya están definidos: $5.000 para Maythe y $15.000 de Operación para Oscar. Esta alerta requiere revisar la validación y su vigencia en el sistema; no volver a confirmar los montos.' : item.descripcion;
+        const action = item.estado === 'abierta' && !selected.frozen_at && !bonus ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">${price ? 'Revisar precios' : 'Revisar y justificar'}</button>` : '';
+        return `<article class="incident-card"><div><strong>${esc(title)}</strong> · ${state(item.estado)}<p>${esc(item.liquidation_operations?.establishment_name || 'General')} · IMEI ${esc(item.liquidation_operations?.imei || '—')}</p><p>${esc(explanation)}</p>${item.resolution ? `<p>Resolución: ${esc(item.resolution)}</p>` : ''}</div>${action}</article>`;
+      }).join('') || '<p>No hay novedades en esta vista.</p>'}<div class="incident-toolbar"><button class="btn secondary" id="previousIssues" ${page === 0 ? 'disabled' : ''}>Anterior</button><span>Página ${page + 1} de ${pages} · ${visible.length} novedades</span><button class="btn secondary" id="nextIssues" ${page + 1 >= pages ? 'disabled' : ''}>Siguiente</button></div></td></tr>`;
+      $('pendingIssues').onclick = () => { showHistory = false; page = 0; render(); };
+      $('historyIssues').onclick = () => { showHistory = true; page = 0; render(); };
+      if ($('allIssues')) $('allIssues').onclick = () => { focusOperationId = null; page = 0; render(); };
+      $('previousIssues').onclick = () => { page--; render(); };
+      $('nextIssues').onclick = () => { page++; render(); };
+      document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
+      document.querySelector('.incident-toolbar')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    };
+    render();
   }
 
   async function loadPayments() {
@@ -237,6 +260,7 @@
   async function loadTab(tab, focusOperationId) {
     activeTab = tab;
     document.querySelector('#detail > .table-wrap')?.classList.toggle('operations-table', tab === 'operations');
+    document.querySelector('#detail > .table-wrap')?.classList.toggle('incidents-table', tab === 'incidents');
     document.querySelectorAll('[data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
     try {
       if (tab === 'operations') await loadOperations();

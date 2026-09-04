@@ -686,6 +686,10 @@
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ticket promedio</div><div class="valor font-mono" id="kpi-ticket">—</div><div class="delta" id="kpi-ticket-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Celulares vendidos</div><div class="valor font-mono" id="kpi-celulares">—</div><div class="delta">Unidades serializadas</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Accesorios vendidos</div><div class="valor font-mono" id="kpi-accesorios">—</div><div class="delta">Unidades no serializadas</div></div>
+    <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Margen bruto</div><div class="valor font-mono" id="kpi-margen">—</div><div class="delta" id="kpi-margen-sub">Venta menos costo congelado</div></div>
+    <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Utilidad operativa</div><div class="valor font-mono" id="kpi-utilidad">—</div><div class="delta" id="kpi-utilidad-sub">Margen menos gastos aprobados</div></div>
+    <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Gastos / venta</div><div class="valor font-mono" id="kpi-gastos-venta">—</div><div class="delta" id="kpi-gastos-sub">Gastos aprobados del período</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Créditos por plataforma</div><div class="valor font-mono" id="kpi-creditos">—</div><div class="delta" id="kpi-creditos-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Inventario (costo real)</div><div class="valor font-mono" id="kpi-inventario">—</div><div class="delta" id="kpi-inventario-sub">—</div></div>
   </section>
@@ -695,6 +699,24 @@
     <div><div class="comparison-label">Venta actual</div><div class="comparison-value font-mono" id="comparativo-actual">—</div></div>
     <div><div class="comparison-label">Referencia proporcional 2025</div><div class="comparison-value font-mono" id="comparativo-anterior">—</div></div>
     <div><div class="comparison-label">Crecimiento</div><div class="comparison-value" id="comparativo-delta">—</div></div>
+  </section>
+
+  <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200" aria-labelledby="comparativo-kpis-title">
+    <details open>
+      <summary class="p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800" id="comparativo-kpis-title">Comparativo operativo frente a 2025</h2>
+          <p class="text-xs text-gray-500">Mismos días del período seleccionado; cifras históricas proporcionales cuando el mes está parcial.</p>
+        </div>
+        <span class="text-xs text-gray-400">▾</span>
+      </summary>
+      <div class="p-4 border-t border-gray-100 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-700"><tr><th class="px-3 py-2 text-left font-semibold">Indicador</th><th class="px-3 py-2 text-right font-semibold">Período actual</th><th class="px-3 py-2 text-right font-semibold">Referencia 2025</th><th class="px-3 py-2 text-right font-semibold">Variación</th></tr></thead>
+          <tbody id="tbody-comparativo-kpis"><tr><td colspan="4" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </details>
   </section>
 
   <!-- ==================== 1.1 CUADRO DIARIO VENTAS ==================== -->
@@ -801,7 +823,7 @@
       <summary class="p-4 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">🎯 2.1 Cumplimiento de presupuesto</h2>
-          <p class="text-xs text-gray-500">Real vs meta del mes por tienda (usa tabla `presupuestos` existente).</p>
+          <p class="text-xs text-gray-500">Venta acumulada frente a la meta de venta del mes por tienda.</p>
         </div>
         <span class="text-xs text-gray-400">▾</span>
       </summary>
@@ -813,8 +835,8 @@
               <tr>
                 <th class="px-3 py-2 text-left font-semibold">Tienda</th>
                 <th class="px-3 py-2 text-right font-semibold">2025 real</th>
-                <th class="px-3 py-2 text-right font-semibold">Meta utilidad</th>
-                <th class="px-3 py-2 text-right font-semibold">Real ventas</th>
+                <th class="px-3 py-2 text-right font-semibold">Meta de venta</th>
+                <th class="px-3 py-2 text-right font-semibold">Venta acumulada</th>
                 <th class="px-3 py-2 text-left font-semibold w-64">Cumplimiento</th>
                 <th class="px-3 py-2 text-right font-semibold">Run-rate</th>
                 <th class="px-3 py-2 text-right font-semibold">vs 2025</th>
@@ -1140,6 +1162,37 @@ async function referenciaVentas2025(desde, hasta) {
   }, 0);
 }
 
+async function referenciaKPIs2025(desde, hasta) {
+  const inicio = new Date(desde + 'T00:00:00');
+  const fin = new Date(hasta + 'T00:00:00');
+  const vacio = { ventas: 0, unidades: 0, celulares: 0, accesorios: 0, margen: 0, gastos: 0, utilidad: 0 };
+  if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return vacio;
+  let q = sb.from('historico_mensual').select('mes, dias_mes, venta_total, venta_total_dia, cel_uds, acc_uds, utilidad_bruta, utilidad_bruta_dia, gastos, gastos_dia, utilidad_neta, utilidad_neta_dia, tienda_codigo').eq('anio', 2025);
+  q = aplicarFiltroTienda(q);
+  const res = await q;
+  exigirRespuestas(res);
+  const diasPorMes = {};
+  for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+    const mes = d.getMonth() + 1;
+    diasPorMes[mes] = (diasPorMes[mes] || 0) + 1;
+  }
+  const porDia = (fila, diario, total) => Number(fila[diario] || 0)
+    || (Number(fila.dias_mes || 0) ? Number(fila[total] || 0) / Number(fila.dias_mes) : 0);
+  return (res.data || []).reduce((acc, fila) => {
+    const dias = diasPorMes[Number(fila.mes)] || 0;
+    if (!dias) return acc;
+    const diasBase = Number(fila.dias_mes || 0);
+    acc.ventas += porDia(fila, 'venta_total_dia', 'venta_total') * dias;
+    acc.celulares += (diasBase ? Number(fila.cel_uds || 0) / diasBase : 0) * dias;
+    acc.accesorios += (diasBase ? Number(fila.acc_uds || 0) / diasBase : 0) * dias;
+    acc.margen += porDia(fila, 'utilidad_bruta_dia', 'utilidad_bruta') * dias;
+    acc.gastos += porDia(fila, 'gastos_dia', 'gastos') * dias;
+    acc.utilidad += porDia(fila, 'utilidad_neta_dia', 'utilidad_neta') * dias;
+    acc.unidades = acc.celulares + acc.accesorios;
+    return acc;
+  }, { ...vacio });
+}
+
 function crearCacheRefresco() {
   const { desde, hasta } = getPeriodo();
   const filtro = [...tiendasFiltro];
@@ -1152,7 +1205,7 @@ function crearCacheRefresco() {
   return queryCache.crear({
     ventas: () => filtrar(
       sb.from('ventas')
-        .select('id, total, tienda_codigo, origen:tienda_codigo(nombre), venta_items(cantidad, productos(tipo))')
+        .select('id, total, tienda_codigo, origen:tienda_codigo(nombre), venta_items(cantidad, precio_venta, costo_congelado, productos(tipo))')
         .gte('fecha', desde)
         .lte('fecha', hasta)
         .neq('anulada', true),
@@ -1174,6 +1227,13 @@ function crearCacheRefresco() {
           .select('producto_id, tienda_codigo, cantidad, precio_tienda, costo_promedio, origen:tienda_codigo(nombre)'),
       ),
     ]),
+    gastos: () => filtrar(
+      sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado'),
+    ),
+    creditos: () => filtrar(
+      sb.from('creditos').select('financiera, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true),
+      'ventas.tienda_codigo',
+    ),
   });
 }
 
@@ -1229,12 +1289,15 @@ async function verificarAuth() {
 // ============================================================================
 async function cargarKPIs(cache) {
   const { desde, hasta } = getPeriodo();
-  const [vRes, ccRes, [unRes, stRes]] = await Promise.all([
+  const [vRes, ccRes, [unRes, stRes], gRes, crRes, ref2025] = await Promise.all([
     cache.obtener('ventas'),
     cache.obtener('cartera'),
     cache.obtener('inventario'),
+    cache.obtener('gastos'),
+    cache.obtener('creditos'),
+    referenciaKPIs2025(desde, hasta),
   ]);
-  const error = vRes.error || ccRes.error || unRes.error || stRes.error;
+  const error = vRes.error || ccRes.error || unRes.error || stRes.error || gRes.error || crRes.error;
   if (error) throw new Error(error.message);
 
   const ventas = vRes.data || [];
@@ -1242,13 +1305,24 @@ async function cargarKPIs(cache) {
   const ticket = ventas.length > 0 ? totalV / ventas.length : 0;
   let celulares = 0;
   let accesorios = 0;
+  let costo = 0;
   ventas.forEach(venta => (venta.venta_items || []).forEach(item => {
     const cantidad = Number(item.cantidad || 0);
+    costo += cantidad * Number(item.costo_congelado || 0);
     if (item.productos?.tipo === 'serializado') celulares += cantidad;
     else accesorios += cantidad;
   }));
   const unidades = celulares + accesorios;
   const unidadesPorFactura = ventas.length ? unidades / ventas.length : 0;
+  const margen = totalV - costo;
+  const gastos = (gRes.data || []).reduce((s, g) => s + Number(g.monto || 0), 0);
+  const utilidad = margen - gastos;
+  const gastosVenta = totalV ? (gastos / totalV) * 100 : 0;
+  const plataformas = (crRes.data || []).reduce((acc, credito) => {
+    const nombre = credito.financiera || 'Sin plataforma';
+    acc[nombre] = (acc[nombre] || 0) + 1;
+    return acc;
+  }, {});
 
   document.getElementById('kpi-ventas').textContent = money(totalV);
   document.getElementById('kpi-facturas').textContent = num(ventas.length);
@@ -1259,15 +1333,23 @@ async function cargarKPIs(cache) {
   document.getElementById('kpi-ticket-sub').textContent = '';
   document.getElementById('kpi-celulares').textContent = num(celulares);
   document.getElementById('kpi-accesorios').textContent = num(accesorios);
+  document.getElementById('kpi-margen').textContent = money(margen);
+  document.getElementById('kpi-margen-sub').textContent = `${pct(margen, totalV)} sobre ventas`;
+  document.getElementById('kpi-utilidad').textContent = money(utilidad);
+  document.getElementById('kpi-utilidad-sub').textContent = `${money(gastos)} en gastos aprobados`;
+  document.getElementById('kpi-gastos-venta').textContent = `${gastosVenta.toFixed(1)}%`;
+  document.getElementById('kpi-gastos-sub').textContent = `${money(gastos)} / ${money(totalV)}`;
+  document.getElementById('kpi-creditos').textContent = num(crRes.data?.length || 0);
+  document.getElementById('kpi-creditos-sub').textContent = Object.entries(plataformas).sort((a, b) => b[1] - a[1]).map(([nombre, cantidad]) => `${nombre}: ${cantidad}`).join(' · ') || 'Sin créditos en el período';
 
   // Delta vs 2025 — usa historico_mensual cuando el rango coincide con un mes
   // conocido o un solo día. Para períodos parciales usa proyección proporcional.
   const deltaEl = document.getElementById('kpi-ventas-delta');
-  const ref2025 = await referenciaVentas2025(desde, hasta);
+  const refVentas2025 = ref2025.ventas;
   let sub = `${ventas.length} operaciones`;
   let delta = null;
-  if (ref2025 > 0) {
-    delta = ((totalV - ref2025) / ref2025) * 100;
+  if (refVentas2025 > 0) {
+    delta = ((totalV - refVentas2025) / refVentas2025) * 100;
     const flecha = delta >= 0 ? '↑' : '↓';
     const cls = delta >= 0 ? 'delta-up' : 'delta-down';
     sub = `${ventas.length} operaciones · <span class="${cls}">${flecha} ${Math.abs(delta).toFixed(1)}% vs 2025 (mismo período)</span>`;
@@ -1275,10 +1357,24 @@ async function cargarKPIs(cache) {
   deltaEl.innerHTML = sub;
   document.getElementById('comparativo-periodo').textContent = `${desde} a ${hasta} frente a las mismas fechas de 2025`;
   document.getElementById('comparativo-actual').textContent = money(totalV);
-  document.getElementById('comparativo-anterior').textContent = ref2025 > 0 ? money(ref2025) : 'Sin base';
+  document.getElementById('comparativo-anterior').textContent = refVentas2025 > 0 ? money(refVentas2025) : 'Sin base';
   const comparativoDelta = document.getElementById('comparativo-delta');
   comparativoDelta.textContent = delta == null ? 'Sin base comparable' : `${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta).toFixed(1)}%`;
   comparativoDelta.className = `comparison-value ${delta == null ? 'text-gray-500' : delta >= 0 ? 'delta-up' : 'delta-down'}`;
+
+  const comparables = [
+    ['Ventas', totalV, ref2025.ventas, money],
+    ['Unidades vendidas', unidades, ref2025.unidades, valor => num(Math.round(valor))],
+    ['Celulares', celulares, ref2025.celulares, valor => num(Math.round(valor))],
+    ['Accesorios', accesorios, ref2025.accesorios, valor => num(Math.round(valor))],
+    ['Margen bruto', margen, ref2025.margen, money],
+    ['Gastos aprobados', gastos, ref2025.gastos, money],
+    ['Utilidad operativa', utilidad, ref2025.utilidad, money],
+  ];
+  document.getElementById('tbody-comparativo-kpis').innerHTML = comparables.map(([nombre, actual, anterior, formato]) => {
+    const variacion = anterior ? ((actual - anterior) / anterior) * 100 : null;
+    return `<tr><td class="px-3 py-2 font-medium">${nombre}</td><td class="px-3 py-2 text-right font-mono">${formato(actual)}</td><td class="px-3 py-2 text-right font-mono text-gray-600">${anterior ? formato(anterior) : 'Sin base'}</td><td class="px-3 py-2 text-right ${variacion == null ? 'text-gray-400' : variacion >= 0 ? 'text-emerald-700' : 'text-red-700'}">${variacion == null ? '—' : `${variacion >= 0 ? '↑' : '↓'} ${Math.abs(variacion).toFixed(1)}%`}</td></tr>`;
+  }).join('');
 
   // Cartera e inventario provienen del caché compartido de este refresco.
   const cc = ccRes.data || [];
@@ -1453,7 +1549,7 @@ async function cargarPresupuesto() {
   const mesActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(hoy) + '-01';
   const mesActualNum = hoy.getMonth() + 1; // 1-12
   const [pRes, vRes, h2025Res] = await Promise.all([
-    sb.from('presupuestos').select('tienda_codigo, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
+    sb.from('presupuestos').select('tienda_codigo, meta_venta_total, meta_utilidad, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').eq('fecha', mesActual),
     sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
     sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
   ]);
@@ -1479,7 +1575,7 @@ async function cargarPresupuesto() {
   const filas = pRes.data.filter(p => tiendaVisible(p.tienda_codigo));
   document.getElementById('tbody-presupuesto').innerHTML = filas.map(p => {
     const real = ventasPorTienda[p.tienda_codigo] || 0;
-    const meta = Number(p.meta_utilidad || 0);
+    const meta = Number(p.meta_venta_total || 0);
     const real2025 = hist2025[p.tienda_codigo] || 0;
     const cumpl = meta ? (real / meta) * 100 : 0;
     const runRate = diaMes > 0 ? (real / diaMes) * diasTotal : 0;

@@ -377,9 +377,11 @@
       const candidates = workbook.SheetNames.map((name) => ({ name, sheet:workbook.Sheets[name] }));
       const selectedSheet = candidates.find(({ sheet }) => XLSX.utils.sheet_to_json(sheet, { header:1, defval:null, raw:true }).slice(0,30).some((row) => {
         const headers = row.map(normalizeHeader);
-        return headers.some((item) => item === '# credito' || item === 'credito') && headers.includes('imei') && headers.includes('pagamos');
+        const hasCredit = headers.some((item) => item === '# credito' || item === 'credito');
+        const hasAmount = headers.includes('monto a financiar') || headers.includes('precio');
+        return hasCredit && headers.includes('imei') && hasAmount;
       }));
-      if (!selectedSheet) throw new Error(`No encontramos la tabla de liquidación de Krediya. Hojas revisadas: ${workbook.SheetNames.join(', ') || 'ninguna'}. Verifica que incluya las columnas Crédito, IMEI y PAGAMOS.`);
+      if (!selectedSheet) throw new Error(`No encontramos la tabla original de ventas de Krediya. Hojas revisadas: ${workbook.SheetNames.join(', ') || 'ninguna'}. Debe incluir Crédito, IMEI y Monto a Financiar o Precio.`);
       const rows = XLSX.utils.sheet_to_json(selectedSheet.sheet, { header:1, defval:null, raw:true });
       preview = D.importarKrediya(rows, await establishments());
       preview.sheetName = selectedSheet.name;

@@ -47,6 +47,20 @@ test('Krediya deduplica por número de crédito y conserva su fórmula de archiv
   assert.equal(result.operaciones[0].pagoNetoArchivo + result.operaciones[0].bonoArchivo + result.operaciones[0].utilidadArchivo, result.operaciones[0].montoCredito);
 });
 
+test('Krediya acepta el archivo original sin columnas manuales de liquidación', () => {
+  const headers = ['Fecha','# Crédito','Cédula','Nombres','Apellidos','IMEI','Modelo','Descripción','Precio','Monto a Financiar','Abono (moneda)','Tienda','Estado del contrato'];
+  const row = ['3/09/2026','codnjm6','1062961763','Yonatan','Domico','356251203448807','TECNO KN3','TECNO SPARK GO 3 64GB 4RAM',402500,342125,60375,'A DIGI MOVIL CANTACLARO','FIRMADO'];
+  const result = domain.importarKrediya([headers,row], establecimientos);
+  assert.equal(result.operaciones.length, 1);
+  assert.equal(result.operaciones[0].montoCredito, 342125);
+  assert.equal(result.operaciones[0].valorComercial, 402500);
+  assert.equal(result.operaciones[0].pagamosArchivo, null);
+  assert.equal(result.operaciones[0].pagoNetoArchivo, null);
+  assert.equal(result.operaciones[0].bonoArchivo, null);
+  assert.equal(result.operaciones[0].utilidadArchivo, null);
+  assert.ok(!result.operaciones[0].incidencias.includes('valor_negativo_imposible'));
+});
+
 test('PayJoy une purchaseAmount y purchaseOutOfPocket en una operación', () => {
   const rows = [[
     'transaction time','merchant name','device','transaction type','device family','device model','imei','sales clerk id','sales clerk name','months','finance product','owed by PayJoy','owed by CREDITEK S.A.S.','national id',

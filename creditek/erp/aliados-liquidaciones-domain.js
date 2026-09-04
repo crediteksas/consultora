@@ -196,11 +196,15 @@
       if (estadoContrato && estadoContrato !== 'firmado') problemas.push('operacion_no_reconocida');
       const montoCredito = dineroColombia(valor(row, 'Monto a Financiar', 'Monto a Financiar.1'));
       const inicial = dineroColombia(valor(row, 'Abono (moneda)', 'Abono (moneda).1'));
-      const pagamosArchivo = dineroColombia(valor(row, 'PAGAMOS'));
-      const pagoNetoArchivo = dineroColombia(valor(row, 'COMI PAGO'));
-      const bonoArchivo = dineroColombia(valor(row, 'BONO alex', 'BONO'));
-      const utilidadArchivo = dineroColombia(valor(row, 'UTILIDAD OSCAR'));
-      if (montoCredito <= 0 || pagamosArchivo <= 0 || pagoNetoArchivo < 0) problemas.push('valor_negativo_imposible');
+      const opcionalDinero = (...headers) => {
+        const raw = valor(row, ...headers);
+        return raw === null || raw === undefined || texto(raw) === '' ? null : dineroColombia(raw);
+      };
+      const pagamosArchivo = opcionalDinero('PAGAMOS');
+      const pagoNetoArchivo = opcionalDinero('COMI PAGO');
+      const bonoArchivo = opcionalDinero('BONO alex', 'BONO');
+      const utilidadArchivo = opcionalDinero('UTILIDAD OSCAR');
+      if (montoCredito <= 0 || (pagamosArchivo !== null && pagamosArchivo <= 0) || (pagoNetoArchivo !== null && pagoNetoArchivo < 0)) problemas.push('valor_negativo_imposible');
       const operacion = {
         plataforma:'krediya', sourceKey, externalId, fecha:fecha(valor(row, 'Fecha')),
         establecimientoNombre:texto(valor(row, 'Tienda', 'Aliado')), establecimiento:clasificacion.establecimiento,

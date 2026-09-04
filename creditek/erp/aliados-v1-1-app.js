@@ -535,7 +535,7 @@
       ["Maestros formalizados", db.allies.length],
     ]);
     $("#content").innerHTML =
-      `<div class="card"><p class="muted">El ejecutivo es el responsable comercial de Creditek. El vendedor reportado por la plataforma pertenece al establecimiento y no se usa como ejecutivo.</p></div>${table(["Establecimiento", "Plataformas", "Créditos pagados", "Valor financiado", "Ejecutivo Creditek", "Vinculación del histórico"], rows(list, [(x) => esc(x.name), (x) => esc([...x.platforms].join(", ")), (x) => x.credits, (x) => cop(x.sales), (x) => esc(execName(x.executiveId)), (x) => badge(x.executiveId ? "vinculado" : "requiere_revision")]))}`;
+      `<div class="card"><p class="muted">El ejecutivo es el responsable comercial de Creditek. El vendedor reportado por la plataforma pertenece al establecimiento y no se usa como ejecutivo.</p></div>${table(["Establecimiento", "Plataformas", "Créditos", "Valor financiado", "Ejecutivo Creditek", "Estado / acción"], rows(list, [(x) => esc(x.name), (x) => esc([...x.platforms].join(", ")), (x) => x.credits, (x) => cop(x.sales), (x) => esc(execName(x.executiveId)), (x) => x.executiveId ? badge("vinculado") : `<div class="review-cell">${badge("requiere_revision")}<a class="btn primary" href="aliados-calidad.html?establecimiento=${encodeURIComponent(x.name)}">Gestionar</a></div>`]))}`;
   }
   function openAlly(id) {
     const a = db.allies.find((x) => x.id === id);
@@ -1189,6 +1189,7 @@
   }
   function renderQuality() {
     const allyOps = db.operations.filter((o) => o.modelo_negocio === "aliado"),
+      requestedEstablishment = new URLSearchParams(location.search).get("establecimiento"),
       pending = [
         ...(db.historicalCredits || [])
           .filter(
@@ -1209,7 +1210,7 @@
             return m;
           }, new Map())
           .values(),
-      ];
+      ].filter((x) => !requestedEstablishment || x.name === requestedEstablishment);
     metrics([
       [
         "Créditos sin ejecutivo Creditek",

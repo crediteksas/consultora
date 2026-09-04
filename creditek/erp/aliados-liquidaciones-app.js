@@ -135,7 +135,8 @@
     const { data, error } = await sb.from('liquidation_operations').select(operationFields).eq('liquidation_id', selected.id).order('operation_at');
     if (error) throw error;
     const rows = (data || []).filter((row) => activeModel === 'all' || row.tipo_establecimiento === activeModel);
-    const headers = ['Tipo de operación', 'Beneficiario', 'Cliente', 'IMEI', 'Valor crédito', 'Inicial plataforma', 'Inicial KORA', 'Diferencia de inicial', 'Valor comercial', 'Porcentaje aplicado', 'Pagamos', 'Pago neto', 'Bonos', 'Utilidad Creditek', 'Estado', 'Novedades'];
+    document.querySelector('#detail > .table-wrap')?.classList.add('operations-table');
+    const headers = ['Operación', 'Cliente / IMEI', 'Crédito', 'Inicial', 'Valor comercial', '% aplicado', 'Pagamos', 'Pago neto', 'Bonos', 'Utilidad', 'Estado / novedad'];
     $('detailHead').innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>`;
     $('detailBody').innerHTML = rows.map((row) => {
       const isOwn = row.tipo_establecimiento === 'propia';
@@ -150,18 +151,23 @@
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
       const utility = row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
-      const issues = !row.reconocida ? '<span class="badge con_novedades">Operación no reconocida</span>' : isOwn && difference ? '<span class="badge con_novedades">Diferencia por revisar</span>' : 'Sin novedades';
-      return `<tr><td>${isOwn ? 'Tienda propia' : 'Aliado'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
+      const hasIssue = !row.reconocida || (isOwn && difference);
+      const issueLabel = !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
+      const issues = hasIssue ? `<div class="issue-action"><span class="badge con_novedades">${issueLabel}</span><button class="btn secondary" data-manage-issue="${row.id}">Gestionar</button></div>` : 'Sin novedades';
+      const initial = isOwn ? `${money(row.inicial)}<small>KORA: ${money(row.inicial_kora)}${difference ? ` · Dif.: ${money(difference)}` : ''}</small>` : money(row.inicial);
+      return `<tr><td><span class="operation-main">${esc(row.establishment_name)}</span><small>${isOwn ? 'Tienda propia' : 'Aliado'}</small></td><td>${esc(row.cliente_nombre || '—')}<small>${esc(row.imei || '—')}</small></td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${initial}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}<div style="margin-top:6px">${issues}</div></td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
+    document.querySelectorAll('[data-manage-issue]').forEach((button) => { button.onclick = () => loadTab('incidents', button.dataset.manageIssue); });
   }
 
-  async function loadIncidents() {
+  async function loadIncidents(focusOperationId) {
     const { data, error } = await sb.from('liquidation_incidents').select('*,liquidation_operations(establishment_name,imei)').eq('liquidation_id', selected.id).order('created_at');
     if (error) throw error;
     $('detailHead').innerHTML = '<tr><th>Novedad</th><th>Tienda</th><th>IMEI</th><th>Descripción</th><th>Estado</th><th>Decisión</th><th>Acción</th></tr>';
-    $('detailBody').innerHTML = (data || []).map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.liquidation_operations?.establishment_name || 'General')}</td><td>${esc(item.liquidation_operations?.imei || '—')}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="7">Sin novedades.</td></tr>';
+    $('detailBody').innerHTML = (data || []).map((item) => `<tr${focusOperationId && item.operation_id === focusOperationId ? ' class="focused-incident"' : ''}><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.liquidation_operations?.establishment_name || 'General')}</td><td>${esc(item.liquidation_operations?.imei || '—')}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="7">Sin novedades.</td></tr>';
     document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
+    document.querySelector('.focused-incident')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   async function loadPayments() {
@@ -210,12 +216,13 @@
       : `<tr><td>Ejecutivo asignado</td><td>${group.establishments.size}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(0)}</td><td>${money(0)}</td><td>Pendiente</td><td>${group.issues}</td></tr>`).join('') || `<tr><td colspan="${heads.length}">Sin registros.</td></tr>`;
   }
 
-  async function loadTab(tab) {
+  async function loadTab(tab, focusOperationId) {
     activeTab = tab;
+    document.querySelector('#detail > .table-wrap')?.classList.toggle('operations-table', tab === 'operations');
     document.querySelectorAll('[data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
     try {
       if (tab === 'operations') await loadOperations();
-      else if (tab === 'incidents') await loadIncidents();
+      else if (tab === 'incidents') await loadIncidents(focusOperationId);
       else if (tab === 'payments') await loadPayments();
       else if (tab === 'audit') await loadAudit();
       else await loadGrouped(tab);

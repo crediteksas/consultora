@@ -245,14 +245,16 @@ function obtenerTelefonoTienda_(tiendaNombre, ciudad) {
   }
 
   var data = sheet.getDataRange().getValues();
+  var nombreBuscado = normalizarClaveTienda_(tiendaNombre);
+  var ciudadBuscada = normalizarClaveTienda_(ciudad);
   // Buscar por nombre + ciudad para evitar duplicados (ej: Creditel Chinú vs Creditel Coveñas)
   for (var i = 1; i < data.length; i++) {
     var nombreSheet = String(data[i][1]).trim();
     var ciudadSheet = String(data[i][2]).trim();
     var tel         = String(data[i][3]).trim();
 
-    var coincideNombre = nombreSheet === tiendaNombre.trim();
-    var coincideCiudad = !ciudad || ciudadSheet === ciudad.trim();
+    var coincideNombre = normalizarClaveTienda_(nombreSheet) === nombreBuscado;
+    var coincideCiudad = !ciudadBuscada || normalizarClaveTienda_(ciudadSheet) === ciudadBuscada;
 
     if (coincideNombre && coincideCiudad && tel !== '') {
       return tel;
@@ -260,12 +262,20 @@ function obtenerTelefonoTienda_(tiendaNombre, ciudad) {
   }
   // Fallback: buscar solo por nombre si no se encontró con ciudad
   for (var j = 1; j < data.length; j++) {
-    if (String(data[j][1]).trim() === tiendaNombre.trim()) {
+    if (normalizarClaveTienda_(data[j][1]) === nombreBuscado) {
       var t = String(data[j][3]).trim();
       return t !== '' ? t : null;
     }
   }
   return null;
+}
+
+function normalizarClaveTienda_(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 // ============================================================
@@ -430,7 +440,7 @@ function inicializarTiendas() {
     ['CRD-CHI-02', 'Creditel Chinú',      'Chinú',          '573017158802', 'yajaira.salas@crediteksas.com',   'SI'],
     ['CRD-CHI-03', 'Sonivox Chinú',       'Chinú',          '573052044046', 'vanessa.salas@crediteksas.com',   'SI'],
     ['CRD-CIE-01', 'OroCell',             'Ciénaga de Oro', '573215039764', 'carmen.viggiani@crediteksas.com', 'SI'],
-    ['CRD-CIE-02', 'KrediSinu',           'Ciénaga de Oro', '578001608332', 'digna.pantoja@crediteksas.com',   'SI'],
+    ['CRD-CIE-02', 'KrediSinu',           'Ciénaga de Oro', '573006177114', 'digna.pantoja@crediteksas.com',   'SI'],
     ['CRD-COV-01', 'Creditel Coveñas',    'Coveñas',        '573008529877', 'yulimar.briceno@crediteksas.com', 'SI']
   ];
 
@@ -636,11 +646,13 @@ function testWhatsApp() {
  */
 function actualizarTelefonos() {
   var CORRECCIONES = {
-    'CRD-COR-02': '573002865747',
-    'CRD-CHI-01': '573163134737',
-    'CRD-CHI-02': '573017158802',
-    'CRD-CIE-01': '573215039764',
-    'CRD-CIE-02': '578001608332'
+    'CRD-COR-02': '573113052878',
+    'CRD-COR-03': '573205417745',
+    'CRD-CHI-01': '573234052533',
+    'CRD-CHI-02': '573239176227',
+    'CRD-CHI-03': '573207235872',
+    'CRD-CIE-01': '573021297349',
+    'CRD-CIE-02': '573006177114'
   };
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();

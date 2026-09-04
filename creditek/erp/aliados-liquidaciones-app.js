@@ -146,10 +146,10 @@
   }
 
   async function loadIncidents() {
-    const { data, error } = await sb.from('liquidation_incidents').select('*').eq('liquidation_id', selected.id).order('created_at');
+    const { data, error } = await sb.from('liquidation_incidents').select('*,liquidation_operations(establishment_name,imei)').eq('liquidation_id', selected.id).order('created_at');
     if (error) throw error;
-    $('detailHead').innerHTML = '<tr><th>Novedad</th><th>Descripción</th><th>Estado</th><th>Decisión</th><th>Acción</th></tr>';
-    $('detailBody').innerHTML = (data || []).map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="5">Sin novedades.</td></tr>';
+    $('detailHead').innerHTML = '<tr><th>Novedad</th><th>Tienda</th><th>IMEI</th><th>Descripción</th><th>Estado</th><th>Decisión</th><th>Acción</th></tr>';
+    $('detailBody').innerHTML = (data || []).map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.liquidation_operations?.establishment_name || 'General')}</td><td>${esc(item.liquidation_operations?.imei || '—')}</td><td>${esc(item.descripcion)}</td><td>${state(item.estado)}</td><td>${esc(item.resolution || 'Pendiente de revisión')}</td><td>${item.estado === 'abierta' && !selected.frozen_at ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">Revisar y justificar</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="7">Sin novedades.</td></tr>';
     document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
   }
 

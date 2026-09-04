@@ -29,3 +29,9 @@ test('una aprobación bloqueada muestra la causa y abre Novedades', () => {
   assert.match(app, /No se puede aprobar: existen novedades bloqueantes/);
   assert.match(app, /if \(approvalBlocked\) await loadTab\('incidents'\)/);
 });
+
+test('Novedades identifica la tienda y el IMEI que requieren revisión', () => {
+  assert.match(app, /liquidation_operations\(establishment_name,imei\)/);
+  assert.match(app, /<th>Tienda<\/th><th>IMEI<\/th>/);
+  assert.match(app, /liquidation_operations\?\.establishment_name/);
+});

@@ -619,10 +619,13 @@
           );
         return { e, ops, bonusNew };
       }),
-      unassignedOps = periodOps.filter((o) => !activeIds.has(o.ejecutivo_id)),
+      ownStoreOps = periodOps.filter((o) => o.tipo_establecimiento === "propia" && !activeIds.has(o.ejecutivo_id)),
+      unassignedOps = periodOps.filter((o) => o.tipo_establecimiento !== "propia" && !activeIds.has(o.ejecutivo_id)),
       pending = (db.historicalCredits || []).filter(
         (h) => h.tipo_establecimiento === "aliado" && !h.ejecutivo_historico_id,
       ).length;
+    if (ownStoreOps.length)
+      list.push({ e: { nombre: "Tiendas propias · Retail" }, ops: ownStoreOps, bonusNew: 0 });
     if (unassignedOps.length)
       list.push({
         e: { nombre: "Sin ejecutivo asignado" },
@@ -692,10 +695,13 @@
           );
         return { e, ops, bonusNew };
       }),
-      unassignedOps = periodOps.filter((o) => !activeIds.has(o.ejecutivo_id)),
+      ownStoreOps = periodOps.filter((o) => o.tipo_establecimiento === "propia" && !activeIds.has(o.ejecutivo_id)),
+      unassignedOps = periodOps.filter((o) => o.tipo_establecimiento !== "propia" && !activeIds.has(o.ejecutivo_id)),
       pending = (db.historicalCredits || []).filter(
         (h) => h.tipo_establecimiento === "aliado" && !h.ejecutivo_historico_id,
       ).length;
+    if (ownStoreOps.length)
+      list.push({ e: { nombre: "Tiendas propias · Retail" }, ops: ownStoreOps, bonusNew: 0 });
     if (unassignedOps.length)
       list.push({
         e: { nombre: "Sin ejecutivo asignado" },

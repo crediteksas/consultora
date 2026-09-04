@@ -69,10 +69,12 @@
   function fecha(value) {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
     const raw = texto(value);
-    const dmy = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+    const dmy = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2}|\d{4})$/);
     if (dmy) {
       const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
-      return new Date(`${year}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}T12:00:00-05:00`).toISOString();
+      const day = `${year}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+      const parsed = new Date(`${day}T12:00:00-05:00`);
+      return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0,10) === day ? parsed.toISOString() : null;
     }
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();

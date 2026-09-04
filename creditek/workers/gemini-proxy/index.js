@@ -400,6 +400,143 @@ async function llamarGemini3Pro_(env, { prompt, imageUrl, imageBase64, imageMime
 }
 __name(llamarGemini3Pro_, "llamarGemini3Pro_");
 __name2(llamarGemini3Pro_, "llamarGemini3Pro_");
+
+var VEO_LOCATION = "us-central1";
+var VEO_MODEL_DEFAULT = "veo-3.1-generate-001";
+var VEO_DURATION_VALUES = /* @__PURE__ */ new Set([4, 6, 8]);
+function safeLogValue(value, limit = 240) {
+  return String(value || "").replace(/[\r\n]+/g, " ").slice(0, limit);
+}
+__name(safeLogValue, "safeLogValue");
+__name2(safeLogValue, "safeLogValue");
+function veoConfig(env) {
+  const project = String(env.GCP_PROJECT_ID || "").trim();
+  const location = String(env.VEO_LOCATION || VEO_LOCATION).trim();
+  const model = String(env.VEO_MODEL || VEO_MODEL_DEFAULT).trim();
+  if (!/^[a-z][a-z0-9-]{4,62}$/.test(project)) throw new Error("Proyecto Vertex AI inválido");
+  if (!/^[a-z0-9-]+$/.test(location)) throw new Error("Región Veo inválida");
+  if (!/^veo-3\.1-(?:fast-)?generate-(?:001|preview)$/.test(model)) throw new Error("Modelo Veo no permitido");
+  const resource = `projects/${project}/locations/${location}/publishers/google/models/${model}`;
+  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/${resource}`;
+  return { project, location, model, resource, endpoint };
+}
+__name(veoConfig, "veoConfig");
+__name2(veoConfig, "veoConfig");
+async function veoAccessToken(env) {
+  if (!env.GCP_WIF_PRIVATE_KEY || !env.GCP_WIF_AUDIENCE || !env.GCP_SA_EMAIL) {
+    throw new Error("La autenticación de Vertex AI no está configurada");
+  }
+  return getVertexToken(env);
+}
+__name(veoAccessToken, "veoAccessToken");
+__name2(veoAccessToken, "veoAccessToken");
+async function iniciarVeo_(env, payload) {
+  const prompt = String(payload?.prompt || "").trim();
+  if (!prompt || prompt.length > 4e3) return err("Prompt de Reel inválido", 400);
+  const duration = Number(payload?.duration || 8);
+  if (!VEO_DURATION_VALUES.has(duration)) return err("La duración debe ser 4, 6 u 8 segundos", 400);
+  const aspectRatio = payload?.aspect_ratio === "16:9" ? "16:9" : "9:16";
+  const image = String(payload?.image || "").replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").replace(/\s/g, "");
+  if (image && !/^[A-Za-z0-9+/]+={0,2}$/.test(image)) return err("La imagen base no es válida", 400);
+  if (image && image.length > 28e6) return err("La imagen base supera el límite de 20 MB", 413);
+  let config;
+  let token;
+  try {
+    config = veoConfig(env);
+    token = await veoAccessToken(env);
+  } catch (error) {
+    console.error("[VEO-AUTH]", JSON.stringify({ error: safeLogValue(error?.message) }));
+    return err("No se pudo autenticar Veo en Vertex AI", 502);
+  }
+  const instance = { prompt };
+  if (image) instance.image = { bytesBase64Encoded: image, mimeType: "image/png" };
+  const started = Date.now();
+  let response;
+  try {
+    response = await fetch(`${config.endpoint}:predictLongRunning`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instances: [instance],
+        parameters: {
+          aspectRatio,
+          durationSeconds: duration,
+          sampleCount: 1,
+          resolution: "720p",
+          generateAudio: false,
+          enhancePrompt: true,
+          personGeneration: "dont_allow"
+        }
+      }),
+      signal: AbortSignal.timeout(3e4)
+    });
+  } catch (error) {
+    console.error("[VEO-START-NETWORK]", JSON.stringify({ error: safeLogValue(error?.message), elapsed_ms: Date.now() - started }));
+    return err("No se pudo iniciar la generación del Reel", 502);
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.name) {
+    console.error("[VEO-START]", JSON.stringify({
+      status: response.status,
+      error: safeLogValue(data?.error?.message),
+      elapsed_ms: Date.now() - started
+    }));
+    return err(response.status === 429 ? "Veo está ocupado. Intenta nuevamente en unos minutos." : "Veo no pudo iniciar el Reel", response.status === 429 ? 429 : 502);
+  }
+  console.log("[VEO-START]", JSON.stringify({ status: response.status, model: config.model, duration, elapsed_ms: Date.now() - started }));
+  return jsonResponse({ success: true, pending: true, operation: data.name, model: config.model }, 202);
+}
+__name(iniciarVeo_, "iniciarVeo_");
+__name2(iniciarVeo_, "iniciarVeo_");
+async function consultarVeo_(env, payload) {
+  const operation = String(payload?.operation || "").trim();
+  let config;
+  let token;
+  try {
+    config = veoConfig(env);
+    if (!operation.startsWith(`${config.resource}/operations/`) || !/^[A-Za-z0-9._\/-]+$/.test(operation)) {
+      return err("Operación Veo inválida", 400);
+    }
+    token = await veoAccessToken(env);
+  } catch (error) {
+    console.error("[VEO-AUTH]", JSON.stringify({ error: safeLogValue(error?.message) }));
+    return err("No se pudo autenticar Veo en Vertex AI", 502);
+  }
+  const started = Date.now();
+  let response;
+  try {
+    response = await fetch(`${config.endpoint}:fetchPredictOperation`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ operationName: operation }),
+      signal: AbortSignal.timeout(3e4)
+    });
+  } catch (error) {
+    console.error("[VEO-STATUS-NETWORK]", JSON.stringify({ error: safeLogValue(error?.message), elapsed_ms: Date.now() - started }));
+    return err("No se pudo consultar el estado del Reel", 502);
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("[VEO-STATUS]", JSON.stringify({ status: response.status, error: safeLogValue(data?.error?.message), elapsed_ms: Date.now() - started }));
+    return err("Veo no pudo consultar el Reel", 502);
+  }
+  if (!data.done) return jsonResponse({ success: true, pending: true, operation }, 202);
+  if (data.error) {
+    console.error("[VEO-COMPLETE]", JSON.stringify({ error: safeLogValue(data.error?.message || data.error?.code), elapsed_ms: Date.now() - started }));
+    return err("Veo no pudo completar el Reel", 502);
+  }
+  const video = data.response?.videos?.[0] || data.response?.generatedVideos?.[0]?.video || data.result?.videos?.[0];
+  const bytes = video?.bytesBase64Encoded || video?.bytes_base64_encoded;
+  if (!bytes) {
+    const filtered = Number(data.response?.raiMediaFilteredCount || data.response?.rai_media_filtered_count || 0);
+    console.error("[VEO-COMPLETE]", JSON.stringify({ filtered, response_keys: Object.keys(data.response || {}).slice(0, 12), elapsed_ms: Date.now() - started }));
+    return err(filtered > 0 ? "Veo bloqueó el Reel por sus filtros de seguridad. Ajusta el contenido e intenta nuevamente." : "Veo terminó sin devolver un video", 502);
+  }
+  console.log("[VEO-COMPLETE]", JSON.stringify({ output_bytes: Math.floor(bytes.length * 0.75), elapsed_ms: Date.now() - started }));
+  return jsonResponse({ success: true, pending: false, video: bytes, format: "mp4" }, 200);
+}
+__name(consultarVeo_, "consultarVeo_");
+__name2(consultarVeo_, "consultarVeo_");
 var index_default = {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -787,11 +924,12 @@ var index_default = {
         ok: true,
         wif: !!env.GCP_WIF_PRIVATE_KEY,
         jwks: !!env.GCP_WIF_PUBLIC_JWK,
+        veo: !!env.GCP_WIF_PRIVATE_KEY && !!env.GCP_PROJECT_ID,
         wif_audience: env.GCP_WIF_AUDIENCE || null,
         jwt_audience: WORKER_URL
       });
     }
-    if (path !== "/generate" && path !== "/openai/responses" && path !== "/anthropic/messages") return err("Ruta no encontrada", 404);
+    if (path !== "/generate" && path !== "/openai/responses" && path !== "/anthropic/messages" && path !== "/veo/generate" && path !== "/veo/status") return err("Ruta no encontrada", 404);
     if (request.method !== "POST") return err("Solo POST", 405);
     if (!await authenticateAura(request, env)) return err("Autenticaci\xF3n AURA requerida", 401);
     let body;
@@ -802,6 +940,8 @@ var index_default = {
     }
     if (path === "/openai/responses") return llamarOpenAI_(env, body);
     if (path === "/anthropic/messages") return llamarAnthropic_(env, body);
+    if (path === "/veo/generate") return iniciarVeo_(env, body);
+    if (path === "/veo/status") return consultarVeo_(env, body);
     const { prompt, aspectRatio = "1:1", engine, imageUrl, imageBase64, imageMimeType } = body;
     if (!prompt) return err('Campo "prompt" requerido', 400);
     let via0Skip = null;
@@ -880,6 +1020,14 @@ function ok(data, via = null) {
 }
 __name(ok, "ok");
 __name2(ok, "ok");
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" }
+  });
+}
+__name(jsonResponse, "jsonResponse");
+__name2(jsonResponse, "jsonResponse");
 function err(message, status = 400) {
   return new Response(JSON.stringify({ error: message }), {
     status,

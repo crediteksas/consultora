@@ -126,3 +126,17 @@ test('Tesorería muestra nombres de tiendas y reserva CK como código interno', 
   assert.match(app, /storeName\(x\.store_code\)/);
   assert.match(app, /storeName\(x\.beneficiary\)/);
 });
+
+test('Tesorería separa compensaciones aplicadas, utilidad y movimientos gestionables', async () => {
+  const app = await readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8');
+  const html = await readFile('creditek/erp/aliados-tesoreria.html', 'utf8');
+  const ledger = await readFile('creditek/erp/cuenta-corriente.html', 'utf8');
+  assert.match(app, /data-compensation-select/);
+  assert.match(app, /Aplicada a cartera/);
+  assert.match(app, /commissionCompensation/);
+  assert.match(app, /automaticTypes=new Set\(\['compensacion_retail','comision_retail','comision_aliado'\]\)/);
+  assert.match(html, /Abonos automáticos a cartera de tiendas/);
+  assert.match(html, /Utilidad del negocio por créditos de tiendas propias/);
+  assert.match(html, /Otros movimientos de Tesorería/);
+  assert.match(ledger, /new URLSearchParams\(location\.search\)\.get\('tienda'\)/);
+});

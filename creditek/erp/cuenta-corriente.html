@@ -537,6 +537,11 @@ async function cargarTodo() {
   }
   await cargarMovimientosCC();
   await cargarInstrucciones();
+  const tiendaSolicitada = new URLSearchParams(location.search).get('tienda');
+  if (tiendaSolicitada) {
+    const tienda = tiendasCache.find(item => item.codigo === tiendaSolicitada);
+    if (tienda) abrirDetalleTienda(tienda.codigo, tienda.nombre);
+  }
 }
 
 async function cargarMovimientosCC() {

@@ -247,7 +247,23 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(11, 30, 61, 0.04);
   overflow-x: auto;
+  scrollbar-color: rgba(11, 30, 61, .34) rgba(11, 30, 61, .06);
+  scrollbar-width: thin;
 }
+
+.tabla-section-head { align-items:end; display:flex; gap:16px; justify-content:space-between; margin:2px 2px 9px; }
+.tabla-section-head h2 { font-family:'Montserrat',sans-serif; font-size:15px; letter-spacing:-.01em; }
+.tabla-scroll-hint { color:#64748B; font-size:11.5px; font-weight:600; text-align:right; }
+.tabla-scroll-hint::before { color:#00AAB2; content:'\2194'; font-size:14px; margin-right:6px; }
+.tabla-wrap::-webkit-scrollbar { height:10px; }
+.tabla-wrap::-webkit-scrollbar-track { background:rgba(11,30,61,.06); }
+.tabla-wrap::-webkit-scrollbar-thumb { background:rgba(11,30,61,.34); border:2px solid #FFF; border-radius:999px; }
+
+#tablaVentas { min-width:1120px; }
+#tablaVentas th:first-child,
+#tablaVentas td:first-child { background:#FFF; box-shadow:1px 0 0 rgba(11,30,61,.08); left:0; position:sticky; z-index:2; }
+#tablaVentas thead th:first-child { background:#0B1E3D; z-index:3; }
+#tablaVentas tbody tr:hover td:first-child { background:#F7FEFE; }
 
 .tabla-wrap thead th {
   background: #0B1E3D;
@@ -315,10 +331,14 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   .filters input[type="date"] { flex: 1 1 100%; width: 100%; }
   .tabla-wrap > .empty-state { padding: 40px 20px; }
   .ventas-resumen { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .tabla-section-head { align-items:flex-start; flex-direction:column; gap:4px; }
+  .tabla-scroll-hint { display:none; }
   #tablaVentas thead { display:none; }
+  #tablaVentas { min-width:0; }
   #tablaVentas, #tablaVentas tbody, #tablaVentas tr, #tablaVentas td { display:block; width:100%; }
   #tablaVentas tr { padding:12px 14px; border-bottom:1px solid var(--border); }
-  #tablaVentas td { display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; padding:5px 0; border:0; white-space:normal; }
+  #tablaVentas td,
+  #tablaVentas td:first-child { background:transparent; box-shadow:none; display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; left:auto; padding:5px 0; position:static; border:0; white-space:normal; }
   #tablaVentas td::before { content:attr(data-label); color:var(--text2); font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
 }
 
@@ -388,7 +408,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <div class="ventas-kpi"><span>Crédito</span><strong id="resumenCredito">$ 0</strong></div>
     </section>
 
-    <div class="tabla-wrap">
+    <div class="tabla-section-head">
+      <h2>Detalle de ventas</h2>
+      <p class="tabla-scroll-hint">Desliza la tabla para ver IMEI, plataforma, valor y vendedor</p>
+    </div>
+    <div class="tabla-wrap" tabindex="0" aria-label="Detalle de ventas; desplaza horizontalmente para ver todas las columnas">
       <table id="tablaVentas">
         <thead><tr><th>Venta #</th><th>Línea</th><th>Fecha</th><th>Tienda</th><th>Cliente</th><th>Referencia</th><th>IMEI</th><th>Plataforma</th><th>Valor</th><th>Vendedor</th></tr></thead>
         <tbody id="tbodyVentas"></tbody>

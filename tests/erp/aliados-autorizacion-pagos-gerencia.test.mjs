@@ -106,3 +106,15 @@ test('Tesorería separa los pagos vigentes del historial cerrado', async () => {
   assert.match(sql, /v_fixed := replace/);
   assert.match(sql, /if v_fixed = v_definition then/);
 });
+
+test('todo lo anterior al 1 de septiembre queda cerrado y fuera de pendientes', async () => {
+  const [app, sql] = await Promise.all([
+    readFile('creditek/erp/aliados-liquidaciones-app.js', 'utf8'),
+    readFile('supabase/migrations/20260904042711_cerrar_liquidaciones_anteriores_inicio_operativo.sql', 'utf8'),
+  ]);
+  assert.match(app, /String\(batch\.fecha_corte \|\| ''\) < '2026-09-01'/);
+  assert.match(app, /!isHistoricalBatch\(batch\)/);
+  assert.match(sql, /where po\.cutoff_snapshot < date '2026-09-01'/);
+  assert.match(sql, /set estado = 'cerrada'/);
+  assert.match(sql, /payment_order_classify_historical_cutoff/);
+});

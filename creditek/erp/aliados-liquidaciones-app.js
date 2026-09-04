@@ -26,6 +26,7 @@
 
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
   const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
+  const isHistoricalBatch = (batch) => String(batch.fecha_corte || '') < '2026-09-01' || HISTORY_STATES.includes(batch.estado);
 
   function statesForMode() {
     return listMode === 'pending' ? PENDING_STATES : HISTORY_STATES;
@@ -68,8 +69,8 @@
     const { data, error } = await query;
     if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; return; }
     batches = data || [];
-    $('showPending').textContent = `Pendientes (${batches.filter((batch) => PENDING_STATES.includes(batch.estado)).length})`;
-    $('showHistory').textContent = `Consultar historial (${batches.filter((batch) => HISTORY_STATES.includes(batch.estado)).length})`;
+    $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
+    $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     $('lastUpdated').textContent = `Actualizado ${new Intl.DateTimeFormat('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(new Date())}`;
     renderBatches();
   }
@@ -77,7 +78,7 @@
   function renderBatches() {
     const search = $('filterSearch').value.trim().toLowerCase();
     const stateFilter = $('filterState').value;
-    const rows = batches.filter((b) => statesForMode().includes(b.estado))
+    const rows = batches.filter((b) => listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
       .filter((b) => !stateFilter || b.estado === stateFilter)
       .filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
     $('batches').innerHTML = rows.map((b) => `<tr>

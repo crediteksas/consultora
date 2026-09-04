@@ -693,7 +693,7 @@
   <section class="comparison-strip" aria-labelledby="comparativo-title">
     <div class="comparison-title"><div class="comparison-label" id="comparativo-title">Comparativo mismo período</div><div class="text-sm text-gray-600" id="comparativo-periodo">2026 frente a 2025</div></div>
     <div><div class="comparison-label">Venta actual</div><div class="comparison-value font-mono" id="comparativo-actual">—</div></div>
-    <div><div class="comparison-label">Referencia 2025</div><div class="comparison-value font-mono" id="comparativo-anterior">—</div></div>
+    <div><div class="comparison-label">Referencia proporcional 2025</div><div class="comparison-value font-mono" id="comparativo-anterior">—</div></div>
     <div><div class="comparison-label">Crecimiento</div><div class="comparison-value" id="comparativo-delta">—</div></div>
   </section>
 
@@ -911,7 +911,7 @@
       <summary class="p-4 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">📈 3.1 Crecimiento mes a mes</h2>
-          <p class="text-xs text-gray-500">Tendencia de ventas por mes. Requiere al menos 2-3 meses de historial.</p>
+          <p class="text-xs text-gray-500">Meses cerrados completos; el mes vigente compara los mismos días transcurridos.</p>
         </div>
         <span class="text-xs text-gray-400">▾</span>
       </summary>
@@ -922,7 +922,7 @@
             <thead class="bg-gray-50 text-gray-700">
               <tr>
                 <th class="px-3 py-2 text-left font-semibold">Mes</th>
-                <th class="px-3 py-2 text-right font-semibold">2025</th>
+                <th class="px-3 py-2 text-right font-semibold" title="El mes vigente usa los mismos días transcurridos">2025</th>
                 <th class="px-3 py-2 text-right font-semibold">2026</th>
                 <th class="px-3 py-2 text-right font-semibold">Δ 2026 vs 2025</th>
               </tr>
@@ -1596,7 +1596,7 @@ async function cargarCrecimiento() {
   let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(inicioAnio)).neq('anulada', true);
   q = aplicarFiltroTienda(q);
   // 2025 desde historico_mensual
-  let qHist = sb.from('historico_mensual').select('mes, venta_total, tienda_codigo').eq('anio', 2025);
+  let qHist = sb.from('historico_mensual').select('mes, venta_total, venta_total_dia, tienda_codigo').eq('anio', 2025);
   qHist = aplicarFiltroTienda(qHist);
 
   const [ventasRes, histRes] = await Promise.all([q, qHist]);
@@ -1611,14 +1611,17 @@ async function cargarCrecimiento() {
   });
   // Serie 2025 por mes
   const porMes2025 = {};
+  const porDia2025 = {};
   (histRes.data || []).forEach(h => {
     porMes2025[h.mes] = (porMes2025[h.mes] || 0) + Number(h.venta_total || 0);
+    porDia2025[h.mes] = (porDia2025[h.mes] || 0) + Number(h.venta_total_dia || 0);
   });
 
   const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const filas = meses.map((nombre, idx) => {
     const m = idx + 1;
-    const v2025 = porMes2025[m] || null;
+    const esMesVigente = m === hoy.getMonth() + 1;
+    const v2025 = esMesVigente ? (porDia2025[m] || 0) * hoy.getDate() : porMes2025[m] || null;
     const v2026 = porMes2026[m] || null;
     const delta = v2025 && v2026 ? ((v2026 - v2025) / v2025) * 100 : null;
     return { mes: nombre, mesNum: m, v2025, v2026, delta };

@@ -111,6 +111,8 @@
   async function openDetail(id) {
     selected = batches.find((batch) => batch.id === id) || selected;
     $('detail').classList.remove('hidden');
+    $('workflowError').classList.add('hidden');
+    $('workflowError').textContent = '';
     $('detailTitle').textContent = `${platformName(selected.plataforma)} · ${UX.fechaCorta(selected.fecha_corte)}`;
     renderMetrics();
     updateActions();
@@ -238,7 +240,15 @@
   }
   async function stateRpc(next, comment = null) {
     const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: selected.id, p_estado: next, p_comentario: comment });
-    if (error) return alert(error.message);
+    if (error) {
+      const approvalBlocked = next === 'aprobada' && /novedades.*bloquean/i.test(error.message || '');
+      $('workflowError').textContent = approvalBlocked
+        ? 'No se puede aprobar: existen novedades bloqueantes. Revisa la pestaña Novedades y corrige o justifica cada operación antes de volver a aprobar.'
+        : (error.message || 'No fue posible completar la acción.');
+      $('workflowError').classList.remove('hidden');
+      if (approvalBlocked) await loadTab('incidents');
+      return;
+    }
     const selectedId = selected.id;
     await loadBatches();
     selected = batches.find((batch) => batch.id === selectedId);

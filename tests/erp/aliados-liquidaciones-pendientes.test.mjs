@@ -24,3 +24,8 @@ test('la pantalla permite actualizar y muestra la hora de la última consulta', 
   assert.match(app, /lastUpdated'\)\.textContent = `Actualizado/);
 });
 
+test('una aprobación bloqueada muestra la causa y abre Novedades', () => {
+  assert.match(html, /id="workflowError" role="alert"/);
+  assert.match(app, /No se puede aprobar: existen novedades bloqueantes/);
+  assert.match(app, /if \(approvalBlocked\) await loadTab\('incidents'\)/);
+});

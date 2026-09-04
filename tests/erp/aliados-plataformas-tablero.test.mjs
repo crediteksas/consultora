@@ -16,7 +16,8 @@ test('Plataformas presenta un tablero operativo por plataforma', () => {
   assert.match(css, /\.platform-grid\{display:grid/);
   assert.match(css, /\.badge\.con_novedad/);
   assert.match(css, /body\[data-aliados-view="platforms"\] \.metrics\{grid-template-columns:repeat\(5/);
-  assert.match(html, /aliados-v1-1\.css\?v=1\.1\.26/);
+  assert.match(css, /body\[data-aliados-view="platforms"\] \.metric strong\{font-size:17px;white-space:nowrap/);
+  assert.match(html, /aliados-v1-1\.css\?v=1\.1\.27/);
   assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.26/);
 });
 

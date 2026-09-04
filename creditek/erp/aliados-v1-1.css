@@ -40,7 +40,8 @@ h1{font-size:25px}
 .platform-card[open] summary{border-bottom:1px solid var(--borde)}.platform-card>.section{padding:0 20px 20px}.platform-card h3{font:700 12px Montserrat;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
 .platform-card-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 20px}.platform-card-metrics>div{display:flex;min-height:76px;flex-direction:column;justify-content:space-between;padding:12px;border:1px solid var(--borde);border-radius:10px;background:#FAFAFB}.platform-card-metrics small,.platform-card-metrics span{color:var(--muted)}.platform-card-metrics strong{font:700 17px Montserrat;font-variant-numeric:tabular-nums}.platform-card-metrics span{font-size:12px}
 body[data-aliados-view="platforms"] .metrics{grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch}
-body[data-aliados-view="platforms"] .metric{min-width:0}
+body[data-aliados-view="platforms"] .metric{min-width:0;padding:14px}
+body[data-aliados-view="platforms"] .metric strong{font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
 body[data-aliados-view="reports"] .metrics{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}
 body[data-aliados-view="reports"] .metric{display:flex;min-width:0;min-height:112px;flex-direction:column;justify-content:flex-start;padding:16px 18px}
 body[data-aliados-view="reports"] .metric small{min-height:2.8em;line-height:1.4;margin-bottom:10px}

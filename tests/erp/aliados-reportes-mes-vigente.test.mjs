@@ -29,7 +29,12 @@ test('el informe operativo no suma el histórico cerrado', () => {
   assert.doesNotMatch(render, /historicalUtilityOriginal/);
   assert.doesNotMatch(render, /Resultado histórico/);
   assert.match(render, /El histórico cerrado se conserva en auditoría/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.18/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.19/);
+});
+
+test('el inicio operativo incluye todas las ventas desde el 1 de septiembre', () => {
+  assert.match(app, /const OPERATION_CUTOFF='2026-09-01'/);
+  assert.doesNotMatch(app, /const OPERATION_CUTOFF='2026-09-02'/);
 });
 
 test('la utilidad del negocio incluye operaciones originadas en tiendas propias y aliados', () => {

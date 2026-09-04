@@ -13,7 +13,7 @@ test('Sofía Finanzas forma parte del control de permisos y no incrusta saldos',
   assert.match(shell, /data-aura-app="finanzas"/);
   assert.match(shell, /isAuraOwner\(\).*finanzas\.read/s);
   assert.match(modules, /permission: 'finanzas\.read'/);
-  assert.match(finance, /aura_supabase_session_v1/);
+  assert.match(finance, /aura_supa_session/);
   assert.match(finance, /Authorization:`Bearer \$\{s\.access_token\}`/);
   assert.doesNotMatch(finance, /962\.55|1710\.80|0\.00381625/);
 });

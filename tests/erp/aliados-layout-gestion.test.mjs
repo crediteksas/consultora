@@ -22,8 +22,8 @@ test('novedades se gestionan desde la fila y llevan al incidente correspondiente
 });
 
 test('tabla de aliados usa todo el ancho y ofrece gestión directa', () => {
-  assert.match(alliesCss, /body\[data-aliados-view="allies"\] \.page\{width:100%;max-width:none/);
-  assert.match(alliesCss, /body\[data-aliados-view="allies"\] \.table-wrap\{overflow-x:hidden}/);
+  assert.match(alliesCss, /body\[data-aliados-view="allies"\] \.main-content \.page\{width:100%!important;max-width:none!important/);
+  assert.match(alliesCss, /body\[data-aliados-view="allies"\] \.table-wrap\{width:100%;overflow-x:hidden!important/);
   assert.match(alliesApp, /aliados-calidad\.html\?establecimiento=/);
   assert.match(alliesApp, /new URLSearchParams\(location\.search\)\.get\("establecimiento"\)/);
 });

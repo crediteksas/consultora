@@ -1,148 +1,1657 @@
-(function(){
-'use strict';
-const view=document.body.dataset.aliadosView;
-const $=s=>document.querySelector(s);
-const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cop=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0);
-const date=v=>v?String(v).slice(0,10):'—';
-const badge=v=>`<span class="badge ${esc(v)}">${esc(String(v||'—').replaceAll('_',' '))}</span>`;
-const sum=(xs,key)=>xs.reduce((n,x)=>n+Number(x[key]||0),0);
-let db={},sb,profile;
-const OPERATION_CUTOFF='2026-09-01';
+(function () {
+  "use strict";
+  const view = document.body.dataset.aliadosView;
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) =>
+    String(v ?? "—").replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c],
+    );
+  const cop = (v) =>
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+    }).format(Number(v) || 0);
+  const date = (v) => (v ? String(v).slice(0, 10) : "—");
+  const badge = (v) =>
+    `<span class="badge ${esc(v)}">${esc(String(v || "—").replaceAll("_", " "))}</span>`;
+  const sum = (xs, key) => xs.reduce((n, x) => n + Number(x[key] || 0), 0);
+  let db = {},
+    sb,
+    profile;
+  const OPERATION_CUTOFF = "2026-09-01";
 
-function rows(items,columns){return items.length?items.map(item=>`<tr>${columns.map(c=>`<td>${c(item)}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="20"><div class="empty">No hay información disponible para los filtros seleccionados.</div></td></tr>`}
-function table(head,body){return `<div class="table-wrap"><table><thead><tr>${head.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`}
-function metrics(items){$('#metrics').innerHTML=items.map(([label,value])=>`<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}
-function execName(id){return db.executives.find(x=>x.id===id)?.nombre||'Ejecutivo Creditek no registrado'}
-function allyName(id){return db.allies.find(x=>x.id===id)?.nombre_comercial||'Aliado no formalizado'}
-function platformName(v){return v==='alo'?'ALO Credit':v==='payjoy'?'PayJoy':v==='krediya'?'Krediya':v==='ecredit'?'eCredit':v||'—'}
-function schemeName(v){return ({tiered_por_aliado:'Escalonado por aliado',fijo:'Bono fijo',fijo_mas_override:'Bono fijo con ajuste autorizado',fijo_universal:'Bono fijo universal'})[v]||v||'Sin política'}
-function relationshipCount(xs,key,id){return xs.filter(x=>x[key]===id).length}
-function operationsForAlly(a){const origins=new Set(db.sites.filter(s=>s.aliado_id===a.id&&s.origen_codigo).map(s=>s.origen_codigo));return db.operations.filter(o=>origins.has(o.origen_codigo))}
-function filters(){const q=($('#q')?.value||'').toLowerCase();const state=$('#state')?.value||'';return {q,state}}
-function businessType(o){return o.modelo_negocio||o.tipo_establecimiento||''}
-function paymentValue(o){return Number(o.pago_aliado??o.pago_neto_beneficiario??o.pago_neto_tienda??0)}
-function historicalUtilityOriginal(item){return Number(item.utilidad_final_historica??item.utilidad_neta_historica??0)}
-function historicalUtilityClosed(item){return Number(item.resultado_cerrado_historico||0)}
-function historicalUtilityAvailable(item){return historicalUtilityOriginal(item)-historicalUtilityClosed(item)}
-function operationUtilityAvailable(item){return Number(item.utilidad_creditek||0)-Number(item.resultado_cerrado||0)}
-function originFor(code){return db.origins.find(x=>x.codigo===code)||db.sites.find(x=>x.origen_codigo===code)||null}
-function operationName(o){return o.origen_nombre||o.establishment_name||originFor(o.origen_codigo)?.nombre||o.origen_codigo||'Sin establecimiento'}
-function operationCity(o){return originFor(o.origen_codigo)?.ciudad||''}
-function liquidationForOperation(o){return db.liquidations.find(x=>x.id===o.liquidation_id)}
-function bogotaDay(v){if(!v)return '—';const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(v)).reduce((out,part)=>{out[part.type]=part.value;return out},{});return `${parts.year}-${parts.month}-${parts.day}`}
-function operationSaleDay(o){return bogotaDay(o.operation_at)}
-function operationIsCurrent(o){return bogotaDay(liquidationForOperation(o)?.created_at)>=OPERATION_CUTOFF}
-function option(value,label){return `<option value="${esc(value)}">${esc(label)}</option>`}
-function bogotaDateParts(value=new Date()){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value).reduce((out,part)=>{out[part.type]=part.value;return out},{});return {today:`${parts.year}-${parts.month}-${parts.day}`,monthStart:`${parts.year}-${parts.month}-01`}}
-function previousYearDay(value){if(!value)return '';const [year,month,day]=String(value).slice(0,10).split('-').map(Number),lastDay=new Date(year-1,month,0).getDate();return `${year-1}-${String(month).padStart(2,'0')}-${String(Math.min(day,lastDay)).padStart(2,'0')}`}
-function setCurrentMonthDashboardRange(force=false){const from=$('#dashboardFrom'),to=$('#dashboardTo');if(!from||!to)return;const range=bogotaDateParts();if(force||!from.value)from.value=range.monthStart;if(force||!to.value)to.value=range.today}
+  function rows(items, columns) {
+    return items.length
+      ? items
+          .map(
+            (item) =>
+              `<tr>${columns.map((c) => `<td>${c(item)}</td>`).join("")}</tr>`,
+          )
+          .join("")
+      : `<tr><td colspan="20"><div class="empty">No hay información disponible para los filtros seleccionados.</div></td></tr>`;
+  }
+  function table(head, body) {
+    return `<div class="table-wrap"><table><thead><tr>${head.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+  function metrics(items) {
+    $("#metrics").innerHTML = items
+      .map(
+        ([label, value]) =>
+          `<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`,
+      )
+      .join("");
+  }
+  function execName(id) {
+    return (
+      db.executives.find((x) => x.id === id)?.nombre ||
+      "Ejecutivo Creditek no registrado"
+    );
+  }
+  function allyName(id) {
+    return (
+      db.allies.find((x) => x.id === id)?.nombre_comercial ||
+      "Aliado no formalizado"
+    );
+  }
+  function platformName(v) {
+    return v === "alo"
+      ? "ALO Credit"
+      : v === "payjoy"
+        ? "PayJoy"
+        : v === "krediya"
+          ? "Krediya"
+          : v === "ecredit"
+            ? "eCredit"
+            : v || "—";
+  }
+  function schemeName(v) {
+    return (
+      {
+        tiered_por_aliado: "Escalonado por aliado",
+        fijo: "Bono fijo",
+        fijo_mas_override: "Bono fijo con ajuste autorizado",
+        fijo_universal: "Bono fijo universal",
+      }[v] ||
+      v ||
+      "Sin política"
+    );
+  }
+  function relationshipCount(xs, key, id) {
+    return xs.filter((x) => x[key] === id).length;
+  }
+  function operationsForAlly(a) {
+    const origins = new Set(
+      db.sites
+        .filter((s) => s.aliado_id === a.id && s.origen_codigo)
+        .map((s) => s.origen_codigo),
+    );
+    return db.operations.filter((o) => origins.has(o.origen_codigo));
+  }
+  function filters() {
+    const q = ($("#q")?.value || "").toLowerCase();
+    const state = $("#state")?.value || "";
+    return { q, state };
+  }
+  function businessType(o) {
+    return o.modelo_negocio || o.tipo_establecimiento || "";
+  }
+  function paymentValue(o) {
+    return Number(
+      o.pago_aliado ?? o.pago_neto_beneficiario ?? o.pago_neto_tienda ?? 0,
+    );
+  }
+  function historicalUtilityOriginal(item) {
+    return Number(
+      item.utilidad_final_historica ?? item.utilidad_neta_historica ?? 0,
+    );
+  }
+  function historicalUtilityClosed(item) {
+    return Number(item.resultado_cerrado_historico || 0);
+  }
+  function historicalUtilityAvailable(item) {
+    return historicalUtilityOriginal(item) - historicalUtilityClosed(item);
+  }
+  function operationUtilityAvailable(item) {
+    return (
+      Number(item.utilidad_creditek || 0) - Number(item.resultado_cerrado || 0)
+    );
+  }
+  function originFor(code) {
+    return (
+      db.origins.find((x) => x.codigo === code) ||
+      db.sites.find((x) => x.origen_codigo === code) ||
+      null
+    );
+  }
+  function operationName(o) {
+    return (
+      o.origen_nombre ||
+      o.establishment_name ||
+      originFor(o.origen_codigo)?.nombre ||
+      o.origen_codigo ||
+      "Sin establecimiento"
+    );
+  }
+  function operationCity(o) {
+    return originFor(o.origen_codigo)?.ciudad || "";
+  }
+  function liquidationForOperation(o) {
+    return db.liquidations.find((x) => x.id === o.liquidation_id);
+  }
+  function bogotaDay(v) {
+    if (!v) return "—";
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Bogota",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date(v))
+      .reduce((out, part) => {
+        out[part.type] = part.value;
+        return out;
+      }, {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+  function operationSaleDay(o) {
+    return bogotaDay(o.operation_at);
+  }
+  function operationIsCurrent(o) {
+    return (
+      bogotaDay(liquidationForOperation(o)?.created_at) >= OPERATION_CUTOFF
+    );
+  }
+  function option(value, label) {
+    return `<option value="${esc(value)}">${esc(label)}</option>`;
+  }
+  function bogotaDateParts(value = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Bogota",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(value)
+      .reduce((out, part) => {
+        out[part.type] = part.value;
+        return out;
+      }, {});
+    return {
+      today: `${parts.year}-${parts.month}-${parts.day}`,
+      monthStart: `${parts.year}-${parts.month}-01`,
+    };
+  }
+  function previousYearDay(value) {
+    if (!value) return "";
+    const [year, month, day] = String(value)
+        .slice(0, 10)
+        .split("-")
+        .map(Number),
+      lastDay = new Date(year - 1, month, 0).getDate();
+    return `${year - 1}-${String(month).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+  }
+  function setCurrentMonthDashboardRange(force = false) {
+    const from = $("#dashboardFrom"),
+      to = $("#dashboardTo");
+    if (!from || !to) return;
+    const range = bogotaDateParts();
+    if (force || !from.value) from.value = range.monthStart;
+    if (force || !to.value) to.value = range.today;
+  }
 
-async function safe(request,required=false){const {data,error}=await request;if(error){if(required)throw error;return []}return data||[]}
-async function allRows(table,columns){const result=[];for(let from=0;;from+=1000){const {data,error}=await sb.from(table).select(columns).range(from,from+999);if(error)return result;result.push(...(data||[]));if(!data||data.length<1000)return result}}
-async function load(){
-  const [allies,sites,links,documents,history,executives,origins,platforms,liquidations,operations,bonuses,beneficiaries,payments,incidents,historicalCredits,expenses,platformGoals]=await Promise.all([
-    safe(sb.from('aliados').select('*'),true),safe(sb.from('aliados_sedes').select('*'),true),safe(sb.from('aliados_plataformas').select('*'),true),safe(sb.from('aliados_documentos').select('*'),true),safe(sb.from('aliados_estado_historial').select('*')),safe(sb.from('ejecutivos').select('*')),safe(sb.from('origenes').select('codigo,nombre,tipo,ciudad,activo,ejecutivo_id')),safe(sb.from('liquidation_platforms').select('*')),safe(sb.from('liquidations').select('*')),safe(sb.from('liquidation_operations').select('*')),safe(sb.from('liquidation_bonuses').select('*')),safe(sb.from('liquidation_beneficiaries').select('*')),safe(sb.from('payment_orders').select('*')),safe(sb.from('liquidation_incidents').select('*')),allRows('creditos_historicos_plataforma','id,plataforma,codigo_credito,fecha_credito,monto_credito,establecimiento,vendedor,tipo_establecimiento,ejecutivo_historico_id,valor_comercial_historico,pagamos_historico,pago_neto_historico,bonos_historicos,utilidad_antes_bonos_historica,utilidad_neta_historica,gasto_financiero_historico,gasto_operativo_referencia_historico,provision_historica,utilidad_final_historica,resultado_cerrado_historico,cierre_utilidad_at,cierre_utilidad_motivo,calculo_historico_estado,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion'),safe(sb.from('aliados_gastos_operativos').select('*').order('fecha',{ascending:false})),safe(sb.from('aliados_metas_plataforma').select('*').order('periodo_desde',{ascending:false}))
-  ]);
-  db={allies,sites,links,documents,history,executives,origins,platforms,liquidations,operations,bonuses,beneficiaries,payments,incidents,historicalCredits,expenses,platformGoals};if(view==='dashboard')populateDashboardFilters();if(view==='expenses')populateExpenseForm();render();
-}
+  async function safe(request, required = false) {
+    const { data, error } = await request;
+    if (error) {
+      if (required) throw error;
+      return [];
+    }
+    return data || [];
+  }
+  async function allRows(table, columns) {
+    const result = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb
+        .from(table)
+        .select(columns)
+        .range(from, from + 999);
+      if (error) return result;
+      result.push(...(data || []));
+      if (!data || data.length < 1000) return result;
+    }
+  }
+  async function load() {
+    const [
+      allies,
+      sites,
+      links,
+      documents,
+      history,
+      executives,
+      origins,
+      platforms,
+      liquidations,
+      operations,
+      bonuses,
+      beneficiaries,
+      payments,
+      incidents,
+      historicalCredits,
+      expenses,
+      platformGoals,
+    ] = await Promise.all([
+      safe(sb.from("aliados").select("*"), true),
+      safe(sb.from("aliados_sedes").select("*"), true),
+      safe(sb.from("aliados_plataformas").select("*"), true),
+      safe(sb.from("aliados_documentos").select("*"), true),
+      safe(sb.from("aliados_estado_historial").select("*")),
+      safe(sb.from("ejecutivos").select("*")),
+      safe(
+        sb
+          .from("origenes")
+          .select("codigo,nombre,tipo,ciudad,activo,ejecutivo_id"),
+      ),
+      safe(sb.from("liquidation_platforms").select("*")),
+      safe(sb.from("liquidations").select("*")),
+      safe(sb.from("liquidation_operations").select("*")),
+      safe(sb.from("liquidation_bonuses").select("*")),
+      safe(sb.from("liquidation_beneficiaries").select("*")),
+      safe(sb.from("payment_orders").select("*")),
+      safe(sb.from("liquidation_incidents").select("*")),
+      allRows(
+        "creditos_historicos_plataforma",
+        "id,plataforma,codigo_credito,fecha_credito,monto_credito,establecimiento,vendedor,tipo_establecimiento,ejecutivo_historico_id,valor_comercial_historico,pagamos_historico,pago_neto_historico,bonos_historicos,utilidad_antes_bonos_historica,utilidad_neta_historica,gasto_financiero_historico,gasto_operativo_referencia_historico,provision_historica,utilidad_final_historica,resultado_cerrado_historico,cierre_utilidad_at,cierre_utilidad_motivo,calculo_historico_estado,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion",
+      ),
+      safe(
+        sb
+          .from("aliados_gastos_operativos")
+          .select("*")
+          .order("fecha", { ascending: false }),
+      ),
+      safe(
+        sb
+          .from("aliados_metas_plataforma")
+          .select("*")
+          .order("periodo_desde", { ascending: false }),
+      ),
+    ]);
+    db = {
+      allies,
+      sites,
+      links,
+      documents,
+      history,
+      executives,
+      origins,
+      platforms,
+      liquidations,
+      operations,
+      bonuses,
+      beneficiaries,
+      payments,
+      incidents,
+      historicalCredits,
+      expenses,
+      platformGoals,
+    };
+    if (view === "dashboard") populateDashboardFilters();
+    if (view === "expenses") populateExpenseForm();
+    render();
+  }
 
-function renderDashboard(){
- const from=$('#dashboardFrom').value,to=$('#dashboardTo').value,business=$('#dashboardBusiness').value,platform=$('#dashboardPlatform').value,executive=$('#dashboardExecutive').value,establishment=$('#dashboardEstablishment').value,city=$('#dashboardCity').value;
- const ops=db.operations.filter(o=>{const day=operationSaleDay(o);return operationIsCurrent(o)&&(!from||day>=from)&&(!to||day<=to)&&(!business||businessType(o)===business)&&(!platform||o.plataforma===platform)&&(!executive||o.ejecutivo_id===executive)&&(!establishment||o.origen_codigo===establishment)&&(!city||operationCity(o)===city)});
- const own=ops.filter(o=>businessType(o)==='propia'),ally=ops.filter(o=>businessType(o)==='aliado'),liquidationIds=new Set(ops.map(o=>o.liquidation_id));
- const bonuses=db.bonuses.filter(b=>liquidationIds.has(b.liquidation_id)&&(!executive||db.beneficiaries.find(x=>x.id===b.beneficiary_id)?.ejecutivo_id===executive));
- const historical=(db.historicalCredits||[]).filter(x=>x.historico_inicial&&x.pagado_antes_inicio&&(!from||date(x.fecha_credito)>=from)&&(!to||date(x.fecha_credito)<=to)&&(!business||x.tipo_establecimiento===business)&&(!platform||x.plataforma===platform)&&(!establishment||x.establecimiento===establishment));
- const historicalGross=sum(historical,'utilidad_antes_bonos_historica'),historicalFinancial=sum(historical,'gasto_financiero_historico'),historicalProvision=sum(historical,'provision_historica'),historicalNet=historical.reduce((n,x)=>n+historicalUtilityOriginal(x),0),historicalClosed=historical.reduce((n,x)=>n+historicalUtilityClosed(x),0),historicalAvailable=historical.reduce((n,x)=>n+historicalUtilityAvailable(x),0),newUtility=ops.reduce((n,x)=>n+operationUtilityAvailable(x),0),approvedExpenses=(db.expenses||[]).filter(x=>{const day=date(x.fecha),origin=originFor(x.origen_codigo);return x.estado==='aprobado'&&day>=OPERATION_CUTOFF&&(!from||day>=from)&&(!to||day<=to)&&(!platform||x.plataforma===platform)&&(!establishment||x.origen_codigo===establishment)&&(!city||origin?.ciudad===city)&&business!=='propia'}),expenseTotal=sum(approvedExpenses,'valor');
- metrics([['Operaciones nuevas',ops.length],['Histórico inicial pagado',historical.length],['Valor financiado histórico',cop(sum(historical,'monto_credito'))],['Resultado antes de provisión',cop(historicalGross)],['Gasto financiero histórico',cop(historicalFinancial)],['Provisión histórica',cop(historicalProvision)],['Resultado histórico final',cop(historicalNet)],['Resultado histórico cerrado',cop(historicalClosed)],['Utilidad disponible',cop(historicalAvailable+newUtility-expenseTotal)],['Ventas nuevas',cop(sum(ops,'monto_base'))],['Bonos nuevos',cop(sum(bonuses,'valor'))],['Gastos aprobados',cop(expenseTotal)],['Novedades bloqueantes',db.incidents.filter(x=>liquidationIds.has(x.liquidation_id)&&x.bloqueante&&!x.resuelta_at).length]]);
- const grouped=[...ops.reduce((map,o)=>{const key=`${businessType(o)}|${o.origen_codigo||operationName(o)}|${o.ejecutivo_id||''}`,current=map.get(key)||{type:businessType(o),code:o.origen_codigo,name:operationName(o),city:operationCity(o),executiveId:o.ejecutivo_id,ops:0,sales:0,payment:0,utility:0};current.ops++;current.sales+=Number(o.monto_base||0);current.payment+=paymentValue(o);current.utility+=operationUtilityAvailable(o);map.set(key,current);return map},new Map()).values()].sort((a,b)=>b.sales-a.sales);
- const historicalByPlatform=[...historical.reduce((map,x)=>{const current=map.get(x.plataforma)||{platform:x.plataforma,count:0,value:0,payment:0,gross:0,financial:0,provision:0,net:0,closed:0,available:0,pending:0};current.count++;current.value+=Number(x.monto_credito||0);current.payment+=Number(x.pago_neto_historico||0);current.gross+=Number(x.utilidad_antes_bonos_historica||0);current.financial+=Number(x.gasto_financiero_historico||0);current.provision+=Number(x.provision_historica||0);current.net+=historicalUtilityOriginal(x);current.closed+=historicalUtilityClosed(x);current.available+=historicalUtilityAvailable(x);if(String(x.calculo_historico_estado||'').startsWith('pendiente'))current.pending++;map.set(x.plataforma,current);return map},new Map()).values()].sort((a,b)=>b.value-a.value);
- $('#dashboardFilterSummary').textContent=`Operación nueva: ${ops.length} de ${db.operations.length} · Histórico inicial pagado: ${historical.length} créditos · Corte de inicio: 1 de septiembre de 2026`;
- $('#content').innerHTML=`<section class="card"><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(['Plataforma','Créditos','Valor financiado','Pago beneficiarios','Resultado final','Resultado cerrado','Disponible','Pendientes'],rows(historicalByPlatform,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.value),x=>cop(x.payment),x=>cop(x.net),x=>cop(x.closed),x=>cop(x.available),x=>x.pending]))}</section><section class="card"><h2>Operación desde el corte</h2>${table(['Tipo','Establecimiento','Ciudad','Ejecutivo','Operaciones','Ventas','Pago','Utilidad disponible','Asociación'],rows(grouped,[x=>badge(x.type==='propia'?'propia':'aliado'),x=>esc(x.name),x=>esc(x.city||'—'),x=>esc(execName(x.executiveId)),x=>x.ops,x=>cop(x.sales),x=>cop(x.payment),x=>cop(x.utility),x=>x.type==='aliado'?badge(db.sites.some(s=>s.origen_codigo===x.code&&s.aliado_id)?'asociado':'pendiente_asociacion'):'—']))}</section>`;
-}
-function populateDashboardFilters(){setCurrentMonthDashboardRange();const platforms=[...new Set([...db.operations,...(db.historicalCredits||[])].map(x=>x.plataforma).filter(Boolean))].sort(),executives=db.executives.filter(x=>x.activo).sort((a,b)=>a.nombre.localeCompare(b.nombre)),establishments=[...new Map([...db.operations.filter(x=>x.origen_codigo).map(x=>[x.origen_codigo,operationName(x)]),...(db.historicalCredits||[]).filter(x=>x.establecimiento).map(x=>[x.establecimiento,x.establecimiento])]).entries()].sort((a,b)=>a[1].localeCompare(b[1])),cities=[...new Set(db.operations.map(operationCity).filter(Boolean))].sort();$('#dashboardPlatform').innerHTML=option('','Todas las plataformas')+platforms.map(x=>option(x,platformName(x))).join('');$('#dashboardExecutive').innerHTML=option('','Todos los ejecutivos')+executives.map(x=>option(x.id,x.nombre)).join('');$('#dashboardEstablishment').innerHTML=option('','Todos los establecimientos')+establishments.map(([value,label])=>option(value,label)).join('');$('#dashboardCity').innerHTML=option('','Todas las ciudades')+cities.map(x=>option(x,x)).join('')}
-function renderAllies(){const {q}=filters(),historical=(db.historicalCredits||[]).filter(x=>x.tipo_establecimiento==='aliado'),list=[...historical.reduce((m,x)=>{const v=m.get(x.establecimiento)||{name:x.establecimiento,credits:0,sales:0,platforms:new Set(),executiveId:x.ejecutivo_historico_id};v.credits++;v.sales+=Number(x.monto_credito||0);v.platforms.add(platformName(x.plataforma));v.executiveId=v.executiveId||x.ejecutivo_historico_id;m.set(x.establecimiento,v);return m},new Map()).values()].filter(x=>!q||x.name.toLowerCase().includes(q));metrics([['Establecimientos históricos',list.length],['Créditos históricos aliados',historical.length],['Sedes del formulario',db.sites.length],['Maestros formalizados',db.allies.length]]);$('#content').innerHTML=`<div class="card"><p class="muted">El ejecutivo es el responsable comercial de Creditek. El vendedor reportado por la plataforma pertenece al establecimiento y no se usa como ejecutivo.</p></div>${table(['Establecimiento','Plataformas','Créditos pagados','Valor financiado','Ejecutivo Creditek','Vinculación del histórico'],rows(list,[x=>esc(x.name),x=>esc([...x.platforms].join(', ')),x=>x.credits,x=>cop(x.sales),x=>esc(execName(x.executiveId)),x=>badge(x.executiveId?'vinculado':'requiere_revision')]))}`;}
-function openAlly(id){const a=db.allies.find(x=>x.id===id);if(!a)return;const ops=operationsForAlly(a);$('#modalBody').innerHTML=`<div class="head"><div><h2>${esc(a.nombre_comercial)}</h2><div class="muted">${esc(a.razon_social||a.identificacion)}</div></div>${badge(a.estado)}</div><div class="section"><b>Propietario:</b> ${esc(a.propietario)} · <b>Ejecutivo:</b> ${esc(execName(a.ejecutivo_id))} · <b>Ciudad:</b> ${esc(a.ciudad_principal)}</div><div class="section"><h2>Sedes</h2>${db.sites.filter(s=>s.aliado_id===id).map(s=>`<div>${esc(s.nombre)} · ${esc(s.ciudad)}</div>`).join('')||'<div class="muted">Sin sedes asociadas.</div>'}</div><div class="section"><h2>Resultado</h2><div>${ops.length} operaciones · ${cop(sum(ops,'monto_base'))} en ventas</div></div><div class="actions section"><button class="btn ${a.estado==='activo'?'danger':'primary'}" id="stateAction">${a.estado==='activo'?'Suspender':'Reactivar'}</button></div>`;$('#modal').classList.add('show');$('#stateAction').onclick=()=>changeState(a);}
-async function changeState(a){const reason=prompt(`Motivo obligatorio para ${a.estado==='activo'?'suspender':'reactivar'} a ${a.nombre_comercial}:`);if(!reason)return;if(reason.trim().length<5)return notice('El motivo debe tener al menos cinco caracteres.',true);const rpc=a.estado==='activo'?'aliados_suspendender':'aliados_reactivar';const {error}=await sb.rpc(rpc,{p_id:a.id,p_motivo:reason.trim()});if(error)return notice('No fue posible actualizar el estado. Verifica tus permisos.',true);$('#modal').classList.remove('show');notice('Estado actualizado y auditado.');await load()}
-function renderExecutives(){let toolbar=$('#executiveToolbar');if(!toolbar){toolbar=document.createElement('section');toolbar.id='executiveToolbar';toolbar.className='toolbar card';toolbar.innerHTML='<label>Fecha de venta desde<input id="executiveFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="executiveTo" class="control" type="date"></label><button id="executiveCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';$('#metrics').before(toolbar);const range=bogotaDateParts();$('#executiveFrom').value=range.monthStart;$('#executiveTo').value=range.today;['executiveFrom','executiveTo'].forEach(id=>$('#'+id).addEventListener('change',renderExecutives));$('#executiveCurrentMonth').addEventListener('click',()=>{const current=bogotaDateParts();$('#executiveFrom').value=current.monthStart;$('#executiveTo').value=current.today;renderExecutives()})}const from=$('#executiveFrom').value,to=$('#executiveTo').value,periodOps=db.operations.filter(o=>{const day=operationSaleDay(o);return operationIsCurrent(o)&&(!from||day>=from)&&(!to||day<=to)}),periodLiquidationIds=new Set(periodOps.map(o=>o.liquidation_id)),activeExecutives=db.executives.filter(e=>e.activo),activeIds=new Set(activeExecutives.map(e=>e.id)),list=activeExecutives.map(e=>{const ops=periodOps.filter(o=>o.ejecutivo_id===e.id),bonusNew=sum(db.bonuses.filter(b=>periodLiquidationIds.has(b.liquidation_id)&&db.beneficiaries.find(y=>y.id===b.beneficiary_id)?.ejecutivo_id===e.id),'valor');return {e,ops,bonusNew}}),unassignedOps=periodOps.filter(o=>!activeIds.has(o.ejecutivo_id)),pending=(db.historicalCredits||[]).filter(h=>h.tipo_establecimiento==='aliado'&&!h.ejecutivo_historico_id).length;if(unassignedOps.length)list.push({e:{nombre:'Sin ejecutivo asignado'},ops:unassignedOps,bonusNew:0});metrics([['Ejecutivos activos',activeExecutives.length],[`Operaciones · ${from} a ${to}`,periodOps.length],[`Ventas · ${from} a ${to}`,cop(sum(periodOps,'monto_base'))],[`Bonos · ${from} a ${to}`,cop(list.reduce((n,x)=>n+x.bonusNew,0))],['Ventas sin ejecutivo',unassignedOps.length]]);const pendingAction=pending?`<div class="card"><div class="head"><div><h2>${pending} créditos anteriores requieren asociación</h2><p class="muted">Esta revisión pertenece al histórico y no altera los resultados del periodo seleccionado.</p></div><a class="btn primary" href="aliados-calidad.html">Revisar pendientes</a></div></div>`:'';$('#content').innerHTML=`<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas de esta tabla corresponden exclusivamente a ventas del periodo seleccionado.</p></div>${table(['Ejecutivo Creditek','Política de bono vigente',`Operaciones ${from}–${to}`,`Ventas ${from}–${to}`,`Bonos ${from}–${to}`],rows(list,[x=>esc(x.e.nombre),x=>esc(schemeName(x.e.esquema_comision?.tipo)),x=>x.ops.length,x=>cop(sum(x.ops,'monto_base')),x=>cop(x.bonusNew)]))}${pendingAction}`;}
+  function renderDashboard() {
+    const from = $("#dashboardFrom").value,
+      to = $("#dashboardTo").value,
+      business = $("#dashboardBusiness").value,
+      platform = $("#dashboardPlatform").value,
+      executive = $("#dashboardExecutive").value,
+      establishment = $("#dashboardEstablishment").value,
+      city = $("#dashboardCity").value;
+    const ops = db.operations.filter((o) => {
+      const day = operationSaleDay(o);
+      return (
+        operationIsCurrent(o) &&
+        (!from || day >= from) &&
+        (!to || day <= to) &&
+        (!business || businessType(o) === business) &&
+        (!platform || o.plataforma === platform) &&
+        (!executive || o.ejecutivo_id === executive) &&
+        (!establishment || o.origen_codigo === establishment) &&
+        (!city || operationCity(o) === city)
+      );
+    });
+    const own = ops.filter((o) => businessType(o) === "propia"),
+      ally = ops.filter((o) => businessType(o) === "aliado"),
+      liquidationIds = new Set(ops.map((o) => o.liquidation_id));
+    const bonuses = db.bonuses.filter(
+      (b) =>
+        liquidationIds.has(b.liquidation_id) &&
+        (!executive ||
+          db.beneficiaries.find((x) => x.id === b.beneficiary_id)
+            ?.ejecutivo_id === executive),
+    );
+    const historical = (db.historicalCredits || []).filter(
+      (x) =>
+        x.historico_inicial &&
+        x.pagado_antes_inicio &&
+        (!from || date(x.fecha_credito) >= from) &&
+        (!to || date(x.fecha_credito) <= to) &&
+        (!business || x.tipo_establecimiento === business) &&
+        (!platform || x.plataforma === platform) &&
+        (!establishment || x.establecimiento === establishment),
+    );
+    const historicalGross = sum(historical, "utilidad_antes_bonos_historica"),
+      historicalFinancial = sum(historical, "gasto_financiero_historico"),
+      historicalProvision = sum(historical, "provision_historica"),
+      historicalNet = historical.reduce(
+        (n, x) => n + historicalUtilityOriginal(x),
+        0,
+      ),
+      historicalClosed = historical.reduce(
+        (n, x) => n + historicalUtilityClosed(x),
+        0,
+      ),
+      historicalAvailable = historical.reduce(
+        (n, x) => n + historicalUtilityAvailable(x),
+        0,
+      ),
+      newUtility = ops.reduce((n, x) => n + operationUtilityAvailable(x), 0),
+      approvedExpenses = (db.expenses || []).filter((x) => {
+        const day = date(x.fecha),
+          origin = originFor(x.origen_codigo);
+        return (
+          x.estado === "aprobado" &&
+          day >= OPERATION_CUTOFF &&
+          (!from || day >= from) &&
+          (!to || day <= to) &&
+          (!platform || x.plataforma === platform) &&
+          (!establishment || x.origen_codigo === establishment) &&
+          (!city || origin?.ciudad === city) &&
+          business !== "propia"
+        );
+      }),
+      expenseTotal = sum(approvedExpenses, "valor");
+    metrics([
+      ["Operaciones nuevas", ops.length],
+      ["Histórico inicial pagado", historical.length],
+      ["Valor financiado histórico", cop(sum(historical, "monto_credito"))],
+      ["Resultado antes de provisión", cop(historicalGross)],
+      ["Gasto financiero histórico", cop(historicalFinancial)],
+      ["Provisión histórica", cop(historicalProvision)],
+      ["Resultado histórico final", cop(historicalNet)],
+      ["Resultado histórico cerrado", cop(historicalClosed)],
+      [
+        "Utilidad disponible",
+        cop(historicalAvailable + newUtility - expenseTotal),
+      ],
+      ["Ventas nuevas", cop(sum(ops, "monto_base"))],
+      ["Bonos nuevos", cop(sum(bonuses, "valor"))],
+      ["Gastos aprobados", cop(expenseTotal)],
+      [
+        "Novedades bloqueantes",
+        db.incidents.filter(
+          (x) =>
+            liquidationIds.has(x.liquidation_id) &&
+            x.bloqueante &&
+            !x.resuelta_at,
+        ).length,
+      ],
+    ]);
+    const grouped = [
+      ...ops
+        .reduce((map, o) => {
+          const key = `${businessType(o)}|${o.origen_codigo || operationName(o)}|${o.ejecutivo_id || ""}`,
+            current = map.get(key) || {
+              type: businessType(o),
+              code: o.origen_codigo,
+              name: operationName(o),
+              city: operationCity(o),
+              executiveId: o.ejecutivo_id,
+              ops: 0,
+              sales: 0,
+              payment: 0,
+              utility: 0,
+            };
+          current.ops++;
+          current.sales += Number(o.monto_base || 0);
+          current.payment += paymentValue(o);
+          current.utility += operationUtilityAvailable(o);
+          map.set(key, current);
+          return map;
+        }, new Map())
+        .values(),
+    ].sort((a, b) => b.sales - a.sales);
+    const historicalByPlatform = [
+      ...historical
+        .reduce((map, x) => {
+          const current = map.get(x.plataforma) || {
+            platform: x.plataforma,
+            count: 0,
+            value: 0,
+            payment: 0,
+            gross: 0,
+            financial: 0,
+            provision: 0,
+            net: 0,
+            closed: 0,
+            available: 0,
+            pending: 0,
+          };
+          current.count++;
+          current.value += Number(x.monto_credito || 0);
+          current.payment += Number(x.pago_neto_historico || 0);
+          current.gross += Number(x.utilidad_antes_bonos_historica || 0);
+          current.financial += Number(x.gasto_financiero_historico || 0);
+          current.provision += Number(x.provision_historica || 0);
+          current.net += historicalUtilityOriginal(x);
+          current.closed += historicalUtilityClosed(x);
+          current.available += historicalUtilityAvailable(x);
+          if (String(x.calculo_historico_estado || "").startsWith("pendiente"))
+            current.pending++;
+          map.set(x.plataforma, current);
+          return map;
+        }, new Map())
+        .values(),
+    ].sort((a, b) => b.value - a.value);
+    $("#dashboardFilterSummary").textContent =
+      `Operación nueva: ${ops.length} de ${db.operations.length} · Histórico inicial pagado: ${historical.length} créditos · Corte de inicio: 1 de septiembre de 2026`;
+    $("#content").innerHTML =
+      `<section class="card"><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</section><section class="card"><h2>Operación desde el corte</h2>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "—"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
+  }
+  function populateDashboardFilters() {
+    setCurrentMonthDashboardRange();
+    const platforms = [
+        ...new Set(
+          [...db.operations, ...(db.historicalCredits || [])]
+            .map((x) => x.plataforma)
+            .filter(Boolean),
+        ),
+      ].sort(),
+      executives = db.executives
+        .filter((x) => x.activo)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      establishments = [
+        ...new Map([
+          ...db.operations
+            .filter((x) => x.origen_codigo)
+            .map((x) => [x.origen_codigo, operationName(x)]),
+          ...(db.historicalCredits || [])
+            .filter((x) => x.establecimiento)
+            .map((x) => [x.establecimiento, x.establecimiento]),
+        ]).entries(),
+      ].sort((a, b) => a[1].localeCompare(b[1])),
+      cities = [
+        ...new Set(db.operations.map(operationCity).filter(Boolean)),
+      ].sort();
+    $("#dashboardPlatform").innerHTML =
+      option("", "Todas las plataformas") +
+      platforms.map((x) => option(x, platformName(x))).join("");
+    $("#dashboardExecutive").innerHTML =
+      option("", "Todos los ejecutivos") +
+      executives.map((x) => option(x.id, x.nombre)).join("");
+    $("#dashboardEstablishment").innerHTML =
+      option("", "Todos los establecimientos") +
+      establishments.map(([value, label]) => option(value, label)).join("");
+    $("#dashboardCity").innerHTML =
+      option("", "Todas las ciudades") +
+      cities.map((x) => option(x, x)).join("");
+  }
+  function renderAllies() {
+    const { q } = filters(),
+      historical = (db.historicalCredits || []).filter(
+        (x) => x.tipo_establecimiento === "aliado",
+      ),
+      list = [
+        ...historical
+          .reduce((m, x) => {
+            const v = m.get(x.establecimiento) || {
+              name: x.establecimiento,
+              credits: 0,
+              sales: 0,
+              platforms: new Set(),
+              executiveId: x.ejecutivo_historico_id,
+            };
+            v.credits++;
+            v.sales += Number(x.monto_credito || 0);
+            v.platforms.add(platformName(x.plataforma));
+            v.executiveId = v.executiveId || x.ejecutivo_historico_id;
+            m.set(x.establecimiento, v);
+            return m;
+          }, new Map())
+          .values(),
+      ].filter((x) => !q || x.name.toLowerCase().includes(q));
+    metrics([
+      ["Establecimientos históricos", list.length],
+      ["Créditos históricos aliados", historical.length],
+      ["Sedes del formulario", db.sites.length],
+      ["Maestros formalizados", db.allies.length],
+    ]);
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted">El ejecutivo es el responsable comercial de Creditek. El vendedor reportado por la plataforma pertenece al establecimiento y no se usa como ejecutivo.</p></div>${table(["Establecimiento", "Plataformas", "Créditos pagados", "Valor financiado", "Ejecutivo Creditek", "Vinculación del histórico"], rows(list, [(x) => esc(x.name), (x) => esc([...x.platforms].join(", ")), (x) => x.credits, (x) => cop(x.sales), (x) => esc(execName(x.executiveId)), (x) => badge(x.executiveId ? "vinculado" : "requiere_revision")]))}`;
+  }
+  function openAlly(id) {
+    const a = db.allies.find((x) => x.id === id);
+    if (!a) return;
+    const ops = operationsForAlly(a);
+    $("#modalBody").innerHTML =
+      `<div class="head"><div><h2>${esc(a.nombre_comercial)}</h2><div class="muted">${esc(a.razon_social || a.identificacion)}</div></div>${badge(a.estado)}</div><div class="section"><b>Propietario:</b> ${esc(a.propietario)} · <b>Ejecutivo:</b> ${esc(execName(a.ejecutivo_id))} · <b>Ciudad:</b> ${esc(a.ciudad_principal)}</div><div class="section"><h2>Sedes</h2>${
+        db.sites
+          .filter((s) => s.aliado_id === id)
+          .map((s) => `<div>${esc(s.nombre)} · ${esc(s.ciudad)}</div>`)
+          .join("") || '<div class="muted">Sin sedes asociadas.</div>'
+      }</div><div class="section"><h2>Resultado</h2><div>${ops.length} operaciones · ${cop(sum(ops, "monto_base"))} en ventas</div></div><div class="actions section"><button class="btn ${a.estado === "activo" ? "danger" : "primary"}" id="stateAction">${a.estado === "activo" ? "Suspender" : "Reactivar"}</button></div>`;
+    $("#modal").classList.add("show");
+    $("#stateAction").onclick = () => changeState(a);
+  }
+  async function changeState(a) {
+    const reason = prompt(
+      `Motivo obligatorio para ${a.estado === "activo" ? "suspender" : "reactivar"} a ${a.nombre_comercial}:`,
+    );
+    if (!reason) return;
+    if (reason.trim().length < 5)
+      return notice("El motivo debe tener al menos cinco caracteres.", true);
+    const rpc =
+      a.estado === "activo" ? "aliados_suspendender" : "aliados_reactivar";
+    const { error } = await sb.rpc(rpc, {
+      p_id: a.id,
+      p_motivo: reason.trim(),
+    });
+    if (error)
+      return notice(
+        "No fue posible actualizar el estado. Verifica tus permisos.",
+        true,
+      );
+    $("#modal").classList.remove("show");
+    notice("Estado actualizado y auditado.");
+    await load();
+  }
+  function renderExecutives() {
+    let toolbar = $("#executiveToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "executiveToolbar";
+      toolbar.className = "toolbar card";
+      toolbar.innerHTML =
+        '<label>Fecha de venta desde<input id="executiveFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="executiveTo" class="control" type="date"></label><button id="executiveCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#executiveFrom").value = range.monthStart;
+      $("#executiveTo").value = range.today;
+      ["executiveFrom", "executiveTo"].forEach((id) =>
+        $("#" + id).addEventListener("change", renderExecutives),
+      );
+      $("#executiveCurrentMonth").addEventListener("click", () => {
+        const current = bogotaDateParts();
+        $("#executiveFrom").value = current.monthStart;
+        $("#executiveTo").value = current.today;
+        renderExecutives();
+      });
+    }
+    const from = $("#executiveFrom").value,
+      to = $("#executiveTo").value,
+      periodOps = db.operations.filter((o) => {
+        const day = operationSaleDay(o);
+        return (
+          operationIsCurrent(o) && (!from || day >= from) && (!to || day <= to)
+        );
+      }),
+      periodLiquidationIds = new Set(periodOps.map((o) => o.liquidation_id)),
+      activeExecutives = db.executives.filter((e) => e.activo),
+      activeIds = new Set(activeExecutives.map((e) => e.id)),
+      list = activeExecutives.map((e) => {
+        const ops = periodOps.filter((o) => o.ejecutivo_id === e.id),
+          bonusNew = sum(
+            db.bonuses.filter(
+              (b) =>
+                periodLiquidationIds.has(b.liquidation_id) &&
+                db.beneficiaries.find((y) => y.id === b.beneficiary_id)
+                  ?.ejecutivo_id === e.id,
+            ),
+            "valor",
+          );
+        return { e, ops, bonusNew };
+      }),
+      unassignedOps = periodOps.filter((o) => !activeIds.has(o.ejecutivo_id)),
+      pending = (db.historicalCredits || []).filter(
+        (h) => h.tipo_establecimiento === "aliado" && !h.ejecutivo_historico_id,
+      ).length;
+    if (unassignedOps.length)
+      list.push({
+        e: { nombre: "Sin ejecutivo asignado" },
+        ops: unassignedOps,
+        bonusNew: 0,
+      });
+    metrics([
+      ["Ejecutivos activos", activeExecutives.length],
+      [`Operaciones · ${from} a ${to}`, periodOps.length],
+      [`Ventas · ${from} a ${to}`, cop(sum(periodOps, "monto_base"))],
+      [
+        `Bonos · ${from} a ${to}`,
+        cop(list.reduce((n, x) => n + x.bonusNew, 0)),
+      ],
+      ["Ventas sin ejecutivo", unassignedOps.length],
+    ]);
+    const pendingAction = pending
+      ? `<div class="card"><div class="head"><div><h2>${pending} créditos anteriores requieren asociación</h2><p class="muted">Esta revisión pertenece al histórico y no altera los resultados del periodo seleccionado.</p></div><a class="btn primary" href="aliados-calidad.html">Revisar pendientes</a></div></div>`
+      : "";
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas de esta tabla corresponden exclusivamente a ventas del periodo seleccionado.</p></div>${table(["Ejecutivo Creditek", "Política de bono vigente", `Operaciones ${from}–${to}`, `Ventas ${from}–${to}`, `Bonos ${from}–${to}`], rows(list, [(x) => esc(x.e.nombre), (x) => esc(schemeName(x.e.esquema_comision?.tipo)), (x) => x.ops.length, (x) => cop(sum(x.ops, "monto_base")), (x) => cop(x.bonusNew)]))}${pendingAction}`;
+  }
 
-function renderExecutiveCards(){
- let toolbar=$('#executiveToolbar');
- if(!toolbar){
-  toolbar=document.createElement('section');toolbar.id='executiveToolbar';toolbar.className='toolbar card';
-  toolbar.innerHTML='<label>Fecha de venta desde<input id="executiveFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="executiveTo" class="control" type="date"></label><button id="executiveCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';
-  $('#metrics').before(toolbar);const range=bogotaDateParts();$('#executiveFrom').value=range.monthStart;$('#executiveTo').value=range.today;
-  ['executiveFrom','executiveTo'].forEach(id=>$('#'+id).addEventListener('change',renderExecutiveCards));
-  $('#executiveCurrentMonth').onclick=()=>{const current=bogotaDateParts();$('#executiveFrom').value=current.monthStart;$('#executiveTo').value=current.today;renderExecutiveCards()};
- }
- const from=$('#executiveFrom').value,to=$('#executiveTo').value,periodOps=db.operations.filter(o=>{const day=operationSaleDay(o);return operationIsCurrent(o)&&(!from||day>=from)&&(!to||day<=to)}),periodLiquidationIds=new Set(periodOps.map(o=>o.liquidation_id)),activeExecutives=db.executives.filter(e=>e.activo),activeIds=new Set(activeExecutives.map(e=>e.id)),list=activeExecutives.map(e=>{const ops=periodOps.filter(o=>o.ejecutivo_id===e.id),bonusNew=sum(db.bonuses.filter(b=>periodLiquidationIds.has(b.liquidation_id)&&db.beneficiaries.find(y=>y.id===b.beneficiary_id)?.ejecutivo_id===e.id),'valor');return {e,ops,bonusNew}}),unassignedOps=periodOps.filter(o=>!activeIds.has(o.ejecutivo_id)),pending=(db.historicalCredits||[]).filter(h=>h.tipo_establecimiento==='aliado'&&!h.ejecutivo_historico_id).length;
- if(unassignedOps.length)list.push({e:{nombre:'Sin ejecutivo asignado'},ops:unassignedOps,bonusNew:0});
- metrics([['Ejecutivos activos',activeExecutives.length],[`Créditos vendidos · ${from} a ${to}`,periodOps.length],[`Valor vendido · ${from} a ${to}`,cop(sum(periodOps,'monto_base'))],[`Bonos · ${from} a ${to}`,cop(list.reduce((n,x)=>n+x.bonusNew,0))],['Ventas sin ejecutivo',unassignedOps.length]]);
- const cards=list.map(item=>{const byPlatform=[...item.ops.reduce((map,o)=>{const current=map.get(o.plataforma)||{id:o.plataforma,count:0,sales:0};current.count++;current.sales+=Number(o.monto_base||0);map.set(o.plataforma,current);return map},new Map()).values()].sort((a,b)=>b.count-a.count),platforms=byPlatform.length?byPlatform.map(p=>`<div class="executive-platform"><span>${esc(platformName(p.id))}</span><strong>${p.count} crédito${p.count===1?'':'s'}</strong><small>${cop(p.sales)}</small></div>`).join(''):'<div class="empty compact">Sin ventas en este periodo</div>';return `<article class="card executive-card"><div class="head"><div><h2>${esc(item.e.nombre)}</h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length===1?'':'s'}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops,'monto_base'))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div></article>`}).join('');
- const pendingAction=pending?`<div class="card"><div class="head"><div><h2>${pending} créditos anteriores requieren asociación</h2><p class="muted">Esta revisión pertenece al histórico y no altera los resultados del periodo seleccionado.</p></div><a class="btn primary" href="aliados-calidad.html">Revisar pendientes</a></div></div>`:'';
- $('#content').innerHTML=`<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Cada tarjeta muestra exclusivamente las ventas asignadas al ejecutivo y su distribución por plataforma.</p></div><section class="executive-grid">${cards}</section>${pendingAction}`;
-}
-function renderPlatforms(){let toolbar=$('#platformToolbar');if(!toolbar){toolbar=document.createElement('section');toolbar.id='platformToolbar';toolbar.className='toolbar card';toolbar.innerHTML='<label>Fecha de venta desde<input id="platformFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="platformTo" class="control" type="date"></label><label>Tipo de negocio<select id="platformBusiness" class="control"><option value="">Propias y aliados</option><option value="propia">Solo tiendas propias</option><option value="aliado">Solo aliados</option></select></label><button id="platformCurrentMonth" class="btn secondary" type="button">Mes vigente</button><button id="platformAllHistory" class="btn secondary" type="button">Todo el histórico</button>';$('#metrics').before(toolbar);const range=bogotaDateParts();$('#platformFrom').value=range.monthStart;$('#platformTo').value=range.today;['platformFrom','platformTo','platformBusiness'].forEach(id=>$('#'+id).addEventListener('change',render));$('#platformCurrentMonth').addEventListener('click',()=>{const current=bogotaDateParts();$('#platformFrom').value=current.monthStart;$('#platformTo').value=current.today;render()});$('#platformAllHistory').addEventListener('click',()=>{const dates=[...(db.historicalCredits||[]).map(x=>date(x.fecha_credito)),...db.operations.map(operationSaleDay)].filter(x=>x&&x!=='—').sort();if(dates.length){$('#platformFrom').value=dates[0];$('#platformTo').value=dates.at(-1)}render()})}const from=$('#platformFrom').value,to=$('#platformTo').value,business=$('#platformBusiness').value,historical=(db.historicalCredits||[]).filter(x=>{const day=date(x.fecha_credito);return x.historico_inicial&&x.pagado_antes_inicio&&(!from||day>=from)&&(!to||day<=to)&&(!business||x.tipo_establecimiento===business)}),ops=db.operations.filter(x=>{const day=operationSaleDay(x);return operationIsCurrent(x)&&(!from||day>=from)&&(!to||day<=to)&&(!business||businessType(x)===business)}),ids=[...new Set([...db.platforms.filter(x=>x.activo).map(x=>x.id),...ops.map(x=>x.plataforma),...historical.map(x=>x.plataforma)].filter(Boolean))],defined=ids.map(id=>{const platformHistorical=historical.filter(x=>x.plataforma===id),platformOps=ops.filter(x=>x.plataforma===id),liquidationIds=new Set(platformOps.map(x=>x.liquidation_id));return {id,name:db.platforms.find(x=>x.id===id)?.nombre||platformName(id),historical:platformHistorical,ops:platformOps,liqs:db.liquidations.filter(x=>x.plataforma===id&&liquidationIds.has(x.id))}});metrics([['Plataformas activas',defined.length],[`Créditos cerrados · ${from} a ${to}`,historical.length],[`Operaciones por fecha de venta · ${from} a ${to}`,ops.length],[`Liquidaciones incluidas · ${from} a ${to}`,defined.reduce((n,x)=>n+x.liqs.length,0)]]);$('#content').innerHTML=`<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business==='propia'?'solo tiendas propias':business==='aliado'?'solo aliados':'tiendas propias y aliados'}. “Créditos cerrados” son ventas anteriores ya pagadas y cargadas como base inicial; su resultado fue retirado y su saldo disponible es cero. “Operaciones por fecha de venta” usa la fecha real de cada venta. La fecha de creación de la liquidación únicamente determina si pertenece a la operación nueva de KORA.</p></div>${table(['Plataforma','Estado',`Créditos cerrados ${from}–${to}`,'Valor financiado cerrado','Resultado generado (ya retirado)','Saldo histórico disponible',`Operaciones por fecha de venta ${from}–${to}`,'Ventas por fecha de venta','Utilidad disponible nueva','Liquidaciones incluidas'],rows(defined,[p=>esc(p.name),p=>badge('activa'),p=>p.historical.length,p=>cop(sum(p.historical,'monto_credito')),p=>cop(p.historical.reduce((n,x)=>n+historicalUtilityOriginal(x),0)),p=>cop(p.historical.reduce((n,x)=>n+historicalUtilityAvailable(x),0)),p=>p.ops.length,p=>cop(sum(p.ops,'monto_base')),p=>cop(p.ops.reduce((n,x)=>n+operationUtilityAvailable(x),0)),p=>p.liqs.length]))}`;}
+  function renderExecutiveCards() {
+    let toolbar = $("#executiveToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "executiveToolbar";
+      toolbar.className = "toolbar card";
+      toolbar.innerHTML =
+        '<label>Fecha de venta desde<input id="executiveFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="executiveTo" class="control" type="date"></label><button id="executiveCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#executiveFrom").value = range.monthStart;
+      $("#executiveTo").value = range.today;
+      ["executiveFrom", "executiveTo"].forEach((id) =>
+        $("#" + id).addEventListener("change", renderExecutiveCards),
+      );
+      $("#executiveCurrentMonth").onclick = () => {
+        const current = bogotaDateParts();
+        $("#executiveFrom").value = current.monthStart;
+        $("#executiveTo").value = current.today;
+        renderExecutiveCards();
+      };
+    }
+    const from = $("#executiveFrom").value,
+      to = $("#executiveTo").value,
+      periodOps = db.operations.filter((o) => {
+        const day = operationSaleDay(o);
+        return (
+          operationIsCurrent(o) && (!from || day >= from) && (!to || day <= to)
+        );
+      }),
+      periodLiquidationIds = new Set(periodOps.map((o) => o.liquidation_id)),
+      activeExecutives = db.executives.filter((e) => e.activo),
+      activeIds = new Set(activeExecutives.map((e) => e.id)),
+      list = activeExecutives.map((e) => {
+        const ops = periodOps.filter((o) => o.ejecutivo_id === e.id),
+          bonusNew = sum(
+            db.bonuses.filter(
+              (b) =>
+                periodLiquidationIds.has(b.liquidation_id) &&
+                db.beneficiaries.find((y) => y.id === b.beneficiary_id)
+                  ?.ejecutivo_id === e.id,
+            ),
+            "valor",
+          );
+        return { e, ops, bonusNew };
+      }),
+      unassignedOps = periodOps.filter((o) => !activeIds.has(o.ejecutivo_id)),
+      pending = (db.historicalCredits || []).filter(
+        (h) => h.tipo_establecimiento === "aliado" && !h.ejecutivo_historico_id,
+      ).length;
+    if (unassignedOps.length)
+      list.push({
+        e: { nombre: "Sin ejecutivo asignado" },
+        ops: unassignedOps,
+        bonusNew: 0,
+      });
+    metrics([
+      ["Ejecutivos activos", activeExecutives.length],
+      [`Créditos vendidos · ${from} a ${to}`, periodOps.length],
+      [`Valor vendido · ${from} a ${to}`, cop(sum(periodOps, "monto_base"))],
+      [
+        `Bonos · ${from} a ${to}`,
+        cop(list.reduce((n, x) => n + x.bonusNew, 0)),
+      ],
+      ["Ventas sin ejecutivo", unassignedOps.length],
+    ]);
+    const cards = list
+      .map((item) => {
+        const byPlatform = [
+            ...item.ops
+              .reduce((map, o) => {
+                const current = map.get(o.plataforma) || {
+                  id: o.plataforma,
+                  count: 0,
+                  sales: 0,
+                };
+                current.count++;
+                current.sales += Number(o.monto_base || 0);
+                map.set(o.plataforma, current);
+                return map;
+              }, new Map())
+              .values(),
+          ].sort((a, b) => b.count - a.count),
+          platforms = byPlatform.length
+            ? byPlatform
+                .map(
+                  (p) =>
+                    `<div class="executive-platform"><span>${esc(platformName(p.id))}</span><strong>${p.count} crédito${p.count === 1 ? "" : "s"}</strong><small>${cop(p.sales)}</small></div>`,
+                )
+                .join("")
+            : '<div class="empty compact">Sin ventas en este periodo</div>';
+        return `<article class="card executive-card"><div class="head"><div><h2>${esc(item.e.nombre)}</h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length === 1 ? "" : "s"}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops, "monto_base"))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div></article>`;
+      })
+      .join("");
+    const pendingAction = pending
+      ? `<div class="card"><div class="head"><div><h2>${pending} créditos anteriores requieren asociación</h2><p class="muted">Esta revisión pertenece al histórico y no altera los resultados del periodo seleccionado.</p></div><a class="btn primary" href="aliados-calidad.html">Revisar pendientes</a></div></div>`
+      : "";
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Cada tarjeta muestra exclusivamente las ventas asignadas al ejecutivo y su distribución por plataforma.</p></div><section class="executive-grid">${cards}</section>${pendingAction}`;
+  }
+  function renderPlatforms() {
+    let toolbar = $("#platformToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "platformToolbar";
+      toolbar.className = "toolbar card";
+      toolbar.innerHTML =
+        '<label>Fecha de venta desde<input id="platformFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="platformTo" class="control" type="date"></label><label>Tipo de negocio<select id="platformBusiness" class="control"><option value="">Propias y aliados</option><option value="propia">Solo tiendas propias</option><option value="aliado">Solo aliados</option></select></label><button id="platformCurrentMonth" class="btn secondary" type="button">Mes vigente</button><button id="platformAllHistory" class="btn secondary" type="button">Todo el histórico</button>';
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#platformFrom").value = range.monthStart;
+      $("#platformTo").value = range.today;
+      ["platformFrom", "platformTo", "platformBusiness"].forEach((id) =>
+        $("#" + id).addEventListener("change", render),
+      );
+      $("#platformCurrentMonth").addEventListener("click", () => {
+        const current = bogotaDateParts();
+        $("#platformFrom").value = current.monthStart;
+        $("#platformTo").value = current.today;
+        render();
+      });
+      $("#platformAllHistory").addEventListener("click", () => {
+        const dates = [
+          ...(db.historicalCredits || []).map((x) => date(x.fecha_credito)),
+          ...db.operations.map(operationSaleDay),
+        ]
+          .filter((x) => x && x !== "—")
+          .sort();
+        if (dates.length) {
+          $("#platformFrom").value = dates[0];
+          $("#platformTo").value = dates.at(-1);
+        }
+        render();
+      });
+    }
+    const from = $("#platformFrom").value,
+      to = $("#platformTo").value,
+      business = $("#platformBusiness").value,
+      historical = (db.historicalCredits || []).filter((x) => {
+        const day = date(x.fecha_credito);
+        return (
+          x.historico_inicial &&
+          x.pagado_antes_inicio &&
+          (!from || day >= from) &&
+          (!to || day <= to) &&
+          (!business || x.tipo_establecimiento === business)
+        );
+      }),
+      ops = db.operations.filter((x) => {
+        const day = operationSaleDay(x);
+        return (
+          operationIsCurrent(x) &&
+          (!from || day >= from) &&
+          (!to || day <= to) &&
+          (!business || businessType(x) === business)
+        );
+      }),
+      ids = [
+        ...new Set(
+          [
+            ...db.platforms.filter((x) => x.activo).map((x) => x.id),
+            ...ops.map((x) => x.plataforma),
+            ...historical.map((x) => x.plataforma),
+          ].filter(Boolean),
+        ),
+      ],
+      defined = ids.map((id) => {
+        const platformHistorical = historical.filter(
+            (x) => x.plataforma === id,
+          ),
+          platformOps = ops.filter((x) => x.plataforma === id),
+          liquidationIds = new Set(platformOps.map((x) => x.liquidation_id));
+        return {
+          id,
+          name:
+            db.platforms.find((x) => x.id === id)?.nombre || platformName(id),
+          historical: platformHistorical,
+          ops: platformOps,
+          liqs: db.liquidations.filter(
+            (x) => x.plataforma === id && liquidationIds.has(x.id),
+          ),
+        };
+      });
+    metrics([
+      ["Plataformas activas", defined.length],
+      [`Créditos cerrados · ${from} a ${to}`, historical.length],
+      [`Operaciones por fecha de venta · ${from} a ${to}`, ops.length],
+      [
+        `Liquidaciones incluidas · ${from} a ${to}`,
+        defined.reduce((n, x) => n + x.liqs.length, 0),
+      ],
+    ]);
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business === "propia" ? "solo tiendas propias" : business === "aliado" ? "solo aliados" : "tiendas propias y aliados"}. “Créditos cerrados” son ventas anteriores ya pagadas y cargadas como base inicial; su resultado fue retirado y su saldo disponible es cero. “Operaciones por fecha de venta” usa la fecha real de cada venta. La fecha de creación de la liquidación únicamente determina si pertenece a la operación nueva de KORA.</p></div>${table(["Plataforma", "Estado", `Créditos cerrados ${from}–${to}`, "Valor financiado cerrado", "Resultado generado (ya retirado)", "Saldo histórico disponible", `Operaciones por fecha de venta ${from}–${to}`, "Ventas por fecha de venta", "Utilidad disponible nueva", "Liquidaciones incluidas"], rows(defined, [(p) => esc(p.name), (p) => badge("activa"), (p) => p.historical.length, (p) => cop(sum(p.historical, "monto_credito")), (p) => cop(p.historical.reduce((n, x) => n + historicalUtilityOriginal(x), 0)), (p) => cop(p.historical.reduce((n, x) => n + historicalUtilityAvailable(x), 0)), (p) => p.ops.length, (p) => cop(sum(p.ops, "monto_base")), (p) => cop(p.ops.reduce((n, x) => n + operationUtilityAvailable(x), 0)), (p) => p.liqs.length]))}`;
+  }
 
-function renderPlatformCards(){
- let toolbar=$('#platformToolbar');
- if(!toolbar){
-  toolbar=document.createElement('section');toolbar.id='platformToolbar';toolbar.className='toolbar card';
-  toolbar.innerHTML='<label>Fecha de venta desde<input id="platformFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="platformTo" class="control" type="date"></label><label>Tipo de negocio<select id="platformBusiness" class="control"><option value="">Propias y aliados</option><option value="propia">Solo tiendas propias</option><option value="aliado">Solo aliados</option></select></label><button id="platformCurrentMonth" class="btn secondary" type="button">Mes vigente</button><a href="aliados-dashboard.html" class="btn secondary">Consultar base histórica</a>';
-  $('#metrics').before(toolbar);const range=bogotaDateParts();$('#platformFrom').value=range.monthStart;$('#platformTo').value=range.today;
-  ['platformFrom','platformTo','platformBusiness'].forEach(id=>$('#'+id).addEventListener('change',renderPlatformCards));
-  $('#platformCurrentMonth').onclick=()=>{const current=bogotaDateParts();$('#platformFrom').value=current.monthStart;$('#platformTo').value=current.today;renderPlatformCards()};
- }
- const from=$('#platformFrom').value,to=$('#platformTo').value,business=$('#platformBusiness').value,ops=db.operations.filter(o=>{const day=operationSaleDay(o);return operationIsCurrent(o)&&(!from||day>=from)&&(!to||day<=to)&&(!business||businessType(o)===business)}),totalSales=sum(ops,'monto_base'),active=db.platforms.filter(p=>p.activo),cards=active.map(p=>{const platformOps=ops.filter(o=>o.plataforma===p.id),liquidationIds=new Set(platformOps.map(o=>o.liquidation_id)),liqs=db.liquidations.filter(l=>liquidationIds.has(l.id)),payments=db.payments.filter(x=>liquidationIds.has(x.liquidation_id)),incidents=db.incidents.filter(x=>liquidationIds.has(x.liquidation_id)&&!x.resuelta_at),sales=sum(platformOps,'monto_base'),origins=[...new Set(platformOps.map(o=>o.origen_codigo||operationName(o)))],ownOrigins=[...new Set(platformOps.filter(o=>businessType(o)==='propia').map(o=>o.origen_codigo||operationName(o)))],allyOrigins=[...new Set(platformOps.filter(o=>businessType(o)==='aliado').map(o=>o.origen_codigo||operationName(o)))],pendingLiqs=liqs.filter(l=>!['aprobada','pagada','conciliada'].includes(l.estado)),lastLiq=[...liqs].sort((a,b)=>date(b.periodo_hasta).localeCompare(date(a.periodo_hasta)))[0],pendingPayments=payments.filter(x=>!['pagado','conciliado','historico_pagado'].includes(x.estado)),byOrigin=[...platformOps.reduce((map,o)=>{const key=o.origen_codigo||operationName(o),current=map.get(key)||{name:operationName(o),type:businessType(o),count:0,sales:0};current.count++;current.sales+=Number(o.monto_base||0);map.set(key,current);return map},new Map()).values()].sort((a,b)=>b.sales-a.sales);return {p,platformOps,liqs,sales,origins,ownOrigins,allyOrigins,pendingLiqs,lastLiq,pendingPayments,incidents,byOrigin}}),totalOperations=ops.length,totalPending=cards.reduce((n,x)=>n+x.pendingLiqs.length,0),totalAlerts=cards.reduce((n,x)=>n+x.incidents.length,0);
- metrics([['Plataformas activas',active.length],[`Créditos vendidos · ${from} a ${to}`,totalOperations],[`Valor vendido · ${from} a ${to}`,cop(totalSales)],['Liquidaciones pendientes',totalPending],['Alertas abiertas',totalAlerts]]);
- const cardHtml=cards.map(x=>{const share=totalSales?Math.round(x.sales/totalSales*100):0,average=x.platformOps.length?x.sales/x.platformOps.length:0,status=x.incidents.length?'con_novedad':x.pendingLiqs.length?'pendiente':'activa',details=x.byOrigin.length?table(['Establecimiento','Tipo','Créditos','Valor vendido'],rows(x.byOrigin,[r=>esc(r.name),r=>esc(r.type==='propia'?'Tienda propia':'Aliado'),r=>r.count,r=>cop(r.sales)])):'<div class="empty compact">Sin operaciones en el periodo.</div>';return `<details class="card platform-card"><summary><div><h2>${esc(x.p.nombre||platformName(x.p.id))}</h2><span>${badge(status)}</span></div><strong>${x.platformOps.length} crédito${x.platformOps.length===1?'':'s'}</strong></summary><div class="platform-card-metrics"><div><small>Valor vendido</small><strong>${cop(x.sales)}</strong></div><div><small>Participación</small><strong>${share}%</strong></div><div><small>Ticket promedio</small><strong>${cop(average)}</strong></div><div><small>Establecimientos</small><strong>${x.origins.length}</strong><span>${x.ownOrigins.length} propias · ${x.allyOrigins.length} aliados</span></div><div><small>Liquidaciones</small><strong>${x.liqs.length}</strong><span>${x.pendingLiqs.length} pendientes</span></div><div><small>Última liquidación</small><strong>${x.lastLiq?date(x.lastLiq.periodo_hasta):'Sin liquidar'}</strong></div><div><small>Pagos por gestionar</small><strong>${x.pendingPayments.length}</strong></div><div><small>Alertas abiertas</small><strong>${x.incidents.length}</strong></div></div><div class="section"><h3>Detalle por establecimiento</h3>${details}</div></details>`}).join('');
- $('#content').innerHTML=`<div class="card"><p class="muted"><b>Periodo operativo:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business==='propia'?'solo tiendas propias':business==='aliado'?'solo aliados':'tiendas propias y aliados'}. Los valores corresponden a la fecha real de venta. Abre una plataforma para consultar el detalle. La utilidad se analiza en Reportes Aliados y las metas en Presupuesto.</p></div><section class="platform-grid">${cardHtml}</section>`;
-}
+  function renderPlatformCards() {
+    let toolbar = $("#platformToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "platformToolbar";
+      toolbar.className = "toolbar card";
+      toolbar.innerHTML =
+        '<label>Fecha de venta desde<input id="platformFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="platformTo" class="control" type="date"></label><label>Tipo de negocio<select id="platformBusiness" class="control"><option value="">Propias y aliados</option><option value="propia">Solo tiendas propias</option><option value="aliado">Solo aliados</option></select></label><button id="platformCurrentMonth" class="btn secondary" type="button">Mes vigente</button><a href="aliados-dashboard.html" class="btn secondary">Consultar base histórica</a>';
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#platformFrom").value = range.monthStart;
+      $("#platformTo").value = range.today;
+      ["platformFrom", "platformTo", "platformBusiness"].forEach((id) =>
+        $("#" + id).addEventListener("change", renderPlatformCards),
+      );
+      $("#platformCurrentMonth").onclick = () => {
+        const current = bogotaDateParts();
+        $("#platformFrom").value = current.monthStart;
+        $("#platformTo").value = current.today;
+        renderPlatformCards();
+      };
+    }
+    const from = $("#platformFrom").value,
+      to = $("#platformTo").value,
+      business = $("#platformBusiness").value,
+      ops = db.operations.filter((o) => {
+        const day = operationSaleDay(o);
+        return (
+          operationIsCurrent(o) &&
+          (!from || day >= from) &&
+          (!to || day <= to) &&
+          (!business || businessType(o) === business)
+        );
+      }),
+      totalSales = sum(ops, "monto_base"),
+      active = db.platforms.filter((p) => p.activo),
+      cards = active.map((p) => {
+        const platformOps = ops.filter((o) => o.plataforma === p.id),
+          liquidationIds = new Set(platformOps.map((o) => o.liquidation_id)),
+          liqs = db.liquidations.filter((l) => liquidationIds.has(l.id)),
+          payments = db.payments.filter((x) =>
+            liquidationIds.has(x.liquidation_id),
+          ),
+          incidents = db.incidents.filter(
+            (x) => liquidationIds.has(x.liquidation_id) && !x.resuelta_at,
+          ),
+          sales = sum(platformOps, "monto_base"),
+          origins = [
+            ...new Set(
+              platformOps.map((o) => o.origen_codigo || operationName(o)),
+            ),
+          ],
+          ownOrigins = [
+            ...new Set(
+              platformOps
+                .filter((o) => businessType(o) === "propia")
+                .map((o) => o.origen_codigo || operationName(o)),
+            ),
+          ],
+          allyOrigins = [
+            ...new Set(
+              platformOps
+                .filter((o) => businessType(o) === "aliado")
+                .map((o) => o.origen_codigo || operationName(o)),
+            ),
+          ],
+          pendingLiqs = liqs.filter(
+            (l) => !["aprobada", "pagada", "conciliada"].includes(l.estado),
+          ),
+          lastLiq = [...liqs].sort((a, b) =>
+            date(b.periodo_hasta).localeCompare(date(a.periodo_hasta)),
+          )[0],
+          pendingPayments = payments.filter(
+            (x) =>
+              !["pagado", "conciliado", "historico_pagado"].includes(x.estado),
+          ),
+          byOrigin = [
+            ...platformOps
+              .reduce((map, o) => {
+                const key = o.origen_codigo || operationName(o),
+                  current = map.get(key) || {
+                    name: operationName(o),
+                    type: businessType(o),
+                    count: 0,
+                    sales: 0,
+                  };
+                current.count++;
+                current.sales += Number(o.monto_base || 0);
+                map.set(key, current);
+                return map;
+              }, new Map())
+              .values(),
+          ].sort((a, b) => b.sales - a.sales);
+        return {
+          p,
+          platformOps,
+          liqs,
+          sales,
+          origins,
+          ownOrigins,
+          allyOrigins,
+          pendingLiqs,
+          lastLiq,
+          pendingPayments,
+          incidents,
+          byOrigin,
+        };
+      }),
+      totalOperations = ops.length,
+      totalPending = cards.reduce((n, x) => n + x.pendingLiqs.length, 0),
+      totalAlerts = cards.reduce((n, x) => n + x.incidents.length, 0);
+    metrics([
+      ["Plataformas activas", active.length],
+      [`Créditos vendidos · ${from} a ${to}`, totalOperations],
+      [`Valor vendido · ${from} a ${to}`, cop(totalSales)],
+      ["Liquidaciones pendientes", totalPending],
+      ["Alertas abiertas", totalAlerts],
+    ]);
+    const cardHtml = cards
+      .map((x) => {
+        const share = totalSales ? Math.round((x.sales / totalSales) * 100) : 0,
+          average = x.platformOps.length ? x.sales / x.platformOps.length : 0,
+          status = x.incidents.length
+            ? "con_novedad"
+            : x.pendingLiqs.length
+              ? "pendiente"
+              : "activa",
+          details = x.byOrigin.length
+            ? table(
+                ["Establecimiento", "Tipo", "Créditos", "Valor vendido"],
+                rows(x.byOrigin, [
+                  (r) => esc(r.name),
+                  (r) => esc(r.type === "propia" ? "Tienda propia" : "Aliado"),
+                  (r) => r.count,
+                  (r) => cop(r.sales),
+                ]),
+              )
+            : '<div class="empty compact">Sin operaciones en el periodo.</div>';
+        return `<details class="card platform-card"><summary><div><h2>${esc(x.p.nombre || platformName(x.p.id))}</h2><span>${badge(status)}</span></div><strong>${x.platformOps.length} crédito${x.platformOps.length === 1 ? "" : "s"}</strong></summary><div class="platform-card-metrics"><div><small>Valor vendido</small><strong>${cop(x.sales)}</strong></div><div><small>Participación</small><strong>${share}%</strong></div><div><small>Ticket promedio</small><strong>${cop(average)}</strong></div><div><small>Establecimientos</small><strong>${x.origins.length}</strong><span>${x.ownOrigins.length} propias · ${x.allyOrigins.length} aliados</span></div><div><small>Liquidaciones</small><strong>${x.liqs.length}</strong><span>${x.pendingLiqs.length} pendientes</span></div><div><small>Última liquidación</small><strong>${x.lastLiq ? date(x.lastLiq.periodo_hasta) : "Sin liquidar"}</strong></div><div><small>Pagos por gestionar</small><strong>${x.pendingPayments.length}</strong></div><div><small>Alertas abiertas</small><strong>${x.incidents.length}</strong></div></div><div class="section"><h3>Detalle por establecimiento</h3>${details}</div></details>`;
+      })
+      .join("");
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted"><b>Periodo operativo:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business === "propia" ? "solo tiendas propias" : business === "aliado" ? "solo aliados" : "tiendas propias y aliados"}. Los valores corresponden a la fecha real de venta. Abre una plataforma para consultar el detalle. La utilidad se analiza en Reportes Aliados y las metas en Presupuesto.</p></div><section class="platform-grid">${cardHtml}</section>`;
+  }
 
-function renderPlatformGoals(){
- const from=$('#budgetFrom')?.value||$('#platformFrom')?.value||'',to=$('#budgetTo')?.value||$('#platformTo')?.value||'',goals=(db.platformGoals||[]).filter(g=>g.estado==='vigente'&&(!from||g.periodo_hasta>=from)&&(!to||g.periodo_desde<=to));
- const html=goals.map(g=>{
-  const visibleFrom=from&&from>g.periodo_desde?from:g.periodo_desde,visibleTo=to&&to<g.periodo_hasta?to:g.periodo_hasta,actual=db.operations.filter(o=>o.plataforma===g.plataforma&&operationIsCurrent(o)&&operationSaleDay(o)>=visibleFrom&&operationSaleDay(o)<=visibleTo).length,priorFrom=previousYearDay(visibleFrom),priorTo=previousYearDay(visibleTo),prior=(db.historicalCredits||[]).filter(h=>h.plataforma===g.plataforma&&date(h.fecha_credito)>=priorFrom&&date(h.fecha_credito)<=priorTo).length,growth=prior?Math.round((actual-prior)/prior*100):null,target=Number(g.meta_creditos),remaining=Math.max(target-actual,0),pct=Math.min(Math.round(actual/target*100),100),extra=Math.max(actual-target,0),potential=actual>=target?Number(g.incentivo_base)+extra*Number(g.valor_credito_adicional):0,fpd=g.fpd7_max_pct==null?'No aplica':`${g.fpd7_max_pct}%`,training=g.capacitacion_at?` <b>Capacitación:</b> ${esc(new Intl.DateTimeFormat('es-CO',{timeZone:'America/Bogota',dateStyle:'long'}).format(new Date(g.capacitacion_at)))}.`:'';
-  return `<section class="card platform-goal"><div class="head"><div><h2>Meta ${esc(platformName(g.plataforma))}</h2><p class="muted">Seguimiento por fecha real de venta · ${esc(g.periodo_desde)} a ${esc(g.periodo_hasta)}</p></div>${badge(g.estado)}</div><div class="goal-metrics"><div><small>Avance</small><strong>${actual} / ${target}</strong><span>${pct}% · faltan ${remaining}</span></div><div><small>Mismo periodo año anterior</small><strong>${prior}</strong><span>${priorFrom} a ${priorTo}</span></div><div><small>Crecimiento interanual</small><strong>${growth==null?'Sin base':`${growth>0?'+':''}${growth}%`}</strong><span>${actual-prior>0?'+':''}${actual-prior} créditos</span></div><div><small>Incentivo base</small><strong>${cop(g.incentivo_base)}</strong><span>al cumplir ${target} créditos</span></div><div><small>Crédito adicional</small><strong>${cop(g.valor_credito_adicional)}</strong><span>por crédito sobre la meta</span></div><div><small>FPD7 máximo</small><strong>${fpd}</strong><span>${g.fpd7_max_pct==null?'sin condición registrada':'resultado actual pendiente de fuente'}</span></div><div><small>Incentivo potencial</small><strong>${cop(potential)}</strong><span>no contabilizado como utilidad</span></div></div><div class="goal-progress"><span style="width:${pct}%"></span></div><p class="muted"><b>Condición:</b> el incentivo solo se confirma después de validar todas las reglas registradas.${training}</p></section>`
- }).join('');
- if(html)$('#content').insertAdjacentHTML('afterbegin',html);else if(view==='budget')$('#content').insertAdjacentHTML('afterbegin','<section class="card empty">No hay metas cargadas para el periodo seleccionado.</section>')
-}
+  function renderPlatformGoals() {
+    const from = $("#budgetFrom")?.value || $("#platformFrom")?.value || "",
+      to = $("#budgetTo")?.value || $("#platformTo")?.value || "",
+      goals = (db.platformGoals || []).filter(
+        (g) =>
+          g.estado === "vigente" &&
+          (!from || g.periodo_hasta >= from) &&
+          (!to || g.periodo_desde <= to),
+      );
+    const html = goals
+      .map((g) => {
+        const visibleFrom =
+            from && from > g.periodo_desde ? from : g.periodo_desde,
+          visibleTo = to && to < g.periodo_hasta ? to : g.periodo_hasta,
+          actual = db.operations.filter(
+            (o) =>
+              o.plataforma === g.plataforma &&
+              operationIsCurrent(o) &&
+              operationSaleDay(o) >= visibleFrom &&
+              operationSaleDay(o) <= visibleTo,
+          ).length,
+          priorFrom = previousYearDay(visibleFrom),
+          priorTo = previousYearDay(visibleTo),
+          prior = (db.historicalCredits || []).filter(
+            (h) =>
+              h.plataforma === g.plataforma &&
+              date(h.fecha_credito) >= priorFrom &&
+              date(h.fecha_credito) <= priorTo,
+          ).length,
+          growth = prior ? Math.round(((actual - prior) / prior) * 100) : null,
+          target = Number(g.meta_creditos),
+          remaining = Math.max(target - actual, 0),
+          pct = Math.min(Math.round((actual / target) * 100), 100),
+          extra = Math.max(actual - target, 0),
+          potential =
+            actual >= target
+              ? Number(g.incentivo_base) +
+                extra * Number(g.valor_credito_adicional)
+              : 0,
+          fpd = g.fpd7_max_pct == null ? "No aplica" : `${g.fpd7_max_pct}%`,
+          training = g.capacitacion_at
+            ? ` <b>Capacitación:</b> ${esc(new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", dateStyle: "long" }).format(new Date(g.capacitacion_at)))}.`
+            : "";
+        return `<section class="card platform-goal"><div class="head"><div><h2>Meta ${esc(platformName(g.plataforma))}</h2><p class="muted">Seguimiento por fecha real de venta · ${esc(g.periodo_desde)} a ${esc(g.periodo_hasta)}</p></div>${badge(g.estado)}</div><div class="goal-metrics"><div><small>Avance</small><strong>${actual} / ${target}</strong><span>${pct}% · faltan ${remaining}</span></div><div><small>Mismo periodo año anterior</small><strong>${prior}</strong><span>${priorFrom} a ${priorTo}</span></div><div><small>Crecimiento interanual</small><strong>${growth == null ? "Sin base" : `${growth > 0 ? "+" : ""}${growth}%`}</strong><span>${actual - prior > 0 ? "+" : ""}${actual - prior} créditos</span></div><div><small>Incentivo base</small><strong>${cop(g.incentivo_base)}</strong><span>al cumplir ${target} créditos</span></div><div><small>Crédito adicional</small><strong>${cop(g.valor_credito_adicional)}</strong><span>por crédito sobre la meta</span></div><div><small>FPD7 máximo</small><strong>${fpd}</strong><span>${g.fpd7_max_pct == null ? "sin condición registrada" : "resultado actual pendiente de fuente"}</span></div><div><small>Incentivo potencial</small><strong>${cop(potential)}</strong><span>no contabilizado como utilidad</span></div></div><div class="goal-progress"><span style="width:${pct}%"></span></div><p class="muted"><b>Condición:</b> el incentivo solo se confirma después de validar todas las reglas registradas.${training}</p></section>`;
+      })
+      .join("");
+    if (html) $("#content").insertAdjacentHTML("afterbegin", html);
+    else if (view === "budget")
+      $("#content").insertAdjacentHTML(
+        "afterbegin",
+        '<section class="card empty">No hay metas cargadas para el periodo seleccionado.</section>',
+      );
+  }
 
-function renderPlatformGoalManager(){if(profile?.rol!=='gerencia')return;const range=bogotaDateParts(),monthEnd=`${range.monthStart.slice(0,8)}${String(new Date(Number(range.monthStart.slice(0,4)),Number(range.monthStart.slice(5,7)),0).getDate()).padStart(2,'0')}`,platforms=db.platforms.filter(x=>x.activo).map(x=>option(x.id,x.nombre)).join('');$('#content').insertAdjacentHTML('afterbegin',`<section class="card goal-manager"><div class="head"><div><h2>Administrar presupuesto</h2><p class="muted">Registra las condiciones oficiales de cada plataforma. Cada cambio conserva trazabilidad.</p></div><button id="toggleGoalForm" class="btn primary" type="button">+ Cargar o actualizar meta</button></div><form id="platformGoalForm" class="form-grid section hidden"><label>Plataforma<select id="goalPlatform" class="control" required>${platforms}</select></label><label>Meta de créditos<input id="goalCredits" class="control" type="number" min="1" step="1" required></label><label>Periodo desde<input id="goalFrom" class="control" type="date" value="${range.monthStart}" required></label><label>Periodo hasta<input id="goalTo" class="control" type="date" value="${monthEnd}" required></label><label>Incentivo base<input id="goalBaseIncentive" class="control" type="number" min="0" step="1" value="0" required></label><label>Valor por crédito adicional<input id="goalAdditionalIncentive" class="control" type="number" min="0" step="1" value="0" required></label><label>FPD7 máximo (%)<input id="goalFpd7" class="control" type="number" min="0" max="100" step="0.01" placeholder="Opcional"></label><label>Fuente o comunicación<input id="goalSource" class="control" maxlength="180" value="Registro de Gerencia" required></label><label class="span-2">Referencia de la fuente<input id="goalSourceReference" class="control" maxlength="250" placeholder="Correo, acta o enlace"></label><label class="span-2">Notas<textarea id="goalNotes" class="control" rows="3" maxlength="1000"></textarea></label><div class="span-2 actions"><button class="btn primary" type="submit">Guardar meta</button><button id="cancelGoalForm" class="btn secondary" type="button">Cancelar</button></div></form></section>`);const form=$('#platformGoalForm');$('#toggleGoalForm').onclick=()=>form.classList.toggle('hidden');$('#cancelGoalForm').onclick=()=>form.classList.add('hidden');form.addEventListener('submit',savePlatformGoal)}
+  function renderPlatformGoalManager() {
+    if (profile?.rol !== "gerencia") return;
+    const range = bogotaDateParts(),
+      monthEnd = `${range.monthStart.slice(0, 8)}${String(new Date(Number(range.monthStart.slice(0, 4)), Number(range.monthStart.slice(5, 7)), 0).getDate()).padStart(2, "0")}`,
+      platforms = db.platforms
+        .filter((x) => x.activo)
+        .map((x) => option(x.id, x.nombre))
+        .join("");
+    $("#content").insertAdjacentHTML(
+      "afterbegin",
+      `<section class="card goal-manager"><div class="head"><div><h2>Administrar presupuesto</h2><p class="muted">Registra las condiciones oficiales de cada plataforma. Cada cambio conserva trazabilidad.</p></div><button id="toggleGoalForm" class="btn primary" type="button">+ Cargar o actualizar meta</button></div><form id="platformGoalForm" class="form-grid section hidden"><label>Plataforma<select id="goalPlatform" class="control" required>${platforms}</select></label><label>Meta de créditos<input id="goalCredits" class="control" type="number" min="1" step="1" required></label><label>Periodo desde<input id="goalFrom" class="control" type="date" value="${range.monthStart}" required></label><label>Periodo hasta<input id="goalTo" class="control" type="date" value="${monthEnd}" required></label><label>Incentivo base<input id="goalBaseIncentive" class="control" type="number" min="0" step="1" value="0" required></label><label>Valor por crédito adicional<input id="goalAdditionalIncentive" class="control" type="number" min="0" step="1" value="0" required></label><label>FPD7 máximo (%)<input id="goalFpd7" class="control" type="number" min="0" max="100" step="0.01" placeholder="Opcional"></label><label>Fuente o comunicación<input id="goalSource" class="control" maxlength="180" value="Registro de Gerencia" required></label><label class="span-2">Referencia de la fuente<input id="goalSourceReference" class="control" maxlength="250" placeholder="Correo, acta o enlace"></label><label class="span-2">Notas<textarea id="goalNotes" class="control" rows="3" maxlength="1000"></textarea></label><div class="span-2 actions"><button class="btn primary" type="submit">Guardar meta</button><button id="cancelGoalForm" class="btn secondary" type="button">Cancelar</button></div></form></section>`,
+    );
+    const form = $("#platformGoalForm");
+    $("#toggleGoalForm").onclick = () => form.classList.toggle("hidden");
+    $("#cancelGoalForm").onclick = () => form.classList.add("hidden");
+    form.addEventListener("submit", savePlatformGoal);
+  }
 
-function renderBudget(){let toolbar=$('#budgetToolbar');if(!toolbar){toolbar=document.createElement('section');toolbar.id='budgetToolbar';toolbar.className='toolbar card';toolbar.innerHTML='<label>Periodo desde<input id="budgetFrom" class="control" type="date"></label><label>Periodo hasta<input id="budgetTo" class="control" type="date"></label><button id="budgetCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';$('#metrics').before(toolbar);const range=bogotaDateParts();$('#budgetFrom').value=range.monthStart;$('#budgetTo').value=range.today;['budgetFrom','budgetTo'].forEach(id=>$('#'+id).addEventListener('change',render));$('#budgetCurrentMonth').onclick=()=>{const current=bogotaDateParts();$('#budgetFrom').value=current.monthStart;$('#budgetTo').value=current.today;render()}}const from=$('#budgetFrom').value,to=$('#budgetTo').value,priorFrom=previousYearDay(from),priorTo=previousYearDay(to),goals=(db.platformGoals||[]).filter(g=>g.estado==='vigente'&&g.periodo_hasta>=from&&g.periodo_desde<=to),actual=goals.reduce((total,g)=>total+db.operations.filter(o=>o.plataforma===g.plataforma&&operationIsCurrent(o)&&operationSaleDay(o)>=(g.periodo_desde>from?g.periodo_desde:from)&&operationSaleDay(o)<=(g.periodo_hasta<to?g.periodo_hasta:to)).length,0),goalPlatforms=new Set(goals.map(g=>g.plataforma)),prior=(db.historicalCredits||[]).filter(h=>goalPlatforms.has(h.plataforma)&&date(h.fecha_credito)>=priorFrom&&date(h.fecha_credito)<=priorTo).length,growth=prior?Math.round((actual-prior)/prior*100):null,target=goals.reduce((total,g)=>total+Number(g.meta_creditos||0),0),potential=goals.reduce((total,g)=>{const count=db.operations.filter(o=>o.plataforma===g.plataforma&&operationIsCurrent(o)&&operationSaleDay(o)>=(g.periodo_desde>from?g.periodo_desde:from)&&operationSaleDay(o)<=(g.periodo_hasta<to?g.periodo_hasta:to)).length;return total+(count>=Number(g.meta_creditos)?Number(g.incentivo_base||0)+Math.max(count-Number(g.meta_creditos),0)*Number(g.valor_credito_adicional||0):0)},0);metrics([['Plataformas con meta',goals.length],['Créditos vendidos',actual],['Meta de créditos',target],['Cumplimiento',target?`${Math.round(actual/target*100)}%`:'Sin meta'],[`Créditos ${priorFrom} a ${priorTo}`,prior],['Variación interanual',`${actual-prior>0?'+':''}${actual-prior}`],['Crecimiento interanual',growth==null?'Sin base':`${growth>0?'+':''}${growth}%`],['Incentivo potencial',cop(potential)]]);$('#content').innerHTML='<section class="card"><p class="muted"><b>Periodo analizado:</b> '+esc(from)+' a '+esc(to)+'. El avance usa la fecha real de venta y el crecimiento compara exactamente el mismo periodo del año anterior. El incentivo es una proyección y no se contabiliza como utilidad hasta que la plataforma lo confirme.</p></section>';renderPlatformGoals();renderPlatformGoalManager()}
+  function renderBudget() {
+    let toolbar = $("#budgetToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "budgetToolbar";
+      toolbar.className = "toolbar card";
+      toolbar.innerHTML =
+        '<label>Periodo desde<input id="budgetFrom" class="control" type="date"></label><label>Periodo hasta<input id="budgetTo" class="control" type="date"></label><button id="budgetCurrentMonth" class="btn secondary" type="button">Mes vigente</button>';
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#budgetFrom").value = range.monthStart;
+      $("#budgetTo").value = range.today;
+      ["budgetFrom", "budgetTo"].forEach((id) =>
+        $("#" + id).addEventListener("change", render),
+      );
+      $("#budgetCurrentMonth").onclick = () => {
+        const current = bogotaDateParts();
+        $("#budgetFrom").value = current.monthStart;
+        $("#budgetTo").value = current.today;
+        render();
+      };
+    }
+    const from = $("#budgetFrom").value,
+      to = $("#budgetTo").value,
+      priorFrom = previousYearDay(from),
+      priorTo = previousYearDay(to),
+      goals = (db.platformGoals || []).filter(
+        (g) =>
+          g.estado === "vigente" &&
+          g.periodo_hasta >= from &&
+          g.periodo_desde <= to,
+      ),
+      actual = goals.reduce(
+        (total, g) =>
+          total +
+          db.operations.filter(
+            (o) =>
+              o.plataforma === g.plataforma &&
+              operationIsCurrent(o) &&
+              operationSaleDay(o) >=
+                (g.periodo_desde > from ? g.periodo_desde : from) &&
+              operationSaleDay(o) <=
+                (g.periodo_hasta < to ? g.periodo_hasta : to),
+          ).length,
+        0,
+      ),
+      goalPlatforms = new Set(goals.map((g) => g.plataforma)),
+      prior = (db.historicalCredits || []).filter(
+        (h) =>
+          goalPlatforms.has(h.plataforma) &&
+          date(h.fecha_credito) >= priorFrom &&
+          date(h.fecha_credito) <= priorTo,
+      ).length,
+      growth = prior ? Math.round(((actual - prior) / prior) * 100) : null,
+      target = goals.reduce(
+        (total, g) => total + Number(g.meta_creditos || 0),
+        0,
+      ),
+      potential = goals.reduce((total, g) => {
+        const count = db.operations.filter(
+          (o) =>
+            o.plataforma === g.plataforma &&
+            operationIsCurrent(o) &&
+            operationSaleDay(o) >=
+              (g.periodo_desde > from ? g.periodo_desde : from) &&
+            operationSaleDay(o) <=
+              (g.periodo_hasta < to ? g.periodo_hasta : to),
+        ).length;
+        return (
+          total +
+          (count >= Number(g.meta_creditos)
+            ? Number(g.incentivo_base || 0) +
+              Math.max(count - Number(g.meta_creditos), 0) *
+                Number(g.valor_credito_adicional || 0)
+            : 0)
+        );
+      }, 0);
+    metrics([
+      ["Plataformas con meta", goals.length],
+      ["Créditos vendidos", actual],
+      ["Meta de créditos", target],
+      [
+        "Cumplimiento",
+        target ? `${Math.round((actual / target) * 100)}%` : "Sin meta",
+      ],
+      [`Créditos ${priorFrom} a ${priorTo}`, prior],
+      [
+        "Variación interanual",
+        `${actual - prior > 0 ? "+" : ""}${actual - prior}`,
+      ],
+      [
+        "Crecimiento interanual",
+        growth == null ? "Sin base" : `${growth > 0 ? "+" : ""}${growth}%`,
+      ],
+      ["Incentivo potencial", cop(potential)],
+    ]);
+    $("#content").innerHTML =
+      '<section class="card"><p class="muted"><b>Periodo analizado:</b> ' +
+      esc(from) +
+      " a " +
+      esc(to) +
+      ". El avance usa la fecha real de venta y el crecimiento compara exactamente el mismo periodo del año anterior. El incentivo es una proyección y no se contabiliza como utilidad hasta que la plataforma lo confirme.</p></section>";
+    renderPlatformGoals();
+    renderPlatformGoalManager();
+  }
 
-async function savePlatformGoal(event){event.preventDefault();const fpd=$('#goalFpd7').value,payload={p_plataforma:$('#goalPlatform').value,p_periodo_desde:$('#goalFrom').value,p_periodo_hasta:$('#goalTo').value,p_meta_creditos:Number($('#goalCredits').value),p_incentivo_base:Number($('#goalBaseIncentive').value),p_valor_credito_adicional:Number($('#goalAdditionalIncentive').value),p_fpd7_max_pct:fpd===''?null:Number(fpd),p_fuente:$('#goalSource').value.trim(),p_fuente_referencia:$('#goalSourceReference').value.trim()||null,p_notas:$('#goalNotes').value.trim()||null};const {error}=await sb.rpc('aliados_guardar_meta_plataforma',payload);if(error)return notice(error.message,true);notice(`Meta de ${platformName(payload.p_plataforma)} guardada y auditada.`);await load()}
-function renderQuality(){const allyOps=db.operations.filter(o=>o.modelo_negocio==='aliado'),pending=[...(db.historicalCredits||[]).filter(x=>x.tipo_establecimiento==='aliado'&&!x.ejecutivo_historico_id).reduce((m,x)=>{const v=m.get(x.establecimiento)||{name:x.establecimiento,count:0,platforms:new Set(),sellers:new Set()};v.count++;v.platforms.add(platformName(x.plataforma));if(x.vendedor)v.sellers.add(x.vendedor);m.set(x.establecimiento,v);return m},new Map()).values()];metrics([['Créditos sin ejecutivo Creditek',pending.reduce((n,x)=>n+x.count,0)],['Establecimientos para revisar',pending.length],['Operaciones evaluables',allyOps.length],['Sin información de calidad',allyOps.length]]);const options=db.executives.filter(x=>x.activo).map(x=>option(x.id,x.nombre)).join('');$('#content').innerHTML=`<div class="card"><h2>Históricos sin ejecutivo Creditek</h2><p class="muted">Solo aparecen establecimientos cuyo histórico no coincide todavía con un origen que tenga ejecutivo. “Vendedor fuente” es personal del comercio, no el ejecutivo de Creditek.</p>${table(['Establecimiento','Plataformas','Vendedor del comercio','Créditos','Ejecutivo Creditek','Acción'],rows(pending,[x=>esc(x.name),x=>esc([...x.platforms].join(', ')),x=>esc([...x.sellers].join(', ')||'—'),x=>x.count,x=>`<select class="control" id="historical-exec-${encodeURIComponent(x.name)}"><option value="">Seleccionar ejecutivo</option>${options}</select>`,x=>`<button class="btn primary" data-historical-associate="${esc(x.name)}">Vincular histórico</button>`]))}</div><div class="card"><h2>Calidad y ventas</h2><p class="muted">Sin política configurada. Las operaciones se conservan sin asignarles calidad cero.</p></div>`;document.querySelectorAll('[data-historical-associate]').forEach(b=>b.onclick=()=>associateHistorical(b.dataset.historicalAssociate));}
-async function associateHistorical(establishment){const select=document.getElementById(`historical-exec-${encodeURIComponent(establishment)}`),executiveId=select?.value;if(!executiveId)return notice('Selecciona un ejecutivo.',true);const {data,error}=await sb.rpc('aliados_asociar_historico',{p_establecimiento:establishment,p_ejecutivo_id:executiveId});if(error)return notice(error.message,true);notice(`${data} crédito(s) asociados y auditados.`);await load()}
-function renderBonuses(){let toolbar=$('#bonusToolbar');if(!toolbar){toolbar=document.createElement('section');toolbar.id='bonusToolbar';toolbar.className='toolbar card';const platforms=[...new Set(db.liquidations.map(x=>x.plataforma).filter(Boolean))].sort(),executives=db.executives.filter(x=>x.activo).sort((a,b)=>a.nombre.localeCompare(b.nombre));toolbar.innerHTML=`<label>Fecha de venta desde<input id="bonusFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="bonusTo" class="control" type="date"></label><label>Plataforma<select id="bonusPlatform" class="control">${option('','Todas las plataformas')}${platforms.map(x=>option(x,platformName(x))).join('')}</select></label><label>Ejecutivo<select id="bonusExecutive" class="control">${option('','Todos los ejecutivos')}${executives.map(x=>option(x.id,x.nombre)).join('')}</select></label><label>Estado<select id="bonusState" class="control"><option value="">Todos los estados</option><option value="aprobado">Aprobado</option><option value="pendiente">Pendiente</option><option value="pagada">Pagado</option></select></label><button id="bonusCurrentMonth" class="btn secondary" type="button">Mes vigente</button>`;$('#metrics').before(toolbar);const range=bogotaDateParts();$('#bonusFrom').value=range.monthStart;$('#bonusTo').value=range.today;['bonusFrom','bonusTo','bonusPlatform','bonusExecutive','bonusState'].forEach(id=>$('#'+id).addEventListener('change',renderBonuses));$('#bonusCurrentMonth').addEventListener('click',()=>{const current=bogotaDateParts();$('#bonusFrom').value=current.monthStart;$('#bonusTo').value=current.today;renderBonuses()})}const from=$('#bonusFrom').value,to=$('#bonusTo').value,platform=$('#bonusPlatform').value,executive=$('#bonusExecutive').value,state=$('#bonusState').value;const items=db.bonuses.map(b=>{const liquidation=db.liquidations.find(x=>x.id===b.liquidation_id),beneficiary=db.beneficiaries.find(x=>x.id===b.beneficiary_id),ops=db.operations.filter(o=>o.liquidation_id===b.liquidation_id&&operationIsCurrent(o)),days=ops.map(operationSaleDay).filter(x=>x&&x!=='—').sort();return {b,liquidation,beneficiary,day:days[0]||'—',current:ops.length>0}}).filter(x=>x.current&&(!from||x.day>=from)&&(!to||x.day<=to)&&(!platform||x.liquidation?.plataforma===platform)&&(!executive||x.beneficiary?.ejecutivo_id===executive)&&(!state||x.b.estado===state));const approved=items.filter(x=>x.b.estado==='aprobado'),pending=items.filter(x=>x.b.estado==='pendiente'),paid=items.filter(x=>x.b.estado==='pagada');metrics([[`Bonificaciones · ${from} a ${to}`,cop(sum(items.map(x=>x.b),'valor'))],['Registros',items.length],['Aprobadas',`${approved.length} · ${cop(sum(approved.map(x=>x.b),'valor'))}`],['Pendientes',`${pending.length} · ${cop(sum(pending.map(x=>x.b),'valor'))}`],['Pagadas',`${paid.length} · ${cop(sum(paid.map(x=>x.b),'valor'))}`]]);$('#content').innerHTML=`<section class="card"><h2>Bonificaciones del periodo</h2><p class="muted">La fecha corresponde a la venta. Esta vista muestra únicamente bonificaciones de operaciones gestionadas en KORA dentro del periodo seleccionado; los bonos históricos ya pagados permanecen conservados para auditoría y no se repiten aquí.</p>${table(['Fecha de venta','Beneficiario','Tipo','Plataforma','Concepto','Valor','Estado'],rows(items,[x=>esc(x.day),x=>esc(x.beneficiary?.nombre),x=>esc(x.beneficiary?.tipo),x=>esc(platformName(x.liquidation?.plataforma)),x=>esc(x.b.motivo||x.b.tipo_bono),x=>cop(x.b.valor),x=>badge(x.b.estado)]))}</section>`;}
-function populateExpenseForm(){const select=$('#expenseOrigin');if(select)select.innerHTML=option('','General')+db.origins.filter(x=>x.tipo==='aliado').sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(x=>option(x.codigo,x.nombre)).join('');if($('#expenseDate'))$('#expenseDate').value=new Date().toISOString().slice(0,10)}
-function renderExpenses(){const approved=db.expenses.filter(x=>x.estado==='aprobado'),pending=db.expenses.filter(x=>x.estado==='pendiente');metrics([['Gastos registrados',db.expenses.length],['Valor aprobado',cop(sum(approved,'valor'))],['Pendientes de aprobación',pending.length],['Valor pendiente',cop(sum(pending,'valor'))]]);$('#content').innerHTML=table(['Fecha','Plataforma','Establecimiento','Concepto','Descripción','Valor','Soporte','Estado','Acción'],rows(db.expenses,[x=>date(x.fecha),x=>esc(platformName(x.plataforma)),x=>esc(originFor(x.origen_codigo)?.nombre||'General'),x=>esc(x.concepto),x=>esc(x.descripcion),x=>cop(x.valor),x=>x.soporte_path?'Adjunto':'—',x=>badge(x.estado),x=>x.estado==='pendiente'&&profile?.rol==='gerencia'?`<button class="btn primary" data-expense-approve="${x.id}">Aprobar</button> <button class="btn danger" data-expense-reject="${x.id}">Rechazar</button>`:'—']));document.querySelectorAll('[data-expense-approve]').forEach(b=>b.onclick=()=>decideExpense(b.dataset.expenseApprove,'aprobado'));document.querySelectorAll('[data-expense-reject]').forEach(b=>b.onclick=()=>decideExpense(b.dataset.expenseReject,'rechazado'))}
-async function decideExpense(id,state){const {error}=await sb.rpc('aliados_decidir_gasto',{p_id:id,p_estado:state});if(error)return notice(error.message,true);notice(`Gasto ${state}.`);await load()}
-async function saveExpense(event){event.preventDefault();const file=$('#expenseSupport').files[0];let path='';if(file){if(file.size>10*1024*1024)return notice('El soporte supera 10 MB.',true);const ext=(file.name.split('.').pop()||'pdf').toLowerCase();path=`aliados/gastos/${crypto.randomUUID()}.${ext}`;const uploaded=await sb.storage.from('soportes').upload(path,file,{upsert:false});if(uploaded.error)return notice(`No fue posible adjuntar el soporte: ${uploaded.error.message}`,true)}const {error}=await sb.rpc('aliados_registrar_gasto',{p_fecha:$('#expenseDate').value,p_plataforma:$('#expensePlatform').value,p_origen_codigo:$('#expenseOrigin').value,p_concepto:$('#expenseConcept').value,p_descripcion:$('#expenseDescription').value,p_valor:Number($('#expenseValue').value),p_soporte_path:path});if(error)return notice(error.message,true);event.target.reset();notice('Gasto registrado y enviado a aprobación.');await load()}
-function renderReports(){
- let toolbar=$('#reportToolbar');
- if(!toolbar){
-  toolbar=document.querySelector('.toolbar.card');toolbar.id='reportToolbar';
-  const platforms=[...new Set(db.liquidations.map(x=>x.plataforma).filter(Boolean))].sort(),executives=db.executives.filter(x=>x.activo).sort((a,b)=>a.nombre.localeCompare(b.nombre)),states=[...new Set(db.payments.map(x=>x.estado).filter(Boolean))].sort();
-  toolbar.innerHTML=`<label>Fecha de venta desde<input id="reportFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="reportTo" class="control" type="date"></label><label>Plataforma<select id="reportPlatform" class="control">${option('','Todas las plataformas')}${platforms.map(x=>option(x,platformName(x))).join('')}</select></label><label>Ejecutivo<select id="reportExecutive" class="control">${option('','Todos los ejecutivos')}${executives.map(x=>option(x.id,x.nombre)).join('')}</select></label><label>Estado de pago<select id="reportPaymentState" class="control">${option('','Todos los estados')}${states.map(x=>option(x,String(x).replaceAll('_',' '))).join('')}</select></label><button id="reportCurrentMonth" class="btn secondary" type="button">Mes vigente</button>`;
-  const range=bogotaDateParts();$('#reportFrom').value=range.monthStart;$('#reportTo').value=range.today;
-  ['reportFrom','reportTo','reportPlatform','reportExecutive','reportPaymentState'].forEach(id=>$('#'+id).addEventListener('change',renderReports));
-  $('#reportCurrentMonth').addEventListener('click',()=>{const current=bogotaDateParts();$('#reportFrom').value=current.monthStart;$('#reportTo').value=current.today;renderReports()});
- }
- const from=$('#reportFrom').value,to=$('#reportTo').value,platform=$('#reportPlatform').value,executive=$('#reportExecutive').value,paymentState=$('#reportPaymentState').value;
- const periodOps=db.operations.filter(o=>{const day=operationSaleDay(o);return operationIsCurrent(o)&&(!from||day>=from)&&(!to||day<=to)&&(!platform||o.plataforma===platform)&&(!executive||o.ejecutivo_id===executive)});
- const liquidationIds=new Set(periodOps.map(o=>o.liquidation_id)),includedLiquidations=db.liquidations.filter(l=>liquidationIds.has(l.id)&&(!paymentState||db.payments.some(p=>p.liquidation_id===l.id&&p.estado===paymentState))),includedIds=new Set(includedLiquidations.map(l=>l.id)),ops=periodOps.filter(o=>includedIds.has(o.liquidation_id)),ownOps=ops.filter(o=>businessType(o)==='propia'),allyOps=ops.filter(o=>businessType(o)==='aliado');
- const bonuses=db.bonuses.filter(b=>includedIds.has(b.liquidation_id)&&(!executive||db.beneficiaries.find(x=>x.id===b.beneficiary_id)?.ejecutivo_id===executive)),expenses=db.expenses.filter(x=>{const day=date(x.fecha),origin=originFor(x.origen_codigo);return x.estado==='aprobado'&&day>=OPERATION_CUTOFF&&(!from||day>=from)&&(!to||day<=to)&&(!platform||x.plataforma===platform)&&(!executive||origin?.ejecutivo_id===executive)}),expenseTotal=sum(expenses,'valor'),ownUtility=ownOps.reduce((n,x)=>n+operationUtilityAvailable(x),0),allyUtility=allyOps.reduce((n,x)=>n+operationUtilityAvailable(x),0),grossUtility=ownUtility+allyUtility,netUtility=grossUtility-expenseTotal;
- metrics([[`Operaciones del negocio · ${from} a ${to}`,ops.length],[`Ventas procesadas · ${from} a ${to}`,cop(sum(ops,'monto_base'))],['Pagos a aliados',cop(allyOps.reduce((n,x)=>n+paymentValue(x),0))],['Bonificaciones',cop(sum(bonuses,'valor'))],['Utilidad originada en tiendas propias',cop(ownUtility)],['Utilidad originada en aliados',cop(allyUtility)],['Gastos aprobados',cop(expenseTotal)],['Utilidad neta disponible',cop(netUtility)]]);
- const reportRows=includedLiquidations.map(l=>{const liquidationOps=ops.filter(o=>o.liquidation_id===l.id),own=liquidationOps.filter(o=>businessType(o)==='propia'),allies=liquidationOps.filter(o=>businessType(o)==='aliado'),payments=db.payments.filter(p=>p.liquidation_id===l.id);return {l,ops:liquidationOps,own,allies,payments}}).sort((a,b)=>date(b.l.periodo_hasta).localeCompare(date(a.l.periodo_hasta)));
- $('#content').innerHTML=`<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas corresponden exclusivamente al periodo seleccionado. La utilidad de este negocio incluye los créditos procesados en tiendas propias y en aliados. “Tienda propia” indica únicamente el origen de la venta; no depende del costo ni de la utilidad Retail. Los gastos aprobados se descuentan una sola vez en la utilidad neta disponible. El histórico cerrado se conserva en auditoría y no se suma.</p></div>${table(['Periodo de ventas','Plataforma','Operaciones totales','Ventas procesadas','Utilidad de tiendas propias','Utilidad de aliados','Utilidad total del negocio','Pago a aliados','Estado de pago'],rows(reportRows,[x=>`${date(x.l.periodo_desde)} — ${date(x.l.periodo_hasta)}`,x=>esc(platformName(x.l.plataforma)),x=>x.ops.length,x=>cop(sum(x.ops,'monto_base')),x=>cop(x.own.reduce((n,o)=>n+operationUtilityAvailable(o),0)),x=>cop(x.allies.reduce((n,o)=>n+operationUtilityAvailable(o),0)),x=>cop(x.ops.reduce((n,o)=>n+operationUtilityAvailable(o),0)),x=>cop(x.allies.reduce((n,o)=>n+paymentValue(o),0)),x=>x.payments.length?esc([...new Set(x.payments.map(p=>String(p.estado).replaceAll('_',' ')))].join(', ')):'Sin pago a terceros']))}`;
-}
-function render(){({dashboard:renderDashboard,allies:renderAllies,executives:renderExecutiveCards,platforms:renderPlatformCards,budget:renderBudget,quality:renderQuality,bonuses:renderBonuses,expenses:renderExpenses,reports:renderReports}[view]||renderDashboard)();}
-function notice(message,error=false){const n=$('#notice');n.textContent=message;n.className=`notice${error?' error':''}`;n.classList.remove('hidden');setTimeout(()=>n.classList.add('hidden'),5000)}
-async function init(){if(!window.creditekSidebar?.sb)return;sb=window.creditekSidebar.sb;profile=window.creditekSidebar.perfil;if(!profile?.es_operador_aliados&&profile?.rol!=='gerencia'){ $('#accessDenied').classList.remove('hidden');return }$('#pageContent').classList.remove('hidden');try{await load()}catch(e){console.error('Aliados V1.1 no pudo cargar',e);notice('No fue posible cargar Creditek Aliados. Intenta de nuevo.',true)}}
-document.addEventListener('kora-sidebar-ready',init,{once:true});if(window.creditekSidebar?.sb)init();
-$('#q')?.addEventListener('input',()=>view==='allies'&&renderAllies());$('#state')?.addEventListener('change',()=>view==='allies'&&renderAllies());$('#modalClose')?.addEventListener('click',()=>$('#modal').classList.remove('show'));
-$('#expenseForm')?.addEventListener('submit',saveExpense);
-['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity'].forEach(id=>$('#'+id)?.addEventListener('change',renderDashboard));$('#dashboardClear')?.addEventListener('click',()=>{['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity'].forEach(id=>{$('#'+id).value=''});renderDashboard()});
+  async function savePlatformGoal(event) {
+    event.preventDefault();
+    const fpd = $("#goalFpd7").value,
+      payload = {
+        p_plataforma: $("#goalPlatform").value,
+        p_periodo_desde: $("#goalFrom").value,
+        p_periodo_hasta: $("#goalTo").value,
+        p_meta_creditos: Number($("#goalCredits").value),
+        p_incentivo_base: Number($("#goalBaseIncentive").value),
+        p_valor_credito_adicional: Number($("#goalAdditionalIncentive").value),
+        p_fpd7_max_pct: fpd === "" ? null : Number(fpd),
+        p_fuente: $("#goalSource").value.trim(),
+        p_fuente_referencia: $("#goalSourceReference").value.trim() || null,
+        p_notas: $("#goalNotes").value.trim() || null,
+      };
+    const { error } = await sb.rpc("aliados_guardar_meta_plataforma", payload);
+    if (error) return notice(error.message, true);
+    notice(
+      `Meta de ${platformName(payload.p_plataforma)} guardada y auditada.`,
+    );
+    await load();
+  }
+  function renderQuality() {
+    const allyOps = db.operations.filter((o) => o.modelo_negocio === "aliado"),
+      pending = [
+        ...(db.historicalCredits || [])
+          .filter(
+            (x) =>
+              x.tipo_establecimiento === "aliado" && !x.ejecutivo_historico_id,
+          )
+          .reduce((m, x) => {
+            const v = m.get(x.establecimiento) || {
+              name: x.establecimiento,
+              count: 0,
+              platforms: new Set(),
+              sellers: new Set(),
+            };
+            v.count++;
+            v.platforms.add(platformName(x.plataforma));
+            if (x.vendedor) v.sellers.add(x.vendedor);
+            m.set(x.establecimiento, v);
+            return m;
+          }, new Map())
+          .values(),
+      ];
+    metrics([
+      [
+        "Créditos sin ejecutivo Creditek",
+        pending.reduce((n, x) => n + x.count, 0),
+      ],
+      ["Establecimientos para revisar", pending.length],
+      ["Operaciones evaluables", allyOps.length],
+      ["Sin información de calidad", allyOps.length],
+    ]);
+    const options = db.executives
+      .filter((x) => x.activo)
+      .map((x) => option(x.id, x.nombre))
+      .join("");
+    $("#content").innerHTML =
+      `<div class="card"><h2>Históricos sin ejecutivo Creditek</h2><p class="muted">Solo aparecen establecimientos cuyo histórico no coincide todavía con un origen que tenga ejecutivo. “Vendedor fuente” es personal del comercio, no el ejecutivo de Creditek.</p>${table(["Establecimiento", "Plataformas", "Vendedor del comercio", "Créditos", "Ejecutivo Creditek", "Acción"], rows(pending, [(x) => esc(x.name), (x) => esc([...x.platforms].join(", ")), (x) => esc([...x.sellers].join(", ") || "—"), (x) => x.count, (x) => `<select class="control" id="historical-exec-${encodeURIComponent(x.name)}"><option value="">Seleccionar ejecutivo</option>${options}</select>`, (x) => `<button class="btn primary" data-historical-associate="${esc(x.name)}">Vincular histórico</button>`]))}</div><div class="card"><h2>Calidad y ventas</h2><p class="muted">Sin política configurada. Las operaciones se conservan sin asignarles calidad cero.</p></div>`;
+    document
+      .querySelectorAll("[data-historical-associate]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            associateHistorical(b.dataset.historicalAssociate)),
+      );
+  }
+  async function associateHistorical(establishment) {
+    const select = document.getElementById(
+        `historical-exec-${encodeURIComponent(establishment)}`,
+      ),
+      executiveId = select?.value;
+    if (!executiveId) return notice("Selecciona un ejecutivo.", true);
+    const { data, error } = await sb.rpc("aliados_asociar_historico", {
+      p_establecimiento: establishment,
+      p_ejecutivo_id: executiveId,
+    });
+    if (error) return notice(error.message, true);
+    notice(`${data} crédito(s) asociados y auditados.`);
+    await load();
+  }
+  function renderBonuses() {
+    let toolbar = $("#bonusToolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("section");
+      toolbar.id = "bonusToolbar";
+      toolbar.className = "toolbar card";
+      const platforms = [
+          ...new Set(db.liquidations.map((x) => x.plataforma).filter(Boolean)),
+        ].sort(),
+        executives = db.executives
+          .filter((x) => x.activo)
+          .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      toolbar.innerHTML = `<label>Fecha de venta desde<input id="bonusFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="bonusTo" class="control" type="date"></label><label>Plataforma<select id="bonusPlatform" class="control">${option("", "Todas las plataformas")}${platforms.map((x) => option(x, platformName(x))).join("")}</select></label><label>Ejecutivo<select id="bonusExecutive" class="control">${option("", "Todos los ejecutivos")}${executives.map((x) => option(x.id, x.nombre)).join("")}</select></label><label>Estado<select id="bonusState" class="control"><option value="">Todos los estados</option><option value="aprobado">Aprobado</option><option value="pendiente">Pendiente</option><option value="pagada">Pagado</option></select></label><button id="bonusCurrentMonth" class="btn secondary" type="button">Mes vigente</button>`;
+      $("#metrics").before(toolbar);
+      const range = bogotaDateParts();
+      $("#bonusFrom").value = range.monthStart;
+      $("#bonusTo").value = range.today;
+      [
+        "bonusFrom",
+        "bonusTo",
+        "bonusPlatform",
+        "bonusExecutive",
+        "bonusState",
+      ].forEach((id) => $("#" + id).addEventListener("change", renderBonuses));
+      $("#bonusCurrentMonth").addEventListener("click", () => {
+        const current = bogotaDateParts();
+        $("#bonusFrom").value = current.monthStart;
+        $("#bonusTo").value = current.today;
+        renderBonuses();
+      });
+    }
+    const from = $("#bonusFrom").value,
+      to = $("#bonusTo").value,
+      platform = $("#bonusPlatform").value,
+      executive = $("#bonusExecutive").value,
+      state = $("#bonusState").value;
+    const items = db.bonuses
+      .map((b) => {
+        const liquidation = db.liquidations.find(
+            (x) => x.id === b.liquidation_id,
+          ),
+          beneficiary = db.beneficiaries.find((x) => x.id === b.beneficiary_id),
+          ops = db.operations.filter(
+            (o) =>
+              o.liquidation_id === b.liquidation_id && operationIsCurrent(o),
+          ),
+          days = ops
+            .map(operationSaleDay)
+            .filter((x) => x && x !== "—")
+            .sort();
+        return {
+          b,
+          liquidation,
+          beneficiary,
+          day: days[0] || "—",
+          current: ops.length > 0,
+        };
+      })
+      .filter(
+        (x) =>
+          x.current &&
+          (!from || x.day >= from) &&
+          (!to || x.day <= to) &&
+          (!platform || x.liquidation?.plataforma === platform) &&
+          (!executive || x.beneficiary?.ejecutivo_id === executive) &&
+          (!state || x.b.estado === state),
+      );
+    const approved = items.filter((x) => x.b.estado === "aprobado"),
+      pending = items.filter((x) => x.b.estado === "pendiente"),
+      paid = items.filter((x) => x.b.estado === "pagada");
+    metrics([
+      [
+        `Bonificaciones · ${from} a ${to}`,
+        cop(
+          sum(
+            items.map((x) => x.b),
+            "valor",
+          ),
+        ),
+      ],
+      ["Registros", items.length],
+      [
+        "Aprobadas",
+        `${approved.length} · ${cop(
+          sum(
+            approved.map((x) => x.b),
+            "valor",
+          ),
+        )}`,
+      ],
+      [
+        "Pendientes",
+        `${pending.length} · ${cop(
+          sum(
+            pending.map((x) => x.b),
+            "valor",
+          ),
+        )}`,
+      ],
+      [
+        "Pagadas",
+        `${paid.length} · ${cop(
+          sum(
+            paid.map((x) => x.b),
+            "valor",
+          ),
+        )}`,
+      ],
+    ]);
+    $("#content").innerHTML =
+      `<section class="card"><h2>Bonificaciones del periodo</h2><p class="muted">La fecha corresponde a la venta. Esta vista muestra únicamente bonificaciones de operaciones gestionadas en KORA dentro del periodo seleccionado; los bonos históricos ya pagados permanecen conservados para auditoría y no se repiten aquí.</p>${table(["Fecha de venta", "Beneficiario", "Tipo", "Plataforma", "Concepto", "Valor", "Estado"], rows(items, [(x) => esc(x.day), (x) => esc(x.beneficiary?.nombre), (x) => esc(x.beneficiary?.tipo), (x) => esc(platformName(x.liquidation?.plataforma)), (x) => esc(x.b.motivo || x.b.tipo_bono), (x) => cop(x.b.valor), (x) => badge(x.b.estado)]))}</section>`;
+  }
+  function populateExpenseForm() {
+    const select = $("#expenseOrigin");
+    if (select)
+      select.innerHTML =
+        option("", "General") +
+        db.origins
+          .filter((x) => x.tipo === "aliado")
+          .sort((a, b) => a.nombre.localeCompare(b.nombre))
+          .map((x) => option(x.codigo, x.nombre))
+          .join("");
+    if ($("#expenseDate"))
+      $("#expenseDate").value = new Date().toISOString().slice(0, 10);
+  }
+  function renderExpenses() {
+    const approved = db.expenses.filter((x) => x.estado === "aprobado"),
+      pending = db.expenses.filter((x) => x.estado === "pendiente");
+    metrics([
+      ["Gastos registrados", db.expenses.length],
+      ["Valor aprobado", cop(sum(approved, "valor"))],
+      ["Pendientes de aprobación", pending.length],
+      ["Valor pendiente", cop(sum(pending, "valor"))],
+    ]);
+    $("#content").innerHTML = table(
+      [
+        "Fecha",
+        "Plataforma",
+        "Establecimiento",
+        "Concepto",
+        "Beneficiario / cuenta",
+        "Valor",
+        "Soporte",
+        "Estado",
+        "Tesorería",
+        "Acción",
+      ],
+      rows(db.expenses, [
+        (x) => date(x.fecha),
+        (x) => esc(platformName(x.plataforma)),
+        (x) => esc(originFor(x.origen_codigo)?.nombre || "General"),
+        (x) => esc(x.concepto),
+        (x) => `${esc(x.beneficiario)}<br><small>${esc(x.cuenta_destino)}</small>`,
+        (x) => cop(x.valor),
+        (x) => (x.soporte_path ? "Adjunto" : "—"),
+        (x) => badge(x.estado),
+        (x) => (x.treasury_movement_id ? badge("pendiente", "Enviado a Tesorería") : "—"),
+        (x) =>
+          x.estado === "pendiente" && profile?.rol === "gerencia"
+            ? `<button class="btn primary" data-expense-approve="${x.id}">Aprobar</button> <button class="btn danger" data-expense-reject="${x.id}">Rechazar</button>`
+            : "—",
+      ]),
+    );
+    document
+      .querySelectorAll("[data-expense-approve]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            decideExpense(b.dataset.expenseApprove, "aprobado")),
+      );
+    document
+      .querySelectorAll("[data-expense-reject]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            decideExpense(b.dataset.expenseReject, "rechazado")),
+      );
+  }
+  async function decideExpense(id, state) {
+    const { error } = await sb.rpc("aliados_decidir_gasto", {
+      p_id: id,
+      p_estado: state,
+    });
+    if (error) return notice(error.message, true);
+    notice(`Gasto ${state}.`);
+    await load();
+  }
+  async function saveExpense(event) {
+    event.preventDefault();
+    const file = $("#expenseSupport").files[0];
+    let path = "";
+    if (file) {
+      if (file.size > 10 * 1024 * 1024)
+        return notice("El soporte supera 10 MB.", true);
+      const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+      path = `aliados/gastos/${crypto.randomUUID()}.${ext}`;
+      const uploaded = await sb.storage
+        .from("soportes")
+        .upload(path, file, { upsert: false });
+      if (uploaded.error)
+        return notice(
+          `No fue posible adjuntar el soporte: ${uploaded.error.message}`,
+          true,
+        );
+    }
+    const { error } = await sb.rpc("aliados_registrar_gasto", {
+      p_fecha: $("#expenseDate").value,
+      p_plataforma: $("#expensePlatform").value,
+      p_origen_codigo: $("#expenseOrigin").value,
+      p_concepto: $("#expenseConcept").value,
+      p_descripcion: $("#expenseDescription").value,
+      p_valor: Number($("#expenseValue").value),
+      p_beneficiario: $("#expenseBeneficiary").value,
+      p_cuenta_destino: $("#expenseAccount").value,
+      p_soporte_path: path,
+    });
+    if (error) return notice(error.message, true);
+    event.target.reset();
+    notice("Gasto registrado. Al aprobarse se enviará a Tesorería para autorizar y soportar el pago.");
+    await load();
+  }
+  function renderReports() {
+    let toolbar = $("#reportToolbar");
+    if (!toolbar) {
+      toolbar = document.querySelector(".toolbar.card");
+      toolbar.id = "reportToolbar";
+      const platforms = [
+          ...new Set(db.liquidations.map((x) => x.plataforma).filter(Boolean)),
+        ].sort(),
+        executives = db.executives
+          .filter((x) => x.activo)
+          .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        states = [
+          ...new Set(db.payments.map((x) => x.estado).filter(Boolean)),
+        ].sort();
+      toolbar.innerHTML = `<label>Fecha de venta desde<input id="reportFrom" class="control" type="date"></label><label>Fecha de venta hasta<input id="reportTo" class="control" type="date"></label><label>Plataforma<select id="reportPlatform" class="control">${option("", "Todas las plataformas")}${platforms.map((x) => option(x, platformName(x))).join("")}</select></label><label>Ejecutivo<select id="reportExecutive" class="control">${option("", "Todos los ejecutivos")}${executives.map((x) => option(x.id, x.nombre)).join("")}</select></label><label>Estado de pago<select id="reportPaymentState" class="control">${option("", "Todos los estados")}${states.map((x) => option(x, String(x).replaceAll("_", " "))).join("")}</select></label><button id="reportCurrentMonth" class="btn secondary" type="button">Mes vigente</button>`;
+      const range = bogotaDateParts();
+      $("#reportFrom").value = range.monthStart;
+      $("#reportTo").value = range.today;
+      [
+        "reportFrom",
+        "reportTo",
+        "reportPlatform",
+        "reportExecutive",
+        "reportPaymentState",
+      ].forEach((id) => $("#" + id).addEventListener("change", renderReports));
+      $("#reportCurrentMonth").addEventListener("click", () => {
+        const current = bogotaDateParts();
+        $("#reportFrom").value = current.monthStart;
+        $("#reportTo").value = current.today;
+        renderReports();
+      });
+    }
+    const from = $("#reportFrom").value,
+      to = $("#reportTo").value,
+      platform = $("#reportPlatform").value,
+      executive = $("#reportExecutive").value,
+      paymentState = $("#reportPaymentState").value;
+    const periodOps = db.operations.filter((o) => {
+      const day = operationSaleDay(o);
+      return (
+        operationIsCurrent(o) &&
+        (!from || day >= from) &&
+        (!to || day <= to) &&
+        (!platform || o.plataforma === platform) &&
+        (!executive || o.ejecutivo_id === executive)
+      );
+    });
+    const liquidationIds = new Set(periodOps.map((o) => o.liquidation_id)),
+      includedLiquidations = db.liquidations.filter(
+        (l) =>
+          liquidationIds.has(l.id) &&
+          (!paymentState ||
+            db.payments.some(
+              (p) => p.liquidation_id === l.id && p.estado === paymentState,
+            )),
+      ),
+      includedIds = new Set(includedLiquidations.map((l) => l.id)),
+      ops = periodOps.filter((o) => includedIds.has(o.liquidation_id)),
+      ownOps = ops.filter((o) => businessType(o) === "propia"),
+      allyOps = ops.filter((o) => businessType(o) === "aliado");
+    const bonuses = db.bonuses.filter(
+        (b) =>
+          includedIds.has(b.liquidation_id) &&
+          (!executive ||
+            db.beneficiaries.find((x) => x.id === b.beneficiary_id)
+              ?.ejecutivo_id === executive),
+      ),
+      expenses = db.expenses.filter((x) => {
+        const day = date(x.fecha),
+          origin = originFor(x.origen_codigo);
+        return (
+          x.estado === "aprobado" &&
+          day >= OPERATION_CUTOFF &&
+          (!from || day >= from) &&
+          (!to || day <= to) &&
+          (!platform || x.plataforma === platform) &&
+          (!executive || origin?.ejecutivo_id === executive)
+        );
+      }),
+      expenseTotal = sum(expenses, "valor"),
+      ownUtility = ownOps.reduce((n, x) => n + operationUtilityAvailable(x), 0),
+      allyUtility = allyOps.reduce(
+        (n, x) => n + operationUtilityAvailable(x),
+        0,
+      ),
+      grossUtility = ownUtility + allyUtility,
+      netUtility = grossUtility - expenseTotal;
+    metrics([
+      [`Operaciones del negocio · ${from} a ${to}`, ops.length],
+      [`Ventas procesadas · ${from} a ${to}`, cop(sum(ops, "monto_base"))],
+      [
+        "Pagos a aliados",
+        cop(allyOps.reduce((n, x) => n + paymentValue(x), 0)),
+      ],
+      ["Bonificaciones", cop(sum(bonuses, "valor"))],
+      ["Utilidad originada en tiendas propias", cop(ownUtility)],
+      ["Utilidad originada en aliados", cop(allyUtility)],
+      ["Gastos aprobados", cop(expenseTotal)],
+      ["Utilidad neta disponible", cop(netUtility)],
+    ]);
+    const reportRows = includedLiquidations
+      .map((l) => {
+        const liquidationOps = ops.filter((o) => o.liquidation_id === l.id),
+          own = liquidationOps.filter((o) => businessType(o) === "propia"),
+          allies = liquidationOps.filter((o) => businessType(o) === "aliado"),
+          payments = db.payments.filter((p) => p.liquidation_id === l.id);
+        return { l, ops: liquidationOps, own, allies, payments };
+      })
+      .sort((a, b) =>
+        date(b.l.periodo_hasta).localeCompare(date(a.l.periodo_hasta)),
+      );
+    $("#content").innerHTML =
+      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas corresponden exclusivamente al periodo seleccionado. La utilidad de este negocio incluye los créditos procesados en tiendas propias y en aliados. “Tienda propia” indica únicamente el origen de la venta; no depende del costo ni de la utilidad Retail. Los gastos aprobados se descuentan una sola vez en la utilidad neta disponible. El histórico cerrado se conserva en auditoría y no se suma.</p></div>${table(["Periodo de ventas", "Plataforma", "Operaciones totales", "Ventas procesadas", "Utilidad de tiendas propias", "Utilidad de aliados", "Utilidad total del negocio", "Pago a aliados", "Estado de pago"], rows(reportRows, [(x) => `${date(x.l.periodo_desde)} — ${date(x.l.periodo_hasta)}`, (x) => esc(platformName(x.l.plataforma)), (x) => x.ops.length, (x) => cop(sum(x.ops, "monto_base")), (x) => cop(x.own.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.allies.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.ops.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.allies.reduce((n, o) => n + paymentValue(o), 0)), (x) => (x.payments.length ? esc([...new Set(x.payments.map((p) => String(p.estado).replaceAll("_", " ")))].join(", ")) : "Sin pago a terceros")]))}`;
+  }
+  function render() {
+    (
+      ({
+        dashboard: renderDashboard,
+        allies: renderAllies,
+        executives: renderExecutiveCards,
+        platforms: renderPlatformCards,
+        budget: renderBudget,
+        quality: renderQuality,
+        bonuses: renderBonuses,
+        expenses: renderExpenses,
+        reports: renderReports,
+      })[view] || renderDashboard
+    )();
+  }
+  function notice(message, error = false) {
+    const n = $("#notice");
+    n.textContent = message;
+    n.className = `notice${error ? " error" : ""}`;
+    n.classList.remove("hidden");
+    setTimeout(() => n.classList.add("hidden"), 5000);
+  }
+  async function init() {
+    if (!window.creditekSidebar?.sb) return;
+    sb = window.creditekSidebar.sb;
+    profile = window.creditekSidebar.perfil;
+    if (!profile?.es_operador_aliados && profile?.rol !== "gerencia") {
+      $("#accessDenied").classList.remove("hidden");
+      return;
+    }
+    $("#pageContent").classList.remove("hidden");
+    try {
+      await load();
+    } catch (e) {
+      console.error("Aliados V1.1 no pudo cargar", e);
+      notice("No fue posible cargar Creditek Aliados. Intenta de nuevo.", true);
+    }
+  }
+  document.addEventListener("kora-sidebar-ready", init, { once: true });
+  if (window.creditekSidebar?.sb) init();
+  $("#q")?.addEventListener("input", () => view === "allies" && renderAllies());
+  $("#state")?.addEventListener(
+    "change",
+    () => view === "allies" && renderAllies(),
+  );
+  $("#modalClose")?.addEventListener("click", () =>
+    $("#modal").classList.remove("show"),
+  );
+  $("#expenseForm")?.addEventListener("submit", saveExpense);
+  [
+    "dashboardFrom",
+    "dashboardTo",
+    "dashboardBusiness",
+    "dashboardPlatform",
+    "dashboardExecutive",
+    "dashboardEstablishment",
+    "dashboardCity",
+  ].forEach((id) => $("#" + id)?.addEventListener("change", renderDashboard));
+  $("#dashboardClear")?.addEventListener("click", () => {
+    [
+      "dashboardFrom",
+      "dashboardTo",
+      "dashboardBusiness",
+      "dashboardPlatform",
+      "dashboardExecutive",
+      "dashboardEstablishment",
+      "dashboardCity",
+    ].forEach((id) => {
+      $("#" + id).value = "";
+    });
+    renderDashboard();
+  });
 })();

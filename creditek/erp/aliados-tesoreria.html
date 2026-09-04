@@ -1,40 +1,503 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KORA · Tesorería</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="aliados-v1-1.css"><link rel="stylesheet" href="/design-system/components/kora-product.css">
-<style>.treasury-grid{display:grid;grid-template-columns:1fr;gap:18px}.treasury-grid .card{min-width:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-head h2{margin:0}.section-copy{margin:4px 0 0;color:#64748b;font-size:13px}.filters{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px}.movement-form{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px}.movement-form label{display:grid;gap:6px;font-size:13px;font-weight:700}.span-2{grid-column:span 2}.actions{display:flex;gap:8px;flex-wrap:wrap}.account{font-variant-numeric:tabular-nums}.loading{opacity:.65;pointer-events:none}.filters input,.filters select,.movement-form input,.movement-form select,.btn{min-height:44px;border-radius:12px}.btn{transition:transform 120ms ease}.btn:active:not(:disabled){transform:scale(.985)}.payment-list{display:grid;gap:12px}.payment-card{border:1px solid #dce5ee;border-radius:14px;padding:16px;background:#fff}.payment-card__top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.payment-card__title{font-size:16px;font-weight:800;color:#0b1e3d}.payment-card__ref{font-size:12px;color:#64748b;margin-top:3px}.payment-card__grid{display:grid;grid-template-columns:1.15fr .8fr .8fr 1.2fr;gap:14px;margin-top:14px}.payment-field{min-width:0}.payment-field small{display:block;color:#64748b;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}.payment-field strong{display:block;color:#0b1e3d;font-size:14px;overflow-wrap:anywhere}.payment-card__actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid #edf1f5}.approval-ok{color:#177245;font-size:12px;font-weight:700}.approval-pending{color:#9a5b00;font-size:12px;font-weight:700}.payment-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.payment-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}.payment-detail-grid div{padding:12px;border:1px solid #dce5ee;border-radius:12px}.payment-detail-grid small{display:block;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:5px}.payment-detail-grid strong{display:block;overflow-wrap:anywhere}.payment-detail-grid .wide{grid-column:1/-1}html.kora-payment-modal-open,body.kora-payment-modal-open{overflow:hidden!important}body>.modal{position:fixed!important;inset:0!important;z-index:2147483000!important;overflow:hidden;overscroll-behavior:contain}body>.modal.show{display:grid!important}body>.modal>.modal-box{position:relative;z-index:1;max-height:min(90dvh,900px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 24px 80px rgba(11,30,61,.35)}@media(max-width:980px){.filters,.movement-form{grid-template-columns:1fr 1fr}.payment-card__grid{grid-template-columns:1fr 1fr}}@media(max-width:620px){.filters,.movement-form,.payment-card__grid,.payment-detail-grid{grid-template-columns:1fr}.span-2,.payment-detail-grid .wide{grid-column:auto}.table-wrap{overflow:auto}.head,.payment-card__top,.payment-card__actions{align-items:flex-start;flex-direction:column}.payment-actions{justify-content:flex-start;width:100%}.payment-actions .btn{width:100%}}</style>
-<style>.selection-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin-bottom:12px;border:1px solid #cfe6e8;border-radius:12px;background:#f2fcfc}.selection-bar strong{color:#0b1e3d}.selection-bar input{width:18px;height:18px;accent-color:#00c4cc}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/config/kora-environment.generated.js"></script>
-<script src="kora-access-control.js?v=2.0.18"></script><script src="sidebar.js?v=2.0.18" data-kora-shell="1.0.0"></script><script src="/design-system/components/kora-product.js" defer></script>
-</head><body data-kora-requires-auth="true"><div id="app"><div id="accessDenied" class="denied hidden"><div><h2>Acceso denegado</h2><p>No tienes permiso para consultar Tesorería.</p></div></div>
-<main id="pageContent" class="main-content hidden"><div class="page"><header class="head"><div><h1>Tesorería</h1><div class="subtitle">Pagos, compensaciones y disponibilidad de Tercerización y B2B.</div></div><div class="actions"><button id="paymentReport" class="btn primary">Generar orden de pagos</button><button id="refresh" class="btn secondary">Actualizar</button></div></header>
-<div id="notice" class="notice hidden"></div><section class="card"><div class="actions"><button id="showOperational" class="btn secondary active">Pagos por gestionar</button><button id="showHistory" class="btn secondary">Consultar historial</button></div></section><section class="toolbar card filters"><select id="platform"><option value="">Todas las plataformas</option><option value="payjoy">PayJoy</option><option value="alo">ALO Credit</option></select><input id="cutoff" type="date" aria-label="Fecha de corte"><select id="status"><option value="">Todos los estados</option><option>pendiente</option><option>programado</option><option>pagado</option><option>conciliado</option></select><input id="search" placeholder="Beneficiario, tienda o concepto"></section>
-<section id="metrics" class="metrics"></section>
-<div class="treasury-grid">
-<section class="card"><div class="section-head"><div><h2>Pagos a Aliados</h2><p class="section-copy">Cada tarjeta muestra beneficiario, valor, cuenta, estado y autorización.</p></div><span id="allyCount" class="badge">0</span></div><div id="allyPayments"></div></section>
-<section class="card"><div class="section-head"><div><h2>Pagos a Ejecutivos</h2><p class="section-copy">Bonificaciones agrupadas por beneficiario y periodo.</p></div><span id="executiveCount" class="badge">0</span></div><div id="executivePayments"></div></section>
-<section class="card"><div class="section-head"><div><h2>Abonos automáticos a cartera de tiendas</h2><p class="section-copy">Cada compensación ya redujo la cartera de la tienda al aprobar la liquidación. Selecciona una para consultar su asiento.</p></div><span id="compensationCount" class="badge">0</span></div><div class="selection-bar"><strong id="compensationSelection">Ninguna compensación seleccionada</strong><button id="openStoreLedger" class="btn secondary" disabled>Ver en cartera</button></div><div id="compensations"></div></section>
-<section class="card"><div class="section-head"><div><h2>Utilidad del negocio por créditos de tiendas propias</h2><p class="section-copy">Resultado de Tercerización generado por cada crédito procesado. No es un pago pendiente ni un movimiento de cartera.</p></div><span id="retailCommissionCount" class="badge">0</span></div><div id="retailCommissions"></div></section>
-</div></div></main></div>
-<div id="paymentDetailModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="paymentDetailTitle">
-  <div class="modal-box" style="max-width:720px">
-    <div class="section-head"><div><h2 id="paymentDetailTitle">Detalle completo del pago</h2><p class="muted">Información bancaria, autorización y trazabilidad.</p></div><button type="button" id="closePaymentDetail" class="btn secondary">Cerrar</button></div>
-    <div id="paymentDetailBody"></div>
-  </div>
-</div>
-<div id="paymentSupportModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="paymentSupportTitle">
-  <div class="modal-box" style="max-width:560px">
-    <div class="section-head"><div><h2 id="paymentSupportTitle">Registrar soporte de pago</h2><p class="muted" id="paymentSupportSummary">Selecciona el comprobante del pago.</p></div><button type="button" id="closePaymentSupport" class="btn secondary">Cerrar</button></div>
-    <form id="paymentSupportForm">
-      <label style="display:grid;gap:8px;font-size:13px;font-weight:700">Comprobante del pago <span class="muted">Imagen o PDF · máximo 10 MB</span>
-        <input id="paymentSupportFile" name="support" type="file" required accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" style="width:100%;min-height:48px;border:1px solid #d8e2ea;border-radius:12px;padding:10px;background:#fff">
-      </label>
-      <div id="paymentSupportSelected" class="notice hidden" style="margin-top:12px"></div>
-      <div id="paymentSupportError" class="notice error hidden" style="margin-top:12px"></div>
-      <div class="actions" style="justify-content:flex-end;margin-top:18px"><button type="submit" id="savePaymentSupport" class="btn primary">Subir soporte y registrar pago</button></div>
-    </form>
-  </div>
-</div>
-<style>.payment-card__holder{font-size:13px;font-weight:600;color:#64748b}.payment-card__orders{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.payment-card__orders span{padding:6px 9px;border-radius:9px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:700}</style>
-<script src="aliados-tesoreria-domain.js?v=1.1.0"></script><script src="aliados-tesoreria-app.js?v=1.2.0"></script></body></html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>KORA · Tesorería</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="aliados-v1-1.css" />
+    <link rel="stylesheet" href="/design-system/components/kora-product.css" />
+    <style>
+      .treasury-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .treasury-grid .card {
+        min-width: 0;
+      }
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .section-head h2 {
+        margin: 0;
+      }
+      .section-copy {
+        margin: 4px 0 0;
+        color: #64748b;
+        font-size: 13px;
+      }
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
+        gap: 10px;
+      }
+      .movement-form {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+        gap: 12px;
+      }
+      .movement-form label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .span-2 {
+        grid-column: span 2;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .account {
+        font-variant-numeric: tabular-nums;
+      }
+      .loading {
+        opacity: 0.65;
+        pointer-events: none;
+      }
+      .filters input,
+      .filters select,
+      .movement-form input,
+      .movement-form select,
+      .btn {
+        min-height: 44px;
+        border-radius: 12px;
+      }
+      .btn {
+        transition: transform 120ms ease;
+      }
+      .btn:active:not(:disabled) {
+        transform: scale(0.985);
+      }
+      .payment-list {
+        display: grid;
+        gap: 12px;
+      }
+      .payment-card {
+        border: 1px solid #dce5ee;
+        border-radius: 14px;
+        padding: 16px;
+        background: #fff;
+      }
+      .payment-card__top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .payment-card__title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #0b1e3d;
+      }
+      .payment-card__ref {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 3px;
+      }
+      .payment-card__grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.8fr 0.8fr 1.2fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+      .payment-field {
+        min-width: 0;
+      }
+      .payment-field small {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .payment-field strong {
+        display: block;
+        color: #0b1e3d;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+      .payment-card__actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #edf1f5;
+      }
+      .approval-ok {
+        color: #177245;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .approval-pending {
+        color: #9a5b00;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .payment-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .payment-detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 18px 0;
+      }
+      .payment-detail-grid div {
+        padding: 12px;
+        border: 1px solid #dce5ee;
+        border-radius: 12px;
+      }
+      .payment-detail-grid small {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+      }
+      .payment-detail-grid strong {
+        display: block;
+        overflow-wrap: anywhere;
+      }
+      .payment-detail-grid .wide {
+        grid-column: 1/-1;
+      }
+      html.kora-payment-modal-open,
+      body.kora-payment-modal-open {
+        overflow: hidden !important;
+      }
+      body > .modal {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483000 !important;
+        overflow: hidden;
+        overscroll-behavior: contain;
+      }
+      body > .modal.show {
+        display: grid !important;
+      }
+      body > .modal > .modal-box {
+        position: relative;
+        z-index: 1;
+        max-height: min(90dvh, 900px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-shadow: 0 24px 80px rgba(11, 30, 61, 0.35);
+      }
+      @media (max-width: 980px) {
+        .filters,
+        .movement-form {
+          grid-template-columns: 1fr 1fr;
+        }
+        .payment-card__grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 620px) {
+        .filters,
+        .movement-form,
+        .payment-card__grid,
+        .payment-detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .span-2,
+        .payment-detail-grid .wide {
+          grid-column: auto;
+        }
+        .table-wrap {
+          overflow: auto;
+        }
+        .head,
+        .payment-card__top,
+        .payment-card__actions {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .payment-actions {
+          justify-content: flex-start;
+          width: 100%;
+        }
+        .payment-actions .btn {
+          width: 100%;
+        }
+      }
+    </style>
+    <style>
+      .selection-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        border: 1px solid #cfe6e8;
+        border-radius: 12px;
+        background: #f2fcfc;
+      }
+      .selection-bar strong {
+        color: #0b1e3d;
+      }
+      .selection-bar input {
+        width: 18px;
+        height: 18px;
+        accent-color: #00c4cc;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config/kora-environment.generated.js"></script>
+    <script src="kora-access-control.js?v=2.0.18"></script>
+    <script src="sidebar.js?v=2.0.18" data-kora-shell="1.0.0"></script>
+    <script src="/design-system/components/kora-product.js" defer></script>
+  </head>
+  <body data-kora-requires-auth="true">
+    <div id="app">
+      <div id="accessDenied" class="denied hidden">
+        <div>
+          <h2>Acceso denegado</h2>
+          <p>No tienes permiso para consultar Tesorería.</p>
+        </div>
+      </div>
+      <main id="pageContent" class="main-content hidden">
+        <div class="page">
+          <header class="head">
+            <div>
+              <h1>Tesorería</h1>
+              <div class="subtitle">
+                Pagos, compensaciones y disponibilidad de Tercerización y B2B.
+              </div>
+            </div>
+            <div class="actions">
+              <button id="paymentReport" class="btn primary">
+                Generar orden de pagos</button
+              ><button id="refresh" class="btn secondary">Actualizar</button>
+            </div>
+          </header>
+          <div id="notice" class="notice hidden"></div>
+          <section class="card">
+            <div class="actions">
+              <button id="showOperational" class="btn secondary active">
+                Pagos por gestionar</button
+              ><button id="showHistory" class="btn secondary">
+                Consultar historial
+              </button>
+            </div>
+          </section>
+          <section class="toolbar card filters">
+            <select id="platform">
+              <option value="">Todas las plataformas</option>
+              <option value="payjoy">PayJoy</option>
+              <option value="alo">ALO Credit</option></select
+            ><input
+              id="cutoff"
+              type="date"
+              aria-label="Fecha de corte"
+            /><select id="status">
+              <option value="">Todos los estados</option>
+              <option>pendiente</option>
+              <option>programado</option>
+              <option>pagado</option>
+              <option>conciliado</option></select
+            ><input id="search" placeholder="Beneficiario, tienda o concepto" />
+          </section>
+          <section id="metrics" class="metrics"></section>
+          <div class="treasury-grid">
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Pagos a Aliados</h2>
+                  <p class="section-copy">
+                    Cada tarjeta muestra beneficiario, valor, cuenta, estado y
+                    autorización.
+                  </p>
+                </div>
+                <span id="allyCount" class="badge">0</span>
+              </div>
+              <div id="allyPayments"></div>
+            </section>
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2>Pagos a Ejecutivos</h2>
+                  <p class="section-copy">
+                    Bonificaciones agrupadas por beneficiario y periodo.
+                  </p>
+                </div>
+                <span id="executiveCount" class="badge">0</span>
+              </div>
+          <div id="executivePayments"></div>
+        </section>
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h2>Gastos aprobados por pagar</h2>
+              <p class="section-copy">Ya afectaron la utilidad. Aquí se autoriza el desembolso, se adjunta su comprobante y se descuenta el efectivo.</p>
+            </div>
+            <span id="expenseCount" class="badge">0</span>
+          </div>
+          <div id="expensePayments"></div>
+        </section>
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Abonos automáticos a cartera de tiendas</h2>
+                  <p class="section-copy">
+                    Cada compensación ya redujo la cartera de la tienda al
+                    aprobar la liquidación. Selecciona una para consultar su
+                    asiento.
+                  </p>
+                </div>
+                <span id="compensationCount" class="badge">0</span>
+              </div>
+              <div class="selection-bar">
+                <strong id="compensationSelection"
+                  >Ninguna compensación seleccionada</strong
+                ><button id="openStoreLedger" class="btn secondary" disabled>
+                  Ver en cartera
+                </button>
+              </div>
+              <div id="compensations"></div>
+            </section>
+            <section class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Utilidad del negocio por créditos de tiendas propias</h2>
+                  <p class="section-copy">
+                    Resultado de Tercerización generado por cada crédito
+                    procesado. No es un pago pendiente ni un movimiento de
+                    cartera.
+                  </p>
+                </div>
+                <span id="retailCommissionCount" class="badge">0</span>
+              </div>
+              <div id="retailCommissions"></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div
+      id="paymentDetailModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paymentDetailTitle"
+    >
+      <div class="modal-box" style="max-width: 720px">
+        <div class="section-head">
+          <div>
+            <h2 id="paymentDetailTitle">Detalle completo del pago</h2>
+            <p class="muted">
+              Información bancaria, autorización y trazabilidad.
+            </p>
+          </div>
+          <button type="button" id="closePaymentDetail" class="btn secondary">
+            Cerrar
+          </button>
+        </div>
+        <div id="paymentDetailBody"></div>
+      </div>
+    </div>
+    <div
+      id="paymentSupportModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paymentSupportTitle"
+    >
+      <div class="modal-box" style="max-width: 560px">
+        <div class="section-head">
+          <div>
+            <h2 id="paymentSupportTitle">Registrar soporte de pago</h2>
+            <p class="muted" id="paymentSupportSummary">
+              Selecciona el comprobante del pago.
+            </p>
+          </div>
+          <button type="button" id="closePaymentSupport" class="btn secondary">
+            Cerrar
+          </button>
+        </div>
+        <form id="paymentSupportForm">
+          <label
+            style="display: grid; gap: 8px; font-size: 13px; font-weight: 700"
+            >Comprobante del pago
+            <span class="muted">Imagen o PDF · máximo 10 MB</span>
+            <input
+              id="paymentSupportFile"
+              name="support"
+              type="file"
+              required
+              accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+              style="
+                width: 100%;
+                min-height: 48px;
+                border: 1px solid #d8e2ea;
+                border-radius: 12px;
+                padding: 10px;
+                background: #fff;
+              "
+            />
+          </label>
+          <div
+            id="paymentSupportSelected"
+            class="notice hidden"
+            style="margin-top: 12px"
+          ></div>
+          <div
+            id="paymentSupportError"
+            class="notice error hidden"
+            style="margin-top: 12px"
+          ></div>
+          <div
+            class="actions"
+            style="justify-content: flex-end; margin-top: 18px"
+          >
+            <button type="submit" id="savePaymentSupport" class="btn primary">
+              Subir soporte y registrar pago
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <style>
+      .payment-card__holder {
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+      }
+      .payment-card__orders {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .payment-card__orders span {
+        padding: 6px 9px;
+        border-radius: 9px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+    </style>
+    <script src="aliados-tesoreria-domain.js?v=1.1.0"></script>
+    <script src="aliados-tesoreria-app.js?v=1.2.1"></script>
+  </body>
+</html>

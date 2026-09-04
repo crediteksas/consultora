@@ -33,14 +33,14 @@ test('el informe operativo no suma el histórico cerrado', () => {
 });
 
 test('el inicio operativo incluye todas las ventas desde el 1 de septiembre', () => {
-  assert.match(app, /const OPERATION_CUTOFF='2026-09-01'/);
-  assert.doesNotMatch(app, /const OPERATION_CUTOFF='2026-09-02'/);
+  assert.match(app, /const OPERATION_CUTOFF\s*=\s*["']2026-09-01["']/);
+  assert.doesNotMatch(app, /const OPERATION_CUTOFF\s*=\s*["']2026-09-02["']/);
 });
 
 test('la utilidad del negocio incluye operaciones originadas en tiendas propias y aliados', () => {
-  assert.match(render, /ownOps=ops\.filter\(o=>businessType\(o\)==='propia'\)/);
-  assert.match(render, /allyOps=ops\.filter\(o=>businessType\(o\)==='aliado'\)/);
-  assert.match(render, /grossUtility=ownUtility\+allyUtility/);
+  assert.match(render, /ownOps\s*=\s*ops\.filter\(\s*\(o\)\s*=>\s*businessType\(o\)\s*===\s*["']propia["']\s*\)/);
+  assert.match(render, /allyOps\s*=\s*ops\.filter\(\s*\(o\)\s*=>\s*businessType\(o\)\s*===\s*["']aliado["']\s*\)/);
+  assert.match(render, /grossUtility\s*=\s*ownUtility\s*\+\s*allyUtility/);
   assert.match(render, /Utilidad originada en tiendas propias/);
   assert.match(render, /Utilidad originada en aliados/);
   assert.match(render, /Utilidad neta disponible/);

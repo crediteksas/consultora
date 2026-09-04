@@ -1,133 +1,1005 @@
-(function(){
-'use strict';
-const $=s=>document.querySelector(s),esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cop=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v)||0),date=v=>v?String(v).slice(0,10):'—';
-const shortId=v=>String(v||'').split('-')[0].toUpperCase()||'—';
-const platformName=v=>v==='alo'?'ALO Credit':v==='payjoy'?'PayJoy':v==='krediya'?'Krediya':String(v||'—');
-const bogotaDateTime=v=>v?new Intl.DateTimeFormat('es-CO',{dateStyle:'short',timeStyle:'short',timeZone:'America/Bogota'}).format(new Date(v)):'—';
-const TYPES={b2b:[['pago_proveedor','Pago a proveedor'],['otra_obligacion_b2b','Otra obligación B2B autorizada']],tercerizacion:[['gasto_administrativo','Gasto administrativo'],['gasto_financiero','Gasto financiero'],['impuesto','Impuesto'],['retiro_socios','Retiro de socios'],['otro_movimiento_autorizado','Otro movimiento autorizado']]};
-let sb,profile,data={},initialized=false,pendingPaymentIds=[],selectedCompensationId=null,treasuryView='operational';
-const canAuthorize=()=>profile?.rol==='gerencia'&&profile?.activo!==false;
-function notice(message,error=false){const n=$('#notice');n.textContent=message;n.className=`notice${error?' error':''}`;n.classList.remove('hidden');setTimeout(()=>n.classList.add('hidden'),5000)}
-function badge(v,label){return `<span class="badge ${esc(v)}">${esc(label||String(v||'—').replaceAll('_',' '))}</span>`}
-function table(head,rows){return `<div class="table-wrap"><table><thead><tr>${head.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.join(''):'<tr><td colspan="12"><div class="empty">No hay información para los filtros seleccionados.</div></td></tr>'}</tbody></table></div>`}
-function mask(snapshot){const value=snapshot?.account_number||'';return value?`${esc(snapshot.bank||'Cuenta')} · •••• ${esc(value.slice(-4))}`:'Cuenta pendiente de validar'}
-function storeName(code){return data.origins?.find(origin=>origin.codigo===code)?.nombre||code||'—'}
-function paymentBusinessName(p){return p.payment_kind==='aliado'?storeName(p.origin_code):null}
-function commissionCompensation(movement){const operationId=String(movement.idempotency_key||'').replace('commission-operation:','');return data.compensations?.find(item=>item.operation_id===operationId)}
-function missingPaymentData(p){const missing=[];if(!p.beneficiary_name||p.beneficiary_name==='Sin nombre')missing.push('titular');if(!p.beneficiary_identification||p.beneficiary_identification==='—')missing.push('identificación');if(!p.bank_snapshot?.bank)missing.push('banco');if(!p.bank_snapshot?.account_type)missing.push('tipo de cuenta');if(!p.bank_snapshot?.account_number)missing.push('número de cuenta');return missing}
-function normalizePayment(p){
- const b=p.liquidation_beneficiaries||data.beneficiaries?.find(x=>x.id===p.beneficiary_id)||{},bank=p.beneficiary_bank_accounts||{},liquidation=p.liquidations||{},items=p.payment_items||[];
- const operations=new Set(items.map(x=>x.operation_id).filter(Boolean));
- return {...p,
-  payment_kind:p.payment_kind||(b.tipo==='ejecutivo'?'ejecutivo':'aliado'),
-  platform_snapshot:p.platform_snapshot||liquidation.plataforma||null,
-  cutoff_snapshot:p.cutoff_snapshot||liquidation.fecha_corte||null,
-  operations_count:Number(p.operations_count||operations.size),
-  concept:p.concept||items.map(x=>x.concepto).filter(Boolean).join(', ')||'Liquidación aprobada',
-  bank_snapshot:p.bank_snapshot||(bank.numero_cuenta?{bank:bank.banco,account_type:bank.tipo_cuenta,account_number:bank.numero_cuenta,holder:b.nombre,holder_identification:b.identificacion}:null),
-  beneficiary_name:b.nombre||'Sin nombre',beneficiary_identification:b.identificacion||'—',origin_code:b.origen_codigo||null
- };
-}
-async function safe(query,required=false){const {data,error}=await query;if(error){if(required)throw error;return[]}return data||[]}
-async function load(){
- const [balances,destinations,payments,beneficiaries,compensations,movements,suppliers,invoices,profiles,origins]=await Promise.all([
-  safe(sb.from('treasury_unit_balances').select('*'),true),safe(sb.from('liquidation_treasury_destinations').select('*')),safe(sb.from('payment_orders').select('*,liquidation_beneficiaries(id,nombre,identificacion,tipo,origen_codigo),beneficiary_bank_accounts(id,banco,tipo_cuenta,numero_cuenta,validada),liquidations(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by),payment_items(operation_id,concepto,valor)').order('created_at',{ascending:false})),safe(sb.from('liquidation_beneficiaries').select('id,nombre,identificacion,tipo')),safe(sb.from('retail_b2b_compensations').select('*').order('created_at',{ascending:false})),safe(sb.from('treasury_movements').select('*').order('created_at',{ascending:false})),safe(sb.from('proveedores').select('id,nombre').eq('activo',true)),safe(sb.from('facturas_proveedor').select('id,proveedor_id,numero,saldo').gt('saldo',0)),safe(sb.from('perfiles').select('id,nombre')),safe(sb.from('origenes').select('codigo,nombre').eq('activo',true))
- ]);data={balances,destinations,payments:[],beneficiaries,compensations,movements,suppliers,invoices,profiles,origins};
- data.payments=payments.map(normalizePayment);render();fillSuppliers();
-}
-function filtered(items){const platform=$('#platform').value,cutoff=$('#cutoff').value,status=$('#status').value,q=$('#search').value.trim().toLowerCase();return items.filter(x=>(!platform||x.platform_snapshot===platform||x.platform===platform)&&(!cutoff||x.cutoff_snapshot===cutoff||x.cutoff_date===cutoff)&&(!status||x.status===status||x.estado===status)&&(!q||JSON.stringify([x.concept,x.concepto,x.beneficiary,x.store_code,data.beneficiaries.find(b=>b.id===x.beneficiary_id)?.nombre]).toLowerCase().includes(q)))}
-function approverName(p){return data.profiles?.find(x=>x.id===p.authorized_by)?.nombre||'Oscar Pacheco'}
-function paymentAction(p,missing){
- if(p.historico_inicial)return '';
- if(missing.length)return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
- if(!p.liquidations?.frozen_at)return '<span class="approval-pending">Primero: Mayte revisa y Oscar aprueba la liquidación</span>';
- if((p.estado==='pendiente'||(p.estado==='programado'&&!p.authorized_by))&&canAuthorize())return `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`;
- if(p.estado==='programado'&&!p.authorized_by)return '<span class="approval-pending">Esperando autorización de Oscar</span>';
- if(p.estado==='programado'&&p.authorized_by)return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte y registrar</button>`;
- if(p.estado==='pagado'&&canAuthorize())return `<button class="btn secondary" data-payment="${p.id}" data-next="conciliado">Conciliar</button>`;
- return '';
-}
-function isClosedPayment(p){return Boolean(p.historico_inicial)||p.estado==='conciliado'}
-function paymentsForCurrentView(){return data.payments.filter(p=>treasuryView==='history'?isClosedPayment(p):!isClosedPayment(p))}
-function paymentGroups(kind){
- const groups=new Map();
- for(const payment of filtered(paymentsForCurrentView().filter(x=>x.payment_kind===kind))){
-  const canGroup=!payment.historico_inicial&&['pendiente','programado'].includes(payment.estado);
-  const key=canGroup?[payment.beneficiary_id,payment.bank_snapshot?.account_number||'sin-cuenta',payment.estado,payment.authorized_by?'autorizado':'sin-autorizar'].join('|'):payment.id;
-  if(!groups.has(key))groups.set(key,[]);
-  groups.get(key).push(payment);
- }
- return [...groups.values()];
-}
-function paymentCards(kind){
- const groups=paymentGroups(kind);
- if(!groups.length)return '<div class="empty">No hay información para los filtros seleccionados.</div>';
- return `<div class="payment-list">${groups.map(group=>{const p=group[0],ids=group.map(x=>x.id).join(','),missing=[...new Set(group.flatMap(missingPaymentData))],authorized=group.every(x=>x.authorized_by&&x.authorized_at),total=group.reduce((n,x)=>n+Number(x.valor),0),operations=group.reduce((n,x)=>n+Number(x.operations_count),0),business=paymentBusinessName(p),action=group.length>1&&p.estado==='programado'&&authorized?`<button class="btn primary" data-payment-group="${ids}">Adjuntar soporte y registrar</button>`:paymentAction(p,missing);return `<article class="payment-card">
-  <div class="payment-card__top"><div><div class="payment-card__title">${business?`${esc(business)} <span class="payment-card__holder">· Titular: ${esc(p.beneficiary_name)}</span>`:esc(p.beneficiary_name)}</div><div class="payment-card__ref">${group.length>1?`${group.length} órdenes consolidadas`:`Orden PO-${shortId(p.id)}`} · ${esc([...new Set(group.map(x=>platformName(x.platform_snapshot)))].join(', '))}</div></div>${p.historico_inicial?badge('pagado','Histórico pagado'):badge(p.estado)}</div>
-  <div class="payment-card__grid"><div class="payment-field"><small>${kind==='ejecutivo'?'Bonificación total':'Valor total a girar'}</small><strong>${cop(total)}</strong></div><div class="payment-field"><small>${kind==='ejecutivo'?'Periodos':'Cortes'}</small><strong>${esc([...new Set(group.map(x=>date(x.cutoff_snapshot)))].join(', '))}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${operations}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length?`<span class="approval-pending">Falta: ${esc(missing.join(', '))}</span>`:''}</div></div>
-  ${group.length>1?`<div class="payment-card__orders">${group.map(x=>`<span>PO-${shortId(x.id)} · ${date(x.cutoff_snapshot)} · ${cop(x.valor)}</span>`).join('')}</div>`:''}
-  <div class="payment-card__actions"><div class="${p.historico_inicial||authorized?'approval-ok':'approval-pending'}">${p.historico_inicial?'Cerrado antes del inicio operativo · no requiere soporte':authorized?`Autorizado por ${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}`:'Sin autorización de Gerencia'}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
- </article>`}).join('')}</div>`;
-}
-function render(){
- const b2b=data.balances.find(x=>x.unit==='b2b')?.balance||0,out=data.balances.find(x=>x.unit==='tercerizacion')?.balance||0,ally=data.payments.filter(x=>!isClosedPayment(x)&&x.payment_kind==='aliado'&&!['pagado','conciliado'].includes(x.estado)),exec=data.payments.filter(x=>!isClosedPayment(x)&&x.payment_kind==='ejecutivo'&&!['pagado','conciliado'].includes(x.estado));
- const received=data.destinations.reduce((n,x)=>n+Number(x.received_from_platform||0),0),comp=data.destinations.reduce((n,x)=>n+Number(x.total_b2b_compensations||0),0),expenses=data.movements.filter(x=>x.unit==='tercerizacion'&&x.direction==='debit'&&['pagado','conciliado'].includes(x.status)).reduce((n,x)=>n+Number(x.amount),0);
- $('#metrics').innerHTML=[['Recibido de plataformas',received],['Pagos pendientes a aliados',ally.reduce((n,x)=>n+Number(x.valor),0)],['Pagos pendientes a ejecutivos',exec.reduce((n,x)=>n+Number(x.valor),0)],['Compensaciones asignadas a B2B',comp],['Saldo B2B disponible',b2b],['Saldo Tercerización disponible',out],['Gastos y salidas de Tercerización',expenses]].map(([l,v])=>`<div class="metric"><small>${l}</small><strong>${cop(v)}</strong></div>`).join('');
- $('#allyPayments').innerHTML=paymentCards('aliado');$('#executivePayments').innerHTML=paymentCards('ejecutivo');
- $('#showOperational').classList.toggle('active',treasuryView==='operational');$('#showHistory').classList.toggle('active',treasuryView==='history');
- const visibleCompensations=filtered(data.compensations),comps=visibleCompensations.map(x=>`<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId===x.id?'checked':''}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei||'—')}</td><td>${cop(x.compensation_value)}</td><td>${cop(x.account_balance_after)}</td><td>${badge('pagado','Aplicada a cartera')}</td></tr>`);$('#compensations').innerHTML=table(['Seleccionar','Tienda','Plataforma','Corte','IMEI','Abono aplicado','Saldo después','Estado'],comps);
- const retailCommissions=filtered(data.movements.filter(x=>x.type==='comision_retail').map(x=>{const c=commissionCompensation(x);return {...x,platform:c?.platform,cutoff_date:c?.cutoff_date,store_code:c?.store_code,imei:c?.imei,commercial_value:c?.commercial_value}})).map(x=>`<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date||x.movement_date)}</td><td>${esc(x.imei||'—')}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.amount)}</td><td>${badge(x.status,'Reconocida')}</td></tr>`);$('#retailCommissions').innerHTML=table(['Tienda origen','Plataforma','Corte','IMEI','Valor comercial','Utilidad del negocio','Estado'],retailCommissions);
- const selected=data.compensations.find(x=>x.id===selectedCompensationId);$('#compensationSelection').textContent=selected?`${storeName(selected.store_code)} · ${cop(selected.compensation_value)} · IMEI ${selected.imei||'—'}`:'Ninguna compensación seleccionada';$('#openStoreLedger').disabled=!selected;
- $('#allyCount').textContent=ally.length;$('#executiveCount').textContent=exec.length;$('#compensationCount').textContent=visibleCompensations.length;$('#retailCommissionCount').textContent=retailCommissions.length;bindActions();
-}
-function movementActions(m){if(m.direction==='credit')return'';if(m.status==='pendiente')return `${m.type==='retiro_socios'&&!m.authorized_by?'<button class="btn secondary" data-authorize="'+m.id+'">Autorizar</button>':''}<button class="btn secondary" data-movement="${m.id}" data-next="programado">Programar</button>`;if(m.status==='programado')return `<button class="btn primary" data-movement="${m.id}" data-next="pagado">Registrar pago</button>`;if(m.status==='pagado')return `<button class="btn secondary" data-movement="${m.id}" data-next="conciliado">Conciliar</button>`;return''}
-function bindActions(){document.querySelectorAll('[data-payment]').forEach(b=>b.onclick=()=>changePayment(b.dataset.payment,b.dataset.next));document.querySelectorAll('[data-payment-group]').forEach(b=>b.onclick=()=>openPaymentSupport(b.dataset.paymentGroup.split(',')));document.querySelectorAll('[data-authorize-payment]').forEach(b=>b.onclick=()=>authorizePayment(b.dataset.authorizePayment));document.querySelectorAll('[data-payment-detail]').forEach(b=>b.onclick=()=>openPaymentDetail(b.dataset.paymentDetail));document.querySelectorAll('[data-complete]').forEach(b=>b.onclick=()=>completePaymentData(b.dataset.complete));document.querySelectorAll('[data-movement]').forEach(b=>b.onclick=()=>changeMovement(b.dataset.movement,b.dataset.next));document.querySelectorAll('[data-authorize]').forEach(b=>b.onclick=()=>authorize(b.dataset.authorize));document.querySelectorAll('[data-compensation-select]').forEach(input=>input.onchange=()=>{selectedCompensationId=input.checked?input.dataset.compensationSelect:null;render()})}
-async function authorizePayment(id){const {error}=await sb.rpc('aliados_autorizar_pago',{p_id:id});if(error)return notice(error.message||'Solo Oscar Pacheco puede autorizar este pago.',true);notice('Pago autorizado por Gerencia. Maite ya puede adjuntar el soporte.');await load()}
-function syncPaymentModalState(){const open=Boolean(document.querySelector('body > .modal.show'));document.documentElement.classList.toggle('kora-payment-modal-open',open);document.body.classList.toggle('kora-payment-modal-open',open)}
-function showPaymentModal(modal){modal.classList.add('show');modal.setAttribute('aria-hidden','false');syncPaymentModalState()}
-function hidePaymentModal(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');syncPaymentModalState()}
-function closePaymentDetail(){hidePaymentModal($('#paymentDetailModal'))}
-function openPaymentDetail(id){const p=data.payments.find(x=>x.id===id);if(!p)return;const bank=p.bank_snapshot||{},authorized=p.authorized_by&&p.authorized_at;$('#paymentDetailBody').innerHTML=`<div class="payment-detail-grid">
- <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial?'Histórico pagado · sin soporte requerido':esc(String(p.estado||'—').replaceAll('_',' '))}</strong></div>
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s),
+    esc = (v) =>
+      String(v ?? "—").replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c],
+      );
+  const cop = (v) =>
+      new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        maximumFractionDigits: 0,
+      }).format(Number(v) || 0),
+    date = (v) => (v ? String(v).slice(0, 10) : "—");
+  const shortId = (v) =>
+    String(v || "")
+      .split("-")[0]
+      .toUpperCase() || "—";
+  const platformName = (v) =>
+    v === "alo"
+      ? "ALO Credit"
+      : v === "payjoy"
+        ? "PayJoy"
+        : v === "krediya"
+          ? "Krediya"
+          : String(v || "—");
+  const bogotaDateTime = (v) =>
+    v
+      ? new Intl.DateTimeFormat("es-CO", {
+          dateStyle: "short",
+          timeStyle: "short",
+          timeZone: "America/Bogota",
+        }).format(new Date(v))
+      : "—";
+  const TYPES = {
+    b2b: [
+      ["pago_proveedor", "Pago a proveedor"],
+      ["otra_obligacion_b2b", "Otra obligación B2B autorizada"],
+    ],
+    tercerizacion: [
+      ["gasto_administrativo", "Gasto administrativo"],
+      ["gasto_financiero", "Gasto financiero"],
+      ["impuesto", "Impuesto"],
+      ["retiro_socios", "Retiro de socios"],
+      ["otro_movimiento_autorizado", "Otro movimiento autorizado"],
+    ],
+  };
+  let sb,
+    profile,
+    data = {},
+    initialized = false,
+    pendingPaymentIds = [],
+    selectedCompensationId = null,
+    treasuryView = "operational";
+  const canAuthorize = () =>
+    profile?.rol === "gerencia" && profile?.activo !== false;
+  function notice(message, error = false) {
+    const n = $("#notice");
+    n.textContent = message;
+    n.className = `notice${error ? " error" : ""}`;
+    n.classList.remove("hidden");
+    setTimeout(() => n.classList.add("hidden"), 5000);
+  }
+  function badge(v, label) {
+    return `<span class="badge ${esc(v)}">${esc(label || String(v || "—").replaceAll("_", " "))}</span>`;
+  }
+  function table(head, rows) {
+    return `<div class="table-wrap"><table><thead><tr>${head.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.join("") : '<tr><td colspan="12"><div class="empty">No hay información para los filtros seleccionados.</div></td></tr>'}</tbody></table></div>`;
+  }
+  function mask(snapshot) {
+    const value = snapshot?.account_number || "";
+    return value
+      ? `${esc(snapshot.bank || "Cuenta")} · •••• ${esc(value.slice(-4))}`
+      : "Cuenta pendiente de validar";
+  }
+  function storeName(code) {
+    return (
+      data.origins?.find((origin) => origin.codigo === code)?.nombre ||
+      code ||
+      "—"
+    );
+  }
+  function paymentBusinessName(p) {
+    return p.payment_kind === "aliado" ? storeName(p.origin_code) : null;
+  }
+  function commissionCompensation(movement) {
+    const operationId = String(movement.idempotency_key || "").replace(
+      "commission-operation:",
+      "",
+    );
+    return data.compensations?.find(
+      (item) => item.operation_id === operationId,
+    );
+  }
+  function missingPaymentData(p) {
+    const missing = [];
+    if (!p.beneficiary_name || p.beneficiary_name === "Sin nombre")
+      missing.push("titular");
+    if (!p.beneficiary_identification || p.beneficiary_identification === "—")
+      missing.push("identificación");
+    if (!p.bank_snapshot?.bank) missing.push("banco");
+    if (!p.bank_snapshot?.account_type) missing.push("tipo de cuenta");
+    if (!p.bank_snapshot?.account_number) missing.push("número de cuenta");
+    return missing;
+  }
+  function normalizePayment(p) {
+    const b =
+        p.liquidation_beneficiaries ||
+        data.beneficiaries?.find((x) => x.id === p.beneficiary_id) ||
+        {},
+      bank = p.beneficiary_bank_accounts || {},
+      liquidation = p.liquidations || {},
+      items = p.payment_items || [];
+    const operations = new Set(
+      items.map((x) => x.operation_id).filter(Boolean),
+    );
+    return {
+      ...p,
+      payment_kind:
+        p.payment_kind || (b.tipo === "ejecutivo" ? "ejecutivo" : "aliado"),
+      platform_snapshot: p.platform_snapshot || liquidation.plataforma || null,
+      cutoff_snapshot: p.cutoff_snapshot || liquidation.fecha_corte || null,
+      operations_count: Number(p.operations_count || operations.size),
+      concept:
+        p.concept ||
+        items
+          .map((x) => x.concepto)
+          .filter(Boolean)
+          .join(", ") ||
+        "Liquidación aprobada",
+      bank_snapshot:
+        p.bank_snapshot ||
+        (bank.numero_cuenta
+          ? {
+              bank: bank.banco,
+              account_type: bank.tipo_cuenta,
+              account_number: bank.numero_cuenta,
+              holder: b.nombre,
+              holder_identification: b.identificacion,
+            }
+          : null),
+      beneficiary_name: b.nombre || "Sin nombre",
+      beneficiary_identification: b.identificacion || "—",
+      origin_code: b.origen_codigo || null,
+    };
+  }
+  async function safe(query, required = false) {
+    const { data, error } = await query;
+    if (error) {
+      if (required) throw error;
+      return [];
+    }
+    return data || [];
+  }
+  async function load() {
+    const [
+      balances,
+      destinations,
+      payments,
+      beneficiaries,
+      compensations,
+      movements,
+      suppliers,
+      invoices,
+      profiles,
+      origins,
+    ] = await Promise.all([
+      safe(sb.from("treasury_unit_balances").select("*"), true),
+      safe(sb.from("liquidation_treasury_destinations").select("*")),
+      safe(
+        sb
+          .from("payment_orders")
+          .select(
+            "*,liquidation_beneficiaries(id,nombre,identificacion,tipo,origen_codigo),beneficiary_bank_accounts(id,banco,tipo_cuenta,numero_cuenta,validada),liquidations(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by),payment_items(operation_id,concepto,valor)",
+          )
+          .order("created_at", { ascending: false }),
+      ),
+      safe(
+        sb
+          .from("liquidation_beneficiaries")
+          .select("id,nombre,identificacion,tipo"),
+      ),
+      safe(
+        sb
+          .from("retail_b2b_compensations")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      ),
+      safe(
+        sb
+          .from("treasury_movements")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      ),
+      safe(sb.from("proveedores").select("id,nombre").eq("activo", true)),
+      safe(
+        sb
+          .from("facturas_proveedor")
+          .select("id,proveedor_id,numero,saldo")
+          .gt("saldo", 0),
+      ),
+      safe(sb.from("perfiles").select("id,nombre")),
+      safe(sb.from("origenes").select("codigo,nombre").eq("activo", true)),
+    ]);
+    data = {
+      balances,
+      destinations,
+      payments: [],
+      beneficiaries,
+      compensations,
+      movements,
+      suppliers,
+      invoices,
+      profiles,
+      origins,
+    };
+    data.payments = payments.map(normalizePayment);
+    render();
+    fillSuppliers();
+  }
+  function filtered(items) {
+    const platform = $("#platform").value,
+      cutoff = $("#cutoff").value,
+      status = $("#status").value,
+      q = $("#search").value.trim().toLowerCase();
+    return items.filter(
+      (x) =>
+        (!platform ||
+          x.platform_snapshot === platform ||
+          x.platform === platform) &&
+        (!cutoff || x.cutoff_snapshot === cutoff || x.cutoff_date === cutoff) &&
+        (!status || x.status === status || x.estado === status) &&
+        (!q ||
+          JSON.stringify([
+            x.concept,
+            x.concepto,
+            x.beneficiary,
+            x.store_code,
+            data.beneficiaries.find((b) => b.id === x.beneficiary_id)?.nombre,
+          ])
+            .toLowerCase()
+            .includes(q)),
+    );
+  }
+  function approverName(p) {
+    return (
+      data.profiles?.find((x) => x.id === p.authorized_by)?.nombre ||
+      "Oscar Pacheco"
+    );
+  }
+  function paymentAction(p, missing) {
+    if (p.historico_inicial) return "";
+    if (missing.length)
+      return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
+    if (!p.liquidations?.frozen_at)
+      return '<span class="approval-pending">Primero: Mayte revisa y Oscar aprueba la liquidación</span>';
+    if (
+      (p.estado === "pendiente" ||
+        (p.estado === "programado" && !p.authorized_by)) &&
+      canAuthorize()
+    )
+      return `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`;
+    if (p.estado === "programado" && !p.authorized_by)
+      return '<span class="approval-pending">Esperando autorización de Oscar</span>';
+    if (p.estado === "programado" && p.authorized_by)
+      return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte y registrar</button>`;
+    if (p.estado === "pagado" && canAuthorize())
+      return `<button class="btn secondary" data-payment="${p.id}" data-next="conciliado">Conciliar</button>`;
+    return "";
+  }
+  function isClosedPayment(p) {
+    return Boolean(p.historico_inicial) || p.estado === "conciliado";
+  }
+  function paymentsForCurrentView() {
+    return data.payments.filter((p) =>
+      treasuryView === "history" ? isClosedPayment(p) : !isClosedPayment(p),
+    );
+  }
+  function paymentGroups(kind) {
+    const groups = new Map();
+    for (const payment of filtered(
+      paymentsForCurrentView().filter((x) => x.payment_kind === kind),
+    )) {
+      const canGroup =
+        !payment.historico_inicial &&
+        ["pendiente", "programado"].includes(payment.estado);
+      const key = canGroup
+        ? [
+            payment.beneficiary_id,
+            payment.bank_snapshot?.account_number || "sin-cuenta",
+            payment.estado,
+            payment.authorized_by ? "autorizado" : "sin-autorizar",
+          ].join("|")
+        : payment.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(payment);
+    }
+    return [...groups.values()];
+  }
+  function paymentCards(kind) {
+    const groups = paymentGroups(kind);
+    if (!groups.length)
+      return '<div class="empty">No hay información para los filtros seleccionados.</div>';
+    return `<div class="payment-list">${groups
+      .map((group) => {
+        const p = group[0],
+          ids = group.map((x) => x.id).join(","),
+          missing = [...new Set(group.flatMap(missingPaymentData))],
+          authorized = group.every((x) => x.authorized_by && x.authorized_at),
+          total = group.reduce((n, x) => n + Number(x.valor), 0),
+          operations = group.reduce(
+            (n, x) => n + Number(x.operations_count),
+            0,
+          ),
+          business = paymentBusinessName(p),
+          action =
+            group.length > 1 && p.estado === "programado" && authorized
+              ? `<button class="btn primary" data-payment-group="${ids}">Adjuntar soporte y registrar</button>`
+              : paymentAction(p, missing);
+        return `<article class="payment-card">
+  <div class="payment-card__top"><div><div class="payment-card__title">${business ? `${esc(business)} <span class="payment-card__holder">· Titular: ${esc(p.beneficiary_name)}</span>` : esc(p.beneficiary_name)}</div><div class="payment-card__ref">${group.length > 1 ? `${group.length} órdenes consolidadas` : `Orden PO-${shortId(p.id)}`} · ${esc([...new Set(group.map((x) => platformName(x.platform_snapshot)))].join(", "))}</div></div>${p.historico_inicial ? badge("pagado", "Histórico pagado") : badge(p.estado)}</div>
+  <div class="payment-card__grid"><div class="payment-field"><small>${kind === "ejecutivo" ? "Bonificación total" : "Valor total a girar"}</small><strong>${cop(total)}</strong></div><div class="payment-field"><small>${kind === "ejecutivo" ? "Periodos" : "Cortes"}</small><strong>${esc([...new Set(group.map((x) => date(x.cutoff_snapshot)))].join(", "))}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${operations}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length ? `<span class="approval-pending">Falta: ${esc(missing.join(", "))}</span>` : ""}</div></div>
+  ${group.length > 1 ? `<div class="payment-card__orders">${group.map((x) => `<span>PO-${shortId(x.id)} · ${date(x.cutoff_snapshot)} · ${cop(x.valor)}</span>`).join("")}</div>` : ""}
+  <div class="payment-card__actions"><div class="${p.historico_inicial || authorized ? "approval-ok" : "approval-pending"}">${p.historico_inicial ? "Cerrado antes del inicio operativo · no requiere soporte" : authorized ? `Autorizado por ${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}` : "Sin autorización de Gerencia"}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
+ </article>`;
+      })
+      .join("")}</div>`;
+  }
+  function render() {
+    const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
+      out = data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0,
+      ally = data.payments.filter(
+        (x) =>
+          !isClosedPayment(x) &&
+          x.payment_kind === "aliado" &&
+          !["pagado", "conciliado"].includes(x.estado),
+      ),
+      exec = data.payments.filter(
+        (x) =>
+          !isClosedPayment(x) &&
+          x.payment_kind === "ejecutivo" &&
+          !["pagado", "conciliado"].includes(x.estado),
+      );
+    const received = data.destinations.reduce(
+        (n, x) => n + Number(x.received_from_platform || 0),
+        0,
+      ),
+      comp = data.destinations.reduce(
+        (n, x) => n + Number(x.total_b2b_compensations || 0),
+        0,
+      ),
+      expenses = data.movements
+        .filter(
+          (x) =>
+            x.unit === "tercerizacion" &&
+            x.direction === "debit" &&
+            ["pagado", "conciliado"].includes(x.status),
+        )
+        .reduce((n, x) => n + Number(x.amount), 0);
+    $("#metrics").innerHTML = [
+      ["Recibido de plataformas", received],
+      [
+        "Pagos pendientes a aliados",
+        ally.reduce((n, x) => n + Number(x.valor), 0),
+      ],
+      [
+        "Pagos pendientes a ejecutivos",
+        exec.reduce((n, x) => n + Number(x.valor), 0),
+      ],
+      ["Compensaciones asignadas a B2B", comp],
+      ["Saldo B2B disponible", b2b],
+      ["Saldo Tercerización disponible", out],
+      ["Gastos y salidas de Tercerización", expenses],
+    ]
+      .map(
+        ([l, v]) =>
+          `<div class="metric"><small>${l}</small><strong>${cop(v)}</strong></div>`,
+      )
+      .join("");
+    $("#allyPayments").innerHTML = paymentCards("aliado");
+    $("#executivePayments").innerHTML = paymentCards("ejecutivo");
+    const expenseMovements = filtered(
+      data.movements.filter((x) => {
+        if (!x.aliados_gasto_id) return false;
+        const closed = ["pagado", "conciliado", "rechazado", "anulado"].includes(x.status);
+        return treasuryView === "history" ? closed : !closed;
+      }),
+    );
+    $("#expensePayments").innerHTML = table(
+      ["Fecha", "Beneficiario", "Concepto", "Cuenta destino", "Valor", "Estado", "Autorización", "Acción"],
+      expenseMovements.map(
+        (x) => `<tr><td>${date(x.movement_date)}</td><td>${esc(x.beneficiary)}</td><td>${esc(x.concept)}</td><td class="account">${esc(x.destination_account)}</td><td>${cop(x.amount)}</td><td>${badge(x.status)}</td><td>${x.authorized_by ? `<span class="approval-ok">Autorizado por ${esc(approverName(x))}</span>` : '<span class="approval-pending">Pendiente de Oscar</span>'}</td><td>${movementActions(x)}</td></tr>`,
+      ),
+    );
+    $("#showOperational").classList.toggle(
+      "active",
+      treasuryView === "operational",
+    );
+    $("#showHistory").classList.toggle("active", treasuryView === "history");
+    const visibleCompensations = filtered(data.compensations),
+      comps = visibleCompensations.map(
+        (x) =>
+          `<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${cop(x.account_balance_after)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
+      );
+    $("#compensations").innerHTML = table(
+      [
+        "Seleccionar",
+        "Tienda",
+        "Plataforma",
+        "Corte",
+        "IMEI",
+        "Abono aplicado",
+        "Saldo después",
+        "Estado",
+      ],
+      comps,
+    );
+    const retailCommissions = filtered(
+      data.movements
+        .filter((x) => x.type === "comision_retail")
+        .map((x) => {
+          const c = commissionCompensation(x);
+          return {
+            ...x,
+            platform: c?.platform,
+            cutoff_date: c?.cutoff_date,
+            store_code: c?.store_code,
+            imei: c?.imei,
+            commercial_value: c?.commercial_value,
+          };
+        }),
+    ).map(
+      (x) =>
+        `<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.amount)}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
+    );
+    $("#retailCommissions").innerHTML = table(
+      [
+        "Tienda origen",
+        "Plataforma",
+        "Corte",
+        "IMEI",
+        "Valor comercial",
+        "Utilidad del negocio",
+        "Estado",
+      ],
+      retailCommissions,
+    );
+    const selected = data.compensations.find(
+      (x) => x.id === selectedCompensationId,
+    );
+    $("#compensationSelection").textContent = selected
+      ? `${storeName(selected.store_code)} · ${cop(selected.compensation_value)} · IMEI ${selected.imei || "—"}`
+      : "Ninguna compensación seleccionada";
+    $("#openStoreLedger").disabled = !selected;
+    $("#allyCount").textContent = ally.length;
+    $("#executiveCount").textContent = exec.length;
+    $("#expenseCount").textContent = expenseMovements.length;
+    $("#compensationCount").textContent = visibleCompensations.length;
+    $("#retailCommissionCount").textContent = retailCommissions.length;
+    bindActions();
+  }
+  function movementActions(m) {
+    if (m.direction === "credit") return "";
+    if (m.status === "pendiente") {
+      if ((m.type === "retiro_socios" || m.aliados_gasto_id) && !m.authorized_by)
+        return canAuthorize()
+          ? `<button class="btn primary" data-authorize="${m.id}">Autorizar pago</button>`
+          : '<span class="approval-pending">Esperando autorización de Oscar</span>';
+      return `<button class="btn secondary" data-movement="${m.id}" data-next="programado">Programar</button>`;
+    }
+    if (m.status === "programado")
+      return `<button class="btn primary" data-movement="${m.id}" data-next="pagado">Registrar pago</button>`;
+    if (m.status === "pagado")
+      return `<button class="btn secondary" data-movement="${m.id}" data-next="conciliado">Conciliar</button>`;
+    return "";
+  }
+  function bindActions() {
+    document
+      .querySelectorAll("[data-payment]")
+      .forEach(
+        (b) =>
+          (b.onclick = () => changePayment(b.dataset.payment, b.dataset.next)),
+      );
+    document
+      .querySelectorAll("[data-payment-group]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            openPaymentSupport(b.dataset.paymentGroup.split(","))),
+      );
+    document
+      .querySelectorAll("[data-authorize-payment]")
+      .forEach(
+        (b) => (b.onclick = () => authorizePayment(b.dataset.authorizePayment)),
+      );
+    document
+      .querySelectorAll("[data-payment-detail]")
+      .forEach(
+        (b) => (b.onclick = () => openPaymentDetail(b.dataset.paymentDetail)),
+      );
+    document
+      .querySelectorAll("[data-complete]")
+      .forEach(
+        (b) => (b.onclick = () => completePaymentData(b.dataset.complete)),
+      );
+    document
+      .querySelectorAll("[data-movement]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            changeMovement(b.dataset.movement, b.dataset.next)),
+      );
+    document
+      .querySelectorAll("[data-authorize]")
+      .forEach((b) => (b.onclick = () => authorize(b.dataset.authorize)));
+    document.querySelectorAll("[data-compensation-select]").forEach(
+      (input) =>
+        (input.onchange = () => {
+          selectedCompensationId = input.checked
+            ? input.dataset.compensationSelect
+            : null;
+          render();
+        }),
+    );
+  }
+  async function authorizePayment(id) {
+    const { error } = await sb.rpc("aliados_autorizar_pago", { p_id: id });
+    if (error)
+      return notice(
+        error.message || "Solo Oscar Pacheco puede autorizar este pago.",
+        true,
+      );
+    notice("Pago autorizado por Gerencia. Maite ya puede adjuntar el soporte.");
+    await load();
+  }
+  function syncPaymentModalState() {
+    const open = Boolean(document.querySelector("body > .modal.show"));
+    document.documentElement.classList.toggle("kora-payment-modal-open", open);
+    document.body.classList.toggle("kora-payment-modal-open", open);
+  }
+  function showPaymentModal(modal) {
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+    syncPaymentModalState();
+  }
+  function hidePaymentModal(modal) {
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+    syncPaymentModalState();
+  }
+  function closePaymentDetail() {
+    hidePaymentModal($("#paymentDetailModal"));
+  }
+  function openPaymentDetail(id) {
+    const p = data.payments.find((x) => x.id === id);
+    if (!p) return;
+    const bank = p.bank_snapshot || {},
+      authorized = p.authorized_by && p.authorized_at;
+    $("#paymentDetailBody").innerHTML = `<div class="payment-detail-grid">
+ <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial ? "Histórico pagado · sin soporte requerido" : esc(String(p.estado || "—").replaceAll("_", " "))}</strong></div>
  <div><small>Beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div><div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div>
  <div><small>Plataforma</small><strong>${esc(platformName(p.platform_snapshot))}</strong></div><div><small>Fecha de corte</small><strong>${date(p.cutoff_snapshot)}</strong></div>
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>
- <div><small>Banco / tipo</small><strong>${esc(bank.bank||'Pendiente')} · ${esc(bank.account_type||'Pendiente')}</strong></div><div><small>Número de cuenta</small><strong class="account">${esc(bank.account_number||'Pendiente')}</strong></div>
- <div><small>Titular de la cuenta</small><strong>${esc(bank.holder||p.beneficiary_name)}</strong></div><div><small>Identificación del titular</small><strong>${esc(bank.holder_identification||p.beneficiary_identification)}</strong></div>
- <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized?'approval-ok':'approval-pending'}">${authorized?`${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}`:'Pendiente de autorización de Oscar Pacheco'}</strong></div>
- </div>`;showPaymentModal($('#paymentDetailModal'));$('#closePaymentDetail').focus()}
-async function completePaymentData(id){const p=data.payments.find(x=>x.id===id);if(!p)return;const bank=prompt(`Banco para ${p.beneficiary_name}:`,p.bank_snapshot?.bank||'');if(!bank?.trim())return;const type=prompt('Tipo de cuenta: ahorros o corriente',p.bank_snapshot?.account_type||'ahorros');if(!['ahorros','corriente'].includes(String(type).trim().toLowerCase()))return notice('El tipo debe ser ahorros o corriente.',true);const account=prompt('Número completo de cuenta:',p.bank_snapshot?.account_number||'');if(!/^\d{5,}$/.test(String(account||'').replace(/\D/g,'')))return notice('Escribe un número de cuenta válido.',true);const {error}=await sb.rpc('aliados_guardar_cuenta_bancaria',{p_beneficiary_id:p.beneficiary_id,p_banco:bank.trim(),p_tipo_cuenta:type.trim().toLowerCase(),p_numero_cuenta:String(account).replace(/\D/g,''),p_validar:true});if(error)return notice(error.message,true);await sb.rpc('aliados_completar_pagos_beneficiario',{p_beneficiary_id:p.beneficiary_id});notice('Datos bancarios completados y validados.');await load()}
-function validateSupport(file){if(!file)return 'Selecciona una imagen o un archivo PDF.';const allowed=['image/jpeg','image/png','application/pdf'];if(!allowed.includes(file.type))return 'El soporte debe ser JPG, PNG o PDF.';if(file.size>10*1024*1024)return 'El archivo supera el límite de 10 MB.';return ''}
-async function upload(file,folder){const validation=validateSupport(file);if(validation)throw new Error(validation);const ext=(file.name.split('.').pop()||'pdf').toLowerCase(),path=`aliados/${folder}/${crypto.randomUUID()}.${ext}`;const {error}=await sb.storage.from('soportes').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;return path}
-function closePaymentSupport(){pendingPaymentIds=[];$('#paymentSupportForm').reset();$('#paymentSupportSelected').classList.add('hidden');$('#paymentSupportError').classList.add('hidden');hidePaymentModal($('#paymentSupportModal'))}
-function openPaymentSupport(ids){pendingPaymentIds=Array.isArray(ids)?ids:[ids];const payments=pendingPaymentIds.map(id=>data.payments.find(x=>x.id===id)).filter(Boolean);if(!payments.length)return;const total=payments.reduce((n,p)=>n+Number(p.valor),0);$('#paymentSupportSummary').textContent=`${payments[0].beneficiary_name} · ${payments.length} ${payments.length===1?'orden':'órdenes'} · ${cop(total)}`;$('#paymentSupportError').classList.add('hidden');$('#paymentSupportSelected').classList.add('hidden');showPaymentModal($('#paymentSupportModal'));$('#paymentSupportFile').focus()}
-async function submitPaymentSupport(event){event.preventDefault();const file=$('#paymentSupportFile').files[0],validation=validateSupport(file),errorBox=$('#paymentSupportError'),button=$('#savePaymentSupport'),payments=pendingPaymentIds.map(id=>data.payments.find(x=>x.id===id)).filter(Boolean);if(validation){errorBox.textContent=validation;errorBox.classList.remove('hidden');return}if(!payments.length)return closePaymentSupport();if(payments.some(payment=>!payment?.liquidations?.frozen_at)){errorBox.textContent='Primero Mayte debe revisar y Oscar aprobar la liquidación. Después podrás registrar el soporte.';errorBox.classList.remove('hidden');return}button.disabled=true;button.textContent='Subiendo soporte…';errorBox.classList.add('hidden');let support=null;try{support=await upload(file,'pagos');const rpc=payments.length>1?sb.rpc('aliados_registrar_pago_agrupado',{p_ids:pendingPaymentIds,p_soporte_path:support}):sb.rpc('aliados_cambiar_estado_pago',{p_id:pendingPaymentIds[0],p_estado:'pagado',p_soporte_path:support});const {error}=await rpc;if(error)throw error;closePaymentSupport();notice(`${payments.length} ${payments.length===1?'pago registrado':'pagos registrados'} con un único soporte.`);await load()}catch(error){if(support)await sb.storage.from('soportes').remove([support]);console.error('No fue posible registrar el soporte del pago',error);errorBox.textContent=error?.message||'No fue posible cargar el soporte y registrar el pago.';errorBox.classList.remove('hidden')}finally{button.disabled=false;button.textContent='Subir soporte y registrar pago'}}
-async function askSupport(folder){const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf';input.style.position='fixed';input.style.left='-9999px';document.body.appendChild(input);return new Promise(resolve=>{input.onchange=async()=>{try{resolve(await upload(input.files[0],folder))}catch(error){notice(error?.message||'No fue posible cargar el soporte privado.',true);resolve(null)}finally{input.remove()}};input.addEventListener('cancel',()=>{input.remove();resolve(null)},{once:true});input.click()})}
-async function changePayment(id,next){if(next==='pagado')return openPaymentSupport(id);const {error}=await sb.rpc('aliados_cambiar_estado_pago',{p_id:id,p_estado:next,p_soporte_path:null});if(error)return notice('No fue posible actualizar el pago. Verifica el estado y la autorización.',true);notice('Pago actualizado y auditado.');await load()}
-function paymentReport(){
- const rows=filtered(data.payments).filter(p=>p.estado==='programado');
- if(!rows.length)return notice('No hay pagos programados con los filtros seleccionados.',true);
- const incomplete=rows.filter(p=>missingPaymentData(p).length);if(incomplete.length){notice(`${incomplete.length} pago(s) tienen datos incompletos. Usa “Completar datos” en la tabla y vuelve a generar el informe.`,true);document.querySelector(`[data-complete="${incomplete[0].id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});return}
- const now=new Date(),total=rows.reduce((n,p)=>n+Number(p.valor||0),0),generated=new Intl.DateTimeFormat('es-CO',{dateStyle:'long',timeStyle:'short',timeZone:'America/Bogota'}).format(now),stamp=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/Bogota'}).formatToParts(now).reduce((o,x)=>(o[x.type]=x.value,o),{}),reportId=`OP-${stamp.year}${stamp.month}${stamp.day}-${stamp.hour}${stamp.minute}${stamp.second}`,logo=new URL('../shared/branding/creditek-logo.png',location.href).href;
- const liquidationRefs=[...new Map(rows.filter(p=>p.liquidation_id).map(p=>[p.liquidation_id,{id:p.liquidation_id,approvedAt:p.liquidations?.approved_at}])).values()];
- const report=window.open('','_blank');
- if(!report)return notice('El navegador bloqueó la ventana del informe.',true);
- report.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre||profile?.email||'Usuario KORA')}<br>Estado: programado · pendiente de pago y soporte</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Beneficiario</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Plataforma / corte</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p,i)=>`<tr><td>${i+1}<br><span class="ref">PO-${shortId(p.id)}</span></td><td>${esc(p.bank_snapshot.holder||p.beneficiary_name)}</td><td>${esc(p.bank_snapshot.holder_identification||p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span></td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join('')}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map(p=>`PO-${shortId(p.id)}`).join(', ')}<br>Liquidaciones: ${liquidationRefs.length?liquidationRefs.map(l=>`LQ-${shortId(l.id)}${l.approvedAt?` (aprobada ${esc(bogotaDateTime(l.approvedAt))})`:''}`).join(', '):'No asociadas'}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`);
- report.document.close();
-}
-async function changeMovement(id,next){let support=null;if(next==='pagado'){support=await askSupport('tesoreria');if(!support)return}const {error}=await sb.rpc('tesoreria_cambiar_estado_movimiento',{p_id:id,p_status:next,p_support_path:support});if(error)return notice('No fue posible actualizar el movimiento. Verifica saldo, soporte y autorización.',true);notice('Movimiento actualizado y auditado.');await load()}
-async function authorize(id){const {error}=await sb.rpc('tesoreria_autorizar_movimiento',{p_id:id});if(error)return notice('Solo Óscar puede autorizar este movimiento.',true);notice('Movimiento autorizado.');await load()}
-function updateTypes(){const unit=$('#movementForm [name=unit]').value,type=$('#movementForm [name=type]');type.innerHTML=TYPES[unit].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');type.onchange=toggleSupplier;toggleSupplier()}
-function toggleSupplier(){const show=$('#movementForm [name=type]').value==='pago_proveedor';$('#supplierWrap').classList.toggle('hidden',!show);$('#invoiceWrap').classList.toggle('hidden',!show)}
-function fillSuppliers(){$('#movementForm [name=supplier_id]').innerHTML='<option value="">Selecciona</option>'+data.suppliers.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');fillInvoices()}
-function fillInvoices(){const supplier=$('#movementForm [name=supplier_id]').value;$('#movementForm [name=supplier_invoice_id]').innerHTML='<option value="">Selecciona</option>'+data.invoices.filter(x=>!supplier||x.proveedor_id===supplier).map(x=>`<option value="${x.id}">${esc(x.numero)} · ${cop(x.saldo)}</option>`).join('')}
-async function submitMovement(event){event.preventDefault();const form=event.currentTarget,values=Object.fromEntries(new FormData(form)),file=form.elements.support.files[0];let support=null;if(file){try{support=await upload(file,'tesoreria')}catch{return notice('No fue posible cargar el soporte privado.',true)}}const input={unidad:values.unit,tipo:values.type,valor:Number(values.amount),saldo:Number(data.balances.find(x=>x.unit===values.unit)?.balance||0)},check=window.CreditekTesoreriaTercerizacion.validarMovimiento(input);if(!check.ok)return notice(check.error==='saldo_insuficiente'?'El valor supera el saldo disponible.':'El tipo no corresponde a la unidad económica.',true);const params={p_unit:values.unit,p_type:values.type,p_beneficiary:values.beneficiary,p_concept:values.concept,p_amount:Number(values.amount),p_destination_account:values.destination_account,p_date:values.movement_date,p_support_path:support,p_liquidation_id:null,p_supplier_id:values.supplier_id||null,p_supplier_invoice_id:values.supplier_invoice_id||null,p_idempotency_key:crypto.randomUUID()};const {error}=await sb.rpc('tesoreria_registrar_movimiento',params);if(error)return notice('No fue posible registrar el movimiento. Verifica saldo y campos obligatorios.',true);$('#movementDialog').close();form.reset();notice('Movimiento preparado y auditado.');await load()}
-async function init(){if(initialized||!window.creditekSidebar?.sb)return;initialized=true;sb=window.creditekSidebar.sb;profile=window.creditekSidebar.perfil;if(!profile?.es_operador_aliados&&profile?.rol!=='gerencia'){$('#accessDenied').classList.remove('hidden');return}$('#pageContent').classList.remove('hidden');try{await load()}catch(error){console.error('Tesorería no pudo cargar',error);notice('No fue posible cargar Tesorería. Intenta nuevamente.',true)}}
-document.addEventListener('kora-sidebar-ready',init,{once:true});if(window.creditekSidebar?.sb)init();['platform','cutoff','status'].forEach(id=>$(`#${id}`).addEventListener('change',render));$('#search').addEventListener('input',render);$('#refresh').onclick=load;$('#paymentReport').onclick=paymentReport;
-$('#showOperational').onclick=()=>{treasuryView='operational';render()};$('#showHistory').onclick=()=>{treasuryView='history';render()};
-$('#openStoreLedger').onclick=()=>{const selected=data.compensations.find(x=>x.id===selectedCompensationId);if(selected)location.href=`cuenta-corriente.html?tienda=${encodeURIComponent(selected.store_code)}&referencia=${encodeURIComponent(selected.id)}`};
-$('#closePaymentSupport').onclick=closePaymentSupport;$('#paymentSupportForm').onsubmit=submitPaymentSupport;$('#paymentSupportFile').onchange=event=>{const file=event.target.files[0],validation=validateSupport(file),selected=$('#paymentSupportSelected'),errorBox=$('#paymentSupportError');if(validation){selected.classList.add('hidden');errorBox.textContent=validation;errorBox.classList.remove('hidden');return}errorBox.classList.add('hidden');selected.textContent=`Archivo listo: ${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`;selected.classList.remove('hidden')};$('#paymentSupportModal').onclick=event=>{if(event.target===$('#paymentSupportModal'))closePaymentSupport()};
-$('#closePaymentDetail').onclick=closePaymentDetail;$('#paymentDetailModal').onclick=event=>{if(event.target===$('#paymentDetailModal'))closePaymentDetail()};
-document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if($('#paymentSupportModal').classList.contains('show'))closePaymentSupport();else if($('#paymentDetailModal').classList.contains('show'))closePaymentDetail()});
+ <div><small>Banco / tipo</small><strong>${esc(bank.bank || "Pendiente")} · ${esc(bank.account_type || "Pendiente")}</strong></div><div><small>Número de cuenta</small><strong class="account">${esc(bank.account_number || "Pendiente")}</strong></div>
+ <div><small>Titular de la cuenta</small><strong>${esc(bank.holder || p.beneficiary_name)}</strong></div><div><small>Identificación del titular</small><strong>${esc(bank.holder_identification || p.beneficiary_identification)}</strong></div>
+ <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized ? "approval-ok" : "approval-pending"}">${authorized ? `${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}` : "Pendiente de autorización de Oscar Pacheco"}</strong></div>
+ </div>`;
+    showPaymentModal($("#paymentDetailModal"));
+    $("#closePaymentDetail").focus();
+  }
+  async function completePaymentData(id) {
+    const p = data.payments.find((x) => x.id === id);
+    if (!p) return;
+    const bank = prompt(
+      `Banco para ${p.beneficiary_name}:`,
+      p.bank_snapshot?.bank || "",
+    );
+    if (!bank?.trim()) return;
+    const type = prompt(
+      "Tipo de cuenta: ahorros o corriente",
+      p.bank_snapshot?.account_type || "ahorros",
+    );
+    if (!["ahorros", "corriente"].includes(String(type).trim().toLowerCase()))
+      return notice("El tipo debe ser ahorros o corriente.", true);
+    const account = prompt(
+      "Número completo de cuenta:",
+      p.bank_snapshot?.account_number || "",
+    );
+    if (!/^\d{5,}$/.test(String(account || "").replace(/\D/g, "")))
+      return notice("Escribe un número de cuenta válido.", true);
+    const { error } = await sb.rpc("aliados_guardar_cuenta_bancaria", {
+      p_beneficiary_id: p.beneficiary_id,
+      p_banco: bank.trim(),
+      p_tipo_cuenta: type.trim().toLowerCase(),
+      p_numero_cuenta: String(account).replace(/\D/g, ""),
+      p_validar: true,
+    });
+    if (error) return notice(error.message, true);
+    await sb.rpc("aliados_completar_pagos_beneficiario", {
+      p_beneficiary_id: p.beneficiary_id,
+    });
+    notice("Datos bancarios completados y validados.");
+    await load();
+  }
+  function validateSupport(file) {
+    if (!file) return "Selecciona una imagen o un archivo PDF.";
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (!allowed.includes(file.type))
+      return "El soporte debe ser JPG, PNG o PDF.";
+    if (file.size > 10 * 1024 * 1024)
+      return "El archivo supera el límite de 10 MB.";
+    return "";
+  }
+  async function upload(file, folder) {
+    const validation = validateSupport(file);
+    if (validation) throw new Error(validation);
+    const ext = (file.name.split(".").pop() || "pdf").toLowerCase(),
+      path = `aliados/${folder}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await sb.storage
+      .from("soportes")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw error;
+    return path;
+  }
+  function closePaymentSupport() {
+    pendingPaymentIds = [];
+    $("#paymentSupportForm").reset();
+    $("#paymentSupportSelected").classList.add("hidden");
+    $("#paymentSupportError").classList.add("hidden");
+    hidePaymentModal($("#paymentSupportModal"));
+  }
+  function openPaymentSupport(ids) {
+    pendingPaymentIds = Array.isArray(ids) ? ids : [ids];
+    const payments = pendingPaymentIds
+      .map((id) => data.payments.find((x) => x.id === id))
+      .filter(Boolean);
+    if (!payments.length) return;
+    const total = payments.reduce((n, p) => n + Number(p.valor), 0);
+    $("#paymentSupportSummary").textContent =
+      `${payments[0].beneficiary_name} · ${payments.length} ${payments.length === 1 ? "orden" : "órdenes"} · ${cop(total)}`;
+    $("#paymentSupportError").classList.add("hidden");
+    $("#paymentSupportSelected").classList.add("hidden");
+    showPaymentModal($("#paymentSupportModal"));
+    $("#paymentSupportFile").focus();
+  }
+  async function submitPaymentSupport(event) {
+    event.preventDefault();
+    const file = $("#paymentSupportFile").files[0],
+      validation = validateSupport(file),
+      errorBox = $("#paymentSupportError"),
+      button = $("#savePaymentSupport"),
+      payments = pendingPaymentIds
+        .map((id) => data.payments.find((x) => x.id === id))
+        .filter(Boolean);
+    if (validation) {
+      errorBox.textContent = validation;
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    if (!payments.length) return closePaymentSupport();
+    if (payments.some((payment) => !payment?.liquidations?.frozen_at)) {
+      errorBox.textContent =
+        "Primero Mayte debe revisar y Oscar aprobar la liquidación. Después podrás registrar el soporte.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Subiendo soporte…";
+    errorBox.classList.add("hidden");
+    let support = null;
+    try {
+      support = await upload(file, "pagos");
+      const rpc =
+        payments.length > 1
+          ? sb.rpc("aliados_registrar_pago_agrupado", {
+              p_ids: pendingPaymentIds,
+              p_soporte_path: support,
+            })
+          : sb.rpc("aliados_cambiar_estado_pago", {
+              p_id: pendingPaymentIds[0],
+              p_estado: "pagado",
+              p_soporte_path: support,
+            });
+      const { error } = await rpc;
+      if (error) throw error;
+      closePaymentSupport();
+      notice(
+        `${payments.length} ${payments.length === 1 ? "pago registrado" : "pagos registrados"} con un único soporte.`,
+      );
+      await load();
+    } catch (error) {
+      if (support) await sb.storage.from("soportes").remove([support]);
+      console.error("No fue posible registrar el soporte del pago", error);
+      errorBox.textContent =
+        error?.message ||
+        "No fue posible cargar el soporte y registrar el pago.";
+      errorBox.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Subir soporte y registrar pago";
+    }
+  }
+  async function askSupport(folder) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf";
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    return new Promise((resolve) => {
+      input.onchange = async () => {
+        try {
+          resolve(await upload(input.files[0], folder));
+        } catch (error) {
+          notice(
+            error?.message || "No fue posible cargar el soporte privado.",
+            true,
+          );
+          resolve(null);
+        } finally {
+          input.remove();
+        }
+      };
+      input.addEventListener(
+        "cancel",
+        () => {
+          input.remove();
+          resolve(null);
+        },
+        { once: true },
+      );
+      input.click();
+    });
+  }
+  async function changePayment(id, next) {
+    if (next === "pagado") return openPaymentSupport(id);
+    const { error } = await sb.rpc("aliados_cambiar_estado_pago", {
+      p_id: id,
+      p_estado: next,
+      p_soporte_path: null,
+    });
+    if (error)
+      return notice(
+        "No fue posible actualizar el pago. Verifica el estado y la autorización.",
+        true,
+      );
+    notice("Pago actualizado y auditado.");
+    await load();
+  }
+  function paymentReport() {
+    const rows = filtered(data.payments).filter(
+      (p) => p.estado === "programado",
+    );
+    if (!rows.length)
+      return notice(
+        "No hay pagos programados con los filtros seleccionados.",
+        true,
+      );
+    const incomplete = rows.filter((p) => missingPaymentData(p).length);
+    if (incomplete.length) {
+      notice(
+        `${incomplete.length} pago(s) tienen datos incompletos. Usa “Completar datos” en la tabla y vuelve a generar el informe.`,
+        true,
+      );
+      document
+        .querySelector(`[data-complete="${incomplete[0].id}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const now = new Date(),
+      total = rows.reduce((n, p) => n + Number(p.valor || 0), 0),
+      generated = new Intl.DateTimeFormat("es-CO", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "America/Bogota",
+      }).format(now),
+      stamp = new Intl.DateTimeFormat("en-CA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZone: "America/Bogota",
+      })
+        .formatToParts(now)
+        .reduce((o, x) => ((o[x.type] = x.value), o), {}),
+      reportId = `OP-${stamp.year}${stamp.month}${stamp.day}-${stamp.hour}${stamp.minute}${stamp.second}`,
+      logo = new URL("../shared/branding/creditek-logo.png", location.href)
+        .href;
+    const liquidationRefs = [
+      ...new Map(
+        rows
+          .filter((p) => p.liquidation_id)
+          .map((p) => [
+            p.liquidation_id,
+            { id: p.liquidation_id, approvedAt: p.liquidations?.approved_at },
+          ]),
+      ).values(),
+    ];
+    const report = window.open("", "_blank");
+    if (!report)
+      return notice("El navegador bloqueó la ventana del informe.", true);
+    report.document.write(
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}<br>Estado: programado · pendiente de pago y soporte</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Beneficiario</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Plataforma / corte</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}<br><span class="ref">PO-${shortId(p.id)}</span></td><td>${esc(p.bank_snapshot.holder || p.beneficiary_name)}</td><td>${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span></td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join("")}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map((p) => `PO-${shortId(p.id)}`).join(", ")}<br>Liquidaciones: ${liquidationRefs.length ? liquidationRefs.map((l) => `LQ-${shortId(l.id)}${l.approvedAt ? ` (aprobada ${esc(bogotaDateTime(l.approvedAt))})` : ""}`).join(", ") : "No asociadas"}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
+    );
+    report.document.close();
+  }
+  async function changeMovement(id, next) {
+    let support = null;
+    if (next === "pagado") {
+      support = await askSupport("tesoreria");
+      if (!support) return;
+    }
+    const { error } = await sb.rpc("tesoreria_cambiar_estado_movimiento", {
+      p_id: id,
+      p_status: next,
+      p_support_path: support,
+    });
+    if (error)
+      return notice(
+        "No fue posible actualizar el movimiento. Verifica saldo, soporte y autorización.",
+        true,
+      );
+    notice("Movimiento actualizado y auditado.");
+    await load();
+  }
+  async function authorize(id) {
+    const { error } = await sb.rpc("tesoreria_autorizar_movimiento", {
+      p_id: id,
+    });
+    if (error)
+      return notice("Solo Óscar puede autorizar este movimiento.", true);
+    notice("Movimiento autorizado.");
+    await load();
+  }
+  function updateTypes() {
+    const unit = $("#movementForm [name=unit]").value,
+      type = $("#movementForm [name=type]");
+    type.innerHTML = TYPES[unit]
+      .map(([v, l]) => `<option value="${v}">${l}</option>`)
+      .join("");
+    type.onchange = toggleSupplier;
+    toggleSupplier();
+  }
+  function toggleSupplier() {
+    const show = $("#movementForm [name=type]").value === "pago_proveedor";
+    $("#supplierWrap").classList.toggle("hidden", !show);
+    $("#invoiceWrap").classList.toggle("hidden", !show);
+  }
+  function fillSuppliers() {
+    $("#movementForm [name=supplier_id]").innerHTML =
+      '<option value="">Selecciona</option>' +
+      data.suppliers
+        .map((x) => `<option value="${x.id}">${esc(x.nombre)}</option>`)
+        .join("");
+    fillInvoices();
+  }
+  function fillInvoices() {
+    const supplier = $("#movementForm [name=supplier_id]").value;
+    $("#movementForm [name=supplier_invoice_id]").innerHTML =
+      '<option value="">Selecciona</option>' +
+      data.invoices
+        .filter((x) => !supplier || x.proveedor_id === supplier)
+        .map(
+          (x) =>
+            `<option value="${x.id}">${esc(x.numero)} · ${cop(x.saldo)}</option>`,
+        )
+        .join("");
+  }
+  async function submitMovement(event) {
+    event.preventDefault();
+    const form = event.currentTarget,
+      values = Object.fromEntries(new FormData(form)),
+      file = form.elements.support.files[0];
+    let support = null;
+    if (file) {
+      try {
+        support = await upload(file, "tesoreria");
+      } catch {
+        return notice("No fue posible cargar el soporte privado.", true);
+      }
+    }
+    const input = {
+        unidad: values.unit,
+        tipo: values.type,
+        valor: Number(values.amount),
+        saldo: Number(
+          data.balances.find((x) => x.unit === values.unit)?.balance || 0,
+        ),
+      },
+      check = window.CreditekTesoreriaTercerizacion.validarMovimiento(input);
+    if (!check.ok)
+      return notice(
+        check.error === "saldo_insuficiente"
+          ? "El valor supera el saldo disponible."
+          : "El tipo no corresponde a la unidad económica.",
+        true,
+      );
+    const params = {
+      p_unit: values.unit,
+      p_type: values.type,
+      p_beneficiary: values.beneficiary,
+      p_concept: values.concept,
+      p_amount: Number(values.amount),
+      p_destination_account: values.destination_account,
+      p_date: values.movement_date,
+      p_support_path: support,
+      p_liquidation_id: null,
+      p_supplier_id: values.supplier_id || null,
+      p_supplier_invoice_id: values.supplier_invoice_id || null,
+      p_idempotency_key: crypto.randomUUID(),
+    };
+    const { error } = await sb.rpc("tesoreria_registrar_movimiento", params);
+    if (error)
+      return notice(
+        "No fue posible registrar el movimiento. Verifica saldo y campos obligatorios.",
+        true,
+      );
+    $("#movementDialog").close();
+    form.reset();
+    notice("Movimiento preparado y auditado.");
+    await load();
+  }
+  async function init() {
+    if (initialized || !window.creditekSidebar?.sb) return;
+    initialized = true;
+    sb = window.creditekSidebar.sb;
+    profile = window.creditekSidebar.perfil;
+    if (!profile?.es_operador_aliados && profile?.rol !== "gerencia") {
+      $("#accessDenied").classList.remove("hidden");
+      return;
+    }
+    $("#pageContent").classList.remove("hidden");
+    try {
+      await load();
+    } catch (error) {
+      console.error("Tesorería no pudo cargar", error);
+      notice("No fue posible cargar Tesorería. Intenta nuevamente.", true);
+    }
+  }
+  document.addEventListener("kora-sidebar-ready", init, { once: true });
+  if (window.creditekSidebar?.sb) init();
+  ["platform", "cutoff", "status"].forEach((id) =>
+    $(`#${id}`).addEventListener("change", render),
+  );
+  $("#search").addEventListener("input", render);
+  $("#refresh").onclick = load;
+  $("#paymentReport").onclick = paymentReport;
+  $("#showOperational").onclick = () => {
+    treasuryView = "operational";
+    render();
+  };
+  $("#showHistory").onclick = () => {
+    treasuryView = "history";
+    render();
+  };
+  $("#openStoreLedger").onclick = () => {
+    const selected = data.compensations.find(
+      (x) => x.id === selectedCompensationId,
+    );
+    if (selected)
+      location.href = `cuenta-corriente.html?tienda=${encodeURIComponent(selected.store_code)}&referencia=${encodeURIComponent(selected.id)}`;
+  };
+  $("#closePaymentSupport").onclick = closePaymentSupport;
+  $("#paymentSupportForm").onsubmit = submitPaymentSupport;
+  $("#paymentSupportFile").onchange = (event) => {
+    const file = event.target.files[0],
+      validation = validateSupport(file),
+      selected = $("#paymentSupportSelected"),
+      errorBox = $("#paymentSupportError");
+    if (validation) {
+      selected.classList.add("hidden");
+      errorBox.textContent = validation;
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    errorBox.classList.add("hidden");
+    selected.textContent = `Archivo listo: ${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    selected.classList.remove("hidden");
+  };
+  $("#paymentSupportModal").onclick = (event) => {
+    if (event.target === $("#paymentSupportModal")) closePaymentSupport();
+  };
+  $("#closePaymentDetail").onclick = closePaymentDetail;
+  $("#paymentDetailModal").onclick = (event) => {
+    if (event.target === $("#paymentDetailModal")) closePaymentDetail();
+  };
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if ($("#paymentSupportModal").classList.contains("show"))
+      closePaymentSupport();
+    else if ($("#paymentDetailModal").classList.contains("show"))
+      closePaymentDetail();
+  });
 })();

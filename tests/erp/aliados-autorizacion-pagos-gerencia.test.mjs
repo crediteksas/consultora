@@ -118,3 +118,11 @@ test('todo lo anterior al 1 de septiembre queda cerrado y fuera de pendientes', 
   assert.match(sql, /set estado = 'cerrada'/);
   assert.match(sql, /payment_order_classify_historical_cutoff/);
 });
+
+test('Tesorería muestra nombres de tiendas y reserva CK como código interno', async () => {
+  const app = await readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8');
+  assert.match(app, /function storeName\(code\)/);
+  assert.match(app, /from\('origenes'\)\.select\('codigo,nombre'\)/);
+  assert.match(app, /storeName\(x\.store_code\)/);
+  assert.match(app, /storeName\(x\.beneficiary\)/);
+});

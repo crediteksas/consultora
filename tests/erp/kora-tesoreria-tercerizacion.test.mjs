@@ -69,12 +69,13 @@ test('rollback es no destructivo y bloquea si existen movimientos conciliados', 
   assert.doesNotMatch(rollback,/delete from public\.(liquidations|liquidation_operations|cuenta_corriente|payment_orders)/i);
 });
 
-test('la interfaz presenta cuatro bloques independientes y usa el guard de KORA', async () => {
+test('la interfaz concentra Tesorería en pagos, compensaciones y utilidad', async () => {
   const [html,app,sidebar,guard] = await Promise.all([
     readFile('creditek/erp/aliados-tesoreria.html','utf8'),readFile('creditek/erp/aliados-tesoreria-app.js','utf8'),
     readFile('creditek/erp/sidebar.js','utf8'),readFile('creditek/erp/kora-access-control.js','utf8'),
   ]);
-  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Compensaciones Retail hacia B2B','Disponibilidad y movimientos de Tesorería']) assert.match(html,new RegExp(label));
+  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Abonos automáticos a cartera de tiendas','Utilidad del negocio por créditos de tiendas propias']) assert.match(html,new RegExp(label));
+  assert.doesNotMatch(html,/Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(sidebar,/Tesorería/);
   assert.match(guard,/aliados-tesoreria\.html/);
   assert.match(app,/window\.creditekSidebar/);

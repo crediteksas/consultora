@@ -16,7 +16,10 @@ test('diferencias de Precio de venta y Pagamos bloquean y requieren decisión de
   assert.match(migration, /krediya_precio_venta_diferente/);
   assert.match(migration, /krediya_pagamos_diferente/);
   assert.match(migration, /aliados_resolver_precio_krediya/);
-  assert.match(app, /Decisión de Mayte/);
+  assert.match(app, /await openPriceEditor\(operationId\)/);
+  assert.match(app, /Guardado en KORA/);
+  assert.match(app, /Recibido de Krediya/);
+  assert.doesNotMatch(app, /escribe USAR/);
 });
 
 test('solo aliados generan pagos; Retail queda separado para cartera', () => {

@@ -121,6 +121,10 @@
 
   async function openDetail(id) {
     selected = batches.find((batch) => batch.id === id) || selected;
+    if (selected.plataforma === 'krediya' && !selected.frozen_at && ['importada','con_novedades','validada','calculada'].includes(selected.estado)) {
+      const { error } = await sb.rpc('aliados_sincronizar_precios_krediya', { p_id:id });
+      if (error) { alert('No se pudieron actualizar las diferencias de precios: ' + error.message); return; }
+    }
     $('detail').classList.remove('hidden');
     $('detail').style.scrollMarginTop = '100px';
     $('detail').setAttribute('tabindex', '-1');
@@ -279,22 +283,8 @@
   }
   async function resolveIncident(id, operationId, incidentType) {
     if (selected.plataforma === 'krediya' && incidentType?.startsWith('krediya_')) {
-      const decision = prompt('Decisión de Mayte: escribe USAR para tomar Precio/Pagamos del archivo, CORREGIR para guardar valores corregidos o ERROR si el archivo está equivocado.');
-      if (!decision) return;
-      const normalized = decision.trim().toLowerCase();
-      const map = { usar:'usar_archivo', corregir:'corregir_configuracion', error:'error_archivo' };
-      if (!map[normalized]) return alert('Decisión inválida. Usa USAR, CORREGIR o ERROR.');
-      let precio = null, pagamos = null;
-      if (normalized === 'corregir') {
-        precio = Number((prompt('Precio de venta correcto:') || '').replace(/[^0-9.-]/g,''));
-        pagamos = Number((prompt('Pagamos correcto:') || '').replace(/[^0-9.-]/g,''));
-        if (!(precio > 0 && pagamos > 0)) return alert('Precio de venta y Pagamos deben ser mayores que cero.');
-      }
-      const justification = prompt('Justificación de la decisión:');
-      if (!justification?.trim()) return;
-      const { error } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId, p_decision:map[normalized], p_precio_venta:precio, p_pagamos:pagamos, p_justificacion:justification.trim() });
-      if (error) return alert(error.message);
-      await loadTab('incidents');
+      if (incidentType === 'krediya_bono_sin_configurar') return;
+      await openPriceEditor(operationId);
       return;
     }
     const justification = prompt('Escribe la justificación de la diferencia o novedad:');
@@ -302,6 +292,53 @@
     const { error } = await sb.rpc('aliados_resolver_novedad', { p_incident_id: id, p_justificacion: justification.trim() });
     if (error) return alert(error.message);
     await loadTab('incidents');
+  }
+  async function openPriceEditor(operationId) {
+    const modal = $('priceEditor');
+    modal.classList.add('show');
+    $('priceEditorContent').textContent = 'Cargando comparación…';
+    $('closePriceEditor').onclick = () => modal.classList.remove('show');
+    const { data: c, error } = await sb.rpc('aliados_contexto_precio_krediya', { p_operation_id: operationId });
+    if (error) { $('priceEditorContent').textContent = error.message; return; }
+    const amount = (value) => value == null ? 'No registrado' : money(value);
+    const delta = (received, saved) => received == null || saved == null ? '—' : money(Number(received) - Number(saved));
+    $('priceEditorContent').innerHTML = `<p><strong>${esc(c.referencia)}</strong><br>${esc(c.tienda)} · IMEI ${esc(c.imei)} · ${esc(c.fecha)}</p>
+      <div class="price-comparison"><table><thead><tr><th>Concepto</th><th>Guardado en KORA</th><th>Recibido de Krediya</th><th>Diferencia</th></tr></thead><tbody>
+      <tr><th>PVP</th><td>${amount(c.pvp_guardado)}</td><td>${amount(c.pvp_recibido)}</td><td>${delta(c.pvp_recibido,c.pvp_guardado)}</td></tr>
+      <tr><th>Pagamos</th><td>${amount(c.pagamos_guardado)}</td><td>${c.pagamos_recibido == null ? 'No viene en el archivo' : money(c.pagamos_recibido)}</td><td>${delta(c.pagamos_recibido,c.pagamos_guardado)}</td></tr></tbody></table></div>
+      <p>${c.pvp_guardado == null ? 'No se encontró una tarifa para esta referencia. No se sustituye por cero.' : 'Si Krediya reportó un error, puedes conservar el precio guardado y registrar el motivo.'}</p>
+      <form id="priceDecisionForm"><label>Decisión<select class="control" id="priceDecision" required><option value="">Selecciona qué hacer</option><option value="aceptar_krediya">Aceptar el PVP recibido de Krediya</option><option value="conservar_guardado" ${c.pvp_guardado == null || c.pagamos_guardado == null ? 'disabled' : ''}>Conservar los valores guardados en KORA</option><option value="editar_operacion">Corregir valores de esta operación</option></select></label>
+      <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="0.01" step="0.01" required disabled></label><label>Pagamos a aplicar<input class="control" id="decisionPagamos" type="number" min="0.01" step="0.01" required value="${c.pagamos_guardado ?? ''}"></label></div>
+      <p id="priceImpact" aria-live="polite">Selecciona una decisión para ver el impacto.</p>
+      <label>Motivo de la decisión<textarea class="control" id="priceReason" required rows="2" maxlength="1000" placeholder="Ejemplo: diferencia confirmada o posible error de Krediya"></textarea></label>
+      <p class="muted">Aplica únicamente a este crédito. Conserva el archivo original y no modifica el tarifario maestro. No autoriza ni registra pagos.</p>
+      <div id="priceSaveError" class="error" role="alert"></div><div class="actions"><button class="btn primary" id="savePriceDecision" type="submit" disabled>Guardar decisión</button></div></form>`;
+    const refresh = () => {
+      const mode = $('priceDecision').value;
+      const p = Number($('decisionPvp').value), paid = Number($('decisionPagamos').value);
+      const known = c.bonos != null;
+      const bruto = p - paid - Number(c.bonos);
+      const previous = c.pvp_guardado == null || c.pagamos_guardado == null || !known ? null : Number(c.pvp_guardado)-Number(c.pagamos_guardado)-Number(c.bonos);
+      $('priceImpact').textContent = !(p>0 && paid>0) ? 'Falta PVP o Pagamos para calcular el impacto.' : !known ? 'La utilidad queda pendiente de resolver la vigencia de bonos. Los precios sí pueden guardarse.' : `Utilidad bruta: ${money(bruto)}. Provisión 28 %: ${money(Math.round(bruto*28)/100)}. Utilidad neta estimada: ${money(bruto-Math.round(bruto*28)/100)}.${previous == null ? '' : ` Cambio bruto frente al precio guardado: ${money(bruto-previous)}.`}`;
+      $('savePriceDecision').disabled = !mode || !(p>0 && paid>0) || !$('priceReason').value.trim();
+    };
+    $('priceDecision').onchange = () => {
+      const mode = $('priceDecision').value;
+      $('decisionPvp').disabled = mode !== 'editar_operacion';
+      $('decisionPagamos').disabled = mode === 'conservar_guardado';
+      $('decisionPvp').value = mode === 'aceptar_krediya' ? c.pvp_recibido ?? '' : c.pvp_guardado ?? '';
+      $('decisionPagamos').value = c.pagamos_guardado ?? c.pagamos_recibido ?? '';
+      refresh();
+    };
+    ['decisionPvp','decisionPagamos','priceReason'].forEach((id) => { $(id).oninput = refresh; });
+    $('priceDecisionForm').onsubmit = async (event) => {
+      event.preventDefault(); $('savePriceDecision').disabled = true;
+      const { error: saveError } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId,p_decision:$('priceDecision').value,p_precio_venta:Number($('decisionPvp').value),p_pagamos:Number($('decisionPagamos').value),p_justificacion:$('priceReason').value.trim() });
+      if (saveError) { $('priceSaveError').textContent = saveError.message; refresh(); return; }
+      modal.classList.remove('show');
+      const batchId = selected.id; await loadBatches(); await openDetail(batchId); await loadTab('incidents',operationId);
+    };
+    $('priceDecision').focus();
   }
   async function stateRpc(next, comment = null) {
     const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: selected.id, p_estado: next, p_comentario: comment });
@@ -384,7 +421,13 @@
     alert(`Cuenta guardada y validada.${completados ? ` ${completados} pago(s) pendiente(s) completado(s) automáticamente.` : ''}`);
     if (selected) await openDetail(selected.id);
   };
-  $('validate').onclick = () => stateRpc('validada');
+  $('validate').onclick = async () => {
+    if (selected.plataforma === 'krediya') {
+      const { error } = await sb.rpc('aliados_sincronizar_precios_krediya', { p_id:selected.id });
+      if (error) { $('workflowError').textContent = error.message; return; }
+    }
+    await stateRpc('validada');
+  };
   $('calculate').onclick = async () => { if (selected.plataforma !== 'krediya') { const bonuses = await sb.rpc('aliados_calcular_bonos_ejecutivos', { p_liquidation_id: selected.id }); if (bonuses.error) return alert(bonuses.error.message); } const rpc = selected.plataforma === 'krediya' ? 'aliados_calcular_liquidacion_krediya' : 'aliados_calcular_liquidacion'; const { error } = await sb.rpc(rpc, { p_id: selected.id }); if (error) alert(error.message); else { await loadBatches(); await openDetail(selected.id); } };
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');
   $('reject').onclick = () => stateRpc('con_novedades', prompt('Motivo para devolver a revisión:') || 'Requiere corrección');

@@ -51,6 +51,12 @@
   .kpi-card .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
   .kpi-card .valor { font-size: 26px; font-weight: 700; margin-top: 4px; }
   .kpi-card .delta { font-size: 11px; margin-top: 4px; }
+  .kpi-card .valor { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .comparison-strip { display: grid; grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px 20px; border: 1px solid #bfeff1; border-radius: 12px; background: linear-gradient(135deg, #f3feff, #fff); }
+  .comparison-strip .comparison-title { align-self: center; }
+  .comparison-strip .comparison-label { color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .comparison-strip .comparison-value { color: #0B1E3D; font-size: 20px; font-weight: 800; margin-top: 3px; }
+  .city-select { background: white; border: 1px solid #d1d5db; border-radius: 12px; min-height: 44px; min-width: 180px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; }
   .delta-up { color: #059669; }
   .delta-down { color: #dc2626; }
   .btn-nav { min-height: 44px; padding: 0 16px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #e5e7eb; background: white; transition: transform 80ms ease; }
@@ -212,6 +218,7 @@
   }
 
   @media (max-width: 63.999rem) {
+    .comparison-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kora-period-viewport {
       -webkit-overflow-scrolling: touch;
       overflow-x: auto;
@@ -219,6 +226,9 @@
       padding-bottom: var(--ctk-space-0-5);
       scrollbar-width: thin;
     }
+  }
+  @media (max-width: 32.5rem) {
+    .comparison-strip { grid-template-columns: minmax(0, 1fr); }
   }
 
   @media (max-width: 47.999rem) {
@@ -659,6 +669,10 @@
           <div id="chkTiendasLista"></div>
         </div>
       </div>
+      <label id="filtroCiudadWrap" class="solo-central">
+        <span class="sr-only">Ciudad</span>
+        <select id="filtroCiudad" class="city-select" aria-label="Filtrar por ciudad"><option value="">Todas las ciudades</option></select>
+      </label>
       <span id="rango-visible" class="text-xs text-gray-500 ml-auto"></span>
     </div>
   </section>
@@ -666,9 +680,21 @@
   <!-- DASHBOARD KPIs -->
   <section class="kpi-grid grid gap-3">
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ventas del período</div><div class="valor font-mono" id="kpi-ventas">—</div><div class="delta" id="kpi-ventas-delta">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Facturas</div><div class="valor font-mono" id="kpi-facturas">—</div><div class="delta">Ventas registradas</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Unidades vendidas</div><div class="valor font-mono" id="kpi-unidades">—</div><div class="delta" id="kpi-unidades-sub">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Unidades por factura</div><div class="valor font-mono" id="kpi-upf">—</div><div class="delta">Productos promedio por venta</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Ticket promedio</div><div class="valor font-mono" id="kpi-ticket">—</div><div class="delta" id="kpi-ticket-sub">—</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Celulares vendidos</div><div class="valor font-mono" id="kpi-celulares">—</div><div class="delta">Unidades serializadas</div></div>
+    <div class="kpi-card bg-white border border-gray-200"><div class="label">Accesorios vendidos</div><div class="valor font-mono" id="kpi-accesorios">—</div><div class="delta">Unidades no serializadas</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Inventario (costo real)</div><div class="valor font-mono" id="kpi-inventario">—</div><div class="delta" id="kpi-inventario-sub">—</div></div>
+  </section>
+
+  <section class="comparison-strip" aria-labelledby="comparativo-title">
+    <div class="comparison-title"><div class="comparison-label" id="comparativo-title">Comparativo mismo período</div><div class="text-sm text-gray-600" id="comparativo-periodo">2026 frente a 2025</div></div>
+    <div><div class="comparison-label">Venta actual</div><div class="comparison-value font-mono" id="comparativo-actual">—</div></div>
+    <div><div class="comparison-label">Referencia 2025</div><div class="comparison-value font-mono" id="comparativo-anterior">—</div></div>
+    <div><div class="comparison-label">Crecimiento</div><div class="comparison-value" id="comparativo-delta">—</div></div>
   </section>
 
   <!-- ==================== 1.1 CUADRO DIARIO VENTAS ==================== -->
@@ -881,7 +907,7 @@
 
   <!-- ==================== 3.1 CRECIMIENTO MES A MES ==================== -->
   <section class="reporte bg-white rounded-lg shadow-sm border border-gray-200">
-    <details>
+    <details open>
       <summary class="p-4 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">📈 3.1 Crecimiento mes a mes</h2>
@@ -1092,6 +1118,28 @@ function tiendaVisible(codigo) {
   return !tiendasFiltro || tiendasFiltro.length === 0 || tiendasFiltro.includes(codigo);
 }
 
+async function referenciaVentas2025(desde, hasta) {
+  const inicio = new Date(desde + 'T00:00:00');
+  const fin = new Date(hasta + 'T00:00:00');
+  if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return 0;
+  let q = sb.from('historico_mensual').select('mes, venta_total, venta_total_dia, dias_mes, tienda_codigo').eq('anio', 2025);
+  q = aplicarFiltroTienda(q);
+  const histRes = await q;
+  exigirRespuestas(histRes);
+  const diasPorMes = {};
+  for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+    const mes = d.getMonth() + 1;
+    diasPorMes[mes] = (diasPorMes[mes] || 0) + 1;
+  }
+  return (histRes.data || []).reduce((total, fila) => {
+    const dias = diasPorMes[Number(fila.mes)] || 0;
+    if (!dias) return total;
+    const promedioDia = Number(fila.venta_total_dia || 0)
+      || (Number(fila.dias_mes || 0) ? Number(fila.venta_total || 0) / Number(fila.dias_mes) : 0);
+    return total + promedioDia * dias;
+  }, 0);
+}
+
 function crearCacheRefresco() {
   const { desde, hasta } = getPeriodo();
   const filtro = [...tiendasFiltro];
@@ -1147,12 +1195,16 @@ async function verificarAuth() {
   document.getElementById('app').classList.remove('hidden');
 
   // Cargar tiendas para el multi-select — RLS filtra automáticamente
-  const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
+  const { data: tiendas } = await sb.from('origenes').select('codigo, nombre, ciudad').eq('tipo', 'propia').eq('activo', true).order('nombre');
   tiendasCache = tiendas || [];
   const lista = document.getElementById('chkTiendasLista');
   lista.innerHTML = tiendasCache.map(t =>
     `<label><input type="checkbox" class="chkTienda" value="${esc(t.codigo)}"> ${esc(t.nombre)}</label>`
   ).join('');
+
+  const ciudades = [...new Set(tiendasCache.map(t => (t.ciudad || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  document.getElementById('filtroCiudad').innerHTML = '<option value="">Todas las ciudades</option>'
+    + ciudades.map(ciudad => `<option value="${esc(ciudad)}">${esc(ciudad)}</option>`).join('');
 
   if (!esCentral() && perfil.tienda_codigo) {
     // admin_tienda / asesor: solo su tienda, multi-select bloqueado
@@ -1188,42 +1240,45 @@ async function cargarKPIs(cache) {
   const ventas = vRes.data || [];
   const totalV = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
   const ticket = ventas.length > 0 ? totalV / ventas.length : 0;
+  let celulares = 0;
+  let accesorios = 0;
+  ventas.forEach(venta => (venta.venta_items || []).forEach(item => {
+    const cantidad = Number(item.cantidad || 0);
+    if (item.productos?.tipo === 'serializado') celulares += cantidad;
+    else accesorios += cantidad;
+  }));
+  const unidades = celulares + accesorios;
+  const unidadesPorFactura = ventas.length ? unidades / ventas.length : 0;
 
   document.getElementById('kpi-ventas').textContent = money(totalV);
+  document.getElementById('kpi-facturas').textContent = num(ventas.length);
+  document.getElementById('kpi-unidades').textContent = num(unidades);
+  document.getElementById('kpi-unidades-sub').textContent = `${num(celulares)} celulares + ${num(accesorios)} accesorios`;
+  document.getElementById('kpi-upf').textContent = unidadesPorFactura.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   document.getElementById('kpi-ticket').textContent = money(ticket);
   document.getElementById('kpi-ticket-sub').textContent = '';
+  document.getElementById('kpi-celulares').textContent = num(celulares);
+  document.getElementById('kpi-accesorios').textContent = num(accesorios);
 
   // Delta vs 2025 — usa historico_mensual cuando el rango coincide con un mes
   // conocido o un solo día. Para períodos parciales usa proyección proporcional.
   const deltaEl = document.getElementById('kpi-ventas-delta');
-  const dDesde = new Date(desde + 'T00:00:00');
-  const dHasta = new Date(hasta + 'T00:00:00');
-  const anio2025 = 2025;
-  const mismosMeses = dDesde.getFullYear() === dHasta.getFullYear() && dDesde.getMonth() === dHasta.getMonth();
-  const esUnDia = desde === hasta;
-  const diasRango = Math.round((dHasta - dDesde) / 86400000) + 1;
-  let ref2025 = 0;
-  if (esUnDia || mismosMeses) {
-    // Mismo mes: comparar contra venta del mes 2025 (proporcional al #días si es parcial)
-    const mesNum = dDesde.getMonth() + 1;
-    let qHist = sb.from('historico_mensual').select('venta_total, venta_total_dia, dias_mes').eq('anio', anio2025).eq('mes', mesNum);
-    qHist = aplicarFiltroTienda(qHist);
-    const histRes = await qHist;
-    exigirRespuestas(histRes);
-    const hist = histRes.data;
-    (hist || []).forEach(h => {
-      if (esUnDia) ref2025 += Number(h.venta_total_dia || 0);
-      else ref2025 += Number(h.venta_total_dia || 0) * diasRango;
-    });
-  }
+  const ref2025 = await referenciaVentas2025(desde, hasta);
   let sub = `${ventas.length} operaciones`;
+  let delta = null;
   if (ref2025 > 0) {
-    const delta = ((totalV - ref2025) / ref2025) * 100;
+    delta = ((totalV - ref2025) / ref2025) * 100;
     const flecha = delta >= 0 ? '↑' : '↓';
     const cls = delta >= 0 ? 'delta-up' : 'delta-down';
-    sub = `${ventas.length} operaciones · <span class="${cls}">${flecha} ${Math.abs(delta).toFixed(1)}% vs mismo período de 2025</span>`;
+    sub = `${ventas.length} operaciones · <span class="${cls}">${flecha} ${Math.abs(delta).toFixed(1)}% vs 2025 (mismo período)</span>`;
   }
   deltaEl.innerHTML = sub;
+  document.getElementById('comparativo-periodo').textContent = `${desde} a ${hasta} frente a las mismas fechas de 2025`;
+  document.getElementById('comparativo-actual').textContent = money(totalV);
+  document.getElementById('comparativo-anterior').textContent = ref2025 > 0 ? money(ref2025) : 'Sin base';
+  const comparativoDelta = document.getElementById('comparativo-delta');
+  comparativoDelta.textContent = delta == null ? 'Sin base comparable' : `${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta).toFixed(1)}%`;
+  comparativoDelta.className = `comparison-value ${delta == null ? 'text-gray-500' : delta >= 0 ? 'delta-up' : 'delta-down'}`;
 
   // Cartera e inventario provienen del caché compartido de este refresco.
   const cc = ccRes.data || [];
@@ -1771,6 +1826,16 @@ function inicializarMultiSelect() {
       actualizarLabelTiendas();
       refrescarTodo();
     });
+  });
+
+  document.getElementById('filtroCiudad').addEventListener('change', (event) => {
+    const ciudad = event.target.value;
+    const codigos = ciudad ? tiendasCache.filter(t => t.ciudad === ciudad).map(t => t.codigo) : [];
+    tiendasFiltro = codigos;
+    chkTodas.checked = !ciudad;
+    chkIndiv.forEach(chk => { chk.checked = codigos.includes(chk.value); });
+    actualizarLabelTiendas();
+    refrescarTodo();
   });
 }
 

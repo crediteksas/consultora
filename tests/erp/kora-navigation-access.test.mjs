@@ -137,6 +137,15 @@ test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tien
   }
 });
 
+test('Presupuestos y metas pertenece al negocio Retail y no al Tablero general', () => {
+  const navigation = access.navigationFor({ rol: 'gerencia', activo: true }, { b2b: true, aliados: true });
+  const tablero = Array.from(navigation).find(section => section.title === 'TABLERO');
+  const retail = Array.from(navigation).find(section => section.title === 'CREDITEK RETAIL');
+  assert.ok(Array.from(retail.items, item => item.href).includes('presupuestos.html'));
+  assert.ok(Array.from(retail.items, item => item.label).includes('Presupuestos y metas'));
+  assert.ok(!Array.from(tablero.items, item => item.href).includes('presupuestos.html'));
+});
+
 test('toda página que monta el shell carga primero el control de acceso', async () => {
   const erpDir = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(erpDir)).filter(name => name.endsWith('.html'));

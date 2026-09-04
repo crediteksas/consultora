@@ -36,6 +36,7 @@
     ] },
     { title: 'CREDITEK RETAIL', icon: 'store', items: [
       { label: 'Dashboard Retail', href: 'reportes.html#retail', icon: 'chart-no-axes-combined' },
+      { label: 'Presupuestos y metas', href: 'presupuestos.html', icon: 'badge-dollar-sign' },
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart' },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users' },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards' },

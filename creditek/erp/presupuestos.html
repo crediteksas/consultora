@@ -9,8 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="kora-access-control.js?v=2.0.17"></script>
-<script src="sidebar.js?v=2.0.17" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.18"></script>
+<script src="sidebar.js?v=2.0.18" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -172,6 +172,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
   </div>
 
   <div class="tabs">
+    <button id="tabVentas" data-metrica="meta_venta_total">Ventas</button>
     <button class="activo" id="tabCreditos" data-metrica="meta_creditos">Créditos</button>
     <button id="tabCelulares" data-metrica="meta_uds_cel">Celulares (contado)</button>
     <button id="tabAccesorios" data-metrica="meta_uds_acc">Accesorios</button>
@@ -420,10 +421,11 @@ function renderTabla() {
       total += val;
       const esFinde = new Date(y, m - 1, d).getDay() === 0;
       const esManual = reg && reg.generado_desde === 'manual';
-      const mostrar = metricaActual === 'meta_utilidad' ? fmtCOP(val).replace('$', '').replace(/\s/g, '') : val;
+      const esDinero = metricaActual === 'meta_utilidad' || metricaActual === 'meta_venta_total';
+      const mostrar = esDinero ? fmtCOP(val).replace('$', '').replace(/\s/g, '') : val;
       fila += `<td class="dia-celda ${esFinde ? 'finde' : ''} ${esManual ? 'manual' : ''}" data-tienda="${t.codigo}" data-fecha="${fechaStr}" data-nombre="${escapeHtml(t.nombre)}" title="${esManual ? 'Editado manualmente' : 'Generado automáticamente'}">${mostrar}</td>`;
     }
-    const totalMostrar = metricaActual === 'meta_utilidad' ? fmtCOP(total) : total;
+    const totalMostrar = (metricaActual === 'meta_utilidad' || metricaActual === 'meta_venta_total') ? fmtCOP(total) : total;
     fila += `<td class="total-mes">${totalMostrar}</td>`;
     return `<tr>${fila}</tr>`;
   }).join('');
@@ -433,7 +435,7 @@ function renderTabla() {
 
 function abrirModalCelda(td) {
   celdaEnEdicion = { tienda: td.dataset.tienda, fecha: td.dataset.fecha, nombre: td.dataset.nombre };
-  const labels = { meta_creditos: 'Meta de créditos', meta_uds_cel: 'Meta de celulares (contado)', meta_uds_acc: 'Meta de accesorios', meta_utilidad: 'Meta de utilidad' };
+  const labels = { meta_venta_total: 'Meta de ventas', meta_creditos: 'Meta de créditos', meta_uds_cel: 'Meta de celulares (contado)', meta_uds_acc: 'Meta de accesorios', meta_utilidad: 'Meta de utilidad' };
   document.getElementById('celdaLabel').textContent = labels[metricaActual];
   document.getElementById('celdaContexto').textContent = `${celdaEnEdicion.nombre} · ${new Date(celdaEnEdicion.fecha + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}`;
   const reg = presupuestoCache.find(p => p.tienda_codigo === celdaEnEdicion.tienda && p.fecha === celdaEnEdicion.fecha);
@@ -457,6 +459,7 @@ async function guardarCelda() {
     meta_uds_cel: reg ? reg.meta_uds_cel : 0,
     meta_uds_acc: reg ? reg.meta_uds_acc : 0,
     meta_utilidad: reg ? reg.meta_utilidad : 0,
+    meta_venta_total: reg ? reg.meta_venta_total : 0,
     generado_desde: 'manual',
   };
   payload[metricaActual] = valor;

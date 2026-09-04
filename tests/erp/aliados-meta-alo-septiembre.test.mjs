@@ -19,6 +19,23 @@ test('Plataformas muestra avance, condiciones e incentivo sin contabilizarlo', (
   assert.match(app, /FPD7 máximo/);
   assert.match(app, /Incentivo potencial/);
   assert.match(app, /no contabilizado como utilidad/);
-  assert.match(app, /miércoles 9 de septiembre/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.20/);
+  assert.match(app, /Capacitación:/);
+  assert.match(app, /g\.capacitacion_at/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.21/);
+});
+
+test('Gerencia puede cargar metas futuras sin inventar valores de PayJoy o Krediya', async () => {
+  const managerMigration = await readFile('supabase/migrations/20260904143635_gestionar_metas_plataformas_aliados.sql', 'utf8');
+  const hardenedMigration = await readFile('supabase/migrations/20260904144249_endurecer_auditoria_metas_plataformas.sql', 'utf8');
+  assert.match(app, /Cargar o actualizar meta de plataforma/);
+  assert.match(app, /aliados_guardar_meta_plataforma/);
+  assert.match(app, /profile\?\.rol!==\x27gerencia\x27/);
+  assert.match(managerMigration, /tiene_capacidad_aliados\('aprobador'\)/);
+  assert.match(managerMigration, /guardar_meta_plataforma/);
+  assert.match(managerMigration, /insert into public\.audit_log/);
+  assert.match(hardenedMigration, /security invoker/);
+  assert.match(hardenedMigration, /revoke all on function public\.aliados_auditar_meta_plataforma\(\) from public, anon, authenticated/);
+  assert.match(hardenedMigration, /create trigger aliados_metas_plataforma_auditoria/);
+  assert.doesNotMatch(managerMigration, /values \(\s*'payjoy'/i);
+  assert.doesNotMatch(managerMigration, /values \(\s*'krediya'/i);
 });

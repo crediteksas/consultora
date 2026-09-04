@@ -7,7 +7,8 @@ const sql = await readFile(new URL('../../supabase/migrations/20260904031256_pre
 test('la propuesta prorratea el histórico mensual y conserva el total exacto', () => {
   assert.match(sql, /histórico mensual prorrateado/);
   assert.match(sql, /v_total - s\.suma_base/);
-  assert.match(sql, /round\(v_total \* \(1 \+ p_pct_crecimiento \/ 100\.0\)\) - s\.suma_meta/);
+  assert.match(sql, /round\(v_total \* \(\(100\.0 \+ p_pct_crecimiento\) \/ 100\.0\)\) - s\.suma_meta/);
+  assert.match(sql, /p_pct_crecimiento < 0 or p_pct_crecimiento > 1000/);
 });
 
 test('la propuesta conserva el patrón diario real cuando existe', () => {

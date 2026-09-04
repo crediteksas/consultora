@@ -25,7 +25,7 @@ begin
   if p_metrica not in ('meta_venta_total','meta_creditos','meta_uds_cel','meta_uds_acc','meta_utilidad') then
     raise exception 'Métrica no permitida';
   end if;
-  if p_pct_crecimiento < -100 or p_pct_crecimiento > 1000 then raise exception 'Porcentaje fuera de rango'; end if;
+  if p_pct_crecimiento < 0 or p_pct_crecimiento > 1000 then raise exception 'El crecimiento debe estar entre 0 y 1000 por ciento'; end if;
 
   if p_metrica = 'meta_venta_total' then
     select count(distinct v.fecha) > 1 into v_hay_diario
@@ -42,7 +42,7 @@ begin
         where v.tienda_codigo = p_tienda and v.fecha >= v_inicio_hist and v.fecha < v_fin_hist
           and coalesce(v.anulada, false) = false group by 1
       )
-      select d.fecha, coalesce(b.valor,0), round(coalesce(b.valor,0) * (1 + p_pct_crecimiento / 100.0)), 'histórico diario'::text
+      select d.fecha, coalesce(b.valor,0), round(coalesce(b.valor,0) * ((100.0 + p_pct_crecimiento) / 100.0)), 'histórico diario'::text
       from dias d left join base b on b.dia = extract(day from d.fecha)::integer order by d.fecha;
       return;
     end if;
@@ -65,7 +65,7 @@ begin
         from public.historico_importado h
         where h.tienda_codigo = p_tienda and h.fecha >= v_inicio_hist and h.fecha < v_fin_hist group by 1
       )
-      select d.fecha, coalesce(b.valor,0), round(coalesce(b.valor,0) * (1 + p_pct_crecimiento / 100.0)), 'histórico diario'::text
+      select d.fecha, coalesce(b.valor,0), round(coalesce(b.valor,0) * ((100.0 + p_pct_crecimiento) / 100.0)), 'histórico diario'::text
       from dias d left join base b on b.dia = extract(day from d.fecha)::integer order by d.fecha;
       return;
     end if;
@@ -92,14 +92,14 @@ begin
   ), calc as (
     select d.fecha, d.rn,
       round(v_total / nullif(v_dias,0)) as base_dia,
-      round((v_total * (1 + p_pct_crecimiento / 100.0)) / nullif(v_dias,0)) as meta_dia
+      round((v_total * ((100.0 + p_pct_crecimiento) / 100.0)) / nullif(v_dias,0)) as meta_dia
     from dias d
   ), sums as (
     select sum(base_dia) as suma_base, sum(meta_dia) as suma_meta from calc
   )
   select c.fecha,
     c.base_dia + case when c.rn = 1 then v_total - s.suma_base else 0 end,
-    c.meta_dia + case when c.rn = 1 then round(v_total * (1 + p_pct_crecimiento / 100.0)) - s.suma_meta else 0 end,
+    c.meta_dia + case when c.rn = 1 then round(v_total * ((100.0 + p_pct_crecimiento) / 100.0)) - s.suma_meta else 0 end,
     'histórico mensual prorrateado'::text
   from calc c cross join sums s order by c.fecha;
 end;

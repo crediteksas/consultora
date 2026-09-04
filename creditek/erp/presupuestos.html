@@ -94,6 +94,10 @@ td.dia-celda:hover { background: rgba(0,196,204,0.08); }
 td.finde { background: rgba(11,30,61,0.02); }
 td.manual { color: var(--turquesa); font-weight: 700; }
 .celda-input { width: 42px; text-align: center; border: 1px solid var(--turquesa); border-radius: 6px; padding: 3px; font-size: 12.5px; font-family: inherit; }
+.porcentajes-grid { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:10px; width:100%; margin-top:10px; }
+.porcentajes-grid input { width:100%; }
+@media (max-width:900px) { .porcentajes-grid { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
+@media (max-width:520px) { .porcentajes-grid { grid-template-columns:1fr; } }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
 
 .modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
@@ -164,13 +168,21 @@ td.manual { color: var(--turquesa); font-weight: 700; }
     <div class="form-inline">
       <div class="campo"><label>Tienda</label><select id="genTienda"><option value="">Selecciona una tienda</option></select></div>
       <div class="campo"><label>Mes</label><input type="month" id="genMes"></div>
-      <div class="campo"><label>% de crecimiento</label><input type="number" id="genPct" value="0" step="1" style="width:90px;"></div>
       <button class="btn-primary" id="btnGenerar">Calcular propuesta</button>
-      <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar y guardar</button>
+      <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar indicador actual</button>
+      <button class="btn-primary" id="btnAprobarTodo">Aprobar los 5 indicadores</button>
       <button class="btn-secundario" id="btnCancelarPropuesta" style="display:none;">Descartar</button>
       <button class="btn-secundario" id="btnImportarHistorico">Importar histórico (CSV)</button>
       <input type="file" id="inputHistorico" accept=".csv,.xlsx,.xls" style="display:none;">
     </div>
+    <div class="porcentajes-grid">
+      <div class="campo"><label>Ventas</label><input class="pct-metrica" data-metrica="meta_venta_total" type="number" value="0" min="0" max="1000" step="1"></div>
+      <div class="campo"><label>Créditos</label><input class="pct-metrica" data-metrica="meta_creditos" type="number" value="0" min="0" max="1000" step="1"></div>
+      <div class="campo"><label>Celulares contado</label><input class="pct-metrica" data-metrica="meta_uds_cel" type="number" value="0" min="0" max="1000" step="1"></div>
+      <div class="campo"><label>Accesorios</label><input class="pct-metrica" data-metrica="meta_uds_acc" type="number" value="0" min="0" max="1000" step="1"></div>
+      <div class="campo"><label>Utilidad</label><input class="pct-metrica" data-metrica="meta_utilidad" type="number" value="0" min="0" max="1000" step="1"></div>
+    </div>
+    <small id="genPctAyuda">Cada indicador conserva su propio porcentaje. 100% significa duplicar el resultado anterior.</small>
     <div class="modal-err" id="genErr"></div>
   </div>
 
@@ -294,8 +306,11 @@ function initPagina() {
   const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
   document.getElementById('genMes').value = mesActual;
   document.getElementById('verMes').value = mesActual;
+  if (currentPerfil.rol !== 'gerencia') document.getElementById('btnAprobarTodo').style.display = 'none';
 
   document.getElementById('btnGenerar').addEventListener('click', generarPresupuesto);
+  document.getElementById('btnAprobarTodo').addEventListener('click', guardarTodosLosIndicadores);
+  document.querySelectorAll('.pct-metrica').forEach(input => input.addEventListener('input', actualizarAyudaCrecimiento));
   document.getElementById('btnAprobarPropuesta').addEventListener('click', guardarPropuesta);
   document.getElementById('btnCancelarPropuesta').addEventListener('click', descartarPropuesta);
   document.getElementById('btnImportarHistorico').addEventListener('click', () => document.getElementById('inputHistorico').click());
@@ -304,6 +319,28 @@ function initPagina() {
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => cambiarTab(b)));
 
   cargarTiendas().then(cargarPresupuesto);
+  actualizarAyudaCrecimiento();
+}
+
+function actualizarAyudaCrecimiento() {
+  const input = document.querySelector(`.pct-metrica[data-metrica="${metricaActual}"]`);
+  const ayuda = document.getElementById('genPctAyuda');
+  if (!input || !ayuda) return;
+  const pct = Number(input.value);
+  ayuda.textContent = Number.isFinite(pct) && pct >= 0
+    ? `${pct}% de crecimiento = ${(1 + pct / 100).toLocaleString('es-CO', { maximumFractionDigits: 2 })} veces la venta anterior`
+    : 'Ingresa un crecimiento entre 0% y 1000%';
+}
+
+function leerPorcentaje(metrica) {
+  return Number(document.querySelector(`.pct-metrica[data-metrica="${metrica}"]`)?.value ?? 0);
+}
+
+function porcentajesValidos() {
+  return [...document.querySelectorAll('.pct-metrica')].every(input => {
+    const valor = Number(input.value);
+    return Number.isFinite(valor) && valor >= 0 && valor <= 1000;
+  });
 }
 
 async function cargarTiendas() {
@@ -318,6 +355,7 @@ function cambiarTab(btn) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('activo'));
   btn.classList.add('activo');
   metricaActual = btn.dataset.metrica;
+  actualizarAyudaCrecimiento();
   renderTabla();
 }
 
@@ -326,8 +364,13 @@ async function generarPresupuesto() {
   err.classList.remove('show');
   const mesStr = document.getElementById('genMes').value;
   const tienda = document.getElementById('genTienda').value;
-  const pct = Number(document.getElementById('genPct').value || 0);
+  const pct = leerPorcentaje(metricaActual);
   if (!tienda || !mesStr) { err.textContent = 'Selecciona una tienda y un mes.'; err.classList.add('show'); return; }
+  if (!Number.isFinite(pct) || pct < 0 || pct > 1000) {
+    err.textContent = 'El crecimiento debe estar entre 0% y 1000%. Ejemplo: 150% produce una meta equivalente a 2,5 veces la venta anterior.';
+    err.classList.add('show');
+    return;
+  }
   const btn = document.getElementById('btnGenerar');
   btn.disabled = true; btn.textContent = 'Calculando...';
   const { data, error } = await sb.rpc('proponer_presupuesto_manual', {
@@ -335,7 +378,13 @@ async function generarPresupuesto() {
   });
   btn.disabled = false; btn.textContent = 'Calcular propuesta';
   if (error) { err.textContent = 'No se pudo calcular: ' + error.message; err.classList.add('show'); return; }
-  propuestaActual = { tienda, mesStr, pct, metrica: metricaActual, filas: data || [] };
+  const filas = data || [];
+  if (filas.some(f => Number(f.meta_propuesta) < 0)) {
+    err.textContent = 'KORA detuvo la propuesta porque produjo un valor negativo. No se guardó ningún cambio.';
+    err.classList.add('show');
+    return;
+  }
+  propuestaActual = { tienda, mesStr, pct, metrica: metricaActual, filas };
   document.getElementById('verMes').value = mesStr;
   await cargarPresupuesto();
   aplicarPropuestaEnVista();
@@ -360,6 +409,33 @@ function aplicarPropuestaEnVista() {
   renderTabla();
 }
 
+async function guardarTodosLosIndicadores() {
+  const err = document.getElementById('genErr');
+  err.classList.remove('show');
+  const tienda = document.getElementById('genTienda').value;
+  const mesStr = document.getElementById('genMes').value;
+  if (!tienda || !mesStr) { err.textContent = 'Selecciona una tienda y un mes.'; err.classList.add('show'); return; }
+  if (!porcentajesValidos()) { err.textContent = 'Todos los porcentajes deben estar entre 0% y 1000%.'; err.classList.add('show'); return; }
+  if (currentPerfil.rol !== 'gerencia') { err.textContent = 'Solo Gerencia puede aprobar presupuestos.'; err.classList.add('show'); return; }
+  const btn = document.getElementById('btnAprobarTodo');
+  btn.disabled = true; btn.textContent = 'Guardando los 5...';
+  const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
+    p_tienda: tienda, p_mes: mesStr + '-01',
+    p_pct_ventas: leerPorcentaje('meta_venta_total'),
+    p_pct_creditos: leerPorcentaje('meta_creditos'),
+    p_pct_celulares: leerPorcentaje('meta_uds_cel'),
+    p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
+    p_pct_utilidad: leerPorcentaje('meta_utilidad')
+  });
+  btn.disabled = false; btn.textContent = 'Aprobar los 5 indicadores';
+  if (error) { err.textContent = 'No se pudo aprobar el presupuesto general: ' + error.message; err.classList.add('show'); return; }
+  propuestaActual = null;
+  document.getElementById('btnAprobarPropuesta').style.display = 'none';
+  document.getElementById('btnCancelarPropuesta').style.display = 'none';
+  await cargarPresupuesto();
+  mostrarBanner('✅ Los cinco indicadores quedaron aprobados con sus porcentajes independientes.');
+}
+
 async function guardarPropuesta() {
   if (!propuestaActual) return;
   const btn = document.getElementById('btnAprobarPropuesta');
@@ -369,7 +445,7 @@ async function guardarPropuesta() {
     p_tienda: propuestaActual.tienda, p_mes: propuestaActual.mesStr + '-01',
     p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
   });
-  btn.disabled = false; btn.textContent = 'Aprobar y guardar';
+  btn.disabled = false; btn.textContent = 'Aprobar indicador actual';
   if (error) { err.textContent = 'No se pudo guardar: ' + error.message; err.classList.add('show'); return; }
   const tiendaNombre = tiendasCache.find(t => t.codigo === propuestaActual.tienda)?.nombre || propuestaActual.tienda;
   propuestaActual = null;

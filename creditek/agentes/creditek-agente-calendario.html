@@ -122,6 +122,25 @@ select option{background:var(--bg2)}
 .badge-ref{background:rgba(255,255,255,.06);color:var(--txt3);border:1px solid rgba(255,255,255,.1)}
 
 .dcard-title{padding:10px 14px 4px;font-size:13px;font-weight:600;color:var(--txt);line-height:1.4}
+.format-row{padding:0 14px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.format-badge,.review-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--bord)}
+.format-reel{color:#b794f6;background:rgba(183,148,246,.1);border-color:rgba(183,148,246,.25)}
+.format-feed{color:#63b3ed;background:rgba(99,179,237,.1);border-color:rgba(99,179,237,.25)}
+.review-ok{color:#9ae6b4;background:rgba(154,230,180,.1);border-color:rgba(154,230,180,.25)}
+.review-risk{color:#fc814a;background:rgba(252,129,74,.1);border-color:rgba(252,129,74,.25)}
+.production-plan{margin:0 14px 10px;border:1px solid var(--bord);border-radius:10px;background:var(--bg3);overflow:hidden}
+.production-plan summary{cursor:pointer;padding:8px 10px;font-size:11px;font-weight:700;color:var(--txt2);list-style:none}
+.production-plan summary::-webkit-details-marker{display:none}
+.production-plan summary::after{content:'+';float:right;color:var(--turquesa)}
+.production-plan[open] summary::after{content:'−'}
+.plan-body{border-top:1px solid var(--bord);padding:9px 10px;display:grid;gap:7px}
+.plan-item{font-size:11px;color:var(--txt2);line-height:1.5}
+.plan-item strong{color:var(--txt);font-weight:700}
+.story-frames{display:grid;gap:5px;margin-top:3px}
+.story-frame{padding:6px 8px;border-radius:7px;border:1px solid var(--bord);background:var(--bg2)}
+.compliance-box{margin:0 14px 10px;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.5}
+.compliance-box.ok{color:#9ae6b4;background:rgba(154,230,180,.08);border:1px solid rgba(154,230,180,.22)}
+.compliance-box.risk{color:#fc814a;background:rgba(252,129,74,.08);border:1px solid rgba(252,129,74,.22)}
 /* FIX v32, 13-jul-2026 — Fase 1, Parte A: texto editable directo en la
    tarjeta (contenteditable), sin cambiar el look — solo un borde punteado
    sutil al enfocar para que quede claro que se puede editar. */
@@ -288,6 +307,13 @@ select option{background:var(--bg2)}
         <option value="2">2 — Días 16 al fin de mes</option>
       </select>
     </div>
+    <div class="fg">
+      <label class="fl">Ritmo de publicación</label>
+      <select id="cadencia">
+        <option value="sostenible" selected>Sostenible — historias diarias + 4–5 Reels/semana</option>
+        <option value="intensiva">Intensiva — historias + Reel todos los días</option>
+      </select>
+    </div>
   </div>
 
   <div class="sec">
@@ -341,6 +367,8 @@ select option{background:var(--bg2)}
 
   <div class="filters" id="filtersBar" style="display:none">
     <span class="ftag active" data-filter="todos" onclick="filtrar(this)">Todos</span>
+    <span class="ftag" data-filter="Reel" onclick="filtrar(this)">🎬 Reels</span>
+    <span class="ftag" data-filter="Feed/Carrusel" onclick="filtrar(this)">▦ Feed/Carrusel</span>
     <span class="ftag" data-filter="Educativo" onclick="filtrar(this)">📚 Educativo</span>
     <span class="ftag" data-filter="Producto" onclick="filtrar(this)">📱 Producto</span>
     <span class="ftag" data-filter="Testimonio" onclick="filtrar(this)">⭐ Testimonio</span>
@@ -351,6 +379,8 @@ select option{background:var(--bg2)}
   </div>
 
   <div class="stats-bar" id="statsBar">
+    <div class="stat"><div class="stat-dot" style="background:#b794f6"></div>Reels: <span class="stat-num" id="cReel">0</span></div>
+    <div class="stat"><div class="stat-dot" style="background:#00C4CC"></div>Días con historias: <span class="stat-num" id="cStoryDays">0</span></div>
     <div class="stat"><div class="stat-dot" style="background:#63b3ed"></div>Educativo: <span class="stat-num" id="cEdu">0</span></div>
     <div class="stat"><div class="stat-dot" style="background:var(--turquesa)"></div>Producto: <span class="stat-num" id="cProd">0</span></div>
     <div class="stat"><div class="stat-dot" style="background:#9ae6b4"></div>Testimonio: <span class="stat-num" id="cTest">0</span></div>
@@ -420,13 +450,56 @@ function filterKey(tipo) {
   return 'Reflexión';
 }
 
+function formatClass(formato) {
+  return String(formato || '').toLowerCase().includes('reel') ? 'format-reel' : 'format-feed';
+}
+
+const PATRONES_RIESGO = [
+  /\b(creditek\s+financia|te\s+financiamos|financiado\s+con\s+creditek|nuestro\s+cr[eé]dito)\b/i,
+  /\b(aprobaci[oó]n|aprobado|te\s+aprobamos)\s+(en\s+minutos|hoy|inmediata|garantizada|el\s+mismo\s+d[ií]a)\b/i,
+  /\b(sin\s+revisar\s+(tu\s+)?historial|no\s+miramos\s+(tu\s+)?historial)\b/i,
+  /\b(el\s+banco\s+te\s+dijo\s+no|los\s+bancos\s+te\s+cierran|aqu[ií]\s+s[ií]\s+te\s+aprobamos)\b/i,
+  /\b(cuotas?\s+desde|bono\s+de|descuento\s+de)\s*\$?[\d.,]+/i
+];
+
+function auditarPieza(d) {
+  const texto = `${d.titulo || ''} ${d.copy || ''} ${d.gancho || ''} ${d.guion || ''}`;
+  const alertas = [];
+  if (PATRONES_RIESGO.some(p => p.test(texto))) alertas.push('Contiene una promesa o cifra que requiere respaldo');
+  if (/testimonio/i.test(d.tipo || '') && !d.fuenteVerificada) alertas.push('Testimonio sin fuente y consentimiento verificados');
+  if (/cr[eé]dito|cuota|financia|payjoy|addi|krediya|alo\s*credit/i.test(texto) && !/Sujeto a aprobaci[oó]n de cr[eé]dito\. Aplican t[eé]rminos y condiciones\./i.test(d.copy || '')) {
+    alertas.push('Falta el aviso de aprobación y condiciones');
+  }
+  return { estado: alertas.length ? 'REVISAR' : 'APTO_PARA_REVISION', alertas };
+}
+
+function normalizarPieza(d) {
+  const historias = Array.isArray(d.historias) ? d.historias.slice(0, 5) : [];
+  const pieza = {
+    ...d,
+    formato: /feed|carrusel/i.test(d.formato || '') ? 'Feed/Carrusel' : 'Reel',
+    objetivo: d.objetivo || 'Interacción',
+    gancho: d.gancho || d.titulo || '',
+    guion: d.guion || '',
+    escenas: Array.isArray(d.escenas) ? d.escenas.slice(0, 6) : [],
+    textoPantalla: d.textoPantalla || '',
+    cta: d.cta || 'Escríbenos por WhatsApp',
+    duracion: d.duracion || (/reel/i.test(d.formato || '') ? '15–25 s' : 'N/A'),
+    hora: d.hora || '7:00 p. m.',
+    historias,
+    fuenteVerificada: d.fuenteVerificada === true
+  };
+  pieza.auditoria = auditarPieza(pieza);
+  return pieza;
+}
+
 // ── Filtrar por tipo ────────────────────────────────────────────
 function filtrar(el) {
   document.querySelectorAll('.ftag').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   const f = el.dataset.filter;
   document.querySelectorAll('.dcard').forEach(c => {
-    if (f === 'todos' || c.dataset.tipo === f) c.classList.remove('hidden');
+    if (f === 'todos' || c.dataset.tipo === f || c.dataset.formato === f) c.classList.remove('hidden');
     else c.classList.add('hidden');
   });
 }
@@ -482,6 +555,8 @@ function actualizarStats(dias) {
   document.getElementById('cStory').textContent = counts.Storytelling;
   document.getElementById('cCta').textContent   = counts.CTA;
   document.getElementById('cTip').textContent   = counts.Tip;
+  document.getElementById('cReel').textContent = dias.filter(d => /reel/i.test(d.formato || '')).length;
+  document.getElementById('cStoryDays').textContent = dias.filter(d => Array.isArray(d.historias) && d.historias.length).length;
 }
 
 // ── Renderizar calendario ───────────────────────────────────────
@@ -497,6 +572,8 @@ hdr.innerHTML = `<span class="cal-title">📅 ${tituloCalendario} — ${mes} ${a
   grid.appendChild(hdr);
 
   dias.forEach((d, i) => {
+    d = normalizarPieza(d);
+    dias[i] = d;
     const fk = filterKey(d.tipo);
     // FIX v32, 13-jul-2026 — Fase 1: si la pieza no trae estado (ej. recién
     // generada, antes de guardarPiezasEnSupabase()), se asume 'sin_imagen',
@@ -505,10 +582,18 @@ hdr.innerHTML = `<span class="cal-title">📅 ${tituloCalendario} — ${mes} ${a
     const card = document.createElement('div');
     card.className = 'dcard';
     card.dataset.tipo = fk;
+    card.dataset.formato = d.formato;
     card.dataset.piezaId = d.supabaseId || '';
 
     const platsHtml = (d.plataformas || []).map(p => `<span class="plat-tag">${p}</span>`).join('');
     const imagenHtml = d.imagen_url ? `<img class="dcard-imagen" id="imagen-${i}" src="${d.imagen_url}">` : `<img class="dcard-imagen" id="imagen-${i}" src="">`;
+    const auditOk = d.auditoria.estado === 'APTO_PARA_REVISION';
+    const escenasHtml = d.escenas.map((e, n) => `<div class="story-frame"><strong>Escena ${n + 1}:</strong> ${escapeHtml(String(e))}</div>`).join('');
+    const historiasHtml = d.historias.map((e, n) => {
+      const contenido = typeof e === 'string' ? e : `${e.texto || ''}${e.interaccion ? ` · ${e.interaccion}` : ''}`;
+      return `<div class="story-frame"><strong>Historia ${n + 1}:</strong> ${escapeHtml(contenido)}</div>`;
+    }).join('');
+    const alertasHtml = d.auditoria.alertas.map(a => `• ${escapeHtml(a)}`).join('<br>');
 
     card.innerHTML = `
       <div class="dcard-head">
@@ -526,7 +611,26 @@ hdr.innerHTML = `<span class="cal-title">📅 ${tituloCalendario} — ${mes} ${a
            salir del campo (onblur), usando el piezaId de la tarjeta. -->
       <div class="dcard-title" contenteditable="true" spellcheck="false"
            onblur="guardarEdicion(this,'headline',${i})">${limpiarMarkdownTitular(d.titulo || '')}</div>
+      <div class="format-row">
+        <span class="format-badge ${formatClass(d.formato)}">${d.formato}</span>
+        <span class="review-badge ${auditOk ? 'review-ok' : 'review-risk'}">${auditOk ? 'Listo para revisión' : 'Requiere corrección'}</span>
+        <span class="plat-tag">${escapeHtml(d.hora)}</span>
+      </div>
       <div class="dcard-plats">${platsHtml}</div>
+      <details class="production-plan">
+        <summary>Ver plan de producción</summary>
+        <div class="plan-body">
+          <div class="plan-item"><strong>Objetivo:</strong> ${escapeHtml(d.objetivo)}</div>
+          <div class="plan-item"><strong>Gancho:</strong> ${escapeHtml(d.gancho)}</div>
+          <div class="plan-item"><strong>Duración:</strong> ${escapeHtml(d.duracion)}</div>
+          <div class="plan-item"><strong>Guion:</strong> ${escapeHtml(d.guion || 'Pendiente')}</div>
+          <div class="plan-item"><strong>Texto en pantalla:</strong> ${escapeHtml(d.textoPantalla || 'Pendiente')}</div>
+          <div class="plan-item"><strong>CTA:</strong> ${escapeHtml(d.cta)}</div>
+          ${escenasHtml ? `<div class="plan-item"><strong>Escenas:</strong><div class="story-frames">${escenasHtml}</div></div>` : ''}
+          <div class="plan-item"><strong>Historias del día:</strong><div class="story-frames">${historiasHtml || '<div class="story-frame">Pendientes</div>'}</div></div>
+        </div>
+      </details>
+      <div class="compliance-box ${auditOk ? 'ok' : 'risk'}">${auditOk ? '✓ Revisión automática: no se detectaron promesas ni cifras riesgosas.' : `⚠ ${alertasHtml}`}</div>
       <div class="dcard-copy">
         <div class="copy-text expanded" id="copy-${i}" contenteditable="true" spellcheck="false"
              onblur="guardarEdicion(this,'copy',${i})">${escapeHtml(d.copy || '')}</div>
@@ -539,7 +643,7 @@ hdr.innerHTML = `<span class="cal-title">📅 ${tituloCalendario} — ${mes} ${a
       <div class="dcard-estado" id="estado-${i}">${estadoBadgeHtml(d.estado)}</div>
       <!-- FIX v32 — Fase 1, Parte B: aprobar y generar imagen con GPT -->
       <div class="dcard-aprobar">
-        <button class="approve-btn" id="approve-btn-${i}" onclick="aprobarYGenerarImagen(${i})">✅ Aprobar y generar imagen</button>
+        <button class="approve-btn" id="approve-btn-${i}" onclick="aprobarYGenerarImagen(${i})" ${auditOk ? '' : 'disabled title="Corrige las alertas antes de generar la pieza"'}>${auditOk ? '✅ Aprobar y generar portada' : '⚠ Corrige el contenido primero'}</button>
         ${d.estado === 'lista_para_publicar' ? `<button class="approve-btn" id="publish-btn-${i}" onclick="publicarPieza(${i})" style="background:#1877F2">📤 Publicar ahora (Facebook + Instagram)</button>` : ''}
         ${d.estado === 'publicado' ? `<span style="color:#10B981;font-weight:600">✓ Publicado</span>` : ''}
         ${d.error_detalle ? `<div style="color:#ef4444;font-size:12px;margin-top:4px">⚠ ${d.error_detalle}</div>` : ''}
@@ -570,7 +674,7 @@ function actualizarEstadoBadge(idx, estado) {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // FIX v1 09-jul-2026 (mismo bug encontrado y corregido en Agente 1/v13): si la
@@ -583,6 +687,22 @@ function limpiarMarkdownTitular(texto) {
   return (texto || '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/_{1,2}/g, '').trim();
 }
 
+async function confirmarRegeneracion(anio, mes, diaInicio, diaFin) {
+  try {
+    const mesNum = MESES_NUM[mes] || '01';
+    const desde = `${anio}-${mesNum}-${String(diaInicio).padStart(2, '0')}`;
+    const hasta = `${anio}-${mesNum}-${String(diaFin).padStart(2, '0')}`;
+    const url = `${SUPABASE_URL}/rest/v1/calendario_piezas?select=id&fecha=gte.${desde}&fecha=lte.${hasta}&limit=1`;
+    const res = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+    if (!res.ok) return true;
+    const existentes = await res.json();
+    if (!existentes.length) return true;
+    return window.confirm('Ya existen piezas guardadas para esta quincena. Si continúas se creará una nueva versión para comparar; no se eliminará la anterior. ¿Deseas continuar?');
+  } catch (_) {
+    return true;
+  }
+}
+
 // ── Generar ─────────────────────────────────────────────────────
 async function generar() {
   const ciudad   = document.getElementById('ciudad').value;
@@ -590,6 +710,7 @@ async function generar() {
   const anio     = document.getElementById('anio').value;
   const quincena = document.getElementById('quincena').value;
   const brief = document.getElementById('brief').value.trim();
+  const cadencia = document.getElementById('cadencia').value;
   const plats    = [...document.querySelectorAll('.pbtn.active')].map(b => b.dataset.plat);
 
   // Calcula el rango real de días según la quincena elegida.
@@ -601,6 +722,8 @@ async function generar() {
   const diaFin    = quincena === '2' ? ultimoDiaMes : 15;
 
   if (!plats.length) { alert('Selecciona al menos una plataforma.'); return; }
+  const continuarDuplicado = await confirmarRegeneracion(anio, mes, diaInicio, diaFin);
+  if (!continuarDuplicado) return;
 
   const btn = document.getElementById('genBtn');
   const sp  = document.getElementById('sp');
@@ -643,11 +766,9 @@ async function generar() {
   const systemPrompt = `Eres el estratega de contenido de Creditek, empresa colombiana que VENDE tecnología y electrónica a crédito (celulares, parlantes, accesorios y afines), con tiendas aliadas en el Caribe colombiano. Creditek NO es una entidad financiera: quien otorga el crédito es la plataforma financiera aliada (PayJoy, Alo Credit, Krediya o Addi), no Creditek. Esta distinción es obligatoria en todo el contenido — ver regla explícita más abajo.
 
 CONTEXTO DE MARCA:
-- Productos: Celulares (Samsung, Xiaomi, Oppo, Honor, Infinix, Motorola, TCL), parlantes, accesorios y tecnología en general
+- Productos: celulares, parlantes, accesorios y tecnología. Una marca o referencia concreta solo puede aparecer si está confirmada en el brief.
 - Financiación a través de: PayJoy, Alo Credit, Krediya, Addi
-- Requisitos: Solo cédula. Sin banco. Sin fiador. Sin codeudor.
-- Aprobación: Mismo día, en minutos
-- Plazos: 4, 6, 8 o 12 meses
+- Los requisitos, plazos, cuotas y tiempos de aprobación dependen de la plataforma y del caso. No afirmes valores universales.
 - Asistente virtual Sofía atiende por WhatsApp al 324 2030299
 - Tiendas aliadas en: Tolú, Corozal, Chinú, Ciénaga de Oro y Coveñas (Caribe colombiano)
 - Público: NSE 2-3, Costa Caribe colombiana, lenguaje cercano y costeño
@@ -657,7 +778,7 @@ CONTEXTO DE MARCA:
 
 REGLAS DE VERACIDAD (obligatorias — publicidad engañosa es un riesgo legal real, no un detalle de estilo):
 - NUNCA inventes cifras de cuota mensual ni precios específicos por producto (ej. "$40.000 al mes"). Solo puedes mencionar un precio o cuota si aparece textualmente en el BRIEF REAL DE LA QUINCENA que te pasen. Si no está ahí, habla en términos generales ("cuotas que se ajustan a tu bolsillo") sin inventar números.
-- NUNCA inventes testimonios de clientes con nombre propio ni cites entre comillas algo que una persona real nunca dijo. El estilo "Testimonio" debe hablar en tercera persona genérica (ej. "Muchos clientes cuentan que...", "Es común escuchar que..."), nunca atribuir una cita textual a un nombre inventado.
+- NUNCA inventes testimonios, citas, nombres, resultados ni expresiones como "muchos clientes" sin evidencia. Solo usa el tipo Testimonio cuando el BRIEF incluya la historia real, la autorización y los datos aprobados para publicación. Si no existe esa fuente, reemplázalo por otro tipo de contenido.
 - NUNCA digas que Creditek "financia", "te financiamos", "nuestro crédito", "financiado con Creditek" ni ninguna variante donde Creditek aparezca como la entidad que otorga el crédito. Creditek VENDE a crédito; quien financia es la plataforma aliada (PayJoy, Alo Credit, Krediya o Addi). Frases correctas: "compra a crédito en Creditek", "Creditek te conecta con financiación", "paga en cuotas a través de nuestras plataformas aliadas", "estrena con crédito en Creditek". Si el copy necesita nombrar la plataforma específica, solo hazlo si aparece en el BRIEF; si no, habla en términos generales ("financiación a través de nuestras plataformas aliadas") sin inventar cuál.
 - NUNCA menciones promociones, bonos o beneficios con fecha límite (como bonos por tiempo limitado) a menos que aparezcan textualmente en el BRIEF REAL DE LA QUINCENA. Si no está ahí, no existe para este calendario.
 - Todo dato de producto destacado, evento, fecha especial o ciudad a impulsar debe salir del BRIEF REAL DE LA QUINCENA si lo hay. Si no hay brief, usa solo el contexto de marca genérico de arriba, sin inventar detalles específicos.
@@ -667,7 +788,7 @@ CUMPLIMIENTO META (obligatorio, no negociable — mismas reglas ya validadas y e
 - NUNCA uses el patrón de contraste "te dijeron no en otro lado / aquí sí" (o cualquier variante de reversión de un rechazo previo de otra entidad financiera) en ningún tipo de contenido.
 - Incluye siempre, en algún lugar del copy (no necesariamente en el titular), la frase: "Sujeto a aprobación de crédito. Aplican términos y condiciones."
 
-ROTACIÓN DE TEMAS OBLIGATORIA (del skill redes-sociales) — aplícala en este orden a las publicaciones que elijas, sin importar qué día de la semana caigan:
+ROTACIÓN DE TEMAS OBLIGATORIA — aplícala en este orden:
 1. Educativo: cómo funciona el crédito, qué es PayJoy/AloCredit/Krediya/Addi, mitos sobre el crédito
 2. Producto/Servicio: presentar un celular y sus beneficios, sin inventar precio de cuota
 3. Testimonio: situación realista y común de un cliente que compró a crédito, sin nombre inventado, sin cita textual, y sin mencionar velocidad de aprobación (ver CUMPLIMIENTO META arriba — aplica igual aquí que en los demás tipos)
@@ -676,7 +797,12 @@ ROTACIÓN DE TEMAS OBLIGATORIA (del skill redes-sociales) — aplícala en este 
 6. Tip: consejo de tecnología, cómo elegir celular, cuidado del equipo
 7. Reflexión (breve, humanización de marca) o CTA suave
 
-CADENCIA: esto es contenido orgánico institucional (no pauta) — el objetivo es mantener la página activa, no vender agresivamente todos los días. Publica 4 a 5 veces por semana, en días espaciados (nunca 2 días seguidos), nunca los 7 días.
+PLAN MULTIFORMATO:
+- Cada día del rango debe incluir entre 3 y 5 historias verticales conectadas entre sí.
+- Cada historia debe indicar el texto y una interacción sugerida (encuesta, pregunta, deslizador o CTA), sin inventar información.
+- Cada Reel debe incluir gancho de los primeros 3 segundos, guion, entre 3 y 6 escenas, texto en pantalla, duración y CTA.
+- Feed/Carrusel debe indicar idea visual y secuencia, sin reemplazar las historias diarias.
+- El contenido debe diseñarse para formato vertical 9:16 cuando sea Reel o Historia.
 
 ESTRUCTURA DE CADA TIPO:
 - Educativo: Dato/pregunta llamativa → Explicación simple → Aprendizaje → CTA suave
@@ -694,27 +820,47 @@ RESPONDE ÚNICAMENTE con un array JSON válido. Sin markdown, sin explicaciones,
     ? 'Genera contenido genérico para toda la red Creditek en el Caribe colombiano. NO menciones una ciudad específica.'
     : `Tienda específica: ${ciudad}. Puedes mencionar ${ciudadNombre} de forma breve y natural, sin forzarlo en cada post.`;
 
-  const userPrompt = `Genera el calendario de contenido de la quincena para:
+  const instruccionCadencia = cadencia === 'intensiva'
+    ? 'Genera un Reel y una secuencia de historias para TODOS los días del rango.'
+    : 'Genera historias para TODOS los días del rango. Distribuye 4 a 5 Reels por semana y usa Feed/Carrusel en los demás días.';
+
+  const userPrompt = `Genera el calendario diario de contenido de la quincena para:
 - ${contextoTienda}
 - Cubre EXCLUSIVAMENTE del día ${diaInicio} al día ${diaFin} de ${mes} ${anio}. NO generes ningún día fuera de este rango.
-- Plataformas: ${plats.join(', ')}${briefInfo}
+- Plataformas: ${plats.join(', ')}
+- Cadencia: ${instruccionCadencia}${briefInfo}
 
-Devuelve entre 8 y 10 objetos JSON (aprox. 4-5 publicaciones por semana, distribuidas en los 15 días, en días espaciados) con esta estructura:
+Devuelve EXACTAMENTE un objeto por cada día del ${diaInicio} al ${diaFin}, sin saltar fechas, con esta estructura:
 [
   {
     "dia": 2,
     "diaSemana": "Martes",
     "tipo": "Educativo",
     "emoji": "📚",
+    "formato": "Reel",
+    "objetivo": "Educar",
     "titulo": "Título corto del post (max 60 chars)",
+    "gancho": "Frase de máximo 8 palabras para los primeros 3 segundos",
+    "guion": "Guion hablado breve y natural",
+    "escenas": ["Toma 1", "Toma 2", "Toma 3"],
+    "textoPantalla": "Texto corto y legible",
+    "duracion": "20 s",
+    "hora": "7:00 p. m.",
+    "cta": "Escríbenos por WhatsApp para orientarte",
+    "historias": [
+      {"texto":"Gancho del día","interaccion":"Encuesta: Sí / Quiero saber"},
+      {"texto":"Explicación útil","interaccion":"Deslizador"},
+      {"texto":"Cierre y llamado a la acción","interaccion":"Escríbenos"}
+    ],
+    "fuenteVerificada": false,
     "plataformas": ["Facebook","Instagram"],
     "copy": "Copy CORTO de máximo 3-4 líneas, listo para publicar. Gancho + beneficio + CTA. Sin listas ni bullets. Máximo 1 emoji. Termina con CTA a escribir al WhatsApp 324 2030299. Máximo 3 hashtags cortos al final."
   }
 ]
 
-Elige tú los días exactos (entre el ${diaInicio} y el ${diaFin} de ${mes}) siguiendo una cadencia de 4-5 por semana, nunca 2 días seguidos. Calcula el día de la semana correcto para ${mes} ${anio}.
+Calcula el día de la semana correcto para cada fecha de ${mes} ${anio}. No inventes testimonios: si no existe fuente verificada, cambia el tipo por educación, producto genérico, storytelling de marca o tip.
 CADA COPY DEBE TENER MÁXIMO 3-4 LÍNEAS — esto es publicidad de redes sociales, no un artículo. La gente desliza rápido.
-Varía los productos: Samsung, Xiaomi, Oppo, Honor, Infinix, Motorola, TCL, parlantes, accesorios — salvo que el brief indique un producto específico a destacar. NO generes contenido centrado en artículos de belleza salvo que el brief lo pida explícitamente (es una categoría marginal del negocio, no un producto de rotación regular).
+Varía las categorías entre celulares, audio, accesorios y tecnología, pero NO inventes marcas, referencias o disponibilidad. Solo menciona una marca, modelo o producto específico cuando aparezca en el brief verificado. NO generes contenido centrado en artículos de belleza salvo que el brief lo pida explícitamente.
 NUNCA uses "bacano".`;
 
   try {
@@ -753,6 +899,13 @@ NUNCA uses "bacano".`;
       const match = raw.match(/\[[\s\S]*\]/);
       if (match) dias = JSON.parse(match[0]);
       else throw new Error('No se pudo parsear el JSON');
+    }
+
+    if (!Array.isArray(dias)) throw new Error('El modelo no devolvió una lista válida');
+    dias = dias.map(normalizarPieza).filter(d => Number(d.dia) >= diaInicio && Number(d.dia) <= diaFin);
+    const diasUnicos = new Set(dias.map(d => Number(d.dia)));
+    if (diasUnicos.size !== (diaFin - diaInicio + 1)) {
+      throw new Error(`El calendario quedó incompleto: se esperaban ${diaFin - diaInicio + 1} días y llegaron ${diasUnicos.size}. Intenta nuevamente.`);
     }
 
     clearInterval(progTimer);
@@ -859,7 +1012,9 @@ async function guardarEdicion(el, campo, idx) {
     if (calendarioActual?.dias?.[idx]) {
       if (campo === 'headline') calendarioActual.dias[idx].titulo = valor;
       if (campo === 'copy') calendarioActual.dias[idx].copy = valor;
+      calendarioActual.dias[idx] = normalizarPieza(calendarioActual.dias[idx]);
       guardarCalendario(calendarioActual.dias, calendarioActual.ciudad, calendarioActual.mes, calendarioActual.anio, calendarioActual.quincena);
+      renderCalendario(calendarioActual.dias, calendarioActual.ciudad, calendarioActual.mes, calendarioActual.anio);
     }
     showToast('✓ Guardado');
   } catch (err) {
@@ -896,13 +1051,14 @@ async function aprobarYGenerarImagen(idx) {
   const titulo = card.querySelector('.dcard-title')?.textContent.trim() || '';
   const copy   = document.getElementById('copy-' + idx)?.textContent.trim() || '';
   const tipo   = card.querySelector('.dtype')?.textContent.trim() || '';
+  const formato = calendarioActual?.dias?.[idx]?.formato || 'Feed/Carrusel';
 
   const btn = document.getElementById('approve-btn-' + idx);
   btn.disabled = true;
   btn.textContent = 'Generando imagen...';
 
   try {
-    const imgB64 = await generarImagenPipelineAgente4(tipo, titulo, copy);
+    const imgB64 = await generarImagenPipelineAgente4(tipo, titulo, copy, formato);
     btn.textContent = 'Subiendo imagen...';
     const publicUrl = await subirImagenASupabase(imgB64, piezaId);
 
@@ -933,7 +1089,7 @@ async function aprobarYGenerarImagen(idx) {
     showToast(err.message || 'Error al generar la imagen', '#ef4444');
   } finally {
     btn.disabled = false;
-    btn.textContent = '✅ Aprobar y generar imagen';
+    btn.textContent = '✅ Aprobar y generar portada';
   }
 }
 
@@ -1119,7 +1275,7 @@ async function llamarImagenWorkerAgente4(path, payload) {
   return data;
 }
 
-async function generarImagenPipelineAgente4(tipo, titulo, copy) {
+async function generarImagenPipelineAgente4(tipo, titulo, copy, formato = 'Feed/Carrusel') {
   const promptFoto = construirPromptGeminiFotoLimpiaAgente4(tipo, titulo, copy);
   const fotoBase = await generarFotoGeminiAgente4(promptFoto);
 
@@ -1132,7 +1288,9 @@ async function generarImagenPipelineAgente4(tipo, titulo, copy) {
     content.push({ type: 'input_text', text: 'Brand logo — place in top-right corner, small card with soft shadow:' });
     content.push({ type: 'input_image', image_url: logo });
   }
-  content.push({ type: 'input_text', text: `Add these clean graphic layers on top of the base photograph, square format for social media (1024x1024):
+  const esVertical = /reel|historia/i.test(formato);
+  const size = esVertical ? '1024x1536' : '1024x1024';
+  content.push({ type: 'input_text', text: `Add these clean graphic layers on top of the base photograph, ${esVertical ? 'vertical 9:16 composition for Reel/Story cover' : 'square composition for Feed'}:
 Headline text prominently placed and legible: "${titulo}"
 Short call-to-action phrase inferred from this context (do NOT render the full text below, just a short CTA of a few words): "${copy}"
 Turquoise #00C4CC and navy blue #0B1E3D as accent colors for text/CTA elements.
@@ -1142,7 +1300,7 @@ Post type: ${tipo}. Keep on-image text minimal — this is a social media ad, no
   const data = await llamarImagenWorkerAgente4('/openai/responses', {
     model: 'gpt-5.6',
     input: [{ role: 'user', content }],
-    tools: [{ type: 'image_generation', action: 'generate', size: '1024x1024' }],
+    tools: [{ type: 'image_generation', action: 'generate', size }],
   });
   const imageCall = data.output?.find(o => o.type === 'image_generation_call');
   const b64 = imageCall?.result;
@@ -1266,6 +1424,14 @@ function cargarCalendarioGuardado() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  const hoy = new Date();
+  const meses = Object.keys(MESES_NUM);
+  const mesActual = meses[hoy.getMonth()];
+  const mesSelect = document.getElementById('mes');
+  const anioSelect = document.getElementById('anio');
+  if ([...mesSelect.options].some(o => o.value === mesActual)) mesSelect.value = mesActual;
+  if ([...anioSelect.options].some(o => o.value === String(hoy.getFullYear()))) anioSelect.value = String(hoy.getFullYear());
+  document.getElementById('quincena').value = hoy.getDate() >= 16 ? '2' : '1';
   cargarCalendarioGuardado();
 });
 </script>

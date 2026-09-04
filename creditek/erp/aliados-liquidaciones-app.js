@@ -20,6 +20,7 @@
   const money = UX.formatoCOP;
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
   const state = (value) => `<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`;
+  const allyUtility = (liquidation) => Math.max(0, Number(liquidation.total_utilidad_creditek || 0) - Number(liquidation.total_utilidad_tiendas || 0));
 
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
   const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
@@ -80,7 +81,7 @@
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.estado)}</td><td>${Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
-      <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(b.total_utilidad_creditek)}</td><td>${money(b.total_pagar)}</td>
+      <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(allyUtility(b))}</td><td>${money(b.total_pagar)}</td>
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
   }
@@ -94,17 +95,24 @@
     $('review').disabled = selected.estado !== 'calculada';
     $('approve').disabled = operator.capacidad !== 'aprobador' || selected.estado !== 'revisada';
     $('reject').disabled = operator.capacidad !== 'aprobador' || !['calculada', 'revisada'].includes(selected.estado);
+    if (!frozen && selected.estado === 'calculada' && operator.capacidad === 'aprobador') {
+      $('workflowError').textContent = 'Pendiente de revisión administrativa: Maite debe marcar la liquidación como revisada antes de que Gerencia pueda aprobarla.';
+      $('workflowError').classList.remove('hidden');
+    } else if (!frozen && selected.estado === 'revisada' && operator.capacidad === 'aprobador') {
+      $('workflowError').textContent = 'Lista para aprobación de Gerencia. Después de aprobarla se crearán los destinos de Tesorería.';
+      $('workflowError').classList.remove('hidden');
+    }
   }
 
   function renderMetrics() {
-    const metrics = (title, values) => `<section class="card"><h2>${title}</h2><div class="grid">${values.map(([label, value, count]) => `<div class="metric"><small>${label}</small><strong>${count ? Number(value || 0) : money(value)}</strong></div>`).join('')}</div></section>`;
+    const metrics = (title, values) => `<section class="card"><h2>${title}</h2><div class="grid">${values.map(([label, value, format]) => `<div class="metric"><small>${label}</small><strong>${format === 'text' ? esc(value) : format ? Number(value || 0) : money(value)}</strong></div>`).join('')}</div></section>`;
     $('metrics').innerHTML = metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
-      ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad Creditek', selected.total_utilidad_creditek], ['Total a girar', selected.total_pagar]
+      ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad Aliados confirmada', allyUtility(selected)], ['Total a girar', selected.total_pagar]
     ]) + metrics('Resumen Operaciones Retail', [
-      ['Operaciones Retail', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Utilidad Creditek Retail', selected.total_utilidad_tiendas]
+      ['Operaciones Retail', selected.operaciones_tiendas, true], ['Pago neto a tiendas', selected.total_pago_tiendas], ['Resultado Retail', 'Se calcula en Retail con costo real', 'text']
     ]) + metrics('Resumen Operaciones Aliados', [
-      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos], ['Utilidad Creditek Aliados', Number(selected.total_utilidad_creditek || 0) - Number(selected.total_utilidad_tiendas || 0)]
+      ['Operaciones', selected.operaciones_aliados, true], ['Pago neto a aliados', selected.total_pago_aliados], ['Bonos', selected.total_bonos], ['Utilidad Creditek Aliados', allyUtility(selected)]
     ]);
   }
 
@@ -138,9 +146,10 @@
       const percent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
-      const utility = row.utilidad_creditek ?? row.utilidad_creditek_tienda ?? calculation?.utilidad_creditek;
+      const utility = isOwn ? row.utilidad_tienda : (row.utilidad_creditek ?? calculation?.utilidad_creditek);
       const issues = !row.reconocida ? '<span class="badge con_novedades">Operación no reconocida</span>' : isOwn && difference ? '<span class="badge con_novedades">Diferencia por revisar</span>' : 'Sin novedades';
-      return `<tr><td>${isOwn ? 'Retail' : 'Aliados'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
+      const utilityDisplay = isOwn && utility == null ? 'Pendiente de costo real en Retail' : money(utility);
+      return `<tr><td>${isOwn ? 'Retail' : 'Aliados'}</td><td>${esc(row.establishment_name)}</td><td>${esc(row.cliente_nombre || '—')}</td><td>${esc(row.imei || '—')}</td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${money(row.inicial)}</td><td>${isOwn ? money(row.inicial_kora) : 'No aplica'}</td><td>${isOwn ? money(difference) : 'No aplica'}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${utilityDisplay}</td><td>${state(selected.estado)}</td><td>${issues}</td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
   }
@@ -159,8 +168,13 @@
     $('detailHead').innerHTML = '<tr><th>Beneficiario</th><th>Tipo</th><th>Aliado o sede</th><th>Concepto</th><th>Cuenta bancaria</th><th>Valor</th><th>Estado</th><th>Fecha programada</th><th>Fecha de pago</th><th>Soporte</th><th>Acción</th></tr>';
     $('detailBody').innerHTML = (data || []).map((payment) => {
       const beneficiary = payment.liquidation_beneficiaries || {};
-      const canApprove = payment.estado === 'pendiente' && operator.capacidad === 'aprobador';
-      return `<tr><td>${esc(beneficiary.nombre || 'Sin nombre')}</td><td>${esc(UX.traducirEstado(beneficiary.tipo || 'otro'))}</td><td>${esc(beneficiary.origen_codigo || '—')}</td><td>${esc((payment.payment_items || []).map((item) => UX.traducirEstado(item.concepto)).join(', ') || 'Liquidación')}</td><td>${esc(UX.cuentaTerminadaEn(payment.beneficiary_bank_accounts?.numero_cuenta))}</td><td>${money(payment.valor)}</td><td>${state(payment.estado)}</td><td>${payment.fecha_programada ? UX.fechaCorta(payment.fecha_programada) : 'Pendiente de aprobación'}</td><td>${payment.fecha_pagada ? UX.fechaCorta(payment.fecha_pagada) : 'Pendiente de soporte'}</td><td>${payment.soporte_path ? 'Adjunto' : 'Sin soporte'}</td><td>${canApprove ? `<button class="btn secondary" data-payment="${payment.id}" data-next="programado">Aprobar pago</button>` : payment.estado === 'programado' || payment.estado === 'pagado' ? '<a class="btn secondary" href="aliados-tesoreria.html">Continuar en Tesorería</a>' : '—'}</td></tr>`;
+      const canApprove = payment.estado === 'pendiente' && operator.capacidad === 'aprobador' && Boolean(selected.frozen_at) && selected.estado === 'aprobada';
+      const action = canApprove
+        ? `<button class="btn secondary" data-payment="${payment.id}" data-next="programado">Autorizar pago</button>`
+        : payment.estado === 'programado' || payment.estado === 'pagado'
+          ? '<a class="btn secondary" href="aliados-tesoreria.html">Continuar en Tesorería</a>'
+          : !selected.frozen_at ? 'Primero: revisión de Maite y aprobación de Gerencia' : '—';
+      return `<tr><td>${esc(beneficiary.nombre || 'Sin nombre')}</td><td>${esc(UX.traducirEstado(beneficiary.tipo || 'otro'))}</td><td>${esc(beneficiary.origen_codigo || '—')}</td><td>${esc((payment.payment_items || []).map((item) => UX.traducirEstado(item.concepto)).join(', ') || 'Liquidación')}</td><td>${esc(UX.cuentaTerminadaEn(payment.beneficiary_bank_accounts?.numero_cuenta))}</td><td>${money(payment.valor)}</td><td>${state(payment.estado)}</td><td>${payment.fecha_programada ? UX.fechaCorta(payment.fecha_programada) : 'Pendiente de aprobación'}</td><td>${payment.fecha_pagada ? UX.fechaCorta(payment.fecha_pagada) : 'Pendiente de soporte'}</td><td>${payment.soporte_path ? 'Adjunto' : 'Sin soporte'}</td><td>${action}</td></tr>`;
     }).join('') || '<tr><td colspan="11">Sin pagos.</td></tr>';
     document.querySelectorAll('[data-payment]').forEach((button) => { button.onclick = () => changePayment(button.dataset.payment, button.dataset.next); });
   }
@@ -260,7 +274,10 @@
     await openDetail(selectedId);
   }
   async function changePayment(id, next) {
-    const { error } = await sb.rpc('aliados_cambiar_estado_pago', { p_id: id, p_estado: next, p_soporte_path: null });
+    const result = next === 'programado'
+      ? await sb.rpc('aliados_autorizar_pago', { p_id: id })
+      : await sb.rpc('aliados_cambiar_estado_pago', { p_id: id, p_estado: next, p_soporte_path: null });
+    const { error } = result;
     if (error) return alert(error.message);
     await loadTab('payments');
   }
@@ -321,7 +338,7 @@
   $('review').onclick = () => stateRpc('revisada', 'Revisión administrativa completada por Maite');
   $('reject').onclick = () => stateRpc('con_novedades', prompt('Motivo para devolver a revisión:') || 'Requiere corrección');
   $('reportIssue').onclick = async () => { const description = prompt('Describe la novedad:'); if (!description?.trim()) return; const { error } = await sb.rpc('aliados_reportar_novedad', { p_id: selected.id, p_operation_id: null, p_descripcion: description.trim() }); if (error) alert(error.message); else loadTab('incidents'); };
-  $('approve').onclick = () => { const message = `Confirma la aprobación de ${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nTiendas: ${selected.operaciones_tiendas || 0}\nAliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad Creditek: ${money(selected.total_utilidad_creditek)}\nTotal: ${money(selected.total_pagar)}`; if (confirm(message)) stateRpc('aprobada'); };
+  $('approve').onclick = () => { const message = `Confirma la aprobación de ${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nTiendas: ${selected.operaciones_tiendas || 0}\nAliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad Aliados confirmada: ${money(allyUtility(selected))}\nEl resultado Retail se calcula con su costo real.\nTotal: ${money(selected.total_pagar)}`; if (confirm(message)) stateRpc('aprobada'); };
   document.querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => loadTab(button.dataset.tab); });
   document.querySelectorAll('[data-model]').forEach((button) => { button.onclick = () => { activeModel = button.dataset.model; document.querySelectorAll('[data-model]').forEach((item) => item.classList.toggle('active', item === button)); loadTab('operations'); }; });
   $('filterPlatform').onchange = loadBatches;

@@ -44,3 +44,12 @@ test('el actualizador conserva los celulares vigentes de Sofía', async () => {
   assert.match(source, /'CRD-CIE-02': '573006177114'/);
   assert.doesNotMatch(source, /578001608332/);
 });
+
+test('WhatsApp obtiene su credencial desde las propiedades seguras del Apps Script', async () => {
+  const source = await readFile(sourcePath, 'utf8');
+
+  assert.match(source, /PropertiesService\.getScriptProperties\(\)\.getProperty\(CONFIG\.WA_ACCESS_TOKEN_PROPERTY\)/);
+  assert.match(source, /'Authorization': 'Bearer ' \+ tokenWhatsApp/);
+  assert.doesNotMatch(source, /WA_ACCESS_TOKEN:\s*['"][A-Za-z0-9]/);
+  assert.doesNotMatch(source, /CONFIG\.WA_ACCESS_TOKEN\b/);
+});

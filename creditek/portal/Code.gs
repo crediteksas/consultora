@@ -7,7 +7,7 @@
 // ⚙️ CONFIGURACIÓN — Reemplaza los valores marcados con ⬅️
 var CONFIG = {
   PHONE_NUMBER_ID: '1171114292752516',
-  WA_ACCESS_TOKEN: 'EAAVLHpnYaZAABR4T7rY65WcUpVxjUGYzcjMwQRWVIkmoEKE40d9N1rcnaH5ayZBZAEbOT1Da8x4vBiFHunZASkDT4gdCpZAwQZANYpT69aJ6LaAQ6WFyrAcAW5VJBaIGjl214zLJmLqjTCYZAcL3YapBmp7xs5PqrcbMywRCdet7SRK1DbunfumeHQYW1YRFQ88',
+  WA_ACCESS_TOKEN_PROPERTY: 'WA_ACCESS_TOKEN',
   WA_TEMPLATE_NAME: 'test_variable',                 // ⬅️ Cambiar por la plantilla final de confirmación de pedido
   WA_LANGUAGE_CODE: 'es',                            // 'es' para español, 'es_CO' si falla
   WA_API_VERSION: 'v19.0',
@@ -21,6 +21,12 @@ var CONFIG = {
   EMAIL_COMERCIAL: 'comercial@crediteksas.com',
   EMAIL_GESTION: 'gestion@crediteksas.com'
 };
+
+function obtenerTokenWhatsApp_() {
+  return String(
+    PropertiesService.getScriptProperties().getProperty(CONFIG.WA_ACCESS_TOKEN_PROPERTY) || ''
+  ).trim();
+}
 
 // ============================================================
 // ENRUTAMIENTO — doGet y doPost
@@ -141,7 +147,8 @@ function guardarPedido_(items) {
 function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
   try {
     // Verificar configuración
-    if (CONFIG.WA_ACCESS_TOKEN === 'PEGA_AQUI_TU_TOKEN_60_DIAS') {
+    var tokenWhatsApp = obtenerTokenWhatsApp_();
+    if (!tokenWhatsApp) {
       Logger.log('WhatsApp: Token no configurado. Omitiendo envio.');
       return { enviado: false, motivo: 'Token no configurado' };
     }
@@ -203,7 +210,7 @@ function enviarConfirmacionWA_(items, numeroPedido, tiendaNombre, ciudad) {
     var response = UrlFetchApp.fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + CONFIG.WA_ACCESS_TOKEN,
+        'Authorization': 'Bearer ' + tokenWhatsApp,
         'Content-Type': 'application/json'
       },
       payload: JSON.stringify(payload),

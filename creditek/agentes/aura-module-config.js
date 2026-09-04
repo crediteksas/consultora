@@ -32,7 +32,7 @@
     }),
     finanzas: Object.freeze({
       id: 'finanzas',
-      name: 'Sofía Finanzas',
+      name: 'Inversiones',
       path: '/creditek/agentes/aura-finanzas.html',
       appId: 'finanzas',
       permission: 'finanzas.read',

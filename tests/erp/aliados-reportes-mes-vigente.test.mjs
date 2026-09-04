@@ -28,5 +28,16 @@ test('el informe operativo no suma el histórico cerrado', () => {
   assert.doesNotMatch(render, /historicalUtilityOriginal/);
   assert.doesNotMatch(render, /Resultado histórico/);
   assert.match(render, /El histórico cerrado se conserva en auditoría/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.17/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.18/);
+});
+
+test('la utilidad del negocio incluye operaciones originadas en tiendas propias y aliados', () => {
+  assert.match(render, /ownOps=ops\.filter\(o=>businessType\(o\)==='propia'\)/);
+  assert.match(render, /allyOps=ops\.filter\(o=>businessType\(o\)==='aliado'\)/);
+  assert.match(render, /grossUtility=ownUtility\+allyUtility/);
+  assert.match(render, /Utilidad originada en tiendas propias/);
+  assert.match(render, /Utilidad originada en aliados/);
+  assert.match(render, /Utilidad neta disponible/);
+  assert.match(render, /Utilidad total del negocio/);
+  assert.doesNotMatch(render, /const allyOps=db\.operations\.filter/);
 });

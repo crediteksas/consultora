@@ -30,5 +30,12 @@
       appId: 'sofia',
       permission: 'sofia.use',
     }),
+    finanzas: Object.freeze({
+      id: 'finanzas',
+      name: 'Sofía Finanzas',
+      path: '/creditek/agentes/aura-finanzas.html',
+      appId: 'finanzas',
+      permission: 'finanzas.read',
+    }),
   });
 })(typeof window !== 'undefined' ? window : globalThis);

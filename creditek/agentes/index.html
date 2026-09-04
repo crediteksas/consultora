@@ -444,6 +444,11 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
       <span class="nav-icon"><i data-lucide="calendar-days"></i></span><span class="nav-label">Calendario de contenido</span>
     </a>
 
+    <div class="sidebar-section" data-aura-app="finanzas">Finanzas privadas</div>
+    <a class="nav-item" data-aura-app="finanzas" onclick="openModule('/creditek/agentes/aura-finanzas.html','Sofía Finanzas',this,'finanzas')">
+      <span class="nav-icon"><i data-lucide="chart-candlestick"></i></span><span class="nav-label">Inversiones</span><span class="nav-badge new">NUEVO</span>
+    </a>
+
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('creditek-gbp-fichas.html','Fichas Google Business',this,'sofia')">
       <span class="nav-icon"><i data-lucide="map-pin"></i></span><span class="nav-label">Google Business</span>
@@ -573,6 +578,13 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
               <span class="module-tag">Calendario</span>
               <span class="module-arrow">→</span>
             </div>
+          </div>
+
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Revisa de forma privada las carteras JA y Óscar, sus riesgos y los informes diarios." data-aura-app="finanzas" onclick="openModuleFromCard('/creditek/agentes/aura-finanzas.html','Sofía Finanzas','finanzas')">
+            <div class="module-top"><div class="module-icon"><i data-lucide="chart-candlestick"></i></div><div class="module-status active">● Activo</div></div>
+            <div class="module-name">Sofía Finanzas</div>
+            <div class="module-desc">Seguimiento privado de las carteras JA y Óscar, análisis de apertura y cierre, noticias, riesgos y decisiones pendientes.</div>
+            <div class="module-meta"><span class="module-tag">Inversión privada</span><span class="module-arrow">→</span></div>
           </div>
         </div>
 
@@ -877,11 +889,14 @@ function renderAuthorizedModules() {
     registro_links: 'registro_links.manage',
     cartera: 'cartera.read',
     consultas: 'consultas.read',
+    finanzas: 'finanzas.read',
   };
   document.querySelectorAll('[data-aura-app]').forEach(element => {
     const appId = element.dataset.auraApp;
     const allowed = appId === 'registro_links'
       ? canManageRegistrationLinks()
+      : appId === 'finanzas'
+        ? isAuraOwner() || hasPermission(auraAccess, 'finanzas', 'finanzas.read')
       : Boolean(permissionByApp[appId] && hasPermission(auraAccess, appId, permissionByApp[appId]));
     element.hidden = !allowed;
   });
@@ -1129,6 +1144,10 @@ async function openModule(url, title, el, appId = '') {
   }
   if (appId === 'convenios' && !hasPermission(auraAccess, appId, 'convenios.use')) {
     showToast('No tienes permiso para abrir Convenios.', '#EF4444');
+    return;
+  }
+  if (appId === 'finanzas' && !isAuraOwner() && !hasPermission(auraAccess, appId, 'finanzas.read')) {
+    showToast('No tienes permiso para abrir Finanzas.', '#EF4444');
     return;
   }
   const destination = new URL(url, location.href);

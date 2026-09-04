@@ -22,7 +22,7 @@
   <label>¿Para quién es la cuenta?<select class="control" id="bankBeneficiaryMode"><option value="existing">Aliado beneficiario existente</option><option value="new">Nuevo aliado beneficiario</option></select></label>
   <label id="bankExistingField">Beneficiario<select class="control" id="bankBeneficiary"></select></label>
   <div id="bankNewBeneficiaryFields" class="grid hidden" style="grid-template-columns:1fr">
-    <label>Aliado que recibirá el pago<select class="control" id="bankAllyOrigin"></select></label>
+    <label>Comercio al que corresponde el pago<select class="control" id="bankAllyOrigin"></select></label><p class="muted">El titular nuevo se usará únicamente en pagos futuros. El historial anterior se conserva.</p>
     <label>Nombre o razón social del titular<input class="control" id="bankHolderName" maxlength="160" autocomplete="off"></label>
     <label>Identificación del titular<input class="control" id="bankHolderIdentification" maxlength="30" inputmode="numeric" autocomplete="off"></label>
   </div>
@@ -32,4 +32,4 @@
 </section>
 </main></div></div>
 <div class="modal" id="importModal"><div class="modal-box"><div class="page-top"><h2>Nueva importación</h2><button class="btn secondary" id="closeImport">Cerrar</button></div><div class="grid"><label>Plataforma<select class="control" id="importPlatform"><option value="payjoy">PayJoy</option><option value="alo">ALO Credit</option><option value="krediya">Krediya</option></select></label><label>Fecha de corte<input class="control" id="cutoff" type="date"></label><label>Periodo desde<input class="control" id="periodFrom" type="date"></label><label>Periodo hasta<input class="control" id="periodTo" type="date"></label></div><div class="drop" style="margin-top:16px"><input id="file" type="file" accept=".xlsx,.xls"><p class="muted">El archivo original se conserva; KORA no genera otro Excel.</p></div><div id="preview" class="hidden"><div class="grid" id="previewMetrics" style="margin-top:16px"></div><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Detalle</th></tr></thead><tbody id="previewIssues"></tbody></table></div></div><div class="error" id="importError"></div><div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="btn secondary" id="validateImport">Validar archivo</button><button class="btn primary" id="saveImport" disabled>Guardar importación</button></div></div></div>
-<script src="aliados-cuentas-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-app.js?v=2.1.2"></script></body></html>
+<script src="aliados-cuentas-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-app.js?v=2.1.3"></script></body></html>

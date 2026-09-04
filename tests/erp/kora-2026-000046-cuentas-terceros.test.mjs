@@ -61,6 +61,14 @@ test('la migración correctiva compara el código sin depender de mayúsculas', 
   assert.match(sql, /revoke all[\s\S]*from public, anon/);
 });
 
+test('permite reemplazar el beneficiario para pagos futuros sin borrar el historial', async () => {
+  const sql = await read('supabase/migrations/20260904210439_permitir_nuevo_beneficiario_aliado.sql');
+  assert.match(sql, /set activo=false/);
+  assert.match(sql, /beneficiario_anterior_id/);
+  assert.match(sql, /id<>v_beneficiary\.id/);
+  assert.doesNotMatch(sql, /ya tiene otro beneficiario activo/);
+});
+
 test('el artefacto productivo conserva el código seleccionado del aliado', async () => {
   const source = await read('public/creditek/erp/aliados-cuentas-domain.js');
   assert.doesNotMatch(source, /originCode:[^\n]*toUpperCase/);

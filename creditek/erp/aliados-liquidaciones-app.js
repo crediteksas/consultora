@@ -11,6 +11,7 @@
   let selected;
   let activeTab = 'operations';
   let activeModel = 'all';
+  let listMode = 'pending';
   let preview;
   let fileBuffer;
   let initialized = false;
@@ -20,7 +21,21 @@
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
   const state = (value) => `<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`;
 
-  $('filterState').innerHTML = '<option value="">Todos los estados</option>' + D.ESTADOS.map((s) => `<option value="${s}">${UX.traducirEstado(s)}</option>`).join('');
+  const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
+  const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
+
+  function statesForMode() {
+    return listMode === 'pending' ? PENDING_STATES : HISTORY_STATES;
+  }
+
+  function updateStateFilter() {
+    const current = $('filterState').value;
+    const allowed = statesForMode();
+    $('filterState').innerHTML = '<option value="">Todos los estados</option>' + allowed.map((s) => `<option value="${s}">${UX.traducirEstado(s)}</option>`).join('');
+    $('filterState').value = allowed.includes(current) ? current : '';
+  }
+
+  updateStateFilter();
 
   async function enterFromKora() {
     if (initialized || !window.creditekSidebar?.sb) return;
@@ -47,21 +62,26 @@
   async function loadBatches() {
     let query = sb.from('liquidations').select('*').order('imported_at', { ascending: false });
     if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
-    if ($('filterState').value) query = query.eq('estado', $('filterState').value);
     const { data, error } = await query;
     if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; return; }
     batches = data || [];
+    $('showPending').textContent = `Pendientes (${batches.filter((batch) => PENDING_STATES.includes(batch.estado)).length})`;
+    $('showHistory').textContent = `Consultar historial (${batches.filter((batch) => HISTORY_STATES.includes(batch.estado)).length})`;
+    $('lastUpdated').textContent = `Actualizado ${new Intl.DateTimeFormat('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(new Date())}`;
     renderBatches();
   }
 
   function renderBatches() {
     const search = $('filterSearch').value.trim().toLowerCase();
-    const rows = batches.filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
+    const stateFilter = $('filterState').value;
+    const rows = batches.filter((b) => statesForMode().includes(b.estado))
+      .filter((b) => !stateFilter || b.estado === stateFilter)
+      .filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.estado)}</td><td>${Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
       <td>${money(b.total_pago_aliados)}</td><td>${money(b.total_bonos)}</td><td>${money(b.total_utilidad_creditek)}</td><td>${money(b.total_pagar)}</td>
-      <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || '<tr><td colspan="10">No hay liquidaciones.</td></tr>';
+      <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
   }
 
@@ -219,7 +239,15 @@
   async function stateRpc(next, comment = null) {
     const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: selected.id, p_estado: next, p_comentario: comment });
     if (error) return alert(error.message);
-    await loadBatches(); await openDetail(selected.id);
+    const selectedId = selected.id;
+    await loadBatches();
+    selected = batches.find((batch) => batch.id === selectedId);
+    if (!selected || !statesForMode().includes(selected.estado)) {
+      $('detail').classList.add('hidden');
+      selected = null;
+      return;
+    }
+    await openDetail(selectedId);
   }
   async function changePayment(id, next) {
     const { error } = await sb.rpc('aliados_cambiar_estado_pago', { p_id: id, p_estado: next, p_soporte_path: null });
@@ -286,7 +314,21 @@
   $('approve').onclick = () => { const message = `Confirma la aprobación de ${selected.plataforma === 'alo' ? 'ALO Credit' : 'PayJoy'}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nTiendas: ${selected.operaciones_tiendas || 0}\nAliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad Creditek: ${money(selected.total_utilidad_creditek)}\nTotal: ${money(selected.total_pagar)}`; if (confirm(message)) stateRpc('aprobada'); };
   document.querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => loadTab(button.dataset.tab); });
   document.querySelectorAll('[data-model]').forEach((button) => { button.onclick = () => { activeModel = button.dataset.model; document.querySelectorAll('[data-model]').forEach((item) => item.classList.toggle('active', item === button)); loadTab('operations'); }; });
-  $('filterPlatform').onchange = loadBatches; $('filterState').onchange = loadBatches; $('filterSearch').oninput = renderBatches;
+  $('filterPlatform').onchange = loadBatches;
+  $('filterState').onchange = renderBatches;
+  $('filterSearch').oninput = renderBatches;
+  $('refreshBatches').onclick = loadBatches;
+  function setListMode(mode) {
+    listMode = mode;
+    $('showPending').classList.toggle('active', mode === 'pending');
+    $('showHistory').classList.toggle('active', mode === 'history');
+    updateStateFilter();
+    $('detail').classList.add('hidden');
+    selected = null;
+    renderBatches();
+  }
+  $('showPending').onclick = () => setListMode('pending');
+  $('showHistory').onclick = () => setListMode('history');
 
   $('newImport').onclick = () => $('importModal').classList.add('show');
   $('closeImport').onclick = () => $('importModal').classList.remove('show');

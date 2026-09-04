@@ -142,7 +142,12 @@
       $('workflowError').classList.remove('hidden');
     } else if (openIssues?.length) {
       const groups = new Map();
-      openIssues.forEach((i) => { const key = i.descripcion || i.tipo; groups.set(key, (groups.get(key) || 0) + 1); });
+      openIssues.forEach((i) => {
+        const key = i.tipo === 'krediya_bono_sin_configurar' ? 'Bonos: revisar vigencia para la fecha de venta; los montos ya están definidos'
+          : ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo) ? 'Precios: diferencias o referencias sin tarifa vigente. El detalle muestra los valores de cada crédito'
+          : i.tipo.replaceAll('_',' ');
+        groups.set(key, (groups.get(key) || 0) + 1);
+      });
       $('workflowError').innerHTML = '<strong>Pendientes de este lote</strong><ul>' + [...groups].map(([label,count]) => `<li>${count} operaciones: ${esc(label)}</li>`).join('') + '</ul><button type="button" class="btn secondary" id="openBatchIssues">Ver y gestionar novedades</button>';
       $('workflowError').classList.remove('hidden');
       $('openBatchIssues').onclick = () => loadTab('incidents');

@@ -1728,11 +1728,44 @@ function tieneIntencionReal(texto) {
   if (!t) return false;
   if (/^(gracias|ok|okay|listo|chao|adios|hasta luego|hasta pronto|de nada|vale|bien|dale|mmm|ah|ahh|jaja)[\s.!]*$/i.test(t)) return false;
   if (texto.includes("?") || texto.includes("\xBF")) return true;
-  if (/\b(celular|samsung|xiaomi|motorola|moto|iphone|apple|huawei|honor|computador|portatil|laptop|tablet|parlante|cable|audifonos|smart\s*tv|equipo|producto|credito|contado|precio|cuota|financiaci|cuanto|cuando|como|donde|quiero|necesito|busco|pued|tienen|\bhay\b|informacion|info|comprar|llev)/i.test(t)) return true;
+  if (/\b(celular|samsung|xiaomi|motorola|moto|iphone|apple|huawei|honor|computador|portatil|laptop|tablet|parlante|cable|audifonos|smart\s*tv|equipo|producto|credito|contado|precio|cuota|pago|financiaci|requisit|contact|asesor|numero|direccion|ubicacion|horario|llam|escrib|cuanto|cuando|como|donde|quiero|necesito|busco|pued|tienen|\bhay\b|informacion|info|comprar|llev)/i.test(t)) return true;
   if (/\d{6,}/.test(texto)) return true;
   return false;
 }
 __name(tieneIntencionReal, "tieneIntencionReal");
+function clasificarIntencionConversacional(texto) {
+  const t = norm2(texto);
+  if (detectaInteresAlianzaComercial(texto)) return "alianza_comercial";
+  if (/\b(donde|direccion|ubicacion|horario|sede|tienda|punto)\b/.test(t)) return "ubicacion_tienda";
+  if (/\b(asesor|contact|llam|escrib|numero)\b/.test(t)) return "contacto_asesor";
+  if (/\b(credito|cuota|pago|plazo|requisit|financi)\b/.test(t)) return "credito_condiciones";
+  if (/\b(celular|telefono|equipo|producto|samsung|xiaomi|motorola|iphone|honor|oppo|infinix|tcl|computador|tablet|parlante|audifono)\b/.test(t)) return "producto_interes";
+  if (/\b(cedula|documento|correo|nombre)\b/.test(t) || /\d{6,}/.test(t)) return "datos_personales";
+  if (/^(hola|buenos dias|buenas tardes|buenas noches)\b/.test(t)) return "saludo";
+  if (/^(gracias|ok|listo|dale|perfecto|chao|adios)\b/.test(t)) return "cierre_cortesia";
+  return "otro";
+}
+__name(clasificarIntencionConversacional, "clasificarIntencionConversacional");
+function combinarRespuestaConSiguientePaso(respuestaComercial, siguientePaso) {
+  const declarativas = respuestaComercial.split(/(?<=[.!?])\s+/).filter((fragmento) => !fragmento.includes("?") && !fragmento.includes("\xBF")).join(" ").trim();
+  return [declarativas, siguientePaso.trim()].filter(Boolean).join("\n\n");
+}
+__name(combinarRespuestaConSiguientePaso, "combinarRespuestaConSiguientePaso");
+function preguntaPendienteDeRespuesta(respuesta) {
+  const preguntas = respuesta.match(/\xBF[^?]{1,240}\?/g);
+  return preguntas?.at(-1) || null;
+}
+__name(preguntaPendienteDeRespuesta, "preguntaPendienteDeRespuesta");
+function evitarRespuestaRepetida(respuesta, historial, estado) {
+  const anterior = [...historial].reverse().find((linea) => linea.startsWith("Sofia: "))?.slice(7) || "";
+  if (!anterior || norm2(anterior) !== norm2(respuesta)) return respuesta;
+  if (estado === "DATOS_MIN") return "Para continuar necesito el dato pendiente. Si prefieres no compartirlo aqu\xED, te comunico con un asesor.";
+  if (estado === "CIUDAD" || estado === "CIUDAD_MODAL") return "Dime otro municipio cercano que te resulte c\xF3modo y reviso si tenemos atenci\xF3n all\xED.";
+  if (estado === "HANDOFF") return "Tu solicitud ya est\xE1 con el asesor asignado. Escr\xEDbeme si necesitas que revisemos el contacto.";
+  if (estado === "FIN") return "Quedo atenta si quieres retomar el proceso.";
+  return "Te leo. Cu\xE9ntame qu\xE9 necesitas y avanzamos.";
+}
+__name(evitarRespuestaRepetida, "evitarRespuestaRepetida");
 function detectaCredito(texto) {
   return /cr[eé]d\w{0,3}to|acredit|financiad|cuota|plazo|mensual|abono/i.test(texto);
 }
@@ -1878,7 +1911,7 @@ var MSG = {
   CELULAR_FB: "\xBFMe regalas tu n\xFAmero de celular colombiano para atenderte mejor? \u{1F4F1}",
   CELULAR_FB_INVALIDO: "\xBFMe das tu celular? (10 d\xEDgitos, ej: 3001234567)",
   CIUDAD_PREGUNTA: "\xBFY en qu\xE9 ciudad est\xE1s? \u{1F60A}",
-  SIN_COBERTURA: "Ahorita no tenemos tienda en esa ciudad, pero puede que te quede cerca una de estas: Tol\xFA, Corozal, Chin\xFA, Ci\xE9naga de Oro o Cove\xF1as. \xBFCu\xE1l te queda m\xE1s cerca?",
+  SIN_COBERTURA: "No veo una tienda activa en esa ciudad. Dime qu\xE9 municipio cercano te queda c\xF3modo y reviso si tenemos atenci\xF3n all\xED.",
   // FIX v24, 14-jul-2026 — Hallazgo 6: cierre honesto cuando el cliente dice
   // que ninguna de las 5 ciudades sugeridas le sirve — no se le fuerza un
   // handoff a un asesor lejano.
@@ -1913,7 +1946,7 @@ var MSG = {
   // en silencio (evidencia real: 22-jul 09:45, teléfono 573116568994).
   CIUDAD_AMBIGUA: /* @__PURE__ */ __name((ciudades) => ciudades.length === 2 ? `Veo que mencionaste dos \u2014 \xBFcu\xE1l te queda mejor, ${ciudades[0]} o ${ciudades[1]}? \u{1F60A}` : `Veo que mencionaste varias \u2014 \xBFcu\xE1l te queda mejor: ${ciudades.slice(0, -1).join(", ")} o ${ciudades[ciudades.length - 1]}? \u{1F60A}`, "CIUDAD_AMBIGUA"),
   // Red de seguridad si en CIUDAD_MODAL ningún patrón conocido matchea.
-  CIUDAD_REPETIR: "Disculpa, \xBFme confirmas cu\xE1l de estas te queda m\xE1s cerca: Tol\xFA, Corozal, Chin\xFA, Ci\xE9naga de Oro o Cove\xF1as?",
+  CIUDAD_REPETIR: "Dime qu\xE9 municipio cercano te queda c\xF3modo y reviso si tenemos atenci\xF3n all\xED.",
   HANDOFF_MSG: /* @__PURE__ */ __name((nombre, asesor, nombreComercial, tel) => `Perfecto, ${nombre} \u{1F60A} Tu solicitud qued\xF3 registrada correctamente y fue asignada a ${nombreComercial}. ${asesor} continuar\xE1 tu proceso lo antes posible; tambi\xE9n puedes escribirle al ${tel}.`, "HANDOFF_MSG"),
   HANDOFF_INFORMATIVO: /* @__PURE__ */ __name((asesor, nombreComercial, tel) => `Perfecto \u{1F60A} Te conecto con ${asesor} de ${nombreComercial} para que primero resuelva tus dudas. Puedes escribirle al ${tel}. Si luego decides solicitar el cr\xE9dito, completas el registro y la autorizaci\xF3n.`, "HANDOFF_INFORMATIVO"),
   ASESOR_NO_CONTESTA: /* @__PURE__ */ __name((asesor2, tel2) => `\xA1Qu\xE9 raro! Te paso con otro asesor \u{1F60A} Escr\xEDbele a ${asesor2} al ${tel2} y dile que te mand\xF3 Sof\xEDa de Creditek.`, "ASESOR_NO_CONTESTA"),
@@ -2236,7 +2269,7 @@ var index_default = {
         if (metaMessageId) await finalizarRecuperacionManual(env2.CONVERSATIONS, metaMessageId, "error_envio");
         throw error;
       }
-      await guardarConv({ telefono, contenido: mensaje.trim(), respondido_por: "admin", canal: "whatsapp" }, sk);
+      await guardarConv({ telefono, contenido: mensaje.trim(), respondido_por: "admin", canal: "whatsapp", intent: "seguimiento_manual", conversation_stage: "MANUAL" }, sk);
       return new Response(JSON.stringify({ ok: true }), { headers: cors });
     }
     if (request.method === "GET") {
@@ -2429,7 +2462,15 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     conv.ultimo_paso = conv.estado;
     return env2.CONVERSATIONS.put(clienteId, JSON.stringify(conv), { expirationTtl: 86400 * 7 });
   }, "save");
-  await guardarConv({ telefono: clienteId, contenido: texto, respondido_por: null, canal }, sk);
+  await guardarConv({
+    telefono: clienteId,
+    contenido: texto,
+    respondido_por: null,
+    canal,
+    intent: clasificarIntencionConversacional(texto),
+    conversation_stage: conv.estado,
+    pending_question: conv.ultima_pregunta || null
+  }, sk);
   const push = /* @__PURE__ */ __name((quien, msg) => {
     conv.historial.push(quien + ": " + msg.substring(0, 200));
     if (conv.historial.length > 12) conv.historial = conv.historial.slice(-12);
@@ -2468,7 +2509,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
       canal_origen: canalOrigenReal(conv.fuente)
     }, sk);
     await sendFn(respuesta, botones);
-    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal, intent: "alianza_comercial", conversation_stage: conv.estado, pending_question: preguntaPendienteDeRespuesta(respuesta) }, sk);
     push("Sofia", respuesta);
     await save();
     return;
@@ -2482,7 +2523,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
       recordatorio_enviado_at: (/* @__PURE__ */ new Date()).toISOString()
     }, sk);
     await sendFn(respuesta);
-    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal, intent: "cierre_cliente", conversation_stage: conv.estado }, sk);
     push("Sofia", respuesta);
     await save();
     return;
@@ -2497,7 +2538,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     }) || MSG.CIUDAD_PREGUNTA;
     conv.ultima_pregunta = respuesta;
     await sendFn(respuesta);
-    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal, intent: "ubicacion_tienda", conversation_stage: conv.estado, pending_question: preguntaPendienteDeRespuesta(respuesta) }, sk);
     push("Sofia", respuesta);
     await save();
     return;
@@ -2509,7 +2550,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
     }) || MSG.CIUDAD_PREGUNTA;
     conv.ultima_pregunta = respuesta;
     await sendFn(respuesta);
-    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal, intent: clasificarIntencionConversacional(texto), conversation_stage: conv.estado, pending_question: preguntaPendienteDeRespuesta(respuesta) }, sk);
     push("Sofia", respuesta);
     await save();
     return;
@@ -2542,7 +2583,7 @@ async function procesarMensaje(clienteId, texto, canal, refQr, referral, sendFn,
 ${siguiente}` : respuestaContinuidad;
       conv.ultima_pregunta = siguiente || void 0;
       await sendFn(respuesta);
-      await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+      await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal, intent: clasificarIntencionConversacional(texto), conversation_stage: conv.estado, pending_question: preguntaPendienteDeRespuesta(respuesta) }, sk);
       push("Sofia", respuesta);
       await save();
       return;
@@ -2812,18 +2853,18 @@ ${siguiente}` : respuestaContinuidad;
       if (conv.modalidad && conv.tienda_id) {
         conv.estado = "DATOS_MIN";
         const pedirDatos = conv.modalidad === "contado" ? MSG.DATOS_CONTADO : MSG.DATOS_CREDITO;
-        respuesta = respClaude + "\n\n" + pedirDatos;
+        respuesta = combinarRespuestaConSiguientePaso(respClaude, pedirDatos);
       } else if (conv.modalidad && !conv.tienda_id) {
         conv.estado = "CIUDAD_MODAL";
-        respuesta = respClaude + "\n\n\xBFY en qu\xE9 ciudad est\xE1s? \u{1F60A}";
+        respuesta = combinarRespuestaConSiguientePaso(respClaude, MSG.CIUDAD_PREGUNTA);
       } else if (!conv.modalidad && conv.tienda_id) {
         conv.modalidad = "credito";
         conv.estado = "DATOS_MIN";
-        respuesta = respClaude + "\n\n" + MSG.DATOS_CREDITO;
+        respuesta = combinarRespuestaConSiguientePaso(respClaude, MSG.DATOS_CREDITO);
       } else {
         conv.modalidad = "credito";
         conv.estado = "CIUDAD_MODAL";
-        respuesta = respClaude + "\n\n" + MSG.CIUDAD_PREGUNTA;
+        respuesta = combinarRespuestaConSiguientePaso(respClaude, MSG.CIUDAD_PREGUNTA);
       }
       break;
     }
@@ -2904,9 +2945,13 @@ ${siguiente}` : respuestaContinuidad;
           producto: conv.producto_interes
         };
         const respClaude = await generarRespuesta("MODALIDAD_CIUDAD", texto, ctx, env2.ANTHROPIC_API_KEY);
-        respuesta = respClaude + "\n\n\xBFLo quieres a cr\xE9dito o de contado? \xBFY en qu\xE9 ciudad est\xE1s? \u{1F60A}";
+        conv.modalidad = conv.modalidad || "credito";
+        conv.estado = "CIUDAD_MODAL";
+        respuesta = combinarRespuestaConSiguientePaso(respClaude, MSG.CIUDAD_PREGUNTA);
       } else {
-        respuesta = "\xBFLo quieres a cr\xE9dito o de contado? \xBFY en qu\xE9 ciudad est\xE1s? \u{1F60A}";
+        conv.modalidad = conv.modalidad || "credito";
+        conv.estado = "CIUDAD_MODAL";
+        respuesta = MSG.CIUDAD_PREGUNTA;
       }
       break;
     }
@@ -3195,9 +3240,18 @@ Si quieres, te comunico con un asesor para que primero resuelva tus dudas.`;
     }
   }
   if (respuesta) {
-    if (respuesta.includes("?")) conv.ultima_pregunta = respuesta;
+    respuesta = evitarRespuestaRepetida(respuesta, conv.historial, conv.estado);
+    conv.ultima_pregunta = preguntaPendienteDeRespuesta(respuesta) || void 0;
     await sendFn(respuesta, botones);
-    await guardarConv({ telefono: clienteId, contenido: respuesta, respondido_por: "bot", canal }, sk);
+    await guardarConv({
+      telefono: clienteId,
+      contenido: respuesta,
+      respondido_por: "bot",
+      canal,
+      intent: clasificarIntencionConversacional(texto),
+      conversation_stage: conv.estado,
+      pending_question: preguntaPendienteDeRespuesta(respuesta)
+    }, sk);
     push("Sofia", respuesta);
   }
   await save();
@@ -3252,7 +3306,7 @@ async function hacerHandoff(conv, clienteId, sendFn, env2, sk, canal, informativ
   conv.estado = "HANDOFF";
   const msg = informativo ? MSG.HANDOFF_INFORMATIVO(nombreAsesor, nombreComercial, tel) : MSG.HANDOFF_MSG(nombreCorto, nombreAsesor, nombreComercial, tel);
   await sendFn(msg);
-  await guardarConv({ telefono: clienteId, contenido: msg, respondido_por: "bot", canal }, sk);
+  await guardarConv({ telefono: clienteId, contenido: msg, respondido_por: "bot", canal, intent: "handoff_asesor", conversation_stage: "HANDOFF" }, sk);
   if (!conv.tiendas_intentadas) conv.tiendas_intentadas = [];
   conv.tiendas_intentadas.push(conv.tienda_id || "");
 }
@@ -3589,7 +3643,7 @@ async function seguimientoLeadsMudos(env2) {
       }
       const variante = mensajeSeguimientoPorEstado(estadoConversacion);
       await enviarMensajeWA(c.telefono, variante, env2.PHONE_NUMBER_ID, env2.WHATSAPP_TOKEN);
-      await guardarConv({ telefono: c.telefono, contenido: variante, respondido_por: "bot", canal: "whatsapp" }, sk);
+      await guardarConv({ telefono: c.telefono, contenido: variante, respondido_por: "bot", canal: "whatsapp", intent: "seguimiento_automatico", conversation_stage: estadoConversacion || "SEGUIMIENTO" }, sk);
       await actualizarCliente(c.telefono, { recordatorio_enviado_at: (/* @__PURE__ */ new Date()).toISOString() }, sk);
       enviados++;
     }
@@ -3850,7 +3904,18 @@ async function registrarTiendaAsignada(telefono, tienda, key) {
 __name(registrarTiendaAsignada, "registrarTiendaAsignada");
 async function guardarConv(data, key) {
   const direccion = data.respondido_por === null ? "entrada" : "salida";
-  const payload = { telefono: data.telefono, tipo_mensaje: "text", contenido: data.contenido, respondido_por: data.respondido_por, direccion, canal: data.canal, timestamp: (/* @__PURE__ */ new Date()).toISOString() };
+  const payload = {
+    telefono: data.telefono,
+    tipo_mensaje: "text",
+    contenido: data.contenido,
+    respondido_por: data.respondido_por,
+    direccion,
+    canal: data.canal,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    intent: data.intent || clasificarIntencionConversacional(data.contenido),
+    conversation_stage: data.conversation_stage || null,
+    pending_question: data.pending_question || null
+  };
   try {
     const r = await fetch(`${supabaseUrl()}/rest/v1/conversaciones`, { method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(payload) });
     if (!r.ok) console.error("[SUPABASE-ERROR] guardarConv fall\xF3:", r.status, await r.text(), "payload:", JSON.stringify(payload));

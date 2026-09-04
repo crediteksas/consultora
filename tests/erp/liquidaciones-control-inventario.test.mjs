@@ -11,6 +11,14 @@ test('el control de IMEI se activa explícitamente por tienda y fecha', () => {
   assert.match(sql, /op\.operation_at >= o\.inventario_control_desde/);
 });
 
+test('una carga inicial activa automáticamente el control dentro de la misma transacción', () => {
+  assert.match(sql, /create or replace function public\.inventario_activar_control_al_cargar\(\)/);
+  assert.match(sql, /new\.tipo = 'carga_inicial'/);
+  assert.match(sql, /new\.referencia_tipo = 'importacion_excel'/);
+  assert.match(sql, /set inventario_control_activo = true/);
+  assert.match(sql, /after insert on public\.movimientos/);
+});
+
 test('las tiendas sin carga inicial conservan la novedad sin bloquear la liquidación', () => {
   assert.match(sql, /if not v_control_inventario then/);
   assert.match(sql, /bloquea_aprobacion=false/);
@@ -30,4 +38,3 @@ test('la función privilegiada conserva autorización interna y permisos mínimo
   assert.match(sql, /revoke all on function public\.aliados_resolver_operaciones_propias\(uuid\) from public,anon/);
   assert.match(sql, /grant execute on function public\.aliados_resolver_operaciones_propias\(uuid\) to authenticated/);
 });
-

@@ -16,6 +16,38 @@ set inventario_control_activo = true,
     )
 where o.codigo = 'CK-02';
 
+create or replace function public.inventario_activar_control_al_cargar()
+returns trigger
+language plpgsql
+security invoker
+set search_path=public,pg_temp
+as $$
+begin
+  if new.tipo = 'carga_inicial'
+    and new.referencia_tipo = 'importacion_excel'
+    and new.tienda_codigo is not null
+    and new.tienda_codigo <> 'CENTRAL'
+  then
+    update public.origenes
+    set inventario_control_activo = true,
+        inventario_control_desde = coalesce(inventario_control_desde, new.created_at, now())
+    where codigo = new.tienda_codigo
+      and activo = true
+      and tipo <> 'central';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_inventario_activar_control_al_cargar on public.movimientos;
+create trigger trg_inventario_activar_control_al_cargar
+after insert on public.movimientos
+for each row
+execute function public.inventario_activar_control_al_cargar();
+
+comment on function public.inventario_activar_control_al_cargar() is
+  'Activa automáticamente el control financiero por IMEI cuando una carga inicial de inventario termina y confirma su transacción.';
+
 update public.liquidation_incidents i
 set bloquea_aprobacion = false,
     descripcion = case

@@ -122,12 +122,27 @@
   async function openDetail(id) {
     selected = batches.find((batch) => batch.id === id) || selected;
     $('detail').classList.remove('hidden');
+    $('detail').style.scrollMarginTop = '100px';
+    $('detail').setAttribute('tabindex', '-1');
+    $('detail').scrollIntoView({ behavior: 'instant', block: 'start' });
+    $('detail').focus({ preventScroll: true });
     $('workflowError').classList.add('hidden');
     $('workflowError').textContent = '';
     $('detailTitle').textContent = `${platformName(selected.plataforma)} · ${UX.fechaCorta(selected.fecha_corte)}`;
     renderMetrics();
     updateActions();
     await loadTab(activeTab);
+    const { data: openIssues, error: issueError } = await sb.from('liquidation_incidents').select('tipo,descripcion').eq('liquidation_id', id).eq('estado', 'abierta');
+    if (issueError) {
+      $('workflowError').textContent = 'No se pudieron consultar las novedades: ' + issueError.message;
+      $('workflowError').classList.remove('hidden');
+    } else if (openIssues?.length) {
+      const groups = new Map();
+      openIssues.forEach((i) => { const key = i.descripcion || i.tipo; groups.set(key, (groups.get(key) || 0) + 1); });
+      $('workflowError').innerHTML = '<strong>Pendientes de este lote</strong><ul>' + [...groups].map(([label,count]) => `<li>${count} operaciones: ${esc(label)}</li>`).join('') + '</ul><button type="button" class="btn secondary" id="openBatchIssues">Ver y gestionar novedades</button>';
+      $('workflowError').classList.remove('hidden');
+      $('openBatchIssues').onclick = () => loadTab('incidents');
+    }
   }
 
   async function loadOperations() {
@@ -135,6 +150,8 @@
     const { data, error } = await sb.from('liquidation_operations').select(operationFields).eq('liquidation_id', selected.id).order('operation_at');
     if (error) throw error;
     const rows = (data || []).filter((row) => activeModel === 'all' || row.tipo_establecimiento === activeModel);
+    const { data: rowIssues, error: rowIssueError } = await sb.from('liquidation_incidents').select('operation_id,tipo,descripcion').eq('liquidation_id', selected.id).eq('estado','abierta');
+    if (rowIssueError) throw rowIssueError;
     document.querySelector('#detail > .table-wrap')?.classList.add('operations-table');
     const headers = ['Operación', 'Cliente / IMEI', 'Crédito', 'Inicial', 'Valor comercial', '% aplicado', 'Pagamos', 'Pago neto', 'Bonos', 'Utilidad', 'Estado / novedad'];
     $('detailHead').innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>`;
@@ -151,8 +168,9 @@
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
       const utility = row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
-      const hasIssue = !row.reconocida || (isOwn && difference);
-      const issueLabel = !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
+      const actualIssues = (rowIssues || []).filter((i) => i.operation_id === row.id);
+      const hasIssue = actualIssues.length || !row.reconocida || (isOwn && difference);
+      const issueLabel = actualIssues.length ? actualIssues.map((i) => i.tipo === 'krediya_regla_precio_ausente' ? 'Confirmar PVP y Pagamos' : i.tipo === 'krediya_bono_sin_configurar' ? 'Revisar vigencia de bonos' : i.descripcion || i.tipo).join(' · ') : !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
       const issues = hasIssue ? `<div class="issue-action"><span class="badge con_novedades">${issueLabel}</span><button class="btn secondary" data-manage-issue="${row.id}">Gestionar</button></div>` : 'Sin novedades';
       const initial = isOwn ? `${money(row.inicial)}<small>KORA: ${money(row.inicial_kora)}${difference ? ` · Dif.: ${money(difference)}` : ''}</small>` : money(row.inicial);
       return `<tr><td><span class="operation-main">${esc(row.establishment_name)}</span><small>${isOwn ? 'Tienda propia' : 'Aliado'}</small></td><td>${esc(row.cliente_nombre || '—')}<small>${esc(row.imei || '—')}</small></td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${initial}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}<div style="margin-top:6px">${issues}</div></td></tr>`;

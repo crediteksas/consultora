@@ -11,18 +11,20 @@
 #liquidationsContent .batches-table{width:100%;overflow-x:visible!important}
 #liquidationsContent .batches-table table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:12px}
 #liquidationsContent .batches-table th,#liquidationsContent .batches-table td{padding:12px 6px!important;white-space:normal!important;overflow-wrap:anywhere;vertical-align:middle;line-height:1.35}
-#liquidationsContent .batches-table th{font-size:9px}
-#liquidationsContent .batches-table th:nth-child(1){width:12%}
+#liquidationsContent .batches-table th{font-size:9px;letter-spacing:0;overflow-wrap:normal;word-break:normal}
+#liquidationsContent .batches-table th:nth-child(1){width:11%}
 #liquidationsContent .batches-table th:nth-child(2){width:8%}
 #liquidationsContent .batches-table th:nth-child(3){width:10%}
-#liquidationsContent .batches-table th:nth-child(4){width:12%}
-#liquidationsContent .batches-table th:nth-child(5){width:8%}
+#liquidationsContent .batches-table th:nth-child(4){width:11%}
+#liquidationsContent .batches-table th:nth-child(5){width:10%;white-space:nowrap!important}
 #liquidationsContent .batches-table th:nth-child(6){width:11%}
 #liquidationsContent .batches-table th:nth-child(7){width:8%}
 #liquidationsContent .batches-table th:nth-child(8){width:10%}
 #liquidationsContent .batches-table th:nth-child(9){width:12%}
 #liquidationsContent .batches-table th:nth-child(10){width:9%}
-#liquidationsContent .batches-table td:nth-child(n+5):nth-child(-n+9){text-align:right;font-variant-numeric:tabular-nums}
+#liquidationsContent .batches-table th:nth-child(n+3):nth-child(-n+5),#liquidationsContent .batches-table td:nth-child(n+3):nth-child(-n+5){text-align:center!important;font-variant-numeric:tabular-nums}
+#liquidationsContent .batches-table th:nth-child(n+6):nth-child(-n+9),#liquidationsContent .batches-table td:nth-child(n+6):nth-child(-n+9){text-align:right!important;font-variant-numeric:tabular-nums}
+#liquidationsContent .batches-table th:last-child,#liquidationsContent .batches-table td:last-child{text-align:center!important}
 #liquidationsContent .batches-table .badge{white-space:normal;padding:5px 7px;font-size:11px}
 #liquidationsContent .batches-table .btn{width:100%;min-width:0;min-height:44px;padding:6px!important;font-size:11px;white-space:normal}
 @media(max-width:700px){#liquidationsContent .batches-table thead{display:none}#liquidationsContent .batches-table table,#liquidationsContent .batches-table tbody{display:block}#liquidationsContent .batches-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;border-bottom:1px solid var(--border)}#liquidationsContent .batches-table td{display:block;text-align:left!important;border:0}#liquidationsContent .batches-table td:before{display:block;font-size:10px;color:var(--text2);margin-bottom:4px}#liquidationsContent .batches-table td:nth-child(1):before{content:'Importación'}#liquidationsContent .batches-table td:nth-child(2):before{content:'Plataforma'}#liquidationsContent .batches-table td:nth-child(3):before{content:'Corte'}#liquidationsContent .batches-table td:nth-child(4):before{content:'Estado'}#liquidationsContent .batches-table td:nth-child(5):before{content:'Operaciones'}#liquidationsContent .batches-table td:nth-child(6):before{content:'Pago aliados'}#liquidationsContent .batches-table td:nth-child(7):before{content:'Bonos'}#liquidationsContent .batches-table td:nth-child(8):before{content:'Utilidad'}#liquidationsContent .batches-table td:nth-child(9):before{content:'Total a pagar'}}

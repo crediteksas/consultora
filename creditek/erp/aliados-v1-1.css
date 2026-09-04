@@ -15,6 +15,10 @@ h1{font-size:25px}
 .metric{padding:17px;background:#fff;border:1px solid var(--borde);border-radius:12px}
 .metric small{display:block;color:var(--muted);margin-bottom:6px}
 .metric strong{font:700 21px Montserrat}
+body[data-aliados-view="reports"] .metrics{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}
+body[data-aliados-view="reports"] .metric{display:flex;min-width:0;min-height:112px;flex-direction:column;justify-content:flex-start;padding:16px 18px}
+body[data-aliados-view="reports"] .metric small{min-height:2.8em;line-height:1.4;margin-bottom:10px}
+body[data-aliados-view="reports"] .metric strong{margin-top:auto;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums}
 .toolbar{padding:16px;margin-bottom:18px}
 .control{min-height:44px;border:1px solid var(--borde);border-radius:12px;background:#fff;padding:0 16px;font:inherit;color:inherit}
 .toolbar .control{flex:1;min-width:145px}
@@ -46,3 +50,5 @@ th{font-size:10.5px;color:var(--muted);text-transform:uppercase;background:#FAFA
 .section{margin-top:18px}
 .section h2{font-size:16px;margin-bottom:12px}
 @media(max-width:720px){.page{padding:76px 14px 40px}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}h1{font-size:21px}.toolbar .control{min-width:100%}}
+@media(max-width:900px){body[data-aliados-view="reports"] .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){body[data-aliados-view="reports"] .metrics{grid-template-columns:1fr}}

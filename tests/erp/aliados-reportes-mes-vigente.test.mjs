@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
 const html = await readFile('creditek/erp/aliados-reportes.html', 'utf8');
+const css = await readFile('creditek/erp/aliados-v1-1.css', 'utf8');
 const render = app.slice(app.indexOf('function renderReports()'), app.indexOf('function render(){'));
 
 test('Reportes Aliados abre con el acumulado del mes vigente', () => {
@@ -40,4 +41,12 @@ test('la utilidad del negocio incluye operaciones originadas en tiendas propias 
   assert.match(render, /Utilidad neta disponible/);
   assert.match(render, /Utilidad total del negocio/);
   assert.doesNotMatch(render, /const allyOps=db\.operations\.filter/);
+});
+
+test('los indicadores del informe forman una cuadrícula alineada y adaptable', () => {
+  assert.match(css, /body\[data-aliados-view="reports"\] \.metrics\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css, /body\[data-aliados-view="reports"\] \.metric\{display:flex;min-width:0;min-height:112px;flex-direction:column/);
+  assert.match(css, /font-variant-numeric:tabular-nums/);
+  assert.match(css, /@media\(max-width:900px\).*repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /@media\(max-width:520px\).*grid-template-columns:1fr/);
 });

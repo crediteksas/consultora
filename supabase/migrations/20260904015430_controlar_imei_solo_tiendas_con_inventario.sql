@@ -16,37 +16,68 @@ set inventario_control_activo = true,
     )
 where o.codigo = 'CK-02';
 
-create or replace function public.inventario_activar_control_al_cargar()
-returns trigger
+create or replace function public.inventario_finalizar_carga_inicial(p_tienda_codigo text)
+returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path=public,pg_temp
 as $$
+declare
+  v_perfil public.perfiles%rowtype;
+  v_unidades integer;
+  v_accesorios integer;
 begin
-  if new.tipo = 'carga_inicial'
-    and new.referencia_tipo = 'importacion_excel'
-    and new.tienda_codigo is not null
-    and new.tienda_codigo <> 'CENTRAL'
-  then
-    update public.origenes
-    set inventario_control_activo = true,
-        inventario_control_desde = coalesce(inventario_control_desde, new.created_at, now())
-    where codigo = new.tienda_codigo
-      and activo = true
-      and tipo <> 'central';
+  select * into v_perfil
+  from public.perfiles
+  where id=auth.uid() and activo=true;
+  if not found or v_perfil.rol not in ('gerencia','auditoria') then
+    raise exception 'Solo gerencia o auditoría pueden finalizar una carga inicial';
   end if;
-  return new;
+
+  perform 1 from public.origenes
+  where codigo=p_tienda_codigo and activo=true and tipo='propia';
+  if not found then
+    raise exception 'La tienda indicada no existe, está inactiva o no es propia';
+  end if;
+
+  select count(*) into v_unidades
+  from public.unidades
+  where tienda_actual=p_tienda_codigo;
+
+  select coalesce(sum(cantidad),0)::integer into v_accesorios
+  from public.stock_cantidad
+  where tienda_codigo=p_tienda_codigo;
+
+  if coalesce(v_unidades,0) + coalesce(v_accesorios,0) = 0 then
+    raise exception 'No se puede finalizar: la tienda todavía no tiene inventario cargado';
+  end if;
+
+  update public.origenes
+  set inventario_control_activo=true,
+      inventario_control_desde=coalesce(inventario_control_desde,now())
+  where codigo=p_tienda_codigo;
+
+  insert into public.audit_log(usuario,accion,tabla,registro_id,detalle)
+  values(
+    auth.uid(),'inventario_carga_inicial_finalizada','origenes',null,
+    jsonb_build_object('tienda_codigo',p_tienda_codigo,'unidades_serializadas',v_unidades,'unidades_por_cantidad',v_accesorios)
+  );
+
+  return jsonb_build_object(
+    'ok',true,
+    'tienda_codigo',p_tienda_codigo,
+    'unidades_serializadas',v_unidades,
+    'unidades_por_cantidad',v_accesorios,
+    'control_imei_activo',true
+  );
 end;
 $$;
 
-drop trigger if exists trg_inventario_activar_control_al_cargar on public.movimientos;
-create trigger trg_inventario_activar_control_al_cargar
-after insert on public.movimientos
-for each row
-execute function public.inventario_activar_control_al_cargar();
+comment on function public.inventario_finalizar_carga_inicial(text) is
+  'Cierra explícitamente la carga inicial de una tienda y activa desde ese momento la conciliación financiera obligatoria por IMEI.';
 
-comment on function public.inventario_activar_control_al_cargar() is
-  'Activa automáticamente el control financiero por IMEI cuando una carga inicial de inventario termina y confirma su transacción.';
+revoke all on function public.inventario_finalizar_carga_inicial(text) from public,anon;
+grant execute on function public.inventario_finalizar_carga_inicial(text) to authenticated;
 
 update public.liquidation_incidents i
 set bloquea_aprobacion = false,

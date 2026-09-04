@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const sql = await readFile('supabase/migrations/20260904015430_controlar_imei_solo_tiendas_con_inventario.sql', 'utf8');
+const html = await readFile('creditek/erp/inventario.html', 'utf8');
 
 test('el control de IMEI se activa explícitamente por tienda y fecha', () => {
   assert.match(sql, /inventario_control_activo boolean not null default false/);
@@ -11,12 +12,17 @@ test('el control de IMEI se activa explícitamente por tienda y fecha', () => {
   assert.match(sql, /op\.operation_at >= o\.inventario_control_desde/);
 });
 
-test('una carga inicial activa automáticamente el control dentro de la misma transacción', () => {
-  assert.match(sql, /create or replace function public\.inventario_activar_control_al_cargar\(\)/);
-  assert.match(sql, /new\.tipo = 'carga_inicial'/);
-  assert.match(sql, /new\.referencia_tipo = 'importacion_excel'/);
+test('ver una unidad no activa el control: la carga debe cerrarse explícitamente', () => {
+  assert.match(sql, /create or replace function public\.inventario_finalizar_carga_inicial\(p_tienda_codigo text\)/);
+  assert.doesNotMatch(sql, /after insert on public\.movimientos/);
+  assert.match(sql, /v_perfil\.rol not in \('gerencia','auditoria'\)/);
+  assert.match(sql, /No se puede finalizar: la tienda todavía no tiene inventario cargado/);
   assert.match(sql, /set inventario_control_activo = true/);
-  assert.match(sql, /after insert on public\.movimientos/);
+  assert.match(sql, /'inventario_carga_inicial_finalizada'/);
+  assert.match(sql, /revoke all on function public\.inventario_finalizar_carga_inicial\(text\) from public,anon/);
+  assert.match(html, /id="btnFinalizarCargaInicial"/);
+  assert.match(html, /inventario_finalizar_carga_inicial/);
+  assert.match(html, /¿Confirmas que el inventario inicial está completo\?/);
 });
 
 test('las tiendas sin carga inicial conservan la novedad sin bloquear la liquidación', () => {

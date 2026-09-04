@@ -395,7 +395,7 @@ function cambiarTiendaDesdePantalla(evento) {
 async function cargarTodo() {
   const [productosRes, tiendasRes] = await Promise.all([
     sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('nombre'),
-    sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+    sb.from('origenes').select('codigo, nombre, inventario_control_activo, inventario_control_desde').eq('tipo', 'propia').eq('activo', true).order('nombre'),
   ]);
   const error = productosRes.error || tiendasRes.error;
   if (error) {
@@ -473,6 +473,10 @@ function renderResumen() {
   }
   if (resumen.preciosPendientes > 0) {
     cards += `<div class="resumen-card"><div class="label">Precios de tienda pendientes</div><div class="valor">${resumen.preciosPendientes}</div></div>`;
+  }
+  const tiendaSeleccionada = tiendasCache.find(tienda => tienda.codigo === tiendaActiva());
+  if (esCentral() && tiendaSeleccionada) {
+    cards += `<div class="resumen-card"><div class="label">Control financiero por IMEI</div><div class="valor">${tiendaSeleccionada.inventario_control_activo ? 'Activo' : 'Pendiente de finalizar carga'}</div></div>`;
   }
   document.getElementById('resumenCards').innerHTML = cards;
 }
@@ -641,6 +645,7 @@ function crearControlesInventarioCentral() {
     <button class="btn-export" id="btnAjustarInventario">Ajustar inventario</button>
     <button class="btn-export" id="btnCargarInventarioInicial">Cargar inventario inicial</button>
     <button class="btn-export" id="btnImportarInventarioExcel">Subir plantilla Excel</button>
+    <button class="btn-export" id="btnFinalizarCargaInicial">Finalizar carga inicial</button>
   `);
   document.body.insertAdjacentHTML('beforeend', `
     <div class="modal-bg" id="modalImportarInventario" role="dialog" aria-modal="true" aria-labelledby="importarInventarioTitulo">
@@ -688,6 +693,7 @@ function crearControlesInventarioCentral() {
   document.getElementById('btnAjustarInventario').addEventListener('click', () => abrirOperacionInventario('ajuste'));
   document.getElementById('btnCargarInventarioInicial').addEventListener('click', () => abrirOperacionInventario('inicial'));
   document.getElementById('btnImportarInventarioExcel').addEventListener('click', abrirImportacionInventario);
+  document.getElementById('btnFinalizarCargaInicial').addEventListener('click', finalizarCargaInicial);
   document.getElementById('btnCancelarImportacion').addEventListener('click', cerrarImportacionInventario);
   document.getElementById('formImportarInventario').addEventListener('submit', importarInventarioExcel);
   document.getElementById('btnCancelarOperacion').addEventListener('click', cerrarOperacionInventario);
@@ -735,6 +741,50 @@ async function importarInventarioExcel(evento) {
     errorEl.textContent = error?.message || 'No fue posible importar el archivo.';
   } finally {
     boton.disabled = false; boton.textContent = 'Validar y cargar';
+  }
+}
+
+async function finalizarCargaInicial() {
+  const tienda = tiendasCache.find(item => item.codigo === tiendaActiva());
+  if (!tienda) {
+    window.alert('Selecciona primero una tienda específica.');
+    return;
+  }
+  if (tienda.inventario_control_activo) {
+    window.alert(`${tienda.nombre} ya tiene activo el control financiero por IMEI.`);
+    return;
+  }
+  const celulares = unidadesCache.filter(item => item.tienda_actual === tienda.codigo).length;
+  const accesorios = stockCache
+    .filter(item => item.tienda_codigo === tienda.codigo)
+    .reduce((total, item) => total + Number(item.cantidad || 0), 0);
+  if (celulares + accesorios === 0) {
+    window.alert('Esta tienda todavía no tiene inventario cargado.');
+    return;
+  }
+  const confirmado = window.confirm(
+    `Vas a finalizar la carga inicial de ${tienda.nombre}.\n\n` +
+    `Celulares/serializados: ${celulares}\nAccesorios por cantidad: ${accesorios}\n\n` +
+    'Desde este momento, sus liquidaciones exigirán que cada IMEI exista en KORA. ¿Confirmas que el inventario inicial está completo?'
+  );
+  if (!confirmado) return;
+
+  const boton = document.getElementById('btnFinalizarCargaInicial');
+  boton.disabled = true;
+  boton.textContent = 'Finalizando...';
+  try {
+    const { data, error } = await sb.rpc('inventario_finalizar_carga_inicial', { p_tienda_codigo: tienda.codigo });
+    if (error) throw error;
+    if (!data?.ok) throw new Error('El servidor no confirmó el cierre de la carga inicial.');
+    tienda.inventario_control_activo = true;
+    tienda.inventario_control_desde = new Date().toISOString();
+    renderResumen();
+    window.alert(`Carga inicial finalizada para ${tienda.nombre}. El control financiero por IMEI quedó activo.`);
+  } catch (error) {
+    window.alert('No fue posible finalizar la carga inicial: ' + (error?.message || 'error desconocido'));
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Finalizar carga inicial';
   }
 }
 

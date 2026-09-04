@@ -11,7 +11,7 @@
   ]);
   const ALLIES_ROUTES = new Set([
     'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
-    'aliados-plataformas.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
+    'aliados-plataformas.html', 'aliados-presupuesto.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
     'aliados-bonificaciones.html', 'aliados-gastos.html', 'aliados-reportes.html', 'aliados-tesoreria.html',
   ]);
   const CORPORATE_ROUTES = new Set([
@@ -64,6 +64,7 @@
       { label: 'Aliados', href: 'aliados.html', icon: 'handshake' },
       { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
       { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
+      { label: 'Presupuesto', href: 'aliados-presupuesto.html', icon: 'target' },
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
       { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark' },
       { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },

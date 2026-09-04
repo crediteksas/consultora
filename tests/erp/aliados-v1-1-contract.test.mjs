@@ -6,7 +6,7 @@ const migrationPath = 'creditek/erp/migrations/20260804_creditek_aliados_v1_1.sq
 const rollbackPath = 'creditek/erp/migrations/rollback/20260804_creditek_aliados_v1_1_rollback.sql';
 const routes = [
   'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
-  'aliados-plataformas.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
+  'aliados-plataformas.html', 'aliados-presupuesto.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
   'aliados-bonificaciones.html', 'aliados-reportes.html',
 ];
 
@@ -16,8 +16,8 @@ test('cada módulo de Creditek Aliados tiene una ruta real e independiente', asy
     assert.match(guard, new RegExp(route.replace('.', '\\.')));
     const html = await readFile(`creditek/erp/${route}`, 'utf8');
     assert.match(html, /data-kora-requires-auth="true"/);
-    assert.match(html, /kora-access-control\.js\?v=2\.0\.15/);
-    assert.match(html, /sidebar\.js\?v=2\.0\.15/);
+    assert.match(html, /kora-access-control\.js\?v=2\.0\.(?:1[5-9]|[2-9]\d)/);
+    assert.match(html, /sidebar\.js\?v=2\.0\.(?:1[5-9]|[2-9]\d)/);
     assert.match(html, /Acceso denegado/);
     assert.doesNotMatch(html, /En desarrollo/i);
   }

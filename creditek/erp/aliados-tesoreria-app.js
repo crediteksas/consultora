@@ -449,7 +449,7 @@
         }),
     ).map(
       (x) =>
-        `<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.amount)}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
+        `<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.direction === "debit" ? -Number(x.amount) : x.amount)}${x.platform === "krediya" ? '<small>Margen antes de bonos y gastos</small>' : ''}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
     );
     $("#retailCommissions").innerHTML = table(
       [
@@ -458,7 +458,7 @@
         "Corte",
         "IMEI",
         "Valor comercial",
-        "Utilidad del negocio",
+        "Movimiento de Tercerización",
         "Estado",
       ],
       retailCommissions,

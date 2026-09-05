@@ -12,6 +12,12 @@ const security = readdirSync('tests/security')
 const erp = [
   'tests/erp/cobros-plataformas-ui.test.mjs',
   'tests/erp/cobros-plataformas-contrato.test.mjs',
+  'tests/erp/krediya-flujo-tarifario.test.mjs',
+  'tests/erp/liquidaciones-pagos-cards.test.mjs',
+  'tests/erp/aliados-tesoreria-pagos-agrupados.test.mjs',
+  'tests/erp/aliados-autorizacion-pagos-gerencia.test.mjs',
+  'tests/erp/pagos-corte-soportes.test.mjs',
+  'tests/erp/kora-orden-pagos.test.mjs',
   'tests/erp/liquidaciones-operaciones-responsive.test.mjs',
   'tests/erp/krediya-gestiones.test.mjs',
   'tests/erp/liquidaciones-grupos-responsive.test.mjs',

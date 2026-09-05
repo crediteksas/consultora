@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import vm from 'node:vm';
 import { promoteWithRollback } from '../../scripts/kora-production-deploy-lib.mjs';
 
 const read = path => readFile(path, 'utf8');
@@ -99,5 +100,34 @@ test('una validación productiva fallida revierte a la versión anterior', async
     validate: async () => { throw new Error('sha distinto'); },
     rollback: async version => actions.push(`rollback:${version}`),
   }), /sha distinto/);
+  assert.deepEqual(actions, ['promote:candidate', 'rollback:stable']);
+});
+
+test('el validador real agota reintentos, conserva el error y exige rollback', async () => {
+  const deploy = await read('scripts/deploy-kora-production.mjs');
+  const start = deploy.indexOf('const validate = async () => {');
+  const end = deploy.indexOf('const remoteSha = await promoteWithRollback', start);
+  assert.ok(start >= 0 && end > start, 'La prueba debe ejecutar el validador del pipeline real');
+  const validationSource = deploy.slice(start, end);
+  const expectedError = new Error('El artefacto productivo no coincide');
+  let attempts = 0;
+  const context = {
+    candidate: 'candidate', commit: 'commit', branch: 'main', releaseRecord: null,
+    policy: { productionUrl: 'https://kora.crediteksas.com/creditek/erp/app', releaseKvNamespaceId: 'test' },
+    manifest: { appSha256: 'expected-sha' },
+    capture: () => JSON.stringify([{ id: 'deployment', created_on: '2026-09-05', versions: [{ version_id: 'candidate', percentage: 100 }] }]),
+    writeFile: async () => {}, run: () => {},
+    hashResponse: async () => { attempts += 1; throw expectedError; },
+    setTimeout: callback => callback(),
+  };
+  vm.runInNewContext(`${validationSource};this.runValidation=validate;`, context);
+  const actions = [];
+  await assert.rejects(() => promoteWithRollback({
+    candidateVersion: 'candidate', previousVersion: 'stable',
+    promote: async version => actions.push(`promote:${version}`),
+    validate: context.runValidation,
+    rollback: async version => actions.push(`rollback:${version}`),
+  }), error => error === expectedError);
+  assert.equal(attempts, 60);
   assert.deepEqual(actions, ['promote:candidate', 'rollback:stable']);
 });

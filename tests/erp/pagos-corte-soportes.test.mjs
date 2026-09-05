@@ -14,7 +14,7 @@ test('solo la operación desde el 1 de septiembre exige soporte', () => {
 });
 
 test('Tesorería distingue el histórico cerrado de soportes pendientes', () => {
-  assert.match(app, /if\(p\.historico_inicial\)return ''/);
+  assert.match(app, /if\s*\(p\.historico_inicial\)\s*return\s*["']["']/);
   assert.match(app, /Histórico pagado/);
   assert.match(app, /Cerrado antes del inicio operativo · no requiere soporte/);
   assert.match(app, /Histórico pagado · sin soporte requerido/);

@@ -31,8 +31,8 @@ test('Tesorería produce una orden imprimible con la cuenta completa y el total'
   assert.match(html, /Generar orden de pagos/);
   for (const field of ['Beneficiario','Identificación','Banco','Número de cuenta','TOTAL A GIRAR']) assert.match(app, new RegExp(field));
   assert.match(app, /window\.print/);
-  assert.match(app, /p\.estado==='programado'/);
-  assert.match(app, /payment_kind:p\.payment_kind/);
+  assert.match(app, /p\.estado\s*===\s*["']programado["']/);
+  assert.match(app, /payment_kind\s*:\s*p\.payment_kind/);
   assert.match(app, /shared\/branding\/creditek-logo\.png/);
   assert.match(app, /Trazabilidad KORA/);
   assert.match(app, /PO-\$\{shortId\(p\.id\)\}/);

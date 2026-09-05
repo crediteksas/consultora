@@ -173,7 +173,7 @@ test('Ver pagos y Ver bonos y pagos llevan a la pestaña de pagos del lote', () 
   }
 });
 
-test('cambiar pestañas aplica grouped-cards solo a aliados y ejecutivos', async () => {
+test('cambiar pestañas adapta aliados, ejecutivos y pagos sin arrastrar estilos a otras vistas', async () => {
   const classes = new Set(['operations-cards', 'operations-table']);
   const calls = [];
   const wrapper = { classList: {
@@ -191,18 +191,18 @@ test('cambiar pestañas aplica grouped-cards solo a aliados y ejecutivos', async
     loadGrouped: async (kind) => calls.push(kind)
   };
   vm.runInNewContext(`${extract('  async function loadTab(', '  async function savePagamos(')};this.load = loadTab;`, context);
-  for (const kind of ['allies', 'executives']) {
+  for (const kind of ['allies', 'executives', 'payments']) {
     await context.load(kind);
     assert.ok(classes.has('grouped-cards'));
     assert.ok(!classes.has('operations-table'));
     assert.ok(!classes.has('operations-cards'));
     assert.ok(!classes.has('incidents-table'));
   }
-  for (const kind of ['incidents', 'payments', 'audit', 'operations']) {
+  for (const kind of ['incidents', 'audit', 'operations']) {
     await context.load(kind);
     assert.ok(!classes.has('grouped-cards'), `${kind} no debe conservar estilos de grupos`);
   }
-  assert.deepEqual(calls, ['allies', 'executives', 'incidents', 'payments', 'audit', 'operations']);
+  assert.deepEqual(calls, ['allies', 'executives', 'payments', 'incidents', 'audit', 'operations']);
 });
 
 test('las tarjetas usan ancho disponible y rejilla de tres columnas que pasa a una en móvil', () => {

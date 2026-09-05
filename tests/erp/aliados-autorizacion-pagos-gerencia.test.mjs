@@ -51,12 +51,12 @@ test('el detalle de pago queda por encima de encabezados fijos y bloquea el fond
     readFile('creditek/erp/aliados-tesoreria.html', 'utf8'),
     readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
   ]);
-  assert.match(html, /body>\.modal\{[^}]*z-index:2147483000!important/);
-  assert.match(html, /html\.kora-payment-modal-open,body\.kora-payment-modal-open\{overflow:hidden!important/);
-  assert.match(html, /body>\.modal>\.modal-box\{[^}]*position:relative;z-index:1/);
+  assert.match(html, /body\s*>\s*\.modal\s*\{[^}]*z-index\s*:\s*2147483000\s*!important/);
+  assert.match(html, /html\.kora-payment-modal-open\s*,\s*body\.kora-payment-modal-open\s*\{\s*overflow\s*:\s*hidden\s*!important/);
+  assert.match(html, /body\s*>\s*\.modal\s*>\s*\.modal-box\s*\{[^}]*position\s*:\s*relative\s*;\s*z-index\s*:\s*1/);
   assert.match(app, /function syncPaymentModalState\(\)/);
-  assert.match(app, /showPaymentModal\(\$\('#paymentDetailModal'\)\)/);
-  assert.match(app, /event\.key!=='Escape'/);
+  assert.match(app, /showPaymentModal\(\$\(["']#paymentDetailModal["']\)\)/);
+  assert.match(app, /event\.key\s*!==\s*["']Escape["']/);
 });
 
 test('la auditoría admite el evento de autorización sin revertir el pago', async () => {
@@ -78,7 +78,7 @@ test('no permite autorizar ni pagar antes de aprobar y fondear la liquidación',
   assert.match(sql, /Primero Mayte debe revisar y Oscar aprobar la liquidación/);
   assert.match(app, /liquidations\(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by\)/);
   assert.match(app, /Primero: Mayte revisa y Oscar aprueba la liquidación/);
-  assert.match(app, /storage\.from\('soportes'\)\.remove\(\[support\]\)/);
+  assert.match(app, /storage\s*\.from\(["']soportes["']\)\s*\.remove\(\[support\]\)/);
 });
 
 test('Liquidaciones guía el orden revisión, aprobación y autorización', async () => {
@@ -101,18 +101,19 @@ test('Tesorería separa los pagos vigentes del historial cerrado', async () => {
   assert.match(html, /Pagos por gestionar/);
   assert.match(html, /Consultar historial/);
   assert.match(app, /function isClosedPayment\(p\)/);
-  assert.match(app, /treasuryView==='history'\?isClosedPayment\(p\):!isClosedPayment\(p\)/);
+  assert.match(app, /treasuryView\s*===\s*["']history["']\s*\?\s*isClosedPayment\(p\)\s*:\s*!isClosedPayment\(p\)/);
   assert.match(sql, /liq_op\.valor_comercial/);
   assert.match(sql, /v_fixed := replace/);
   assert.match(sql, /if v_fixed = v_definition then/);
 });
 
-test('todo lo anterior al 1 de septiembre queda cerrado y fuera de pendientes', async () => {
+test('el corte histórico se conserva para otras plataformas y Krediya editable permanece pendiente', async () => {
   const [app, sql] = await Promise.all([
     readFile('creditek/erp/aliados-liquidaciones-app.js', 'utf8'),
     readFile('supabase/migrations/20260904042711_cerrar_liquidaciones_anteriores_inicio_operativo.sql', 'utf8'),
   ]);
   assert.match(app, /String\(batch\.fecha_corte \|\| ''\) < '2026-09-01'/);
+  assert.match(app, /batch\.plataforma\s*!==\s*'krediya'\s*&&\s*String\(batch\.fecha_corte/);
   assert.match(app, /!isHistoricalBatch\(batch\)/);
   assert.match(sql, /where po\.cutoff_snapshot < date '2026-09-01'/);
   assert.match(sql, /set estado = 'cerrada'/);
@@ -122,7 +123,7 @@ test('todo lo anterior al 1 de septiembre queda cerrado y fuera de pendientes', 
 test('Tesorería muestra nombres de tiendas y reserva CK como código interno', async () => {
   const app = await readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8');
   assert.match(app, /function storeName\(code\)/);
-  assert.match(app, /from\('origenes'\)\.select\('codigo,nombre'\)/);
+  assert.match(app, /from\(["']origenes["']\)\s*\.select\(["']codigo,nombre["']\)/);
   assert.match(app, /storeName\(x\.store_code\)/);
 });
 
@@ -133,9 +134,10 @@ test('Tesorería separa compensaciones aplicadas y utilidad sin duplicar el mód
   assert.match(app, /data-compensation-select/);
   assert.match(app, /Aplicada a cartera/);
   assert.match(app, /commissionCompensation/);
-  assert.doesNotMatch(app, /\$\('#movements'\)/);
+  assert.doesNotMatch(app, /\$\(["']#movements["']\)/);
   assert.match(html, /Abonos automáticos a cartera de tiendas/);
-  assert.match(html, /Utilidad del negocio por créditos de tiendas propias/);
+  assert.match(html, /Movimientos por créditos de tiendas propias/);
+  assert.match(html, /Krediya, el margen se muestra antes de bonos y gastos/);
   assert.doesNotMatch(html, /Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(ledger, /new URLSearchParams\(location\.search\)\.get\('tienda'\)/);
 });

@@ -9,15 +9,17 @@ const sql=fs.readFileSync('supabase/migrations/20260904174000_registrar_pago_agr
 test('muestra comercio y titular en pagos de aliados',()=>{
   assert.match(app,/paymentBusinessName/);
   assert.match(app,/Titular:/);
-  assert.match(app,/origin_code:b\.origen_codigo/);
+  assert.match(app,/origin_code\s*:\s*b\.origen_codigo/);
 });
 
 test('consolida órdenes abiertas del mismo beneficiario y cuenta',()=>{
   assert.match(app,/function paymentGroups/);
-  assert.match(app,/beneficiary_id,payment\.bank_snapshot\?\.account_number/);
+  assert.match(app,/beneficiary_id\s*,\s*payment\.bank_snapshot\?\.account_number/);
   assert.match(app,/órdenes consolidadas/);
-  assert.match(app,/reduce\(\(n,x\)=>n\+Number\(x\.valor\),0\)/);
-  assert.match(html,/aliados-tesoreria-app\.js\?v=1\.2\.0/);
+  assert.match(app,/reduce\(\(n\s*,\s*x\)\s*=>\s*n\s*\+\s*Number\(x\.valor\)\s*,\s*0\)/);
+  const version=html.match(/src="aliados-tesoreria-app\.js\?v=(\d+)\.(\d+)\.(\d+)"/);
+  assert.ok(version,'El módulo debe tener una versión explícita para actualizar caché');
+  assert.ok(Number(version[1])>1||Number(version[1])===1&&Number(version[2])>=3,'La versión incluye pagos agrupados y Cobros');
 });
 
 test('un soporte registra todo el grupo en una transacción validada',()=>{

@@ -33,5 +33,23 @@
     if (Number(valor) > Number(saldo || 0)) return { ok:false,error:'saldo_insuficiente' };
     return { ok:true };
   }
-  return { destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, B2B_TYPES, OUTSOURCING_TYPES };
+  // Fechas de corte (DATE), no timestamps ni fecha de registro del abono.
+  // Sólo selecciona registros: nunca recalcula cartera ni modifica movimientos.
+  function filtrarCompensaciones(items, { tienda = '', desde = '', hasta = '' } = {}) {
+    const rangoInvalido = Boolean(desde && hasta && desde > hasta);
+    const rows = rangoInvalido ? [] : items.filter(item => {
+      const corte = String(item.cutoff_date || '').slice(0, 10);
+      return (!tienda || item.store_code === tienda)
+        && (!desde || (corte && corte >= desde))
+        && (!hasta || (corte && corte <= hasta));
+    });
+    return { rows, rangoInvalido };
+  }
+  function tiendasCompensaciones(items, origins = []) {
+    const nombres = new Map(origins.map(origin => [origin.codigo, origin.nombre]));
+    return [...new Set(items.map(item => item.store_code).filter(Boolean))]
+      .map(codigo => ({ codigo, nombre: nombres.get(codigo) || codigo }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+  }
+  return { destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

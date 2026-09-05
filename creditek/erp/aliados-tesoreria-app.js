@@ -163,6 +163,30 @@
     }
     return data || [];
   }
+  async function loadCompensations() {
+    const rows = [], ids = new Set();
+    let total;
+    do {
+      const result = await sb.from("retail_b2b_compensations")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .range(rows.length, rows.length + 499);
+      if (result.error) throw result.error;
+      if (!Array.isArray(result.data) || !Number.isInteger(result.count)
+        || (total !== undefined && result.count !== total)) {
+        throw new Error("No fue posible cargar el historial completo de abonos. Actualiza Tesorería.");
+      }
+      total = result.count;
+      for (const row of result.data) {
+        if (!row.id || ids.has(row.id)) throw new Error("El historial de abonos cambió durante la consulta. Actualiza Tesorería.");
+        ids.add(row.id);
+        rows.push(row);
+      }
+      if ((result.data.length === 0 && rows.length < total) || rows.length > total)
+        throw new Error("La consulta de abonos está incompleta. Actualiza Tesorería.");
+    } while (rows.length < total);
+    return rows;
+  }
   async function load() {
     const [
       balances,
@@ -191,12 +215,7 @@
           .from("liquidation_beneficiaries")
           .select("id,nombre,identificacion,tipo"),
       ),
-      safe(
-        sb
-          .from("retail_b2b_compensations")
-          .select("*")
-          .order("created_at", { ascending: false }),
-      ),
+      loadCompensations(),
       safe(
         sb
           .from("treasury_movements")
@@ -226,6 +245,7 @@
       origins,
     };
     data.payments = payments.map(normalizePayment);
+    fillCompensationStores();
     render();
     fillSuppliers();
   }
@@ -252,6 +272,20 @@
             .toLowerCase()
             .includes(q)),
     );
+  }
+  function fillCompensationStores() {
+    const select = $("#compensationStore"), previous = select.value;
+    const stores = window.CreditekTesoreriaTercerizacion.tiendasCompensaciones(data.compensations, data.origins);
+    select.innerHTML = '<option value="">Todas las tiendas</option>' + stores
+      .map(store => `<option value="${esc(store.codigo)}">${esc(store.nombre)}</option>`).join("");
+    select.value = stores.some(store => store.codigo === previous) ? previous : "";
+  }
+  function compensationView() {
+    return window.CreditekTesoreriaTercerizacion.filtrarCompensaciones(filtered(data.compensations), {
+      tienda: $("#compensationStore").value,
+      desde: $("#compensationFrom").value,
+      hasta: $("#compensationTo").value,
+    });
   }
   function approverName(p) {
     return (
@@ -415,8 +449,16 @@
       treasuryView === "operational",
     );
     $("#showHistory").classList.toggle("active", treasuryView === "history");
-    const visibleCompensations = filtered(data.compensations),
-      comps = visibleCompensations.map(
+    const { rows: visibleCompensations, rangoInvalido } = compensationView();
+    $("#compensationFilterError").classList.toggle("hidden", !rangoInvalido);
+    for (const id of ["compensationFrom", "compensationTo"]) {
+      $(`#${id}`).setAttribute("aria-invalid", String(rangoInvalido));
+    }
+    if (!visibleCompensations.some(x => x.id === selectedCompensationId)) selectedCompensationId = null;
+    $("#compensationSummary").textContent = rangoInvalido
+      ? "Corrige el rango para consultar los abonos."
+      : `${visibleCompensations.length} de ${data.compensations.length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
+    const comps = visibleCompensations.map(
         (x) =>
           `<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${cop(x.account_balance_after)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
       );
@@ -463,7 +505,7 @@
       ],
       retailCommissions,
     );
-    const selected = data.compensations.find(
+    const selected = visibleCompensations.find(
       (x) => x.id === selectedCompensationId,
     );
     $("#compensationSelection").textContent = selected
@@ -868,6 +910,7 @@
     $("#invoiceWrap").classList.toggle("hidden", !show);
   }
   function fillSuppliers() {
+    if (!$("#movementForm")) return;
     $("#movementForm [name=supplier_id]").innerHTML =
       '<option value="">Selecciona</option>' +
       data.suppliers
@@ -976,7 +1019,21 @@
     $(`#${id}`).addEventListener("change", render),
   );
   $("#search").addEventListener("input", render);
-  $("#refresh").onclick = () => treasuryView==='cobros' ? cobros?.mount($("#cobrosContent")) : load();
+  ["compensationStore", "compensationFrom", "compensationTo"].forEach(id =>
+    $(`#${id}`).addEventListener("change", render),
+  );
+  $("#clearCompensationFilters").onclick = () => {
+    ["compensationStore", "compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = ""; });
+    render();
+  };
+  $("#refresh").onclick = async () => {
+    try {
+      if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
+      else await load();
+    } catch (error) {
+      notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
+    }
+  };
   $("#showCobros").onclick = async () => {
     if(!cobros)return;
     treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));
@@ -993,7 +1050,7 @@
     render();
   };
   $("#openStoreLedger").onclick = () => {
-    const selected = data.compensations.find(
+    const selected = compensationView().rows.find(
       (x) => x.id === selectedCompensationId,
     );
     if (selected)

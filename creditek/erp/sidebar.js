@@ -567,6 +567,20 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       link.href = '/design-system/components/kora-shell.css?v=2.0.4';
       document.head.appendChild(link);
     }
+    if (!document.getElementById('koraResponsiveStyles')) {
+      const link = document.createElement('link');
+      link.id = 'koraResponsiveStyles';
+      link.rel = 'stylesheet';
+      link.href = '/design-system/components/kora-responsive.css?v=1.0.0';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('koraResponsive')) {
+      const script = document.createElement('script');
+      script.id = 'koraResponsive';
+      script.src = '/creditek/erp/kora-responsive.js?v=1.0.0';
+      script.defer = true;
+      document.head.appendChild(script);
+    }
     if (!document.getElementById('koraLucide')) {
       const script = document.createElement('script');
       script.id = 'koraLucide';

@@ -1,0 +1,392 @@
+/* KORA responsive foundation
+ * Presentation only: shell reflow, resilient content sizing and readable data tables.
+ */
+
+html,
+body.kora-responsive-ready {
+  max-width: 100%;
+  width: 100%;
+}
+
+body.kora-responsive-ready :where(
+  .kora-shell-root,
+  .kora-shell-main,
+  .kora-shell-content,
+  .main-content,
+  .main-area,
+  main,
+  .page,
+  .container,
+  .content,
+  .contenido,
+  .dashboard,
+  section,
+  article
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.kora-responsive-ready :where(h1, h2, h3, h4, p, label, legend, button, .btn) {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+body.kora-responsive-ready :where(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.kora-responsive-ready :where(
+  .table-wrap,
+  .tabla-wrap,
+  .tablewrap,
+  .table-container,
+  .tabla-container,
+  .kora-table-region,
+  .overflow-x-auto
+) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.kora-responsive-ready table.kora-responsive-scroll {
+  min-width: max(100%, 48rem);
+}
+
+body.kora-responsive-ready table :where(th, td) {
+  word-break: normal;
+}
+
+body.kora-responsive-ready :where(.modal, .modal-bg, .modal-overlay, .overlay) {
+  max-width: 100vw;
+  overscroll-behavior: contain;
+}
+
+body.kora-responsive-ready :where(
+  .modal-box,
+  .modal-card,
+  .modal-content,
+  .modal > .box,
+  .ctk-modal,
+  .kora-incident-task-dialog,
+  .foto-modal-preview,
+  dialog,
+  .drawer,
+  .panel-lateral
+) {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 2rem);
+  max-width: calc(100vw - 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 79.999rem) {
+  .kora-profile__copy {
+    display: none;
+  }
+
+  .kora-command {
+    display: none;
+  }
+
+  .kora-topbar__context {
+    flex-basis: 14rem;
+  }
+
+  body.kora-responsive-ready :where(.page, .container, .content, .contenido, .dashboard, main) {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready :where(.page-top, .page-header, .head, .top, .section-head, .panel-head) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  body.kora-responsive-ready :where(.page-top, .page-header, .head, .top, .section-head, .panel-head) > :where(.actions, .action-row, .botones, .button-row) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .kora-topbar {
+    align-items: center;
+    display: grid;
+    gap: .5rem;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    min-height: auto;
+    padding: .5rem .75rem .625rem;
+  }
+
+  .kora-navigation-toggle {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .kora-topbar__context {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  body.kora-product-page .kora-shell-root .kora-topbar__title,
+  .kora-topbar__title {
+    font-size: .9375rem;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kora-breadcrumb,
+  .kora-command,
+  .kora-extension,
+  .kora-profile {
+    display: none;
+  }
+
+  .kora-topbar__actions {
+    display: flex;
+    gap: .375rem;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .kora-store {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .kora-store select {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .kora-topbar__actions .kora-icon-button {
+    flex: 0 0 2.75rem;
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+
+  body.kora-responsive-ready :where(.page, .container, .content, .contenido, .dashboard, main) {
+    padding-left: .875rem;
+    padding-right: .875rem;
+  }
+
+  body.kora-responsive-ready :where(.page-header h1, .page-top h1, .head h1, .top h1, main > h1) {
+    font-size: clamp(1.375rem, 7vw, 1.75rem);
+    line-height: 1.18;
+  }
+
+  body.kora-responsive-ready :where(.toolbar, .filters, .filtros, .filter-bar, .filter-row) {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    position: static;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready :where(.toolbar, .filters, .filtros, .filter-bar, .filter-row) > :where(input, select, button, .btn, .field, .campo, label) {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready :where(.actions, .action-row, .botones, .button-row) {
+    align-items: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+
+  body.kora-responsive-ready :where(.actions, .action-row, .botones, .button-row) > :where(button, .btn) {
+    flex: 1 1 9rem;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  body.kora-responsive-ready :where(input, select, textarea) {
+    font-size: 1rem;
+  }
+
+  body.kora-responsive-ready :where(button, .btn, input, select) {
+    min-height: 2.75rem;
+  }
+
+  body.kora-responsive-ready :where(.tabs, .tab-bar, .tabs-nav) {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  body.kora-responsive-ready :where(.tabs, .tab-bar, .tabs-nav) > * {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  body.kora-responsive-ready :where(.modal, .modal-bg, .modal-overlay, .overlay) {
+    align-items: flex-start;
+    padding: .5rem;
+  }
+
+  body.kora-responsive-ready :where(
+    .modal-box,
+    .modal-card,
+    .modal-content,
+    .modal > .box,
+    .ctk-modal,
+    .kora-incident-task-dialog,
+    .foto-modal-preview,
+    dialog,
+    .drawer,
+    .panel-lateral
+  ) {
+    border-radius: 1rem;
+    margin: auto;
+    max-height: calc(100dvh - 1rem);
+    max-width: calc(100vw - 1rem);
+    padding: 1rem;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready .toast {
+    bottom: .75rem;
+    left: .75rem;
+    max-width: calc(100vw - 1.5rem);
+    right: .75rem;
+    top: auto;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards,
+  body.kora-responsive-ready table.kora-responsive-cards tbody,
+  body.kora-responsive-ready table.kora-responsive-cards tfoot {
+    background: transparent;
+    display: block;
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards thead {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards tbody,
+  body.kora-responsive-ready table.kora-responsive-cards tfoot {
+    display: grid;
+    gap: .75rem;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) tr {
+    background: #fff;
+    border: 1px solid rgba(11, 30, 61, .1);
+    border-radius: .875rem;
+    box-shadow: 0 2px 8px rgba(11, 30, 61, .05);
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    padding: .375rem .875rem;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td {
+    align-items: start;
+    background: transparent !important;
+    border: 0;
+    border-bottom: 1px solid rgba(11, 30, 61, .07);
+    display: grid;
+    gap: .625rem;
+    grid-template-columns: minmax(6.75rem, 36%) minmax(0, 1fr);
+    height: auto;
+    min-width: 0;
+    overflow-wrap: break-word;
+    padding: .6875rem 0;
+    text-align: left !important;
+    white-space: normal;
+    width: 100%;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td:last-child {
+    border-bottom: 0;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td::before {
+    color: #64748b;
+    content: attr(data-kora-label);
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td[colspan] {
+    display: block;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td[colspan]::before,
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td[data-kora-label=""]::before {
+    display: none;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td :where(button, .btn, input, select, textarea) {
+    max-width: 100%;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) tr[hidden],
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) tr.hidden {
+    display: none !important;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-scroll :where(th, td) {
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  .kora-topbar {
+    padding-inline: .5rem;
+  }
+
+  .kora-topbar__actions {
+    overflow-x: auto;
+  }
+
+  .kora-store {
+    flex-basis: 8rem;
+    min-width: 8rem;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td {
+    grid-template-columns: minmax(0, 1fr);
+    gap: .25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.kora-responsive-ready :where(.kora-sidebar, .kora-topbar, .modal, .modal-bg, .tabs, table) {
+    scroll-behavior: auto;
+    transition-duration: .01ms !important;
+  }
+}

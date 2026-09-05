@@ -4,6 +4,9 @@ import { readdirSync } from 'node:fs';
 const security = readdirSync('tests/security')
   .filter(name => name.endsWith('.test.mjs') && name !== 'live-smoke.test.mjs')
   .map(name => `tests/security/${name}`);
+const responsive = [
+  'tests/design-system/kora-responsive-foundation.test.mjs',
+];
 // AURA (tests/agentes/*) tiene su propio ciclo de vida, separado de KORA
 // (confirmado por tests/security/separated-artifacts.test.mjs). No debe
 // bloquear el deploy de KORA. tests/erp/* completo tampoco se incluye aquí
@@ -36,4 +39,4 @@ const erp = [
   'tests/erp/aliados-reportes-mes-vigente.test.mjs',
   'tests/erp/kora-2026-000014-destinos-consignacion.test.mjs',
 ];
-execFileSync(process.execPath, ['--test', ...security, ...erp], { stdio: 'inherit' });
+execFileSync(process.execPath, ['--test', ...security, ...responsive, ...erp], { stdio: 'inherit' });

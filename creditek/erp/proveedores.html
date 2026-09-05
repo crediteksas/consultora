@@ -23,6 +23,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <script src="proveedores-domain.js"></script>
+  <script src="proveedores-saldo-inicial.js?v=1.0.0"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -32,6 +33,12 @@
     .semaforo-gris  { background-color: #9ca3af; }
     tbody tr:hover { background-color: #f9fafb; cursor: pointer; }
     tbody tr.seleccionado { background-color: #eff6ff; border-left: 3px solid #3b82f6; }
+    #modal-saldo-inicial { z-index: var(--ctk-z-modal, 700); }
+    #modal-saldo-inicial > section { max-height: calc(100dvh - 2rem); min-width: 0; }
+    #modal-saldo-inicial input, #modal-saldo-inicial textarea { min-width: 0; max-width: 100%; }
+    #toast { z-index: var(--ctk-z-toast, 900); max-width: calc(100vw - 2rem); }
+    #saldo-inicial-estado { padding: 12px; border-radius: 8px; background: #f0f9fb; color: #163b4d; overflow-wrap: break-word; }
+    #saldo-inicial-estado[data-error="true"] { background: #fff5f5; color: #9b1c1c; border: 1px solid #fecaca; }
   </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -312,8 +319,9 @@
       <label class="block text-sm">Valor pendiente <span class="text-red-500">*</span><input id="saldo-inicial-monto" type="number" min="1" step="1" required placeholder="0" class="mt-1 w-full border rounded px-3 py-2"></label>
       <label class="block text-sm">Factura o referencia <span class="text-xs text-gray-500">(opcional)</span><input id="saldo-inicial-referencia" type="text" maxlength="120" placeholder="Número del estado de cuenta" class="mt-1 w-full border rounded px-3 py-2"></label>
       <label class="block text-sm">Observación<textarea id="saldo-inicial-observacion" maxlength="500" rows="3" placeholder="Detalle de lo que compone el saldo" class="mt-1 w-full border rounded px-3 py-2"></textarea></label>
-      <label class="block text-sm">Soporte <span class="text-red-500">*</span><input id="saldo-inicial-soporte" type="file" required accept="image/*,application/pdf" class="mt-1 w-full border rounded px-3 py-2"><span class="block mt-1 text-xs text-gray-500">Estado de cuenta, factura o relación enviada por el proveedor.</span></label>
+      <label class="block text-sm">Soporte <span class="text-red-500">*</span><input id="saldo-inicial-soporte" type="file" required accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" class="mt-1 w-full border rounded px-3 py-2"><span class="block mt-1 text-xs text-gray-500">Estado de cuenta, factura o relación del proveedor. PDF, JPG, PNG o WebP; hasta 10 MB.</span></label>
       <label class="block text-sm">Responsable<input id="saldo-inicial-responsable" type="text" readonly class="mt-1 w-full border rounded px-3 py-2 bg-gray-100"></label>
+      <p id="saldo-inicial-estado" class="hidden text-sm" role="status" aria-live="polite" tabindex="-1"></p>
       <div class="flex gap-2 pt-2"><button id="btn-cancelar-saldo-inicial" type="button" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Cancelar</button><button id="btn-guardar-saldo-inicial" type="submit" class="flex-1 px-4 py-2 rounded bg-teal-600 hover:bg-teal-700 text-white font-semibold">Registrar saldo inicial</button></div>
     </form>
   </section>
@@ -400,6 +408,10 @@ let proveedorSeleccionado = null;
 let detalleFacturaActual = null;
 let pagoIdempotencyKey = null;
 let saldoInicialIdempotencyKey = null;
+let registroSaldoInicial = null;
+let saldoInicialEnCurso = false;
+let focoAntesSaldoInicial = null;
+let overflowAntesSaldoInicial = '';
 
 // ============================================================
 // CARGA DE DATOS
@@ -568,13 +580,17 @@ async function mostrarFacturas(provId) {
 async function abrirSoporte(path) {
   if (!path) return;
   const ventana = window.open('about:blank', '_blank');
-  const { data, error } = await SB.storage.from(BUCKET_SOPORTES).createSignedUrl(path, 60);
-  if (error || !data?.signedUrl) {
+  if (ventana) ventana.opener = null;
+  try {
+    const soporte = window.CreditekSaldoInicialProveedor.resolverSoporte(path);
+    const { data, error } = await SB.storage.from(soporte.bucket).createSignedUrl(soporte.path, 60);
+    if (error || !data?.signedUrl) throw new Error(error?.message || 'enlace no disponible');
+    if (ventana) ventana.location.href = data.signedUrl;
+    else toast('Permite abrir ventanas para consultar el soporte.', 'warn');
+  } catch (error) {
     if (ventana) ventana.close();
-    toast('No se pudo abrir el soporte: ' + (error?.message || 'enlace no disponible'), 'error');
-    return;
+    toast('No se pudo abrir el soporte: ' + error.message, 'error');
   }
-  if (ventana) ventana.location.href = data.signedUrl;
 }
 
 function renderDetalleFactura(datos) {
@@ -718,6 +734,7 @@ async function registrarPago(event) {
 }
 
 function abrirSaldoInicial(proveedorId) {
+  if (saldoInicialEnCurso) return;
   const proveedor = proveedores.find(item => item.id === proveedorId);
   if (!proveedor) return;
   if (facturas.some(f => f.proveedor_id === proveedorId && f.origen_registro === 'saldo_inicial')) { toast('Este proveedor ya tiene un saldo inicial registrado', 'warn'); return; }
@@ -731,40 +748,72 @@ function abrirSaldoInicial(proveedorId) {
   document.getElementById('saldo-inicial-soporte').value = '';
   document.getElementById('saldo-inicial-responsable').value = usuarioActual?.email || '';
   saldoInicialIdempotencyKey = crypto.randomUUID();
+  registroSaldoInicial = window.CreditekSaldoInicialProveedor.crearRegistro({ sb: SB, idempotencyKey: saldoInicialIdempotencyKey });
+  document.getElementById('saldo-inicial-estado').classList.add('hidden');
+  focoAntesSaldoInicial = document.activeElement;
+  overflowAntesSaldoInicial = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
   const modal = document.getElementById('modal-saldo-inicial');
   modal.classList.remove('hidden'); modal.classList.add('flex');
   document.getElementById('saldo-inicial-fecha').focus();
 }
 
-function cerrarSaldoInicial() { const modal = document.getElementById('modal-saldo-inicial'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+function cerrarSaldoInicial() {
+  if (saldoInicialEnCurso) return;
+  const modal = document.getElementById('modal-saldo-inicial');
+  modal.classList.add('hidden'); modal.classList.remove('flex');
+  document.body.style.overflow = overflowAntesSaldoInicial;
+  if (focoAntesSaldoInicial?.isConnected) focoAntesSaldoInicial.focus();
+}
+
+function estadoSaldoInicial(mensaje, error = false) {
+  const estado = document.getElementById('saldo-inicial-estado');
+  estado.textContent = mensaje;
+  estado.dataset.error = String(error);
+  estado.setAttribute('role', error ? 'alert' : 'status');
+  estado.classList.remove('hidden');
+  estado.scrollIntoView({ block: 'nearest' });
+  if (error) estado.focus({ preventScroll: true });
+}
 
 async function registrarSaldoInicial(event) {
   event.preventDefault();
-  const proveedorId = document.getElementById('saldo-inicial-proveedor-id').value;
-  const fechaCorte = document.getElementById('saldo-inicial-fecha').value;
-  const fechaVencimiento = document.getElementById('saldo-inicial-vencimiento').value || null;
-  const monto = Number(document.getElementById('saldo-inicial-monto').value || 0);
-  const archivo = document.getElementById('saldo-inicial-soporte').files?.[0];
-  if (!proveedorId || !fechaCorte || monto <= 0 || !archivo) { toast('Completa fecha, valor y soporte del saldo inicial', 'error'); return; }
-  if (fechaVencimiento && fechaVencimiento < fechaCorte) { toast('El vencimiento no puede ser anterior a la fecha de corte', 'error'); return; }
+  if (saldoInicialEnCurso) return;
+  const datos = {
+    proveedorId: document.getElementById('saldo-inicial-proveedor-id').value,
+    fechaCorte: document.getElementById('saldo-inicial-fecha').value,
+    fechaVencimiento: document.getElementById('saldo-inicial-vencimiento').value,
+    monto: document.getElementById('saldo-inicial-monto').value,
+    referencia: document.getElementById('saldo-inicial-referencia').value,
+    observacion: document.getElementById('saldo-inicial-observacion').value,
+    archivo: document.getElementById('saldo-inicial-soporte').files?.[0],
+  };
+  const form = document.getElementById('form-saldo-inicial');
+  const controles = Array.from(form.elements).filter(control => !control.disabled);
+  saldoInicialEnCurso = true;
+  controles.forEach(control => { control.disabled = true; });
+  form.setAttribute('aria-busy', 'true');
   const btn = document.getElementById('btn-guardar-saldo-inicial'); btn.disabled = true; btn.textContent = 'Registrando...';
+  let resultado;
   try {
-    const extension = (archivo.name.split('.').pop() || 'bin').toLowerCase();
-    const soportePath = `saldos-iniciales-proveedores/${saldoInicialIdempotencyKey}.${extension}`;
-    const { error: uploadError } = await SB.storage.from(BUCKET_SOPORTES).upload(soportePath, archivo, { cacheControl: '3600', upsert: false });
-    if (uploadError) throw new Error('No se pudo subir el soporte: ' + uploadError.message);
-    const { data, error } = await SB.rpc('registrar_saldo_inicial_proveedor', {
-      p_proveedor_id: proveedorId, p_fecha_corte: fechaCorte, p_fecha_vencimiento: fechaVencimiento,
-      p_monto: monto, p_referencia: document.getElementById('saldo-inicial-referencia').value.trim() || null,
-      p_observacion: document.getElementById('saldo-inicial-observacion').value.trim() || null,
-      p_soporte_path: soportePath, p_idempotency_key: saldoInicialIdempotencyKey,
-    });
-    if (error) throw new Error(error.message);
-    if (!data?.ok) throw new Error('El servidor no confirmó el saldo inicial');
-    cerrarSaldoInicial(); toast(data.reutilizado ? 'El saldo inicial ya estaba registrado' : 'Saldo inicial registrado correctamente');
-    await cargarProveedores(); await mostrarFacturas(proveedorId);
-  } catch (error) { toast('No se pudo registrar el saldo inicial: ' + error.message, 'error'); }
-  finally { btn.disabled = false; btn.textContent = 'Registrar saldo inicial'; }
+    resultado = await registroSaldoInicial.registrar(datos, mensaje => estadoSaldoInicial(mensaje));
+  } catch (error) {
+    estadoSaldoInicial('No se pudo confirmar el saldo inicial: ' + error.message, true);
+  } finally {
+    saldoInicialEnCurso = false;
+    controles.forEach(control => { control.disabled = false; });
+    form.setAttribute('aria-busy', 'false');
+    btn.textContent = 'Registrar saldo inicial';
+  }
+  if (!resultado?.ok) return;
+  cerrarSaldoInicial();
+  toast(resultado.reutilizado ? 'El saldo inicial ya estaba registrado' : 'Saldo inicial registrado correctamente');
+  try {
+    await cargarProveedores();
+    await mostrarFacturas(datos.proveedorId);
+  } catch (_) {
+    toast('El saldo quedó registrado, pero no se pudo actualizar la consulta. Recarga la página para verlo.', 'warn');
+  }
 }
 
 // ============================================================
@@ -851,6 +900,23 @@ document.getElementById('panel-detalle-factura').addEventListener('click', event
 });
 document.getElementById('form-pago-proveedor').addEventListener('submit', registrarPago);
 document.getElementById('form-saldo-inicial').addEventListener('submit', registrarSaldoInicial);
+document.getElementById('form-saldo-inicial').addEventListener('invalid', event => {
+  estadoSaldoInicial(event.target.validationMessage || 'Revisa los campos obligatorios del formulario.', true);
+}, true);
+document.getElementById('modal-saldo-inicial').addEventListener('keydown', event => {
+  if (event.key === 'Escape') { event.preventDefault(); cerrarSaldoInicial(); }
+  if (event.key !== 'Tab') return;
+  const modal = document.getElementById('modal-saldo-inicial');
+  const controles = Array.from(modal.querySelectorAll('input:not([type="hidden"]), textarea, button'))
+    .filter(control => !control.disabled);
+  if (!controles.length) { event.preventDefault(); return; }
+  const primero = controles[0], ultimo = controles[controles.length - 1];
+  if (event.shiftKey && (document.activeElement === primero || !controles.includes(document.activeElement))) {
+    event.preventDefault(); ultimo.focus();
+  } else if (!event.shiftKey && (document.activeElement === ultimo || !controles.includes(document.activeElement))) {
+    event.preventDefault(); primero.focus();
+  }
+});
 document.getElementById('btn-cancelar-saldo-inicial').addEventListener('click', cerrarSaldoInicial);
 
 document.getElementById('tbody-proveedores').addEventListener('click', e => {

@@ -6,6 +6,8 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '../..');
 const html = await readFile(path.join(root, 'public/creditek/erp/proveedores.html'), 'utf8');
 const mirror = await readFile(path.join(root, 'creditek/erp/proveedores.html'), 'utf8');
+const helper = await readFile(path.join(root, 'creditek/erp/proveedores-saldo-inicial.js'), 'utf8');
+const publishedHelper = await readFile(path.join(root, 'public/creditek/erp/proveedores-saldo-inicial.js'), 'utf8');
 const sql = await readFile(path.join(root, 'supabase/migrations/20260902222454_saldo_inicial_proveedores_b2b.sql'), 'utf8');
 
 test('Maite conserva el alta de proveedores y recibe la acción de saldo inicial', () => {
@@ -40,8 +42,10 @@ test('la autorización y auditoría se controlan en servidor', () => {
 });
 
 test('la pantalla productiva y su espejo conservan el mismo contrato funcional', () => {
-  for (const marker of ['registrar_saldo_inicial_proveedor', 'saldo-inicial-soporte', 'Saldo inicial cargado']) {
+  for (const marker of ['proveedores-saldo-inicial.js', 'registroSaldoInicial.registrar', 'saldo-inicial-soporte', 'Saldo inicial cargado']) {
     assert.match(html, new RegExp(marker));
     assert.match(mirror, new RegExp(marker));
   }
+  assert.equal(publishedHelper, helper, 'el artefacto incluye la misma lógica que fue probada');
+  assert.match(helper, /sb\.rpc\('registrar_saldo_inicial_proveedor', payload\)/);
 });

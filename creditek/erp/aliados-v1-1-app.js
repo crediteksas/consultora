@@ -104,6 +104,25 @@
   function businessType(o) {
     return o.modelo_negocio || o.tipo_establecimiento || "";
   }
+  function establishmentKey(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+  function historicalMatchesOwnStore(item) {
+    const key = establishmentKey(item?.establecimiento);
+    return Boolean(
+      key &&
+        (db.origins || []).some(
+          (origin) =>
+            origin.tipo === "propia" &&
+            establishmentKey(origin.nombre) === key,
+        ),
+    );
+  }
   function paymentValue(o) {
     return Number(
       o.pago_aliado ?? o.pago_neto_beneficiario ?? o.pago_neto_tienda ?? 0,
@@ -1200,7 +1219,9 @@
         ...(db.historicalCredits || [])
           .filter(
             (x) =>
-              x.tipo_establecimiento === "aliado" && !x.ejecutivo_historico_id,
+              x.tipo_establecimiento === "aliado" &&
+              !x.ejecutivo_historico_id &&
+              !historicalMatchesOwnStore(x),
           )
           .reduce((m, x) => {
             const v = m.get(x.establecimiento) || {
@@ -1241,6 +1262,12 @@
       );
   }
   async function associateHistorical(establishment) {
+    if (historicalMatchesOwnStore({ establecimiento: establishment })) {
+      return notice(
+        "Este establecimiento pertenece a Creditek Retail y no admite ejecutivo de Aliados.",
+        true,
+      );
+    }
     const select = document.getElementById(
         `historical-exec-${encodeURIComponent(establishment)}`,
       ),

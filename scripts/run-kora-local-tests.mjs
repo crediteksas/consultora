@@ -18,6 +18,7 @@ const erp = [
   'tests/erp/utilidad-creditek-domain.test.mjs', // KORA-2026-000034
   'tests/erp/aliados-utilidad-corte.test.mjs',
   'tests/erp/aliados-asociacion-historica.test.mjs',
+  'tests/erp/sonivox-clasificacion-retail.test.mjs',
   'tests/erp/aliados-prefijo-a-alexander.test.mjs',
   'tests/erp/aliados-ejecutivos-periodo.test.mjs',
   'tests/erp/aliados-plataformas-periodo.test.mjs',

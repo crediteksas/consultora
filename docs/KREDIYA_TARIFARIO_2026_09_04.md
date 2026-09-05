@@ -32,3 +32,37 @@ Pagamos = columna N antes de inicial. Giro al aliado = Pagamos − inicial.
 Utilidad bruta = PVP − Pagamos − $20.000 de bonos; provisión = bruta × 28%.
 La inicial no se descuenta otra vez de la utilidad. Si el importe reportado por
 Krediya difiere del PVP, se muestra la comparación sin adoptar ese importe.
+
+## Referencias recuperadas del manual y presentación de operaciones
+
+La copia `SEMANA K DEL 24 AL AGOSTO 2026.xlsx` tiene columnas distintas:
+Hoja1 J=PVP, K=PAGAMOS. SHA256:
+`48263902ee56de66ecdd007bdd1826dad090962e4a81408cd6cedc5b9dcc55f2`.
+
+- J54/K54: REDMI A7 PRO 64GB 4RAM, $492.800/$369.600; fila adicional omitida.
+- J49/K49: TECNO SPARK GO 3 4GB RAM 64GB, $591.500/$443.625.
+  Alias explícito para la misma referencia importada con sufijo REGULAR,
+  TECNO KN3, 64GB y 4GB RAM. No se enlaza con la variante de 128GB.
+- K55: INFINIX HOT 60 PRO+ 256GB 8+8RAM, Pagamos $890.000,
+  comprobado también en LIQUIDACION!AJ2. J55=0 por costo I55 vacío:
+  se conserva evidencia parcial para cob6uk5; NO se crea una tarifa ni
+  se acepta automáticamente el precio recibido de $1.199.000.
+- MOTOROLA EDGE 50 FUSION 5G 256GB 8RAM: dos créditos sin tarifa
+  en las fuentes revisadas. No se inventa un precio ni se usa otro modelo.
+
+Resultado comprobado: 43 operaciones reconocidas, 40 con PVP de tarifa,
+41 con Pagamos respaldado; 0 alertas abiertas de bonos y 0 órdenes de pago del lote.
+Las diferencias de PVP siguen requiriendo una decisión específica del revisor.
+
+La vista muestra referencia completa, comercio, cliente, IMEI y fecha por
+operación, con PVP guardado/recibido, Pagamos e inicial en una cuadrícula
+adaptable. El giro previo al cálculo está identificado como estimado.
+Los cálculos guardados conservan prioridad, incluidos ceros reales.
+La lista y el resumen cuentan los datos importados y no simulan $0 cuando
+el cálculo no existe. El botón abre directamente el editor de esa operación.
+
+Seguridad: consulta por lote SECURITY INVOKER, RLS conservado, revisión
+de capacidad y acceso anónimo revocado. El asesor marca la función de contexto
+preexistente por ser SECURITY DEFINER accesible a authenticated; conserva
+auth.uid(), capacidad revisor, search_path fijo y prohibición de anon.
+Referencia: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable

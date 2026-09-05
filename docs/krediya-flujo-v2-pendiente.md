@@ -1,4 +1,6 @@
-# Krediya v2 — implementación local, publicación pendiente
+# Krediya v2 — registro histórico de preparación
+
+> Actualización 2026-09-05: el motor y el seguimiento de siete días ya fueron instalados en Supabase, con pruebas SQL transaccionales satisfactorias y reversión de todos los datos sintéticos. Las ventas Krediya desde el 31 de agosto se eliminaron por instrucción expresa de Oscar. Estado y alcance actuales: [cierre y verificación](krediya-cierre-20260905.md). El contenido siguiente conserva el historial previo; sus bloqueos de instalación ya no describen el estado actual.
 
 Estado: la migración `20260905034907_krediya_flujo_tarifario_y_seguimiento.sql` NO se ha aplicado. La protección de producción rechazó su aplicación por alcance financiero. No desplegar el frontend sin esa migración y sin pruebas SQL transaccionales satisfactorias.
 

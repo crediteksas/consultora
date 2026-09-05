@@ -19,7 +19,7 @@
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = UX.formatoCOP;
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
-  const state = (value) => `<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`;
+  const state = (value) => `<span class="badge ${esc(value)}" title="${esc(UX.traducirEstado(value))}">${value === 'con_novedades' ? 'Revisar' : esc(UX.traducirEstado(value))}</span>`;
   const ownStoreUtility = (liquidation) => Number(liquidation.total_utilidad_tiendas || 0);
   const allyUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0) - ownStoreUtility(liquidation);
   const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);
@@ -179,8 +179,8 @@
       const utility = row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
       const actualIssues = (rowIssues || []).filter((i) => i.operation_id === row.id);
       const hasIssue = actualIssues.length || !row.reconocida || (isOwn && difference);
-      const issueLabel = actualIssues.length ? actualIssues.map((i) => i.tipo === 'krediya_regla_precio_ausente' ? 'Confirmar PVP y Pagamos' : i.tipo === 'krediya_bono_sin_configurar' ? 'Revisar vigencia de bonos' : i.descripcion || i.tipo).join(' · ') : !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
-      const issues = hasIssue ? `<div class="issue-action"><span class="badge con_novedades">${issueLabel}</span><button class="btn secondary" data-manage-issue="${row.id}">Gestionar</button></div>` : 'Sin novedades';
+      const issueLabel = actualIssues.length ? [...new Set(actualIssues.map((i) => ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo) ? 'Revisar diferencia de precios' : i.tipo === 'krediya_bono_sin_configurar' ? 'Revisar vigencia de bonos' : i.descripcion || i.tipo))].join(' · ') : !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
+      const issues = hasIssue ? `<div class="issue-action"><p class="issue-summary">${esc(issueLabel)}</p><button class="btn secondary" data-manage-issue="${row.id}">Ver diferencia</button></div>` : 'Sin novedades';
       const initial = isOwn ? `${money(row.inicial)}<small>KORA: ${money(row.inicial_kora)}${difference ? ` · Dif.: ${money(difference)}` : ''}</small>` : money(row.inicial);
       return `<tr><td><span class="operation-main">${esc(row.establishment_name)}</span><small>${isOwn ? 'Tienda propia' : 'Aliado'}</small></td><td>${esc(row.cliente_nombre || '—')}<small>${esc(row.imei || '—')}</small></td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${initial}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}<div style="margin-top:6px">${issues}</div></td></tr>`;
     }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
@@ -203,9 +203,9 @@
       $('detailHead').innerHTML = '';
       $('detailBody').innerHTML = `<tr><td><div class="incident-toolbar"><button class="btn secondary" id="pendingIssues">Pendientes (${pending.length})</button><button class="btn secondary" id="historyIssues">Consultar historial (${history.length})</button>${focusOperationId ? '<button class="btn secondary" id="allIssues">Ver todo el lote</button>' : ''}<strong>${showHistory ? 'Historial: no requiere gestión' : 'Pendientes de resolver'}</strong></div>${visible.slice(page * pageSize, (page + 1) * pageSize).map((item) => {
         const bonus = item.tipo === 'krediya_bono_sin_configurar';
-        const price = item.tipo === 'krediya_regla_precio_ausente';
+        const price = ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(item.tipo);
         const title = bonus ? 'Validación de bonos Krediya' : price ? 'Precio de venta y Pagamos' : UX.traducirEstado(item.tipo);
-        const explanation = bonus ? 'Los bonos ya están definidos: $5.000 para Maythe y $15.000 de Operación para Oscar. Esta alerta requiere revisar la validación y su vigencia en el sistema; no volver a confirmar los montos.' : item.descripcion;
+        const explanation = bonus ? (item.estado === 'abierta' ? 'No se encontró una regla de bonos aplicable. Configuración esperada: gestión Maythe $5.000 y operación Oscar $15.000. Requiere corregir la configuración, no confirmar el bono de cada venta.' : 'Gestión Maythe $5.000 y operación Oscar $15.000. Configuración corregida; no requiere ninguna acción.') : item.descripcion;
         const action = item.estado === 'abierta' && !selected.frozen_at && !bonus ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">${price ? 'Revisar precios' : 'Revisar y justificar'}</button>` : '';
         return `<article class="incident-card"><div><strong>${esc(title)}</strong> · ${state(item.estado)}<p>${esc(item.liquidation_operations?.establishment_name || 'General')} · IMEI ${esc(item.liquidation_operations?.imei || '—')}</p><p>${esc(explanation)}</p>${item.resolution ? `<p>Resolución: ${esc(item.resolution)}</p>` : ''}</div>${action}</article>`;
       }).join('') || '<p>No hay novedades en esta vista.</p>'}<div class="incident-toolbar"><button class="btn secondary" id="previousIssues" ${page === 0 ? 'disabled' : ''}>Anterior</button><span>Página ${page + 1} de ${pages} · ${visible.length} novedades</span><button class="btn secondary" id="nextIssues" ${page + 1 >= pages ? 'disabled' : ''}>Siguiente</button></div></td></tr>`;
@@ -311,9 +311,11 @@
       <div class="price-comparison"><table><thead><tr><th>Concepto</th><th>Guardado en KORA</th><th>Recibido de Krediya</th><th>Diferencia</th></tr></thead><tbody>
       <tr><th>PVP</th><td>${amount(c.pvp_guardado)}</td><td>${amount(c.pvp_recibido)}</td><td>${delta(c.pvp_recibido,c.pvp_guardado)}</td></tr>
       <tr><th>Pagamos</th><td>${amount(c.pagamos_guardado)}</td><td>${c.pagamos_recibido == null ? 'No viene en el archivo' : money(c.pagamos_recibido)}</td><td>${delta(c.pagamos_recibido,c.pagamos_guardado)}</td></tr></tbody></table></div>
+      <p class="price-rule">Tarifario: PVP de la columna PVP y Pagamos de la columna PAGAMOS. No se usa Precio sugerido. El valor de Krediya se compara; no reemplaza la tarifa sin una decisión.</p>
       <p>${c.pvp_guardado == null ? 'No se encontró una tarifa para esta referencia. No se sustituye por cero.' : 'Si Krediya reportó un error, puedes conservar el precio guardado y registrar el motivo.'}</p>
       <form id="priceDecisionForm"><label>Decisión<select class="control" id="priceDecision" required><option value="">Selecciona qué hacer</option><option value="aceptar_krediya">Aceptar el PVP recibido de Krediya</option><option value="conservar_guardado" ${c.pvp_guardado == null || c.pagamos_guardado == null ? 'disabled' : ''}>Conservar los valores guardados en KORA</option><option value="editar_operacion">Corregir valores de esta operación</option></select></label>
-      <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="0.01" step="0.01" required disabled></label><label>Pagamos a aplicar<input class="control" id="decisionPagamos" type="number" min="0.01" step="0.01" required value="${c.pagamos_guardado ?? ''}"></label></div>
+      <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="0.01" step="0.01" required disabled></label><label>Pagamos antes de inicial<input class="control" id="decisionPagamos" type="number" min="0.01" step="0.01" required value="${c.pagamos_guardado ?? ''}"></label></div>
+      <p id="pricePayout" class="price-payout">Inicial del crédito: ${amount(c.inicial)}. Pago al aliado = Pagamos − inicial.</p>
       <p id="priceImpact" aria-live="polite">Selecciona una decisión para ver el impacto.</p>
       <label>Motivo de la decisión<textarea class="control" id="priceReason" required rows="2" maxlength="1000" placeholder="Ejemplo: diferencia confirmada o posible error de Krediya"></textarea></label>
       <p class="muted">Aplica únicamente a este crédito. Conserva el archivo original y no modifica el tarifario maestro. No autoriza ni registra pagos.</p>
@@ -322,10 +324,12 @@
       const mode = $('priceDecision').value;
       const p = Number($('decisionPvp').value), paid = Number($('decisionPagamos').value);
       const known = c.bonos != null;
+      const initial = Number(c.inicial ?? 0);
+      $('pricePayout').textContent = paid>0 ? `Pago al aliado: ${money(paid)} − ${money(initial)} de inicial = ${money(paid-initial)}.` : `Inicial del crédito: ${money(initial)}. Falta Pagamos para calcular el giro.`;
       const bruto = p - paid - Number(c.bonos);
       const previous = c.pvp_guardado == null || c.pagamos_guardado == null || !known ? null : Number(c.pvp_guardado)-Number(c.pagamos_guardado)-Number(c.bonos);
-      $('priceImpact').textContent = !(p>0 && paid>0) ? 'Falta PVP o Pagamos para calcular el impacto.' : !known ? 'La utilidad queda pendiente de resolver la vigencia de bonos. Los precios sí pueden guardarse.' : `Utilidad bruta: ${money(bruto)}. Provisión 28 %: ${money(Math.round(bruto*28)/100)}. Utilidad neta estimada: ${money(bruto-Math.round(bruto*28)/100)}.${previous == null ? '' : ` Cambio bruto frente al precio guardado: ${money(bruto-previous)}.`}`;
-      $('savePriceDecision').disabled = !mode || !(p>0 && paid>0) || !$('priceReason').value.trim();
+      $('priceImpact').textContent = !(p>0 && paid>0) ? 'Falta PVP o Pagamos para calcular el impacto.' : !known ? 'La utilidad queda pendiente de resolver la vigencia de bonos. Los precios sí pueden guardarse.' : `Utilidad bruta (PVP − Pagamos − bonos): ${money(bruto)}.\nProvisión 28 %: ${money(Math.round(bruto*28)/100)}.\nUtilidad neta estimada: ${money(bruto-Math.round(bruto*28)/100)}.${previous == null ? '' : `\nCambio bruto frente al precio guardado: ${money(bruto-previous)}.`}`;
+      $('savePriceDecision').disabled = !mode || !(p>0 && paid>0) || paid<initial || !$('priceReason').value.trim();
     };
     $('priceDecision').onchange = () => {
       const mode = $('priceDecision').value;

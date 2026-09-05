@@ -51,3 +51,44 @@ test('52 filas trazables del Excel, sin fusionar capacidades o precios distintos
  assert.match(seed,/'pvp_celda','L'\|\|x\.fila/);assert.match(seed,/'pagamos_celda','N'\|\|x\.fila/);
  assert.match(sql,/'ref:'\|\|regexp_replace\(lower\(coalesce\(o\.referencia/);
 });
+test('Pagamos menos inicial determina el giro sin descontar inicial dos veces de utilidad',async()=>{
+ for(const inicial of [100000,200000]){
+  const e=editor({...base,pvp_guardado:1000000,pagamos_guardado:750000,bonos:20000,inicial});
+  await e.context.open('credit');
+  e.$('priceDecision').value='conservar_guardado';e.$('priceDecision').onchange();
+  assert.match(e.$('pricePayout').textContent,new RegExp(`= ${750000-inicial}\\.`));
+  assert.match(e.$('priceImpact').textContent,/bonos\): 230000/);
+  assert.match(e.$('priceImpact').textContent,/Provisión 28 %: 64400/);
+  assert.match(e.$('priceImpact').textContent,/neta estimada: 165600/);
+ }
+});
+test('Redmi usa PVP 646400 y Pagamos 484800; no adopta Precio Sug 701500',async()=>{
+ const e=editor({...base,pvp_guardado:646400,pagamos_guardado:484800,pvp_recibido:701500,bonos:20000,inicial:140300});
+ await e.context.open('credit');
+ assert.match(e.$('priceEditorContent').innerHTML,/No se usa Precio sugerido/);
+ e.$('priceDecision').value='conservar_guardado';e.$('priceDecision').onchange();
+ assert.equal(e.$('decisionPvp').value,646400);
+ assert.equal(e.$('decisionPagamos').value,484800);
+ assert.match(e.$('pricePayout').textContent,/= 344500/);
+ assert.match(e.$('priceImpact').textContent,/bonos\): 141600/);
+});
+test('vigencia se corrige solo sobre tarifas trazadas y no genera pagos',()=>{
+ const repair=fs.readFileSync('supabase/migrations/20260905000628_krediya_tarifario_vigencia_y_pago_neto.sql','utf8');
+ assert.match(repair,/tarifario_importado_fuente_autorizada/);
+ assert.match(repair,/p\.precio_venta=\(a\.detalle->>'pvp'\)::numeric/);
+ assert.match(repair,/l\.frozen_at is null/);
+ assert.match(repair,/'anterior',anterior/);
+ assert.doesNotMatch(repair,/update public\.(liquidations|liquidation_operations)|insert into public\.payment_orders/);
+ const bonus=fs.readFileSync('supabase/migrations/20260904235121_krediya_bonos_vigencia_lote_pendiente.sql','utf8');
+ assert.match(bonus,/gestion_krediya' and valor=5000/);
+ assert.match(bonus,/operacion' and valor=15000/);
+ assert.match(bonus,/krediya_bono_sin_configurar/);
+ assert.doesNotMatch(bonus,/insert into public\.payment_orders/);
+});
+test('novedades no usan pastillas rosadas para explicaciones largas',()=>{
+ const html=fs.readFileSync('creditek/erp/aliados-liquidaciones.html','utf8');
+ assert.match(html,/#liquidationsContent \.badge\.con_novedades\{background:#F1F5F9!important/);
+ assert.match(app,/class="issue-summary"/);
+ assert.doesNotMatch(app,/class="badge con_novedades">\$\{issueLabel\}/);
+ assert.match(html,/#priceImpact\{white-space:pre-line/);
+});

@@ -48,3 +48,10 @@ test('reflow usa ancho de contenido y protege importes, títulos y controles',()
   assert.match(css,/\.operation-amount\{white-space:nowrap!important/);
   assert.match(css,/min-height:44px/); assert.match(css,/\.kora-topbar__context\{flex:1 0 160px/);
 });
+test('cada operación conserva su propia altura y separación sin superponerse',()=>{
+  assert.match(css,/\.operations-cards #detailBody\{display:grid!important/);
+  assert.match(css,/grid-template-columns:minmax\(0,1fr\);gap:16px/);
+  assert.match(css,/#detailBody>tr\{display:block!important;position:static!important/);
+  assert.match(css,/#detailBody>tr>td\{display:block!important;position:static!important/);
+  assert.match(css,/\.operations-cards \.krediya-operation\{display:block!important;position:static!important/);
+});

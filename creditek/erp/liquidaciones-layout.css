@@ -13,9 +13,13 @@ body.liquidations-view .kora-extension{white-space:nowrap}
 #liquidationsContent :is(.btn,.badge){word-break:normal;overflow-wrap:normal;white-space:normal}
 #liquidationsContent .btn{min-height:44px;font-size:13px}
 #liquidationsContent :is(.operations-cards,.grouped-cards,.incidents-table){overflow:visible!important;min-width:0}
-#liquidationsContent .operations-cards :is(table,tbody,tr,td){display:block;width:100%!important;min-width:0!important}
+#liquidationsContent .operations-cards table{display:block!important;width:100%!important;min-width:0!important;height:auto!important;border-collapse:separate}
+#liquidationsContent .operations-cards #detailBody{display:grid!important;grid-template-columns:minmax(0,1fr);gap:16px;width:100%!important;min-width:0!important;height:auto!important}
+#liquidationsContent .operations-cards #detailBody>tr{display:block!important;position:static!important;width:100%!important;min-width:0!important;height:auto!important;min-height:0!important}
+#liquidationsContent .operations-cards #detailBody>tr>td{display:block!important;position:static!important;width:100%!important;min-width:0!important;height:auto!important;min-height:0!important}
 #liquidationsContent .operations-cards thead{display:none}
-#liquidationsContent .operations-cards td{padding:0 0 16px!important;white-space:normal!important;word-break:normal;overflow-wrap:normal}
+#liquidationsContent .operations-cards td{padding:0!important;white-space:normal!important;word-break:normal;overflow-wrap:normal}
+#liquidationsContent .operations-cards .krediya-operation{display:block!important;position:static!important;width:100%;height:auto!important;min-height:0!important;overflow:visible}
 #liquidationsContent .operation-heading{position:static!important;min-height:0;padding:0;background:transparent;border:0}
 #liquidationsContent .operation-heading h3{font-size:18px;word-break:normal;overflow-wrap:break-word}
 #liquidationsContent .operation-status{display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:100%;white-space:normal}

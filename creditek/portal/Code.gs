@@ -441,14 +441,14 @@ function inicializarTiendas() {
   var tiendas = [
     ['CRD-TOL-01', 'Cellfiao Tolú',       'Tolú',           '573112889758', 'luisa.medrano@crediteksas.com',   'SI'],
     ['CRD-COR-01', 'Móvil Shoping',       'Corozal',        '573014991556', 'andrea.velez@crediteksas.com',    'SI'],
-    ['CRD-COR-02', 'Celfiao Tecnología',  'Corozal',        '573002865747', 'katty.puello@crediteksas.com',    'SI'],
-    ['CRD-COR-03', 'Creditel Store',      'Corozal',        '573144220401', 'wendy.perez@crediteksas.com',     'SI'],
-    ['CRD-CHI-01', 'Chinú Cell',          'Chinú',          '573163134737', 'luis.marin@crediteksas.com',      'SI'],
-    ['CRD-CHI-02', 'Creditel Chinú',      'Chinú',          '573017158802', 'yajaira.salas@crediteksas.com',   'SI'],
-    ['CRD-CHI-03', 'Sonivox Chinú',       'Chinú',          '573052044046', 'vanessa.salas@crediteksas.com',   'SI'],
-    ['CRD-CIE-01', 'OroCell',             'Ciénaga de Oro', '573215039764', 'carmen.viggiani@crediteksas.com', 'SI'],
+    ['CRD-COR-02', 'Celfiao Tecnología',  'Corozal',        '573113052878', 'katty.puello@crediteksas.com',    'SI'],
+    ['CRD-COR-03', 'Creditel Store',      'Corozal',        '573205417745', 'wendy.perez@crediteksas.com',     'SI'],
+    ['CRD-CHI-01', 'Chinú Cell',          'Chinú',          '573234052533', 'luis.marin@crediteksas.com',      'SI'],
+    ['CRD-CHI-02', 'Creditel Chinú',      'Chinú',          '573239176227', 'yajaira.salas@crediteksas.com',   'SI'],
+    ['CRD-CHI-03', 'Sonivox Chinú',       'Chinú',          '573207235872', 'vanessa.salas@crediteksas.com',   'SI'],
+    ['CRD-CIE-01', 'OroCell',             'Ciénaga de Oro', '573021297349', 'carmen.viggiani@crediteksas.com', 'SI'],
     ['CRD-CIE-02', 'KrediSinu',           'Ciénaga de Oro', '573006177114', 'digna.pantoja@crediteksas.com',   'SI'],
-    ['CRD-COV-01', 'Creditel Coveñas',    'Coveñas',        '573008529877', 'yulimar.briceno@crediteksas.com', 'SI']
+    ['CRD-COV-01', 'Creditel Coveñas',    'Coveñas',        '573507098377', 'yulimar.briceno@crediteksas.com', 'SI']
   ];
 
   tiendas.forEach(function(row) { sheet.appendRow(row); });
@@ -644,22 +644,25 @@ function testWhatsApp() {
 }
 
 // ============================================================
-// ACTUALIZAR TELÉFONOS — Ejecutar una vez para corregir 5 números
+// ACTUALIZAR TELÉFONOS — Sincroniza los 10 números definitivos
 // ============================================================
 
 /**
- * Corrige los 5 teléfonos incorrectos en la hoja TIENDAS sin recrearla.
+ * Sincroniza los teléfonos definitivos en la hoja TIENDAS sin recrearla.
  * Menú: Ejecutar → actualizarTelefonos
  */
 function actualizarTelefonos() {
   var CORRECCIONES = {
+    'CRD-TOL-01': '573112889758',
+    'CRD-COR-01': '573014991556',
     'CRD-COR-02': '573113052878',
     'CRD-COR-03': '573205417745',
     'CRD-CHI-01': '573234052533',
     'CRD-CHI-02': '573239176227',
     'CRD-CHI-03': '573207235872',
     'CRD-CIE-01': '573021297349',
-    'CRD-CIE-02': '573006177114'
+    'CRD-CIE-02': '573006177114',
+    'CRD-COV-01': '573507098377'
   };
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();

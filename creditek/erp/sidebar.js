@@ -564,7 +564,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraShellStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-shell.css?v=2.0.4';
+      link.href = '/design-system/components/kora-shell.css?v=2.0.5';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraResponsiveStyles')) {
@@ -704,6 +704,14 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         </div>
       </section>`;
     }).join('');
+  }
+
+  function setExclusiveNavigationGroup(aside, targetGroup, shouldOpen = true) {
+    aside.querySelectorAll('.kora-nav-group').forEach(group => {
+      const open = group === targetGroup && shouldOpen;
+      group.dataset.open = String(open);
+      group.querySelector('.kora-nav-group__label')?.setAttribute('aria-expanded', String(open));
+    });
   }
 
   function koraStoreHtml(profile, stores) {
@@ -849,12 +857,21 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     root.classList.add('kora-shell-root');
     root.dataset.koraMounted = 'true';
     window.KoraAudio?.setUser?.(profile.id || profile.nombre || 'anonymous');
-    root.dataset.sidebarCollapsed = localStorage.getItem('kora_sidebar_collapsed') === 'true' ? 'true' : 'false';
+    const sidebarMode = localStorage.getItem('kora_sidebar_mode_v2') || 'auto';
+    root.dataset.sidebarCollapsed = sidebarMode === 'pinned' ? 'false' : 'true';
+    root.dataset.sidebarPeek = 'false';
+    aside.dataset.peek = 'false';
 
     const renderShellBrand = () => {
       const marker = aside.querySelector('[data-kora-brand]');
       marker.className = '';
-      marker.dataset.variant = root.dataset.sidebarCollapsed === 'true' ? 'sidebar-collapsed' : 'sidebar';
+      const temporarilyOpen = root.dataset.sidebarPeek === 'true';
+      const compactNavigation = root.dataset.sidebarCollapsed === 'true'
+        && !temporarilyOpen
+        && !matchMedia('(max-width: 63.999rem)').matches;
+      marker.dataset.variant = compactNavigation
+        ? 'sidebar-collapsed'
+        : 'sidebar';
       if (productName) marker.dataset.productName = productName;
       marker.dataset.koraBrandReady = 'false';
       marker.innerHTML = '';
@@ -895,6 +912,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         group.hidden = matches === 0;
         if (query && matches) group.dataset.open = 'true';
       });
+      if (!query) {
+        const activeGroup = aside.querySelector('.kora-nav-link[aria-current="page"]')?.closest('.kora-nav-group');
+        setExclusiveNavigationGroup(aside, activeGroup, Boolean(activeGroup));
+      }
     });
     command?.addEventListener('keydown', event => {
       if (event.key !== 'Enter') return;
@@ -917,6 +938,18 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     });
     const navigationControl = main.querySelector('.kora-navigation-toggle');
     const navigationMedia = matchMedia('(max-width: 63.999rem)');
+    const hoverNavigationMedia = matchMedia('(min-width: 64rem) and (hover: hover) and (pointer: fine)');
+    const setSidebarPeek = shouldPeek => {
+      const peek = Boolean(
+        shouldPeek
+        && hoverNavigationMedia.matches
+        && root.dataset.sidebarCollapsed === 'true'
+      );
+      if (root.dataset.sidebarPeek === String(peek)) return;
+      root.dataset.sidebarPeek = String(peek);
+      aside.dataset.peek = String(peek);
+      renderShellBrand();
+    };
     const syncNavigationControl = () => {
       if (!navigationControl) return;
       if (navigationMedia.matches) {
@@ -927,7 +960,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         return;
       }
       const collapsed = root.dataset.sidebarCollapsed === 'true';
-      const label = collapsed ? 'Expandir navegación' : 'Colapsar navegación';
+      const label = collapsed ? 'Fijar navegación abierta' : 'Ocultar navegación automáticamente';
       navigationControl.setAttribute('aria-label', label);
       navigationControl.dataset.koraTooltip = label;
       navigationControl.setAttribute('aria-expanded', String(!collapsed));
@@ -943,15 +976,23 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const collapsed = root.dataset.sidebarCollapsed !== 'true';
       root.dataset.sidebarCollapsed = String(collapsed);
       localStorage.setItem('kora_sidebar_collapsed', String(collapsed));
+      localStorage.setItem('kora_sidebar_mode_v2', collapsed ? 'auto' : 'pinned');
+      setSidebarPeek(false);
       renderShellBrand();
       syncNavigationControl();
     });
+    aside.addEventListener('pointerenter', () => setSidebarPeek(true));
+    aside.addEventListener('pointerleave', () => setSidebarPeek(false));
+    aside.addEventListener('focusin', () => setSidebarPeek(true));
+    aside.addEventListener('focusout', event => {
+      if (!aside.contains(event.relatedTarget)) setSidebarPeek(false);
+    });
+    hoverNavigationMedia.addEventListener?.('change', () => setSidebarPeek(false));
     installDelayedTooltips(root);
     aside.querySelectorAll('.kora-nav-group__label').forEach(button => button.addEventListener('click', () => {
       const group = button.closest('.kora-nav-group');
       const open = group.dataset.open !== 'true';
-      group.dataset.open = String(open);
-      button.setAttribute('aria-expanded', String(open));
+      setExclusiveNavigationGroup(aside, group, open);
     }));
     aside.querySelectorAll('.kora-nav-link[data-kora-action]').forEach(link => link.addEventListener('click', event => {
       const action = link.dataset.koraAction;

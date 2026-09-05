@@ -27,6 +27,28 @@ test('el shell carga una única capa responsive transversal', async () => {
   assert.match(shell, /kora-responsive\.js\?v=1\.0\.0/);
 });
 
+test('la navegación lateral usa acordeón exclusivo y cortina accesible en escritorio', async () => {
+  const [shell, css] = await Promise.all([
+    read('creditek/erp/sidebar.js'),
+    read('design-system/components/kora-shell.css'),
+  ]);
+
+  assert.match(shell, /function setExclusiveNavigationGroup/);
+  assert.match(shell, /setExclusiveNavigationGroup\(aside, group, open\)/);
+  assert.match(shell, /kora_sidebar_mode_v2/);
+  assert.match(shell, /\(min-width: 64rem\) and \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(shell, /pointerenter/);
+  assert.match(shell, /pointerleave/);
+  assert.match(shell, /focusin/);
+  assert.match(shell, /focusout/);
+  assert.match(shell, /Fijar navegación abierta/);
+  assert.match(css, /@media \(min-width: 64rem\) and \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(css, /data-sidebar-peek="true"/);
+  assert.match(css, /\.kora-sidebar\[data-peek="true"\][\s\S]*width:\s*var\(--ctk-width-sidebar\)/);
+  assert.match(css, /@media \(max-width: 63\.999rem\)[\s\S]*data-sidebar-collapsed="true"\][\s\S]*width:\s*var\(--ctk-width-sidebar\)/);
+  assert.match(shell, /!matchMedia\('\(max-width: 63\.999rem\)'\)\.matches/);
+});
+
 test('la cabecera móvil separa contexto y acciones sin recortar nombres', async () => {
   const css = await read('design-system/components/kora-responsive.css');
   assert.match(css, /grid-template-columns:\s*2\.75rem minmax\(0, 1fr\)/);

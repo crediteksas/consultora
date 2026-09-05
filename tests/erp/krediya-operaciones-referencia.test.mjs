@@ -45,7 +45,6 @@ function operations(rows, contexts = [], incidents = [], selected = {}) {
     // Null would format as zero, so a missing-value regression remains observable.
     money: (value) => `COP ${Number(value)}`,
     openPriceEditor: (id) => calls.push(['editor', id]),
-    tarifarioKrediya: {openTariff:()=>calls.push(['tarifario'])},
     loadTab: (...args) => calls.push(['tab', ...args])
   };
   vm.runInNewContext(`${renderSource};this.render = renderKrediyaOperations;`, context);
@@ -121,10 +120,9 @@ test('cada operación identifica referencia completa e IMEI sin cabeceras de la 
   assert.ok(result.classes.has('operations-cards'));
 });
 
-test('sin cálculo usa PVP recibido, conserva tarifa comparativa, Pagamos y giro', () => {
+test('sin cálculo ignora ceros provisionales y muestra tarifa 646400, Pagamos 484800, giro 414650 y bonos 20000', () => {
   const { html } = operations([row], [tariff], [priceIssue]);
-  assert.match(metricHtml(html, 'PVP configurado de referencia'), /COP 646400/);
-  assert.match(metricHtml(html, 'PVP recibido para liquidar'), /COP 701500/);
+  assert.match(metricHtml(html, 'PVP guardado'), /COP 646400/);
   assert.match(metricHtml(html, 'PVP recibido de Krediya'), /COP 701500/);
   assert.match(metricHtml(html, 'Pagamos antes de inicial'), /COP 484800/);
   assert.match(metricHtml(html, 'Inicial'), /COP 70150/);
@@ -132,7 +130,7 @@ test('sin cálculo usa PVP recibido, conserva tarifa comparativa, Pagamos y giro
   assert.match(html, /Bonos configurados: <strong[^>]*>COP 20000<\/strong>/);
   assert.match(html, /Utilidad: <span[^>]*>Pendiente de calcular<\/span>/);
   assert.match(html, />Sin calcular<\/span>/);
-  assert.match(html, /Se respeta PAGAMOS/);
+  assert.match(html, /Pagamos sí está registrado/);
   assert.match(html, /El giro es estimado; no es un pago autorizado/);
   assert.doesNotMatch(html, /COP 0(?:<|\b)/);
 });
@@ -141,7 +139,7 @@ test('tarifa ausente queda pendiente y no se convierte en Pagamos cero', () => {
   const { html } = operations([row], [{ ...tariff, pvp_guardado: null, pagamos_guardado: null }], [
     { operation_id: row.id, tipo: 'krediya_regla_precio_ausente' }
   ]);
-  for (const label of ['PVP configurado de referencia', 'Pagamos antes de inicial']) {
+  for (const label of ['PVP guardado', 'Pagamos antes de inicial']) {
     assert.match(metricHtml(html, label), /Sin tarifa vinculada/);
     assert.doesNotMatch(metricHtml(html, label), /COP 0/);
   }
@@ -157,12 +155,13 @@ test('Infinix conserva Pagamos manual 890000 y estimado 770100 sin inventar el P
     pvp_recibido: 1199000, diferencia_pvp: null,
     fuente_pagamos: { pagamos: 890000, pvp: null, celda: 'K55' }
   }], [{ operation_id: infinix.id, tipo: 'krediya_regla_precio_ausente' }]);
-  assert.match(metricHtml(html, 'PVP configurado de referencia'), /Sin tarifa vinculada/);
-  assert.doesNotMatch(metricHtml(html, 'PVP configurado de referencia'), /operation-amount|COP \d/);
+  assert.match(metricHtml(html, 'PVP guardado'), /Sin tarifa vinculada/);
+  assert.doesNotMatch(metricHtml(html, 'PVP guardado'), /operation-amount|COP \d/);
   assert.match(metricHtml(html, 'PVP recibido de Krediya'), /COP 1199000/);
   assert.match(metricHtml(html, 'Pagamos antes de inicial'), /COP 890000/);
   assert.match(metricHtml(html, 'Pagamos − inicial · estimado'), /COP 770100/);
-  assert.match(metricHtml(html, 'PVP recibido para liquidar'), /COP 1199000/);
+  assert.match(html, /Pagamos está respaldado en el manual/);
+  assert.match(html, /Falta resolver únicamente el PVP/);
   assert.match(html, /El giro es estimado; no es un pago autorizado/);
   assert.doesNotMatch(html, /COP 0(?:<|\b)/);
 });
@@ -182,18 +181,18 @@ test('un cálculo real conserva ceros autoritativos aunque la tarifa y la decisi
     assert.match(html, /Bonos liquidados: <strong[^>]*>COP 0<\/strong>/);
     assert.match(html, /Utilidad: <strong[^>]*>COP 0<\/strong>/);
     assert.match(html, />Calculada<\/span>/);
-    assert.doesNotMatch(html, /COP (?:484800|700000|525000|999999)\b/);
+    assert.doesNotMatch(html, /COP (?:646400|484800|700000|525000|999999)\b/);
     assert.doesNotMatch(html, /El giro es estimado/);
   }
 });
 
-test('el nuevo flujo usa PVP recibido y Pagamos pactado sin adoptar decisiones antiguas', () => {
+test('la decisión por operación prevalece sobre tarifa y recalcula el estimado una sola vez', () => {
   const { html } = operations([row], [{ ...tariff, decision: { precio_venta: 700000, pagamos: 525000 } }]);
-  assert.match(metricHtml(html, 'PVP recibido para liquidar'), /COP 701500/);
-  assert.match(metricHtml(html, 'Pagamos antes de inicial'), /COP 484800/);
-  assert.match(metricHtml(html, 'Pagamos − inicial · estimado'), /COP 414650/);
+  assert.match(metricHtml(html, 'PVP decidido'), /COP 700000/);
+  assert.match(metricHtml(html, 'Pagamos antes de inicial'), /COP 525000/);
+  assert.match(metricHtml(html, 'Pagamos − inicial · estimado'), /COP 454850/);
   assert.match(html, /Bonos configurados: <strong[^>]*>COP 20000<\/strong>/);
-  assert.doesNotMatch(html, /COP (?:700000|525000)\b/);
+  assert.doesNotMatch(html, /COP (?:646400|484800)\b/);
 });
 
 test('una operación excluida no presenta un giro estimado y dirige a su novedad', () => {
@@ -209,23 +208,23 @@ test('una operación excluida no presenta un giro estimado y dirige a su novedad
   assert.deepEqual(result.calls, [['tab', 'incidents', row.id]]);
 });
 
-test('la diferencia permite abrir el tarifario sin pedir aceptación de cada crédito', () => {
+test('Comparar y editar precios abre directamente el editor de la operación correspondiente', () => {
   const result = operations([row], [tariff], [priceIssue]);
-  const buttons = result.buttons('[data-open-tariff]');
+  const buttons = result.buttons('[data-edit-operation-price]');
   assert.equal(buttons.length, 1);
-  assert.match(result.html, /Ver tarifario<\/button>/);
+  assert.match(result.html, /Comparar y editar precios<\/button>/);
   assert.equal(typeof buttons[0].onclick, 'function');
   buttons[0].onclick();
-  assert.deepEqual(result.calls, [['tarifario']]);
+  assert.deepEqual(result.calls, [['editor', row.id]]);
 });
 
-test('la operación congelada no ofrece editar su resultado y permite consultar tarifario', () => {
+test('la operación congelada permite consultar la novedad y no ofrece editar precios', () => {
   const result = operations([row], [tariff], [priceIssue], { frozen_at: '2026-09-04T18:00:00Z' });
   assert.equal(result.buttons('[data-edit-operation-price]').length, 0);
-  const buttons = result.buttons('[data-open-tariff]');
+  const buttons = result.buttons('[data-manage-issue]');
   assert.equal(buttons.length, 1);
   buttons[0].onclick();
-  assert.deepEqual(result.calls, [['tarifario']]);
+  assert.deepEqual(result.calls, [['tab', 'incidents', row.id]]);
 });
 
 test('referencia, cliente, comercio e IMEI se escapan al generar el HTML', () => {

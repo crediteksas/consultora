@@ -9,14 +9,14 @@ const html = fs.readFileSync('creditek/erp/aliados-liquidaciones.html','utf8');
 test('Krediya usa motor aislado sin modificar la función PayJoy/ALO', () => {
   assert.match(migration, /aliados_calcular_liquidacion_krediya/);
   assert.doesNotMatch(migration, /create or replace function public\.aliados_calcular_liquidacion\(p_id/);
-  assert.match(app, /krediya\?'krediya_calcular_y_enviar_aprobacion':'aliados_calcular_liquidacion'/);
+  assert.match(app, /selected\.plataforma === 'krediya' \? 'aliados_calcular_liquidacion_krediya'/);
 });
 
-test('las antiguas diferencias se consultan en el tarifario sin aceptar cada operación', () => {
+test('diferencias de Precio de venta y Pagamos bloquean y requieren decisión de Mayte', () => {
   assert.match(migration, /krediya_precio_venta_diferente/);
   assert.match(migration, /krediya_pagamos_diferente/);
   assert.match(migration, /aliados_resolver_precio_krediya/);
-  assert.match(app, /await tarifarioKrediya.openTariff\(\)/);
+  assert.match(app, /await openPriceEditor\(operationId\)/);
   assert.match(app, /Guardado en KORA/);
   assert.match(app, /Recibido de Krediya/);
   assert.doesNotMatch(app, /escribe USAR/);

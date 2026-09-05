@@ -1,0 +1,78 @@
+.cobros-plataformas {
+  min-width: 0;
+  margin-top: 18px;
+  color: var(--azul, #0b1e3d);
+}
+.cobros-plataformas *, .cobros-plataformas *::before, .cobros-plataformas *::after { box-sizing: border-box; }
+.cobros-heading, .cobros-record-head, .cobros-actions { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.cobros-heading, .cobros-record-head { justify-content: space-between; }
+.cobros-heading h2 { font-size: 21px; margin: 0; }
+.cobros-heading p { margin: 7px 0 0; }
+.cobros-muted { color: var(--muted, #64748b); font-size: 13px; line-height: 1.55; }
+.cobros-definition { margin: 12px 0 18px; }
+.cobros-notice { margin: 14px 0; padding: 12px 14px; background: #ecfdf3; color: #067647; border: 1px solid #abefc6; border-radius: 12px; overflow-wrap: anywhere; }
+.cobros-notice--error { color: #912018; background: #fff1f0; border-color: #fecdca; }
+.cobros-filter { display: grid; gap: 6px; max-width: 340px; margin: 18px 0 14px; font-weight: 600; font-size: 13px; }
+.cobros-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 10px; margin: 14px 0; }
+.cobros-metric { min-width: 0; padding: 15px; border-radius: 12px; background: #fff; border: 1px solid var(--borde, #dce5ee); }
+.cobros-metric dt { color: var(--muted, #64748b); font-size: 12px; line-height: 1.45; }
+.cobros-metric dd { margin: 8px 0 0; font-size: clamp(17px, 1.6vw, 22px); font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
+.cobros-metric--alert { background: #fff8f7; border-color: #fecdca; }
+.cobros-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; margin-bottom: 20px; }
+.cobros-entry, .cobros-history, .cobros-void { min-width: 0; border: 1px solid var(--borde, #dce5ee); border-radius: 12px; background: #fff; }
+.cobros-plataformas summary { padding: 14px; cursor: pointer; font-weight: 700; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.cobros-plataformas summary::marker { color: var(--azul, #0b1e3d); }
+.cobros-plataformas summary:focus-visible, .cobros-plataformas button:focus-visible, .cobros-plataformas input:focus-visible, .cobros-plataformas select:focus-visible, .cobros-plataformas a:focus-visible { outline: 3px solid #00858b; outline-offset: 3px; }
+.cobros-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; padding: 0 14px 16px; }
+.cobros-form p { margin: 0; }
+.cobros-field { display: grid; align-content: start; min-width: 0; gap: 6px; font-size: 13px; font-weight: 600; line-height: 1.5; }
+.cobros-plataformas input, .cobros-plataformas select { display: block; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #c7d1dc; border-radius: 10px; font: inherit; color: inherit; background: #fff; }
+.cobros-plataformas input:disabled, .cobros-plataformas select:disabled { background: #f5f5f7; }
+.cobros-form-wide, .cobros-form-actions { grid-column: 1 / -1; }
+.cobros-form-actions { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+.cobros-plataformas .btn { white-space: normal; height: auto; min-height: 44px; padding: 10px 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.cobros-platforms { display: grid; gap: 20px; }
+.cobros-candidates { margin: 20px 0; }
+.cobros-candidates > h3 { font-size: 18px; margin: 0; }
+.cobros-candidate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.cobros-platform { min-width: 0; padding: 20px; border: 1px solid var(--borde, #dce5ee); border-top: 3px solid var(--turquesa, #00c4cc); border-radius: 14px; background: #fff; }
+.cobros-platform h3 { margin: 0; font-size: 19px; }
+.cobros-platform .cobros-metric { background: #fafafb; }
+.cobros-platform .cobros-metric--alert { background: #fff8f7; }
+.cobros-platform .cobros-metric dd { font-size: 18px; }
+.cobros-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+.cobros-columns > div { min-width: 0; }
+.cobros-group-title { margin: 14px 0 10px; font-size: 14px; }
+.cobros-record { margin: 0 0 12px; padding: 15px; border: 1px solid var(--borde, #dce5ee); border-radius: 12px; min-width: 0; }
+.cobros-record--void { background: #f7f8fa; }
+.cobros-record h4 { margin: 0; font-size: 14px; line-height: 1.5; }
+.cobros-record p { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.cobros-record-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.cobros-record-fields > div { min-width: 0; }
+.cobros-record-fields dt { font-size: 11px; color: var(--muted, #64748b); line-height: 1.5; }
+.cobros-record-fields dd { margin: 3px 0 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; line-height: 1.5; }
+.cobros-record a { color: #006e76; text-decoration: underline; text-underline-offset: 3px; }
+.cobros-status { display: inline-block; max-width: 100%; padding: 4px 9px; border-radius: 20px; background: #edf3f8; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.cobros-status--alert { color: #912018; background: #fee4e2; }
+.cobros-history { margin-top: 14px; }
+.cobros-history > p, .cobros-history > .cobros-columns { margin: 0; padding: 0 14px 14px; }
+.cobros-history ol, .cobros-history ul { margin: 0; padding: 0 14px 14px 32px; }
+.cobros-history li { padding: 8px 0; font-size: 13px; overflow-wrap: anywhere; }
+.cobros-history li + li { border-top: 1px solid var(--borde, #dce5ee); }
+.cobros-history li p { margin: 5px 0; line-height: 1.5; }
+.cobros-void { margin-top: 10px; }
+.cobros-void > summary { color: #912018; font-size: 12px; }
+.cobros-empty { padding: 18px 0; color: var(--muted, #64748b); font-size: 13px; line-height: 1.5; }
+@media (max-width: 900px) {
+  .cobros-columns, .cobros-entry-grid, .cobros-candidate-grid { grid-template-columns: minmax(0, 1fr); }
+  .cobros-platform { padding: 16px; }
+}
+@media (max-width: 480px) {
+  .cobros-form { grid-template-columns: minmax(0, 1fr); }
+  .cobros-platform { padding: 12px; }
+  .cobros-record { padding: 12px; }
+  .cobros-record-fields { grid-template-columns: minmax(0, 1fr); }
+  .cobros-actions { width: 100%; }
+  .cobros-actions .btn { flex: 1 1 160px; }
+  .cobros-form-actions .btn { width: 100%; }
+}

@@ -59,9 +59,12 @@
     initialized = false,
     pendingPaymentIds = [],
     selectedCompensationId = null,
-    treasuryView = "operational";
+    treasuryView = "operational",
+    cobros;
   const canAuthorize = () =>
     profile?.rol === "gerencia" && profile?.activo !== false;
+  const canViewOutgoing = () =>
+    Boolean(profile?.es_operador_aliados || profile?.rol === "gerencia");
   function notice(message, error = false) {
     const n = $("#notice");
     n.textContent = message;
@@ -335,6 +338,13 @@
       .join("")}</div>`;
   }
   function render() {
+    $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
+    $("#outgoingContent").classList.toggle("hidden",treasuryView==="cobros");
+    $("#paymentReport").classList.toggle("hidden",treasuryView==="cobros");
+    $("#showCobros").classList.toggle("active",treasuryView==="cobros");
+    $("#showOperational").classList.toggle("active",treasuryView==="operational");
+    $("#showHistory").classList.toggle("active",treasuryView==="history");
+    if(treasuryView==="cobros")return;
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
       out = data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0,
       ally = data.payments.filter(
@@ -366,7 +376,7 @@
         )
         .reduce((n, x) => n + Number(x.amount), 0);
     $("#metrics").innerHTML = [
-      ["Recibido de plataformas", received],
+      ["Base calculada de plataformas · no es ingreso bancario", received],
       [
         "Pagos pendientes a aliados",
         ally.reduce((n, x) => n + Number(x.valor), 0),
@@ -936,11 +946,23 @@
     initialized = true;
     sb = window.creditekSidebar.sb;
     profile = window.creditekSidebar.perfil;
-    if (!profile?.es_operador_aliados && profile?.rol !== "gerencia") {
+    if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
+      cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:profile.rol==='gerencia',canVoid:profile.rol==='gerencia'});
+      $("#showCobros").classList.remove("hidden");
+    }
+    if (!canViewOutgoing() && !cobros) {
       $("#accessDenied").classList.remove("hidden");
       return;
     }
     $("#pageContent").classList.remove("hidden");
+    if (!canViewOutgoing()) {
+      $("#showOperational").classList.add("hidden");
+      $("#showHistory").classList.add("hidden");
+      treasuryView = "cobros";
+      render();
+      await cobros.mount($("#cobrosContent"));
+      return;
+    }
     try {
       await load();
     } catch (error) {
@@ -954,13 +976,19 @@
     $(`#${id}`).addEventListener("change", render),
   );
   $("#search").addEventListener("input", render);
-  $("#refresh").onclick = load;
+  $("#refresh").onclick = () => treasuryView==='cobros' ? cobros?.mount($("#cobrosContent")) : load();
+  $("#showCobros").onclick = async () => {
+    if(!cobros)return;
+    treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));
+  };
   $("#paymentReport").onclick = paymentReport;
   $("#showOperational").onclick = () => {
+    if (!canViewOutgoing()) return;
     treasuryView = "operational";
     render();
   };
   $("#showHistory").onclick = () => {
+    if (!canViewOutgoing()) return;
     treasuryView = "history";
     render();
   };

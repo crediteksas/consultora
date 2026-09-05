@@ -10,6 +10,7 @@
     />
     <link rel="stylesheet" href="aliados-v1-1.css" />
     <link rel="stylesheet" href="/design-system/components/kora-product.css" />
+    <link rel="stylesheet" href="cobros-plataformas.css?v=1.0.0" />
     <style>
       .treasury-grid {
         display: grid;
@@ -281,7 +282,7 @@
             <div>
               <h1>Tesorería</h1>
               <div class="subtitle">
-                Pagos, compensaciones y disponibilidad de Tercerización y B2B.
+                Cobros de plataformas, pagos y disponibilidad de Tesorería.
               </div>
             </div>
             <div class="actions">
@@ -295,11 +296,15 @@
             <div class="actions">
               <button id="showOperational" class="btn secondary active">
                 Pagos por gestionar</button
+              ><button id="showCobros" class="btn secondary hidden">
+                Cobros de plataformas</button
               ><button id="showHistory" class="btn secondary">
                 Consultar historial
               </button>
             </div>
           </section>
+          <section id="cobrosContent" class="hidden" aria-label="Cobros de plataformas"></section>
+          <div id="outgoingContent">
           <section class="toolbar card filters">
             <select id="platform">
               <option value="">Todas las plataformas</option>
@@ -389,6 +394,7 @@
               </div>
               <div id="retailCommissions"></div>
             </section>
+          </div>
           </div>
         </div>
       </main>
@@ -498,6 +504,7 @@
       }
     </style>
     <script src="aliados-tesoreria-domain.js?v=1.1.0"></script>
-    <script src="aliados-tesoreria-app.js?v=1.2.1"></script>
+    <script src="cobros-plataformas.js?v=1.0.0"></script>
+    <script src="aliados-tesoreria-app.js?v=1.3.0"></script>
   </body>
 </html>

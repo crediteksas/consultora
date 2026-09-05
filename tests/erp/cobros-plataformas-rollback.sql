@@ -1,0 +1,45 @@
+-- Ejecutar solo como prueba transaccional. No confirma ni paga liquidaciones.
+begin;
+do $$begin perform set_config('request.jwt.claim.sub',(select id::text from public.perfiles where rol='gerencia' and activo limit 1),true); end$$;
+set local role authenticated;
+do $$declare e uuid; e2 uuid; x uuid; d uuid; a uuid; a2 uuid;
+ k uuid:=gen_random_uuid(); dk uuid:=gen_random_uuid(); ak uuid:=gen_random_uuid();
+ hoy date:=(now() at time zone 'America/Bogota')::date; result jsonb;
+begin
+ e:=public.cobros_crear_esperado('krediya',hoy,hoy,'PRUEBA TRANSACCIONAL',10000,'TEST ROLLBACK',null,k);
+ assert e=public.cobros_crear_esperado('krediya',hoy,hoy,'PRUEBA TRANSACCIONAL',10000,'TEST ROLLBACK',null,k),'expected idempotency';
+ begin perform public.cobros_crear_esperado('krediya',hoy,hoy,'PRUEBA TRANSACCIONAL',9999,'TEST ROLLBACK',null,k); raise exception 'FAILED changed payload'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ begin perform public.cobros_registrar_abono('krediya',hoy,'Banco prueba','0001','REF-TEMP',-1,'TEST ROLLBACK',gen_random_uuid()); raise exception 'FAILED negative amount'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ begin perform public.cobros_registrar_abono('krediya',hoy+1,'Banco prueba','0001','REF-FUTURO',100,'TEST ROLLBACK',gen_random_uuid()); raise exception 'FAILED future deposit'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ e2:=public.cobros_crear_esperado('krediya',hoy-1,hoy,'OTRO CORTE DE PRUEBA',2000,'TEST ROLLBACK',null,gen_random_uuid());
+ x:=public.cobros_crear_esperado('payjoy',hoy,hoy,'OTRA PLATAFORMA',1000,'TEST ROLLBACK',null,gen_random_uuid());
+ d:=public.cobros_registrar_abono('krediya',hoy,'Banco prueba','0001','REF-TEMP',6000,'TEST ROLLBACK',dk);
+ assert d=public.cobros_registrar_abono('krediya',hoy,'Banco prueba','0001','REF-TEMP',6000,'TEST ROLLBACK',dk),'deposit idempotency';
+ begin perform public.cobros_registrar_abono('krediya',hoy,'Banco prueba','0001','REF-TEMP',6000,'TEST ROLLBACK',gen_random_uuid()); raise exception 'FAILED duplicate deposit'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ begin perform public.cobros_aplicar_abono(d,e2,2001,gen_random_uuid()); raise exception 'FAILED overapply expected'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ a:=public.cobros_aplicar_abono(d,e,5000,ak);
+ assert a=public.cobros_aplicar_abono(d,e,5000,ak),'allocation idempotency';
+ begin perform public.cobros_aplicar_abono(d,x,100,gen_random_uuid()); raise exception 'FAILED cross-platform'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ begin perform public.cobros_aplicar_abono(d,e,2000,gen_random_uuid()); raise exception 'FAILED overapply deposit'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ a2:=public.cobros_aplicar_abono(d,e2,1000,gen_random_uuid());
+ result:=public.cobros_plataformas_resumen();
+ assert (select sum((v->>'importe')::numeric) from jsonb_array_elements(result->'allocations') v where (v->>'deposit_id')::uuid=d and v->>'estado'='activo')=6000,'aggregate';
+ begin perform public.cobros_anular_registro('deposit',d,'Anulación prueba'); raise exception 'FAILED void allocated deposit'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end;
+ perform public.cobros_anular_registro('allocation',a,'Anulación prueba');
+ perform public.cobros_anular_registro('allocation',a2,'Anulación prueba');
+ perform public.cobros_anular_registro('deposit',d,'Anulación prueba');
+ perform public.cobros_anular_registro('expected',e,'Anulación prueba');
+ assert (select count(*) from public.cobros_events where registro_id in(e,e2,x,d,a,a2))>=9,'audit';
+ begin insert into public.cobros_events(tipo,registro_id,detalle,actor_id,actor_nombre) values('tamper',gen_random_uuid(),'{}',auth.uid(),'TEST'); raise exception 'FAILED direct write'; exception when insufficient_privilege then null; end;
+end$$;
+reset role;
+do $$begin perform set_config('request.jwt.claim.sub',(select id::text from public.perfiles where rol='auditoria' and activo limit 1),true); end$$;
+set local role authenticated;
+do $$begin perform public.cobros_plataformas_resumen(); begin perform public.cobros_crear_esperado('alo',current_date,current_date,'FORBIDDEN',100,'TEST',null,gen_random_uuid()); raise exception 'FAILED audit write'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end; end$$;
+reset role;
+do $$begin perform set_config('request.jwt.claim.sub',(select id::text from public.perfiles where rol='admin_tienda' and activo limit 1),true); end$$;
+set local role authenticated;
+do $$begin assert (select count(*) from public.cobros_expected)=0,'shop RLS'; begin perform public.cobros_plataformas_resumen(); raise exception 'FAILED shop RPC'; exception when others then if sqlerrm like 'FAILED%' then raise; end if; end; end$$;
+rollback;
+select 'PASS: rollback, parcial, multicorte, idempotencia, sobreaplicación, cruce, anulaciones, auditoría y permisos' resultado,
+ (select count(*) from public.cobros_expected) cobros_reales,(select count(*) from public.cobros_deposits) abonos_reales;

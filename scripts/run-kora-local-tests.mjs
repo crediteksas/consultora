@@ -10,6 +10,7 @@ const security = readdirSync('tests/security')
 // porque arrastra fallos preexistentes sin relación con este pipeline;
 // se incluye puntualmente el test de regresión de cada fix ya validado.
 const erp = [
+  'tests/erp/krediya-gestiones.test.mjs',
   'tests/erp/liquidaciones-grupos-responsive.test.mjs',
   'tests/erp/krediya-operaciones-referencia.test.mjs',
   'tests/erp/krediya-editor-diferencias.test.mjs',

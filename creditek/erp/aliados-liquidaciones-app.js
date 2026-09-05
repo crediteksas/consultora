@@ -7,6 +7,7 @@
   let sb;
   let operator;
   let profile;
+  let gestionKrediya;
   let batches = [];
   let selected;
   let activeTab = 'operations';
@@ -58,6 +59,7 @@
       return;
     }
     operator = currentOperator;
+    gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management') });
     $('liquidationsContent').classList.remove('hidden');
     await loadBatches();
   }
@@ -227,18 +229,21 @@
         : priceIssue && pvp == null ? 'Pagamos está respaldado en el manual, pero su PVP está vacío o en cero. Falta resolver únicamente el PVP.'
         : priceIssue ? `Pagamos sí está registrado. ${delta != null && Number(delta) !== 0 ? `El PVP recibido difiere ${money(delta)} del guardado.` : 'Existe una diferencia pendiente de revisión.'}`
         : calculated ? 'Valores calculados de esta operación.' : 'Datos disponibles. Liquidación pendiente de calcular.';
-      const action = priceIssue && !selected.frozen_at && row.reconocida
+      const priceAction = priceIssue && !selected.frozen_at && row.reconocida
         ? `<button class="btn secondary" data-edit-operation-price="${row.id}">Comparar y editar precios</button>`
         : openIssues.length ? `<button class="btn secondary" data-manage-issue="${row.id}">Ver novedad</button>` : '';
+      const instructionAction = typeof operator !== 'undefined' && operator?.capacidad === 'aprobador' && !selected.frozen_at && row.reconocida
+        ? `<button class="btn primary" data-instruct-krediya="${row.id}">Dar instrucción a Maythe</button>` : '';
       return `<tr><td><article class="krediya-operation" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
         <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : calculated ? 'Calculada' : 'Sin calcular'}</span></header>
         <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>
         <dl class="operation-values">${metric(calculated ? 'PVP liquidado' : c.decision ? 'PVP decidido' : 'PVP guardado', pvp)}${metric('PVP recibido de Krediya', c.pvp_recibido, 'No informado')}${metric('Pagamos antes de inicial', paid)}${metric('Inicial', row.inicial, 'No informada')}${metric(calculated ? 'Pago neto liquidado' : 'Pagamos − inicial · estimado', net, row.reconocida ? 'Pendiente de tarifa' : 'No aplica: operación excluida')}${metric('Crédito financiado', row.monto_credito ?? row.monto_base, 'No informado')}</dl>
         <div class="operation-totals"><span>Bonos ${calculated ? 'liquidados' : 'configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span><span>Utilidad: ${amount(calculated ? calc.utilidad_creditek : null, 'Pendiente de calcular')}</span></div>
-        <footer class="operation-footer"><p>${esc(note)}${!calculated && paid != null && row.reconocida ? ' El giro es estimado; no es un pago autorizado.' : ''}</p>${action}</footer>
+        <footer class="operation-footer"><p>${esc(note)}${!calculated && paid != null && row.reconocida ? ' El giro es estimado; no es un pago autorizado.' : ''}</p><div class="operation-actions">${instructionAction}${priceAction}</div></footer>
       </article></td></tr>`;
     }).join('') || '<tr><td>Sin operaciones.</td></tr>';
     document.querySelectorAll('[data-edit-operation-price]').forEach((button) => { button.onclick = () => openPriceEditor(button.dataset.editOperationPrice); });
+    document.querySelectorAll('[data-instruct-krediya]').forEach((button) => { button.onclick = () => gestionKrediya.open(button.dataset.instructKrediya); });
     document.querySelectorAll('[data-manage-issue]').forEach((button) => { button.onclick = () => loadTab('incidents', button.dataset.manageIssue); });
   }
 
@@ -340,16 +345,22 @@
 
   async function loadTab(tab, focusOperationId) {
     activeTab = tab;
+    if (typeof gestionKrediya !== 'undefined') gestionKrediya?.cancelReport();
     document.querySelector('#detail > .table-wrap')?.classList.remove('operations-cards');
     document.querySelector('#detail > .table-wrap')?.classList.toggle('operations-table', tab === 'operations');
     document.querySelector('#detail > .table-wrap')?.classList.toggle('incidents-table', tab === 'incidents');
-    document.querySelector('#detail > .table-wrap')?.classList.toggle('grouped-cards', tab === 'allies' || tab === 'executives');
+    document.querySelector('#detail > .table-wrap')?.classList.toggle('grouped-cards', tab === 'allies' || tab === 'executives' || tab === 'management');
     document.querySelectorAll('[data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
     try {
       if (tab === 'operations') await loadOperations();
       else if (tab === 'incidents') await loadIncidents(focusOperationId);
       else if (tab === 'payments') await loadPayments();
       else if (tab === 'audit') await loadAudit();
+      else if (tab === 'management') {
+        $('detailHead').innerHTML = '';
+        $('detailBody').innerHTML = '<tr><td><div id="krediyaManagementReport"></div></td></tr>';
+        await gestionKrediya.renderReport($('krediyaManagementReport'), selected.id);
+      }
       else await loadGrouped(tab);
     } catch (error) { $('detailBody').innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; }
   }

@@ -1,0 +1,33 @@
+#instructionEditor .modal-box { width:min(720px,100%); padding:24px; font-size:14px; line-height:1.6; }
+#instructionEditor h2 { font-size:19px; line-height:1.4; }
+#instructionEditor label, #krediyaManagementReport label { display:grid; gap:6px; margin:12px 0; min-width:0; }
+#instructionEditor .control, #krediyaManagementReport .control { width:100%; min-width:0; max-width:100%; font:inherit; }
+#instructionEditor textarea, #krediyaManagementReport textarea { resize:vertical; }
+#instructionEditor .instruction-context { display:flex; flex-wrap:wrap; gap:8px 24px; color:#475569; }
+#instructionEditor .instruction-boundary, #krediyaManagementReport .instruction-boundary { border-left:3px solid #00C4CC; padding:10px 14px; background:#F5FAFC; color:#475569; font-size:13px; line-height:1.6; }
+#instructionEditor .btn, #krediyaManagementReport .btn { min-height:44px; white-space:normal; max-width:100%; }
+#liquidationsContent .operation-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; min-width:0; max-width:100%; }
+#liquidationsContent .operation-actions .btn { max-width:100%; white-space:normal; }
+#krediyaManagementReport { font-size:14px; line-height:1.6; min-width:0; color:#0B1E3D; }
+#krediyaManagementReport .management-report { padding:18px; background:#fff; border:1px solid #DCE3EC; border-radius:12px; }
+#krediyaManagementReport h3 { margin:0; font-size:19px; line-height:1.5; }
+#krediyaManagementReport h4 { margin:0; font-size:17px; line-height:1.5; }
+#krediyaManagementReport p { margin:8px 0; overflow-wrap:anywhere; white-space:pre-wrap; }
+#krediyaManagementReport .management-header, #krediyaManagementReport .management-card>header { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 16px; }
+#krediyaManagementReport .management-header>div, #krediyaManagementReport .management-card>header>div { flex:1 1 260px; min-width:0; }
+#krediyaManagementReport .management-controls { display:flex; flex-wrap:wrap; gap:10px 20px; align-items:center; margin:14px 0; }
+#krediyaManagementReport .management-controls label { flex:1 1 230px; margin:0; }
+#krediyaManagementReport .management-card { padding:18px; margin:16px 0; border:1px solid #DCE3EC; border-top:3px solid #00C4CC; border-radius:12px; min-width:0; }
+#krediyaManagementReport .management-instruction { font-size:16px; color:#0B1E3D; }
+#krediyaManagementReport .management-state { color:#475569; background:#F1F5F9; padding:5px 10px; border-radius:6px; font-size:12px; }
+#krediyaManagementReport .management-target { border-block:1px solid #E2E8F0; padding:10px 0; }
+#krediyaManagementReport .management-meta { color:#64748B; font-size:13px; }
+#krediyaManagementReport summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:600; }
+#krediyaManagementReport .management-editor { margin-top:10px; border-top:1px solid #E2E8F0; }
+#krediyaManagementReport .management-empty { padding:22px 0; color:#64748B; }
+@media(max-width:600px) {
+  #instructionEditor { padding:12px; }
+  #instructionEditor .modal-box { padding:16px; }
+  #krediyaManagementReport .management-report, #krediyaManagementReport .management-card { padding:14px; }
+  #krediyaManagementReport h3 { font-size:17px; }
+}

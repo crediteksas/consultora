@@ -17,5 +17,5 @@ test('Krediya detecta la tabla por columnas y no por un nombre fijo de hoja',()=
 test('conserva el nombre real de la hoja en la trazabilidad',()=>{
   assert.match(app,/preview\.sheetName = selectedSheet\.name/);
   assert.match(app,/sheet: preview\.sheetName/);
-  assert.match(html,/aliados-liquidaciones-app\.js\?v=2\.1\.7/);
+  assert.match(html,/aliados-liquidaciones-app\.js\?v=2\.1\.8/);
 });

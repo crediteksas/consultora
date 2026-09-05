@@ -43,6 +43,22 @@
 #liquidationsContent .operation-footer p{flex:1 1 300px;margin:0;font-size:13px;color:#475569;line-height:1.6}
 #liquidationsContent .operation-footer .btn{font-size:13px;white-space:nowrap;min-height:44px;padding:10px 16px;flex-shrink:0}
 @media(max-width:650px){#liquidationsContent .operation-values{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}#liquidationsContent .krediya-operation{padding:14px}#liquidationsContent .operation-heading{flex-wrap:wrap;gap:6px}#liquidationsContent .operation-heading h3{font-size:16px}}
+#liquidationsContent .grouped-cards{background:transparent;border:0;box-shadow:none;width:100%;min-width:0;overflow:visible}
+#liquidationsContent .grouped-cards .kora-table-region{width:100%;min-width:0;overflow:visible;border:0;box-shadow:none}
+#liquidationsContent .grouped-cards table{width:100%!important;min-width:0!important;table-layout:fixed!important}
+#liquidationsContent .grouped-cards td{padding:0 0 12px!important;border:0;background:transparent!important;white-space:normal!important;word-break:normal;overflow-wrap:break-word}
+#liquidationsContent .grouped-summary{padding:18px 20px;border:1px solid #DCE3EC;border-top:3px solid #00C4CC;border-radius:12px;background:#fff;font-size:14px;line-height:1.5;min-width:0}
+#liquidationsContent .grouped-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+#liquidationsContent .grouped-heading h3{margin:0;min-width:0;font-size:17px;line-height:1.5;color:#0B1E3D;word-break:normal;overflow-wrap:break-word}
+#liquidationsContent .grouped-heading span{color:#64748B;font-size:13px}
+#liquidationsContent .grouped-establishments{margin:8px 0 0;font-size:13px;line-height:1.6;color:#475569;overflow-wrap:break-word;word-break:normal}
+#liquidationsContent .grouped-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 24px;margin:16px 0;min-width:0}
+#liquidationsContent .grouped-values dt{font-size:12px;color:#64748B;margin-bottom:4px}
+#liquidationsContent .grouped-values dd{margin:0;font-size:18px;font-weight:700;color:#0B1E3D;white-space:nowrap;font-variant-numeric:tabular-nums}
+#liquidationsContent .grouped-footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px 16px;border-top:1px solid #E2E8F0;padding-top:12px;font-size:13px;color:#475569}
+#liquidationsContent .grouped-footer .btn{min-height:44px;max-width:100%;white-space:normal;word-break:normal;font-size:13px;padding:10px 16px}
+#liquidationsContent .grouped-empty{padding:20px;background:#fff;border:1px solid #DCE3EC;border-radius:12px}
+@media(max-width:600px){#liquidationsContent .grouped-values{grid-template-columns:minmax(0,1fr);gap:12px}#liquidationsContent .grouped-summary{padding:14px}#liquidationsContent .grouped-heading h3{font-size:16px}}
 #liquidationsContent .batches-table{width:100%;overflow-x:visible!important}
 #liquidationsContent .batches-table table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:12px}
 #liquidationsContent .batches-table th,#liquidationsContent .batches-table td{padding:12px 6px!important;white-space:normal!important;overflow-wrap:anywhere;vertical-align:middle;line-height:1.35}
@@ -89,4 +105,4 @@
 </main></div></div>
 <div class="modal" id="importModal"><div class="modal-box"><div class="page-top"><h2>Nueva importación</h2><button class="btn secondary" id="closeImport">Cerrar</button></div><div class="grid"><label>Plataforma<select class="control" id="importPlatform"><option value="payjoy">PayJoy</option><option value="alo">ALO Credit</option><option value="krediya">Krediya</option></select></label><label>Fecha de corte<input class="control" id="cutoff" type="date"></label><label>Periodo desde<input class="control" id="periodFrom" type="date"></label><label>Periodo hasta<input class="control" id="periodTo" type="date"></label></div><div class="drop" style="margin-top:16px"><input id="file" type="file" accept=".xlsx,.xls"><p class="muted">El archivo original se conserva; KORA no genera otro Excel.</p></div><div id="preview" class="hidden"><div class="grid" id="previewMetrics" style="margin-top:16px"></div><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Detalle</th></tr></thead><tbody id="previewIssues"></tbody></table></div></div><div class="error" id="importError"></div><div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="btn secondary" id="validateImport">Validar archivo</button><button class="btn primary" id="saveImport" disabled>Guardar importación</button></div></div></div>
 <div class="modal" id="priceEditor" role="dialog" aria-modal="true" aria-labelledby="priceEditorTitle"><div class="modal-box"><div class="page-top"><h2 id="priceEditorTitle">Diferencia de precios Krediya</h2><button class="btn secondary" id="closePriceEditor" type="button">Cerrar</button></div><div id="priceEditorContent"></div></div></div>
-<script src="aliados-cuentas-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-app.js?v=2.1.7"></script></body></html>
+<script src="aliados-cuentas-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-app.js?v=2.1.8"></script></body></html>

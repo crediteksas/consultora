@@ -304,20 +304,38 @@
   async function loadGrouped(kind) {
     const { data, error } = await sb.from('liquidation_operations').select('*').eq('liquidation_id', selected.id).eq('tipo_establecimiento', 'aliado');
     if (error) throw error;
+    const executiveNames = new Map();
+    if (kind === 'executives') {
+      const { data: executives, error: executivesError } = await sb.from('ejecutivos').select('id,nombre');
+      if (executivesError) throw executivesError;
+      (executives || []).forEach((executive) => executiveNames.set(executive.id, executive.nombre));
+    }
     const key = kind === 'allies' ? 'establishment_name' : 'ejecutivo_id';
     const groups = Object.values((data || []).reduce((acc, row) => {
       const value = row[key] || 'Sin asignar';
-      acc[value] ||= { label: value, establishments: new Set(), operations: 0, sales: 0, initial: 0, issues: 0 };
+      const label = kind === 'allies' ? value : row.ejecutivo_id ? (executiveNames.get(row.ejecutivo_id) || 'Ejecutivo no disponible') : 'Sin ejecutivo asignado';
+      acc[value] ||= { label, establishments: new Set(), operations: 0, sales: 0, initial: 0, issues: 0 };
       acc[value].establishments.add(row.establishment_name); acc[value].operations += 1; acc[value].sales += Number(row.monto_credito ?? row.monto_base); acc[value].initial += Number(row.inicial || 0); acc[value].issues += row.reconocida ? 0 : 1;
       return acc;
-    }, {}));
-    const normalized = kind === 'allies' ? D.agruparPorAliado([]) : D.agruparPorEjecutivo([]);
-    void normalized;
-    const heads = kind === 'allies' ? ['Aliado', 'Sede', 'Plataforma', 'Operaciones', 'Monto liquidado', 'Inicial', 'Pago al aliado', 'Novedades', 'Estado del pago'] : ['Ejecutivo', 'Aliados incluidos', 'Operaciones', 'Ventas', 'Bonos', 'Total a recibir', 'Estado del pago', 'Novedades'];
-    $('detailHead').innerHTML = `<tr>${heads.map((h) => `<th>${h}</th>`).join('')}</tr>`;
-    $('detailBody').innerHTML = groups.map((group) => kind === 'allies'
-      ? `<tr><td>${esc(group.label)}</td><td>${esc([...group.establishments].join(', '))}</td><td>${platformName(selected.plataforma)}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(group.initial)}</td><td>${group.issues}</td><td>Pendiente</td></tr>`
-      : `<tr><td>Ejecutivo asignado</td><td>${group.establishments.size}</td><td>${group.operations}</td><td>${money(group.sales)}</td><td>${money(0)}</td><td>${money(0)}</td><td>Pendiente</td><td>${group.issues}</td></tr>`).join('') || `<tr><td colspan="${heads.length}">Sin registros.</td></tr>`;
+    }, Object.create(null)));
+    renderGrouped(groups, kind);
+  }
+
+  function renderGrouped(groups, kind) {
+    const allies = kind === 'allies';
+    $('detailHead').innerHTML = '';
+    $('detailBody').innerHTML = groups.map((group, index) => {
+      const fields = allies
+        ? [['Operaciones', esc(group.operations)], ['Crédito financiado', money(group.sales)], ['Iniciales', money(group.initial)]]
+        : [['Aliados incluidos', esc(group.establishments.size)], ['Operaciones', esc(group.operations)], ['Crédito financiado', money(group.sales)]];
+      return `<tr><td><article class="grouped-summary" aria-labelledby="group-title-${index}">
+        <header class="grouped-heading"><h3 id="group-title-${index}">${esc(group.label)}</h3><span>${esc(platformName(selected.plataforma))}</span></header>
+        ${allies ? '' : `<p class="grouped-establishments">${esc([...group.establishments].filter(Boolean).join(' · '))}</p>`}
+        <dl class="grouped-values">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
+        <footer class="grouped-footer"><span>Operaciones sin reconocer: <strong>${esc(group.issues)}</strong></span><button class="btn secondary" type="button" data-group-payments>${allies ? 'Ver pagos' : 'Ver bonos y pagos'}</button></footer>
+      </article></td></tr>`;
+    }).join('') || '<tr><td><p class="grouped-empty">Sin registros.</p></td></tr>';
+    document.querySelectorAll('[data-group-payments]').forEach((button) => { button.onclick = () => loadTab('payments'); });
   }
 
   async function loadTab(tab, focusOperationId) {
@@ -325,6 +343,7 @@
     document.querySelector('#detail > .table-wrap')?.classList.remove('operations-cards');
     document.querySelector('#detail > .table-wrap')?.classList.toggle('operations-table', tab === 'operations');
     document.querySelector('#detail > .table-wrap')?.classList.toggle('incidents-table', tab === 'incidents');
+    document.querySelector('#detail > .table-wrap')?.classList.toggle('grouped-cards', tab === 'allies' || tab === 'executives');
     document.querySelectorAll('[data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
     try {
       if (tab === 'operations') await loadOperations();

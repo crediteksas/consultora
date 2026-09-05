@@ -1,0 +1,59 @@
+/* Liquidaciones: reflow by available content width, never by splitting money. */
+body.liquidations-view .kora-topbar{flex-wrap:wrap;height:auto;gap:10px 16px}
+body.liquidations-view .kora-topbar__context{flex:1 0 160px;overflow:visible}
+body.liquidations-view .kora-topbar__title{white-space:normal;word-break:normal;overflow:visible}
+body.liquidations-view .kora-command{flex:0 1 220px;margin-left:0}
+body.liquidations-view .kora-topbar__actions{flex-wrap:wrap;gap:8px;min-width:0}
+body.liquidations-view .kora-store{min-width:180px}
+body.liquidations-view .kora-store select{width:100%;max-width:none}
+body.liquidations-view .kora-extension{white-space:nowrap}
+#liquidationsContent{min-width:0;container:liquidaciones / inline-size}
+#liquidationsContent .page{min-width:0;width:100%;max-width:none}
+#liquidationsContent .tabs{flex-wrap:wrap;overflow:visible}
+#liquidationsContent :is(.btn,.badge){word-break:normal;overflow-wrap:normal;white-space:normal}
+#liquidationsContent .btn{min-height:44px;font-size:13px}
+#liquidationsContent :is(.operations-cards,.grouped-cards,.incidents-table){overflow:visible!important;min-width:0}
+#liquidationsContent .operations-cards :is(table,tbody,tr,td){display:block;width:100%!important;min-width:0!important}
+#liquidationsContent .operations-cards thead{display:none}
+#liquidationsContent .operations-cards td{padding:0 0 16px!important;white-space:normal!important;word-break:normal;overflow-wrap:normal}
+#liquidationsContent .operation-heading{position:static!important;min-height:0;padding:0;background:transparent;border:0}
+#liquidationsContent .operation-heading h3{font-size:18px;word-break:normal;overflow-wrap:break-word}
+#liquidationsContent .operation-status{display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:100%;white-space:normal}
+#liquidationsContent .operation-status .badge{white-space:nowrap}
+#liquidationsContent .operation-values{grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:16px 20px}
+#liquidationsContent .operation-values>div{min-width:0}
+#liquidationsContent .operation-values dt{font-size:13px;word-break:normal;overflow-wrap:normal}
+#liquidationsContent .operation-values dd{font-size:17px;font-weight:600}
+#liquidationsContent .operation-amount{white-space:nowrap!important;word-break:normal;overflow-wrap:normal;font-variant-numeric:tabular-nums}
+#liquidationsContent .operation-amount .actions{display:flex;flex-wrap:wrap}
+#liquidationsContent .operation-amount input{max-width:100%;width:150px}
+#liquidationsContent .operation-identity{line-height:1.6}
+#liquidationsContent .operation-reconciliation{font-size:13px;margin:12px 0;color:#475569}
+#liquidationsContent .operation-reconciliation summary{cursor:pointer;min-height:44px;display:flex;align-items:center;text-decoration:underline;text-underline-offset:3px}
+#liquidationsContent .operation-notice{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-top:16px;padding:16px;border:1px solid #E6D5B0;border-left:3px solid #B7791F;border-radius:8px;background:#FFFCF5;font-size:14px;line-height:1.6}
+#liquidationsContent .operation-notice>div{flex:1 1 320px;min-width:0}
+#liquidationsContent .operation-notice p{margin:4px 0 0;color:#475569;word-break:normal;overflow-wrap:normal}
+#liquidationsContent .operation-notice-info{background:#F5FAFC;border-color:#DCE8EE;border-left-color:#00A7B0}
+#liquidationsContent .operation-clear{font-size:13px;color:#475569;margin:12px 0 0}
+#liquidationsContent .data-reflow-table :is(th,td){word-break:normal!important;overflow-wrap:normal!important}
+#liquidationsContent .data-reflow-table td{white-space:nowrap!important}
+#liquidationsContent .data-reflow-table th{position:static!important;font-size:11px}
+#liquidationsContent .data-reflow-table td:last-child{white-space:normal!important}
+#liquidationsContent #workflowError{font-size:14px;line-height:1.6}
+@container liquidaciones (max-width:1100px){
+  #liquidationsContent .data-reflow-table,#liquidationsContent .data-reflow-table tbody{display:block;width:100%!important;min-width:0!important}
+  #liquidationsContent .data-reflow-table thead{display:none}
+  #liquidationsContent .data-reflow-table tr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:16px;padding:18px;border-bottom:1px solid #DCE3EC}
+  #liquidationsContent .data-reflow-table td{display:block;min-width:0;width:auto!important;border:0;padding:0!important;text-align:left!important;font-size:14px;line-height:1.6;white-space:normal!important}
+  #liquidationsContent .data-reflow-table td::before{content:attr(data-label)!important;display:block;font-size:12px;font-weight:500;color:#64748B;margin-bottom:4px}
+  #liquidationsContent .data-reflow-table td[colspan]{grid-column:1/-1}
+  #liquidationsContent .data-reflow-table td pre{white-space:pre-wrap;overflow-wrap:anywhere}
+}
+@media(max-width:700px){
+  body.liquidations-view .kora-topbar__actions{flex:1 0 100%;margin-left:0}
+  body.liquidations-view .kora-store{flex:1 1 180px}
+  #liquidationsContent .krediya-operation{padding:16px}
+  #liquidationsContent .operation-heading{flex-wrap:wrap}
+  #liquidationsContent .operation-footer .btn{white-space:normal;max-width:100%}
+  #liquidationsContent .filters>*{width:100%;min-width:0}
+}

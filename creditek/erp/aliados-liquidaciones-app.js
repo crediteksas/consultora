@@ -180,9 +180,13 @@
       renderKrediyaOperations(rows, contexts || [], rowIssues || []);
       return;
     }
-    document.querySelector('#detail > .table-wrap')?.classList.add('operations-table');
-    const headers = ['Operación', 'Cliente / IMEI', 'Crédito', 'Inicial', 'Valor comercial', '% aplicado', 'Pagamos', 'Pago neto', 'Bonos', 'Utilidad', 'Estado / novedad'];
-    $('detailHead').innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>`;
+    renderStandardOperations(rows, rowIssues || []);
+  }
+
+  function renderStandardOperations(rows, rowIssues) {
+    document.querySelector('#detail > .table-wrap')?.classList.add('operations-cards');
+    $('detailHead').innerHTML = '';
+    const metric = (label, value) => `<div><dt>${label}</dt><dd>${value == null ? '<span class="value-pending">No informado</span>' : `<strong class="operation-amount">${money(value)}</strong>`}</dd></div>`;
     $('detailBody').innerHTML = rows.map((row) => {
       const isOwn = row.tipo_establecimiento === 'propia';
       const future = String(row.operation_at || '').slice(0, 10) >= '2026-08-05';
@@ -199,10 +203,16 @@
       const actualIssues = (rowIssues || []).filter((i) => i.operation_id === row.id);
       const hasIssue = actualIssues.length || !row.reconocida || (isOwn && difference);
       const issueLabel = actualIssues.length ? [...new Set(actualIssues.map((i) => ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo) ? 'Revisar diferencia de precios' : i.tipo === 'krediya_bono_sin_configurar' ? 'Revisar vigencia de bonos' : i.descripcion || i.tipo))].join(' · ') : !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
-      const issues = hasIssue ? `<div class="issue-action"><p class="issue-summary">${esc(issueLabel)}</p><button class="btn secondary" data-manage-issue="${row.id}">Ver diferencia</button></div>` : 'Sin novedades';
-      const initial = isOwn ? `${money(row.inicial)}<small>KORA: ${money(row.inicial_kora)}${difference ? ` · Dif.: ${money(difference)}` : ''}</small>` : money(row.inicial);
-      return `<tr><td><span class="operation-main">${esc(row.establishment_name)}</span><small>${isOwn ? 'Tienda propia' : 'Aliado'}</small></td><td>${esc(row.cliente_nombre || '—')}<small>${esc(row.imei || '—')}</small></td><td>${money(row.monto_credito ?? row.monto_base)}</td><td>${initial}</td><td>${money(commercial)}</td><td>${percent == null ? '—' : `${(Number(percent) * 100).toFixed(0)} %`}</td><td>${payField}</td><td>${money(net)}</td><td>${money(bonuses)}</td><td>${money(utility)}</td><td>${state(selected.estado)}<div style="margin-top:6px">${issues}</div></td></tr>`;
-    }).join('') || `<tr><td colspan="${headers.length}">Sin operaciones.</td></tr>`;
+      const inventoryOnly = actualIssues.length > 0 && actualIssues.every((i) => i.tipo === 'imei_no_resuelto') && row.reconocida && !difference;
+      const issues = hasIssue ? `<aside class="operation-notice ${inventoryOnly ? 'operation-notice-info' : ''}" aria-label="Novedad de la operación"><div><strong>${inventoryOnly ? 'Equipo pendiente de registro en inventario' : 'Novedad por revisar'}</strong><p class="issue-summary">${inventoryOnly ? 'KORA no encontró este IMEI en el inventario de la tienda. Revisa su registro; este aviso no bloquea el pago.' : esc(issueLabel)}</p></div><button class="btn secondary" data-manage-issue="${row.id}">${inventoryOnly ? 'Revisar inventario' : 'Ver novedad'}</button></aside>` : '<p class="operation-clear">Sin novedades en esta operación</p>';
+      return `<tr><td><article class="krediya-operation standard-operation" aria-label="${esc(row.establishment_name || 'Comercio no informado')}">
+        <header class="operation-heading"><div><h3>${esc(row.establishment_name || 'Comercio no informado')}</h3><p>${esc(row.referencia || row.modelo || 'Referencia no informada')} · ${isOwn ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">Liquidación: ${state(selected.estado)}</span></header>
+        <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
+        <dl class="operation-values">${metric('Crédito financiado', row.monto_credito ?? row.monto_base)}${metric('Inicial', row.inicial)}${metric('Valor comercial', commercial)}<div><dt>Porcentaje aplicado</dt><dd><strong class="operation-amount">${percent == null ? 'No informado' : `${(Number(percent) * 100).toFixed(0)} %`}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
+        ${isOwn ? `<details class="operation-reconciliation"><summary>Conciliación de la inicial</summary><dl class="operation-values">${metric('Inicial registrada en KORA', row.inicial_kora)}${metric('Diferencia de inicial', row.diferencia_inicial)}</dl></details>` : ''}
+        ${issues}
+      </article></td></tr>`;
+    }).join('') || '<tr><td>Sin operaciones.</td></tr>';
     document.querySelectorAll('[data-save-pagamos]').forEach((button) => { button.onclick = () => savePagamos(button.dataset.savePagamos); });
     document.querySelectorAll('[data-manage-issue]').forEach((button) => { button.onclick = () => loadTab('incidents', button.dataset.manageIssue); });
   }

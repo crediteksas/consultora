@@ -617,7 +617,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (document.getElementById('koraIncidentCenter')) return;
       const center = document.createElement('script');
       center.id = 'koraIncidentCenter';
-      center.src = '/creditek/erp/kora-incident-center.js?v=1.2.1';
+      center.src = '/creditek/erp/kora-incident-center.js?v=1.2.2';
       document.head.appendChild(center);
     };
     if (window.KoraIncidentDomain || document.getElementById('koraIncidentDomain')) {
@@ -970,9 +970,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       sb: supabaseClient,
       profile,
       stores,
-      koraVersion: document.documentElement.dataset.koraVersion
-        || document.documentElement.dataset.koraEcosystem
-        || KORA_VERSION,
+      koraVersion: KORA_VERSION,
     });
     mountIncidentCenter();
     if (!window.KoraIncidentCenter) {

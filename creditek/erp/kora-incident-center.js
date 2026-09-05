@@ -137,8 +137,18 @@
   function focusable(root) {
     return [...root.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href]')];
   }
-  function mount({ sb, profile, koraVersion = '2.0.1' } = {}) {
+  function currentKoraVersion(explicitVersion) {
+    return safe(
+      explicitVersion
+      || global.KoraNavigation?.version
+      || document.documentElement.dataset.koraVersion
+      || document.documentElement.dataset.koraEcosystem
+      || 'unknown'
+    );
+  }
+  function mount({ sb, profile, koraVersion } = {}) {
     if (mounted || !sb || !profile || !domain()) return;
+    const incidentVersion = currentKoraVersion(koraVersion);
     const footer = document.querySelector('.kora-sidebar__footer');
     if (!footer) return;
     mounted = true;
@@ -229,7 +239,7 @@
         global.KoraAudio?.play?.('error');
         return;
       }
-      const technicalContext = pageContext(profile, koraVersion);
+      const technicalContext = pageContext(profile, incidentVersion);
       const payload = {
         title: validation.value.title,
         description: validation.value.description,

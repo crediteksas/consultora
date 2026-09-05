@@ -23,6 +23,20 @@ const validIncident = {
   priority: 'alta',
 };
 
+test('toda incidencia hereda la versión central vigente de KORA', async () => {
+  const [center, sidebar, page] = await Promise.all([
+    readFile(path.join(root, 'creditek/erp/kora-incident-center.js'), 'utf8'),
+    readFile(path.join(root, 'creditek/erp/sidebar.js'), 'utf8'),
+    readFile(path.join(root, 'creditek/erp/incidencias.html'), 'utf8'),
+  ]);
+
+  assert.doesNotMatch(center, /koraVersion\s*=\s*['"]\d/);
+  assert.match(center, /global\.KoraNavigation\?\.version/);
+  assert.match(sidebar, /koraVersion:\s*KORA_VERSION/);
+  assert.doesNotMatch(sidebar, /koraVersion:\s*document\.documentElement\.dataset/);
+  assert.doesNotMatch(page, /data-kora-version=/);
+});
+
 test('valida el formulario y limita texto, prioridad y archivos inseguros', () => {
   const domain = loadDomain();
   assert.ok(domain, 'falta el dominio compartido de incidencias');

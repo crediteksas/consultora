@@ -182,7 +182,7 @@ test('cambiar pestañas adapta aliados, ejecutivos y pagos sin arrastrar estilos
   } };
   const context = {
     activeTab: 'operations', esc: escapeHtml,
-    $: () => ({ innerHTML: '' }),
+    $: () => ({ innerHTML: '', classList:{add(){}} }),
     document: { querySelector: () => wrapper, querySelectorAll: () => [] },
     loadOperations: async () => calls.push('operations'),
     loadIncidents: async () => calls.push('incidents'),

@@ -1,0 +1,48 @@
+/* Krediya uses KORA typography and natural-height rows; only detail expands. */
+.krediya-review-dialog{width:min(720px,calc(100vw - 24px));max-height:85dvh;overflow:auto;border:1px solid #DCE3EC;border-radius:14px;padding:20px;color:#0B1E3D;background:white;font:inherit}
+.krediya-review-dialog::backdrop{background:rgb(11 30 61 / 40%)}
+.krediya-review-dialog header{position:static!important;background:transparent!important;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:0!important}
+.krediya-review-dialog h2{font:700 18px Montserrat,sans-serif;flex:1;margin:0}
+.krediya-review-dialog h3{margin:14px 0 6px;font-size:16px}
+.krediya-review-dialog .operation-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.krediya-review-dialog :is(input,textarea,select,button){font:inherit;max-width:100%}
+.krediya-review-dialog form,.krediya-review-dialog label{display:grid;gap:12px;margin-top:16px}
+.krediya-review-dialog textarea{min-height:110px;resize:vertical;width:100%}
+.krediya-review-dialog p{line-height:1.5}
+.krediya-review-dialog [role=alert]{color:#a1242e}
+.krediya-review-dialog [role=alert]:empty{display:none}
+.krediya-review-dialog dl,.compact-price-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:12px;margin:12px 0}
+.krediya-review-dialog dt,.compact-price-values dt{color:#64748B;font-size:12px;margin-bottom:4px}
+.krediya-review-dialog dd,.compact-price-values dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.krediya-review-dialog summary{cursor:pointer;min-height:44px;padding:12px 0}
+.krediya-review-dialog .btn{min-height:44px;white-space:normal;word-break:normal}
+.krediya-review-controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:10px 0 14px;scroll-margin-top:150px}
+.krediya-review-controls label{display:grid;gap:5px;flex:1 1 190px;min-width:0;font-size:12px}
+.krediya-review-controls .control{width:100%;min-width:0}
+.krediya-review-controls span{font-size:13px;color:#475569}
+#liquidationsContent .operations-cards .compact-krediya{padding:12px 16px;border-top-width:1px}
+#liquidationsContent .compact-krediya .operation-heading h3{font-size:15px}
+#liquidationsContent .compact-krediya .operation-heading p{font-size:12px}
+#liquidationsContent .compact-krediya .operation-values{margin:10px 0;padding:10px 0;gap:10px 16px}
+#liquidationsContent .compact-krediya .operation-values dd{font-size:15px}
+#liquidationsContent .compact-krediya .operation-identity{margin:8px 0;font-size:12px}
+#liquidationsContent .compact-krediya .operation-footer{margin-top:6px}
+#liquidationsContent .compact-krediya .operation-footer p{font-size:12px}
+#liquidationsContent .compact-krediya summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
+#liquidationsContent .operations-cards #detailBody{gap:8px}
+#liquidationsContent .compact-krediya .operation-details{border-top:1px solid #E2E8F0;margin-top:8px}
+#liquidationsContent #krediyaFlow{padding:14px 16px;margin:12px 0;border:1px solid #DCE3EC;border-left:3px solid #00A7B0;border-radius:10px;background:#fff;line-height:1.5;font-size:14px}
+#liquidationsContent #detail[data-platform=krediya]>.card:first-child{padding:12px 16px;margin-top:14px!important;margin-bottom:10px}
+#liquidationsContent #detail[data-platform=krediya]>.card:first-child .page-top{margin-bottom:0}
+#liquidationsContent #detail[data-platform=krediya] #workflowError{padding:10px 14px!important;margin:10px 0}
+#liquidationsContent #detail[data-platform=krediya] .batch-followup{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+#liquidationsContent #detail[data-platform=krediya] .batch-followup p{flex:1 1 220px;margin:0;font-size:13px}
+#liquidationsContent #detail[data-platform=krediya] .batch-followup strong{font-size:13px}
+#liquidationsContent .operation-actions{display:flex;flex-wrap:wrap;gap:8px}
+#krediyaFlow p{margin:4px 0 10px}#krediyaFlow summary{cursor:pointer;padding:10px 0}
+#krediyaFlow .missing-payee{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #E2E8F0}
+#liquidationsContent .krediya-differences .difference-card{padding:12px 16px;margin-top:8px;border-top-width:1px}
+#liquidationsContent .krediya-differences .difference-card h4{font-size:15px;margin:0}
+#liquidationsContent .krediya-differences .difference-card p{font-size:12px;margin:6px 0}
+#liquidationsContent .krediya-differences .difference-card dl{gap:10px;margin:10px 0}
+@media(max-width:600px){.krediya-review-dialog{padding:16px}.krediya-review-controls>label{flex-basis:100%}#liquidationsContent .compact-krediya .operation-values{grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))}}

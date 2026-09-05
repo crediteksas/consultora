@@ -18,7 +18,7 @@
     });
     return '\uFEFF' + matrix.map(line => line.map(csvCell).join(';')).join('\r\n');
   }
-  function create({ sb, userId, capability, money, onReport }) {
+  function create({ sb, userId, capability, money, onReport, onOperation }) {
     const $ = id => document.getElementById(id);
     const date = value => value ? new Intl.DateTimeFormat('es-CO', {dateStyle:'short',timeStyle:'short'}).format(new Date(value)) : '—';
     let returnFocus;
@@ -78,7 +78,7 @@
         $('instructionText').focus();
       } catch (error) { $('instructionContent').textContent = 'No se pudo abrir la instrucción: ' + error.message; }
     }
-    async function renderReport(container, liquidationId) {
+    async function renderReport(container, liquidationId, focusOperationId) {
       const request = ++reportRequest;
       let allBatches = false, filter = '', page = 0, rows = [], loadRequest = 0;
       async function load() {
@@ -98,9 +98,9 @@
         } catch (error) { if (request === reportRequest && loadId === loadRequest) container.textContent = 'No se pudo cargar el informe: ' + error.message; }
       }
       function render() {
-        const visible = rows.filter(row => !filter || status(row) === filter);
+        const visible = rows.filter(row => (!filter || status(row) === filter) && (!focusOperationId || row.operation_id === focusOperationId));
         const pages = Math.max(1,Math.ceil(visible.length/8)); page = Math.min(page,pages-1);
-        container.innerHTML = `<section class="management-report"><header class="management-header"><div><h3>Informe de gestión para Maythe</h3><p>Instrucciones de Gerencia para actuar en Krediya. ${rows.length} registradas · ${rows.filter(r=>!['realizada','no_aplicada'].includes(status(r))).length} pendientes o en gestión.</p></div><button class="btn secondary" id="exportInstructions">Descargar informe CSV</button></header>
+        container.innerHTML = `<section class="management-report"><header class="management-header"><div><h3>Instrucciones · Gestión y Gerencia</h3><p>Instrucciones de Gerencia para actuar en Krediya. ${rows.length} registradas · ${rows.filter(r=>!['realizada','no_aplicada'].includes(status(r))).length} pendientes o en gestión.</p><p>Esta lista contiene solo instrucciones guardadas, no todas las ventas. Cada instrucción enlaza su operación por IMEI.${focusOperationId?' Estás viendo únicamente la operación seleccionada.':''}</p></div><button class="btn secondary" id="exportInstructions">Descargar informe CSV</button>${focusOperationId?'<button class="btn secondary" id="allInstructions">Ver instrucciones del lote</button>':''}</header>
           <p class="instruction-boundary">Registrar una gestión no confirma que Krediya haya cambiado automáticamente. Tampoco modifica tarifas, cálculos, bonos ni autoriza pagos en KORA.</p>
           <div class="management-controls"><label>Alcance<select id="instructionScope" class="control"><option value="batch">Este lote</option><option value="all" ${allBatches?'selected':''}>Todos los lotes</option></select></label><label>Estado<select id="instructionFilter" class="control"><option value="">Todos los estados</option>${Object.entries(labels).map(([key,label])=>`<option value="${key}" ${filter===key?'selected':''}>${label}</option>`).join('')}</select></label></div>
           <div>${visible.slice(page*8,(page+1)*8).map(row => {
@@ -108,6 +108,7 @@
             const canManage = capability === 'aprobador' || row.responsable_id === userId;
             return `<article class="management-card"><header><div><h4>${esc(c.referencia || 'Referencia no informada')}</h4><p>${esc(c.tienda)} · IMEI ${esc(c.imei)}</p></div><span class="management-state">${labels[status(row)]}</span></header>
               <p class="management-instruction">${esc(row.instruccion)}</p>
+              ${onOperation?`<button class="btn secondary" data-instruction-operation="${esc(row.operation_id)}" data-instruction-batch="${esc(row.liquidation_id)}">Ver operación de esta instrucción</button>`:''}
               ${row.pvp_objetivo == null ? '' : `<p class="management-target">PVP solicitado <strong>en Krediya: ${money(row.pvp_objetivo)}</strong></p>`}
               <p class="management-meta">${esc(row.autor_nombre)} · ${esc(date(row.created_at))}<br>Responsable: ${esc(row.responsable_nombre)} · Venta: ${esc(c.fecha)}</p>
               ${e ? `<p><strong>Última gestión:</strong> ${esc(e.comentario)}<br><span class="management-meta">${esc(e.autor_nombre)} · ${esc(date(e.created_at))}</span></p>${e.evidencia ? `<p>Soporte o referencia: ${esc(e.evidencia)}</p>`:''}` : '<p class="management-meta">Maythe aún no ha registrado una gestión.</p>'}
@@ -116,7 +117,9 @@
             </article>`;
           }).join('') || '<p class="management-empty">No hay instrucciones para estos filtros. Gerencia puede crearlas desde cada operación de Krediya.</p>'}</div>
           <div class="management-controls"><button class="btn secondary" id="instructionsPrevious" ${page===0?'disabled':''}>Anterior</button><span>Página ${page+1} de ${pages} · ${visible.length} instrucciones</span><button class="btn secondary" id="instructionsNext" ${page+1>=pages?'disabled':''}>Siguiente</button></div></section>`;
-        $('instructionScope').onchange = async () => { allBatches = $('instructionScope').value === 'all'; page=0; await load(); };
+        if(focusOperationId)$('allInstructions').onclick=()=>{focusOperationId=null;page=0;render();};
+        container.querySelectorAll('[data-instruction-operation]').forEach(button=>button.onclick=()=>onOperation(button.dataset.instructionOperation,button.dataset.instructionBatch));
+        $('instructionScope').onchange = async () => { allBatches = $('instructionScope').value === 'all'; focusOperationId=null;page=0; await load(); };
         $('instructionFilter').onchange = () => { filter=$('instructionFilter').value; page=0; render(); };
         $('instructionsPrevious').onclick = () => { page--;render(); };
         $('instructionsNext').onclick = () => { page++;render(); };

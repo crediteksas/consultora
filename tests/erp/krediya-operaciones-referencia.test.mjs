@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const Review=createRequire(import.meta.url)('../../creditek/erp/krediya-review-ui.js');
 
 const app = fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js', 'utf8');
 const contextsSql = fs.readFileSync('supabase/migrations/20260905004723_krediya_contextos_operaciones_lectura.sql', 'utf8');
@@ -22,7 +24,7 @@ function operations(rows, contexts = [], incidents = [], selected = {}) {
   const classes = new Set();
   const buttons = new Map();
   const calls = [];
-  const $ = (id) => nodes.get(id);
+  const $ = (id) => {if(!nodes.has(id))nodes.set(id,{innerHTML:'',classList:{add(){},remove(){}},focus(){},setSelectionRange(){},scrollIntoView(){}});return nodes.get(id);};
   const document = {
     querySelector(selector) {
       assert.equal(selector, '#detail > .table-wrap');
@@ -40,7 +42,7 @@ function operations(rows, contexts = [], incidents = [], selected = {}) {
     }
   };
   const context = {
-    $, document, selected: { id: 'batch', frozen_at: null, ...selected },
+    $, document, operator:{capacidad:'aprobador'},gestionKrediya:{open:id=>calls.push(['instruction',id])},Review:{...Review,dialog:(title,html)=>{calls.push(['dialog',title]);calls.push(['dialogHtml',html]);return {close(){},querySelector:()=>({})};}},KREDIYA_FOLLOWUP_TYPES:new Set(['krediya_precio_venta_diferente']),selected: { id: 'batch', frozen_at: null, ...selected },
     esc: escapeHtml,
     // Null would format as zero, so a missing-value regression remains observable.
     money: (value) => `COP ${Number(value)}`,
@@ -119,6 +121,16 @@ test('cada operación identifica referencia completa e IMEI sin cabeceras de la 
   assert.equal(result.$('detailHead').innerHTML, '');
   assert.doesNotMatch(result.html, /<th\b|Cliente \/ IMEI|% aplicado|Estado \/ novedad/);
   assert.ok(result.classes.has('operations-cards'));
+});
+
+test('29 operaciones se muestran en cuatro páginas y el filtro no descarta datos',()=>{
+  const rows=Array.from({length:29},(_,i)=>({...row,id:`row-${i}`,referencia:`Equipo ${i}`,origen_codigo:i%2?'A':'B'}));
+  const result=operations(rows,rows.map(r=>({...tariff,operation_id:r.id})));
+  assert.equal((result.$('detailBody').innerHTML.match(/<article/g)||[]).length,8);
+  result.$('operationsNext').onclick();assert.match(result.$('operationPaging').innerHTML,/Página 2 de 4/);
+  result.$('operationSearch').oninput({target:{value:'Equipo 28'}});
+  assert.equal((result.$('detailBody').innerHTML.match(/<article/g)||[]).length,1);
+  assert.match(result.$('detailBody').innerHTML,/Equipo 28/);assert.match(result.$('operationPaging').innerHTML,/Página 1 de 1/);
 });
 
 test('sin cálculo usa PVP recibido, conserva tarifa comparativa, Pagamos y giro', () => {
@@ -206,7 +218,20 @@ test('una operación excluida no presenta un giro estimado y dirige a su novedad
   const [button] = result.buttons('[data-manage-issue]');
   assert.equal(typeof button?.onclick, 'function');
   button.onclick();
-  assert.deepEqual(result.calls, [['tab', 'incidents', row.id]]);
+  assert.deepEqual(result.calls[0], ['dialog', 'Novedad de la operación']);
+  assert.match(result.calls[1][1],/excluida del cálculo y del pago/);
+});
+
+test('la novedad conserva la referencia, IMEI y precios congelados de su operación, no los de otra ni la tarifa actual', () => {
+  const snapshot={motor:'krediya_v2',pvp_guardado:600000,pvp_recibido:650000,diferencia_pvp:50000};
+  const frozen={...row,liquidation_calculations:[{policy_snapshot:snapshot,pagamos:450000,pago_aliado:379850}]};
+  const result=operations([{...row,id:'samsung',referencia:'SAMSUNG A07',imei:'otra-imei'},frozen],[{...tariff,pvp_recibido:999999}],[priceIssue],{frozen_at:'2026-09-05'});
+  result.buttons('[data-manage-issue]')[0].onclick();
+  const html=result.calls.find(c=>c[0]==='dialogHtml')[1];
+  assert.match(html,/XIAOMI REDMI 15C 256GB 8 RAM/);
+  assert.match(html,/861234567890123/);
+  assert.match(html,/COP 650000/);assert.match(html,/COP 450000/);
+  assert.doesNotMatch(html,/SAMSUNG|otra-imei|999999/);
 });
 
 test('la diferencia completa no exige una acción individual por crédito', () => {

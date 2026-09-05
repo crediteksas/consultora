@@ -15,7 +15,7 @@ test('tarifario exporta referencia, PVP y Pagamos originales como números',()=>
 test('informe exporta snapshot del cálculo, resta inicial una sola vez y conserva pérdidas',()=>{
  const result=api.diferenciasRows([{estado:'pendiente',contexto:{referencia:'Equipo',tienda:'Comercio',imei:'012345678901234',fecha:'2026-08-12',pvp_guardado:646400,pvp_liquidado:701500,impacto_bruto:55100,pagamos:484800,inicial:70150,bonos:50000,utilidad_neta:-100,impacto_neto:-20}}]);
  assert.equal(result[1][2],'012345678901234');assert.equal(result[1][9],414650);
- assert.equal(result[1][11],-100);assert.equal(result[1][13],'Oscar y Mayte');
+ assert.equal(result[1][11],-100);assert.equal(result[1][13],'Gestión y Gerencia');
 });
 test('PVP no configurado permanece ausente, no aparece como cero en la exportación',()=>{
  const rows=api.diferenciasRows([{estado:'pendiente',contexto:{pvp_guardado:null,pvp_liquidado:100,pagamos:80,inicial:20,impacto_neto:null}}]);
@@ -51,13 +51,13 @@ test('abrir un detalle ya no sincroniza ni modifica precios',()=>{
  const open=app.slice(app.indexOf('  async function openDetail('),app.indexOf('  async function loadTab('));
  assert.doesNotMatch(open,/rpc\('aliados_sincronizar_precios_krediya'/);
 });
-test('clic Krediya llama solo el nuevo cálculo y abre el informe, sin aprobar ni pagar',async()=>{
+test('clic Krediya calcula y muestra las órdenes; no aprueba ni paga automáticamente',async()=>{
  const nodes=new Map();const calls=[];
- const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:''});return nodes.get(id);};
+ const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:'',scrollIntoView(){}});return nodes.get(id);};
  const context={$ ,selected:{id:'lote',plataforma:'krediya'},sb:{rpc:async(...a)=>{calls.push(a);return {error:null};}},loadBatches:async()=>{},openDetail:async()=>{},loadTab:async name=>calls.push(['tab',name]),updateActions:()=>{}};
  vm.runInNewContext(app.slice(app.indexOf("  $('calculate').onclick"),app.indexOf("  $('review').onclick")),context);
  await $('calculate').onclick();
- assert.equal(calls.length,2);assert.equal(calls[0][0],'krediya_calcular_y_enviar_aprobacion');assert.deepEqual(calls[1],['tab','differences']);
+ assert.equal(calls.length,2);assert.equal(calls[0][0],'krediya_calcular_y_enviar_aprobacion');assert.deepEqual(calls[1],['tab','payments']);
 });
 test('un error del cálculo no queda oculto por el texto genérico del estado',async()=>{
  const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:''});return nodes.get(id);};

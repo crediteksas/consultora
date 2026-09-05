@@ -13,8 +13,8 @@ const instruction = {
   pvp_objetivo:880000, created_at:'2026-09-05T00:00:00Z', contexto:{ ...operation, fecha:'2026-08-12' }, krediya_gestiones:[]
 };
 
-function harness({ capability='aprobador', userId='oscar', reportRows=[instruction], failInsert=false, reportError=false, onReport=async()=>{}, queryResult }={}) {
-  const nodes = new Map(), calls = [], forms = [];
+function harness({ capability='aprobador', userId='oscar', reportRows=[instruction], failInsert=false, reportError=false, onReport=async()=>{}, onOperation, queryResult }={}) {
+  const nodes = new Map(), calls = [], forms = [], operationLinks=[];
   function node(id='') {
     const classes = new Set();
     const element = { id, value:'', textContent:'', disabled:false, required:false, dataset:{}, listeners:{},
@@ -30,6 +30,8 @@ function harness({ capability='aprobador', userId='oscar', reportRows=[instructi
       for (const match of value.matchAll(/\bid="([^"]+)"/g)) if (!nodes.has(match[1])) nodes.set(match[1], node(match[1]));
       if (id==='instructionContent') nodes.get('instructionAssignee').value='maythe';
       if (id==='report') {
+        operationLinks.length=0;
+        for(const match of value.matchAll(/data-instruction-operation="([^"]+)" data-instruction-batch="([^"]+)"/g))operationLinks.push({dataset:{instructionOperation:match[1],instructionBatch:match[2]}});
         forms.length=0;
         for (const match of value.matchAll(/<form data-management-form="([^"]+)"/g)) {
           const controls = new Map(['estado','comentario','evidencia'].map(key=>[key,node(key)]));
@@ -44,7 +46,7 @@ function harness({ capability='aprobador', userId='oscar', reportRows=[instructi
   }
   const document={ activeElement:null, getElementById:id=>nodes.get(id), createElement:()=>node() };
   for (const id of ['instructionEditor','closeInstructionEditor','instructionContent','report']) nodes.set(id,node(id));
-  nodes.get('report').querySelectorAll=selector=>selector==='[data-management-form]'?forms:[];
+  nodes.get('report').querySelectorAll=selector=>selector==='[data-management-form]'?forms:selector==='[data-instruction-operation]'?operationLinks:[];
   const sb={
     async rpc(name,args) { calls.push({type:'rpc',name,args}); assert.equal(name,'aliados_contexto_precio_krediya'); return {data:operation,error:null}; },
     from(table) {
@@ -70,9 +72,19 @@ function harness({ capability='aprobador', userId='oscar', reportRows=[instructi
   const context={module:{exports:{}},document,Intl,URL:{createObjectURL:()=>'',revokeObjectURL(){}},Blob,setTimeout};
   vm.runInNewContext(source, context);
   const api=context.module.exports;
-  const client=api.create({sb,userId,capability,money:value=>`COP ${value}`,onReport});
-  return {api,client,nodes,calls,forms,report:nodes.get('report')};
+  const client=api.create({sb,userId,capability,money:value=>`COP ${value}`,onReport,onOperation});
+  return {api,client,nodes,calls,forms,operationLinks,report:nodes.get('report')};
 }
+
+test('instrucciones y operaciones enlazan por identificador y lote, no por posición Samsung/Redmi',async()=>{
+  const navigation=[];
+  const h=harness({reportRows:[{...instruction,id:'samsung',operation_id:'samsung-op',liquidation_id:'otro-lote',contexto:{referencia:'SAMSUNG A07'}},instruction],onOperation:(...args)=>navigation.push(args)});
+  await h.client.renderReport(h.report,'batch-1','operation-1');
+  assert.match(h.report.innerHTML,/REDMI 15C/);assert.doesNotMatch(h.report.innerHTML,/SAMSUNG A07/);
+  h.operationLinks[0].onclick();assert.deepEqual(navigation[0],['operation-1','batch-1']);
+  h.nodes.get('allInstructions').onclick();h.operationLinks[0].onclick();
+  assert.deepEqual(navigation[1],['samsung-op','otro-lote']);
+});
 
 test('sin gestiones es pendiente y el estado usa el evento más reciente sin mutar el historial', () => {
   const {api}=harness();

@@ -12,7 +12,7 @@ async function render(payments,{batch={id:'lote',plataforma:'krediya',estado:'re
  const nodes={detailHead:{innerHTML:'tabla anterior'},detailBody:{innerHTML:''}},buttons=[],calls=[];
  const query={select(fields){assert.match(fields,/payment_items\(concepto\)/);return query;},eq(field,id){assert.equal(field,'liquidation_id');assert.equal(id,batch.id);return Promise.resolve({data:payments,error});}};
  const context={$:id=>nodes[id],selected:batch,operator:{capacidad},UX,esc,money:UX.formatoCOP,state:value=>`<span class="badge ${esc(value)}">${esc(UX.traducirEstado(value))}</span>`,sb:{from:table=>{assert.equal(table,'payment_orders');return query;}},changePayment:(id,next)=>calls.push({id,next}),document:{querySelectorAll(selector){assert.equal(selector,'[data-payment]');for(const match of nodes.detailBody.innerHTML.matchAll(/data-payment="([^"]+)" data-next="([^"]+)"/g))buttons.push({dataset:{payment:match[1],next:match[2]}});return buttons;}}};
- vm.runInNewContext(`${extract('  async function loadPayments()', '  async function loadAudit()')};this.run=loadPayments;`,context);
+ vm.runInNewContext(`${extract('  async function loadPayments(', '  async function loadAudit(')};this.run=loadPayments;`,context);
  await context.run();return {head:nodes.detailHead.innerHTML,html:nodes.detailBody.innerHTML,buttons,calls};
 }
 const payment={id:'pago-1',valor:15000,estado:'pendiente',fecha_programada:null,fecha_pagada:null,soporte_path:null,liquidation_beneficiaries:{nombre:'Maythe Reyes',tipo:'ejecutivo',origen_codigo:null},beneficiary_bank_accounts:{numero_cuenta:'123456782835'},payment_items:[{concepto:'bono_operativo'},{concepto:'bono_operativo'},{concepto:'bono_ejecutivo'}]};
@@ -60,7 +60,7 @@ test('nombres, origen y conceptos se escapan; vacío o error no deja una tabla e
 test('pestaña Pagos activa grouped-cards y elimina el formato de operaciones',async()=>{
  const classes=new Set(['operations-cards','operations-table']),calls=[];
  const wrapper={classList:{remove:(...names)=>names.forEach(n=>classes.delete(n)),toggle:(n,on)=>on?classes.add(n):classes.delete(n)}};
- const context={activeTab:'operations',document:{querySelector:()=>wrapper,querySelectorAll:()=>[]},loadPayments:async()=>calls.push('payments'),esc,$:()=>({innerHTML:''})};
+ const context={activeTab:'operations',document:{querySelector:()=>wrapper,querySelectorAll:()=>[]},loadPayments:async()=>calls.push('payments'),esc,$:()=>({innerHTML:'',classList:{add(){}}})};
  vm.runInNewContext(`${extract('  async function loadTab(', '  async function savePagamos(')};this.run=loadTab;`,context);
  await context.run('payments');assert.ok(classes.has('grouped-cards'));assert.ok(!classes.has('operations-table'));assert.ok(!classes.has('operations-cards'));assert.deepEqual(calls,['payments']);
 });

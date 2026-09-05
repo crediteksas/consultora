@@ -78,14 +78,15 @@
       try {rows=await all(()=>sb.from('krediya_diferencias').select('*,krediya_diferencias_gestiones(*)').eq('liquidation_id',batch.id).order('operation_id'));}
       catch(error){container.textContent='No se pudo cargar el informe: '+error.message;return;}
       const summary=impacto(rows);
+      const due=rows.map(r=>r.vence_el).filter(Boolean).sort()[0];
       const states={pendiente:'Pendiente',en_gestion:'En gestión',resuelta:'Resuelta'};
       container.innerHTML=`<section class="krediya-differences">
-        <header><div><h3>Informe de diferencias de PVP</h3><p>Krediya · Corte ${esc(batch.fecha_corte)} · Responsables: Oscar y Mayte</p></div><button class="btn primary" data-export>Descargar informe Excel</button></header>
-        <p>Estas tareas no bloquean la aprobación ni el pago autorizado. Los valores corresponden al cálculo guardado, no al tarifario actual.</p>
+        <header><div><h3>Informe consolidado único de diferencias</h3><p>Krediya · Corte ${esc(batch.fecha_corte)} · Responsables: Oscar y Mayte${due ? ` · Gestionar hasta ${esc(due)}` : ''}</p></div><button class="btn primary" data-export>Descargar informe Excel</button></header>
+        <p>Este informe se genera una sola vez por lote. No bloquea la aprobación ni el pago y no modifica PAGAMOS. Las correcciones se gestionan durante los 7 días siguientes.</p>
         <div class="difference-summary"><strong>${rows.length} diferencias</strong><span>${rows.filter(r=>r.estado!=='resuelta').length} por gestionar</span><span>${summary.pendientes?'Impacto neto parcial':'Impacto neto cuantificado'}: ${amount(summary.total)}</span>${summary.pendientes?`<span>${summary.pendientes} sin impacto cuantificado</span>`:''}</div>
         <p data-export-error role="alert"></p>
         ${rows.length?'':'<p>Sin diferencias registradas. Si el lote está sin calcular, genera la liquidación para obtener el informe.</p>'}
-        ${rows.map(r=>{
+        ${rows.length ? `<details class="difference-detail"><summary>Ver detalle de ${rows.length} diferencias</summary>${rows.map(r=>{
           const c=r.contexto||{},g=last(r);
           const fields=[['PVP configurado',c.pvp_guardado],['PVP Krediya liquidado',c.pvp_liquidado],['Diferencia PVP',c.impacto_bruto],['PAGAMOS pactado',c.pagamos],['Inicial',c.inicial],['Giro al aliado',giro(c)],['Bonos',c.bonos],['Gasto financiero',c.gasto_financiero],['Provisión',c.provision],['Utilidad neta',c.utilidad_neta],['Impacto neto',c.impacto_neto]];
           return `<article class="difference-card">
@@ -98,7 +99,7 @@
               ${(r.krediya_diferencias_gestiones||[]).map(g=>`<p>${esc(g.created_at)} · ${esc(g.autor_nombre)} · ${esc(states[g.estado]||g.estado)}<br>${esc(g.comentario)}<br>${esc(g.soporte||'')}</p>`).join('')}
               <form data-followup="${esc(r.operation_id)}" class="tariff-form"><label>Estado<select class="control" name="estado"><option value="en_gestion">En gestión</option><option value="resuelta">Resuelta</option></select></label><label>Instrucción o gestión para Oscar y Mayte<textarea class="control" name="comentario" minlength="5" maxlength="4000" required></textarea></label><label>Soporte (obligatorio al resolver)<input class="control" name="soporte" maxlength="2000"></label><p data-error role="alert"></p><button class="btn primary" type="submit">Guardar seguimiento</button></form>
             </details></article>`;
-        }).join('')}</section>`;
+        }).join('')}</details>` : ''}</section>`;
       container.querySelector('[data-export]').onclick=()=>{try{download(diferenciasRows(rows),`Diferencias-Krediya-${batch.fecha_corte}.xlsx`,'Diferencias PVP');}catch{container.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
       container.querySelectorAll('[data-followup]').forEach(f=>{
         f.elements.estado.onchange=()=>{f.elements.soporte.required=f.elements.estado.value==='resuelta';};

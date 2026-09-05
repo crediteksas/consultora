@@ -209,23 +209,18 @@ test('una operación excluida no presenta un giro estimado y dirige a su novedad
   assert.deepEqual(result.calls, [['tab', 'incidents', row.id]]);
 });
 
-test('la diferencia permite abrir el tarifario sin pedir aceptación de cada crédito', () => {
+test('la diferencia completa no exige una acción individual por crédito', () => {
   const result = operations([row], [tariff], [priceIssue]);
-  const buttons = result.buttons('[data-open-tariff]');
-  assert.equal(buttons.length, 1);
-  assert.match(result.html, /Ver tarifario<\/button>/);
-  assert.equal(typeof buttons[0].onclick, 'function');
-  buttons[0].onclick();
-  assert.deepEqual(result.calls, [['tarifario']]);
+  assert.equal(result.buttons('[data-open-tariff]').length, 0);
+  assert.match(result.html, /informe consolidado de 7 días/);
+  assert.doesNotMatch(result.html, /Dar instrucción a Maythe|Revisar precios/);
 });
 
-test('la operación congelada no ofrece editar su resultado y permite consultar tarifario', () => {
+test('la operación congelada conserva el resultado sin acciones individuales', () => {
   const result = operations([row], [tariff], [priceIssue], { frozen_at: '2026-09-04T18:00:00Z' });
   assert.equal(result.buttons('[data-edit-operation-price]').length, 0);
-  const buttons = result.buttons('[data-open-tariff]');
-  assert.equal(buttons.length, 1);
-  buttons[0].onclick();
-  assert.deepEqual(result.calls, [['tarifario']]);
+  assert.equal(result.buttons('[data-open-tariff]').length, 0);
+  assert.deepEqual(result.calls, []);
 });
 
 test('referencia, cliente, comercio e IMEI se escapan al generar el HTML', () => {

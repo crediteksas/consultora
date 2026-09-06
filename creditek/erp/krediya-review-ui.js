@@ -18,8 +18,16 @@
     });
   }
 
-  function missingBeneficiaries(operations, beneficiaries) {
-    const known = new Set(beneficiaries.filter(b => b.activo !== false && b.tipo === 'aliado').map(b => b.origen_codigo));
+  function missingBeneficiaries(operations, beneficiaries, sites=[], clients=[]) {
+    const active=beneficiaries.filter(b=>b.activo!==false && b.tipo==='aliado');
+    const known = new Set(active.map(b=>b.origen_codigo));
+    for(const site of sites){
+      const client=clients.find(c=>c.id===site.aliado_id);
+      if(client && Object.hasOwn(client,'payment_beneficiary_id')){
+        known.delete(site.origen_codigo);
+        if(active.some(b=>b.id===client.payment_beneficiary_id))known.add(site.origen_codigo);
+      }
+    }
     const groups = new Map();
     operations.filter(o => o.reconocida && o.tipo_establecimiento === 'aliado' && !known.has(o.origen_codigo)).forEach(o => {
       if (!groups.has(o.origen_codigo)) groups.set(o.origen_codigo, {code:o.origen_codigo, name:o.establishment_name, count:0});

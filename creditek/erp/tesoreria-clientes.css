@@ -16,6 +16,8 @@
 .tc-row p, .tc-row small { font-size: 13px; color: #64748b; margin: 4px 0; }
 .tc-row small { font-size: 11px; }
 .tc-label { display: block; color: #64748b; font-size: 12px; margin-bottom: 5px; }
+.tc-sites { padding-left: 20px; font-size: 14px; line-height: 1.6; }
+.tc-sites li { margin-bottom: 10px; overflow-wrap: anywhere; }
 .tc-status { display: inline-block; font-size: 12px; padding: 5px 8px; border-radius: 6px; color: #0b1e3d; background: #edf7f8; }
 .tc-pagination { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 18px; font-size: 13px; }
 .tc-dialog { box-sizing: border-box; width: min(660px,calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 24px; overflow: auto; border: 1px solid #dce5ee; border-radius: 16px; color: #0b1e3d; background: #fff; font-family: 'DM Sans', sans-serif; }

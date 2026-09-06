@@ -16,6 +16,7 @@ const erp = [
   'tests/erp/caja-arrastre-retroactivos.test.mjs',
   'tests/erp/tesoreria-clientes.test.mjs',
   'tests/erp/clientes-pagos-unificados.test.mjs',
+  'tests/erp/clientes-multilocal.test.mjs',
   'tests/erp/kora-pwa-install.test.mjs',
   'tests/erp/proveedores-saldo-inicial.test.mjs',
   'tests/erp/saldo-inicial-proveedores-b2b.test.mjs',

@@ -219,13 +219,15 @@
     if(selected.estado==='revisada'){flow.innerHTML='<strong>Lista para aprobación de Gerencia</strong><p>El lote está liquidado y el informe generado. La aprobación es una sola para todo el lote.</p>';return;}
     flow.textContent='Comprobando destinatarios del lote…';
     try {
-      const [{data:ops,error:oe},{data:beneficiaries,error:be}]=await Promise.all([
+      const [{data:ops,error:oe},{data:beneficiaries,error:be},{data:sites,error:se},{data:clients,error:ce}]=await Promise.all([
         sb.from('liquidation_operations').select('id,reconocida,tipo_establecimiento,origen_codigo,establishment_name').eq('liquidation_id',id),
-        sb.from('liquidation_beneficiaries').select('tipo,origen_codigo,activo').eq('tipo','aliado').eq('activo',true)
+        sb.from('liquidation_beneficiaries').select('id,tipo,origen_codigo,activo').eq('tipo','aliado').eq('activo',true),
+        sb.from('aliados_sedes').select('origen_codigo,aliado_id'),
+        sb.from('aliados').select('id,payment_beneficiary_id')
       ]);
-      if(oe||be)throw oe||be;
+      if(oe||be||se||ce)throw oe||be||se||ce;
       if(selected?.id!==id)return;
-      const missing=Review.missingBeneficiaries(ops||[],beneficiaries||[]);
+      const missing=Review.missingBeneficiaries(ops||[],beneficiaries||[],sites||[],clients||[]);
       krediyaMissingPayees=missing.length;updateActions();
       flow.innerHTML=missing.length?`<strong>Falta el titular de pago de ${missing.length} comercios</strong><p>Sus ventas y precios sí están registrados. Vincula quién recibe el pago para generar las órdenes; no debes confirmar PVP ni bonos.</p><details><summary>Ver comercios y completar destinatarios</summary>${missing.map(m=>`<div class="missing-payee"><span>${esc(m.name)} · ${m.count} operaciones</span><button class="btn secondary" data-payee="${esc(m.code)}">Vincular titular</button></div>`).join('')}</details>`:'<strong>Siguiente: liquidar el lote completo</strong><p>El cálculo guarda el informe y envía una sola revisión a aprobación. No ejecuta transferencias. Se validan iniciales, crédito y reglas antes de continuar.</p>';
       flow.querySelectorAll('[data-payee]').forEach(button=>button.onclick=()=>{

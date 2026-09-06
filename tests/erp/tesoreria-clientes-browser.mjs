@@ -1,0 +1,67 @@
+// Ejecutar: node tests/erp/tesoreria-clientes-browser.mjs. Solo datos ficticios.
+import {chromium} from 'playwright';
+import {readFile} from 'node:fs/promises';
+import {resolve,extname} from 'node:path';
+import assert from 'node:assert/strict';
+const root=resolve('.');
+const browser=await chromium.launch({headless:true,channel:'chrome'});
+try {
+ const page=await browser.newPage(); const errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',async route=>{
+   const url=new URL(route.request().url());
+   if(url.hostname!=='kora.test')return route.abort();
+   if(/sidebar\.js|kora-access-control\.js|kora-environment/.test(url.pathname))return route.fulfill({contentType:'text/javascript',body:''});
+   const file=resolve(root,'.'+url.pathname);
+   if(!file.startsWith(root+'/'))return route.abort();
+   try {await route.fulfill({contentType:({'.js':'text/javascript','.css':'text/css','.html':'text/html'})[extname(file)]||'application/octet-stream',body:await readFile(file)});}catch {await route.fulfill({status:404,body:''});}
+ });
+ await page.addInitScript(()=>{
+  window.calls=[];window.failSave=false;
+  const origins=Array.from({length:24},(_,i)=>({codigo:'aliado-'+i,nombre:i===0?'A TECH MOVIL':i===1?'A CREDICELULARES':`Comercio ${i}`,ciudad:'Montería',tipo:'aliado',activo:true}));
+  const beneficiaries=[{id:'h1',tipo:'aliado',nombre:'Titular de prueba',identificacion:'123456789',origen_codigo:'aliado-0',activo:true}];
+  const accounts=[{id:'bank1',beneficiary_id:'h1',banco:'Banco de prueba',tipo_cuenta:'ahorros',numero_cuenta:'001234567890',activo:true,validada:true,created_at:'2026-09-01'}];
+  window.creditekSidebar={perfil:{rol:'operaciones',activo:true,es_operador_aliados:true},sb:{
+   from(table){let range;return {select(){return this;},order(){return this;},eq(){return this;},gt(){return this;},range(a,b){range=[a,b];return this;},then(ok,bad){const rows=table==='origenes'?origins:table==='liquidation_beneficiaries'?beneficiaries:table==='beneficiary_bank_accounts'?accounts:[];return Promise.resolve({data:range?rows.slice(range[0],range[1]+1):rows,error:null,count:rows.length}).then(ok,bad);}};},
+   async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(name!=='tesoreria_guardar_cliente_cuenta')throw Error('RPC financiera inesperada');return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
+  }};
+ });
+ await page.goto('https://kora.test/creditek/erp/aliados-tesoreria.html');
+ await page.locator('#showClients').click();
+ await page.locator('#clientList .tc-row').first().waitFor();
+ assert.equal(await page.locator('#clientList .tc-row').count(),10);
+ await page.locator('#clientNext').click();assert.match(await page.locator('#clientPage').textContent(),/Página 2/);
+ await page.locator('#clientSearch').fill('TECH MOVIL');assert.equal(await page.locator('#clientList .tc-row').count(),1);
+ assert.equal(await page.locator('#clientList').textContent().then(t=>t.includes('001234567890')),false);
+ await page.locator('[data-edit="aliado-0"]').click();
+ assert.equal(await page.locator('[name="accountNumber"]').inputValue(),'001234567890');
+ assert.equal(await page.locator('[name="name"]').inputValue(),'Titular de prueba');
+ for(const width of [390,768,1280]) {
+   await page.setViewportSize({width,height:850});
+   assert.equal(await page.locator('[name="verified"]').evaluate(e=>e.getBoundingClientRect().height),18,`checkbox alignment ${width}`);
+   assert.ok(await page.locator('#clientDialog').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`dialog overflow ${width}`);
+   assert.ok(await page.locator('#clientsContent').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`directory overflow ${width}`);
+   await page.screenshot({path:`/private/tmp/tesoreria-clientes-${width}.png`});
+ }
+ await page.evaluate(()=>{window.failSave=true;});
+ await page.locator('[name="verified"]').check();
+ await page.locator('#clientSave').click();
+ await page.waitForFunction(()=>document.querySelector('#clientEditorError').textContent.includes('Error de prueba'));
+ assert.equal(await page.locator('[name="accountNumber"]').inputValue(),'001234567890');
+ assert.equal(await page.locator('#clientDialog').evaluate(e=>e.open),true);
+ await page.evaluate(()=>{window.failSave=false;});
+ await page.locator('#clientSave').click();
+ await page.waitForFunction(()=>!document.querySelector('#clientDialog').open);
+ assert.match(await page.locator('#clientNotice').textContent(),/No se modificaron órdenes/);
+ await page.locator('#clientSearch').fill('CREDICELULARES');
+ await page.locator('[data-edit="aliado-1"]').click();
+ assert.equal(await page.locator('[name="identification"]').inputValue(),'');
+ assert.equal(await page.locator('[name="accountNumber"]').inputValue(),'');
+ await page.keyboard.press('Escape');
+ assert.equal(await page.locator('#clientDialog').evaluate(e=>e.open),false);
+ const calls=await page.evaluate(()=>window.calls);
+ assert.ok(calls.every(c=>['tiene_capacidad_aliados','tesoreria_guardar_cliente_cuenta'].includes(c.name)));
+ assert.equal(calls.filter(c=>c.name==='tesoreria_guardar_cliente_cuenta').length,2);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: Tesorería real con fixtures; botón, búsqueda, paginación, editor, permisos de lectura, fallo/reintento, ceros, cuenta faltante, Escape y reflow 390/768/1280. Sin RPC de pagos.');
+} finally {await browser.close();}

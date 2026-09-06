@@ -1,0 +1,33 @@
+.tc-directory { min-width: 0; }
+.tc-directory h2, .tc-directory h3 { margin: 0; }
+.tc-filters { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto; gap: 12px; align-items: end; margin: 20px 0 12px; }
+.tc-directory label { display: grid; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; }
+.tc-directory input:not([type=checkbox]), .tc-directory select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #dce5ee; border-radius: 10px; background: #fff; color: #0b1e3d; font: inherit; }
+.tc-row { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto; gap: 16px; align-items: center; padding: 18px 0; border-bottom: 1px solid #e2e8f0; }
+.tc-row > div { min-width: 0; overflow-wrap: anywhere; }
+.tc-row h3 { font-size: 15px; line-height: 1.5; }
+.tc-row strong { display: block; font-size: 14px; }
+.tc-row p, .tc-row small { font-size: 13px; color: #64748b; margin: 4px 0; }
+.tc-row small { font-size: 11px; }
+.tc-label { display: block; color: #64748b; font-size: 12px; margin-bottom: 5px; }
+.tc-status { display: inline-block; font-size: 12px; padding: 5px 8px; border-radius: 6px; color: #0b1e3d; background: #edf7f8; }
+.tc-pagination { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 18px; font-size: 13px; }
+.tc-dialog { box-sizing: border-box; width: min(660px,calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 24px; overflow: auto; border: 1px solid #dce5ee; border-radius: 16px; color: #0b1e3d; background: #fff; font-family: 'DM Sans', sans-serif; }
+.tc-dialog::backdrop { background: rgb(11 30 61 / 45%); }
+.tc-dialog header { display: flex; justify-content: space-between; align-items: start; gap: 14px; margin-bottom: 10px; }
+.tc-dialog header > div { min-width: 0; }
+.tc-dialog h2 { font-family: Montserrat, sans-serif; font-size: 18px; overflow-wrap: anywhere; line-height: 1.4; }
+.tc-dialog form { display: grid; gap: 16px; margin-top: 18px; }
+.tc-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.tc-wide { grid-column: 1 / -1; }
+.tc-directory .tc-check { display: flex; flex-direction: row; align-items: start; gap: 10px; line-height: 1.5; min-height: 44px; }
+/* La etiqueta completa es el área táctil; la regla global móvil de inputs no debe estirar la casilla. */
+.tc-directory .tc-check input[type=checkbox] { width: 18px; height: 18px !important; min-height: 18px !important; margin: 2px 0 0; flex: 0 0 18px; align-self: flex-start; accent-color: #00b9c2; }
+.tc-help { font-size: 13px; line-height: 1.6; margin: 0; padding: 12px; border-left: 3px solid #00b9c2; background: #f2fafb; }
+.tc-error { color: #b42318; font-size: 14px; line-height: 1.5; }
+.tc-error:empty { display: none; }
+.tc-dialog details { margin-top: 20px; font-size: 13px; line-height: 1.6; }
+.tc-dialog summary { cursor: pointer; min-height: 30px; }
+.tc-directory .btn { white-space: normal; word-break: normal; overflow-wrap: normal; flex-shrink: 0; min-height: 44px; }
+@media(max-width:1100px) { .tc-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .tc-row > button { justify-self: end; } }
+@media(max-width:600px) { .tc-filters, .tc-row, .tc-form-grid { grid-template-columns: minmax(0,1fr); } .tc-row > button { justify-self: stretch; } .tc-dialog { padding: 18px; } .tc-pagination { gap: 8px; } .tc-pagination .btn { padding: 10px; } }

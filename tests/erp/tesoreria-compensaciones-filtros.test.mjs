@@ -73,7 +73,10 @@ async function boot(records = rows, options = {}) {
       };
       return builder;
     },
-    rpc(...args) { writes.push(args); throw new Error('No se permite escribir desde filtros'); },
+    rpc(...args) {
+      if (args[0] === 'tiene_capacidad_aliados') return Promise.resolve({data:false,error:null});
+      writes.push(args); throw new Error('No se permite escribir desde filtros');
+    },
   };
   const location = { href: '' };
   const context = {
@@ -156,7 +159,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.2.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=1.4.0/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=1.5.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

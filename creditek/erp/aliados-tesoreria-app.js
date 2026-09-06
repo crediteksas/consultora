@@ -60,7 +60,8 @@
     pendingPaymentIds = [],
     selectedCompensationId = null,
     treasuryView = "operational",
-    cobros;
+    cobros,
+    clients;
   const canAuthorize = () =>
     profile?.rol === "gerencia" && profile?.activo !== false;
   const canViewOutgoing = () =>
@@ -150,8 +151,8 @@
               holder_identification: b.identificacion,
             }
           : null),
-      beneficiary_name: b.nombre || "Sin nombre",
-      beneficiary_identification: b.identificacion || "—",
+      beneficiary_name: p.bank_snapshot?.holder || b.nombre || "Sin nombre",
+      beneficiary_identification: p.bank_snapshot?.holder_identification || b.identificacion || "—",
       origin_code: b.origen_codigo || null,
     };
   }
@@ -373,12 +374,14 @@
   }
   function render() {
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
-    $("#outgoingContent").classList.toggle("hidden",treasuryView==="cobros");
-    $("#paymentReport").classList.toggle("hidden",treasuryView==="cobros");
+    $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
+    $("#paymentReport").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
+    $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(treasuryView==="cobros")return;
+    if(["cobros","clients"].includes(treasuryView))return;
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
       out = data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0,
       ally = data.payments.filter(
@@ -998,6 +1001,16 @@
       return;
     }
     $("#pageContent").classList.remove("hidden");
+    // The same server capability protects both the directory and its save RPC.
+    try {
+      const clientAccess = await sb.rpc('tiene_capacidad_aliados', {p_capacidad:'revisor'});
+      if (!clientAccess.error && clientAccess.data === true) {
+        clients = window.CreditekTesoreriaClientes.create({sb});
+        $("#showClients").classList.remove("hidden");
+      }
+    } catch (error) {
+      console.error('No se pudo comprobar el acceso al directorio bancario', error);
+    }
     if (!canViewOutgoing()) {
       $("#showOperational").classList.add("hidden");
       $("#showHistory").classList.add("hidden");
@@ -1029,6 +1042,7 @@
   $("#refresh").onclick = async () => {
     try {
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
+      else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1037,6 +1051,12 @@
   $("#showCobros").onclick = async () => {
     if(!cobros)return;
     treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));
+  };
+  $("#showClients").onclick = async () => {
+    if (!clients) return;
+    treasuryView = 'clients';
+    render();
+    await clients.mount($("#clientsContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   $("#showOperational").onclick = () => {

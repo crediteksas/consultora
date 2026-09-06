@@ -40,6 +40,12 @@ La revisión de dependencias identificó siete avisos preexistentes, ninguno aso
 
 ## Publicación y reversión
 
-Migración: `supabase/migrations/20260906185045_caja_arrastre_movimientos_retroactivos.sql`.
+Migración instalada en Supabase: `supabase/migrations/20260906191354_caja_arrastre_movimientos_retroactivos.sql`. El nombre local coincide con el identificador asignado al aplicarla.
+
+Validación productiva del 6 de septiembre: Caja recargada en la sesión autenticada muestra $3.702.900 para Móvil Shopping; las otras nueve tiendas del consolidado no cambiaron. Las huellas antes/después coinciden exactamente para los cinco cierres (excluyendo la nueva columna), dos movimientos de caja, dos abonos y 23 movimientos de cuenta corriente. Respaldo de funciones y huellas: `/private/tmp/kora-caja-respaldo-S5JqHB`.
+
+La comprobación de seguridad confirma que anónimos no pueden ejecutar las dos funciones. El aviso de Supabase sobre funciones `SECURITY DEFINER` accesibles a usuarios autenticados corresponde al diseño existente e intencional: ambas validan usuario activo, rol y tienda antes de operar. No se amplió acceso. Referencia: [aviso 0029 de Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+Al instalar la migración, el frontend continúa pendiente de publicación: el pipeline completo también incluiría el directorio «Clientes y cuentas» del commit `58ae9b9`, aún no desplegado. Se solicitó autorización expresa para incluir ese alcance; no se ha publicado silenciosamente.
 
 El frontend se publica solo por el pipeline `deploy:kora:production`, que construye, valida y comprueba hashes y permite rollback de la versión del Worker. Antes de migrar se respalda la definición real de ambas funciones y una huella de los registros financieros involucrados. Si fuera necesario revertir la base, deben revisarse primero los cierres creados con la nueva marca de arrastre: volver ciegamente al cálculo antiguo recuperaría el error. No se debe quitar la columna ni alterar cierres para hacer rollback.

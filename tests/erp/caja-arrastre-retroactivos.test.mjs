@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 
 // PostgreSQL aislado: se ejecutan las funciones PL/pgSQL reales, sin conexión
 // a Supabase ni datos bancarios. Los UUID son exclusivamente de prueba.
-const migrationPath = new URL('../../supabase/migrations/20260906185045_caja_arrastre_movimientos_retroactivos.sql', import.meta.url);
+const migrationPath = new URL('../../supabase/migrations/20260906191354_caja_arrastre_movimientos_retroactivos.sql', import.meta.url);
 const migration = await readFile(migrationPath, 'utf8');
 const html = await readFile(new URL('../../creditek/erp/caja.html', import.meta.url), 'utf8');
 const gerente = '00000000-0000-4000-8000-000000000001';

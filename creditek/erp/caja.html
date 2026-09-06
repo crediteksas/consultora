@@ -197,7 +197,7 @@ tr.fila-abierta { background: #FEF2F2; }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Tienda</th><th>Fecha</th><th>Contado</th><th>Financiado</th><th>Iniciales</th><th>Gastos</th><th>Utilidad</th><th>Salidas explícitas</th><th>Esperado</th><th>Contado real</th><th>Diferencia</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Tienda</th><th>Fecha</th><th>Contado</th><th>Financiado</th><th>Iniciales</th><th>Gastos</th><th>Utilidad</th><th>Salidas explícitas</th><th>Esperado actualizado</th><th>Contado al cerrar</th><th>Diferencia al cerrar</th><th>Estado</th></tr></thead>
           <tbody id="tbodyConsolidado"></tbody>
         </table>
         <div class="empty-state" id="emptyConsolidado" style="display:none;">Cargando...</div>
@@ -390,6 +390,8 @@ async function calcularCuadrito(tienda, fecha) {
     salidasExplicitas,
     totalUtilidad,
     esperado,
+    aperturaCierreAnterior: Number(cuadre.apertura_cierre_anterior ?? apertura),
+    ajusteArrastre: Number(cuadre.ajuste_arrastre_movimientos || 0),
     caja: cuadre.caja || null,
     movimientosCaja: movimientosCaja || [],
   };
@@ -442,6 +444,11 @@ async function cargarCuadrito(tienda, fecha) {
           `).join('') : '<div class="cuadrito-vacio">Sin gastos hoy.</div>'}
         </div>
         <div class="cuadrito-totales">
+          ${c.ajusteArrastre !== 0 ? `
+            <div class="cuadrito-linea"><span class="izq">Saldo del cierre anterior</span><span class="der">${fmtCOP(c.aperturaCierreAnterior)}</span></div>
+            <div class="cuadrito-linea"><span class="izq">Ajuste por movimientos de días anteriores</span><span class="der">${fmtCOP(c.ajusteArrastre)}</span></div>
+            <p class="meta">Ya incluido en la apertura. No es un abono nuevo ni un segundo descuento.</p>
+          ` : ''}
           <div class="cuadrito-linea"><span class="izq">Apertura</span><span class="der">${fmtCOP(c.apertura)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total contado</span><span class="der">${fmtCOP(c.totalContado)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Financiado recibido en tienda</span><span class="der">${fmtCOP(c.totalFinanciado)}</span></div>
@@ -473,8 +480,11 @@ async function cargarCuadrito(tienda, fecha) {
 
         ${cerrada ? `
           <div class="cierre-box">
-            <div class="cuadrito-linea"><span class="izq">Efectivo contado</span><span class="der">${fmtCOP(c.caja.efectivo_contado)}</span></div>
-            <div class="cuadrito-linea"><span class="izq">Diferencia</span><span class="der">${fmtCOP(c.caja.diferencia)}</span></div>
+            <h3>Registro del cierre original</h3>
+            ${Number(c.caja.efectivo_esperado) !== c.esperado ? '<p class="meta">El saldo esperado se actualizó con movimientos registrados después del cierre. El registro original se conserva; no representa el saldo actualizado.</p>' : ''}
+            <div class="cuadrito-linea"><span class="izq">Saldo esperado al cerrar</span><span class="der">${fmtCOP(c.caja.efectivo_esperado)}</span></div>
+            <div class="cuadrito-linea"><span class="izq">Efectivo registrado al cerrar</span><span class="der">${fmtCOP(c.caja.efectivo_contado)}</span></div>
+            <div class="cuadrito-linea"><span class="izq">Diferencia registrada al cerrar</span><span class="der">${fmtCOP(c.caja.diferencia)}</span></div>
             ${c.caja.nota ? `<div class="cuadrito-vacio" style="margin-top:6px;">Nota: ${escapeHtml(c.caja.nota)}</div>` : ''}
             <button class="btn-primary" id="btnCompartirWA" style="margin-top:14px;">Compartir por WhatsApp</button>
           </div>
@@ -588,7 +598,8 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += c.creditosDelDia.length ? c.creditosDelDia.map(cr => `${cr.cliente} — ${cr.producto} — ${cr.financiera}\n  Inicial: ${fmtCOP(cr.inicial)} | Financiado: ${fmtCOP(cr.financiado)}`).join('\n') : 'Sin créditos.';
   texto += `\n\n*GASTOS*\n`;
   texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
-  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO: ${fmtCOP(c.esperado)}*\nEfectivo contado: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia: ${fmtCOP(c.caja.diferencia)}`;
+  if (c.ajusteArrastre !== 0) texto += `\n\nAjuste por movimientos de días anteriores (incluido en apertura): ${fmtCOP(c.ajusteArrastre)}`;
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO ACTUALIZADO: ${fmtCOP(c.esperado)}*\n\nREGISTRO DEL CIERRE ORIGINAL\nEsperado al cerrar: ${fmtCOP(c.caja.efectivo_esperado)}\nEfectivo registrado al cerrar: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia al cerrar: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');
@@ -642,6 +653,7 @@ async function cargarConsolidado() {
         utilidad: c.totalUtilidad,
         salidasExplicitas: c.salidasExplicitas,
         esperado: c.esperado,
+        saldoActualizado: cerrada && Number(c.caja.efectivo_esperado) !== c.esperado,
         contadoReal: cerrada ? c.caja.efectivo_contado : null,
         diferencia: cerrada ? c.caja.diferencia : null,
         cerrada,
@@ -662,7 +674,7 @@ async function cargarConsolidado() {
       <td>${fmtCOP(f.gastos)}</td>
       <td>${fmtCOP(f.utilidad)}</td>
       <td>${fmtCOP(f.salidasExplicitas)}</td>
-      <td>${fmtCOP(f.esperado)}</td>
+      <td>${fmtCOP(f.esperado)}${f.saldoActualizado ? '<div class="meta">Actualizado tras el cierre</div>' : ''}</td>
       <td>${f.contadoReal !== null ? fmtCOP(f.contadoReal) : '—'}</td>
       <td>${f.diferencia !== null ? fmtCOP(f.diferencia) : '—'}</td>
       <td><span class="badge ${f.cerrada ? 'cerrada' : 'abierta'}">${f.cerrada ? 'Cerrada ✓' : 'Abierta'}</span></td>

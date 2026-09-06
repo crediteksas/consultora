@@ -36,6 +36,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "^1.55.0",
     "wrangler": "4.114.0"
   }

@@ -156,7 +156,7 @@
       origin_code: b.origen_codigo || null,
     };
   }
-  async function safe(query, required = false) {
+  async function safe(query, required = true) {
     const { data, error } = await query;
     if (error) {
       if (required) throw error;
@@ -296,10 +296,12 @@
   }
   function paymentAction(p, missing) {
     if (p.historico_inicial) return "";
+    if (p.estado === 'pagado' && !p.soporte_path)
+      return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte pendiente</button>`;
     if (missing.length)
       return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
-    if (!p.liquidations?.frozen_at)
-      return '<span class="approval-pending">Primero: Mayte revisa y Oscar aprueba la liquidación</span>';
+    if (!p.liquidations?.frozen_at || !p.liquidations?.approved_at)
+      return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}. Primero: Mayte revisa y Oscar aprueba la liquidación.</span>`;
     if (
       (p.estado === "pendiente" ||
         (p.estado === "programado" && !p.authorized_by)) &&
@@ -308,14 +310,15 @@
       return `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`;
     if (p.estado === "programado" && !p.authorized_by)
       return '<span class="approval-pending">Esperando autorización de Oscar</span>';
-    if (p.estado === "programado" && p.authorized_by)
+    if (p.estado === "programado" && window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready)
       return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte y registrar</button>`;
+    if (p.estado === 'programado') return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}</span>`;
     if (p.estado === "pagado" && canAuthorize())
       return `<button class="btn secondary" data-payment="${p.id}" data-next="conciliado">Conciliar</button>`;
     return "";
   }
   function isClosedPayment(p) {
-    return Boolean(p.historico_inicial) || p.estado === "conciliado";
+    return Boolean(p.historico_inicial) || p.estado === "conciliado" || (p.estado === 'pagado' && Boolean(p.soporte_path));
   }
   function paymentsForCurrentView() {
     return data.payments.filter((p) =>
@@ -327,21 +330,11 @@
     for (const payment of filtered(
       paymentsForCurrentView().filter((x) => x.payment_kind === kind),
     )) {
-      const canGroup =
-        !payment.historico_inicial &&
-        ["pendiente", "programado"].includes(payment.estado);
-      const key = canGroup
-        ? [
-            payment.beneficiary_id,
-            payment.bank_snapshot?.account_number || "sin-cuenta",
-            payment.estado,
-            payment.authorized_by ? "autorizado" : "sin-autorizar",
-          ].join("|")
-        : payment.id;
+      const key = window.CreditekTesoreriaTercerizacion.paymentGroupKey(payment);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(payment);
     }
-    return [...groups.values()];
+    return [...groups.values()].flatMap(group => Array.from({length:Math.ceil(group.length/50)},(_,i)=>group.slice(i*50,i*50+50)));
   }
   function paymentCards(kind) {
     const groups = paymentGroups(kind);
@@ -360,7 +353,7 @@
           ),
           business = paymentBusinessName(p),
           action =
-            group.length > 1 && p.estado === "programado" && authorized
+            group.length > 1 && group.every(x => window.CreditekTesoreriaTercerizacion.paymentReadiness(x).ready)
               ? `<button class="btn primary" data-payment-group="${ids}">Adjuntar soporte y registrar</button>`
               : paymentAction(p, missing);
         return `<article class="payment-card">
@@ -634,36 +627,10 @@
   async function completePaymentData(id) {
     const p = data.payments.find((x) => x.id === id);
     if (!p) return;
-    const bank = prompt(
-      `Banco para ${p.beneficiary_name}:`,
-      p.bank_snapshot?.bank || "",
-    );
-    if (!bank?.trim()) return;
-    const type = prompt(
-      "Tipo de cuenta: ahorros o corriente",
-      p.bank_snapshot?.account_type || "ahorros",
-    );
-    if (!["ahorros", "corriente"].includes(String(type).trim().toLowerCase()))
-      return notice("El tipo debe ser ahorros o corriente.", true);
-    const account = prompt(
-      "Número completo de cuenta:",
-      p.bank_snapshot?.account_number || "",
-    );
-    if (!/^\d{5,}$/.test(String(account || "").replace(/\D/g, "")))
-      return notice("Escribe un número de cuenta válido.", true);
-    const { error } = await sb.rpc("aliados_guardar_cuenta_bancaria", {
-      p_beneficiary_id: p.beneficiary_id,
-      p_banco: bank.trim(),
-      p_tipo_cuenta: type.trim().toLowerCase(),
-      p_numero_cuenta: String(account).replace(/\D/g, ""),
-      p_validar: true,
-    });
-    if (error) return notice(error.message, true);
-    await sb.rpc("aliados_completar_pagos_beneficiario", {
-      p_beneficiary_id: p.beneficiary_id,
-    });
-    notice("Datos bancarios completados y validados.");
-    await load();
+    if (!clients) return notice('No tienes permiso para editar titulares y cuentas.',true);
+    treasuryView='clients';render();
+    await clients.mount($("#clientsContent"));
+    clients.openBeneficiary(p.beneficiary_id);
   }
   function validateSupport(file) {
     if (!file) return "Selecciona una imagen o un archivo PDF.";
@@ -698,6 +665,8 @@
       .map((id) => data.payments.find((x) => x.id === id))
       .filter(Boolean);
     if (!payments.length) return;
+    const blocked = payments.map(p => ({p,check:window.CreditekTesoreriaTercerizacion.paymentReadiness(p)})).filter(x=>!x.check.ready);
+    if (blocked.length) return notice(blocked.map(x=>x.check.reason).join('. '),true);
     const total = payments.reduce((n, p) => n + Number(p.valor), 0);
     $("#paymentSupportSummary").textContent =
       `${payments[0].beneficiary_name} · ${payments.length} ${payments.length === 1 ? "orden" : "órdenes"} · ${cop(total)}`;
@@ -721,38 +690,50 @@
       return;
     }
     if (!payments.length) return closePaymentSupport();
-    if (payments.some((payment) => !payment?.liquidations?.frozen_at)) {
-      errorBox.textContent =
-        "Primero Mayte debe revisar y Oscar aprobar la liquidación. Después podrás registrar el soporte.";
+    const blocked = payments.map(p=>window.CreditekTesoreriaTercerizacion.paymentReadiness(p)).find(x=>!x.ready);
+    if (blocked) {
+      errorBox.textContent = blocked.reason;
       errorBox.classList.remove("hidden");
       return;
     }
     button.disabled = true;
     button.textContent = "Subiendo soporte…";
     errorBox.classList.add("hidden");
-    let support = null;
+    let support = null, recorded = false;
     try {
       support = await upload(file, "pagos");
-      const rpc =
-        payments.length > 1
-          ? sb.rpc("aliados_registrar_pago_agrupado", {
-              p_ids: pendingPaymentIds,
-              p_soporte_path: support,
-            })
-          : sb.rpc("aliados_cambiar_estado_pago", {
-              p_id: pendingPaymentIds[0],
-              p_estado: "pagado",
-              p_soporte_path: support,
-            });
+      const rpc = sb.rpc("tesoreria_cerrar_pagos_con_soporte", {p_ids:pendingPaymentIds,p_soporte_path:support});
       const { error } = await rpc;
       if (error) throw error;
+      recorded = true;
       closePaymentSupport();
       notice(
         `${payments.length} ${payments.length === 1 ? "pago registrado" : "pagos registrados"} con un único soporte.`,
       );
       await load();
     } catch (error) {
-      if (support) await sb.storage.from("soportes").remove([support]);
+      if (recorded) {
+        notice('El pago quedó registrado con soporte. No se pudo actualizar la lista; pulsa Actualizar, no vuelvas a registrarlo.',true);
+        return;
+      }
+      // Una respuesta perdida puede ocultar un pago ya confirmado. Nunca borrar
+      // su comprobante sin comprobar que ninguna orden lo está utilizando.
+      if (support) {
+        try {
+          const referenced = await sb.from('payment_orders').select('id').eq('soporte_path',support);
+          if (!referenced.error && Array.isArray(referenced.data)) {
+            if (payments.every(p=>referenced.data.some(r=>r.id===p.id))) {
+              closePaymentSupport();
+              notice('Pago confirmado con su soporte. No se repitió el registro.');
+              await load().catch(()=>notice('El pago está confirmado. Actualiza la lista para ver su estado.',true));
+              return;
+            }
+            if (referenced.data.length === 0) await sb.storage.from("soportes").remove([support]);
+          }
+        } catch {
+          notice('No fue posible confirmar el resultado. Conservamos el soporte; actualiza Tesorería antes de reintentar.',true);
+        }
+      }
       console.error("No fue posible registrar el soporte del pago", error);
       errorBox.textContent =
         error?.message ||
@@ -1010,6 +991,13 @@
       }
     } catch (error) {
       console.error('No se pudo comprobar el acceso al directorio bancario', error);
+    }
+    const route = new URLSearchParams(location.search);
+    if (route.get('vista') === 'clientes' && clients) {
+      treasuryView='clients';render();await clients.mount($("#clientsContent"));
+      if(route.get('origen'))clients.openOrigin(route.get('origen'));
+      else if(route.get('beneficiario'))clients.openBeneficiary(route.get('beneficiario'));
+      return;
     }
     if (!canViewOutgoing()) {
       $("#showOperational").classList.add("hidden");

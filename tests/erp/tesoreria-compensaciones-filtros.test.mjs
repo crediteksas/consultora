@@ -82,7 +82,7 @@ async function boot(records = rows, options = {}) {
   const context = {
     window: { creditekSidebar: { sb, perfil: { rol: 'gerencia', activo: true } }, CreditekTesoreriaTercerizacion: domain, CreditekCobrosPlataformas: { create: () => ({}) } },
     document: { querySelector: node, querySelectorAll: selector => selector === '[data-compensation-select]' ? node('#compensations').children : [], addEventListener: (k, fn) => listeners.set(k, fn) },
-    location, console: { error() {} }, Intl, Date, Set, Map, setTimeout() {},
+    location, URLSearchParams, console: { error() {} }, Intl, Date, Set, Map, setTimeout() {},
   };
   vm.runInNewContext(source, context);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
@@ -158,8 +158,8 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   for (const id of ['compensationStore', 'compensationFrom', 'compensationTo']) assert.match(html, new RegExp(`label for="${id}"`));
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
-  assert.match(html, /aliados-tesoreria-domain.js\?v=1.2.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=1.5.0/);
+  assert.match(html, /aliados-tesoreria-domain.js\?v=1.3.0/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=1.6.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

@@ -11,6 +11,7 @@ const KORA_PWA_FILES = [
   'creditek/erp/kora-icon-512.png',
   'creditek/erp/kora-icon-maskable-512.png',
   'creditek/erp/kora-install.js',
+  'creditek/erp/kora-release-label.js',
   'creditek/erp/kora-service-worker.js',
 ];
 const EXCLUDED_ERP_FILES = new Set(['registro.html']);

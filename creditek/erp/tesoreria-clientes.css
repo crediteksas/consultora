@@ -1,4 +1,10 @@
 .tc-directory { min-width: 0; }
+.tc-directory [hidden], .tc-dialog [hidden] { display: none !important; }
+.tc-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.tc-tabs .active { background: #0b1e3d; color: #fff; }
+.tc-executives { margin-top: 20px; font-size: 14px; }
+.tc-executives summary { cursor: pointer; padding: 12px 0; }
+.tc-directory textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: 12px; border: 1px solid #dce5ee; border-radius: 10px; font: inherit; }
 .tc-directory h2, .tc-directory h3 { margin: 0; }
 .tc-filters { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto; gap: 12px; align-items: end; margin: 20px 0 12px; }
 .tc-directory label { display: grid; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; }

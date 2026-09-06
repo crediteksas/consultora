@@ -551,7 +551,7 @@
       ["Establecimientos históricos", list.length],
       ["Créditos históricos aliados", historical.length],
       ["Sedes del formulario", db.sites.length],
-      ["Maestros formalizados", db.allies.length],
+      ["Fichas de cliente", db.allies.length],
     ]);
     $("#content").innerHTML =
       `<div class="card"><p class="muted">El ejecutivo es el responsable comercial de Creditek. El vendedor reportado por la plataforma pertenece al establecimiento y no se usa como ejecutivo.</p></div>${table(["Establecimiento", "Plataformas", "Créditos", "Valor financiado", "Ejecutivo Creditek", "Estado / acción"], rows(list, [(x) => esc(x.name), (x) => esc([...x.platforms].join(", ")), (x) => x.credits, (x) => cop(x.sales), (x) => esc(execName(x.executiveId)), (x) => x.executiveId ? badge("vinculado") : `<div class="review-cell">${badge("requiere_revision")}<a class="btn primary" href="aliados-calidad.html?establecimiento=${encodeURIComponent(x.name)}">Gestionar</a></div>`]))}`;
@@ -1648,6 +1648,17 @@
     }
     $("#pageContent").classList.remove("hidden");
     try {
+      if (view === 'allies' && window.CreditekTesoreriaClientes && new URLSearchParams(location.search).get('vista') !== 'actividad') {
+        const access=await sb.rpc('tiene_capacidad_aliados',{p_capacidad:'revisor'});
+        if(access.error)throw access.error;
+        if(access.data===true){
+          document.querySelector('.toolbar').classList.add('hidden');
+          $("#metrics").classList.add('hidden');
+          const directory=window.CreditekTesoreriaClientes.create({sb});
+          await directory.mount($("#content"));
+          return;
+        }
+      }
       await load();
     } catch (e) {
       console.error("Aliados V1.1 no pudo cargar", e);

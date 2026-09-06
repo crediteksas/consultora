@@ -61,7 +61,8 @@ test('compartir la instalación queda dentro de Administración y solo para perf
   assert.match(page, /data-kora-requires-auth="true"/);
   assert.match(page, /Compartir instalación de KORA/);
   assert.match(page, /navigator\.share/);
-  assert.match(page, /instalar\?v=1\.0\.1/);
+  assert.match(page, /value="https:\/\/kora\.crediteksas\.com\/instalar"/);
+  assert.doesNotMatch(page, /instalar\?v=/);
   assert.match(page, /Chrome no puede ordenar que Safari abra una página/);
   assert.match(sidebar, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);
   assert.match(access, /label:\s*'Compartir instalación'[\s\S]*roles:\s*\['gerencia', 'auditoria'\]/);

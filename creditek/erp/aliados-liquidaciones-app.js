@@ -228,10 +228,8 @@
       const missing=Review.missingBeneficiaries(ops||[],beneficiaries||[]);
       krediyaMissingPayees=missing.length;updateActions();
       flow.innerHTML=missing.length?`<strong>Falta el titular de pago de ${missing.length} comercios</strong><p>Sus ventas y precios sí están registrados. Vincula quién recibe el pago para generar las órdenes; no debes confirmar PVP ni bonos.</p><details><summary>Ver comercios y completar destinatarios</summary>${missing.map(m=>`<div class="missing-payee"><span>${esc(m.name)} · ${m.count} operaciones</span><button class="btn secondary" data-payee="${esc(m.code)}">Vincular titular</button></div>`).join('')}</details>`:'<strong>Siguiente: liquidar el lote completo</strong><p>El cálculo guarda el informe y envía una sola revisión a aprobación. No ejecuta transferencias. Se validan iniciales, crédito y reglas antes de continuar.</p>';
-      flow.querySelectorAll('[data-payee]').forEach(button=>button.onclick=async()=>{
-        await $('addBankAccount').onclick();
-        if(!$('bankAccountModal').classList.contains('show'))return;
-        $('bankBeneficiaryMode').value='new';updateBankBeneficiaryMode();$('bankAllyOrigin').value=button.dataset.payee;
+      flow.querySelectorAll('[data-payee]').forEach(button=>button.onclick=()=>{
+        location.href='aliados-tesoreria.html?vista=clientes&origen='+encodeURIComponent(button.dataset.payee);
       });
     }catch(error){flow.textContent='No se pudo comprobar a quién pagar: '+error.message;}
   }
@@ -605,57 +603,7 @@
     await loadTab('payments');
   }
   $('saveReview').onclick = async () => { const { error } = await sb.rpc('aliados_resolver_operaciones_propias', { p_liquidation_id: selected.id }); if (error) alert(error.message); else await loadTab('operations'); };
-  async function loadBankBeneficiaries() {
-    const [{ data: beneficiaries, error: beneficiariesError }, { data: allies, error: alliesError }] = await Promise.all([
-      sb.from('liquidation_beneficiaries').select('id,nombre,tipo,origen_codigo').eq('activo', true).order('nombre'),
-      sb.from('origenes').select('codigo,nombre').eq('activo', true).eq('tipo', 'aliado').order('nombre')
-    ]);
-    if (beneficiariesError || alliesError) throw beneficiariesError || alliesError;
-    $('bankBeneficiary').innerHTML = '<option value="">Selecciona un beneficiario</option>' + (beneficiaries || []).map(b => `<option value="${b.id}">${esc(b.nombre)} (${esc(b.tipo)})</option>`).join('');
-    $('bankAllyOrigin').innerHTML = '<option value="">Selecciona un aliado</option>' + (allies || []).map(a => `<option value="${esc(a.codigo)}">${esc(a.nombre)} · ${esc(a.codigo)}</option>`).join('');
-  }
-  function updateBankBeneficiaryMode() {
-    const isNew = $('bankBeneficiaryMode').value === 'new';
-    $('bankExistingField').classList.toggle('hidden', isNew);
-    $('bankNewBeneficiaryFields').classList.toggle('hidden', !isNew);
-  }
-  $('bankBeneficiaryMode').onchange = updateBankBeneficiaryMode;
-  $('addBankAccount').onclick = async () => {
-    $('bankError').textContent = '';
-    $('bankBeneficiaryMode').value = 'existing';
-    updateBankBeneficiaryMode();
-    try { await loadBankBeneficiaries(); $('bankAccountModal').classList.add('show'); }
-    catch (error) { alert(`No fue posible cargar los beneficiarios: ${error.message}`); }
-  };
-  $('closeBankAccount').onclick = () => $('bankAccountModal').classList.remove('show');
-  $('saveBankAccount').onclick = async () => {
-    const isNew = $('bankBeneficiaryMode').value === 'new';
-    let beneficiary_id = $('bankBeneficiary').value;
-    let error;
-    $('bankError').textContent = '';
-    $('saveBankAccount').disabled = true;
-    if (isNew) {
-      const validation = Accounts.validateNewBeneficiary({ originCode: $('bankAllyOrigin').value, name: $('bankHolderName').value, identification: $('bankHolderIdentification').value, bank: $('bankBanco').value, accountType: $('bankTipo').value, accountNumber: $('bankNumero').value });
-      if (!validation.ok) { $('bankError').textContent = validation.errors[0]; $('saveBankAccount').disabled = false; return; }
-      const result = await sb.rpc('aliados_crear_tercero_con_cuenta', {
-        p_origen_codigo: validation.value.originCode, p_identificacion: validation.value.identification,
-        p_nombre: validation.value.name, p_banco: validation.value.bank,
-        p_tipo_cuenta: validation.value.accountType, p_numero_cuenta: validation.value.accountNumber
-      });
-      error = result.error;
-      beneficiary_id = result.data?.beneficiary_id;
-    } else {
-      const banco = Accounts.clean($('bankBanco').value), tipo_cuenta = $('bankTipo').value, numero_cuenta = Accounts.digits($('bankNumero').value);
-      if (!beneficiary_id || !banco || numero_cuenta.length < 5) { $('bankError').textContent = 'Selecciona el beneficiario y completa los datos de la cuenta.'; $('saveBankAccount').disabled = false; return; }
-      ({ error } = await sb.rpc('aliados_guardar_cuenta_bancaria', { p_beneficiary_id: beneficiary_id, p_banco: banco, p_tipo_cuenta: tipo_cuenta, p_numero_cuenta: numero_cuenta, p_validar: true }));
-    }
-    $('saveBankAccount').disabled = false;
-    if (error) { $('bankError').textContent = error.message; return; }
-    const { data: completados } = await sb.rpc('aliados_completar_pagos_beneficiario', { p_beneficiary_id: beneficiary_id });
-    $('bankAccountModal').classList.remove('show');
-    alert(`Cuenta guardada y validada.${completados ? ` ${completados} pago(s) pendiente(s) completado(s) automáticamente.` : ''}`);
-    if (selected) await openDetail(selected.id);
-  };
+  $('addBankAccount').onclick = () => { location.href='aliados-tesoreria.html?vista=clientes'; };
   $('validate').onclick = async () => {
     if (selected.plataforma === 'krediya') {
       const { error } = await sb.rpc('aliados_sincronizar_precios_krediya', { p_id:selected.id });

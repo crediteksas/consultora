@@ -297,7 +297,9 @@ body.kora-product-page .kora-shell-root .kora-icon-button {
   .kora-shell-root, .kora-shell-root[data-sidebar-collapsed="true"] { display: block !important; }
   .kora-sidebar,
   .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar { box-shadow: var(--ctk-shadow-3); left: 0; position: fixed; transform: translateX(-100%); transition: transform var(--ctk-duration-4) var(--ctk-ease-standard); width: var(--ctk-width-sidebar); }
-  .kora-sidebar[data-open="true"] { transform: translateX(0); }
+  /* La preferencia compacta de escritorio no puede ocultar el drawer móvil abierto. */
+  .kora-sidebar[data-open="true"],
+  .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar[data-open="true"] { transform: translateX(0); }
   .kora-drawer-close { display: inline-flex; }
   .kora-sidebar__brand,
   .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar__brand { align-items: flex-start; justify-content: space-between; min-height: calc(var(--ctk-height-topbar) + var(--ctk-space-5)); padding-inline: var(--ctk-space-2); }

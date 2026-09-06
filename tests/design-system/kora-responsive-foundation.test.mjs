@@ -58,6 +58,17 @@ test('la cabecera móvil separa contexto y acciones sin recortar nombres', async
   assert.match(css, /@media \(max-width: 79\.999rem\)[\s\S]*\.kora-command[\s\S]*display:\s*none/);
 });
 
+test('el drawer móvil abierto prevalece sobre la preferencia compacta del escritorio', async () => {
+  const [shell, css] = await Promise.all([
+    read('creditek/erp/sidebar.js'),
+    read('design-system/components/kora-shell.css'),
+  ]);
+  const mobile = css.slice(css.indexOf('@media (max-width: 63.999rem)'));
+  assert.match(mobile, /\.kora-shell-root\[data-sidebar-collapsed="true"\] \.kora-sidebar\[data-open="true"\]\s*\{\s*transform:\s*translateX\(0\)/);
+  assert.match(shell, /kora-shell\.css\?v=2\.0\.6/);
+  assert.match(shell, /navigationMedia\.addEventListener\?\.\('change', \(\) => \{[\s\S]*?if \(aside\.dataset\.open === 'true'\) closeDrawer\(\);[\s\S]*?syncNavigationControl\(\);\s*\}\)/);
+});
+
 test('tablas de lectura se convierten en fichas y tablas editables conservan scroll', async () => {
   const [css, js] = await Promise.all([
     read('design-system/components/kora-responsive.css'),

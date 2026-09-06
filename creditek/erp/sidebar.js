@@ -564,7 +564,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraShellStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-shell.css?v=2.0.5';
+      link.href = '/design-system/components/kora-shell.css?v=2.0.6';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraResponsiveStyles')) {
@@ -890,7 +890,8 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       previousFocus?.focus?.();
     };
     const openDrawer = () => {
-      previousFocus = document.activeElement;
+      // Safari no siempre enfoca un botón al tocarlo: devolver el foco al menú explícitamente.
+      previousFocus = navigationControl;
       aside.dataset.open = 'true';
       aside.setAttribute('role', 'dialog');
       aside.setAttribute('aria-modal', 'true');
@@ -967,7 +968,13 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       navigationControl.innerHTML = koraStaticIcon(collapsed ? 'panel-left-open' : 'panel-left-close');
     };
     syncNavigationControl();
-    navigationMedia.addEventListener?.('change', syncNavigationControl);
+    navigationMedia.addEventListener?.('change', () => {
+      // Al cambiar entre drawer y barra de escritorio no debe quedar una cortina modal.
+      if (aside.dataset.open === 'true') closeDrawer();
+      setSidebarPeek(false);
+      renderShellBrand();
+      syncNavigationControl();
+    });
     navigationControl?.addEventListener('click', () => {
       if (navigationMedia.matches) {
         openDrawer();

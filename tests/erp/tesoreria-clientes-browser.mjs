@@ -86,6 +86,10 @@ try {
  assert.equal(await page.locator('[name="name"]').inputValue(),'Ejecutivo prueba');
  assert.equal(await page.locator('[name="name"]').getAttribute('readonly'),'');
  assert.equal(await page.locator('#clientProfileTab').isVisible(),false);
+ await page.locator('#clientClose').click();
+ await page.locator('#showOperational').click();
+ await page.waitForFunction(()=>!document.querySelector('#outgoingContent').classList.contains('hidden'));
+ await page.locator('#showHistory').click();
  assert.deepEqual(errors,[]);
  console.log('PASS: Tesorería real con fixtures; botón, búsqueda, paginación, editor, permisos de lectura, fallo/reintento, ceros, cuenta faltante, Escape y reflow 390/768/1280. Sin RPC de pagos.');
 } finally {await browser.close();}

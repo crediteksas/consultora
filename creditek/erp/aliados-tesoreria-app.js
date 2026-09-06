@@ -792,12 +792,12 @@
     await load();
   }
   function paymentReport() {
-    const rows = filtered(data.payments).filter(
-      (p) => p.estado === "programado",
+    const rows = filtered(data.payments || []).filter(
+      (p) => p.estado === "programado" && window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready,
     );
     if (!rows.length)
       return notice(
-        "No hay pagos programados con los filtros seleccionados.",
+        "No hay órdenes listas para pagar con estos filtros. Revisa la aprobación de los lotes y sus autorizaciones.",
         true,
       );
     const incomplete = rows.filter((p) => missingPaymentData(p).length);
@@ -1047,16 +1047,14 @@
     await clients.mount($("#clientsContent"));
   };
   $("#paymentReport").onclick = paymentReport;
-  $("#showOperational").onclick = () => {
+  async function showPaymentView(view) {
     if (!canViewOutgoing()) return;
-    treasuryView = "operational";
-    render();
-  };
-  $("#showHistory").onclick = () => {
-    if (!canViewOutgoing()) return;
-    treasuryView = "history";
-    render();
-  };
+    treasuryView = view;
+    try { if (!Array.isArray(data.payments)) await load(); else render(); }
+    catch { notice('No fue posible cargar los pagos. Pulsa Actualizar para reintentar.',true); }
+  }
+  $("#showOperational").onclick = () => showPaymentView('operational');
+  $("#showHistory").onclick = () => showPaymentView('history');
   $("#openStoreLedger").onclick = () => {
     const selected = compensationView().rows.find(
       (x) => x.id === selectedCompensationId,

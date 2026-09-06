@@ -30,6 +30,8 @@ La guía de Supabase influyó en la decisión de usar una operación bancaria at
 
 ## Estado de publicación
 
-La migración `tesoreria_clientes_cuentas` está instalada en Supabase. La interfaz está implementada y probada localmente. **No se desplegó KORA**: pendiente la revisión de Claude exigida por `REGLAS.md`, o autorización explícita de Oscar para omitirla. La ruta publicada anterior sigue siendo Liquidaciones → Cuenta bancaria.
+La migración `20260906154913_tesoreria_clientes_cuentas` está instalada en Supabase y su nombre local coincide con el historial remoto. Oscar autorizó expresamente publicar el directorio junto con el arreglo de Caja, sin revisión de Claude, el 6 de septiembre. Se publica mediante el pipeline oficial y se verifica el resultado antes de comunicar el cierre.
+
+El directorio reutiliza `origenes.codigo` y relaciona titulares/cuentas; no crea otro comercio. La ficha general de Aliados y la edición bancaria todavía son vistas distintas. Una ficha única con datos generales, contacto, sedes, cuentas e historial requiere integrar esas vistas conservando las relaciones exactas y los permisos; esta publicación no fusiona clientes ni modifica sus datos generales.
 
 No se hicieron altas bancarias reales ni se dedujeron titulares desde los formularios de empleados. A TECH MOVIL y A CREDICELULARES siguen siendo comercios separados.

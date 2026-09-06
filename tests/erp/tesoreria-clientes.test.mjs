@@ -31,7 +31,7 @@ test('cuenta reciente activa y número enmascarado sin perder ceros',()=>{
   assert.equal(rows[0].account.id,'b'); assert.equal(domain.masked(bank),'Banco · ahorros · •••• 4567');
 });
 test('guardado independiente de pagos, capacidad real y snapshots históricos',()=>{
-  const sql=readFileSync('supabase/migrations/20260906153609_tesoreria_clientes_cuentas.sql','utf8');
+  const sql=readFileSync('supabase/migrations/20260906154913_tesoreria_clientes_cuentas.sql','utf8');
   const app=readFileSync('creditek/erp/tesoreria-clientes.js','utf8');
   const treasury=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');
   assert.match(sql,/auth.uid\(\) is null or not public.tiene_capacidad_aliados\('revisor'\)/);

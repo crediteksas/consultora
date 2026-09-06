@@ -156,10 +156,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .corr-stat-num{font-size:22px;font-weight:700;color:var(--accent);}
   .corr-stat-label{font-size:10px;color:var(--text3);margin-top:2px;}
 </style>
+<link rel="stylesheet" href="/creditek/agentes/aura-responsive.css">
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
-<body>
+<body data-aura-page="sofia">
   <div class="topbar">
   <div class="topbar-left">
     <h1><i class="ti ti-message-chatbot" style="color:var(--accent);font-size:20px" aria-hidden="true"></i> Sofia · <span>CRM WhatsApp</span></h1>
@@ -174,6 +175,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="top-stat"><div class="top-stat-val" id="s-transferidos">-</div><div class="top-stat-label">Transferidos a asesor</div></div>
   </div>
   <div class="topbar-actions">
+    <span id="sofiaServiceStatus" role="status" hidden style="color:#b45309;font-size:12px;font-weight:600;align-self:center;">Servicio temporalmente no disponible</span>
     <button class="btn btn-outline" onclick="logoutPanel()">Salir</button>
     <button class="btn btn-outline" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> Exportar</button>
     <button class="btn btn-primary" onclick="loadAll()"><i class="ti ti-refresh" aria-hidden="true"></i> Actualizar</button>
@@ -293,36 +295,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="/creditek/agentes/aura-responsive.js" defer></script>
 <script>
-const API='https://creditek-bot.comercial-853.workers.dev';
+const API='/api/sofia';
 let cityMap={};let allTiendas=[];
 let allConvs=[],allClients=[],grouped={},currentTel=null,currentInbox='all',interventionMap={};
 const colors=['#8b5cf6','#0ea5e9','#f59e0b','#ef4444','#22c55e','#ec4899','#6366f1','#14b8a6'];
 
 async function loadTiendas(){
   try{
-    allTiendas=await(await workerFetch('/api/tiendas')).json();
+    const response=await workerFetch('/tiendas');
+    if(!response.ok)throw new Error('Servicio temporalmente no disponible');
+    const payload=await response.json().catch(()=>null);
+    if(!Array.isArray(payload))throw new Error('Servicio temporalmente no disponible');
+    allTiendas=payload;
     cityMap={};
     const ciudades=new Set();
     allTiendas.forEach(t=>{cityMap[t.id]=t.ciudad;ciudades.add(t.ciudad)});
     const sel=document.getElementById('filterCity');
     sel.innerHTML='<option value="all">Ciudad</option>';
     [...ciudades].sort().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
-  }catch(e){console.error(e)}
+  }catch(e){allTiendas=[];showSofiaServiceUnavailable();console.error(e)}
 }
-async function loadAll(){await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()]);recomputeInterventions();applyFilters()}
+async function loadAll(){hideSofiaServiceUnavailable();await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()]);recomputeInterventions();applyFilters()}
 
 async function loadStats(){
   try{
     // Los endpoints administrativos usan la sesión activa de AURA y solo
     // aceptan usuarios con role_id aura.owner.
-    const d=await(await workerFetch('/api/stats')).json();
+    const response=await workerFetch('/stats');
+    if(!response.ok)throw new Error('Servicio temporalmente no disponible');
+    const d=await response.json().catch(()=>null);
+    if(!d||Array.isArray(d)||typeof d!=='object')throw new Error('Servicio temporalmente no disponible');
     document.getElementById('s-clientes').textContent=d.total_clientes||0;
     document.getElementById('s-convs').textContent=d.hoy||0;
     document.getElementById('s-optins').textContent=d.optins||0;
     document.getElementById('s-leads').textContent=d.leads_pendientes??d.leads??0;
     document.getElementById('s-transferidos').textContent=d.transferidos??0;
-  }catch(e){console.error(e)}
+  }catch(e){showSofiaServiceUnavailable();console.error(e)}
 }
 
 const SUPA='https://ditiwpndvmyuqcagupea.supabase.co/rest/v1';
@@ -332,6 +342,8 @@ const SUPA_KEY='sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW';
   function irAlHub(){top.location.href='index.html'}
   async function refreshSession(){const s=getSession();if(!s||!s.refresh_token)return null;try{const r=await fetch(SUPA_BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});if(!r.ok)return null;const d=await r.json();const nuevo={access_token:d.access_token,refresh_token:d.refresh_token,email:s.email};sessionStorage.setItem('aura_supabase_session_v1',JSON.stringify(nuevo));return nuevo}catch(e){return null}}
   async function supaFetch(url,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}let res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+s.access_token})}));if(res.status===401){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error('401')}res=await fetch(SUPA+url,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{apikey:SUPA_KEY,Authorization:'Bearer '+nuevo.access_token})}))}return res}
+  function showSofiaServiceUnavailable(){const el=document.getElementById('sofiaServiceStatus');if(el)el.hidden=false}
+  function hideSofiaServiceUnavailable(){const el=document.getElementById('sofiaServiceStatus');if(el)el.hidden=true}
   async function workerFetch(path,opts){opts=opts||{};let s=getSession();if(!s){irAlHub();throw new Error('Sin sesion')}const request=async(session)=>fetch(API+path,Object.assign({},opts,{headers:Object.assign({},opts.headers||{},{Authorization:'Bearer '+session.access_token})}));let res=await request(s);if(res.status===401||res.status===403){const nuevo=await refreshSession();if(!nuevo){irAlHub();throw new Error(String(res.status))}res=await request(nuevo)}return res}
   function logoutPanel(){sessionStorage.removeItem('aura_supabase_session_v1');localStorage.removeItem('aura_supabase_session_v1');irAlHub()}
 async function loadConvs(){
@@ -627,7 +639,7 @@ async function actualizarSeguimientoAsesor(tel){
   if(!select||!button)return;
   button.disabled=true;if(message)message.textContent='Guardando seguimiento...';
   try{
-    const res=await workerFetch('/api/seguimiento-asesor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefono:tel,estado:select.value})});
+    const res=await workerFetch('/seguimiento-asesor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefono:tel,estado:select.value})});
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.error||'No se pudo guardar');
     const client=allClients.find(c=>c.telefono===tel);if(client)client.confirmacion_asesor=data.estado;
@@ -641,7 +653,7 @@ async function reintentarHandoffSeguro(tel){
   if(btn)btn.disabled=true;
   if(statusEl)statusEl.textContent='Enviando al asesor...';
   try{
-    const res=await workerFetch('/api/reintentar-handoff',{
+    const res=await workerFetch('/reintentar-handoff',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({telefono:tel}),
@@ -675,7 +687,7 @@ async function enviarDesdePanel(tel){
   if(btn)btn.disabled=true;
   if(statusEl)statusEl.textContent='Enviando...';
   try{
-    const res=await workerFetch('/api/enviar-mensaje',{
+    const res=await workerFetch('/enviar-mensaje',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({telefono:tel,mensaje}),

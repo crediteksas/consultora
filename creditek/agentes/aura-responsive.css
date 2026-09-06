@@ -1,0 +1,103 @@
+/* AURA responsive foundation. Visual-only: no business state or data rules. */
+html, body { max-width: 100%; }
+body { overflow-x: hidden; }
+img, video, canvas { max-width: 100%; }
+:where(input, select, textarea, button) { max-width: 100%; }
+:where(.main, .content, .content-area, .main-content, .page, .shell, .agent-workspace, .agent4-workspace, .agent-workspace-main) { min-width: 0; }
+:where(.table-wrap, .table-wrapper, .table-card) { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+:where(.modal, .modal-content, .m-card, .links-dialog, .iframe-status-card) { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
+
+@media (max-width: 63.999rem) {
+  :where(input, select, textarea) { font-size: 16px !important; }
+  :where(button, .btn, [role="button"], a.action-btn) { min-height: 44px; }
+  :where(.header, .topbar, .aura-topbar) { height: auto !important; min-height: 56px; flex-wrap: wrap; }
+  :where(.header-right, .topbar-actions, .actions) { flex-wrap: wrap; }
+  :where(.page, .content, .main-content, .content-area) { max-width: 100%; }
+}
+
+@media (max-width: 47.999rem) {
+  :where(.page, .content, .main-content, .content-area, .table-view) { padding-inline: 12px !important; }
+  :where(.grid, .reports, .charts-row, .trend-row, .db-grid, .metrics, .kpi-grid, .strategy-grid, .store-body) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  :where(.modal-overlay) { align-items: flex-end; padding: 0; }
+  :where(.modal, .modal-content, .m-card, .links-dialog) { width: 100%; max-width: 100%; max-height: 92dvh; border-radius: 18px 18px 0 0; }
+}
+
+/* Sofía: desktop, narrow windows, tablet and phone. */
+body[data-aura-page="sofia"] .main { position: relative; min-height: 0; }
+body[data-aura-page="sofia"] .center-panel,
+body[data-aura-page="sofia"] .table-view { min-width: 0; }
+body[data-aura-page="sofia"] .data-table { min-width: 720px; }
+body[data-aura-page="sofia"] .table-view { overflow: auto; }
+body[data-aura-page="sofia"] .aura-pane-button {
+  align-items: center; background: #fff; border: 1px solid var(--border); color: var(--text);
+  cursor: pointer; display: none; font: 600 12px/1 inherit; gap: 6px; justify-content: center;
+  min-height: 40px; padding: 8px 11px;
+}
+body[data-aura-page="sofia"] .aura-pane-button i { font-size: 18px; }
+body[data-aura-page="sofia"] .aura-chat-tools { align-items: center; display: flex; gap: 6px; }
+body[data-aura-page="sofia"] .aura-panel-close { position: sticky; top: 8px; float: right; margin: 8px 8px 0 0; z-index: 2; }
+
+@media (max-width: 74.999rem) {
+  body[data-aura-page="sofia"] { height: 100dvh; }
+  body[data-aura-page="sofia"] .topbar { align-items: center; gap: 8px 14px; padding: 8px 12px; }
+  body[data-aura-page="sofia"] .topbar-left { flex: 1 1 auto; }
+  body[data-aura-page="sofia"] .topbar-stats { flex: 1 1 100%; gap: 8px; order: 3; overflow-x: auto; padding-bottom: 2px; }
+  body[data-aura-page="sofia"] .top-stat { background: #f8fafc; border-radius: 9px; flex: 1 0 104px; padding: 6px 8px; }
+  body[data-aura-page="sofia"] .top-stat-val { font-size: 15px; }
+  body[data-aura-page="sofia"] .top-stat-label { white-space: normal; }
+  body[data-aura-page="sofia"] .sidebar { width: clamp(260px, 32vw, 320px); }
+  body[data-aura-page="sofia"] .right-panel {
+    bottom: 0; box-shadow: -14px 0 32px rgba(15, 23, 42, .16); max-width: 92vw;
+    position: absolute; right: 0; top: 0; width: 340px; z-index: 15;
+  }
+  body[data-aura-page="sofia"] .aura-pane-button { display: inline-flex; }
+  body[data-aura-page="sofia"] .chat-header { gap: 10px; padding-inline: 12px; }
+  body[data-aura-page="sofia"] .chat-badges { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+@media (max-width: 47.999rem) {
+  body[data-aura-page="sofia"] .topbar { max-height: 38dvh; overflow-y: auto; }
+  body[data-aura-page="sofia"] .topbar-left h1 { font-size: 14px; }
+  body[data-aura-page="sofia"] .topbar-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  body[data-aura-page="sofia"] .topbar-actions .btn { justify-content: center; padding-inline: 8px; }
+  body[data-aura-page="sofia"] .topbar-stats { order: 2; }
+  body[data-aura-page="sofia"] .topbar-actions { order: 3; }
+  body[data-aura-page="sofia"] .main { width: 100%; }
+  body[data-aura-page="sofia"] .sidebar { border: 0; width: 100%; }
+  body[data-aura-page="sofia"] .sidebar-tabs { flex-wrap: nowrap; overflow-x: auto; }
+  body[data-aura-page="sofia"] .sidebar-tab { flex: 0 0 auto; min-height: 44px; padding-inline: 11px; }
+  body[data-aura-page="sofia"] .sidebar-filters { padding: 10px 12px; }
+  body[data-aura-page="sofia"] .conv-item { min-height: 70px; }
+  body[data-aura-page="sofia"] .center-panel,
+  body[data-aura-page="sofia"] .table-view { inset: 0; position: absolute; width: 100%; }
+  body[data-aura-page="sofia"][data-sofia-pane="list"] .center-panel,
+  body[data-aura-page="sofia"][data-sofia-pane="list"] .table-view { display: none !important; }
+  body[data-aura-page="sofia"][data-sofia-pane="chat"] .sidebar,
+  body[data-aura-page="sofia"][data-sofia-pane="chat"] .table-view { display: none !important; }
+  body[data-aura-page="sofia"][data-sofia-pane="chat"] .center-panel { display: flex !important; }
+  body[data-aura-page="sofia"][data-sofia-pane="table"] .sidebar,
+  body[data-aura-page="sofia"][data-sofia-pane="table"] .center-panel { display: none !important; }
+  body[data-aura-page="sofia"][data-sofia-pane="table"] .table-view.active { display: block !important; }
+  body[data-aura-page="sofia"] .chat-header { align-items: flex-start; flex-direction: column; }
+  body[data-aura-page="sofia"] .chat-header-left { width: 100%; }
+  body[data-aura-page="sofia"] .aura-chat-tools { justify-content: space-between; order: -1; width: 100%; }
+  body[data-aura-page="sofia"] .chat-msgs { max-height: none !important; padding: 12px; }
+  body[data-aura-page="sofia"] .msg { max-width: 88%; }
+  body[data-aura-page="sofia"] .chat-reply { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  body[data-aura-page="sofia"] .reply-input { min-height: 44px; }
+  body[data-aura-page="sofia"] .right-panel { max-width: 100%; position: fixed; top: 0; width: 100%; }
+  body[data-aura-page="sofia"] .db-label { width: 112px; }
+}
+
+/* Existing AURA modules: prevent fixed workspaces from pushing off-screen. */
+@media (max-width: 63.999rem) {
+  body[data-aura-page="design"] .agent-workspace,
+  body[data-aura-page="calendar"] .agent4-workspace-shell { height: auto; min-height: 100dvh; }
+  body[data-aura-page="design"] .agent-workspace-panel,
+  body[data-aura-page="calendar"] .agent4-config-panel { max-width: 100%; min-width: 0; width: 100%; }
+  body[data-aura-page="meta"] .main { padding-inline: 12px; }
+  body[data-aura-page="meta"] .period-tabs { max-width: 100%; overflow-x: auto; }
+  body[data-aura-page="meta"] .table-card { overflow-x: auto; }
+}

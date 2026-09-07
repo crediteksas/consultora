@@ -37,6 +37,7 @@ for(const engine of ['chromium','webkit'])test(`Gestión retira un lote y descar
     await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');
     await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
     await page.locator('[data-open="lote-alo"]').click();
+    await page.getByText('Otras acciones',{exact:true}).click();
     await page.locator('#removeImport').click();
     await page.getByRole('button',{name:'Eliminar este lote',exact:true}).waitFor();
     assert.match(await page.locator('dialog').textContent(),/ALO CREDIT - ARCHIVO ERRONEO/);

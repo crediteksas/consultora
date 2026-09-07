@@ -333,10 +333,12 @@
                 Consultar historial
               </button>
               <button id="showClients" class="btn secondary hidden">Clientes y cuentas</button>
+              <button id="showPreparation" class="btn secondary hidden">Preparación de pagos</button>
             </div>
           </section>
           <section id="cobrosContent" class="hidden" aria-label="Cobros de plataformas"></section>
           <section id="clientsContent" class="hidden" aria-label="Clientes y cuentas"></section>
+          <section id="preparationContent" class="hidden" aria-label="Preparación de pagos"></section>
           <div id="outgoingContent">
           <section class="toolbar card filters">
             <select id="platform">
@@ -555,6 +557,18 @@
     <script src="cobros-plataformas.js?v=1.0.0"></script>
     <script src="aliados-cuentas-domain.js"></script>
     <script src="tesoreria-clientes.js?v=1.1.0"></script>
-    <script src="aliados-tesoreria-app.js?v=1.6.0"></script>
+    <style>
+      .preparation-card {padding:16px 0;border-top:1px solid #dbe5ef;overflow-wrap:break-word;min-width:0}
+      .preparation-card h3 {margin:0 0 8px}
+      .preparation-card form {display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+      .preparation-card label {min-width:0;flex:1 1 220px}
+      .preparation-card select {width:100%;max-width:100%}
+      .preparation-card .actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+      #preparationContent .btn {white-space:normal;max-width:100%}
+      .actions:has(> #showPreparation) {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+      .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
+    </style>
+    <script src="tesoreria-preparacion.js?v=1.0.0"></script>
+    <script src="aliados-tesoreria-app.js?v=1.7.0"></script>
   </body>
 </html>

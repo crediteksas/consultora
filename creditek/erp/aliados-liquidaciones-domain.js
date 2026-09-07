@@ -376,9 +376,25 @@
     if (!session) return 'redirect';
     return permitido === true && operador ? 'allowed' : 'denied';
   }
+  // Vista previa exclusivamente de lectura: no asigna comercio ni altera importes.
+  function porcentajeConfigurado(operation, policies) {
+    if (!['propia','aliado'].includes(operation.tipo_establecimiento) || !operation.operation_at) return null;
+    const instant = new Date(operation.operation_at);
+    if (!Number.isFinite(instant.getTime())) return null;
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit' }).formatToParts(instant);
+    const part = type => parts.find(item => item.type === type).value;
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(operation.operation_at)
+      ? operation.operation_at : `${part('year')}-${part('month')}-${part('day')}`;
+    const matches = (policies || []).filter(policy => policy.plataforma === operation.plataforma &&
+      policy.tipo_establecimiento === operation.tipo_establecimiento && policy.estado === 'aprobada' &&
+      policy.vigente_desde && policy.vigente_desde <= day && (!policy.vigente_hasta || policy.vigente_hasta >= day));
+    if (matches.length !== 1 || matches[0].porcentaje == null) return null;
+    const percentage = Number(matches[0].porcentaje);
+    return Number.isFinite(percentage) && percentage >= 0 && percentage <= 1 ? percentage : null;
+  }
   function evento(tipo, liquidacionId, extras = {}) {
     if (!/^(liquidation|payment)\./.test(tipo)) throw new Error('evento_invalido');
     return { type: tipo, aggregate_type: tipo.startsWith('payment.') ? 'payment' : 'liquidation', aggregate_id: liquidacionId, occurred_at: new Date().toISOString(), data: { liquidation_id: liquidacionId, ...extras } };
   }
-  return { ESTADOS, TRANSICIONES, clave, dinero, dineroColombia, fecha, importarPayjoy, importarAlo, importarKrediya, clasificarEstablecimiento, resolverPolitica, normalizarOperacion, calcularOperaciones, resumirUnificado, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, evento };
+  return { ESTADOS, TRANSICIONES, clave, dinero, dineroColombia, fecha, importarPayjoy, importarAlo, importarKrediya, clasificarEstablecimiento, resolverPolitica, normalizarOperacion, calcularOperaciones, resumirUnificado, calcularAliados, resumir, generarPagos, agruparPorAliado, agruparPorEjecutivo, puedeTransicionar, resolverAccesoKora, porcentajeConfigurado, evento };
 });

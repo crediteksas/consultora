@@ -6,7 +6,7 @@
     const button=document.createElement('button');
     button.type='button';button.id='removeImport';button.className='btn secondary hidden';
     button.textContent='Eliminar importación';
-    document.getElementById('approve').parentElement.append(button);
+    (document.getElementById('batchSecondaryActions') || document.getElementById('approve').parentElement).append(button);
     let selected;
     button.onclick=async()=>{
       if(!canRemove(selected))return;

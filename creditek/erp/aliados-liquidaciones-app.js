@@ -82,12 +82,14 @@
     gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management'), onOperation:openInstructionOperation });
     $('liquidationsContent').classList.remove('hidden');
     await loadBatches();
+    const requestedBatch=new URLSearchParams(location.search).get('lote');
+    if(requestedBatch && batches.some(b=>b.id===requestedBatch))await openDetail(requestedBatch);
   }
   document.addEventListener('kora-sidebar-ready', enterFromKora);
   if (window.creditekSidebar?.sb) enterFromKora();
 
   async function loadBatches() {
-    let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,establishment_name,referencia,imei)').order('imported_at', { ascending: false });
+    let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,ejecutivo_id,establishment_name,referencia,imei)').order('imported_at', { ascending: false });
     if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
     const { data, error } = await query;
     if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; return; }
@@ -116,17 +118,17 @@
     importaciones?.setBatch(selected);
     const frozen = Boolean(selected.frozen_at);
     const krediya = selected.plataforma === 'krediya';
-    $('calculate').textContent = krediya ? 'Liquidar y enviar a aprobación' : 'Calcular';
-    $('calculate').classList.toggle('hidden', krediya && (frozen || selected.estado === 'revisada'));
+    $('calculate').textContent = ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
+    $('calculate').classList.toggle('hidden', frozen);
     $('approve').textContent = krediya ? 'Aprobar y pasar a pagos' : 'Aprobar liquidación';
     $('saveReview').classList.toggle('hidden', frozen || krediya);
-    $('validate').classList.toggle('hidden',krediya);
+    $('validate').classList.add('hidden');
     $('review').classList.toggle('hidden',krediya);
     document.querySelector('[data-tab="differences"]').classList.toggle('hidden',!krediya);
     $('currentState').textContent = UX.traducirEstado(selected.estado);
     $('validate').disabled = !['importada', 'con_novedades'].includes(selected.estado);
-    $('calculate').disabled = frozen || (krediya && krediyaMissingPayees > 0) || !(krediya ? ['importada','validada','con_novedades','calculada'] : ['validada','calculada']).includes(selected.estado);
-    $('calculate').title = krediya && krediyaMissingPayees > 0 ? 'Primero vincula los titulares indicados abajo.' : '';
+    $('calculate').disabled = frozen || !['importada','validada','con_novedades','calculada','revisada'].includes(selected.estado);
+    $('calculate').title = 'Calcula el lote; los datos administrativos pendientes se completan en Tesorería.';
     $('review').disabled = selected.estado !== 'calculada';
     $('approve').disabled = operator.capacidad !== 'aprobador' || selected.estado !== 'revisada';
     $('reject').disabled = operator.capacidad !== 'aprobador' || !['calculada', 'revisada'].includes(selected.estado);
@@ -152,7 +154,8 @@
       ]);
       return;
     }
-    $('metrics').innerHTML = metrics('Resumen general', [
+    const provisional=!selected.frozen_at && (selected.liquidation_operations||[]).some(o=>o.reconocida && o.tipo_establecimiento==='aliado' && !o.ejecutivo_id);
+    $('metrics').innerHTML = (provisional ? '<section class="card"><strong>Principal calculado · bonos y utilidad provisionales</strong><p>Falta asignar ejecutivo en Tesorería. Los importes mostrados solo incluyen bonos conocidos; no son utilidad final.</p></section>' : '') + metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
       ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad total del negocio', businessUtility(selected)], ['Total a girar', selected.total_pagar]
     ]) + metrics('Operaciones originadas en tiendas propias', [
@@ -186,7 +189,8 @@
       $('workflowError').textContent = 'No se pudieron consultar las novedades: ' + issueError.message;
       $('workflowError').classList.remove('hidden');
     } else if (openIssues?.length) {
-      const blocking = openIssues.filter((item) => item.bloquea_aprobacion);
+      const administrative = openIssues.filter((item) => ['comercio_no_reconocido','aliado_sin_ejecutivo','beneficiario_sin_identificacion','cuenta_bancaria_no_validada','bono_beneficiario_sin_cuenta'].includes(item.tipo));
+      const blocking = openIssues.filter((item) => item.bloquea_aprobacion && !administrative.includes(item));
       const followup = openIssues.filter((item) => !item.bloquea_aprobacion || KREDIYA_FOLLOWUP_TYPES.has(item.tipo));
       const groups = new Map();
       blocking.forEach((i) => {
@@ -195,7 +199,7 @@
           : i.tipo.replaceAll('_',' ');
         groups.set(key, (groups.get(key) || 0) + 1);
       });
-      $('workflowError').innerHTML = (blocking.length
+      $('workflowError').innerHTML = (administrative.length ? `<div class="batch-followup"><strong>${administrative.length} pendientes administrativos · no detienen el cálculo</strong><p>Liquida el lote. Completa cliente, ejecutivo y cuenta en Tesorería; el bono del ejecutivo y la utilidad serán provisionales si falta su asignación.</p><a class="btn secondary" href="aliados-tesoreria.html?vista=preparacion&amp;lote=${encodeURIComponent(id)}">Completar en Tesorería</a></div>` : '') + (blocking.length
         ? '<strong>Datos indispensables que sí detienen el lote</strong><ul>' + [...groups].map(([label,count]) => `<li>${count} operaciones: ${esc(label)}</li>`).join('') + '</ul><button type="button" class="btn secondary" id="openBatchIssues">Corregir datos indispensables</button>'
         : '') + (followup.length
         ? `<div class="batch-followup"><strong>${followup.length} anotaciones en seguimiento</strong><p>No requieren aprobación individual ni cambian PAGAMOS.</p><button class="btn secondary" id="openFollowupReport">Ver informe · Gestión y Gerencia</button></div>`
@@ -269,13 +273,19 @@
       renderKrediyaOperations(rows.map(row=>({...row,instruction_count:(instructions||[]).filter(i=>i.operation_id===row.id).length})), contexts || [], rowIssues || [], focusOperationId);
       return;
     }
-    renderStandardOperations(rows, rowIssues || []);
+    const policies = await sb.from('settlement_policy_versions').select('plataforma,tipo_establecimiento,porcentaje,estado,vigente_desde,vigente_hasta').eq('plataforma',selected.plataforma).eq('estado','aprobada');
+    if (!isCurrent()) return;
+    renderStandardOperations(rows.map(row=>({...row,
+      configured_percentage:policies.error ? null : D.porcentajeConfigurado(row,policies.data || []),
+      percentage_lookup_failed:Boolean(policies.error)
+    })), rowIssues || []);
   }
 
   function renderStandardOperations(rows, rowIssues) {
     document.querySelector('#detail > .table-wrap')?.classList.add('operations-cards');
     $('detailHead').innerHTML = '';
-    const metric = (label, value) => `<div><dt>${label}</dt><dd>${value == null ? '<span class="value-pending">No informado</span>' : `<strong class="operation-amount">${money(value)}</strong>`}</dd></div>`;
+    const pending = awaitingCalculation(selected);
+    const metric = (label, value) => `<div><dt>${label}</dt><dd>${value == null ? `<span class="value-pending">${pending && !['Crédito financiado','Inicial','Inicial registrada en KORA','Diferencia de inicial'].includes(label) ? 'Pendiente de calcular' : 'No informado'}</span>` : `<strong class="operation-amount">${money(value)}</strong>`}</dd></div>`;
     $('detailBody').innerHTML = rows.map((row) => {
       const isOwn = row.tipo_establecimiento === 'propia';
       const missingCommerce = Commerce.missing(row);
@@ -284,12 +294,16 @@
       const calculation = Array.isArray(row.liquidation_calculations) ? row.liquidation_calculations[0] : row.liquidation_calculations;
       const payField = isOwn && !future && operator.capacidad === 'aprobador' && !selected.frozen_at
         ? `<div class="actions"><input class="control" data-pagamos-input="${row.id}" inputmode="numeric" value="${Number(row.pagamos || 0)}" aria-label="Pagamos"><button class="btn secondary" data-save-pagamos="${row.id}">Guardar</button></div>`
-        : money(row.pagamos ?? calculation?.pagamos);
+        : (row.pagamos ?? calculation?.pagamos) == null ? '<span class="value-pending">Pendiente de calcular</span>' : money(row.pagamos ?? calculation?.pagamos);
       const commercial = row.valor_comercial ?? calculation?.explanation?.valor_comercial ?? calculation?.explanation?.base_liquidable;
-      const percent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
+      const appliedPercent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
+      const percent = appliedPercent ?? row.configured_percentage;
+      const percentLabel = appliedPercent == null ? 'Porcentaje configurado' : 'Porcentaje aplicado';
+      const percentText = percent == null ? row.percentage_lookup_failed ? 'No se pudo consultar' : missingCommerce ? 'Por definir: propia o aliado' : 'Sin regla vigente' : `${Number((Number(percent) * 100).toFixed(4))} %`;
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
-      const utility = row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
+      const commissionPending = !selected.frozen_at && !isOwn && (!row.ejecutivo_id || rowIssues.some(i=>i.operation_id===row.id && i.tipo==='aliado_sin_ejecutivo'));
+      const utility = commissionPending ? null : row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
       const actualIssues = (rowIssues || []).filter((i) => i.operation_id === row.id);
       const hasIssue = actualIssues.length || !row.reconocida || (isOwn && difference);
       const issueLabel = actualIssues.length ? [...new Set(actualIssues.map((i) => ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo) ? 'Revisar diferencia de precios' : i.tipo === 'krediya_bono_sin_configurar' ? 'Revisar vigencia de bonos' : i.descripcion || i.tipo))].join(' · ') : !row.reconocida ? 'Operación no reconocida' : isOwn && difference ? 'Diferencia por revisar' : 'Sin novedades';
@@ -298,7 +312,8 @@
       return `<tr><td><article class="krediya-operation standard-operation" aria-label="${esc(row.establishment_name || 'Comercio no informado')}">
         <header class="operation-heading"><div><h3>${esc(row.establishment_name || 'Comercio no informado')}</h3><p>${esc(row.referencia || row.modelo || 'Referencia no informada')} · ${missingCommerce ? 'Comercio pendiente de vincular' : isOwn ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">Liquidación: ${state(selected.estado)}</span></header>
         <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
-        <dl class="operation-values">${metric('Crédito financiado', row.monto_credito ?? row.monto_base)}${metric('Inicial', row.inicial)}${metric('Valor comercial', commercial)}<div><dt>Porcentaje aplicado</dt><dd><strong class="operation-amount">${percent == null ? 'No informado' : `${(Number(percent) * 100).toFixed(0)} %`}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
+        <dl class="operation-values">${metric('Crédito financiado', row.monto_credito ?? row.monto_base)}${metric('Inicial', row.inicial)}${metric('Valor comercial', commercial)}<div><dt>${percentLabel}</dt><dd><strong class="${percent == null ? 'value-pending' : 'operation-amount'}">${percentText}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
+        ${commissionPending ? '<p class="value-pending">Bonos conocidos mostrados; falta el bono del ejecutivo. Utilidad final pendiente de esa asignación en Tesorería.</p>' : ''}
         ${isOwn ? `<details class="operation-reconciliation"><summary>Conciliación de la inicial</summary><dl class="operation-values">${metric('Inicial registrada en KORA', row.inicial_kora)}${metric('Diferencia de inicial', row.diferencia_inicial)}</dl></details>` : ''}
         ${missingCommerce && awaitingCalculation(selected) ? `<aside class="operation-notice"><div><strong>Falta vincular el comercio</strong><p>Vincula una tienda existente o registra el nuevo local antes de completar su cuenta.</p></div><button class="btn secondary" data-commerce="${row.id}">Vincular comercio</button></aside>` : issues}
       </article></td></tr>`;
@@ -328,6 +343,7 @@
       const c = calc?.policy_snapshot?.motor === 'krediya_v2' ? calc.policy_snapshot : contextById.get(row.id) || {};
       // Persisted calculations remain authoritative; a live tariff is only a preview.
       const calculated = Boolean(calc);
+      const pendingExecutive=calculated && !selected.frozen_at && row.tipo_establecimiento==='aliado' && (c.bono_ejecutivo_pendiente || !row.ejecutivo_id);
       const pvp = calculated ? (calc.explanation?.valor_comercial ?? calc.explanation?.base_liquidable ?? row.valor_comercial) : c.pvp_recibido;
       const paid = calculated ? calc.pagamos : c.pagamos_guardado;
       const net = calculated ? calc.pago_aliado : paid == null || !row.reconocida ? null : Number(paid) - Number(row.inicial || 0);
@@ -346,10 +362,11 @@
         <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : calculated ? 'Calculada' : 'Sin calcular'}</span></header>
         <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Pago neto':'PAGAMOS − inicial · estimado',net)}</dl>
         <footer class="operation-footer"><p>${esc(note)}</p><div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
+        ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>
         <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>
         <dl class="operation-values">${metric(calculated ? 'PVP liquidado' : 'PVP recibido para liquidar', pvp)}${metric('PVP configurado de referencia', c.pvp_guardado)}${metric('PVP recibido de Krediya', c.pvp_recibido, 'No informado')}${metric('Pagamos antes de inicial', paid)}${metric('Inicial', row.inicial, 'No informada')}${metric(calculated ? 'Pago neto liquidado' : 'Pagamos − inicial · estimado', net, row.reconocida ? 'Pendiente de tarifa' : 'No aplica: operación excluida')}${metric('Crédito financiado', row.monto_credito ?? row.monto_base, 'No informado')}</dl>
-        <div class="operation-totals"><span>Bonos ${calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(calc.policy_snapshot?.provision, 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated ? calc.utilidad_creditek : null, 'Pendiente de calcular')}</span></div>
+        <div class="operation-totals"><span>Bonos ${pendingExecutive ? 'conocidos' : calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(pendingExecutive ? null : calc.policy_snapshot?.provision, pendingExecutive ? 'Pendiente de bono' : 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated && !pendingExecutive ? calc.utilidad_creditek : null, pendingExecutive ? 'Pendiente de bono' : 'Pendiente de calcular')}</span></div>
         <p>${priceIssue ? 'La diferencia queda en el informe consolidado de 7 días. ' : ''}${!calculated && paid != null && row.reconocida ? 'El giro es estimado; no es un pago autorizado.' : ''}</p></details>
       </article></td></tr>`;
     }).join('') || '<tr><td>Sin operaciones.</td></tr>';
@@ -590,12 +607,18 @@
     $('priceDecision').focus();
   }
   async function stateRpc(next, comment = null) {
-    const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: selected.id, p_estado: next, p_comentario: comment });
+    const batchId = selected.id;
+    const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: batchId, p_estado: next, p_comentario: comment });
+    if (selected?.id !== batchId) return;
     if (error) {
       const approvalBlocked = next === 'aprobada' && /novedades.*bloquean/i.test(error.message || '');
-      $('workflowError').textContent = approvalBlocked
-        ? 'No se puede aprobar: existen novedades bloqueantes. Revisa la pestaña Novedades y corrige o justifica cada operación antes de volver a aprobar.'
+      await openDetail(selected.id);
+      if (selected?.id !== batchId) return;
+      const errorMessage = document.createElement('p');
+      errorMessage.textContent = approvalBlocked
+        ? 'No se puede aprobar: existen novedades bloqueantes. Revisa el detalle de Novedades.'
         : (error.message || 'No fue posible completar la acción.');
+      $('workflowError').prepend(errorMessage);
       $('workflowError').classList.remove('hidden');
       if (approvalBlocked) await loadTab('incidents');
       return;
@@ -636,11 +659,11 @@
     $('calculate').disabled=true;
     let calculationError;
     try {
-      if (!krediya) {const bonuses=await sb.rpc('aliados_calcular_bonos_ejecutivos',{p_liquidation_id:batchId});if(bonuses.error)throw bonuses.error;}
+      // El servidor prepara catálogo, bonos y cálculo en una sola transacción.
       const {error}=await sb.rpc(krediya?'krediya_calcular_y_enviar_aprobacion':'aliados_calcular_liquidacion',{p_id:batchId});
       if(error)throw error;
       await loadBatches();await openDetail(batchId);
-      if(krediya){await loadTab('payments');$('detail').scrollIntoView({block:'start'});}
+      if(krediya && selected.estado==='revisada'){await loadTab('payments');$('detail').scrollIntoView({block:'start'});}
     } catch(error) {calculationError=error;}
     finally {updateActions();if(calculationError){$('workflowError').textContent=calculationError.message;$('workflowError').classList.remove('hidden');}}
   };

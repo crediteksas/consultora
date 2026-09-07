@@ -151,3 +151,22 @@ test('resuelve acceso con la sesión única de KORA antes de evaluar la capacida
   assert.equal(domain.resolverAccesoKora({ session:{ user:{ id:'u1' } }, permitido:false, operador:null }),'denied');
   assert.equal(domain.resolverAccesoKora({ session:{ user:{ id:'u1' } }, permitido:true, operador:{ capacidad:'revisor' } }),'allowed');
 });
+test('porcentaje configurado: lectura por plataforma, clasificación y fecha de Bogotá',()=>{
+  const policies=[
+    {plataforma:'alo',tipo_establecimiento:'propia',estado:'aprobada',porcentaje:'0.76',vigente_desde:'2026-08-05',vigente_hasta:null},
+    {plataforma:'alo',tipo_establecimiento:'aliado',estado:'aprobada',porcentaje:'0.77',vigente_desde:'2026-08-05',vigente_hasta:null}
+  ];
+  const op={plataforma:'alo',tipo_establecimiento:'propia',operation_at:'2026-09-01T02:00:00Z'};
+  const api=createRequire(import.meta.url)('../../creditek/erp/aliados-liquidaciones-domain.js');
+  assert.equal(api.porcentajeConfigurado(op,policies),.76);
+  assert.equal(api.porcentajeConfigurado({...op,tipo_establecimiento:'aliado'},policies),.77);
+  for(const change of [{tipo_establecimiento:'no_reconocido'},{plataforma:'krediya'},{operation_at:null},{operation_at:'fecha inválida'}])assert.equal(api.porcentajeConfigurado({...op,...change},policies),null);
+  assert.equal(api.porcentajeConfigurado(op,[...policies,policies[0]]),null);
+  assert.equal(api.porcentajeConfigurado(op,policies.map(p=>({...p,estado:'borrador'}))),null);
+  assert.equal(api.porcentajeConfigurado({...op,operation_at:'2026-08-05T02:00:00Z'},policies),null);
+  assert.equal(api.porcentajeConfigurado({...op,operation_at:'2026-08-05'},policies),.76);
+  assert.equal(api.porcentajeConfigurado(op,[{...policies[0],vigente_hasta:'2026-08-30'}]),null);
+  assert.equal(api.porcentajeConfigurado(op,[{...policies[0],porcentaje:null}]),null);
+  assert.equal(api.porcentajeConfigurado(op,[{...policies[0],porcentaje:1.5}]),null);
+  assert.equal(api.porcentajeConfigurado(op,[{...policies[0],porcentaje:0}]),0);
+});

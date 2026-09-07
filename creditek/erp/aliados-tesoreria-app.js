@@ -53,6 +53,7 @@
       ["otro_movimiento_autorizado", "Otro movimiento autorizado"],
     ],
   };
+  let preparation;
   let sb,
     profile,
     data = {},
@@ -368,13 +369,15 @@
   function render() {
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
-    $("#outgoingContent").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
-    $("#paymentReport").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
+    $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");
+    $("#showPreparation").classList.toggle("active",treasuryView==="preparation");
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
+    $("#paymentReport").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
     $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(["cobros","clients"].includes(treasuryView))return;
+    if(["cobros","clients","preparation"].includes(treasuryView))return;
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
       out = data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0,
       ally = data.payments.filter(
@@ -987,12 +990,17 @@
       const clientAccess = await sb.rpc('tiene_capacidad_aliados', {p_capacidad:'revisor'});
       if (!clientAccess.error && clientAccess.data === true) {
         clients = window.CreditekTesoreriaClientes.create({sb});
+        preparation = window.CreditekTesoreriaPreparacion.create({sb});
+        $("#showPreparation").classList.remove("hidden");
         $("#showClients").classList.remove("hidden");
       }
     } catch (error) {
       console.error('No se pudo comprobar el acceso al directorio bancario', error);
     }
     const route = new URLSearchParams(location.search);
+    if (route.get('vista') === 'preparacion' && preparation) {
+      treasuryView='preparation';render();await preparation.mount($("#preparationContent"));return;
+    }
     if (route.get('vista') === 'clientes' && clients) {
       treasuryView='clients';render();await clients.mount($("#clientsContent"));
       if(route.get('origen'))clients.openOrigin(route.get('origen'));
@@ -1031,6 +1039,7 @@
     try {
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
+      else if (treasuryView === 'preparation') await preparation?.mount($("#preparationContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1045,6 +1054,10 @@
     treasuryView = 'clients';
     render();
     await clients.mount($("#clientsContent"));
+  };
+  $("#showPreparation").onclick = async () => {
+    if(!preparation)return;
+    treasuryView='preparation';render();await preparation.mount($("#preparationContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   async function showPaymentView(view) {

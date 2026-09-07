@@ -97,7 +97,7 @@ test('abrir una operación filtra el informe pero permite recuperar todo el lote
 test('integración versionada elimina prompt de novedad y conserva aprobación explícita',()=>{
   const page=fs.readFileSync('creditek/erp/aliados-liquidaciones.html','utf8'),app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
   assert.match(page,/krediya-review-ui\.js\?v=1\.0\.0/);assert.match(page,/Gestión y Gerencia/);
-  assert.doesNotMatch(app,/prompt\('Describe la novedad/);assert.match(app,/Liquidar y enviar a aprobación/);
+  assert.doesNotMatch(app,/prompt\('Describe la novedad/);assert.match(app,/Liquidar lote/);
   assert.match(app,/Aprobar y pasar a pagos/);assert.match(app,/if \(confirm\(message\)\) stateRpc\('aprobada'\)/);
   assert.match(app,/selected\?\.plataforma==='krediya' && next==='aprobada'/);
   assert.match(app,/slice\(page\*8,\(page\+1\)\*8\)/);

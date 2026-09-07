@@ -21,10 +21,11 @@ for(const engine of ['chromium','webkit'])test(`vinculación de comercios con pe
       const origins=[{codigo:'CK11',nombre:'Creditel Coveñas',ciudad:'Coveñas',tipo:'propia',activo:true}];
       window.creditekSidebar={perfil:{rol:'auditoria'},sb:{auth:{getSession:async()=>({data:{session:{user:{id:'gestion'}}}})},
         from(table){let single=false,filters=[];const q={select(){return q;},eq(k,v){filters.push([k,v]);return q;},order(){return q;},range(){return q;},maybeSingle(){single=true;return q;},then(ok,bad){
-          let rows=table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?[{id:'alo',plataforma:'alo',estado:'con_novedades',fecha_corte:'2026-09-06',imported_at:'2026-09-07T15:30:22Z',liquidation_operations:operations}]:table==='liquidation_operations'?operations:table==='liquidation_incidents'?incidents:table==='origenes'?origins:table==='ejecutivos'?[{id:'ejecutivo',nombre:'Ejecutivo de prueba',activo:true}]:[];
+          let rows=table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?[{id:'alo',plataforma:'alo',estado:'con_novedades',fecha_corte:'2026-09-06',imported_at:'2026-09-07T15:30:22Z',liquidation_operations:operations}]:table==='liquidation_operations'?operations:table==='liquidation_incidents'?incidents:table==='origenes'?origins:table==='ejecutivos'?[{id:'ejecutivo',nombre:'Ejecutivo de prueba',activo:true}]:table==='settlement_policy_versions'?[{plataforma:'alo',tipo_establecimiento:'propia',estado:'aprobada',porcentaje:.76,vigente_desde:'2026-08-05'}]:[];
           rows=rows.filter(r=>filters.every(([k,v])=>r[k]===undefined||r[k]===v));return Promise.resolve({data:single?rows[0]:rows,error:null}).then(ok,bad);
         }};return q;},
         async rpc(name,params){window.testCalls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true};
+          if(name==='aliados_cambiar_estado')return {error:{message:'Resuelva las novedades antes de validar'}};
           if(name!=='aliados_vincular_comercio')throw Error('RPC no esperado: '+name);
           if(window.testFailure)return {error:{message:'El lote ya pasó a cálculo. Actualiza.'}};
           const op=operations.find(o=>o.id===params.p_operation_id),isNew=!!params.p_nuevo;
@@ -37,7 +38,16 @@ for(const engine of ['chromium','webkit'])test(`vinculación de comercios con pe
     await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');
     await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
     await page.locator('[data-open="alo"]').click();
-    await page.waitForFunction(()=>document.getElementById('workflowError').textContent.includes('3 operaciones'));
+    await page.waitForFunction(()=>document.getElementById('workflowError').textContent.includes('3 pendientes administrativos'));
+    assert.match(await page.locator('#detailBody').textContent(),/Porcentaje configurado/);
+    assert.match(await page.locator('#detailBody').textContent(),/76 %/);
+    assert.match(await page.locator('#detailBody').textContent(),/Por definir: propia o aliado/);
+    assert.equal(await page.locator('#validate').isVisible(),false);
+    assert.equal(await page.locator('#calculate').isEnabled(),true);
+    assert.match(await page.locator('#workflowError').textContent(),/3 pendientes administrativos/);
+    assert.equal(await page.getByRole('link',{name:'Completar en Tesorería'}).isVisible(),true);
+    assert.equal(await page.locator('#addBankAccount').isVisible(),false);
+    assert.equal(await page.locator('#approve').isDisabled(),true);
     assert.equal(await page.locator('#batches tr td').nth(4).textContent(),'6');
     await page.locator('[data-tab="incidents"]').click();assert.equal(await page.locator('#pendingIssues').textContent(),'Pendientes (3)');
     await page.locator('[data-operation="op1"]').click();

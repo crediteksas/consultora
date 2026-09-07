@@ -185,7 +185,7 @@ test('un cálculo real conserva ceros autoritativos aunque la tarifa y la decisi
     pagamos: 0, pago_aliado: 0, total_bonos: 0, utilidad_creditek: 0
   };
   for (const liquidation_calculations of [calculation, [calculation]]) {
-    const { html } = operations([{ ...row, valor_comercial: 999999, liquidation_calculations }], [
+    const { html } = operations([{ ...row, ejecutivo_id: 'ejecutivo-configurado', valor_comercial: 999999, liquidation_calculations }], [
       { ...tariff, decision: { precio_venta: 700000, pagamos: 525000 } }
     ]);
     for (const label of ['PVP liquidado', 'Pagamos antes de inicial', 'Pago neto liquidado']) {
@@ -196,6 +196,20 @@ test('un cálculo real conserva ceros autoritativos aunque la tarifa y la decisi
     assert.match(html, />Calculada<\/span>/);
     assert.doesNotMatch(html, /COP (?:484800|700000|525000|999999)\b/);
     assert.doesNotMatch(html, /El giro es estimado/);
+  }
+});
+
+test('un bono ejecutivo pendiente no presenta provisión ni utilidad como definitivas', () => {
+  for (const ejecutivo_id of [null, 'ejecutivo-con-datos-incompletos']) {
+    const { html } = operations([{ ...row, ejecutivo_id, liquidation_calculations: {
+      pagamos: 525000, pago_aliado: 454850, total_bonos: 20000, utilidad_creditek: 90000,
+      policy_snapshot: { motor: 'krediya_v2', bono_ejecutivo_pendiente: true, provision: 35000 }
+    } }], []);
+    assert.match(metricHtml(html, 'Pago neto liquidado'), /COP 454850/);
+    assert.match(html, /Bonos conocidos: <strong[^>]*>COP 20000<\/strong>/);
+    assert.match(html, /Utilidad: <span[^>]*>Pendiente de bono<\/span>/);
+    assert.match(html, /Provisión: <span[^>]*>Pendiente de bono<\/span>/);
+    assert.doesNotMatch(html, /COP (?:90000|35000)\b/);
   }
 });
 

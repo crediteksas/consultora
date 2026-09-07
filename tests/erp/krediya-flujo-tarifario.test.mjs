@@ -54,7 +54,7 @@ test('abrir un detalle ya no sincroniza ni modifica precios',()=>{
 test('clic Krediya calcula y muestra las órdenes; no aprueba ni paga automáticamente',async()=>{
  const nodes=new Map();const calls=[];
  const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:'',scrollIntoView(){}});return nodes.get(id);};
- const context={$ ,selected:{id:'lote',plataforma:'krediya'},sb:{rpc:async(...a)=>{calls.push(a);return {error:null};}},loadBatches:async()=>{},openDetail:async()=>{},loadTab:async name=>calls.push(['tab',name]),updateActions:()=>{}};
+ const context={$ ,selected:{id:'lote',plataforma:'krediya',estado:'revisada'},sb:{rpc:async(...a)=>{calls.push(a);return {error:null};}},loadBatches:async()=>{},openDetail:async()=>{},loadTab:async name=>calls.push(['tab',name]),updateActions:()=>{}};
  vm.runInNewContext(app.slice(app.indexOf("  $('calculate').onclick"),app.indexOf("  $('review').onclick")),context);
  await $('calculate').onclick();
  assert.equal(calls.length,2);assert.equal(calls[0][0],'krediya_calcular_y_enviar_aprobacion');assert.deepEqual(calls[1],['tab','payments']);

@@ -19,7 +19,7 @@
   }
   function diferenciasRows(rows) {
     return [['Referencia','Comercio','IMEI','Fecha venta','PVP configurado','PVP Krediya','Diferencia PVP','PAGAMOS pactado','Inicial','Giro al aliado','Bonos','Utilidad neta','Impacto neto','Responsables','Estado','Última gestión','Soporte','Gasto financiero','Provisión'],
-      ...rows.map(r=>{const c=r.contexto||{},g=last(r);return [c.referencia,c.tienda,c.imei,c.fecha,numeric(c.pvp_guardado),numeric(c.pvp_liquidado),numeric(c.impacto_bruto),numeric(c.pagamos),numeric(c.inicial),giro(c),numeric(c.bonos),numeric(c.utilidad_neta),numeric(c.impacto_neto),'Gestión y Gerencia',r.preliminar?'Preliminar · sin liquidar':r.estado,g?.comentario||'',g?.soporte||'',numeric(c.gasto_financiero),numeric(c.provision)];})];
+      ...rows.map(r=>{const c=r.contexto||{},g=last(r);return [c.referencia,c.tienda,c.imei,c.fecha,numeric(c.pvp_guardado),numeric(c.pvp_liquidado),numeric(c.impacto_bruto),numeric(c.pagamos),numeric(c.inicial),giro(c),c.bono_ejecutivo_pendiente?'Parcial: falta ejecutivo':numeric(c.bonos),c.bono_ejecutivo_pendiente?null:numeric(c.utilidad_neta),numeric(c.impacto_neto),'Gestión y Gerencia',r.preliminar?'Preliminar · sin liquidar':r.estado,g?.comentario||'',g?.soporte||'',numeric(c.gasto_financiero),c.bono_ejecutivo_pendiente?null:numeric(c.provision)];})];
   }
   function last(row) {return [...(row.krediya_diferencias_gestiones||[])].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];}
   function download(rows,name,sheetName) {
@@ -103,7 +103,7 @@
         ${filtered.slice(page*8,(page+1)*8).map(r=>{
           const c=r.contexto||{},g=last(r);
           const fields=[['PVP configurado',c.pvp_guardado],['PVP Krediya',c.pvp_liquidado],['Diferencia',c.impacto_bruto],['PAGAMOS pactado',c.pagamos]];
-          const extra=[['Inicial',c.inicial],['PAGAMOS − inicial',giro(c)],['Bonos',c.bonos],['Gasto financiero',c.gasto_financiero],['Provisión',c.provision],['Utilidad neta',c.utilidad_neta],['Impacto neto',c.impacto_neto]];
+          const extra=[['Inicial',c.inicial],['PAGAMOS − inicial',giro(c)],['Bonos',c.bono_ejecutivo_pendiente?null:c.bonos],['Gasto financiero',c.gasto_financiero],['Provisión',c.bono_ejecutivo_pendiente?null:c.provision],['Utilidad neta',c.bono_ejecutivo_pendiente?null:c.utilidad_neta],['Impacto neto',c.impacto_neto]];
           return `<article class="difference-card">
             <header><div><h4>${esc(c.referencia||'Referencia no informada')}</h4><p>${esc(c.tienda||'Comercio no informado')} · IMEI ${esc(c.imei||'No informado')} · Venta ${esc(c.fecha||'No informada')}</p></div><span class="difference-status">${esc(states[r.estado]||'Estado no informado')}</span></header>
             <dl>${fields.map(([label,value])=>`<div><dt>${label}</dt><dd>${amount(value)}</dd></div>`).join('')}</dl>

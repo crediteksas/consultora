@@ -61,3 +61,11 @@ body.liquidations-view .kora-extension{white-space:nowrap}
   #liquidationsContent .operation-footer .btn{white-space:normal;max-width:100%}
   #liquidationsContent .filters>*{width:100%;min-width:0}
 }
+/* Las consultas no comparten barra con mutaciones ni acciones destructivas. */
+#detail .batch-workflow{margin-top:24px;min-width:0}
+#detail .workflow-group{min-width:0;margin-top:12px}
+#detail .workflow-group h3,#detail .workflow-label{font-size:13px;margin:0 0 8px}
+#detail .workflow-group summary{cursor:pointer;padding:12px 0;font-size:13px;min-height:44px;box-sizing:border-box}
+#detail .workflow-group .actions{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+#detail .workflow-group .btn{max-width:100%;white-space:normal;word-break:normal;overflow-wrap:normal}
+@media(max-width:600px){#detail .workflow-group .actions{display:grid;grid-template-columns:minmax(0,1fr)}#detail .workflow-group .btn{width:100%}}

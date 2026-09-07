@@ -40,6 +40,25 @@ test('cero se conserva y un dato ausente no se inventa',()=>{
   const result=render({...row,bonos_aplicados:0,utilidad_creditek:null});
   assert.match(result.html,/Bonos<\/dt><dd><strong[^>]*>\$ 0/); assert.match(result.html,/Utilidad<\/dt><dd><span[^>]*>No informado/);
 });
+test('antes de calcular muestra porcentaje configurado sin simular Pagamos cero',()=>{
+  const result=render({...row,porcentaje_politica:null,pagamos:null,configured_percentage:.77});
+  assert.match(result.html,/Porcentaje configurado/);assert.match(result.html,/77 %/);
+  assert.match(result.html,/Pagamos<\/dt><dd[^>]*><span[^>]*>Pendiente de calcular/);
+  const unknown=render({...row,tipo_establecimiento:'no_reconocido',porcentaje_politica:null,configured_percentage:null});
+  assert.match(unknown.html,/Por definir: propia o aliado/);
+  assert.doesNotMatch(unknown.html,/76 %|77 %/);
+  assert.match(render({...row,configured_percentage:.77}).html,/76 %/);
+});
+test('consultas y acciones del lote tienen contenedores separados',()=>{
+  const html=fs.readFileSync('creditek/erp/aliados-liquidaciones.html','utf8');
+  const querySection=html.match(/aria-label="Consultas e informes"[^]*?<\/div>/)?.[0];
+  assert.ok(querySection);assert.doesNotMatch(querySection,/id="(?:approve|validate|calculate|addBankAccount|removeImport)"/);
+  assert.match(html,/<details[^]*?id="batchSecondaryActions"/);
+  const actions=html.match(/aria-label="Acciones del lote en orden"[^]*?<\/div>/)?.[0];
+  assert.ok(actions.indexOf('id="validate"')<actions.indexOf('id="calculate"'));
+  assert.ok(actions.indexOf('id="calculate"')<actions.indexOf('id="review"'));
+  assert.ok(actions.indexOf('id="review"')<actions.indexOf('id="approve"'));
+});
 test('solo conserva la edición histórica de Pagamos para aprobador',()=>{
   assert.doesNotMatch(render(row).html,/data-save-pagamos/);
   assert.match(render({...row,operation_at:'2026-08-01'},[],'aprobador').html,/data-save-pagamos/);

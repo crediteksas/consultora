@@ -10,6 +10,7 @@
   let profile;
   let gestionKrediya;
   let tarifarioKrediya;
+  let importaciones;
   let batches = [];
   let selected;
   let activeTab = 'operations';
@@ -65,6 +66,11 @@
       return;
     }
     operator = currentOperator;
+    importaciones = CreditekLiquidacionesImportaciones.create({sb,dialog:Review.dialog,esc,platformName,onRemoved:async(id)=>{
+      if(selected?.id===id){selected=null;activeTabRequest=null;$('detail').classList.add('hidden');}
+      await loadBatches();
+      $('lastUpdated').textContent='Importación eliminada con respaldo de auditoría. Puedes cargar el archivo corregido.';
+    }});
     tarifarioKrediya = CreditekKrediyaTarifario.create({sb,money});
     $('openKrediyaTariff').onclick = () => tarifarioKrediya.openTariff();
     gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management'), onOperation:openInstructionOperation });
@@ -101,6 +107,7 @@
   }
 
   function updateActions() {
+    importaciones?.setBatch(selected);
     const frozen = Boolean(selected.frozen_at);
     const krediya = selected.plataforma === 'krediya';
     $('calculate').textContent = krediya ? 'Liquidar y enviar a aprobación' : 'Calcular';
@@ -656,7 +663,7 @@
   $('showHistory').onclick = () => setListMode('history');
 
   $('newImport').onclick = () => $('importModal').classList.add('show');
-  $('closeImport').onclick = () => $('importModal').classList.remove('show');
+  $('closeImport').onclick = () => { resetImportPreview(true); $('importModal').classList.remove('show'); };
   async function establishments() { const [{ data: origins }, { data: executives }] = await Promise.all([sb.from('origenes').select('codigo,nombre,tipo,ejecutivo_id,aliases').eq('activo', true), sb.from('ejecutivos').select('id,nombre').eq('activo', true)]); return (origins || []).map((origin) => ({ ...origin, aliases: [...(origin.aliases || []), origin.codigo], ejecutivo: (executives || []).find((item) => item.id === origin.ejecutivo_id) || null })); }
   $('validateImport').onclick = async () => { try { const file = $('file').files[0]; if (!file) throw new Error('Selecciona un archivo Excel.'); fileBuffer = await file.arrayBuffer(); const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true }); const platform = $('importPlatform').value; const sheet = platform === 'payjoy' ? (workbook.Sheets.Transacciones || workbook.Sheets[workbook.SheetNames[1]]) : (workbook.Sheets.Worksheet || workbook.Sheets[workbook.SheetNames[0]]); const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true }); preview = platform === 'payjoy' ? D.importarPayjoy(rows, await establishments()) : D.importarAlo(rows, await establishments()); $('preview').classList.remove('hidden'); $('previewMetrics').innerHTML = `<div class="metric"><small>Filas fuente</small><strong>${preview.filasOriginales.length}</strong></div><div class="metric"><small>Operaciones</small><strong>${preview.operaciones.length}</strong></div><div class="metric"><small>Novedades</small><strong>${preview.incidencias.length}</strong></div>`; $('previewIssues').innerHTML = preview.incidencias.map((item) => `<tr><td>${esc(UX.traducirEstado(item.tipo))}</td><td>${esc(item.sourceKey)}</td></tr>`).join('') || '<tr><td colspan="2">Sin novedades estructurales.</td></tr>'; $('saveImport').disabled = false; $('importError').textContent = ''; } catch (error) { $('importError').textContent = error.message; $('saveImport').disabled = true; } };
   async function sha256(buffer) { const digest = await crypto.subtle.digest('SHA-256', buffer); return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
@@ -690,5 +697,47 @@
       $('importError').textContent = error.message;
       $('saveImport').disabled = true;
     }
+  };
+  // Una vista previa nunca puede guardarse con otro archivo, plataforma o corte.
+  let importRevision=0, validatedRevision=-1, importBusy=false;
+  function resetImportPreview(clearFile=false){
+    importRevision++;validatedRevision=-1;preview=null;fileBuffer=null;
+    $('preview').classList.add('hidden');$('previewMetrics').innerHTML='';$('previewIssues').innerHTML='';
+    $('saveImport').disabled=true;$('importError').textContent='';
+    if(clearFile)$('file').value='';
+  }
+  const discard=document.createElement('button');
+  discard.type='button';discard.id='discardImportFile';discard.className='btn secondary';discard.textContent='Descartar archivo';
+  $('validateImport').before(discard);discard.onclick=()=>{if(!importBusy)resetImportPreview(true);};
+  const importInputs=['file','importPlatform','cutoff','periodFrom','periodTo'];
+  importInputs.forEach(id=>$(id).addEventListener('change',()=>resetImportPreview()));
+  function lockImport(busy){
+    importBusy=busy;
+    [...importInputs,'validateImport','discardImportFile','closeImport'].forEach(id=>$(id).disabled=busy);
+  }
+  const validateCurrent=$('validateImport').onclick;
+  $('validateImport').onclick=async()=>{
+    if(importBusy)return;
+    resetImportPreview();const revision=importRevision;lockImport(true);
+    try{
+      await validateCurrent();
+      if(importRevision!==revision){resetImportPreview();return;}
+      if(!preview?.operaciones?.length){
+        $('saveImport').disabled=true;
+        if(!$('importError').textContent)$('importError').textContent='El archivo no contiene operaciones para importar. Descártalo y selecciona el correcto.';
+        return;
+      }
+      validatedRevision=revision;
+    }finally{lockImport(false);}
+  };
+  const saveCurrent=$('saveImport').onclick;
+  $('saveImport').onclick=async()=>{
+    if(importBusy)return;
+    if(validatedRevision!==importRevision || !preview?.operaciones?.length || !fileBuffer){
+      $('importError').textContent='Valida el archivo seleccionado antes de guardar.';$('saveImport').disabled=true;return;
+    }
+    lockImport(true);
+    try{await saveCurrent();if(!$('importModal').classList.contains('show'))resetImportPreview(true);}
+    finally{lockImport(false);}
   };
 }());

@@ -1,0 +1,10 @@
+.commerce-editor { min-width:0; }
+.commerce-editor p { overflow-wrap:break-word; }
+.commerce-editor label { display:grid; gap:6px; margin-block:12px; min-width:0; }
+.commerce-editor fieldset { border:1px solid var(--border,#dce5ef); border-radius:12px; padding:12px; margin:16px 0; min-width:0; }
+.commerce-editor fieldset[hidden] { display:none; }
+.commerce-editor .control { box-sizing:border-box; min-width:0; max-width:100%; width:100%; font:inherit; }
+.commerce-editor .commerce-confirm { display:flex; align-items:flex-start; gap:10px; }
+.commerce-editor .commerce-confirm input { width:18px; height:18px; flex:none; margin-top:3px; }
+.commerce-editor [role=alert] { color:#b42318; }
+.commerce-editor .btn { white-space:normal; max-width:100%; }

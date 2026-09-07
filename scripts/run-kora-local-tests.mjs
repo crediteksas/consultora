@@ -13,6 +13,7 @@ const responsive = [
 // porque arrastra fallos preexistentes sin relación con este pipeline;
 // se incluye puntualmente el test de regresión de cada fix ya validado.
 const erp = [
+  'tests/erp/liquidaciones-comercios.test.mjs',
   'tests/erp/liquidaciones-eliminar-importacion.test.mjs',
   'tests/erp/caja-arrastre-retroactivos.test.mjs',
   'tests/erp/tesoreria-clientes.test.mjs',

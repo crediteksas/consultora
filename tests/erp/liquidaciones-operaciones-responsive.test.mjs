@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
+const Commerce=createRequire(import.meta.url)('../../creditek/erp/liquidaciones-comercios.js');
 const app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
 const css=fs.readFileSync('creditek/erp/liquidaciones-layout.css','utf8');
 function render(row, issues=[], capability='revisor') {
@@ -9,6 +11,7 @@ function render(row, issues=[], capability='revisor') {
   const buttons=[], calls=[];
   const context={ $:id=>nodes[id], money:v=>`$ ${Number(v).toLocaleString('es-CO')}`, esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'), state:v=>`<span class="badge">${v}</span>`, operator:{capacidad:capability}, selected:{estado:'programada',frozen_at:null}, loadTab:(...args)=>calls.push(args), savePagamos:()=>{}, document:{querySelector:()=>({classList:{add(){}}}),querySelectorAll:selector=>selector==='[data-manage-issue]'?buttons:[]} };
   buttons.push({dataset:{manageIssue:row.id}});
+  context.Commerce=Commerce;context.awaitingCalculation=()=>false;
   vm.runInNewContext(app.slice(app.indexOf('  function renderStandardOperations('),app.indexOf('  function renderKrediyaOperations(')),context);
   context.renderStandardOperations([row],issues);
   return {html:nodes.detailBody.innerHTML,head:nodes.detailHead.innerHTML,buttons,calls};

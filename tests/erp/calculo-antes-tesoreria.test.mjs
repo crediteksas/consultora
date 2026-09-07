@@ -8,6 +8,8 @@ const migration=await read('../../supabase/migrations/20260907173853_liquidacion
 const fixture=await read('./fixtures/calculo-antes-tesoreria.sql');
 const old=await read('../../supabase/migrations/20260907155104_liquidaciones_vincular_comercio.sql');
 const unified=await read('../../supabase/migrations/20260906205155_clientes_unificados_y_pagos_seguros.sql');
+const retailMigration=await read('../../supabase/migrations/20260907191759_liquidaciones_asignar_retail_desde_novedades.sql');
+const ownResolver=await read('../../supabase/migrations/20260904015430_controlar_imei_solo_tiendas_con_inventario.sql');
 const actor='00000000-0000-4000-8000-000000000001';let db,batch;
 before(async()=>{
  db=await PGlite.create({extensions:{unaccent}});
@@ -17,7 +19,7 @@ before(async()=>{
  select set_config('request.jwt.claim.sub','${actor}',false);`);
  await db.exec('create extension unaccent');
  await db.exec(fixture);
- await db.exec(`create table liquidation_approvals(liquidation_id uuid,etapa text,decision text);
+ await db.exec(`create table liquidation_approvals(liquidation_id uuid,etapa text,decision text,comentario text);
  alter table origenes add primary key(codigo);alter table aliados add primary key(id);alter table aliados_sedes add unique(origen_codigo);
  alter table liquidation_calculations add unique(operation_id);alter table payment_orders add unique(liquidation_id,beneficiary_id);
  alter table liquidation_bonuses add primary key(id);alter table payment_orders add primary key(id);
@@ -35,6 +37,9 @@ before(async()=>{
  await db.exec(old.slice(old.indexOf('create function kora_private.clave_comercio'),old.indexOf('create function kora_private.vincular_comercio_liquidacion')));
  await db.exec(unified.slice(unified.indexOf('create or replace function public.vincular_ficha_nuevo_comercio()'),unified.indexOf('create or replace function public.tesoreria_guardar_ficha_cliente(')));
  await db.exec(migration);
+ await db.exec(ownResolver.slice(ownResolver.indexOf('create or replace function public.aliados_resolver_operaciones_propias'),ownResolver.indexOf('revoke',ownResolver.indexOf('create or replace function public.aliados_resolver_operaciones_propias'))));
+ await db.exec('alter table liquidation_incidents add unique(liquidation_id,operation_id,tipo)');
+ await db.exec(retailMigration);
  batch=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('alo','con_novedades','2026-09-06') returning id")).rows[0].id;
  const data=[['CREDITEK. CIENAGA DE ORO 2','CK-09','propia',741200,185300],['Artesanias eileen','artesanias','aliado',630000,150000],['Lachescel soluciones',null,'no_reconocido',665000,35000],['FULL ACCESORIOS LA 72',null,'no_reconocido',900000,250000],['Gangacell Galapa','gangacell','aliado',720000,180000],['CREDITEK COVEÑAS',null,'no_reconocido',566000,100000]];
  for(const [name,code,type,credit,initial] of data){
@@ -119,6 +124,60 @@ test('Krediya calcula PAGAMOS sin titular ni ejecutivo; preserva el informe y no
  const c=(await db.query('select * from liquidation_calculations where operation_id=$1',[op])).rows[0];assert.equal(Number(c.pagamos),525000);assert.equal(Number(c.total_bonos),20000);assert.equal(c.policy_snapshot.bono_ejecutivo_pendiente,true);assert.equal(c.policy_snapshot.motor,'krediya_v2');
  assert.equal((await db.query('select count(*)::int n from krediya_diferencias where operation_id=$1',[op])).rows[0].n,1);
  await db.query('select krediya_private.calcular_y_enviar_aprobacion($1)',[lot]);assert.equal((await db.query('select count(*)::int n from payment_orders where liquidation_id=$1',[lot])).rows[0].n,2);
+ await db.query("insert into krediya_bonus_rules(tipo_establecimiento,concepto,valor,beneficiary_id,vigente_desde) select 'propia',concepto,valor,beneficiary_id,vigente_desde from krediya_bonus_rules where tipo_establecimiento='aliado'");
+ const beforeRetail=(await db.query('select origen_codigo from liquidation_operations where id=$1',[op])).rows[0].origen_codigo;
+ await db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op,beforeRetail,'CK-11']);
+ const own=(await db.query('select * from liquidation_operations where id=$1',[op])).rows[0];assert.equal(own.tipo_establecimiento,'propia');assert.equal(own.ejecutivo_id,null);assert.equal(Number(own.pagamos),525000);
+ const ownLot=(await db.query('select * from liquidations where id=$1',[lot])).rows[0];assert.equal(ownLot.estado,'revisada');assert.equal(ownLot.approved_at,null);assert.equal(ownLot.frozen_at,null);assert.equal(Number(ownLot.total_pago_aliados),0);assert.equal(Number(ownLot.total_pago_tiendas),455000);
  await db.query('update liquidations set frozen_at=now() where id=$1',[lot]);await assert.rejects(()=>db.query('select krediya_private.calcular_y_enviar_aprobacion($1)',[lot]),/no editable/);
  assert.equal((await db.query('select count(*)::int n from liquidation_calculations where liquidation_id=$1',[lot])).rows[0].n,1);
+});
+
+test('Retail exige tienda propia real y comparación de vínculo anterior; no admite cuenta/bono ficticio',async()=>{
+ const op=(await db.query("select * from liquidation_operations where liquidation_id=$1 and establishment_name='CREDITEK COVEÑAS'",[batch])).rows[0];
+ await assert.rejects(()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,op.origen_codigo,'artesanias']),/tienda propia activa/);
+ await assert.rejects(()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,'otro','CK-11']),/comercio cambió/);
+ await db.exec("select set_config('test.allowed','false',false)");
+ await assert.rejects(()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,op.origen_codigo,'CK-11']),/No autorizado/);
+ await db.exec("select set_config('test.allowed','true',false);set role anon");
+ await assert.rejects(()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,op.origen_codigo,'CK-11']),/permission denied/);await db.exec('reset role');
+ assert.equal((await db.query('select origen_codigo from liquidation_operations where id=$1',[op.id])).rows[0].origen_codigo,op.origen_codigo);
+});
+test('Retail recalcula borrador con 76%, sin ejecutivo de aliado, preservando maestros e importe fuente',async()=>{
+ const op=(await db.query("select * from liquidation_operations where liquidation_id=$1 and establishment_name='CREDITEK COVEÑAS'",[batch])).rows[0];
+ const origins=(await db.query('select * from origenes order by codigo')).rows;
+ await db.query("update liquidations set estado='revisada',reviewed_at=now(),reviewed_by=$2 where id=$1",[batch,actor]);
+ const result=(await db.query('select tesoreria_vincular_operacion_retail($1,$2,$3) result',[op.id,op.origen_codigo,'CK-11'])).rows[0].result;
+ assert.equal(result.tipo,'propia');assert.equal(result.estado,'calculada');
+ const updated=(await db.query('select * from liquidation_operations where id=$1',[op.id])).rows[0];
+ assert.equal(updated.origen_codigo,'CK-11');assert.equal(updated.ejecutivo_id,null);assert.equal(Number(updated.porcentaje_politica),.76);
+ assert.equal(Number(updated.pago_neto_beneficiario),330160);assert.equal(updated.monto_credito,op.monto_credito);assert.equal(updated.inicial,op.inicial);
+ assert.deepEqual((await db.query('select * from origenes order by codigo')).rows,origins);
+ const l=(await db.query('select * from liquidations where id=$1',[batch])).rows[0];assert.equal(l.reviewed_at,null);assert.equal(l.approved_at,null);assert.equal(l.frozen_at,null);
+ assert.equal((await db.query("select count(*)::int n from liquidation_incidents where operation_id=$1 and estado='abierta' and tipo in ('aliado_sin_ejecutivo','beneficiario_sin_identificacion')",[op.id])).rows[0].n,0);
+ assert.equal((await db.query("select count(*)::int n from liquidation_bonuses where operation_id=$1 and tipo_bono like 'automatico_%'",[op.id])).rows[0].n,0);
+ const audit=(await db.query("select detalle from audit_log where accion='liquidacion_operacion_vinculada_retail' and registro_id=$1",[op.id])).rows[0].detalle;
+ assert.equal(audit.antes.origen_codigo,op.origen_codigo);assert.equal(audit.sin_aprobacion_ni_pago,true);
+});
+test('fallo de cálculo Retail revierte clasificación y auditoría; no deja importes obsoletos',async()=>{
+ const op=(await db.query("select * from liquidation_operations where liquidation_id=$1 and establishment_name='FULL ACCESORIOS LA 72'",[batch])).rows[0];
+ const count=(await db.query("select count(*)::int n from audit_log where accion='liquidacion_operacion_vinculada_retail'")).rows[0].n;
+ await db.exec("update settlement_policy_versions set porcentaje=.01 where tipo_establecimiento='propia'");
+ await assert.rejects(()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,op.origen_codigo,'CK-11']),/valor_negativo/);
+ assert.deepEqual((await db.query('select * from liquidation_operations where id=$1',[op.id])).rows[0],op);
+ assert.equal((await db.query("select count(*)::int n from audit_log where accion='liquidacion_operacion_vinculada_retail'")).rows[0].n,count);
+ await db.exec("update settlement_policy_versions set porcentaje=.76 where tipo_establecimiento='propia'");
+});
+test('Retail no toca aprobación, órdenes autorizadas ni bonos manuales; wrapper invoker',async()=>{
+ const op=(await db.query("select * from liquidation_operations where liquidation_id=$1 and establishment_name='FULL ACCESORIOS LA 72'",[batch])).rows[0];
+ await db.query('select tesoreria_asignar_ejecutivo($1,null,$2)',[op.origen_codigo,actor]);await calculate();
+ const call=()=>db.query('select tesoreria_vincular_operacion_retail($1,$2,$3)',[op.id,op.origen_codigo,'CK-11']);
+ for(const state of ['aprobada','programada','pagada','cerrada','anulada']){await db.query('update liquidations set estado=$2 where id=$1',[batch,state]);await assert.rejects(call,/aprobado|gestión/);}
+ await db.query("update liquidations set estado='calculada',frozen_at=now() where id=$1",[batch]);await assert.rejects(call,/aprobado|gestión/);
+ await db.query('update liquidations set frozen_at=null where id=$1',[batch]);
+ await db.query('update payment_orders set authorized_at=now() where liquidation_id=$1',[batch]);await assert.rejects(call,/pagos en gestión/);
+ await db.query('update payment_orders set authorized_at=null where liquidation_id=$1',[batch]);
+ const bonus=(await db.query("insert into liquidation_bonuses(liquidation_id,operation_id,tipo_bono,valor) values($1,$2,'manual',1000) returning id",[batch,op.id])).rows[0].id;
+ await assert.rejects(call,/bonos manuales/);await db.query('delete from liquidation_bonuses where id=$1',[bonus]);
+ assert.equal((await db.query("select prosecdef from pg_proc where proname='tesoreria_vincular_operacion_retail'")).rows[0].prosecdef,false);
 });

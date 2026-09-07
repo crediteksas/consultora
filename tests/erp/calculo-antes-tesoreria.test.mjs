@@ -260,3 +260,80 @@ test('fórmula ALO concilia las 12 filas Excel y conserva bonos, PayJoy e histó
  const o=(await db.query('select * from liquidation_operations where liquidation_id=$1',[pj])).rows[0];
  assert.equal(Number(o.pagamos),450262);assert.equal(Number(o.pago_neto_beneficiario),345712);assert.equal(Number(o.utilidad_creditek),142188);
 });
+
+test('aprobar sin cuentas pasa a Tesorería; completar órdenes no recalcula ni duplica',async()=>{
+ await db.exec(await read('./fixtures/bonos-diferidos-guards.sql'));
+ // El generador real se comprueba además en transacción revertida en Supabase.
+ await db.exec(`create function public.tesoreria_generar_destinos_liquidacion(uuid) returns void language plpgsql as $$
+ declare l record;o record;right_value numeric;op_base numeric;op_bonus numeric;commission_value numeric;
+ begin if false then right_value:=0; else right_value:=round(op_base*o.porcentaje_politica,2); end if;
+ if false then commission_value:=0; else commission_value:=round(op_base-right_value-op_bonus,2); end if;end;$$;`);
+ await db.exec(await read('../../supabase/migrations/20260907224158_aprobacion_independiente_cuentas.sql'));
+ const lot=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('alo','importada','2026-09-06') returning id")).rows[0].id;
+ const op=(await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'alo','2026-09-03T17:00:00Z','artesanias','artesanias','aliado',630000,630000,150000,true,'{}') returning id",[lot])).rows[0].id;
+ await db.query('select aliados_calcular_liquidacion($1)',[lot]);
+ await db.query("select aliados_cambiar_estado($1,'revisada')",[lot]);
+ const approved=(await db.query("select to_jsonb(aliados_cambiar_estado($1,'aprobada')) l",[lot])).rows[0].l;
+ assert.equal(approved.estado,'aprobada');assert.ok(approved.approved_at);assert.ok(approved.frozen_at);
+ const frozen=(await db.query('select to_jsonb(o) o from liquidation_operations o where id=$1',[op])).rows[0].o;
+ const pending=(await db.query('select tesoreria_pendientes_liquidacion($1) p',[lot])).rows[0].p;
+ assert.equal(pending.length,1);assert.equal(pending[0].estado,'aprobada');
+ await db.query("select aliados_cambiar_estado($1,'aprobada')",[lot]);
+ assert.equal((await db.query("select count(*)::int n from liquidation_approvals where liquidation_id=$1 and etapa='aprobacion'",[lot])).rows[0].n,1);
+ const b=(await db.query("insert into liquidation_beneficiaries(tipo,nombre,identificacion) values('aliado','Titular prueba','123') returning id")).rows[0].id;
+ await db.query("update aliados set payment_beneficiary_id=$1 where id in (select aliado_id from aliados_sedes where origen_codigo='artesanias')",[b]);
+ // La ficha canónica resuelve este beneficiario en la fixture por origen.
+ await db.query("update liquidation_beneficiaries set origen_codigo='artesanias' where id=$1",[b]);
+ await db.query("insert into beneficiary_bank_accounts(beneficiary_id,banco,tipo_cuenta,numero_cuenta,activo,validada) values($1,'Banco','ahorros','123',true,true)",[b]);
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]);
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]);
+ assert.equal((await db.query('select count(*)::int n from payment_items where operation_id=$1 and bonus_id is null',[op])).rows[0].n,1);
+ assert.deepEqual((await db.query('select to_jsonb(o) o from liquidation_operations o where id=$1',[op])).rows[0].o,frozen);
+ await assert.rejects(()=>db.query('select aliados_calcular_liquidacion($1)',[lot]),/inmutable/);
+ await db.exec("select set_config('test.allowed','false',false)");
+ await assert.rejects(()=>db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]),/No autorizado/);
+ await db.exec("select set_config('test.allowed','true',false)");
+});
+
+test('bono diferido: aprueba sin ejecutivo, completa en Tesorería una vez, conserva principal y revisión',async()=>{
+ await db.exec(`create table treasury_movements(unit text,direction text,type text,concept text,amount numeric,movement_date date,liquidation_id uuid,balance_before numeric,balance_after numeric,status text,requested_by uuid,idempotency_key text unique);
+ create table liquidation_treasury_destinations(liquidation_id uuid,total_outsourcing_commission numeric,total_executives numeric);
+ create function tesoreria_aplicar_saldo(text,text,numeric,text) returns jsonb language sql as $$select '{"before":0,"after":100}'::jsonb$$;
+ insert into origenes(codigo,nombre,tipo) values('DIFERIDO','Tienda sin ejecutivo','aliado');`);
+ const lot=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('alo','importada','2026-09-06') returning id")).rows[0].id;
+ const op=(await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'alo','2026-09-03T17:00:00Z','Tienda sin ejecutivo','DIFERIDO','aliado',630000,630000,150000,true,'{}') returning id",[lot])).rows[0].id;
+ await db.query('select aliados_calcular_liquidacion($1)',[lot]);
+ await db.query("select aliados_cambiar_estado($1,'revisada')",[lot]);
+ await db.query("select aliados_cambiar_estado($1,'aprobada')",[lot]);
+ const before=(await db.query('select * from liquidations where id=$1',[lot])).rows[0];
+ const principal=(await db.query('select pagamos,pago_neto_beneficiario from liquidation_operations where id=$1',[op])).rows[0];
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]);
+ assert.equal((await db.query('select completed_at from kora_private.bonos_diferidos where operation_id=$1',[op])).rows[0].completed_at,null);
+ await db.query('select tesoreria_asignar_ejecutivo($1,null,$2)',['DIFERIDO',actor]);
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]);
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[lot]);
+ const after=(await db.query('select * from liquidations where id=$1',[lot])).rows[0];
+ assert.equal(after.estado,'aprobada');assert.equal(String(after.approved_at),String(before.approved_at));
+ assert.equal(Number(after.total_bonos)-Number(before.total_bonos),30000);
+ assert.equal(Number(after.total_utilidad_creditek),Number(before.total_utilidad_creditek)-30000);
+ assert.deepEqual((await db.query('select pagamos,pago_neto_beneficiario from liquidation_operations where id=$1',[op])).rows[0],principal);
+ assert.equal((await db.query('select count(*)::int n from treasury_movements where liquidation_id=$1',[lot])).rows[0].n,1);
+ assert.equal((await db.query("select count(*)::int n from liquidation_bonuses where operation_id=$1 and tipo_bono='automatico_ejecutivo'",[op])).rows[0].n,1);
+ await assert.rejects(()=>db.query('update liquidation_operations set pagamos=1 where id=$1',[op]),/inmutable/);
+ await assert.rejects(()=>db.query('update liquidations set total_bonos=1 where id=$1',[lot]),/inmutable/);
+});
+
+test('cuenta pendiente se completa sin reemplazar destinos ni repetir principal',async()=>{
+ await db.exec(await read('../../docs/pendientes/completar_destinos_pendientes_tesoreria.sql'));
+ const op=(await db.query("select * from liquidation_operations where origen_codigo='DIFERIDO'")).rows[0];
+ const b=(await db.query("insert into liquidation_beneficiaries(tipo,nombre,identificacion,origen_codigo) values('aliado','Titular','1234','DIFERIDO') returning id")).rows[0].id;
+ const po=(await db.query('insert into payment_orders(liquidation_id,beneficiary_id,valor) values($1,$2,$3) returning id',[op.liquidation_id,b,op.pago_neto_beneficiario])).rows[0].id;
+ await db.query("insert into payment_items(payment_order_id,operation_id,concepto,valor) values($1,$2,'pago_aliado',$3)",[po,op.id,op.pago_neto_beneficiario]);
+ const account=(await db.query("insert into beneficiary_bank_accounts(beneficiary_id,banco,tipo_cuenta,numero_cuenta,activo,validada) values($1,'Banco','ahorros','12345',true,true) returning id",[b])).rows[0].id;
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[op.liquidation_id]);
+ await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[op.liquidation_id]);
+ const order=(await db.query('select * from payment_orders where id=$1',[po])).rows[0];
+ assert.equal(order.bank_account_id,account);assert.equal(Number(order.valor),Number(op.pago_neto_beneficiario));
+ await assert.rejects(()=>db.query("update payment_orders set bank_snapshot='{}' where id=$1",[po]),/autorizada o cerrada/);
+ assert.equal((await db.query('select count(*)::int n from payment_items where payment_order_id=$1',[po])).rows[0].n,1);
+});

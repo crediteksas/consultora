@@ -65,7 +65,7 @@ function metricHtml(html, label) {
 function batchSummary(batch) {
   const nodes = new Map();
   const $ = (id) => {
-    if (!nodes.has(id)) nodes.set(id, { value: '', innerHTML: '' });
+    if (!nodes.has(id)) nodes.set(id, { value: '', innerHTML: '', querySelectorAll:()=>[] });
     return nodes.get(id);
   };
   const helpers = app.slice(app.indexOf('  const ownStoreUtility ='), app.indexOf('  function statesForMode('));

@@ -21,6 +21,7 @@ for(const engine of ['chromium','webkit'])test(`Novedades: ejecutivo y Retail re
    const pending=()=>window.testStale?[]:operations.filter(op=>op.tipo_establecimiento==='aliado').map(op=>({id:op.id,liquidation_id:'alo',origen_codigo:op.origen_codigo,comercio:op.establishment_name,ejecutivo_actual:masters[op.origen_codigo]||null,falta_ejecutivo:!masters[op.origen_codigo]}));
    const sb={auth:{getSession:async()=>({data:{session:{user:{id:'gestion'}}}})},from(table){let filters=[],single=false;const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},range(){return q},maybeSingle(){single=true;return q},then(ok,bad){
     let data=table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?[{id:'alo',plataforma:window.testPlatform,estado:window.testFrozen?'aprobada':'calculada',frozen_at:window.testFrozen?'2026-09-07':null,fecha_corte:'2026-09-06',imported_at:'2026-09-07',liquidation_operations:operations}]:table==='liquidation_operations'?operations:table==='liquidation_incidents'?incidents:table==='ejecutivos'?[{id:'exec-1',nombre:'Ejecutivo de prueba',activo:true}]:table==='origenes'?[{codigo:'CK-11',nombre:'Creditel Coveñas',activo:true,tipo:'propia'},{codigo:'CK-01',nombre:'Celfiao Tolú',activo:true,tipo:'propia'},{codigo:'ALIADO-X',nombre:'No es Retail',activo:true,tipo:'aliado'}]:[];
+    if(table==='liquidations'&&window.testHistory)data=Array.from({length:7},(_,i)=>({...data[0],id:'history'+i,approved_at:'2026-09-0'+(i+1),fecha_corte:'2026-09-0'+(i+1)}));
     data=data.filter(r=>filters.every(([k,v])=>r[k]===undefined||r[k]===v));return Promise.resolve({data:single?data[0]:data}).then(ok,bad);
    }};return q},async rpc(name,params){
     window.testCalls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true};
@@ -37,7 +38,13 @@ for(const engine of ['chromium','webkit'])test(`Novedades: ejecutivo y Retail re
    }};window.creditekSidebar={sb,perfil:{rol:'auditoria'}};
   });
   await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
-  await page.locator('[data-open=alo]').click();await page.locator('[data-tab=incidents]').click();
+  await page.locator('[data-open=alo]').click();
+  await page.getByRole('button',{name:'Asignar ejecutivos',exact:true}).click();
+  await page.getByRole('heading',{name:'Estas tiendas no tienen ejecutivo'}).waitFor();
+  assert.equal(await page.locator('dialog select').count(),2);
+  assert.ok(await page.locator('dialog').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
+  await page.screenshot({path:`/private/tmp/liquidaciones-asignacion-compacta-${engine}.png`});
+  await page.locator('dialog [data-close]').click();await page.locator('[data-tab=incidents]').click();
   assert.equal(await page.getByRole('button',{name:'Revisar y justificar'}).count(),0);
   assert.match(await page.getByRole('link',{name:'Completar cliente y cuenta'}).first().getAttribute('href'),/origen=LOCAL-0/);
   await page.getByRole('button',{name:'Asignar ejecutivo',exact:true}).first().click();
@@ -71,11 +78,23 @@ for(const engine of ['chromium','webkit'])test(`Novedades: ejecutivo y Retail re
   await page.locator('dialog [role=status]').filter({hasText:'Cálculo del lote actualizado'}).waitFor();await page.locator('dialog [data-close]').click();
   assert.equal(await page.getByRole('button',{name:'Asignar ejecutivo',exact:true}).count(),0);
   await page.evaluate(()=>window.testFrozen=true);await page.locator('#refreshBatches').click();await page.locator('#showHistory').click();await page.locator('[data-open=alo]').click();await page.locator('[data-tab=incidents]').click();
+  assert.equal(await page.locator('#approve').isVisible(),false);
+  assert.equal(await page.locator('#calculate').isVisible(),false);
+  assert.equal(await page.locator('#review').isVisible(),false);
+  assert.match(await page.locator('#showPending').textContent(),/\(0\)/);
   assert.equal(await page.getByRole('link',{name:'Completar cliente y cuenta'}).count(),0);
   const calls=await page.evaluate(()=>window.testCalls);
   assert.deepEqual(calls.find(c=>c.name==='tesoreria_asignar_ejecutivo').params,{p_origen:'LOCAL-0',p_anterior:null,p_ejecutivo:'exec-1'});
   assert.deepEqual(calls.find(c=>c.name==='tesoreria_vincular_operacion_retail').params,{p_operation_id:'op1',p_origen_anterior:'LOCAL-1',p_retail:'CK-11'});
   assert.ok(calls.every(c=>['tiene_capacidad_aliados','tesoreria_pendientes_liquidacion','tesoreria_asignar_ejecutivo','aliados_calcular_liquidacion','aliados_contextos_precios_krediya','tesoreria_vincular_operacion_retail'].includes(c.name)));
+  await page.evaluate(()=>window.testHistory=true);await page.locator('#refreshBatches').click();await page.locator('#showPending').click();
+  assert.equal(await page.locator('[data-recent]').count(),4);
+  assert.equal(await page.locator('#recentBatches').isVisible(),true);
+  await page.locator('#recentBatches').scrollIntoViewIfNeeded();
+  await page.screenshot({path:`/private/tmp/liquidaciones-cuatro-recientes-${engine}.png`});
+  await page.locator('#showHistory').click();await page.locator('#historyFrom').fill('2026-09-05');await page.locator('#historyUntil').fill('2026-09-06');await page.locator('#historyUntil').blur();
+  assert.equal(await page.locator('#batches [data-open]').count(),2);
+  const download=page.waitForEvent('download');await page.locator('#downloadHistory').click();assert.equal((await download).suggestedFilename(),'rentabilidad-liquidaciones.csv');
   assert.deepEqual(errors,[]);
  }catch(error){console.error('Dialog:',await page.locator('dialog').allTextContents(),'Page errors:',errors);throw error;}finally{await browser.close();}
 });

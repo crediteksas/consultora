@@ -34,6 +34,7 @@
   const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);
   const awaitingKrediyaCalculation = (batch) => batch.plataforma === 'krediya' && ['importada','validada','con_novedades'].includes(batch.estado);
   const awaitingCalculation = (batch) => ['importada','validada','con_novedades'].includes(batch.estado);
+  const provisionalBatch = batch => (batch.liquidation_operations || []).some(o=>o.reconocida && o.tipo_establecimiento==='aliado' && !o.ejecutivo_id);
   const KREDIYA_FOLLOWUP_TYPES = new Set(['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente','novedad_administrativa']);
 
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
@@ -88,6 +89,7 @@
     $('liquidationsContent').classList.remove('hidden');
     await loadBatches();
     const requestedBatch=new URLSearchParams(location.search).get('lote');
+    if(new URLSearchParams(location.search).get('vista')==='historial')setListMode('history');
     if(requestedBatch && batches.some(b=>b.id===requestedBatch))await openDetail(requestedBatch);
   }
   document.addEventListener('kora-sidebar-ready', enterFromKora);
@@ -111,24 +113,32 @@
     const rows = batches.filter((b) => listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
       .filter((b) => !stateFilter || b.estado === stateFilter)
       .filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
+    const from=$('historyFrom')?.value,until=$('historyUntil')?.value;
+    if(listMode==='history')rows.splice(0,rows.length,...rows.filter(b=>(!from||b.fecha_corte>=from)&&(!until||b.fecha_corte<=until)));
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
-      <td>${state(b.estado)}</td><td>${awaitingCalculation(b) ? (b.liquidation_operations || []).filter(o=>b.plataforma!=='krediya'||o.reconocida).length : Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
-      ${[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar].map((v) => `<td>${awaitingCalculation(b) ? 'Por calcular' : money(v)}</td>`).join('')}
+      <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${awaitingCalculation(b) ? (b.liquidation_operations || []).filter(o=>b.plataforma!=='krediya'||o.reconocida).length : Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
+      ${[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar].map((v,i) => `<td>${awaitingCalculation(b) ? 'Por calcular' : money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
+    let recent=$('recentBatches');
+    if(!recent){recent=document.createElement('section');recent.id='recentBatches';recent.className='card';$('batches').closest('section').after(recent);}
+    recent.hidden=listMode!=='pending';
+    recent.innerHTML='<h2>Últimas 4 aprobadas</h2>'+batches.filter(b=>b.approved_at).sort((a,b)=>b.approved_at.localeCompare(a.approved_at)).slice(0,4).map(b=>`<div class="actions" style="justify-content:space-between;padding:6px 0"><span>${platformName(b.plataforma)} · ${esc(b.fecha_corte)} · Aprobada</span><button class="btn secondary" data-recent="${esc(b.id)}">Consultar</button></div>`).join('');
+    recent.querySelectorAll('[data-recent]').forEach(button=>button.onclick=()=>openDetail(button.dataset.recent));
   }
 
   function updateActions() {
     importaciones?.setBatch(selected);
-    const frozen = Boolean(selected.frozen_at);
+    const frozen = Boolean(selected.frozen_at || selected.approved_at || ['aprobada','programada','pagada','cerrada'].includes(selected.estado));
     const krediya = selected.plataforma === 'krediya';
     $('calculate').textContent = ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
     $('calculate').classList.toggle('hidden', frozen);
     $('approve').textContent = krediya ? 'Aprobar y pasar a pagos' : 'Aprobar liquidación';
+    $('approve').classList.toggle('hidden',frozen);
     $('saveReview').classList.toggle('hidden', frozen || krediya);
     $('validate').classList.add('hidden');
-    $('review').classList.toggle('hidden',krediya);
+    $('review').classList.toggle('hidden',krediya || frozen);
     document.querySelector('[data-tab="differences"]').classList.toggle('hidden',!krediya);
     $('currentState').textContent = UX.traducirEstado(selected.estado);
     $('validate').disabled = !['importada', 'con_novedades'].includes(selected.estado);
@@ -137,7 +147,7 @@
     $('review').disabled = selected.estado !== 'calculada';
     $('approve').disabled = operator.capacidad !== 'aprobador' || selected.estado !== 'revisada';
     $('reject').disabled = operator.capacidad !== 'aprobador' || !['calculada', 'revisada'].includes(selected.estado);
-    $('reject').classList.toggle('hidden', krediya && $('reject').disabled);
+    $('reject').classList.toggle('hidden', frozen || krediya && $('reject').disabled);
     if (!frozen && selected.estado === 'calculada' && operator.capacidad === 'aprobador') {
       $('workflowError').textContent = 'Pendiente de revisión administrativa: Maite debe marcar la liquidación como revisada antes de que Gerencia pueda aprobarla.';
       $('workflowError').classList.remove('hidden');
@@ -159,7 +169,7 @@
       ]);
       return;
     }
-    const provisional=!selected.frozen_at && (selected.liquidation_operations||[]).some(o=>o.reconocida && o.tipo_establecimiento==='aliado' && !o.ejecutivo_id);
+    const provisional=provisionalBatch(selected);
     $('metrics').innerHTML = (provisional ? '<section class="card"><strong>Principal calculado · bonos y utilidad provisionales</strong><p>Falta asignar ejecutivo en Tesorería. Los importes mostrados solo incluyen bonos conocidos; no son utilidad final.</p></section>' : '') + metrics('Resumen general', [
       ['Operaciones', Number(selected.operaciones_tiendas || 0) + Number(selected.operaciones_aliados || 0), true],
       ['Valor comercial', selected.total_operaciones], ['Pago total', Number(selected.total_pago_tiendas || 0) + Number(selected.total_pago_aliados || 0)], ['Bonos', selected.total_bonos], ['Utilidad total del negocio', businessUtility(selected)], ['Total a girar', selected.total_pagar]
@@ -225,6 +235,16 @@
       if ($('openFollowupReport')) $('openFollowupReport').onclick = () => loadTab(selected.plataforma === 'krediya' ? 'differences' : 'incidents');
     }
     await renderKrediyaFlow(id);
+    if(selected?.approved_at){
+      $('workflowError').innerHTML=`Liquidación aprobada. <a class="btn secondary" href="aliados-tesoreria.html?vista=preparacion&amp;lote=${encodeURIComponent(id)}">Gestionar en Tesorería</a>`;
+      $('workflowError').classList.remove('hidden');
+      $('batchSecondaryActions').parentElement.classList.add('hidden');
+    }else{
+      $('batchSecondaryActions').parentElement.classList.remove('hidden');
+      if((selected.liquidation_operations||[]).some(o=>o.tipo_establecimiento==='aliado'&&!o.ejecutivo_id)){
+        const button=document.createElement('button');button.className='btn secondary';button.textContent='Asignar ejecutivos';button.onclick=()=>askExecutives(id);$('workflowError').appendChild(button);
+      }
+    }
   }
 
   async function openInstructionOperation(operationId, liquidationId) {
@@ -318,7 +338,7 @@
       const percentText = percent == null ? row.percentage_lookup_failed ? 'No se pudo consultar' : missingCommerce ? 'Por definir: propia o aliado' : 'Sin regla vigente' : `${Number((Number(percent) * 100).toFixed(4))} %`;
       const net = row.pago_neto_beneficiario ?? row.pago_neto_tienda ?? calculation?.pago_aliado;
       const bonuses = row.bonos_aplicados ?? calculation?.total_bonos;
-      const commissionPending = !selected.frozen_at && !isOwn && (!row.ejecutivo_id || rowIssues.some(i=>i.operation_id===row.id && i.tipo==='aliado_sin_ejecutivo'));
+      const commissionPending = !isOwn && (!row.ejecutivo_id || rowIssues.some(i=>i.operation_id===row.id && i.tipo==='aliado_sin_ejecutivo'));
       const utility = commissionPending ? null : row.utilidad_creditek ?? (isOwn ? row.utilidad_creditek_tienda : null) ?? calculation?.utilidad_creditek;
       const actualIssues = (rowIssues || []).filter((i) => i.operation_id === row.id);
       const hasIssue = actualIssues.length || !row.reconocida || (isOwn && difference);
@@ -702,11 +722,23 @@
   $('filterPlatform').onchange = loadBatches;
   $('filterState').onchange = renderBatches;
   $('filterSearch').oninput = renderBatches;
+  const historyTools=document.createElement('div');historyTools.className='filters hidden';historyTools.id='historyTools';
+  historyTools.innerHTML='<label>Desde<input class="control" type="date" id="historyFrom"></label><label>Hasta<input class="control" type="date" id="historyUntil"></label><button class="btn secondary" id="downloadHistory">Descargar rentabilidad</button>';
+  $('filterPlatform').parentElement.appendChild(historyTools);
+  $('historyFrom').onchange=renderBatches;$('historyUntil').onchange=renderBatches;
+  $('downloadHistory').onclick=()=>{
+    const from=$('historyFrom').value,to=$('historyUntil').value;
+    const rows=batches.filter(b=>b.approved_at&&(!from||b.fecha_corte>=from)&&(!to||b.fecha_corte<=to));
+    const cell=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+    const csv=[['Plataforma','Corte','Estado liquidación','Pago aliados','Pago Retail','Bonos','Utilidad','Rentabilidad sobre base %','Estado utilidad'],...rows.map(b=>[platformName(b.plataforma),b.fecha_corte,'Aprobada',b.total_pago_aliados,b.total_pago_tiendas,b.total_bonos,businessUtility(b),Number(b.total_operaciones)>0?(100*businessUtility(b)/Number(b.total_operaciones)).toFixed(2):'',provisionalBatch(b)?'Provisional: falta bono de ejecutivo':'Definitiva'])].map(row=>row.map(cell).join(';')).join('\r\n');
+    const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='rentabilidad-liquidaciones.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
   $('refreshBatches').onclick = loadBatches;
   function setListMode(mode) {
     listMode = mode;
     $('showPending').classList.toggle('active', mode === 'pending');
     $('showHistory').classList.toggle('active', mode === 'history');
+    historyTools.classList.toggle('hidden',mode!=='history');
     updateStateFilter();
     $('detail').classList.add('hidden');
     selected = null;
@@ -790,7 +822,20 @@
       $('importError').textContent='Valida el archivo seleccionado antes de guardar.';$('saveImport').disabled=true;return;
     }
     lockImport(true);
-    try{await saveCurrent();if(!$('importModal').classList.contains('show'))resetImportPreview(true);}
+    try{await saveCurrent();if(!$('importModal').classList.contains('show')){resetImportPreview(true);if(selected)await askExecutives(selected.id);}}
     finally{lockImport(false);}
   };
+  async function askExecutives(lotId){
+    const [pending,execs]=await Promise.all([sb.rpc('tesoreria_pendientes_liquidacion',{p_lote:lotId}),sb.from('ejecutivos').select('id,nombre').eq('activo',true).order('nombre')]);
+    if(pending.error||execs.error)return;
+    const stores=[...new Map((pending.data||[]).filter(r=>r.falta_ejecutivo&&r.origen_codigo).map(r=>[r.origen_codigo,r])).values()];
+    if(!stores.length)return;
+    const modal=Review.dialog('Estas tiendas no tienen ejecutivo',`<form><div style="display:grid;gap:8px">${stores.map((r,i)=>`<label style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center">${esc(r.comercio)}<select class="control" style="width:100%;min-width:0" name="store${i}"><option value="">Completar después</option>${(execs.data||[]).map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}</option>`).join('')}</select></label>`).join('')}</div><p role="alert"></p><div class="actions"><button class="btn primary" type="submit">Guardar y liquidar</button><button class="btn secondary" type="button" data-later>Completar después</button></div></form>`);
+    modal.querySelector('[data-later]').onclick=async()=>{modal.close();await loadBatches();await openDetail(lotId);await $('calculate').onclick();};
+    modal.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget;form.querySelector('button').disabled=true;
+      try{for(const [i,r] of stores.entries()){const chosen=form.elements['store'+i].value;if(!chosen)continue;const saved=await sb.rpc('tesoreria_asignar_ejecutivo',{p_origen:r.origen_codigo,p_anterior:r.ejecutivo_actual||null,p_ejecutivo:chosen});if(saved.error)throw saved.error;}
+       modal.close();await loadBatches();await openDetail(lotId);await $('calculate').onclick();
+      }catch(error){form.querySelector('[role=alert]').textContent=error.message;form.querySelector('button').disabled=false;}
+    };
+  }
 }());

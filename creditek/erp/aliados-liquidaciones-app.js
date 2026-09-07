@@ -183,10 +183,21 @@
     $('workflowError').classList.add('hidden');
     $('workflowError').textContent = '';
     $('detailTitle').textContent = `${platformName(selected.plataforma)} · ${UX.fechaCorta(selected.fecha_corte)}`;
+    document.getElementById('aloDuplicateReport')?.remove();
     renderMetrics();
     updateActions();
     await loadTab(activeTab);
     if(selected?.id!==id)return;
+    if(selected.plataforma==='alo') {
+      const result=await sb.from('audit_log').select('detalle').eq('tabla','liquidations').eq('registro_id',id).eq('accion','alo_credito_repetido_omitido');
+      if(selected?.id!==id)return;
+      if(result.error || result.data?.length) {
+        const report=document.createElement('div');report.id='aloDuplicateReport';report.className='operation-notice operation-notice-info';
+        report.innerHTML=result.error ? '<p>No se pudo consultar el informe de créditos repetidos. Reintenta abrir el lote.</p>' :
+          `<div><strong>${result.data.length} créditos repetidos omitidos</strong><p>No generan otro cálculo ni pago. Los demás créditos continúan.</p><details><summary>Ver contratos y estado anterior</summary>${result.data.map(({detalle:d})=>`<p>Contrato ${esc(d.contrato)} · ${d.mismo_archivo?'Repetido en este archivo':`Estado anterior: ${esc(d.estado_anterior)}`} ${d.datos_diferentes?'· Datos distintos: revisar el archivo original; se conservó el registro anterior.':''}</p>`).join('')}</details></div>`;
+        $('detailTitle').parentElement.appendChild(report);
+      }
+    }
     const { data: issues, error: issueError } = await sb.from('liquidation_incidents').select('operation_id,estado,tipo,descripcion,bloquea_aprobacion').eq('liquidation_id', id).eq('estado', 'abierta');
     if(selected?.id!==id)return;
     const openIssues = Commerce.pending(issues || [], awaitingCalculation(selected) ? selected.liquidation_operations || [] : []);

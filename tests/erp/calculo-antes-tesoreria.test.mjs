@@ -49,6 +49,45 @@ before(async()=>{
 });
 after(()=>db?.close());
 const calculate=()=>db.query('select to_jsonb(aliados_calcular_liquidacion($1)) as result',[batch]);
+// Referencias numéricas de Worksheet U:Y y AD de los dos Excel ALO 24–30/08/2026.
+const excelAloRows=[
+ ['propia',592450,104550,0,529720,425170,167280],
+ ['propia',571200,142800,0,542640,399840,171360],
+ ['propia',504500,150000,0,497420,347420,157080],
+ ['propia',593000,100000,0,526680,426680,166320],
+ ['propia',657900,116100,0,588240,472140,185760],
+ ['aliado',561000,99000,45000,508200,409200,106800],
+ ['aliado',825000,275000,25000,847000,572000,228000],
+ ['aliado',720000,180000,25000,693000,513000,182000],
+ ['aliado',825000,275000,25000,847000,572000,228000],
+ ['aliado',720000,180000,25000,693000,513000,182000],
+ ['aliado',960000,240000,25000,924000,684000,251000],
+ ['aliado',450000,200000,45000,500500,300500,104500],
+];
+test('ALO omite contratos repetidos entre cortes y dentro del archivo, conserva fuentes y continúa',async()=>{
+ await db.exec(`create table liquidation_imported_files(id uuid default gen_random_uuid(),liquidation_id uuid,original_name text,sha256 text,storage_path text,size_bytes bigint,mime_type text,detected_cutoff date);
+ create table liquidation_source_rows(liquidation_id uuid,file_id uuid,sheet_name text,row_number int,movement_type text,source_key text,original_data jsonb);`);
+ const original=await read('../../creditek/erp/migrations/20260802_creditek_aliados_liquidaciones_v1.sql');
+ const start=original.indexOf('create or replace function public.aliados_importar_liquidacion(');
+ await db.exec(original.slice(start,original.indexOf('create or replace function public.aliados_cambiar_estado(',start)));
+ await db.exec(await read('../../supabase/migrations/20260907221719_alo_creditos_repetidos_seguimiento.sql'));
+ const op=id=>({externalId:id,sourceKey:`alo|${id}`,fecha:'2026-08-25T17:00:00Z',establecimientoNombre:'EXCEL',montoCredito:561000,montoBase:561000,inicial:99000,imei:'123',reconocida:true,tipoEstablecimiento:'aliado'});
+ const run=async(ops,key,cutoff='2026-08-30')=>(await db.query(`select aliados_importar_liquidacion('alo','test.xlsx',$2::text,'test',1,'xlsx',$3,$3,$3,$4::jsonb,$1::jsonb,'[]'::jsonb,$2::text::uuid) id`,[JSON.stringify(ops),key,cutoff,JSON.stringify(ops.map((o,i)=>({sheet:'Worksheet',row_number:i+2,source_key:o.sourceKey,original:o})))])).rows[0].id;
+ const first=await run([op('contract-1')],'10000000-0000-4000-8000-000000000001');
+ await db.query("update liquidations set estado='pagada' where id=$1",[first]);
+ const second=await run([op('contract-1'),op('contract-2'),op('contract-2')],'10000000-0000-4000-8000-000000000002','2026-09-06');
+ assert.equal((await db.query('select count(*)::int n from liquidation_operations where liquidation_id=$1',[second])).rows[0].n,1);
+ assert.equal((await db.query('select count(*)::int n from liquidation_source_rows where liquidation_id=$1',[second])).rows[0].n,3);
+ const skipped=(await db.query("select detalle from audit_log where registro_id=$1 and accion='alo_credito_repetido_omitido'",[second])).rows;
+ assert.equal(skipped.length,2);assert.ok(skipped.some(x=>x.detalle.estado_anterior==='pagada'));
+ assert.equal(await run([op('contract-2')],'10000000-0000-4000-8000-000000000002'),second);
+ const third=await run([op('contract-1')],'10000000-0000-4000-8000-000000000003');
+ assert.equal((await db.query('select count(*)::int n from liquidation_operations where liquidation_id=$1',[third])).rows[0].n,0);
+ await assert.rejects(()=>run([op('')],'10000000-0000-4000-8000-000000000004'),/número de contrato/);
+ await db.query("update liquidations set estado='anulada' where id=$1",[second]);
+ const fourth=await run([op('contract-2')],'10000000-0000-4000-8000-000000000005');
+ assert.equal((await db.query('select count(*)::int n from liquidation_operations where liquidation_id=$1',[fourth])).rows[0].n,1);
+});
 test('ALO calcula las seis operaciones aunque tres no tengan ejecutivo ni cuenta',async()=>{
  const result=(await calculate()).rows[0].result;assert.equal(result.estado,'calculada');
  assert.equal(Number(result.total_pago_aliados),1965370);assert.equal(Number(result.total_pago_tiendas),378012);
@@ -180,4 +219,44 @@ test('Retail no toca aprobación, órdenes autorizadas ni bonos manuales; wrappe
  const bonus=(await db.query("insert into liquidation_bonuses(liquidation_id,operation_id,tipo_bono,valor) values($1,$2,'manual',1000) returning id",[batch,op.id])).rows[0].id;
  await assert.rejects(call,/bonos manuales/);await db.query('delete from liquidation_bonuses where id=$1',[bonus]);
  assert.equal((await db.query("select prosecdef from pg_proc where proname='tesoreria_vincular_operacion_retail'")).rows[0].prosecdef,false);
+});
+
+test('fórmula ALO concilia las 12 filas Excel y conserva bonos, PayJoy e históricos',async()=>{
+ const sql=await read('../../supabase/migrations/20260907221206_alo_formula_referencia_excel.sql');
+ const previous=(await db.query('select to_jsonb(l) data from liquidations l order by id')).rows;
+ const bonusFunction=(await db.query("select pg_get_functiondef('aliados_calcular_bonos_ejecutivos(uuid)'::regprocedure) body")).rows;
+ await db.exec(sql);
+ assert.deepEqual((await db.query('select to_jsonb(l) data from liquidations l order by id')).rows,previous);
+ assert.deepEqual((await db.query("select pg_get_functiondef('aliados_calcular_bonos_ejecutivos(uuid)'::regprocedure) body")).rows,bonusFunction);
+ const lot=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('alo','importada','2026-08-30') returning id")).rows[0].id;
+ for(const [i,[type,credit,initial,bonus]] of excelAloRows.entries()){
+  const code=`EXCEL-${i}`;
+  await db.query('insert into origenes(codigo,nombre,tipo) values($1,$1,$2)',[code,type]);
+  const op=(await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'alo','2026-08-26T17:00:00Z',$2,$2,$3,$4,$4,$5,true,'{}') returning id",[lot,code,type,credit,initial])).rows[0].id;
+  if(bonus)await db.query("insert into liquidation_bonuses(liquidation_id,operation_id,tipo_bono,valor,estado) values($1,$2,'referencia_excel', $3,'aprobado')",[lot,op,bonus]);
+ }
+ const check=async()=>{
+  await db.query('select aliados_calcular_liquidacion($1)',[lot]);
+  const rows=(await db.query('select * from liquidation_operations where liquidation_id=$1',[lot])).rows;
+  for(const [i,[,credit,,bonus,pagamos,net,utility]] of excelAloRows.entries()){
+   const o=rows.find(x=>x.origen_codigo===`EXCEL-${i}`);
+   assert.deepEqual([o.pagamos,o.pago_neto_beneficiario,o.bonos_aplicados,o.utilidad_creditek].map(Number),[pagamos,net,bonus,utility]);
+   assert.equal(net+bonus+utility,credit);
+  }
+ };
+ await check();await check();
+ const totals=(await db.query('select * from liquidations where id=$1',[lot])).rows[0];
+ assert.equal(Number(totals.total_pago_tiendas),2071250);assert.equal(Number(totals.total_pago_aliados),3563700);
+ assert.equal(Number(totals.total_bonos),215000);assert.equal(Number(totals.total_utilidad_creditek),2130100);
+ assert.equal(totals.approved_at,null);
+ await db.query('update liquidations set frozen_at=now() where id=$1',[lot]);
+ await assert.rejects(()=>db.query('select aliados_calcular_liquidacion($1)',[lot]),/inmutable/);
+ await assert.rejects(()=>db.exec(sql),/función de cálculo cambió/);
+ // Misma función, rama PayJoy intacta: su fórmula no está autorizada por estos Excel ALO.
+ await db.exec("insert into settlement_policy_versions(plataforma,tipo_establecimiento,estado,vigente_desde,porcentaje,base_field,formula_code) values('payjoy','propia','aprobada','2026-08-05',.76,'valor_comercial','VALOR_COMERCIAL_X_PORCENTAJE_MENOS_INICIAL')");
+ const pj=(await db.query("insert into liquidations(plataforma,estado) values('payjoy','importada') returning id")).rows[0].id;
+ await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'payjoy','2026-08-26T17:00:00Z','EXCEL-0','EXCEL-0','propia',592450,592450,104550,true,'{}')",[pj]);
+ await db.query('select aliados_calcular_liquidacion($1)',[pj]);
+ const o=(await db.query('select * from liquidation_operations where liquidation_id=$1',[pj])).rows[0];
+ assert.equal(Number(o.pagamos),450262);assert.equal(Number(o.pago_neto_beneficiario),345712);assert.equal(Number(o.utilidad_creditek),142188);
 });

@@ -36,14 +36,14 @@ test('normaliza PayJoy y ALO a crédito, inicial y valor comercial sin duplicar 
 test('aplica 76 % a Retail y 77 % a Aliados sobre crédito más inicial', () => {
   const retail = domain.calcularOperaciones([operation({ tipoEstablecimiento:'propia' })], policies)[0];
   const aliado = domain.calcularOperaciones([operation()], policies)[0];
-  assert.deepEqual({ porcentaje:retail.porcentaje, pagamos:retail.pagamos, neto:retail.pagoNeto, utilidad:retail.utilidadCreditek }, { porcentaje:.76, pagamos:912_000, neto:712_000, utilidad:488_000 });
-  assert.deepEqual({ porcentaje:aliado.porcentaje, pagamos:aliado.pagamos, neto:aliado.pagoNeto, utilidad:aliado.utilidadCreditek }, { porcentaje:.77, pagamos:924_000, neto:724_000, utilidad:476_000 });
+  assert.deepEqual({ porcentaje:retail.porcentaje, pagamos:retail.pagamos, neto:retail.pagoNeto, utilidad:retail.utilidadCreditek }, { porcentaje:.76, pagamos:912_000, neto:712_000, utilidad:288_000 });
+  assert.deepEqual({ porcentaje:aliado.porcentaje, pagamos:aliado.pagamos, neto:aliado.pagoNeto, utilidad:aliado.utilidadCreditek }, { porcentaje:.77, pagamos:924_000, neto:724_000, utilidad:276_000 });
 });
 
 test('resta inicial una vez, descuenta bonos y congela snapshot de política', () => {
   const [result] = domain.calcularOperaciones([operation()], policies, [{ operationKey:'alo|1', valor:25_000, estado:'aprobado' }]);
   assert.equal(result.pagoNeto, 724_000);
-  assert.equal(result.utilidadCreditek, 451_000);
+  assert.equal(result.utilidadCreditek, 251_000);
   assert.equal(result.totalBonos, 25_000);
   assert.deepEqual(result.policySnapshot, policies[3]);
 });

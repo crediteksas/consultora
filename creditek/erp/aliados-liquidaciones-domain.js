@@ -259,7 +259,8 @@
       const pagoNeto = Math.round((pagamos - operation.inicialPlataforma) * 100) / 100;
       const bonuses = bonos.filter(bonus => bonus.operationKey === operation.sourceKey && bonus.estado !== 'anulado');
       const totalBonos = bonuses.reduce((sum, bonus) => sum + dinero(bonus.valor), 0);
-      const utilidadCreditek = Math.round((operation.valorComercial - pagoNeto - totalBonos) * 100) / 100;
+      const ingresoUtilidad = operation.plataforma === 'alo' ? operation.valorCredito : operation.valorComercial;
+      const utilidadCreditek = Math.round((ingresoUtilidad - pagoNeto - totalBonos) * 100) / 100;
       const incidencias = [];
       if (pagoNeto < 0 || utilidadCreditek < 0) incidencias.push('valor_negativo_imposible');
       if (operation.tipoEstablecimiento === 'aliado' && !operation.ejecutivo) incidencias.push('aliado_sin_ejecutivo');

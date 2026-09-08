@@ -324,7 +324,7 @@ test('bono diferido: aprueba sin ejecutivo, completa en Tesorería una vez, cons
 });
 
 test('cuenta pendiente se completa sin reemplazar destinos ni repetir principal',async()=>{
- await db.exec(await read('../../docs/pendientes/completar_destinos_pendientes_tesoreria.sql'));
+ await db.exec(await read('../../supabase/migrations/20260907235856_completar_destinos_pendientes_tesoreria.sql'));
  const op=(await db.query("select * from liquidation_operations where origen_codigo='DIFERIDO'")).rows[0];
  const b=(await db.query("insert into liquidation_beneficiaries(tipo,nombre,identificacion,origen_codigo) values('aliado','Titular','1234','DIFERIDO') returning id")).rows[0].id;
  const po=(await db.query('insert into payment_orders(liquidation_id,beneficiary_id,valor) values($1,$2,$3) returning id',[op.liquidation_id,b,op.pago_neto_beneficiario])).rows[0].id;

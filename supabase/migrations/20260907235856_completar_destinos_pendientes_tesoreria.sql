@@ -1,4 +1,4 @@
--- BORRADOR NO INSTALADO: requiere autorización específica de Oscar.
+-- Autorizado por Oscar: completar únicamente destinos vacíos pendientes.
 -- Completar un destino vacío no equivale a reemplazar una cuenta aprobada.
 do $migration$
 declare body text;

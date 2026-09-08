@@ -29,7 +29,7 @@ test('el informe operativo no suma el histórico cerrado', () => {
   assert.doesNotMatch(render, /historicalUtilityOriginal/);
   assert.doesNotMatch(render, /Resultado histórico/);
   assert.match(render, /El histórico cerrado se conserva en auditoría/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.29/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.30/);
 });
 
 test('el inicio operativo incluye todas las ventas desde el 1 de septiembre', () => {

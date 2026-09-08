@@ -21,6 +21,31 @@ test('dashboard compacto conserva histórico cerrado bajo consulta',()=>{
   assert.match(source,/<details class="card"><summary>Consultar histórico cerrado/);
   assert.doesNotMatch(source,/<details[^>]*\bopen\b/);
 });
+test('recupera ciudad de ficha original sin propagar la ciudad del titular compartido',()=>{
+ const ctx={db:{origins:[],sites:[{origen_codigo:'cerete',aliado_id:'grupo',nombre:'CELUVENTAS CERETE'},{origen_codigo:'monteria',aliado_id:'grupo',nombre:'CELUVENTAS MONTERIA'},{origen_codigo:'dk',aliado_id:'dk'}],allies:[{id:'grupo',nombre_comercial:'CELUVENTAS MONTERIA',ciudad_principal:'Montería'},{id:'original',nombre_comercial:'CELUVENTAS CERETE',ciudad_principal:'Cereté'},{id:'dk',nombre_comercial:'DKCHE',ciudad_principal:'Lorica'}]}};
+ vm.runInNewContext(citySource,ctx);
+ assert.equal(ctx.operationCity({origen_codigo:'cerete',establishment_name:'A CELUVENTAS CERETE'}),'Cereté');
+ assert.equal(ctx.operationCity({origen_codigo:'monteria'}),'Montería');
+ assert.equal(ctx.operationCity({origen_codigo:'dk'}),'Lorica');
+ assert.equal(ctx.operationCity({origen_codigo:'desconocido'}),'');
+});
+test('provisión usa snapshot guardado y distingue cálculo ausente de cero',()=>{
+ const ctx={};vm.runInNewContext(citySource,ctx);
+ assert.equal(ctx.operationProvision({policy_snapshot:{krediya_v2:{provision:'921312.60'}}}),921312.6);
+ assert.equal(ctx.operationProvision({policy_snapshot:{krediya_v2:{provision:0}}}),0);
+ assert.equal(ctx.operationProvision({}),null);
+});
+test('dashboard filtra provisión y bonos por crédito sin restar dos veces la reserva',()=>{
+ const nodes={};for(const id of ['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity','dashboardFilterSummary','content'])nodes['#'+id]={value:''};
+ nodes['#dashboardCity'].value='Cereté';let cards;
+ const ctx={$:s=>nodes[s],db:{operations:[{id:'a',liquidation_id:'l',origen_codigo:'a',plataforma:'krediya',monto_base:100,utility:72,policy_snapshot:{krediya_v2:{provision:28}}},{id:'b',liquidation_id:'l',origen_codigo:'b',plataforma:'krediya',monto_base:200,utility:144,policy_snapshot:{krediya_v2:{provision:56}}}],origins:[{codigo:'a',ciudad:'Cereté'},{codigo:'b',ciudad:'Montería'}],sites:[],allies:[],bonuses:[{operation_id:'a',liquidation_id:'l',valor:5},{operation_id:'b',liquidation_id:'l',valor:10}],beneficiaries:[],incidents:[]},operationIsCurrent:()=>true,operationSaleDay:()=> '2026-08-25',businessType:()=> 'aliado',sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),historicalUtilityOriginal:()=>0,historicalUtilityClosed:()=>0,historicalUtilityAvailable:()=>0,operationUtilityAvailable:o=>o.utility,metrics:x=>cards=x,cop:String,operationName:o=>o.origen_codigo,paymentValue:()=>0,esc:String,execName:()=>'',badge:String,platformName:String,rows:(a,cols)=>a.map(x=>cols.map(c=>c(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n')};
+ vm.runInNewContext(citySource+app.slice(app.indexOf('  function renderDashboard()'),app.indexOf('  function populateDashboardFilters()')),ctx);ctx.renderDashboard();
+ assert.equal(cards.find(c=>c[0]==='Provisión calculada del periodo')[1],'28');
+ assert.equal(cards.find(c=>c[0]==='Utilidad disponible')[1],'72');
+ assert.equal(cards.find(c=>c[0]==='Bonificaciones del periodo')[1],'5');
+ assert.match(nodes['#content'].innerHTML,/Provisión/);
+ assert.match(nodes['#content'].innerHTML,/ya está descontada/);
+});
 const auditSource=liquidaciones.slice(liquidaciones.indexOf('  async function loadAudit('),liquidaciones.indexOf('  async function loadGrouped('));
 async function audit(profileError=false,stale=false){
   const nodes={detailHead:{},detailBody:{}};const calls=[];

@@ -22,7 +22,7 @@ test('Plataformas explica y separa la base cerrada de la operación nueva', () =
   assert.match(app, /Saldo histórico disponible/);
   assert.match(app, /Operaciones nuevas/);
   assert.match(html, /Seguimiento operativo por plataforma, periodo y tipo de negocio/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.29/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.30/);
 });
 
 test('contador muestra solo abiertas del filtro y ofrece acceso al lote', () => {

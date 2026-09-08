@@ -165,7 +165,24 @@
     if (originCity) return originCity;
     const cities = [...new Set(db.sites.filter(x => x.origen_codigo === o.origen_codigo)
       .map(x => x.ciudad?.trim()).filter(Boolean))];
-    return cities.length === 1 ? cities[0] : "";
+    if (cities.length) return cities.length === 1 ? cities[0] : "";
+    const sites = db.sites.filter(x => x.origen_codigo === o.origen_codigo);
+    // Un titular compartido no implica que sus locales estén en la misma ciudad.
+    const singleSiteCities = sites.flatMap(s => {
+      const codes = new Set(db.sites.filter(x => x.aliado_id === s.aliado_id).map(x => x.origen_codigo).filter(Boolean));
+      const city = (db.allies || []).find(a => a.id === s.aliado_id)?.ciudad_principal?.trim();
+      return codes.size === 1 && city ? [city] : [];
+    });
+    const key = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/^A\s+/, "").replace(/[^A-Z0-9]/g, "");
+    const names = [o.establishment_name, ...sites.map(s => s.nombre), db.origins.find(x => x.codigo === o.origen_codigo)?.nombre].map(key).filter(Boolean);
+    const originalCities = (db.allies || []).filter(a => names.includes(key(a.nombre_comercial)))
+      .map(a => a.ciudad_principal?.trim()).filter(Boolean);
+    const resolved = [...new Set([...singleSiteCities, ...originalCities])];
+    return resolved.length === 1 ? resolved[0] : "";
+  }
+  function operationProvision(o) {
+    const value = o.policy_snapshot?.krediya_v2?.provision;
+    return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) ? Number(value) : null;
   }
   function liquidationForOperation(o) {
     return db.liquidations.find((x) => x.id === o.liquidation_id);
@@ -357,7 +374,7 @@
       liquidationIds = new Set(ops.map((o) => o.liquidation_id));
     const bonuses = db.bonuses.filter(
       (b) =>
-        liquidationIds.has(b.liquidation_id) &&
+        ops.some(o => o.id === b.operation_id && o.liquidation_id === b.liquidation_id) &&
         (!executive ||
           db.beneficiaries.find((x) => x.id === b.beneficiary_id)
             ?.ejecutivo_id === executive),
@@ -411,6 +428,7 @@
       ],
       ["Ventas del periodo", cop(sum(ops, "monto_base"))],
       ["Bonificaciones del periodo", cop(sum(bonuses, "valor"))],
+      ["Provisión calculada del periodo", cop(ops.reduce((n, o) => n + (operationProvision(o) ?? 0), 0)) + (ops.some(o => o.plataforma === "krediya" && operationProvision(o) === null) ? " · cálculo incompleto" : "")],
       ["Gastos aprobados", cop(expenseTotal)],
       [
         "Novedades bloqueantes",
@@ -436,11 +454,15 @@
               sales: 0,
               payment: 0,
               utility: 0,
+              provision: 0,
+              provisionMissing: false,
             };
           current.ops++;
           current.sales += Number(o.monto_base || 0);
           current.payment += paymentValue(o);
           current.utility += operationUtilityAvailable(o);
+          current.provision += operationProvision(o) ?? 0;
+          current.provisionMissing ||= o.plataforma === "krediya" && operationProvision(o) === null;
           map.set(key, current);
           return map;
         }, new Map())
@@ -481,7 +503,7 @@
     $("#dashboardFilterSummary").textContent =
       `Operación nueva: ${ops.length} de ${db.operations.length} · Histórico inicial pagado: ${historical.length} créditos · Corte de inicio: 1 de septiembre de 2026`;
     $("#content").innerHTML =
-      `<details class="card"><summary>Consultar histórico cerrado</summary><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</details><section class="card"><h2>Operaciones del periodo</h2>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "Ciudad pendiente"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
+      `<details class="card"><summary>Consultar histórico cerrado</summary><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</details><section class="card"><h2>Operaciones del periodo</h2><p class="muted">La provisión mostrada ya está descontada de la utilidad. Es una reserva calculada; no acredita que el dinero esté separado en una cuenta bancaria.</p>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Provisión", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "Ciudad pendiente"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => x.provisionMissing ? "Pendiente de calcular" : cop(x.provision), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();

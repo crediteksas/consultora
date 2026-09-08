@@ -90,7 +90,10 @@
     await loadBatches();
     const requestedBatch=new URLSearchParams(location.search).get('lote');
     if(new URLSearchParams(location.search).get('vista')==='historial')setListMode('history');
-    if(requestedBatch && batches.some(b=>b.id===requestedBatch))await openDetail(requestedBatch);
+    if(requestedBatch && batches.some(b=>b.id===requestedBatch)) {
+      await openDetail(requestedBatch);
+      if(new URLSearchParams(location.search).get('tab')==='incidents')await loadTab('incidents');
+    }
   }
   document.addEventListener('kora-sidebar-ready', enterFromKora);
   if (window.creditekSidebar?.sb) enterFromKora();

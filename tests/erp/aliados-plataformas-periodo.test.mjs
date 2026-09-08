@@ -24,3 +24,14 @@ test('Plataformas explica y separa la base cerrada de la operación nueva', () =
   assert.match(html, /Seguimiento operativo por plataforma, periodo y tipo de negocio/);
   assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.26/);
 });
+
+test('contador muestra solo abiertas del filtro y ofrece acceso al lote', () => {
+ const start=app.indexOf('incidents = db.incidents.filter',app.indexOf('function renderPlatformCards'));
+ const filter=app.slice(start,app.indexOf('sales =',start));
+ assert.match(filter,/x.estado === 'abierta'/);
+ assert.match(filter,/platformOps.some\(o=>o.id===x.operation_id\)/);
+ assert.doesNotMatch(filter,/resuelta_at/);
+ assert.match(app,/Gestionar novedades/);
+ assert.match(app,/&tab=incidents/);
+ assert.match(app,/créditos afectados/);
+});

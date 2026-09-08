@@ -911,7 +911,8 @@
             liquidationIds.has(x.liquidation_id),
           ),
           incidents = db.incidents.filter(
-            (x) => liquidationIds.has(x.liquidation_id) && !x.resuelta_at,
+            (x) => liquidationIds.has(x.liquidation_id) && x.estado === 'abierta'
+              && (!x.operation_id || platformOps.some(o=>o.id===x.operation_id)),
           ),
           sales = sum(platformOps, "monto_base"),
           origins = [
@@ -1005,7 +1006,7 @@
                 ]),
               )
             : '<div class="empty compact">Sin operaciones en el periodo.</div>';
-        return `<details class="card platform-card"><summary><div><h2>${esc(x.p.nombre || platformName(x.p.id))}</h2><span>${badge(status)}</span></div><strong>${x.platformOps.length} crédito${x.platformOps.length === 1 ? "" : "s"}</strong></summary><div class="platform-card-metrics"><div><small>Valor vendido</small><strong>${cop(x.sales)}</strong></div><div><small>Participación</small><strong>${share}%</strong></div><div><small>Ticket promedio</small><strong>${cop(average)}</strong></div><div><small>Establecimientos</small><strong>${x.origins.length}</strong><span>${x.ownOrigins.length} propias · ${x.allyOrigins.length} aliados</span></div><div><small>Liquidaciones</small><strong>${x.liqs.length}</strong><span>${x.pendingLiqs.length} pendientes</span></div><div><small>Última liquidación</small><strong>${x.lastLiq ? date(x.lastLiq.periodo_hasta) : "Sin liquidar"}</strong></div><div><small>Pagos por gestionar</small><strong>${x.pendingPayments.length}</strong></div><div><small>Alertas abiertas</small><strong>${x.incidents.length}</strong></div></div><div class="section"><h3>Detalle por establecimiento</h3>${details}</div></details>`;
+        return `<details class="card platform-card"><summary><div><h2>${esc(x.p.nombre || platformName(x.p.id))}</h2><span>${badge(status)}</span></div><strong>${x.platformOps.length} crédito${x.platformOps.length === 1 ? "" : "s"}</strong></summary><div class="platform-card-metrics"><div><small>Valor vendido</small><strong>${cop(x.sales)}</strong></div><div><small>Participación</small><strong>${share}%</strong></div><div><small>Ticket promedio</small><strong>${cop(average)}</strong></div><div><small>Establecimientos</small><strong>${x.origins.length}</strong><span>${x.ownOrigins.length} propias · ${x.allyOrigins.length} aliados</span></div><div><small>Liquidaciones</small><strong>${x.liqs.length}</strong><span>${x.pendingLiqs.length} pendientes</span></div><div><small>Última liquidación</small><strong>${x.lastLiq ? date(x.lastLiq.periodo_hasta) : "Sin liquidar"}</strong></div><div><small>Pagos por gestionar</small><strong>${x.pendingPayments.length}</strong></div><div><small>Novedades abiertas</small><strong>${x.incidents.length}</strong><span>${new Set(x.incidents.map(i=>i.operation_id).filter(Boolean)).size} créditos afectados</span><details><summary style="cursor:pointer">Gestionar novedades</summary>${x.liqs.filter(l=>x.incidents.some(i=>i.liquidation_id===l.id)).map(l=>`<p><a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(l.id)}&tab=incidents">Gestionar ${x.incidents.filter(i=>i.liquidation_id===l.id).length} novedades · ${esc(date(l.fecha_corte))}</a></p>`).join('') || '<p>Sin novedades abiertas.</p>'}</details></div></div><div class="section"><h3>Detalle por establecimiento</h3>${details}</div></details>`;
       })
       .join("");
     $("#content").innerHTML =

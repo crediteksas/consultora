@@ -15,6 +15,7 @@ const responsive = [
 const erp = [
   'tests/erp/aliados-auditoria-resumen-ciudades.test.mjs',
   'tests/erp/krediya-vigencia-venta.test.mjs',
+  'tests/erp/krediya-bonos-plataforma.test.mjs',
   'tests/erp/autorizacion-unica-lote.test.mjs',
   'tests/erp/calculo-antes-tesoreria.test.mjs',
   'tests/erp/liquidaciones-comercios.test.mjs',

@@ -1323,6 +1323,7 @@
           beneficiary = db.beneficiaries.find((x) => x.id === b.beneficiary_id),
           ops = db.operations.filter(
             (o) =>
+              o.id === b.operation_id &&
               o.liquidation_id === b.liquidation_id && operationIsCurrent(o),
           ),
           days = ops
@@ -1333,6 +1334,7 @@
           b,
           liquidation,
           beneficiary,
+          operation: ops[0],
           day: days[0] || "—",
           current: ops.length > 0,
         };
@@ -1359,7 +1361,8 @@
           ),
         ),
       ],
-      ["Registros", items.length],
+      ["Créditos con bono", new Set(items.map((x) => x.b.operation_id)).size],
+      ["Bonos por beneficiario", items.length],
       [
         "Aprobadas",
         `${approved.length} · ${cop(
@@ -1397,9 +1400,12 @@
     });
     const ranked = [...groups.values()].sort((a,b) => b.total-a.total);
     const maximum = Math.max(1,...ranked.map(x=>Math.abs(x.total)));
+    const policyReview = items.filter(x => x.liquidation?.plataforma === 'krediya' &&
+      (x.b.tipo_bono === 'automatico_override' ||
+       (['krediya_operacion','krediya_gestion'].includes(x.b.tipo_bono) && x.operation?.tipo_establecimiento === 'propia')));
     const chartRow = x => `<div style="margin:14px 0"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><span>${esc(x.name)} <small class="muted">· ${x.count} bonos</small></span><strong>${cop(x.total)}</strong></div><div aria-hidden="true" style="height:8px;background:#eef3f8;border-radius:6px;margin-top:6px;overflow:hidden"><div style="height:100%;background:${x.total<0?'#b45309':'#087f8c'};width:${Math.abs(x.total)/maximum*100}%"></div></div></div>`;
     $("#content").innerHTML =
-      `<section class="card"><h2>Bonificaciones del periodo</h2><p class="muted">${esc(from)} a ${esc(to)} · ${ranked.length} beneficiarios · Valores en pesos colombianos. Los bonos históricos ya pagados permanecen conservados para auditoría.</p><h3>Total por beneficiario</h3>${ranked.length ? ranked.slice(0,6).map(chartRow).join('') : '<p>No hay bonificaciones con estos filtros.</p>'}${ranked.length>6?`<details><summary>Ver los ${ranked.length-6} beneficiarios restantes</summary>${ranked.slice(6).map(chartRow).join('')}</details>`:''}<details style="margin-top:20px"><summary style="cursor:pointer;padding:12px 0;font-weight:600">Consultar detalle · ${items.length} registros</summary><div style="max-height:420px;overflow:auto">${table(["Fecha de venta", "Beneficiario", "Tipo", "Plataforma", "Concepto", "Valor", "Estado"], rows(items, [(x) => esc(x.day), (x) => esc(x.beneficiary?.nombre), (x) => esc(x.beneficiary?.tipo), (x) => esc(platformName(x.liquidation?.plataforma)), (x) => esc(x.b.motivo || x.b.tipo_bono), (x) => cop(x.b.valor), (x) => badge(x.b.estado)]))}</div></details></section>`;
+      `${policyReview.length ? `<div class="notice">Krediya: ${policyReview.length} bonos anteriores requieren conciliación con la regla corregida. Se conservan los importes registrados; no se han anulado pagos.</div>` : ""}<section class="card"><h2>Bonificaciones del periodo</h2><p class="muted">${esc(from)} a ${esc(to)} · ${ranked.length} beneficiarios · Valores en pesos colombianos. Los bonos históricos ya pagados permanecen conservados para auditoría.</p><h3>Total por beneficiario</h3>${ranked.length ? ranked.slice(0,6).map(chartRow).join('') : '<p>No hay bonificaciones con estos filtros.</p>'}${ranked.length>6?`<details><summary>Ver los ${ranked.length-6} beneficiarios restantes</summary>${ranked.slice(6).map(chartRow).join('')}</details>`:''}<details style="margin-top:20px"><summary style="cursor:pointer;padding:12px 0;font-weight:600">Consultar detalle · ${items.length} registros</summary><div style="max-height:420px;overflow:auto">${table(["Fecha de venta", "Beneficiario", "Tipo", "Plataforma", "Concepto", "Valor", "Estado"], rows(items, [(x) => esc(x.day), (x) => esc(x.beneficiary?.nombre), (x) => esc(x.beneficiary?.tipo), (x) => esc(platformName(x.liquidation?.plataforma)), (x) => esc(x.b.motivo || x.b.tipo_bono), (x) => cop(x.b.valor), (x) => badge(x.b.estado)]))}</div></details></section>`;
   }
   function populateExpenseForm() {
     const select = $("#expenseOrigin");

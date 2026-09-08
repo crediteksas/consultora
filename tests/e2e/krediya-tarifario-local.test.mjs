@@ -63,10 +63,10 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
   await page.getByRole('button',{name:'Descargar informe Excel'}).click();
   const exportData=await page.evaluate(()=>window.downloads[0]);
   assert.equal(exportData.name,'Diferencias-Krediya-2026-08-30.xlsx');
-  assert.equal(exportData.book.Sheets['Diferencias PVP'].C2.v,'012345678901234');
-  assert.equal(exportData.book.Sheets['Diferencias PVP'].C2.t,'s');
-  assert.equal(exportData.book.Sheets['Diferencias PVP'].J2.v,414650);
-  assert.equal(exportData.book.Sheets['Diferencias PVP'].R2.v,2525.4);
+  assert.equal(exportData.book.Sheets['Gestión y Gerencia'].C2.v,'012345678901234');
+  assert.equal(exportData.book.Sheets['Gestión y Gerencia'].C2.t,'s');
+  assert.equal(exportData.book.Sheets['Gestión y Gerencia'].J2.v,414650);
+  assert.equal(exportData.book.Sheets['Gestión y Gerencia'].R2.v,2525.4);
   await page.getByText('Gestionar / ver historial',{exact:true}).click();
   await page.locator('[name=comentario]').fill('Subir el precio en Krediya a 880000.');
   await page.getByRole('button',{name:'Guardar seguimiento'}).click();
@@ -110,11 +110,11 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
    await window.component.report(document.getElementById('report-test'),{id:'batch',fecha_corte:'2026-08-30'});
   });
   assert.match(await page.locator('.difference-summary').innerText(),/Impacto neto parcial/);
-  assert.match(await page.locator('.difference-summary').innerText(),/1 sin impacto cuantificado/);
+  assert.match(await page.locator('.difference-card').last().innerText(),/No disponible/);
   await page.setViewportSize({width:390,height:900});
   assert.equal(await page.locator('#report-test').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,'soportes largos no ensanchan informe');
   await page.getByRole('button',{name:'Descargar informe Excel'}).click();
-  const missingRow=await page.evaluate(()=>window.downloads.at(-1).book.Sheets['Diferencias PVP']);
+  const missingRow=await page.evaluate(()=>window.downloads.at(-1).book.Sheets['Gestión y Gerencia']);
   assert.equal(missingRow.J3,undefined,'Giro desconocido no exportado como cero');
   assert.equal(missingRow.P3.t,'s');assert.equal(missingRow.P3.f,undefined,'Comentario no ejecutable como fórmula');
   if(process.env.KORA_SCREENSHOT_DIR){

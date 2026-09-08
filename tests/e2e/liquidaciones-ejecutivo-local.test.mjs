@@ -21,6 +21,7 @@ for(const engine of ['chromium','webkit'])test(`Novedades: ejecutivo y Retail re
    const pending=()=>window.testStale?[]:operations.filter(op=>op.tipo_establecimiento==='aliado').map(op=>({id:op.id,liquidation_id:'alo',origen_codigo:op.origen_codigo,comercio:op.establishment_name,ejecutivo_actual:masters[op.origen_codigo]||null,falta_ejecutivo:!masters[op.origen_codigo]}));
    const sb={auth:{getSession:async()=>({data:{session:{user:{id:'gestion'}}}})},from(table){let filters=[],single=false;const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},range(){return q},maybeSingle(){single=true;return q},then(ok,bad){
     let data=table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?[{id:'alo',plataforma:window.testPlatform,estado:window.testFrozen?'aprobada':'calculada',frozen_at:window.testFrozen?'2026-09-07':null,fecha_corte:'2026-09-06',imported_at:'2026-09-07',liquidation_operations:operations}]:table==='liquidation_operations'?operations:table==='liquidation_incidents'?incidents:table==='ejecutivos'?[{id:'exec-1',nombre:'Ejecutivo de prueba',activo:true}]:table==='origenes'?[{codigo:'CK-11',nombre:'Creditel Coveñas',activo:true,tipo:'propia'},{codigo:'CK-01',nombre:'Celfiao Tolú',activo:true,tipo:'propia'},{codigo:'ALIADO-X',nombre:'No es Retail',activo:true,tipo:'aliado'}]:[];
+    if(table==='liquidations')Object.assign(data[0],{total_pago_aliados:2103100,total_bonos:120000,total_utilidad:1074100,total_pagar:3148100});
     if(table==='liquidations'&&window.testHistory)data=Array.from({length:7},(_,i)=>({...data[0],id:'history'+i,approved_at:'2026-09-0'+(i+1),fecha_corte:'2026-09-0'+(i+1)}));
     data=data.filter(r=>filters.every(([k,v])=>r[k]===undefined||r[k]===v));return Promise.resolve({data:single?data[0]:data}).then(ok,bad);
    }};return q},async rpc(name,params){
@@ -38,6 +39,18 @@ for(const engine of ['chromium','webkit'])test(`Novedades: ejecutivo y Retail re
    }};window.creditekSidebar={sb,perfil:{rol:'auditoria'}};
   });
   await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
+  await page.locator('#batches small').first().waitFor();
+  // Las etiquetas provisionales no pueden pegarse al importe ni invadir otra columna.
+  for(const width of [390,768,1128,1255,1440]){
+   await page.setViewportSize({width,height:900});
+   assert.ok(await page.locator('#batches small').evaluateAll(labels=>labels.every(label=>{
+    const cell=label.parentElement,range=document.createRange();range.selectNodeContents(cell.firstChild);
+    const amount=range.getBoundingClientRect(),note=label.getBoundingClientRect(),box=cell.getBoundingClientRect();
+    return note.top>=amount.bottom && note.right<=box.right+1 && note.left>=box.left-1;
+   })),`Provisional debe quedar debajo y dentro de su celda a ${width}px`);
+  }
+  await page.screenshot({path:`/private/tmp/liquidaciones-provisional-${engine}.png`,animations:'disabled'});
+  await page.setViewportSize({width:390,height:844});
   await page.locator('[data-open=alo]').click();
   await page.getByRole('button',{name:'Asignar ejecutivos',exact:true}).click();
   await page.getByRole('heading',{name:'Estas tiendas no tienen ejecutivo'}).waitFor();

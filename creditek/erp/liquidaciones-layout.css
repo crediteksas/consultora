@@ -43,6 +43,7 @@ body.liquidations-view .kora-extension{white-space:nowrap}
 #liquidationsContent .data-reflow-table td{white-space:nowrap!important}
 #liquidationsContent .data-reflow-table th{position:static!important;font-size:11px}
 #liquidationsContent .data-reflow-table td:last-child{white-space:normal!important}
+#liquidationsContent .batches-table td small{display:block;margin-top:4px;font-size:10px;line-height:1.4;color:#64748B;white-space:normal;overflow-wrap:normal}
 #liquidationsContent #workflowError{font-size:14px;line-height:1.6}
 @container liquidaciones (max-width:1100px){
   #liquidationsContent .data-reflow-table,#liquidationsContent .data-reflow-table tbody{display:block;width:100%!important;min-width:0!important}

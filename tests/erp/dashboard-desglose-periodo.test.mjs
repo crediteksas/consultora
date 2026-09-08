@@ -52,3 +52,26 @@ test('margen guardado inconsistente se marca como parcial y no se fuerza a cuadr
  const {ctx}=fixture();const result=ctx.dashboardBreakdown({plataforma:'krediya',valor_comercial:200,pagamos:100,utilidad_creditek:50,bonos_aplicados:10,policy_snapshot:{krediya_v2:{gasto_financiero:0,provision:20}}});
  assert.equal(result.gross,100);assert.equal(result.complete,false);
 });
+test('Reportes usa exactamente el mismo resumen del dashboard y solo los bonos del día',()=>{
+ const {ctx,db,nodes}=fixture();
+ db.operations=[{id:'a',external_id:'a',liquidation_id:'l',plataforma:'alo',operation_at:'2026-08-31',tipo_establecimiento:'aliado',monto_base:630000,bonos_aplicados:45000,utilidad_creditek:134400},{id:'b',external_id:'b',liquidation_id:'l',plataforma:'alo',operation_at:'2026-09-06',tipo_establecimiento:'aliado',monto_base:500000,bonos_aplicados:95000,utilidad_creditek:50000}];
+ nodes['#dashboardFrom'].value='2026-08-31';nodes['#dashboardTo'].value='2026-08-31';ctx.renderDashboard();const expected=JSON.stringify(ctx.cards);
+ nodes['#reportToolbar']={};for(const id of ['reportFrom','reportTo','reportPlatform','reportExecutive','reportPaymentState','reportBusiness'])nodes['#'+id]={value:id==='reportFrom'||id==='reportTo'?'2026-08-31':''};
+ vm.runInNewContext(app.slice(app.indexOf('  function renderReports()'),app.indexOf('  function render()')),ctx);ctx.renderReports();
+ assert.equal(JSON.stringify(ctx.cards),expected);assert.equal(ctx.cards.find(x=>x[0]==='Bonificaciones del periodo')[1],'45000');
+ db.payments=[{liquidation_id:'l',estado:'programado'}];nodes['#reportPaymentState'].value='programado';ctx.renderReports();assert.equal(ctx.cards[0][1],1);
+ nodes['#reportPaymentState'].value='pagado';ctx.renderReports();assert.equal(ctx.cards[0][1],0);
+});
+test('carga paginada no trunca registros ni convierte fallos en cero',async()=>{
+ let calls=0;const ctx={sb:{}};
+ ctx.sb.from=()=>({select(){return this},order(){return this},range:async()=>{calls++;return {data:Array(calls===1?1000:7).fill({id:'x'})};}});
+ vm.runInNewContext(app.slice(app.indexOf('  async function safe('),app.indexOf('  async function load()')),ctx);
+ assert.equal((await ctx.allRows('x','*')).length,1007);
+ await assert.rejects(()=>ctx.safe(Promise.resolve({error:new Error('load failed')})),/load failed/);
+ ctx.sb.from=()=>({select(){return this},order(){return this},range:async()=>({error:new Error('second page failed')})});
+ await assert.rejects(()=>ctx.allRows('x','*'),/second page failed/);
+});
+test('no presenta utilidad final numérica cuando el desglose falta',()=>{
+ const {ctx,db}=fixture();db.operations=[{id:'x',plataforma:'krediya',operation_at:'2026-08-15',monto_base:100,utilidad_creditek:100}];ctx.renderDashboard();
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'No disponible · revisar datos');
+});

@@ -20,3 +20,9 @@ Agosto 1–31, solo aliados, consulta SQL deduplicada: PayJoy 78 / 70.828.000 CO
 Resultado final del periodo y resultado no cerrado son conceptos separados. El histórico cerrado no genera pagos ni saldo nuevo. Datos financieros incompletos se señalan como parciales. El gasto operativo mostrado comprende únicamente gastos aprobados registrados, no costos todavía sin registrar. Las provisiones calculadas no prueban reservas bancarias efectivas.
 
 Pruebas: dashboard-desglose-periodo.test.mjs y dashboard-desglose-local.test.mjs, más pipeline local de KORA. ADDI permanece fuera del alcance.
+
+## Corrección de Reportes y cargas incompletas
+
+Reportes utiliza el mismo cálculo y selección por fecha de venta del dashboard. Los bonos proceden del crédito seleccionado, no del total del lote: ALO del 31 de agosto suma 45.000 COP, no 140.000 COP. El filtro de estado de pago se identifica expresamente como filtro del lote, no confirmación del pago de cada crédito.
+
+Las consultas se paginan en bloques de 1.000 con orden estable. Cualquier error de carga retira los totales y muestra «Informe no disponible», sin convertir fallos en ceros. Un desglose financiero incompleto tampoco muestra utilidad final numérica, incluido el detalle por establecimiento. Las pruebas cubren igualdad entre pantallas, bonos de un día, histórico, paginación y errores de carga. No se modifican cálculos almacenados, autorizaciones ni pagos.

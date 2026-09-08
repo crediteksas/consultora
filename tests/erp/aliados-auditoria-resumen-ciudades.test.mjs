@@ -15,7 +15,7 @@ test('ciudad usa origen o sede vinculada sin tomar ciudad de otro local',()=>{
   assert.equal(ctx.operationCity({origen_codigo:'a'}),'');
 });
 test('dashboard compacto conserva histórico cerrado bajo consulta',()=>{
-  const source=app.slice(app.indexOf('  function renderDashboard()'),app.indexOf('  function populateDashboardFilters()'));
+  const source=app.slice(app.indexOf('  function renderDashboard('),app.indexOf('  function populateDashboardFilters()'));
   assert.doesNotMatch(source,/Bonos nuevos|Resultado histórico final|Resultado histórico cerrado/);
   assert.match(source,/Bonificaciones del periodo/);
   assert.match(source,/<details class="card"><summary>Consultar histórico cerrado/);

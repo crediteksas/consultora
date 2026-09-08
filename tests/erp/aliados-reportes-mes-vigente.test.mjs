@@ -15,36 +15,21 @@ test('Reportes Aliados abre con el acumulado del mes vigente', () => {
   assert.match(render, /Mes vigente/);
 });
 
-test('tarjetas y tabla usan la fecha real de venta y los filtros visibles', () => {
-  assert.match(render, /operationSaleDay/);
-  assert.match(render, /operationIsCurrent/);
-  assert.match(render, /reportPlatform/);
-  assert.match(render, /reportExecutive/);
-  assert.match(render, /reportPaymentState/);
-  assert.match(render, /Periodo de ventas visible/);
-  assert.match(render, /exclusivamente al periodo seleccionado/);
+test('Reportes comparte fuente, filtros y cálculo del dashboard', () => {
+  assert.match(render, /renderDashboard\(\{report:true,from,to,platform,executive,paymentState/);
+  assert.match(render, /reportBusiness/);
+  assert.doesNotMatch(render, /operationIsCurrent\(o\)/);
+  assert.doesNotMatch(render, /includedIds\.has\(b\.liquidation_id\)/);
 });
-
-test('el informe operativo no suma el histórico cerrado', () => {
-  assert.doesNotMatch(render, /historicalUtilityOriginal/);
-  assert.doesNotMatch(render, /Resultado histórico/);
-  assert.match(render, /El histórico cerrado se conserva en auditoría/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.30/);
+test('histórico se incluye para consulta sin pagos nuevos', () => {
+  assert.match(app, /dashboardOperations\(\)\.filter/);
+  assert.match(app, /Incluye históricos sin duplicar créditos ni generar pagos/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.32/);
 });
-
-test('el inicio operativo incluye todas las ventas desde el 1 de septiembre', () => {
-  assert.match(app, /const OPERATION_CUTOFF\s*=\s*["']2026-09-01["']/);
-  assert.doesNotMatch(app, /const OPERATION_CUTOFF\s*=\s*["']2026-09-02["']/);
-});
-
-test('la utilidad del negocio incluye operaciones originadas en tiendas propias y aliados', () => {
-  assert.match(render, /ownOps\s*=\s*ops\.filter\(\s*\(o\)\s*=>\s*businessType\(o\)\s*===\s*["']propia["']\s*\)/);
-  assert.match(render, /allyOps\s*=\s*ops\.filter\(\s*\(o\)\s*=>\s*businessType\(o\)\s*===\s*["']aliado["']\s*\)/);
-  assert.match(render, /grossUtility\s*=\s*ownUtility\s*\+\s*allyUtility/);
-  assert.match(render, /Utilidad de Creditek/);
-  assert.match(render, /Utilidad después de gastos/);
-  assert.doesNotMatch(render, /Utilidad (originada en|de tiendas propias|de aliados)/);
-  assert.doesNotMatch(render, /const allyOps=db\.operations\.filter/);
+test('utilidad bruta y final se distinguen sin margen Retail', () => {
+  assert.match(app, /Utilidad bruta del negocio/);
+  assert.match(app, /Utilidad final del periodo/);
+  assert.match(app, /Margen de la liquidación, no ganancia del inventario Retail/);
 });
 
 test('los indicadores del informe forman una cuadrícula alineada y adaptable', () => {

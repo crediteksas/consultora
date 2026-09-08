@@ -402,7 +402,7 @@ __name(llamarGemini3Pro_, "llamarGemini3Pro_");
 __name2(llamarGemini3Pro_, "llamarGemini3Pro_");
 
 var VEO_LOCATION = "us-central1";
-var VEO_MODEL_DEFAULT = "veo-3.1-generate-001";
+var VEO_MODEL_DEFAULT = "veo-3.1-fast-generate-001";
 var VEO_DURATION_VALUES = /* @__PURE__ */ new Set([4, 6, 8]);
 function safeLogValue(value, limit = 240) {
   return String(value || "").replace(/[\r\n]+/g, " ").slice(0, limit);

@@ -37,6 +37,50 @@ body.kora-responsive-ready :where(input, select, textarea) {
   max-width: 100%;
 }
 
+/* Reflow by available container width, not only by phone viewport.
+ * A filter must move to the next row before its standard label is clipped. */
+body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: .75rem;
+  min-width: 0;
+  max-width: 100%;
+  align-items: end;
+}
+
+body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) > :is(input, select, button, .btn, .field, .campo, label) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) :is(button, .btn) {
+  white-space: normal;
+  height: auto;
+  min-height: 2.75rem;
+  padding-block: .625rem;
+}
+
+body.kora-responsive-ready .main-content .metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  align-items: stretch;
+}
+
+body.kora-responsive-ready .main-content .metric {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+body.kora-responsive-ready .main-content .metric strong {
+  margin-top: auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+
 body.kora-responsive-ready :where(
   .table-wrap,
   .tabla-wrap,
@@ -116,6 +160,20 @@ body.kora-responsive-ready :where(
 }
 
 @media (max-width: 47.999rem) {
+  /* The inner page already owns its gutter; do not charge it twice. */
+  body.kora-responsive-ready .main-content:has(> .page) {
+    padding-inline: 0;
+  }
+
+  body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) {
+    padding: .75rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) select {
+    padding-inline: .625rem;
+  }
+
   .kora-topbar {
     align-items: center;
     display: grid;

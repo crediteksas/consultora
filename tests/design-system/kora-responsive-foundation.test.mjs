@@ -22,7 +22,7 @@ test('las 39 pantallas del shell declaran un viewport adaptable', async () => {
 test('el shell carga una única capa responsive transversal', async () => {
   const shell = await read('creditek/erp/sidebar.js');
   assert.match(shell, /koraResponsiveStyles/);
-  assert.match(shell, /kora-responsive\.css\?v=1\.0\.0/);
+  assert.match(shell, /kora-responsive\.css\?v=1\.0\.1/);
   assert.match(shell, /koraResponsive/);
   assert.match(shell, /kora-responsive\.js\?v=1\.0\.0/);
 });
@@ -94,4 +94,11 @@ test('modales, filtros, acciones y anchos extremos tienen reflow propio', async 
   assert.match(css, /@media \(max-width: 22\.5rem\)/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /:where\(input, select, textarea\)[\s\S]*font-size:\s*1rem/);
+});
+
+test('filtros y métricas compartidos se reorganizan por ancho disponible también en escritorio', async () => {
+  const css = await read('design-system/components/kora-responsive.css');
+  assert.match(css, /repeat\(auto-fit, minmax\(min\(100%, 18rem\), 1fr\)\)/);
+  assert.match(css, /repeat\(auto-fit, minmax\(min\(100%, 14rem\), 1fr\)\)/);
+  assert.match(css, /\.metric strong\s*\{[^}]*margin-top: auto;[^}]*white-space: normal;/s);
 });

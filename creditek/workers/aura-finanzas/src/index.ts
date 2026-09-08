@@ -1,8 +1,7 @@
 type Destinatario = { telefono: string; nombre: string };
 type Sesion = "apertura" | "cierre";
 type DispatchBody = { fecha: string; sesion: Sesion; resumen: string; informe: string };
-type AuraUser = { id?: string; email?: string };
-type AuraAccess = { apps?: Array<{ app_id?: string; role_id?: string; permissions?: string[] }> };
+type AuraUser = { email?: string; app_metadata?: { aura_access?: boolean } };
 
 function respuesta(data: unknown, status = 200): Response {
   return Response.json(data, { status });
@@ -18,6 +17,20 @@ function respuestaCors(data: unknown, status: number, env: Env): Response {
   return response;
 }
 
+function respuestaPreflight(env: Env): Response {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": env.AURA_ALLOWED_ORIGIN,
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin",
+      "Cache-Control": "private, no-store",
+    },
+  });
+}
+
 async function usuarioAura(request: Request, env: Env): Promise<AuraUser | null> {
   const authorization = request.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return null;
@@ -26,18 +39,8 @@ async function usuarioAura(request: Request, env: Env): Promise<AuraUser | null>
   });
   if (!response.ok) return null;
   const user = await response.json<AuraUser>();
-  if (!user.id) return null;
-  const accessResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/aura_my_access`, {
-    method: "POST",
-    headers: { Authorization: authorization, apikey: env.SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!accessResponse.ok) return null;
-  const access = await accessResponse.json<AuraAccess>();
-  const authorized = access.apps?.some((grant) => grant.role_id === "aura.owner" || (
-    grant.app_id === "finanzas" && grant.permissions?.includes("finanzas.read")
-  ));
-  if (!authorized) return null;
+  const allowed = env.AURA_ALLOWED_EMAILS.split(",").map((email) => email.trim().toLowerCase());
+  if (!user.email || !allowed.includes(user.email.toLowerCase())) return null;
   return user;
 }
 
@@ -91,11 +94,20 @@ function escapeHtml(value: string): string {
 }
 
 function htmlInforme(data: DispatchBody): string {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informe AURA Finanzas</title><style>body{margin:0;background:#f5f7fb;color:#17203a;font:16px/1.55 system-ui,sans-serif}.wrap{max-width:820px;margin:auto;padding:24px}.card{background:white;border:1px solid #e4e8f2;border-radius:18px;padding:28px;box-shadow:0 12px 36px #17203a12}h1{margin:0 0 4px;font-size:26px}.meta{color:#667085;margin-bottom:24px}.report{white-space:pre-wrap}.foot{margin-top:28px;color:#667085;font-size:13px}</style></head><body><main class="wrap"><article class="card"><h1>AURA Finanzas</h1><div class="meta">Informe de ${escapeHtml(data.sesion)} · ${escapeHtml(data.fecha)}</div><div class="report">${escapeHtml(data.informe)}</div><div class="foot">Investigación informativa. No garantiza rentabilidad ni ejecuta operaciones.</div></article></main></body></html>`;
+  const lines = data.informe.split("\n").filter((line) => line.trim());
+  const sections = lines.map((line) => {
+    const clean = escapeHtml(line.trim());
+    if (/^(JA|ÓSCAR|OSCAR|MERCADO|OPORTUNIDADES|DECISIONES|RESUMEN)/i.test(line.trim())) return `<h2>${clean}</h2>`;
+    if (/^\d+[.)-]/.test(line.trim())) return `<div class="decision">${clean}</div>`;
+    return `<p>${clean}</p>`;
+  }).join("");
+  const sessionLabel = data.sesion === "apertura" ? "Apertura" : "Cierre";
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${sessionLabel} de inversiones · AURA</title><style>:root{--navy:#0b1e3d;--turq:#13b8a6;--ink:#172033;--muted:#667085;--line:#e4e8f2}*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:var(--ink);font:15px/1.6 Inter,system-ui,sans-serif}.wrap{max-width:860px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,var(--navy),#173767);color:#fff;border-radius:20px;padding:28px;margin-bottom:16px}.eyebrow{color:#72e2d6;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800}.hero h1{margin:7px 0 4px;font-size:28px}.hero p{margin:0;color:#d9e2ef}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 12px 36px #17203a0e}.card h2{font-size:16px;color:var(--navy);margin:22px 0 8px;padding-bottom:7px;border-bottom:2px solid #e9edff}.card h2:first-child{margin-top:0}.card p{margin:7px 0}.decision{border-left:4px solid var(--turq);background:#f0fbf9;border-radius:8px;padding:10px 12px;margin:8px 0;font-weight:650}.foot{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}@media(max-width:600px){.wrap{padding:12px}.hero,.card{border-radius:14px;padding:18px}}</style></head><body><main class="wrap"><header class="hero"><div class="eyebrow">AURA · Inteligencia de inversión</div><h1>${sessionLabel} de mercados</h1><p>${escapeHtml(data.fecha)} · Carteras JA y Óscar analizadas por separado</p></header><article class="card">${sections}</article><div class="foot">Información de apoyo. No garantiza rentabilidad ni ejecuta operaciones.</div></main></body></html>`;
 }
 
 async function enviarPlantilla(env: Env, dest: Destinatario, data: DispatchBody, url: string): Promise<void> {
-  const contenido = `${data.sesion === "apertura" ? "Apertura" : "Cierre"}: ${data.resumen}\nInforme completo: ${url}`;
+  const icono = data.sesion === "apertura" ? "☀️" : "🌙";
+  const contenido = `${icono} *${data.sesion === "apertura" ? "Apertura" : "Cierre"} de inversiones*\n\n${data.resumen}\n\n📊 Informe completo: ${url}`;
   const response = await fetch(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.PHONE_NUMBER_ID}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
@@ -150,7 +162,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/health") return respuesta({ ok: true, servicio: "aura-finanzas" });
     if (request.method === "OPTIONS" && request.headers.get("Origin") === env.AURA_ALLOWED_ORIGIN) {
-      return respuestaCors({ ok: true }, 204, env);
+      return respuestaPreflight(env);
     }
     if (url.pathname === "/api/dashboard" && request.method === "GET") {
       if (request.headers.get("Origin") !== env.AURA_ALLOWED_ORIGIN || !await usuarioAura(request, env)) {

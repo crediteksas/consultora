@@ -21,6 +21,7 @@ test('el corte usa medianoche de Bogotá del 2 de septiembre', () => {
 test('los tableros muestran utilidad disponible neta del resultado cerrado', () => {
   assert.match(app, /historicalUtilityAvailable/);
   assert.match(app, /operationUtilityAvailable/);
-  assert.match(app, /Resultado histórico cerrado/);
+  assert.match(app, /Consultar histórico cerrado/);
+  assert.match(app, /historicalUtilityOriginal\(item\) - historicalUtilityClosed\(item\)/);
   assert.match(app, /Utilidad disponible/);
 });

@@ -492,11 +492,20 @@
   }
 
   async function loadAudit(isCurrent = () => true) {
-    const { data, error } = await sb.from('audit_log').select('accion,usuario,created_at,detalle,perfiles:usuario(nombre,rol)').eq('tabla', 'liquidations').eq('registro_id', selected.id).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('audit_log').select('accion,usuario,created_at,detalle').eq('tabla', 'liquidations').eq('registro_id', selected.id).order('created_at', { ascending: false });
     if (!isCurrent()) return;
-    if (error) throw error;
+    if (error) throw new Error('No se pudo consultar el historial de cambios. Intenta nuevamente.');
+    const userIds = [...new Set((data || []).map(item => item.usuario).filter(Boolean))];
+    const profiles = new Map();
+    if (userIds.length) {
+      const result = await sb.from('perfiles').select('id,nombre,rol').in('id', userIds);
+      if (!isCurrent()) return;
+      // La falta de acceso a un perfil no debe ocultar los eventos de auditoría.
+      if (!result.error) (result.data || []).forEach(profile => profiles.set(profile.id, profile));
+    }
     $('detailHead').innerHTML = '<tr><th>Acción</th><th>Realizada por</th><th>Fecha</th><th>Descripción</th><th>Resultado</th></tr>';
     $('detailBody').innerHTML = (data || []).map((item) => {
+      item = { ...item, perfiles: profiles.get(item.usuario) };
       const readable = UX.describirAuditoria(item.accion, item.detalle, item.perfiles?.nombre || 'Usuario KORA');
       return `<tr><td>${esc(readable.accion)}</td><td>${esc(item.perfiles?.nombre || 'Usuario KORA')}${item.perfiles?.rol ? ` — ${esc(UX.traducirEstado(item.perfiles.rol))}` : ''}</td><td>${UX.fechaAuditoria(item.created_at)}</td><td>${esc(readable.descripcion)}</td><td>${esc(readable.resultado)}<details><summary>Ver detalle técnico</summary><pre>${esc(UX.detalleTecnico(item.detalle))}</pre></details></td></tr>`;
     }).join('') || '<tr><td colspan="5">Sin registros de auditoría.</td></tr>';

@@ -161,7 +161,11 @@
     );
   }
   function operationCity(o) {
-    return originFor(o.origen_codigo)?.ciudad || "";
+    const originCity = db.origins.find(x => x.codigo === o.origen_codigo)?.ciudad?.trim();
+    if (originCity) return originCity;
+    const cities = [...new Set(db.sites.filter(x => x.origen_codigo === o.origen_codigo)
+      .map(x => x.ciudad?.trim()).filter(Boolean))];
+    return cities.length === 1 ? cities[0] : "";
   }
   function liquidationForOperation(o) {
     return db.liquidations.find((x) => x.id === o.liquidation_id);
@@ -400,19 +404,12 @@
       expenseTotal = sum(approvedExpenses, "valor");
     metrics([
       ["Operaciones nuevas", ops.length],
-      ["Histórico inicial pagado", historical.length],
-      ["Valor financiado histórico", cop(sum(historical, "monto_credito"))],
-      ["Resultado antes de provisión", cop(historicalGross)],
-      ["Gasto financiero histórico", cop(historicalFinancial)],
-      ["Provisión histórica", cop(historicalProvision)],
-      ["Resultado histórico final", cop(historicalNet)],
-      ["Resultado histórico cerrado", cop(historicalClosed)],
       [
         "Utilidad disponible",
         cop(historicalAvailable + newUtility - expenseTotal),
       ],
-      ["Ventas nuevas", cop(sum(ops, "monto_base"))],
-      ["Bonos nuevos", cop(sum(bonuses, "valor"))],
+      ["Ventas del periodo", cop(sum(ops, "monto_base"))],
+      ["Bonificaciones del periodo", cop(sum(bonuses, "valor"))],
       ["Gastos aprobados", cop(expenseTotal)],
       [
         "Novedades bloqueantes",
@@ -483,7 +480,7 @@
     $("#dashboardFilterSummary").textContent =
       `Operación nueva: ${ops.length} de ${db.operations.length} · Histórico inicial pagado: ${historical.length} créditos · Corte de inicio: 1 de septiembre de 2026`;
     $("#content").innerHTML =
-      `<section class="card"><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</section><section class="card"><h2>Operación desde el corte</h2>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "—"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
+      `<details class="card"><summary>Consultar histórico cerrado</summary><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</details><section class="card"><h2>Operaciones del periodo</h2>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "Ciudad pendiente"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();
@@ -1608,10 +1605,9 @@
         cop(allyOps.reduce((n, x) => n + paymentValue(x), 0)),
       ],
       ["Bonificaciones", cop(sum(bonuses, "valor"))],
-      ["Utilidad originada en tiendas propias", cop(ownUtility)],
-      ["Utilidad originada en aliados", cop(allyUtility)],
+      ["Utilidad de Creditek", cop(grossUtility)],
       ["Gastos aprobados", cop(expenseTotal)],
-      ["Utilidad neta disponible", cop(netUtility)],
+      ["Utilidad después de gastos", cop(netUtility)],
     ]);
     const reportRows = includedLiquidations
       .map((l) => {
@@ -1625,7 +1621,7 @@
         date(b.l.periodo_hasta).localeCompare(date(a.l.periodo_hasta)),
       );
     $("#content").innerHTML =
-      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas corresponden exclusivamente al periodo seleccionado. La utilidad de este negocio incluye los créditos procesados en tiendas propias y en aliados. “Tienda propia” indica únicamente el origen de la venta; no depende del costo ni de la utilidad Retail. Los gastos aprobados se descuentan una sola vez en la utilidad neta disponible. El histórico cerrado se conserva en auditoría y no se suma.</p></div>${table(["Periodo de ventas", "Plataforma", "Operaciones totales", "Ventas procesadas", "Utilidad de tiendas propias", "Utilidad de aliados", "Utilidad total del negocio", "Pago a aliados", "Estado de pago"], rows(reportRows, [(x) => `${date(x.l.periodo_desde)} — ${date(x.l.periodo_hasta)}`, (x) => esc(platformName(x.l.plataforma)), (x) => x.ops.length, (x) => cop(sum(x.ops, "monto_base")), (x) => cop(x.own.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.allies.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.ops.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.allies.reduce((n, o) => n + paymentValue(o), 0)), (x) => (x.payments.length ? esc([...new Set(x.payments.map((p) => String(p.estado).replaceAll("_", " ")))].join(", ")) : "Sin pago a terceros")]))}`;
+      `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas corresponden exclusivamente al periodo seleccionado. Utilidad de Creditek: resultado registrado de las liquidaciones, sin margen comercial ni costo de inventario Retail. Utilidad después de gastos: resultado menos gastos aprobados del periodo, descontados una sola vez. El histórico cerrado se conserva en auditoría y no se suma.</p></div>${table(["Periodo de ventas", "Plataforma", "Operaciones totales", "Ventas procesadas", "Utilidad de Creditek", "Pago a aliados", "Estado de pago"], rows(reportRows, [(x) => `${date(x.l.periodo_desde)} — ${date(x.l.periodo_hasta)}`, (x) => esc(platformName(x.l.plataforma)), (x) => x.ops.length, (x) => cop(sum(x.ops, "monto_base")), (x) => cop(x.ops.reduce((n, o) => n + operationUtilityAvailable(o), 0)), (x) => cop(x.allies.reduce((n, o) => n + paymentValue(o), 0)), (x) => (x.payments.length ? esc([...new Set(x.payments.map((p) => String(p.estado).replaceAll("_", " ")))].join(", ")) : "Sin pago a terceros")]))}`;
   }
   function render() {
     (

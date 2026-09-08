@@ -62,6 +62,18 @@ test('Alegre costeño exige calidez regional sin convertirla en carnaval', () =>
   assert.doesNotMatch(publisher, /- Deep navy #0B1E3D \| Turquoise #00C4CC \| White #FFFFFF/);
 });
 
+test('Chistoso exige un remate visual y una tienda reconocible de nuestra región', () => {
+  assert.match(publisher, /CHISTOSO_VISUAL_CONTRACT/);
+  assert.match(publisher, /visual setup and punchline/);
+  assert.match(publisher, /Smiling, laughing, posing, attractive friends or colorful clothes alone are not humor/);
+  assert.match(publisher, /Corozal, Chinú, Tolú, Ciénaga or Montería/);
+  assert.match(publisher, /Never depict a US flagship, Manhattan-style street, Bogotá luxury shop/);
+  assert.match(publisher, /No sexualized models, beauty-campaign posing/);
+  assert.match(publisher, /currentEstilo === 'chistoso'\) return CHISTOSO_VISUAL_CONTRACT/);
+  assert.match(publisher, /Sonreír o posar no es humor/);
+  assert.match(publisher, /styleRequirement = estilo === 'chistoso'/);
+});
+
 test('El cliente permite llamar Recraft y el Worker conserva también las rutas de video', () => {
   assert.match(imageClient, /'\/recraft\/images'/);
   assert.match(worker, /path !== "\/recraft\/images"/);

@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aura-finanzas",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "finanzas.crediteksas.com", "custom_domain": true }],
+  "vars": {
+    "META_GRAPH_VERSION": "v21.0",
+    "WHATSAPP_TEMPLATE_NAME": "sofia_informe_financiero",
+    "WHATSAPP_TEMPLATE_LANGUAGE": "es_CO",
+    "PUBLIC_BASE_URL": "https://finanzas.crediteksas.com",
+    "SUPABASE_URL": "https://ditiwpndvmyuqcagupea.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW",
+    "AURA_ALLOWED_EMAILS": "comercial@crediteksas.com",
+    "AURA_ALLOWED_ORIGIN": "https://aura.crediteksas.com",
+    "DESTINATARIOS_JSON": "[{\"telefono\":\"573002024083\",\"nombre\":\"Ocar\"},{\"telefono\":\"573006034500\",\"nombre\":\"Jj Amorcito Corazón\"}]"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "REPORT_STATE",
+      "id": "e64ab6c0a48445b6a025982bbe83669a"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 }
+  }
+}

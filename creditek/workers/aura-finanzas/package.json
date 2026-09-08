@@ -1,0 +1,14 @@
+{
+  "name": "aura-finanzas",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "npm run check"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "latest",
+    "wrangler": "latest"
+  }
+}

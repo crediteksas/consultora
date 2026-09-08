@@ -286,6 +286,12 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
       <span class="nav-icon">📅</span> Calendario
     </a>
 
+    <div class="sidebar-section">Finanzas privadas</div>
+    <a class="nav-item" onclick="openModule('aura-finanzas.html','Inversiones',this)">
+      <span class="nav-icon">📈</span> Inversiones
+      <span class="nav-badge new">NUEVO</span>
+    </a>
+
     <div class="sidebar-section">Comercial</div>
     <a class="nav-item" onclick="openModule('../portal/index.html','Portal de Pedidos B2B',this)">
       <span class="nav-icon">🛒</span> Portal B2B
@@ -410,6 +416,16 @@ iframe{flex:1;border:none;width:100%;background:var(--bg)}
               <span class="module-tag">Agente 4</span>
               <span class="module-arrow">→</span>
             </div>
+          </div>
+
+          <div class="module-card" onclick="openModuleFromCard('aura-finanzas.html','Inversiones')">
+            <div class="module-top">
+              <div class="module-icon"><i data-lucide="chart-candlestick" aria-hidden="true"></i></div>
+              <div class="module-status active">● Activo</div>
+            </div>
+            <div class="module-name">Inversiones</div>
+            <div class="module-desc">Seguimiento privado de las carteras JA y Óscar, análisis de apertura y cierre, noticias, riesgos y decisiones pendientes.</div>
+            <div class="module-meta"><span class="module-tag">Inversión privada</span><span class="module-arrow">→</span></div>
           </div>
         </div>
 

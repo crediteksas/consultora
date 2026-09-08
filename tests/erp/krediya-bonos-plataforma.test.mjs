@@ -10,6 +10,7 @@ test('reporte filtra la fecha de cada crédito y distingue créditos de bonos si
  const nodes={'#bonusToolbar':{},'#bonusFrom':{value:'2026-08-25'},'#bonusTo':{value:'2026-08-25'},'#bonusPlatform':{value:'krediya'},'#bonusExecutive':{value:''},'#bonusState':{value:''},'#content':{}};
  let cards;
  const ctx={$:x=>nodes[x],db:{liquidations:[{id:'k',plataforma:'krediya'},{id:'p',plataforma:'payjoy'}],beneficiaries:[{id:'a',nombre:'Ejecutivo'},{id:'b',nombre:'Gestión'}],operations:[{id:'o1',liquidation_id:'k',day:'2026-08-24'},{id:'o2',liquidation_id:'k',day:'2026-08-25'},{id:'o3',liquidation_id:'p',day:'2026-08-25'}],bonuses:[{operation_id:'o1',liquidation_id:'k',beneficiary_id:'a',valor:30000},{operation_id:'o2',liquidation_id:'k',beneficiary_id:'a',valor:30000},{operation_id:'o2',liquidation_id:'k',beneficiary_id:'b',valor:5000},{operation_id:'o3',liquidation_id:'p',beneficiary_id:'a',valor:20000}]},operationIsCurrent:()=>true,operationSaleDay:o=>o.day,metrics:x=>cards=x,cop:String,sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),esc:String,table:()=>'',rows:()=>[],badge:String,platformName:String};
+ ctx.db.bonuses.push({operation_id:'o2',liquidation_id:'k',beneficiary_id:'a',valor:220000,estado:'anulado'});
  vm.runInNewContext(src.slice(src.indexOf('  function renderBonuses()'),src.indexOf('  function populateExpenseForm()')),ctx);
  ctx.renderBonuses();
  assert.equal(cards.find(x=>x[0]==='Créditos con bono')[1],1);

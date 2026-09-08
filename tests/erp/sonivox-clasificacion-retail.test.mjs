@@ -31,5 +31,5 @@ test('servidor e interfaz impiden vincular una tienda propia con Aliados', () =>
   assert.match(app, /function historicalMatchesOwnStore/);
   assert.match(app, /!historicalMatchesOwnStore\(x\)/);
   assert.match(app, /Este establecimiento pertenece a Creditek Retail/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.27/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.29/);
 });

@@ -201,6 +201,7 @@
       invoices,
       profiles,
       origins,
+      rectifications,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -233,6 +234,7 @@
       ),
       safe(sb.from("perfiles").select("id,nombre")),
       safe(sb.from("origenes").select("codigo,nombre").eq("activo", true)),
+      safe(sb.from("liquidation_adjustments").select("id,liquidation_id,new_value,estado").eq("field_name", "krediya_bonos_rectificados")),
     ]);
     data = {
       balances,
@@ -245,6 +247,7 @@
       invoices,
       profiles,
       origins,
+      rectifications,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -360,6 +363,17 @@
       .join("")}</div>`;
   }
   function render() {
+    let correction = $("#rectificationSummary");
+    if (!correction) {
+      correction = document.createElement("section");
+      correction.id = "rectificationSummary";
+      correction.className = "card";
+      $("#outgoingContent").before(correction);
+    }
+    const differences = (data.rectifications || []).filter(x => x.estado === "aprobado")
+      .flatMap(x => (x.new_value?.diferencias_pagos || []).filter(d => d.estado === "pendiente_validacion_soporte"));
+    correction.classList.toggle("hidden", !differences.length || ["cobros", "clients", "preparation"].includes(treasuryView));
+    correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
     $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");

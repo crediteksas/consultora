@@ -15,7 +15,7 @@ test('Ejecutivos usa una tarjeta por persona con desglose real por plataforma', 
   assert.match(app, /executives:\s*renderExecutiveCards/);
   assert.match(css, /\.executive-grid\{display:grid/);
   assert.match(css, /\.executive-card\{border-top:3px solid var\(--turquesa\)/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.24/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.29/);
 });
 
 test('tiendas propias se identifican aparte de aliados sin ejecutivo', () => {

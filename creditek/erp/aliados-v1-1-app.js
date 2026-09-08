@@ -317,7 +317,8 @@
       platforms,
       liquidations,
       operations,
-      bonuses,
+      // Los devengos anulados se conservan en la base y auditoría, no en totales vigentes.
+      bonuses: bonuses.filter((b) => !["anulado", "rechazado"].includes(b.estado)),
       beneficiaries,
       payments,
       incidents,
@@ -1316,6 +1317,7 @@
       executive = $("#bonusExecutive").value,
       state = $("#bonusState").value;
     const items = db.bonuses
+      .filter((b) => !["anulado", "rechazado"].includes(b.estado))
       .map((b) => {
         const liquidation = db.liquidations.find(
             (x) => x.id === b.liquidation_id,

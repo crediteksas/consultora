@@ -262,8 +262,9 @@
       const { data, error } = await sb
         .from(table)
         .select(columns)
+        .order('id')
         .range(from, from + 999);
-      if (error) return result;
+      if (error) throw error; // Never present an incomplete page of credits as the complete month.
       result.push(...(data || []));
       if (!data || data.length < 1000) return result;
     }
@@ -301,7 +302,7 @@
       ),
       safe(sb.from("liquidation_platforms").select("*")),
       safe(sb.from("liquidations").select("*")),
-      safe(sb.from("liquidation_operations").select("*")),
+      allRows("liquidation_operations", "*"),
       safe(sb.from("liquidation_bonuses").select("*")),
       safe(sb.from("liquidation_beneficiaries").select("*")),
       safe(sb.from("payment_orders").select("*")),
@@ -348,6 +349,46 @@
     render();
   }
 
+  // Reporting is independent of payment eligibility. Match only the lender's
+  // credit identifier: an IMEI or a date alone is not a unique credit.
+  function dashboardOperations() {
+    const key = o => o.external_id ? `${o.plataforma}|${String(o.external_id).trim().toLowerCase()}` : `operation|${o.id}`;
+    const records = new Map();
+    for (const o of db.operations) records.set(key(o), o);
+    for (const h of db.historicalCredits || []) {
+      const existing = records.get(`${h.plataforma}|${String(h.codigo_credito).trim().toLowerCase()}`);
+      if (existing) continue; // The reviewed liquidation takes precedence over its imported copy.
+      const origins = (db.origins || []).filter(o => establishmentKey(o.nombre) === establishmentKey(h.establecimiento));
+      const origin = origins.length === 1 ? origins[0] : null;
+      const o = {
+        id: `historical|${h.id}`, external_id: h.codigo_credito, plataforma: h.plataforma,
+        operation_at: h.fecha_credito, establishment_name: h.establecimiento,
+        origen_codigo: origin?.codigo, tipo_establecimiento: h.tipo_establecimiento,
+        ejecutivo_id: h.ejecutivo_historico_id, monto_base: h.monto_credito,
+        valor_comercial: h.valor_comercial_historico, pagamos: h.pagamos_historico,
+        pago_neto_beneficiario: h.pago_neto_historico, bonos_aplicados: h.bonos_historicos,
+        utilidad_creditek: h.utilidad_final_historica ?? h.utilidad_neta_historica,
+        resultado_cerrado: h.resultado_cerrado_historico, historical: h,
+      };
+      records.set(key(o), o);
+    }
+    return [...records.values()];
+  }
+  function dashboardBreakdown(o) {
+    const number = v => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
+    const snap = o.policy_snapshot?.krediya_v2, h = o.historical;
+    const net = number(o.utilidad_creditek), bonus = number(o.bonos_aplicados);
+    const financial = number(h ? h.gasto_financiero_historico : snap?.gasto_financiero) ?? (o.plataforma !== 'krediya' ? 0 : null);
+    const provision = number(h ? h.provision_historica : snap?.provision) ?? (o.plataforma !== 'krediya' ? 0 : null);
+    // The legacy field "utilidad_bruta" already deducts bonuses and bank cost.
+    // Reconstruct the opening margin from recorded components, not that label.
+    const complete = [net, bonus, financial, provision].every(v => v !== null);
+    const reconstructed = complete ? net + bonus + financial + provision : null;
+    const gross = o.plataforma === 'krediya' && number(o.valor_comercial) !== null && number(o.pagamos) !== null
+      ? Number(o.valor_comercial) - Number(o.pagamos) : reconstructed;
+    const reconciled = !complete || gross === null || Math.abs(gross - reconstructed) <= 0.02;
+    return {net, bonus, financial, provision, complete: complete && reconciled, gross};
+  }
   function renderDashboard() {
     const from = $("#dashboardFrom").value,
       to = $("#dashboardTo").value,
@@ -356,55 +397,26 @@
       executive = $("#dashboardExecutive").value,
       establishment = $("#dashboardEstablishment").value,
       city = $("#dashboardCity").value;
-    const ops = db.operations.filter((o) => {
+    const ops = dashboardOperations().filter((o) => {
       const day = operationSaleDay(o);
       return (
-        operationIsCurrent(o) &&
         (!from || day >= from) &&
         (!to || day <= to) &&
         (!business || businessType(o) === business) &&
         (!platform || o.plataforma === platform) &&
         (!executive || o.ejecutivo_id === executive) &&
-        (!establishment || o.origen_codigo === establishment) &&
+        (!establishment || o.origen_codigo === establishment || o.establishment_name === establishment) &&
         (!city || operationCity(o) === city)
       );
     });
-    const own = ops.filter((o) => businessType(o) === "propia"),
-      ally = ops.filter((o) => businessType(o) === "aliado"),
-      liquidationIds = new Set(ops.map((o) => o.liquidation_id));
-    const bonuses = db.bonuses.filter(
-      (b) =>
-        ops.some(o => o.id === b.operation_id && o.liquidation_id === b.liquidation_id) &&
-        (!executive ||
-          db.beneficiaries.find((x) => x.id === b.beneficiary_id)
-            ?.ejecutivo_id === executive),
-    );
+    const selectedCreditKeys = new Set(ops.filter(o=>o.external_id).map(o=>`${o.plataforma}|${String(o.external_id).trim().toLowerCase()}`));
     const historical = (db.historicalCredits || []).filter(
       (x) =>
         x.historico_inicial &&
         x.pagado_antes_inicio &&
-        (!from || date(x.fecha_credito) >= from) &&
-        (!to || date(x.fecha_credito) <= to) &&
-        (!business || x.tipo_establecimiento === business) &&
-        (!platform || x.plataforma === platform) &&
-        (!establishment || x.establecimiento === establishment),
+        selectedCreditKeys.has(`${x.plataforma}|${String(x.codigo_credito).trim().toLowerCase()}`),
     );
-    const historicalGross = sum(historical, "utilidad_antes_bonos_historica"),
-      historicalFinancial = sum(historical, "gasto_financiero_historico"),
-      historicalProvision = sum(historical, "provision_historica"),
-      historicalNet = historical.reduce(
-        (n, x) => n + historicalUtilityOriginal(x),
-        0,
-      ),
-      historicalClosed = historical.reduce(
-        (n, x) => n + historicalUtilityClosed(x),
-        0,
-      ),
-      historicalAvailable = historical.reduce(
-        (n, x) => n + historicalUtilityAvailable(x),
-        0,
-      ),
-      newUtility = ops.reduce((n, x) => n + operationUtilityAvailable(x), 0),
+    const newUtility = ops.reduce((n, x) => n + operationUtilityAvailable(x), 0),
       approvedExpenses = (db.expenses || []).filter((x) => {
         const day = date(x.fecha),
           origin = originFor(x.origen_codigo);
@@ -420,25 +432,19 @@
         );
       }),
       expenseTotal = sum(approvedExpenses, "valor");
+    const breakdown = ops.map(dashboardBreakdown);
+    const complete = breakdown.every(x => x.complete);
+    const component = field => breakdown.reduce((n, x) => n + (x[field] ?? 0), 0);
+    const amount = value => cop(value) + (complete ? '' : ' · parcial');
+    const finalUtility = component('net') - expenseTotal;
+    const closedUtility = sum(ops, 'resultado_cerrado');
     metrics([
-      ["Operaciones nuevas", ops.length],
-      [
-        "Utilidad disponible",
-        cop(historicalAvailable + newUtility - expenseTotal),
-      ],
+      ["Créditos del periodo", ops.length],
+      ["Utilidad bruta del negocio", amount(component('gross'))],
       ["Ventas del periodo", cop(sum(ops, "monto_base"))],
-      ["Bonificaciones del periodo", cop(sum(bonuses, "valor"))],
-      ["Provisión calculada del periodo", cop(ops.reduce((n, o) => n + (operationProvision(o) ?? 0), 0)) + (ops.some(o => o.plataforma === "krediya" && operationProvision(o) === null) ? " · cálculo incompleto" : "")],
-      ["Gastos aprobados", cop(expenseTotal)],
-      [
-        "Novedades bloqueantes",
-        db.incidents.filter(
-          (x) =>
-            liquidationIds.has(x.liquidation_id) &&
-            x.bloqueante &&
-            !x.resuelta_at,
-        ).length,
-      ],
+      ["Bonificaciones del periodo", amount(component('bonus'))],
+      ["Provisión calculada del periodo", amount(component('provision'))],
+      ["Utilidad final del periodo", amount(finalUtility)],
     ]);
     const grouped = [
       ...ops
@@ -461,8 +467,8 @@
           current.sales += Number(o.monto_base || 0);
           current.payment += paymentValue(o);
           current.utility += operationUtilityAvailable(o);
-          current.provision += operationProvision(o) ?? 0;
-          current.provisionMissing ||= o.plataforma === "krediya" && operationProvision(o) === null;
+          current.provision += dashboardBreakdown(o).provision ?? 0;
+          current.provisionMissing ||= dashboardBreakdown(o).provision === null;
           map.set(key, current);
           return map;
         }, new Map())
@@ -501,9 +507,27 @@
         .values(),
     ].sort((a, b) => b.value - a.value);
     $("#dashboardFilterSummary").textContent =
-      `Operación nueva: ${ops.length} de ${db.operations.length} · Histórico inicial pagado: ${historical.length} créditos · Corte de inicio: 1 de septiembre de 2026`;
+      `${ops.length} créditos por fecha de venta · ${[...new Set(ops.map(o => platformName(o.plataforma)))].join(', ')} · Incluye históricos sin duplicar créditos ni generar pagos.`;
     $("#content").innerHTML =
       `<details class="card"><summary>Consultar histórico cerrado</summary><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</details><section class="card"><h2>Operaciones del periodo</h2><p class="muted">La provisión mostrada ya está descontada de la utilidad. Es una reserva calculada; no acredita que el dinero esté separado en una cuenta bancaria.</p>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Provisión", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "Ciudad pendiente"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => x.provisionMissing ? "Pendiente de calcular" : cop(x.provision), (x) => cop(x.utility), (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
+    const reconciliation = [
+      ['Utilidad bruta del negocio', component('gross')],
+      ['Menos: bonificaciones', -component('bonus')],
+      ['Menos: gastos financieros', -component('financial')],
+      ['Menos: gastos operativos aprobados', -expenseTotal],
+      ['Menos: provisión calculada', -component('provision')],
+      ['Utilidad final del periodo', finalUtility],
+      ['Menos: resultado ya cerrado / retirado', -closedUtility],
+      ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
+    ];
+    const formatExact = v => new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
+    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Los gastos operativos son los aprobados y registrados; no incluyen costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
+    const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
+      const credits = ops.filter(o => o.plataforma === platform);
+      return {platform, count:credits.length, sales:sum(credits,'monto_base')};
+    });
+    const platformSummary = `<section class="card"><h2>Ventas por financiera</h2>${table(['Financiera','Créditos','Valor financiado'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales)]))}</section>`;
+    $("#content").innerHTML = reconciliationHtml + platformSummary + $("#content").innerHTML;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();
@@ -528,7 +552,7 @@
         ]).entries(),
       ].sort((a, b) => a[1].localeCompare(b[1])),
       cities = [
-        ...new Set(db.operations.map(operationCity).filter(Boolean)),
+        ...new Set(dashboardOperations().map(operationCity).filter(Boolean)),
       ].sort();
     $("#dashboardPlatform").innerHTML =
       option("", "Todas las plataformas") +

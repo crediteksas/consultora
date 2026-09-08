@@ -29,5 +29,18 @@ test('la pantalla operativa no repite el histórico cerrado', () => {
   assert.match(render, /Fecha de venta/);
   assert.doesNotMatch(render, /Histórico inicial — pagado/);
   assert.doesNotMatch(render, /<h2>Operación nueva<\/h2>/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.17/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.20/);
+});
+
+test('resumen agrupa por identidad y conserva el detalle cerrado', () => {
+  const source=render.slice(render.indexOf('const groups = new Map();'),render.lastIndexOf('}'));
+  const content={innerHTML:''};
+  const items=[{b:{beneficiary_id:'a',valor:20000},beneficiary:{nombre:'Luis'}},{b:{beneficiary_id:'a',valor:20000},beneficiary:{nombre:'Luis'}},{b:{beneficiary_id:'b',valor:5000},beneficiary:{nombre:'Mayte'}}];
+  new Function('items','$','esc','cop','from','to','table','rows',source)(items,()=>content,String,String,'2026-09-01','2026-09-07',()=>'<table></table>',()=>[]);
+  assert.match(content.innerHTML,/Luis/);
+  assert.match(content.innerHTML,/40000/);
+  assert.match(content.innerHTML,/5000/);
+  assert.match(content.innerHTML,/2 beneficiarios/);
+  assert.match(content.innerHTML,/Consultar detalle · 3 registros/);
+  assert.doesNotMatch(content.innerHTML,/<details[^>]*\bopen\b/);
 });

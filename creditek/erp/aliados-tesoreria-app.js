@@ -301,17 +301,9 @@
       return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte pendiente</button>`;
     if (missing.length)
       return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
-    if (!p.liquidations?.frozen_at || !p.liquidations?.approved_at)
+    if (!window.CreditekTesoreriaTercerizacion.loteAutorizado(p))
       return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}. Primero: Mayte revisa y Oscar aprueba la liquidación.</span>`;
-    if (
-      (p.estado === "pendiente" ||
-        (p.estado === "programado" && !p.authorized_by)) &&
-      canAuthorize()
-    )
-      return `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`;
-    if (p.estado === "programado" && !p.authorized_by)
-      return '<span class="approval-pending">Esperando autorización de Oscar</span>';
-    if (p.estado === "programado" && window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready)
+    if (window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready)
       return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte y registrar</button>`;
     if (p.estado === 'programado') return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}</span>`;
     if (p.estado === "pagado" && canAuthorize())
@@ -346,7 +338,7 @@
         const p = group[0],
           ids = group.map((x) => x.id).join(","),
           missing = [...new Set(group.flatMap(missingPaymentData))],
-          authorized = group.every((x) => x.authorized_by && x.authorized_at),
+          authorized = group.every((x) => window.CreditekTesoreriaTercerizacion.loteAutorizado(x)),
           total = group.reduce((n, x) => n + Number(x.valor), 0),
           operations = group.reduce(
             (n, x) => n + Number(x.operations_count),
@@ -359,10 +351,10 @@
               : paymentAction(p, missing);
         return `<article class="payment-card">
   <div class="payment-card__top"><div><div class="payment-card__title">${business ? `${esc(business)} <span class="payment-card__holder">· Titular: ${esc(p.beneficiary_name)}</span>` : esc(p.beneficiary_name)}</div><div class="payment-card__ref">${group.length > 1 ? `${group.length} órdenes consolidadas` : `Orden PO-${shortId(p.id)}`} · ${esc([...new Set(group.map((x) => platformName(x.platform_snapshot)))].join(", "))}</div></div>${p.historico_inicial ? badge("pagado", "Histórico pagado") : badge(p.estado)}</div>
-  <p class="payment-card__ref">Liquidación: ${group.every(x=>x.liquidations?.approved_at&&x.liquidations?.frozen_at)?'aprobada · no requiere otra aprobación del lote':'pendiente de aprobación'} · Pago: ${esc(p.estado)}</p>
+  <p class="payment-card__ref">Liquidación: ${authorized?'autorizada · no requiere otra aprobación':'pendiente de aprobación'} · Pago: ${esc(p.estado)}</p>
   <div class="payment-card__grid"><div class="payment-field"><small>${kind === "ejecutivo" ? "Bonificación total" : "Valor total a girar"}</small><strong>${cop(total)}</strong></div><div class="payment-field"><small>${kind === "ejecutivo" ? "Periodos" : "Cortes"}</small><strong>${esc([...new Set(group.map((x) => date(x.cutoff_snapshot)))].join(", "))}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${operations}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length ? `<span class="approval-pending">Falta: ${esc(missing.join(", "))}</span>` : ""}</div></div>
   ${group.length > 1 ? `<div class="payment-card__orders">${group.map((x) => `<span>PO-${shortId(x.id)} · ${date(x.cutoff_snapshot)} · ${cop(x.valor)}</span>`).join("")}</div>` : ""}
-  <div class="payment-card__actions"><div class="${p.historico_inicial || authorized ? "approval-ok" : "approval-pending"}">${p.historico_inicial ? "Cerrado antes del inicio operativo · no requiere soporte" : authorized ? `Autorizado por ${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}` : "Sin autorización de Gerencia"}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
+  <div class="payment-card__actions"><div class="${p.historico_inicial || authorized ? "approval-ok" : "approval-pending"}">${p.historico_inicial ? "Cerrado antes del inicio operativo · no requiere soporte" : authorized ? `Autorización vigente del lote · ${esc(bogotaDateTime(p.liquidations?.approved_at||p.authorized_at))}` : "Sin autorización de Gerencia"}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
  </article>`;
       })
       .join("")}</div>`;
@@ -615,7 +607,7 @@
     const p = data.payments.find((x) => x.id === id);
     if (!p) return;
     const bank = p.bank_snapshot || {},
-      authorized = p.authorized_by && p.authorized_at;
+      authorized = window.CreditekTesoreriaTercerizacion.loteAutorizado(p);
     $("#paymentDetailBody").innerHTML = `<div class="payment-detail-grid">
  <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial ? "Histórico pagado · sin soporte requerido" : esc(String(p.estado || "—").replaceAll("_", " "))}</strong></div>
  <div><small>Beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div><div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div>
@@ -623,7 +615,7 @@
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>
  <div><small>Banco / tipo</small><strong>${esc(bank.bank || "Pendiente")} · ${esc(bank.account_type || "Pendiente")}</strong></div><div><small>Número de cuenta</small><strong class="account">${esc(bank.account_number || "Pendiente")}</strong></div>
  <div><small>Titular de la cuenta</small><strong>${esc(bank.holder || p.beneficiary_name)}</strong></div><div><small>Identificación del titular</small><strong>${esc(bank.holder_identification || p.beneficiary_identification)}</strong></div>
- <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized ? "approval-ok" : "approval-pending"}">${authorized ? `${esc(approverName(p))} · ${esc(bogotaDateTime(p.authorized_at))}` : "Pendiente de autorización de Oscar Pacheco"}</strong></div>
+ <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized ? "approval-ok" : "approval-pending"}">${authorized ? `Autorización vigente del lote · ${esc(bogotaDateTime(p.liquidations?.approved_at||p.authorized_at))}` : "Pendiente de autorización de Oscar Pacheco"}</strong></div>
  </div>`;
     showPaymentModal($("#paymentDetailModal"));
     $("#closePaymentDetail").focus();

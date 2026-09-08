@@ -27,4 +27,10 @@ Las órdenes ya pagadas/conciliadas no se amplían automáticamente. Los concept
 - Advisors: sin nuevas advertencias de seguridad; nueva nota informativa RLS sin política para la tabla privada deliberadamente inaccesible a clientes. No se abrieron permisos de tabla a anon/authenticated.
 - `npm test` global incluye fallos preexistentes de AURA y pruebas antiguas ajenas al pipeline KORA; no se declara toda esa suite aprobada.
 
-La autorización bancaria individual existente no se eliminó. No debe confundirse con volver a aprobar el lote.
+## Autorización única del lote (corrección posterior)
+
+Se elimina la segunda autorización individual de la interfaz. La aprobación de Liquidaciones habilita la gestión de soportes en Tesorería; al registrar un soporte válido se hereda la autorización original, sin modificar beneficiario, cuenta ni valor. Se conservan los controles de cuenta completa, soporte real e idempotencia.
+
+El PayJoy del 1 de septiembre usa el flujo anterior: sus tres órdenes conservan autorización explícita y no tienen fechas modernas de aprobación ni destinos materializados. Se reconoce esa autorización sin inventar fechas, saldos ni soportes. La excepción solo alcanza órdenes previamente programadas/autorizadas de lotes legados programados; los lotes modernos siguen exigiendo destinos.
+
+Después de aprobar, Liquidaciones vuelve a pendientes y las últimas cuatro aprobadas, sin abrir automáticamente todo el historial. Pruebas: suite KORA y casos SQL aislados de autorización heredada, legado, cuenta incompleta, permisos y soporte repetido. La instalación no actualiza pagos ni ejecuta giros.

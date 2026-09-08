@@ -23,7 +23,7 @@ test('Pagos mantiene nombres, importes y conceptos legibles sin desborde a 390/7
   await page.setContent(html,{waitUntil:'networkidle'});await page.addStyleTag({url:origin+'/design-system/components/kora-shell.css'});
   await page.addScriptTag({path:'creditek/erp/aliados-liquidaciones-ux.js'});
   const app=await fs.readFile('creditek/erp/aliados-liquidaciones-app.js','utf8');
-  const source=app.slice(app.indexOf('  async function loadPayments()'),app.indexOf('  async function loadAudit()'));
+  const source=app.slice(app.indexOf('  async function loadPayments('),app.indexOf('  async function loadAudit('));
   await page.evaluate(()=>{
    document.body.classList.add('kora-product-page');document.getElementById('app').classList.remove('hidden');document.getElementById('liquidationsContent').classList.remove('hidden');document.getElementById('detail').classList.remove('hidden');
    document.querySelector('#detail>.table-wrap').classList.add('grouped-cards');

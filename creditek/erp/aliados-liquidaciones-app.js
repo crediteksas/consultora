@@ -476,10 +476,7 @@
     $('detailHead').innerHTML = '';
     $('detailBody').innerHTML = (data || []).map((payment) => {
       const beneficiary = payment.liquidation_beneficiaries || {};
-      const canApprove = payment.estado === 'pendiente' && operator.capacidad === 'aprobador' && Boolean(selected.frozen_at) && selected.estado === 'aprobada';
-      const action = canApprove
-        ? `<button class="btn secondary" data-payment="${payment.id}" data-next="programado">Autorizar pago</button>`
-        : payment.estado === 'programado' || payment.estado === 'pagado'
+      const action = (selected.frozen_at && selected.estado === 'aprobada') || payment.estado === 'programado' || payment.estado === 'pagado'
           ? '<a class="btn secondary" href="aliados-tesoreria.html">Continuar en Tesorería</a>'
           : !selected.frozen_at ? 'Primero: revisión de Maite y aprobación de Gerencia' : '—';
       const concepts = [...new Set((payment.payment_items || []).map((item) => UX.traducirEstado(item.concepto)))];
@@ -665,9 +662,8 @@
     const selectedId = selected.id;
     await loadBatches();
     selected = batches.find((batch) => batch.id === selectedId);
-    if (selected?.plataforma==='krediya' && next==='aprobada') {
-      listMode='history';$('showPending').classList.remove('active');$('showHistory').classList.add('active');updateStateFilter();renderBatches();
-      await openDetail(selectedId);await loadTab('payments');return;
+    if (next==='aprobada') {
+      setListMode('pending');$('detail').classList.add('hidden');selected=null;return;
     }
     if (!selected || !statesForMode().includes(selected.estado)) {
       $('detail').classList.add('hidden');

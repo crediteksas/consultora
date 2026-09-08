@@ -39,11 +39,11 @@ test('fechas reales y soporte se presentan sin cambiar el día por zona horaria'
  assert.equal(metric(html,'Soporte'),'Adjunto');assert.match(html,/Continuar en Tesorería/);
  assert.doesNotMatch(html,/Autorizar pago|soportes\/archivo.pdf/);
 });
-test('solo un aprobador con liquidación aprobada y congelada puede programar el pago pendiente',async()=>{
+test('un lote aprobado remite a Tesorería sin otra autorización individual',async()=>{
  const approved={id:'lote',plataforma:'krediya',estado:'aprobada',frozen_at:'2026-09-05T00:00:00Z'};
  const result=await render([payment],{batch:approved,capacidad:'aprobador'});
- assert.equal(result.buttons.length,1);result.buttons[0].onclick();
- assert.deepEqual(result.calls,[{id:'pago-1',next:'programado'}]);
+ assert.equal(result.buttons.length,0);assert.match(result.html,/Continuar en Tesorería/);
+ assert.deepEqual(result.calls,[]);
  for(const options of [{batch:approved,capacidad:'revisor'},{batch:{...approved,frozen_at:null},capacidad:'aprobador'},{batch:{...approved,estado:'revisada'},capacidad:'aprobador'}]){
   const blocked=await render([payment],options);assert.equal(blocked.buttons.length,0);assert.doesNotMatch(blocked.html,/Autorizar pago/);
  }

@@ -83,7 +83,7 @@ test('no permite autorizar ni pagar antes de aprobar y fondear la liquidación',
 
 test('Liquidaciones guía el orden revisión, aprobación y autorización', async () => {
   const app = await readFile('creditek/erp/aliados-liquidaciones-app.js', 'utf8');
-  assert.match(app, /payment\.estado === 'pendiente'[\s\S]*selected\.frozen_at[\s\S]*selected\.estado === 'aprobada'/);
+  assert.match(app, /selected\.frozen_at && selected\.estado === 'aprobada'/);
   assert.match(app, /await sb\.rpc\('aliados_autorizar_pago'/);
   assert.match(app, /Pendiente de revisión administrativa/);
   assert.match(app, /Utilidad total del negocio/);

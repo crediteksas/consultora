@@ -14,7 +14,7 @@ test('rectifica 29 créditos sin borrar pagos ni soportes; ajuste auditable e id
  await db.exec(`alter table liquidations add primary key(id);
  create table treasury_movements(id uuid default gen_random_uuid(),liquidation_id uuid,valor numeric);
  create table liquidation_treasury_destinations(id uuid default gen_random_uuid(),liquidation_id uuid,total_executives numeric);
- create table liquidation_adjustments(id uuid default gen_random_uuid(),liquidation_id uuid,field_name text,old_value jsonb,new_value jsonb,motivo text,estado text,approved_at timestamptz);
+ create table liquidation_adjustments(id uuid default gen_random_uuid(),liquidation_id uuid,field_name text,old_value jsonb,new_value jsonb,motivo text,estado text,approved_at timestamptz,created_by uuid not null,approved_by uuid);
  insert into liquidations(plataforma,fecha_corte,total_bonos,total_pago_aliados,estado) values('krediya','2026-08-30',1460000,10028667,'aprobada');
  insert into liquidation_operations(liquidation_id,tipo_establecimiento,reconocida,monto_credito,valor_comercial,pagamos,policy_snapshot)
  select l.id,case when n<=22 then 'aliado' else 'propia' end,true,900000,1000000,750000,
@@ -31,10 +31,11 @@ test('rectifica 29 créditos sin borrar pagos ni soportes; ajuste auditable e id
  insert into payment_items(payment_order_id,operation_id,bonus_id,valor) select p.id,b.operation_id,b.id,b.valor from liquidation_bonuses b join payment_orders p on p.beneficiary_id=b.beneficiary_id;
  insert into treasury_movements(liquidation_id,valor) select id,-1025000 from liquidations;
  insert into liquidation_treasury_destinations(liquidation_id,total_executives) select id,1460000 from liquidations;
- update liquidations set frozen_at=now(),approved_at=now();`);
+ update liquidations set frozen_at=now(),approved_at=now(),approved_by=gen_random_uuid();`);
  await db.exec(await read('./fixtures/bonos-diferidos-guards.sql'));
  const migration=await read('../../supabase/migrations/20260908151037_rectificacion_krediya_bonos_auditada.sql');
  await db.exec(migration);
+ await db.exec(await read('../../supabase/migrations/20260908152145_rectificacion_krediya_autoria.sql'));
  const id=(await db.query('select id from liquidations')).rows[0].id;
  const call=async()=>(await db.query('select kora_private.rectificar_krediya_bonos_20260908($1) result',[id])).rows[0].result;
  const result=await call();

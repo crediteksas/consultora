@@ -68,9 +68,12 @@ test('Chistoso exige un remate visual y una tienda reconocible de nuestra regió
   assert.match(publisher, /Smiling, laughing, posing, attractive friends or colorful clothes alone are not humor/);
   assert.match(publisher, /Corozal, Chinú, Tolú, Ciénaga or Montería/);
   assert.match(publisher, /Never depict a US flagship, Manhattan-style street, Bogotá luxury shop/);
-  assert.match(publisher, /No sexualized models, beauty-campaign posing/);
+  assert.match(publisher, /Attractive, glamorous or sensual adults and fashion-forward styling are allowed/);
+  assert.match(publisher, /Keep every person clearly adult, confident and agentic/);
+  assert.match(publisher, /no nudity, explicit sexual content, fetishization, degrading or objectifying framing/);
+  assert.doesNotMatch(publisher, /No sexualized models/);
   assert.match(publisher, /currentEstilo === 'chistoso'\) return CHISTOSO_VISUAL_CONTRACT/);
-  assert.match(publisher, /Sonreír o posar no es humor/);
+  assert.match(publisher, /Sonreír, posar o ser sensual no es por sí solo humor/);
   assert.match(publisher, /styleRequirement = estilo === 'chistoso'/);
 });
 

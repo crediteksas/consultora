@@ -929,7 +929,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="estilo-grid">
       <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase."><i data-lucide="building-2" aria-hidden="true"></i> Formal</button>
       <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Caribe colombiano cálido y luminoso: arquitectura, vegetación y color regional con una sensibilidad macondiana contemporánea. Sin carnaval, disfraces ni clichés turísticos."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
-      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor visual cotidiano de nuestras tiendas: una situación con planteamiento y remate ligada al producto. Caribe colombiano real, sin modelos de moda, memes ni locales extranjeros."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
+      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor visual cotidiano de nuestras tiendas: una situación con planteamiento y remate ligada al producto. Caribe colombiano real; pueden aparecer adultos atractivos o sensuales con tratamiento elegante, sin memes ni locales extranjeros."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
       <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square" aria-hidden="true"></i> Minimalista</button>
       <button class="estilo-btn" onclick="selectEstilo('contemporaneo',this)" title="Dirección editorial actual: composiciones asimétricas, fotografía auténtica, tipografía protagonista y detalles gráficos de tendencia sin perder claridad comercial."><i data-lucide="sparkles" aria-hidden="true"></i> Contemporáneo</button>
       <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil" aria-hidden="true"></i> Personalizar</button>
@@ -1239,7 +1239,7 @@ function enviarACola() {
 function buildCreativeStyleDirection(estilo = currentEstilo) {
   const directions = {
     costeno: 'Alegre costeño contemporáneo: comercio cuidado, luz cálida, vegetación y arquitectura cotidiana del Caribe colombiano; una sensibilidad macondiana sutil, viva y moderna, sin carnaval ni clichés turísticos.',
-    chistoso: 'Humor visual cotidiano del Caribe colombiano: presenta una situación real de compra y un remate claro ligado al producto. Sonrisas o poses no cuentan como chiste; evita modelos de moda, locales extranjeros, memes y estereotipos.',
+    chistoso: 'Humor visual cotidiano del Caribe colombiano: presenta una situación real de compra y un remate claro ligado al producto. Ser atractivo, sensual, sonreír o posar no sustituye el chiste; permite adultos con estilo cuando aporten al concepto, sin contenido explícito, trato degradante, locales extranjeros, memes ni estereotipos.',
     formal: 'Formal contemporáneo: confianza, precisión comercial y jerarquía visual limpia; evita lenguaje corporativo genérico.',
     minimalista: 'Minimalista: una sola idea comercial concreta, pocas palabras, espacio visual y máxima claridad.',
     contemporaneo: 'Contemporáneo editorial: composición asimétrica, fotografía auténtica, tipografía expresiva, ritmo visual actual y una sola idea comercial; evita plantillas, neones gratuitos y decoración tecnológica genérica.',
@@ -1302,7 +1302,7 @@ CONTROL DE CALIDAD — PUBLICISTA SENIOR:
 function ESTILO_INSTRUCCIONES() {
   return {
     'alegre costeño': 'Calidez contemporánea del Caribe colombiano: luz de tarde, vegetación, fachadas y acentos coral, terracota, amarillo sol y turquesa. Sensibilidad macondiana sutil y cotidiana; llamativa sin carnaval, folclor forzado ni slang impuesto.',
-    'chistoso': 'Humor comercial visual y reconocible: plantea una situación cotidiana de nuestras tiendas y ciérrala con un remate ligado al producto o beneficio. Personas sonriendo o posando no constituyen un chiste. Sin memes, modelos de moda, personajes exagerados ni locales de Estados Unidos o grandes ciudades.',
+    'chistoso': 'Humor comercial visual y reconocible: plantea una situación cotidiana de nuestras tiendas y ciérrala con un remate ligado al producto o beneficio. Adultos atractivos o sensuales pueden aparecer con tratamiento elegante, pero la pose no sustituye el chiste. Sin contenido explícito, objetificación, memes, personajes exagerados ni locales de Estados Unidos o grandes ciudades.',
     'formal': 'Precisión, confianza y claridad de performance. Prioriza un beneficio demostrable y una acción concreta; evita frases corporativas o aspiracionales vacías.',
     'minimalista': 'Una sola idea comercial con pocas palabras, pero completa y comprensible. Cada palabra debe aportar producto, beneficio o acción; no uses fragmentos vacíos.',
     'contemporáneo': 'Lenguaje actual, directo y editorial. Una frase memorable, un beneficio concreto y un CTA útil; evita anglicismos, frases de moda vacías y tono de marca juvenil forzado.',
@@ -2954,7 +2954,7 @@ async function proponerDetalleCreativoConIA(estilo, { force = false, avoid = '' 
   const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
   const brief = document.getElementById('instruccion-ia-extra')?.value.trim() || document.getElementById('modo-contexto')?.value.trim() || '';
   const styleRequirement = estilo === 'chistoso'
-    ? 'La idea debe tener planteamiento y remate visual ligados al producto, comprensibles sin leer un caption. Sonreír o posar no es humor. Sitúala en una tienda o calle comercial cotidiana del Caribe colombiano; no uses modelos de moda, sexualización, memes, estereotipos, centros comerciales de lujo ni arquitectura de Estados Unidos o Bogotá.'
+    ? 'La idea debe tener planteamiento y remate visual ligados al producto, comprensibles sin leer un caption. Sonreír, posar o ser sensual no es por sí solo humor. Puedes usar adultos atractivos, sensuales o con estilo de moda si aportan al concepto, siempre de forma elegante, no explícita y no degradante; evita objetificación, memes, estereotipos, centros comerciales de lujo y arquitectura de Estados Unidos o Bogotá.'
     : estilo === 'costeno'
       ? 'Representa vida cotidiana luminosa del Caribe colombiano con calidez macondiana sutil, sin carnaval ni postal turística.'
       : '';
@@ -3086,7 +3086,7 @@ async function buildImgPrompt() {
     const estiloRico = {
       formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
       costeno:    `Warm, luminous everyday life from Colombia's Caribbean region with subtle contemporary Macondian character: sun-washed walls, leafy plants, breezy natural light and controlled coral, terracotta, sun-yellow and turquoise accents. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Make it inviting and scroll-stopping, never dark, corporate, carnival-like or touristy.`,
-      chistoso:   `A clear visual setup and punchline grounded in an everyday cellphone purchase in Colombia's Caribbean region. Smiling, posing or fashionable people alone are not humor. Use the user brief as the focus; secondary detail only: ${detalleDia}. Never depict a US-style store, a Bogotá luxury shop, influencer fashion shoot, sexualized models, random meme or regional stereotype.`,
+      chistoso:   `A clear visual setup and punchline grounded in an everyday cellphone purchase in Colombia's Caribbean region. Smiling, posing, being fashionable or sensual alone are not humor. Attractive, glamorous or sensual adults are allowed when relevant, treated tastefully and with agency. Use the user brief as the focus; secondary detail only: ${detalleDia}. Never depict minors, nudity, explicit sexual content, degrading or objectifying framing, a US-style store, a Bogotá luxury shop, a random meme or regional stereotype.`,
       minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
       contemporaneo:`Contemporary editorial retail art direction: asymmetric composition, authentic documentary-style photography, bold scale contrast, restrained graphic accents and intentional negative space. The product and commercial action must remain unmistakable. Avoid template-like layouts, generic neon technology effects and decorative people. Secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
@@ -3281,8 +3281,8 @@ async function buildImgPrompt() {
     formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual secundario: ${detalleDiaMsg}.`,
     costeno:     `Tono caribeño colombiano auténtico, comercial y luminoso — un cliente disfrutando su celular nuevo como foco claro de la escena. Sensibilidad macondiana contemporánea y sutil: luz de tarde, brisa sugerida, vegetación frondosa, fachadas o texturas regionales y acentos coral, terracota, amarillo sol o turquesa, sin acumularlos. Escena: ${detalleDiaMsg}. Debe sentirse como un momento plausible de Corozal, Chinú, Tolú o Ciénaga, no como una campaña institucional ni una postal turística. Prohibidos carnaval, comparsa, confeti, disfraces, máscaras, sombreros folclóricos y decoraciones tropicales apiladas.`,
     chistoso:    /lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'')
-      ? `Humor visual cotidiano sobre ${producto}: planteamiento reconocible y remate claro ligado a su uso o beneficio. Sonreír o posar no cuenta como chiste. Escena realista de comercio del Caribe colombiano; sin tienda extranjera, modelos de moda, sexualización, memes ni estereotipos. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares: el producto de esta pieza no es un celular.`
-      : `Humor visual cotidiano: planteamiento reconocible y remate claro entre el celular viejo y ${producto}, ligado a una ventaja real. Sonreír o posar no cuenta como chiste. Escena realista de una tienda o calle comercial del Caribe colombiano; sin local estadounidense o bogotano de lujo, modelos de moda, sexualización, memes ni estereotipos. Detalle secundario: ${detalleDiaMsg}.`,
+      ? `Humor visual cotidiano sobre ${producto}: planteamiento reconocible y remate claro ligado a su uso o beneficio. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Escena realista de comercio del Caribe colombiano; sin tienda extranjera, objetificación, memes ni estereotipos. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares: el producto de esta pieza no es un celular.`
+      : `Humor visual cotidiano: planteamiento reconocible y remate claro entre el celular viejo y ${producto}, ligado a una ventaja real. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Escena realista de una tienda o calle comercial del Caribe colombiano; sin local estadounidense o bogotano de lujo, objetificación, memes ni estereotipos. Detalle secundario: ${detalleDiaMsg}.`,
     minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual derivado del brief; detalle secundario: ${detalleDiaMsg}.`,
     contemporaneo:`Dirección editorial contemporánea, segura y comercial. Producto y acción real como protagonistas, encuadre asimétrico, tipografía con contraste de escala y máximo dos personas con función narrativa. Sin poses de celebración artificial, neones genéricos ni adornos sin propósito. Detalle secundario: ${detalleDiaMsg}.`,
     custom:      estiloCustomVal || `Estilo libre. Aplicar criterio artístico según las instrucciones.`,
@@ -3404,7 +3404,7 @@ function buildImgPromptGeminiFallback() {
   const colorMap = {
     formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
     costeno:     'luz natural cálida del Caribe colombiano, vegetación y arquitectura regional cotidiana con acentos coral, terracota, amarillo sol y turquesa; carácter macondiano sutil y contemporáneo, llamativo sin carnaval, folclor forzado ni postal turística',
-    chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, sin modelos de moda ni local extranjero',
+    chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, con adultos de estilo libre cuando aporten al concepto y sin local extranjero',
     minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
     contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; estética editorial actual, limpia y sofisticada, sin neones tecnológicos genéricos',
     custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
@@ -3492,7 +3492,7 @@ async function buildImgPromptGemini() {
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
     costeno:     `caribeño colombiano comercial, luminoso y cálido — sensibilidad macondiana contemporánea expresada con luz de tarde, vegetación y arquitectura regional cotidiana, no con fiesta ni disfraces. Escena plausible: ${detalleDiaClaude}. Acentos coral, terracota, amarillo sol y turquesa controlados; nunca fondo lúgubre, plantilla corporativa ni clichés turísticos apilados`,
-    chistoso:    `humor visual cotidiano del Caribe colombiano con planteamiento y remate ligados al producto — sonreír o posar no cuenta como chiste. Escena: ${detalleDiaClaude}. Sin modelos de moda, sexualización, memes, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
+    chistoso:    `humor visual cotidiano del Caribe colombiano con planteamiento y remate ligados al producto — sonreír, posar o ser sensual no cuenta por sí solo como chiste. Escena: ${detalleDiaClaude}. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Sin objetificación, memes, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto inequívoco y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -3583,7 +3583,7 @@ async function buildImgPromptGeminiFotoLimpia() {
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
     costeno:     `caribeño colombiano comercial, luminoso y cálido — sensibilidad macondiana contemporánea expresada con luz de tarde, vegetación y arquitectura regional cotidiana, no con fiesta ni disfraces. Escena plausible: ${detalleDiaClaude}. Acentos coral, terracota, amarillo sol y turquesa controlados; nunca fondo lúgubre, plantilla corporativa ni clichés turísticos apilados`,
-    chistoso:    `humor visual cotidiano del Caribe colombiano con planteamiento y remate ligados al producto — sonreír o posar no cuenta como chiste. Escena: ${detalleDiaClaude}. Sin modelos de moda, sexualización, memes, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
+    chistoso:    `humor visual cotidiano del Caribe colombiano con planteamiento y remate ligados al producto — sonreír, posar o ser sensual no cuenta por sí solo como chiste. Escena: ${detalleDiaClaude}. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Sin objetificación, memes, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto protagonista y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -3594,7 +3594,7 @@ async function buildImgPromptGeminiFotoLimpia() {
     const colorMap = {
       formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
       costeno:     'luz natural cálida del Caribe colombiano, vegetación y arquitectura regional cotidiana con acentos coral, terracota, amarillo sol y turquesa; carácter macondiano sutil y contemporáneo, llamativo sin carnaval, folclor forzado ni postal turística',
-      chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, sin modelos de moda ni local extranjero',
+      chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, con adultos de estilo libre cuando aporten al concepto y sin local extranjero',
       minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
       contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; fotografía editorial actual y sofisticada, sin neones tecnológicos genéricos',
       custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
@@ -4057,7 +4057,7 @@ const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - Establish an immediate visual hook, a clear product/people focal point, strong hierarchy and a CTA readable on a mobile screen.
 - Use intentional contrast, depth, scale, asymmetry and controlled color accents. Avoid a flat navy background occupying most of the canvas.
 - Preserve generous but purposeful breathing room. Never stack every text element in one centered column.
-- Show authentic Colombian Caribbean customers naturally interacting with the product when people are requested; use ordinary customers rather than fashion models and avoid sexualized casting, influencer poses, stock-photo smiles and empty streets.
+- Show authentic Colombian Caribbean adults naturally interacting with the product when people are requested. Casting may be ordinary, attractive, glamorous or sensual when relevant; keep it tasteful, clearly adult and non-explicit, with agency and product relevance. Avoid minors, nudity, degrading or objectifying framing, stock-photo smiles and empty streets.
 - Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
 - Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
 - The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
@@ -4074,7 +4074,8 @@ const CHISTOSO_VISUAL_CONTRACT = `SELECTED STYLE — CHISTOSO, MANDATORY:
 - Smiling, laughing, posing, attractive friends or colorful clothes alone are not humor. Reject and recompute any concept without a genuine comic turn.
 - Ground the scene in an accessible cellphone store or everyday commercial street from Colombia's Caribbean region, comparable to Corozal, Chinú, Tolú, Ciénaga or Montería: compact scale, glass counters, practical displays, warm daylight and ordinary customers.
 - Never depict a US flagship, Manhattan-style street, Bogotá luxury shop, upscale mall, fashion boutique, influencer photoshoot or generic international showroom.
-- Use believable regional customers in casual everyday clothing. No sexualized models, beauty-campaign posing, caricatures, memes, ridicule, forced slang, carnival props or regional stereotypes.
+- Attractive, glamorous or sensual adults and fashion-forward styling are allowed when they strengthen the concept. Keep every person clearly adult, confident and agentic; no nudity, explicit sexual content, fetishization, degrading or objectifying framing, or sexual focus unrelated to the product.
+- Do not use caricatures, memes, ridicule, forced slang, carnival props or regional stereotypes.
 - Keep the product and commercial benefit accurate. Humor must make the piece more memorable, never obscure what is being offered.`;
 
 function buildSelectedVisualStyleContract() {
@@ -4093,7 +4094,7 @@ const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY W
 - Distribute 8–12 customers naturally in small groups across foreground, middle ground and background. Prefer full-body or three-quarter figures and believable interaction with advisers and devices.
 - Preserve clear spatial depth and enough architecture to identify the location even if all advertising copy is hidden.
 - No close-up, tight crop, bust portrait, single face dominating the frame or shallow depth of field that erases the store.
-- Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Avoid influencer or fashion-campaign posing and sexualized casting. Do not invent readable prices, offers or third-party brand marks inside the store.`;
+- Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Fashion-forward or sensual adult casting is allowed when relevant, but it must remain tasteful, non-explicit, agentic and connected to the product; never depict minors, nudity or degrading or objectifying framing. Do not invent readable prices, offers or third-party brand marks inside the store.`;
 
 const AD_CREATIVE_QUALITY_CONTRACT = `9.5/10 AD CREATIVE QUALITY GATE — SELF-CHECK BEFORE RENDERING:
 - Use one dominant visual idea. People, product, headline and decorative graphics must not compete for equal attention.

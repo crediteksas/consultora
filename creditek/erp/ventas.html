@@ -542,7 +542,6 @@ const ventasPagos = window.CreditekCajaPiloto;
 let currentUser = null;
 let currentPerfil = null;
 let ventasCache = [];
-let productosCache = [];
 let tiendasCache = [];
 let detalleVentaActiva = null;
 let detalleCreditoActivo = null;
@@ -648,11 +647,9 @@ function initPagina() {
 }
 
 async function cargarDatosBase() {
-  const [{ data: productos }, { data: tiendas }] = await Promise.all([
-    sb.from('productos').select('id,codigo,nombre,categoria,tipo,activo').eq('activo', true).order('nombre'),
+  const [{ data: tiendas }] = await Promise.all([
     sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).not('codigo', 'in', '(CK-12,CK-13,CK-14)').order('nombre'),
   ]);
-  productosCache = productos || [];
   tiendasCache = tiendas || [];
   document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
   cargarVentas();
@@ -1040,11 +1037,10 @@ function agregarItemCelular() {
   renderItemsVenta();
 }
 
-function agregarItemAccesorio() {
+async function agregarItemAccesorio() {
   const cont = document.getElementById('itemsVentaContainer');
   const div = document.createElement('div');
   div.className = 'item-card';
-  const accesorios = productosCache.filter(p => p.tipo === 'cantidad');
   div.innerHTML = `
     <div class="nombre-prod">Buscar accesorio</div>
     <input type="text" class="buscador-accesorio" placeholder="Nombre o código...">
@@ -1053,23 +1049,31 @@ function agregarItemAccesorio() {
   cont.appendChild(div);
   const input = div.querySelector('.buscador-accesorio');
   const resultadosCont = div.querySelector('.buscador-resultados-cont');
+  input.disabled = true;
+  resultadosCont.textContent = 'Consultando accesorios de tu tienda…';
+  let accesorios;
+  try {
+    accesorios = await ventasDomain.accesoriosDeTienda(sb, currentPerfil.tienda_codigo);
+  } catch (error) {
+    resultadosCont.textContent = 'No se pudo consultar el inventario. Cierra y vuelve a abrir la venta para reintentar.';
+    return;
+  }
+  if (!div.isConnected) return;
+  input.disabled = false;
+  resultadosCont.textContent = accesorios.length ? '' : 'No hay accesorios con existencias en tu tienda.';
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
     if (!q) { resultadosCont.innerHTML = ''; return; }
     const encontrados = accesorios.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 8);
     resultadosCont.innerHTML = encontrados.length
-      ? `<div class="buscador-resultados">${encontrados.map(p => `<button data-id="${p.id}">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</button>`).join('')}</div>`
-      : '<div class="buscador-resultados"><button disabled>Sin resultados</button></div>';
+      ? `<div class="buscador-resultados">${encontrados.map(p => `<button data-id="${p.id}">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)} · Stock: ${p.cantidad}</button>`).join('')}</div>`
+      : '<div class="buscador-resultados"><button disabled>Sin coincidencias con existencias en tu tienda</button></div>';
     resultadosCont.querySelectorAll('button[data-id]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const prod = productosCache.find(p => p.id === btn.dataset.id);
+        const prod = accesorios.find(p => p.id === btn.dataset.id);
         div.remove();
         // El precio configurado en la tienda se usa como sugerencia editable.
-        const { data: stockTienda } = await sb.from('stock_cantidad')
-          .select('precio_tienda,costo_promedio')
-          .eq('producto_id', prod.id)
-          .eq('tienda_codigo', currentPerfil.tienda_codigo)
-          .maybeSingle();
+        const stockTienda = prod;
         const precioAcc = stockTienda?.precio_tienda || null;
         venta.items.push({
           tipoProducto: 'cantidad', producto_id: prod.id, unidad_id: null,
@@ -1153,7 +1157,12 @@ async function verificarStockAccesorio(idx) {
   const it = venta.items[idx];
   const hint = document.getElementById('stockHint' + idx);
   if (!hint) return;
-  const { data } = await sb.from('stock_cantidad').select('cantidad').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
+  const { data, error } = await sb.from('stock_cantidad').select('cantidad').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
+  if (error) {
+    hint.textContent = 'No se pudo verificar el stock. Reintenta antes de guardar.';
+    hint.style.color = 'var(--rojo)';
+    return;
+  }
   const disponible = data ? data.cantidad : 0;
   hint.textContent = `Stock disponible en tu tienda: ${disponible}`;
   hint.style.color = disponible < it.cantidad ? 'var(--rojo)' : 'var(--text2)';

@@ -10,6 +10,26 @@
     return Number.isFinite(convertido) ? convertido : 0;
   }
 
+  async function accesoriosDeTienda(sb, tienda) {
+    if (!tienda) throw new Error('Selecciona una tienda para consultar su inventario.');
+    const filas = [];
+    const tamano = 500;
+    for (let desde = 0; ; desde += tamano) {
+      const { data, error } = await sb.from('stock_cantidad')
+        .select('producto_id,cantidad,precio_tienda,costo_promedio,productos!inner(id,codigo,nombre,tipo,activo)')
+        .eq('tienda_codigo', tienda).eq('productos.activo', true)
+        .eq('productos.tipo', 'cantidad').gt('cantidad', 0)
+        .order('producto_id').range(desde, desde + tamano - 1);
+      if (error) throw error;
+      filas.push(...(data || []));
+      if (!data || data.length < tamano) break;
+    }
+    return filas.map(fila => ({ ...relacionUnica(fila.productos),
+      cantidad: numero(fila.cantidad), precio_tienda: fila.precio_tienda,
+      costo_promedio: fila.costo_promedio,
+    })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
   function columnasListaVentas() {
     return [
       'id',
@@ -95,6 +115,7 @@
   }
 
   global.CreditekVentasDomain = Object.freeze({
+    accesoriosDeTienda,
     columnasListaVentas,
     columnasDetalleItems,
     columnasUnidadVenta,

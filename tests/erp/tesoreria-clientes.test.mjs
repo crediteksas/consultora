@@ -43,4 +43,19 @@ test('guardado independiente de pagos, capacidad real y snapshots históricos',(
   assert.doesNotMatch(app,/aliados_completar_pagos_beneficiario|prompt\(/);
   assert.match(treasury,/beneficiary_name: p.bank_snapshot\?\.holder \|\| b.nombre/);
   assert.match(app,/No se modificaron órdenes de pago ni saldos/);
+  assert.match(app,/tesoreria_guardar_cuenta_ejecutivo/);
+  assert.match(app,/p_identificacion:v\.identification/);
+});
+test('la cuenta del ejecutivo permite reemplazar la clave interna por identificación legal',()=>{
+  const app=readFileSync('creditek/erp/tesoreria-clientes.js','utf8');
+  const publicApp=readFileSync('public/creditek/erp/tesoreria-clientes.js','utf8');
+  const sql=readFileSync('supabase/migrations/20260909232759_permitir_identificacion_pago_ejecutivo.sql','utf8');
+  assert.equal(publicApp,app,'la fuente pública y el componente compartido deben permanecer sincronizados');
+  assert.match(app,/identification\.readOnly=false/);
+  assert.match(app,/Escribe la cédula o NIT real del titular/);
+  assert.match(sql,/tipo='ejecutivo'/);
+  assert.match(sql,/v_identification !~ '\^\[0-9\]\{5,20\}\$'/);
+  assert.match(sql,/public\.aliados_guardar_cuenta_bancaria/);
+  assert.match(sql,/identificacion_anterior_terminada_en/);
+  assert.doesNotMatch(sql,/(update|delete from) public\.payment_orders/i);
 });

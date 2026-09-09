@@ -19,13 +19,13 @@ try {
  await page.addInitScript(()=>{
   window.calls=[];window.failSave=false;
   const origins=Array.from({length:24},(_,i)=>({codigo:'aliado-'+i,nombre:i===0?'A TECH MOVIL':i===1?'A CREDICELULARES':`Comercio ${i}`,ciudad:'Montería',tipo:'aliado',activo:true}));
-  const beneficiaries=[{id:'h1',tipo:'aliado',nombre:'Titular de prueba',identificacion:'123456789',origen_codigo:'aliado-0',activo:true},{id:'e1',tipo:'ejecutivo',nombre:'Ejecutivo prueba',identificacion:'7654321',activo:true}];
+  const beneficiaries=[{id:'h1',tipo:'aliado',nombre:'Titular de prueba',identificacion:'123456789',origen_codigo:'aliado-0',activo:true},{id:'e1',tipo:'ejecutivo',nombre:'Ejecutivo prueba',identificacion:'GERENCIA-EJECUTIVO-PRUEBA',activo:true}];
   const accounts=[{id:'bank1',beneficiary_id:'h1',banco:'Banco de prueba',tipo_cuenta:'ahorros',numero_cuenta:'001234567890',activo:true,validada:true,created_at:'2026-09-01'}];
   const sites=origins.map(o=>({id:'site-'+o.codigo,origen_codigo:o.codigo,aliado_id:'client-'+o.codigo,direccion:'Dirección de prueba'}));
   const clients=origins.map(o=>({id:'client-'+o.codigo,nombre_comercial:o.nombre,revision:0,contacto:'Contacto prueba',payment_beneficiary_id:o.codigo==='aliado-0'?'h1':null}));
   window.creditekSidebar={perfil:{rol:'operaciones',activo:true,es_operador_aliados:true},sb:{
    from(table){let range;return {select(){return this;},order(){return this;},eq(){return this;},gt(){return this;},range(a,b){range=[a,b];return this;},then(ok,bad){const rows=table==='origenes'?origins:table==='liquidation_beneficiaries'?beneficiaries:table==='beneficiary_bank_accounts'?accounts:table==='aliados_sedes'?sites:table==='aliados'?clients:[];return Promise.resolve({data:range?rows.slice(range[0],range[1]+1):rows,error:null,count:rows.length}).then(ok,bad);}};},
-   async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(!['tesoreria_guardar_cliente_cuenta','tesoreria_guardar_ficha_cliente','tesoreria_vincular_local_cliente'].includes(name))throw Error('RPC financiera inesperada');if(name==='tesoreria_vincular_local_cliente' && !window.failSave)sites.find(s=>s.origen_codigo===params.p_origen_codigo).aliado_id=params.p_cliente_destino;return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
+   async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(!['tesoreria_guardar_cliente_cuenta','tesoreria_guardar_ficha_cliente','tesoreria_vincular_local_cliente','tesoreria_guardar_cuenta_ejecutivo'].includes(name))throw Error('RPC financiera inesperada');if(name==='tesoreria_vincular_local_cliente' && !window.failSave)sites.find(s=>s.origen_codigo===params.p_origen_codigo).aliado_id=params.p_cliente_destino;return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
   }};
  });
  await page.goto('https://kora.test/creditek/erp/aliados-tesoreria.html');
@@ -102,13 +102,24 @@ try {
  await page.waitForFunction(()=>!document.querySelector('#clientDialog').open);
  assert.equal(await page.evaluate(()=>window.calls.filter(c=>c.name==='tesoreria_guardar_ficha_cliente').length),1);
  assert.equal(await page.evaluate(()=>window.calls.some(c=>c.name==='tesoreria_guardar_cliente_cuenta')),false);
- // El enlace de una orden de ejecutivo abre el mismo formulario, sin editar identidad.
+ // El enlace de una orden de ejecutivo conserva el perfil, pero permite registrar su identificación legal.
  await page.goto('https://kora.test/creditek/erp/aliados-tesoreria.html?vista=clientes&beneficiario=e1');
  await page.locator('#clientDialog[open]').waitFor();
  assert.equal(await page.locator('[name="name"]').inputValue(),'Ejecutivo prueba');
  assert.equal(await page.locator('[name="name"]').getAttribute('readonly'),'');
  assert.equal(await page.locator('#clientProfileTab').isVisible(),false);
- await page.locator('#clientClose').click();
+ assert.equal(await page.locator('[name="identification"]').getAttribute('readonly'),null);
+ assert.equal(await page.locator('[name="identification"]').inputValue(),'');
+ await page.screenshot({path:'/private/tmp/kora-ejecutivo-identificacion-editable.png'});
+ await page.locator('[name="identification"]').fill('12345678');
+ await page.locator('[name="bank"]').fill('Banco ejecutivo');
+ await page.locator('[name="accountNumber"]').fill('0012345678');
+ await page.locator('[name="verified"]').check();
+ await page.locator('#clientSave').click();
+ await page.waitForFunction(()=>!document.querySelector('#clientDialog').open);
+ const executiveCall=await page.evaluate(()=>window.calls.find(c=>c.name==='tesoreria_guardar_cuenta_ejecutivo'));
+ assert.equal(executiveCall.params.p_identificacion,'12345678');
+ assert.equal(executiveCall.params.p_numero_cuenta,'0012345678');
  await page.locator('#showOperational').click();
  await page.waitForFunction(()=>!document.querySelector('#outgoingContent').classList.contains('hidden'));
  await page.locator('#showHistory').click();

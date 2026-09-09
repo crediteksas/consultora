@@ -150,9 +150,11 @@
       const b=beneficiaries.find(b=>b.id===id && b.tipo==='ejecutivo' && b.activo);
       if(!b)return message('No se encontró un titular activo relacionado. Busca el comercio para completar su ficha.',true);
       const f=$('#clientForm');f.reset();f.dataset.executive=b.id;f.dataset.origin='';f.dataset.previous='';
-      bankFields(b);f.elements.name.readOnly=true;f.elements.identification.readOnly=true;
+      bankFields(b);f.elements.name.readOnly=true;f.elements.identification.readOnly=false;
+      if (!/^[0-9]{5,20}$/.test(String(b.identificacion || ''))) f.elements.identification.value='';
+      f.elements.identification.placeholder='Escribe la cédula o NIT real del titular';
       $('#clientHolder').parentElement.hidden=true;$('#clientProfileTab').hidden=true;$('#clientSitesTab').hidden=true;
-      $('#clientEditorTitle').textContent=b.nombre;$('#clientPrevious').textContent='Cuenta del ejecutivo. Su identidad y las órdenes existentes no se modifican.';
+      $('#clientEditorTitle').textContent=b.nombre;$('#clientPrevious').textContent='Cuenta del ejecutivo. Completa la cédula o NIT real del titular. Su perfil y las órdenes existentes no se modifican.';
       $('#clientAccountHistory').innerHTML=accounts.filter(a=>a.beneficiary_id===b.id).map(a=>`<li>${esc(masked(a))} · ${a.activo?'Activa':'Anterior'}</li>`).join('');
       $('#clientEditorError').textContent='';setPanel('bank');$('#clientDialog').showModal();
     }
@@ -181,8 +183,9 @@
       const v = check.value;
       let saved = false;
       try {
-        const response = form.dataset.executive ? await sb.rpc('aliados_guardar_cuenta_bancaria',{
-          p_beneficiary_id:form.dataset.executive,p_banco:v.bank,p_tipo_cuenta:v.accountType,p_numero_cuenta:v.accountNumber,p_validar:true
+        const response = form.dataset.executive ? await sb.rpc('tesoreria_guardar_cuenta_ejecutivo',{
+          p_beneficiary_id:form.dataset.executive,p_identificacion:v.identification,p_banco:v.bank,
+          p_tipo_cuenta:v.accountType,p_numero_cuenta:v.accountNumber,p_validar:true
         }) : await sb.rpc('tesoreria_guardar_cliente_cuenta', {
           p_origen_codigo:v.originCode, p_previous_beneficiary_id:form.dataset.previous || null,
           p_nombre:v.name, p_identificacion:v.identification, p_banco:v.bank,

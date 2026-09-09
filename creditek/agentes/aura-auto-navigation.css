@@ -1,4 +1,6 @@
 #app .sidebar{position:relative;z-index:30}
+#app .sidebar .sidebar-toggle{left:14px!important;right:auto!important;top:20px!important;bottom:auto!important}
+#app:not(.sidebar-collapsed) .sidebar-home,#app.sidebar-peek .sidebar-home{padding-left:40px}
 #app.sidebar-peek .sidebar{width:240px;box-shadow:8px 0 28px #0b1e3d22}
 #app .aura-group-toggle{display:block;width:100%;min-height:44px;text-align:left;border:0;background:#fff!important;color:#64748b!important;box-shadow:none!important;border-radius:0;padding:14px 12px 8px;cursor:pointer}
 #app:not(.sidebar-collapsed) .aura-nav-group:not([data-open="true"]) .aura-group-items,

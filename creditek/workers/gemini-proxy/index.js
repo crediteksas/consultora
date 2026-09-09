@@ -264,6 +264,21 @@ async function llamarAnthropic_(env, payload) {
     temperature: payload.temperature,
     system: payload.system
   };
+  const requestedWebSearch = Array.isArray(payload.tools) && payload.tools.some((tool) => tool?.type === "web_search_20250305" && tool?.name === "web_search");
+  if (requestedWebSearch) {
+    allowedPayload.tools = [{
+      type: "web_search_20250305",
+      name: "web_search",
+      max_uses: 1,
+      user_location: {
+        type: "approximate",
+        city: "Monteria",
+        region: "Cordoba",
+        country: "CO",
+        timezone: "America/Bogota"
+      }
+    }];
+  }
   for (const key of Object.keys(allowedPayload)) {
     if (allowedPayload[key] === void 0) delete allowedPayload[key];
   }

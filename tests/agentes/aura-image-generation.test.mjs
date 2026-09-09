@@ -39,3 +39,22 @@ test('la integración conserva todos los ambientes del diseñador', async () => 
     assert.match(page, new RegExp(`selectEstilo\\('${style}',this\\)`), style);
   }
 });
+
+test('Chistoso investiga actualidad una sola vez y transforma la referencia sin copiarla', async () => {
+  const [page, worker] = await Promise.all([
+    read('creditek/agentes/creditek-agente-redes.html'),
+    read('creditek/workers/gemini-proxy/index.js'),
+  ]);
+
+  assert.match(page, /INVESTIGACIÓN DE HUMOR ACTUAL — OBLIGATORIA/);
+  assert.match(page, /detalleEstilo === 'chistoso' \? \{ tools: \[\{ type:'web_search_20250305', name:'web_search', max_uses:1 \}\] \} : \{\}/);
+  assert.match(page, /estilo === 'chistoso' \? \{ tools: \[\{ type:'web_search_20250305', name:'web_search', max_uses:1 \}\] \} : \{\}/);
+  assert.match(page, /Borrow the comedic mechanism, never the protected expression/);
+  assert.match(page, /Never reproduce or closely imitate an existing individualized meme image/);
+
+  assert.match(worker, /requestedWebSearch = Array\.isArray\(payload\.tools\)/);
+  assert.match(worker, /type: "web_search_20250305"/);
+  assert.match(worker, /max_uses: 1/);
+  assert.match(worker, /city: "Monteria"/);
+  assert.doesNotMatch(worker, /allowedPayload\.tools\s*=\s*payload\.tools/);
+});

@@ -5,23 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agente 3 · Meta Ads — AURA</title>
 <script type="module">
-import { auraSessionToken } from './agente3-aura-session.mjs';
-window.auraSessionToken = auraSessionToken;
-// Exponer también como función directa por si el módulo tarda
-window.__metaToken = function() {
-  const STORAGE_KEY = 'aura_supabase_session_v1';
-  try {
-    const ls = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (ls?.access_token) return ls.access_token;
-    const ss = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
-    if (ss?.access_token) return ss.access_token;
-  } catch(e) {}
-  return '';
-};
-// Fallback por si window.auraSessionToken no carga
-if (!window.auraSessionToken) {
-  window.auraSessionToken = window.__metaToken;
-}
+import { metaSessionToken } from './agente3-meta-session.mjs';
+window.auraSessionToken = metaSessionToken;
 </script>
 <script>
 try {
@@ -2008,7 +1993,7 @@ ${SEPARADOR_INSTRUCCION}`;
     const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Authorization': 'Bearer ' + (await window.auraSessionToken() || ''),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -2082,7 +2067,7 @@ function escapeJs(value) {
 }
 
 async function metaWorkerRequest(path, options = {}) {
-  const fn = window.auraSessionToken || window.__metaToken;
+  const fn = window.auraSessionToken;
   if (!fn) throw new Error('Autenticación AURA requerida');
   const token = await fn();
   if (!token) throw new Error('Autenticación AURA requerida');

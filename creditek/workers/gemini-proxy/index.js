@@ -122,11 +122,16 @@ var CORS = {
 var WORKER_URL = "https://creditek-gemini-proxy.comercial-853.workers.dev";
 var _saToken = null;
 var _saTokenExpiry = 0;
+var OPENAI_IMAGE_MODEL = "gpt-image-2.5-flare";
 async function llamarOpenAI_(env, payload) {
   if (!env.OPENAI_API_KEY) return err("OpenAI no est\xE1 configurado en el servidor", 503);
   if (payload?.model !== "gpt-5.6" || !Array.isArray(payload?.tools) || !payload.tools.some((tool) => tool?.type === "image_generation")) {
     return err("Solicitud de imagen OpenAI inv\xE1lida", 400);
   }
+  const imagePayload = {
+    ...payload,
+    tools: payload.tools.map((tool) => tool?.type === "image_generation" ? { ...tool, model: OPENAI_IMAGE_MODEL } : tool)
+  };
   const started = Date.now();
   let response;
   try {
@@ -136,7 +141,7 @@ async function llamarOpenAI_(env, payload) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${env.OPENAI_API_KEY}`
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(imagePayload),
       // GPT Image puede tardar más de dos minutos en composiciones complejas.
       // Se espera una sola llamada hasta cuatro minutos; nunca se reintenta.
       signal: AbortSignal.timeout(24e4)

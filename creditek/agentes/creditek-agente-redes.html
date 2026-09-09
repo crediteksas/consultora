@@ -919,7 +919,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     </div>
     <div class="key-status" style="padding:3px 3px 4px">
       <span style="font-size:12px;color:var(--text2)">
-        <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2
+        <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2.5 Flare
       </span>
       <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
@@ -1046,7 +1046,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       </div>
       <div class="engine-row">
         <label class="model-chk-label"><input type="checkbox" id="chk-recraft" checked onchange="updateGenerationEstimate()"> 📷 Diseñador A · Recraft V4.1</label>
-        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ Diseñador B · GPT Image 2</label>
+        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ Diseñador B · GPT Image 2.5 Flare</label>
       </div>
       <div class="reel-cost" id="image-cost-estimate">Control de uso de hoy: cargando…</div>
       <div class="fmt-toggle">
@@ -1120,9 +1120,9 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
             <button class="img-ab-use-btn" id="img-ab-use-a" onclick="usarImagenDeAB('a')" style="display:none">✓ Usar en editor</button>
           </div>
           <div class="img-ab-col">
-            <div class="img-ab-col-label">⬡ GPT Image 2</div>
-            <div class="img-ab-placeholder">La vista previa de GPT Image 2 aparecerá aquí.</div>
-            <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2" style="display:none">
+            <div class="img-ab-col-label">⬡ GPT Image 2.5 Flare</div>
+            <div class="img-ab-placeholder">La vista previa de GPT Image 2.5 Flare aparecerá aquí.</div>
+            <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2.5 Flare" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-b" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-b" onclick="descargarImagenAB('b')" style="display:none">⬇ Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-b" onclick="usarImagenDeAB('b')" style="display:none">✓ Usar en editor</button>
@@ -2532,7 +2532,7 @@ function usarImagenDeAB(side) {
   imgHistoryIdx = 0;
   mostrarImgVersion(el.src);
   const labelEl = side === 'a' ? document.getElementById('img-ab-label-a') : null;
-  const label = labelEl ? labelEl.textContent.replace(/^[✦⬡]\s+/,'') : 'GPT Image 2';
+  const label = labelEl ? labelEl.textContent.replace(/^[✦⬡]\s+/,'') : 'GPT Image 2.5 Flare';
   document.getElementById('img-model-lbl').textContent = `Usando: ${label}`;
   document.getElementById('img-result').style.display = 'block';
   document.getElementById('img-editor').style.display = 'block';
@@ -2757,12 +2757,15 @@ async function loadLogoBase64() {
     const resp = await fetch('/creditek/shared/branding/creditek-logo.png', { cache: 'no-store' });
     if (!resp.ok) throw new Error('No se pudo cargar el logo oficial de Creditek.');
     const blob = await resp.blob();
-    return new Promise(resolve => {
+    return await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = e => { logoBase64 = e.target.result; resolve(logoBase64); };
+      reader.onerror = () => reject(new Error('logo-no-legible'));
       reader.readAsDataURL(blob);
     });
-  } catch(e) { throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.'); }
+  } catch(e) {
+    throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.');
+  }
 }
 
 function confirmarPreviewYGenerar() {
@@ -2860,7 +2863,7 @@ function updateImgKeyStatus() {
     document.getElementById('img-key-dot').className = 'img-key-dot ok';
     const parts = [];
     if (useRecraft && recraftOk) parts.push('Recraft V4.1');
-    if (useDalle  && dalleOk)  parts.push('GPT Image 2');
+    if (useDalle  && dalleOk)  parts.push('GPT Image 2.5 Flare');
     document.getElementById('img-key-label').textContent = parts.join(' · ') + ' configurado';
     btn.style.display = 'none';
   } else {
@@ -3296,13 +3299,17 @@ async function buildImgPrompt() {
     halloween:'fondo casi negro #0D0D0D', anonuevo:'fondo negro #050505',
     clases:'fondo blanco #FFFFFF con acentos azul cielo #87CEEB',
   };
+  const fondoPorEstilo = {
+    formal: 'escena fotográfica o fondo editorial contemporáneo; azul marino solo como ancla, nunca como bloque plano dominante',
+    costeno: 'escena fotográfica luminosa de borde a borde, con luz natural cálida, vegetación o arquitectura caribeña cotidiana; sin fondo oscuro dominante ni panel institucional',
+    chistoso: 'tienda compacta o calle comercial cotidiana del Caribe colombiano, con vitrinas y mostradores accesibles, luz cálida y escala de pueblo o ciudad intermedia; nunca boutique de lujo, centro comercial, local estadounidense ni arquitectura bogotana genérica',
+    minimalista: 'fondo blanco #FFFFFF o muy claro, limpio y con espacio negativo intencional',
+    contemporaneo: 'escena fotográfica o fondo editorial contemporáneo, luminoso y comercial; azul marino solo como ancla puntual',
+    custom: 'fondo coherente con la dirección visual escrita por el usuario; si no se especifica, contemporáneo, luminoso y comercial',
+  };
   const bgSpec = (fechaData && fechaBgMap[fechaKey])
     ? fechaBgMap[fechaKey]
-    : currentEstilo === 'costeno'
-      ? 'escena fotográfica luminosa de borde a borde, con luz natural cálida, vegetación o arquitectura caribeña cotidiana; sin fondo oscuro dominante ni panel institucional'
-      : currentEstilo === 'chistoso'
-        ? 'tienda compacta o calle comercial cotidiana del Caribe colombiano, con vitrinas y mostradores accesibles, luz cálida y escala de pueblo o ciudad intermedia; nunca boutique de lujo, centro comercial, local estadounidense ni arquitectura bogotana genérica'
-        : 'escena fotográfica o fondo editorial contemporáneo; azul marino solo como ancla, nunca como bloque plano dominante';
+    : (fondoPorEstilo[currentEstilo] || fondoPorEstilo.formal);
   const fechaImgBlock = fechaData ? `Temática ${fechaData.label}: incorporar paleta secundaria (${fechaData.colores}) y elementos decorativos sutiles (${fechaData.elementos}). Estos acentos estacionales complementan la identidad Creditek, no la reemplazan.` : '';
 
   const selectedFins = getSelectedFinancieras();
@@ -3840,7 +3847,7 @@ function showImgSection() {
   resetPreviewFields();
   updateImgKeyStatus();
   syncModelUI();
-  loadLogoBase64();
+  loadLogoBase64().catch(() => { /* la precarga no bloquea; generar mostrará el error accionable */ });
   // Refresh brand-refs modelos + financieras cache silently in background
   fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/brand-references')
     .then(r => r.ok ? r.json() : null)
@@ -3910,7 +3917,7 @@ async function generarImagen(callerBtn = null) {
     // queda estático varios segundos dando sensación de que no está avanzando.
     if (isWorkerEngine) label.textContent = 'Preparando fotografía humana...';
 
-    lastImgModelLabel = currentEngine === 'recraft' ? 'Recraft V4.1' : 'GPT Image 2';
+    lastImgModelLabel = currentEngine === 'recraft' ? 'Recraft V4.1' : 'GPT Image 2.5 Flare';
     const src = currentEngine === 'recraft'
       ? await generarConRecraft(prompt)
       : await generarConDalle(key, prompt);
@@ -4013,8 +4020,8 @@ function calcularDimensionesLogo(ctx, canvas, logoCanvas) {
 
 async function componerLogoSobreImagen(dataUrlImagen) {
   const logo = await loadLogoBase64();
-  if (!logo) return dataUrlImagen;
-  return new Promise(resolve => {
+  if (!logo) throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.');
+  return new Promise((resolve, reject) => {
     const imgBase = new Image();
     imgBase.onload = () => {
       const canvas = document.createElement('canvas');
@@ -4023,28 +4030,32 @@ async function componerLogoSobreImagen(dataUrlImagen) {
       ctx.drawImage(imgBase, 0, 0);
       const imgLogo = new Image();
       imgLogo.onload = () => {
-        const logoCanvas = document.createElement('canvas');
-        logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
-        const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
-        logoCtx.drawImage(imgLogo, 0, 0);
-        quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
-        const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
-        const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
-        if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
-          adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+        try {
+          const logoCanvas = document.createElement('canvas');
+          logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
+          const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
+          logoCtx.drawImage(imgLogo, 0, 0);
+          quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
+          const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
+          const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
+          if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
+            adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+          }
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.32)';
+          ctx.shadowBlur = Math.max(6, canvas.width * 0.009);
+          ctx.shadowOffsetY = Math.max(1, canvas.width * 0.002);
+          ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
+          ctx.restore();
+          resolve(canvas.toDataURL('image/png'));
+        } catch (error) {
+          reject(new Error('No se pudo aplicar el logo oficial de Creditek. La imagen no se entregará sin marca.'));
         }
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.32)';
-        ctx.shadowBlur = Math.max(6, canvas.width * 0.009);
-        ctx.shadowOffsetY = Math.max(1, canvas.width * 0.002);
-        ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
-        ctx.restore();
-        resolve(canvas.toDataURL('image/png'));
       };
-      imgLogo.onerror = () => resolve(dataUrlImagen);
+      imgLogo.onerror = () => reject(new Error('No se pudo aplicar el logo oficial de Creditek. La imagen no se entregará sin marca.'));
       imgLogo.src = logo;
     };
-    imgBase.onerror = () => resolve(dataUrlImagen);
+    imgBase.onerror = () => reject(new Error('No se pudo validar la imagen generada. La pieza no se habilitó.'));
     imgBase.src = dataUrlImagen;
   });
 }
@@ -4468,7 +4479,7 @@ async function generarAB() {
     document.getElementById('img-ab-use-b').style.display = 'block';
   } else {
     const err = document.getElementById('img-ab-err-b');
-    err.textContent = dalleRes.reason?.message || 'Error GPT Image 2'; err.style.display = 'block';
+    err.textContent = dalleRes.reason?.message || 'Error GPT Image 2.5 Flare'; err.style.display = 'block';
   }
 
   btn.disabled = false; spinner.style.display = 'none'; label.textContent = '⚡ Comparar A/B';
@@ -4511,7 +4522,7 @@ async function generarConModelos() {
 
   const MODELS = [
     { id: 'recraft',  label: '📷 Recraft V4.1',            checked: useRecraft },
-    { id: 'dalle',    label: '⬡ GPT Image 2',              checked: useDalle },
+    { id: 'dalle',    label: '⬡ GPT Image 2.5 Flare',      checked: useDalle },
   ];
   const selected = MODELS.filter(m => m.checked);
 

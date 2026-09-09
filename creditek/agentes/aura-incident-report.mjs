@@ -1,3 +1,5 @@
+import './aura-release.js';
+
 const REDACTIONS = [
   [/\b(?:bearer\s+)?eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gi, '[TOKEN REDACTADO]'],
   [/\b(?:sk|AIza|EAAB)[A-Za-z0-9_.-]{12,}\b/g, '[CLAVE REDACTADA]'],
@@ -7,7 +9,7 @@ const REDACTIONS = [
   [/\b[A-Z0-9._%+-]+@(?!crediteksas\.com\b)[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[CORREO REDACTADO]'],
 ];
 
-export const AURA_VERSION = 'AURA v1.1.0';
+export const AURA_VERSION = globalThis.AuraRelease.label;
 
 export function sanitizeIncidentText(value) {
   return REDACTIONS.reduce(

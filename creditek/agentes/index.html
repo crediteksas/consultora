@@ -16,6 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="aura-module-config.js"></script>
+<script src="aura-release.js" defer></script>
 <script src="aura-context-help.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons());</script>
 <style>
@@ -467,7 +468,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     </a>
 
     <div class="sidebar-footer">
-      <div class="aura-version">AURA v1.1.0</div>
+      <div class="aura-version" data-aura-release>Verificando versión de AURA…</div>
       <div class="sidebar-footer-actions">
         <span class="sidebar-owner">Creditek</span>
         <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión" aria-label="Cerrar sesión"><i data-lucide="log-out"></i></button>

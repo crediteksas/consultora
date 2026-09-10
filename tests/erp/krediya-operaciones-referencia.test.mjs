@@ -328,7 +328,7 @@ test('Infinix guarda solo evidencia de Pagamos y bloquea lote y operación antes
   assert.match(recoverySql, /'pvp_guardado',r\.precio_venta,'pagamos_guardado',coalesce\(r\.pagamos,nullif\(o\.policy_snapshot->'pagamos_fuente_manual'->>'pagamos',''\)::numeric\)/);
 });
 
-test('resumen pendiente cuenta solo reconocidas y muestra Por calcular sin totales falsos en cero', () => {
+test('resumen pendiente cuenta solo reconocidas y espera consulta sin totales falsos en cero', () => {
   for (const estado of ['importada', 'validada', 'con_novedades']) {
     const batch = {
       id: 'batch', plataforma: 'krediya', estado, fecha_corte: '2026-09-04',
@@ -343,7 +343,7 @@ test('resumen pendiente cuenta solo reconocidas y muestra Por calcular sin total
     const { list, metrics } = batchSummary(batch);
     const cells = [...list.matchAll(/<td>([\s\S]*?)<\/td>/g)].map((match) => match[1]);
     assert.equal(cells[4], '2');
-    assert.deepEqual(cells.slice(5, 9), ['Por calcular', 'Por calcular', 'Por calcular', 'Por calcular']);
+    assert.deepEqual(cells.slice(5, 9), ['Consultando…', 'Consultando…', 'Consultando…', 'Consultando…']);
     assert.match(metrics, /<small>Operaciones reconocidas<\/small><strong>2<\/strong>/);
     assert.match(metrics, /<small>Crédito financiado<\/small><strong>COP 300000<\/strong>/);
     assert.match(metrics, /<small>Iniciales<\/small><strong>COP 30000<\/strong>/);

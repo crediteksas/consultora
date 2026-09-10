@@ -673,6 +673,17 @@
     const p = data.payments.find((x) => x.id === id);
     if (!p) return;
     if (!clients) return notice('No tienes permiso para editar titulares y cuentas.',true);
+    if(!p.bank_account_id&&!p.bank_snapshot&&p.estado==='pendiente'&&!p.authorized_at&&!p.authorized_by){
+      const result=await sb.from('beneficiary_bank_accounts').select('id,banco,tipo_cuenta,numero_cuenta').eq('beneficiary_id',p.beneficiary_id).eq('activo',true).eq('validada',true);
+      if(result.error)return notice(result.error.message,true);
+      if(result.data?.length===1){
+        const a=result.data[0];
+        if(!confirm(`Vincular a esta orden la cuenta validada de ${p.liquidation_beneficiaries?.nombre||'su beneficiario'}: ${a.banco}, ${a.tipo_cuenta}, terminada en ${String(a.numero_cuenta).slice(-4)}.\n\nNo cambia el importe ni autoriza el pago. ¿Vincular cuenta?`))return;
+        const linked=await sb.rpc('tesoreria_vincular_cuenta_orden',{p_orden:id,p_cuenta:a.id});
+        if(linked.error)return notice(linked.error.message,true);
+        await load();notice('Cuenta vinculada. El pago sigue pendiente de autorización de Gerencia.');return;
+      }
+    }
     treasuryView='clients';render();
     await clients.mount($("#clientsContent"));
     clients.openBeneficiary(p.beneficiary_id);

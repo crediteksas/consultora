@@ -33,6 +33,16 @@ test('RPC de cuenta funciona como authenticated sin abrir kora_private; rechaza 
  await db.exec('reset role');
  assert.equal((await db.query('select numero_cuenta from beneficiary_bank_accounts')).rows[0].numero_cuenta,'000123456');
  assert.equal((await db.query('select count(*)::int n from audit_log')).rows[0].n,1);
+ await db.exec(`alter table beneficiary_bank_accounts add column banco text default 'Banco',add column tipo_cuenta text default 'ahorros',add column activo boolean default true,add column validada boolean default true;
+ alter table liquidation_beneficiaries add column nombre text default 'Prueba';
+ create table payment_orders(id uuid primary key,beneficiary_id uuid,estado text,valor numeric,bank_account_id uuid,bank_snapshot jsonb,authorized_at timestamptz,authorized_by uuid);
+ insert into payment_orders values('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001','pendiente',330000,null,null,null,null);`);
+ await db.exec(readFileSync('supabase/migrations/20260910223539_vincular_cuenta_orden_pendiente.sql','utf8'));
+ const account=(await db.query('select id from beneficiary_bank_accounts')).rows[0].id;
+ await db.exec('set role authenticated');
+ const linked=(await db.query("select * from public.tesoreria_vincular_cuenta_orden('00000000-0000-0000-0000-000000000003',$1)",[account])).rows[0];
+ assert.equal(linked.bank_account_id,account);assert.equal(Number(linked.valor),330000);assert.equal(linked.authorized_at,null);assert.equal(linked.estado,'pendiente');
+ await assert.rejects(db.query("select public.tesoreria_vincular_cuenta_orden('00000000-0000-0000-0000-000000000003',$1)",[account]),/ya tiene destino/);
  }finally{await db.close();}
 });
 test('incluye comercios sin titular y no fusiona nombres parecidos',()=>{

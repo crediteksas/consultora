@@ -182,13 +182,16 @@
   }
   function importarKrediya(rows, establecimientos) {
     const originales = filasObjetos(rows);
+    // Liquidar un contrato finalizado no autoriza ni registra su pago.
+    const finalizada = row => clave(valor(row,'Estado del contrato'))==='firmado' &&
+      (clave(valor(row,'Estado del Pago'))==='pagado' ||
+       (clave(valor(row,'Estado del Pago'))==='pendiente' && clave(valor(row,'Estado de la solicitud'))==='aprobado'));
     const vistos = new Set();
     const incidencias = [];
     // Preserve both events and process payable entries first, even when the
     // cancellation is listed first in the file. Keep the original row number.
     const ordered = originales.map((row,index)=>({row,index})).sort((a,b)=>
-      Number(clave(valor(b.row,'Estado del contrato'))==='firmado' && clave(valor(b.row,'Estado del Pago'))==='pagado')-
-      Number(clave(valor(a.row,'Estado del contrato'))==='firmado' && clave(valor(a.row,'Estado del Pago'))==='pagado'));
+      Number(finalizada(b.row))-Number(finalizada(a.row)));
     const sourceKeys = new Set();
     const operaciones = ordered.map(({row,index}) => {
       const externalId = texto(valor(row, '# Crédito', 'Credito', 'Crédito'));
@@ -197,7 +200,7 @@
       sourceKeys.add(sourceKey);
       const clasificacion = clasificarEstablecimiento(valor(row, 'Tienda', 'Aliado'), establecimientos);
       const problemas = [];
-      const eligible = clave(valor(row,'Estado del contrato'))==='firmado' && clave(valor(row,'Estado del Pago'))==='pagado';
+      const eligible = finalizada(row);
       if (!externalId || (eligible && vistos.has(externalId.toLowerCase()))) problemas.push('operacion_duplicada');
       if(eligible) vistos.add(externalId.toLowerCase());
       if (!texto(valor(row, 'IMEI'))) problemas.push('imei_vacio');
@@ -205,9 +208,9 @@
       if (clasificacion.incidencia) problemas.push(clasificacion.incidencia);
       const estadoContrato = clave(valor(row, 'Estado del contrato'));
       const estadoPago = clave(valor(row, 'Estado del Pago'));
-      const pendienteKrediya = estadoPago === 'pendiente';
+      const pendienteKrediya = estadoPago === 'pendiente' && !eligible;
       if (pendienteKrediya) problemas.push('krediya_pago_pendiente');
-      else if (estadoContrato !== 'firmado' || estadoPago !== 'pagado') problemas.push('krediya_estado_por_validar');
+      else if (!eligible) problemas.push('krediya_estado_por_validar');
       const montoCredito = dineroColombia(valor(row, 'Monto a Financiar', 'Monto a Financiar.1'));
       const inicial = dineroColombia(valor(row, 'Abono (moneda)', 'Abono (moneda).1'));
       const opcionalDinero = (...headers) => {
@@ -232,7 +235,7 @@
         pagamosArchivo, pagoNetoArchivo, bonoArchivo, utilidadArchivo,
         vendedorNombre:[valor(row, 'Nombre Vendedor'), valor(row, 'Apellido vendedor')].map(texto).filter(Boolean).join(' '),
         estadoContrato, estadoPago,
-        reconocida:estadoContrato === 'firmado' && estadoPago === 'pagado' && problemas.length === 0,
+        reconocida:eligible && problemas.length === 0,
         movimientos:[{ fila:index + 2, tipo:'credito_krediya', original:row }], incidencias:[...new Set(problemas)],
       };
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));

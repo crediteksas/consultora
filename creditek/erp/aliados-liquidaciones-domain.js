@@ -195,7 +195,10 @@
       if (!texto(valor(row, 'Cédula', 'Cedula'))) problemas.push('documento_vacio');
       if (clasificacion.incidencia) problemas.push(clasificacion.incidencia);
       const estadoContrato = clave(valor(row, 'Estado del contrato'));
-      if (estadoContrato && estadoContrato !== 'firmado') problemas.push('operacion_no_reconocida');
+      const estadoPago = clave(valor(row, 'Estado del Pago'));
+      const pendienteKrediya = estadoPago === 'pendiente';
+      if (pendienteKrediya) problemas.push('krediya_pago_pendiente');
+      else if (estadoContrato !== 'firmado' || estadoPago !== 'pagado') problemas.push('krediya_estado_por_validar');
       const montoCredito = dineroColombia(valor(row, 'Monto a Financiar', 'Monto a Financiar.1'));
       const inicial = dineroColombia(valor(row, 'Abono (moneda)', 'Abono (moneda).1'));
       const opcionalDinero = (...headers) => {
@@ -219,7 +222,8 @@
         inicialPlataforma:inicial, valorComercial:montoCredito + inicial,
         pagamosArchivo, pagoNetoArchivo, bonoArchivo, utilidadArchivo,
         vendedorNombre:[valor(row, 'Nombre Vendedor'), valor(row, 'Apellido vendedor')].map(texto).filter(Boolean).join(' '),
-        reconocida:estadoContrato === 'firmado' && problemas.length === 0,
+        estadoContrato, estadoPago,
+        reconocida:estadoContrato === 'firmado' && estadoPago === 'pagado' && problemas.length === 0,
         movimientos:[{ fila:index + 2, tipo:'credito_krediya', original:row }], incidencias:[...new Set(problemas)],
       };
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));

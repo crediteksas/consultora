@@ -420,3 +420,6 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+[functions.krediya-report-mail]
+# Uses a random per-job capability, atomically checked by a service-only RPC.
+verify_jwt = false

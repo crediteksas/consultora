@@ -22,6 +22,26 @@
       ...rows.map(r=>{const c=r.contexto||{},g=last(r);return [c.referencia,c.tienda,c.imei,c.fecha,numeric(c.pvp_guardado),numeric(c.pvp_liquidado),numeric(c.impacto_bruto),numeric(c.pagamos),numeric(c.inicial),giro(c),c.bono_ejecutivo_pendiente?'Parcial: falta ejecutivo':numeric(c.bonos),c.bono_ejecutivo_pendiente?null:numeric(c.utilidad_neta),numeric(c.impacto_neto),'Gestión y Gerencia',r.preliminar?'Preliminar · sin liquidar':r.estado,g?.comentario||'',g?.soporte||'',numeric(c.gasto_financiero),c.bono_ejecutivo_pendiente?null:numeric(c.provision)];})];
   }
   function last(row) {return [...(row.krediya_diferencias_gestiones||[])].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];}
+  function pvpSummary(contexts) {
+    const groups=new Map();let missing=0,compared=0,affected=0,total=0;
+    for(const c of contexts) {
+      const saved=numeric(c.pvp_guardado),received=numeric(c.pvp_recibido);
+      if(saved==null||received==null){missing++;continue;}
+      compared++;
+      const delta=Math.round((received-saved)*100)/100;
+      if(delta===0)continue;
+      affected++;total+=delta;
+      // Never average different prices for the same model into a misleading unit price.
+      const key=JSON.stringify([c.referencia||c.modelo||'Sin referencia',saved,received]);
+      const group=groups.get(key)||{reference:c.referencia||c.modelo||'Sin referencia',saved,received,delta,count:0,total:0};
+      group.count++;group.total=Math.round((group.total+delta)*100)/100;groups.set(key,group);
+    }
+    return {groups:[...groups.values()],missing,compared,affected,total:Math.round(total*100)/100,operations:contexts.length};
+  }
+  function compactPvpHtml(contexts,amount) {
+    const s=pvpSummary(contexts);
+    return `<section aria-label="Resumen PVP"><h3>Favor revisar estos PVP</h3><p>${s.operations} créditos · ${s.affected} con diferencias${s.missing?` · ${s.missing} sin datos para comparar`:''}.</p><p>PAGAMOS se respeta. Este informe no detiene la liquidación ni autoriza pagos.</p><div style="overflow-x:auto"><table><thead><tr><th>Equipo</th><th>Créditos</th><th>PVP KORA</th><th>PVP archivo</th><th>Diferencia por crédito</th><th>Diferencia total</th></tr></thead><tbody>${s.groups.map(g=>`<tr><td>${esc(g.reference)}</td><td>${g.count}</td><td>${amount(g.saved)}</td><td>${amount(g.received)}</td><td>${amount(g.delta)}</td><td>${amount(g.total)}</td></tr>`).join('')}</tbody></table></div><p>${s.affected?`Diferencia acumulada: ${amount(s.total)}.`:'No se encontraron diferencias entre los PVP comparables.'} Diferencia = PVP del archivo − PVP KORA vigente en la fecha de venta. No es una pérdida bancaria ni una modificación de PAGAMOS.</p>${s.missing?`<details><summary>Ver ${s.missing} créditos sin comparación completa</summary>${contexts.filter(c=>numeric(c.pvp_guardado)==null||numeric(c.pvp_recibido)==null).map(c=>`<p>${esc(c.referencia||c.modelo)} · Crédito ${esc(c.credito||c.operation_id)} · ${esc(c.tienda)} · PVP KORA: ${numeric(c.pvp_guardado)==null?'No disponible':amount(c.pvp_guardado)} · PVP archivo: ${numeric(c.pvp_recibido)==null?'No disponible':amount(c.pvp_recibido)}</p>`).join('')}</details>`:''}</section>`;
+  }
   function download(rows,name,sheetName) {
     const book=root.XLSX.utils.book_new(),sheet=root.XLSX.utils.aoa_to_sheet(rows);
     sheet['!cols']=rows[0].map((h,i)=>({wch:i===1?36:Math.min(26,Math.max(18,h.length+2))}));
@@ -74,8 +94,10 @@
     }
     async function report(container,batch,focusOperationId) {
       container.textContent='Cargando diferencias de PVP…';
-      let rows,preliminary=false;
+      let rows,preliminary=false,importReport=null;
       try {
+        const snapshot=await sb.from('krediya_import_reports').select('contexts,operation_count,report_status,email_status').eq('liquidation_id',batch.id).maybeSingle();
+        if(!snapshot.error)importReport=snapshot.data;
         rows=await all(()=>sb.from('krediya_diferencias').select('*,krediya_diferencias_gestiones(*)').eq('liquidation_id',batch.id).order('operation_id'));
         if (!batch.frozen_at && ['importada','validada','con_novedades'].includes(batch.estado)) {
           const operations=await all(()=>sb.from('liquidation_operations').select('id,reconocida,referencia,modelo,establishment_name,imei,operation_at,inicial').eq('liquidation_id',batch.id).order('id'));
@@ -87,14 +109,20 @@
       }
       catch(error){container.textContent='No se pudo cargar el informe: '+error.message;return;}
       const summary=impacto(rows);
+      const comparison=importReport?.report_status==='preparado'?importReport.contexts:rows.map(r=>({...r.contexto,pvp_recibido:r.contexto?.pvp_recibido??r.contexto?.pvp_liquidado}));
+      const emailLabel={sin_configurar:'Correo automático pendiente de configurar; aún no enviado.',pendiente:'Correo pendiente de envío.',enviado:'Informe enviado por correo.',error:'El correo no pudo enviarse; no bloquea la liquidación.'};
       const due=rows.map(r=>r.vence_el).filter(Boolean).sort()[0];
       const states={pendiente:'Pendiente',en_gestion:'En gestión',resuelta:'Resuelta'};
       let page=0,search='';
       function render() {
+      const detailsOpen=container.querySelector('[data-report-details]')?.open||Boolean(focusOperationId);
       const filtered=rows.filter(r=>(!focusOperationId||r.operation_id===focusOperationId)&&`${r.contexto?.referencia||''} ${r.contexto?.tienda||''} ${r.contexto?.imei||''}`.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es')));
       const pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
       container.innerHTML=`<section class="krediya-differences">
         <header><div><h3>Diferencias PVP · Gestión y Gerencia</h3><p>Krediya · Corte ${esc(batch.fecha_corte)}${due ? ` · Gestionar hasta ${esc(due)}` : ''}</p></div><button class="btn primary" data-export>Descargar ${preliminary?'vista previa':'informe'} Excel</button></header>
+        ${compactPvpHtml(comparison,amount)}
+        <p>${importReport?esc(importReport.report_status==='error'?'El informe de importación requiere revisión; se muestra la comparación disponible.':emailLabel[importReport.email_status]||'Estado del correo no disponible.'):'Comparación disponible del lote; no hay envío automático registrado para esta importación anterior.'}</p>
+        <details data-report-details ${detailsOpen?'open':''}><summary>Consultar detalle y seguimiento</summary>
         <p>${preliminary?'Vista previa con los datos importados. Al liquidar se guardan el informe definitivo, los bonos y la utilidad.':'Informe consolidado del lote. Las correcciones se gestionan durante los 7 días siguientes.'} Las diferencias de PVP no bloquean el pago ni modifican PAGAMOS.</p>
         <div class="difference-summary"><strong>${rows.length} diferencias de PVP</strong><span>${rows.filter(r=>r.estado!=='resuelta').length} por gestionar</span><span>${preliminary?'Utilidad e impacto neto: pendientes de liquidar':`${summary.pendientes?'Impacto neto parcial':'Impacto neto cuantificado'}: ${amount(summary.total)}`}</span></div>
         <div class="krediya-review-controls"><label>Buscar referencia, tienda o IMEI<input class="control" data-search value="${esc(search)}"></label>${focusOperationId?'<button class="btn secondary" data-all>Ver todo el lote</button>':''}<span>${filtered.length} resultados</span></div>
@@ -115,7 +143,7 @@
               ${(r.krediya_diferencias_gestiones||[]).map(g=>`<p>${esc(g.created_at)} · ${esc(g.autor_nombre)} · ${esc(states[g.estado]||g.estado)}<br>${esc(g.comentario)}<br>${esc(g.soporte||'')}</p>`).join('')}
               <form data-followup="${esc(r.operation_id)}" class="tariff-form"><label>Estado<select class="control" name="estado"><option value="en_gestion">En gestión</option><option value="resuelta">Resuelta</option></select></label><label>Instrucción para Gestión y Gerencia<textarea class="control" name="comentario" minlength="5" maxlength="4000" required></textarea></label><label>Soporte (obligatorio al resolver)<input class="control" name="soporte" maxlength="2000"></label><p data-error role="alert"></p><button class="btn primary" type="submit">Guardar seguimiento</button></form>
             </details>`}</article>`;
-        }).join('')}<div class="krediya-review-controls"><button class="btn secondary" data-prev ${page===0?'disabled':''}>Anterior</button><span>Página ${page+1} de ${pages}</span><button class="btn secondary" data-next ${page+1>=pages?'disabled':''}>Siguiente</button></div></section>`;
+        }).join('')}<div class="krediya-review-controls"><button class="btn secondary" data-prev ${page===0?'disabled':''}>Anterior</button><span>Página ${page+1} de ${pages}</span><button class="btn secondary" data-next ${page+1>=pages?'disabled':''}>Siguiente</button></div></details></section>`;
       container.querySelector('[data-search]').oninput=e=>{search=e.target.value;page=0;render();const input=container.querySelector('[data-search]');input.focus();input.setSelectionRange(search.length,search.length);};
       if(container.querySelector('[data-all]'))container.querySelector('[data-all]').onclick=()=>{focusOperationId=null;page=0;render();};
       for(const [key,delta] of [['prev',-1],['next',1]])container.querySelector(`[data-${key}]`).onclick=()=>{page+=delta;render();container.scrollIntoView({block:'start'});};
@@ -131,6 +159,6 @@
     }
     return {openTariff,report};
   }
-  const api={create,tarifaRows,diferenciasRows,last,numeric,giro,impacto};
+  const api={create,tarifaRows,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekKrediyaTarifario=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -65,7 +65,7 @@ test('búsqueda y tienda se combinan y toleran tildes sin modificar registros',(
 function fixture({operations=ops,ctx=contexts,persisted=[],error=null}={}) {
   const calls=[],nodes=new Map();let html='';
   const container={set innerHTML(v){html=v;nodes.clear();},get innerHTML(){return html;},textContent:'',scrollIntoView(){},querySelector(s){if(!nodes.has(s))nodes.set(s,{focus(){},setSelectionRange(){}});return nodes.get(s);},querySelectorAll(){return []}};
-  const sb={from(table){calls.push(table);return {select(){return this},eq(){return this},order(){return this},range(start,end){return Promise.resolve({data:(table==='krediya_diferencias'?persisted:operations).slice(start,end+1),error})}};},async rpc(name){calls.push(name);return {data:ctx,error};}};
+  const sb={from(table){calls.push(table);return {select(){return this},eq(){return this},order(){return this},maybeSingle(){assert.equal(table,'krediya_import_reports');return Promise.resolve({data:null,error});},range(start,end){return Promise.resolve({data:(table==='krediya_diferencias'?persisted:operations).slice(start,end+1),error})}};},async rpc(name){calls.push(name);return {data:ctx,error};}};
   return {container,calls,service:Tariff.create({sb,money:v=>`COP ${v}`})};
 }
 test('informe antes de liquidar muestra datos y paginación, no pantalla vacía ni cero definitivo',async()=>{
@@ -81,7 +81,7 @@ test('informe antes de liquidar muestra datos y paginación, no pantalla vacía 
 test('informe definitivo usa snapshot aun cuando el tarifario actual haya cambiado',async()=>{
   const f=fixture({persisted:[{operation_id:'op-1',estado:'pendiente',contexto:{referencia:'Guardada',pagamos:42,impacto_neto:-4}}]});
   await f.service.report(f.container,{id:'batch',estado:'aprobada',frozen_at:'yes',fecha_corte:'2026-08-30'});
-  assert.deepEqual(f.calls,['krediya_diferencias']);assert.match(f.container.innerHTML,/COP 42/);assert.match(f.container.innerHTML,/COP -4/);assert.doesNotMatch(f.container.innerHTML,/Vista previa/);
+  assert.deepEqual(f.calls,['krediya_import_reports','krediya_diferencias']);assert.match(f.container.innerHTML,/COP 42/);assert.match(f.container.innerHTML,/COP -4/);assert.doesNotMatch(f.container.innerHTML,/Vista previa/);
 });
 test('no ofrece exportar datos incompletos ni encubre errores como ausencia de diferencias',async()=>{
   for(const options of [{ctx:[]},{error:{message:'Sin permiso'}}]){

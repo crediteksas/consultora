@@ -63,6 +63,26 @@
         rows.push(...data);if(data.length<500)return rows;
       }
     }
+    async function openOperationTariff(operationId,onSaved) {
+      const dialog=document.createElement('dialog');dialog.className='krediya-tariff-dialog';
+      dialog.innerHTML='<header><h2>Datos de la referencia</h2><button class="btn secondary" data-close>Cerrar</button></header><div data-content>Cargando…</div>';
+      document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+      const content=dialog.querySelector('[data-content]');
+      try {
+        const {data:c,error}=await sb.rpc('aliados_contexto_precio_krediya',{p_operation_id:operationId});if(error)throw error;
+        let rule=null;
+        if(c.regla_id){const result=await sb.from('krediya_price_rules').select('*').eq('id',c.regla_id).single();if(result.error)throw result.error;rule=result.data;}
+        if(rule?.vigente_hasta){content.innerHTML=`<h3>${esc(c.referencia)}</h3><p>Esta venta usa la tarifa histórica vigente del ${esc(rule.vigente_desde)} al ${esc(rule.vigente_hasta)}: PVP KORA ${amount(rule.precio_venta)} y PAGAMOS ${amount(rule.pagamos)}.</p><p>Ya existe una vigencia posterior. Este formulario no sobrescribe el histórico ni aplica el precio de hoy a ventas anteriores. La corrección de esa vigencia requiere revisión específica.</p>`;return;}
+        content.innerHTML=`<h3>${esc(c.referencia)}</h3><p>PVP del archivo Krediya: ${amount(c.pvp_recibido)}. Se conserva el archivo original.</p><form class="tariff-form"><label>PVP de KORA<input class="control" name="pvp" type="number" min="0.01" step="0.01" required value="${esc(c.pvp_guardado??'')}"></label><label>PAGAMOS pactado<input class="control" name="pagamos" type="number" min="0.01" step="0.01" required value="${esc(c.pagamos_guardado??'')}"></label><label>Aplicar a ventas desde<input class="control" name="desde" type="date" required value="${esc(c.fecha)}" ${rule?`min="${esc(rule.vigente_desde)}"`:''}></label><p>Se guarda para esta referencia y las ventas de su vigencia. No modifica liquidaciones aprobadas ni autoriza pagos.</p><p data-error role="alert"></p><button class="btn primary" type="submit">Guardar datos de la referencia</button></form>`;
+        content.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;
+          try {const pvp=numeric(f.elements.pvp.value),pagamos=numeric(f.elements.pagamos.value);if(!(pvp>0&&pagamos>0))throw new Error('Completa PVP y PAGAMOS mayores que cero.');
+            const args={p_pvp:pvp,p_pagamos:pagamos,p_desde:f.elements.desde.value};
+            const result=rule?await sb.rpc('krediya_guardar_tarifa',{...args,p_id:rule.id,p_version:rule.updated_at,p_motivo:'Edición explícita desde transacción '+operationId}):await sb.rpc('krediya_crear_tarifa_operacion',{...args,p_operation_id:operationId});
+            if(result.error)throw result.error;dialog.close();await onSaved?.();
+          }catch(err){f.querySelector('[data-error]').textContent=err.message;b.disabled=false;}
+        };
+      }catch(error){content.textContent='No se pudieron cargar los datos: '+error.message;}
+    }
     async function openTariff() {
       modal?.remove();modal=document.createElement('dialog');modal.className='krediya-tariff-dialog';
       modal.setAttribute('aria-labelledby','krediya-tariff-title');
@@ -157,7 +177,7 @@
       }
       render();
     }
-    return {openTariff,report};
+    return {openTariff,openOperationTariff,report};
   }
   const api={create,tarifaRows,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekKrediyaTarifario=api;

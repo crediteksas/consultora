@@ -158,7 +158,8 @@ test('tarifa ausente queda pendiente y no se convierte en Pagamos cero', () => {
     assert.doesNotMatch(metricHtml(html, label), /COP 0/);
   }
   assert.match(metricHtml(html, 'Pagamos − inicial · estimado'), /Pendiente de tarifa/);
-  assert.match(html, /No significa que Pagamos sea \$0/);
+  assert.match(html, /Falta completar PVP o PAGAMOS de esta referencia/);
+  assert.match(html, /Crear datos · PVP y PAGAMOS/);
   assert.doesNotMatch(html, /COP 0(?:<|\b)/);
 });
 
@@ -248,9 +249,10 @@ test('la novedad conserva la referencia, IMEI y precios congelados de su operaci
   assert.doesNotMatch(html,/SAMSUNG|otra-imei|999999/);
 });
 
-test('la diferencia completa no exige una acción individual por crédito', () => {
+test('la diferencia permite editar la referencia sin exigir aprobación individual', () => {
   const result = operations([row], [tariff], [priceIssue]);
-  assert.equal(result.buttons('[data-open-tariff]').length, 0);
+  assert.equal(result.buttons('[data-open-tariff]').length, 1);
+  assert.match(result.html, /Editar PVP y PAGAMOS/);
   assert.match(result.html, /informe consolidado de 7 días/);
   assert.doesNotMatch(result.html, /Dar instrucción a Maythe|Revisar precios/);
 });

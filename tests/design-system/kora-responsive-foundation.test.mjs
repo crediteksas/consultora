@@ -4,7 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 
 const read = relative => readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
-test('las 39 pantallas del shell declaran un viewport adaptable', async () => {
+test('las 40 pantallas del shell declaran un viewport adaptable', async () => {
   const directory = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(directory)).filter(name => name.endsWith('.html'));
   let shellPages = 0;
@@ -16,7 +16,7 @@ test('las 39 pantallas del shell declaran un viewport adaptable', async () => {
     assert.match(html, /<meta\s+name="viewport"\s+content="[^"]*width=device-width/i, file);
   }
 
-  assert.equal(shellPages, 39);
+  assert.equal(shellPages, 40);
 });
 
 test('el shell carga una única capa responsive transversal', async () => {

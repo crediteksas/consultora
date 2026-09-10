@@ -277,6 +277,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', lucide: 'book-open-check', description: 'Consulta cargos, abonos, saldos y soportes de clientes comerciales B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Resultado B2B', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza facturación, costo congelado, gastos y retiros B2B.', roles: ['gerencia', 'auditoria'] },
     ]},
+    { titulo: 'CRÉDITOS Y CARTERA', icono: '💳', lucide: 'badge-dollar-sign', description: 'Autorizaciones Nova, pagos del cliente y gestión operativa de Cobra.', items: [
+      { label: 'Cartera de créditos', href: 'creditos-cartera.html', lucide: 'book-open-check', description: 'Consulta créditos, pagos, mora y resultados para retroalimentar a Nova.', roles: ['gerencia','auditoria','admin_tienda','asesor'] },
+    ]},
     { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'] },
       { label: 'Tesorería', href: 'aliados-tesoreria.html', lucide: 'landmark', description: 'Administra pagos, compensaciones y saldos separados de B2B y Tercerización.', roles: ['gerencia', 'auditoria'] },

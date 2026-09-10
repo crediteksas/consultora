@@ -14,20 +14,22 @@
     'aliados-plataformas.html', 'aliados-presupuesto.html', 'aliados-liquidaciones.html', 'aliados-calidad.html',
     'aliados-bonificaciones.html', 'aliados-gastos.html', 'aliados-reportes.html', 'aliados-tesoreria.html',
   ]);
+  const CREDIT_PORTFOLIO_ROUTES = new Set(['creditos-cartera.html']);
   const CORPORATE_ROUTES = new Set([
     'tablero.html', 'presupuestos.html', 'ventas.html', 'registro-interno.html',
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
     'incidencias.html', 'compartir-instalacion.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
+    ...CREDIT_PORTFOLIO_ROUTES,
   ]);
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
       'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
       'inventario.html', 'catalogo.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
-      'documento-remision.html', 'pedidos-b2b.html', 'incidencias.html',
+      'documento-remision.html', 'pedidos-b2b.html', 'incidencias.html', 'creditos-cartera.html',
     ]),
-    asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html', 'pedidos-b2b.html']),
+    asesor: new Set(['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html', 'pedidos-b2b.html', 'creditos-cartera.html']),
   });
 
   const CORPORATE_NAVIGATION = Object.freeze([
@@ -45,6 +47,9 @@
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt' },
       { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },
       { label: 'Reportes Retail', href: 'reportes.html', icon: 'file-chart-column-increasing' },
+    ] },
+    { title: 'CRÉDITOS Y CARTERA', icon: 'badge-dollar-sign', items: [
+      { label: 'Cartera de créditos', href: 'creditos-cartera.html', icon: 'book-open-check' },
     ] },
     { title: 'CREDITEK B2B', icon: 'warehouse', capability: 'b2b', items: [
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', icon: 'layout-dashboard' },
@@ -85,6 +90,7 @@
       { label: 'Resumen de mi tienda', href: 'reportes.html', icon: 'gauge', roles: ['admin_tienda', 'asesor'] },
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart', roles: ['admin_tienda', 'asesor'] },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Créditos y cartera', href: 'creditos-cartera.html', icon: 'book-open-check', roles: ['admin_tienda', 'asesor'] },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },

@@ -29,7 +29,7 @@ test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
   const allowed = [
     'reportes.html', 'ventas.html', 'registro-interno.html', 'caja.html',
     'inventario.html', 'gastos.html', 'cuenta-corriente.html', 'remisiones.html',
-    'documento-remision.html', 'incidencias.html',
+    'documento-remision.html', 'incidencias.html', 'creditos-cartera.html',
   ];
   const forbidden = [
     'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
@@ -43,7 +43,7 @@ test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
 
 test('asesor conserva solo las operaciones permitidas por su rol', () => {
   const profile = { rol: 'asesor', activo: true, tienda_codigo: 'T-01' };
-  for (const route of ['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html']) {
+  for (const route of ['reportes.html', 'ventas.html', 'registro-interno.html', 'inventario.html', 'creditos-cartera.html']) {
     assert.equal(access.authorize(profile, route).allowed, true, route);
   }
   for (const route of [
@@ -94,7 +94,7 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
   );
   assert.deepEqual(
     Array.from(corporate, section => section.title),
-    ['TABLERO', 'CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
+    ['TABLERO', 'CREDITEK RETAIL', 'CRÉDITOS Y CARTERA', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
   );
   const store = access.navigationFor({ rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' });
   assert.deepEqual(Array.from(store, section => section.title), ['MI TIENDA']);
@@ -102,12 +102,12 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
   assert.doesNotMatch(labels, /Terceros|Partners|Operaciones Creditek|Tiendas propias/);
 });
 
-test('matriz equivalente de Óscar conserva Corporativo, Retail, B2B, Aliados y Administración', () => {
+test('matriz equivalente de Óscar conserva Retail, Créditos, B2B, Aliados y Administración', () => {
   const profile = { rol: 'gerencia', activo: true };
   const navigation = access.navigationFor(profile, { b2b: false, aliados: false });
   assert.deepEqual(
     Array.from(navigation, section => section.title),
-    ['TABLERO', 'CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
+    ['TABLERO', 'CREDITEK RETAIL', 'CRÉDITOS Y CARTERA', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
   );
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, true);

@@ -2,11 +2,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
 const require = createRequire(import.meta.url);
 const domain = require('../../creditek/erp/tesoreria-clientes.js');
 const origin = {codigo:'Tech-Movil',nombre:'A TECH MOVIL',ciudad:'Montería',activo:true,tipo:'aliado'};
 const holder = {id:'h',nombre:'Titular Uno',identificacion:'123456',tipo:'aliado',activo:true,origen_codigo:origin.codigo};
 const bank = {id:'a',beneficiary_id:'h',banco:'Banco',tipo_cuenta:'ahorros',numero_cuenta:'001234567',activo:true,validada:true,created_at:'2026-09-01'};
+test('RPC de cuenta funciona como authenticated sin abrir kora_private; rechaza anon y no revisor',async()=>{
+ const db=new PGlite();
+ try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create schema kora_private;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create function public.tiene_capacidad_aliados(text) returns boolean language sql as $$select coalesce(current_setting('test.revisor',true),'false')='true'$$;
+ create table liquidation_beneficiaries(id uuid primary key,tipo text,activo boolean,identificacion text);
+ create table beneficiary_bank_accounts(id uuid default gen_random_uuid(),beneficiary_id uuid,numero_cuenta text);
+ create table audit_log(usuario uuid,accion text,tabla text,registro_id uuid,detalle jsonb);
+ create function public.aliados_guardar_cuenta_bancaria(uuid,text,text,text,boolean) returns beneficiary_bank_accounts language sql security definer as $$insert into public.beneficiary_bank_accounts(beneficiary_id,numero_cuenta) values($1,$4) returning *$$;
+ insert into liquidation_beneficiaries values('00000000-0000-0000-0000-000000000001','ejecutivo',true,'INTERNA');`);
+ await db.exec(readFileSync('supabase/migrations/20260909232759_permitir_identificacion_pago_ejecutivo.sql','utf8'));
+ const call="select public.tesoreria_guardar_cuenta_ejecutivo('00000000-0000-0000-0000-000000000001','123456','Banco prueba','ahorros','000123456',true)";
+ await db.exec("set role authenticated;set test.uid='00000000-0000-0000-0000-000000000002';set test.revisor='true';");
+ await assert.rejects(db.query(call),/permission denied for schema kora_private/);
+ await db.exec('reset role');
+ await db.exec(readFileSync('supabase/migrations/20260910215504_tesoreria_cuenta_ejecutivo_acceso_acotado.sql','utf8'));
+ await db.exec('set role anon');await assert.rejects(db.query(call),/permission denied/);
+ await db.exec("set role authenticated;set test.revisor='false'");
+ await assert.rejects(db.query(call),/No autorizado/);
+ await db.exec("set test.revisor='true'");await db.query(call);
+ assert.equal((await db.query("select has_schema_privilege('authenticated','kora_private','USAGE') ok")).rows[0].ok,false);
+ await db.exec('reset role');
+ assert.equal((await db.query('select numero_cuenta from beneficiary_bank_accounts')).rows[0].numero_cuenta,'000123456');
+ assert.equal((await db.query('select count(*)::int n from audit_log')).rows[0].n,1);
+ }finally{await db.close();}
+});
 test('incluye comercios sin titular y no fusiona nombres parecidos',()=>{
   const rows=domain.directory([origin,{...origin,codigo:'otra',nombre:'A TECNO MOVIL MH'},{...origin,codigo:'retail',tipo:'propia'}],[],[]);
   assert.equal(rows.length,2);assert.ok(rows.every(r=>r.status==='sin_titular'));

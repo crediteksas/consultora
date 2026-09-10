@@ -3,8 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = await readFile(new URL('../../supabase/migrations/20260910200436_creditos_cartera_nova_ready.sql', import.meta.url), 'utf8');
+const andreaPermission = await readFile(new URL('../../supabase/migrations/20260910204442_cartera_permiso_andrea.sql', import.meta.url), 'utf8');
 const html = await readFile(new URL('../../creditek/erp/creditos-cartera.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../../creditek/erp/creditos-cartera-app.js', import.meta.url), 'utf8');
+const sidebar = await readFile(new URL('../../creditek/erp/sidebar.js', import.meta.url), 'utf8');
 
 test('Nova queda preparada pero no bloquea pagos actuales', () => {
   assert.match(migration,/nova_enforcement_enabled boolean not null default false/);
@@ -44,4 +46,16 @@ test('KORA ofrece las cuatro vistas operativas sin habilitar Nova desde la inter
   assert.match(app,/function loadAllPortfolio/);
   assert.match(app,/\.range\(from,from\+pageSize-1\)/);
   assert.doesNotMatch(app,/creditos_cartera_configurar_nova/);
+});
+
+test('Andrea recibe capacidad explícita para consultar y gestionar Cartera sin ampliar su rol', () => {
+  assert.match(andreaPermission,/lower\(u\.email\) = 'andrea\.velez@crediteksas\.com'/);
+  assert.match(andreaPermission,/select p\.id, 'manage', true/);
+  assert.match(andreaPermission,/create or replace function public\.tiene_capacidad_cartera/);
+  assert.match(andreaPermission,/operator\.capability = 'manage'/);
+  assert.match(andreaPermission,/creditos_cartera_puede_gestionar/);
+  assert.doesNotMatch(andreaPermission,/update public\.perfiles[\s\S]+set rol/i);
+  assert.match(sidebar,/tiene_capacidad_cartera/);
+  assert.match(sidebar,/perfil\.es_gestor_cartera = puedeGestionarCartera/);
+  assert.match(app,/profile\?\.es_gestor_cartera === true/);
 });

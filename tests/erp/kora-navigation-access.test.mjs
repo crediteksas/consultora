@@ -126,11 +126,13 @@ test('matriz equivalente de Maite conserva Corporativo y aplica capacidades exis
 });
 
 test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tienda', () => {
-  const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
-  const navigation = access.navigationFor(profile);
+  const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01', es_operador_cartera: true, es_gestor_cartera: true };
+  const navigation = access.navigationFor(profile, { cartera: true });
   assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
   assert.ok(Array.from(navigation[0].items, item => item.href).includes('catalogo.html'));
+  assert.ok(Array.from(navigation[0].items, item => item.href).includes('creditos-cartera.html'));
   assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
+  assert.equal(access.authorize(profile, 'creditos-cartera.html', { cartera: true }).allowed, true);
   assert.equal(access.authorize(profile, 'incidencias.html').allowed, true);
   for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html']) {
     assert.equal(access.authorize(profile, route).allowed, false, route);

@@ -1246,7 +1246,29 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       perfil.es_operador_aliados = esOperadorAliados;
       completeBootStage('allies-capability', { enabled: esOperadorAliados });
 
-      const capabilities = { b2b: esAdminB2b, aliados: esOperadorAliados };
+      let puedeLeerCartera = false;
+      let puedeGestionarCartera = false;
+      if (typeof sb.rpc === 'function') {
+        startBootStage('portfolio-capability');
+        const [lecturaCartera, gestionCartera] = await Promise.all([
+          withBootTimeout(sb.rpc('tiene_capacidad_cartera', { p_capacidad: 'read' })),
+          withBootTimeout(sb.rpc('tiene_capacidad_cartera', { p_capacidad: 'manage' })),
+        ]);
+        puedeLeerCartera = lecturaCartera?.error ? false : lecturaCartera?.data === true;
+        puedeGestionarCartera = gestionCartera?.error ? false : gestionCartera?.data === true;
+      }
+      perfil.es_operador_cartera = puedeLeerCartera;
+      perfil.es_gestor_cartera = puedeGestionarCartera;
+      completeBootStage('portfolio-capability', {
+        read: puedeLeerCartera,
+        manage: puedeGestionarCartera,
+      });
+
+      const capabilities = {
+        b2b: esAdminB2b,
+        aliados: esOperadorAliados,
+        cartera: puedeLeerCartera,
+      };
       startBootStage('authorization');
       const authorization = window.KoraAccessControl.authorize(perfil, location.pathname, capabilities);
       const pageClient = sharedPageClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

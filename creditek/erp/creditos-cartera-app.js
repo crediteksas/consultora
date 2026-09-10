@@ -10,7 +10,7 @@
     return new Promise(resolve => document.addEventListener('kora-sidebar-ready', () => resolve(window.creditekSidebar), { once:true }));
   }
   function setNotice(message, error=false) { const n=$('notice'); n.hidden=!message; n.textContent=message||''; n.className=`notice card${error?' error':''}`; }
-  function canManage() { return ['gerencia','auditoria'].includes(profile?.rol); }
+  function canManage() { return ['gerencia','auditoria'].includes(profile?.rol) || profile?.es_gestor_cartera === true; }
   function unique(key) { return [...new Map(rows.filter(r=>r[key]).map(r=>[r[key],r])).values()]; }
   function selectedRows() { return D.filter(rows,{query:$('query').value,platform:$('platform').value,status:$('status').value,origin:$('origin').value}); }
 

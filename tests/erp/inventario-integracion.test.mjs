@@ -6,13 +6,20 @@ const html = await readFile(
   new URL('../../creditek/erp/inventario.html', import.meta.url),
   'utf8',
 );
+const app = await readFile(new URL('../../creditek/erp/app.html', import.meta.url), 'utf8');
 
 test('inventario integra dominio, shell KORA y exportación', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="inventario-domain\.js"><\/script>/);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.15"><\/script>/);
-  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.15" data-kora-shell="1\.0\.0"><\/script>/);
+  for (const archivo of ['kora-access-control', 'sidebar']) {
+    const patron = new RegExp(`<script src="${archivo}\\.js\\?v=([^\"]+)"`);
+    const esperado = app.match(patron);
+    const actual = html.match(patron);
+    assert.ok(esperado && actual, `${archivo} debe estar en el shell y en Inventario`);
+    assert.equal(actual[1], esperado[1], `${archivo} debe usar la versión compartida`);
+  }
+  assert.match(html, /data-kora-shell="1\.0\.0"/);
   assert.match(html, /xlsx@0\.18\.5/);
   assert.match(html, /<script src="inventario-export\.js"><\/script>/);
   assert.match(html, /const inventarioDomain = window\.CreditekInventarioDomain/);

@@ -648,8 +648,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
   function koraCurrentItem(modules) {
     const current = paginaActual();
-    return modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })))
-      .find(item => item.href?.split('#')[0] === current)
+    const items = modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })));
+    return items.find(item => item.href === current + window.location.hash)
+      || items.find(item => item.href?.split('#')[0] === current)
       || modules[0]?.items[0];
   }
 
@@ -717,9 +718,9 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraStoreHtml(profile, stores) {
     const central = profile.rol === 'gerencia' || profile.rol === 'auditoria';
     if (!central) {
-      return `<span class="kora-extension"><i data-lucide="store"></i><span>${escapeHtml(nombreTienda(profile.tienda_codigo, stores))}</span></span>`;
+      return `<span class="kora-extension" data-kora-retail-store><i data-lucide="store"></i><span>${escapeHtml(nombreTienda(profile.tienda_codigo, stores))}</span></span>`;
     }
-    return `<label class="kora-store">
+    return `<label class="kora-store" data-kora-retail-store>
       <span class="ctk-sr-only">Tienda</span>
       <select class="ctk-select" id="koraStoreSelector" aria-label="Tienda seleccionada">
         <option value="">Todas las tiendas</option>
@@ -818,6 +819,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       </label>
       <div class="kora-topbar__actions">
         ${koraStoreHtml(profile, stores)}
+        <span class="kora-extension" data-kora-business-context></span>
         <span class="kora-extension" data-kora-connectivity data-state="online"><span class="kora-extension__dot"></span><span>En línea</span></span>
         <button class="kora-icon-button ghost" type="button" data-kora-audio-settings aria-label="Configuración de experiencia" title="Configuración de experiencia">${koraStaticIcon('sliders-horizontal')}</button>
         <button class="kora-icon-button ghost" type="button" data-kora-help aria-label="Guía de esta pantalla" title="Guía de esta pantalla" data-kora-tooltip="Guía de esta pantalla"><i data-lucide="circle-help"></i></button>
@@ -856,6 +858,11 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     root.append(aside, main, overlay, aboutDialog);
     root.classList.add('kora-shell-root');
     root.dataset.koraMounted = 'true';
+    updateKoraBusinessContext(root, [shellProductName, current?.group, current?.label]);
+    window.addEventListener('hashchange', () => {
+      const next = koraCurrentItem(modules);
+      setKoraContext(next?.label || 'KORA', [shellProductName, next?.group, next?.label]);
+    });
     window.KoraAudio?.setUser?.(profile.id || profile.nombre || 'anonymous');
     const sidebarMode = localStorage.getItem('kora_sidebar_mode_v2') || 'auto';
     root.dataset.sidebarCollapsed = sidebarMode === 'pinned' ? 'false' : 'true';
@@ -1062,10 +1069,30 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
   }
 
+  function koraBusinessContext(breadcrumbs) {
+    const groups = breadcrumbs.filter(Boolean).map(value => String(value).trim().toUpperCase());
+    if (groups.some(group => group.includes('B2B'))) return { retail: false, label: 'B2B' };
+    if (groups.some(group => group.includes('ALIADOS'))) return { retail: false, label: 'Aliados' };
+    const retail = groups.some(group => ['CREDITEK RETAIL', 'RETAIL', 'MI TIENDA', 'INVENTARIO', 'CAJA'].includes(group));
+    return { retail, label: retail ? 'Retail' : 'Administración' };
+  }
+
+  function updateKoraBusinessContext(root, breadcrumbs) {
+    const context = koraBusinessContext(breadcrumbs);
+    const store = root?.querySelector('[data-kora-retail-store]');
+    const business = root?.querySelector('[data-kora-business-context]');
+    if (store) store.style.display = context.retail ? '' : 'none';
+    if (business) {
+      business.textContent = context.label;
+      business.style.display = context.retail ? 'none' : '';
+    }
+  }
+
   function setKoraContext(title, breadcrumbs = ['KORA', title]) {
     const root = document.querySelector('.kora-shell-root');
     const titleNode = root?.querySelector('.kora-topbar__title');
     const breadcrumb = root?.querySelector('.kora-breadcrumb');
+    updateKoraBusinessContext(root, breadcrumbs);
     if (titleNode) titleNode.textContent = title;
     if (breadcrumb) breadcrumb.innerHTML = breadcrumbs.filter(Boolean).map((item, index, list) =>
       `<li ${index === list.length - 1 ? 'aria-current="page"' : ''}>${escapeHtml(item)}</li>`).join('');

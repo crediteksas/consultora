@@ -13,9 +13,9 @@ test('el shell KORA se activa en las pantallas principales autenticadas', async 
     read('creditek/erp/catalogo.html'),
   ]);
 
-  assert.match(tablero, /sidebar\.js\?v=2\.0\.20" data-kora-shell="1\.0\.0"/);
-  assert.match(utilidad, /sidebar\.js\?v=2\.0\.20" data-kora-shell="1\.0\.0"/);
-  assert.match(catalogo, /sidebar\.js\?v=2\.0\.20" data-kora-shell="1\.0\.0"/);
+  assert.match(tablero, /sidebar\.js\?v=2\.0\.21" data-kora-shell="1\.0\.0"/);
+  assert.match(utilidad, /sidebar\.js\?v=2\.0\.21" data-kora-shell="1\.0\.0"/);
+  assert.match(catalogo, /sidebar\.js\?v=2\.0\.21" data-kora-shell="1\.0\.0"/);
 });
 
 test('la navegación KORA usa Design System, Lucide fijado y no estilos inline', async () => {

@@ -112,6 +112,22 @@
     $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     $('lastUpdated').textContent = `Actualizado ${new Intl.DateTimeFormat('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(new Date())}`;
     renderBatches();
+    await Promise.all(batches.filter(b=>b.plataforma==='krediya'&&awaitingCalculation(b)&&!b.approved_at&&!b.frozen_at).map(async b=>{
+      try {
+        const result=await sb.rpc('aliados_contextos_precios_krediya',{p_liquidation_id:b.id});
+        if(request!==batchesRequest)return;
+        const contexts=result.data||[];
+        const recognized=(b.liquidation_operations||[]).filter(o=>o.reconocida);
+        if(result.error||!recognized.length||contexts.length!==recognized.length||recognized.some(o=>contexts.filter(c=>c.operation_id===o.id).length!==1)||contexts.some(c=>!c.automatica?.disponible||['giro','bonos','utilidad_neta'].some(k=>c.automatica[k]==null||!Number.isFinite(Number(c.automatica[k]))))){
+          b.previewError=result.error?'No se pudo consultar':'Faltan datos';
+        }else{
+          const sum=key=>contexts.reduce((n,c)=>n+Number(c.automatica[key]),0);
+          const allied=contexts.filter(c=>recognized.find(o=>o.id===c.operation_id)?.tipo_establecimiento==='aliado').reduce((n,c)=>n+Number(c.automatica.giro),0);
+          b.previewValues=[allied,sum('bonos'),sum('utilidad_neta'),allied+sum('bonos')];
+        }
+      }catch(_){if(request===batchesRequest)b.previewError='No se pudo consultar';}
+    }));
+    if(request===batchesRequest)renderBatches();
   }
 
   function renderBatches() {
@@ -127,7 +143,7 @@
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${awaitingCalculation(b) ? (b.liquidation_operations || []).filter(o=>b.plataforma!=='krediya'||o.reconocida).length : Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
-      ${[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar].map((v,i) => `<td>${awaitingCalculation(b) ? 'Por calcular' : money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
+      ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
     let recent=$('recentBatches');

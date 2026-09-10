@@ -65,13 +65,13 @@ test('la compuerta solo bloquea cuando Gerencia activa Nova',async()=>{
   }finally{await db.close();}
 });
 
-test('Andrea gestiona Cartera completa por capacidad sin cambiar su rol',async()=>{
+test('Andrea accede a Cartera de su tienda sin recibir gestión financiera ni alcance global',async()=>{
   const db=await setup();
   try{
     await db.exec(andreaPermission);
     await db.query("select set_config('test.uid',$1,false)",[andrea]);
-    const capability=(await db.query("select tiene_capacidad_cartera('read') lectura,tiene_capacidad_cartera('manage') gestion,creditos_cartera_puede_leer('OTRA-TIENDA') lectura_global")).rows[0];
-    assert.deepEqual(capability,{lectura:true,gestion:true,lectura_global:true});
+    const capability=(await db.query("select tiene_capacidad_cartera('read') lectura,tiene_capacidad_cartera('manage') gestion,creditos_cartera_puede_leer('T-1') lectura_tienda,creditos_cartera_puede_leer('OTRA-TIENDA') lectura_global")).rows[0];
+    assert.deepEqual(capability,{lectura:true,gestion:false,lectura_tienda:true,lectura_global:false});
     assert.equal((await db.query('select rol from perfiles where id=$1',[andrea])).rows[0].rol,'admin_tienda');
   }finally{await db.close();}
 });

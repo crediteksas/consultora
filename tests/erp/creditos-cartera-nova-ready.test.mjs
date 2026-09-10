@@ -48,12 +48,13 @@ test('KORA ofrece las cuatro vistas operativas sin habilitar Nova desde la inter
   assert.doesNotMatch(app,/creditos_cartera_configurar_nova/);
 });
 
-test('Andrea recibe capacidad explícita para consultar y gestionar Cartera sin ampliar su rol', () => {
+test('Andrea recibe capacidad explícita para ver Cartera sin acciones financieras ni ampliar su rol', () => {
   assert.match(andreaPermission,/lower\(u\.email\) = 'andrea\.velez@crediteksas\.com'/);
-  assert.match(andreaPermission,/select p\.id, 'manage', true/);
+  assert.match(andreaPermission,/select p\.id, 'read', true/);
   assert.match(andreaPermission,/create or replace function public\.tiene_capacidad_cartera/);
-  assert.match(andreaPermission,/operator\.capability = 'manage'/);
-  assert.match(andreaPermission,/creditos_cartera_puede_gestionar/);
+  assert.doesNotMatch(andreaPermission,/create or replace function public\.creditos_cartera_puede_gestionar/);
+  assert.doesNotMatch(andreaPermission,/create or replace function public\.creditos_cartera_registrar_pago_cliente/);
+  assert.doesNotMatch(andreaPermission,/create or replace function public\.creditos_cartera_registrar_gestion/);
   assert.doesNotMatch(andreaPermission,/update public\.perfiles[\s\S]+set rol/i);
   assert.match(sidebar,/tiene_capacidad_cartera/);
   assert.match(sidebar,/perfil\.es_gestor_cartera = puedeGestionarCartera/);

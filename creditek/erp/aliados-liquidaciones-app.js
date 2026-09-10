@@ -141,7 +141,7 @@
     importaciones?.setBatch(selected);
     const frozen = Boolean(selected.frozen_at || selected.approved_at || ['aprobada','programada','pagada','cerrada'].includes(selected.estado));
     const krediya = selected.plataforma === 'krediya';
-    $('calculate').textContent = ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
+    $('calculate').textContent = krediya ? 'Revisar y enviar a aprobación' : ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
     $('calculate').classList.toggle('hidden', frozen);
     $('approve').textContent = krediya ? 'Aprobar y pasar a pagos' : 'Aprobar liquidación';
     $('approve').classList.toggle('hidden',frozen);
@@ -168,6 +168,16 @@
 
   function renderMetrics() {
     const metrics = (title, values) => `<section class="card"><h2>${title}</h2><div class="grid">${values.map(([label, value, format]) => `<div class="metric"><small>${label}</small><strong>${format === 'text' ? esc(value) : format ? Number(value || 0) : money(value)}</strong></div>`).join('')}</div></section>`;
+    if (selected.plataforma==='krediya' && !selected.frozen_at && !selected.approved_at && selected.automaticContexts) {
+      const all=selected.automaticContexts, ready=all.filter(c=>c.automatica?.disponible),missing=all.length-ready.length;
+      const sum=key=>ready.reduce((n,c)=>n+Number(c.automatica[key]),0);
+      $('metrics').innerHTML=metrics(missing?'Resumen automático · parcial':'Resumen automático del lote',[
+        ['Operaciones reconocidas',all.length,true],['Con datos completos',ready.length,true],
+        ['Valor de venta',sum('pvp')],['Giros a beneficiarios',sum('giro')],['Bonos',sum('bonos')],
+        ['Gasto financiero',sum('gasto_financiero')],['Provisión',sum('provision')],['Utilidad después de descuentos',sum('utilidad_neta')]
+      ])+`<p>${missing?`${missing} operaciones sin datos completos no están incluidas en los importes. `:''}Información matemática; no autoriza pagos ni representa efectivo disponible.</p>`;
+      return;
+    }
     if (awaitingCalculation(selected)) {
       const known = (selected.liquidation_operations || []).filter((o) => o.reconocida);
       $('metrics').innerHTML = metrics('Datos importados · pagos y utilidad pendientes de calcular', [
@@ -328,6 +338,7 @@
       const { data: contexts, error: contextError } = await sb.rpc('aliados_contextos_precios_krediya', { p_liquidation_id: selected.id });
       if (!isCurrent()) return;
       if (contextError) throw contextError;
+      selected.automaticContexts=contexts || [];renderMetrics();
       const {data:instructions,error:instructionsError}=await sb.from('krediya_instrucciones').select('operation_id').eq('liquidation_id',selected.id);
       if (!isCurrent()) return;
       if(instructionsError)throw instructionsError;
@@ -396,18 +407,20 @@
     function render() {
     const filtered=Review.filterOperations(rows,{search,store}).filter(r=>!focusOperationId||r.id===focusOperationId).filter(r=>{const c=contextById.get(r.id)||{};return !priceFilter||(priceFilter==='missing'?(c.pvp_guardado==null||c.pagamos_guardado==null):c.diferencia_pvp!=null&&Number(c.diferencia_pvp)!==0);}),pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
     $('operationControls').innerHTML=`<label>Buscar referencia, cliente o IMEI<input class="control" id="operationSearch" value="${esc(search)}"></label><label>Tienda<select class="control" id="operationStore"><option value="">Todas las tiendas del lote</option>${stores.map(([code,name])=>`<option value="${esc(code)}" ${store===code?'selected':''}>${esc(name)}</option>`).join('')}</select></label><span>${filtered.length} de ${rows.length} operaciones${focusOperationId?' · Operación vinculada a la consulta':''}</span>${focusOperationId?'<button class="btn secondary" id="allOperations">Ver todo el lote</button>':''}`;
-    $('operationControls').innerHTML+=`<label>Precios<select class="control" id="operationPriceFilter"><option value="">Todos</option><option value="missing">Falta PVP o PAGAMOS</option><option value="difference">Diferencia con PVP KORA</option></select></label>${!selected.frozen_at?'<button class="btn primary" id="calculateVisibleLot">Calcular utilidades del lote</button>':''}`;
+    $('operationControls').innerHTML+=`<label>Precios<select class="control" id="operationPriceFilter"><option value="">Todos</option><option value="missing">Falta PVP o PAGAMOS</option><option value="difference">Diferencia con PVP KORA</option></select></label>`;
     $('operationPriceFilter').value=priceFilter;$('operationPriceFilter').onchange=e=>{priceFilter=e.target.value;page=0;render();};
-    if(!selected.frozen_at){$('calculateVisibleLot').disabled=$('calculate').disabled;$('calculateVisibleLot').onclick=()=>$('calculate').click();}
     if(focusOperationId)$('allOperations').onclick=()=>{focusOperationId=null;page=0;render();};
     $('operationSearch').oninput=e=>{search=e.target.value;page=0;render();$('operationSearch').focus();$('operationSearch').setSelectionRange(search.length,search.length);};
     $('operationStore').onchange=e=>{store=e.target.value;page=0;render();};
     $('detailBody').innerHTML = filtered.slice(page*8,(page+1)*8).map((row) => {
-      const calc = Array.isArray(row.liquidation_calculations) ? row.liquidation_calculations[0] : row.liquidation_calculations;
-      const c = calc?.policy_snapshot?.motor === 'krediya_v2' ? calc.policy_snapshot : contextById.get(row.id) || {};
-      // Persisted calculations remain authoritative; a live tariff is only a preview.
+      const saved = Array.isArray(row.liquidation_calculations) ? row.liquidation_calculations[0] : row.liquidation_calculations;
+      const live = contextById.get(row.id) || {};
+      const automatic = !selected.frozen_at && !selected.approved_at ? live.automatica : null;
+      const calc = automatic ? (automatic.disponible ? {pagamos:automatic.pagamos,pago_aliado:automatic.giro,total_bonos:automatic.bonos,utilidad_creditek:automatic.utilidad_neta,explanation:{valor_comercial:automatic.pvp},policy_snapshot:{...live,motor:'krediya_v2',...automatic}} : null) : saved;
+      const c = calc?.policy_snapshot?.motor === 'krediya_v2' ? calc.policy_snapshot : live;
+      // Frozen calculations remain authoritative. Editable lots show live mathematics without writes.
       const calculated = Boolean(calc);
-      const pendingExecutive=calculated && !selected.frozen_at && row.tipo_establecimiento==='aliado' && (c.bono_ejecutivo_pendiente || !row.ejecutivo_id);
+      const pendingExecutive=!automatic && calculated && !selected.frozen_at && row.tipo_establecimiento==='aliado' && (c.bono_ejecutivo_pendiente || !row.ejecutivo_id);
       const pvp = calculated ? (calc.explanation?.valor_comercial ?? calc.explanation?.base_liquidable ?? row.valor_comercial) : c.pvp_recibido;
       const paid = calculated ? calc.pagamos : c.pagamos_guardado;
       const net = calculated ? calc.pago_aliado : paid == null || !row.reconocida ? null : Number(paid) - Number(row.inicial || 0);
@@ -418,13 +431,13 @@
         : paid == null || c.pvp_guardado == null ? 'Falta completar PVP o PAGAMOS de esta referencia.'
         : pvp == null ? 'Falta PVP recibido de Krediya para calcular.'
         : delta != null && Number(delta) !== 0 ? `Diferencia PVP: ${money(delta)} · Seguimiento, no bloquea. Se respeta PAGAMOS.`
-        : calculated ? 'Valores calculados de esta operación.' : 'Datos disponibles. Liquidación pendiente de calcular.';
+        : automatic?.disponible ? 'Utilidad automática. Se respeta PAGAMOS, incluso si hay pérdida.' : calculated ? 'Valores calculados de esta operación.' : automatic?.motivo || 'No se pudo obtener el desglose automático.';
       const priceAction = !selected.frozen_at && row.reconocida
         ? `<button class="btn secondary" data-open-tariff="${row.id}">${c.pvp_guardado==null||c.pagamos_guardado==null?'Crear datos · PVP y PAGAMOS':'Editar PVP y PAGAMOS'}</button>`
         : openIssues.length ? `<button class="btn secondary" data-manage-issue="${row.id}">Ver novedad</button>` : '';
       return `<tr><td><article class="krediya-operation compact-krediya" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
-        <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : calculated ? 'Calculada' : 'Sin calcular'}</span></header>
-        <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Pendiente de calcular')}</dl>
+        <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
+        <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
         <footer class="operation-footer"><p>${esc(note)}</p><div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
         ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>

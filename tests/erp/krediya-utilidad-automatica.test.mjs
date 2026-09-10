@@ -1,0 +1,30 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {PGlite} from '@electric-sql/pglite';
+test('utilidad automática incluye bonos, financiero y provisión, admite pérdida y no altera pagos',async()=>{
+const db=new PGlite();try{
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema krediya_private;
+create function auth.uid() returns uuid language sql as $$select '00000000-0000-4000-8000-000000000001'::uuid$$;
+create function tiene_capacidad_aliados(text) returns boolean language sql as $$select coalesce(current_setting('test.allowed',true),'yes')='yes'$$;
+create function unaccent(text) returns text language sql immutable as $$select $1$$;
+create table liquidations(id uuid primary key default gen_random_uuid(),frozen_at timestamptz,approved_at timestamptz);
+create table ejecutivos(id uuid primary key default gen_random_uuid(),nombre text,esquema_comision jsonb,activo boolean default true);
+create table origenes(codigo text,ejecutivo_id uuid);
+create table liquidation_operations(id uuid primary key default gen_random_uuid(),liquidation_id uuid,plataforma text,referencia text,reconocida boolean,operation_at timestamptz,tipo_establecimiento text,origen_codigo text,ejecutivo_id uuid,inicial numeric,monto_credito numeric,normalized_data jsonb);
+create table liquidation_beneficiaries(id uuid primary key default gen_random_uuid(),ejecutivo_id uuid,tipo text,activo boolean default true);
+create table krediya_bonus_rules(beneficiary_id uuid,tipo_establecimiento text,activo boolean default true,vigente_desde date,vigente_hasta date,concepto text,valor numeric);
+create table liquidation_bonuses(operation_id uuid,liquidation_id uuid,estado text,tipo_bono text,valor numeric);
+create function aliados_contexto_precio_krediya(uuid) returns jsonb language sql stable as $$select jsonb_build_object('operation_id',$1,'pvp_recibido',coalesce(nullif(current_setting('test.pvp',true),''),'862500')::numeric,'pagamos_guardado',nullif(coalesce(nullif(current_setting('test.pagamos',true),''),'562500'),'null')::numeric)$$;
+insert into liquidations default values;
+insert into ejecutivos(nombre,esquema_comision) values ('Alexander Fernandez','{"tipo":"fijo","valor":30000}');
+insert into liquidation_beneficiaries(ejecutivo_id,tipo) select id,'ejecutivo' from ejecutivos;
+insert into krediya_bonus_rules(beneficiary_id,tipo_establecimiento,vigente_desde,concepto,valor) select id,'aliado','2026-08-01','operacion',15000 from liquidation_beneficiaries;
+insert into krediya_bonus_rules(beneficiary_id,tipo_establecimiento,vigente_desde,concepto,valor) select id,'aliado','2026-08-01','gestion_krediya',5000 from liquidation_beneficiaries;
+insert into liquidation_operations(liquidation_id,plataforma,reconocida,operation_at,tipo_establecimiento,origen_codigo,ejecutivo_id,inicial,monto_credito) select l.id,'krediya',true,'2026-09-02 12:00-05','aliado','A',e.id,86250,776250 from liquidations l cross join ejecutivos e;`);
+await db.exec(fs.readFileSync('supabase/migrations/20260910211449_krediya_utilidad_automatica_consulta.sql','utf8'));
+const run=async()=> (await db.query('select krediya_private.utilidad_consulta(id) v from liquidation_operations')).rows[0].v;
+let v=await run();assert.equal(v.bonos,50000);assert.equal(v.giro,476250);assert.equal(v.gasto_financiero,3105);assert.equal(v.utilidad_neta,177764.4);assert.equal(v.provision,69130.6);
+await db.exec("set test.pvp='500000'");v=await run();assert.equal(v.pagamos,562500);assert.ok(v.utilidad_neta<0);
+await db.exec("set test.pagamos='null'");v=await run();assert.equal(v.disponible,false);assert.match(v.motivo,/PAGAMOS/);assert.equal(v.utilidad_neta,undefined);
+await db.exec("set test.pagamos='562500';update liquidation_operations set tipo_establecimiento='propia'");v=await run();assert.equal(v.bonos,0);
+assert.equal((await db.query('select count(*) n from liquidation_bonuses')).rows[0].n,0);
+await db.exec("set test.allowed='no'");await assert.rejects(run(),/No autorizado/);
+}finally{await db.close();}});

@@ -143,10 +143,17 @@ test('sin cálculo usa PVP recibido, conserva tarifa comparativa, Pagamos y giro
   assert.match(metricHtml(html, 'Pagamos − inicial · estimado'), /COP 414650/);
   assert.match(html, /Bonos operativos configurados: <strong[^>]*>COP 20000<\/strong>/);
   assert.match(html, /Utilidad: <span[^>]*>Pendiente de calcular<\/span>/);
-  assert.match(html, />Sin calcular<\/span>/);
+  assert.match(html, />Datos incompletos<\/span>/);
   assert.match(html, /Se respeta PAGAMOS/);
   assert.match(html, /El giro es estimado; no es un pago autorizado/);
   assert.doesNotMatch(html, /COP 0(?:<|\b)/);
+});
+
+test('utilidad automática aparece sin botón y conserva pérdidas', () => {
+  const automatic={disponible:true,pvp:862500,pagamos:562500,giro:476250,bonos:50000,gasto_financiero:3105,provision:69130.6,utilidad_neta:-12000};
+  const {html}=operations([row],[{...tariff,automatica:automatic}],[]);
+  assert.match(html,/Utilidad automática/);assert.match(html,/COP -12000/);
+  assert.doesNotMatch(html,/Calcular utilidades del lote|Los bonos del ejecutivo se suman al calcular/);
 });
 
 test('tarifa ausente queda pendiente y no se convierte en Pagamos cero', () => {

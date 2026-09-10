@@ -27,7 +27,7 @@ test('tarjetas exponen datos y utilidad, con filtro y editor por referencia, sin
  const app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
  assert.match(app,/Crear datos · PVP y PAGAMOS/);assert.match(app,/openOperationTariff\(button.dataset.openTariff/);
  assert.match(app,/metric\('Utilidad después de bonos, gasto financiero y provisión'/);
- assert.match(app,/Falta PVP o PAGAMOS/);assert.match(app,/Calcular utilidades del lote/);
+ assert.match(app,/Falta PVP o PAGAMOS/);assert.doesNotMatch(app,/Calcular utilidades del lote/);assert.match(app,/Utilidad automática/);
  const editor=fs.readFileSync('creditek/erp/krediya-tarifario.js','utf8');
  assert.match(editor,/Guardar datos de la referencia/);assert.match(editor,/krediya_crear_tarifa_operacion/);
 });

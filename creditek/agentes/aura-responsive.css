@@ -39,14 +39,34 @@ body[data-aura-page="sofia"] .aura-pane-button i { font-size: 18px; }
 body[data-aura-page="sofia"] .aura-chat-tools { align-items: center; display: flex; gap: 6px; }
 body[data-aura-page="sofia"] .aura-panel-close { position: sticky; top: 8px; float: right; margin: 8px 8px 0 0; z-index: 2; }
 
+/* The CRM header needs to reflow before the conversation columns become narrow. */
+@media (max-width: 89.999rem) {
+  body[data-aura-page="sofia"] .topbar {
+    align-items: center; display: grid; gap: 8px 12px;
+    grid-template-columns: minmax(0, 1fr) auto; height: auto; padding: 8px 12px;
+  }
+  body[data-aura-page="sofia"] .topbar-left { grid-column: 1; grid-row: 1; min-width: 0; }
+  body[data-aura-page="sofia"] .topbar-left h1 {
+    align-items: center; display: flex; line-height: 1.25; min-width: 0; white-space: nowrap;
+  }
+  body[data-aura-page="sofia"] .topbar-actions {
+    grid-column: 2; grid-row: 1; justify-self: end; min-width: 0;
+  }
+  body[data-aura-page="sofia"] .topbar-stats {
+    display: grid; gap: 8px; grid-column: 1 / -1;
+    grid-template-columns: repeat(6, minmax(0, 1fr)); min-width: 0; width: 100%;
+  }
+  body[data-aura-page="sofia"] .top-stat {
+    background: #f8fafc; border-radius: 9px; min-width: 0; padding: 6px 8px;
+  }
+  body[data-aura-page="sofia"] .top-stat-val { font-size: 15px; }
+  body[data-aura-page="sofia"] .top-stat-label {
+    line-height: 1.25; overflow-wrap: anywhere; white-space: normal;
+  }
+}
+
 @media (max-width: 74.999rem) {
   body[data-aura-page="sofia"] { height: 100dvh; }
-  body[data-aura-page="sofia"] .topbar { align-items: center; gap: 8px 14px; padding: 8px 12px; }
-  body[data-aura-page="sofia"] .topbar-left { flex: 1 1 auto; }
-  body[data-aura-page="sofia"] .topbar-stats { flex: 1 1 100%; gap: 8px; order: 3; overflow-x: auto; padding-bottom: 2px; }
-  body[data-aura-page="sofia"] .top-stat { background: #f8fafc; border-radius: 9px; flex: 1 0 104px; padding: 6px 8px; }
-  body[data-aura-page="sofia"] .top-stat-val { font-size: 15px; }
-  body[data-aura-page="sofia"] .top-stat-label { white-space: normal; }
   body[data-aura-page="sofia"] .sidebar { width: clamp(260px, 32vw, 320px); }
   body[data-aura-page="sofia"] .right-panel {
     bottom: 0; box-shadow: -14px 0 32px rgba(15, 23, 42, .16); max-width: 92vw;
@@ -57,13 +77,23 @@ body[data-aura-page="sofia"] .aura-panel-close { position: sticky; top: 8px; flo
   body[data-aura-page="sofia"] .chat-badges { flex-wrap: wrap; justify-content: flex-end; }
 }
 
+@media (max-width: 63.999rem) {
+  body[data-aura-page="sofia"] .topbar-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 47.999rem) {
-  body[data-aura-page="sofia"] .topbar { max-height: 38dvh; overflow-y: auto; }
+  body[data-aura-page="sofia"] .topbar {
+    grid-template-columns: minmax(0, 1fr); max-height: 38dvh; overflow-y: auto;
+  }
   body[data-aura-page="sofia"] .topbar-left h1 { font-size: 14px; }
-  body[data-aura-page="sofia"] .topbar-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  body[data-aura-page="sofia"] .topbar-actions {
+    display: grid; grid-column: 1; grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-row: auto; justify-self: stretch; width: 100%;
+  }
   body[data-aura-page="sofia"] .topbar-actions .btn { justify-content: center; padding-inline: 8px; }
-  body[data-aura-page="sofia"] .topbar-stats { order: 2; }
-  body[data-aura-page="sofia"] .topbar-actions { order: 3; }
+  body[data-aura-page="sofia"] .topbar-stats {
+    grid-column: 1; grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   body[data-aura-page="sofia"] .main { width: 100%; }
   body[data-aura-page="sofia"] .sidebar { border: 0; width: 100%; }
   body[data-aura-page="sofia"] .sidebar-tabs { flex-wrap: nowrap; overflow-x: auto; }

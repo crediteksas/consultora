@@ -42,6 +42,21 @@ test('Sofía usa navegación por paneles en móvil y un panel de detalles en ven
   assert.match(js, /MutationObserver/);
 });
 
+test('Sofía conserva el título y los seis indicadores completos en ventanas estrechas', async () => {
+  const [html, css] = await Promise.all([
+    source('creditek-agente-respuestas.html'),
+    source('aura-responsive.css'),
+  ]);
+  assert.match(html, /Sofía\s*·\s*<span>CRM WhatsApp<\/span>/);
+  assert.match(css, /max-width:\s*89\.999rem/);
+  assert.match(css, /\.topbar-actions\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1/s);
+  assert.match(css, /\.topbar-stats\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
+  assert.match(css, /grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.topbar-left h1\s*\{[^}]*white-space:\s*nowrap/s);
+});
+
 test('la base responsive protege controles táctiles, modales y tablas', async () => {
   const css = await source('aura-responsive.css');
   assert.match(css, /min-height:\s*44px/);

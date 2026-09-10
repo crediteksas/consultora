@@ -56,6 +56,9 @@
     return Boolean((l.frozen_at&&l.approved_at) ||
       (l.estado==='programada'&&!l.approved_at&&p.estado==='programado'&&p.authorized_by&&p.authorized_at));
   }
+  function pagoAutorizado(p) {
+    return Boolean(p.authorized_by && p.authorized_at);
+  }
   function paymentReadiness(p) {
     if (p.historico_inicial || p.estado === 'conciliado') return {ready:false,reason:'Pago cerrado'};
     if (p.estado === 'pagado') return {ready:!p.soporte_path,reason:p.soporte_path ? 'Pago con soporte registrado' : '',supportOnly:true};
@@ -63,6 +66,8 @@
       return {ready:false,reason:`Falta aprobar el lote ${p.platform_snapshot || ''} · corte ${p.cutoff_snapshot || 'sin fecha'}`};
     if (!['pendiente','programado'].includes(p.estado))
       return {ready:false,reason:'La orden no está pendiente de pago'};
+    if (!pagoAutorizado(p))
+      return {ready:false,reason:'Falta autorización individual del pago por Gerencia'};
     const bank = p.bank_snapshot || {};
     if (!(Number(p.valor)>0) || !bank.bank || !bank.account_type || !bank.account_number || !bank.holder || !bank.holder_identification)
       return {ready:false,reason:'Faltan datos completos de la orden o su cuenta'};
@@ -73,5 +78,5 @@
     if (!eligibility.ready || eligibility.supportOnly) return p.id;
     return JSON.stringify([p.beneficiary_id,b.bank,b.account_type,b.account_number,b.holder,b.holder_identification,p.estado]);
   }
-  return { loteAutorizado, paymentReadiness, paymentGroupKey, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  return { loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

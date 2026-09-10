@@ -57,7 +57,7 @@ test('grupos: Luis 110.000 listo; 80.000 de PayJoy 1/9 separado, no desbloqueado
  assert.match(paymentReadiness(orders[2]).reason,/PayJoy.*2026-09-01/);
  assert.equal(orders.filter(p=>paymentReadiness(p).ready).reduce((sum,p)=>sum+p.valor,0),110000);
  for(const key of Object.keys(bank))assert.notEqual(paymentGroupKey(ready),paymentGroupKey({...ready,bank_snapshot:{...bank,[key]:'otra'}}));
- assert.equal(paymentReadiness({...ready,authorized_at:null}).ready,true,'La aprobación del lote sustituye la autorización individual');
+ assert.equal(paymentReadiness({...ready,authorized_at:null}).ready,false,'La aprobación del lote no sustituye la autorización individual');
  assert.equal(paymentReadiness({...ready,bank_snapshot:{...bank,holder_identification:''}}).ready,false);
  assert.equal(paymentReadiness({...ready,estado:'pagado',soporte_path:null}).supportOnly,true);
 });

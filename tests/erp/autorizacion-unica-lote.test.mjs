@@ -5,9 +5,9 @@ import {PGlite} from '@electric-sql/pglite';
 import domain from '../../creditek/erp/aliados-tesoreria-domain.js';
 const actor='00000000-0000-4000-8000-000000000001';
 const bank={bank:'Banco',account_type:'Ahorros',account_number:'123',holder:'Titular',holder_identification:'456'};
-test('interfaz: una aprobación habilita soporte, legado autorizado no pide nueva aprobación',async()=>{
+test('interfaz: aprobación del lote no reemplaza autorización individual del pago',async()=>{
  const p={estado:'pendiente',valor:100,bank_snapshot:bank,liquidations:{estado:'aprobada',frozen_at:'2026-09-07',approved_at:'2026-09-07'}};
- assert.equal(domain.paymentReadiness(p).ready,true);
+ assert.equal(domain.paymentReadiness(p).ready,false);
  assert.equal(domain.paymentReadiness({...p,bank_snapshot:{}}).ready,false);
  assert.equal(domain.paymentReadiness({...p,liquidations:{estado:'revisada'}}).ready,false);
  assert.equal(domain.paymentReadiness({...p,estado:'programado',authorized_by:actor,authorized_at:'2026-09-03',liquidations:{estado:'programada'}}).ready,true);
@@ -15,13 +15,15 @@ test('interfaz: una aprobación habilita soporte, legado autorizado no pide nuev
  const app=await readFile(new URL('../../creditek/erp/aliados-tesoreria-app.js',import.meta.url),'utf8');
  const source=app.slice(app.indexOf('  function paymentAction('),app.indexOf('  function isClosedPayment('));
  const render=new Function('window','esc','canAuthorize',source+';return paymentAction;')({CreditekTesoreriaTercerizacion:domain},String,()=>true);
- for(const payment of [p,{...p,estado:'programado',authorized_by:actor,authorized_at:'2026-09-03',liquidations:{estado:'programada'}}]){
+ assert.match(render(p,[]),/Autorizar pago/);
+ assert.doesNotMatch(render(p,[]),/Adjuntar soporte y registrar/);
+ for(const payment of [{...p,estado:'programado',authorized_by:actor,authorized_at:'2026-09-03',liquidations:{estado:'programada'}}]){
   assert.match(render(payment,[]),/Adjuntar soporte y registrar/);
   assert.doesNotMatch(render(payment,[]),/Autorizar pago|Falta aprobar/);
  }
  assert.match(render(p,['cuenta']),/Completar datos/);
 });
-test('SQL: hereda aprobación al registrar soporte; conserva cuenta, legado e idempotencia',async()=>{
+test('SQL: exige autorización individual sin heredarla; conserva legado e idempotencia',async()=>{
  const db=await PGlite.create();
  try{
  await db.exec(`create role anon;create role authenticated;create schema auth;create schema kora_private;create schema storage;
@@ -44,6 +46,7 @@ test('SQL: hereda aprobación al registrar soporte; conserva cuenta, legado e id
  await db.exec(fixture.replace(/^(end )?\$function\$$/gm,'$&;'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260908021116_autorizacion_unica_lote.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260908022500_autorizacion_legacy_destinos.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../supabase/migrations/20260910001811_autorizacion_individual_pagos.sql',import.meta.url),'utf8'));
  await db.exec('create trigger payment_guard before update of estado on payment_orders for each row execute function aliados_exigir_liquidacion_aprobada_para_pago()');
  const lot=(await db.query("insert into liquidations(estado,approved_by,approved_at,frozen_at) values('aprobada',$1,now(),now()) returning id",[actor])).rows[0].id;
  await db.query('insert into liquidation_treasury_destinations values($1)',[lot]);
@@ -51,6 +54,9 @@ test('SQL: hereda aprobación al registrar soporte; conserva cuenta, legado e id
  const id=await order();
  await assert.rejects(db.query("select tesoreria_cerrar_pagos_con_soporte($1,'aliados/pagos/missing.pdf')",[[id]]),/no se ha cargado/);
  assert.equal((await db.query('select authorized_at from payment_orders where id=$1',[id])).rows[0].authorized_at,null);
+ await assert.rejects(db.query("select tesoreria_cerrar_pagos_con_soporte($1,'aliados/pagos/test.pdf')",[[id]]),/autorización individual/);
+ await assert.rejects(db.query("update payment_orders set estado='pagado' where id=$1",[id]),/autorización individual/);
+ await db.query("update payment_orders set estado='programado',authorized_by=$1,authorized_at=now() where id=$2",[actor,id]);
  await db.query("select tesoreria_cerrar_pagos_con_soporte($1,'aliados/pagos/test.pdf')",[[id]]);
  const paid=(await db.query('select * from payment_orders where id=$1',[id])).rows[0];
  assert.equal(paid.estado,'pagado');assert.equal(paid.authorized_by,actor);assert.deepEqual(paid.bank_snapshot,bank);assert.equal(Number(paid.valor),100);
@@ -67,6 +73,7 @@ test('SQL: hereda aprobación al registrar soporte; conserva cuenta, legado e id
  const unapproved=(await db.query("insert into liquidations(estado) values('revisada') returning id")).rows[0].id;
  await assert.rejects(db.query("select tesoreria_cerrar_pagos_con_soporte($1,'aliados/pagos/test.pdf')",[[await order(unapproved)]]),/aprobación/);
  const incomplete=await order();await db.query("update payment_orders set bank_snapshot='{}' where id=$1",[incomplete]);
+ await db.query("update payment_orders set estado='programado',authorized_by=$1,authorized_at=now() where id=$2",[actor,incomplete]);
  await assert.rejects(db.query("select tesoreria_cerrar_pagos_con_soporte($1,'aliados/pagos/test.pdf')",[[incomplete]]),/cuenta/);
  await db.exec("select set_config('test.allowed','false',false)");
  await assert.rejects(db.query("select kora_private.preparar_pago_autorizado_por_lote($1)",[incomplete]),/No autorizado/);

@@ -574,7 +574,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraResponsiveStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-responsive.css?v=1.0.1';
+      link.href = '/design-system/components/kora-responsive.css?v=1.0.2';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraResponsive')) {

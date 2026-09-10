@@ -37,6 +37,70 @@ body.kora-responsive-ready :where(input, select, textarea) {
   max-width: 100%;
 }
 
+/* Primary page surface.
+ * Keep the title, description and its actions inside one rounded container.
+ * This deliberately targets only the first-level page header so section and
+ * modal headers keep their existing hierarchy. */
+body.kora-responsive-ready .main-content > :where(
+  .head,
+  .page-head,
+  .page-header,
+  .page-top,
+  .top
+),
+body.kora-responsive-ready .main-content > :where(
+  .page,
+  .page-shell,
+  .container,
+  .content,
+  .contenido,
+  .dashboard
+) > :where(
+  .head,
+  .page-head,
+  .page-header,
+  .page-top,
+  .top
+) {
+  background: #fff;
+  border: 1px solid rgba(11, 30, 61, .1);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(11, 30, 61, .04);
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: clamp(1rem, 2vw, 1.25rem);
+  width: 100%;
+}
+
+/* A header action row is part of the surface above, not a second card. */
+body.kora-responsive-ready .main-content > :where(
+  .head,
+  .page-head,
+  .page-header,
+  .page-top,
+  .top
+) > :where(.actions, .action-row, .botones, .button-row),
+body.kora-responsive-ready .main-content > :where(
+  .page,
+  .page-shell,
+  .container,
+  .content,
+  .contenido,
+  .dashboard
+) > :where(
+  .head,
+  .page-head,
+  .page-header,
+  .page-top,
+  .top
+) > :where(.actions, .action-row, .botones, .button-row) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
 /* Reflow by available container width, not only by phone viewport.
  * A filter must move to the next row before its standard label is clipped. */
 body.kora-responsive-ready .main-content :is(.toolbar, .filters, .filtros, .filter-bar, .filter-row) {

@@ -137,7 +137,7 @@ test('rango inválido se explica sin total engañoso, y los filtros generales se
 test('carga el historial completo en páginas antes de filtrar, no sólo los primeros mil', async () => {
   const many = Array.from({ length: 1201 }, (_, i) => row(`r${i}`, i === 1200 ? 'B' : 'A', '2026-09-03'));
   const ui = await boot(many);
-  assert.deepEqual(ui.queries.filter(q => q.range).map(q => q.range), [[0, 499], [500, 999], [1000, 1499]]);
+  assert.deepEqual(ui.queries.filter(q => q.table==='retail_b2b_compensations'&&q.range).map(q => q.range), [[0, 499], [500, 999], [1000, 1499]]);
   ui.change('compensationStore', 'B');
   assert.equal(ui.node('#compensationCount').textContent, 1);
   assert.match(ui.node('#compensations').innerHTML, /IMEI-r1200/);

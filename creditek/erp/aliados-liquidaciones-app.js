@@ -184,6 +184,20 @@
     ]);
   }
 
+  async function loadReversalSummary(id) {
+    const [current,original]=await Promise.all([
+      sb.from('aliados_reversiones').select('*').eq('liquidation_id',id),
+      sb.from('aliados_reversiones').select('*').contains('snapshot',{original:{liquidation_id:id}}),
+    ]);
+    if(selected?.id!==id)return;
+    let panel=$('reversalSummary');
+    if(!panel){panel=document.createElement('section');panel.id='reversalSummary';panel.className='card';$('metrics').after(panel);}
+    if(current.error||original.error){panel.hidden=false;panel.textContent='No se pudieron consultar los ajustes por anulaciones. No tomes este resumen como definitivo; actualiza la pantalla.';return;}
+    const records=[...new Map([...(current.data||[]),...(original.data||[])].map(r=>[r.id,r])).values()];
+    panel.hidden=records.length===0;
+    panel.innerHTML=`<h2>Ajustes por anulaciones</h2><p>El resumen original se conserva para auditoría. Los ajustes se contabilizan en su fecha de corte y los cruces se autorizan en Tesorería.</p>${records.map(r=>`<article><strong>Crédito ${esc(r.snapshot.original.external_id)} · ${esc(r.fecha)}</strong>${r.tipo==='sin_desembolso'?'<p>Entrada y salida en cero, sin pagos ni bonos.</p>':`<p>Menos pago al aliado: ${money(r.snapshot.calculo.pago_aliado)} · menos bonos: ${money(r.snapshot.calculo.total_bonos)} · menos utilidad: ${money(r.snapshot.calculo.utilidad_creditek)} · menos provisión: ${money(r.snapshot.calculo.policy_snapshot.provision)}</p>`}</article>`).join('')}<a class="btn secondary" href="aliados-tesoreria.html">Ver cruces y saldos por cobrar en Tesorería</a>`;
+  }
+
   async function openDetail(id) {
     krediyaMissingPayees = 0;
     selected = batches.find((batch) => batch.id === id) || selected;
@@ -199,6 +213,8 @@
     $('detailTitle').textContent = `${platformName(selected.plataforma)} · ${UX.fechaCorta(selected.fecha_corte)}`;
     document.getElementById('aloDuplicateReport')?.remove();
     renderMetrics();
+    await loadReversalSummary(id);
+    if(selected?.id!==id)return;
     updateActions();
     await loadTab(activeTab);
     if(selected?.id!==id)return;
@@ -427,6 +443,27 @@
     render();
   }
 
+  async function reviewReversal(operationId) {
+    const lotId=selected.id;
+    const modal=Review.dialog('Revisar anulación', '<p data-status>Buscando la venta original en todos los cortes…</p><div data-preview></div>');
+    try {
+      const {data:p,error}=await sb.rpc('aliados_previsualizar_reversion',{p_cancelacion:operationId});
+      if(error)throw error;
+      modal.querySelector('[data-status]').textContent='Comprueba el crédito y los importes originales antes de confirmar.';
+      const c=p.calculo;
+      modal.querySelector('[data-preview]').innerHTML=`<p><strong>Crédito ${esc(p.credito)}</strong> · ${esc(p.comercio)} · IMEI ${esc(p.imei)}</p><p>Venta original: ${esc(String(p.fecha_original||'').slice(0,10))}</p>${c?`<dl class="compact-price-values">${[['Pago al aliado',c.pago_aliado],['Bonos',c.total_bonos],['Utilidad a reversar',c.utilidad_creditek],['Provisión a reversar',c.policy_snapshot?.provision]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value==null?'No disponible':money(value)}</dd></div>`).join('')}</dl>${(p.pagos||[]).map(x=>`<p>${esc(x.beneficiario)}: ${money(x.importe)} · ${['pagado','conciliado'].includes(x.estado)?'Por recuperar mediante cruce o cobro':'Obligación pendiente por cancelar'}</p>`).join('')}<p>Se conservarán los comprobantes. No se ejecutará ningún pago ni se marcará dinero como recuperado en el banco.</p>`:'<p>Si entrada y anulación pertenecen al mismo lote y todavía no tienen cálculo ni pagos, quedarán en cero conservando ambas filas.</p>'}${!c||operator.capacidad==='aprobador'?'<button class="btn primary" data-confirm>Confirmar anulación y sus ajustes</button>':'<p>Gerencia debe confirmar los ajustes de una liquidación aprobada.</p>'}`;
+      const confirm=modal.querySelector('[data-confirm]');
+      if(confirm)confirm.onclick=async()=>{
+        confirm.disabled=true;
+        try{
+          const result=await sb.rpc('aliados_confirmar_reversion',{p_cancelacion:operationId});
+          if(result.error)throw result.error;
+          modal.close();await loadBatches();await openDetail(lotId);await loadTab('incidents');
+        }catch(e){modal.querySelector('[data-status]').textContent=e.message;confirm.disabled=false;}
+      };
+    }catch(e){modal.querySelector('[data-status]').textContent=e.message;}
+  }
+
   async function loadIncidents(focusOperationId, isCurrent = () => true) {
     const { data, error } = await sb.from('liquidation_incidents').select('*,liquidation_operations(establishment_name,imei,referencia,modelo,origen_codigo)').eq('liquidation_id', selected.id).order('created_at');
     if (!isCurrent()) return;
@@ -460,7 +497,7 @@
         const editable = item.estado === 'abierta' && !selected.frozen_at && PENDING_STATES.includes(selected.estado);
         const action = editable && administrative?.href ? `<a class="btn secondary" href="${esc(administrative.href)}">${esc(administrative.label)}</a>` : editable && !bonus && !followupOnly ? `<button class="btn secondary" data-resolve="${item.id}" data-operation="${item.operation_id || ''}" data-incident-type="${esc(item.tipo)}">${administrative?.label || (Commerce.types.has(item.tipo) ? 'Vincular comercio' : price ? 'Revisar precios' : 'Revisar y justificar')}</button>` : '';
         const priceDetails=price&&c&&item.estado==='abierta'?`<dl class="compact-price-values">${[['PVP configurado',c.pvp_guardado],['PVP Krediya',c.pvp_recibido],['Diferencia PVP',c.diferencia_pvp],['PAGAMOS pactado',c.pagamos_guardado]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value==null?'No disponible':money(value)}</dd></div>`).join('')}</dl><p>Se conserva PAGAMOS. Esta diferencia se gestiona en el informe, sin aceptación individual.</p>`:`<p>${esc(explanation)}</p>`;
-        return `<article class="incident-card"><div><strong>${esc(title)}</strong> · ${paymentFollowup ? '<span class="badge">Sin nuevo pago · el resto del lote continúa</span>' : followupOnly ? '<span class="badge">Informe de 7 días · no bloquea pago</span>' : state(item.estado)}<p><strong>${esc(item.liquidation_operations?.referencia || item.liquidation_operations?.modelo || '')}</strong></p><p>${esc(item.liquidation_operations?.establishment_name || 'General')} · IMEI ${esc(item.liquidation_operations?.imei || '—')}</p>${priceDetails}${item.resolution ? `<p>Resolución: ${esc(item.resolution)}</p>` : ''}</div>${paymentFollowup ? '' : action}${price?`<button class="btn secondary" data-issue-report="${esc(item.operation_id||'')}">Ver informe</button>`:''}</article>`;
+        return `<article class="incident-card"><div><strong>${esc(title)}</strong> · ${paymentFollowup ? '<span class="badge">Sin nuevo pago · el resto del lote continúa</span>' : followupOnly ? '<span class="badge">Informe de 7 días · no bloquea pago</span>' : state(item.estado)}<p><strong>${esc(item.liquidation_operations?.referencia || item.liquidation_operations?.modelo || '')}</strong></p><p>${esc(item.liquidation_operations?.establishment_name || 'General')} · IMEI ${esc(item.liquidation_operations?.imei || '—')}</p>${priceDetails}${item.resolution ? `<p>Resolución: ${esc(item.resolution)}</p>` : ''}</div>${item.tipo==='krediya_anulacion_por_conciliar'&&item.estado==='abierta'?`<button class="btn secondary" data-reversal="${esc(item.operation_id)}">Revisar anulación</button>`:paymentFollowup ? '' : action}${price?`<button class="btn secondary" data-issue-report="${esc(item.operation_id||'')}">Ver informe</button>`:''}</article>`;
       }).join('') || '<p>No hay novedades en esta vista.</p>'}<div class="incident-toolbar"><button class="btn secondary" id="previousIssues" ${page === 0 ? 'disabled' : ''}>Anterior</button><span>Página ${page + 1} de ${pages} · ${visible.length} novedades</span><button class="btn secondary" id="nextIssues" ${page + 1 >= pages ? 'disabled' : ''}>Siguiente</button></div></td></tr>`;
       $('pendingIssues').onclick = () => { showHistory = false; page = 0; render(); };
       $('historyIssues').onclick = () => { showHistory = true; page = 0; render(); };
@@ -469,6 +506,7 @@
       $('nextIssues').onclick = () => { page++; render(); };
       document.querySelectorAll('[data-resolve]').forEach((button) => { button.onclick = () => resolveIncident(button.dataset.resolve, button.dataset.operation, button.dataset.incidentType); });
       document.querySelectorAll('[data-issue-report]').forEach(button=>button.onclick=()=>loadTab('differences',button.dataset.issueReport||null));
+      document.querySelectorAll('[data-reversal]').forEach(button=>button.onclick=()=>reviewReversal(button.dataset.reversal));
       document.querySelector('.incident-toolbar')?.scrollIntoView({ block: 'start', behavior: 'instant' });
     };
     render();

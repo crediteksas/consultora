@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import CreditekReversiones from '../../creditek/erp/aliados-reversiones-domain.js';
 const app=fs.readFileSync('creditek/erp/aliados-v1-1-app.js','utf8');
 const source=app.slice(app.indexOf('  function dashboardOperations()'),app.indexOf('  function populateDashboardFilters()'));
 function fixture(){
@@ -9,7 +10,7 @@ function fixture(){
  nodes['#dashboardFrom'].value='2026-08-01';nodes['#dashboardTo'].value='2026-08-31';
  const db={operations:[],historicalCredits:[],origins:[],sites:[],expenses:[],incidents:[]};
  const ctx={db,$:s=>nodes[s],establishmentKey:v=>String(v||'').toLowerCase(),operationSaleDay:o=>String(o.operation_at).slice(0,10),date:v=>String(v).slice(0,10),businessType:o=>o.tipo_establecimiento,operationCity:o=>db.origins.find(x=>x.codigo===o.origen_codigo)?.ciudad||'',operationName:o=>o.establishment_name,operationUtilityAvailable:o=>Number(o.utilidad_creditek||0)-Number(o.resultado_cerrado||0),historicalUtilityOriginal:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0),historicalUtilityClosed:o=>Number(o.resultado_cerrado_historico||0),historicalUtilityAvailable:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0)-Number(o.resultado_cerrado_historico||0),sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),metrics:x=>ctx.cards=x,cop:String,esc:String,badge:String,platformName:String,execName:String,paymentValue:o=>Number(o.pago_neto_beneficiario||0),rows:(a,c)=>a.map(x=>c.map(f=>f(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n'),OPERATION_CUTOFF:'2026-09-01',originFor:()=>null};
- vm.runInNewContext(source,ctx);return {ctx,db,nodes};
+ ctx.CreditekReversiones=CreditekReversiones;vm.runInNewContext(source,ctx);return {ctx,db,nodes};
 }
 test('Krediya concilia margen antes de bonos, gasto financiero y provisión sin doble descuento',()=>{
  const {ctx,db,nodes}=fixture();

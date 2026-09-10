@@ -57,7 +57,7 @@
       (l.estado==='programada'&&!l.approved_at&&p.estado==='programado'&&p.authorized_by&&p.authorized_at));
   }
   function pagoAutorizado(p) {
-    return Boolean(p.authorized_by && p.authorized_at);
+    return Boolean(p.authorized_by && p.authorized_at && !p.recovery_review_required);
   }
   function paymentReadiness(p) {
     if (p.historico_inicial || p.estado === 'conciliado') return {ready:false,reason:'Pago cerrado'};

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import CreditekReversiones from '../../creditek/erp/aliados-reversiones-domain.js';
 const app = fs.readFileSync('creditek/erp/aliados-v1-1-app.js','utf8');
 const liquidaciones = fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
 const citySource = app.slice(app.indexOf('  function operationCity('),app.indexOf('  function liquidationForOperation('));
@@ -39,7 +40,7 @@ test('dashboard filtra provisión y bonos por crédito sin restar dos veces la r
  const nodes={};for(const id of ['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity','dashboardFilterSummary','content'])nodes['#'+id]={value:''};
  nodes['#dashboardCity'].value='Cereté';let cards;
  const ctx={$:s=>nodes[s],db:{operations:[{id:'a',liquidation_id:'l',origen_codigo:'a',plataforma:'krediya',monto_base:100,utility:72,policy_snapshot:{krediya_v2:{provision:28}}},{id:'b',liquidation_id:'l',origen_codigo:'b',plataforma:'krediya',monto_base:200,utility:144,policy_snapshot:{krediya_v2:{provision:56}}}],origins:[{codigo:'a',ciudad:'Cereté'},{codigo:'b',ciudad:'Montería'}],sites:[],allies:[],bonuses:[{operation_id:'a',liquidation_id:'l',valor:5},{operation_id:'b',liquidation_id:'l',valor:10}],beneficiaries:[],incidents:[]},operationIsCurrent:()=>true,operationSaleDay:()=> '2026-08-25',businessType:()=> 'aliado',sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),historicalUtilityOriginal:()=>0,historicalUtilityClosed:()=>0,historicalUtilityAvailable:()=>0,operationUtilityAvailable:o=>o.utility,metrics:x=>cards=x,cop:String,operationName:o=>o.origen_codigo,paymentValue:()=>0,esc:String,execName:()=>'',badge:String,platformName:String,rows:(a,cols)=>a.map(x=>cols.map(c=>c(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n')};
- ctx.db.operations.forEach(o=>{o.utilidad_creditek=o.utility;o.bonos_aplicados=o.id==='a'?5:10;o.policy_snapshot.krediya_v2.gasto_financiero=0;});
+ ctx.CreditekReversiones=CreditekReversiones;ctx.db.operations.forEach(o=>{o.utilidad_creditek=o.utility;o.bonos_aplicados=o.id==='a'?5:10;o.policy_snapshot.krediya_v2.gasto_financiero=0;});
  vm.runInNewContext(citySource+app.slice(app.indexOf('  function dashboardOperations()'),app.indexOf('  function populateDashboardFilters()')),ctx);ctx.renderDashboard();
  assert.equal(cards.find(c=>c[0]==='Provisión calculada del periodo')[1],'28');
  assert.equal(cards.find(c=>c[0]==='Utilidad final del periodo')[1],'72');

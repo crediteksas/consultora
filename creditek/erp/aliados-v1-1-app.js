@@ -288,6 +288,7 @@
       historicalCredits,
       expenses,
       platformGoals,
+      reversions,
     ] = await Promise.all([
       allRows("aliados", "*"),
       allRows("aliados_sedes", "*"),
@@ -309,6 +310,7 @@
       ),
       allRows("aliados_gastos_operativos", "*"),
       allRows("aliados_metas_plataforma", "*"),
+      allRows("aliados_reversiones", "*"),
     ]);
     db = {
       allies,
@@ -321,8 +323,9 @@
       platforms,
       liquidations,
       operations,
+      reversions,
       // Los devengos anulados se conservan en la base y auditoría, no en totales vigentes.
-      bonuses: bonuses.filter((b) => !["anulado", "rechazado"].includes(b.estado)),
+      bonuses: bonuses.filter((b) => !["anulado", "rechazado"].includes(b.estado)).concat(CreditekReversiones.bonusEntries(reversions)),
       beneficiaries,
       payments,
       incidents,
@@ -338,9 +341,9 @@
   // Reporting is independent of payment eligibility. Match only the lender's
   // credit identifier: an IMEI or a date alone is not a unique credit.
   function dashboardOperations() {
-    const key = o => o.external_id ? `${o.plataforma}|${String(o.external_id).trim().toLowerCase()}` : `operation|${o.id}`;
+    const key = CreditekReversiones.key;
     const records = new Map();
-    for (const o of db.operations) records.set(key(o), o);
+    for (const o of CreditekReversiones.reportingOperations(db.operations,db.reversions)) records.set(key(o), o);
     for (const h of db.historicalCredits || []) {
       const existing = records.get(`${h.plataforma}|${String(h.codigo_credito).trim().toLowerCase()}`);
       if (existing) continue; // The reviewed liquidation takes precedence over its imported copy.
@@ -428,7 +431,7 @@
     const finalUtility = component('net') - expenseTotal;
     const closedUtility = sum(ops, 'resultado_cerrado');
     metrics([
-      ["Créditos del periodo", ops.length],
+      ["Créditos del periodo", CreditekReversiones.creditCount(ops)],
       ["Utilidad bruta del negocio", amount(component('gross'))],
       ["Ventas del periodo", cop(sum(ops, "monto_base"))],
       ["Bonificaciones del periodo", amount(component('bonus'))],
@@ -453,7 +456,7 @@
               provisionMissing: false,
               complete: true,
             };
-          current.ops++;
+          current.ops += o.reversion_id ? -1 : 1;
           current.complete &&= dashboardBreakdown(o).complete;
           current.sales += Number(o.monto_base || 0);
           current.payment += paymentValue(o);
@@ -497,7 +500,7 @@
         }, new Map())
         .values(),
     ].sort((a, b) => b.value - a.value);
-    const filterSummary = `${ops.length} créditos por fecha de venta · ${[...new Set(ops.map(o => platformName(o.plataforma)))].join(', ')} · Incluye históricos sin duplicar créditos ni generar pagos.`;
+    const filterSummary = `${ops.filter(o=>!o.reversion_id).length} créditos por fecha de venta · ${ops.filter(o=>o.reversion_id).length} anulaciones por fecha de ajuste · ${[...new Set(ops.map(o => platformName(o.plataforma)))].join(', ')}. Incluye históricos sin duplicar créditos ni generar pagos. Los créditos netos descuentan las anulaciones; los cobros y cruces no generan nueva utilidad.`;
     if($("#dashboardFilterSummary")) $("#dashboardFilterSummary").textContent = filterSummary;
     $("#content").innerHTML =
 `<details class="card"><summary>Consultar histórico cerrado</summary><h2>Histórico inicial — ya pagado y cerrado</h2><p class="muted">Los cálculos originales permanecen para auditoría. Todo resultado anterior al 1 de septiembre de 2026 fue retirado y su saldo disponible es cero. No genera órdenes de pago ni exige soportes. En Krediya, la comisión operativa histórica está incluida en esa provisión, sin duplicar el descuento.</p>${table(["Plataforma", "Créditos", "Valor financiado", "Pago beneficiarios", "Resultado final", "Resultado cerrado", "Disponible", "Pendientes"], rows(historicalByPlatform, [(x) => esc(platformName(x.platform)), (x) => x.count, (x) => cop(x.value), (x) => cop(x.payment), (x) => cop(x.net), (x) => cop(x.closed), (x) => cop(x.available), (x) => x.pending]))}</details><section class="card"><h2>Operaciones del periodo</h2><p class="muted">La provisión mostrada ya está descontada de la utilidad. Es una reserva calculada; no acredita que el dinero esté separado en una cuenta bancaria.</p>${table(["Tipo", "Establecimiento", "Ciudad", "Ejecutivo", "Operaciones", "Ventas", "Pago", "Provisión", "Utilidad disponible", "Asociación"], rows(grouped, [(x) => badge(x.type === "propia" ? "propia" : "aliado"), (x) => esc(x.name), (x) => esc(x.city || "Ciudad pendiente"), (x) => esc(execName(x.executiveId)), (x) => x.ops, (x) => cop(x.sales), (x) => cop(x.payment), (x) => x.provisionMissing ? "Pendiente de calcular" : cop(x.provision), (x) => x.complete ? cop(x.utility) : "No disponible · revisar datos", (x) => (x.type === "aliado" ? badge(db.sites.some((s) => s.origen_codigo === x.code && s.aliado_id) ? "asociado" : "pendiente_asociacion") : "—")]))}</section>`;
@@ -515,7 +518,7 @@
     const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Los gastos operativos son los aprobados y registrados; no incluyen costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
     const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
-      return {platform, count:credits.length, sales:sum(credits,'monto_base')};
+      return {platform, count:CreditekReversiones.creditCount(credits), sales:sum(credits,'monto_base')};
     });
     const platformSummary = `<section class="card"><h2>Ventas por financiera</h2>${table(['Financiera','Créditos','Valor financiado'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales)]))}</section>`;
     $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + reconciliationHtml + platformSummary + $("#content").innerHTML;
@@ -1360,7 +1363,7 @@
             (x) => x.id === b.liquidation_id,
           ),
           beneficiary = db.beneficiaries.find((x) => x.id === b.beneficiary_id),
-          ops = db.operations.filter(
+          ops = [...db.operations,...CreditekReversiones.entries(db.reversions)].filter(
             (o) =>
               o.id === b.operation_id &&
               o.liquidation_id === b.liquidation_id && operationIsCurrent(o),
@@ -1400,7 +1403,7 @@
           ),
         ),
       ],
-      ["Créditos con bono", new Set(items.map((x) => x.b.operation_id)).size],
+      ["Créditos con bono", new Set(items.filter(x=>!x.b.reversion_id).map((x) => x.b.operation_id)).size],
       ["Bonos por beneficiario", items.length],
       [
         "Aprobadas",

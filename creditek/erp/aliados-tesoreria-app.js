@@ -189,6 +189,15 @@
     } while (rows.length < total);
     return rows;
   }
+  async function loadRecoveryRows(table) {
+    const rows=[];
+    for (;;) {
+      const result=await sb.from(table).select('*').order('id').range(rows.length,rows.length+499);
+      if(result.error) throw result.error;
+      rows.push(...result.data);
+      if(result.data.length<500) return rows;
+    }
+  }
   async function load() {
     const [
       balances,
@@ -202,6 +211,9 @@
       profiles,
       origins,
       rectifications,
+      recoveries,
+      recoveryApplications,
+      reversions,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -235,6 +247,9 @@
       safe(sb.from("perfiles").select("id,nombre")),
       safe(sb.from("origenes").select("codigo,nombre").eq("activo", true)),
       safe(sb.from("liquidation_adjustments").select("id,liquidation_id,new_value,estado").eq("field_name", "krediya_bonos_rectificados")),
+      loadRecoveryRows('aliados_recuperaciones'),
+      loadRecoveryRows('aliados_cruces_recuperacion'),
+      loadRecoveryRows('aliados_reversiones'),
     ]);
     data = {
       balances,
@@ -248,6 +263,9 @@
       profiles,
       origins,
       rectifications,
+      recoveries,
+      reversions,
+      recoveryApplications,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -318,7 +336,7 @@
     return "";
   }
   function isClosedPayment(p) {
-    return Boolean(p.historico_inicial) || p.estado === "conciliado" || (p.estado === 'pagado' && Boolean(p.soporte_path));
+    return Boolean(p.historico_inicial) || (p.estado === 'anulado' && Number(p.valor)===0) || p.estado === "conciliado" || (p.estado === 'pagado' && Boolean(p.soporte_path));
   }
   function paymentsForCurrentView() {
     return data.payments.filter((p) =>
@@ -361,12 +379,20 @@
   <p class="payment-card__ref">Liquidación: ${window.CreditekTesoreriaTercerizacion.loteAutorizado(p)?'aprobada':'pendiente de aprobación'} · Pago: ${esc(p.estado)}</p>
   <div class="payment-card__grid"><div class="payment-field"><small>${kind === "ejecutivo" ? "Bonificación total" : "Valor total a girar"}</small><strong>${cop(total)}</strong></div><div class="payment-field"><small>${kind === "ejecutivo" ? "Periodos" : "Cortes"}</small><strong>${esc([...new Set(group.map((x) => date(x.cutoff_snapshot)))].join(", "))}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${operations}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length ? `<span class="approval-pending">Falta: ${esc(missing.join(", "))}</span>` : ""}</div></div>
   ${group.length > 1 ? `<div class="payment-card__orders">${group.map((x) => `<span>PO-${shortId(x.id)} · ${date(x.cutoff_snapshot)} · ${cop(x.valor)}</span>`).join("")}</div>` : ""}
+  ${(data.recoveryApplications||[]).some(a=>group.some(x=>x.id===a.payment_order_id))?`<p>Descuentos por anulaciones: ${cop((data.recoveryApplications||[]).filter(a=>group.some(x=>x.id===a.payment_order_id)).reduce((n,a)=>n+Number(a.importe),0))}. ${total===0?'Sin giro bancario.':'El valor a girar ya incluye estos descuentos.'}</p>`:''}
 <div class="payment-card__actions"><div class="${p.historico_inicial || authorized ? "approval-ok" : "approval-pending"}">${p.historico_inicial ? "Cerrado antes del inicio operativo · no requiere soporte" : authorized ? `Pago autorizado por Gerencia · ${esc(bogotaDateTime(p.authorized_at))}` : "Sin autorización de Gerencia"}</div><div class="payment-actions"><button class="btn secondary" data-payment-detail="${p.id}">Ver detalle completo</button>${action}</div></div>
  </article>`;
       })
       .join("")}</div>`;
   }
   function render() {
+    let recoverySummary=$('#recoverySummary');
+    if(!recoverySummary){recoverySummary=document.createElement('section');recoverySummary.id='recoverySummary';recoverySummary.className='card';$('#outgoingContent').before(recoverySummary);}
+    const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
+    const debtGroups=new Map();
+    for(const d of recoveries){const amount=Number(d.importe)-Number(d.recuperado);debtGroups.set(d.beneficiary_id,(debtGroups.get(d.beneficiary_id)||0)+amount);}
+    recoverySummary.hidden=!recoveries.length;
+    recoverySummary.innerHTML=`<h2>Dinero por recuperar · todos los cortes</h2><p>Se cruza con los próximos pagos del mismo beneficiario. Si no tiene pagos, Gestión debe cobrarlo. No representa dinero ya recuperado.</p><strong>${cop([...debtGroups.values()].reduce((n,v)=>n+v,0))}</strong><details><summary>Ver ${debtGroups.size} beneficiarios</summary>${[...debtGroups].map(([id,value])=>`<p>${esc(data.beneficiaries.find(b=>b.id===id)?.nombre||'Beneficiario sin nombre')} · ${cop(value)}</p>`).join('')}</details>`;
     let correction = $("#rectificationSummary");
     if (!correction) {
       correction = document.createElement("section");
@@ -390,7 +416,7 @@
     $("#showHistory").classList.toggle("active",treasuryView==="history");
     if(["cobros","clients","preparation"].includes(treasuryView))return;
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
-      out = data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0,
+      out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
         (x) =>
           !isClosedPayment(x) &&
@@ -431,7 +457,8 @@
       ],
       ["Compensaciones asignadas a B2B", comp],
       ["Saldo B2B disponible", b2b],
-      ["Saldo Tercerización disponible", out],
+      ["Saldo Tercerización disponible", Math.max(0,out)],
+      ["Faltante operativo por anulaciones", Math.max(0,-out)],
       ["Gastos y salidas de Tercerización", expenses],
     ]
       .map(
@@ -594,13 +621,17 @@
     );
   }
   async function authorizePayment(id) {
-    const { error } = await sb.rpc("aliados_autorizar_pago", { p_id: id });
+    const preview=await sb.rpc('aliados_previsualizar_cruce',{p_id:id});
+    if(preview.error) return notice(preview.error.message,true);
+    const v=preview.data;
+    if(Number(v.recuperacion)>0&&!confirm(`Pago antes del cruce: ${cop(v.pago)}\nDescuento por anulación: ${cop(v.recuperacion)}\nValor a girar: ${cop(v.neto)}\nSaldo aún por cobrar: ${cop(v.saldo_por_cobrar)}\n\n¿Confirmas este cruce y autorizas únicamente el valor neto?`))return;
+    const { error } = await sb.rpc("aliados_autorizar_pago_con_cruce", { p_id: id,p_neto_esperado:Number(v.neto) });
     if (error)
       return notice(
         error.message || "Solo Oscar Pacheco puede autorizar este pago.",
         true,
       );
-    notice("Pago autorizado por Gerencia. Maite ya puede adjuntar el soporte.");
+    notice(Number(v.neto)===0?'Cruce registrado. No hay giro ni se requiere un comprobante bancario ficticio.':"Pago neto autorizado por Gerencia. Maite ya puede adjuntar el soporte.");
     await load();
   }
   function syncPaymentModalState() {

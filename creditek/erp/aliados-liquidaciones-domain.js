@@ -184,13 +184,22 @@
     const originales = filasObjetos(rows);
     const vistos = new Set();
     const incidencias = [];
-    const operaciones = originales.map((row, index) => {
+    // Preserve both events and process payable entries first, even when the
+    // cancellation is listed first in the file. Keep the original row number.
+    const ordered = originales.map((row,index)=>({row,index})).sort((a,b)=>
+      Number(clave(valor(b.row,'Estado del contrato'))==='firmado' && clave(valor(b.row,'Estado del Pago'))==='pagado')-
+      Number(clave(valor(a.row,'Estado del contrato'))==='firmado' && clave(valor(a.row,'Estado del Pago'))==='pagado'));
+    const sourceKeys = new Set();
+    const operaciones = ordered.map(({row,index}) => {
       const externalId = texto(valor(row, '# Crédito', 'Credito', 'Crédito'));
-      const sourceKey = `krediya|${externalId}`;
+      let sourceKey = `krediya|${externalId}`;
+      if(sourceKeys.has(sourceKey)) sourceKey += `|fila:${index+2}`;
+      sourceKeys.add(sourceKey);
       const clasificacion = clasificarEstablecimiento(valor(row, 'Tienda', 'Aliado'), establecimientos);
       const problemas = [];
-      if (!externalId || vistos.has(externalId)) problemas.push('operacion_duplicada');
-      vistos.add(externalId);
+      const eligible = clave(valor(row,'Estado del contrato'))==='firmado' && clave(valor(row,'Estado del Pago'))==='pagado';
+      if (!externalId || (eligible && vistos.has(externalId.toLowerCase()))) problemas.push('operacion_duplicada');
+      if(eligible) vistos.add(externalId.toLowerCase());
       if (!texto(valor(row, 'IMEI'))) problemas.push('imei_vacio');
       if (!texto(valor(row, 'Cédula', 'Cedula'))) problemas.push('documento_vacio');
       if (clasificacion.incidencia) problemas.push(clasificacion.incidencia);

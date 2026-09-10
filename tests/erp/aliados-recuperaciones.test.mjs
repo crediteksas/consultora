@@ -41,6 +41,22 @@ async function setup(){
  await db.exec(sql);return db;
 }
 const row=async(db,q,p=[])=>(await db.query(q,p)).rows[0];
+test('botón autorizar: preview y autorización funcionan con authenticated sin USAGE de kora_private',async()=>{
+ const db=await setup();try{
+ const b=await row(db,"insert into liquidation_beneficiaries(nombre) values('Prueba') returning id");
+ const p=await row(db,"insert into payment_orders(beneficiary_id,valor,estado) values($1,100,'pendiente') returning id",[b.id]);
+ await db.exec('revoke usage on schema kora_private from authenticated;set role authenticated');
+ await assert.rejects(db.query('select public.aliados_previsualizar_cruce($1)',[p.id]),/permission denied for schema kora_private/);
+ await db.exec('reset role');await db.exec(fs.readFileSync('supabase/migrations/20260910220925_tesoreria_autorizar_cruce_acceso_acotado.sql','utf8'));
+ await db.exec('set role authenticated');
+ const v=(await db.query('select public.aliados_previsualizar_cruce($1) v',[p.id])).rows[0].v;assert.equal(v.neto,100);
+ await db.exec("set test.gerencia='false'");await assert.rejects(db.query('select public.aliados_autorizar_pago_con_cruce($1,100)',[p.id]),/Solo Gerencia/);
+ await db.exec("set test.gerencia='true'");await db.query('select public.aliados_autorizar_pago_con_cruce($1,100)',[p.id]);
+ assert.equal((await db.query("select has_schema_privilege('authenticated','kora_private','USAGE') ok")).rows[0].ok,false);
+ await db.exec('set role anon');await assert.rejects(db.query('select public.aliados_previsualizar_cruce($1)',[p.id]),/permission denied/);
+ await db.exec('reset role');const saved=await row(db,'select * from payment_orders where id=$1',[p.id]);assert.equal(saved.estado,'programado');assert.equal(Number(saved.valor),100);assert.ok(saved.authorized_at);
+ }finally{await db.close();}
+});
 async function sale(db,{paid=true,principal=100,bonus=20,frozen=true}={}){
  const l=await row(db,`insert into liquidations(frozen_at) values(${frozen?'now()':'null'}) returning id`);
  const c=await row(db,"insert into liquidations(estado,frozen_at) values('importada',null) returning id");

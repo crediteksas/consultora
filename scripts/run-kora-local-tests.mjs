@@ -42,6 +42,7 @@ const erp = [
   'tests/erp/krediya-flujo-tarifario.test.mjs',
   'tests/erp/krediya-tarifa-operacion.test.mjs',
   'tests/erp/krediya-review-ui.test.mjs',
+  'tests/erp/liquidacion-aprobacion-inmediata.test.mjs',
   'tests/erp/liquidaciones-pagos-cards.test.mjs',
   'tests/erp/aliados-tesoreria-pagos-agrupados.test.mjs',
   'tests/erp/tesoreria-compensaciones-filtros.test.mjs',

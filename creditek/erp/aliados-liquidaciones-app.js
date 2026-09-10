@@ -15,6 +15,7 @@
   let comercios;
   let preparacion;
   let batches = [];
+  let batchesRequest = 0;
   let selected;
   let activeTab = 'operations';
   let activeTabRequest;
@@ -40,7 +41,7 @@
 
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
   const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
-  const isHistoricalBatch = (batch) => HISTORY_STATES.includes(batch.estado) ||
+  const isHistoricalBatch = (batch) => Boolean(batch.approved_at) || HISTORY_STATES.includes(batch.estado) ||
     (batch.plataforma !== 'krediya' && String(batch.fecha_corte || '') < '2026-09-01');
 
   function statesForMode() {
@@ -100,9 +101,11 @@
   if (window.creditekSidebar?.sb) enterFromKora();
 
   async function loadBatches() {
+    const request = ++batchesRequest;
     let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,ejecutivo_id,establishment_name,referencia,imei)').order('imported_at', { ascending: false });
     if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
     const { data, error } = await query;
+    if (request !== batchesRequest) return;
     if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; return; }
     batches = data || [];
     $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
@@ -112,6 +115,8 @@
   }
 
   function renderBatches() {
+    $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
+    $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     const search = $('filterSearch').value.trim().toLowerCase();
     const stateFilter = $('filterState').value;
     const rows = batches.filter((b) => listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
@@ -699,7 +704,24 @@
   }
   async function stateRpc(next, comment = null) {
     const batchId = selected.id;
-    const { error } = await sb.rpc('aliados_cambiar_estado', { p_id: batchId, p_estado: next, p_comentario: comment });
+    if (next === 'aprobada') $('approve').disabled = true;
+    let data, error;
+    try {
+      ({ data, error } = await sb.rpc('aliados_cambiar_estado', { p_id: batchId, p_estado: next, p_comentario: comment }));
+    } catch (failure) { error = failure; }
+    const confirmed = Array.isArray(data) ? data[0] : data;
+    if (!error && next === 'aprobada') {
+      if (confirmed?.id !== batchId || !confirmed.approved_at) {
+        error = {message:'No se recibió confirmación de aprobación. El lote sigue en pendientes; verifica su estado antes de intentarlo otra vez.'};
+      } else {
+        ++batchesRequest; // Una consulta anterior no puede restaurar la fila pendiente.
+        batches = batches.map(batch => batch.id === batchId ? {...batch,...confirmed} : batch);
+        if (selected?.id === batchId) { setListMode('pending'); $('detail').classList.add('hidden'); selected = null; }
+        else renderBatches();
+        $('lastUpdated').textContent = 'Liquidación aprobada. Disponible en historial y en las últimas aprobadas. Los pagos requieren autorización en Tesorería.';
+        return;
+      }
+    }
     if (selected?.id !== batchId) return;
     if (error) {
       const approvalBlocked = next === 'aprobada' && /novedades.*bloquean/i.test(error.message || '');
@@ -712,6 +734,8 @@
       $('workflowError').prepend(errorMessage);
       $('workflowError').classList.remove('hidden');
       if (approvalBlocked) await loadTab('incidents');
+      $('workflowError').scrollIntoView?.({behavior:'smooth',block:'center'});
+      $('lastUpdated').textContent = 'La aprobación no se completó: ' + errorMessage.textContent;
       return;
     }
     const selectedId = selected.id;

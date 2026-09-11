@@ -328,6 +328,16 @@ let imeisEscaneados = {};   // { item_id: [imeis], ... }
 // FIX 23-jul-2026 · trazabilidad: mapa factura_id → {numero, fecha, proveedor}
 let trazabilidadFacturas = {};   // {facturaId: {numero, fecha, proveedor}}
 let trazabilidadItemFacturas = {}; // {remision_item_id: [facturaId, ...]}
+let errorTrazabilidad = false;
+
+function proveedorPorProducto(itemId) {
+  if (errorTrazabilidad) return 'Proveedor: Creditek · Origen para garantía no disponible; vuelve a cargar la remisión.';
+  const proveedores = [...new Set([...(trazabilidadItemFacturas[itemId] || [])]
+    .map(id => trazabilidadFacturas[id]?.proveedor).filter(nombre => nombre && nombre !== '—'))];
+  return proveedores.length
+    ? 'Proveedor: Creditek · ' + proveedores.join(' / ') + ' (origen para garantía)'
+    : 'Proveedor: Creditek · Origen para garantía pendiente de vincular';
+}
 
 // La tienda obtiene únicamente proveedor, factura y fecha mediante un RPC
 // SECURITY DEFINER que valida que la remisión pertenezca a su tienda. El RPC
@@ -335,10 +345,12 @@ let trazabilidadItemFacturas = {}; // {remision_item_id: [facturaId, ...]}
 async function cargarTrazabilidadRemision(remisionId) {
   trazabilidadFacturas = {};
   trazabilidadItemFacturas = {};
+  errorTrazabilidad = false;
   const { data, error } = await SB.rpc('obtener_trazabilidad_remision', {
     p_remision_id: remisionId
   });
   if (error) {
+    errorTrazabilidad = true;
     console.warn('No se pudo cargar la trazabilidad de la remisión:', error.message);
     return;
   }
@@ -370,7 +382,7 @@ function renderTrazabilidad() {
   if (totalFacturas === 1) {
     const f = Object.values(trazabilidadFacturas)[0];
     div.innerHTML = `
-      <div><b>Proveedor:</b> ${esc(f.proveedor)}</div>
+      <div><b>Proveedor:</b> Creditek · ${esc(f.proveedor)} (origen para garantía)</div>
       <div><b>Factura:</b> ${esc(f.numero)} · <b>Fecha de compra:</b> ${fecha(f.fecha)}</div>
     `;
     return;
@@ -487,6 +499,7 @@ function renderDocumento() {
           <td class="py-3 pr-2">
             <div class="font-medium text-gray-800">${esc(p.nombre)}</div>
             <div class="text-xs text-gray-500">${p.tipo === 'serializado' ? 'Con IMEI' : 'Stock por cantidad'}</div>
+            <div class="text-xs text-gray-700 mt-2" data-proveedor-origen>${esc(proveedorPorProducto(it.id))}</div>
           </td>
           <td class="py-3 pr-2 font-mono text-xs">${esc(p.codigo || '—')}</td>
           <td class="py-3 pr-2 text-xs text-gray-600 uppercase">${esc(p.categoria)}</td>

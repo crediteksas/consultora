@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Finanzas programadas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.21"></script>
+  <script src="sidebar.js?v=2.0.21" data-kora-shell="1.0.0"></script>
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <script src="finanzas-programadas-domain.js?v=1.0.0"></script>
+  <style>
+    :root{--navy:#0b1e3d;--aqua:#00c4cc;--bg:#f5f7fa;--muted:#667085;--line:#dde5ed;--ok:#177245;--danger:#b42318;--warn:#9a6700}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:'DM Sans',sans-serif}.page{max-width:1500px;margin:auto;padding:26px 24px 60px}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}.page-head h1{font:800 27px/1.15 Montserrat,sans-serif;margin:0}.page-head p{color:var(--muted);margin:7px 0 0;max-width:760px}.actions,.row-actions{display:flex;gap:8px;flex-wrap:wrap}.card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(11,30,61,.03)}.notice{padding:14px 16px;border-left:4px solid var(--aqua);margin-bottom:16px}.notice.error{border-color:var(--danger);color:var(--danger)}.notice strong{display:block;margin-bottom:3px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.metric{padding:17px}.metric small{display:block;color:var(--muted);font-weight:700}.metric strong{display:block;font:800 22px Montserrat,sans-serif;margin-top:6px}.toolbar{display:grid;grid-template-columns:2fr repeat(3,minmax(140px,1fr)) auto;gap:10px;padding:13px;margin-bottom:16px}.control{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--navy);padding:9px 12px;font:inherit;min-width:0}.btn{min-height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--navy);padding:10px 14px;font-weight:700;cursor:pointer}.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}.btn.danger{color:var(--danger)}.section{margin-top:16px;overflow:hidden}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line)}.section-head h2{font:800 18px Montserrat,sans-serif;margin:0}.section-head p{color:var(--muted);margin:4px 0 0}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:1050px}.table th{background:var(--navy);color:#fff;text-align:left;padding:12px;font-size:12px}.table td{padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:top}.table small{display:block;color:var(--muted);margin-top:3px}.amount{font-weight:800;white-space:nowrap}.pill{display:inline-flex;border-radius:999px;padding:5px 9px;background:#eef2f6;font-size:12px;font-weight:700}.pill.aprobado,.pill.pagado{background:#dcfce7;color:var(--ok)}.pill.pendiente_aprobacion{background:#fff2cc;color:var(--warn)}.pill.rechazado,.pill.anulado{background:#fee4e2;color:var(--danger)}.empty{padding:38px 20px;text-align:center;color:var(--muted)}.modal-bg{position:fixed;inset:0;background:rgba(11,30,61,.62);z-index:1100;display:grid;place-items:center;padding:16px}.modal-bg[hidden]{display:none}.modal{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:22px}.modal h2{font:800 20px Montserrat,sans-serif;margin:0 0 15px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:var(--muted);font-weight:700}.check{display:flex;align-items:center;gap:8px;min-height:44px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.hidden{display:none!important}
+    @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.toolbar{grid-template-columns:repeat(2,1fr)}.toolbar input{grid-column:1/-1}.page-head{flex-direction:column}.page-head .actions{width:100%}}
+    @media(max-width:640px){.page{padding:16px 12px 44px}.page-head h1{font-size:23px}.page-head .actions,.page-head .btn{width:100%}.metrics{grid-template-columns:1fr 1fr}.metric{padding:13px}.metric strong{font-size:18px}.toolbar{grid-template-columns:1fr}.toolbar input{grid-column:auto}.section-head{align-items:flex-start;flex-direction:column}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.modal{padding:18px 14px}.modal-actions{flex-direction:column-reverse}.modal-actions .btn{width:100%}}
+  </style>
+</head>
+<body data-kora-requires-auth="true">
+<main id="app" class="main-content" hidden>
+  <div class="page">
+    <header class="page-head">
+      <div><h1 id="pageTitle">Finanzas programadas</h1><p id="pageSubtitle"></p></div>
+      <div class="actions"><button id="newRecurring" class="btn" type="button">Nueva obligación periódica</button><button id="newExpense" class="btn primary general-only" type="button">Nuevo gasto general</button><button id="newWithdrawal" class="btn general-only" type="button">Nuevo retiro</button></div>
+    </header>
+    <div id="separationNotice" class="notice card"></div>
+    <div id="notice" class="notice card" hidden role="status"></div>
+    <section id="metrics" class="metrics"></section>
+    <section class="toolbar card">
+      <input id="query" class="control" type="search" placeholder="Concepto, beneficiario o identificación">
+      <select id="business" class="control general-only"><option value="">Todos los negocios</option><option value="retail">Retail</option><option value="b2b">B2B</option><option value="aliados">Aliados</option></select>
+      <select id="store" class="control retail-only"><option value="">Todas las tiendas</option></select>
+      <select id="status" class="control"><option value="">Todos los estados</option><option value="pendiente_aprobacion">Pendientes</option><option value="aprobado">Aprobados</option><option value="pagado">Pagados</option><option value="rechazado">Rechazados</option></select>
+      <input id="from" class="control" type="date" aria-label="Desde">
+      <input id="to" class="control" type="date" aria-label="Hasta">
+      <button id="exportCsv" class="btn" type="button">Descargar informe</button>
+    </section>
+    <section class="section card"><div class="section-head"><div><h2>Pendientes de aprobación</h2><p>Maite configura o registra; Oscar aprueba o rechaza.</p></div></div><div id="pendingContent"></div></section>
+    <section class="section card"><div class="section-head"><div><h2>Obligaciones periódicas</h2><p>Se generan automáticamente en su fecha y nunca ejecutan un pago solas.</p></div></div><div id="templatesContent"></div></section>
+    <section class="section card"><div class="section-head"><div><h2>Histórico</h2><p>Consulta aprobaciones, pagos, rechazos y retiros por fecha.</p></div></div><div id="historyContent"></div></section>
+  </div>
+</main>
+<div id="modalBg" class="modal-bg" hidden><form id="form" class="modal card"><h2 id="modalTitle"></h2><input id="recordId" type="hidden"><input id="formKind" type="hidden"><div id="formFields" class="form-grid"></div><div id="formError" class="notice error" hidden></div><div class="modal-actions"><button id="cancel" class="btn" type="button">Cancelar</button><button id="save" class="btn primary" type="submit">Guardar</button></div></form></div>
+<script src="finanzas-programadas-app.js?v=1.0.0"></script>
+</body>
+</html>

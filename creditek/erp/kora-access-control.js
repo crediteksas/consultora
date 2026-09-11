@@ -3,6 +3,11 @@
 
   const CORPORATE_ROLES = new Set(['gerencia', 'auditoria']);
   const STORE_ROLES = new Set(['admin_tienda', 'asesor']);
+  const FINANCIAL_CONTROLLERS = new Set([
+    'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
+    '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
+  ]);
+  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html']);
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
@@ -21,7 +26,7 @@
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
     'incidencias.html', 'compartir-instalacion.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
-    ...CREDIT_PORTFOLIO_ROUTES,
+    ...CREDIT_PORTFOLIO_ROUTES, ...FINANCIAL_CONTROLLER_ROUTES,
   ]);
   const STORE_ROUTES_BY_ROLE = Object.freeze({
     admin_tienda: new Set([
@@ -45,6 +50,7 @@
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2' },
       { label: 'Inventario Retail', href: 'inventario.html', icon: 'package' },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt' },
+      { label: 'Gastos periódicos', href: 'finanzas-programadas.html?vista=retail', icon: 'calendar-clock', users: [...FINANCIAL_CONTROLLERS] },
       { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },
       { label: 'Reportes Retail', href: 'reportes.html', icon: 'file-chart-column-increasing' },
     ] },
@@ -78,6 +84,7 @@
       { label: 'Reportes Aliados', href: 'aliados-reportes.html', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', icon: 'hand-coins', users: [...FINANCIAL_CONTROLLERS] },
       { label: 'Compartir instalación', href: 'compartir-instalacion.html', icon: 'share-2', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', icon: 'bug', roles: ['gerencia'] },
       { label: 'Reportar incidencia', href: 'incidencias.html#reportar', icon: 'bug', roles: ['auditoria'] },
@@ -135,6 +142,9 @@
     const hasFullCorporateAccess = profile.rol === 'gerencia';
     const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
     if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
+    if (FINANCIAL_CONTROLLER_ROUTES.has(normalized) && !FINANCIAL_CONTROLLERS.has(profile.id)) {
+      return { allowed: false, route: normalized, experience };
+    }
     if (!hasB2BReadAccess && B2B_ROUTES.has(normalized) && capabilities.b2b !== true) return { allowed: false, route: normalized, experience };
     if (!hasFullCorporateAccess && ALLIES_ROUTES.has(normalized) && capabilities.aliados !== true) return { allowed: false, route: normalized, experience };
     return { allowed: true, route: normalized, experience };
@@ -152,7 +162,8 @@
         .map(section => ({
           ...section,
           items: section.items
-            .filter(item => !item.roles || item.roles.includes(profile.rol))
+            .filter(item => (!item.roles || item.roles.includes(profile.rol))
+              && (!item.users || item.users.includes(profile.id)))
             .map(item => ({ ...item })),
         }))
         .filter(section => section.items.length > 0);

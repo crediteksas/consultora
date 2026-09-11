@@ -67,5 +67,6 @@ const erp = [
   'tests/erp/aliados-bonificaciones-periodo.test.mjs',
   'tests/erp/aliados-reportes-mes-vigente.test.mjs',
   'tests/erp/kora-2026-000014-destinos-consignacion.test.mjs',
+  'tests/erp/finanzas-programadas.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...responsive, ...erp], { stdio: 'inherit' });

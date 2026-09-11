@@ -258,6 +258,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     { titulo: 'CAJA', icono: '💰', lucide: 'wallet-cards', description: 'Ventas, gastos, cierres y movimientos financieros diarios.', items: [
       { label: 'Ventas', href: 'ventas.html', lucide: 'shopping-cart', description: 'Registra y consulta las ventas realizadas por la tienda.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Gastos', href: 'gastos.html', lucide: 'receipt', description: 'Registra y consulta los gastos operativos autorizados.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
+      { label: 'Gastos periódicos', href: 'finanzas-programadas.html?vista=retail', lucide: 'calendar-clock', description: 'Configura nómina, arriendos y obligaciones periódicas por tienda sin mezclarlas con los gastos diarios.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Cierre día', href: 'caja.html', lucide: 'circle-check-big', description: 'Concilia el efectivo esperado y realiza el cierre diario de caja.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Cuenta cte.', href: 'cuenta-corriente.html', lucide: 'book-open-check', description: 'Administra saldos, abonos y movimientos con terceros.', roles: ['gerencia', 'auditoria', 'admin_tienda'] },
       { label: 'Conciliación', href: 'conciliacion.html', lucide: 'scale', description: 'Compara pagos y movimientos para identificar diferencias.', roles: ['gerencia', 'auditoria'] },
@@ -289,6 +290,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', lucide: 'hand-coins', description: 'Controla gastos generales por negocio y retiros de utilidad por separado.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Compartir instalación', href: 'compartir-instalacion.html', lucide: 'share-2', description: 'Comparte el acceso oficial para instalar KORA en un dispositivo autorizado.', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona responsables, prioridades, estados y soluciones.', roles: ['gerencia'] },
       { label: 'Reportar incidencia', href: 'incidencias.html#reportar', lucide: 'bug', description: 'Registra una incidencia para seguimiento.', roles: ['auditoria', 'admin_tienda'] },
@@ -482,7 +484,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     const rolLabel = ROL_LABEL[perfil.rol] || perfil.rol;
 
     const modulosHtml = MODULOS.filter(mod => (!mod.b2b || puedeVerB2B) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
-      const items = mod.items.filter(it => it.roles.includes(perfil.rol));
+      const items = mod.items.filter(it => it.roles.includes(perfil.rol) && (!it.users || it.users.includes(perfil.id)));
       if (!items.length) return '';
       const abierto = items.some(it => it.href === activa);
       return `
@@ -678,7 +680,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraNavigationHtml(modules, role, activeItem, profile) {
     const puedeVerB2B = profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true;
     return modules.filter(module => (!module.b2b || puedeVerB2B) && (!module.aliados || profile.es_operador_aliados)).map(module => {
-      const items = module.items.filter(item => !item.roles || item.roles.includes(role));
+      const items = module.items.filter(item => (!item.roles || item.roles.includes(role)) && (!item.users || item.users.includes(profile.id)));
       if (!items.length) return '';
       const isActive = item => item === activeItem
         || (item.href && item.href === activeItem?.href)

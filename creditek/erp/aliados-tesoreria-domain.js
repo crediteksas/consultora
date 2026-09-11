@@ -67,6 +67,22 @@
       .map(codigo => ({ codigo, nombre: nombres.get(codigo) || codigo }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
   }
+  function diaBogota(value = new Date()) {
+    const d = new Date(value);
+    if (!value || !Number.isFinite(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  }
+  function filtrarMovimientosTiendas(items, { tienda = '', desde = '', hasta = '', plataforma = '', imei = '', valor = '' } = {}) {
+    const rangoInvalido = Boolean(desde && hasta && desde > hasta);
+    return { rangoInvalido, rows: rangoInvalido ? [] : items.filter(x => {
+      const dia = diaBogota(x.created_at);
+      const importe = x.compensation_value ?? (x.direction === 'debit' ? -Number(x.amount) : x.amount);
+      return (!tienda || x.store_code === tienda) && (!plataforma || x.platform === plataforma)
+        && (!desde || (dia && dia >= desde)) && (!hasta || (dia && dia <= hasta))
+        && (!imei || String(x.imei || '').includes(imei.trim()))
+        && (valor === '' || (Number.isFinite(Number(valor)) && Number(importe) === Number(valor)));
+    }) };
+  }
   function loteAutorizado(p) {
     const l=p.liquidations||{};
     return Boolean((l.frozen_at&&l.approved_at) ||
@@ -144,5 +160,5 @@
     });
     return `\uFEFF${[header.map(csvCell).join(';'),...lines].join('\r\n')}`;
   }
-  return { saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  return { diaBogota, filtrarMovimientosTiendas, saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

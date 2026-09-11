@@ -333,6 +333,7 @@
                 Consultar historial
               </button>
               <button id="showClients" class="btn secondary hidden">Clientes y cuentas</button>
+              <button id="showStoreMovements" class="btn secondary">Compensaciones y movimientos de tiendas</button>
               <button id="showPreparation" class="btn secondary hidden">Preparación de pagos</button>
             </div>
           </section>
@@ -356,7 +357,7 @@
             <p id="historyFilterError" class="compensation-filter-error hidden" role="alert">La fecha desde no puede ser posterior a la fecha hasta.</p>
             <div id="historySummary" class="history-summary"></div>
           </section>
-          <section class="toolbar card filters">
+          <section id="generalFilters" class="toolbar card filters">
             <select id="platform">
               <option value="">Todas las plataformas</option>
               <option value="payjoy">PayJoy</option>
@@ -375,6 +376,7 @@
           </section>
           <section id="metrics" class="metrics"></section>
           <div class="treasury-grid">
+            <div id="paymentSections" class="treasury-grid">
             <section class="card">
               <div class="section-head">
                 <div>
@@ -410,6 +412,8 @@
           </div>
           <div id="expensePayments"></div>
         </section>
+            </div>
+            <div id="storeMovementsContent" class="hidden">
             <section class="card">
               <div class="section-head">
                 <div>
@@ -426,16 +430,22 @@
                 <label for="compensationStore">Tienda
                   <select id="compensationStore"><option value="">Todas las tiendas</option></select>
                 </label>
-                <label for="compensationFrom">Corte desde
+                <label for="compensationFrom">Movimiento desde
                   <input id="compensationFrom" type="date" aria-describedby="compensationFilterError" />
                 </label>
-                <label for="compensationTo">Corte hasta
+                <label for="compensationTo">Movimiento hasta
                   <input id="compensationTo" type="date" aria-describedby="compensationFilterError" />
                 </label>
-                <button id="clearCompensationFilters" type="button" class="btn secondary">Limpiar filtros de abonos</button>
+                <label for="compensationPlatform">Plataforma
+                  <select id="compensationPlatform"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option></select>
+                </label>
+                <label for="compensationImei">IMEI<input id="compensationImei" type="search" placeholder="Completo o parcial" /></label>
+                <label for="compensationAmount">Valor exacto<input id="compensationAmount" type="number" step="0.01" placeholder="Ej. 394485" /></label>
+                <button id="todayCompensations" type="button" class="btn secondary">Hoy</button>
+                <button id="clearCompensationFilters" type="button" class="btn secondary">Consultar todo · limpiar filtros</button>
               </div>
-              <p id="compensationFilterHelp" class="section-copy">Filtra por fecha de corte, incluyendo ambos días. Se combina con los filtros generales de Tesorería.</p>
-              <p id="compensationFilterError" class="compensation-filter-error hidden" role="alert">El corte desde no puede ser posterior al corte hasta.</p>
+              <p id="compensationFilterHelp" class="section-copy">Al abrir: movimientos registrados hoy en Colombia, no por corte del crédito. Estos filtros aplican a las dos tablas de esta pestaña, sin cambiar saldos ni los filtros de pagos.</p>
+              <p id="compensationFilterError" class="compensation-filter-error hidden" role="alert">La fecha desde no puede ser posterior a la fecha hasta.</p>
               <p id="compensationSummary" class="compensation-summary" role="status" aria-live="polite"></p>
               <div class="selection-bar">
                 <strong id="compensationSelection"
@@ -460,6 +470,7 @@
               </div>
               <div id="retailCommissions"></div>
             </section>
+            </div>
           </div>
           </div>
         </div>
@@ -579,7 +590,7 @@
       .history-person small {color:#64748b}
       @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
     </style>
-    <script src="aliados-tesoreria-domain.js?v=1.5.1"></script>
+    <script src="aliados-tesoreria-domain.js?v=1.6.0"></script>
     <script src="cobros-plataformas.js?v=1.0.0"></script>
     <script src="aliados-cuentas-domain.js"></script>
     <script src="tesoreria-clientes.js?v=1.1.0"></script>
@@ -595,6 +606,6 @@
       .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
     </style>
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
-    <script src="aliados-tesoreria-app.js?v=2.11.1"></script>
+    <script src="aliados-tesoreria-app.js?v=2.12.0"></script>
   </body>
 </html>

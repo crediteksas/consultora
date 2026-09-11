@@ -371,6 +371,7 @@ const cuentaDomain = window.CreditekCuentaCorrienteDomain;
 let currentUser = null;
 let currentPerfil = null;
 let movimientosCC = [];
+let imeisCompensaciones = new Map();
 let abonosCache = [];
 let saldosInicialesCache = [];
 let tiendasCache = [];
@@ -568,6 +569,14 @@ async function cargarMovimientosCC() {
     return;
   }
   movimientosCC = resultadoMovimientos.data || [];
+  imeisCompensaciones = new Map();
+  const referencias = [...new Set(movimientosCC.filter(m => m.referencia_tipo === 'compensacion_liquidacion_retail').map(m => m.referencia_id))];
+  for (let i = 0; i < referencias.length; i += 200) {
+    try {
+      const { data: detalles, error } = await sb.rpc('cuenta_corriente_imei_compensaciones', { p_ids: referencias.slice(i, i + 200) });
+      if (!error) for (const d of detalles || []) imeisCompensaciones.set(`${d.tienda_codigo}:${d.referencia_id}`, d.imei);
+    } catch { /* El historial conserva sus importes y muestra IMEI no disponible. */ }
+  }
   abonosCache = resultadoAbonos.data || [];
   saldosInicialesCache = resultadoSaldosIniciales.data || [];
   renderTablaTiendas();
@@ -637,7 +646,7 @@ function abrirDetalleTienda(codigo, nombre) {
     return `
     <tr>
       <td>${new Date(m.created_at).toLocaleDateString('es-CO')}</td>
-      <td>${escapeHtml(m.concepto)}${estadoHtml}${saldoInicialHtml}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
+      <td>${escapeHtml(m.concepto)}${m.referencia_tipo === 'compensacion_liquidacion_retail' ? `<div>IMEI: ${escapeHtml(imeisCompensaciones.get(`${m.tienda_codigo}:${m.referencia_id}`) || 'No disponible')}</div>` : ''}${estadoHtml}${saldoInicialHtml}${escapeHtml(m.destino || '—') !== '—' ? ` · ${escapeHtml(m.destino || '—')}` : ''}</td>
       <td class="cargo">${m.tipo === 'cargo' ? fmtCOP(m.monto) : ''}</td>
       <td class="abono">${m.tipo === 'abono' ? fmtCOP(m.monto) : ''}</td>
       <td>${fmtCOP(m.saldoAcumulado)}</td>

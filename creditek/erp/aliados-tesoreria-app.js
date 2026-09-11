@@ -168,11 +168,11 @@
     }
     return data || [];
   }
-  async function loadCompensations() {
+  async function loadCompensations(tableName = "retail_b2b_compensations") {
     const rows = [], ids = new Set();
     let total;
     do {
-      const result = await sb.from("retail_b2b_compensations")
+      const result = await sb.from(tableName)
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false }).order("id", { ascending: false })
         .range(rows.length, rows.length + 499);
@@ -260,12 +260,7 @@
           .select("id,nombre,identificacion,tipo"),
       ),
       loadCompensations(),
-      safe(
-        sb
-          .from("treasury_movements")
-          .select("*")
-          .order("created_at", { ascending: false }),
-      ),
+      loadCompensations("treasury_movements"),
       safe(sb.from("proveedores").select("id,nombre").eq("activo", true)),
       safe(
         sb
@@ -340,10 +335,16 @@
     select.value = stores.some(store => store.codigo === previous) ? previous : "";
   }
   function compensationView() {
-    return window.CreditekTesoreriaTercerizacion.filtrarCompensaciones(filtered(data.compensations), {
+    return movementView(data.compensations);
+  }
+  function movementView(rows) {
+    return window.CreditekTesoreriaTercerizacion.filtrarMovimientosTiendas(rows, {
       tienda: $("#compensationStore").value,
       desde: $("#compensationFrom").value,
       hasta: $("#compensationTo").value,
+      plataforma: $("#compensationPlatform").value,
+      imei: $("#compensationImei").value,
+      valor: $("#compensationAmount").value,
     });
   }
   function approverName(p) {
@@ -516,6 +517,11 @@
     $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
     $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
     $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
+    $("#showStoreMovements").classList.toggle("active", treasuryView === "storeMovements");
+    $("#storeMovementsContent").classList.toggle("hidden", treasuryView !== "storeMovements");
+    $("#paymentSections").classList.toggle("hidden", treasuryView === "storeMovements");
+    $("#generalFilters").classList.toggle("hidden", treasuryView === "storeMovements");
+    $("#metrics").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
@@ -604,10 +610,11 @@
       : `${visibleCompensations.length} de ${data.compensations.length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
     const comps = visibleCompensations.map(
         (x) =>
-          `<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
+          `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
       );
     $("#compensations").innerHTML = table(
       [
+        "Fecha del movimiento",
         "Seleccionar",
         "Tienda",
         "Plataforma",
@@ -619,7 +626,7 @@
       ],
       comps,
     );
-    const retailCommissions = filtered(
+    const retailCommissions = movementView(
       data.movements
         .filter((x) => x.type === "comision_retail")
         .map((x) => {
@@ -633,12 +640,13 @@
             commercial_value: c?.commercial_value,
           };
         }),
-    ).map(
+    ).rows.map(
       (x) =>
-        `<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.direction === "debit" ? -Number(x.amount) : x.amount)}${x.platform === "krediya" ? '<small>Margen antes de bonos y gastos</small>' : ''}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
+        `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.direction === "debit" ? -Number(x.amount) : x.amount)}${x.platform === "krediya" ? '<small>Margen antes de bonos y gastos</small>' : ''}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
     );
     $("#retailCommissions").innerHTML = table(
       [
+        "Fecha del movimiento",
         "Tienda origen",
         "Plataforma",
         "Corte",
@@ -1171,6 +1179,7 @@
     if (!canViewOutgoing()) {
       $("#showOperational").classList.add("hidden");
       $("#showHistory").classList.add("hidden");
+      $("#showStoreMovements").classList.add("hidden");
       treasuryView = "cobros";
       render();
       await cobros.mount($("#cobrosContent"));
@@ -1189,11 +1198,16 @@
     $(`#${id}`).addEventListener("change", render),
   );
   $("#search").addEventListener("input", render);
-  ["compensationStore", "compensationFrom", "compensationTo"].forEach(id =>
+  ["compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota(); });
+  ["compensationStore", "compensationFrom", "compensationTo", "compensationPlatform", "compensationImei", "compensationAmount"].forEach(id =>
     $(`#${id}`).addEventListener("change", render),
   );
   $("#clearCompensationFilters").onclick = () => {
-    ["compensationStore", "compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = ""; });
+    ["compensationStore", "compensationFrom", "compensationTo", "compensationPlatform", "compensationImei", "compensationAmount"].forEach(id => { $(`#${id}`).value = ""; });
+    render();
+  };
+  $("#todayCompensations").onclick = () => {
+    ["compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota(); });
     render();
   };
   $("#refresh").onclick = async () => {
@@ -1229,6 +1243,7 @@
   }
   $("#showOperational").onclick = () => showPaymentView('operational');
   $("#showHistory").onclick = () => showPaymentView('history');
+  $("#showStoreMovements").onclick = () => showPaymentView('storeMovements');
   ["historyFrom","historyTo"].forEach((id) => $("#" + id).onchange = render);
   $("#clearPaymentHistory").onclick = () => {
     $("#historyFrom").value = "";

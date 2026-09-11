@@ -10,9 +10,42 @@ const source = readFileSync('creditek/erp/aliados-tesoreria-app.js', 'utf8');
 const html = readFileSync('creditek/erp/aliados-tesoreria.html', 'utf8');
 const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
   id, store_code, cutoff_date, compensation_value, account_balance_after: -40,
-  platform: 'payjoy', imei: `IMEI-${id}`, created_at: '2026-09-05T20:00:00Z',
+  platform: 'payjoy', imei: `IMEI-${id}`, created_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null,
 });
 const rows = [row('uno', 'A', '2026-09-02', 100), row('dos', 'B', '2026-09-03', 200), row('tres', 'A', '2026-09-04', 300)];
+
+test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => {
+  const inputs = [{ ...rows[0], created_at: '2026-09-12T04:59:00Z' }, { ...rows[1], created_at: '2026-09-12T05:00:00Z' }];
+  assert.deepEqual(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-11', hasta: '2026-09-11' }).rows, [inputs[0]]);
+  assert.equal(domain.filtrarMovimientosTiendas(inputs, { plataforma: 'payjoy', tienda: 'A', imei: 'uno', valor: '100' }).rows.length, 1);
+  assert.equal(domain.filtrarMovimientosTiendas(inputs, { valor: '0' }).rows.length, 0);
+  assert.equal(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-12', hasta: '2026-09-11' }).rangoInvalido, true);
+});
+
+test('abre sólo hoy en pestaña separada y permite consultar todo sin escribir', async () => {
+  const ui = await boot([{ ...rows[0], created_at: new Date().toISOString() }, rows[1]], { keepToday: true });
+  assert.equal(ui.node('#compensationCount').textContent, 1);
+  assert.equal(ui.node('#compensationFrom').value, domain.diaBogota());
+  await ui.node('#showStoreMovements').onclick();
+  assert.equal(ui.node('#storeMovementsContent').classList.contains('hidden'), false);
+  assert.equal(ui.node('#paymentSections').classList.contains('hidden'), true);
+  ui.node('#clearCompensationFilters').onclick();
+  assert.equal(ui.node('#compensationCount').textContent, 2);
+  ui.change('compensationImei', 'dos');
+  assert.equal(ui.node('#compensationCount').textContent, 1);
+  assert.deepEqual(ui.writes, []);
+});
+
+test('IMEI en cartera usa consulta mínima por referencia y tienda sin recalcular', () => {
+  const cc = readFileSync('creditek/erp/cuenta-corriente.html', 'utf8');
+  const sql = readFileSync('supabase/migrations/20260911145851_cuenta_corriente_imei_compensacion.sql', 'utf8');
+  assert.match(cc, /sb.rpc\('cuenta_corriente_imei_compensaciones'/);
+  assert.match(cc, /escapeHtml\(imeisCompensaciones.get/);
+  assert.match(sql, /r.store_code = c.tienda_codigo/);
+  assert.match(sql, /c.tienda_codigo = public.tienda_actual\(\)/);
+  assert.match(sql, /auth.uid\(\) is not null/);
+  assert.doesNotMatch(sql, /\b(update|insert|delete)\b/i);
+});
 
 test('tienda y rango de corte se combinan con límites inclusivos sin cambiar importes', () => {
   const original = structuredClone(rows);
@@ -87,6 +120,7 @@ async function boot(records = rows, options = {}) {
   };
   vm.runInNewContext(source, context);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
+  if (!options.keepToday && node('#compensations').innerHTML) node('#clearCompensationFilters').onclick();
   return { node, queries, writes, location, change(id, value) { node(`#${id}`).value = value; node(`#${id}`).handlers.change(); } };
 }
 
@@ -156,7 +190,7 @@ test('un registro oculto por el filtro pierde selección y no puede abrir carter
   assert.equal(ui.location.href, '');
 });
 
-test('rango inválido se explica sin total engañoso, y los filtros generales se respetan', async () => {
+test('rango inválido se explica y la consulta es independiente de los filtros de pagos', async () => {
   const ui = await boot();
   ui.change('compensationFrom', '2026-09-04');
   ui.change('compensationTo', '2026-09-02');
@@ -165,7 +199,7 @@ test('rango inválido se explica sin total engañoso, y los filtros generales se
   assert.match(ui.node('#compensationSummary').textContent, /Corrige el rango/);
   ui.node('#clearCompensationFilters').onclick();
   ui.change('platform', 'krediya');
-  assert.equal(ui.node('#compensationCount').textContent, 0);
+  assert.equal(ui.node('#compensationCount').textContent, 3);
   ui.node('#clearCompensationFilters').onclick();
   assert.equal(ui.node('#platform').value, 'krediya', 'limpiar abonos no altera otros filtros');
 });
@@ -194,8 +228,8 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   for (const id of ['compensationStore', 'compensationFrom', 'compensationTo']) assert.match(html, new RegExp(`label for="${id}"`));
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
-  assert.match(html, /aliados-tesoreria-domain.js\?v=1.5.1/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.11.1/);
+  assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.12.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

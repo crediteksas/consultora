@@ -135,7 +135,8 @@ test('Tesorería separa compensaciones aplicadas y utilidad sin duplicar el mód
   assert.match(app, /Aplicada a cartera/);
   assert.match(app, /commissionCompensation/);
   assert.doesNotMatch(app, /\$\(["']#movements["']\)/);
-  assert.match(html, /Abonos automáticos a cartera de tiendas/);
+  assert.match(html, /Compensaciones pendientes/);
+  assert.match(html, /Histórico de abonos aplicados/);
   assert.match(html, /Movimientos por créditos de tiendas propias/);
   assert.match(html, /Krediya, el margen se muestra antes de bonos y gastos/);
   assert.doesNotMatch(html, /Otros movimientos de Tesorería|Registrar movimiento/);

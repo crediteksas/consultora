@@ -22,10 +22,10 @@ test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => 
   assert.equal(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-12', hasta: '2026-09-11' }).rangoInvalido, true);
 });
 
-test('abre todas las compensaciones y permite consultar hoy sin escribir', async () => {
+test('abre con histórico de hoy y permite consultar todo sin escribir', async () => {
   const ui = await boot([{ ...rows[0], created_at: new Date().toISOString() }, rows[1]], { keepToday: true });
-  assert.equal(ui.node('#compensationCount').textContent, 2);
-  assert.equal(ui.node('#compensationFrom').value, '');
+  assert.equal(ui.node('#compensationCount').textContent, 1);
+  assert.notEqual(ui.node('#compensationFrom').value, '');
   await ui.node('#showStoreMovements').onclick();
   assert.equal(ui.node('#storeMovementsContent').classList.contains('hidden'), false);
   assert.equal(ui.node('#paymentSections').classList.contains('hidden'), true);
@@ -36,11 +36,11 @@ test('abre todas las compensaciones y permite consultar hoy sin escribir', async
   assert.deepEqual(ui.writes, []);
 });
 
-test('pagos abiertos y compensaciones permanecen visibles aunque existan filtros', async () => {
-  const ui=await boot(rows);
+test('pagos abiertos y compensaciones pendientes permanecen visibles aunque existan filtros', async () => {
+  const ui=await boot(rows, { ownStoreOperations: [{ id: 'op-pendiente', liquidation_id: 'lote-1', origen_codigo: 'A', reconocida: true, liquidations: { plataforma: 'payjoy', fecha_corte: '2026-09-01', estado: 'cerrada' } }] });
   ui.change('platform','krediya');
-  assert.match(ui.node('#persistentPending').innerHTML,/Pendientes siempre visibles/);
-  assert.match(ui.node('#persistentPending').innerHTML,/3 ·/);
+  assert.equal(ui.node('#pendingCompensationCount').textContent, 1);
+  assert.match(ui.node('#pendingCompensations').innerHTML,/Gestionar liquidación/);
   assert.match(source,/treasuryView === "history" \? filtered\(source\) : source/);
 });
 
@@ -105,7 +105,7 @@ async function boot(records = rows, options = {}) {
         range(from, to) { q.range = [from, to]; return this; },
         then(resolve, reject) {
           queries.push(q);
-          const list = table === 'cuenta_corriente' ? (options.ledger || []) : table === 'retail_b2b_compensations' ? records : table === 'origenes'
+          const list = table === 'cuenta_corriente' ? (options.ledger || []) : table === 'retail_b2b_compensations' ? records : table === 'liquidation_operations' ? (options.ownStoreOperations || []) : table === 'origenes'
             ? [{ codigo: 'A', nombre: 'Sonivox' }, { codigo: 'B', nombre: '<Tienda B>' }] : [];
           let result = { data: q.range ? list.slice(q.range[0], q.range[1] + 1) : list, error: null, count: list.length };
           if (options.pageResult && q.range) result = options.pageResult(result, q);
@@ -237,7 +237,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.13.0/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.14.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

@@ -74,7 +74,7 @@ test('la interfaz concentra Tesorería en pagos, compensaciones y utilidad', asy
     readFile('creditek/erp/aliados-tesoreria.html','utf8'),readFile('creditek/erp/aliados-tesoreria-app.js','utf8'),
     readFile('creditek/erp/sidebar.js','utf8'),readFile('creditek/erp/kora-access-control.js','utf8'),
   ]);
-  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Abonos automáticos a cartera de tiendas','Utilidad del negocio por créditos de tiendas propias']) assert.match(html,new RegExp(label));
+  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Compensaciones pendientes','Histórico de abonos aplicados','Utilidad del negocio por créditos de tiendas propias']) assert.match(html,new RegExp(label));
   assert.doesNotMatch(html,/Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(sidebar,/Tesorería/);
   assert.match(guard,/aliados-tesoreria\.html/);

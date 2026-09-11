@@ -201,6 +201,19 @@
       if(result.data.length<500) return rows;
     }
   }
+  async function loadOwnStoreOperations() {
+    const rows = [];
+    for (;;) {
+      const result = await sb.from("liquidation_operations")
+        .select("id,liquidation_id,origen_codigo,imei,referencia,modelo,operation_at,reconocida,liquidations(id,plataforma,fecha_corte,estado)")
+        .eq("tipo_establecimiento", "propia")
+        .order("operation_at", { ascending: false })
+        .range(rows.length, rows.length + 499);
+      if (result.error) throw result.error;
+      rows.push(...result.data);
+      if (result.data.length < 500) return rows;
+    }
+  }
   // Cartera vigente, independiente del corte/plataforma de cada compensación.
   // No se modifica account_balance_after: permanece como evidencia histórica.
   async function loadCurrentStoreBalances() {
@@ -233,6 +246,7 @@
       payments,
       beneficiaries,
       compensations,
+      ownStoreOperations,
       movements,
       suppliers,
       invoices,
@@ -260,6 +274,7 @@
           .select("id,nombre,identificacion,tipo"),
       ),
       loadCompensations(),
+      loadOwnStoreOperations(),
       loadCompensations("treasury_movements"),
       safe(sb.from("proveedores").select("id,nombre").eq("activo", true)),
       safe(
@@ -282,6 +297,7 @@
       payments: [],
       beneficiaries,
       compensations,
+      ownStoreOperations,
       movements,
       suppliers,
       invoices,
@@ -499,7 +515,6 @@
     for(const d of recoveries){const amount=Number(d.importe)-Number(d.recuperado);debtGroups.set(d.beneficiary_id,(debtGroups.get(d.beneficiary_id)||0)+amount);}
     recoverySummary.hidden=!recoveries.length;
     recoverySummary.innerHTML=`<h2>Dinero por recuperar · todos los cortes</h2><p>Se cruza con los próximos pagos del mismo beneficiario. Si no tiene pagos, Gestión debe cobrarlo. No representa dinero ya recuperado.</p><strong>${cop([...debtGroups.values()].reduce((n,v)=>n+v,0))}</strong><details><summary>Ver ${debtGroups.size} beneficiarios</summary>${[...debtGroups].map(([id,value])=>`<p>${esc(data.beneficiaries.find(b=>b.id===id)?.nombre||'Beneficiario sin nombre')} · ${cop(value)}</p>`).join('')}</details>`;
-    renderPersistentPending(recoveries);
     let correction = $("#rectificationSummary");
     if (!correction) {
       correction = document.createElement("section");
@@ -600,6 +615,21 @@
     );
     $("#showHistory").classList.toggle("active", treasuryView === "history");
     const { rows: visibleCompensations, rangoInvalido } = compensationView();
+    const compensatedOperationIds = new Set(
+      data.compensations.filter(x => !x.reversed_at).map(x => x.operation_id),
+    );
+    const pendingCompensations = (data.ownStoreOperations || []).filter(
+      x => x.reconocida !== false && !compensatedOperationIds.has(x.id),
+    );
+    $("#pendingCompensationCount").textContent = pendingCompensations.length;
+    $("#pendingCompensations").innerHTML = table(
+      ["Tienda", "Plataforma", "Corte", "IMEI / referencia", "Estado", "Gestión"],
+      pendingCompensations.map(x => {
+        const liquidation = x.liquidations || {};
+        const detail = [x.imei, x.referencia || x.modelo].filter(Boolean).join(" · ") || "Sin referencia";
+        return `<tr><td>${esc(storeName(x.origen_codigo))}</td><td>${esc(platformName(liquidation.plataforma))}</td><td>${date(liquidation.fecha_corte || x.operation_at)}</td><td>${esc(detail)}</td><td>${badge(liquidation.estado || "pendiente", "Pendiente de compensar")}</td><td><a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(x.liquidation_id)}">Gestionar liquidación</a></td></tr>`;
+      }),
+    );
     $("#compensationFilterError").classList.toggle("hidden", !rangoInvalido);
     for (const id of ["compensationFrom", "compensationTo"]) {
       $(`#${id}`).setAttribute("aria-invalid", String(rangoInvalido));
@@ -670,21 +700,6 @@
     $("#compensationCount").textContent = visibleCompensations.length;
     $("#retailCommissionCount").textContent = retailCommissions.length;
     bindActions();
-  }
-  function renderPersistentPending(recoveries) {
-    const openPayments=(data.payments||[]).filter(p=>!isClosedPayment(p));
-    const openExpenses=(data.movements||[]).filter(m=>m.aliados_gasto_id&&!['pagado','conciliado','rechazado','anulado'].includes(m.status));
-    const liveCompensations=(data.compensations||[]).filter(c=>!c.reversed_at);
-    const box=$('#persistentPending');
-    box.innerHTML=`<div class="pending-overview__intro"><h2>Pendientes siempre visibles</h2><p>Ningún filtro ni informe oculta pagos sin cerrar. Las compensaciones vigentes permanecen disponibles hasta que consultes su asiento.</p></div>
-      <article class="pending-overview__item"><small>Pagos sin cerrar</small><strong>${openPayments.length} · ${cop(openPayments.reduce((n,p)=>n+Number(p.valor||0),0))}</strong><button class="btn primary" type="button" data-persistent-view="operational">Gestionar pagos</button></article>
-      <article class="pending-overview__item"><small>Gastos por desembolsar</small><strong>${openExpenses.length} · ${cop(openExpenses.reduce((n,m)=>n+Number(m.amount||0),0))}</strong><button class="btn secondary" type="button" data-persistent-view="operational">Gestionar gastos</button></article>
-      <article class="pending-overview__item"><small>Compensaciones vigentes</small><strong>${liveCompensations.length} · ${cop(liveCompensations.reduce((n,c)=>n+Number(c.compensation_value||0),0))}</strong><button class="btn secondary" type="button" data-persistent-view="storeMovements">Ver compensaciones</button></article>`;
-    document.querySelectorAll('[data-persistent-view]').forEach(button=>button.onclick=()=>{
-      treasuryView=button.dataset.persistentView;
-      if(treasuryView==='storeMovements')clearCompensationFilters();
-      render();
-    });
   }
   function movementActions(m) {
     if (m.direction === "credit") return "";
@@ -1219,6 +1234,9 @@
   function clearCompensationFilters() {
     ["compensationStore", "compensationFrom", "compensationTo", "compensationPlatform", "compensationImei", "compensationAmount"].forEach(id => { $(`#${id}`).value = ""; });
   }
+  ["compensationFrom", "compensationTo"].forEach(id => {
+    $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota();
+  });
   $("#clearCompensationFilters").onclick = () => { clearCompensationFilters(); render(); };
   $("#todayCompensations").onclick = () => {
     ["compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota(); });

@@ -329,7 +329,6 @@
             </div>
           </header>
           <div id="notice" class="notice hidden"></div>
-          <section id="persistentPending" class="card pending-overview" aria-live="polite"></section>
           <section class="card">
             <div class="actions">
               <button id="showOperational" class="btn secondary active">
@@ -421,10 +420,24 @@
         </section>
             </div>
             <div id="storeMovementsContent" class="hidden">
+            <section class="card pending-compensations-card">
+              <div class="section-head">
+                <div>
+                  <h2>Compensaciones pendientes</h2>
+                  <p class="section-copy">
+                    Operaciones de tiendas propias que todavía no tienen un
+                    abono de compensación generado. Permanecen aquí sin límite
+                    de fecha hasta que el proceso quede aplicado.
+                  </p>
+                </div>
+                <span id="pendingCompensationCount" class="badge">0</span>
+              </div>
+              <div id="pendingCompensations"></div>
+            </section>
             <section class="card">
               <div class="section-head">
                 <div>
-                  <h2>Abonos automáticos a cartera de tiendas</h2>
+                  <h2>Histórico de abonos aplicados</h2>
                   <p class="section-copy">
                     Cada compensación ya redujo la cartera de la tienda al
                     aprobar la liquidación. Selecciona una para consultar su
@@ -451,7 +464,7 @@
                 <button id="todayCompensations" type="button" class="btn secondary">Hoy</button>
                 <button id="clearCompensationFilters" type="button" class="btn secondary">Consultar todo · limpiar filtros</button>
               </div>
-              <p id="compensationFilterHelp" class="section-copy">Al abrir: movimientos registrados hoy en Colombia, no por corte del crédito. Estos filtros aplican a las dos tablas de esta pestaña, sin cambiar saldos ni los filtros de pagos.</p>
+              <p id="compensationFilterHelp" class="section-copy">Al abrir: movimientos aplicados hoy en Colombia, no por corte del crédito. Los pendientes aparecen completos arriba y nunca dependen de estos filtros.</p>
               <p id="compensationFilterError" class="compensation-filter-error hidden" role="alert">La fecha desde no puede ser posterior a la fecha hasta.</p>
               <p id="compensationSummary" class="compensation-summary" role="status" aria-live="polite"></p>
               <div class="selection-bar">
@@ -595,10 +608,6 @@
       .history-person {border:1px solid #dce5ee;border-radius:12px;padding:12px;background:#f8fafc;min-width:0}
       .history-person strong,.history-person span {display:block;overflow-wrap:anywhere}
       .history-person small {color:#64748b}
-      .pending-overview{display:grid;grid-template-columns:minmax(220px,1.4fr) repeat(3,minmax(160px,1fr));gap:12px;align-items:stretch;border-left:4px solid #00c4cc}
-      .pending-overview__intro,.pending-overview__item{padding:16px}.pending-overview__intro h2{margin:0 0 6px}.pending-overview__intro p{margin:0;color:#64748b}.pending-overview__item{border:1px solid #dce5ec;border-radius:14px;background:#f8fafc;display:flex;flex-direction:column;align-items:flex-start;gap:7px}.pending-overview__item small{color:#64748b}.pending-overview__item strong{font:800 20px Montserrat,sans-serif}.pending-overview__item .btn{margin-top:auto;width:100%}
-      @media (max-width:1050px){.pending-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.pending-overview__intro{grid-column:1/-1}}
-      @media (max-width:620px){.pending-overview{grid-template-columns:1fr}.pending-overview__intro{grid-column:auto}}
       @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
     </style>
     <script src="aliados-tesoreria-domain.js?v=1.6.0"></script>
@@ -617,6 +626,6 @@
       .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
     </style>
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
-    <script src="aliados-tesoreria-app.js?v=2.13.0"></script>
+    <script src="aliados-tesoreria-app.js?v=2.14.0"></script>
   </body>
 </html>

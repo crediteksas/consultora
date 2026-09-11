@@ -24,6 +24,17 @@ test('administrador y asesor de tienda entran a Mi Tienda', () => {
   }
 });
 
+test('la entrada raíz de KORA se reconoce como pública y lleva al inicio de la tienda', () => {
+  const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'CK-01' };
+
+  for (const route of ['/creditek/erp', '/creditek/erp/', '/creditek/erp/app']) {
+    const authorization = access.authorize(profile, route);
+    assert.equal(authorization.allowed, true, route);
+    assert.equal(authorization.route, 'app.html', route);
+  }
+  assert.equal(access.homeFor(profile), 'reportes.html');
+});
+
 test('Mi Tienda contiene únicamente las rutas operativas autorizadas', () => {
   const profile = { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' };
   const allowed = [

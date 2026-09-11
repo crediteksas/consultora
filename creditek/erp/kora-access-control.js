@@ -114,6 +114,10 @@
   function normalizeRoute(value) {
     const raw = String(value || '').split('#')[0].split('?')[0];
     const last = raw.split('/').filter(Boolean).pop() || 'app';
+    // El hosting sirve app.html también desde /creditek/erp y /creditek/erp/.
+    // Sin esta equivalencia, un acceso guardado con la URL de la carpeta se
+    // interpretaba como "erp.html" y bloqueaba incluso a perfiles activos.
+    if (last === 'erp') return 'app.html';
     return last.includes('.') ? last : `${last}.html`;
   }
 

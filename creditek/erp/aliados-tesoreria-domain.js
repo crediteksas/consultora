@@ -78,5 +78,55 @@
     if (!eligibility.ready || eligibility.supportOnly) return p.id;
     return JSON.stringify([p.beneficiary_id,b.bank,b.account_type,b.account_number,b.holder,b.holder_identification,p.estado]);
   }
-  return { loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  function paymentBusinessName(payment, origins = []) {
+    const snapshot = payment.business_snapshot || {};
+    return snapshot.name || snapshot.nombre || origins.find(origin => origin.codigo === payment.origin_code)?.nombre || payment.origin_code || '';
+  }
+  function paymentPaidDate(payment) {
+    return payment.fecha_pagada || (payment.historico_inicial ? payment.cutoff_snapshot : null) || null;
+  }
+  function paymentHistoryRows(payments, { from = '', to = '', origins = [] } = {}) {
+    if (from && to && from > to) return [];
+    return payments
+      .filter(payment => ['pagado','conciliado'].includes(payment.estado) || payment.historico_inicial)
+      .map(payment => ({
+        payment,
+        paidDate:paymentPaidDate(payment),
+        business:paymentBusinessName(payment, origins),
+        holder:payment.bank_snapshot?.holder || payment.beneficiary_name || '',
+        identification:payment.bank_snapshot?.holder_identification || payment.beneficiary_identification || '',
+      }))
+      .filter(row => {
+        const paid = String(row.paidDate || '').slice(0, 10);
+        return paid && (!from || paid >= from) && (!to || paid <= to);
+      })
+      .sort((a, b) => String(b.paidDate).localeCompare(String(a.paidDate)) || String(a.holder).localeCompare(String(b.holder), 'es'));
+  }
+  function paymentHistorySummary(rows) {
+    const groups = new Map();
+    for (const row of rows) {
+      const key = row.identification || row.holder;
+      const current = groups.get(key) || { identification:row.identification, holder:row.holder, businesses:new Set(), amount:0, payments:0 };
+      if (row.business) current.businesses.add(row.business);
+      current.amount = amount(current.amount + Number(row.payment.valor || 0));
+      current.payments += 1;
+      groups.set(key, current);
+    }
+    return [...groups.values()].map(item => ({ ...item, businesses:[...item.businesses].sort((a,b)=>a.localeCompare(b,'es')) }))
+      .sort((a,b)=>b.amount-a.amount || a.holder.localeCompare(b.holder,'es'));
+  }
+  function csvCell(value) {
+    let text = String(value ?? '');
+    if (/^[\s\t]*[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replaceAll('"','""')}"`;
+  }
+  function paymentHistoryCsv(rows) {
+    const header = ['Fecha de pago','Negocio relacionado','Titular o razón social','CC o NIT','Banco','Tipo de cuenta','Cuenta terminada en','Plataforma','Corte','Concepto','Valor girado','Orden KORA','Liquidación KORA','Estado','Soporte','Origen del registro'];
+    const lines = rows.map(({payment,paidDate,business,holder,identification}) => {
+      const bank = payment.bank_snapshot || {}, account = String(bank.account_number || '');
+      return [String(paidDate).slice(0,10),business,holder,identification,bank.bank,bank.account_type,account ? account.slice(-4) : '',payment.platform_snapshot,String(payment.cutoff_snapshot || '').slice(0,10),payment.concept,amount(payment.valor),payment.id,payment.liquidation_id,payment.estado,payment.soporte_path,payment.historico_inicial ? 'Histórico inicial' : 'Operación KORA'].map(csvCell).join(';');
+    });
+    return `\uFEFF${[header.map(csvCell).join(';'),...lines].join('\r\n')}`;
+  }
+  return { loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

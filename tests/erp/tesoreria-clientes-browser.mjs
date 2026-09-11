@@ -21,10 +21,11 @@ try {
   const origins=Array.from({length:24},(_,i)=>({codigo:'aliado-'+i,nombre:i===0?'A TECH MOVIL':i===1?'A CREDICELULARES':`Comercio ${i}`,ciudad:'Montería',tipo:'aliado',activo:true}));
   const beneficiaries=[{id:'h1',tipo:'aliado',nombre:'Titular de prueba',identificacion:'123456789',origen_codigo:'aliado-0',activo:true},{id:'e1',tipo:'ejecutivo',nombre:'Ejecutivo prueba',identificacion:'GERENCIA-EJECUTIVO-PRUEBA',activo:true}];
   const accounts=[{id:'bank1',beneficiary_id:'h1',banco:'Banco de prueba',tipo_cuenta:'ahorros',numero_cuenta:'001234567890',activo:true,validada:true,created_at:'2026-09-01'}];
+  const payments=[{id:'payment-1',beneficiary_id:'h1',payment_kind:'aliado',estado:'pagado',valor:500000,fecha_pagada:'2026-09-10T18:00:00Z',soporte_path:'aliados/pagos/prueba.pdf',platform_snapshot:'krediya',cutoff_snapshot:'2026-09-09',concept:'Pago aliados',liquidation_id:'liquidation-1',business_snapshot:{code:'aliado-0',name:'A TECH MOVIL',city:'Montería'},bank_snapshot:{bank:'Banco de prueba',account_type:'ahorros',account_number:'001234567890',holder:'Titular de prueba',holder_identification:'123456789'},liquidation_beneficiaries:beneficiaries[0],payment_items:[]}];
   const sites=origins.map(o=>({id:'site-'+o.codigo,origen_codigo:o.codigo,aliado_id:'client-'+o.codigo,direccion:'Dirección de prueba'}));
   const clients=origins.map(o=>({id:'client-'+o.codigo,nombre_comercial:o.nombre,revision:0,contacto:'Contacto prueba',payment_beneficiary_id:o.codigo==='aliado-0'?'h1':null}));
   window.creditekSidebar={perfil:{rol:'operaciones',activo:true,es_operador_aliados:true},sb:{
-   from(table){let range;return {select(){return this;},order(){return this;},eq(){return this;},gt(){return this;},range(a,b){range=[a,b];return this;},then(ok,bad){const rows=table==='origenes'?origins:table==='liquidation_beneficiaries'?beneficiaries:table==='beneficiary_bank_accounts'?accounts:table==='aliados_sedes'?sites:table==='aliados'?clients:[];return Promise.resolve({data:range?rows.slice(range[0],range[1]+1):rows,error:null,count:rows.length}).then(ok,bad);}};},
+   from(table){let range;return {select(){return this;},order(){return this;},eq(){return this;},gt(){return this;},range(a,b){range=[a,b];return this;},then(ok,bad){const rows=table==='origenes'?origins:table==='liquidation_beneficiaries'?beneficiaries:table==='beneficiary_bank_accounts'?accounts:table==='payment_orders'?payments:table==='aliados_sedes'?sites:table==='aliados'?clients:[];return Promise.resolve({data:range?rows.slice(range[0],range[1]+1):rows,error:null,count:rows.length}).then(ok,bad);}};},
    async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(!['tesoreria_guardar_cliente_cuenta','tesoreria_guardar_ficha_cliente','tesoreria_vincular_local_cliente','tesoreria_guardar_cuenta_ejecutivo'].includes(name))throw Error('RPC financiera inesperada');if(name==='tesoreria_vincular_local_cliente' && !window.failSave)sites.find(s=>s.origen_codigo===params.p_origen_codigo).aliado_id=params.p_cliente_destino;return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
   }};
  });
@@ -123,6 +124,14 @@ try {
  await page.locator('#showOperational').click();
  await page.waitForFunction(()=>!document.querySelector('#outgoingContent').classList.contains('hidden'));
  await page.locator('#showHistory').click();
+ assert.match(await page.locator('#historySummary').textContent(),/A TECH MOVIL/);
+ assert.match(await page.locator('#historySummary').textContent(),/Titular de prueba/);
+ await page.locator('#historyFrom').fill('2026-09-11');
+ assert.match(await page.locator('#historySummary').textContent(),/No hay giros/);
+ await page.locator('#clearPaymentHistory').click();
+ assert.match(await page.locator('#historySummary').textContent(),/500\.000/);
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#exportPaymentHistory').click()]);
+ assert.equal(download.suggestedFilename(),'kora-historico-giros-inicio-a-hoy.csv');
  assert.deepEqual(errors,[]);
  console.log('PASS: Tesorería real con fixtures; botón, búsqueda, paginación, editor, permisos de lectura, fallo/reintento, ceros, cuenta faltante, Escape y reflow 390/768/1280. Sin RPC de pagos.');
 } finally {await browser.close();}

@@ -46,6 +46,7 @@ const erp = [
   'tests/erp/liquidacion-aprobacion-inmediata.test.mjs',
   'tests/erp/liquidaciones-pagos-cards.test.mjs',
   'tests/erp/aliados-tesoreria-pagos-agrupados.test.mjs',
+  'tests/erp/kora-orden-pagos.test.mjs',
   'tests/erp/tesoreria-compensaciones-filtros.test.mjs',
   'tests/erp/aliados-autorizacion-pagos-gerencia.test.mjs',
   'tests/erp/pagos-corte-soportes.test.mjs',

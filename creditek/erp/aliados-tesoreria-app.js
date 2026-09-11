@@ -94,7 +94,9 @@
     );
   }
   function paymentBusinessName(p) {
-    return p.payment_kind === "aliado" ? storeName(p.origin_code) : null;
+    return p.payment_kind === "aliado"
+      ? window.CreditekTesoreriaTercerizacion.paymentBusinessName(p, data.origins)
+      : null;
   }
   function commissionCompensation(movement) {
     const operationId = String(movement.idempotency_key || "").replace(
@@ -155,6 +157,7 @@
       beneficiary_name: p.bank_snapshot?.holder || b.nombre || "Sin nombre",
       beneficiary_identification: p.bank_snapshot?.holder_identification || b.identificacion || "—",
       origin_code: b.origen_codigo || null,
+      business_snapshot: p.business_snapshot || null,
     };
   }
   async function safe(query, required = true) {
@@ -289,6 +292,11 @@
             x.concept,
             x.concepto,
             x.beneficiary,
+            x.beneficiary_name,
+            x.beneficiary_identification,
+            x.bank_snapshot?.holder,
+            x.bank_snapshot?.holder_identification,
+            paymentBusinessName(x),
             x.store_code,
             data.beneficiaries.find((b) => b.id === x.beneficiary_id)?.nombre,
           ])
@@ -338,10 +346,79 @@
   function isClosedPayment(p) {
     return Boolean(p.historico_inicial) || (p.estado === 'anulado' && Number(p.valor)===0) || p.estado === "conciliado" || (p.estado === 'pagado' && Boolean(p.soporte_path));
   }
+  function paymentHistoryRange() {
+    const from = $("#historyFrom")?.value || "";
+    const to = $("#historyTo")?.value || "";
+    return { from, to, invalid:Boolean(from && to && from > to) };
+  }
+  function historyRows() {
+    return window.CreditekTesoreriaTercerizacion.paymentHistoryRows(
+      data.payments || [],
+      { from:paymentHistoryRange().from, to:paymentHistoryRange().to, origins: data.origins || [] },
+    ).filter((row) => filtered([row.payment]).length);
+  }
+  function renderPaymentHistory() {
+    if (treasuryView !== "history") return;
+    const range = paymentHistoryRange();
+    $("#historyFilterError").classList.toggle("hidden", !range.invalid);
+    for (const id of ["historyFrom","historyTo"]) {
+      $("#" + id).setAttribute("aria-invalid", String(range.invalid));
+    }
+    const rows = historyRows();
+    const summary =
+      window.CreditekTesoreriaTercerizacion.paymentHistorySummary(rows);
+    $("#historySummary").innerHTML = summary.length
+      ? summary
+          .map(
+            (item) =>
+              '<article class="history-person"><strong>' +
+              esc(item.holder || "Sin titular") +
+              "</strong><span>" +
+              esc(item.identification || "Sin identificación") +
+              "</span><small>" +
+              esc(item.businesses.join(", ") || "Sin negocio relacionado") +
+              " · " +
+              item.payments +
+              (item.payments === 1 ? " giro" : " giros") +
+              "</small><strong>" +
+              cop(item.amount) +
+              "</strong></article>",
+          )
+          .join("")
+      : '<div class="empty">No hay giros registrados para el rango y filtros seleccionados.</div>';
+    $("#exportPaymentHistory").disabled = !rows.length || range.invalid;
+  }
+  function exportPaymentHistory() {
+    const rows = historyRows();
+    if (!rows.length)
+      return notice("No hay giros para exportar con estos filtros.", true);
+    const csv =
+      window.CreditekTesoreriaTercerizacion.paymentHistoryCsv(rows);
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    const range = paymentHistoryRange();
+    link.download = "kora-historico-giros-" + (range.from || "inicio") + "-a-" + (range.to || "hoy") + ".csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
   function paymentsForCurrentView() {
-    return data.payments.filter((p) =>
+    const payments = data.payments.filter((p) =>
       treasuryView === "history" ? isClosedPayment(p) : !isClosedPayment(p),
     );
+    const range = paymentHistoryRange();
+    if (treasuryView !== "history" || (!range.from && !range.to)) return payments;
+    return window.CreditekTesoreriaTercerizacion
+      .paymentHistoryRows(payments, {
+        from: range.from,
+        to: range.to,
+        origins: data.origins || [],
+      })
+      .map((row) => row.payment);
   }
   function paymentGroups(kind) {
     const groups = new Map();
@@ -409,12 +486,14 @@
     $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");
     $("#showPreparation").classList.toggle("active",treasuryView==="preparation");
     $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
-    $("#paymentReport").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
+    $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
+    $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
     $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
     if(["cobros","clients","preparation"].includes(treasuryView))return;
+    renderPaymentHistory();
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
       out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
@@ -659,7 +738,8 @@
       authorized = window.CreditekTesoreriaTercerizacion.pagoAutorizado(p);
     $("#paymentDetailBody").innerHTML = `<div class="payment-detail-grid">
  <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial ? "Histórico pagado · sin soporte requerido" : esc(String(p.estado || "—").replaceAll("_", " "))}</strong></div>
- <div><small>Beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div><div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div>
+ <div><small>Negocio relacionado</small><strong>${esc(paymentBusinessName(p) || "No aplica")}</strong></div><div><small>Titular / beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div>
+ <div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div><div><small>Fecha real del pago</small><strong>${date(p.fecha_pagada)}</strong></div>
  <div><small>Plataforma</small><strong>${esc(platformName(p.platform_snapshot))}</strong></div><div><small>Fecha de corte</small><strong>${date(p.cutoff_snapshot)}</strong></div>
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>
  <div><small>Banco / tipo</small><strong>${esc(bank.bank || "Pendiente")} · ${esc(bank.account_type || "Pendiente")}</strong></div><div><small>Número de cuenta</small><strong class="account">${esc(bank.account_number || "Pendiente")}</strong></div>
@@ -903,7 +983,7 @@
     if (!report)
       return notice("El navegador bloqueó la ventana del informe.", true);
     report.document.write(
-      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}<br>Estado: programado · pendiente de pago y soporte</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Beneficiario</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Plataforma / corte</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}<br><span class="ref">PO-${shortId(p.id)}</span></td><td>${esc(p.bank_snapshot.holder || p.beneficiary_name)}</td><td>${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span></td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join("")}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map((p) => `PO-${shortId(p.id)}`).join(", ")}<br>Liquidaciones: ${liquidationRefs.length ? liquidationRefs.map((l) => `LQ-${shortId(l.id)}${l.approvedAt ? ` (aprobada ${esc(bogotaDateTime(l.approvedAt))})` : ""}`).join(", ") : "No asociadas"}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}<br>Estado: programado · pendiente de pago y soporte</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Negocio / titular</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Plataforma / corte</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}<br><span class="ref">PO-${shortId(p.id)}</span></td><td><strong>${esc(paymentBusinessName(p) || "No aplica")}</strong><br><span class="muted">Titular: ${esc(p.bank_snapshot.holder || p.beneficiary_name)}</span></td><td>${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span></td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join("")}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map((p) => `PO-${shortId(p.id)}`).join(", ")}<br>Liquidaciones: ${liquidationRefs.length ? liquidationRefs.map((l) => `LQ-${shortId(l.id)}${l.approvedAt ? ` (aprobada ${esc(bogotaDateTime(l.approvedAt))})` : ""}`).join(", ") : "No asociadas"}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
     );
     report.document.close();
   }
@@ -1121,6 +1201,13 @@
   }
   $("#showOperational").onclick = () => showPaymentView('operational');
   $("#showHistory").onclick = () => showPaymentView('history');
+  ["historyFrom","historyTo"].forEach((id) => $("#" + id).onchange = render);
+  $("#clearPaymentHistory").onclick = () => {
+    $("#historyFrom").value = "";
+    $("#historyTo").value = "";
+    render();
+  };
+  $("#exportPaymentHistory").onclick = exportPaymentHistory;
   $("#openStoreLedger").onclick = () => {
     const selected = compensationView().rows.find(
       (x) => x.id === selectedCompensationId,

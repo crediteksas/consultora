@@ -340,6 +340,22 @@
           <section id="clientsContent" class="hidden" aria-label="Clientes y cuentas"></section>
           <section id="preparationContent" class="hidden" aria-label="Preparación de pagos"></section>
           <div id="outgoingContent">
+          <section id="historyTools" class="card history-tools hidden" aria-label="Histórico de giros">
+            <div>
+              <h2>Histórico de giros por persona</h2>
+              <p class="section-copy">Consulta los pagos registrados y descarga el detalle del periodo que necesites.</p>
+            </div>
+            <label>Fecha desde
+              <input id="historyFrom" type="date" aria-label="Fecha inicial del histórico de giros" />
+            </label>
+            <label>Fecha hasta
+              <input id="historyTo" type="date" aria-label="Fecha final del histórico de giros" />
+            </label>
+            <button id="clearPaymentHistory" class="btn secondary">Limpiar fechas</button>
+            <button id="exportPaymentHistory" class="btn primary">Descargar informe</button>
+            <p id="historyFilterError" class="compensation-filter-error hidden" role="alert">La fecha desde no puede ser posterior a la fecha hasta.</p>
+            <div id="historySummary" class="history-summary"></div>
+          </section>
           <section class="toolbar card filters">
             <select id="platform">
               <option value="">Todas las plataformas</option>
@@ -552,8 +568,18 @@
         font-size: 11px;
         font-weight: 700;
       }
+      .history-tools {display:grid;grid-template-columns:minmax(220px,1fr) repeat(2,minmax(140px,180px)) auto auto;gap:14px;align-items:end}
+      .history-tools h2 {margin:0 0 4px}
+      .history-tools label {display:grid;gap:6px;font-size:13px;font-weight:700}
+      .history-tools input {width:100%;min-height:44px;border:1px solid #dce5ee;border-radius:12px;background:#fff;padding:10px 12px;font:inherit}
+      .history-tools .compensation-filter-error {grid-column:1/-1;margin:0}
+      .history-summary {grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px}
+      .history-person {border:1px solid #dce5ee;border-radius:12px;padding:12px;background:#f8fafc;min-width:0}
+      .history-person strong,.history-person span {display:block;overflow-wrap:anywhere}
+      .history-person small {color:#64748b}
+      @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
     </style>
-    <script src="aliados-tesoreria-domain.js?v=1.4.0"></script>
+    <script src="aliados-tesoreria-domain.js?v=1.5.0"></script>
     <script src="cobros-plataformas.js?v=1.0.0"></script>
     <script src="aliados-cuentas-domain.js"></script>
     <script src="tesoreria-clientes.js?v=1.1.0"></script>
@@ -569,6 +595,6 @@
       .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
     </style>
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
-    <script src="aliados-tesoreria-app.js?v=2.10.1"></script>
+    <script src="aliados-tesoreria-app.js?v=2.11.0"></script>
   </body>
 </html>

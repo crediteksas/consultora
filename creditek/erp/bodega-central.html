@@ -805,12 +805,13 @@ document.getElementById('tbody-alerta').addEventListener('click', e => {
 // ============================================================
 // SPEC v2 · SECCIÓN DE DESPACHO ACTIVO
 // ============================================================
-let tiendasDestino = [];       // [{codigo, nombre}] — tiendas propias activas
+let tiendasDestino = [];       // Tiendas y clientes con cartera B2B, nunca inventario de destino B2B.
+let solicitudB2B = null;
 let productosDisponibles = []; // [{id, nombre, categoria, tipo, disponible, precio_tienda}]
 let despachoItems = [];        // [{tempId, producto_id, producto_nombre, tipo, cantidad, precio_remision, precio_override, stock_disponible}]
 
 async function cargarDataDespacho() {
-  const [tRes, uRes, lotesRes, pRes] = await Promise.all([
+  const [tRes, uRes, lotesRes, pRes, bRes] = await Promise.all([
     SB.from('tiendas_operativas').select('codigo, nombre').order('codigo'),
     // Unidades disponibles serializadas: agrupar por producto
     bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
@@ -821,16 +822,18 @@ async function cargarDataDespacho() {
     // Lotes de productos por cantidad, conservando la factura.
     SB.rpc('obtener_lotes_cantidad_central'),
     bodegaDomain.cargarTodasLasPaginas(() => SB.from('productos').select('id, codigo, nombre, categoria, tipo').order('id')),
+    SB.from('origenes').select('codigo,nombre,tipo').eq('tipo','cliente_b2b').eq('activo',true).order('nombre'),
   ]);
   if (tRes.error) { toast('Error tiendas: ' + tRes.error.message, 'error'); return; }
+  if (bRes.error) { toast('Error clientes B2B: ' + bRes.error.message, 'error'); return; }
   if (uRes.error) { toast('Error unidades: ' + uRes.error.message, 'error'); return; }
   if (lotesRes.error) { toast('Error lotes: ' + lotesRes.error.message, 'error'); return; }
   if (pRes.error) { toast('Error productos: ' + pRes.error.message, 'error'); return; }
 
-  tiendasDestino = tRes.data || [];
+  tiendasDestino = [...(tRes.data || []), ...(bRes.data || [])];
   const sel = document.getElementById('despacho-tienda');
-  sel.innerHTML = '<option value="">— Selecciona una tienda —</option>' +
-    tiendasDestino.map(t => `<option value="${esc(t.codigo)}">${esc(t.codigo)} · ${esc(t.nombre)}</option>`).join('');
+  sel.innerHTML = '<option value="">— Selecciona tienda o cliente B2B —</option>' +
+    tiendasDestino.map(t => `<option value="${esc(t.codigo)}">${esc(t.codigo)} · ${esc(t.nombre)}${t.tipo==='cliente_b2b'?' · Cartera sin inventario':''}</option>`).join('');
 
   // Consolidar disponibilidad por producto (respetando filtro de factura si aplica).
   const facturaFiltro = document.getElementById('filtro-factura').value;
@@ -1050,13 +1053,22 @@ document.getElementById('btn-despachar').addEventListener('click', async () => {
       payload.push(bodegaDomain.crearItemPayload(it, facturaFiltro));
     }
 
-    const { data, error } = await SB.rpc('despachar_remision_desde_central', {
+    const clienteB2B = tiendasDestino.find(t => t.codigo===tienda)?.tipo === 'cliente_b2b';
+    const firma = JSON.stringify({tienda,payload,nota});
+    if (clienteB2B && (!solicitudB2B || solicitudB2B.firma!==firma)) {
+      if (!confirm('Se descontará CENTRAL y se cargará inmediatamente la cartera del cliente al precio de remisión, sin aceptación ni inventario de destino. ¿Continuar?')) return;
+      solicitudB2B = {firma,id:crypto.randomUUID()};
+    }
+    const { data, error } = clienteB2B
+      ? await SB.rpc('despachar_remision_cliente_b2b', {p_destino:tienda,p_items:payload,p_nota:nota||null,p_request_id:solicitudB2B.id})
+      : await SB.rpc('despachar_remision_desde_central', {
       p_tienda_codigo: tienda,
       p_items: payload,
       p_nota: nota || null,
     });
     if (error) throw new Error(error.message);
     if (!data || data.ok !== true) throw new Error('Respuesta inesperada del RPC');
+    solicitudB2B = null;
 
     toast(`Remisión #${data.consecutivo} despachada`);
     despachoItems = [];

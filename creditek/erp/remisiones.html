@@ -202,6 +202,7 @@ body.modal-open { overflow:hidden; }
         <option value="borrador">Borrador</option>
         <option value="despachada">Despachada</option>
         <option value="recibida">Recibida</option>
+        <option value="cartera_b2b">Cargada a cartera B2B</option>
         <option value="anulada">Anulada</option>
       </select>
       <input type="date" id="filtroFecha">
@@ -520,7 +521,7 @@ function renderTablaRemisiones() {
   }));
 }
 
-function etiquetaEstado(e) { return { borrador: 'Borrador', despachada: 'Despachada', recibida: 'Recibida', anulada: 'Anulada' }[e] || e; }
+function etiquetaEstado(e) { return { borrador: 'Borrador', despachada: 'Despachada', recibida: 'Recibida', cartera_b2b: 'Cargada a cartera B2B', anulada: 'Anulada' }[e] || e; }
 
 // ─── Builder: crear / editar / ver remisión ────────────────────────────
 let puedeCorregirRemisiones = false;

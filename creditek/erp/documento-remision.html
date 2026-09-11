@@ -349,6 +349,7 @@ async function cargarImeisRemision() {
 }
 
 function textoImeis(it) {
+  if (remision.estado === 'cartera_b2b') return 'Cartera B2B · Sin inventario ni recepción de IMEI';
   if (it.productos?.tipo !== 'serializado') return 'Stock por cantidad';
   if (errorImeis) return 'IMEI: no se pudo consultar. Vuelve a cargar la remisión.';
   const lista = imeisPorItem[it.id] || [];
@@ -486,6 +487,7 @@ function renderDocumento() {
     borrador:   ['bg-gray-100 text-gray-700', '📝 Borrador'],
     despachada: ['bg-yellow-100 text-yellow-800', '🟡 Pendiente de aceptar'],
     recibida:   ['bg-green-100 text-green-800', '🟢 Recibida ' + fechaHora(remision.recibida_at)],
+    cartera_b2b: ['bg-green-100 text-green-800', 'Cargada a cartera B2B · Sin recepción de tienda'],
     anulada:    ['bg-red-100 text-red-800', '⛔ Anulada']
   };
   const [cls, txt] = map[remision.estado] || ['bg-gray-100 text-gray-700', remision.estado];
@@ -730,7 +732,7 @@ function compartirWhatsApp() {
     const p = it.productos || {};
     return `- ${p.nombre}: ${it.cantidad} und × ${money(it.precio_remision)}`;
   });
-  const estado = remision.estado === 'recibida' ? '🟢 Recibida' : '🟡 Pendiente de aceptar';
+  const estado = remision.estado === 'cartera_b2b' ? 'Cargada a cartera B2B' : remision.estado === 'recibida' ? '🟢 Recibida' : '🟡 Pendiente de aceptar';
   const texto = [
     `*REMISIÓN #${remision.consecutivo}* — Creditek SAS`,
     `Fecha: ${fechaHora(remision.despachada_at || remision.created_at)}`,

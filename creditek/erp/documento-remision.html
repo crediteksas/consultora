@@ -439,7 +439,7 @@ async function cargarRemision() {
 
   const { data: rem, error: rErr } = await SB
     .from('remisiones')
-    .select('id, consecutivo, tienda_codigo, estado, nota, creada_por, despachada_at, recibida_at, created_at')
+    .select('id, consecutivo, tienda_codigo, estado, nota, creada_por, despachada_at, recibida_at, created_at, revision')
     .eq('id', REMISION_ID).maybeSingle();
 
   if (rErr) { showError('Error cargando remisión: ' + rErr.message); return; }
@@ -696,7 +696,7 @@ async function aceptarRecepcion() {
 
     const { data, error } = await SB.rpc('confirmar_recepcion_remision', {
       p_remision_id: REMISION_ID,
-      p_items: payload
+      p_items: payload.map(item => ({ ...item, revision: remision.revision ?? 0 }))
     });
     if (error) throw new Error(error.message);
     if (!data || data.ok !== true) throw new Error('Respuesta inválida del servidor');

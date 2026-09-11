@@ -222,6 +222,10 @@ body.modal-open { overflow:hidden; }
     <h2 id="modalRemisionTitulo">Nueva remisión</h2>
     <div class="modal-sub" id="modalRemisionSub"></div>
     <input type="hidden" id="remId">
+    <div class="campo" id="correccionMotivoCampo" hidden>
+      <label for="correccionMotivo">Motivo de la corrección</label>
+      <input id="correccionMotivo" maxlength="1000" placeholder="Explica qué precio, cantidad o referencia estás corrigiendo">
+    </div>
 
     <div class="campo">
       <label>Tienda destino</label>
@@ -360,6 +364,8 @@ async function entrarApp(user) {
     return;
   }
   currentPerfil = perfil;
+  const permiso = await sb.rpc('puede_corregir_remisiones');
+  puedeCorregirRemisiones = !permiso.error && permiso.data === true;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').classList.add('show');
   pintarNavUser();
@@ -474,6 +480,8 @@ function renderTablaRemisiones() {
       acciones = `<button class="btn-editar" data-id="${rem.id}">Editar</button>
         <button class="accion-recibir btn-despachar" data-id="${rem.id}">Despachar</button>
         <button class="accion-anular btn-anular" data-id="${rem.id}">Anular</button>`;
+    } else if (puedeCorregirRemisiones && rem.estado === 'despachada' && !rem.recibida_at) {
+      acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Corregir remisión</button>`;
     } else if (!esCentral() && esMiaTienda && rem.estado === 'despachada') {
       acciones = `<button class="accion-recibir btn-recibir" data-id="${rem.id}">Recibir</button>`;
     }
@@ -507,10 +515,19 @@ function renderTablaRemisiones() {
 function etiquetaEstado(e) { return { borrador: 'Borrador', despachada: 'Despachada', recibida: 'Recibida', anulada: 'Anulada' }[e] || e; }
 
 // ─── Builder: crear / editar / ver remisión ────────────────────────────
+let puedeCorregirRemisiones = false;
+let remisionEnEdicion = null;
 function abrirModalRemision(rem) {
-  const soloLectura = !!rem && rem.estado !== 'borrador';
+  remisionEnEdicion = rem ? { ...rem } : null;
+  const correccion = !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
+  const soloLectura = !!rem && rem.estado !== 'borrador' && !correccion;
   document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`);
   document.getElementById('modalRemisionSub').textContent = soloLectura ? 'Esta remisión ya no se puede editar.' : 'Se guarda como borrador — puedes seguir editando hasta despachar.';
+  if (correccion) document.getElementById('modalRemisionSub').textContent = 'Corrección antes de recepción. Conserva el número de remisión, ajusta las reservas de bodega y deja historial. La tienda deberá revisar los cambios antes de aceptar.';
+  document.getElementById('correccionMotivoCampo').hidden = !correccion;
+  document.getElementById('correccionMotivo').value = '';
+  document.getElementById('btnGuardarRemision').textContent = correccion ? 'Guardar corrección' : 'Guardar borrador';
+  document.getElementById('btnGuardarRemision').disabled = !!rem;
   document.getElementById('remId').value = rem ? rem.id : '';
   document.getElementById('modalRemisionErr').classList.remove('show');
   document.getElementById('modalRemisionOk').classList.remove('show');
@@ -522,7 +539,7 @@ function abrirModalRemision(rem) {
 
   document.getElementById('itemsContainer').innerHTML = '';
   document.getElementById('btnAgregarItem').style.display = soloLectura ? 'none' : 'inline-block';
-  document.getElementById('btnCrearProductoDesdeRemision').style.display = soloLectura ? 'none' : 'inline-block';
+  document.getElementById('btnCrearProductoDesdeRemision').style.display = soloLectura || correccion ? 'none' : 'inline-block';
   document.getElementById('btnGuardarRemision').style.display = soloLectura ? 'none' : 'inline-block';
 
   if (rem && rem.remision_items && rem.remision_items_full) {
@@ -545,9 +562,11 @@ async function cargarItemsRemision(remisionId, soloLectura) {
   // (donde solo gerencia/auditoría pueden verlo) — este modal legacy ya no lo
   // pide ni lo muestra, para que un inspector de DevTools no lo lea del payload.
   const { data, error } = await sb.from('remision_items').select('*').eq('remision_id', remisionId);
+  if (document.getElementById('remId').value !== remisionId) return;
   if (error) { document.getElementById('modalRemisionErr').textContent = 'Error cargando items: ' + error.message; document.getElementById('modalRemisionErr').classList.add('show'); return; }
   document.getElementById('itemsContainer').innerHTML = '';
   (data || []).forEach(it => agregarItemRow(it, soloLectura));
+  document.getElementById('btnGuardarRemision').disabled = soloLectura;
   actualizarTotalRemision();
 }
 
@@ -557,6 +576,7 @@ function agregarItemRow(item, soloLectura) {
   const div = document.createElement('div');
   div.className = 'item-row' + (esCentral() ? '' : ' sin-central');
   div.id = rowId;
+  div.dataset.itemId = item?.id || '';
   const opcionesProducto = productosCache.map(p => `<option value="${p.id}" ${item && item.producto_id === p.id ? 'selected' : ''}>${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</option>`).join('');
   // FIX 23-jul-2026 · columna Costo Oscar eliminada del render.
   div.innerHTML = `
@@ -595,18 +615,41 @@ async function guardarRemision() {
     const producto_id = row.querySelector('.it-producto').value;
     const cantidad = Number(row.querySelector('.it-cantidad').value || 0);
     const precio_remision = Number(row.querySelector('.it-precio').value || 0);
-    if (!producto_id || cantidad <= 0) { err.textContent = 'Revisa la cantidad en cada producto.'; err.classList.add('show'); return; }
+    if (!producto_id || !Number.isInteger(cantidad) || cantidad <= 0) { err.textContent = 'Revisa la cantidad entera en cada producto.'; err.classList.add('show'); return; }
     if (!Number.isFinite(precio_remision) || precio_remision <= 0) {
       const nombre = row.querySelector('.it-producto option:checked')?.textContent?.trim() || 'este producto';
       err.textContent = `Falta el precio de tienda para ${nombre}`;
       err.classList.add('show');
       return;
     }
-    items.push({ producto_id, cantidad, precio_remision });
+    items.push({ id: row.dataset.itemId || null, producto_id, cantidad, precio_remision });
   }
 
   const btn = document.getElementById('btnGuardarRemision');
   btn.disabled = true; btn.textContent = 'Guardando...';
+
+  if (remisionEnEdicion?.estado === 'despachada') {
+    try {
+      const { data, error } = await sb.rpc('corregir_remision_despachada', {
+        p_remision_id: id,
+        p_revision: remisionEnEdicion.revision ?? 0,
+        p_items: items,
+        p_motivo: document.getElementById('correccionMotivo').value.trim(),
+      });
+      if (error) throw new Error(error.message);
+      if (data?.ok !== true) throw new Error('El servidor no confirmó el guardado. Actualiza antes de volver a intentar.');
+      await cargarRemisiones();
+      cerrarModalAccesible('modalRemision');
+      mostrarBanner('Corrección guardada. La tienda verá los datos actualizados antes de aceptar.');
+    } catch (error) {
+      err.textContent = 'No se pudo corregir: ' + error.message;
+      err.classList.add('show');
+      await cargarRemisiones();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar corrección';
+    }
+    return;
+  }
 
   let remisionId = id;
   if (!remisionId) {
@@ -641,7 +684,7 @@ async function guardarRemision() {
 }
 
 async function despacharRemision(id) {
-  if (!confirm('¿Despachar esta remisión? Ya no se podrá editar.')) return;
+  if (!confirm('¿Despachar esta remisión? Solo Maite o Gerencia podrán corregirla antes de que la tienda la acepte.')) return;
   const { error } = await sb.from('remisiones').update({ estado: 'despachada', despachada_at: new Date().toISOString() }).eq('id', id).eq('estado', 'borrador');
   if (error) { alert('No se pudo despachar: ' + error.message); return; }
   mostrarBanner('Remisión despachada correctamente.');
@@ -858,7 +901,7 @@ async function confirmarRecepcion() {
   }
   const { data, error } = await sb.rpc('confirmar_recepcion_remision', {
     p_remision_id: recepcionRemisionActual.id,
-    p_items: payload,
+    p_items: payload.map(item => ({ ...item, revision: recepcionRemisionActual.revision ?? 0 })),
   });
   btn.disabled = false; btn.textContent = 'Confirmar recepción';
 

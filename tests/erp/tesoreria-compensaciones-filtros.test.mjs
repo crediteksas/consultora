@@ -22,10 +22,10 @@ test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => 
   assert.equal(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-12', hasta: '2026-09-11' }).rangoInvalido, true);
 });
 
-test('abre sólo hoy en pestaña separada y permite consultar todo sin escribir', async () => {
+test('abre todas las compensaciones y permite consultar hoy sin escribir', async () => {
   const ui = await boot([{ ...rows[0], created_at: new Date().toISOString() }, rows[1]], { keepToday: true });
-  assert.equal(ui.node('#compensationCount').textContent, 1);
-  assert.equal(ui.node('#compensationFrom').value, domain.diaBogota());
+  assert.equal(ui.node('#compensationCount').textContent, 2);
+  assert.equal(ui.node('#compensationFrom').value, '');
   await ui.node('#showStoreMovements').onclick();
   assert.equal(ui.node('#storeMovementsContent').classList.contains('hidden'), false);
   assert.equal(ui.node('#paymentSections').classList.contains('hidden'), true);
@@ -34,6 +34,14 @@ test('abre sólo hoy en pestaña separada y permite consultar todo sin escribir'
   ui.change('compensationImei', 'dos');
   assert.equal(ui.node('#compensationCount').textContent, 1);
   assert.deepEqual(ui.writes, []);
+});
+
+test('pagos abiertos y compensaciones permanecen visibles aunque existan filtros', async () => {
+  const ui=await boot(rows);
+  ui.change('platform','krediya');
+  assert.match(ui.node('#persistentPending').innerHTML,/Pendientes siempre visibles/);
+  assert.match(ui.node('#persistentPending').innerHTML,/3 ·/);
+  assert.match(source,/treasuryView === "history" \? filtered\(source\) : source/);
 });
 
 test('IMEI en cartera usa consulta mínima por referencia y tienda sin recalcular', () => {
@@ -229,7 +237,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.12.0/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.13.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

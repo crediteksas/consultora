@@ -25,7 +25,7 @@
 
   const closeProfile = () => rightPanel.classList.remove('show');
   const enhanceProfile = () => {
-    if (!narrow.matches || !rightPanel.classList.contains('show')) return;
+    if (!rightPanel.classList.contains('show')) return;
     if (rightPanel.querySelector('.aura-panel-close')) return;
     const close = button('Cerrar', 'x', 'aura-panel-close');
     close.setAttribute('aria-label', 'Cerrar información del cliente');

@@ -2,6 +2,7 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyAuraArtifact } from './verify-aura-artifact.mjs';
+import { stampAuraRelease } from './aura-release-build.mjs';
 
 const DESIGN_FILES = [
   'design-system/components',
@@ -35,6 +36,7 @@ export async function buildAura(root, out = path.join(root, 'dist/aura')) {
   for (const relative of DESIGN_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'config/aura-environment.js');
 
+  await stampAuraRelease(resolvedOut);
   await verifyAuraArtifact(resolvedOut);
   return resolvedOut;
 }

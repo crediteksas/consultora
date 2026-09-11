@@ -5,27 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agente 3 · Meta Ads — AURA</title>
 <script type="module">
-import { auraSessionToken } from './agente3-aura-session.mjs';
-window.auraSessionToken = auraSessionToken;
-// Exponer también como función directa por si el módulo tarda
-window.__metaToken = function() {
-  const STORAGE_KEY = 'aura_supabase_session_v1';
-  try {
-    const ls = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (ls?.access_token) return ls.access_token;
-    const ss = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
-    if (ss?.access_token) return ss.access_token;
-  } catch(e) {}
-  return '';
-};
-// Fallback por si window.auraSessionToken no carga
-if (!window.auraSessionToken) {
-  window.auraSessionToken = window.__metaToken;
-}
+import { metaSessionToken } from './agente3-meta-session.mjs';
+window.auraSessionToken = metaSessionToken;
 </script>
 <script>
 try {
-  ['ck_api_key', 'ck_claude_key'].forEach(key => {
+  ['ck_api_key', 'ck_claude_key', 'ck_meta_token', 'ck_meta_account'].forEach(key => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
   });
@@ -282,7 +267,6 @@ body::-webkit-scrollbar{width:6px}body::-webkit-scrollbar-track{background:trans
   <div class="header-right">
     <button class="refresh-btn" onclick="abrirWizard()" style="background:var(--turq)">+ Crear campaña</button>
     <button class="config-btn" onclick="verHistorial()">📜 Historial</button>
-    <button class="config-btn" onclick="abrirConfig()">⚙ Configurar</button>
     <button class="refresh-btn" id="refresh-btn" onclick="cargarDatos()">
       <span id="refresh-icon">↻</span> Actualizar
     </button>
@@ -516,38 +500,6 @@ body::-webkit-scrollbar{width:6px}body::-webkit-scrollbar-track{background:trans
 
 </div>
 
-<!-- Modal config -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <div class="modal-title">⚙ Configuración Meta Ads</div>
-    <div class="modal-sub">El dashboard usa el Worker seguro. El token local es solo un override manual para el publicador legado.</div>
-    <div class="field">
-      <label>Token de acceso Meta Ads</label>
-      <input type="password" id="inp-token" placeholder="EAAxxxxxxxxxxxxx">
-    </div>
-    <div class="field">
-      <label>ID de cuenta publicitaria</label>
-      <input type="text" id="inp-account" value="27446180201684830" readonly>
-    </div>
-    <div class="field">
-      <label>Presupuesto semanal (COP)</label>
-      <input type="number" id="inp-budget" value="160000" readonly>
-    </div>
-    <!-- FIX v32, 21-jul-2026 — dashboard 100% en COP (account_currency=COP
-         confirmado), ya no se convierte nada. Se oculta el campo en vez de
-         borrar la variable/lógica COP_TO_USD por si se necesita a futuro
-         (ver nota en el bloque "Config" más abajo, en el JS). -->
-    <div class="field" style="display:none">
-      <label>Tasa de cambio COP → USD (actualízala cuando cambie el dólar)</label>
-      <input type="number" id="inp-tasa" placeholder="3350" min="1000" step="1">
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="cerrarConfig()">Cancelar</button>
-      <button class="btn-primary" onclick="guardarConfig()">Guardar y conectar</button>
-    </div>
-  </div>
-</div>
-
 <!-- Wizard crear campaña -->
 <div class="modal-overlay" id="modal-wizard">
   <div class="modal modal-wizard">
@@ -697,13 +649,13 @@ body::-webkit-scrollbar{width:6px}body::-webkit-scrollbar-track{background:trans
       <div class="field">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="wiz-activar-ya" checked style="width:auto">
-          Activar la campaña inmediatamente (si no, queda pausada para revisarla en Meta)
+          Confirmo que revisé imagen, texto, presupuesto y ciudades antes de publicar
         </label>
       </div>
       <div class="wiz-progress" id="wiz-progress">Publicando...</div>
       <div class="wiz-nav">
         <button class="btn-secondary" onclick="wizGoStep(3)">← Atrás</button>
-        <button class="btn-primary" style="flex:none;padding:10px 20px" id="wiz-publish-btn" onclick="publicarCampana()">🚀 Publicar en Meta</button>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" id="wiz-publish-btn" onclick="publicarCampanaSegura()">🚀 Publicar en Meta</button>
       </div>
     </div>
 
@@ -777,18 +729,34 @@ let wizCustomZones = {};
 let wizDuration = 7;
 let wizImageBase64 = null;
 let wizImageBaseB = null; // A/B testing — imagen de la Variante B
+let wizImageMime = 'image/png';
+let wizImageMimeB = 'image/png';
 let wizABTest = false;    // A/B testing — activado/desactivado
+let securePublisherCities = [];
 
-function abrirWizard() {
-  if (!localStorage.getItem('ck_meta_token') || !localStorage.getItem('ck_meta_account')) {
-    showToast('Primero configura tu token y cuenta de Meta', '#EF4444');
-    abrirConfig();
-    return;
+function normalizeCityName(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+function secureCityName(city) { return city?.name || city?.city_name || city?.nombre || ''; }
+function secureCityId(city) { return city?.id || city?.city_id || city?.slug || ''; }
+
+async function abrirWizard() {
+  try {
+    showToast('Validando conexión segura con Meta…');
+    const options = await metaWorkerRequest('/v1/publisher/options');
+    securePublisherCities = Array.isArray(options.cities) ? options.cities : [];
+    Object.values(WIZ_ZONES).forEach(zone => {
+      const match = securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name));
+      zone.secureId = secureCityId(match) ? String(secureCityId(match)) : '';
+    });
+    renderWizZones();
+    renderWizDuration();
+    wizGoStep(1);
+    document.getElementById('modal-wizard').classList.add('open');
+    showToast('✓ Conexión segura lista', '#10B981');
+  } catch (error) {
+    showToast(`No se pudo abrir el publicador seguro: ${error.message}`, '#EF4444');
   }
-  renderWizZones();
-  renderWizDuration();
-  wizGoStep(1);
-  document.getElementById('modal-wizard').classList.add('open');
 }
 
 function cerrarWizard() {
@@ -824,38 +792,14 @@ function wizToggleSearch() {
 // Actualizar esta lista el día que se consiga un aliado en alguna de ellas.
 const EXCLUDED_CITY_NAMES = ['Sincelejo', 'Montería'];
 
-async function resolverCiudadesExcluidas(token) {
-  const resultados = [];
-  for (const nombre of EXCLUDED_CITY_NAMES) {
-    try {
-      const url = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=${encodeURIComponent('["city"]')}&q=${encodeURIComponent(nombre)}&country_code=CO&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const match = (data.data || []).find(c => c.type === 'city' && c.name === nombre);
-      if (match) {
-        resultados.push({ key: match.key, region: match.region, region_id: String(match.region_id), country: 'CO' });
-      } else {
-        console.warn(`No se pudo resolver la ciudad a excluir: ${nombre}`);
-      }
-    } catch (err) {
-      console.warn(`Error buscando ciudad a excluir ${nombre}:`, err);
-    }
-  }
-  return resultados;
-}
 
 async function wizSearchCity() {
   const q = document.getElementById('wiz-search-input').value.trim();
   const resultsDiv = document.getElementById('wiz-search-results');
   if (!q) return;
   resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Buscando...</div>';
-  const token = localStorage.getItem('ck_meta_token');
   try {
-    const url = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=${encodeURIComponent('["city"]')}&q=${encodeURIComponent(q)}&country_code=CO&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) { resultsDiv.innerHTML = `<div style="font-size:12px;color:#EF4444;padding:6px 0">${data.error.message}</div>`; return; }
-    const cities = (data.data || []).filter(c => c.type === 'city');
+    const cities = securePublisherCities.filter(city => normalizeCityName(secureCityName(city)).includes(normalizeCityName(q)));
     if (cities.length === 0) { resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Sin resultados</div>'; return; }
     resultsDiv.innerHTML = '';
     cities.slice(0, 8).forEach(c => {
@@ -909,31 +853,19 @@ async function wizCargarAliados() {
   wizAliadosCargando = true;
   const status = document.getElementById('wiz-aliados-status');
   const lista = document.getElementById('wiz-aliados-list');
-  const token = localStorage.getItem('ck_meta_token');
-  if (!token) {
-    status.innerHTML = '<span style="color:#EF4444">Sin token Meta. Configúralo en el ícono de ajustes.</span>';
-    wizAliadosCargando = false;
-    return;
-  }
-  status.textContent = 'Resolviendo ciudades en Meta…';
+  status.textContent = 'Validando ciudades autorizadas…';
   lista.innerHTML = '';
-
-  await Promise.all(CIUDADES_ALIADOS.map(async (nombre) => {
-    try {
-      const url = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=${encodeURIComponent('["city"]')}&q=${encodeURIComponent(nombre)}&country_code=CO&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      const cities = (data.data || []).filter(c => c.type === 'city');
-      // Preferir match exacto de nombre. Si hay varios (ej. Barranquilla), tomar el primero.
-      const match = cities.find(c => c.name === nombre) || cities[0];
-      if (match) {
-        wizAliadoResueltos[nombre] = { key: match.key, region: match.region, region_id: String(match.region_id) };
-      }
-    } catch (err) {
-      console.warn(`No se pudo resolver ciudad aliada "${nombre}":`, err);
-    }
-  }));
+  CIUDADES_ALIADOS.forEach(nombre => {
+    const match = securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(nombre));
+    if (!match) return;
+    const secureId = String(secureCityId(match));
+    wizAliadoResueltos[nombre] = {
+      key: secureId,
+      secureId,
+      region: match.region || match.region_name || '',
+      region_id: String(match.region_id || '')
+    };
+  });
 
   const resueltas = Object.keys(wizAliadoResueltos).length;
   status.textContent = resueltas === CIUDADES_ALIADOS.length
@@ -962,7 +894,7 @@ function wizToggleAliado(nombre, marcar) {
   if (!resuelto) return;
   const id = 'aliado_' + resuelto.key;
   if (marcar) {
-    wizCustomZones[id] = { name: nombre, key: resuelto.key, region: resuelto.region, region_id: resuelto.region_id, sub: '🤝 Aliado' };
+    wizCustomZones[id] = { name: nombre, key: resuelto.key, secureId: resuelto.secureId, region: resuelto.region, region_id: resuelto.region_id, sub: '🤝 Aliado' };
     wizSelectedZones.add(id);
   } else {
     delete wizCustomZones[id];
@@ -980,7 +912,7 @@ function wizToggleAllAliados() {
     nombresResueltos.forEach(n => {
       const r = wizAliadoResueltos[n];
       const id = 'aliado_' + r.key;
-      wizCustomZones[id] = { name: n, key: r.key, region: r.region, region_id: r.region_id, sub: '🤝 Aliado' };
+      wizCustomZones[id] = { name: n, key: r.key, secureId: r.secureId, region: r.region, region_id: r.region_id, sub: '🤝 Aliado' };
       wizSelectedZones.add(id);
     });
   } else {
@@ -1061,6 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
+      wizImageMime = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
       const reader = new FileReader();
       reader.onload = ev => {
         wizImageBase64 = ev.target.result.split(',')[1];
@@ -1076,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInputB.addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
+      wizImageMimeB = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
       const reader = new FileReader();
       reader.onload = ev => {
         wizImageBaseB = ev.target.result.split(',')[1];
@@ -1101,39 +1035,9 @@ async function actualizarAudienciaEstimada() {
   el.textContent = 'Calculando...';
   if (bar) bar.style.width = '0%';
 
-  const token = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
-  if (!token || !account || wizSelectedZones.size === 0) { el.textContent = 'Elige al menos una zona'; return; }
-
-  try {
-    const excludedCities = await resolverCiudadesExcluidas(token);
-    const targetingSpec = {
-      age_min: 18, age_max: 65,
-      geo_locations: {
-        cities: [...wizSelectedZones].map(id => ({
-          key: wizAllZones()[id].key, radius: 20, distance_unit: 'kilometer',
-          region: wizAllZones()[id].region, region_id: wizAllZones()[id].region_id, country: 'CO'
-        })),
-        location_types: ['home', 'recent']
-      },
-      ...(excludedCities.length > 0 ? { excluded_geo_locations: { cities: excludedCities, location_types: ['home', 'recent'] } } : {})
-    };
-    const url = `https://graph.facebook.com/v25.0/act_${account}/delivery_estimate?optimization_goal=REACH&targeting_spec=${encodeURIComponent(JSON.stringify(targetingSpec))}&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) { el.textContent = 'No se pudo calcular — revisa tu token'; return; }
-
-    const est = data.data && data.data[0];
-    if (!est || !est.estimate_ready) { el.textContent = 'Estimación no disponible para esta selección'; return; }
-
-    const lower = est.estimate_mau_lower_bound || 0;
-    const upper = est.estimate_mau_upper_bound || 0;
-    el.innerHTML = `${fmtNum(lower)} - ${fmtNum(upper)} personas <span style="color:var(--text3)">(${clasificarAudiencia(upper)})</span>`;
-    if (bar) bar.style.width = Math.min(100, Math.round((upper / 500000) * 100)) + '%';
-  } catch (err) {
-    console.warn('Error calculando audiencia estimada:', err);
-    el.textContent = 'Error al calcular audiencia';
-  }
+  if (wizSelectedZones.size === 0) { el.textContent = 'Elige al menos una zona'; return; }
+  el.textContent = 'La segmentación se validará de forma segura al publicar';
+  if (bar) bar.style.width = '100%';
 }
 
 function wizGoStep(n) {
@@ -1171,184 +1075,71 @@ function wizGoStep(n) {
   }
 }
 
-async function publicarCampana() {
-  const token = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
+
+function localIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function publicarCampanaSegura() {
   const progress = document.getElementById('wiz-progress');
   const btn = document.getElementById('wiz-publish-btn');
   progress.style.display = 'block';
+  progress.style.color = '';
   btn.disabled = true;
-
   try {
-    const budgetCop = parseInt(document.getElementById('wiz-budget-slider').value); // FIX v33 — ya en COP, sin multiplicar
-    const dailyBudgetCop = Math.round(budgetCop / 7);
-    const adText = document.getElementById('wiz-ad-text').value.trim();
-    const headlineText = document.getElementById('wiz-headline').value.trim();
-    const activarYa = document.getElementById('wiz-activar-ya').checked;
-    const status = activarYa ? 'ACTIVE' : 'PAUSED';
-    const horaActual = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit', hour12:false});
-    const copySnippet = adText ? adText.split(' ').slice(0,4).join(' ') : 'sin-copy';
-    const nombreAutoFallback = `Creditek - ${[...wizSelectedZones].map(id => wizAllZones()[id].name).join('+')} - ${new Date().toLocaleDateString('es-CO')} ${horaActual} - ${copySnippet}`;
-    const campaignName = document.getElementById('wiz-campaign-name').value.trim() || nombreAutoFallback;
+    if (!document.getElementById('wiz-activar-ya').checked) throw new Error('Confirma la revisión final antes de publicar');
+    const zones = [...wizSelectedZones].map(id => wizAllZones()[id]).filter(Boolean);
+    const cityIds = zones.map(zone => zone.secureId || secureCityId(securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name)))).filter(Boolean).map(String);
+    if (!cityIds.length || cityIds.length !== zones.length) throw new Error('Una ciudad seleccionada no está habilitada en el catálogo seguro');
+    if (!wizImageBase64) throw new Error('Sube la imagen del anuncio');
+    if (wizABTest && !wizImageBaseB) throw new Error('Sube la imagen de la variante B');
 
-    // 1. Subir imagen(es)
-    progress.textContent = 'Subiendo imagen...';
-    const imgRes = await fetch(`https://graph.facebook.com/v25.0/act_${account}/adimages`, {
-      method: 'POST',
-      body: new URLSearchParams({ access_token: token, bytes: wizImageBase64 })
-    });
-    const imgData = await imgRes.json();
-    if (imgData.error) throw new Error('Imagen: ' + (imgData.error.error_user_msg || imgData.error.message));
-    const imageHash = Object.values(imgData.images)[0].hash;
-
-    let imageHashB = null;
-    if (wizABTest && wizImageBaseB) {
-      progress.textContent = 'Subiendo imagen Variante B...';
-      const imgResB = await fetch(`https://graph.facebook.com/v25.0/act_${account}/adimages`, {
-        method: 'POST',
-        body: new URLSearchParams({ access_token: token, bytes: wizImageBaseB })
-      });
-      const imgDataB = await imgResB.json();
-      if (imgDataB.error) throw new Error('Imagen B: ' + (imgDataB.error.error_user_msg || imgDataB.error.message));
-      imageHashB = Object.values(imgDataB.images)[0].hash;
-    }
-
-    // 2. Crear campaña
-    progress.textContent = 'Creando campaña...';
-    const objetivoSeleccionado = document.getElementById('wiz-objective').value;
-    const esMensajesWA = objetivoSeleccionado === 'mensajes';
-    const campObjective = esMensajesWA ? 'OUTCOME_ENGAGEMENT' : 'OUTCOME_ENGAGEMENT';
-    const campRes = await fetch(`https://graph.facebook.com/v25.0/act_${account}/campaigns`, {
-      method: 'POST',
-      body: new URLSearchParams({
-        access_token: token,
-        name: campaignName,
-        objective: campObjective,
-        status: status,
-        special_ad_categories: JSON.stringify(['FINANCIAL_PRODUCTS_SERVICES']),
-        special_ad_category_country: JSON.stringify(['CO']),
-        is_adset_budget_sharing_enabled: 'false'
-      })
-    });
-    const campData = await campRes.json();
-    if (campData.error) throw new Error('Campaña: ' + (campData.error.error_user_msg || campData.error.message));
-
-    // 3. Crear ad set
-    progress.textContent = 'Configurando segmentación...';
-    const startTime = new Date().toISOString();
-    const endTime = new Date(Date.now() + wizDuration * 86400000).toISOString();
-    // Fix v6 — radio reducido de 40km a 15km, y exclusión explícita de ciudades
-    // grandes vecinas sin aliado (Sincelejo, Montería), para dejar de pagar por
-    // leads que Sofía no puede atender bien. Cuando haya aliado ahí, se agregan
-    // como zona propia en WIZ_ZONES, y se quitan de EXCLUDED_CITY_NAMES.
-    const excludedCities = await resolverCiudadesExcluidas(token);
-    const targeting = {
-      age_min: 18, age_max: 65,
-      geo_locations: {
-        cities: [...wizSelectedZones].map(id => ({
-          key: wizAllZones()[id].key, radius: 20, distance_unit: 'kilometer',
-          region: wizAllZones()[id].region, region_id: wizAllZones()[id].region_id, country: 'CO'
-        })),
-        location_types: ['home', 'recent']
-      },
-      ...(excludedCities.length > 0 ? {
-        excluded_geo_locations: { cities: excludedCities, location_types: ['home', 'recent'] }
-      } : {}),
-      targeting_automation: { advantage_audience: 1 }
+    const weeklyBudget = Number(document.getElementById('wiz-budget-slider').value);
+    const dailyBudget = Math.round(weeklyBudget / 7);
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + wizDuration);
+    const objectiveChoice = document.getElementById('wiz-objective').value;
+    const headline = document.getElementById('wiz-headline').value.trim();
+    const copy = document.getElementById('wiz-ad-text').value.trim();
+    const campaignName = document.getElementById('wiz-campaign-name').value.trim();
+    const cta = objectiveChoice === 'mensajes' ? 'SEND_MESSAGE' : 'LEARN_MORE';
+    const objective = objectiveChoice === 'mensajes' ? 'OUTCOME_ENGAGEMENT' : 'OUTCOME_TRAFFIC';
+    const baseCreative = {
+      piece_id: 'manual', copy, headline, cta, image_url: '',
+      image_data: { mime_type: wizImageMime, bytes_base64: wizImageBase64 }
     };
-    const adsetBody = {
-        access_token: token,
-        name: 'Costa Caribe - ' + campaignName,
-        campaign_id: campData.id,
-        daily_budget: String(dailyBudgetCop),
-        billing_event: 'IMPRESSIONS',
-        optimization_goal: esMensajesWA ? 'CONVERSATIONS' : 'REACH',
-        bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-        targeting: JSON.stringify(targeting),
-        start_time: startTime,
-        end_time: endTime,
-        status: status
+    const payload = {
+      ...baseCreative,
+      campaign_name: campaignName,
+      cities: cityIds,
+      platforms: ['facebook', 'instagram'],
+      objective,
+      budget_type: 'daily',
+      budget_cop: dailyBudget,
+      start_date: localIsoDate(start),
+      end_date: localIsoDate(end),
+      final_confirmation: true,
+      ...(wizABTest ? { variants: [baseCreative, {
+        piece_id: 'manual', copy, headline, cta, image_url: '',
+        image_data: { mime_type: wizImageMimeB, bytes_base64: wizImageBaseB }
+      }] } : {})
     };
-    if (esMensajesWA) {
-      adsetBody.destination_type = 'WHATSAPP';
-      adsetBody.promoted_object = JSON.stringify({ page_id: WIZ_PAGE_ID });
-    }
-    const adsetRes = await fetch(`https://graph.facebook.com/v25.0/act_${account}/adsets`, {
+
+    progress.textContent = 'Publicando mediante conexión segura…';
+    const idempotencyKey = `aura_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const result = await metaWorkerRequest('/v1/publisher/publish', {
       method: 'POST',
-      body: new URLSearchParams(adsetBody)
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(payload)
     });
-    const adsetData = await adsetRes.json();
-    if (adsetData.error) throw new Error('Ad set: ' + (adsetData.error.error_user_msg || adsetData.error.message));
-
-    // 4. Crear creative(s) y ad(s) — 1 si es sencilla, 2 si es A/B (mismo ad set)
-    const ctaInstagram = { type: 'VIEW_INSTAGRAM_PROFILE', value: { link: 'http://instagram.com/creditekco' } };
-
-    async function crearCreativeYAd(imgHash, variantLabel) {
-      const nombreVariante = variantLabel ? `${campaignName} - ${variantLabel}` : campaignName;
-      let creativeBody;
-      if (esMensajesWA) {
-        creativeBody = {
-          access_token: token,
-          name: 'Creative - ' + nombreVariante,
-          object_story_spec: JSON.stringify({
-            page_id: WIZ_PAGE_ID,
-            link_data: {
-              name: headlineText,
-              message: adText,
-              image_hash: imgHash,
-              link: 'https://api.whatsapp.com/send',
-              call_to_action: { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } }
-            }
-          })
-        };
-      } else {
-        creativeBody = {
-          access_token: token,
-          name: 'Creative - ' + nombreVariante,
-          object_story_spec: JSON.stringify({
-            page_id: WIZ_PAGE_ID,
-            instagram_user_id: WIZ_IG_USER_ID,
-            link_data: {
-              name: headlineText,
-              link: 'http://instagram.com/creditekco',
-              message: adText,
-              image_hash: imgHash,
-              call_to_action: ctaInstagram
-            }
-          })
-        };
-      }
-      const creativeRes = await fetch(`https://graph.facebook.com/v25.0/act_${account}/adcreatives`, {
-        method: 'POST',
-        body: new URLSearchParams(creativeBody)
-      });
-      const creativeData = await creativeRes.json();
-      if (creativeData.error) { console.error('CREATIVE ERROR FULL:', JSON.stringify(creativeData.error)); throw new Error('Creative' + (variantLabel ? ' ' + variantLabel : '') + ': ' + (creativeData.error.error_user_msg || creativeData.error.message) + ' | Code: ' + creativeData.error.code + ' Subcode: ' + creativeData.error.error_subcode); }
-
-      const adRes = await fetch(`https://graph.facebook.com/v25.0/act_${account}/ads`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          access_token: token,
-          name: nombreVariante,
-          adset_id: adsetData.id,
-          creative: JSON.stringify({ creative_id: creativeData.id }),
-          status: status
-        })
-      });
-      const adData = await adRes.json();
-      if (adData.error) throw new Error('Ad' + (variantLabel ? ' ' + variantLabel : '') + ': ' + (adData.error.error_user_msg || adData.error.message));
-      return adData;
-    }
-
-    progress.textContent = 'Publicando anuncio...';
-    await crearCreativeYAd(imageHash, wizABTest ? 'Variante A' : null);
-    if (wizABTest && imageHashB) {
-      progress.textContent = 'Publicando Variante B...';
-      await crearCreativeYAd(imageHashB, 'Variante B');
-    }
-
-    progress.textContent = '✓ ¡Campaña publicada!';
-    showToast(wizABTest ? '✓ Campaña con 2 variantes A/B creada en Meta' : '✓ Campaña creada en Meta correctamente', '#10B981');
+    if (!result.ok) throw new Error(result.error || 'Meta no confirmó la publicación');
+    progress.textContent = '✓ Campaña enviada a revisión de Meta';
+    progress.style.color = '#10B981';
+    showToast('✓ Campaña publicada mediante el Worker seguro', '#10B981');
     setTimeout(() => {
       cerrarWizard();
       wizSelectedZones = new Set();
@@ -1356,26 +1147,16 @@ async function publicarCampana() {
       wizImageBase64 = null;
       wizImageBaseB = null;
       wizABTest = false;
-      document.getElementById('wiz-ab-toggle').checked = false;
-      document.getElementById('wiz-field-imgb').style.display = 'none';
-      document.getElementById('wiz-img-a-label').style.display = 'none';
-      document.getElementById('wiz-campaign-name').value = '';
-      delete document.getElementById('wiz-campaign-name').dataset.editado;
-      document.getElementById('wiz-headline').value = '';
-      document.getElementById('wiz-ad-text').value = '';
-      document.getElementById('wiz-img-preview').style.display = 'none';
-      document.getElementById('wiz-upload-placeholder').style.display = 'block';
-      document.getElementById('wiz-img-preview-b').style.display = 'none';
-      document.getElementById('wiz-upload-placeholder-b').style.display = 'block';
       progress.style.display = 'none';
       cargarDatos();
-    }, 1500);
-  } catch (err) {
-    progress.textContent = '✗ Error: ' + err.message;
+    }, 1800);
+  } catch (error) {
+    progress.textContent = `✗ ${error.message}`;
     progress.style.color = '#EF4444';
-    showToast(err.message, '#EF4444');
+    showToast(error.message, '#EF4444');
+  } finally {
+    btn.disabled = false;
   }
-  btn.disabled = false;
 }
 let lastData = null;
 // FIX v29, 13-jul-2026: estado real de calendario (Sección A) — independiente
@@ -1427,28 +1208,6 @@ function contarResultadosReales(actions) {
     .reduce((s, a) => s + parseInt(a.value || 0), 0);
 }
 
-function abrirConfig() {
-  document.getElementById('inp-token').value   = localStorage.getItem('ck_meta_token') || '';
-  document.getElementById('inp-account').value = META_AD_ACCOUNT_ID;
-  document.getElementById('inp-budget').value  = getWeeklyBudgetCOP();
-  document.getElementById('inp-tasa').value    = localStorage.getItem('ck_cop_usd') || COP_TO_USD;
-  document.getElementById('modal').classList.add('open');
-}
-function cerrarConfig() {
-  document.getElementById('modal').classList.remove('open');
-}
-function guardarConfig() {
-  const t = document.getElementById('inp-token').value.trim();
-  const tasa = document.getElementById('inp-tasa').value.trim();
-  if (t) localStorage.setItem('ck_meta_token', t);
-  else localStorage.removeItem('ck_meta_token');
-  localStorage.removeItem('ck_meta_account');
-  localStorage.removeItem('ck_weekly_budget');
-  if (tasa) { localStorage.setItem('ck_cop_usd', tasa); COP_TO_USD = parseFloat(tasa); }
-  cerrarConfig();
-  showToast('✓ Configuración guardada');
-  cargarDatos();
-}
 
 // ── Period ───────────────────────────────────────────────────────
 function setPeriod(days, btn) {
@@ -1490,31 +1249,6 @@ function getFechaPrimerDiaMes() {
 function fmtFecha(d) { return d.toISOString().split('T')[0]; }
 
 // ── Sección A: estado real de calendario (semana + mes) ───────────
-async function cargarEstadoActual() {
-  const token   = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
-  if (!token || !account) return;
-
-  const hoy = new Date();
-  const lunes = getFechaLunesEstaSemana();
-  const primerDiaMes = getFechaPrimerDiaMes();
-
-  try {
-    const [resSemana, resMes] = await Promise.all([
-      fetch(`https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend&time_range={"since":"${fmtFecha(lunes)}","until":"${fmtFecha(hoy)}"}&level=account&access_token=${token}`),
-      fetch(`https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend&time_range={"since":"${fmtFecha(primerDiaMes)}","until":"${fmtFecha(hoy)}"}&level=account&access_token=${token}`),
-    ]);
-    const [dSemana, dMes] = await Promise.all([resSemana.json(), resMes.json()]);
-    if (dSemana.error) throw new Error(dSemana.error.message);
-    if (dMes.error) throw new Error(dMes.error.message);
-
-    estadoReal.semanaSpendCOP = parseFloat(dSemana.data?.[0]?.spend || 0);
-    estadoReal.mesSpendCOP    = parseFloat(dMes.data?.[0]?.spend || 0);
-    renderEstadoActual();
-  } catch (e) {
-    console.error('[ESTADO-ACTUAL] error:', e);
-  }
-}
 
 function renderEstadoActual() {
   if (estadoReal.semanaSpendCOP === null) return;
@@ -1579,7 +1313,7 @@ function workerMetricToLegacy(metric = {}) {
 
 async function cargarDatosDesdeWorker(btn, icon) {
   try {
-    const sessionToken = window.auraSessionToken?.();
+    const sessionToken = await window.auraSessionToken?.();
     if (!sessionToken) throw new Error('Autenticación AURA requerida');
     const response = await fetch(`${META_ADS_WORKER_API}/v1/dashboard?period=${currentDays}`, {
       headers: { Authorization: `Bearer ${sessionToken}` }
@@ -1636,172 +1370,9 @@ async function cargarDatos() {
   icon.style.animation = 'spin 1s linear infinite';
   icon.style.display = 'inline-block';
 
-  if (!token) return cargarDatosDesdeWorker(btn, icon);
+  return cargarDatosDesdeWorker(btn, icon);
 
-  // FIX v29, 13-jul-2026: Sección A ("Tu estado actual") se refresca en
-  // paralelo, sin esperar — es una consulta independiente con rango de
-  // fechas FIJO (semana/mes de calendario), no afectada por currentDays ni
-  // por lo que tarde el resto de cargarDatos().
-  cargarEstadoActual();
-
-  try {
-    const { since, until } = getFechas(currentDays);
-    const prevFechas = getFechas(currentDays * 2);
-    // FIX v24, 13-jul-2026 — Fase 1, Mejora 2: el período anterior real que
-    // se le pide a Meta (ver urlPrev abajo) es [prevFechas.since, since] —
-    // NO [prevFechas.since, prevFechas.until] — por eso se arma el label con
-    // esas mismas 2 fechas, para que coincida exacto con el dato mostrado.
-    prevRangeLabel = `${formatFechaCorta(prevFechas.since)} - ${formatFechaCorta(since)}`;
-
-    // Actualizar label período
-    document.getElementById('period-label').textContent =
-      `${since} → ${until} (últimos ${currentDays} días)`;
-
-    // Fields a pedir
-    const fields = 'spend,impressions,clicks,reach,frequency,cpm,cpc,ctr,actions,cost_per_action_type,conversions';
-
-
-    // Petición principal
-    const url = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=${fields}&time_range={"since":"${since}","until":"${until}"}&level=account&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error.message);
-
-    // Petición período anterior (comparación)
-    const urlPrev = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=${fields}&time_range={"since":"${prevFechas.since}","until":"${since}"}&level=account&access_token=${token}`;
-    const resPrev = await fetch(urlPrev);
-    const dataPrev = await resPrev.json();
-
-    // Campañas — status removido (inválido en insights) + fallback date_preset=today
-    const urlCamp = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,ctr,cpm,cpc,actions&time_range={"since":"${since}","until":"${until}"}&level=campaign&access_token=${token}`;
-    const resCamp = await fetch(urlCamp);
-    const dataCamp = await resCamp.json();
-
-    let campsData = dataCamp.data || [];
-    if (campsData.length === 0 && dataCamp.error === undefined) {
-      const urlCampToday = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,reach,frequency,ctr,cpm,cpc,actions&date_preset=today&level=campaign&access_token=${token}`;
-      const resCampToday = await fetch(urlCampToday);
-      const dataCampToday = await resCampToday.json();
-      if (dataCampToday.data && dataCampToday.data.length > 0) {
-        campsData = dataCampToday.data;
-      }
-    }
-
-    // Fix v1 — traer el estado real de cada campaña (insights no lo tiene, /campaigns sí)
-    const campaignIds = campsData.map(c => c.campaign_id).filter(Boolean);
-    let statusMap = {};
-    if (campaignIds.length > 0) {
-      const urlStatus = `https://graph.facebook.com/v25.0/?ids=${campaignIds.join(',')}&fields=effective_status&access_token=${token}`;
-      const resStatus = await fetch(urlStatus);
-      const dataStatus = await resStatus.json();
-      campaignIds.forEach(id => { statusMap[id] = dataStatus[id]?.effective_status || 'DESCONOCIDO'; });
-    }
-    campsData = campsData.map(c => ({ ...c, effective_status: statusMap[c.campaign_id] || 'DESCONOCIDO' }));
-
-    // A/B testing — traer datos a nivel de anuncio (ad) para comparar variantes
-    // FIX v30 — effective_status removido de aquí: /insights no acepta ese campo
-    // (error real de Meta: "(#100) effective_status is not valid for fields param").
-    // El estado del anuncio se pide aparte, igual que ya se hacía para campañas arriba.
-    const urlAds = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=ad_id,ad_name,campaign_id,spend,reach,ctr,cpc,actions&time_range={"since":"${since}","until":"${until}"}&level=ad&access_token=${token}`;
-    const resAds = await fetch(urlAds);
-    const dataAds = await resAds.json();
-    const todosLosAds = dataAds.data || []; // FIX v26 — sin filtrar, para el mapeo anuncio→campaña de Mejora 5
-
-    // FIX v30 — estado real de cada anuncio en A/B testing (insights no lo tiene, /?ids= sí)
-    const adIdsVariantes = todosLosAds.filter(a => a.ad_name && a.ad_name.includes(' - Variante ')).map(a => a.ad_id).filter(Boolean);
-    let adStatusMap = {};
-    if (adIdsVariantes.length > 0) {
-      const urlAdStatus = `https://graph.facebook.com/v25.0/?ids=${adIdsVariantes.join(',')}&fields=effective_status&access_token=${token}`;
-      const resAdStatus = await fetch(urlAdStatus);
-      const dataAdStatus = await resAdStatus.json();
-      adIdsVariantes.forEach(id => { adStatusMap[id] = dataAdStatus[id]?.effective_status || 'DESCONOCIDO'; });
-    }
-    const adsData = todosLosAds
-      .filter(a => a.ad_name && a.ad_name.includes(' - Variante '))
-      .map(a => ({ ...a, effective_status: adStatusMap[a.ad_id] || 'DESCONOCIDO' }));
-
-    // FIX v26, 13-jul-2026 — Fase 3, Mejora 5: costo real por venta.
-    // anuncio_id (guardado en Supabase por Sofía, viene del referral de Meta)
-    // es a nivel de ANUNCIO (ad_id), no de campaña — se necesita este mismo
-    // listado de anuncios (ya pedido arriba para A/B testing) para mapear
-    // cada anuncio a su campaign_id antes de cruzarlo con las ventas.
-    let ventasPorCampaña = {};
-    let pctSinAtribucion = null;
-    try {
-      const auraToken = window.auraSessionToken?.();
-      if (!auraToken) throw new Error('Autenticación AURA requerida');
-      const resVentas = await fetch(`${WORKER_API}/api/ventas-por-anuncio`, { headers: { Authorization: `Bearer ${auraToken}` } });
-      if (resVentas.ok) {
-        const ventasInfo = await resVentas.json();
-        const adIdToCampaignId = {};
-        todosLosAds.forEach(a => { if (a.ad_id && a.campaign_id) adIdToCampaignId[a.ad_id] = a.campaign_id; });
-        Object.entries(ventasInfo.ventas_por_anuncio || {}).forEach(([anuncioId, ventas]) => {
-          const campId = adIdToCampaignId[anuncioId];
-          if (campId) ventasPorCampaña[campId] = (ventasPorCampaña[campId] || 0) + ventas;
-        });
-        if (ventasInfo.total_clientes > 0) {
-          pctSinAtribucion = Math.round(100 - (ventasInfo.con_anuncio_id / ventasInfo.total_clientes) * 100);
-        }
-      } else {
-        console.warn('[VENTAS-POR-ANUNCIO] no autorizado o error:', resVentas.status);
-      }
-    } catch (e) { console.error('[VENTAS-POR-ANUNCIO] excepción:', e); }
-
-    // FIX v25, 13-jul-2026 — Fase 2, Mejora 3: ampliado de 4 a 8 semanas —
-    // con solo 4 puntos la gráfica de línea no aportaba mucho más que los 4
-    // recuadros que reemplaza. Se agrega "ctr" a los campos pedidos (antes
-    // solo spend/actions) porque la gráfica muestra gasto Y CTR en el tiempo.
-    // Si la cuenta/campañas son más nuevas que 8 semanas, las semanas sin
-    // actividad simplemente muestran $0 — es el dato real, no un error.
-    const trendData = [];
-    for (let w = 7; w >= 0; w--) {
-      const wEnd   = new Date(); wEnd.setDate(wEnd.getDate() - w*7);
-      const wStart = new Date(); wStart.setDate(wStart.getDate() - (w+1)*7);
-      const wUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend,actions,ctr&time_range={"since":"${wStart.toISOString().split('T')[0]}","until":"${wEnd.toISOString().split('T')[0]}"}&level=account&access_token=${token}`;
-      const wRes = await fetch(wUrl);
-      const wDat = await wRes.json();
-      trendData.push({ week: w, data: wDat.data?.[0] || null });
-    }
-
-    // FIX v29, 13-jul-2026: "Total ejecutado por mes" (histórico) — misma
-    // gráfica de tendencia, con una vista mensual alternable (setTrendModo)
-    // además de la semanal de arriba. 6 meses (no más) para no sumar
-    // demasiadas llamadas extra a Meta en cada carga.
-    const trendDataMensual = [];
-    for (let mAtras = 5; mAtras >= 0; mAtras--) {
-      const hoyM = new Date();
-      const inicioMes = new Date(hoyM.getFullYear(), hoyM.getMonth() - mAtras, 1);
-      const finMes = mAtras === 0 ? hoyM : new Date(hoyM.getFullYear(), hoyM.getMonth() - mAtras + 1, 0);
-      const mUrl = `https://graph.facebook.com/v25.0/act_${account}/insights?fields=spend,actions,ctr&time_range={"since":"${fmtFecha(inicioMes)}","until":"${fmtFecha(finMes)}"}&level=account&access_token=${token}`;
-      const mRes = await fetch(mUrl);
-      const mDat = await mRes.json();
-      trendDataMensual.push({ mesLabel: `${MESES_CORTOS[inicioMes.getMonth()]} ${inicioMes.getFullYear()}`, data: mDat.data?.[0] || null });
-    }
-
-    lastData = { main: data.data?.[0], prev: dataPrev.data?.[0], camps: campsData, trend: trendData, trendMensual: trendDataMensual, ads: adsData, ventasPorCampaña, pctSinAtribucion };
-    renderDatos(lastData);
-    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO');
-    // FIX v28, 13-jul-2026: el análisis de IA (analizarConIA) ya no se llama
-    // aquí directo — ahora lo dispara renderVista(), que también se ejecuta
-    // al cambiar el selector de campaña, para que la IA se re-analice según
-    // lo seleccionado sin tener que recargar datos de Meta de nuevo.
-
-  } catch(e) {
-    showToast('Error: ' + e.message, '#EF4444');
-    console.error(e);
-  }
-
-  btn.disabled = false;
-  icon.style.animation = '';
 }
-
-// ── Render datos ─────────────────────────────────────────────────
-// FIX v28, 13-jul-2026: extraído de renderDatos para poder recalcular los
-// mismos KPIs a partir de un objeto de cuenta (d.main) O de una sola
-// campaña (un elemento de d.camps) — ambos traen exactamente los mismos
-// campos de Meta Insights (spend, impressions, clicks, reach, frequency,
-// cpm, cpc, ctr, actions), así que la misma función sirve para los 2 casos.
 function computeKPIs(obj) {
   obj = obj || {};
   // FIX v32 — spendCOP ya es el valor real en pesos (account_currency=COP,
@@ -2054,36 +1625,18 @@ function estadoHistoricoLabel(c) {
 }
 
 async function cargarCostoHistorico() {
-  const token   = localStorage.getItem('ck_meta_token');
-  const account = localStorage.getItem('ck_meta_account');
-  if (!token || !account) { abrirConfig(); return; }
-
   const btn = document.getElementById('btn-costo-historico');
   const wrap = document.getElementById('costo-historico-wrap');
   btn.disabled = true;
   btn.textContent = 'Cargando...';
 
   try {
-    const hoy = new Date();
-    const hace12Meses = new Date(hoy.getFullYear() - 1, hoy.getMonth(), hoy.getDate());
-
-    const [resCamps, resInsights] = await Promise.all([
-      fetch(`https://graph.facebook.com/v25.0/act_${account}/campaigns?fields=id,name,effective_status,start_time,stop_time&limit=500&access_token=${token}`),
-      fetch(`https://graph.facebook.com/v25.0/act_${account}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${fmtFecha(hace12Meses)}","until":"${fmtFecha(hoy)}"}&level=campaign&limit=500&access_token=${token}`),
-    ]);
-    const dCamps = await resCamps.json();
-    const dInsights = await resInsights.json();
-    if (dCamps.error) throw new Error(dCamps.error.message);
-    if (dInsights.error) throw new Error(dInsights.error.message);
-
-    const spendPorCampaña = {};
-    (dInsights.data || []).forEach(i => { spendPorCampaña[i.campaign_id] = parseFloat(i.spend || 0); });
-
-    const filas = (dCamps.data || []).map(c => ({
+    const data = await metaWorkerRequest('/v1/dashboard?period=90');
+    const filas = (data.campaigns || []).map(c => ({
       id: c.id,
       nombre: c.name,
-      estado: estadoHistoricoLabel(c),
-      spendCOP: spendPorCampaña[c.id] || 0,
+      estado: estadoHistoricoLabel({ ...c, effective_status: c.status }),
+      spendCOP: Number(c.metrics?.spend || 0),
       inicio: c.start_time ? c.start_time.split('T')[0] : null,
       fin: c.stop_time ? c.stop_time.split('T')[0] : null,
     })).sort((a, b) => b.spendCOP - a.spendCOP);
@@ -2093,7 +1646,7 @@ async function cargarCostoHistorico() {
     } else {
       wrap.innerHTML = `<div class="table-wrapper"><table>
         <thead><tr>
-          <th>#</th><th>Campaña</th><th>Estado</th><th>Gasto (últimos 12 meses)</th><th>Inicio</th><th>Fin</th>
+          <th>#</th><th>Campaña</th><th>Estado</th><th>Gasto (últimos 90 días)</th><th>Inicio</th><th>Fin</th>
         </tr></thead>
         <tbody>
         ${filas.map((f, i) => `<tr>
@@ -2105,7 +1658,7 @@ async function cargarCostoHistorico() {
           <td>${f.fin || (f.estado.label === 'Activa' ? 'En curso' : '—')}</td>
         </tr>`).join('')}
         </tbody></table></div>
-        <p style="font-size:11px;color:var(--text3);margin-top:8px">ℹ️ Gasto de los últimos 12 meses, no de la vida completa de la cuenta (consultar desde la fecha de creación sería mucho más lento). Incluye campañas pausadas o terminadas, no solo las activas.</p>`;
+        <p style="font-size:11px;color:var(--text3);margin-top:8px">ℹ️ Gasto de los últimos 90 días consultado mediante la conexión segura. Incluye campañas pausadas o terminadas, no solo las activas.</p>`;
     }
     wrap.style.display = 'block';
   } catch (e) {
@@ -2440,7 +1993,7 @@ ${SEPARADOR_INSTRUCCION}`;
     const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Authorization': 'Bearer ' + (await window.auraSessionToken() || ''),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -2514,7 +2067,7 @@ function escapeJs(value) {
 }
 
 async function metaWorkerRequest(path, options = {}) {
-  const fn = window.auraSessionToken || window.__metaToken;
+  const fn = window.auraSessionToken;
   if (!fn) throw new Error('Autenticación AURA requerida');
   const token = await fn();
   if (!token) throw new Error('Autenticación AURA requerida');
@@ -2530,7 +2083,18 @@ async function metaWorkerRequest(path, options = {}) {
   const data = contentType.includes('application/json') ? await response.json() : {};
   if (!response.ok) {
     if (response.status === 404) throw new Error('Esta función aún no está disponible en el Worker');
-    throw new Error(data.error || data.message || `El Worker respondió HTTP ${response.status}`);
+    const stageLabels = {
+      META_IMAGE_UPLOAD_FAILED: 'Meta rechazó la imagen',
+      META_CAMPAIGN_CREATE_FAILED: 'Meta rechazó la configuración de campaña',
+      META_ADSET_CREATE_FAILED: 'Meta rechazó el objetivo, presupuesto o segmentación',
+      META_CREATIVE_CREATE_FAILED: 'Meta rechazó el texto, imagen o destino de WhatsApp',
+      META_AD_CREATE_FAILED: 'Meta no pudo crear el anuncio',
+      META_CITY_RESOLUTION_FAILED: 'No se pudo validar la ciudad seleccionada'
+    };
+    const stage = stageLabels[data.reason] || data.reason || '';
+    const metaMessage = String(data.meta?.error_user_msg || data.meta?.message || '').replace(/^"|"$/g, '');
+    const detail = [stage, metaMessage].filter(Boolean).join(': ');
+    throw new Error(detail || data.error || data.message || `El Worker respondió HTTP ${response.status}`);
   }
   return data;
 }

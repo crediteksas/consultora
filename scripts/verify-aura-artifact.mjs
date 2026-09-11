@@ -51,10 +51,16 @@ export async function verifyAuraArtifact(root) {
     'creditek/agentes/index.html',
     'creditek/agentes/aura-auth.js',
     'creditek/agentes/aura-shell.js',
+    'creditek/agentes/aura-release.js',
+    'creditek/agentes/aura-build-manifest.json',
     'creditek/shared/branding/creditek-logo.png',
     'config/aura-environment.js',
   ];
   for (const relative of required) await stat(path.join(root, relative));
+  const release = JSON.parse(await readFile(path.join(root, 'creditek/agentes/aura-build-manifest.json'), 'utf8'));
+  const home = await readFile(path.join(root, 'creditek/agentes/index.html'), 'utf8');
+  if (!/^[a-f0-9]{64}$/.test(release.build) || !home.includes(`content="${release.build}"`)) throw new Error('AURA release stamp mismatch');
+  if (/AURA v\d+\.\d+\.\d+/.test(home)) throw new Error('Hardcoded AURA version in home');
 
   for (const file of await walk(root)) {
     const relative = path.relative(root, file).split(path.sep).join('/');

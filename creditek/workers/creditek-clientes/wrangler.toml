@@ -18,6 +18,8 @@ ALLOW_LEGACY_REGISTRATION_LINKS = "true"
 #   TURNSTILE_SECRET_KEY
 #   TURNSTILE_SITE_KEY
 #   ADMIN_ENLACES_TOKEN   — token servidor-servidor para administrar enlaces desde AURA
+#   ALLY_PROVISION_SECRET — compartido exclusivamente con Apps Script de convenios
+#   ALLY_TOKEN_DERIVATION_SECRET — derivación estable de enlaces para reintentos
 
 # FEATURE 22-jul-2026 · Reportes diarios por WhatsApp a Oscar y Mayte.
 # Cron cada 5 min entre 11am y 7pm hora Colombia (UTC-5), traducido a UTC.

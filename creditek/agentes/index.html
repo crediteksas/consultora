@@ -16,6 +16,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 <script src="aura-module-config.js"></script>
+<script src="aura-release.js" defer></script>
+<script src="aura-auto-navigation.js" defer></script>
+<link rel="stylesheet" href="aura-auto-navigation.css">
 <script src="aura-context-help.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons());</script>
 <style>
@@ -176,17 +179,17 @@ body.kora-product-page .sidebar-home:hover,body.kora-product-page .sidebar-home:
 .logout-btn:hover{color:#0B1E3D}
 .logout-btn svg{width:16px;height:16px}
 .aura-version{display:block;max-width:100%;margin:0 8px 7px;padding:5px 7px;border:1px solid #E2E8F0;border-radius:7px;color:#64748B;font:500 9px/1.25 var(--mono);text-align:center;overflow-wrap:anywhere;white-space:normal}
-#app.sidebar-collapsed .sidebar-logo{min-height:74px;padding:11px 8px;justify-content:center}
-#app.sidebar-collapsed .sidebar-home{width:32px;align-items:center;padding:4px 0;margin-top:0}
-#app.sidebar-collapsed .sidebar-brand-name{font-size:0}
-#app.sidebar-collapsed .sidebar-brand-name::after{content:'A';font-size:18px;letter-spacing:0}
-#app.sidebar-collapsed .sidebar-brand-by,#app.sidebar-collapsed .sidebar-brand-logo,#app.sidebar-collapsed .sidebar-section,#app.sidebar-collapsed .nav-label,#app.sidebar-collapsed .nav-badge,#app.sidebar-collapsed .aura-version,#app.sidebar-collapsed .sidebar-owner{display:none}
-#app.sidebar-collapsed .sidebar-toggle{top:auto;right:18px;bottom:5px}
-#app.sidebar-collapsed .nav-item{justify-content:center;margin:4px 7px;padding:10px 0;gap:0}
-#app.sidebar-collapsed .nav-icon{width:20px}
-#app.sidebar-collapsed .sidebar-footer{padding:9px 0}
-#app.sidebar-collapsed .sidebar-footer-actions{justify-content:center;padding:0}
-#app.sidebar-collapsed .logout-btn{margin:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-logo{min-height:74px;padding:11px 8px;justify-content:center}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-home{width:32px;align-items:center;padding:4px 0;margin-top:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-brand-name{font-size:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-brand-name::after{content:'A';font-size:18px;letter-spacing:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-brand-by,#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-brand-logo,#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-section,#app.sidebar-collapsed:not(.sidebar-peek) .nav-label,#app.sidebar-collapsed:not(.sidebar-peek) .nav-badge,#app.sidebar-collapsed:not(.sidebar-peek) .aura-version,#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-owner{display:none}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-toggle{top:auto;right:18px;bottom:5px}
+#app.sidebar-collapsed:not(.sidebar-peek) .nav-item{justify-content:center;margin:4px 7px;padding:10px 0;gap:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .nav-icon{width:20px}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-footer{padding:9px 0}
+#app.sidebar-collapsed:not(.sidebar-peek) .sidebar-footer-actions{justify-content:center;padding:0}
+#app.sidebar-collapsed:not(.sidebar-peek) .logout-btn{margin:0}
 
 /* ── MAIN AREA ──────────────────────────────────────────────── */
 .main-area{flex:1;display:flex;flex-direction:column;min-width:0;height:100dvh;min-height:0;overflow:hidden;background:var(--ctk-color-background,#F5F5F7)}
@@ -435,6 +438,9 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('/creditek/agentes/creditek-agente-redes.html','Piezas comerciales',this,'sofia')">
       <span class="nav-icon"><i data-lucide="image-plus"></i></span><span class="nav-label">Piezas comerciales</span>
     </a>
+    <a class="nav-item" data-aura-app="sofia" onclick="openModule('/creditek/agentes/creditek-estudio-video.html','Estudio de Video',this,'sofia')">
+      <span class="nav-icon"><i data-lucide="clapperboard"></i></span><span class="nav-label">Estudio de Video</span><span class="nav-badge new">NUEVO</span>
+    </a>
     <a class="nav-item" data-aura-app="sofia" onclick="openModule('/creditek/agentes/creditek-agente-respuestas.html','Sofía',this,'sofia')">
       <span class="nav-icon"><i data-lucide="messages-square"></i></span><span class="nav-label">Sofía</span>
     </a>
@@ -464,7 +470,7 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
     </a>
 
     <div class="sidebar-footer">
-      <div class="aura-version">AURA v1.1.0</div>
+      <div class="aura-version" data-aura-release>Verificando versión de AURA…</div>
       <div class="sidebar-footer-actions">
         <span class="sidebar-owner">Creditek</span>
         <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión" aria-label="Cerrar sesión"><i data-lucide="log-out"></i></button>
@@ -538,6 +544,19 @@ iframe{flex:1;border:none;width:100%;min-height:0;background:var(--bg)}
             <div class="module-desc">Genera copy e imágenes con IA para Facebook, Instagram y WhatsApp. 7 modos, estilos costeños y generación dual Gemini + GPT.</div>
             <div class="module-meta">
               <span class="module-tag">Piezas comerciales</span>
+              <span class="module-arrow">→</span>
+            </div>
+          </div>
+
+          <div class="module-card" tabindex="0" role="button" data-aura-help="Convierte una imagen aprobada en video vertical y exige aprobación manual antes de descargar." data-aura-app="sofia" onclick="openModuleFromCard('/creditek/agentes/creditek-estudio-video.html','Estudio de Video','sofia')">
+            <div class="module-top">
+              <div class="module-icon"><i data-lucide="clapperboard"></i></div>
+              <div class="module-status active">● Nuevo</div>
+            </div>
+            <div class="module-name">Estudio de Video</div>
+            <div class="module-desc">Anima piezas ya aprobadas en formato vertical de 8 segundos. Muestra el costo y conserva el video como borrador hasta tu aprobación.</div>
+            <div class="module-meta">
+              <span class="module-tag">Reels y TikTok</span>
               <span class="module-arrow">→</span>
             </div>
           </div>
@@ -774,13 +793,15 @@ function applyAuraSidebar(collapsed, persist = false) {
 }
 
 function toggleAuraSidebar() {
-  applyAuraSidebar(!document.getElementById('app').classList.contains('sidebar-collapsed'), true);
+  const app = document.getElementById('app');
+  const expanded = app.classList.contains('sidebar-peek') || !app.classList.contains('sidebar-collapsed');
+  app.classList.remove('sidebar-peek');
+  applyAuraSidebar(expanded, true);
 }
 
 function restoreAuraSidebar() {
-  let collapsed = false;
-  try { collapsed = sessionStorage.getItem(SIDEBAR_STORAGE_KEY) === '1'; } catch (_) {}
-  applyAuraSidebar(collapsed);
+  applyAuraSidebar(true);
+  window.installAuraAutoNavigation?.(applyAuraSidebar);
 }
 
 function setAuthStatus(id, message = '', kind = 'error') {
@@ -1412,7 +1433,7 @@ if (document.readyState === 'loading') {
 }
 
 Object.assign(window, {
-  showSection, openModule, openModuleFromCard, closeIframe, retryModule,
+  showSection, openModule, openModuleFromCard, closeIframe, retryModule, toggleAuraSidebar,
   openIncidentReporter, closeIncidentReporter, submitCorporateIncident,
   generateIncidentReport, copyIncidentReport, downloadIncidentReport, showToast,
   openRegistrationLinksPanel, closeRegistrationLinksPanel, closeGeneratedLink,

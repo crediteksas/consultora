@@ -7,6 +7,7 @@
  */
 
 import { resolveRegistrationContext } from './registro-context';
+import { provisionAlly, type AllyProvisionEnv } from './aliado-provision';
 import {
   isSecureOtpSendRequest,
   isSecureOtpVerifyRequest,
@@ -30,7 +31,7 @@ import {
   type AdminEnlacesEnv,
 } from './admin-enlaces';
 
-interface Env extends SecureOtpEnv, SecureRegistrationEnv, SecureDocumentsEnv, AdminEnlacesEnv {
+interface Env extends SecureOtpEnv, SecureRegistrationEnv, SecureDocumentsEnv, AdminEnlacesEnv, AllyProvisionEnv {
   WHATSAPP_TOKEN: string;
   PHONE_NUMBER_ID: string;
   TURNSTILE_SITE_KEY: string;
@@ -137,6 +138,9 @@ async function adminAuthorized(request: Request, env: Env): Promise<boolean> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (new URL(request.url).pathname === '/api/interno/aliados/aprovisionar') {
+      return provisionAlly(request, env);
+    }
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -640,15 +644,11 @@ function base64ToUint8Array(base64: string): Uint8Array {
 //     no offset manual — respeta cualquier ajuste eventual de la TZ.
 // ============================================================================
 
-const DESTINATARIOS_REPORTES = ['573002024083', '573005516040']; // Oscar, Mayte
+const DESTINATARIOS_REPORTES = [
+  { id: 'oscar', telefono: '573002024083' },
+  { id: 'mayte', telefono: '573005516040' },
+] as const;
 const TZ_COL = 'America/Bogota';
-const SEPARACION_REPORTES_MS = 120_000; // 2 minutos entre reporte y reporte
-const IDIOMA_PLANTILLAS_REPORTES = 'es_CO';
-const PLANTILLAS_REPORTES = {
-  gastos: 'reporte_gastos_diario',
-  ventas: 'reporte_ventas_diario',
-  caja: 'reporte_caja_diario',
-} as const;
 
 // ─── Helpers de tiempo Colombia ────────────────────────────────────────
 
@@ -751,39 +751,94 @@ async function obtenerCajaHoy(fechaISO: string, env: Env): Promise<Array<any>> {
   return (await r.json()) as any[];
 }
 
-// Devuelve true si logró reservar (fila insertada), false si ya existía la del día.
+type ResultadoReporte = {
+  plantilla: string;
+  destinatario: string;
+  meta_message_id: string;
+  confirmado_at: string;
+};
+
+type EstadoReporteDiario = {
+  fecha: string;
+  status?: 'reserved' | 'sending' | 'sent' | 'error';
+  attempts?: number;
+  resultados?: ResultadoReporte[] | null;
+  sending_started_at?: string | null;
+};
+
+// Reserva o reabre un envío fallido. Una fila existente solo bloquea cuando
+// status=sent; reserved/error puede continuar sin duplicar entregas ya
+// confirmadas por Meta.
 async function reservarEnvioDelDia(
   fechaISO: string, completo: boolean, tiendasFaltantes: string[], env: Env
-): Promise<boolean> {
+): Promise<EstadoReporteDiario | null> {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/reportes_diarios_enviados`, {
     method: 'POST',
-    headers: sbHeaders(env, { Prefer: 'return=minimal' }),
-    body: JSON.stringify({ fecha: fechaISO, completo, tiendas_faltantes: tiendasFaltantes }),
+    headers: sbHeaders(env, { Prefer: 'return=representation' }),
+    body: JSON.stringify({
+      fecha: fechaISO,
+      completo,
+      tiendas_faltantes: tiendasFaltantes,
+      status: 'sending',
+      attempts: 1,
+      sending_started_at: new Date().toISOString(),
+      resultados: [],
+      last_error: null,
+    }),
   });
-  if (r.status === 201) return true; // creado ok
-  if (r.status === 409) return false; // duplicate key — otro cron reservó primero
-  console.error('[REPORTES-DIARIOS] Error inesperado reservando:', r.status, await r.text());
-  return false;
+  if (r.status === 201) {
+    const [creado] = await r.json() as EstadoReporteDiario[];
+    return creado || null;
+  }
+  if (r.status !== 409) {
+    console.error('[REPORTES-DIARIOS] Error inesperado reservando:', r.status, await r.text());
+    return null;
+  }
+
+  const existenteResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}` +
+      `&select=fecha,status,attempts,resultados,sending_started_at&limit=1`,
+    { headers: sbHeaders(env) },
+  );
+  if (!existenteResponse.ok) return null;
+  const [existente] = await existenteResponse.json() as EstadoReporteDiario[];
+  if (!existente || existente.status === 'sent') return null;
+  const sendingVigente = existente.status === 'sending'
+    && !!existente.sending_started_at
+    && Date.now() - new Date(existente.sending_started_at).getTime() < 10 * 60 * 1000;
+  if (sendingVigente) return null;
+
+  const attempts = Number(existente.attempts || 0) + 1;
+  if (attempts > 3) {
+    console.error('[REPORTES-DIARIOS] límite de reintentos alcanzado para', fechaISO);
+    return null;
+  }
+  const reabrir = await fetch(
+    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}&status=eq.${existente.status || 'error'}`,
+    {
+      method: 'PATCH',
+      headers: sbHeaders(env, { Prefer: 'return=representation' }),
+      body: JSON.stringify({
+        status: 'sending',
+        attempts,
+        sending_started_at: new Date().toISOString(),
+        last_error: null,
+      }),
+    },
+  );
+  if (!reabrir.ok) return null;
+  const [reabierto] = await reabrir.json() as EstadoReporteDiario[];
+  return reabierto || null;
 }
 
 async function yaSeEnvioHoy(fechaISO: string, env: Env): Promise<boolean> {
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}&select=fecha&limit=1`,
+    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}&status=eq.sent&select=fecha&limit=1`,
     { headers: sbHeaders(env) }
   );
   if (!r.ok) return false;
   const arr = (await r.json()) as any[];
   return arr.length > 0;
-}
-
-async function liberarReservaDelDia(fechaISO: string, env: Env): Promise<void> {
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}`,
-    { method: 'DELETE', headers: sbHeaders(env, { Prefer: 'return=minimal' }) }
-  );
-  if (!r.ok) {
-    throw new Error(`No se pudo liberar la reserva del reporte (${r.status}): ${await r.text()}`);
-  }
 }
 
 // ─── Formato de mensajes (WhatsApp texto plano) ──────────────────────────
@@ -866,12 +921,28 @@ function formatearCaja(cierres: any[], fechaLarga: string): string {
   ].join('\n');
 }
 
-// ─── WhatsApp template send ────────────────────────────────────────────
-// Los informes son iniciados por la empresa. Una plantilla aprobada permite
-// entregarlos aunque el destinatario no haya escrito durante las últimas 24 h.
+// ─── WhatsApp template send ─────────────────────────────────────────────
 
-async function enviarPlantillaReporte(
-  telefono: string, plantilla: string, mensaje: string, env: Env
+const REPORT_TEMPLATE_LANGUAGE = 'es_CO';
+const REPORT_TEMPLATES = Object.freeze({
+  gastos: 'reporte_gastos_diario',
+  ventas: 'reporte_ventas_diario',
+  caja: 'reporte_caja_diario',
+});
+
+function normalizarParametroPlantilla(resumen: string): string {
+  // Meta no permite saltos de línea, tabulaciones ni bloques de más de cuatro
+  // espacios dentro de parámetros de plantillas. Conservamos la información
+  // separando cada línea con un punto medio y respetamos el máximo de 1.024.
+  return resumen
+    .replace(/\s*[\r\n\t]+\s*/g, ' · ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 1024);
+}
+
+async function enviarWhatsAppPlantillaReporte(
+  telefono: string, plantilla: string, resumen: string, env: Env
 ): Promise<string> {
   const r = await fetch(`https://graph.facebook.com/v21.0/${env.PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -882,36 +953,56 @@ async function enviarPlantillaReporte(
       type: 'template',
       template: {
         name: plantilla,
-        language: { code: IDIOMA_PLANTILLAS_REPORTES },
+        language: { code: REPORT_TEMPLATE_LANGUAGE },
         components: [{
           type: 'body',
-          parameters: [{ type: 'text', text: mensaje }],
+          parameters: [{ type: 'text', text: normalizarParametroPlantilla(resumen) }],
         }],
       },
     }),
   });
-  const respuesta = await r.json().catch(() => ({})) as any;
-  const messageId = respuesta?.messages?.[0]?.id;
-  if (!r.ok || !messageId) {
-    throw new Error(
-      `Meta rechazó la plantilla ${plantilla} (${r.status}): ${JSON.stringify(respuesta)}`
-    );
+  if (!r.ok) {
+    const detail = await r.text();
+    console.error(`[REPORTES-WA] Meta rechazó ${plantilla} para ${telefono}:`, r.status, detail);
+    throw new Error(`meta_template_rejected:${plantilla}:${r.status}`);
   }
+  const payload = await r.json() as { messages?: Array<{ id?: string }> };
+  const messageId = payload.messages?.[0]?.id;
+  if (!messageId) throw new Error(`meta_message_id_missing:${plantilla}`);
   return messageId;
 }
 
-async function enviarReporteATodos(
-  plantilla: string, mensaje: string, env: Env
-): Promise<string[]> {
-  const messageIds: string[] = [];
-  for (const dest of DESTINATARIOS_REPORTES) {
-    messageIds.push(await enviarPlantillaReporte(dest, plantilla, mensaje, env));
-  }
-  return messageIds;
+async function guardarEstadoReporte(
+  fechaISO: string,
+  data: Record<string, unknown>,
+  env: Env,
+): Promise<void> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}`, {
+    method: 'PATCH',
+    headers: sbHeaders(env, { Prefer: 'return=minimal' }),
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`report_status_persist_failed:${r.status}`);
 }
 
-function esperar(ms: number): Promise<void> {
-  return new Promise((res) => setTimeout(res, ms));
+async function enviarReporteATodos(
+  fechaISO: string,
+  plantilla: string,
+  mensaje: string,
+  resultados: ResultadoReporte[],
+  env: Env,
+): Promise<void> {
+  for (const dest of DESTINATARIOS_REPORTES) {
+    if (resultados.some((r) => r.plantilla === plantilla && r.destinatario === dest.id)) continue;
+    const messageId = await enviarWhatsAppPlantillaReporte(dest.telefono, plantilla, mensaje, env);
+    resultados.push({
+      plantilla,
+      destinatario: dest.id,
+      meta_message_id: messageId,
+      confirmado_at: new Date().toISOString(),
+    });
+    await guardarEstadoReporte(fechaISO, { resultados }, env);
+  }
 }
 
 // ─── Entry point del scheduled ──────────────────────────────────────────
@@ -953,6 +1044,7 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   // Reserva ATÓMICA — evita duplicados si dos crons corren muy juntos.
   const reservado = await reservarEnvioDelDia(hoy, debeMandarCompleto, faltantes, env);
   if (!reservado) return;
+  const resultados = Array.isArray(reservado.resultados) ? reservado.resultados : [];
 
   // Componer mensajes
   const [gastos, ventas, cajas] = await Promise.all([
@@ -967,24 +1059,30 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   const msg2 = formatearVentas(ventas, fechaLarga);
   const msg3 = formatearCaja(cajas, fechaLarga);
 
-  // Enviar con separación de 2 min. El scheduled event de Cloudflare permite
-  // wall time > CPU time; los 4 minutos de esperas son sleep, no CPU.
+  // Enviar secuencialmente y persistir cada confirmación antes de continuar.
+  // No usamos esperas largas: Cloudflare cancela las tareas waitUntil que no
+  // terminan dentro de su ventana posterior a la invocación.
   console.log('[REPORTES-DIARIOS] Enviando reporte del', hoy, 'completo=', debeMandarCompleto);
   try {
-    const idsGastos = await enviarReporteATodos(PLANTILLAS_REPORTES.gastos, msg1, env);
-    await esperar(SEPARACION_REPORTES_MS);
-    const idsVentas = await enviarReporteATodos(PLANTILLAS_REPORTES.ventas, msg2, env);
-    await esperar(SEPARACION_REPORTES_MS);
-    const idsCaja = await enviarReporteATodos(PLANTILLAS_REPORTES.caja, msg3, env);
-    console.log('[REPORTES-DIARIOS] Reporte del', hoy, 'aceptado por Meta.', {
-      cantidad: idsGastos.length + idsVentas.length + idsCaja.length,
-    });
-  } catch (e) {
-    console.error('[REPORTES-DIARIOS] Envío incompleto; se habilitará reintento:', e);
-    try {
-      await liberarReservaDelDia(hoy, env);
-    } catch (liberarError) {
-      console.error('[REPORTES-DIARIOS] No se pudo habilitar el reintento:', liberarError);
-    }
+    await enviarReporteATodos(hoy, REPORT_TEMPLATES.gastos, msg1, resultados, env);
+    await enviarReporteATodos(hoy, REPORT_TEMPLATES.ventas, msg2, resultados, env);
+    await enviarReporteATodos(hoy, REPORT_TEMPLATES.caja, msg3, resultados, env);
+    await guardarEstadoReporte(hoy, {
+      status: 'sent',
+      completed_at: new Date().toISOString(),
+      sending_started_at: null,
+      last_error: null,
+      resultados,
+    }, env);
+    console.log('[REPORTES-DIARIOS] Reporte del', hoy, 'enviado a los 2 destinatarios.');
+  } catch (error) {
+    const code = error instanceof Error ? error.message.slice(0, 240) : 'unknown_report_error';
+    await guardarEstadoReporte(hoy, {
+      status: 'error',
+      sending_started_at: null,
+      last_error: code,
+      resultados,
+    }, env);
+    throw error;
   }
 }

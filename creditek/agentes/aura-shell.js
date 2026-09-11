@@ -1,7 +1,7 @@
 (function installAuraShell(root) {
   'use strict';
 
-  const AURA_VERSION = '4.1.0';
+  const AURA_VERSION = root.AuraRelease?.version || 'sin verificar';
   const TOOLTIP_DELAY_MS = 2_500;
   const LUCIDE_URL = 'https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js';
   const MODULES = [

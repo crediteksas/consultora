@@ -907,19 +907,19 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
       </label>
     </div>
     <div class="fin-note">Aparecerán en la franja inferior de la imagen, alineados horizontalmente</div>
-    <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Solo disponible con GPT Image 2 — Gemini no acepta imágenes de referencia.</div>
+    <div class="fin-note" style="color:#f59e0b;margin-top:3px">⚠️ Los logos de financieras se componen al final, sin consumir una generación adicional.</div>
   </div>
   <div class="sidebar-section" style="padding-bottom:10px">
     <div class="sidebar-label">Servicios IA</div>
     <div class="key-status" style="padding:3px 3px 0">
       <span style="font-size:12px;color:var(--text2)">
-        <span class="img-key-dot" id="sidebar-gemini-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Vertex AI
+        <span class="img-key-dot" id="sidebar-recraft-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>Recraft V4.1
       </span>
       <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
     <div class="key-status" style="padding:3px 3px 4px">
       <span style="font-size:12px;color:var(--text2)">
-        <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2
+        <span class="img-key-dot" id="sidebar-openai-dot" style="width:7px;height:7px;margin-right:5px;display:inline-block"></span>OpenAI / GPT Image 2.5 Flare
       </span>
       <button type="button" disabled style="display:none">Backend seguro</button>
     </div>
@@ -928,8 +928,8 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="sidebar-label">Estilo visual de imagen</div>
     <div class="estilo-grid">
       <button class="estilo-btn active" onclick="selectEstilo('formal',this)" title="Composición profesional y aspiracional. Paleta azul marino + turquesa dominante. Para piezas institucionales, crédito y showcase."><i data-lucide="building-2" aria-hidden="true"></i> Formal</button>
-      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Energía costeña colombiana. Colores cálidos, ambiente comercial real de pueblo. Para captación, promo y crédito con público de la Costa."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
-      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial colombiano. Paleta libre, energía visual divertida. Para captación y piezas que buscan engagement (interacción) alto."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
+      <button class="estilo-btn" onclick="selectEstilo('costeno',this)" title="Caribe colombiano cálido y luminoso: arquitectura, vegetación y color regional con una sensibilidad macondiana contemporánea. Sin carnaval, disfraces ni clichés turísticos."><i data-lucide="sun" aria-hidden="true"></i> Alegre costeño</button>
+      <button class="estilo-btn" onclick="selectEstilo('chistoso',this)" title="Humor comercial inspirado en temas actuales, comportamientos y formatos virales: AURA toma el mecanismo del chiste y crea una pieza original ligada al producto. Nunca copia el meme, la imagen ni el texto ajeno."><i data-lucide="laugh" aria-hidden="true"></i> Chistoso</button>
       <button class="estilo-btn" onclick="selectEstilo('minimalista',this)" title="Máximo espacio en blanco. Un solo punto focal. Para showcase de producto premium y piezas institucionales limpias."><i data-lucide="square" aria-hidden="true"></i> Minimalista</button>
       <button class="estilo-btn" onclick="selectEstilo('contemporaneo',this)" title="Dirección editorial actual: composiciones asimétricas, fotografía auténtica, tipografía protagonista y detalles gráficos de tendencia sin perder claridad comercial."><i data-lucide="sparkles" aria-hidden="true"></i> Contemporáneo</button>
       <button class="estilo-btn" onclick="selectEstilo('custom',this)" title="Tú defines el estilo en texto libre. Úsalo para campañas especiales o fechas específicas."><i data-lucide="pencil" aria-hidden="true"></i> Personalizar</button>
@@ -956,15 +956,15 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
     <div class="sidebar-label">Formato de salida</div>
     <div class="format-selector" role="group" aria-label="Formato de salida">
       <button type="button" class="format-btn active" data-format="image" aria-pressed="true" onclick="selectOutputFormat('image',this)"><i data-lucide="image" class="format-icon" aria-hidden="true"></i><span>Imagen</span></button>
-      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel</span></button>
+      <button type="button" class="format-btn" data-format="reel" aria-pressed="false" onclick="selectOutputFormat('reel',this)"><i data-lucide="film" class="format-icon" aria-hidden="true"></i><span>Reel · costo alto</span></button>
       <button type="button" class="format-btn" data-format="carousel" aria-pressed="false" onclick="selectOutputFormat('carousel',this)"><i data-lucide="layout-grid" class="format-icon" aria-hidden="true"></i><span>Multi-producto</span></button>
     </div>
     <div id="reel-options" class="reel-options">
       <label for="reel-duration">Duración del Reel</label>
-      <select id="reel-duration">
-        <option value="4">4 segundos</option>
+      <select id="reel-duration" onchange="updateReelEstimate()">
+        <option value="4" selected>4 segundos</option>
         <option value="6">6 segundos</option>
-        <option value="8" selected>8 segundos</option>
+        <option value="8">8 segundos</option>
       </select>
       <label for="reel-style">Estilo de animación</label>
       <select id="reel-style">
@@ -973,7 +973,7 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <option value="slide">Entrada lateral con texto</option>
         <option value="dynamic">Dinámico (IA decide)</option>
       </select>
-      <div class="reel-cost">💡 La generación usa Veo 3.1 y puede tardar entre 30 y 120 segundos.</div>
+      <div class="reel-cost" id="reel-cost">⚠️ Operación premium: 2 llamadas previstas (imagen base + Veo 3.1). Se mostrará el costo estimado y se pedirá confirmación antes de generar.</div>
     </div>
   </div>
   <button class="gen-btn" id="gen-btn" onclick="generarContenido()">
@@ -1045,10 +1045,10 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <span class="img-hdr-badge">Beta</span>
       </div>
       <div class="engine-row">
-        <label class="model-chk-label"><input type="checkbox" id="chk-gemini" checked onchange="updateImgKeyStatus()"> 📷 Foto producto</label>
-        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateImgKeyStatus()"> ⬡ GPT Image 2</label>
-        <label class="model-chk-label"><input type="checkbox" id="chk-pipeline" onchange="updateImgKeyStatus()"> 🔗 Pipeline (mejor de ambos)</label>
+        <label class="model-chk-label"><input type="checkbox" id="chk-recraft" checked onchange="updateGenerationEstimate()"> 📷 Diseñador A · Recraft V4.1</label>
+        <label class="model-chk-label"><input type="checkbox" id="chk-dalle" checked onchange="updateGenerationEstimate()"> ⬡ Diseñador B · GPT Image 2.5 Flare</label>
       </div>
+      <div class="reel-cost" id="image-cost-estimate">Control de uso de hoy: cargando…</div>
       <div class="fmt-toggle">
         <button class="fmt-btn active" id="fmt-feed" onclick="selectFormat('feed')">📱 Feed (1080×1080)</button>
         <button class="fmt-btn" id="fmt-stories" onclick="selectFormat('stories')">📲 Stories (1080×1920)</button>
@@ -1109,20 +1109,20 @@ body.kora-product-page .kora-breadcrumb{min-height:0}
         <button class="img-dl-btn" onclick="descargarImagen()">⬇ Descargar PNG</button>
       </div>
       <div class="img-err" id="img-err"></div>
-      <div class="img-ab-result" id="img-ab-result">
+      <div class="img-ab-result" id="img-ab-result" hidden aria-hidden="true">
         <div class="img-ab-cols">
           <div class="img-ab-col">
             <div class="img-ab-col-label" id="img-ab-label-a">📷 Foto producto</div>
-            <div class="img-ab-placeholder">La vista previa de Gemini aparecerá aquí.</div>
-            <img class="img-output" id="img-ab-a" src="" alt="Gemini" style="display:none">
+            <div class="img-ab-placeholder">Comparación automática desactivada para controlar costos.</div>
+            <img class="img-output" id="img-ab-a" src="" alt="Comparación desactivada" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-a" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-a" onclick="descargarImagenAB('a')" style="display:none">⬇ Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-a" onclick="usarImagenDeAB('a')" style="display:none">✓ Usar en editor</button>
           </div>
           <div class="img-ab-col">
-            <div class="img-ab-col-label">⬡ GPT Image 2</div>
-            <div class="img-ab-placeholder">La vista previa de GPT Image 2 aparecerá aquí.</div>
-            <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2" style="display:none">
+            <div class="img-ab-col-label">⬡ GPT Image 2.5 Flare</div>
+            <div class="img-ab-placeholder">La vista previa de GPT Image 2.5 Flare aparecerá aquí.</div>
+            <img class="img-output" id="img-ab-b" src="" alt="GPT Image 2.5 Flare" style="display:none">
             <div class="img-ab-col-err" id="img-ab-err-b" style="display:none"></div>
             <button class="img-dl-btn" id="img-ab-dl-b" onclick="descargarImagenAB('b')" style="display:none">⬇ Descargar</button>
             <button class="img-ab-use-btn" id="img-ab-use-b" onclick="usarImagenDeAB('b')" style="display:none">✓ Usar en editor</button>
@@ -1238,8 +1238,8 @@ function enviarACola() {
 // por eso hay que llamarla como ESTILO_INSTRUCCIONES(), no usarla como valor.
 function buildCreativeStyleDirection(estilo = currentEstilo) {
   const directions = {
-    costeno: 'Alegre costeño contemporáneo: comercio cuidado, luz natural y vida real del Caribe colombiano; evita clichés y cambia composición y ritmo en cada pieza.',
-    chistoso: 'Humor comercial inteligente: parte de una tensión real y resuélvela con un giro original, sin estereotipos ni muletillas.',
+    costeno: 'Alegre costeño contemporáneo: comercio cuidado, luz cálida, vegetación y arquitectura cotidiana del Caribe colombiano; una sensibilidad macondiana sutil, viva y moderna, sin carnaval ni clichés turísticos.',
+    chistoso: 'Humor comercial actual del Caribe colombiano: parte de un comportamiento, conversación o formato viral vigente y transforma su mecanismo en una situación original de compra con planteamiento y remate. Nunca copies la imagen, el texto, el personaje ni el logo de un meme ajeno.',
     formal: 'Formal contemporáneo: confianza, precisión comercial y jerarquía visual limpia; evita lenguaje corporativo genérico.',
     minimalista: 'Minimalista: una sola idea comercial concreta, pocas palabras, espacio visual y máxima claridad.',
     contemporaneo: 'Contemporáneo editorial: composición asimétrica, fotografía auténtica, tipografía expresiva, ritmo visual actual y una sola idea comercial; evita plantillas, neones gratuitos y decoración tecnológica genérica.',
@@ -1301,8 +1301,8 @@ CONTROL DE CALIDAD — PUBLICISTA SENIOR:
 
 function ESTILO_INSTRUCCIONES() {
   return {
-    'alegre costeño': 'Calidez contemporánea del Caribe colombiano: cercanía, optimismo y humor suave cuando nazca de la escena. Vende con claridad, sin estereotipos ni slang impuesto.',
-    'chistoso': 'Humor comercial inteligente: el giro nace de la situación y conduce a un beneficio o acción concreta. No uses memes aleatorios ni pidas personajes exagerados.',
+    'alegre costeño': 'Calidez contemporánea del Caribe colombiano: luz de tarde, vegetación, fachadas y acentos coral, terracota, amarillo sol y turquesa. Sensibilidad macondiana sutil y cotidiana; llamativa sin carnaval, folclor forzado ni slang impuesto.',
+    'chistoso': 'Humor comercial visual y reconocible: toma de la actualidad solo el mecanismo de un chiste, conversación o formato viral y conviértelo en una pieza original con planteamiento y remate ligados al producto. Nunca copies imágenes, textos, personajes, creadores o logos ajenos. Adultos atractivos o sensuales pueden aparecer con tratamiento elegante, pero la pose no sustituye el chiste.',
     'formal': 'Precisión, confianza y claridad de performance. Prioriza un beneficio demostrable y una acción concreta; evita frases corporativas o aspiracionales vacías.',
     'minimalista': 'Una sola idea comercial con pocas palabras, pero completa y comprensible. Cada palabra debe aportar producto, beneficio o acción; no uses fragmentos vacíos.',
     'contemporáneo': 'Lenguaje actual, directo y editorial. Una frase memorable, un beneficio concreto y un CTA útil; evita anglicismos, frases de moda vacías y tono de marca juvenil forzado.',
@@ -1433,6 +1433,7 @@ window.addEventListener('DOMContentLoaded', () => {
   populateCiudadDropdown();
   renderRefStatus();
   updateImgKeyStatus();
+  renderImageUsageControl();
 
   // ── Precarga desde Calendario: cola batch (lote) o pieza única ───
   const p = new URLSearchParams(location.search);
@@ -1707,6 +1708,68 @@ let reelGenerationInFlight = false;
 let currentReelObjectUrl = null;
 window._selectedOutputFormat = 'image';
 
+const REEL_ESTIMATED_COP_PER_SECOND = { min: 170, max: 1375 };
+
+function reelCostEstimate(duration) {
+  const seconds = Number(duration) || 4;
+  return {
+    seconds,
+    min: seconds * REEL_ESTIMATED_COP_PER_SECOND.min,
+    max: seconds * REEL_ESTIMATED_COP_PER_SECOND.max,
+    calls: 2
+  };
+}
+
+function formatCop(value) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+}
+
+function updateGenerationEstimate() {
+  renderImageUsageControl();
+  updateImgKeyStatus();
+}
+
+const IMAGE_USAGE_KEY = 'ck_image_usage_v1';
+
+function imageUsageTodayKey() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
+function readImageUsage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(IMAGE_USAGE_KEY) || '{}');
+    return saved.day === imageUsageTodayKey() ? saved : { day: imageUsageTodayKey(), recraft: { attempts: 0, success: 0, failed: 0, units: 0 }, gpt: { attempts: 0, success: 0, failed: 0 } };
+  } catch {
+    return { day: imageUsageTodayKey(), recraft: { attempts: 0, success: 0, failed: 0, units: 0 }, gpt: { attempts: 0, success: 0, failed: 0 } };
+  }
+}
+
+function recordImageUsage(engine, status, billing = {}) {
+  const usage = readImageUsage();
+  const bucket = engine === 'recraft' ? usage.recraft : usage.gpt;
+  if (status === 'attempt') bucket.attempts += 1;
+  if (status === 'success') {
+    bucket.success += 1;
+    if (engine === 'recraft') bucket.units += Number(billing.api_units || 0);
+  }
+  if (status === 'failed') bucket.failed += 1;
+  localStorage.setItem(IMAGE_USAGE_KEY, JSON.stringify(usage));
+  renderImageUsageControl();
+}
+
+function renderImageUsageControl() {
+  const el = document.getElementById('image-cost-estimate');
+  if (!el) return;
+  const usage = readImageUsage();
+  el.textContent = `Control de hoy · Recraft: ${usage.recraft.success} imágenes / ${usage.recraft.units} unidades · GPT: ${usage.gpt.success} imágenes · Fallidas: ${usage.recraft.failed + usage.gpt.failed}`;
+}
+
+function updateReelEstimate() {
+  const estimate = reelCostEstimate(document.getElementById('reel-duration')?.value);
+  const cost = document.getElementById('reel-cost');
+  if (cost) cost.textContent = `⚠️ ${estimate.calls} llamadas previstas: imagen base + video Veo de ${estimate.seconds}s. Estimado del video: ${formatCop(estimate.min)}–${formatCop(estimate.max)}. Requiere confirmación.`;
+}
+
 function selectOutputFormat(format, button) {
   window._selectedOutputFormat = format;
   document.querySelectorAll('.format-btn').forEach((item) => {
@@ -1715,6 +1778,7 @@ function selectOutputFormat(format, button) {
     item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   document.getElementById('reel-options')?.classList.toggle('visible', format === 'reel');
+  if (format === 'reel') updateReelEstimate();
   const label = document.getElementById('gen-label');
   if (label) label.textContent = format === 'reel' ? '🎬 Generar Reel' : format === 'carousel' ? 'Generar Multi-producto' : '✦ Generar piezas';
 }
@@ -1903,6 +1967,17 @@ async function generateReel(imageBase64, config) {
 
 async function generateReelFromCurrentForm() {
   if (reelGenerationInFlight || imageGenerationInFlight) return;
+  const estimate = reelCostEstimate(document.getElementById('reel-duration')?.value);
+  const approved = window.confirm(
+    `Vas a generar un Reel premium de ${estimate.seconds} segundos.\n\n` +
+    `Llamadas previstas: ${estimate.calls} (imagen base + video Veo).\n` +
+    `Costo estimado del video: ${formatCop(estimate.min)} a ${formatCop(estimate.max)} COP.\n\n` +
+    'El valor real puede variar. ¿Autorizar esta generación?'
+  );
+  if (!approved) {
+    setReelStatus('Generación cancelada. No se realizó ninguna llamada.', 'error');
+    return;
+  }
   const button = document.getElementById('gen-btn');
   const spinner = document.getElementById('spinner');
   const label = document.getElementById('gen-label');
@@ -2158,6 +2233,12 @@ ${culturaCtx ? `CONTEXTO DE CIUDAD — ${ciudadDisplay}:\n${culturaCtx}\n${!esCi
 })()}
 ${COPY_QUALITY_GUARD}
 ${buildModeCopyGuard(modo)}
+${detalleEstilo === 'chistoso' ? `INVESTIGACIÓN DE HUMOR ACTUAL — OBLIGATORIA:
+- Usa la búsqueda web una sola vez para identificar una conversación, comportamiento, formato de humor o tema vigente que pueda conectarse de forma natural con tecnología, compras o la vida cotidiana.
+- No copies ni recrees una publicación existente. Extrae únicamente el mecanismo del chiste y escribe una versión original para Creditek.
+- No uses política, tragedias, accidentes, menores, datos privados, burlas a grupos protegidos, personajes o logos ajenos.
+- Si la actualidad no ofrece una conexión clara con el producto, usa una observación cotidiana vigente en vez de forzar una tendencia.
+- La publicación siempre queda como propuesta para revisión humana; no afirmes que será viral.` : ''}
 LENGUAJE Y TONO OBLIGATORIO:
 - Habla como un vendedor colombiano cercano y respetuoso, no como una marca corporativa
 ${culturaCtx && (culturaCtx.includes('tradicional') || culturaCtx.includes('ganadero')) ? '- Registro: usa "usted" si el contexto lo pide; cálido, de confianza, como alguien del mismo pueblo.' : '- Registro: tuteo natural y directo, como alguien que ya conoce al cliente.'}
@@ -2243,12 +2324,7 @@ ${inclBrief ? '\n[BRIEF VISUAL CANVA]\n{brief}' : ''}
         model: 'claude-sonnet-4-6',
         max_tokens: 6000,
         messages: [{ role: 'user', content: prompt }],
-        // FIX v12 09-jul-2026: el estilo "Chistoso" pide referencias a la
-        // actualidad (memes, fútbol, canciones sonando) que Claude no puede
-        // conocer sin buscar — se activa la herramienta de búsqueda SOLO para
-        // ese estilo (~$0.01 por búsqueda, hasta 2 por generación). Los otros
-        // 3 estilos no la necesitan, no se les activa.
-        // Sin búsqueda externa por generación: el humor debe nacer del concepto.
+        ...(detalleEstilo === 'chistoso' ? { tools: [{ type:'web_search_20250305', name:'web_search', max_uses:1 }] } : {})
       })
     });
     if (!response.ok) {
@@ -2457,7 +2533,7 @@ function usarImagenDeAB(side) {
   imgHistoryIdx = 0;
   mostrarImgVersion(el.src);
   const labelEl = side === 'a' ? document.getElementById('img-ab-label-a') : null;
-  const label = labelEl ? labelEl.textContent.replace(/^[✦⬡]\s+/,'') : 'GPT Image 2';
+  const label = labelEl ? labelEl.textContent.replace(/^[✦⬡]\s+/,'') : 'GPT Image 2.5 Flare';
   document.getElementById('img-model-lbl').textContent = `Usando: ${label}`;
   document.getElementById('img-result').style.display = 'block';
   document.getElementById('img-editor').style.display = 'block';
@@ -2532,7 +2608,7 @@ function selectTitular(btn, text) {
 }
 
 // ── Módulo generador de imágenes ────────────────────────────────
-let currentEngine = 'gemini';
+let currentEngine = 'dalle';
 let currentEstilo = 'formal';
 let currentFormat = 'feed';
 let productoImgBase64 = null;
@@ -2679,15 +2755,18 @@ async function cambiarDetalleDia() {
 async function loadLogoBase64() {
   if (logoBase64) return logoBase64;
   try {
-    const resp = await fetch('/creditek/shared/branding/creditek-logo.png');
-    if (!resp.ok) return null;
+    const resp = await fetch('/creditek/shared/branding/creditek-logo.png', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('No se pudo cargar el logo oficial de Creditek.');
     const blob = await resp.blob();
-    return new Promise(resolve => {
+    return await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = e => { logoBase64 = e.target.result; resolve(logoBase64); };
+      reader.onerror = () => reject(new Error('logo-no-legible'));
       reader.readAsDataURL(blob);
     });
-  } catch(e) { return null; }
+  } catch(e) {
+    throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.');
+  }
 }
 
 function confirmarPreviewYGenerar() {
@@ -2766,7 +2845,7 @@ function resetPreviewFields() {
 }
 
 function syncModelUI() {
-  ['chk-gemini', 'chk-dalle'].forEach(id => {
+  ['chk-recraft', 'chk-dalle'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.closest('label')?.classList.toggle('model-chk-active', !!el.checked);
@@ -2775,17 +2854,17 @@ function syncModelUI() {
 
 function updateImgKeyStatus() {
   syncModelUI();
-  const useGemini = document.getElementById('chk-gemini')?.checked;
+  const useRecraft = document.getElementById('chk-recraft')?.checked;
   const useDalle  = document.getElementById('chk-dalle')?.checked;
-  const geminiOk  = true;
+  const recraftOk = true;
   const dalleOk   = true;
   const btn = document.getElementById('img-key-row-btn');
 
-  if (useGemini || useDalle) {
+  if (useRecraft || useDalle) {
     document.getElementById('img-key-dot').className = 'img-key-dot ok';
     const parts = [];
-    if (useGemini && geminiOk) parts.push('Vertex AI');
-    if (useDalle  && dalleOk)  parts.push('GPT Image 2');
+    if (useRecraft && recraftOk) parts.push('Recraft V4.1');
+    if (useDalle  && dalleOk)  parts.push('GPT Image 2.5 Flare');
     document.getElementById('img-key-label').textContent = parts.join(' · ') + ' configurado';
     btn.style.display = 'none';
   } else {
@@ -2794,9 +2873,9 @@ function updateImgKeyStatus() {
     btn.style.display = 'none';
   }
   // Update sidebar key dots
-  const sgd = document.getElementById('sidebar-gemini-dot');
+  const sgd = document.getElementById('sidebar-recraft-dot');
   const sod = document.getElementById('sidebar-openai-dot');
-  if (sgd) sgd.className = 'img-key-dot' + (geminiOk ? ' ok' : '');
+  if (sgd) sgd.className = 'img-key-dot' + (recraftOk ? ' ok' : '');
   if (sod) sod.className = 'img-key-dot' + (dalleOk  ? ' ok' : '');
 }
 
@@ -2818,9 +2897,9 @@ const creativeFallbackByStyle = {
     'Una familia comparte fotos del celular nuevo en el parque del barrio durante una tarde luminosa.'
   ],
   chistoso: [
-    'El celular nuevo se vuelve el protagonista cuando todos en la mesa quieren ser los primeros en probarlo.',
-    'Un comprador mira su celular viejo con sorpresa mientras el nuevo resuelve la situación con naturalidad.',
-    'La primera foto con el celular nuevo provoca una competencia amistosa y muchas risas entre amigos.'
+    'El celular viejo tarda tanto en abrir la cámara que el nuevo ya tomó la foto y todos celebran el remate.',
+    'El cliente llega con cargador, batería externa y cables; la asesora le muestra un celular cuya batería resuelve el enredo.',
+    'Dos amigos compiten por la mejor selfie: el celular nuevo enfoca perfecto y el viejo solo captura el dedo.'
   ],
   minimalista: [
     'El celular nuevo descansa sobre una superficie clara y concentra toda la atención en su diseño.',
@@ -2878,6 +2957,11 @@ async function proponerDetalleCreativoConIA(estilo, { force = false, avoid = '' 
   const actual = avoid || detalleCreativoActual(estilo);
   const producto = document.getElementById('producto')?.value.trim() || 'tecnología';
   const brief = document.getElementById('instruccion-ia-extra')?.value.trim() || document.getElementById('modo-contexto')?.value.trim() || '';
+  const styleRequirement = estilo === 'chistoso'
+    ? 'Usa una búsqueda web para identificar un tema, conversación, comportamiento o formato de humor vigente que pueda conectarse naturalmente con celulares, crédito, batería, cámara, compras o vida cotidiana. Toma únicamente el mecanismo del chiste y crea una idea original con planteamiento y remate visual ligados al producto, comprensible sin leer un caption. Nunca copies la imagen, texto, personaje, creador, celebridad o logo de la referencia; evita política, tragedias, accidentes, objetificación y estereotipos. Sonreír, posar o ser sensual no es por sí solo humor.'
+    : estilo === 'costeno'
+      ? 'Representa vida cotidiana luminosa del Caribe colombiano con calidez macondiana sutil, sin carnaval ni postal turística.'
+      : '';
   creativeConceptRequest = (async () => {
     try {
       let retryForRepeated = false;
@@ -2890,7 +2974,12 @@ async function proponerDetalleCreativoConIA(estilo, { force = false, avoid = '' 
       const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
         method: 'POST',
         headers: {'Authorization':'Bearer ' + (await auraSessionToken() || ''),'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:100, messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. No repitas ni parafrasees estos conceptos recientes: ${recientes}. ${retryInstruction} Devuelve solo una frase concreta, plausible y distinta, máximo 18 palabras.`}] })
+        body: JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:100,
+          messages:[{role:'user',content:`Propón UNA idea visual comercial nueva para ${producto}. Estilo: ${estilo}. Brief: ${brief || 'ninguno'}. ${styleRequirement} No repitas ni parafrasees estos conceptos recientes: ${recientes}. ${retryInstruction} Devuelve solo una frase concreta, plausible y distinta, máximo 24 palabras.`}],
+          ...(estilo === 'chistoso' ? { tools: [{ type:'web_search_20250305', name:'web_search', max_uses:1 }] } : {})
+        })
       });
       const data = await res.json();
       const concepto = (data.content?.find(b => b.type === 'text')?.text || '').replace(/["\n]/g, ' ').trim();
@@ -3005,8 +3094,8 @@ async function buildImgPrompt() {
     const detalleDia = getDetalleDelDia(currentEstilo);
     const estiloRico = {
       formal:     `Professional, trustworthy, aspirational. Geometric accents in turquoise at low opacity. Corporate credibility. Use the user brief as the visual focus; secondary detail only: ${detalleDia}.`,
-      costeno:    `Authentic everyday Caribbean Colombian commercial life with warm natural light and genuine warmth. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Never stack unrelated tropical clichés.`,
-      chistoso:   `Playful commercial humor grounded in the user brief. Secondary detail only: ${detalleDia}.`,
+      costeno:    `Warm, luminous everyday life from Colombia's Caribbean region with subtle contemporary Macondian character: sun-washed walls, leafy plants, breezy natural light and controlled coral, terracotta, sun-yellow and turquoise accents. Use the user brief as the visual focus; secondary detail only: ${detalleDia}. Make it inviting and scroll-stopping, never dark, corporate, carnival-like or touristy.`,
+      chistoso:   `An original visual setup and punchline grounded in an everyday cellphone purchase in Colombia's Caribbean region. When a current trend or meme mechanism inspired the concept, reinterpret only its comedic structure; never reproduce the source image, wording, characters, creator, celebrity likeness or third-party logo. Smiling, posing, being fashionable or sensual alone are not humor. Attractive, glamorous or sensual adults are allowed when relevant, treated tastefully and with agency. Use the user brief as the focus; secondary detail only: ${detalleDia}. Never depict minors, nudity, explicit sexual content, degrading or objectifying framing, a US-style store, a Bogotá luxury shop or a regional stereotype.`,
       minimalista:`Ultra minimal. Maximum white space. One strong visual from the user brief; secondary detail only: ${detalleDia}.`,
       contemporaneo:`Contemporary editorial retail art direction: asymmetric composition, authentic documentary-style photography, bold scale contrast, restrained graphic accents and intentional negative space. The product and commercial action must remain unmistakable. Avoid template-like layouts, generic neon technology effects and decorative people. Secondary detail only: ${detalleDia}.`,
       custom:     estiloCustomVal ? `Custom style: ${estiloCustomVal}` : 'Professional clean modern.',
@@ -3030,9 +3119,9 @@ async function buildImgPrompt() {
     // 80% de navy+turquesa incluso en Chistoso/Costeno, donde no aplica - ahi la
     // marca solo necesita estar presente en el CTA y el logo, no dominar el fondo.
     const paletaPorEstilo = {
-      formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
-      chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
-      costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
+      formal:      { paleta: 'azul marino #0B1E3D y turquesa #00C4CC como anclas de marca, blanco luminoso y uno o dos acentos contemporáneos derivados de la escena', dominio: 'marca reconocible sin convertir el lienzo en un bloque azul; ningún color plano debe ocupar más del 55%.' },
+      chistoso:    { paleta: 'colores vivos y cálidos tomados de una tienda cotidiana del Caribe colombiano, con turquesa #00C4CC como acento de marca', dominio: 'el remate visual y el producto dominan; el color acompaña el humor sin convertir la escena en moda, carnaval o una tienda extranjera.' },
+      costeno:     { paleta: 'luz cálida y una paleta caribeña controlada: coral, terracota, amarillo sol, verdes de vegetación y turquesa #00C4CC como acento de marca', dominio: 'fotografía luminosa de borde a borde; azul marino solo en texto o pequeños anclajes. Nunca fondo oscuro dominante, gris corporativo, panel blanco institucional, carnaval ni saturación de clichés.' },
       minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
       contemporaneo:{ paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF | un neutral cálido controlado', dominio: 'base de marca dominante con un solo neutral editorial; contraste sofisticado, sin neones genéricos ni colores decorativos sin función.' },
       custom:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
@@ -3058,8 +3147,9 @@ async function buildImgPrompt() {
       '',
       `VISUAL STYLE: ${estiloRico}`,
       '',
-      'BRAND IDENTITY:',
-      '- Deep navy #0B1E3D | Turquoise #00C4CC | White #FFFFFF',
+      'BRAND IDENTITY — ADAPT TO THE SELECTED STYLE:',
+      `- PALETTE: ${paletaEstilo.paleta}`,
+      `- COLOR BALANCE: ${paletaEstilo.dominio}`,
       '- Do not render any logo, word Creditek, placeholder, rectangle, white panel, badge or empty frame. The official asset is composited after generation exactly once in natural negative space.',
       '- Typography: Montserrat ExtraBold headlines, DM Sans body.',
       '',
@@ -3115,9 +3205,9 @@ async function buildImgPrompt() {
     : `Composición CUADRADA 1080×1080 px: producto y textos jerarquizados con equilibrio visual. ${variableGraphicDirection}`;
 
   const paletaPorEstilo_B = {
-    formal:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
-    chistoso:    { paleta: 'colores vivos, saturados y alegres — los que mejor comuniquen humor y energía (no restringido a azul/turquesa) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta es libre, priorizando humor y energía visual real, no institucional.' },
-    costeno:     { paleta: 'colores cálidos y vivos del Caribe colombiano real (turquesa del mar, dorado de atardecer, tonos de casas coloniales) — con turquesa #00C4CC como acento de marca en el CTA y el logo', dominio: 'turquesa #00C4CC visible en el CTA y el logo — el resto de la paleta refleja el Caribe real, nunca institucional ni azul marino dominante.' },
+    formal:      { paleta: 'azul marino #0B1E3D y turquesa #00C4CC como anclas de marca, blanco luminoso y uno o dos acentos contemporáneos derivados de la escena', dominio: 'marca reconocible sin convertir el lienzo en un bloque azul; ningún color plano debe ocupar más del 55%.' },
+    chistoso:    { paleta: 'colores vivos y cálidos tomados de una tienda cotidiana del Caribe colombiano, con turquesa #00C4CC como acento de marca', dominio: 'el remate visual y el producto dominan; el color acompaña el humor sin convertir la escena en moda, carnaval o una tienda extranjera.' },
+    costeno:     { paleta: 'luz cálida y una paleta caribeña controlada: coral, terracota, amarillo sol, verdes de vegetación y turquesa #00C4CC como acento de marca', dominio: 'fotografía luminosa de borde a borde; azul marino solo en texto o pequeños anclajes. Nunca fondo oscuro dominante, gris corporativo, panel blanco institucional, carnaval ni saturación de clichés.' },
     minimalista: { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'mucho espacio en blanco — azul marino y turquesa como únicos acentos puntuales, sin llenar el lienzo.' },
     contemporaneo:{ paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF | un neutral cálido controlado', dominio: 'base de marca dominante con un solo neutral editorial; contraste sofisticado, sin neones genéricos ni colores decorativos sin función.' },
     custom:      { paleta: 'azul marino #0B1E3D | turquesa #00C4CC | blanco #FFFFFF', dominio: 'azul marino + turquesa mínimo 80% del diseño.' },
@@ -3198,10 +3288,10 @@ async function buildImgPrompt() {
   const detalleDiaMsg = getDetalleDelDia(currentEstilo);
   const mensajeMap = {
     formal:      `Tono comercial profesional, confiable y aspiracional. Resaltar el beneficio principal del equipo. Detalle visual secundario: ${detalleDiaMsg}.`,
-    costeno:     `Tono caribeño colombiano auténtico y comercial — un cliente feliz disfrutando su celular nuevo como foco claro de la escena. Luz natural cálida, colores vivos, calidez humana genuina. Escena: ${detalleDiaMsg}. REGLA DE ORO: la escena debe ser PLAUSIBLE — un momento que de verdad podría pasar un día cualquiera en un pueblo de la costa (Corozal, Chinú, Ciénaga). Varios elementos costeños están bien SOLO si conviven de forma natural en un mismo momento real (ej: dos amigas en la plaza, una con un coco, mirando el celular). Lo PROHIBIDO es apilar elementos que no conviven en la vida real solo para "gritar Costa" (confeti + palmeras + flores + coco todos juntos = falso). Nada de confeti, disfraces ni máscaras de comparsa.`,
+    costeno:     `Tono caribeño colombiano auténtico, comercial y luminoso — un cliente disfrutando su celular nuevo como foco claro de la escena. Sensibilidad macondiana contemporánea y sutil: luz de tarde, brisa sugerida, vegetación frondosa, fachadas o texturas regionales y acentos coral, terracota, amarillo sol o turquesa, sin acumularlos. Escena: ${detalleDiaMsg}. Debe sentirse como un momento plausible de Corozal, Chinú, Tolú o Ciénaga, no como una campaña institucional ni una postal turística. Prohibidos carnaval, comparsa, confeti, disfraces, máscaras, sombreros folclóricos y decoraciones tropicales apiladas.`,
     chistoso:    /lavadora|\bmoto\b|nevera|televisor|\btv\b|estufa|licuadora|parlante|bicicleta|colchon/i.test(producto||'')
-      ? `Tono de humor comercial ligero sobre ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares — el producto de esta pieza no es un celular.`
-      : `Tono de humor comercial ligero. Crear contraste entre celular viejo y ${producto}. Humor cálido colombiano — divertido sin perder credibilidad. Detalle visual secundario: ${detalleDiaMsg}.`,
+      ? `Humor visual cotidiano sobre ${producto}: planteamiento reconocible y remate claro ligado a su uso o beneficio. Si el concepto nació de una tendencia o meme actual, transforma solo su mecanismo cómico en una escena original: no copies imagen, texto, personajes, creador, celebridad ni logos. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Escena realista de comercio del Caribe colombiano; sin tienda extranjera, objetificación ni estereotipos. Detalle visual: ${detalleDiaMsg}. NO mencionar ni mostrar celulares: el producto de esta pieza no es un celular.`
+      : `Humor visual cotidiano: planteamiento reconocible y remate claro entre el celular viejo y ${producto}, ligado a una ventaja real. Si el concepto nació de una tendencia o meme actual, transforma solo su mecanismo cómico en una escena original: no copies imagen, texto, personajes, creador, celebridad ni logos. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Escena realista de una tienda o calle comercial del Caribe colombiano; sin local estadounidense o bogotano de lujo, objetificación ni estereotipos. Detalle secundario: ${detalleDiaMsg}.`,
     minimalista: `Tono sereno y aspiracional. Menos texto, más espacio en blanco. Un solo elemento visual derivado del brief; detalle secundario: ${detalleDiaMsg}.`,
     contemporaneo:`Dirección editorial contemporánea, segura y comercial. Producto y acción real como protagonistas, encuadre asimétrico, tipografía con contraste de escala y máximo dos personas con función narrativa. Sin poses de celebración artificial, neones genéricos ni adornos sin propósito. Detalle secundario: ${detalleDiaMsg}.`,
     custom:      estiloCustomVal || `Estilo libre. Aplicar criterio artístico según las instrucciones.`,
@@ -3215,7 +3305,17 @@ async function buildImgPrompt() {
     halloween:'fondo casi negro #0D0D0D', anonuevo:'fondo negro #050505',
     clases:'fondo blanco #FFFFFF con acentos azul cielo #87CEEB',
   };
-  const bgSpec = (fechaData && fechaBgMap[fechaKey]) ? fechaBgMap[fechaKey] : 'azul marino profundo #0B1E3D';
+  const fondoPorEstilo = {
+    formal: 'escena fotográfica o fondo editorial contemporáneo; azul marino solo como ancla, nunca como bloque plano dominante',
+    costeno: 'escena fotográfica luminosa de borde a borde, con luz natural cálida, vegetación o arquitectura caribeña cotidiana; sin fondo oscuro dominante ni panel institucional',
+    chistoso: 'tienda compacta o calle comercial cotidiana del Caribe colombiano, con vitrinas y mostradores accesibles, luz cálida y escala de pueblo o ciudad intermedia; nunca boutique de lujo, centro comercial, local estadounidense ni arquitectura bogotana genérica',
+    minimalista: 'fondo blanco #FFFFFF o muy claro, limpio y con espacio negativo intencional',
+    contemporaneo: 'escena fotográfica o fondo editorial contemporáneo, luminoso y comercial; azul marino solo como ancla puntual',
+    custom: 'fondo coherente con la dirección visual escrita por el usuario; si no se especifica, contemporáneo, luminoso y comercial',
+  };
+  const bgSpec = (fechaData && fechaBgMap[fechaKey])
+    ? fechaBgMap[fechaKey]
+    : (fondoPorEstilo[currentEstilo] || fondoPorEstilo.formal);
   const fechaImgBlock = fechaData ? `Temática ${fechaData.label}: incorporar paleta secundaria (${fechaData.colores}) y elementos decorativos sutiles (${fechaData.elementos}). Estos acentos estacionales complementan la identidad Creditek, no la reemplazan.` : '';
 
   const selectedFins = getSelectedFinancieras();
@@ -3316,8 +3416,8 @@ function buildImgPromptGeminiFallback() {
 
   const colorMap = {
     formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
-    costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
-    chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
+    costeno:     'luz natural cálida del Caribe colombiano, vegetación y arquitectura regional cotidiana con acentos coral, terracota, amarillo sol y turquesa; carácter macondiano sutil y contemporáneo, llamativo sin carnaval, folclor forzado ni postal turística',
+    chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, con adultos de estilo libre cuando aporten al concepto y sin local extranjero',
     minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
     contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; estética editorial actual, limpia y sofisticada, sin neones tecnológicos genéricos',
     custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
@@ -3404,8 +3504,8 @@ async function buildImgPromptGemini() {
   const detalleDiaClaude = getDetalleDelDia(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
-    costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
-    chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
+    costeno:     `caribeño colombiano comercial, luminoso y cálido — sensibilidad macondiana contemporánea expresada con luz de tarde, vegetación y arquitectura regional cotidiana, no con fiesta ni disfraces. Escena plausible: ${detalleDiaClaude}. Acentos coral, terracota, amarillo sol y turquesa controlados; nunca fondo lúgubre, plantilla corporativa ni clichés turísticos apilados`,
+    chistoso:    `humor visual actual del Caribe colombiano con planteamiento y remate ligados al producto. Si el concepto parte de una tendencia o meme, transforma solo su mecanismo cómico en una escena original; nunca copies imagen, texto, personajes, creador, celebridad ni logos. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Escena: ${detalleDiaClaude}. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Sin objetificación, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto inequívoco y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -3495,8 +3595,8 @@ async function buildImgPromptGeminiFotoLimpia() {
   const detalleDiaClaude = getDetalleDelDia(currentEstilo);
   const estiloDescMap = {
     formal:      `profesional, confiable, elegante — incorporar este detalle visual: ${detalleDiaClaude}`,
-    costeno:     `caribeño colombiano comercial, alegre y cálido — un cliente feliz disfrutando su celular nuevo como foco. Escena plausible y real (un momento que de verdad pasa en un pueblo de la costa): ${detalleDiaClaude}. Varios elementos costeños están bien solo si conviven naturalmente en el mismo momento; nunca apilar clichés turísticos para decorar`,
-    chistoso:    `divertido, humor comercial ligero — incorporar este detalle visual: ${detalleDiaClaude}`,
+    costeno:     `caribeño colombiano comercial, luminoso y cálido — sensibilidad macondiana contemporánea expresada con luz de tarde, vegetación y arquitectura regional cotidiana, no con fiesta ni disfraces. Escena plausible: ${detalleDiaClaude}. Acentos coral, terracota, amarillo sol y turquesa controlados; nunca fondo lúgubre, plantilla corporativa ni clichés turísticos apilados`,
+    chistoso:    `humor visual actual del Caribe colombiano con planteamiento y remate ligados al producto. Si el concepto parte de una tendencia o meme, transforma solo su mecanismo cómico en una escena original; nunca copies imagen, texto, personajes, creador, celebridad ni logos. Sonreír, posar o ser sensual no cuenta por sí solo como chiste. Escena: ${detalleDiaClaude}. Se permiten adultos atractivos o sensuales con tratamiento elegante, no explícito y no degradante. Sin objetificación, estereotipos, boutique estadounidense, centro comercial de lujo ni arquitectura bogotana genérica`,
     minimalista: `minimalista, mucho espacio en blanco, sereno — un solo elemento visual: ${detalleDiaClaude}`,
     contemporaneo:`editorial contemporáneo y comercial — fotografía auténtica, encuadre asimétrico, contraste de escala, producto protagonista y máximo dos personas con función narrativa; sin poses exageradas, plantillas repetidas ni neones genéricos. Incorporar de forma secundaria: ${detalleDiaClaude}`,
     custom:      estiloCustomVal || 'moderno',
@@ -3506,8 +3606,8 @@ async function buildImgPromptGeminiFotoLimpia() {
   const fallbackEstatico = () => {
     const colorMap = {
       formal:      'tonos azul marino profundo con acentos turquesa, elegante y confiable',
-      costeno:     'colores cálidos y luz natural del Caribe colombiano, ambiente comercial cotidiano y real (plaza de pueblo, calle comercial, local surtido) con un cliente feliz disfrutando su celular nuevo — auténtico, nunca una postal turística ni una fiesta montada',
-      chistoso:    'colores vivos y alegres, azul marino y turquesa con energía divertida',
+      costeno:     'luz natural cálida del Caribe colombiano, vegetación y arquitectura regional cotidiana con acentos coral, terracota, amarillo sol y turquesa; carácter macondiano sutil y contemporáneo, llamativo sin carnaval, folclor forzado ni postal turística',
+      chistoso:    'colores vivos y cálidos de una tienda cotidiana del Caribe colombiano; humor visual con planteamiento y remate, con adultos de estilo libre cuando aporten al concepto y sin local extranjero',
       minimalista: 'azul marino profundo, mucho espacio en blanco, muy pocos elementos',
       contemporaneo:'azul marino profundo, blanco y turquesa con un único neutral cálido; fotografía editorial actual y sofisticada, sin neones tecnológicos genéricos',
       custom:      estiloCustomVal || 'azul marino y turquesa, estilo moderno',
@@ -3753,7 +3853,7 @@ function showImgSection() {
   resetPreviewFields();
   updateImgKeyStatus();
   syncModelUI();
-  loadLogoBase64();
+  loadLogoBase64().catch(() => { /* la precarga no bloquea; generar mostrará el error accionable */ });
   // Refresh brand-refs modelos + financieras cache silently in background
   fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/brand-references')
     .then(r => r.ok ? r.json() : null)
@@ -3813,7 +3913,7 @@ async function generarImagen(callerBtn = null) {
     await corregirMensajeSecundario();
     label.textContent = 'Generando imagen...'; // avanza el mensaje de estado a la fase de imagen
 
-    const isWorkerEngine = currentEngine === 'gemini';
+    const isWorkerEngine = currentEngine === 'recraft';
     const key = '';
 
     const prompt = document.getElementById('img-prompt-ta').value.trim();
@@ -3821,13 +3921,11 @@ async function generarImagen(callerBtn = null) {
     // FIX v4f (06-jul-2026): buildImgPromptGemini() hace su propia llamada de red
     // (redacción del prompt visual vía Claude) — sin este mensaje, el label se
     // queda estático varios segundos dando sensación de que no está avanzando.
-    if (isWorkerEngine) label.textContent = 'Redactando prompt visual...';
-    const promptGemini = isWorkerEngine ? await buildImgPromptGemini() : null; // FIX 02-jul-2026
-    if (isWorkerEngine) label.textContent = 'Generando imagen...';
+    if (isWorkerEngine) label.textContent = 'Preparando fotografía humana...';
 
-    lastImgModelLabel = currentEngine === 'gemini' ? 'Imagen 4 (Vertex)' : 'GPT Image 2';
-    const src = currentEngine === 'gemini'
-      ? await generarConGemini(key, promptGemini)
+    lastImgModelLabel = currentEngine === 'recraft' ? 'Recraft V4.1' : 'GPT Image 2.5 Flare';
+    const src = currentEngine === 'recraft'
+      ? await generarConRecraft(prompt)
       : await generarConDalle(key, prompt);
     imgHistory = [src];
     imgHistoryIdx = 0;
@@ -3928,8 +4026,8 @@ function calcularDimensionesLogo(ctx, canvas, logoCanvas) {
 
 async function componerLogoSobreImagen(dataUrlImagen) {
   const logo = await loadLogoBase64();
-  if (!logo) return dataUrlImagen;
-  return new Promise(resolve => {
+  if (!logo) throw new Error('No se pudo cargar el logo oficial de Creditek. La imagen no se entregará sin marca.');
+  return new Promise((resolve, reject) => {
     const imgBase = new Image();
     imgBase.onload = () => {
       const canvas = document.createElement('canvas');
@@ -3938,34 +4036,159 @@ async function componerLogoSobreImagen(dataUrlImagen) {
       ctx.drawImage(imgBase, 0, 0);
       const imgLogo = new Image();
       imgLogo.onload = () => {
-        const logoCanvas = document.createElement('canvas');
-        logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
-        const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
-        logoCtx.drawImage(imgLogo, 0, 0);
-        quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
-        const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
-        const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
-        if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
-          adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+        try {
+          const logoCanvas = document.createElement('canvas');
+          logoCanvas.width = imgLogo.width; logoCanvas.height = imgLogo.height;
+          const logoCtx = logoCanvas.getContext('2d', { willReadFrequently: true });
+          logoCtx.drawImage(imgLogo, 0, 0);
+          quitarFondoBlancoDelLogo(logoCtx, logoCanvas.width, logoCanvas.height);
+          const { logoWidth: logoAncho, logoHeight: logoAlto } = calcularDimensionesLogo(ctx, canvas, logoCanvas);
+          const pos = elegirUbicacionLogo(ctx, canvas, logoAncho, logoAlto);
+          if (luminosidadZonaLogo(ctx, pos.x, pos.y, logoAncho, logoAlto) < 0.54) {
+            adaptarLogoAFondoOscuro(logoCtx, logoCanvas.width, logoCanvas.height);
+          }
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.32)';
+          ctx.shadowBlur = Math.max(6, canvas.width * 0.009);
+          ctx.shadowOffsetY = Math.max(1, canvas.width * 0.002);
+          ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
+          ctx.restore();
+          resolve(canvas.toDataURL('image/png'));
+        } catch (error) {
+          reject(new Error('No se pudo aplicar el logo oficial de Creditek. La imagen no se entregará sin marca.'));
         }
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.32)';
-        ctx.shadowBlur = Math.max(6, canvas.width * 0.009);
-        ctx.shadowOffsetY = Math.max(1, canvas.width * 0.002);
-        ctx.drawImage(logoCanvas, pos.x, pos.y, logoAncho, logoAlto);
-        ctx.restore();
-        resolve(canvas.toDataURL('image/png'));
       };
-      imgLogo.onerror = () => resolve(dataUrlImagen);
+      imgLogo.onerror = () => reject(new Error('No se pudo aplicar el logo oficial de Creditek. La imagen no se entregará sin marca.'));
       imgLogo.src = logo;
     };
-    imgBase.onerror = () => resolve(dataUrlImagen);
+    imgBase.onerror = () => reject(new Error('No se pudo validar la imagen generada. La pieza no se habilitó.'));
     imgBase.src = dataUrlImagen;
   });
 }
 
 const IMAGE_WORKER_URL = 'https://creditek-gemini-proxy.comercial-853.workers.dev';
 const GPT_BRANDING_GUARD = 'BRANDING LOCK: generate with NO logo, NO word Creditek, NO brand name and NO interpreted mark. Do not draw a placeholder, rectangle, white panel, badge or empty frame for branding; leave only natural negative space. The official asset is composited after generation exactly once.';
+const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
+- This is a paid social advertisement whose primary purpose is to stop the scroll and sell the specified product or offer.
+- Deliver a contemporary 2026 retail campaign concept, not a generic corporate flyer, presentation slide or rigid template.
+- Establish an immediate visual hook, a clear product/people focal point, strong hierarchy and a CTA readable on a mobile screen.
+- Use intentional contrast, depth, scale, asymmetry and controlled color accents. Avoid a flat navy background occupying most of the canvas.
+- Preserve generous but purposeful breathing room. Never stack every text element in one centered column.
+- Show authentic Colombian Caribbean adults naturally interacting with the product when people are requested. Casting may be ordinary, attractive, glamorous or sensual when relevant; keep it tasteful, clearly adult and non-explicit, with agency and product relevance. Avoid minors, nudity, degrading or objectifying framing, stock-photo smiles and empty streets.
+- Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
+- Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
+- The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
+const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: create one full-bleed editorial retail photograph with natural Caribbean light and a single believable customer-adviser interaction as the focal point. The store environment remains visible across the entire canvas. Place the approved headline, supporting copy and compact CTA directly over calm areas of the photograph with strong contrast and mobile readability. Use no solid header, footer, card, beige or white panel, detached banner, empty block or framed template. The CTA may occupy at most 35% of the canvas width. Do not generate any trademark, company name, check symbol or wordmark; one verified brand asset is added after generation.`;
+const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: create an independent premium retail concept with sophisticated typography, dynamic composition, restrained modern color blocking and a conversion-focused human story. Build a visual triangle connecting the main customer interaction, headline and CTA. Keep the CTA clearly readable on a phone and approximately 20–25% more prominent than ordinary body copy, without becoming a banner. Place supporting copy on a calm high-contrast area or a subtle dark translucent scrim. Reduce background crowd density when needed so one believable customer-adviser interaction leads the scene. Reserve at least 6% safe margin around the natural logo zone. Avoid decorative bands that cut through the photograph. It must remain visibly different from Designer A.`;
+const COSTENO_VISUAL_CONTRACT = `SELECTED STYLE — ALEGRE COSTEÑO, MANDATORY:
+- Express Colombia's Caribbean region through warm daylight, airy atmosphere, leafy vegetation, sun-washed architecture and a controlled palette of coral, terracotta, sun-yellow, green and Creditek turquoise.
+- Aim for subtle contemporary Macondian warmth: everyday regional life made visually memorable, inviting and slightly poetic, while remaining a believable commercial scene.
+- The result must be brighter and more eye-catching than the formal style. Navy may appear only in typography or small brand anchors; it must never dominate the background.
+- Do not interpret "costeño" as carnival, party or folklore. No confetti, comparsa, costumes, masks, folkloric hats, tourist-postcard staging, exaggerated tropical props or stacked regional clichés.
+- Reject dark, gloomy, beige, gray, overly sober or institutional compositions; reject corporate white panels, presentation-slide layouts and rigid centered templates.`;
+const CHISTOSO_VISUAL_CONTRACT = `SELECTED STYLE — CHISTOSO, MANDATORY:
+- Build one instantly understandable visual setup and punchline tied to the product, its use or a real shopping friction. The joke must work visually before reading the caption.
+- The concept may be inspired by a current conversation, behavior or meme format found through research, but must transform it into a new Creditek situation. Borrow the comedic mechanism, never the protected expression.
+- Never reproduce or closely imitate an existing individualized meme image, wording, composition, character, creator asset, celebrity likeness, screenshot, watermark or third-party logo.
+- Smiling, laughing, posing, attractive friends or colorful clothes alone are not humor. Reject and recompute any concept without a genuine comic turn.
+- Ground the scene in an accessible cellphone store or everyday commercial street from Colombia's Caribbean region, comparable to Corozal, Chinú, Tolú, Ciénaga or Montería: compact scale, glass counters, practical displays, warm daylight and ordinary customers.
+- Never depict a US flagship, Manhattan-style street, Bogotá luxury shop, upscale mall, fashion boutique, influencer photoshoot or generic international showroom.
+- Attractive, glamorous or sensual adults and fashion-forward styling are allowed when they strengthen the concept. Keep every person clearly adult, confident and agentic; no nudity, explicit sexual content, fetishization, degrading or objectifying framing, or sexual focus unrelated to the product.
+- Do not use degrading caricatures, ridicule, forced slang, carnival props or regional stereotypes.
+- Keep the product and commercial benefit accurate. Humor must make the piece more memorable, never obscure what is being offered.`;
+
+function buildSelectedVisualStyleContract() {
+  if (currentEstilo === 'costeno') return COSTENO_VISUAL_CONTRACT;
+  if (currentEstilo === 'chistoso') return CHISTOSO_VISUAL_CONTRACT;
+  if (currentEstilo === 'minimalista') return 'SELECTED STYLE — MINIMALISTA: one commercial idea, restrained elements and intentional negative space; keep the product and CTA unmistakable.';
+  if (currentEstilo === 'contemporaneo') return 'SELECTED STYLE — CONTEMPORÁNEO: current editorial photography, asymmetric rhythm and expressive hierarchy without generic technology effects.';
+  if (currentEstilo === 'custom') return `SELECTED STYLE — CUSTOM: ${document.getElementById('estilo-custom')?.value.trim() || 'follow the operator visual brief exactly.'}`;
+  return 'SELECTED STYLE — FORMAL: trustworthy and polished retail communication with a clean hierarchy, without looking like a presentation slide.';
+}
+const RETAIL_STORE_SCENE_CONTRACT = `RETAIL STORE SCENE CONTRACT — MANDATORY WHEN A STORE OR IN-STORE CUSTOMERS ARE REQUESTED:
+- The setting must be unmistakably an accessible Colombian Caribbean cellphone store, not a generic social venue, luxury boutique or international showroom.
+- Use the scale and practical character of a real store in Corozal, Chinú, Tolú, Ciénaga or Montería: glass display counters, wall accessories, tiled or simple commercial flooring, warm-climate daylight and ordinary local customers. Never use a US flagship, Manhattan street, Bogotá luxury shop or upscale shopping mall.
+- Use an establishing wide shot at eye level with a 24–28 mm wide-angle lens. Place the camera 3–4 meters from the nearest customer.
+- At least 45% of the frame must visibly describe the store environment: glass cellphone display counters, wall-mounted phones or accessories, a service counter, commercial lighting and sales advisers helping customers.
+- Distribute 8–12 customers naturally in small groups across foreground, middle ground and background. Prefer full-body or three-quarter figures and believable interaction with advisers and devices.
+- Preserve clear spatial depth and enough architecture to identify the location even if all advertising copy is hidden.
+- No close-up, tight crop, bust portrait, single face dominating the frame or shallow depth of field that erases the store.
+- Never resemble a restaurant, café, bar, party, event hall, residential interior or empty street. Fashion-forward or sensual adult casting is allowed when relevant, but it must remain tasteful, non-explicit, agentic and connected to the product; never depict minors, nudity or degrading or objectifying framing. Do not invent readable prices, offers or third-party brand marks inside the store.`;
+
+const AD_CREATIVE_QUALITY_CONTRACT = `9.5/10 AD CREATIVE QUALITY GATE — SELF-CHECK BEFORE RENDERING:
+- Use one dominant visual idea. People, product, headline and decorative graphics must not compete for equal attention.
+- Preserve a clear mobile-feed hierarchy: visual story first, headline second, CTA third, official logo zone fourth.
+- Use the selected-style palette. In Alegre costeño, navy and turquoise are small recognizable brand anchors while warm regional colors and natural light lead the photograph.
+- Keep overlays purposeful and restrained. Avoid giant diagonal bands, excessive dark filters, crowded badges, duplicated frames or decorative elements that cut through faces, hands, devices or the store.
+- People must perform varied believable actions: asking an adviser, comparing devices, viewing a display or receiving assistance. Do not make everyone pose, smile at the same phone or face the camera.
+- Every approved text element must remain readable at phone-feed size with safe margins and sufficient contrast.
+- Before rendering, reject and recompute any composition containing invented copy, a dominant floating device, an ambiguous venue, obstructed people/product, weak hierarchy or an unbalanced brand palette.`;
+
+function buildRetailStoreSceneContract(prompt = '') {
+  const normalized = String(prompt).toLowerCase();
+  const requestsStoreScene = /\b(tienda|local|punto de venta|almac[eé]n|vitrina|mostrador|jornada|clientes comprando|calle comercial|negocios de celulares|pueblo|in[- ]?store|retail store|shop)\b/.test(normalized);
+  return requestsStoreScene ? RETAIL_STORE_SCENE_CONTRACT : '';
+}
+
+function buildProductProminenceContract() {
+  const product = document.getElementById('producto')?.value.trim() || '';
+  const genericProduct = !product || /^(smartphone|celular|tel[eé]fono|cualquier)/i.test(product);
+  const hasSpecificProduct = Boolean(productoImgBase64) || !genericProduct;
+  if (!hasSpecificProduct) {
+    return `PRODUCT DISCIPLINE — NO SPECIFIC MODEL PROVIDED:
+- Do not add any floating, oversized, cut-out or hero smartphone/device.
+- The visible store displays already communicate the category; people and the retail experience are the visual story.
+- Background phones may appear only naturally inside display counters, shelves or customers' hands.`;
+  }
+  return `PRODUCT DISCIPLINE — SPECIFIC PRODUCT PROVIDED:
+- Feature only the selected/reference product. Never substitute or invent another model.
+- The product may occupy at most 20% of the full canvas and must be naturally integrated in a hand, display counter or believable retail setting.
+- No giant floating cut-out, no edge crop and no product covering customers, store depth, headline, CTA or official logo zone.`;
+}
+
+function buildExactTextAllowlist() {
+  const allowed = [
+    document.getElementById('img-titular')?.value.trim(),
+    document.getElementById('img-mensaje')?.value.trim(),
+    document.getElementById('chk-cta-activo')?.checked !== false ? document.getElementById('img-cta')?.value.trim() : '',
+    document.getElementById('jornada-fecha')?.value.trim(),
+    document.getElementById('jornada-lugar')?.value.trim(),
+    document.getElementById('jornada-hora')?.value.trim(),
+  ].filter(Boolean);
+  const list = allowed.length ? allowed.map(value => `- "${value}"`).join('\n') : '- No generated text is authorized.';
+  return `EXACT TEXT ALLOWLIST — ZERO EXCEPTIONS:
+The image may contain only these exact strings:
+${list}
+Do not add SOLO HOY, urgency badges, prices, discounts, dates, slogans, store signs, product labels, legal claims or any other readable words. If a text is not listed above, it must not appear.`;
+}
+
+function buildAdCreativeQualityPrompt(prompt = '') {
+  return [
+    AD_CREATIVE_QUALITY_CONTRACT,
+    buildRetailStoreSceneContract(prompt),
+    buildProductProminenceContract(),
+    buildExactTextAllowlist(),
+  ].filter(Boolean).join('\n\n');
+}
+
+function buildRecraftProviderPrompt(prompt = '') {
+  const sourceWithoutBrandInstructions = String(prompt)
+    .split('\n')
+    .filter(line => !/(logo|wordmark|brand identity|branding lock|official asset|creditek)/i.test(line))
+    .join('\n');
+  const priorityPrefix = [
+    RECRAFT_ART_DIRECTION,
+    buildSelectedVisualStyleContract(),
+    buildRetailStoreSceneContract(prompt),
+    buildProductProminenceContract(),
+    buildExactTextAllowlist(),
+  ].filter(Boolean).join('\n\n');
+  const separator = '\n\nSOURCE CREATIVE BRIEF — retain the following details in priority order:\n';
+  const maxLength = 9500;
+  const available = Math.max(0, maxLength - priorityPrefix.length - separator.length);
+  const sourceBrief = sourceWithoutBrandInstructions.slice(0, available);
+  return `${priorityPrefix}${separator}${sourceBrief}`;
+}
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/dirección de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';
 const GPT_LAYOUT_PATTERNS = [
@@ -3999,13 +4222,26 @@ async function llamarBackendImagen(path, payload) {
   return window.requestAuraImage(path, payload);
 }
 
+async function generarConRecraft(prompt) {
+  const data = await llamarBackendImagen('/recraft/images', {
+    prompt: buildRecraftProviderPrompt(prompt),
+    format: currentFormat === 'stories' ? 'stories' : 'feed',
+    images: 1
+  });
+  const pred = data.predictions?.[0];
+  if (!pred?.bytesBase64Encoded) throw new Error('Recraft no devolvió imagen.');
+  lastImgModelLabel = data.label || 'Recraft V4.1';
+  const mime = pred.mimeType || 'image/png';
+  const b64 = pred.bytesBase64Encoded.replace(/\s/g, '');
+  return await componerLogoSobreImagen(`data:${mime};base64,${b64}`);
+}
+
 async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl = null, esEdicion = false) {
   // FIX 03-jul-2026: relación de aspecto exacta para calzar con GPT
   // (GPT: 1024x1024 = 1:1 · 1024x1536 = 2:3).
   // gemini3pro SÍ admite 2:3 exacto. El respaldo Imagen 4 :predict NO admite
   // 2:3 (solo 1:1/3:4/4:3/9:16/16:9) — usa 3:4 como la más cercana si se cae ahí.
   const aspectRatioG3       = currentFormat === 'stories' ? '2:3' : '1:1';
-  const aspectRatioFallback = currentFormat === 'stories' ? '3:4' : '1:1';
 
   async function llamarWorker(reqBody) {
     const data = await llamarBackendImagen('/generate', reqBody);
@@ -4035,23 +4271,12 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
   try {
     src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioG3, engine: 'gemini3pro' });
   } catch (errPrincipal) {
-    // FIX v17 12-jul-2026: decisión de Oscar — para EDICIÓN específicamente,
-    // si gemini3pro (el único motor con imagen de referencia) falla, NO caer
-    // a la vía normal del Worker (Nano Banana 2 / Vía 0), porque esa vía no
-    // manda ninguna imagen de referencia y el resultado sería una regeneración
-    // completa disfrazada de "edición" — el mismo problema que v16 resolvió.
-    // Nota: el "fallback a Vía 0" no ocurre dentro del Worker en una sola
-    // llamada — son 2 peticiones HTTP separadas orquestadas aquí en el
-    // frontend (el intento con engine=gemini3pro, y este segundo intento sin
-    // engine). Por eso el fix va aquí y no como un parámetro que el Worker
-    // deba respetar: si nunca se hace la segunda llamada, no hay nada que el
-    // Worker necesite bloquear.
-    if (esEdicion) {
-      console.warn('[generarConGemini] gemini3pro falló durante edición — NO se intenta Vía 0 (sin imagen de referencia):', errPrincipal.message);
-      throw new Error('No se pudo editar la imagen, intenta de nuevo.');
-    }
-    console.warn('[generarConGemini] gemini3pro falló, usando vía normal del Worker:', errPrincipal.message);
-    src = await llamarWorker({ ...reqBase, aspectRatio: aspectRatioFallback });
+    // Control de costo: una acción del usuario equivale a una sola llamada.
+    // Nunca se cobra un segundo intento automático con otro motor.
+    console.warn('[generarConGemini] falló el intento único; respaldo automático deshabilitado:', errPrincipal.message);
+    throw new Error(esEdicion
+      ? 'No se pudo editar la imagen. No se realizó un segundo intento automático.'
+      : 'No se pudo generar la imagen con Gemini. No se realizó un respaldo automático.');
   }
   // FIX v4d (07-jul-2026): si es para el pipeline, devolver la foto CRUDA sin
   // overlay de logo — GPT se encarga del logo y el texto en el paso 2.
@@ -4064,6 +4289,8 @@ async function generarConGemini(key, prompt, soloFoto = false, imagenRefDataUrl 
 async function generarConDalle(key, prompt) {
   const finLogos = await loadAllSelectedFinancieras();
   const layoutGuard = buildGptLayoutGuard();
+  const qualityContract = buildAdCreativeQualityPrompt(prompt);
+  const selectedStyleContract = buildSelectedVisualStyleContract();
   let inputPayload;
   if (productoImgBase64 || finLogos.length) {
     const content = [];
@@ -4075,10 +4302,10 @@ async function generarConDalle(key, prompt) {
       content.push({ type: 'input_text', text: `Partner financing logo for bottom strip (${fin.label}):` });
       content.push({ type: 'input_image', image_url: fin.b64 });
     }
-    content.push({ type: 'input_text', text: `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
+    content.push({ type: 'input_text', text: `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${selectedStyleContract}\n${qualityContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}` });
     inputPayload = [{ role: 'user', content }];
   } else {
-    inputPayload = `${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
+    inputPayload = `${COMMERCIAL_DESIGN_CONTRACT}\n${GPT_ART_DIRECTION}\n${selectedStyleContract}\n${qualityContract}\n${GPT_BRANDING_GUARD}\n${layoutGuard}\n${prompt}`;
   }
   const data = await llamarBackendImagen('/openai/responses', {
     model: 'gpt-5.6',
@@ -4167,16 +4394,8 @@ async function aplicarCambioImagen() {
     const promptBase = document.getElementById('img-prompt-ta').value.trim();
     let newSrc;
 
-    if (currentEngine === 'gemini') {
-      const key = '';
-      const promptBaseGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
-      // FIX v16 12-jul-2026: antes no se mandaba currentSrc — Gemini regeneraba
-      // toda la escena desde cero por texto, sin "ver" la imagen real (logo,
-      // colores y specs cambiaban). Ahora se manda como imagen de referencia
-      // adicional junto al logo (ver generarConGemini/llamarGemini3Pro_ en el Worker).
-      const editPrompt = `${promptBaseGemini} Además: ${instruccion}. La imagen de referencia adjunta es la pieza ACTUAL — mantén exactamente igual todo lo demás (logo, colores de marca, composición, specs) y aplica únicamente este cambio.`;
-      newSrc = await generarConGemini(key, editPrompt, false, currentSrc, /* esEdicion */ true);
-      document.getElementById('img-model-lbl').textContent = `Generado con ${lastImgModelLabel}`;
+    if (currentEngine === 'recraft') {
+      throw new Error('La edición automática de Recraft está deshabilitada para evitar cobros inesperados. Genera una nueva versión con confirmación.');
     } else {
       // FIX v16 12-jul-2026: antes se mandaba SOLO texto (prompt original +
       // instrucción) — la IA nunca "veía" currentSrc, por eso regeneraba todo
@@ -4216,6 +4435,12 @@ async function aplicarCambioImagen() {
 
 async function generarAB() {
   if (!beginImageGeneration()) return;
+  const approved = window.confirm('La comparación A/B genera 2 imágenes pagadas (Gemini + GPT). ¿Autorizar las 2 llamadas?');
+  if (!approved) {
+    finishImageGeneration();
+    showToast('Comparación cancelada. No se realizó ninguna llamada.', '#f59e0b');
+    return;
+  }
   const keyGemini = '';
   const keyOpenAI = '';
   const prompt = document.getElementById('img-prompt-ta').value.trim();
@@ -4262,7 +4487,7 @@ async function generarAB() {
     document.getElementById('img-ab-use-b').style.display = 'block';
   } else {
     const err = document.getElementById('img-ab-err-b');
-    err.textContent = dalleRes.reason?.message || 'Error GPT Image 2'; err.style.display = 'block';
+    err.textContent = dalleRes.reason?.message || 'Error GPT Image 2.5 Flare'; err.style.display = 'block';
   }
 
   btn.disabled = false; spinner.style.display = 'none'; label.textContent = '⚡ Comparar A/B';
@@ -4300,37 +4525,34 @@ async function generarConModelos() {
   await buildImgPrompt();
   const prompt = document.getElementById('img-prompt-ta').value.trim();
   if (!prompt) { showToast('Genera el copy primero para obtener el prompt de imagen', '#ef4444'); return; }
-  const promptGemini = await buildImgPromptGemini(); // FIX 02-jul-2026
-
-  const useGemini   = document.getElementById('chk-gemini')?.checked;
+  const useRecraft  = document.getElementById('chk-recraft')?.checked;
   const useDalle    = document.getElementById('chk-dalle')?.checked;
-  const usePipeline = document.getElementById('chk-pipeline')?.checked; // FIX v4d, 07-jul-2026
-
-  // FIX v4d (07-jul-2026): el prompt "solo foto" solo se calcula si el pipeline
-  // está seleccionado — evita una llamada extra a Claude cuando nadie lo usa.
-  const promptGeminiFotoLimpia = usePipeline ? await buildImgPromptGeminiFotoLimpia() : null;
 
   const MODELS = [
-    { id: 'gemini',   label: '📷 Foto producto',           checked: useGemini },
-    { id: 'dalle',    label: '⬡ GPT Image 2',              checked: useDalle },
-    { id: 'pipeline', label: '🔗 Pipeline (mejor de ambos)', checked: usePipeline },
+    { id: 'recraft',  label: '📷 Recraft V4.1',            checked: useRecraft },
+    { id: 'dalle',    label: '⬡ GPT Image 2.5 Flare',      checked: useDalle },
   ];
   const selected = MODELS.filter(m => m.checked);
 
   if (selected.length === 0) { showToast('Selecciona al menos un modelo', '#f59e0b'); return; }
-
-  const keyGemini = '';
   const keyOpenAI = '';
 
   document.getElementById('img-result').style.display     = 'none';
   document.getElementById('img-ab-result').style.display  = 'none';
   document.getElementById('img-err').style.display        = 'none';
 
-  const callEngine = (id) => {
-    const key = id === 'dalle' ? keyOpenAI : keyGemini;
-    if (id === 'gemini') return generarConGemini(key, promptGemini);
-    if (id === 'pipeline') return generarConPipelineGeminiGPT(keyOpenAI, keyGemini, promptGeminiFotoLimpia, prompt);
-    return generarConDalle(key, prompt);
+  const callEngine = async (id) => {
+    recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'attempt');
+    try {
+      const result = id === 'recraft'
+        ? await generarConRecraft(prompt)
+        : await generarConDalle(keyOpenAI, prompt);
+      recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'success', id === 'recraft' ? { api_units: 35 } : {});
+      return result;
+    } catch (error) {
+      recordImageUsage(id === 'recraft' ? 'recraft' : 'gpt', 'failed');
+      throw error;
+    }
   };
 
   if (selected.length === 1) {
@@ -4462,8 +4684,8 @@ function toggleCanvaBrief() {
   const formato   = currentFormat === 'stories' ? 'Stories 1080×1920px' : 'Feed 1080×1080px';
   const estiloMap = {
     formal:      'Retail profesional — composición geométrica, alto contraste, tipografía precisa',
-    costeno:     'Caribeño colombiano — colores cálidos, energético, festivo',
-    chistoso:    'Humor comercial ligero — mensajes ingeniosos, tono juguetón, llamada a la acción divertida',
+    costeno:     'Caribeño colombiano luminoso — acentos regionales y sensibilidad macondiana contemporánea, sin carnaval ni folclor forzado',
+    chistoso:    'Humor visual actual — una situación original de nuestras tiendas inspirada en el mecanismo de un tema o formato vigente, nunca en copiar la pieza ajena',
     minimalista: 'Minimalista — espacio generoso, producto héroe, tipografía elegante',
     contemporaneo:'Editorial contemporáneo — fotografía auténtica, composición asimétrica, tipografía expresiva y producto protagonista',
     custom:      document.getElementById('estilo-custom')?.value.trim() || 'Personalizado'

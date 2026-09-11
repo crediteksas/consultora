@@ -24,7 +24,7 @@ test('el Worker expone las dos rutas Veo detrás de la sesión AURA', () => {
 });
 
 test('Veo usa el contrato oficial de operación larga y limita su entrada', () => {
-  assert.match(worker, /veo-3\.1-generate-001/);
+  assert.match(worker, /VEO_MODEL_DEFAULT = "veo-3\.1-fast-generate-001"/);
   assert.match(worker, /:predictLongRunning/);
   assert.match(worker, /:fetchPredictOperation/);
   assert.match(worker, /durationSeconds: duration/);

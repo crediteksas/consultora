@@ -580,7 +580,7 @@ function openChat(tel){
   const attentionHtml=attentionReasons.length?'<div class="attention-box"><strong><i class="ti ti-alert-triangle" aria-hidden="true"></i> Necesita intervención</strong>'+attentionReasons.join(' · ')+'</div>':'';
   area.innerHTML='<div class="chat-header"><div class="chat-header-left"><h3>'+(cl?.nombre||tel)+'</h3><p>'+tel+' · '+(cl?.segmento||'sin clasificar')+'</p></div><div class="chat-badges">'+badges+'</div></div>'+attentionHtml+'<div class="chat-msgs" id="chat-msgs-inner" style="max-height:calc(100vh - 190px)">'+msgsHtml+'</div>'+replyHtml;
   setTimeout(()=>{const cm=document.getElementById('chat-msgs-inner');if(cm)cm.scrollTop=cm.scrollHeight;},50);
-  rp.className='right-panel show';
+  rp.className='right-panel';
   const ci=Math.abs(hashCode(tel))%colors.length;
   const init=(cl?.nombre||tel).substring(0,2).toUpperCase();
   const recoveryHtml=cl?.estado_funnel==='lead_caliente'
@@ -786,7 +786,7 @@ function switchView(view,el){
   document.getElementById('center-optins').className=view==='optins'?'table-view active':'table-view';
   document.getElementById('view-correcciones').className=view==='correcciones'?'table-view active':'table-view';
   document.getElementById('view-dashboard').className=view==='dashboard'?'table-view active':'table-view';
-  document.getElementById('right-panel').className=(view==='chats'||view==='intervention')&&currentTel?'right-panel show':'right-panel';
+  document.getElementById('right-panel').className='right-panel';
   if(view==='correcciones') cargarCorrecciones();
   if(view==='dashboard') cargarDashboard();
   if(view==='chats'||view==='intervention')applyFilters();

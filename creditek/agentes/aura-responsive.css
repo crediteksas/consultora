@@ -37,6 +37,8 @@ body[data-aura-page="sofia"] .aura-pane-button {
 }
 body[data-aura-page="sofia"] .aura-pane-button i { font-size: 18px; }
 body[data-aura-page="sofia"] .aura-chat-tools { align-items: center; display: flex; gap: 6px; }
+body[data-aura-page="sofia"] .aura-chat-details,
+body[data-aura-page="sofia"] .aura-panel-close { display: inline-flex; }
 body[data-aura-page="sofia"] .aura-panel-close { position: sticky; top: 8px; float: right; margin: 8px 8px 0 0; z-index: 2; }
 
 /* The CRM header needs to reflow before the conversation columns become narrow. */

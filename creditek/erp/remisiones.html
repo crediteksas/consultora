@@ -491,6 +491,8 @@ function renderTablaRemisiones() {
         <button class="accion-anular btn-anular" data-id="${rem.id}">Anular</button>`;
     } else if (puedeCorregirRemisiones && rem.estado === 'despachada' && !rem.recibida_at) {
       acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Corregir remisión</button>`;
+    } else if (puedeCorregirRemisiones && rem.estado === 'cartera_b2b') {
+      acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Ajustar precio</button>`;
     } else if (!esCentral() && esMiaTienda && rem.estado === 'despachada') {
       acciones = `<button class="accion-recibir btn-recibir" data-id="${rem.id}">Recibir</button>`;
     }
@@ -528,11 +530,14 @@ let puedeCorregirRemisiones = false;
 let remisionEnEdicion = null;
 function abrirModalRemision(rem) {
   remisionEnEdicion = rem ? { ...rem } : null;
-  const correccion = !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
+  const correccionRecepcion = !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
+  const correccionB2B = !!rem && rem.estado === 'cartera_b2b' && puedeCorregirRemisiones;
+  const correccion = correccionRecepcion || correccionB2B;
   const soloLectura = !!rem && rem.estado !== 'borrador' && !correccion;
-  document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`);
+  document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : (correccionB2B ? `Ajustar precio · Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`));
   document.getElementById('modalRemisionSub').textContent = soloLectura ? 'Esta remisión ya no se puede editar.' : 'Se guarda como borrador — puedes seguir editando hasta despachar.';
-  if (correccion) document.getElementById('modalRemisionSub').textContent = 'Corrección antes de recepción. Conserva el número de remisión, ajusta las reservas de bodega y deja historial. La tienda deberá revisar los cambios antes de aceptar.';
+  if (correccionRecepcion) document.getElementById('modalRemisionSub').textContent = 'Corrección antes de recepción. Conserva el número de remisión, ajusta las reservas de bodega y deja historial. La tienda deberá revisar los cambios antes de aceptar.';
+  if (correccionB2B) document.getElementById('modalRemisionSub').textContent = 'Solo puedes ajustar el precio de venta. Producto, cantidad, factura, costo e inventario permanecen sin cambios; la diferencia queda registrada en cartera y auditoría.';
   document.getElementById('correccionMotivoCampo').hidden = !correccion;
   document.getElementById('correccionMotivo').value = '';
   document.getElementById('btnGuardarRemision').textContent = correccion ? 'Guardar corrección' : 'Guardar borrador';
@@ -547,7 +552,7 @@ function abrirModalRemision(rem) {
   selTienda.disabled = !!rem; // la tienda destino no se cambia una vez creada
 
   document.getElementById('itemsContainer').innerHTML = '';
-  document.getElementById('btnAgregarItem').style.display = soloLectura ? 'none' : 'inline-block';
+  document.getElementById('btnAgregarItem').style.display = soloLectura || correccionB2B ? 'none' : 'inline-block';
   document.getElementById('btnCrearProductoDesdeRemision').style.display = soloLectura || correccion ? 'none' : 'inline-block';
   document.getElementById('btnGuardarRemision').style.display = soloLectura ? 'none' : 'inline-block';
 
@@ -556,7 +561,7 @@ function abrirModalRemision(rem) {
   }
 
   if (rem) {
-    cargarItemsRemision(rem.id, soloLectura);
+    cargarItemsRemision(rem.id, soloLectura, correccionB2B);
   } else {
     agregarItemRow(null);
     actualizarTotalRemision();
@@ -565,7 +570,7 @@ function abrirModalRemision(rem) {
   abrirModalAccesible('modalRemision');
 }
 
-async function cargarItemsRemision(remisionId, soloLectura) {
+async function cargarItemsRemision(remisionId, soloLectura, soloPrecio = false) {
   // FIX 23-jul-2026 · FIX_Remision_Visual_v1: quitar costo_oscar del SELECT.
   // El campo sigue disponible en bodega-central.html y utilidad-creditek.html
   // (donde solo gerencia/auditoría pueden verlo) — este modal legacy ya no lo
@@ -577,12 +582,12 @@ async function cargarItemsRemision(remisionId, soloLectura) {
   (data || []).forEach(it => {
     if (it.productos && !productosCache.some(p => p.id === it.producto_id)) productosCache.push(it.productos);
   });
-  (data || []).forEach(it => agregarItemRow(it, soloLectura));
+  (data || []).forEach(it => agregarItemRow(it, soloLectura, soloPrecio));
   document.getElementById('btnGuardarRemision').disabled = soloLectura;
   actualizarTotalRemision();
 }
 
-function agregarItemRow(item, soloLectura) {
+function agregarItemRow(item, soloLectura, soloPrecio = false) {
   itemRowSeq++;
   const rowId = 'itemrow_' + itemRowSeq;
   const div = document.createElement('div');
@@ -592,14 +597,14 @@ function agregarItemRow(item, soloLectura) {
   // FIX 23-jul-2026 · columna Costo Oscar eliminada del render.
   div.innerHTML = `
     <div><label for="${rowId}_buscar">Buscar producto por nombre o código</label>
-      <input id="${rowId}_buscar" type="search" class="it-buscar" placeholder="Ej. Redmi Buds o 2MR0001" ${soloLectura ? 'disabled' : ''}>
+      <input id="${rowId}_buscar" type="search" class="it-buscar" placeholder="Ej. Redmi Buds o 2MR0001" ${soloLectura || soloPrecio ? 'disabled' : ''}>
       <label for="${rowId}_producto">Producto seleccionado</label>
-      <select id="${rowId}_producto" class="it-producto" ${soloLectura ? 'disabled' : ''}></select>
+      <select id="${rowId}_producto" class="it-producto" ${soloLectura || soloPrecio ? 'disabled' : ''}></select>
       <span class="it-nombre-actual" aria-live="polite"></span>
     </div>
-    <div><label>Cant.</label><input type="number" min="1" class="it-cantidad" value="${item ? item.cantidad : 1}" ${soloLectura ? 'disabled' : ''}></div>
+    <div><label>Cant.</label><input type="number" min="1" class="it-cantidad" value="${item ? item.cantidad : 1}" ${soloLectura || soloPrecio ? 'disabled' : ''}></div>
     <div><label>Precio remisión</label><input type="number" min="0" class="it-precio" value="${item ? item.precio_remision : ''}" ${soloLectura ? 'disabled' : ''}></div>
-    ${!soloLectura ? `<button class="btn-quitar" title="Quitar">✕</button>` : '<div></div>'}
+    ${!soloLectura && !soloPrecio ? `<button class="btn-quitar" title="Quitar">✕</button>` : '<div></div>'}
   `;
   document.getElementById('itemsContainer').appendChild(div);
   const selector = div.querySelector('.it-producto');
@@ -659,6 +664,29 @@ async function guardarRemision() {
 
   const btn = document.getElementById('btnGuardarRemision');
   btn.disabled = true; btn.textContent = 'Guardando...';
+
+  if (remisionEnEdicion?.estado === 'cartera_b2b') {
+    try {
+      const { data, error } = await sb.rpc('corregir_precios_remision_b2b', {
+        p_remision_id: id,
+        p_revision: remisionEnEdicion.revision ?? 0,
+        p_precios: items.map(item => ({ id: item.id, precio_remision: item.precio_remision })),
+        p_motivo: document.getElementById('correccionMotivo').value.trim(),
+      });
+      if (error) throw new Error(error.message);
+      if (data?.ok !== true) throw new Error('El servidor no confirmó el ajuste. Actualiza antes de volver a intentar.');
+      await cargarRemisiones();
+      cerrarModalAccesible('modalRemision');
+      mostrarBanner(`Precio actualizado. La cartera pasó de ${fmtCOP(data.total_anterior)} a ${fmtCOP(data.total_nuevo)} y el diferencial quedó auditado.`);
+    } catch (error) {
+      err.textContent = 'No se pudo ajustar el precio: ' + error.message;
+      err.classList.add('show');
+      await cargarRemisiones();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar corrección';
+    }
+    return;
+  }
 
   if (remisionEnEdicion?.estado === 'despachada') {
     try {

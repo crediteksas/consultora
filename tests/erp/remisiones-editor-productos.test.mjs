@@ -15,3 +15,11 @@ test('editor nunca sustituye originales ausentes y exige selección válida',()=
  assert.match(html,/type="search" class="it-buscar"/);
  for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) if(m[1].trim()) new vm.Script(m[1]);
 });
+test('cartera B2B permite corregir solo precios con motivo y RPC auditada',()=>{
+ assert.match(html,/rem\.estado === 'cartera_b2b'/);
+ assert.match(html,/>Ajustar precio<\/button>/);
+ assert.match(html,/corregir_precios_remision_b2b/);
+ assert.match(html,/p_precios:\s*items\.map\(item => \(\{ id: item\.id, precio_remision: item\.precio_remision \}\)\)/);
+ assert.match(html,/soloLectura \|\| soloPrecio \? 'disabled'/);
+ assert.match(html,/!soloLectura && !soloPrecio/);
+});

@@ -170,6 +170,32 @@ body.kora-responsive-ready table :where(th, td) {
   word-break: normal;
 }
 
+/* A grid child must shrink with its card; otherwise the entire table escapes
+ * the viewport even when its own scroll container is configured correctly. */
+body.kora-responsive-ready :where(.grid, .treasury-grid, .dashboard-grid, .layout-grid) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.kora-responsive-ready table thead th {
+  white-space: normal;
+  overflow-wrap: normal;
+  letter-spacing: .025em;
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+body.kora-responsive-ready table tbody td {
+  padding: 12px 10px;
+}
+
+body.kora-responsive-ready table :where(.badge, .tag, .chip, .estado, .status) {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.35;
+}
+
 body.kora-responsive-ready :where(.modal, .modal-bg, .modal-overlay, .overlay) {
   max-width: 100vw;
   overscroll-behavior: contain;

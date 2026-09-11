@@ -4,6 +4,15 @@ import { readFile, readdir } from 'node:fs/promises';
 
 const read = relative => readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
+test('tablas no ensanchan hijos de grid y resumen de compensaciones conserva bordes', async () => {
+  const css = await read('design-system/components/kora-responsive.css');
+  const html = await read('creditek/erp/aliados-tesoreria.html');
+  assert.match(css, /\.treasury-grid, \.dashboard-grid, \.layout-grid\) > \*\s*\{\s*min-width: 0/);
+  assert.match(css, /table thead th\s*\{\s*white-space: normal/);
+  assert.match(html, /\.compensation-summary\s*\{[^}]*border-radius: 14px/);
+  assert.match(html, /#storeMovementsContent table :is\(th, td\) \{ text-align: center/);
+});
+
 test('las 40 pantallas del shell declaran un viewport adaptable', async () => {
   const directory = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(directory)).filter(name => name.endsWith('.html'));
@@ -22,7 +31,7 @@ test('las 40 pantallas del shell declaran un viewport adaptable', async () => {
 test('el shell carga una única capa responsive transversal', async () => {
   const shell = await read('creditek/erp/sidebar.js');
   assert.match(shell, /koraResponsiveStyles/);
-  assert.match(shell, /kora-responsive\.css\?v=1\.0\.2/);
+  assert.match(shell, /kora-responsive\.css\?v=1\.0\.3/);
   assert.match(shell, /koraResponsive/);
   assert.match(shell, /kora-responsive\.js\?v=1\.0\.0/);
 });
@@ -114,5 +123,5 @@ test('cabeceras principales usan una sola superficie redondeada en las 40 pantal
   assert.match(css, /overflow:\s*hidden/);
   assert.match(css, /A header action row is part of the surface above/);
   assert.match(css, /> :where\(\.actions, \.action-row, \.botones, \.button-row\)[\s\S]*background:\s*transparent;[\s\S]*border:\s*0;[\s\S]*padding:\s*0;/);
-  assert.match(shell, /kora-responsive\.css\?v=1\.0\.2/);
+  assert.match(shell, /kora-responsive\.css\?v=1\.0\.3/);
 });

@@ -9,6 +9,22 @@
   const OUTSOURCING_TYPES = new Set(['pago_ejecutivo','gasto_administrativo','gasto_financiero','impuesto','retiro_socios','otro_movimiento_autorizado']);
   const amount = value => Math.round(Number(value || 0) * 100) / 100;
 
+  function saldosActualesTiendas(movimientos) {
+    const saldos = new Map();
+    for (const movimiento of movimientos) {
+      if (!movimiento.tienda_codigo || !['cargo', 'abono'].includes(movimiento.tipo)
+        || movimiento.monto == null || movimiento.monto === '' || !Number.isFinite(Number(movimiento.monto))) {
+        throw new Error('Movimiento de cartera inválido');
+      }
+      const centavos = Math.round(Number(movimiento.monto) * 100);
+      const saldo = (saldos.get(movimiento.tienda_codigo) || 0)
+        + (movimiento.tipo === 'cargo' ? centavos : -centavos);
+      if (!Number.isSafeInteger(saldo)) throw new Error('Saldo fuera de rango');
+      saldos.set(movimiento.tienda_codigo, saldo);
+    }
+    return new Map([...saldos].map(([codigo, centavos]) => [codigo, centavos / 100]));
+  }
+
   function destinoRetail(input) {
     const recibidoPlataforma = amount(input.valorCredito);
     const derechoRetail = amount(input.valorComercial * input.porcentaje);
@@ -128,5 +144,5 @@
     });
     return `\uFEFF${[header.map(csvCell).join(';'),...lines].join('\r\n')}`;
   }
-  return { loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  return { saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

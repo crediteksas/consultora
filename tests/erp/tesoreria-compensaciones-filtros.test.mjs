@@ -64,10 +64,11 @@ async function boot(records = rows, options = {}) {
         range(from, to) { q.range = [from, to]; return this; },
         then(resolve, reject) {
           queries.push(q);
-          const list = table === 'retail_b2b_compensations' ? records : table === 'origenes'
+          const list = table === 'cuenta_corriente' ? (options.ledger || []) : table === 'retail_b2b_compensations' ? records : table === 'origenes'
             ? [{ codigo: 'A', nombre: 'Sonivox' }, { codigo: 'B', nombre: '<Tienda B>' }] : [];
           let result = { data: q.range ? list.slice(q.range[0], q.range[1] + 1) : list, error: null, count: list.length };
           if (options.pageResult && q.range) result = options.pageResult(result, q);
+          if (table === 'cuenta_corriente' && options.ledgerError) result = { error: { message: 'Sin conexión' }, data: null };
           return Promise.resolve(result).then(resolve, reject);
         },
       };
@@ -105,6 +106,41 @@ test('interfaz filtra, suma sólo resultados y limpia sin modificar otras seccio
   assert.equal(ui.node('#compensationCount').textContent, 3);
   assert.equal(ui.node('#compensationFrom').value, '');
   assert.deepEqual(ui.writes, []);
+});
+
+test('saldo visible es cartera actual completa, no instantánea histórica ni suma del filtro', async () => {
+  const ledger = [{ id: 1, tienda_codigo: 'A', tipo: 'abono', monto: 824340 },
+    { id: 2, tienda_codigo: 'A', tipo: 'cargo', monto: 26177371 },
+    { id: 3, tienda_codigo: 'A', tipo: 'abono', monto: 2275580 }];
+  const before = structuredClone(rows);
+  const ui = await boot(rows, { ledger });
+  assert.match(ui.node('#compensations').innerHTML, /Saldo actual de tienda/);
+  assert.match(ui.node('#compensations').innerHTML, /23\.077\.451/);
+  assert.doesNotMatch(ui.node('#compensations').innerHTML, /-\$?\s*40/);
+  ui.change('compensationStore', 'A');
+  ui.change('compensationFrom', '2026-09-04');
+  assert.match(ui.node('#compensations').innerHTML, /23\.077\.451/);
+  assert.deepEqual(rows, before);
+  assert.deepEqual(ui.writes, []);
+});
+
+test('cartera pagina completa y falla explícitamente sin mostrar saldo histórico o cero', async () => {
+  const ledger = Array.from({ length: 501 }, (_, i) => ({ id: i + 1, tienda_codigo: 'A', tipo: 'cargo', monto: 1 }));
+  const ui = await boot(rows, { ledger });
+  assert.match(ui.node('#compensations').innerHTML, /\$\s*501/);
+  assert.equal(ui.queries.filter(q => q.table === 'cuenta_corriente').length, 2);
+  const failed = await boot(rows, { ledgerError: true });
+  assert.match(failed.node('#compensations').innerHTML, /Saldo no disponible/);
+  const partial = await boot(rows, { ledger, pageResult: (r, q) => q.table === 'cuenta_corriente' && q.range[0] > 0 ? { ...r, data: [] } : r });
+  assert.match(partial.node('#compensations').innerHTML, /Saldo no disponible/);
+});
+
+test('saldo actual conserva saldos a favor reales, centavos y rechaza datos inválidos', () => {
+  const result = domain.saldosActualesTiendas([{ tienda_codigo: 'A', tipo: 'cargo', monto: 0.3 },
+    { tienda_codigo: 'A', tipo: 'abono', monto: 0.1 }, { tienda_codigo: 'B', tipo: 'abono', monto: 100 }]);
+  assert.equal(result.get('A'), 0.2);
+  assert.equal(result.get('B'), -100);
+  assert.throws(() => domain.saldosActualesTiendas([{ tienda_codigo: 'A', tipo: 'cargo', monto: null }]));
 });
 
 test('un registro oculto por el filtro pierde selección y no puede abrir cartera', async () => {
@@ -158,8 +194,8 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   for (const id of ['compensationStore', 'compensationFrom', 'compensationTo']) assert.match(html, new RegExp(`label for="${id}"`));
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
-  assert.match(html, /aliados-tesoreria-domain.js\?v=1.5.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.11.0/);
+  assert.match(html, /aliados-tesoreria-domain.js\?v=1.5.1/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.11.1/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

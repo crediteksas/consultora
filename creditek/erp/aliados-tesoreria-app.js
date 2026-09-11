@@ -201,6 +201,31 @@
       if(result.data.length<500) return rows;
     }
   }
+  // Cartera vigente, independiente del corte/plataforma de cada compensación.
+  // No se modifica account_balance_after: permanece como evidencia histórica.
+  async function loadCurrentStoreBalances() {
+    const rows = [], ids = new Set();
+    let total;
+    try {
+      do {
+        const result = await sb.from('cuenta_corriente')
+          .select('id,tienda_codigo,tipo,monto', { count: 'exact' })
+          .order('id').range(rows.length, rows.length + 499);
+        if (result.error || !Array.isArray(result.data) || !Number.isInteger(result.count)
+          || (total !== undefined && total !== result.count)) throw new Error('Cartera incompleta');
+        total = result.count;
+        for (const row of result.data) {
+          if (row.id == null || ids.has(row.id)) throw new Error('Cartera cambió durante la consulta');
+          ids.add(row.id);
+          rows.push(row);
+        }
+        if ((!result.data.length && rows.length < total) || rows.length > total) throw new Error('Cartera incompleta');
+      } while (rows.length < total);
+      return window.CreditekTesoreriaTercerizacion.saldosActualesTiendas(rows);
+    } catch {
+      return null;
+    }
+  }
   async function load() {
     const [
       balances,
@@ -217,6 +242,7 @@
       recoveries,
       recoveryApplications,
       reversions,
+      currentStoreBalances,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -253,6 +279,7 @@
       loadRecoveryRows('aliados_recuperaciones'),
       loadRecoveryRows('aliados_cruces_recuperacion'),
       loadRecoveryRows('aliados_reversiones'),
+      loadCurrentStoreBalances(),
     ]);
     data = {
       balances,
@@ -269,6 +296,7 @@
       recoveries,
       reversions,
       recoveryApplications,
+      currentStoreBalances,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -576,7 +604,7 @@
       : `${visibleCompensations.length} de ${data.compensations.length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
     const comps = visibleCompensations.map(
         (x) =>
-          `<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${cop(x.account_balance_after)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
+          `<tr><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
       );
     $("#compensations").innerHTML = table(
       [
@@ -586,7 +614,7 @@
         "Corte",
         "IMEI",
         "Abono aplicado",
-        "Saldo después",
+        "Saldo actual de tienda",
         "Estado",
       ],
       comps,

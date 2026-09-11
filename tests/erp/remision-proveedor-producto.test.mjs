@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const html = readFileSync('creditek/erp/documento-remision.html', 'utf8');
+test('IMEI visible por ítem, sin confundir ausencia con recepción confirmada', () => {
+  const context = { imeisPorItem: { a: ['001234567890123', '991234567890123'] }, errorImeis: false, remision: { estado: 'recibida' } };
+  vm.createContext(context);
+  vm.runInContext(html.slice(html.indexOf('function textoImeis('), html.indexOf('function proveedorPorProducto(')), context);
+  const item = { id: 'a', productos: { tipo: 'serializado' } };
+  assert.equal(context.textoImeis(item), 'IMEI: 001234567890123 · 991234567890123');
+  assert.match(context.textoImeis({ ...item, id: 'b' }), /sin vínculo visible/);
+  context.remision.estado = 'despachada';
+  assert.match(context.textoImeis({ ...item, id: 'b' }), /pendiente de recepción/);
+  context.errorImeis = true;
+  assert.match(context.textoImeis(item), /no se pudo consultar/);
+  assert.equal(context.textoImeis({ productos: { tipo: 'cantidad' } }), 'Stock por cantidad');
+  assert.match(html, /esc\(textoImeis\(it\)\)/);
+  assert.match(html, /await cargarImeisRemision\(\);\s+renderDocumento\(\)/);
+  assert.match(html, /select\('remision_item_id, imei'\)\.in\('remision_item_id', ids\)/);
+});
 const helper = html.slice(html.indexOf('function proveedorPorProducto('), html.indexOf('// La tienda obtiene'));
 function label(id, mappings, invoices, error = false) {
   const context = { trazabilidadItemFacturas: mappings, trazabilidadFacturas: invoices, errorTrazabilidad: error };

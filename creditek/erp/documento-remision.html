@@ -329,6 +329,33 @@ let imeisEscaneados = {};   // { item_id: [imeis], ... }
 let trazabilidadFacturas = {};   // {facturaId: {numero, fecha, proveedor}}
 let trazabilidadItemFacturas = {}; // {remision_item_id: [facturaId, ...]}
 let errorTrazabilidad = false;
+let imeisPorItem = {};
+let errorImeis = false;
+
+async function cargarImeisRemision() {
+  imeisPorItem = {};
+  errorImeis = false;
+  const ids = items.filter(it => it.productos?.tipo === 'serializado').map(it => it.id);
+  if (!ids.length) return;
+  const { data, error } = await SB.from('unidades')
+    .select('remision_item_id, imei').in('remision_item_id', ids);
+  if (error) { errorImeis = true; return; }
+  (data || []).forEach(unidad => {
+    const imei = String(unidad.imei || '').trim();
+    if (!imei) return;
+    if (!imeisPorItem[unidad.remision_item_id]) imeisPorItem[unidad.remision_item_id] = [];
+    if (!imeisPorItem[unidad.remision_item_id].includes(imei)) imeisPorItem[unidad.remision_item_id].push(imei);
+  });
+}
+
+function textoImeis(it) {
+  if (it.productos?.tipo !== 'serializado') return 'Stock por cantidad';
+  if (errorImeis) return 'IMEI: no se pudo consultar. Vuelve a cargar la remisión.';
+  const lista = imeisPorItem[it.id] || [];
+  return lista.length ? 'IMEI: ' + lista.join(' · ')
+    : remision.estado === 'recibida' ? 'IMEI: sin vínculo visible; requiere revisión'
+    : 'IMEI: pendiente de recepción';
+}
 
 function proveedorPorProducto(itemId) {
   if (errorTrazabilidad) return 'Proveedor: Creditek · Origen para garantía no disponible; vuelve a cargar la remisión.';
@@ -431,6 +458,7 @@ async function cargarRemision() {
   tiendaNombre = origen ? origen.nombre : rem.tienda_codigo;
 
   await cargarTrazabilidadRemision(REMISION_ID);
+  await cargarImeisRemision();
 
   document.getElementById('app').classList.remove('hidden');
   renderDocumento();
@@ -498,7 +526,7 @@ function renderDocumento() {
           <td class="py-3 pr-2">${thumbHtml}</td>
           <td class="py-3 pr-2">
             <div class="font-medium text-gray-800">${esc(p.nombre)}</div>
-            <div class="text-xs text-gray-500">${p.tipo === 'serializado' ? 'Con IMEI' : 'Stock por cantidad'}</div>
+            <div class="text-xs text-gray-700" data-imeis style="overflow-wrap:anywhere;user-select:text">${esc(textoImeis(it))}</div>
             <div class="text-xs text-gray-700 mt-2" data-proveedor-origen>${esc(proveedorPorProducto(it.id))}</div>
           </td>
           <td class="py-3 pr-2 font-mono text-xs">${esc(p.codigo || '—')}</td>
@@ -680,6 +708,7 @@ async function aceptarRecepcion() {
     document.getElementById('panel-aceptar').classList.add('hidden');
     document.getElementById('panel-recibida').classList.remove('hidden');
     document.getElementById('recibida-total').textContent = money(data.total);
+    await cargarImeisRemision();
     renderDocumento();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 

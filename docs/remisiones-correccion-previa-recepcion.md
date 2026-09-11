@@ -17,10 +17,10 @@ Maite (perfil activo de Auditoría, correo verificado `gestion@crediteksas.com`)
 
 445 pruebas de KORA aprobadas, incluidas tres pruebas funcionales PostgreSQL/PGlite: autorización y precio; reservas/cantidades y rollback; bloqueo de acceso directo, revisión antigua y recepción posterior. No se editaron remisiones reales como prueba.
 
-## Publicación pendiente de autorización explícita
+## Publicación autorizada
 
-El control de seguridad rechazó aplicar la migración en producción por su impacto sobre recepción e inventario. **No se aplicó la migración ni se desplegó esta versión.** La versión productiva permanece en 3.3.1.
+Después del bloqueo inicial del control de seguridad, Oscar autorizó explícitamente aplicar la migración y desplegar KORA 3.3.2. La migración se aplicó el 11 de septiembre de 2026; no se editaron remisiones reales. El estado y commit de la publicación frontend se verifican en `/kora-build-manifest.json`.
 
-La migración crea permiso e historial privados, agrega revisión, reutiliza la reserva canónica, protege las escrituras directas y envuelve la recepción para validar la revisión. Tras autorización: aplicar migración, verificar permiso/seguridad sin operar remisiones reales, publicar únicamente KORA con `npm run deploy:kora:production` y verificar interfaz y versión activa. No desplegar el frontend antes de la migración.
+La migración crea permiso e historial privados, agrega revisión, reutiliza la reserva canónica, protege las escrituras directas y envuelve la recepción para validar la revisión. El frontend se publica únicamente con `npm run deploy:kora:production`, después de la migración. Las dos tablas privadas tienen RLS sin políticas deliberadamente: ningún cliente tiene acceso directo; se accede mediante funciones acotadas. Los avisos informativos del asesor sobre estas tablas no requieren abrir políticas.
 
 La auditoría visual global no está cerrada por este cambio.

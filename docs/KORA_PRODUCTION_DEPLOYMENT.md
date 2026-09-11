@@ -1,11 +1,13 @@
-# KORA v3.3 — Producción
+# KORA v3.3.1 — Producción
 
-KORA v3.3 es la versión productiva oficial del ERP Creditek: Shell V2, Creditek Retail,
+KORA v3.3.1 es la versión productiva oficial del ERP Creditek: Shell V2, Creditek Retail,
 Creditek B2B, Creditek Aliados, Motor de Liquidaciones unificado, Tesorería y
 Centro de Incidencias. La arquitectura permanece preparada para AURA, sin
 compartir autenticación ni proyecto Supabase.
 
 ## Versionado
+
+- `3.3.1` (11 de septiembre de 2026): consolidación de Tesorería, IMEI en remisiones, ajustes de tablas, finanzas programadas y diagnóstico de conciliación. La auditoría visual integral sigue abierta; esta versión no certifica cobertura visual al 100 %.
 
 - `3.0.x`: correcciones compatibles.
 - `3.1`: nuevos módulos compatibles.

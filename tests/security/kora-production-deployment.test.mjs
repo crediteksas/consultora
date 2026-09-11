@@ -6,18 +6,18 @@ import { promoteWithRollback } from '../../scripts/kora-production-deploy-lib.mj
 
 const read = path => readFile(path, 'utf8');
 
-test('KORA v3.3 queda registrada en configuración, shell y documentación', async () => {
+test('KORA v3.3.1 queda registrada en configuración, shell y documentación', async () => {
   const [version, sidebar, documentation] = await Promise.all([
     read('config/version.json'),
     read('creditek/erp/sidebar.js'),
     read('docs/KORA_PRODUCTION_DEPLOYMENT.md'),
   ]);
-  assert.equal(JSON.parse(version).version, '3.3.0');
-  assert.match(sidebar, /KORA v3\.3/);
+  assert.equal(JSON.parse(version).version, '3.3.1');
+  assert.match(sidebar, /KORA v3\.3\.1/);
   assert.match(sidebar, /Acerca de KORA/);
-  assert.match(sidebar, /KORA ERP v3\.3/);
+  assert.match(sidebar, /KORA ERP v3\.3\.1/);
   assert.match(sidebar, /Versión (?:no )?verificada/);
-  assert.match(documentation, /KORA v3\.3/);
+  assert.match(documentation, /KORA v3\.3\.1/);
   assert.match(documentation, /3\.0\.x[\s\S]*3\.1[\s\S]*3\.2[\s\S]*4\.0/);
 });
 
@@ -84,7 +84,7 @@ test('el pipeline valida repositorio, rama, commit, limpieza, manifiesto, SHA y 
 test('el manifiesto esperado documenta versión, commit, artefacto y Worker', async () => {
   const manifest = JSON.parse(await read('config/kora-production-manifest.json'));
   assert.equal(manifest.product, 'KORA');
-  assert.equal(manifest.version, '3.3.0');
+  assert.equal(manifest.version, '3.3.1');
   assert.equal(manifest.worker, 'creditek-kora');
   assert.equal(manifest.productionUrl, 'https://kora.crediteksas.com/creditek/erp/app');
   assert.equal(manifest.supabaseProjectRef, 'jfkmiyvcdfbsbwchyvol');

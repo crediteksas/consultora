@@ -28,6 +28,17 @@
   <script src="bodega-domain.js"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <style>
+    #despacho-search-results button[data-desp-prod] {
+      display: block; width: 100%; padding: 14px 16px; margin: 6px 0;
+      background: #fff !important; color: #0b1e3d !important;
+      border: 1px solid #d5e1ea; border-radius: 12px; text-align: left;
+      white-space: normal; height: auto;
+    }
+    #despacho-search-results button[data-desp-prod]:hover,
+    #despacho-search-results button[data-desp-prod]:focus-visible { background: #e8f9fb !important; outline: 2px solid #00b8c4; }
+    #despacho-search-results button[data-desp-prod] > div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    #despacho-search-results button[data-desp-prod] span,
+    #despacho-search-results button[data-desp-prod] div { color: #0b1e3d !important; overflow-wrap: anywhere; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .fade-in { animation: fadeIn 0.15s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
@@ -230,9 +241,9 @@
       <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Estado de la bodega</div>
       <div class="flex items-baseline gap-2">
         <span id="estado-icono" class="text-3xl">✅</span>
-        <span id="estado-titulo" class="text-2xl font-bold text-gray-800">Cuadrada</span>
+        <span id="estado-titulo" class="text-2xl font-bold text-gray-800">Verificando…</span>
       </div>
-      <p id="estado-detalle" class="text-sm text-gray-700 mt-2">Todo lo comprado ha sido despachado.</p>
+      <p id="estado-detalle" class="text-sm text-gray-700 mt-2">Consultando inventario completo pendiente por remisionar.</p>
     </div>
 
     <div class="border-2 border-gray-200 rounded-lg p-5 card-azul">
@@ -248,9 +259,9 @@
       <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Unidades pendientes de despacho</div>
       <div class="flex items-baseline gap-2">
         <span id="kpi-unidades" class="text-4xl font-bold text-gray-800">0</span>
-        <span class="text-sm text-gray-500">unidades físicas</span>
+        <span class="text-sm text-gray-500">unidades por remisionar</span>
       </div>
-      <p class="text-xs text-gray-500 mt-2">Suma total de todo el inventario en CENTRAL.</p>
+      <p class="text-xs text-gray-500 mt-2">Bodega virtual: no incluye mercancía ya remisionada pendiente de recepción.</p>
     </div>
   </section>
 
@@ -506,27 +517,31 @@ let facturasPorProducto = {};
 let facturasIndex = [];  // [{id, numero, fecha, proveedor_nombre}]
 
 async function cargarAlerta() {
+  document.getElementById('estado-titulo').textContent = 'Verificando…';
+  document.getElementById('estado-detalle').textContent = 'Consultando todos los registros; todavía no se confirma el cuadre.';
+  document.getElementById('estado-icono').textContent = '…';
+  document.getElementById('card-estado').className = 'border-2 rounded-lg p-5';
   const [alertaResp, unidadesFacturas, lotesResp, facturasResp] = await Promise.all([
-    SB.from('alerta_bodega_central')
-      .select('producto_id, nombre, categoria, tipo, stock_actual_central, descuadrado'),
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('alerta_bodega_central')
+      .select('producto_id, nombre, categoria, tipo, stock_actual_central, descuadrado').order('producto_id')),
     // Solo unidades realmente disponibles en CENTRAL.
-    SB.from('unidades')
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
       .select('producto_id, factura_proveedor_id')
       .eq('tienda_actual', 'CENTRAL')
       .eq('estado', 'disponible')
       .is('imei', null)
-      .not('factura_proveedor_id', 'is', null),
+      .order('id')),
     SB.rpc('obtener_lotes_cantidad_central'),
-    SB.from('facturas_proveedor')
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('facturas_proveedor')
       .select('id, numero, fecha, proveedor:proveedor_id(nombre)')
-      .order('fecha', { ascending: false }),
+      .order('fecha', { ascending: false }).order('id')),
   ]);
   if (alertaResp.error) { toast('Error cargando alerta: ' + alertaResp.error.message, 'error'); return; }
   if (unidadesFacturas.error) { toast('Error cargando facturas de equipos: ' + unidadesFacturas.error.message, 'error'); return; }
   if (lotesResp.error) { toast('Error cargando lotes de accesorios: ' + lotesResp.error.message, 'error'); return; }
   if (facturasResp.error) { toast('Error cargando facturas: ' + facturasResp.error.message, 'error'); return; }
 
-  alertaData = alertaResp.data || [];
+  alertaData = bodegaDomain.pendientesPorRemisionar(alertaResp.data || [], unidadesFacturas.data || []);
   alertaData.sort((a, b) => {
     if (a.descuadrado !== b.descuadrado) return b.descuadrado - a.descuadrado;
     if (a.stock_actual_central !== b.stock_actual_central) return b.stock_actual_central - a.stock_actual_central;
@@ -798,14 +813,14 @@ async function cargarDataDespacho() {
   const [tRes, uRes, lotesRes, pRes] = await Promise.all([
     SB.from('tiendas_operativas').select('codigo, nombre').order('codigo'),
     // Unidades disponibles serializadas: agrupar por producto
-    SB.from('unidades')
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
       .select('producto_id, precio_tienda, factura_proveedor_id')
       .eq('tienda_actual', 'CENTRAL')
       .eq('estado', 'disponible')
-      .is('imei', null),
+      .is('imei', null).order('id')),
     // Lotes de productos por cantidad, conservando la factura.
     SB.rpc('obtener_lotes_cantidad_central'),
-    SB.from('productos').select('id, nombre, categoria, tipo').eq('activo', true),
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('productos').select('id, codigo, nombre, categoria, tipo').order('id')),
   ]);
   if (tRes.error) { toast('Error tiendas: ' + tRes.error.message, 'error'); return; }
   if (uRes.error) { toast('Error unidades: ' + uRes.error.message, 'error'); return; }
@@ -934,7 +949,7 @@ function renderDespachoBusqueda(q) {
   const res = document.getElementById('despacho-search-results');
   const hits = productosDisponibles.filter(p => {
     if (!filtro) return true;
-    return (p.nombre + ' ' + p.categoria).toLowerCase().includes(filtro);
+    return (p.nombre + ' ' + p.categoria + ' ' + (p.codigo || '')).toLowerCase().includes(filtro);
   }).slice(0, 50);
   if (hits.length === 0) {
     res.innerHTML = '<p class="p-3 text-sm text-gray-400 text-center">Sin resultados o sin stock en CENTRAL.</p>';
@@ -946,7 +961,7 @@ function renderDespachoBusqueda(q) {
         <span class="font-medium text-gray-800">${esc(p.nombre)}</span>
         <span class="text-xs text-gray-500">Disp: <b>${p.disponible}</b> · ${money(p.precio_tienda)}${p.precios_varian ? ' · varía por factura' : ''}</span>
       </div>
-      <div class="text-xs text-gray-500">${esc(p.categoria)} · ${p.tipo}</div>
+      <div class="text-xs text-gray-500">${esc(p.codigo || '')} · ${esc(p.categoria)} · ${esc(p.tipo)}</div>
     </button>
   `).join('');
 }

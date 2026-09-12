@@ -38,10 +38,9 @@ test('rechaza códigos ambiguos antes de llamar al servidor', () => {
   ])), /asignado a productos diferentes/);
 });
 
-test('la importación es central, atómica, auditada y muestra nombres de tienda', () => {
-  assert.match(html, /Subir plantilla Excel/);
-  assert.match(html, /inventario_importar_inicial_excel/);
-  assert.match(html, /escapeHtml\(t\.nombre\)\} · código/);
+test('la importación histórica conserva su auditoría pero ya no se ofrece en la UI', () => {
+  assert.doesNotMatch(html, /Subir plantilla Excel/);
+  assert.doesNotMatch(html, /inventario_importar_inicial_excel/);
   assert.match(migrations, /v_perfil\.rol not in \('gerencia', 'auditoria'\)/);
   assert.match(migrations, /set search_path = public, pg_temp/);
   assert.match(migrations, /'importacion_excel', v_referencia::text, auth\.uid\(\)/);

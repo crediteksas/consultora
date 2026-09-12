@@ -56,8 +56,8 @@ test('la pantalla fuerza la tienda del perfil para usuarios no centrales', () =>
   );
   assert.match(html, /btnExportarInventario/);
   assert.match(html, /btnExportarConteo/);
-  assert.match(html, /btnDescargarPlantilla/);
-  assert.match(html, /Descargar plantilla de carga inicial/);
+  assert.doesNotMatch(html, /btnDescargarPlantilla/);
+  assert.doesNotMatch(html, /Descargar plantilla de carga inicial/);
 });
 
 test('genera una plantilla de carga inicial separada del importador', () => {

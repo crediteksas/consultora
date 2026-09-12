@@ -15,10 +15,10 @@ test('los controles sensibles se crean únicamente después de esCentral', () =>
   assert.match(html, /crearControlesInventarioCentral\(\)/);
 });
 
-test('la UI invoca ambos RPC y refresca las dos fuentes de inventario', () => {
+test('la UI conserva ajustes pero retira la carga inicial y refresca ambas fuentes', () => {
   assert.match(html, /inventario_registrar_ajuste/);
-  assert.match(html, /inventario_cargar_inicial/);
-  assert.match(html, /p_precio_tienda/);
+  assert.doesNotMatch(html, /inventario_cargar_inicial/);
+  assert.match(html, /operacionInventarioActual !== 'ajuste'/);
   assert.match(html, /Promise\.all\(\[cargarCelulares\(\), cargarAccesorios\(\)\]\)/);
 });
 

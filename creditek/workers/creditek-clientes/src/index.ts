@@ -7,6 +7,7 @@
  */
 
 import { resolveRegistrationContext } from './registro-context';
+import { paginarReporte, type PaginaReporte } from './reportes-formato';
 import { provisionAlly, type AllyProvisionEnv } from './aliado-provision';
 import {
   isSecureOtpSendRequest,
@@ -38,6 +39,8 @@ interface Env extends SecureOtpEnv, SecureRegistrationEnv, SecureDocumentsEnv, A
   ALLOWED_ORIGIN: string;
   ALLOW_LEGACY_REGISTRATION_LINKS: string;
   ADMIN_ENLACES_TOKEN: string;
+  // Activar solo tras aprobar las ocho variantes es_CO en Meta.
+  REPORTES_FORMATO_ORDENADO?: string;
 }
 
 const SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
@@ -756,6 +759,9 @@ type ResultadoReporte = {
   destinatario: string;
   meta_message_id: string;
   confirmado_at: string;
+  // Congelar el contenido confirmado para que un reintento no desplace filas
+  // si llegaron nuevas operaciones entre dos ejecuciones del cron.
+  paginas_reporte?: PaginaReporte[];
 };
 
 type EstadoReporteDiario = {
@@ -852,13 +858,16 @@ function encabezadoEstado(
 ): string {
   return completo
     ? '✅ Las tiendas cerraron caja'
-    : `⚠️ Falta cerrar caja: ${nombresFaltantes.join(', ')} (enviado a las ${hhmm})`;
+    : `⚠️ Falta cerrar caja (enviado a las ${hhmm}):\n${nombresFaltantes.map(nombre => `• ${nombre}: cierre pendiente`).join('\n')}`;
 }
 
 function formatearGastos(
   gastos: any[], fechaLarga: string, encabezado: string
 ): string {
-  const lineas = gastos.map((g) => {
+  const ordenados = [...gastos].sort((a, b) =>
+    String(a.origen?.nombre || a.tienda_codigo)
+      .localeCompare(String(b.origen?.nombre || b.tienda_codigo), 'es'));
+  const lineas = ordenados.map((g) => {
     const tienda = g.origen?.nombre || g.tienda_codigo;
     const concepto = g.concepto?.nombre || '—';
     const desc = g.descripcion ? ` — ${g.descripcion}` : '';
@@ -942,7 +951,7 @@ function normalizarParametroPlantilla(resumen: string): string {
 }
 
 async function enviarWhatsAppPlantillaReporte(
-  telefono: string, plantilla: string, resumen: string, env: Env
+  telefono: string, plantilla: string, resumen: string, env: Env, parametros?: string[]
 ): Promise<string> {
   const r = await fetch(`https://graph.facebook.com/v21.0/${env.PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -956,7 +965,7 @@ async function enviarWhatsAppPlantillaReporte(
         language: { code: REPORT_TEMPLATE_LANGUAGE },
         components: [{
           type: 'body',
-          parameters: [{ type: 'text', text: normalizarParametroPlantilla(resumen) }],
+          parameters: (parametros || [normalizarParametroPlantilla(resumen)]).map(text => ({ type: 'text', text })),
         }],
       },
     }),
@@ -985,15 +994,40 @@ async function guardarEstadoReporte(
   if (!r.ok) throw new Error(`report_status_persist_failed:${r.status}`);
 }
 
-async function enviarReporteATodos(
+export async function enviarReporteATodos(
   fechaISO: string,
   plantilla: string,
   mensaje: string,
   resultados: ResultadoReporte[],
   env: Env,
 ): Promise<void> {
+  const planConfirmado = resultados.find(r =>
+    r.plantilla.startsWith(`${plantilla}:ordenado:`) && r.paginas_reporte)?.paginas_reporte;
+  const paginas = env.REPORTES_FORMATO_ORDENADO === 'true'
+    ? (planConfirmado || paginarReporte(mensaje)) : null;
   for (const dest of DESTINATARIOS_REPORTES) {
     if (resultados.some((r) => r.plantilla === plantilla && r.destinatario === dest.id)) continue;
+    if (paginas) {
+      for (const [indice, pagina] of paginas.entries()) {
+        // La clave incluye el tipo de informe: gastos, ventas y caja pueden usar
+        // la misma plantilla de Meta sin confundirse al reintentar.
+        const clave = `${plantilla}:ordenado:${indice + 1}`;
+        if (resultados.some(r => r.plantilla === clave && r.destinatario === dest.id)) continue;
+        const messageId = await enviarWhatsAppPlantillaReporte(dest.telefono, pagina.plantilla, '', env, pagina.parametros);
+        resultados.push({
+          plantilla: clave,
+          destinatario: dest.id,
+          meta_message_id: messageId,
+          confirmado_at: new Date().toISOString(),
+          ...(indice === 0 ? { paginas_reporte: paginas } : {}),
+        });
+        await guardarEstadoReporte(fechaISO, { resultados }, env);
+      }
+      continue;
+    }
+    if (resultados.some(r => r.plantilla.startsWith(`${plantilla}:ordenado:`) && r.destinatario === dest.id)) {
+      throw new Error('report_format_changed_during_delivery');
+    }
     const messageId = await enviarWhatsAppPlantillaReporte(dest.telefono, plantilla, mensaje, env);
     resultados.push({
       plantilla,

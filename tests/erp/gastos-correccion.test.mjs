@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {PGlite} from '@electric-sql/pglite';
+const sql=readFileSync('supabase/migrations/20260912221445_gastos_devolver_corregir.sql','utf8');
+const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+test('devolver y reenviar: identidad, permisos, historial, concurrencia y período cerrado',async()=>{
+ const db=new PGlite();
+ try {
+ await db.exec(`create role anon;create role authenticated; create schema auth;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('app.uid',true),'')::uuid$$;
+ create table perfiles(id uuid primary key,activo boolean,rol text,tienda_codigo text);
+ insert into perfiles values('${id(1)}',true,'auditoria',null),('${id(2)}',true,'admin_tienda','A'),('${id(3)}',true,'admin_tienda','B');
+ create table conceptos_gasto(id uuid primary key,activo boolean);insert into conceptos_gasto values('${id(9)}',true);
+ create table periodos(tienda_codigo text,fecha_inicio date,fecha_fin date);
+ create table gastos(id uuid primary key,tienda_codigo text,fecha date,concepto_id uuid,monto numeric,descripcion text,estado text,registrado_por uuid,aprobado_por uuid,aprobado_at timestamptz,nota_rechazo text);
+ insert into gastos values('${id(8)}','A','2026-09-12','${id(9)}',100,'original','registrado','${id(2)}',null,null,null);
+ alter table gastos enable row level security;
+ create policy visible on gastos for select to authenticated using(tienda_codigo=(select tienda_codigo from perfiles where id=auth.uid()) or (select rol from perfiles where id=auth.uid())='auditoria');
+ grant usage on schema public,auth to authenticated;grant select on perfiles,gastos to authenticated;
+ `);
+ await db.exec(sql);
+ await db.exec('set role authenticated');
+ const user=async n=>db.query("select set_config('app.uid',$1,false)",[n?id(n):'']);
+ const act=(revision,accion,datos)=>db.query('select * from public.corregir_gasto($1,$2,$3,$4)',[id(8),revision,accion,JSON.stringify(datos)]);
+ const datos={fecha:'2026-09-12',concepto_id:id(9),monto:80,descripcion:'corregido'};
+ await user(2);await assert.rejects(act(0,'devolver',{motivo:'corregir'}),/Solo gestión/);
+ await user(1);await assert.rejects(act(0,'devolver',{motivo:''}),/motivo/);
+ await act(0,'devolver',{motivo:'Separar conceptos'});
+ await assert.rejects(act(0,'devolver',{motivo:'duplicado'}),/cambió/);
+ await user(3);await assert.rejects(act(1,'reenviar',datos),/otra tienda/);
+ assert.equal((await db.query('select * from gastos_historial')).rows.length,0);
+ await user(2);await assert.rejects(act(1,'reenviar',{...datos,monto:-1}),/positivo/);
+ await assert.rejects(db.query("update gastos set monto=1"),/permission denied/);
+ await act(1,'reenviar',datos);
+ const g=(await db.query('select * from gastos')).rows[0];
+ assert.equal(g.id,id(8));assert.equal(g.registrado_por,id(2));assert.equal(g.estado,'registrado');assert.equal(g.aprobado_por,null);assert.equal(g.revision,2);
+ assert.equal((await db.query('select * from gastos_historial')).rows.length,2);
+ await assert.rejects(act(1,'reenviar',datos),/cambió/);
+ await user(1);await act(2,'devolver',{motivo:'Otro ajuste'});
+ await db.exec("reset role;insert into periodos values('A','2026-09-01','2026-09-30');set role authenticated;");
+ await user(2);await assert.rejects(act(3,'reenviar',datos),/período cerrado/);
+ await user(null);await assert.rejects(act(3,'reenviar',datos),/Sesión/);
+ } finally {await db.close();}
+});
+test('UI diferencia rechazo/devolución, corrige con RPC sin inserción nueva y tiene historial',()=>{
+ const html=readFileSync('creditek/erp/gastos.html','utf8');
+ for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))if(m[1].trim())new vm.Script(m[1]);
+ assert.match(html,/Devolver para corrección/);assert.match(html,/gastoEditando \? await sb.rpc\('corregir_gasto'/);
+ assert.match(html,/p_revision: gastoEditando.revision/);assert.match(html,/gastos_historial/);
+});

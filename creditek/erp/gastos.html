@@ -79,7 +79,8 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .cola-card .meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
 .cola-card .monto { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 16px; }
 .cola-card .desc { font-size: 12.5px; margin-top: 8px; color: var(--azul); }
-.cola-card .acciones { display: flex; gap: 8px; margin-top: 12px; }
+.cola-card .acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.cola-card .acciones .btn-devolver { flex-basis: 100%; background: #e0f2fe; color: #0f172a; white-space: normal; }
 .cola-card .acciones button { flex: 1; border: none; border-radius: 999px; padding: 9px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .cola-card .btn-aprobar { background: var(--verde); color: white; }
 .cola-card .btn-rechazar { background: white; color: var(--rojo); border: 1px solid rgba(220,38,38,0.3) !important; }
@@ -190,6 +191,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
           <option value="registrado">Registrado</option>
           <option value="aprobado">Aprobado</option>
           <option value="rechazado">Rechazado</option>
+          <option value="devuelto">Devuelto para corrección</option>
         </select>
       </div>
       <div class="tabla-wrap">
@@ -266,6 +268,8 @@ let gastosCache = [];
 let conceptosCache = [];
 let tiendasCache = [];
 let gastoIdParaRechazar = null;
+let devolverParaCorreccion = false;
+let gastoEditando = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function puedeRegistrarGasto() {
@@ -414,22 +418,27 @@ function renderColaAprobacion() {
       <div class="acciones">
         <button class="btn-aprobar" data-id="${g.id}">Aprobar</button>
         <button class="btn-rechazar" data-id="${g.id}">Rechazar</button>
+        <button class="btn-devolver" data-id="${g.id}">Devolver para corrección</button>
       </div>
     </div>
   `).join('');
 
   cont.querySelectorAll('.btn-aprobar').forEach(btn => btn.addEventListener('click', () => aprobarGasto(btn.dataset.id)));
   cont.querySelectorAll('.btn-rechazar').forEach(btn => btn.addEventListener('click', () => abrirModalRechazo(btn.dataset.id)));
+  cont.querySelectorAll('.btn-devolver').forEach(btn => btn.addEventListener('click', () => abrirModalRechazo(btn.dataset.id, true)));
 }
 
 async function aprobarGasto(id) {
-  const { error } = await sb.from('gastos').update({ estado: 'aprobado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString() }).eq('id', id);
+  const { error } = await sb.from('gastos').update({ estado: 'aprobado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString() }).eq('id', id).eq('estado', 'registrado').select('id').single();
   if (error) { alert('No se pudo aprobar: ' + error.message); return; }
   mostrarBanner('✅ Gasto aprobado.');
   cargarGastos();
 }
 
-function abrirModalRechazo(id) {
+function abrirModalRechazo(id, devolver = false) {
+  devolverParaCorreccion = devolver;
+  document.querySelector('#modalRechazo h2').textContent = devolver ? 'Devolver para corrección' : 'Rechazar definitivamente';
+  document.getElementById('btnConfirmarRechazo').textContent = devolver ? 'Devolver a la tienda' : 'Rechazar';
   gastoIdParaRechazar = id;
   document.getElementById('rechazoNota').value = '';
   document.getElementById('modalRechazoErr').classList.remove('show');
@@ -442,10 +451,16 @@ async function confirmarRechazo() {
   err.classList.remove('show');
   if (!nota) { err.textContent = 'La nota de rechazo es obligatoria.'; err.classList.add('show'); return; }
 
-  const { error } = await sb.from('gastos').update({ estado: 'rechazado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString(), nota_rechazo: nota }).eq('id', gastoIdParaRechazar);
+  const btn = document.getElementById('btnConfirmarRechazo');
+  btn.disabled = true;
+  const gasto = gastosCache.find(g => g.id === gastoIdParaRechazar);
+  const { error } = devolverParaCorreccion
+    ? await sb.rpc('corregir_gasto', { p_id: gasto.id, p_revision: gasto.revision, p_accion: 'devolver', p_datos: { motivo: nota } })
+    : await sb.from('gastos').update({ estado: 'rechazado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString(), nota_rechazo: nota }).eq('id', gastoIdParaRechazar).eq('estado', 'registrado').select('id').single();
+  btn.disabled = false;
   if (error) { err.textContent = 'No se pudo rechazar: ' + error.message; err.classList.add('show'); return; }
   document.getElementById('modalRechazo').classList.remove('show');
-  mostrarBanner('Gasto rechazado.');
+  mostrarBanner(devolverParaCorreccion ? 'Gasto devuelto: la tienda puede corregirlo y reenviarlo.' : 'Gasto rechazado.');
   cargarGastos();
 }
 
@@ -459,7 +474,7 @@ function renderTablaGastos() {
     if (tienda && g.tienda_codigo !== tienda) return false;
     if (fecha && g.fecha !== fecha) return false;
     if (concepto && g.concepto_id !== concepto) return false;
-    if (estado && g.estado !== estado) return false;
+    if (estado === 'devuelto' ? !g.correccion_pendiente : estado && (g.estado !== estado || g.correccion_pendiente)) return false;
     return true;
   });
 
@@ -474,14 +489,48 @@ function renderTablaGastos() {
       <td>${escapeHtml(g.conceptos_gasto?.nombre || '—')}</td>
       <td>${fmtCOP(g.monto)}</td>
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>
-      <td><span class="badge ${g.estado}">${g.estado}</span></td>
+      <td><span class="badge ${g.estado}">${g.correccion_pendiente ? 'Devuelto para corrección' : g.estado}</span>
+        ${g.correccion_pendiente && puedeRegistrarGasto() ? `<button type="button" data-corregir="${g.id}">Corregir y reenviar</button>` : ''}
+        <details><summary data-historial="${g.id}">Historial</summary><div></div></details>
+      </td>
       <td>${escapeHtml(g.registrado?.nombre || '—')}</td>
     </tr>
   `).join('');
+  tbody.querySelectorAll('[data-corregir]').forEach(btn => btn.addEventListener('click', () => abrirCorreccionGasto(btn.dataset.corregir)));
+  tbody.querySelectorAll('[data-historial]').forEach(btn => btn.addEventListener('click', () => cargarHistorialGasto(btn)));
+}
+
+async function cargarHistorialGasto(btn) {
+  const cont = btn.nextElementSibling;
+  const { data, error } = await sb.from('gastos_historial').select('*').eq('gasto_id', btn.dataset.historial).order('creado_at');
+  cont.innerHTML = error ? 'No se pudo consultar el historial.' : (data || []).map(h => `<p>${escapeHtml(new Date(h.creado_at).toLocaleString('es-CO'))}<br>${escapeHtml(h.anterior.estado)} → ${escapeHtml(h.posterior.correccion_pendiente ? 'Devuelto para corrección' : h.posterior.estado)}<br>${fmtCOP(h.anterior.monto)} → ${fmtCOP(h.posterior.monto)}<br>${escapeHtml(h.posterior.nota_rechazo || h.posterior.descripcion || '')}</p>`).join('') || 'Sin cambios registrados.';
+}
+
+function abrirCorreccionGasto(id) {
+  const g = gastosCache.find(g => g.id === id);
+  if (!g?.correccion_pendiente) return;
+  abrirModalGasto();
+  gastoEditando = g;
+  document.querySelector('#modalGasto h2').textContent = 'Corregir y reenviar gasto';
+  document.getElementById('gastoFecha').value = g.fecha;
+  document.getElementById('gastoMonto').value = g.monto;
+  document.getElementById('gastoDescripcion').value = g.descripcion || '';
+  document.getElementById('gastoConcepto').value = g.concepto_id;
+  document.getElementById('gastoTienda').value = g.tienda_codigo;
+  document.getElementById('gastoTienda').disabled = true;
+  document.getElementById('btnGuardarGasto').textContent = 'Reenviar a aprobación';
+  const aviso = document.getElementById('avisoAdicional');
+  aviso.textContent = 'Motivo: ' + (g.nota_rechazo || '') + '. La corrección vuelve a aprobación.';
+  aviso.classList.add('show');
 }
 
 // ─── Registrar gasto ─────────────────────────────────────────────────
 function abrirModalGasto() {
+  gastoEditando = null;
+  document.querySelector('#modalGasto h2').textContent = 'Registrar gasto';
+  document.getElementById('gastoTienda').disabled = false;
+  document.getElementById('btnGuardarGasto').textContent = 'Guardar';
+  document.getElementById('avisoAdicional').textContent = 'Este concepto no está preautorizado — quedará en cola para que Mayte lo apruebe.';
   document.getElementById('gastoFecha').value = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'America/Bogota',
   }).format(new Date());
@@ -497,7 +546,7 @@ function onConceptoCambiado() {
   const sel = document.getElementById('gastoConcepto');
   const opt = sel.options[sel.selectedIndex];
   const preautorizado = opt && opt.dataset.preautorizado === 'true';
-  document.getElementById('avisoAdicional').classList.toggle('show', !preautorizado);
+  document.getElementById('avisoAdicional').classList.toggle('show', !!gastoEditando || !preautorizado);
   document.getElementById('labelDescripcion').textContent = preautorizado ? 'Descripción (opcional)' : 'Descripción (obligatoria)';
 }
 
@@ -529,7 +578,10 @@ async function guardarGasto() {
   const btn = document.getElementById('btnGuardarGasto');
   btn.disabled = true; btn.textContent = 'Guardando...';
 
-  const { error } = await sb.from('gastos').insert({
+  const { error } = gastoEditando ? await sb.rpc('corregir_gasto', {
+    p_id: gastoEditando.id, p_revision: gastoEditando.revision, p_accion: 'reenviar',
+    p_datos: { fecha: fechaSeleccionada, concepto_id, monto, descripcion }
+  }) : await sb.from('gastos').insert({
     tienda_codigo: tiendaSeleccionada,
     fecha: fechaSeleccionada,
     concepto_id, monto, descripcion: descripcion || null,
@@ -541,7 +593,7 @@ async function guardarGasto() {
   if (error) { err.textContent = 'No se pudo registrar: ' + error.message; err.classList.add('show'); return; }
 
   document.getElementById('modalGasto').classList.remove('show');
-  mostrarBanner(preautorizado ? '✅ Gasto registrado.' : '✅ Gasto registrado — queda en cola de aprobación.');
+  mostrarBanner(gastoEditando ? 'Gasto corregido y reenviado a aprobación, sin duplicarlo.' : preautorizado ? '✅ Gasto registrado.' : '✅ Gasto registrado — queda en cola de aprobación.');
   cargarGastos();
 }
 </script>

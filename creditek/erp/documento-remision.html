@@ -248,6 +248,7 @@
 </main>
 
 <!-- ============================================================ SCRIPT -->
+<script src="recepcion-origen.js?v=1"></script>
 <script>
 const SB = (function () {
   if (window.SB) return window.SB;
@@ -329,6 +330,7 @@ let imeisEscaneados = {};   // { item_id: [imeis], ... }
 let trazabilidadFacturas = {};   // {facturaId: {numero, fecha, proveedor}}
 let trazabilidadItemFacturas = {}; // {remision_item_id: [facturaId, ...]}
 let errorTrazabilidad = false;
+let origenesRecepcion = [];
 let imeisPorItem = {};
 let errorImeis = false;
 
@@ -371,6 +373,7 @@ function proveedorPorProducto(itemId) {
 // SECURITY DEFINER que valida que la remisión pertenezca a su tienda. El RPC
 // nunca retorna costo_oscar ni margen.
 async function cargarTrazabilidadRemision(remisionId) {
+  origenesRecepcion = [];
   trazabilidadFacturas = {};
   trazabilidadItemFacturas = {};
   errorTrazabilidad = false;
@@ -382,6 +385,7 @@ async function cargarTrazabilidadRemision(remisionId) {
     console.warn('No se pudo cargar la trazabilidad de la remisión:', error.message);
     return;
   }
+  origenesRecepcion = data || [];
   (data || []).forEach(f => {
     if (!f.factura_id) return;
     trazabilidadFacturas[f.factura_id] = {
@@ -570,6 +574,7 @@ function renderPanelAceptacion() {
   cont.innerHTML = items.map(it => {
     const p = it.productos || {};
     const esSerial = p.tipo === 'serializado';
+    const origen = RecepcionOrigen.render(it.id, origenesRecepcion, errorTrazabilidad);
     if (esSerial) {
       imeisEscaneados[it.id] = new Array(it.cantidad).fill('');
       const inputs = Array.from({ length: it.cantidad }, (_, i) => `
@@ -593,6 +598,7 @@ function renderPanelAceptacion() {
               Puedes recibir menos si algo faltó — el sistema generará el ajuste automático.
             </div>
           </div>
+          ${origen}
           <div class="space-y-2">${inputs}</div>
         </div>
       `;
@@ -600,6 +606,7 @@ function renderPanelAceptacion() {
     // Tipo cantidad
     return `
       <div class="border border-gray-200 rounded p-4">
+        ${origen}
         <div class="flex justify-between items-center">
           <div>
             <div class="font-medium text-gray-800">${esc(p.nombre)}</div>

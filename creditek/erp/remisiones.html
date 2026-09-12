@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="producto-foto.js"></script>
+<script src="recepcion-origen.js?v=1"></script>
 <script src="bodega-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.22"></script>
@@ -814,6 +815,7 @@ async function abrirModalRecepcion(rem) {
     .eq('remision_id', rem.id);
   if (error) { alert('No se pudieron cargar los productos de la remisión: ' + error.message); return; }
   recepcionRemisionActual = { ...rem, items: items || [] };
+  const { data: origenes, error: errorOrigen } = await sb.rpc('obtener_trazabilidad_remision', { p_remision_id: rem.id });
 
   document.getElementById('recepcionTitulo').textContent = `Recibir remisión #${rem.consecutivo}`;
   document.getElementById('modalRecepcionErr').classList.remove('show');
@@ -821,6 +823,7 @@ async function abrirModalRecepcion(rem) {
   const cont = document.getElementById('recepcionItems');
   cont.innerHTML = recepcionRemisionActual.items.map((it, idx) => {
     const prod = it.productos;
+    const origen = RecepcionOrigen.render(it.id, origenes, !!errorOrigen);
     const bloqueFoto = prod.foto_url
       ? `<div class="foto-recepcion"><label>Foto del producto</label><img src="${escapeHtml(prod.foto_url)}" alt="${escapeHtml(prod.nombre)}"></div>`
       : `<div class="foto-recepcion">
@@ -837,12 +840,14 @@ async function abrirModalRecepcion(rem) {
       `).join('');
       return `<div class="item-recepcion" data-tipo="serializado" data-item="${idx}">
         <div class="nombre-prod">${escapeHtml(prod.nombre)} — se esperan ${it.cantidad} unidad(es)</div>
+        ${origen}
         ${bloqueFoto}
         ${imeis}
       </div>`;
     } else {
       return `<div class="item-recepcion" data-tipo="cantidad" data-item="${idx}">
         <div class="nombre-prod">${escapeHtml(prod.nombre)} — se despacharon ${it.cantidad}</div>
+        ${origen}
         ${bloqueFoto}
         <input type="number" min="0" class="cantidad-recibida-input" data-item="${idx}" value="${it.cantidad}">
         <div class="aviso-diferencia" id="aviso-${idx}">Esta diferencia generará un ajuste de inventario pendiente de revisión.</div>

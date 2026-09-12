@@ -351,7 +351,8 @@
     select.value = stores.some(store => store.codigo === previous) ? previous : "";
   }
   function compensationView() {
-    return movementView(data.compensations);
+    return movementView(data.compensations.filter(x => x.applied_at && !x.reversed_at)
+      .map(x => ({ ...x, created_at: x.applied_at })));
   }
   function movementView(rows) {
     return window.CreditekTesoreriaTercerizacion.filtrarMovimientosTiendas(rows, {
@@ -618,16 +619,23 @@
     const compensatedOperationIds = new Set(
       data.compensations.filter(x => !x.reversed_at).map(x => x.operation_id),
     );
-    const pendingCompensations = (data.ownStoreOperations || []).filter(
+    const unlinkedOperations = (data.ownStoreOperations || []).filter(
       x => x.reconocida !== false && !compensatedOperationIds.has(x.id),
     );
+    const pendingCompensations = data.compensations.filter(x => !x.applied_at && !x.reversed_at);
     $("#pendingCompensationCount").textContent = pendingCompensations.length;
     $("#pendingCompensations").innerHTML = table(
-      ["Tienda", "Plataforma", "Corte", "IMEI / referencia", "Estado", "Gestión"],
-      pendingCompensations.map(x => {
+      ["Seleccionar", "Tienda", "Plataforma", "Corte", "IMEI", "Abono por aplicar"],
+      pendingCompensations.map(x => `<tr><td><input type="checkbox" data-pending-compensation="${x.id}" aria-label="Aplicar abono de ${esc(storeName(x.store_code))}"></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei)}</td><td>${cop(x.compensation_value)}</td></tr>`),
+    );
+    $("#applyCompensations").disabled = !pendingCompensations.length || !['gerencia','auditoria'].includes(profile?.rol);
+    $("#unlinkedCompensations").innerHTML = table(
+      ["Tienda", "Plataforma", "Corte", "IMEI / referencia", "Situación", "Consulta"],
+      unlinkedOperations.map(x => {
         const liquidation = x.liquidations || {};
         const detail = [x.imei, x.referencia || x.modelo].filter(Boolean).join(" · ") || "Sin referencia";
-        return `<tr><td>${esc(storeName(x.origen_codigo))}</td><td>${esc(platformName(liquidation.plataforma))}</td><td>${date(liquidation.fecha_corte || x.operation_at)}</td><td>${esc(detail)}</td><td>${badge(liquidation.estado || "pendiente", "Pendiente de compensar")}</td><td><a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(x.liquidation_id)}">Gestionar liquidación</a></td></tr>`;
+        const historical = ['cerrada','pagada'].includes(liquidation.estado);
+        return `<tr><td>${esc(storeName(x.origen_codigo))}</td><td>${esc(platformName(liquidation.plataforma))}</td><td>${date(liquidation.fecha_corte || x.operation_at)}</td><td>${esc(detail)}</td><td>${badge(liquidation.estado || "pendiente", historical ? "Histórico por conciliar" : "Sin abono preparado")}</td><td><a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(x.liquidation_id)}">Consultar liquidación</a></td></tr>`;
       }),
     );
     $("#compensationFilterError").classList.toggle("hidden", !rangoInvalido);
@@ -637,10 +645,10 @@
     if (!visibleCompensations.some(x => x.id === selectedCompensationId)) selectedCompensationId = null;
     $("#compensationSummary").textContent = rangoInvalido
       ? "Corrige el rango para consultar los abonos."
-      : `${visibleCompensations.length} de ${data.compensations.length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
+      : `${visibleCompensations.length} de ${data.compensations.filter(x => x.applied_at && !x.reversed_at).length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
     const comps = visibleCompensations.map(
         (x) =>
-          `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", "Aplicada a cartera")}</td></tr>`,
+          `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", x.legacy_applied ? "Aplicada histórica · sin aceptación registrada" : x.accepted_at ? "Aceptada por tienda" : "Aplicada a cartera · pendiente de aceptación")}</td></tr>`,
       );
     $("#compensations").innerHTML = table(
       [
@@ -717,6 +725,20 @@
     return "";
   }
   function bindActions() {
+    $("#applyCompensations").onclick = async () => {
+      const ids = [...document.querySelectorAll('[data-pending-compensation]:checked')].map(x => x.dataset.pendingCompensation);
+      if (!ids.length) return notice('Selecciona los abonos que revisaste.', true);
+      const amount = data.compensations.filter(x => ids.includes(x.id)).reduce((sum,x) => sum + Number(x.compensation_value),0);
+      if (!confirm(`Confirmo que revisé estos ${ids.length} créditos. Aplicar ${cop(amount)} a las carteras seleccionadas. La tienda deberá aceptar después.`)) return;
+      $("#applyCompensations").disabled = true;
+      try {
+        const { data: applied, error } = await sb.rpc('aplicar_compensaciones_gestion', { p_ids: ids });
+        if (error) throw error;
+        await load();
+        notice(`${applied} abonos aplicados. Quedan pendientes de aceptación en cada tienda.`);
+      } catch (error) { notice(error.message, true); }
+      finally { $("#applyCompensations").disabled = !data.compensations.some(x => !x.applied_at && !x.reversed_at); }
+    };
     document
       .querySelectorAll("[data-payment]")
       .forEach(

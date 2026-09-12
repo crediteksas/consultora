@@ -274,6 +274,7 @@ body.modal-open { overflow: hidden; }
         <tbody id="tbodyAbonosPendientes"></tbody>
       </table>
     </div>
+    <div id="panelCompensacionesRecibidas" class="pendientes-panel" aria-live="polite"></div>
     <div class="historial-controles">
       <label for="historialDias">Historial de movimientos</label>
       <select id="historialDias">
@@ -612,8 +613,29 @@ function renderTablaTiendas() {
   tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirDetalleTienda(tr.dataset.tienda, nombrePorCodigo[tr.dataset.tienda])));
 }
 
+async function cargarCompensacionesRecibidas(codigo) {
+  const panel = document.getElementById('panelCompensacionesRecibidas');
+  panel.textContent = 'Consultando abonos enviados por Gestión…';
+  try {
+    const { data: rows, error } = await sb.rpc('compensaciones_recibidas_tienda', { p_tienda: codigo });
+    if (error) throw error;
+    if (tiendaDetalleActual?.codigo !== codigo) return;
+    panel.innerHTML = rows?.length ? '<h3>Abonos aplicados por Gestión · pendientes de tu aceptación</h3><p>Ya descontados de la deuda. Aceptar confirma la recepción, no modifica otra vez el saldo.</p>' + rows.map(x => `<div style="padding:12px 0;border-bottom:1px solid var(--border)"><strong>${escapeHtml(x.platform)} · ${fmtCOP(x.amount)}</strong><div>IMEI: ${escapeHtml(x.imei || 'No disponible')} · Corte: ${escapeHtml(x.cutoff_date)}</div><div>Aplicó: ${escapeHtml(x.applied_by)} · ${new Date(x.applied_at).toLocaleString('es-CO', {timeZone:'America/Bogota'})}</div>${currentPerfil?.rol === 'admin_tienda' && currentPerfil.tienda_codigo === codigo ? `<button class="btn-primary" data-aceptar-compensacion="${escapeHtml(x.id)}">Aceptar abono</button>` : ''}</div>`).join('') : '';
+    panel.querySelectorAll('[data-aceptar-compensacion]').forEach(button => button.onclick = async () => {
+      if (!confirm('¿Confirmas la recepción de este abono? El saldo no se descontará nuevamente.')) return;
+      button.disabled = true;
+      const { error } = await sb.rpc('aceptar_compensacion_tienda', { p_id: button.dataset.aceptarCompensacion });
+      if (error) { alert(error.message); button.disabled = false; return; }
+      await cargarCompensacionesRecibidas(codigo);
+    });
+  } catch(error) {
+    if (tiendaDetalleActual?.codigo === codigo) panel.textContent = `No se pudo consultar la aceptación de abonos: ${error.message}`;
+  }
+}
+
 function abrirDetalleTienda(codigo, nombre) {
   tiendaDetalleActual = { codigo, nombre };
+  cargarCompensacionesRecibidas(codigo);
   document.getElementById('detalleTitulo').textContent = nombre || codigo;
   document.getElementById('btnAbrirAbono').style.display = esCentral() ? 'inline-block' : 'none';
 

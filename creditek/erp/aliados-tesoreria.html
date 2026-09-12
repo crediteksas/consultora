@@ -425,22 +425,27 @@
                 <div>
                   <h2>Compensaciones pendientes</h2>
                   <p class="section-copy">
-                    Operaciones de tiendas propias que todavía no tienen un
-                    abono de compensación generado. Permanecen aquí sin límite
-                    de fecha hasta que el proceso quede aplicado.
+                    Abonos de liquidaciones autorizadas. Gestión valida el crédito,
+                    selecciona y aplica a la cartera. Después la tienda acepta,
+                    sin descontar el saldo una segunda vez.
                   </p>
                 </div>
                 <span id="pendingCompensationCount" class="badge">0</span>
               </div>
               <div id="pendingCompensations"></div>
+              <button id="applyCompensations" class="btn primary" disabled>Validar y aplicar seleccionados</button>
+              <details><summary>Consultar operaciones sin abono vinculado / histórico por conciliar</summary>
+                <p>Los lotes antiguos cerrados o pagados sin asiento vinculado no se consideran aplicados ni se vuelven a aplicar automáticamente.</p>
+                <div id="unlinkedCompensations"></div>
+              </details>
             </section>
             <section class="card">
               <div class="section-head">
                 <div>
                   <h2>Histórico de abonos aplicados</h2>
                   <p class="section-copy">
-                    Cada compensación ya redujo la cartera de la tienda al
-                    aprobar la liquidación. Selecciona una para consultar su
+                    Estos abonos ya redujeron la cartera; no se vuelven a aplicar.
+                    La aceptación de la tienda solo cierra el seguimiento. Selecciona uno para consultar su
                     asiento.
                   </p>
                 </div>

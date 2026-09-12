@@ -1,0 +1,68 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,readdirSync} from 'node:fs';
+import vm from 'node:vm';
+import {PGlite} from '@electric-sql/pglite';
+const file=readdirSync('supabase/migrations').find(x=>x.endsWith('_compensaciones_revision_gestion_aceptacion_tienda.sql'));
+const sql=readFileSync(`supabase/migrations/${file}`,'utf8');
+const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+test('aplicar solo Gestión; aceptar solo tienda; historial y saldo una sola vez',async()=>{
+ const db=new PGlite();
+ try {
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('app.uid',true),'')::uuid$$;
+ create table perfiles(id uuid primary key,activo boolean,rol text,tienda_codigo text,nombre text);
+ insert into perfiles values('${id(1)}',true,'auditoria',null,'Maite'),('${id(2)}',true,'admin_tienda','A','Tienda A'),('${id(3)}',true,'admin_tienda','B','Tienda B');
+ create function public.tiene_capacidad_aliados(text) returns boolean language sql as $$select auth.uid()='${id(1)}'::uuid$$;
+ create table liquidations(id uuid primary key,estado text,frozen_at timestamptz);
+ insert into liquidations values('${id(5)}','aprobada',now());
+ create table retail_b2b_compensations(id uuid primary key,liquidation_id uuid,store_code text,platform text,cutoff_date date,imei text,compensation_value numeric,account_balance_before numeric,account_balance_after numeric,reversed_at timestamptz);
+ insert into retail_b2b_compensations values('${id(8)}','${id(5)}','A','payjoy','2026-09-01','123',20,100,80,null);
+ create table cuenta_corriente(id bigint generated always as identity,tienda_codigo text,tipo text,concepto text,monto numeric,referencia_tipo text,referencia_id text,usuario uuid,created_at timestamptz default now());
+ insert into cuenta_corriente(tienda_codigo,tipo,monto,referencia_tipo,referencia_id,usuario) values('A','cargo',100,'compra','x','${id(1)}'),('A','abono',20,'compensacion_liquidacion_retail','${id(8)}','${id(1)}');
+ create table treasury_movements(unit text,direction text,type text,beneficiary text,concept text,amount numeric,movement_date date,liquidation_id uuid,compensation_id uuid,balance_before numeric,balance_after numeric,status text,requested_by uuid,idempotency_key text unique);
+ create table audit_log(usuario uuid,accion text,tabla text,registro_id uuid,detalle jsonb);
+ create table test_balance(amount numeric);insert into test_balance values(20);
+ create function public.tesoreria_aplicar_saldo(text,text,numeric,text) returns jsonb language plpgsql set search_path='public' as $$declare b numeric;begin select amount into b from test_balance;update test_balance set amount=amount+$3;return jsonb_build_object('before',b,'after',b+$3);end$$;
+ grant usage on schema public,auth to authenticated;grant select on perfiles to authenticated;
+ `);
+ // Existing generator is checked separately; exercise all new schema/backfill/RPC SQL.
+ await db.exec(sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION public.tesoreria_generar_destinos_liquidacion'))+sql.slice(sql.indexOf('CREATE SCHEMA IF NOT EXISTS compensaciones_private')));
+ assert.equal((await db.query('select legacy_applied from retail_b2b_compensations')).rows[0].legacy_applied,true);
+ await db.exec(`insert into retail_b2b_compensations(id,liquidation_id,store_code,platform,cutoff_date,imei,compensation_value) values('${id(9)}','${id(5)}','A','payjoy','2026-09-12','456',30);set role authenticated;`);
+ const user=n=>db.query("select set_config('app.uid',$1,false)",[n?id(n):'']);
+ const apply=ids=>db.query('select public.aplicar_compensaciones_gestion($1) as n',[ids.map(id)]);
+ const accept=n=>db.query('select public.aceptar_compensacion_tienda($1) as ok',[id(n)]);
+ await user(2);await assert.rejects(apply([9]),/Solo Gestión/);await assert.rejects(accept(9),/pendiente/);
+ await user(1);await assert.rejects(apply([]),/Selecciona/);await assert.rejects(apply([9,99]),/no disponible/);
+ assert.equal((await apply([9,9])).rows[0].n,1);assert.equal((await apply([9])).rows[0].n,0);
+ await assert.rejects(accept(9),/Solo la administración/);
+ await user(3);await assert.rejects(accept(9),/Solo la administración/);
+ await assert.rejects(db.query("select public.compensaciones_recibidas_tienda('A')"),/no autorizada/);
+ await user(2);assert.equal((await db.query("select public.compensaciones_recibidas_tienda('A') as r")).rows[0].r.length,1);
+ await assert.rejects(accept(8),/nuevo aplicado/);assert.equal((await accept(9)).rows[0].ok,true);assert.equal((await accept(9)).rows[0].ok,false);
+ assert.equal((await db.query("select public.compensaciones_recibidas_tienda('A') as r")).rows[0].r.length,0);
+ await assert.rejects(db.query('update retail_b2b_compensations set accepted_at=now()'),/permission denied/);
+ await user(null);await assert.rejects(apply([9]),/Solo Gestión/);
+ await db.exec('reset role');
+ assert.equal(Number((await db.query('select amount from test_balance')).rows[0].amount),50);
+ assert.equal((await db.query('select * from cuenta_corriente')).rows.length,3);
+ assert.equal((await db.query('select * from treasury_movements')).rows.length,1);
+ assert.equal((await db.query('select * from audit_log')).rows.length,2);
+ const row=(await db.query(`select * from retail_b2b_compensations where id='${id(9)}'`)).rows[0];
+ assert.equal(row.applied_by,id(1));assert.equal(row.accepted_by,id(2));assert.equal(Number(row.account_balance_after),50);
+ } finally {await db.close();}
+});
+test('aprobar prepara compensación sin aplicar; UI separa históricos y confirma recepción',()=>{
+ const generator=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION'),sql.indexOf('CREATE SCHEMA IF NOT EXISTS compensaciones_private'));
+ const own=generator.slice(generator.indexOf("if o.tipo_establecimiento='propia' then"),generator.indexOf('if commission_value>0'));
+ assert.match(own,/insert into public.retail_b2b_compensations/);
+ assert.doesNotMatch(own,/insert into public.cuenta_corriente|tesoreria_aplicar_saldo|insert into public.treasury_movements/);
+ assert.match(generator,/commission-operation:/);assert.match(generator,/bank_snapshot=/);
+ const ui=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');new vm.Script(ui);
+ assert.match(ui,/aplicar_compensaciones_gestion/);assert.match(ui,/!x.applied_at && !x.reversed_at/);
+ assert.match(ui,/Histórico por conciliar/);
+ const html=readFileSync('creditek/erp/cuenta-corriente.html','utf8');
+ for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))if(m[1].trim())new vm.Script(m[1]);
+ assert.match(html,/aceptar_compensacion_tienda/);
+});

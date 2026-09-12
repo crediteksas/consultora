@@ -10,7 +10,7 @@ const source = readFileSync('creditek/erp/aliados-tesoreria-app.js', 'utf8');
 const html = readFileSync('creditek/erp/aliados-tesoreria.html', 'utf8');
 const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
   id, store_code, cutoff_date, compensation_value, account_balance_after: -40,
-  platform: 'payjoy', imei: `IMEI-${id}`, created_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null,
+  platform: 'payjoy', imei: `IMEI-${id}`, applied_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null, created_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null,
 });
 const rows = [row('uno', 'A', '2026-09-02', 100), row('dos', 'B', '2026-09-03', 200), row('tres', 'A', '2026-09-04', 300)];
 
@@ -23,7 +23,7 @@ test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => 
 });
 
 test('abre con histórico de hoy y permite consultar todo sin escribir', async () => {
-  const ui = await boot([{ ...rows[0], created_at: new Date().toISOString() }, rows[1]], { keepToday: true });
+  const ui = await boot([{ ...rows[0], applied_at: new Date().toISOString(), created_at: new Date().toISOString() }, rows[1]], { keepToday: true });
   assert.equal(ui.node('#compensationCount').textContent, 1);
   assert.notEqual(ui.node('#compensationFrom').value, '');
   await ui.node('#showStoreMovements').onclick();
@@ -39,8 +39,8 @@ test('abre con histórico de hoy y permite consultar todo sin escribir', async (
 test('pagos abiertos y compensaciones pendientes permanecen visibles aunque existan filtros', async () => {
   const ui=await boot(rows, { ownStoreOperations: [{ id: 'op-pendiente', liquidation_id: 'lote-1', origen_codigo: 'A', reconocida: true, liquidations: { plataforma: 'payjoy', fecha_corte: '2026-09-01', estado: 'cerrada' } }] });
   ui.change('platform','krediya');
-  assert.equal(ui.node('#pendingCompensationCount').textContent, 1);
-  assert.match(ui.node('#pendingCompensations').innerHTML,/Gestionar liquidación/);
+  assert.equal(ui.node('#pendingCompensationCount').textContent, 0);
+  assert.match(ui.node('#unlinkedCompensations').innerHTML,/Histórico por conciliar/);
   assert.match(source,/treasuryView === "history" \? filtered\(source\) : source/);
 });
 

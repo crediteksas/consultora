@@ -351,7 +351,7 @@
     select.value = stores.some(store => store.codigo === previous) ? previous : "";
   }
   function compensationView() {
-    return movementView(data.compensations.filter(x => x.applied_at && !x.reversed_at)
+    return movementView(data.compensations.filter(x => x.applied_at && !x.reversed_at && (x.accepted_at || x.legacy_applied))
       .map(x => ({ ...x, created_at: x.applied_at })));
   }
   function movementView(rows) {
@@ -623,6 +623,13 @@
       x => x.reconocida !== false && !compensatedOperationIds.has(x.id),
     );
     const pendingCompensations = data.compensations.filter(x => !x.applied_at && !x.reversed_at);
+    const awaitingAcceptance = data.compensations.filter(x => x.applied_at && !x.accepted_at && !x.reversed_at && !x.legacy_applied);
+    $("#awaitingAcceptanceCount").textContent = awaitingAcceptance.length;
+    $("#awaitingAcceptanceSummary").textContent = `${awaitingAcceptance.length} abonos · ${cop(awaitingAcceptance.reduce((sum,x) => sum + Number(x.compensation_value || 0),0))} ya descontados de cartera. No requieren otra aplicación de Gestión.`;
+    $("#awaitingAcceptance").innerHTML = awaitingAcceptance.length ? table(
+      ["Tienda", "Plataforma", "IMEI", "Abono aplicado", "Fecha de aplicación", "Aplicó", "Estado"],
+      awaitingAcceptance.map(x => `<tr><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${esc(x.imei || '—')}</td><td>${cop(x.compensation_value)}</td><td>${esc(bogotaDateTime(x.applied_at))}</td><td>${esc(data.profiles?.find(p => p.id === x.applied_by)?.nombre || 'Consultar registro de aplicación')}</td><td>${badge('pendiente', 'Pendiente de aceptación de la tienda')}</td></tr>`),
+    ) : '<div class="empty">No hay abonos nuevos pendientes de aceptación de la tienda.</div>';
     $("#pendingCompensationCount").textContent = pendingCompensations.length;
     $("#pendingCompensations").innerHTML = table(
       ["Seleccionar", "Tienda", "Plataforma", "Corte", "IMEI", "Abono por aplicar"],
@@ -645,7 +652,7 @@
     if (!visibleCompensations.some(x => x.id === selectedCompensationId)) selectedCompensationId = null;
     $("#compensationSummary").textContent = rangoInvalido
       ? "Corrige el rango para consultar los abonos."
-      : `${visibleCompensations.length} de ${data.compensations.filter(x => x.applied_at && !x.reversed_at).length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
+      : `${visibleCompensations.length} de ${data.compensations.filter(x => x.applied_at && !x.reversed_at && (x.accepted_at || x.legacy_applied)).length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
     const comps = visibleCompensations.map(
         (x) =>
           `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", x.legacy_applied ? "Aplicada histórica · sin aceptación registrada" : x.accepted_at ? "Aceptada por tienda" : "Aplicada a cartera · pendiente de aceptación")}</td></tr>`,

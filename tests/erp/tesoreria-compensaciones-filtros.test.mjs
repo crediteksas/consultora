@@ -9,7 +9,7 @@ const domain = require('../../creditek/erp/aliados-tesoreria-domain.js');
 const source = readFileSync('creditek/erp/aliados-tesoreria-app.js', 'utf8');
 const html = readFileSync('creditek/erp/aliados-tesoreria.html', 'utf8');
 const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
-  id, store_code, cutoff_date, compensation_value, account_balance_after: -40,
+  id, store_code, cutoff_date, compensation_value, account_balance_after: -40, legacy_applied: true,
   platform: 'payjoy', imei: `IMEI-${id}`, applied_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null, created_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null,
 });
 const rows = [row('uno', 'A', '2026-09-02', 100), row('dos', 'B', '2026-09-03', 200), row('tres', 'A', '2026-09-04', 300)];
@@ -42,6 +42,30 @@ test('pagos abiertos y compensaciones pendientes permanecen visibles aunque exis
   assert.equal(ui.node('#pendingCompensationCount').textContent, 0);
   assert.match(ui.node('#unlinkedCompensations').innerHTML,/Histórico por conciliar/);
   assert.match(source,/treasuryView === "history" \? filtered\(source\) : source/);
+});
+
+test('abonos aplicados siguen en seguimiento sin filtros hasta aceptación; históricos no reaparecen', async () => {
+  const awaiting = {...rows[0], id:'espera', imei:'IMEI-ESPERA', legacy_applied:false};
+  const accepted = {...rows[1], legacy_applied:false, accepted_at:'2026-09-12T20:00:00Z'};
+  const pending = {...rows[2], id:'por-aplicar', applied_at:null, legacy_applied:false};
+  const reversed = {...awaiting,id:'reversado',reversed_at:'2026-09-12T20:00:00Z'};
+  const ui = await boot([awaiting,accepted,pending,reversed,rows[2]],{keepToday:true});
+  assert.equal(ui.node('#awaitingAcceptanceCount').textContent,1);
+  assert.match(ui.node('#awaitingAcceptance').innerHTML,/IMEI-ESPERA/);
+  assert.doesNotMatch(ui.node('#awaitingAcceptance').innerHTML,/<button|type="checkbox"/);
+  assert.equal(ui.node('#pendingCompensationCount').textContent,1);
+  ui.change('compensationStore','INEXISTENTE');
+  assert.equal(ui.node('#awaitingAcceptanceCount').textContent,1);
+  assert.equal(ui.node('#compensationCount').textContent,0);
+  ui.node('#clearCompensationFilters').onclick();
+  assert.equal(ui.node('#compensationCount').textContent,2);
+  assert.doesNotMatch(ui.node('#compensations').innerHTML,/IMEI-ESPERA/);
+  awaiting.accepted_at='2026-09-12T21:00:00Z';
+  await ui.node('#refresh').onclick();
+  assert.equal(ui.node('#awaitingAcceptanceCount').textContent,0);
+  assert.equal(ui.node('#compensationCount').textContent,3);
+  assert.match(ui.node('#compensations').innerHTML,/IMEI-ESPERA/);
+  assert.deepEqual(ui.writes,[]);
 });
 
 test('IMEI en cartera usa consulta mínima por referencia y tienda sin recalcular', () => {

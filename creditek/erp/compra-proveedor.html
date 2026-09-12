@@ -316,6 +316,15 @@
         <select id="referencia-categoria" class="w-full"></select>
       </label>
       <label class="block">
+        <span class="ctk-label">Control de inventario *</span>
+        <select id="referencia-tipo" class="w-full" required>
+          <option value="">Selecciona cómo se controla</option>
+          <option value="cantidad">Por cantidad — sin IMEI</option>
+          <option value="serializado">Por IMEI / serial individual</option>
+        </select>
+      <span class="text-sm">Para productos sin IMEI ni serial individual, selecciona «Por cantidad».</span>
+      </label>
+      <label class="block">
         <span class="ctk-label">Precio de remisión sugerido *</span>
         <input id="referencia-precio" type="number" min="1" step="1" class="w-full" inputmode="numeric" />
       </label>
@@ -647,6 +656,7 @@ function abrirCrearReferencia() {
   const busqueda = document.getElementById('input-buscar').value.trim();
   document.getElementById('referencia-nombre').value = busqueda;
   document.getElementById('referencia-codigo').value = '';
+  document.getElementById('referencia-tipo').value = '';
   document.getElementById('referencia-precio').value = '';
   document.getElementById('referencia-categoria').value = categorias[0]?.codigo || '';
   document.getElementById('referencia-error').classList.add('hidden');
@@ -667,11 +677,17 @@ async function guardarCrearReferencia() {
   const nombre = document.getElementById('referencia-nombre').value.trim();
   const codigo = document.getElementById('referencia-codigo').value.trim();
   const categoria = document.getElementById('referencia-categoria').value;
+  const tipo = document.getElementById('referencia-tipo').value;
   const precio = Number(document.getElementById('referencia-precio').value);
   const errorEl = document.getElementById('referencia-error');
   const btn = document.getElementById('guardar-crear-referencia');
   errorEl.classList.add('hidden');
 
+  if (!['cantidad', 'serializado'].includes(tipo)) {
+    errorEl.textContent = 'Selecciona el control de inventario: por cantidad o por IMEI / serial.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
   if (!nombre || !codigo || !categoria || !Number.isFinite(precio) || precio <= 0) {
     errorEl.textContent = 'Nombre, código, categoría y precio de remisión son obligatorios.';
     errorEl.classList.remove('hidden');
@@ -694,7 +710,7 @@ async function guardarCrearReferencia() {
       codigo,
       nombre,
       categoria,
-      tipo: 'serializado',
+      tipo,
       precio_guia: precio,
       margen_tipo: categoriaActual?.margen_tipo || 'porcentaje',
       margen_valor: Number(categoriaActual?.margen_valor || 0),

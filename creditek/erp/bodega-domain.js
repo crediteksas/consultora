@@ -35,6 +35,7 @@
           precio_tienda: null,
           precios_varian: false,
           facturas: [],
+          tramos: [],
         },
       ]),
     );
@@ -45,6 +46,7 @@
       if (!producto) return;
 
       producto.disponible += Number(cantidad || 0);
+      producto.tramos.push({ cantidad: Number(cantidad || 0), precio: Number(registro.precio_tienda || 0), costo: Number(registro.costo_unitario ?? registro.costo_remision ?? 0) });
       if (registro.factura_proveedor_id && !producto.facturas.includes(registro.factura_proveedor_id)) {
         producto.facturas.push(registro.factura_proveedor_id);
       }
@@ -64,6 +66,8 @@
   }
 
   function crearItemPayload(item, facturaId) {
+    if (Object.hasOwn(item, 'factura_id') && item.factura_id !== (facturaId || null)) throw new Error('La factura cambió. Vuelve a cargar los productos.');
+    if (!Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) <= 0 || Number(item.cantidad) > Number(item.stock_disponible ?? Infinity)) throw new Error('Cantidad inválida o superior al disponible');
     const payload = {
       producto_id: item.producto_id,
       cantidad: item.cantidad,
@@ -73,10 +77,31 @@
     return payload;
   }
 
+  function prepararItem(producto, facturaId, cantidad = producto.disponible) {
+    return { producto_id: producto.id, producto_nombre: producto.nombre, tipo: producto.tipo,
+      factura_id: facturaId || null, stock_disponible: producto.disponible, cantidad,
+      precio_remision: producto.precio_tienda ?? 0, precio_override_active: false,
+      precios_varian: producto.precios_varian, tramos: producto.tramos };
+  }
+
+  function valorarItem(item) {
+    let pendiente = Number(item.cantidad), costo = 0, total = 0;
+    for (const tramo of item.tramos || []) {
+      const cantidad = Math.min(pendiente, tramo.cantidad);
+      costo += cantidad * tramo.costo;
+      total += cantidad * (item.precio_override_active ? Number(item.precio_remision) : tramo.precio);
+      pendiente -= cantidad;
+      if (pendiente <= 0) break;
+    }
+    return { costo, total, utilidad: total - costo };
+  }
+
   return {
     cargarTodasLasPaginas,
     pendientesPorRemisionar,
     consolidarDisponibilidad,
     crearItemPayload,
+    prepararItem,
+    valorarItem,
   };
 });

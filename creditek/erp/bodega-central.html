@@ -276,6 +276,8 @@
     </div>
 
     <div id="panel-despacho">
+      <p id="despacho-factura-aviso" role="status" class="hidden rounded-lg border border-teal-200 bg-teal-50 p-3 mb-3 text-sm"></p>
+      <p id="despacho-valoracion" class="rounded-lg bg-gray-50 p-3 mb-3 text-sm text-gray-700">El precio de remisión ya incluye la utilidad configurada al comprar.</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <label class="block md:col-span-2">
           <span class="text-sm font-medium text-gray-700">Tienda destino <span class="text-red-500">*</span></span>
@@ -571,7 +573,10 @@ async function cargarAlerta() {
       const prov = f.proveedor?.nombre ? f.proveedor.nombre + ' · ' : '';
       return `<option value="${esc(f.id)}">${prov}${esc(f.numero)} · ${fechaCorta(f.fecha)}</option>`;
     }).join('');
-  if (facturasIndex.some(f => f.id === actual)) selFactura.value = actual;
+  if (actual && !facturasIndex.some(f => f.id === actual)) {
+    selFactura.add(new Option('Factura sin unidades pendientes de remisionar', actual));
+  }
+  selFactura.value = actual;
 
   actualizarKPIs();
   render();
@@ -809,21 +814,28 @@ let tiendasDestino = [];       // Tiendas y clientes con cartera B2B, nunca inve
 let solicitudB2B = null;
 let productosDisponibles = []; // [{id, nombre, categoria, tipo, disponible, precio_tienda}]
 let despachoItems = [];        // [{tempId, producto_id, producto_nombre, tipo, cantidad, precio_remision, precio_override, stock_disponible}]
+let cargaDespacho = 0;
 
 async function cargarDataDespacho() {
+  const carga = ++cargaDespacho;
+  const facturaSolicitada = document.getElementById('filtro-factura').value;
+  productosDisponibles = [];
   const [tRes, uRes, lotesRes, pRes, bRes] = await Promise.all([
     SB.from('tiendas_operativas').select('codigo, nombre').order('codigo'),
     // Unidades disponibles serializadas: agrupar por producto
     bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
-      .select('producto_id, precio_tienda, factura_proveedor_id')
+      .select('producto_id, precio_tienda, costo_remision, factura_proveedor_id')
       .eq('tienda_actual', 'CENTRAL')
       .eq('estado', 'disponible')
-      .is('imei', null).order('id')),
+      .is('imei', null).order('created_at').order('id')),
     // Lotes de productos por cantidad, conservando la factura.
-    SB.rpc('obtener_lotes_cantidad_central'),
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('stock_cantidad_lotes')
+      .select('producto_id, factura_proveedor_id, cantidad, costo_unitario, precio_tienda, created_at, id')
+      .eq('tienda_codigo', 'CENTRAL').gt('cantidad', 0).order('created_at').order('id')),
     bodegaDomain.cargarTodasLasPaginas(() => SB.from('productos').select('id, codigo, nombre, categoria, tipo').order('id')),
     SB.from('origenes').select('codigo,nombre,tipo').eq('tipo','cliente_b2b').eq('activo',true).order('nombre'),
   ]);
+  if (carga !== cargaDespacho || facturaSolicitada !== document.getElementById('filtro-factura').value) return false;
   if (tRes.error) { toast('Error tiendas: ' + tRes.error.message, 'error'); return; }
   if (bRes.error) { toast('Error clientes B2B: ' + bRes.error.message, 'error'); return; }
   if (uRes.error) { toast('Error unidades: ' + uRes.error.message, 'error'); return; }
@@ -837,25 +849,33 @@ async function cargarDataDespacho() {
 
   // Consolidar disponibilidad por producto (respetando filtro de factura si aplica).
   const facturaFiltro = document.getElementById('filtro-factura').value;
+  // Mismo FIFO del despacho transaccional: fecha de factura, creación e ID de lote.
+  const fechas = new Map(facturasIndex.map(f => [f.id, f.fecha]));
+  (lotesRes.data || []).sort((a, b) => String(fechas.get(a.factura_proveedor_id) || '9999').localeCompare(String(fechas.get(b.factura_proveedor_id) || '9999')) || a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
   productosDisponibles = bodegaDomain.consolidarDisponibilidad({
     productos: pRes.data || [],
     unidades: uRes.data || [],
     lotes: lotesRes.data || [],
     facturaId: facturaFiltro || null,
   });
+  return true;
 }
 
 function despachoNuevoTempId() { return crypto.randomUUID(); }
 
 function despachoActualizarTotal() {
   let total = 0;
+  let costo = 0;
   despachoItems.forEach(i => {
-    const sub = (Number(i.cantidad) || 0) * (Number(i.precio_remision) || 0);
+    const valor = bodegaDomain.valorarItem(i);
+    const sub = valor.total;
+    costo += valor.costo;
     total += sub;
     const el = document.getElementById('desp-sub-' + i.tempId);
     if (el) el.textContent = money(sub);
   });
   document.getElementById('despacho-total').textContent = money(total);
+  document.getElementById('despacho-valoracion').textContent = `Costo proveedor de lo seleccionado: ${money(costo)} · Remisión a tienda: ${money(total)} · Utilidad bruta B2B: ${money(total - costo)}. El precio ya incluye la utilidad; no se suma nuevamente. La tienda recibe y acepta la remisión.`;
 }
 
 function despachoRender() {
@@ -893,6 +913,7 @@ function despachoRender() {
                    class="despacho-precio-input border border-gray-300 rounded px-2 py-1 text-right ${precioDisabled ? 'bg-gray-100 text-gray-600' : 'bg-yellow-50 font-semibold'} focus:outline-none focus:ring-2 focus:ring-blue-500" />
             ${lapiz}
           </div>
+          ${i.precios_varian && !i.precio_override_active ? '<div class="text-xs text-gray-600">Precio mostrado: primer lote. El subtotal conserva los precios de cada lote.</div>' : ''}
         </td>
         <td class="px-3 py-2 text-right font-mono" id="desp-sub-${i.tempId}">${money(sub)}</td>
         <td class="px-3 py-2 text-center">
@@ -912,16 +933,7 @@ function despachoAgregarProducto(prodId) {
     toast('Ese producto ya está en la lista', 'warn');
     return;
   }
-  despachoItems.push({
-    tempId: despachoNuevoTempId(),
-    producto_id: p.id,
-    producto_nombre: p.nombre,
-    tipo: p.tipo,
-    stock_disponible: p.disponible,
-    cantidad: 1,
-    precio_remision: p.precio_tienda ?? 0,
-    precio_override_active: false,
-  });
+  despachoItems.push({ ...bodegaDomain.prepararItem(p, document.getElementById('filtro-factura').value, 1), tempId: despachoNuevoTempId() });
   despachoRender();
 }
 
@@ -1091,6 +1103,7 @@ document.getElementById('btn-despachar').addEventListener('click', async () => {
 
 // Re-cargar productos disponibles cada vez que cambia el filtro-factura
 document.getElementById('filtro-factura').addEventListener('change', () => {
+  document.getElementById('despacho-factura-aviso').classList.add('hidden');
   if (despachoItems.length) {
     despachoItems = [];
     despachoRender();
@@ -1106,7 +1119,24 @@ document.getElementById('filtro-factura').addEventListener('change', () => {
   const ok = await verificarAuth();
   if (!ok) return;
   await cargarAlerta();
-  await cargarDataDespacho();
+  const facturaOrigen = new URLSearchParams(location.search).get('factura');
+  if (facturaOrigen) {
+    const filtro = document.getElementById('filtro-factura');
+    if (!facturasIndex.some(f => f.id === facturaOrigen)) filtro.add(new Option('Factura sin unidades pendientes de remisionar', facturaOrigen));
+    filtro.value = facturaOrigen;
+    render();
+  }
+  const cargado = await cargarDataDespacho();
+  if (facturaOrigen && cargado) {
+    despachoItems = productosDisponibles.map(p => ({ ...bodegaDomain.prepararItem(p, facturaOrigen), tempId: despachoNuevoTempId() }));
+    despachoRender();
+    const factura = facturasIndex.find(f => f.id === facturaOrigen);
+    document.getElementById('despacho-nota').value = factura ? `Reparto factura ${factura.numero}` : '';
+    const aviso = document.getElementById('despacho-factura-aviso');
+    aviso.textContent = factura && despachoItems.length ? `Factura ${factura.numero} · ${factura.proveedor?.nombre || 'Proveedor'}: se cargaron todas las cantidades pendientes. Selecciona el destino, revisa y pulsa Despachar. Puedes quitar productos o reducir cantidades.` : 'Esta factura no tiene unidades disponibles para remisionar. Puede estar ya despachada. No se cargaron productos de otras facturas.';
+    aviso.classList.remove('hidden');
+    document.getElementById('panel-despacho').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   // SIDEBAR OPCIONAL:
   // if (window.renderSidebar) window.renderSidebar('bodega-central');

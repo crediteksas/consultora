@@ -91,7 +91,7 @@
 <!-- ============================================================ HEADER -->
 <header class="bg-white border-b border-gray-200 shadow-sm">
   <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
       <h1 class="text-xl font-bold text-gray-800">Registrar compra a proveedor</h1>
       <span class="text-xs text-gray-500">Entrada de mercancía a Bodega Central</span>
@@ -122,6 +122,7 @@
           La mercancía entró a <b>Bodega Central</b> y ya puede ser despachada a tiendas.
         </p>
       </div>
+      <a id="btn-remisionar-factura" class="hidden bg-blue-900 text-white px-4 py-2 rounded text-sm font-medium">Remisionar esta factura</a>
       <button id="btn-nueva" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium">
         Registrar otra compra
       </button>
@@ -835,6 +836,9 @@ async function guardarCompra() {
     // Éxito
     document.getElementById('exito-factura').textContent = numero;
     document.getElementById('exito-total').textContent = money(data.total);
+    const remisionar = document.getElementById('btn-remisionar-factura');
+    remisionar.classList.toggle('hidden', !data.factura_id);
+    if (data.factura_id) remisionar.href = `bodega-central.html?factura=${encodeURIComponent(data.factura_id)}`;
     document.getElementById('panel-exito').classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Compra registrada exitosamente');

@@ -221,6 +221,7 @@
             <h2 id="detalle-factura-titulo" class="text-lg font-semibold text-gray-800">Detalle de factura</h2>
             <p id="detalle-factura-sub" class="text-xs text-gray-500"></p>
           </div>
+          <a id="btn-remisionar-factura" class="hidden bg-blue-900 text-white px-4 py-2 rounded text-sm">Remisionar esta factura</a>
           <button id="btn-cerrar-detalle-factura" class="text-sm text-gray-500 hover:text-gray-800">Cerrar</button>
         </div>
         <div id="detalle-factura-resumen" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
@@ -597,6 +598,9 @@ function renderDetalleFactura(datos) {
   const detalle = proveedoresDomain.normalizarDetalle(datos);
   detalleFacturaActual = detalle;
   const f = detalle.factura;
+  const remisionar = document.getElementById('btn-remisionar-factura');
+  remisionar.classList.toggle('hidden', !f.id || !detalle.lineas.length);
+  if (f.id) remisionar.href = `bodega-central.html?factura=${encodeURIComponent(f.id)}`;
   document.getElementById('detalle-factura-titulo').textContent =
     `${f.proveedor_nombre || 'Proveedor'} · ${f.numero || 'Sin número'}`;
   document.getElementById('detalle-factura-sub').textContent = `Factura del ${fecha(f.fecha)}`;
@@ -665,6 +669,7 @@ async function cargarAplicacionesFifo(facturaId) {
 }
 
 async function mostrarDetalleFactura(facturaId) {
+  document.getElementById('btn-remisionar-factura').classList.add('hidden');
   const panel = document.getElementById('panel-detalle-factura');
   panel.classList.remove('hidden');
   document.getElementById('detalle-factura-titulo').textContent = 'Cargando detalle...';

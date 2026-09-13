@@ -8,6 +8,11 @@ const require = createRequire(import.meta.url);
 const domain = require('../../creditek/erp/aliados-tesoreria-domain.js');
 const source = readFileSync('creditek/erp/aliados-tesoreria-app.js', 'utf8');
 const html = readFileSync('creditek/erp/aliados-tesoreria.html', 'utf8');
+test('filtro general ofrece todas las plataformas, incluida Krediya', () => {
+  const selector = html.match(/<select id="platform">([\s\S]*?)<\/select\s*>/)?.[1];
+  assert.ok(selector);
+  assert.deepEqual([...selector.matchAll(/<option value="([^"]*)">/g)].map(m => m[1]), ['', 'payjoy', 'krediya', 'alo']);
+});
 const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
   id, store_code, cutoff_date, compensation_value, account_balance_after: -40, legacy_applied: true,
   platform: 'payjoy', imei: `IMEI-${id}`, applied_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null, created_at: cutoff_date ? `${cutoff_date}T20:00:00Z` : null,

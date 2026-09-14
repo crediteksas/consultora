@@ -14,6 +14,13 @@
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
+  function destinationAccount(bank, type, account) {
+    const value = String(account || '').trim();
+    if (!bank && !type && !value) return null;
+    if (!bank || !type || !/^\d{6,20}$/.test(value)) throw new Error('Selecciona banco o billetera, tipo de cuenta y un número válido de 6 a 20 dígitos. No ingreses un correo.');
+    return `${bank} · ${type} · ${value}`;
+  }
+
   function money(value) {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(number(value));
   }
@@ -75,6 +82,6 @@
   }
 
   global.KoraFinancialDomain = Object.freeze({
-    BUSINESS_LABELS, CATEGORY_LABELS, STATUS_LABELS, csv, filterEntries, money, normalizeView, number, recurrenceLabel, scopeForView, summarize,
+    BUSINESS_LABELS, CATEGORY_LABELS, STATUS_LABELS, destinationAccount, csv, filterEntries, money, normalizeView, number, recurrenceLabel, scopeForView, summarize,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

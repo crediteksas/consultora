@@ -1,4 +1,4 @@
--- Control financiero recurrente de KORA.
+-- Control financiero recurrente de KORA. Activado y verificado el 14-09-2026.
 -- Separa obligaciones gerenciales de Retail, gastos generales por negocio y
 -- retiros de utilidad. Ninguna creación o aprobación altera ventas, caja,
 -- liquidaciones ni los cálculos históricos existentes.
@@ -43,8 +43,8 @@ create table public.financial_entries (
   store_code text references public.origenes(codigo),
   due_date date not null,
   category text not null,
-  concept text not null,
-  beneficiary text not null,
+  concept text not null check (length(btrim(concept)) >= 3),
+  beneficiary text not null check (length(btrim(beneficiary)) >= 3),
   beneficiary_document text,
   destination_account text,
   amount numeric(16,2) check (amount is null or amount > 0),
@@ -215,7 +215,7 @@ begin
     where id=p_id returning * into v;
     if v.id is null then raise exception 'Configuración no encontrada'; end if;
   end if;
-  perform kora_private.generate_financial_entries(current_date);
+  perform kora_private.generate_financial_entries((now() at time zone 'America/Bogota')::date);
   insert into public.audit_log(usuario,accion,tabla,registro_id,detalle)
   values(auth.uid(),case when p_id is null then 'finanzas_recurrencia_creada' else 'finanzas_recurrencia_actualizada' end,
     'financial_recurring_templates',v.id,jsonb_build_object('scope',v.scope,'business_unit',v.business_unit,'store_code',v.store_code,'category',v.category,'active',v.active));
@@ -229,7 +229,7 @@ language plpgsql security definer set search_path = ''
 as $$
 begin
   if not (select public.es_controlador_financiero()) then raise exception 'No autorizado'; end if;
-  return kora_private.generate_financial_entries(current_date);
+  return kora_private.generate_financial_entries((now() at time zone 'America/Bogota')::date);
 end
 $$;
 
@@ -281,7 +281,8 @@ language plpgsql security definer set search_path = ''
 as $$
 declare v public.financial_entries%rowtype;
 begin
-  if (select public.rol_actual()) is distinct from 'gerencia' or not (select public.es_controlador_financiero()) then
+  if auth.uid() is distinct from '6de0ad26-64af-4966-8cd9-d468880af627'::uuid
+    or (select public.rol_actual()) is distinct from 'gerencia' or not (select public.es_controlador_financiero()) then
     raise exception 'Solo Oscar puede aprobar o rechazar movimientos';
   end if;
   if p_decision not in ('aprobado','rechazado') then raise exception 'Decisión no permitida'; end if;
@@ -307,6 +308,10 @@ declare v public.financial_entries%rowtype;
 begin
   if not (select public.es_controlador_financiero()) then raise exception 'Solo Maite u Oscar pueden registrar el pago'; end if;
   if nullif(btrim(coalesce(p_support_path,'')),'') is null then raise exception 'Adjunta el soporte del pago'; end if;
+  if p_support_path !~ '^finanzas/[0-9a-f-]{36}\.(pdf|jpg|jpeg|png)$'
+    or not exists (select 1 from storage.objects where bucket_id='soportes' and name=p_support_path) then
+    raise exception 'El soporte del pago no está cargado en Finanzas';
+  end if;
   update public.financial_entries set status='pagado',paid_by=auth.uid(),paid_at=now(),support_path=btrim(p_support_path),updated_at=now()
   where id=p_id and status='aprobado' returning * into v;
   if v.id is null then raise exception 'El movimiento no está aprobado o ya fue pagado'; end if;
@@ -329,6 +334,43 @@ grant execute on function public.finanzas_guardar_recurrencia(uuid,text,text,tex
   public.finanzas_registrar_pago(uuid,text)
 to authenticated;
 
+-- La implementación privilegiada vive en un esquema no expuesto.
+-- Los wrappers mantienen exactamente los nombres y argumentos de la API.
+-- Todas las implementaciones validan auth.uid() mediante el controlador activo;
+-- el generador interno solo es ejecutable por el propietario (cron).
+do $wrappers$
+declare f record; call_args text;
+begin
+  for f in
+    select p.oid,p.proname,pg_get_function_arguments(p.oid) args,
+      pg_get_function_identity_arguments(p.oid) identity_args,
+      pg_get_function_result(p.oid) result_type,p.pronargs,p.provolatile
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname in (
+      'es_controlador_financiero','finanzas_guardar_recurrencia','finanzas_generar_pendientes',
+      'finanzas_registrar_movimiento','finanzas_decidir_movimiento','finanzas_registrar_pago'
+    )
+  loop
+    select coalesce(string_agg('$'||i,',' order by i),'') into call_args from generate_series(1,f.pronargs) i;
+    execute format('alter function public.%I(%s) set schema kora_private',f.proname,f.identity_args);
+    execute format('revoke all on function kora_private.%I(%s) from public, anon',f.proname,f.identity_args);
+    execute format('grant execute on function kora_private.%I(%s) to authenticated',f.proname,f.identity_args);
+    execute format('create function public.%I(%s) returns %s language sql %s security invoker set search_path = '''' as %L',
+      f.proname,f.args,f.result_type,case when f.provolatile='s' then 'stable' else 'volatile' end,
+      format('select kora_private.%I(%s)',f.proname,call_args));
+    execute format('revoke all on function public.%I(%s) from public, anon',f.proname,f.identity_args);
+    execute format('grant execute on function public.%I(%s) to authenticated',f.proname,f.identity_args);
+  end loop;
+end
+$wrappers$;
+grant usage on schema kora_private to authenticated;
+
+-- Correos no son cuentas de destino; valida también llamadas directas a la API.
+alter table public.financial_entries add constraint financial_entries_account_not_email
+  check (destination_account is null or position('@' in destination_account)=0);
+alter table public.financial_recurring_templates add constraint financial_templates_account_not_email
+  check (destination_account is null or position('@' in destination_account)=0);
+
 drop policy if exists soportes_finanzas_insert on storage.objects;
 create policy soportes_finanzas_insert on storage.objects for insert to authenticated
 with check (bucket_id='soportes' and (select public.es_controlador_financiero()) and name ~ '^finanzas/[0-9a-f-]{36}\.(pdf|jpg|jpeg|png)$');
@@ -348,3 +390,5 @@ begin
   );
 end
 $$;
+
+notify pgrst, 'reload schema';

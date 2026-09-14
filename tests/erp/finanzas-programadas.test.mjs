@@ -5,12 +5,20 @@ import vm from 'node:vm';
 
 const domainSource=await readFile(new URL('../../creditek/erp/finanzas-programadas-domain.js',import.meta.url),'utf8');
 const accessSource=await readFile(new URL('../../creditek/erp/kora-access-control.js',import.meta.url),'utf8');
-const migration=await readFile(new URL('../../supabase/migrations/20260911151414_obligaciones_recurrentes_y_retiros_por_negocio.sql',import.meta.url),'utf8');
+const migration=await readFile(new URL('../../supabase/migrations/20260914200633_obligaciones_recurrentes_y_retiros_por_negocio.sql',import.meta.url),'utf8');
 const html=await readFile(new URL('../../creditek/erp/finanzas-programadas.html',import.meta.url),'utf8');
 const app=await readFile(new URL('../../creditek/erp/finanzas-programadas-app.js',import.meta.url),'utf8');
 
 const domainContext={Intl};domainContext.globalThis=domainContext;vm.runInNewContext(domainSource,domainContext);
 const D=domainContext.KoraFinancialDomain;
+
+test('cuenta destino distingue banco, tipo y número, rechaza correos y datos parciales',()=>{
+ assert.equal(D.destinationAccount('Nequi','Billetera digital','3001234567'),'Nequi · Billetera digital · 3001234567');
+ assert.equal(D.destinationAccount('Bancolombia','Ahorros','00123456789'),'Bancolombia · Ahorros · 00123456789');
+ assert.equal(D.destinationAccount('','',''),null);
+ assert.throws(()=>D.destinationAccount('Nequi','Billetera digital','persona@example.com'),/No ingreses un correo/);
+ assert.throws(()=>D.destinationAccount('','','3001234567'),/Selecciona banco/);
+});
 
 function accessFor(profile){const context={window:{}};vm.runInNewContext(accessSource,context);return context.window.KoraAccessControl;}
 

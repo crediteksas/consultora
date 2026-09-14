@@ -347,6 +347,13 @@
     if (!isCurrent()) return;
     if (error) throw error;
     const rows = (data || []).filter((row) => activeModel === 'all' || row.tipo_establecimiento === activeModel);
+    const executiveIds = [...new Set(rows.filter(row => row.tipo_establecimiento === 'aliado').map(row => row.ejecutivo_id).filter(Boolean))];
+    if (executiveIds.length) {
+      const executives = await sb.from('ejecutivos').select('id,nombre').in('id', executiveIds);
+      if (!isCurrent()) return;
+      const names = new Map((executives.data || []).map(executive => [executive.id, executive.nombre]));
+      rows.forEach(row => { row.executive_display_name = executives.error ? 'No se pudo consultar' : names.get(row.ejecutivo_id); });
+    }
     const { data: rowIssues, error: rowIssueError } = await sb.from('liquidation_incidents').select('operation_id,tipo,descripcion').eq('liquidation_id', selected.id).eq('estado','abierta');
     if (!isCurrent()) return;
     if (rowIssueError) throw rowIssueError;
@@ -367,6 +374,12 @@
       configured_percentage:policies.error ? null : D.porcentajeConfigurado(row,policies.data || []),
       percentage_lookup_failed:Boolean(policies.error)
     })), rowIssues || []);
+  }
+
+  function executiveIdentity(row) {
+    if (row.tipo_establecimiento !== 'aliado') return '';
+    const name = row.ejecutivo_id ? row.executive_display_name || 'Ejecutivo no disponible' : 'Sin ejecutivo asignado';
+    return `<p class="operation-executive">Ejecutivo responsable: ${esc(name)}</p>`;
   }
 
   function renderStandardOperations(rows, rowIssues) {
@@ -399,7 +412,8 @@
       const issues = hasIssue ? `<aside class="operation-notice ${inventoryOnly ? 'operation-notice-info' : ''}" aria-label="Novedad de la operación"><div><strong>${inventoryOnly ? 'Equipo pendiente de registro en inventario' : 'Novedad por revisar'}</strong><p class="issue-summary">${inventoryOnly ? 'KORA no encontró este IMEI en el inventario de la tienda. Revisa su registro; este aviso no bloquea el pago.' : esc(issueLabel)}</p></div><button class="btn secondary" data-manage-issue="${row.id}">${inventoryOnly ? 'Revisar inventario' : 'Ver novedad'}</button></aside>` : '<p class="operation-clear">Sin novedades en esta operación</p>';
       return `<tr><td><article class="krediya-operation standard-operation" aria-label="${esc(row.establishment_name || 'Comercio no informado')}">
         <header class="operation-heading"><div><h3>${esc(row.establishment_name || 'Comercio no informado')}</h3><p>${esc(row.referencia || row.modelo || 'Referencia no informada')} · ${missingCommerce ? 'Comercio pendiente de vincular' : isOwn ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">Liquidación: ${state(selected.estado)}</span></header>
-        <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
+        ${executiveIdentity(row)}
+        <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
         <dl class="operation-values">${metric('Crédito financiado', row.monto_credito ?? row.monto_base)}${metric('Inicial', row.inicial)}${metric('Valor comercial', commercial)}<div><dt>${percentLabel}</dt><dd><strong class="${percent == null ? 'value-pending' : 'operation-amount'}">${percentText}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
         ${commissionPending ? '<p class="value-pending">Bonos conocidos mostrados; falta el bono del ejecutivo. Utilidad final pendiente de esa asignación en Tesorería.</p>' : ''}
         ${isOwn ? `<details class="operation-reconciliation"><summary>Conciliación de la inicial</summary><dl class="operation-values">${metric('Inicial registrada en KORA', row.inicial_kora)}${metric('Diferencia de inicial', row.diferencia_inicial)}</dl></details>` : ''}
@@ -453,11 +467,12 @@
         : openIssues.length ? `<button class="btn secondary" data-manage-issue="${row.id}">Ver novedad</button>` : '';
       return `<tr><td><article class="krediya-operation compact-krediya" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
         <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
+        ${executiveIdentity(row)}
         <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
         <footer class="operation-footer"><p>${esc(note)}</p><div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
         ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>
-        <div class="operation-identity"><span>Cliente: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>
+        <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>
         <dl class="operation-values">${metric(calculated ? 'PVP liquidado' : 'PVP recibido para liquidar', pvp)}${metric('PVP configurado de referencia', c.pvp_guardado)}${metric('PVP recibido de Krediya', c.pvp_recibido, 'No informado')}${metric('Pagamos antes de inicial', paid)}${metric('Inicial', row.inicial, 'No informada')}${metric(calculated ? 'Pago neto liquidado' : 'Pagamos − inicial · estimado', net, row.reconocida ? 'Pendiente de tarifa' : 'No aplica: operación excluida')}${metric('Crédito financiado', row.monto_credito ?? row.monto_base, 'No informado')}</dl>
         <div class="operation-totals"><span>Bonos ${pendingExecutive ? 'conocidos' : calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(pendingExecutive ? null : calc.policy_snapshot?.provision, pendingExecutive ? 'Pendiente de bono' : 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated && !pendingExecutive ? calc.utilidad_creditek : null, pendingExecutive ? 'Pendiente de bono' : 'Pendiente de calcular')}</span></div>
         <p>${priceIssue ? 'La diferencia queda en el informe consolidado de 7 días. ' : ''}${!calculated && paid != null && row.reconocida ? 'El giro es estimado; no es un pago autorizado.' : ''}</p></details>

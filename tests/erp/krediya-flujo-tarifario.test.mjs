@@ -5,6 +5,23 @@ import vm from 'node:vm';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const api=require('../../creditek/erp/krediya-tarifario.js');
+
+test('lista y Excel usan solo vigencias actuales sin borrar el histórico',()=>{
+ const rows=[
+  {referencia:'A17',vigente_desde:'2026-08-12',vigente_hasta:'2026-09-09'},
+  {referencia:'A17',vigente_desde:'2026-09-10',vigente_hasta:'2026-09-10'},
+  {referencia:'A17',vigente_desde:'2026-09-11',precio_venta:850000,pagamos:637000},
+  {referencia:'Futura',vigente_desde:'2026-09-15'},
+  {referencia:'Inactiva',vigente_desde:'2026-09-01',activo:false}
+ ];
+ const snapshot=JSON.stringify(rows);
+ const current=api.tarifasVigentes(rows,new Date('2026-09-14T19:00:00Z'));
+ assert.deepEqual(current,[rows[2]]);
+ assert.equal(api.tarifaRows(current).length,2);
+ assert.deepEqual(api.tarifasVigentes(rows,new Date('2026-09-11T04:59:59Z')),[rows[1]]);
+ assert.deepEqual(api.tarifasVigentes(rows,new Date('2026-09-11T05:00:00Z')),[rows[2]]);
+ assert.equal(JSON.stringify(rows),snapshot);
+});
 const app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20260905034907_krediya_flujo_tarifario_y_seguimiento.sql','utf8');
 const engine=sql.slice(sql.indexOf('create function krediya_private.calcular_y_enviar_aprobacion'),sql.indexOf('create or replace function public.aliados_cambiar_estado'));

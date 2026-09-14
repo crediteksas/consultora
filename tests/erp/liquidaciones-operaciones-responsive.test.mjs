@@ -12,7 +12,7 @@ function render(row, issues=[], capability='revisor') {
   const context={ $:id=>nodes[id], money:v=>`$ ${Number(v).toLocaleString('es-CO')}`, esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'), state:v=>`<span class="badge">${v}</span>`, operator:{capacidad:capability}, selected:{estado:'programada',frozen_at:null}, loadTab:(...args)=>calls.push(args), savePagamos:()=>{}, document:{querySelector:()=>({classList:{add(){}}}),querySelectorAll:selector=>selector==='[data-manage-issue]'?buttons:[]} };
   buttons.push({dataset:{manageIssue:row.id}});
   context.Commerce=Commerce;context.awaitingCalculation=()=>false;
-  vm.runInNewContext(app.slice(app.indexOf('  function renderStandardOperations('),app.indexOf('  function renderKrediyaOperations(')),context);
+  vm.runInNewContext(app.slice(app.indexOf('  function executiveIdentity('),app.indexOf('  function renderKrediyaOperations(')),context);
   context.renderStandardOperations([row],issues);
   return {html:nodes.detailBody.innerHTML,head:nodes.detailHead.innerHTML,buttons,calls};
 }

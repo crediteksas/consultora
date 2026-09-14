@@ -9,6 +9,21 @@ const app = await readFile('creditek/erp/aliados-liquidaciones-app.js','utf8');
 const login = await readFile('creditek/erp/app.html','utf8');
 const sidebar = await readFile('creditek/erp/sidebar.js','utf8');
 
+test('tarjetas muestran el ejecutivo de la operación separado del comprador en todas las plataformas', () => {
+  const body = app.match(/function executiveIdentity\(row\) \{([\s\S]*?)\n  \}/)[1];
+  const identity = new Function('row', 'esc', body);
+  const escape = value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  assert.match(identity({tipo_establecimiento:'aliado',ejecutivo_id:'luis',executive_display_name:'Luis Rivera'},escape),/Ejecutivo responsable: Luis Rivera/);
+  assert.match(identity({tipo_establecimiento:'aliado'},escape),/Sin ejecutivo asignado/);
+  assert.match(identity({tipo_establecimiento:'aliado',ejecutivo_id:'otro'},escape),/Ejecutivo no disponible/);
+  assert.match(identity({tipo_establecimiento:'aliado',ejecutivo_id:'otro',executive_display_name:'No se pudo consultar'},escape),/No se pudo consultar/);
+  assert.equal(identity({tipo_establecimiento:'propia'},escape),'');
+  assert.doesNotMatch(identity({tipo_establecimiento:'aliado',ejecutivo_id:'otro',executive_display_name:'<script>'},escape),/<script>/);
+  assert.equal((app.match(/\$\{executiveIdentity\(row\)\}/g)||[]).length,2);
+  assert.equal((app.match(/Comprador del celular:/g)||[]).length,2);
+  assert.match(app,/from\('ejecutivos'\)\.select\('id,nombre'\)\.in\('id', executiveIds\)/);
+});
+
 test('la migración reutiliza maestros, auditoría y bucket sin crear duplicados', () => {
   assert.match(sql,/to_regclass\('public\.origenes'\)/);
   assert.match(sql,/to_regclass\('public\.ejecutivos'\)/);

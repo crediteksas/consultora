@@ -50,7 +50,8 @@ function operations(rows, contexts = [], incidents = [], selected = {}) {
     tarifarioKrediya: {openTariff:()=>calls.push(['tarifario'])},
     loadTab: (...args) => calls.push(['tab', ...args])
   };
-  vm.runInNewContext(`${renderSource};this.render = renderKrediyaOperations;`, context);
+  const identitySource = app.slice(app.indexOf('  function executiveIdentity('), app.indexOf('  function renderStandardOperations('));
+  vm.runInNewContext(`${identitySource}\n${renderSource};this.render = renderKrediyaOperations;`, context);
   context.render(rows, contexts, incidents);
   return { $, classes, calls, html: $('detailBody').innerHTML, buttons: (selector) => document.querySelectorAll(selector) };
 }
@@ -116,7 +117,7 @@ test('cada operación identifica referencia completa e IMEI sin cabeceras de la 
   const result = operations([row], [tariff]);
   assert.match(result.html, /<h3>XIAOMI REDMI 15C 256GB 8 RAM<\/h3>/);
   assert.match(result.html, /IMEI: 861234567890123/);
-  assert.match(result.html, /Cliente: Cliente de prueba/);
+  assert.match(result.html, /Comprador del celular: Cliente de prueba/);
   assert.match(result.html, /Comercio de prueba · Aliado/);
   assert.equal(result.$('detailHead').innerHTML, '');
   assert.doesNotMatch(result.html, /<th\b|Cliente \/ IMEI|% aplicado|Estado \/ novedad/);

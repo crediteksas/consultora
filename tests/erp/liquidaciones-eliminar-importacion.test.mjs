@@ -34,6 +34,9 @@ before(async()=>{
     alter table liquidation_source_rows add column file_id uuid references liquidation_imported_files;
     alter table liquidation_calculations add column operation_id uuid references liquidation_operations;`);
   await db.exec(migration);
+  // Match production: this table has operation_id instead of id.
+  await db.exec('alter table krediya_diferencias rename column id to operation_id');
+  await db.exec(await readFile(new URL('../../supabase/migrations/20260914190258_retirar_importacion_clave_diferencias.sql',import.meta.url),'utf8'));
 });
 after(()=>db?.close());
 async function batch(state='importada'){

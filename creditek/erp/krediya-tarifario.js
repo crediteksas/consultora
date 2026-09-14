@@ -13,6 +13,10 @@
     const values=rows.map(r=>numeric(r.contexto?.impacto_neto)),known=values.filter(v=>v!=null);
     return {total:known.length?Math.round(known.reduce((sum,value)=>sum+value,0)*100)/100:rows.length?null:0,pendientes:values.length-known.length};
   }
+  function tarifasVigentes(rows, now = new Date()) {
+    const today = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota'}).format(now);
+    return rows.filter(r => r.activo !== false && r.vigente_desde && r.vigente_desde <= today && (!r.vigente_hasta || r.vigente_hasta >= today));
+  }
   function tarifaRows(rows) {
     return [['Código','Referencia','PVP configurado','PAGAMOS antes de inicial','Vigente desde','Vigente hasta'],
       ...rows.map(r=>[r.codigo || '',r.referencia,numeric(r.precio_venta),numeric(r.pagamos),r.vigente_desde,r.vigente_hasta || ''])];
@@ -95,8 +99,8 @@
         catch(e){content.textContent='No se pudo cargar el tarifario: '+e.message;}
       }
       function render(search='') {
-        const filtered=rows.filter(r=>`${r.codigo||''} ${r.referencia}`.toLowerCase().includes(search.toLowerCase()));
-        content.innerHTML=`<div class="tariff-controls"><label>Buscar código o referencia<input class="control" data-search value="${esc(search)}"></label><button class="btn primary" data-download>Descargar tarifario Excel</button></div><p>${filtered.length} tarifas · Se muestran también vigencias anteriores activas.</p><p data-export-error role="alert"></p><div class="tariff-list">${filtered.map(r=>`<article><div><h3>${esc(r.referencia)}</h3><p>${esc(r.codigo||'Sin código')} · Desde ${esc(r.vigente_desde)}${r.vigente_hasta?' hasta '+esc(r.vigente_hasta):''}</p></div><dl><div><dt>PVP configurado</dt><dd>${amount(r.precio_venta)}</dd></div><div><dt>PAGAMOS pactado</dt><dd>${amount(r.pagamos)}</dd></div></dl>${r.vigente_hasta?'':'<button class="btn secondary" data-edit="'+esc(r.id)+'">Editar precios</button>'}</article>`).join('')||'<p>No hay referencias con ese filtro.</p>'}</div>`;
+        const filtered=tarifasVigentes(rows).filter(r=>`${r.codigo||''} ${r.referencia}`.toLowerCase().includes(search.toLowerCase()));
+        content.innerHTML=`<div class="tariff-controls"><label>Buscar código o referencia<input class="control" data-search value="${esc(search)}"></label><button class="btn primary" data-download>Descargar tarifario Excel</button></div><p>${filtered.length} tarifas vigentes hoy · Los precios anteriores se conservan para liquidar según la fecha de venta.</p><p data-export-error role="alert"></p><div class="tariff-list">${filtered.map(r=>`<article><div><h3>${esc(r.referencia)}</h3><p>${esc(r.codigo||'Sin código')} · Desde ${esc(r.vigente_desde)}${r.vigente_hasta?' hasta '+esc(r.vigente_hasta):''}</p></div><dl><div><dt>PVP configurado</dt><dd>${amount(r.precio_venta)}</dd></div><div><dt>PAGAMOS pactado</dt><dd>${amount(r.pagamos)}</dd></div></dl>${r.vigente_hasta?'':'<button class="btn secondary" data-edit="'+esc(r.id)+'">Editar precios</button>'}</article>`).join('')||'<p>No hay referencias con ese filtro.</p>'}</div>`;
         const searchInput=content.querySelector('[data-search]');
         searchInput.oninput=()=>{const pos=searchInput.selectionStart;render(searchInput.value);const input=content.querySelector('[data-search]');input.focus();input.setSelectionRange(pos,pos);};
         content.querySelector('[data-download]').onclick=()=>{try{download(tarifaRows(filtered),'Tarifario-Krediya.xlsx','Tarifario');}catch{content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
@@ -179,6 +183,6 @@
     }
     return {openTariff,openOperationTariff,report};
   }
-  const api={create,tarifaRows,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
+  const api={create,tarifasVigentes,tarifaRows,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekKrediyaTarifario=api;
 })(typeof window==='undefined'?globalThis:window);

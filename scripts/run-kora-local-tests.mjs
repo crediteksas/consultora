@@ -88,5 +88,6 @@ const erp = [
   'tests/erp/kora-2026-000014-destinos-consignacion.test.mjs',
   'tests/erp/finanzas-programadas.test.mjs',
   'tests/erp/finanzas-programadas-db.test.mjs',
+  'tests/erp/tesoreria-gastos.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...responsive, ...erp], { stdio: 'inherit' });

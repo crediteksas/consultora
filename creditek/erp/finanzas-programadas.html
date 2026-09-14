@@ -37,12 +37,12 @@
       <input id="to" class="control" type="date" aria-label="Hasta">
       <button id="exportCsv" class="btn" type="button">Descargar informe</button>
     </section>
-    <section class="section card"><div class="section-head"><div><h2>Pendientes de aprobación</h2><p>Maite configura o registra; Oscar aprueba o rechaza.</p></div></div><div id="pendingContent"></div></section>
+    <section class="section card"><div class="section-head"><div><h2>Pendientes de aprobación en Tesorería</h2><p>Maite registra aquí; Óscar aprueba o rechaza en Tesorería. No se crea otro gasto.</p><a class="btn" href="aliados-tesoreria.html?vista=gastos">Ir a Tesorería · Gastos y retiros</a></div></div><div id="pendingContent"></div></section>
     <section class="section card"><div class="section-head"><div><h2>Obligaciones periódicas</h2><p>Se generan automáticamente en su fecha y nunca ejecutan un pago solas.</p></div></div><div id="templatesContent"></div></section>
     <section class="section card"><div class="section-head"><div><h2>Histórico</h2><p>Consulta aprobaciones, pagos, rechazos y retiros por fecha.</p></div></div><div id="historyContent"></div></section>
   </div>
 </main>
 <div id="modalBg" class="modal-bg" hidden><form id="form" class="modal card"><h2 id="modalTitle"></h2><input id="recordId" type="hidden"><input id="formKind" type="hidden"><div id="formFields" class="form-grid"></div><div id="formError" class="notice error" hidden></div><div class="modal-actions"><button id="cancel" class="btn" type="button">Cancelar</button><button id="save" class="btn primary" type="submit">Guardar</button></div></form></div>
-<script src="finanzas-programadas-app.js?v=1.0.1"></script>
+<script src="finanzas-programadas-app.js?v=1.0.2"></script>
 </body>
 </html>

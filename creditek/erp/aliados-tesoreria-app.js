@@ -53,7 +53,7 @@
       ["otro_movimiento_autorizado", "Otro movimiento autorizado"],
     ],
   };
-  let preparation;
+  let preparation, financialExpenses;
   let sb,
     profile,
     data = {},
@@ -514,7 +514,7 @@
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
     const debtGroups=new Map();
     for(const d of recoveries){const amount=Number(d.importe)-Number(d.recuperado);debtGroups.set(d.beneficiary_id,(debtGroups.get(d.beneficiary_id)||0)+amount);}
-    recoverySummary.hidden=!recoveries.length;
+    recoverySummary.hidden=!recoveries.length||treasuryView==='expenses';
     recoverySummary.innerHTML=`<h2>Dinero por recuperar · todos los cortes</h2><p>Se cruza con los próximos pagos del mismo beneficiario. Si no tiene pagos, Gestión debe cobrarlo. No representa dinero ya recuperado.</p><strong>${cop([...debtGroups.values()].reduce((n,v)=>n+v,0))}</strong><details><summary>Ver ${debtGroups.size} beneficiarios</summary>${[...debtGroups].map(([id,value])=>`<p>${esc(data.beneficiaries.find(b=>b.id===id)?.nombre||'Beneficiario sin nombre')} · ${cop(value)}</p>`).join('')}</details>`;
     let correction = $("#rectificationSummary");
     if (!correction) {
@@ -529,9 +529,11 @@
     correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
+    $("#financialExpensesContent").classList.toggle("hidden",treasuryView!=="expenses");
+    $("#showFinancialExpenses").classList.toggle("active",treasuryView==="expenses");
     $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");
     $("#showPreparation").classList.toggle("active",treasuryView==="preparation");
-    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation","expenses"].includes(treasuryView));
     $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
     $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
     $("#showStoreMovements").classList.toggle("active", treasuryView === "storeMovements");
@@ -543,7 +545,10 @@
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(["cobros","clients","preparation"].includes(treasuryView))return;
+    if(treasuryView==='expenses'){
+      correction.classList.add('hidden');
+    }
+    if(["cobros","clients","preparation","expenses"].includes(treasuryView))return;
     renderPaymentHistory();
     const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
       out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
@@ -1204,11 +1209,18 @@
     initialized = true;
     sb = window.creditekSidebar.sb;
     profile = window.creditekSidebar.perfil;
+    try {
+      const access = await sb.rpc('es_controlador_financiero');
+      if (!access.error && access.data === true) {
+        financialExpenses = window.CreditekTesoreriaGastos.create({sb,profile,domain:window.KoraFinancialDomain});
+        $("#showFinancialExpenses").classList.remove('hidden');
+      }
+    } catch (error) { console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
       cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:profile.rol==='gerencia',canVoid:profile.rol==='gerencia'});
       $("#showCobros").classList.remove("hidden");
     }
-    if (!canViewOutgoing() && !cobros) {
+    if (!canViewOutgoing() && !cobros && !financialExpenses) {
       $("#accessDenied").classList.remove("hidden");
       return;
     }
@@ -1226,6 +1238,9 @@
       console.error('No se pudo comprobar el acceso al directorio bancario', error);
     }
     const route = new URLSearchParams(location.search);
+    if (route.get('vista') === 'gastos' && financialExpenses) {
+      treasuryView='expenses';render();await financialExpenses.mount($("#financialExpensesContent"));return;
+    }
     if (route.get('vista') === 'preparacion' && preparation) {
       treasuryView='preparation';render();await preparation.mount($("#preparationContent"));return;
     }
@@ -1276,6 +1291,7 @@
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
       else if (treasuryView === 'preparation') await preparation?.mount($("#preparationContent"));
+      else if (treasuryView === 'expenses') await financialExpenses?.mount($("#financialExpensesContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1294,6 +1310,10 @@
   $("#showPreparation").onclick = async () => {
     if(!preparation)return;
     treasuryView='preparation';render();await preparation.mount($("#preparationContent"));
+  };
+  $("#showFinancialExpenses").onclick = async () => {
+    if(!financialExpenses)return;
+    treasuryView='expenses';render();await financialExpenses.mount($("#financialExpensesContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   async function showPaymentView(view) {

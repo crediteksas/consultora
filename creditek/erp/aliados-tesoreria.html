@@ -341,11 +341,13 @@
               <button id="showClients" class="btn secondary hidden">Clientes y cuentas</button>
               <button id="showStoreMovements" class="btn secondary">Compensaciones y movimientos de tiendas</button>
               <button id="showPreparation" class="btn secondary hidden">Preparación de pagos</button>
+              <button id="showFinancialExpenses" class="btn secondary hidden">Gastos y retiros</button>
             </div>
           </section>
           <section id="cobrosContent" class="hidden" aria-label="Cobros de plataformas"></section>
           <section id="clientsContent" class="hidden" aria-label="Clientes y cuentas"></section>
           <section id="preparationContent" class="hidden" aria-label="Preparación de pagos"></section>
+          <section id="financialExpensesContent" class="hidden" aria-label="Gastos y retiros de Tesorería"></section>
           <div id="outgoingContent">
           <section id="historyTools" class="card history-tools hidden" aria-label="Histórico de giros">
             <div>
@@ -643,6 +645,8 @@
       .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
     </style>
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
-    <script src="aliados-tesoreria-app.js?v=2.14.0"></script>
+    <script src="finanzas-programadas-domain.js?v=1.0.1"></script>
+    <script src="tesoreria-gastos.js?v=1.0.0"></script>
+    <script src="aliados-tesoreria-app.js?v=2.15.0"></script>
   </body>
 </html>

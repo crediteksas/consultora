@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 const read = name => readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8');
 const migration=await read('20260914164745_costos_tienda_lecturas_seguras.sql');
-const acl=await read('20260914161928_costos_internos_restringir_columnas.sql');
+const acl=await read('20260914165947_costos_internos_restringir_columnas.sql');
 test('costos: aislamiento por tienda, columnas privadas y utilidad de remisión',async()=>{
  const db=new PGlite();
  try {

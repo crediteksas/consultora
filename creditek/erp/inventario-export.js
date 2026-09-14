@@ -79,7 +79,7 @@
 
   function filasCelulares(unidades, esCentral) {
     return (unidades || []).map(unidad => {
-      const valorUnitario = numero(unidad.costo_remision);
+      const valorUnitario = numero(esCentral ? unidad.costo_remision : unidad.precio_tienda);
       const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
       const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {
@@ -99,7 +99,7 @@
   function filasAccesorios(stock, esCentral) {
     return (stock || []).map(registro => {
       const cantidad = numero(registro.cantidad);
-      const valorUnitario = numero(registro.costo_promedio);
+      const valorUnitario = numero(esCentral ? registro.costo_promedio : registro.precio_tienda);
       const etiquetaUnitario = esCentral ? 'Costo interno unitario' : 'Costo unitario';
       const etiquetaTotal = esCentral ? 'Valor total al costo interno' : 'Valor total al costo';
       return {

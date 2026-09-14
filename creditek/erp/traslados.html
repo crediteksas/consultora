@@ -392,7 +392,7 @@ async function cargarTraslados() {
   empty.textContent = 'Cargando traslados...';
 
   const { data, error } = await sb.from('traslados')
-    .select('*, origen:tienda_origen(nombre), destino:tienda_destino(nombre), traslado_items(cantidad, productos(nombre))')
+    .select('*, origen:tienda_origen(nombre), destino:tienda_destino(nombre), traslado_items:traslado_items_lectura(cantidad, productos(nombre))')
     .order('despachado_at', { ascending: false });
   if (error) {
     console.error('[TRASLADOS] No fue posible cargar el listado:', error);
@@ -555,10 +555,10 @@ async function verificarStockAccesorioTra(idx) {
   const it = itemsTraslado[idx];
   const hint = document.getElementById('stockHintTra' + idx);
   if (!hint) return;
-  const { data } = await sb.from('stock_cantidad').select('cantidad, costo_promedio').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
+  const { data } = await sb.from('stock_cantidad_lectura').select('cantidad, precio_tienda').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
   const disponible = data ? data.cantidad : 0;
   it.stockDisponible = disponible;
-  it.costo = data ? data.costo_promedio : 0;
+  it.costo = data ? data.precio_tienda : 0;
   hint.textContent = `Stock disponible en tu tienda: ${disponible} · Costo: ${fmtCOP(it.costo)} c/u`;
   hint.style.color = disponible < it.cantidad ? 'var(--rojo)' : 'var(--text2)';
   actualizarTotalTraslado();
@@ -571,7 +571,7 @@ async function validarImeiTraslado(idx, imei, silencioso) {
   if (!imei) { if (estadoDiv) estadoDiv.textContent = ''; return; }
   if (estadoDiv) { estadoDiv.textContent = 'Verificando...'; estadoDiv.className = 'imei-estado'; }
 
-  const { data: unidad, error } = await sb.from('unidades').select('*, productos(nombre)').eq('imei', imei).maybeSingle();
+  const { data: unidad, error } = await sb.from('unidades_lectura').select('*, productos(nombre)').eq('imei', imei).maybeSingle();
   if (error || !unidad) {
     if (estadoDiv) { estadoDiv.textContent = 'IMEI no registrado en inventario.'; estadoDiv.className = 'imei-estado error'; }
     return;
@@ -588,7 +588,7 @@ async function validarImeiTraslado(idx, imei, silencioso) {
   itemsTraslado[idx].unidad_id = unidad.id;
   itemsTraslado[idx].producto_id = unidad.producto_id;
   itemsTraslado[idx].nombreProducto = unidad.productos?.nombre || null;
-  itemsTraslado[idx].costo = unidad.costo_remision || 0;
+  itemsTraslado[idx].costo = unidad.precio_tienda || 0;
   if (estadoDiv) { estadoDiv.textContent = `✓ ${unidad.productos?.nombre || 'Producto'} — disponible · Costo: ${fmtCOP(itemsTraslado[idx].costo)}`; estadoDiv.className = 'imei-estado ok'; }
   if (!silencioso) renderItemsTraslado();
   else actualizarTotalTraslado();
@@ -643,7 +643,7 @@ async function confirmarDespacho() {
 // ─── Ver / recibir traslado ─────────────────────────────────────────────
 async function abrirModalVerTraslado(t) {
   trasladoActual = t;
-  const { data: items, error } = await sb.from('traslado_items').select('*, productos(nombre)').eq('traslado_id', t.id);
+  const { data: items, error } = await sb.from('traslado_items_lectura').select('*, productos(nombre)').eq('traslado_id', t.id);
   if (error) { alert('No se pudieron cargar los productos: ' + error.message); return; }
 
   document.getElementById('verTrasladoTitulo').textContent = `Traslado #${t.consecutivo}`;
@@ -657,7 +657,7 @@ async function abrirModalVerTraslado(t) {
   document.getElementById('verTrasladoItems').innerHTML = (items || []).map(it => `
     <div class="item-recepcion">
       <div class="nombre-prod">${escapeHtml(it.productos?.nombre || '—')}${it.unidad_id ? '' : ` ×${it.cantidad}`}</div>
-      <div class="meta">Costo: ${fmtCOP(it.costo)}${it.unidad_id ? ' · Serializado' : ''}</div>
+      <div class="meta">Costo de remisión: ${fmtCOP(it.precio_tienda)}${it.unidad_id ? ' · Serializado' : ''}</div>
     </div>
   `).join('') || '<div class="empty-state">Sin productos.</div>';
 

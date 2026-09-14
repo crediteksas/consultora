@@ -339,7 +339,7 @@ async function cargarImeisRemision() {
   errorImeis = false;
   const ids = items.filter(it => it.productos?.tipo === 'serializado').map(it => it.id);
   if (!ids.length) return;
-  const { data, error } = await SB.from('unidades')
+  const { data, error } = await SB.from('unidades_lectura')
     .select('remision_item_id, imei').in('remision_item_id', ids);
   if (error) { errorImeis = true; return; }
   (data || []).forEach(unidad => {
@@ -649,7 +649,7 @@ async function validarImei(itemId, idx, valor) {
 
   // 2. Duplicado global (existe en unidades)
   const { data, error } = await SB
-    .from('unidades').select('id, tienda_actual, estado').eq('imei', v).maybeSingle();
+    .from('unidades_lectura').select('id, tienda_actual, estado').eq('imei', v).maybeSingle();
 
   if (error) {
     check.textContent = '?';

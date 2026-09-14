@@ -409,9 +409,9 @@ async function cargarProductos() {
   // y "Precio guía" para central (se re-etiqueta abajo).
   if (!esCentral() && currentPerfil?.tienda_codigo) {
     const [stocks, unidades] = await Promise.all([
-      sb.from('stock_cantidad').select('producto_id, precio_tienda')
+      sb.from('stock_cantidad_lectura').select('producto_id, precio_tienda')
         .eq('tienda_codigo', currentPerfil.tienda_codigo).not('precio_tienda', 'is', null),
-      sb.from('unidades').select('producto_id, precio_tienda')
+      sb.from('unidades_lectura').select('producto_id, precio_tienda')
         .eq('tienda_actual', currentPerfil.tienda_codigo)
         .eq('estado', 'disponible').not('precio_tienda', 'is', null),
     ]);

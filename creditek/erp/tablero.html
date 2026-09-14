@@ -356,7 +356,7 @@ async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
 
   let totalUtilidad = 0;
   if (ids.length) {
-    const { data: items } = await sb.from('venta_items').select('utilidad, venta_id').in('venta_id', ids);
+    const { data: items } = await sb.from('venta_items_lectura').select('utilidad, venta_id').in('venta_id', ids);
     totalUtilidad = (items || []).reduce((s, i) => s + Number(i.utilidad || 0), 0);
   }
   return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad };
@@ -410,7 +410,7 @@ async function cargarTiendas_Tabla() {
   const idsVentas = (ventasMes || []).map(v => v.id);
   let itemsMes = [];
   if (idsVentas.length) {
-    const { data } = await sb.from('venta_items').select('venta_id, utilidad').in('venta_id', idsVentas);
+    const { data } = await sb.from('venta_items_lectura').select('venta_id, utilidad').in('venta_id', idsVentas);
     itemsMes = data || [];
   }
   const { data: presupuestoMes } = await sb.from('presupuestos').select('tienda_codigo, meta_creditos').gte('fecha', inicioMesStr).lt('fecha', finMesStr);
@@ -547,7 +547,7 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
   const idsVentas = (ventas || []).map(v => v.id);
   let items = [];
   if (idsVentas.length) {
-    const { data } = await sb.from('venta_items').select('venta_id, utilidad').in('venta_id', idsVentas);
+    const { data } = await sb.from('venta_items_lectura').select('venta_id, utilidad').in('venta_id', idsVentas);
     items = data || [];
   }
   const utilidadPorVenta = {};
@@ -651,7 +651,7 @@ async function calcularAlertas(filas, ventasMes, hoy) {
   }
 
   // Stock bajo (< 3 unidades)
-  const { data: stockBajo } = await sb.from('stock_cantidad').select('tienda_codigo, cantidad, productos(nombre)').lt('cantidad', 3);
+  const { data: stockBajo } = await sb.from('stock_cantidad_lectura').select('tienda_codigo, cantidad, productos(nombre)').lt('cantidad', 3);
   (stockBajo || []).slice(0, 8).forEach(s => {
     alertas.push({ nivel: 'amarilla', texto: `${nombreTienda(s.tienda_codigo)}: stock de ${s.productos?.nombre || '—'} en ${s.cantidad} unidad(es)` });
   });

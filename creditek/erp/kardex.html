@@ -382,7 +382,7 @@ async function buscarMovimientos() {
   const imei = document.getElementById('filtroImei').value.trim();
   let unidadId = null;
   if (imei) {
-    const { data: unidad } = await sb.from('unidades').select('id').eq('imei', imei).maybeSingle();
+    const { data: unidad } = await sb.from('unidades_lectura').select('id').eq('imei', imei).maybeSingle();
     if (!unidad) {
       tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No existe ninguna unidad con ese IMEI.</div></td></tr>';
       info.textContent = '';
@@ -391,7 +391,7 @@ async function buscarMovimientos() {
     unidadId = unidad.id;
   }
 
-  let q = sb.from('movimientos')
+  let q = sb.from('movimientos_lectura')
     .select('id, tipo, tienda_codigo, producto_id, unidad_id, cantidad, costo, precio, referencia_tipo, referencia_id, nota, created_at, productos(nombre, codigo, foto_url), unidades(imei)')
     .order('created_at', { ascending: false })
     .limit(300);

@@ -302,7 +302,7 @@ async function calcularCuadrito(tienda, fecha) {
     { data: cuadre, error: cuadreError },
     { data: movimientosCaja, error: movimientosCajaError },
   ] = await Promise.all([
-    sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items(*, productos(nombre, tipo))')
+    sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items:venta_items_lectura(*, productos(nombre, tipo))')
       .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false),
     sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha),
     sb.rpc('calcular_efectivo_esperado_tienda', {

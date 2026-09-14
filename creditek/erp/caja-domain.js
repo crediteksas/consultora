@@ -17,7 +17,7 @@
       'total',
       'clientes(nombre_completo)',
       'creditos(financiera,cuota_inicial)',
-      'venta_items(cantidad,precio_venta,utilidad,productos(nombre,tipo))',
+      'venta_items:venta_items_lectura(cantidad,precio_venta,utilidad,productos(nombre,tipo))',
     ].join(',');
   }
 

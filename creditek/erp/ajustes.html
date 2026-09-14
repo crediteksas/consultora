@@ -552,7 +552,7 @@ async function actualizarStockHintCantidad() {
   const prod = productosCache.find(p => p.id === sel.value);
   const hint = document.getElementById('stockHintCantidad');
   if (!prod || prod.tipo === 'serializado') { hint.textContent = ''; return; }
-  const { data } = await sb.from('stock_cantidad').select('cantidad').eq('producto_id', prod.id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
+  const { data } = await sb.from('stock_cantidad_lectura').select('cantidad').eq('producto_id', prod.id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
   hint.textContent = `Stock actual en sistema: ${data ? data.cantidad : 0}`;
 }
 
@@ -562,7 +562,7 @@ async function validarImeiFaltante(imei) {
   if (!imei) { estadoDiv.textContent = ''; return; }
   estadoDiv.textContent = 'Verificando...'; estadoDiv.className = 'imei-estado';
 
-  const { data: unidad, error } = await sb.from('unidades').select('*, productos(nombre)').eq('imei', imei).maybeSingle();
+  const { data: unidad, error } = await sb.from('unidades_lectura').select('*, productos(nombre)').eq('imei', imei).maybeSingle();
   if (error || !unidad) { estadoDiv.textContent = 'IMEI no registrado en inventario.'; estadoDiv.className = 'imei-estado error'; return; }
   if (unidad.tienda_actual !== currentPerfil.tienda_codigo) { estadoDiv.textContent = `Este equipo está en otra tienda (${unidad.tienda_actual || 'sin asignar'}).`; estadoDiv.className = 'imei-estado error'; return; }
   if (unidad.estado !== 'disponible') { estadoDiv.textContent = `Este equipo no está disponible (estado: ${unidad.estado}).`; estadoDiv.className = 'imei-estado error'; return; }

@@ -665,7 +665,7 @@ async function cargarVentas() {
   const tienda = document.getElementById('filtroTienda').value;
 
   let q = sb.from('ventas')
-    .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
+    .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items:venta_items_lectura(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
     .order('created_at', { ascending: false });
   if (desde) q = q.gte('fecha', desde);
   if (hasta) q = q.lte('fecha', hasta);
@@ -749,7 +749,7 @@ async function abrirDetalleVenta(ventaId) {
   modal.classList.add('show');
 
   const [resultadoItems, resultadoCredito, resultadoMovimientos] = await Promise.all([
-    sb.from('venta_items')
+    sb.from('venta_items_lectura')
       .select(ventasDomain.columnasDetalleItems())
       .eq('venta_id', ventaId)
       .order('id'),
@@ -757,7 +757,7 @@ async function abrirDetalleVenta(ventaId) {
       .select('financiera,cuota_inicial,valor_esperado_financiera,contrato_ref,plazo_meses,estado_conciliacion')
       .eq('venta_id', ventaId)
       .maybeSingle(),
-    sb.from('movimientos')
+    sb.from('movimientos_lectura')
       .select('id,tipo,producto_id,unidad_id,cantidad,created_at,referencia_tipo,referencia_id')
       .eq('referencia_tipo', 'venta')
       .eq('referencia_id', ventaId)
@@ -1157,7 +1157,7 @@ async function verificarStockAccesorio(idx) {
   const it = venta.items[idx];
   const hint = document.getElementById('stockHint' + idx);
   if (!hint) return;
-  const { data, error } = await sb.from('stock_cantidad').select('cantidad').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
+  const { data, error } = await sb.from('stock_cantidad_lectura').select('cantidad').eq('producto_id', it.producto_id).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
   if (error) {
     hint.textContent = 'No se pudo verificar el stock. Reintenta antes de guardar.';
     hint.style.color = 'var(--rojo)';
@@ -1175,7 +1175,7 @@ async function validarImei(idx, imei, silencioso) {
   if (!imei) { if (estadoDiv) estadoDiv.textContent = ''; return; }
   if (estadoDiv) { estadoDiv.textContent = 'Verificando...'; estadoDiv.className = 'imei-estado'; }
 
-  const { data: unidad, error } = await sb.from('unidades')
+  const { data: unidad, error } = await sb.from('unidades_lectura')
     .select(ventasDomain.columnasUnidadVenta())
     .eq('imei', imei)
     .maybeSingle();
@@ -1199,7 +1199,7 @@ async function validarImei(idx, imei, silencioso) {
   const precioSugerido = unidad.precio_tienda || null;
   if (!venta.items[idx].precio_venta) venta.items[idx].precio_venta = precioSugerido;
   venta.items[idx].precio_sugerido = unidad.precio_tienda || 0;
-  venta.items[idx].costo_unitario = unidad.costo_remision ?? null;
+  venta.items[idx].costo_unitario = unidad.precio_tienda ?? null;
   if (estadoDiv) { estadoDiv.textContent = `✓ ${unidad.productos?.nombre || 'Producto'} — disponible`; estadoDiv.className = 'imei-estado ok'; }
   if (!silencioso) renderItemsVenta();
   else actualizarTotalParcial();

@@ -745,8 +745,8 @@ async function abrirModalConteo() {
   document.getElementById('modalConteoErr').classList.remove('show');
 
   const [{ data: unidades }, { data: stock }] = await Promise.all([
-    sb.from('unidades').select('id, imei, producto_id, productos(nombre)').eq('tienda_actual', tienda).eq('estado', 'disponible').order('imei'),
-    sb.from('stock_cantidad').select('producto_id, cantidad, productos(nombre)').eq('tienda_codigo', tienda).order('producto_id'),
+    sb.from('unidades_lectura').select('id, imei, producto_id, productos(nombre)').eq('tienda_actual', tienda).eq('estado', 'disponible').order('imei'),
+    sb.from('stock_cantidad_lectura').select('producto_id, cantidad, productos(nombre)').eq('tienda_codigo', tienda).order('producto_id'),
   ]);
   conteoUnidades = (unidades || []).map(u => ({ ...u, presente: true }));
   conteoStock = stock || [];

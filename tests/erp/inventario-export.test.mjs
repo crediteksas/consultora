@@ -70,7 +70,7 @@ test('genera una plantilla de carga inicial separada del importador', () => {
   assert.match(instrucciones.at(-1)[1], /validar e importar/i);
 });
 
-test('la tienda solicita el costo real en las consultas de inventario', () => {
+test('solo central solicita columnas internas en inventario', () => {
   assert.doesNotMatch(html, /from\('unidades'\)[\s\S]{0,120}\.select\('\*'/);
   assert.doesNotMatch(html, /from\('stock_cantidad'\)[\s\S]{0,120}\.select\('\*'/);
   assert.match(html, /columnas\.splice\(5, 0, 'costo_remision'\)/);
@@ -98,8 +98,8 @@ test('el Excel de accesorios contiene columnas separadas y valores numéricos', 
       Categoría: 'Accesorios',
       'Referencia o producto': 'Silicona',
       Cantidad: 8,
-      'Costo unitario': 9120,
-      'Valor total al costo': 72960,
+      'Costo unitario': 7011,
+      'Valor total al costo': 56088,
     }]
   );
   assert.equal(typeof filas[0].Cantidad, 'number');
@@ -125,7 +125,7 @@ test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
   assert.equal(filas[0]['Código producto'], 'CEL-001');
   assert.equal(filas[0].Cantidad, 1);
   assert.equal(filas[0].IMEI, '000000000000001');
-  assert.equal(filas[0]['Costo unitario'], 450000);
+  assert.equal(filas[0]['Costo unitario'], 500000);
 });
 
 test('la pantalla muestra costo y no precio de venta', () => {

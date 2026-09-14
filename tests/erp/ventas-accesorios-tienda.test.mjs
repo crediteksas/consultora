@@ -5,7 +5,7 @@ import '../../creditek/erp/ventas-domain.js';
 function cliente(filas, fallar = false) {
   const llamadas = [];
   return { llamadas, from(tabla) {
-    assert.equal(tabla, 'stock_cantidad');
+    assert.equal(tabla, 'stock_cantidad_lectura');
     const filtros = {};
     return {
       select(campos) { assert.match(campos, /productos!inner/); return this; },
@@ -34,7 +34,7 @@ test('carga todas las páginas de la tienda, incluyendo vidrios después del reg
   assert.deepEqual(sb.llamadas, [[0, 499], [500, 999], [1000, 1499]]);
   assert.equal(productos.find(p => p.nombre === 'VIDRIO').cantidad, 12);
   assert.equal(productos[0].precio_tienda, 10000);
-  assert.equal(productos[0].costo_promedio, 3600);
+  assert.equal(productos[0].costo_promedio, 10000);
 });
 
 test('no convierte errores de inventario en stock cero ni consulta sin tienda', async () => {

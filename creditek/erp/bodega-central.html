@@ -527,7 +527,7 @@ async function cargarAlerta() {
     bodegaDomain.cargarTodasLasPaginas(() => SB.from('alerta_bodega_central')
       .select('producto_id, nombre, categoria, tipo, stock_actual_central, descuadrado').order('producto_id')),
     // Solo unidades realmente disponibles en CENTRAL.
-    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades_lectura')
       .select('producto_id, factura_proveedor_id')
       .eq('tienda_actual', 'CENTRAL')
       .eq('estado', 'disponible')
@@ -683,7 +683,7 @@ async function abrirDetalle(prodId, nombre, tipo) {
 
   // Movimientos
   const { data: mov, error: mErr } = await SB
-    .from('movimientos')
+    .from('movimientos_lectura')
     .select('created_at, tipo, cantidad, costo, precio, referencia_tipo, referencia_id')
     .eq('tienda_codigo', 'CENTRAL')
     .eq('producto_id', prodId)
@@ -728,7 +728,7 @@ async function abrirDetalle(prodId, nombre, tipo) {
   if (tipo === 'serializado') {
     document.getElementById('unidades-panel').classList.remove('hidden');
     const { data: uns, error: uErr } = await SB
-      .from('unidades')
+      .from('unidades_lectura')
       .select('id, imei, estado, costo_remision, precio_tienda, factura_proveedor_id, created_at')
       .eq('producto_id', prodId)
       .eq('tienda_actual', 'CENTRAL')
@@ -823,7 +823,7 @@ async function cargarDataDespacho() {
   const [tRes, uRes, lotesRes, pRes, bRes] = await Promise.all([
     SB.from('tiendas_operativas').select('codigo, nombre').order('codigo'),
     // Unidades disponibles serializadas: agrupar por producto
-    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades')
+    bodegaDomain.cargarTodasLasPaginas(() => SB.from('unidades_lectura')
       .select('producto_id, precio_tienda, costo_remision, factura_proveedor_id')
       .eq('tienda_actual', 'CENTRAL')
       .eq('estado', 'disponible')

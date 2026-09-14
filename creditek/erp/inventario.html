@@ -429,8 +429,8 @@ async function cargarCelulares() {
     'producto_id', 'created_at', 'productos(codigo, nombre, categoria)',
     'tiendas:tienda_actual(nombre)',
   ];
-  columnas.splice(5, 0, 'costo_remision');
-  const { data, error } = await sb.from('unidades')
+  if (esCentral()) columnas.splice(5, 0, 'costo_remision');
+  const { data, error } = await sb.from('unidades_lectura')
     .select(inventarioDomain.columnasUnidades(esCentral()))
     .order('created_at', { ascending: false });
   if (error) { document.getElementById('emptyCelulares').style.display = 'block'; document.getElementById('emptyCelulares').textContent = 'Error: ' + error.message; return; }
@@ -443,8 +443,8 @@ async function cargarAccesorios() {
     'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
     'productos(codigo, nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
   ];
-  columnas.splice(4, 0, 'costo_promedio');
-  const { data, error } = await sb.from('stock_cantidad')
+  if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
+  const { data, error } = await sb.from('stock_cantidad_lectura')
     .select(inventarioDomain.columnasStock(esCentral()))
     .order('updated_at', { ascending: false });
   if (error) { document.getElementById('emptyAccesorios').style.display = 'block'; document.getElementById('emptyAccesorios').textContent = 'Error: ' + error.message; return; }
@@ -503,7 +503,7 @@ function renderCelulares() {
       <td>${escapeHtml(u.productos?.nombre || '—')}</td>
       <td><span class="badge ${u.estado}">${u.estado}</span></td>
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
-      <td>${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
+      <td>${inventarioDomain.valorVisibleUnidad(u, esCentral()) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, esCentral()))}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
     </tr>
   `).join('');
@@ -530,7 +530,7 @@ function renderAccesorios() {
   empty.style.display = 'none';
   tbody.innerHTML = filtrados.map(r => {
     const bajoStock = r.cantidad < 3;
-    const costoVisible = inventarioDomain.valorVisibleStock(r);
+    const costoVisible = inventarioDomain.valorVisibleStock(r, esCentral());
     return `
       <tr class="${bajoStock ? 'fila-bajo-stock' : ''}">
         <td>${escapeHtml(r.productos?.nombre || '—')}</td>
@@ -550,7 +550,7 @@ async function abrirHistorial(unidadId) {
   document.getElementById('histLista').innerHTML = 'Cargando...';
   document.getElementById('modalHistorial').classList.add('show');
 
-  const { data, error } = await sb.from('movimientos')
+  const { data, error } = await sb.from('movimientos_lectura')
     .select('tipo, nota, created_at')
     .eq('unidad_id', unidadId)
     .order('created_at', { ascending: false });

@@ -196,7 +196,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Descripción</th><th>Estado</th><th>Registrado por</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Tienda</th><th>Concepto</th><th>Monto</th><th>Descripción</th><th>Estado</th><th>Registrado por</th></tr></thead>
           <tbody id="tbodyGastos"></tbody>
         </table>
         <div class="empty-state" id="emptyState" style="display:none;">Cargando...</div>
@@ -350,7 +350,20 @@ function initPagina() {
   document.getElementById('btnCancelarRechazo').addEventListener('click', () => document.getElementById('modalRechazo').classList.remove('show'));
   document.getElementById('btnConfirmarRechazo').addEventListener('click', confirmarRechazo);
 
-  document.getElementById('filtroTienda').addEventListener('change', renderTablaGastos);
+  document.getElementById('filtroTienda').addEventListener('change', () => {
+    const codigo = document.getElementById('filtroTienda').value;
+    localStorage.setItem('creditek_sidebar_tienda', codigo);
+    const cabecera = document.getElementById('koraStoreSelector');
+    if (cabecera) cabecera.value = codigo;
+    renderColaAprobacion();
+    renderTablaGastos();
+  });
+  document.addEventListener('change', event => {
+    if (event.target.id !== 'koraStoreSelector' || !esCentral()) return;
+    document.getElementById('filtroTienda').value = event.target.value;
+    renderColaAprobacion();
+    renderTablaGastos();
+  });
   document.getElementById('filtroFecha').addEventListener('change', renderTablaGastos);
   document.getElementById('filtroConcepto').addEventListener('change', renderTablaGastos);
   document.getElementById('filtroEstado').addEventListener('change', renderTablaGastos);
@@ -367,6 +380,13 @@ async function cargarDatosBase() {
   tiendasCache = tiendas || [];
 
   document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  if (esCentral()) {
+    const guardada = localStorage.getItem('creditek_sidebar_tienda') || '';
+    document.getElementById('filtroTienda').value = tiendasCache.some(t => t.codigo === guardada) ? guardada : '';
+    localStorage.setItem('creditek_sidebar_tienda', document.getElementById('filtroTienda').value);
+    const cabecera = document.getElementById('koraStoreSelector');
+    if (cabecera) cabecera.value = document.getElementById('filtroTienda').value;
+  }
   document.getElementById('filtroConcepto').innerHTML = '<option value="">Todos los conceptos</option>' + conceptosCache.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
   document.getElementById('gastoConcepto').innerHTML = conceptosCache.map(c => `<option value="${c.id}" data-preautorizado="${c.preautorizado}">${escapeHtml(c.nombre)}${c.preautorizado ? '' : ' (requiere aprobación)'}</option>`).join('');
 
@@ -402,7 +422,8 @@ async function cargarGastos() {
 
 function renderColaAprobacion() {
   if (!esCentral()) return;
-  const pendientes = gastosCache.filter(g => g.estado === 'registrado');
+  const tienda = document.getElementById('filtroTienda').value;
+  const pendientes = gastosCache.filter(g => g.estado === 'registrado' && (!tienda || g.tienda_codigo === tienda));
   const cont = document.getElementById('colaAprobacion');
   if (!pendientes.length) { cont.innerHTML = '<div class="empty-state">No hay gastos pendientes de aprobar.</div>'; return; }
   cont.innerHTML = pendientes.map(g => `
@@ -486,6 +507,7 @@ function renderTablaGastos() {
   tbody.innerHTML = filtrados.map(g => `
     <tr>
       <td>${formatearFechaGasto(g.fecha)}</td>
+      <td>${escapeHtml(g.origenes?.nombre || g.tienda_codigo)}</td>
       <td>${escapeHtml(g.conceptos_gasto?.nombre || '—')}</td>
       <td>${fmtCOP(g.monto)}</td>
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>

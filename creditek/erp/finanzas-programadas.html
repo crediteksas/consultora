@@ -35,7 +35,8 @@
       <select id="status" class="control"><option value="">Todos los estados</option><option value="pendiente_aprobacion">Pendientes</option><option value="aprobado">Aprobados</option><option value="pagado">Pagados</option><option value="rechazado">Rechazados</option></select>
       <input id="from" class="control" type="date" aria-label="Desde">
       <input id="to" class="control" type="date" aria-label="Hasta">
-      <button id="exportCsv" class="btn" type="button">Descargar informe</button>
+      <button id="exportCsv" class="btn" type="button">Descargar informe Excel</button>
+      <button id="exportPaymentOrder" class="btn" type="button">Orden de pago / PDF</button>
     </section>
     <section class="section card"><div class="section-head"><div><h2>Pendientes de aprobación en Tesorería</h2><p>Maite registra aquí; Óscar aprueba o rechaza en Tesorería. No se crea otro gasto.</p><a class="btn" href="aliados-tesoreria.html?vista=gastos">Ir a Tesorería · Gastos y retiros</a></div></div><div id="pendingContent"></div></section>
     <section class="section card"><div class="section-head"><div><h2>Obligaciones periódicas</h2><p>Se generan automáticamente en su fecha y nunca ejecutan un pago solas.</p></div></div><div id="templatesContent"></div></section>
@@ -43,6 +44,8 @@
   </div>
 </main>
 <div id="modalBg" class="modal-bg" hidden><form id="form" class="modal card"><h2 id="modalTitle"></h2><input id="recordId" type="hidden"><input id="formKind" type="hidden"><div id="formFields" class="form-grid"></div><div id="formError" class="notice error" hidden></div><div class="modal-actions"><button id="cancel" class="btn" type="button">Cancelar</button><button id="save" class="btn primary" type="submit">Guardar</button></div></form></div>
-<script src="finanzas-programadas-app.js?v=1.0.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="finanzas-reportes.js?v=1.0.0"></script>
+<script src="finanzas-programadas-app.js?v=1.0.3"></script>
 </body>
 </html>

@@ -23,3 +23,12 @@ test('cartera B2B permite corregir solo precios con motivo y RPC auditada',()=>{
  assert.match(html,/soloLectura \|\| soloPrecio \? 'disabled'/);
  assert.match(html,/!soloLectura && !soloPrecio/);
 });
+test('una remisión despachada y no recibida permite cambiar solo su destino con auditoría',()=>{
+ assert.match(html,/rem\.estado === 'despachada' && !rem\.recibida_at/);
+ assert.match(html,/>Cambiar destino<\/button>/);
+ assert.match(html,/abrirModalRemision\(rem, 'destino'\)/);
+ assert.match(html,/corregir_destino_remision_despachada/);
+ assert.match(html,/selTienda\.disabled = !!rem && !soloDestino/);
+ assert.match(html,/soloLectura && !habilitarGuardado/);
+ assert.match(html,/Productos, cantidades, precios e inventario no se modifican/);
+});

@@ -491,7 +491,8 @@ function renderTablaRemisiones() {
         <button class="accion-recibir btn-despachar" data-id="${rem.id}">Despachar</button>
         <button class="accion-anular btn-anular" data-id="${rem.id}">Anular</button>`;
     } else if (puedeCorregirRemisiones && rem.estado === 'despachada' && !rem.recibida_at) {
-      acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Corregir remisión</button>`;
+      acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Corregir remisión</button>
+        <button class="btn-cambiar-destino" data-id="${rem.id}">Cambiar destino</button>`;
     } else if (puedeCorregirRemisiones && rem.estado === 'cartera_b2b') {
       acciones += `<button class="accion-recibir btn-editar" data-id="${rem.id}">Ajustar precio</button>`;
     } else if (!esCentral() && esMiaTienda && rem.estado === 'despachada') {
@@ -516,6 +517,10 @@ function renderTablaRemisiones() {
     const rem = remisionesCache.find(r => r.id === btn.dataset.id);
     if (rem) abrirModalRemision(rem);
   }));
+  tbody.querySelectorAll('.btn-cambiar-destino').forEach(btn => btn.addEventListener('click', () => {
+    const rem = remisionesCache.find(r => r.id === btn.dataset.id);
+    if (rem) abrirModalRemision(rem, 'destino');
+  }));
   tbody.querySelectorAll('.btn-despachar').forEach(btn => btn.addEventListener('click', () => despacharRemision(btn.dataset.id)));
   tbody.querySelectorAll('.btn-anular').forEach(btn => btn.addEventListener('click', () => anularRemision(btn.dataset.id)));
   tbody.querySelectorAll('.btn-recibir').forEach(btn => btn.addEventListener('click', () => {
@@ -529,19 +534,21 @@ function etiquetaEstado(e) { return { borrador: 'Borrador', despachada: 'Despach
 // ─── Builder: crear / editar / ver remisión ────────────────────────────
 let puedeCorregirRemisiones = false;
 let remisionEnEdicion = null;
-function abrirModalRemision(rem) {
-  remisionEnEdicion = rem ? { ...rem } : null;
+function abrirModalRemision(rem, modo = 'contenido') {
+  remisionEnEdicion = rem ? { ...rem, modoEdicion: modo } : null;
   const correccionRecepcion = !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
   const correccionB2B = !!rem && rem.estado === 'cartera_b2b' && puedeCorregirRemisiones;
+  const soloDestino = correccionRecepcion && modo === 'destino';
   const correccion = correccionRecepcion || correccionB2B;
   const soloLectura = !!rem && rem.estado !== 'borrador' && !correccion;
-  document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : (correccionB2B ? `Ajustar precio · Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`));
+  document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : (correccionB2B ? `Ajustar precio · Remisión #${rem.consecutivo}` : (soloDestino ? `Cambiar destino · Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`)));
   document.getElementById('modalRemisionSub').textContent = soloLectura ? 'Esta remisión ya no se puede editar.' : 'Se guarda como borrador — puedes seguir editando hasta despachar.';
   if (correccionRecepcion) document.getElementById('modalRemisionSub').textContent = 'Corrección antes de recepción. Conserva el número de remisión, ajusta las reservas de bodega y deja historial. La tienda deberá revisar los cambios antes de aceptar.';
+  if (soloDestino) document.getElementById('modalRemisionSub').textContent = 'Selecciona la tienda correcta. Productos, cantidades, precios e inventario no se modifican y el cambio queda auditado.';
   if (correccionB2B) document.getElementById('modalRemisionSub').textContent = 'Solo puedes ajustar el precio de venta. Producto, cantidad, factura, costo e inventario permanecen sin cambios; la diferencia queda registrada en cartera y auditoría.';
   document.getElementById('correccionMotivoCampo').hidden = !correccion;
   document.getElementById('correccionMotivo').value = '';
-  document.getElementById('btnGuardarRemision').textContent = correccion ? 'Guardar corrección' : 'Guardar borrador';
+  document.getElementById('btnGuardarRemision').textContent = soloDestino ? 'Guardar nuevo destino' : (correccion ? 'Guardar corrección' : 'Guardar borrador');
   document.getElementById('btnGuardarRemision').disabled = !!rem;
   document.getElementById('remId').value = rem ? rem.id : '';
   document.getElementById('modalRemisionErr').classList.remove('show');
@@ -550,10 +557,10 @@ function abrirModalRemision(rem) {
   const selTienda = document.getElementById('remTienda');
   selTienda.innerHTML = tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
   if (rem) selTienda.value = rem.tienda_codigo;
-  selTienda.disabled = !!rem; // la tienda destino no se cambia una vez creada
+  selTienda.disabled = !!rem && !soloDestino;
 
   document.getElementById('itemsContainer').innerHTML = '';
-  document.getElementById('btnAgregarItem').style.display = soloLectura || correccionB2B ? 'none' : 'inline-block';
+  document.getElementById('btnAgregarItem').style.display = soloLectura || correccionB2B || soloDestino ? 'none' : 'inline-block';
   document.getElementById('btnCrearProductoDesdeRemision').style.display = soloLectura || correccion ? 'none' : 'inline-block';
   document.getElementById('btnGuardarRemision').style.display = soloLectura ? 'none' : 'inline-block';
 
@@ -562,7 +569,7 @@ function abrirModalRemision(rem) {
   }
 
   if (rem) {
-    cargarItemsRemision(rem.id, soloLectura, correccionB2B);
+    cargarItemsRemision(rem.id, soloLectura || soloDestino, correccionB2B, soloDestino);
   } else {
     agregarItemRow(null);
     actualizarTotalRemision();
@@ -571,7 +578,7 @@ function abrirModalRemision(rem) {
   abrirModalAccesible('modalRemision');
 }
 
-async function cargarItemsRemision(remisionId, soloLectura, soloPrecio = false) {
+async function cargarItemsRemision(remisionId, soloLectura, soloPrecio = false, habilitarGuardado = false) {
   // FIX 23-jul-2026 · FIX_Remision_Visual_v1: quitar costo_oscar del SELECT.
   // El campo sigue disponible en bodega-central.html y utilidad-creditek.html
   // (donde solo gerencia/auditoría pueden verlo) — este modal legacy ya no lo
@@ -584,7 +591,7 @@ async function cargarItemsRemision(remisionId, soloLectura, soloPrecio = false) 
     if (it.productos && !productosCache.some(p => p.id === it.producto_id)) productosCache.push(it.productos);
   });
   (data || []).forEach(it => agregarItemRow(it, soloLectura, soloPrecio));
-  document.getElementById('btnGuardarRemision').disabled = soloLectura;
+  document.getElementById('btnGuardarRemision').disabled = soloLectura && !habilitarGuardado;
   actualizarTotalRemision();
 }
 
@@ -665,6 +672,30 @@ async function guardarRemision() {
 
   const btn = document.getElementById('btnGuardarRemision');
   btn.disabled = true; btn.textContent = 'Guardando...';
+
+  if (remisionEnEdicion?.modoEdicion === 'destino') {
+    try {
+      const { data, error } = await sb.rpc('corregir_destino_remision_despachada', {
+        p_remision_id: id,
+        p_revision: remisionEnEdicion.revision ?? 0,
+        p_tienda_codigo: tienda_codigo,
+        p_motivo: document.getElementById('correccionMotivo').value.trim(),
+      });
+      if (error) throw new Error(error.message);
+      if (data?.ok !== true) throw new Error('El servidor no confirmó el cambio. Actualiza antes de volver a intentar.');
+      const destino = tiendasCache.find(t => t.codigo === data.destino_nuevo)?.nombre || data.destino_nuevo;
+      await cargarRemisiones();
+      cerrarModalAccesible('modalRemision');
+      mostrarBanner(`Destino actualizado a ${destino}. La tienda correcta ya puede recibir la remisión.`);
+    } catch (error) {
+      err.textContent = 'No se pudo cambiar el destino: ' + error.message;
+      err.classList.add('show');
+      await cargarRemisiones();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar nuevo destino';
+    }
+    return;
+  }
 
   if (remisionEnEdicion?.estado === 'cartera_b2b') {
     try {

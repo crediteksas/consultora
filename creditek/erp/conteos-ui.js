@@ -10,7 +10,7 @@
     document.body.insertAdjacentHTML('beforeend', `<div id="conteos-modal" class="modal-bg" style="z-index:10000" role="dialog" aria-modal="true" aria-label="Conteos y ajustes de inventario">
       <div class="modal-box" style="max-width:1250px;width:100%">
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
-        <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Las cantidades deben corresponder a la fecha real del conteo.</p>
+        <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
         <div class="form-actions"><button id="conteos-crear" class="primary">Crear corte y descargar</button><button id="conteos-ciego" class="secondary">Crear conteo ciego</button></div></div>
         <p id="conteos-mensaje" role="status" style="margin:12px 0;white-space:pre-wrap"></p>
@@ -51,15 +51,16 @@
       hoja(libro,lineas.map(l=>({
         'Código producto':l.codigo,'Referencia':l.nombre,'Tipo':l.tipo==='cantidad'?'Accesorio / cantidad':'Equipo individual',
         'IMEI / serial':l.imei,...(ciego?{}:{'Cantidad sistema al corte':l.cantidad_corte,'Costo de la tienda':l.costo_tienda}),
-        'Cantidad física':'','Observación':''
+        'Cantidad reportada al corte':'','Observación':''
       })),'Conteo');
-      if (!lineas.length) libro.Sheets.Conteo=XLSX.utils.aoa_to_sheet([['Código producto','Referencia','Tipo','IMEI / serial','Cantidad física','Observación']]);
+      if (!lineas.length) libro.Sheets.Conteo=XLSX.utils.aoa_to_sheet([['Código producto','Referencia','Tipo','IMEI / serial','Cantidad reportada al corte','Observación']]);
       const resumen=XLSX.utils.aoa_to_sheet([
-        ['Formato','KORA-CONTEO-1'],['Identificador del corte',corte.id],['Tienda',corte.tienda_nombre],['Fecha del corte (Colombia)',local(corte.corte_at)],
-        ['Instrucciones','Completa Cantidad física en TODAS las filas; cero es distinto de vacío. No borres ni repitas filas.'],
+        ['Formato','KORA-CONTEO-2'],['Identificador del corte',corte.id],['Tienda',corte.tienda_nombre],['Fecha del corte (Colombia)',local(corte.corte_at)],
+        ['Instrucciones','Completa Cantidad reportada al corte en TODAS las filas; cero es distinto de vacío. No borres ni repitas filas.'],
         ['Equipos','Una fila por IMEI/serial, cantidad 0 o 1. Accesorios sin IMEI.'],
         ['Sobrantes','Añade código de producto y serial si corresponde. Mayte debe identificar códigos desconocidos antes de subir.'],
-        ['Fecha física','Todas las cantidades deben corresponder a la misma hora. Cuenta sin ventas/recepciones durante la revisión física o concilia esos movimientos antes de subir. No uses la hora de subida si se contó antes.'],
+        ['Regla del corte','Reportado al corte = físico contado + ventas y otras salidas posteriores al corte − compras, devoluciones y otras entradas posteriores al corte. La tienda hace esta conciliación manual; el sistema no la calcula.'],
+        ['Ejemplo','Corte 100; físico 90 y 10 vendidos después: reporta 100. Diferencia cero; no se modifica el saldo actual de 90. Registra la explicación en Observación.'],
         ['Inventario incluido','Disponible de toda la tienda, sin los filtros de pantalla. No incluye equipos vendidos, en traslado o en garantía.'],
         ['Aprobación','Subir no aplica cambios. Mayte u Óscar revisan motivo, evidencia y valoración.']
       ]);
@@ -86,30 +87,29 @@
     }
     function renderDetalle() {
       const { corte,lineas }=detalle;
-      const pendiente=corte.estado==='pendiente';
+      const pendiente=corte.estado==='pendiente', corteFijo=corte.base_conteo==='corte_fijo';
       const diferencias=lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0);
       el('detalle').innerHTML=`<h2>${esc(corte.tienda_nombre)} · ${esc(estados[corte.estado])}</h2>
         <p style="margin:12px 0">Corte: ${esc(local(corte.corte_at))} · ${lineas.length} referencias/equipos.<br>
-        ${corte.contado_at?`Conteo físico: ${esc(local(corte.contado_at))} · Registrado por ${esc(corte.contado_nombre)} · ${diferencias.length} diferencias.`:'Pendiente de subir el conteo físico.'}</p>
+        ${corte.contado_at?`${corteFijo?'Conteo referido al corte':'Conteo del método anterior'}: ${esc(local(corte.contado_at))} · Registrado por ${esc(corte.contado_nombre)}${corte.recibido_at?' el '+esc(local(corte.recibido_at)):''} · ${diferencias.length} diferencias.`:'Pendiente de subir cantidades reconstruidas al corte.'}</p>
         ${corte.autorizado_at?`<p>Revisión: ${esc(corte.autorizado_nombre)} · ${esc(local(corte.autorizado_at))}<br>Motivo: ${esc(corte.motivo)}<br>Soporte: ${esc(corte.soporte||'—')}</p>`:''}
         <button id="conteos-redescargar" class="btn-export">Descargar este corte</button>
         ${corte.estado==='abierto'?`<form id="conteos-form-subir" class="inventario-form" style="margin:16px 0">
           <label>Archivo único contado<input id="conteos-archivo" type="file" accept=".xlsx" required></label>
-          <label>Fecha a la que corresponden las cantidades<select id="conteos-fecha-modo"><option value="">Selecciona</option><option value="corte">Se contaron al momento del corte</option><option value="otra">Se contaron después del corte</option></select></label>
-          <label>Fecha y hora física, Colombia (si fue después)<input id="conteos-fecha" type="datetime-local" step="1"></label>
+          <label><input id="conteos-confirmar-corte" type="checkbox" required> Confirmo que la tienda sumó las salidas y restó las entradas posteriores al corte. El Excel reporta lo que había al corte, no el físico de hoy.</label>
           <button class="btn-export" type="submit">Registrar conteo sin aplicar ajustes</button></form>`:''}
-        <p style="margin:12px 0">Propuesto hoy = inventario actual + diferencia al contar. Si el resultado es negativo o el IMEI ya cambió de situación, debe conciliarse antes de aplicar.</p>
+        <p style="margin:12px 0">Diferencia = cantidad reportada al corte − cantidad del sistema al corte. Propuesto hoy = inventario actual + diferencia. No se descuentan ventas otra vez. Si el resultado es negativo o el IMEI ya cambió de situación, debe conciliarse antes de aplicar.</p>
         <label><input type="checkbox" id="conteos-solo-dif" ${pendiente?'checked':''}> Mostrar solo diferencias</label>
-        <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Al corte</th><th>Sistema al contar</th><th>Físico</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Observación</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
+        <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Sistema al corte</th><th>Reportado al corte</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Observación</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
         ${config.autoriza&&(pendiente||corte.estado==='abierto')?`<form id="conteos-form-decidir" class="inventario-form">
           <label>Motivo de la revisión<textarea id="conteos-motivo" minlength="5" required></textarea></label>
           <label>Soporte o referencia documental<input id="conteos-soporte" placeholder="Número/enlace de acta o evidencia"></label>
           <label>Clasificación<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
-          <p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
-          <div class="form-actions">${pendiente?'<button type="submit" class="primary">Autorizar y aplicar una sola vez</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div></form>`:''}`;
+          ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
+          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Autorizar y aplicar una sola vez</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div></form>`:''}`;
       function pintarLineas() {
         const filas=el('solo-dif').checked?lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0):lineas;
-        el('lineas').innerHTML=filas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${l.esperado_conteo??'—'}</td><td>${l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${config.autoriza&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${esc(l.nota)}</td></tr>`).join('')||'<tr><td colspan="9">Sin diferencias registradas.</td></tr>';
+        el('lineas').innerHTML=filas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${config.autoriza&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${esc(l.nota)}</td></tr>`).join('')||'<tr><td colspan="8">Sin diferencias registradas.</td></tr>';
       }
       pintarLineas();el('solo-dif').onchange=pintarLineas;
       el('redescargar').onclick=()=>descargar();
@@ -123,12 +123,10 @@
       const buffer=await file.arrayBuffer();
       const parsed=global.KoraConteos.leerLibro(XLSX,XLSX.read(buffer,{type:'array'}));
       if(parsed.corte!==detalle.corte.id)throw new Error('Este archivo corresponde a otro corte. Ábrelo desde el historial.');
-      const modo=el('fecha-modo').value;
-      if(!modo)throw new Error('Confirma cuándo se hizo el conteo físico.');
-      const contado_at=modo==='corte'?detalle.corte.corte_at:el('fecha').value?new Date(`${el('fecha').value}-05:00`).toISOString():null;
-      if(!contado_at)throw new Error('Falta la fecha y hora real del conteo.');
+      if(!el('confirmar-corte').checked)throw new Error('Confirma que la tienda reconstruyó las cantidades a la fecha del corte.');
+      const contado_at=detalle.corte.corte_at;
       const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');
-      detalle=await rpc('subir',{id:parsed.corte,contado_at,filas:parsed.filas,archivo:file.name,sha256});
+      detalle=await rpc('subir',{id:parsed.corte,base_conteo:'corte_fijo',contado_at,filas:parsed.filas,archivo:file.name,sha256});
       renderDetalle();await historial();
     }
     async function decidir(accion) {
@@ -137,7 +135,7 @@
       if(accion==='aplicar'&&(!clasificacion||soporte.length<5))throw new Error('Completa clasificación y soporte antes de aplicar.');
       const costos=Array.from(el('lineas').querySelectorAll('[data-costo-codigo]'),i=>({codigo:i.dataset.costoCodigo,imei:i.dataset.costoImei,costo_tienda:Number(i.value)}));
       if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual?`:'¿Cerrar este corte sin modificar existencias?'))return;
-      detalle=await rpc(accion,{id:detalle.corte.id,motivo,soporte,clasificacion,costos});
+      detalle=await rpc(accion,{id:detalle.corte.id,base_conteo:'corte_fijo',motivo,soporte,clasificacion,costos});
       renderDetalle();await historial();if(accion==='aplicar')await refrescar();
     }
     async function informe() {
@@ -146,9 +144,9 @@
         const data=await rpc('ver',{id:c.id});
         for(const l of data.lineas.length?data.lineas:[{}])rows.push({
           Tienda:c.tienda_nombre,Corte:local(c.corte_at),Estado:estados[c.estado],
-          'Fecha física':c.contado_at?local(c.contado_at):'',Creó:c.creado_nombre,Contó:c.contado_nombre||'',Autorizó:c.autorizado_nombre||'',
-          'Fecha autorización':c.autorizado_at?local(c.autorizado_at):'',Referencia:l.nombre||'',Código:l.codigo||'',IMEI:l.imei||'',
-          'Cantidad corte':l.cantidad_corte,'Sistema al contar':l.esperado_conteo,'Cantidad física':l.cantidad_fisica,
+          'Método del conteo':c.base_conteo==='corte_fijo'?'Referido al corte':'Método anterior','Fecha base del conteo':c.contado_at?local(c.contado_at):'',Creó:c.creado_nombre,Contó:c.contado_nombre||'',Autorizó:c.autorizado_nombre||'',
+          'Fecha de subida':c.recibido_at?local(c.recibido_at):'','Fecha autorización':c.autorizado_at?local(c.autorizado_at):'',Referencia:l.nombre||'',Código:l.codigo||'',IMEI:l.imei||'',
+          'Cantidad corte':l.cantidad_corte,'Base usada para comparar':l.esperado_conteo,'Cantidad entregada (según método)':l.cantidad_fisica,
           Diferencia:l.diferencia,'Antes del ajuste':l.anterior,'Después del ajuste':l.posterior,'Costo tienda':l.costo_tienda,'Valor ajuste':l.valor_ajuste,
           Clasificación:c.clasificacion||'',Motivo:c.motivo||'',Soporte:c.soporte||'',Observación:l.nota||'',Archivo:c.archivo_nombre||'',SHA256:c.archivo_sha256||'','ID corte':c.id
         });

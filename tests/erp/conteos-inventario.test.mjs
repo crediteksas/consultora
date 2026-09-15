@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import vm from 'node:vm';
 import XLSX from 'xlsx';
 const sql=readFileSync(new URL('../../supabase/migrations/20260915162101_inventario_conteos_auditables.sql',import.meta.url),'utf8');
+const fixedSql=readFileSync(new URL('../../supabase/migrations/20260915163724_inventario_conteo_referido_al_corte.sql',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const storeUser='00000000-0000-0000-0000-000000000003',otherUser='00000000-0000-0000-0000-000000000004',otherAdmin='00000000-0000-0000-0000-000000000005';
 let db,n=0;
@@ -26,10 +27,11 @@ before(async()=>{
  grant usage on schema public,auth to authenticated;grant select,insert,update,delete on stock_cantidad,unidades to authenticated;
  `);
  await db.exec(sql);
+ await db.exec(fixedSql);
 });
 after(async()=>db?.close());
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
-async function api(action,data={}){return (await db.query('select public.inventario_conteos($1,$2::jsonb) r',[action,JSON.stringify(data)])).rows[0].r;}
+async function api(action,data={}){return (await db.query('select public.inventario_conteos($1,$2::jsonb) r',[action,JSON.stringify({base_conteo:'corte_fijo',...data})])).rows[0].r;}
 async function fixture(qty=250,serialized=false){
  await db.exec('reset role');const code=`REF${++n}`,store=`T${n}`;
  await db.query("insert into origenes values($1,$1,'propia',true)",[store]);
@@ -48,11 +50,25 @@ test('el ejemplo conserva ventas posteriores: 250 → físico 499 → venta 17 �
  await db.exec('reset role');const m=(await db.query('select * from movimientos where referencia_id=$1',[f.result.corte.id])).rows;
  assert.equal(m.length,1);assert.equal(Number(m[0].costo_tienda),1500);assert.equal(m[0].usuario,maite);
 });
-test('si se cuentan 499 después de vender 17, no se restan por segunda vez',async()=>{
- const f=await fixture();await db.exec('reset role');await db.query('update stock_cantidad set cantidad=233 where producto_id=$1',[f.id]);
- const time=(await db.query('select clock_timestamp()::text t')).rows[0].t;await asUser(oscar);
- const u=await upload(f,499,time);assert.equal(u.lineas[0].esperado_conteo,233);assert.equal(u.lineas[0].diferencia,266);
- assert.equal((await apply(f)).lineas[0].posterior,499);
+test('corte 100: físico 90 más diez vendidos reporta 100 y no ajusta el saldo de 90',async()=>{
+ const f=await fixture(100);await db.exec('reset role');await db.query('update stock_cantidad set cantidad=90 where producto_id=$1',[f.id]);await asUser(oscar);
+ const u=await upload(f,100);assert.equal(u.lineas[0].esperado_conteo,100);assert.equal(u.lineas[0].diferencia,0);
+ const a=await apply(f);assert.equal(a.lineas[0].posterior,90);assert.equal(a.corte.estado,'sin_diferencias');
+});
+test('corte 100: reportado 98 y tres ventas posteriores aplica solo menos dos y deja 95',async()=>{
+ const f=await fixture(100);await db.exec('reset role');await db.query('update stock_cantidad set cantidad=97 where producto_id=$1',[f.id]);await asUser(oscar);
+ const u=await upload(f,98);assert.equal(u.lineas[0].diferencia,-2);assert.equal((await apply(f)).lineas[0].posterior,95);
+});
+test('las entradas posteriores tampoco cambian la base: físico 115 menos quince recibidos reporta 100',async()=>{
+ const f=await fixture(100);await db.exec('reset role');await db.query('update stock_cantidad set cantidad=115 where producto_id=$1',[f.id]);await asUser(maite);
+ const u=await upload(f,100);assert.equal(u.lineas[0].esperado_conteo,100);assert.equal(u.lineas[0].diferencia,0);assert.equal((await apply(f)).lineas[0].posterior,115);
+});
+test('no acepta fecha móvil, cliente desactualizado ni aprobación del método anterior',async()=>{
+ const f=await fixture(100);
+ await assert.rejects(upload(f,100,'2099-01-01T00:00:00Z'),/únicamente con la fecha del corte/);
+ await assert.rejects(api('subir',{base_conteo:null,id:f.result.corte.id}),/Actualiza la pantalla/);
+ await upload(f,100);await db.exec('reset role');await db.query("update inventario_control.cortes set base_conteo='observacion_fisica' where id=$1",[f.result.corte.id]);await asUser(maite);
+ await assert.rejects(apply(f),/método anterior/);assert.equal((await api('ver',{id:f.result.corte.id})).corte.estado,'pendiente');
 });
 test('el conteo sin diferencias queda en historial sin movimientos',async()=>{
  const f=await fixture(10);await upload(f,10);const a=await apply(f);assert.equal(a.corte.estado,'sin_diferencias');
@@ -68,7 +84,7 @@ test('un segundo corte anterior al ajuste no puede volver a aplicarlo',async()=>
  await assert.rejects(api('subir',{id:other.corte.id,contado_at:other.corte.corte_at,archivo:'otro.xlsx',sha256:'b'.repeat(64),filas:[{codigo:f.code,imei:'',cantidad:12}]}),/otro ajuste/);
 });
 test('fechas, celdas vacías, borradas y duplicados rechazan toda la transacción',async()=>{
- const f=await fixture(10);await assert.rejects(upload(f,10,'2020-01-01T00:00:00Z'),/hora física/);
+ const f=await fixture(10);await assert.rejects(upload(f,10,'2020-01-01T00:00:00Z'),/fecha del corte/);
  const data={id:f.result.corte.id,contado_at:f.result.corte.corte_at,archivo:'test.xlsx',sha256:'c'.repeat(64),filas:[{codigo:f.code,imei:'',cantidad:''}]};
  await assert.rejects(api('subir',data),/inválida/);
  data.filas=[{codigo:f.code,imei:'',cantidad:10},{codigo:f.code,imei:'',cantidad:10}];await assert.rejects(api('subir',data),/duplicado/);
@@ -140,10 +156,11 @@ test('la paginación carga más de mil referencias y no disfraza errores como in
 });
 test('Excel exige cantidades explícitas e identificador persistente',()=>{
  const ctx={};vm.runInNewContext(readFileSync(new URL('../../creditek/erp/conteos-domain.js',import.meta.url),'utf8'),ctx);
- const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Formato','KORA-CONTEO-1'],['ID',oscar]]),'Resumen');
- XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet([{'Código producto':'A','IMEI / serial':'','Cantidad física':0}]),'Conteo');
+ const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Formato','KORA-CONTEO-2'],['ID',oscar]]),'Resumen');
+ XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet([{'Código producto':'A','IMEI / serial':'','Cantidad reportada al corte':0}]),'Conteo');
  assert.equal(ctx.KoraConteos.leerLibro(XLSX,book).filas[0].cantidad,0);
  book.Sheets.Conteo.C2.v='';assert.throws(()=>ctx.KoraConteos.leerLibro(XLSX,book),/vacío/);
  assert.equal(ctx.KoraConteos.conciliar(250,499,233).propuesto,482);
- assert.equal(ctx.KoraConteos.conciliar(233,499,233).propuesto,499);
+ assert.equal(ctx.KoraConteos.conciliar(100,100,90).propuesto,90);
+ book.Sheets.Resumen.B1.v='KORA-CONTEO-1';assert.throws(()=>ctx.KoraConteos.leerLibro(XLSX,book),/reconstruidas al corte/);
 });

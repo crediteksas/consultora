@@ -48,5 +48,5 @@ test('Tesorería integra cobros y auditoría sin ampliar acceso a salidas', () =
   assert.match(html, /cobros-plataformas\.css/);
   assert(html.indexOf('src="cobros-plataformas.js') < html.indexOf('src="aliados-tesoreria-app.js'));
   assert.match(app, /if \(!canViewOutgoing\(\)\) \{[\s\S]*?await cobros\.mount[\s\S]*?return;/);
-  assert.match(app, /Base calculada de plataformas · no es ingreso bancario/);
+  assert.match(app, /label: "Base calculada de plataformas", value: received, detail: "Referencia operativa; no confirma un ingreso bancario\."/);
 });

@@ -57,3 +57,26 @@ test('consultas de tienda no solicitan columnas internas', () => {
   assert.match(domain.columnasUnidades(true), /tiendas:tienda_actual\(nombre\)/);
   assert.match(domain.columnasStock(true), /tiendas:tienda_codigo\(nombre\)/);
 });
+
+test('sin tienda asignada no consolida inventarios de otras tiendas', () => {
+  const resumen=domain.resumirInventario({unidades,stock,tiendaCodigo:'',esCentral:false});
+  assert.equal(resumen.celularesDisponibles,0);assert.equal(resumen.accesoriosDisponibles,0);
+  assert.equal(domain.acotarTienda(stock,'tienda_codigo','').length,0);
+});
+
+test('accesorios: busca nombre/código sin tildes y ordena A-Z sin mutar la base', () => {
+  const rows=[
+    {tienda_codigo:'A',cantidad:2,productos:{nombre:'Vidrio 10',codigo:'V10',categoria:'ACC'}},
+    {tienda_codigo:'B',cantidad:4,productos:{nombre:'Adaptador ajeno',codigo:'AJENO',categoria:'ACC'}},
+    {tienda_codigo:'A',cantidad:3,productos:{nombre:'Ádaptador',codigo:'AD01',categoria:'ACC'}},
+    {tienda_codigo:'A',cantidad:0,productos:{nombre:'Vidrio 2',codigo:'V2',categoria:'ACC'}},
+  ];
+  const base={tiendaCodigo:'A',categoria:'ACC'};
+  assert.equal(domain.filtrarAccesorios(rows,base).map(r=>r.productos.nombre).join('|'),'Ádaptador|Vidrio 2|Vidrio 10');
+  assert.equal(domain.filtrarAccesorios(rows,{...base,busqueda:'adaptador'}).length,1);
+  assert.equal(domain.filtrarAccesorios(rows,{...base,busqueda:'ad01'})[0].productos.nombre,'Ádaptador');
+  assert.equal(domain.filtrarAccesorios(rows,{...base,busqueda:'ajeno'}).length,0);
+  assert.equal(domain.filtrarAccesorios(rows,{...base,soloAgotados:true})[0].productos.codigo,'V2');
+  assert.equal(domain.filtrarAccesorios(rows,{tiendaCodigo:''}).length,0);
+  assert.equal(rows[0].productos.nombre,'Vidrio 10');
+});

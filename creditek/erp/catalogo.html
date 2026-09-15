@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="producto-foto.js"></script>
+<script src="inventario-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.22"></script>
 <script src="sidebar.js?v=2.0.22" data-kora-shell="1.0.0"></script>
@@ -133,7 +134,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
   <div class="page">
     <div class="page-top">
-      <h1>Catálogo de productos</h1>
+      <h1 id="tituloCatalogo">Catálogo de productos</h1>
+      <p id="alcanceCatalogo" style="display:none;margin:8px 0">Solo productos disponibles en el inventario de tu tienda. No se incluyen existencias de otras tiendas.</p>
       <button class="btn-primary" id="btnNuevoProducto" style="display:none;">+ Nuevo producto</button>
     </div>
 
@@ -238,6 +240,7 @@ const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
 const SUPABASE_ANON_KEY = KORA_ENV.KORA_ERP_SUPABASE_ANON_KEY;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const productoFoto = window.CreditekProductoFoto;
+const inventarioDomain = window.CreditekInventarioDomain;
 
 let currentUser = null;
 let currentPerfil = null;
@@ -314,6 +317,10 @@ function escapeHtml(str) {
 
 // ─── Página: Catálogo ─────────────────────────────────────────────────
 function initPagina() {
+  if (!esCentral()) {
+    document.getElementById('tituloCatalogo').textContent = 'Catálogo de mi inventario';
+    document.getElementById('alcanceCatalogo').style.display = '';
+  }
   const permisos = productoFoto.permisosCatalogo(currentPerfil.rol);
   if (permisos.puedeEditarProducto) {
     document.getElementById('btnNuevoProducto').style.display = 'inline-block';
@@ -390,53 +397,41 @@ async function subirFotoProducto(productoId, archivo) {
 }
 
 async function cargarProductos() {
+  productosCache = [];
+  document.getElementById('tbodyProductos').innerHTML = '';
   document.getElementById('emptyState').style.display = 'block';
   document.getElementById('emptyState').textContent = 'Cargando productos...';
-  const { data, error } = await sb.from('productos')
-    .select(productoFoto.columnasProductos(currentPerfil.rol))
-    .eq('activo', true)
-    .order('nombre');
+  const central = esCentral(), tienda = currentPerfil?.tienda_codigo;
+  if (!central && !tienda) {
+    document.getElementById('emptyState').textContent = 'Tu cuenta no tiene una tienda asignada. No se cargó ningún catálogo.';
+    return;
+  }
+  const { data, error } = await inventarioDomain.cargarPaginas(() => {
+    let q = sb.from(central ? 'productos' : 'catalogo_tienda_lectura')
+      .select(central ? productoFoto.columnasProductos(currentPerfil.rol) : 'id,codigo,nombre,categoria,tipo,foto_url,activo,tienda_codigo,costo_min,costo_max')
+      .eq('activo', true).order('nombre').order('id');
+    if (!central) q = q.eq('tienda_codigo', tienda);
+    return q;
+  });
   if (error) {
     document.getElementById('emptyState').textContent = 'Error cargando productos: ' + error.message;
     return;
   }
-  productosCache = data || [];
-
-  // FIX 23-jul-2026 · para admin_tienda, mostrar el precio_tienda del stock de
-  // SU tienda (lo que Andrea le paga a Creditek al recibir la remisión), no el
-  // precio_guia del catálogo (que es solo referencial interno). Para gerencia/
-  // auditoría, se conserva precio_guia. El header dice "Mi costo" para tienda
-  // y "Precio guía" para central (se re-etiqueta abajo).
-  if (!esCentral() && currentPerfil?.tienda_codigo) {
-    const [stocks, unidades] = await Promise.all([
-      sb.from('stock_cantidad_lectura').select('producto_id, precio_tienda')
-        .eq('tienda_codigo', currentPerfil.tienda_codigo).not('precio_tienda', 'is', null),
-      sb.from('unidades_lectura').select('producto_id, precio_tienda')
-        .eq('tienda_actual', currentPerfil.tienda_codigo)
-        .eq('estado', 'disponible').not('precio_tienda', 'is', null),
-    ]);
-    const stockMap = {};
-    (stocks.data || []).forEach(s => { stockMap[s.producto_id] = s.precio_tienda; });
-    (unidades.data || []).forEach(u => {
-      if (!stockMap[u.producto_id]) stockMap[u.producto_id] = u.precio_tienda;
-    });
-    productosCache.forEach(p => { p._precio_mostrar = stockMap[p.id] || null; });
-  } else {
-    productosCache.forEach(p => { p._precio_mostrar = null; });
-  }
+  productosCache = inventarioDomain.ordenarPorNombre(central ? data : inventarioDomain.acotarTienda(data,'tienda_codigo',tienda));
+  productosCache.forEach(p => { p._precio_mostrar = central ? null : p.costo_min; });
 
   renderTabla();
 }
 
 function renderTabla() {
-  const q = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
+  const q = inventarioDomain.textoBusqueda(document.getElementById('filtroBusqueda').value);
   const cat = document.getElementById('filtroCategoria').value;
   const tipo = document.getElementById('filtroTipo').value;
 
   let filtrados = productosCache.filter(p => {
     if (cat && p.categoria !== cat) return false;
     if (tipo && p.tipo !== tipo) return false;
-    if (q && !(p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))) return false;
+    if (q && !inventarioDomain.textoBusqueda(`${p.nombre || ''} ${p.codigo || ''}`).includes(q)) return false;
     return true;
   });
 
@@ -457,7 +452,7 @@ function renderTabla() {
       <td><span class="tag">${escapeHtml(nombreCategoria(p.categoria))}</span></td>
       <td><span class="tag ${p.tipo === 'cantidad' ? 'cantidad' : ''}">${p.tipo}</span></td>
       ${esCentral() ? `<td>${fmtMargen(p.margen_tipo, p.margen_valor)}</td>` : ''}
-      ${esCentral() ? '' : `<td>${p._precio_mostrar == null ? 'Pendiente' : fmtCOP(p._precio_mostrar)}</td>`}
+      ${esCentral() ? '' : `<td>${p._precio_mostrar == null ? 'Pendiente' : fmtCOP(p._precio_mostrar)}${p.costo_max != null && Number(p.costo_max) !== Number(p._precio_mostrar) ? ' – ' + fmtCOP(p.costo_max) : ''}</td>`}
       ${productoFoto.permisosCatalogo(currentPerfil.rol).puedeEditarProducto
         ? `<td><button class="link-edit" data-id="${p.id}">Editar</button></td>`
         : productoFoto.permisosCatalogo(currentPerfil.rol).puedeGestionarFoto

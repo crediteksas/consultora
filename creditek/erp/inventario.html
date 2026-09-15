@@ -223,6 +223,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <div class="filters">
         <select id="filtroTiendaAcc" style="display:none;"><option value="">Todas las tiendas</option></select>
         <select id="filtroCategoriaAcc"><option value="">Todas las categorías</option></select>
+        <input type="search" id="filtroBusquedaAcc" placeholder="Buscar accesorio por nombre o código…" aria-label="Buscar accesorio por nombre o código">
         <label class="chk"><input type="checkbox" id="chkAgotados"> Solo agotados</label>
       </div>
       <div class="tabla-wrap">
@@ -335,6 +336,7 @@ function initPagina() {
   ['filtroEstadoCel', 'filtroProductoCel'].forEach(id => document.getElementById(id).addEventListener('change', renderCelulares));
   document.getElementById('filtroImei').addEventListener('input', renderCelulares);
   document.getElementById('filtroCategoriaAcc').addEventListener('change', renderAccesorios);
+  document.getElementById('filtroBusquedaAcc').addEventListener('input', renderAccesorios);
   document.getElementById('chkAgotados').addEventListener('change', renderAccesorios);
   window.addEventListener('creditek:tienda-cambiada', aplicarTiendaSidebar);
 
@@ -395,9 +397,27 @@ function cambiarTiendaDesdePantalla(evento) {
 }
 
 async function cargarTodo() {
+  unidadesCache = []; stockCache = []; productosCache = []; tiendasCache = [];
+  document.getElementById('tbodyCelulares').innerHTML = '';
+  document.getElementById('tbodyAccesorios').innerHTML = '';
+  const central = esCentral(), tienda = currentPerfil?.tienda_codigo;
+  if (!central && !tienda) {
+    ['emptyCelulares', 'emptyAccesorios'].forEach(id => {
+      document.getElementById(id).style.display = 'block';
+      document.getElementById(id).textContent = 'Tu cuenta no tiene una tienda asignada. No se cargó inventario.';
+    });
+    renderResumen();
+    return;
+  }
+  let consultaTiendas = sb.from('origenes').select('codigo, nombre, inventario_control_activo, inventario_control_desde').eq('tipo', 'propia').eq('activo', true).order('nombre');
+  if (!central) consultaTiendas = consultaTiendas.eq('codigo', tienda);
   const [productosRes, tiendasRes] = await Promise.all([
-    inventarioDomain.cargarPaginas(() => sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('id')),
-    sb.from('origenes').select('codigo, nombre, inventario_control_activo, inventario_control_desde').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+    inventarioDomain.cargarPaginas(() => {
+      let q = sb.from(central ? 'productos' : 'catalogo_tienda_lectura').select('id, tipo, nombre, categoria').eq('activo', true).order('id');
+      if (!central) q = q.eq('tienda_codigo', tienda);
+      return q;
+    }),
+    consultaTiendas,
   ]);
   const error = productosRes.error || tiendasRes.error;
   if (error) {
@@ -408,7 +428,7 @@ async function cargarTodo() {
     });
     return;
   }
-  productosCache = productosRes.data || [];
+  productosCache = inventarioDomain.ordenarPorNombre(productosRes.data || []);
   tiendasCache = tiendasRes.data || [];
 
   const opcionesTienda = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
@@ -423,6 +443,7 @@ async function cargarTodo() {
 }
 
 async function cargarCelulares() {
+  if (!esCentral() && !currentPerfil?.tienda_codigo) { unidadesCache = []; return; }
   // FIX 23-jul-2026 · quitamos el join anidado remision_items(remision_margenes(costo_oscar))
   // que retornaba null porque en SPEC v2 el costo_oscar vive en remision_margenes
   // (accesible solo con RLS es_central) y el path no siempre resolvía. El costo
@@ -434,25 +455,30 @@ async function cargarCelulares() {
     'tiendas:tienda_actual(nombre)',
   ];
   if (esCentral()) columnas.splice(5, 0, 'costo_remision');
-  const { data, error } = await inventarioDomain.cargarPaginas(() => sb.from('unidades_lectura')
-    .select(inventarioDomain.columnasUnidades(esCentral()))
-    .order('id'));
+  const { data, error } = await inventarioDomain.cargarPaginas(() => {
+    let q = sb.from('unidades_lectura').select(inventarioDomain.columnasUnidades(esCentral())).order('id');
+    if (!esCentral()) q = q.eq('tienda_actual', currentPerfil.tienda_codigo);
+    return q;
+  });
   if (error) { document.getElementById('emptyCelulares').style.display = 'block'; document.getElementById('emptyCelulares').textContent = 'Error: ' + error.message; return; }
-  unidadesCache = data || [];
+  unidadesCache = inventarioDomain.acotarTienda(data, 'tienda_actual', esCentral() ? '' : currentPerfil.tienda_codigo, esCentral());
   renderCelulares();
 }
 
 async function cargarAccesorios() {
+  if (!esCentral() && !currentPerfil?.tienda_codigo) { stockCache = []; return; }
   const columnas = [
     'producto_id', 'tienda_codigo', 'cantidad', 'precio_tienda', 'updated_at',
     'productos(codigo, nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
   ];
   if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
-  const { data, error } = await inventarioDomain.cargarPaginas(() => sb.from('stock_cantidad_lectura')
-    .select(inventarioDomain.columnasStock(esCentral()))
-    .order('tienda_codigo').order('producto_id'));
+  const { data, error } = await inventarioDomain.cargarPaginas(() => {
+    let q = sb.from('stock_cantidad_lectura').select(inventarioDomain.columnasStock(esCentral())).order('tienda_codigo').order('producto_id');
+    if (!esCentral()) q = q.eq('tienda_codigo', currentPerfil.tienda_codigo);
+    return q;
+  });
   if (error) { document.getElementById('emptyAccesorios').style.display = 'block'; document.getElementById('emptyAccesorios').textContent = 'Error: ' + error.message; return; }
-  stockCache = data || [];
+  stockCache = inventarioDomain.acotarTienda(data, 'tienda_codigo', esCentral() ? '' : currentPerfil.tienda_codigo, esCentral());
   renderAccesorios();
 }
 
@@ -489,7 +515,7 @@ function renderCelulares() {
   const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
 
   const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
-  const filtradas = unidadesCache.filter(u => {
+  const filtradas = inventarioDomain.acotarTienda(unidadesCache, 'tienda_actual', tiendaPermitida, esCentral()).filter(u => {
     if (tiendaPermitida && u.tienda_actual !== tiendaPermitida) return false;
     if (estado && u.estado !== estado) return false;
     if (producto && u.producto_id !== producto) return false;
@@ -521,11 +547,9 @@ function renderAccesorios() {
   const soloAgotados = document.getElementById('chkAgotados').checked;
 
   const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
-  const filtrados = stockCache.filter(r => {
-    if (tiendaPermitida && r.tienda_codigo !== tiendaPermitida) return false;
-    if (categoria && r.productos?.categoria !== categoria) return false;
-    if (soloAgotados && r.cantidad > 0) return false;
-    return true;
+  const filtrados = inventarioDomain.filtrarAccesorios(stockCache, {
+    tiendaCodigo: tiendaPermitida, esCentral: esCentral(), categoria, soloAgotados,
+    busqueda: document.getElementById('filtroBusquedaAcc').value,
   });
 
   const tbody = document.getElementById('tbodyAccesorios');
@@ -575,7 +599,7 @@ function datosExportables() {
     const estado = document.getElementById('filtroEstadoCel').value;
     const producto = document.getElementById('filtroProductoCel').value;
     const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
-    return unidadesCache.filter(unidad => {
+    return inventarioDomain.acotarTienda(unidadesCache, 'tienda_actual', tienda, esCentral()).filter(unidad => {
       if (tienda && unidad.tienda_actual !== tienda) return false;
       if (estado && unidad.estado !== estado) return false;
       if (producto && unidad.producto_id !== producto) return false;
@@ -586,11 +610,9 @@ function datosExportables() {
   const tienda = esCentral() ? document.getElementById('filtroTiendaAcc').value : currentPerfil.tienda_codigo;
   const categoria = document.getElementById('filtroCategoriaAcc').value;
   const soloAgotados = document.getElementById('chkAgotados').checked;
-  return stockCache.filter(registro => {
-    if (tienda && registro.tienda_codigo !== tienda) return false;
-    if (categoria && registro.productos?.categoria !== categoria) return false;
-    if (soloAgotados && Number(registro.cantidad || 0) > 0) return false;
-    return true;
+  return inventarioDomain.filtrarAccesorios(stockCache, {
+    tiendaCodigo: tienda, esCentral: esCentral(), categoria, soloAgotados,
+    busqueda: document.getElementById('filtroBusquedaAcc').value,
   });
 }
 

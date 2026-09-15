@@ -34,6 +34,7 @@
   }
 
   function resumirInventario({ unidades, stock, tiendaCodigo = '', esCentral = false }) {
+    if (!esCentral && !tiendaCodigo) { unidades = []; stock = []; }
     const celulares = unidadesDisponibles(unidades, tiendaCodigo);
     const accesorios = stockDisponible(stock, tiendaCodigo);
 
@@ -113,7 +114,38 @@
     }
   }
 
+  function acotarTienda(filas, campo, tiendaCodigo, esCentral = false) {
+    if (!esCentral && !tiendaCodigo) return [];
+    return (filas || []).filter(r => !tiendaCodigo || r?.[campo] === tiendaCodigo);
+  }
+
+  function textoBusqueda(value) {
+    return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es');
+  }
+
+  function ordenarPorNombre(filas) {
+    const comparar = new Intl.Collator('es', { sensitivity: 'base', numeric: true }).compare;
+    return [...(filas || [])].sort((a,b) =>
+      comparar(a.productos?.nombre || a.nombre || '', b.productos?.nombre || b.nombre || '') ||
+      comparar(a.productos?.codigo || a.codigo || '', b.productos?.codigo || b.codigo || '') ||
+      comparar(a.tienda_codigo || '', b.tienda_codigo || '') || comparar(a.id || '', b.id || '')
+    );
+  }
+
+  function filtrarAccesorios(filas, { tiendaCodigo, esCentral = false, categoria = '', busqueda = '', soloAgotados = false }) {
+    const q = textoBusqueda(busqueda);
+    return ordenarPorNombre(acotarTienda(filas, 'tienda_codigo', tiendaCodigo, esCentral).filter(r =>
+      (!categoria || r.productos?.categoria === categoria) &&
+      (!soloAgotados || Number(r.cantidad || 0) <= 0) &&
+      (!q || textoBusqueda(`${r.productos?.nombre || ''} ${r.productos?.codigo || ''}`).includes(q))
+    ));
+  }
+
   global.CreditekInventarioDomain = Object.freeze({
+    acotarTienda,
+    textoBusqueda,
+    ordenarPorNombre,
+    filtrarAccesorios,
     cargarPaginas,
     unidadesDisponibles,
     stockDisponible,

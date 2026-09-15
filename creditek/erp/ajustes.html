@@ -363,13 +363,15 @@ document.getElementById('btnCerrarBanner').addEventListener('click', () => docum
 
 // ─── Página: Ajustes ────────────────────────────────────────────────────
 function initPagina() {
-  if (puedeSolicitarAjuste()) document.getElementById('btnNuevoAjuste').style.display = 'inline-block';
+  const nuevo = document.getElementById('btnNuevoAjuste');
+  nuevo.style.display = 'inline-block';
+  nuevo.textContent = 'Ir a conteos y ajustes';
   if (esCentral()) {
     document.getElementById('filtroTienda').style.display = '';
     document.getElementById('seccionCola').style.display = 'block';
   }
 
-  document.getElementById('btnNuevoAjuste').addEventListener('click', abrirModalAjuste);
+  nuevo.addEventListener('click', () => { location.href = 'inventario.html#conteos'; });
   document.getElementById('btnCancelarAjuste').addEventListener('click', () => document.getElementById('modalAjuste').classList.remove('show'));
   document.getElementById('btnTipoFaltante').addEventListener('click', () => seleccionarTipoAjuste('faltante'));
   document.getElementById('btnTipoSobrante').addEventListener('click', () => seleccionarTipoAjuste('sobrante'));
@@ -433,14 +435,13 @@ function renderColaAprobacion() {
       </div>
       <div class="desc">${escapeHtml(a.motivo)}</div>
       <div class="acciones">
-        <button class="btn-aprobar" data-id="${a.id}">Autorizar</button>
-        <button class="btn-rechazar" data-id="${a.id}">Rechazar</button>
+        <a class="btn-aprobar" href="inventario.html#conteos">Revisar con corte de inventario</a>
+        <button class="btn-rechazar" data-id="${a.id}">Cerrar sin aplicar</button>
       </div>
     </div>
   `;
   }).join('');
 
-  cont.querySelectorAll('.btn-aprobar').forEach(btn => btn.addEventListener('click', () => autorizarAjuste(btn.dataset.id)));
   cont.querySelectorAll('.btn-rechazar').forEach(btn => btn.addEventListener('click', () => abrirModalRechazo(btn.dataset.id)));
 }
 

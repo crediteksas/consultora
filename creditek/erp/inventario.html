@@ -13,6 +13,8 @@
 <script src="kora-access-control.js?v=2.0.22"></script>
 <script src="sidebar.js?v=2.0.22" data-kora-shell="1.0.0"></script>
 <script src="inventario-export.js"></script>
+<script src="conteos-domain.js"></script>
+<script src="conteos-ui.js"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -181,6 +183,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
         <a class="btn-export" href="kardex.html">Informe de movimientos por fecha</a>
         <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
         <button class="btn-export" id="btnExportarConteo">Descargar conteo ciego</button>
+        <button class="btn-export" id="btnControlConteos">Conteos, ajustes e informes</button>
       </div>
     </div>
 
@@ -318,9 +321,11 @@ function initPagina() {
   if (esCentral()) {
     document.getElementById('filtroTiendaCel').style.display = '';
     document.getElementById('filtroTiendaAcc').style.display = '';
-    crearControlesInventarioCentral();
   }
   actualizarEtiquetasCosto();
+  controlConteos = KoraConteosUI.init({ sb, XLSX, tiendaActual: tiendaActiva, refrescar: cargarTodo });
+  document.getElementById('btnControlConteos').addEventListener('click', () => controlConteos.abrir());
+  if (location.hash === '#conteos') controlConteos.abrir();
 
   document.getElementById('tabCelulares').addEventListener('click', () => cambiarTab('celulares'));
   document.getElementById('tabAccesorios').addEventListener('click', () => cambiarTab('accesorios'));
@@ -391,7 +396,7 @@ function cambiarTiendaDesdePantalla(evento) {
 
 async function cargarTodo() {
   const [productosRes, tiendasRes] = await Promise.all([
-    sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('nombre'),
+    inventarioDomain.cargarPaginas(() => sb.from('productos').select('id, tipo, nombre, categoria').eq('activo', true).order('id')),
     sb.from('origenes').select('codigo, nombre, inventario_control_activo, inventario_control_desde').eq('tipo', 'propia').eq('activo', true).order('nombre'),
   ]);
   const error = productosRes.error || tiendasRes.error;
@@ -412,7 +417,6 @@ async function cargarTodo() {
   document.getElementById('filtroProductoCel').innerHTML = '<option value="">Todos los productos</option>' + productosCache.filter(p => p.tipo === 'serializado').map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
   document.getElementById('filtroCategoriaAcc').innerHTML = '<option value="">Todas las categorías</option>' + CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join('');
   if (esCentral()) fijarTiendaEnFiltros(localStorage.getItem('creditek_sidebar_tienda') || '');
-  if (esCentral()) poblarFormulariosInventario();
 
   await Promise.all([cargarCelulares(), cargarAccesorios()]);
   renderResumen();
@@ -430,9 +434,9 @@ async function cargarCelulares() {
     'tiendas:tienda_actual(nombre)',
   ];
   if (esCentral()) columnas.splice(5, 0, 'costo_remision');
-  const { data, error } = await sb.from('unidades_lectura')
+  const { data, error } = await inventarioDomain.cargarPaginas(() => sb.from('unidades_lectura')
     .select(inventarioDomain.columnasUnidades(esCentral()))
-    .order('created_at', { ascending: false });
+    .order('id'));
   if (error) { document.getElementById('emptyCelulares').style.display = 'block'; document.getElementById('emptyCelulares').textContent = 'Error: ' + error.message; return; }
   unidadesCache = data || [];
   renderCelulares();
@@ -444,9 +448,9 @@ async function cargarAccesorios() {
     'productos(codigo, nombre, categoria)', 'tiendas:tienda_codigo(nombre)',
   ];
   if (esCentral()) columnas.splice(4, 0, 'costo_promedio');
-  const { data, error } = await sb.from('stock_cantidad_lectura')
+  const { data, error } = await inventarioDomain.cargarPaginas(() => sb.from('stock_cantidad_lectura')
     .select(inventarioDomain.columnasStock(esCentral()))
-    .order('updated_at', { ascending: false });
+    .order('tienda_codigo').order('producto_id'));
   if (error) { document.getElementById('emptyAccesorios').style.display = 'block'; document.getElementById('emptyAccesorios').textContent = 'Error: ' + error.message; return; }
   stockCache = data || [];
   renderAccesorios();
@@ -590,169 +594,11 @@ function datosExportables() {
   });
 }
 
-function descargarInventario(conteoCiego) {
-  const corte = inventarioExport.fechaCorte();
-  const filas = datosExportables();
-  if (!conteoCiego) {
-    const libro = inventarioExport.crearLibroInventario({
-      XLSX,
-      tipo: tabActual,
-      registros: filas,
-      esCentral: esCentral(),
-      corte,
-    });
-    XLSX.writeFile(libro, `inventario-${tabActual}-${corte.slice(0, 10)}.xlsx`);
-    return;
-  }
-  const contenido = tabActual === 'celulares'
-    ? inventarioExport.exportarCelulares({ unidades: filas, esCentral: esCentral(), conteoCiego, corte })
-    : inventarioExport.exportarAccesorios({ stock: filas, esCentral: esCentral(), conteoCiego, corte });
-  const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8' });
-  const enlace = document.createElement('a');
-  enlace.href = URL.createObjectURL(blob);
-  enlace.download = `inventario-${tabActual}-${corte.slice(0, 10)}${conteoCiego ? '-ciego' : ''}.csv`;
-  document.body.appendChild(enlace);
-  enlace.click();
-  const url = enlace.href;
-  enlace.remove();
-  URL.revokeObjectURL(url);
-}
+let controlConteos;
+function descargarInventario() { return controlConteos.abrir(); }
 
 
-// Los controles sensibles se crean únicamente después de validar esCentral().
-// Para admin_tienda y asesor no existen botones ni modales en el DOM.
-function crearControlesInventarioCentral() {
-  if (!esCentral() || document.getElementById('btnAjustarInventario')) return;
-  const acciones = document.querySelector('.export-actions');
-  acciones.insertAdjacentHTML('beforeend', `
-    <button class="btn-export" id="btnAjustarInventario">Ajustar inventario</button>
-  `);
-  document.body.insertAdjacentHTML('beforeend', `
-    <div class="modal-bg" id="modalOperacionInventario" role="dialog" aria-modal="true" aria-labelledby="operacionInventarioTitulo">
-      <div class="modal-box">
-        <h2 id="operacionInventarioTitulo"></h2>
-        <div class="modal-sub" id="operacionInventarioSub"></div>
-        <form class="inventario-form" id="formOperacionInventario">
-          <label>Tienda<select id="operacionTienda" required></select></label>
-          <label>Producto<select id="operacionProducto" required></select></label>
-          <label id="campoOperacionImei">IMEI / unidad<select id="operacionUnidad"></select></label>
-          <label id="campoOperacionImeis">IMEIs reales (uno por línea)<textarea id="operacionImeis"></textarea></label>
-          <label id="campoOperacionCantidad">Cantidad<input id="operacionCantidad" type="number" step="1"></label>
-          <label id="campoOperacionCosto">Costo interno de compra (no visible para la tienda)<input id="operacionCosto" type="number" min="0" step="0.01"></label>
-          <label id="campoOperacionPrecio">Precio de venta al cliente en la tienda<input id="operacionPrecio" type="number" min="0.01" step="0.01"></label>
-          <label id="campoOperacionEstado">Nuevo estado<select id="operacionEstado">
-            <option value="">Sin cambio</option><option value="disponible">Disponible</option>
-            <option value="vendido">Vendido</option><option value="en_traslado">En traslado</option>
-            <option value="garantia_proveedor">Garantía proveedor</option><option value="en_oscar">En Oscar</option>
-            <option value="anulado_reingreso">Anulado/reingreso</option>
-          </select></label>
-          <label id="campoOperacionDestino">Corregir tienda actual<select id="operacionDestino"></select></label>
-          <label>Motivo (mínimo 5 caracteres)<textarea id="operacionMotivo" minlength="5" required></textarea></label>
-          <div class="form-error" id="operacionError" role="alert"></div>
-          <div class="form-actions"><button type="button" class="secondary" id="btnCancelarOperacion">Cancelar</button><button type="submit" class="primary" id="btnGuardarOperacion">Guardar</button></div>
-        </form>
-      </div>
-    </div>
-  `);
-  document.getElementById('btnAjustarInventario').addEventListener('click', () => abrirOperacionInventario('ajuste'));
-  document.getElementById('btnCancelarOperacion').addEventListener('click', cerrarOperacionInventario);
-  document.getElementById('operacionProducto').addEventListener('change', actualizarCamposOperacion);
-  document.getElementById('operacionTienda').addEventListener('change', actualizarCamposOperacion);
-  document.getElementById('formOperacionInventario').addEventListener('submit', guardarOperacionInventario);
-}
-
-
-let operacionInventarioActual = null;
-
-function poblarFormulariosInventario() {
-  const tiendas = tiendasCache.filter(t => t.codigo !== 'CENTRAL');
-  const opcionesTiendas = '<option value="">Selecciona una tienda</option>' + tiendas.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
-  document.getElementById('operacionTienda').innerHTML = opcionesTiendas;
-  document.getElementById('operacionDestino').innerHTML = '<option value="">Sin cambio</option>' + opcionesTiendas.replace('<option value="">Selecciona una tienda</option>', '');
-  document.getElementById('operacionProducto').innerHTML = '<option value="">Selecciona un producto</option>' + productosCache.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)} · ${p.tipo}</option>`).join('');
-}
-
-function abrirOperacionInventario(tipo) {
-  if (!esCentral() || tipo !== 'ajuste') return;
-  operacionInventarioActual = tipo;
-  document.getElementById('formOperacionInventario').reset();
-  document.getElementById('operacionError').textContent = '';
-  document.getElementById('operacionInventarioTitulo').textContent = tipo === 'ajuste' ? 'Ajustar inventario' : 'Cargar inventario inicial';
-  document.getElementById('operacionInventarioSub').textContent = 'Disponible únicamente para tiendas. Todos los cambios quedan registrados en Kardex.';
-  const tiendaPreferida = tiendaActiva();
-  if (tiendaPreferida && tiendaPreferida !== 'CENTRAL') document.getElementById('operacionTienda').value = tiendaPreferida;
-  actualizarCamposOperacion();
-  document.getElementById('modalOperacionInventario').classList.add('show');
-}
-
-function cerrarOperacionInventario() {
-  document.getElementById('modalOperacionInventario')?.classList.remove('show');
-  operacionInventarioActual = null;
-}
-
-function actualizarCamposOperacion() {
-  const producto = productosCache.find(p => p.id === document.getElementById('operacionProducto').value);
-  const serializado = producto?.tipo === 'serializado';
-  const inicial = operacionInventarioActual === 'inicial';
-  document.getElementById('campoOperacionCantidad').style.display = serializado ? 'none' : '';
-  document.getElementById('campoOperacionImei').style.display = serializado && !inicial ? '' : 'none';
-  document.getElementById('campoOperacionImeis').style.display = serializado && inicial ? '' : 'none';
-  document.getElementById('campoOperacionPrecio').style.display = inicial ? '' : 'none';
-  document.getElementById('campoOperacionEstado').style.display = serializado && !inicial ? '' : 'none';
-  document.getElementById('campoOperacionDestino').style.display = serializado && !inicial ? '' : 'none';
-  document.getElementById('operacionCantidad').required = !serializado;
-  document.getElementById('operacionPrecio').required = inicial;
-  document.getElementById('operacionCosto').required = inicial;
-  if (serializado && !inicial) {
-    const tienda = document.getElementById('operacionTienda').value;
-    const unidades = unidadesCache.filter(u => u.producto_id === producto.id && (!tienda || u.tienda_actual === tienda));
-    document.getElementById('operacionUnidad').innerHTML = '<option value="">Selecciona un IMEI</option>' + unidades.map(u => `<option value="${u.id}">${escapeHtml(u.imei || '(sin IMEI)')} · ${escapeHtml(u.estado)}</option>`).join('');
-  }
-}
-
-async function guardarOperacionInventario(evento) {
-  evento.preventDefault();
-  if (!esCentral() || operacionInventarioActual !== 'ajuste') return;
-  const tienda = document.getElementById('operacionTienda').value;
-  const producto = productosCache.find(p => p.id === document.getElementById('operacionProducto').value);
-  const motivo = document.getElementById('operacionMotivo').value.trim();
-  const costoTexto = document.getElementById('operacionCosto').value;
-  const costo = costoTexto === '' ? null : Number(costoTexto);
-  const errorEl = document.getElementById('operacionError');
-  const boton = document.getElementById('btnGuardarOperacion');
-  errorEl.textContent = '';
-  if (!tienda || !producto) { errorEl.textContent = 'Selecciona tienda y producto.'; return; }
-  if (motivo.length < 5) { errorEl.textContent = 'El motivo debe tener mínimo 5 caracteres.'; return; }
-  if (operacionInventarioActual === 'ajuste' && producto.tipo === 'serializado'
-      && !document.getElementById('operacionEstado').value
-      && !document.getElementById('operacionDestino').value) {
-    errorEl.textContent = 'Indica un nuevo estado o una tienda destino.';
-    return;
-  }
-
-  let nombreRpc;
-  let parametros;
-  if (operacionInventarioActual === 'ajuste') {
-    nombreRpc = 'inventario_registrar_ajuste';
-    const serializado = producto.tipo === 'serializado';
-    parametros = {
-      p_tienda_codigo: tienda, p_producto_id: producto.id,
-      p_cantidad: serializado ? 1 : Number(document.getElementById('operacionCantidad').value),
-      p_motivo: motivo, p_unidad_id: serializado ? document.getElementById('operacionUnidad').value || null : null,
-      p_costo: costo, p_estado: serializado ? document.getElementById('operacionEstado').value || null : null,
-      p_tienda_destino: serializado ? document.getElementById('operacionDestino').value || null : null,
-    };
-  }
-
-  boton.disabled = true; boton.textContent = 'Guardando...';
-  const { data, error } = await sb.rpc(nombreRpc, parametros);
-  boton.disabled = false; boton.textContent = 'Guardar';
-  if (error) { errorEl.textContent = error.message; return; }
-  if (!data?.ok) { errorEl.textContent = 'El servidor no confirmó la operación.'; return; }
-  cerrarOperacionInventario();
-  await Promise.all([cargarCelulares(), cargarAccesorios()]);
-  renderResumen();
-}
+// Los ajustes se realizan únicamente en KoraConteosUI, con autorización de servidor.
 </script>
 </body>
 </html>

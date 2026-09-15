@@ -8,6 +8,7 @@ import vm from 'node:vm';
 const root = path.resolve(import.meta.dirname, '../..');
 const source = await readFile(path.join(root, 'creditek/erp/inventario-export.js'), 'utf8');
 const html = await readFile(path.join(root, 'creditek/erp/inventario.html'), 'utf8');
+const conteos = await readFile(path.join(root, 'creditek/erp/conteos-ui.js'), 'utf8');
 const context = { window: {}, Intl, Date };
 vm.runInNewContext(source, context);
 const exportador = context.window.CreditekInventarioExport;
@@ -131,8 +132,8 @@ test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
 test('la pantalla muestra costo y no precio de venta', () => {
   assert.match(html, /Costo unitario/);
   assert.match(html, /Valor total al costo/);
-  assert.match(html, /Costo interno de compra \(no visible para la tienda\)/);
-  assert.match(html, /Precio de venta al cliente en la tienda/);
+  assert.match(conteos, /Costo de la tienda/);
+  assert.doesNotMatch(conteos, /costo_promedio|costo_remision/);
   assert.doesNotMatch(html, /Precio de venta unitario/);
 });
 
@@ -174,7 +175,7 @@ test('CSV de conteo incluye nombre, código de tienda y código de producto', ()
 
 test('la pantalla descarga inventario normal como xlsx', () => {
   assert.match(html, /xlsx@0\.18\.5/);
-  assert.match(html, /crearLibroInventario/);
-  assert.match(html, /XLSX\.writeFile/);
-  assert.match(html, /\.xlsx/);
+  assert.match(html, /controlConteos\.abrir/);
+  assert.match(conteos, /XLSX\.writeFile/);
+  assert.match(conteos, /\.xlsx/);
 });

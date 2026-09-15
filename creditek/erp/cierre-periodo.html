@@ -733,7 +733,7 @@ function renderResumen() {
   cont.innerHTML = html;
 
   const btnConteo = document.getElementById('btnIniciarConteo');
-  if (btnConteo) btnConteo.addEventListener('click', abrirModalConteo);
+  if (btnConteo) btnConteo.addEventListener('click', () => { location.href = 'inventario.html#conteos'; });
   const btnCerrar = document.getElementById('btnCerrarPeriodo');
   if (btnCerrar) btnCerrar.addEventListener('click', ejecutarCierre);
   wireHistorial();

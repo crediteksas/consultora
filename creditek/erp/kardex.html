@@ -135,6 +135,7 @@ table.kardex-tabla tbody tr:hover { background: rgba(0,196,204,0.04); }
   <div class="page">
     <div class="page-top">
       <h1>📋 Kardex — Historial de movimientos</h1>
+      <button class="btn-secundario" id="btnExportarKardex" disabled>Descargar informe CSV</button>
     </div>
 
     <div class="seccion">
@@ -274,6 +275,9 @@ document.getElementById('btnCerrarBanner').addEventListener('click', () => docum
 // en la tienda origen, traslado_entrada en la tienda destino), por eso la
 // columna "Tienda" es una sola, con una anotación → / ← para traslados.
 const TIPOS_MOVIMIENTO = [
+  { valor: 'carga_inicial', label: 'Carga inicial histórica', clase: 'entra' },
+  { valor: 'ajuste_entrada', label: 'Ajuste de entrada', clase: 'entra' },
+  { valor: 'ajuste_salida', label: 'Ajuste de salida', clase: 'sale' },
   { valor: 'remision_entrada',    label: '📥 Entrada por remisión', clase: 'entra' },
   { valor: 'venta',               label: '🛒 Venta',                clase: 'sale' },
   { valor: 'traslado_salida',     label: '📤 Traslado — salida',    clase: 'sale' },
@@ -287,8 +291,9 @@ const TIPOS_MOVIMIENTO = [
 function tipoInfo(valor) {
   return TIPOS_MOVIMIENTO.find(t => t.valor === valor) || { label: valor, clase: 'neutro' };
 }
-const REF_LABEL = { venta: 'Venta', remision: 'Remisión', traslado: 'Traslado', ajuste: 'Ajuste' };
-const REF_HREF = { venta: 'ventas.html', remision: 'remisiones.html', traslado: 'traslados.html', ajuste: 'ajustes.html' };
+const REF_LABEL = { venta: 'Venta', remision: 'Remisión', traslado: 'Traslado', ajuste: 'Ajuste', conteo_inventario: 'Conteo autorizado' };
+const REF_HREF = { venta: 'ventas.html', remision: 'remisiones.html', traslado: 'traslados.html', ajuste: 'ajustes.html', conteo_inventario: 'inventario.html#conteos' };
+let ultimoInformeKardex = [];
 
 let productosCache = [];
 let tiendasCache = [];
@@ -305,6 +310,13 @@ function initPagina() {
   document.getElementById('filtroDesde').value = isoFecha(hace30);
 
   document.getElementById('btnBuscar').addEventListener('click', buscarMovimientos);
+  document.getElementById('btnExportarKardex').addEventListener('click', () => {
+    const cell = v => { const t = String(v ?? ''); return '"'+(/^[=+@\-]/.test(t)?"'":'')+t.replace(/"/g,'""')+'"'; };
+    const filas = [['Fecha Colombia','Tienda','Producto','Código','IMEI','Movimiento','Cantidad','Costo autorizado','Referencia','ID referencia','Nota'],
+      ...ultimoInformeKardex.map(m=>[new Date(m.created_at).toLocaleString('es-CO',{timeZone:'America/Bogota'}),nombreTienda(m.tienda_codigo),m.productos?.nombre,m.productos?.codigo,m.unidades?.imei,tipoInfo(m.tipo).label,m.cantidad,m.costo,m.referencia_tipo,m.referencia_id,m.nota])];
+    const url=URL.createObjectURL(new Blob(['\uFEFF'+filas.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');a.href=url;a.download='informe-kardex.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
   document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
   document.getElementById('filtroProductoTexto').addEventListener('input', onProductoTextoChange);
   document.getElementById('filtroImei').addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarMovimientos(); });
@@ -375,6 +387,8 @@ function limpiarFiltros() {
 }
 
 async function buscarMovimientos() {
+  ultimoInformeKardex=[];
+  document.getElementById('btnExportarKardex').disabled=true;
   const tbody = document.getElementById('tbodyKardex');
   const info = document.getElementById('infoResultados');
   tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Buscando...</div></td></tr>';
@@ -391,10 +405,13 @@ async function buscarMovimientos() {
     unidadId = unidad.id;
   }
 
+  const instanteConsulta = new Date().toISOString();
+  function consulta() {
   let q = sb.from('movimientos_lectura')
     .select('id, tipo, tienda_codigo, producto_id, unidad_id, cantidad, costo, precio, referencia_tipo, referencia_id, nota, created_at, productos(nombre, codigo, foto_url), unidades(imei)')
-    .order('created_at', { ascending: false })
-    .limit(300);
+    .order('id', { ascending: false })
+    .lte('created_at', instanteConsulta)
+    .limit(500);
 
   const tienda = document.getElementById('filtroTienda').value;
   if (tienda) q = q.eq('tienda_codigo', tienda);
@@ -408,9 +425,20 @@ async function buscarMovimientos() {
   const desde = document.getElementById('filtroDesde').value;
   const hasta = document.getElementById('filtroHasta').value;
   if (desde) q = q.gte('created_at', `${desde}T00:00:00-05:00`);
-  if (hasta) q = q.lte('created_at', `${hasta}T23:59:59-05:00`);
+  if (hasta) q = q.lt('created_at', new Date(new Date(`${hasta}T00:00:00-05:00`).getTime()+86400000).toISOString());
+  return q;
+  }
 
-  const { data, error } = await q;
+  let data = [], error = null, ultimoId = null;
+  for (;;) {
+    let q = consulta();
+    if (ultimoId !== null) q = q.lt('id', ultimoId);
+    const pagina = await q;
+    if (pagina.error) { error = pagina.error; break; }
+    data.push(...(pagina.data || []));
+    if ((pagina.data || []).length < 500) break;
+    ultimoId = pagina.data.at(-1).id;
+  }
 
   if (error) {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error: ${escapeHtml(error.message)}</div></td></tr>`;
@@ -418,7 +446,9 @@ async function buscarMovimientos() {
     return;
   }
 
-  const movimientos = data || [];
+  const movimientos = (data || []).sort((a,b) => new Date(b.created_at)-new Date(a.created_at) || Number(b.id)-Number(a.id));
+  ultimoInformeKardex=movimientos;
+  document.getElementById('btnExportarKardex').disabled=!movimientos.length;
 
   // Contexto de dirección para traslados (una sola consulta batch, no N+1).
   const idsTraslado = [...new Set(movimientos.filter(m => m.referencia_tipo === 'traslado').map(m => m.referencia_id))];
@@ -428,7 +458,7 @@ async function buscarMovimientos() {
     (traslados || []).forEach(t => { trasladosMap[t.id] = t; });
   }
 
-  info.textContent = `${movimientos.length} movimiento${movimientos.length === 1 ? '' : 's'}${movimientos.length === 300 ? ' (límite de 300 — afina los filtros para ver más detalle)' : ''}`;
+  info.textContent = `${movimientos.length} movimiento${movimientos.length === 1 ? '' : 's'} · rango completo`;
 
   if (!movimientos.length) {
     tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No hay movimientos con estos filtros.</div></td></tr>';

@@ -103,7 +103,18 @@
     return visibles.join(',');
   }
 
+  async function cargarPaginas(crearConsulta) {
+    const filas = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await crearConsulta().range(offset, offset + 499);
+      if (error) return { data: null, error };
+      filas.push(...(data || []));
+      if ((data || []).length < 500) return { data: filas, error: null };
+    }
+  }
+
   global.CreditekInventarioDomain = Object.freeze({
+    cargarPaginas,
     unidadesDisponibles,
     stockDisponible,
     valorVisibleUnidad,

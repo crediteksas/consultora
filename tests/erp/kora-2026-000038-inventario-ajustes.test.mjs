@@ -7,18 +7,18 @@ const root = path.resolve(import.meta.dirname, '../..');
 const html = await readFile(path.join(root, 'creditek/erp/inventario.html'), 'utf8');
 const sql = await readFile(path.join(root, 'creditek/erp/migrations/20260824_kora_2026_000038_ajustes_inventario.sql'), 'utf8');
 
-test('los controles sensibles se crean únicamente después de esCentral', () => {
+test('los controles sensibles pertenecen al flujo de conteos autorizado en servidor', () => {
   const markupInicial = html.slice(0, html.lastIndexOf('<script>'));
   assert.doesNotMatch(markupInicial, /id="btnAjustarInventario"/);
   assert.doesNotMatch(markupInicial, /id="btnCargarInventarioInicial"/);
-  assert.match(html, /if \(!esCentral\(\) \|\| document\.getElementById\('btnAjustarInventario'\)\) return/);
-  assert.match(html, /crearControlesInventarioCentral\(\)/);
+  assert.match(html, /KoraConteosUI\.init/);
+  assert.doesNotMatch(html, /crearControlesInventarioCentral/);
 });
 
 test('la UI conserva ajustes pero retira la carga inicial y refresca ambas fuentes', () => {
-  assert.match(html, /inventario_registrar_ajuste/);
+  assert.doesNotMatch(html, /inventario_registrar_ajuste/);
   assert.doesNotMatch(html, /inventario_cargar_inicial/);
-  assert.match(html, /operacionInventarioActual !== 'ajuste'/);
+  assert.match(html, /refrescar: cargarTodo/);
   assert.match(html, /Promise\.all\(\[cargarCelulares\(\), cargarAccesorios\(\)\]\)/);
 });
 

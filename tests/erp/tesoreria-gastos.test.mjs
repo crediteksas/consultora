@@ -48,14 +48,15 @@ test('Gastos remite a Tesorería y ya no llama a la API de aprobación',()=>{
   assert.match(treasury,/sb\.rpc\('es_controlador_financiero'\)/);
   assert.match(treasury,/route.get\('vista'\) === 'gastos'/);
 });
-test('indicador distingue aprobación, pago y estados cerrados',()=>{
+test('indicador discreto alerta solo aprobaciones, no pagos ya autorizados',()=>{
   assert.deepEqual(summarize(['pendiente_aprobacion','aprobado','aprobado','pagado','rechazado','anulado'].map(status=>({status}))),{pending:1,approved:2});
   const classes=new Set(),attrs={};const button={classList:{toggle(k,v){v?classes.add(k):classes.delete(k);}},setAttribute(k,v){attrs[k]=v;}};
   paintIndicator(button,{pending:1,approved:2});
-  assert.ok(classes.has('expenses-attention'));assert.match(button.innerHTML,/1<\/span> <span>por aprobar/);assert.match(attrs['aria-label'],/2 por pagar/);
-  paintIndicator(button,{pending:0,approved:2});assert.ok(!classes.has('expenses-attention'));assert.ok(classes.has('expenses-to-pay'));assert.doesNotMatch(button.innerHTML,/por aprobar/);
+  assert.ok(classes.has('expenses-attention'));assert.match(button.innerHTML,/aria-hidden="true">1<\/span>/);assert.match(attrs['aria-label'],/1 por aprobar/);assert.doesNotMatch(button.innerHTML,/por aprobar|por pagar/);
+  paintIndicator(button,{pending:0,approved:2});assert.equal(classes.size,0);assert.equal(button.innerHTML,'Gastos y retiros');
+  paintIndicator(button,{pending:123,approved:2});assert.match(button.innerHTML,/>99\+<\/span>/);assert.match(attrs['aria-label'],/123 por aprobar/);
   paintIndicator(button,{pending:0,approved:0});assert.equal(button.innerHTML,'Gastos y retiros');assert.equal(classes.size,0);
-  paintIndicator(button,{error:true});assert.match(attrs['aria-label'],/No se pudo consultar/);assert.doesNotMatch(attrs['aria-label'],/0 por aprobar/);
+  paintIndicator(button,{pending:2,error:true});assert.match(attrs['aria-label'],/No se pudo consultar/);assert.doesNotMatch(attrs['aria-label'],/0 por aprobar/);assert.equal(classes.size,0);assert.equal(button.innerHTML,'Gastos y retiros');
 });
 test('indicador carga antes de abrir la pestaña, pagina y no escribe',async()=>{
   const summaries=[],selections=[];let page=0;

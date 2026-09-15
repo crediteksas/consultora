@@ -4,13 +4,12 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const canDecide=(profile,row)=>profile?.activo===true&&profile.id===OSCAR&&profile.rol==='gerencia'&&row.status==='pendiente_aprobacion';
   const summarize=rows=>({pending:rows.filter(r=>r.status==='pendiente_aprobacion').length,approved:rows.filter(r=>r.status==='aprobado').length});
-  function paintIndicator(button,{pending=0,approved=0,error=false}){
+  function paintIndicator(button,{pending=0,error=false}){
     button.classList.toggle('expenses-attention',!error&&pending>0);
-    button.classList.toggle('expenses-to-pay',!error&&pending===0&&approved>0);
-    const label=error?'No se pudo consultar los pendientes. Pulsa Gastos y retiros para reintentar.':`${pending} por aprobar; ${approved} por pagar`;
+    const label=error?'No se pudo consultar los pendientes. Pulsa Gastos y retiros para reintentar.':`${pending} por aprobar`;
     button.setAttribute('aria-label',`Gastos y retiros: ${label}`);
     button.title=label;
-    button.innerHTML='Gastos y retiros'+(error?' <span class="expense-counter expense-counter-pay">!</span>':`${pending?` <span class="expense-counter">${pending}</span> <span>por aprobar</span>`:''}${approved?` <span class="expense-counter expense-counter-pay">${approved}</span> <span>por pagar</span>`:''}`);
+    button.innerHTML='Gastos y retiros'+(!error&&pending>0?`<span class="expense-counter" aria-hidden="true">${pending>99?'99+':pending}</span>`:'');
   }
   function create({sb,profile,domain,onSummary=()=>{}}){
     let host,rows=[],busy=false,sequence=0,summarySequence=0;

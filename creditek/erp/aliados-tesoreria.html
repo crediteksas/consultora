@@ -13,10 +13,9 @@
     <link rel="stylesheet" href="cobros-plataformas.css?v=1.0.0" />
     <link rel="stylesheet" href="tesoreria-clientes.css?v=1.1.0" />
     <style>
-      #showFinancialExpenses.expenses-attention { background:#fff1f2; border-color:#e11d48; color:#9f1239; }
-      #showFinancialExpenses.expenses-to-pay { background:#fffbeb; border-color:#d97706; color:#92400e; }
-      #showFinancialExpenses .expense-counter { display:inline-flex; align-items:center; justify-content:center; min-width:24px; min-height:24px; padding:2px 6px; border-radius:999px; background:#be123c; color:#fff; font-weight:800; }
-      #showFinancialExpenses .expense-counter-pay { background:#92400e; }
+      #showFinancialExpenses { position:relative; }
+      #showFinancialExpenses.expenses-attention:not(.active) { background:#fff1f2; border-color:#fecdd3; }
+      #showFinancialExpenses .expense-counter { position:absolute; top:-6px; right:-5px; display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:999px; background:#be123c; color:#fff; font-size:10px; line-height:1; font-weight:700; box-shadow:0 0 0 2px #fff; pointer-events:none; }
       .treasury-grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -675,7 +674,7 @@
     </style>
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
     <script src="finanzas-programadas-domain.js?v=1.0.1"></script>
-    <script src="tesoreria-gastos.js?v=1.1.0"></script>
+    <script src="tesoreria-gastos.js?v=1.1.1"></script>
     <script src="aliados-tesoreria-app.js?v=2.17.0"></script>
   </body>
 </html>

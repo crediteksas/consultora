@@ -105,7 +105,7 @@ test('la navegación renderizada usa las unidades oficiales y no términos hered
   );
   assert.deepEqual(
     Array.from(corporate, section => section.title),
-    ['TABLERO', 'CREDITEK RETAIL', 'CRÉDITOS Y CARTERA', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
+    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'CRÉDITOS Y CARTERA', 'ADMINISTRACIÓN'],
   );
   const store = access.navigationFor({ rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' });
   assert.deepEqual(Array.from(store, section => section.title), ['MI TIENDA']);
@@ -118,7 +118,7 @@ test('matriz equivalente de Óscar conserva Retail, Créditos, B2B, Aliados y Ad
   const navigation = access.navigationFor(profile, { b2b: false, aliados: false });
   assert.deepEqual(
     Array.from(navigation, section => section.title),
-    ['TABLERO', 'CREDITEK RETAIL', 'CRÉDITOS Y CARTERA', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'ADMINISTRACIÓN'],
+    ['CREDITEK RETAIL', 'CREDITEK B2B', 'CREDITEK ALIADOS', 'TABLERO', 'CRÉDITOS Y CARTERA', 'ADMINISTRACIÓN'],
   );
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
   assert.equal(access.authorize(profile, 'aliados-liquidaciones.html', { aliados: false }).allowed, true);

@@ -92,6 +92,17 @@
     ] },
   ]);
 
+  // Orden visual de las unidades principales. No modifica rutas, permisos ni
+  // capacidades: únicamente prioriza los tres negocios en la navegación.
+  const CORPORATE_NAVIGATION_ORDER = Object.freeze({
+    'CREDITEK RETAIL': 0,
+    'CREDITEK B2B': 1,
+    'CREDITEK ALIADOS': 2,
+    'TABLERO': 3,
+    'CRÉDITOS Y CARTERA': 4,
+    'ADMINISTRACIÓN': 5,
+  });
+
   const STORE_NAVIGATION = Object.freeze([
     { title: 'MI TIENDA', icon: 'store', items: [
       { label: 'Resumen de mi tienda', href: 'reportes.html', icon: 'gauge', roles: ['admin_tienda', 'asesor'] },
@@ -163,6 +174,9 @@
         .filter(section => section.capability === 'b2b'
           ? hasB2BReadAccess || capabilities.b2b === true
           : hasFullCorporateAccess || !section.capability || capabilities[section.capability] === true)
+        .sort((left, right) =>
+          (CORPORATE_NAVIGATION_ORDER[left.title] ?? 99)
+          - (CORPORATE_NAVIGATION_ORDER[right.title] ?? 99))
         .map(section => ({
           ...section,
           items: section.items

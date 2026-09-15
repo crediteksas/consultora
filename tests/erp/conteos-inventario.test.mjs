@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import XLSX from 'xlsx';
 const sql=readFileSync(new URL('../../supabase/migrations/20260915162101_inventario_conteos_auditables.sql',import.meta.url),'utf8');
 const fixedSql=readFileSync(new URL('../../supabase/migrations/20260915163724_inventario_conteo_referido_al_corte.sql',import.meta.url),'utf8');
+const historicoSql=readFileSync(new URL('../../supabase/migrations/20260915195416_inventario_comparativo_historico.sql',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const storeUser='00000000-0000-0000-0000-000000000003',otherUser='00000000-0000-0000-0000-000000000004',otherAdmin='00000000-0000-0000-0000-000000000005';
 let db,n=0;
@@ -28,6 +29,7 @@ before(async()=>{
  `);
  await db.exec(sql);
  await db.exec(fixedSql);
+ await db.exec(historicoSql);
 });
 after(async()=>db?.close());
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
@@ -42,6 +44,16 @@ async function fixture(qty=250,serialized=false){
 }
 function upload(f,qty,time=f.result.corte.corte_at){return api('subir',{id:f.result.corte.id,contado_at:time,archivo:'conteo.xlsx',sha256:'a'.repeat(64),filas:[{codigo:f.code,imei:f.result.lineas[0].imei,cantidad:qty}]});}
 function apply(f,extra={}){return api('aplicar',{id:f.result.corte.id,motivo:'Revisión física',soporte:'Acta de prueba',clasificacion:'sobrante_por_aclarar',...extra});}
+test('comparativo histórico puede consultarse pero no aplicar ni omitir la revisión en el mismo UPDATE',async()=>{
+ const f=await fixture(100);await upload(f,102);
+ await db.exec('reset role');await db.query("update inventario_control.cortes set revision_fuente=$2 where id=$1",[f.result.corte.id,{solo_comparativo:true,fecha_confirmada:'2026-09-06',pendientes:[{nombre:'Sin identificar'}]}]);
+ await asUser(maite);assert.equal((await api('ver',{id:f.result.corte.id})).lineas[0].diferencia,2);
+ await assert.rejects(apply(f),/Comparativo histórico pendiente/);
+ await db.exec('reset role');assert.equal((await db.query('select cantidad from stock_cantidad where producto_id=$1',[f.id])).rows[0].cantidad,100);
+ assert.equal((await db.query('select count(*)::int n from movimientos where referencia_id=$1',[f.result.corte.id])).rows[0].n,0);
+ await assert.rejects(db.query("update inventario_control.cortes set revision_fuente=null,estado='aplicado' where id=$1",[f.result.corte.id]),/Comparativo histórico pendiente/);
+ await asUser(otherUser);await assert.rejects(api('ver',{id:f.result.corte.id}),/otra tienda/);
+});
 test('el ejemplo conserva ventas posteriores: 250 → físico 499 → venta 17 → 482',async()=>{
  const f=await fixture();await db.exec('reset role');await db.query('update stock_cantidad set cantidad=cantidad-17 where producto_id=$1',[f.id]);await asUser(maite);
  const uploaded=await upload(f,499);assert.equal(uploaded.corte.estado,'pendiente');assert.equal(uploaded.lineas[0].actual,233);assert.equal(uploaded.lineas[0].diferencia,249);

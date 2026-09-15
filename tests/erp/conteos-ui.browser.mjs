@@ -14,8 +14,9 @@ try {
  await page.addScriptTag({content:readFileSync('creditek/erp/conteos-ui.js','utf8')});
  await page.evaluate(async()=>{
    window.calls=[];window.downloads=[];
-   XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets['Conteos y ajustes'],{defval:''}),name});
+   XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets.Comparativo||book.Sheets['Conteos y ajustes'],{defval:''}),name});
    const c={id:'11111111-1111-4111-8111-111111111111',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:new Date(Date.now()-60000).toISOString(),creado_nombre:'Operadora',estado:'abierto',base_conteo:'corte_fijo'};
+   window.demoCorte=c;
    const lines=[{producto_id:'a',codigo:'VID',nombre:'Vidrio',tipo:'cantidad',imei:'',cantidad_corte:250,costo_tienda:1500,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:233},
     {producto_id:'b',codigo:'CEL',nombre:'Equipo',tipo:'serializado',imei:'000000000000001',cantidad_corte:1,costo_tienda:400000,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:1}];
    const sb={rpc:async(name,{p_accion:a,p_datos:d})=>{
@@ -50,5 +51,16 @@ try {
  page.on('dialog',d=>d.accept());await page.locator('#conteos-form-decidir button[type=submit]').click();
  await page.waitForFunction(()=>calls.some(c=>c.a==='aplicar'));
  assert.match(await page.locator('#conteos-detalle').innerText(),/Ajuste aplicado/);
+ await page.evaluate(async()=>{demoCorte.estado='pendiente';demoCorte.revision_fuente={solo_comparativo:true,fecha_confirmada:'2026-09-06',nota:'Fecha confirmada por Óscar. Fuentes con fecha impresa del día 7.',fuentes:[{nombre:'Archivo.xlsx',sha256:'a'.repeat(64),fecha_impresa:'2026-09-07 09:11:32'}],pendientes:[{nombre:'SIM TIGO PAQUETE',fila:361,base:42,conteo:42,motivo:'Código por aclarar',archivo:'Archivo.xlsx'}]};await ui.abrir();});
+ await page.locator('[data-conteo-id]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-detalle').textContent.includes('Comparativo histórico'));
+ assert.match(await page.locator('#conteos-detalle').innerText(),/SIM TIGO PAQUETE/);
+ assert.equal(await page.locator('#conteos-form-decidir').count(),0);
+ assert.equal(await page.locator('#conteos-form-subir').count(),0);
+ await page.locator('#conteos-redescargar').click();
+ assert.deepEqual(await page.evaluate(()=>downloads.at(-1).names),['Comparativo','Por aclarar','Fuentes']);
+ await page.locator('#conteos-informe').click();
+ await page.waitForFunction(()=>downloads.at(-1).names.includes('Conteos y ajustes'));
+ assert.deepEqual(await page.evaluate(()=>downloads.at(-1).names),['Conteos y ajustes','Por aclarar']);
  assert.deepEqual(errors,[]);console.log('Navegador: archivo mixto, ceros IMEI, carga, 482, autorización, escritorio y móvil OK.');
 } finally {await browser.close();}

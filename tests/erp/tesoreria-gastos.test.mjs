@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
-const {create,canDecide}=require('../../creditek/erp/tesoreria-gastos.js');
+const {create,canDecide,summarize,paintIndicator}=require('../../creditek/erp/tesoreria-gastos.js');
 require('../../creditek/erp/finanzas-programadas-domain.js');
 const domain=globalThis.KoraFinancialDomain;
 const oscar={id:'6de0ad26-64af-4966-8cd9-d468880af627',activo:true,rol:'gerencia'};
@@ -47,4 +47,33 @@ test('Gastos remite a Tesorería y ya no llama a la API de aprobación',()=>{
   assert.match(app,/aliados-tesoreria.html\?vista=gastos/);
   assert.match(treasury,/sb\.rpc\('es_controlador_financiero'\)/);
   assert.match(treasury,/route.get\('vista'\) === 'gastos'/);
+});
+test('indicador distingue aprobación, pago y estados cerrados',()=>{
+  assert.deepEqual(summarize(['pendiente_aprobacion','aprobado','aprobado','pagado','rechazado','anulado'].map(status=>({status}))),{pending:1,approved:2});
+  const classes=new Set(),attrs={};const button={classList:{toggle(k,v){v?classes.add(k):classes.delete(k);}},setAttribute(k,v){attrs[k]=v;}};
+  paintIndicator(button,{pending:1,approved:2});
+  assert.ok(classes.has('expenses-attention'));assert.match(button.innerHTML,/1<\/span> <span>por aprobar/);assert.match(attrs['aria-label'],/2 por pagar/);
+  paintIndicator(button,{pending:0,approved:2});assert.ok(!classes.has('expenses-attention'));assert.ok(classes.has('expenses-to-pay'));assert.doesNotMatch(button.innerHTML,/por aprobar/);
+  paintIndicator(button,{pending:0,approved:0});assert.equal(button.innerHTML,'Gastos y retiros');assert.equal(classes.size,0);
+  paintIndicator(button,{error:true});assert.match(attrs['aria-label'],/No se pudo consultar/);assert.doesNotMatch(attrs['aria-label'],/0 por aprobar/);
+});
+test('indicador carga antes de abrir la pestaña, pagina y no escribe',async()=>{
+  const summaries=[],selections=[];let page=0;
+  const sb={from(table){assert.equal(table,'financial_entries');const query={select(cols){selections.push(cols);return query;},in(key,values){assert.equal(key,'status');assert.deepEqual(values,['pendiente_aprobacion','aprobado']);return query;},order(){return query;},range(from,to){assert.equal(to-from,499);page++;return Promise.resolve({data:page===1?Array.from({length:500},()=>({status:'pendiente_aprobacion'})):[{status:'aprobado'}]});}};return query;}};
+  const api=create({sb,profile:oscar,domain,onSummary:x=>summaries.push(x)});await api.refreshSummary();
+  assert.deepEqual(summaries,[{pending:500,approved:1}]);assert.deepEqual(selections,['id,status','id,status']);
+});
+test('error del indicador no se presenta como cero y una respuesta vieja no pisa la nueva',async()=>{
+  const summaries=[],pending=[];
+  const sb={from(){const query={select(){return query;},in(){return query;},order(){return query;},range(){return new Promise(resolve=>pending.push(resolve));}};return query;}};
+  const api=create({sb,profile:oscar,domain,onSummary:x=>summaries.push(x)});
+  const a=api.refreshSummary(),b=api.refreshSummary();pending[1]({data:[{status:'aprobado'}]});await b;pending[0]({data:[{status:'pendiente_aprobacion'}]});await a;
+  assert.deepEqual(summaries,[{pending:0,approved:1}]);
+  const c=api.refreshSummary();pending[2]({error:{message:'offline'}});await c;assert.deepEqual(summaries.at(-1),{error:true});
+});
+test('aprobar actualiza el contador global y conserva el total pendiente de pago',async()=>{
+  const f=fixture(),summaries=[];f.api=create({sb:f.sb,profile:oscar,domain,onSummary:x=>summaries.push(x)});await f.api.mount(f.host);
+  const form={dataset:{decision:'pending'},elements:{amount:{value:'100'},note:{value:''}}};
+  await f.host.onsubmit({preventDefault(){},target:{closest(){return form;}},submitter:{value:'aprobado'}});
+  assert.deepEqual(summaries,[{pending:1,approved:1},{pending:0,approved:2}]);
 });

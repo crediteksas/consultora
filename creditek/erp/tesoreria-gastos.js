@@ -3,8 +3,24 @@
   const OSCAR='6de0ad26-64af-4966-8cd9-d468880af627';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const canDecide=(profile,row)=>profile?.activo===true&&profile.id===OSCAR&&profile.rol==='gerencia'&&row.status==='pendiente_aprobacion';
-  function create({sb,profile,domain}){
-    let host,rows=[],busy=false,sequence=0;
+  const summarize=rows=>({pending:rows.filter(r=>r.status==='pendiente_aprobacion').length,approved:rows.filter(r=>r.status==='aprobado').length});
+  function paintIndicator(button,{pending=0,approved=0,error=false}){
+    button.classList.toggle('expenses-attention',!error&&pending>0);
+    button.classList.toggle('expenses-to-pay',!error&&pending===0&&approved>0);
+    const label=error?'No se pudo consultar los pendientes. Pulsa Gastos y retiros para reintentar.':`${pending} por aprobar; ${approved} por pagar`;
+    button.setAttribute('aria-label',`Gastos y retiros: ${label}`);
+    button.title=label;
+    button.innerHTML='Gastos y retiros'+(error?' <span class="expense-counter expense-counter-pay">!</span>':`${pending?` <span class="expense-counter">${pending}</span> <span>por aprobar</span>`:''}${approved?` <span class="expense-counter expense-counter-pay">${approved}</span> <span>por pagar</span>`:''}`);
+  }
+  function create({sb,profile,domain,onSummary=()=>{}}){
+    let host,rows=[],busy=false,sequence=0,summarySequence=0;
+    async function refreshSummary(){
+      const current=++summarySequence;
+      try{
+        const all=[];for(let from=0;;from+=500){const result=await sb.from('financial_entries').select('id,status').in('status',['pendiente_aprobacion','aprobado']).order('id').range(from,from+499);if(result.error)throw result.error;all.push(...result.data);if(result.data.length<500)break;}
+        if(current===summarySequence)onSummary(summarize(all));
+      }catch(error){if(current===summarySequence)onSummary({error:true});}
+    }
     const visible=()=>domain.filterEntries(rows,{business:host.querySelector('[data-business]').value,query:host.querySelector('[data-query]').value});
     const history=()=>domain.filterEntries(visible().filter(r=>r.status!=='pendiente_aprobacion'&&r.status!=='aprobado'),{from:host.querySelector('[data-from]').value,to:host.querySelector('[data-to]').value});
     function card(row){return `<article class="preparation-card"><h3>${esc(row.concept)}</h3><p>${esc(domain.BUSINESS_LABELS[row.business_unit]||row.business_unit)}${row.store_code?' · Tienda '+esc(row.store_code):''} · ${esc(row.due_date)} · ${esc(row.entry_type==='retiro_utilidad'?'Retiro de utilidad':'Gasto')}</p><p>Beneficiario: <strong>${esc(row.beneficiary)}</strong> · ${esc(row.beneficiary_document||'')}</p><p>Cuenta destino: ${esc(row.destination_account||'No informada')}</p><p>Valor: <strong>${row.amount?domain.money(row.amount):'Por confirmar'}</strong> · ${esc(domain.STATUS_LABELS[row.status]||row.status)}</p>${row.note?`<p>${esc(row.note)}</p>`:''}${row.approved_at?`<p>Aprobación / decisión: ${esc(new Date(row.approved_at).toLocaleString('es-CO',{timeZone:'America/Bogota'}))}</p>`:''}${canDecide(profile,row)?`<form data-decision="${esc(row.id)}"><label>Valor confirmado<input class="control" name="amount" type="number" min="1" step="0.01" value="${esc(row.amount||'')}" aria-label="Valor confirmado"></label><label>Nota<input class="control" name="note" aria-label="Nota de decisión"></label><div class="actions"><button class="btn primary" name="decision" value="aprobado" type="submit">Aprobar</button><button class="btn secondary" name="decision" value="rechazado" type="submit">Rechazar</button></div></form>`:''}${row.status==='aprobado'?'<p>Autorización conservada · pendiente de registrar el pago. No requiere otra aprobación.</p>':''}</article>`;}
@@ -17,7 +33,7 @@
     function message(text){host.querySelector('[data-message]').textContent=text;}
     async function load(){const current=++sequence;message('Consultando gastos…');try{
       const all=[];for(let from=0;;from+=500){const result=await sb.from('financial_entries').select('*').order('due_date',{ascending:false}).order('id').range(from,from+499);if(result.error)throw result.error;all.push(...result.data);if(result.data.length<500)break;}
-      if(current!==sequence)return;rows=all;render();message('');
+      if(current!==sequence)return;rows=all;++summarySequence;onSummary(summarize(rows));render();message('');
     }catch(error){if(current===sequence)message('No fue posible consultar los gastos: '+(error.message||'Intenta nuevamente.'));}}
     async function submit(event){event.preventDefault();const form=event.target.closest('[data-decision]');if(!form||busy)return;const row=rows.find(r=>r.id===form.dataset.decision);if(!canDecide(profile,row||{}))return;
       const decision=event.submitter?.value;if(!['aprobado','rechazado'].includes(decision))return;
@@ -32,7 +48,7 @@
       host.querySelector('[data-export]').onclick=()=>{const exportRows=[...visible().filter(r=>['pendiente_aprobacion','aprobado'].includes(r.status)),...history()];const url=URL.createObjectURL(new Blob([domain.csv(exportRows)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='tesoreria-gastos.csv';a.click();URL.revokeObjectURL(url);};
       await load();
     }
-    return {mount};
+    return {mount,refreshSummary};
   }
-  const api={create,canDecide};if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekTesoreriaGastos=api;
+  const api={create,canDecide,summarize,paintIndicator};if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekTesoreriaGastos=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -1251,8 +1251,15 @@
     try {
       const access = await sb.rpc('es_controlador_financiero');
       if (!access.error && access.data === true) {
-        financialExpenses = window.CreditekTesoreriaGastos.create({sb,profile,domain:window.KoraFinancialDomain});
+        financialExpenses = window.CreditekTesoreriaGastos.create({sb,profile,domain:window.KoraFinancialDomain,onSummary:summary=>window.CreditekTesoreriaGastos.paintIndicator($("#showFinancialExpenses"),summary)});
         $("#showFinancialExpenses").classList.remove('hidden');
+        await financialExpenses.refreshSummary();
+        // Read-only refresh: never replace an approval form while it is being edited.
+        const refreshExpenseIndicator=()=>{if(!document.hidden)financialExpenses.refreshSummary();};
+        const expenseTimer=setInterval(refreshExpenseIndicator,60000);
+        window.addEventListener('focus',refreshExpenseIndicator);
+        document.addEventListener('visibilitychange',refreshExpenseIndicator);
+        window.addEventListener('pagehide',()=>clearInterval(expenseTimer),{once:true});
       }
     } catch (error) { console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
@@ -1327,6 +1334,7 @@
   };
   $("#refresh").onclick = async () => {
     try {
+      if(treasuryView!=='expenses')await financialExpenses?.refreshSummary();
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
       else if (treasuryView === 'preparation') await preparation?.mount($("#preparationContent"));

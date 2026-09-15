@@ -82,3 +82,25 @@ test('la interfaz concentra Tesorería en pagos, compensaciones y utilidad', asy
   assert.doesNotMatch(html,/UUID|JSON|service_role/i);
   assert.doesNotMatch(app,/service_role/i);
 });
+
+test('Tesorería diferencia saldo contable, compensaciones y utilidad real', async () => {
+  const [html, app] = await Promise.all([
+    readFile('creditek/erp/aliados-tesoreria.html', 'utf8'),
+    readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
+  ]);
+  for (const text of [
+    'No corresponde a la utilidad de las ventas B2B',
+    'Ver utilidad B2B por día',
+    'Ver utilidad por liquidación',
+  ]) assert.match(html, new RegExp(text));
+  for (const text of [
+    'Compensaciones Retail calculadas para B2B',
+    'Compensaciones pendientes de aplicar a B2B',
+    'Saldo contable B2B disponible',
+    'Utilidad de liquidaciones asignada a Tercerización',
+    'Pagos y ajustes descontados de Tercerización',
+    'Saldo neto de Tercerización disponible',
+  ]) assert.match(app, new RegExp(text));
+  assert.match(app, /!x\.applied_at && !x\.reversed_at/);
+  assert.match(app, /total_outsourcing_commission/);
+});

@@ -567,6 +567,7 @@
     $("#paymentSections").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#generalFilters").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#metrics").classList.toggle("hidden", treasuryView === "storeMovements");
+    $("#balanceGuide").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
@@ -598,6 +599,13 @@
         (n, x) => n + Number(x.total_b2b_compensations || 0),
         0,
       ),
+      pendingB2B = data.compensations
+        .filter((x) => !x.applied_at && !x.reversed_at)
+        .reduce((n, x) => n + Number(x.compensation_value || 0), 0),
+      outsourcingGenerated = data.destinations.reduce(
+        (n, x) => n + Number(x.total_outsourcing_commission || 0),
+        0,
+      ),
       expenses = data.movements
         .filter(
           (x) =>
@@ -606,25 +614,22 @@
             ["pagado", "conciliado"].includes(x.status),
         )
         .reduce((n, x) => n + Number(x.amount), 0);
-    $("#metrics").innerHTML = [
-      ["Base calculada de plataformas · no es ingreso bancario", received],
-      [
-        "Pagos pendientes a aliados",
-        ally.reduce((n, x) => n + Number(x.valor), 0),
-      ],
-      [
-        "Pagos pendientes a ejecutivos",
-        exec.reduce((n, x) => n + Number(x.valor), 0),
-      ],
-      ["Compensaciones asignadas a B2B", comp],
-      ["Saldo B2B disponible", b2b],
-      ["Saldo Tercerización disponible", Math.max(0,out)],
-      ["Faltante operativo por anulaciones", Math.max(0,-out)],
-      ["Gastos y salidas de Tercerización", expenses],
-    ]
+    const metrics = [
+      { label: "Base calculada de plataformas", value: received, detail: "Referencia operativa; no confirma un ingreso bancario." },
+      { label: "Pagos pendientes a aliados", value: ally.reduce((n, x) => n + Number(x.valor), 0), detail: "Órdenes aún no cerradas." },
+      { label: "Pagos pendientes a ejecutivos", value: exec.reduce((n, x) => n + Number(x.valor), 0), detail: "Bonificaciones aún no cerradas." },
+      { label: "Compensaciones Retail calculadas para B2B", value: comp, detail: "Incluye valores aplicados y pendientes. No es utilidad B2B.", className: "metric-b2b" },
+      { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
+      { label: "Saldo contable B2B disponible", value: b2b, detail: "Compensaciones aplicadas menos pagos B2B. No es utilidad de ventas.", className: "metric-b2b" },
+      { label: "Utilidad de liquidaciones asignada a Tercerización", value: outsourcingGenerated, detail: "Utilidad generada antes de pagos y ajustes de Tesorería.", className: "metric-outsourcing" },
+      { label: "Pagos y ajustes descontados de Tercerización", value: expenses, detail: "Incluye pagos a ejecutivos y ajustes contabilizados.", className: "metric-outsourcing" },
+      { label: "Saldo neto de Tercerización disponible", value: Math.max(0, out), detail: "Utilidad asignada menos pagos, ajustes y salidas.", className: "metric-outsourcing" },
+    ];
+    if (out < 0) metrics.push({ label: "Faltante operativo por anulaciones", value: -out, detail: "Valor por cubrir antes de nuevas salidas.", className: "metric-outsourcing" });
+    $("#metrics").innerHTML = metrics
       .map(
-        ([l, v]) =>
-          `<div class="metric"><small>${l}</small><strong>${cop(v)}</strong></div>`,
+        ({ label, value, detail, className = "" }) =>
+          `<article class="metric ${className}"><small>${esc(label)}</small><strong>${cop(value)}</strong><span class="metric-detail">${esc(detail)}</span></article>`,
       )
       .join("");
     $("#allyPayments").innerHTML = paymentCards("aliado");

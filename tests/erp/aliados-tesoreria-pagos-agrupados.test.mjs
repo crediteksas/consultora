@@ -12,6 +12,15 @@ test('muestra comercio y titular en pagos de aliados',()=>{
   assert.match(app,/origin_code\s*:\s*b\.origen_codigo/);
 });
 
+test('muestra el ejecutivo real de las operaciones en cada pago de aliados',()=>{
+  assert.match(app,/payment_items\(operation_id,concepto,valor,liquidation_operations\(ejecutivo_id,ejecutivos\(nombre\)\)\)/);
+  assert.match(app,/function paymentExecutiveNames\(payments\)/);
+  assert.match(app,/item\.liquidation_operations\?\.ejecutivos\?\.nombre/);
+  assert.match(app,/payment-card__executive/);
+  assert.match(app,/Sin ejecutivo asignado/);
+  assert.match(app,/executives\.join\(\", \"\)/);
+});
+
 test('consolida órdenes abiertas del mismo beneficiario y cuenta',()=>{
   assert.match(app,/function paymentGroups/);
   assert.match(app,/paymentGroupKey\(payment\)/);

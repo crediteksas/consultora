@@ -98,6 +98,17 @@
       ? window.CreditekTesoreriaTercerizacion.paymentBusinessName(p, data.origins)
       : null;
   }
+  function paymentExecutiveNames(payments) {
+    const rows = Array.isArray(payments) ? payments : [payments];
+    return [
+      ...new Set(
+        rows
+          .flatMap((payment) => payment.executive_names || [])
+          .map((name) => String(name || "").trim())
+          .filter(Boolean),
+      ),
+    ];
+  }
   function commissionCompensation(movement) {
     const operationId = String(movement.idempotency_key || "").replace(
       "commission-operation:",
@@ -158,6 +169,16 @@
       beneficiary_identification: p.bank_snapshot?.holder_identification || b.identificacion || "—",
       origin_code: b.origen_codigo || null,
       business_snapshot: p.business_snapshot || null,
+      executive_names: [
+        ...new Set(
+          items
+            .map(
+              (item) =>
+                item.liquidation_operations?.ejecutivos?.nombre || null,
+            )
+            .filter(Boolean),
+        ),
+      ],
     };
   }
   async function safe(query, required = true) {
@@ -264,7 +285,7 @@
         sb
           .from("payment_orders")
           .select(
-            "*,liquidation_beneficiaries(id,nombre,identificacion,tipo,origen_codigo),beneficiary_bank_accounts(id,banco,tipo_cuenta,numero_cuenta,validada),liquidations(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by),payment_items(operation_id,concepto,valor)",
+            "*,liquidation_beneficiaries(id,nombre,identificacion,tipo,origen_codigo),beneficiary_bank_accounts(id,banco,tipo_cuenta,numero_cuenta,validada),liquidations(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by),payment_items(operation_id,concepto,valor,liquidation_operations(ejecutivo_id,ejecutivos(nombre)))",
           )
           .order("created_at", { ascending: false }),
       ),
@@ -493,6 +514,10 @@
             0,
           ),
           business = paymentBusinessName(p),
+          executives = paymentExecutiveNames(group),
+          executiveText = executives.length
+            ? esc(executives.join(", "))
+            : '<span class="approval-pending">Sin ejecutivo asignado</span>',
           action =
             group.length > 1 && group.every(x => window.CreditekTesoreriaTercerizacion.paymentReadiness(x).ready)
               ? `<button class="btn primary" data-payment-group="${ids}">Adjuntar soporte y registrar</button>`
@@ -500,6 +525,7 @@
         return `<article class="payment-card">
   <div class="payment-card__top"><div><div class="payment-card__title">${business ? `${esc(business)} <span class="payment-card__holder">· Titular: ${esc(p.beneficiary_name)}</span>` : esc(p.beneficiary_name)}</div><div class="payment-card__ref">${group.length > 1 ? `${group.length} órdenes consolidadas` : `Orden PO-${shortId(p.id)}`} · ${esc([...new Set(group.map((x) => platformName(x.platform_snapshot)))].join(", "))}</div></div>${p.historico_inicial ? badge("pagado", "Histórico pagado") : badge(p.estado)}</div>
   <p class="payment-card__ref">Liquidación: ${window.CreditekTesoreriaTercerizacion.loteAutorizado(p)?'aprobada':'pendiente de aprobación'} · Pago: ${esc(p.estado)}</p>
+  ${kind === "aliado" ? `<p class="payment-card__executive"><strong>${executives.length > 1 ? "Ejecutivos" : "Ejecutivo"}:</strong> ${executiveText}</p>` : ""}
   <div class="payment-card__grid"><div class="payment-field"><small>${kind === "ejecutivo" ? "Bonificación total" : "Valor total a girar"}</small><strong>${cop(total)}</strong></div><div class="payment-field"><small>${kind === "ejecutivo" ? "Periodos" : "Cortes"}</small><strong>${esc([...new Set(group.map((x) => date(x.cutoff_snapshot)))].join(", "))}</strong></div><div class="payment-field"><small>Operaciones</small><strong>${operations}</strong></div><div class="payment-field"><small>Cuenta destino</small><strong>${mask(p.bank_snapshot)}</strong>${missing.length ? `<span class="approval-pending">Falta: ${esc(missing.join(", "))}</span>` : ""}</div></div>
   ${group.length > 1 ? `<div class="payment-card__orders">${group.map((x) => `<span>PO-${shortId(x.id)} · ${date(x.cutoff_snapshot)} · ${cop(x.valor)}</span>`).join("")}</div>` : ""}
   ${(data.recoveryApplications||[]).some(a=>group.some(x=>x.id===a.payment_order_id))?`<p>Descuentos por anulaciones: ${cop((data.recoveryApplications||[]).filter(a=>group.some(x=>x.id===a.payment_order_id)).reduce((n,a)=>n+Number(a.importe),0))}. ${total===0?'Sin giro bancario.':'El valor a girar ya incluye estos descuentos.'}</p>`:''}
@@ -835,10 +861,12 @@
     const p = data.payments.find((x) => x.id === id);
     if (!p) return;
     const bank = p.bank_snapshot || {},
+      executives = paymentExecutiveNames(p),
       authorized = window.CreditekTesoreriaTercerizacion.pagoAutorizado(p);
     $("#paymentDetailBody").innerHTML = `<div class="payment-detail-grid">
  <div><small>Orden KORA</small><strong>PO-${shortId(p.id)}</strong></div><div><small>Estado</small><strong>${p.historico_inicial ? "Histórico pagado · sin soporte requerido" : esc(String(p.estado || "—").replaceAll("_", " "))}</strong></div>
  <div><small>Negocio relacionado</small><strong>${esc(paymentBusinessName(p) || "No aplica")}</strong></div><div><small>Titular / beneficiario</small><strong>${esc(p.beneficiary_name)}</strong></div>
+ ${p.payment_kind === "aliado" ? `<div><small>Ejecutivo</small><strong>${executives.length ? esc(executives.join(", ")) : "Sin ejecutivo asignado"}</strong></div>` : ""}
  <div><small>Identificación</small><strong>${esc(p.beneficiary_identification)}</strong></div><div><small>Fecha real del pago</small><strong>${date(p.fecha_pagada)}</strong></div>
  <div><small>Plataforma</small><strong>${esc(platformName(p.platform_snapshot))}</strong></div><div><small>Fecha de corte</small><strong>${date(p.cutoff_snapshot)}</strong></div>
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>

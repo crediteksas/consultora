@@ -6,6 +6,7 @@
   const Accounts = CreditekAliadosCuentas;
   const Review = CreditekKrediyaReview;
   const Commerce = CreditekLiquidacionesComercios;
+  const Summary = CreditekLiquidacionesResumen;
   let sb;
   let operator;
   let profile;
@@ -20,7 +21,7 @@
   let activeTab = 'operations';
   let activeTabRequest;
   let activeModel = 'all';
-  let listMode = 'pending';
+  let listMode = 'week';
   let preview;
   let fileBuffer;
   let lastImportedBatch=null;
@@ -45,7 +46,7 @@
     (batch.plataforma !== 'krediya' && String(batch.fecha_corte || '') < '2026-09-01');
 
   function statesForMode() {
-    return listMode === 'pending' ? PENDING_STATES : HISTORY_STATES;
+    return listMode === 'pending' ? PENDING_STATES : listMode === 'history' ? HISTORY_STATES : [...PENDING_STATES,...HISTORY_STATES];
   }
 
   function updateStateFilter() {
@@ -102,11 +103,17 @@
 
   async function loadBatches() {
     const request = ++batchesRequest;
-    let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,ejecutivo_id,establishment_name,referencia,imei)').order('imported_at', { ascending: false });
-    if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
-    const { data, error } = await query;
+    const data=[];let error;
+    for(let from=0;;from+=500){
+      let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,ejecutivo_id,establishment_name,referencia,imei)').order('imported_at', { ascending: false }).order('id').range(from,from+499);
+      if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
+      const page=await query;
+      if(request!==batchesRequest)return;
+      if(page.error||!Array.isArray(page.data)){error=page.error||{message:'Respuesta incompleta'};break;}
+      data.push(...page.data);if(page.data.length<500)break;
+    }
     if (request !== batchesRequest) return;
-    if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; return; }
+    if (error) { $('batches').innerHTML = `<tr><td colspan="10">${esc(error.message)}</td></tr>`; $('monthlySummary').textContent='No se pudo consultar la utilidad del mes. Actualiza para reintentar.'; return; }
     batches = data || [];
     $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
     $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
@@ -124,6 +131,7 @@
           const sum=key=>contexts.reduce((n,c)=>n+Number(c.automatica[key]),0);
           const allied=contexts.filter(c=>recognized.find(o=>o.id===c.operation_id)?.tipo_establecimiento==='aliado').reduce((n,c)=>n+Number(c.automatica.giro),0);
           b.previewValues=[allied,sum('bonos'),sum('utilidad_neta'),allied+sum('bonos')];
+          b.previewRetail=contexts.filter(c=>recognized.find(o=>o.id===c.operation_id)?.tipo_establecimiento==='propia').reduce((n,c)=>n+Number(c.automatica.giro),0);
         }
       }catch(_){if(request===batchesRequest)b.previewError='No se pudo consultar';}
     }));
@@ -131,26 +139,35 @@
   }
 
   function renderBatches() {
+    const periodo=Summary.periodos();
+    const month=Summary.utilidadMes(batches,periodo);
+    $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad liquidada · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · ${esc($('filterPlatform').value?platformName($('filterPlatform').value):'Todas las plataformas')}</p></div><strong class="monthly-utility">${month.total==null?'No disponible':money(month.total)}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Antes de gastos, retiros y ajustes posteriores; no es saldo bancario.${month.faltantes?' Hay liquidaciones sin utilidad informada.':''}</p>`;
+    $('showWeek').textContent=`Esta semana (${batches.filter(b=>Summary.deSemana(b,periodo)).length})`;
+    $('listPeriod').textContent=listMode==='week'?`Cortes del ${UX.fechaCorta(periodo.semanaDesde)} al ${UX.fechaCorta(periodo.semanaHasta)}`:listMode==='pending'?'Pendientes de todas las fechas, para no omitir gestiones.':'Consulta liquidaciones anteriores por fecha de corte.';
     $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
     $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     const search = $('filterSearch').value.trim().toLowerCase();
     const stateFilter = $('filterState').value;
-    const rows = batches.filter((b) => listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
+    const rows = batches.filter((b) => listMode === 'week' ? Summary.deSemana(b,periodo) : listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
       .filter((b) => !stateFilter || b.estado === stateFilter)
-      .filter((b) => !search || b.plataforma.includes(search) || UX.traducirEstado(b.estado).toLowerCase().includes(search));
+      .filter((b) => !search || [b.id,b.plataforma,b.fecha_corte,UX.traducirEstado(b.estado),...(b.liquidation_operations||[]).flatMap(o=>[o.establishment_name,o.origen_codigo,o.imei])].some(value=>String(value||'').toLowerCase().includes(search)));
     const from=$('historyFrom')?.value,until=$('historyUntil')?.value;
     if(listMode==='history')rows.splice(0,rows.length,...rows.filter(b=>(!from||b.fecha_corte>=from)&&(!until||b.fecha_corte<=until)));
     $('batches').innerHTML = rows.map((b) => `<tr>
       <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${awaitingCalculation(b) ? (b.liquidation_operations || []).filter(o=>b.plataforma!=='krediya'||o.reconocida).length : Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
-      ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
-      <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial.'}</td></tr>`;
+      ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${i===0?commercePayment(b):awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : v==null?'No informado':money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
+      <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'week' ? 'No hay liquidaciones en esta semana. Puedes consultar otras fechas en el historial.' : listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial para este rango.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
-    let recent=$('recentBatches');
-    if(!recent){recent=document.createElement('section');recent.id='recentBatches';recent.className='card';$('batches').closest('section').after(recent);}
-    recent.hidden=listMode!=='pending';
-    recent.innerHTML='<h2>Últimas 4 aprobadas</h2>'+batches.filter(b=>b.approved_at).sort((a,b)=>b.approved_at.localeCompare(a.approved_at)).slice(0,4).map(b=>`<div class="actions" style="justify-content:space-between;padding:6px 0"><span>${platformName(b.plataforma)} · ${esc(b.fecha_corte)} · Aprobada</span><button class="btn secondary" data-recent="${esc(b.id)}">Consultar</button></div>`).join('');
-    recent.querySelectorAll('[data-recent]').forEach(button=>button.onclick=()=>openDetail(button.dataset.recent));
+  }
+
+  function commercePayment(batch){
+    const preview=awaitingCalculation(batch);
+    if(preview&&!batch.previewValues)return esc(batch.previewError||(batch.plataforma==='krediya'?'Consultando…':'Por calcular'));
+    const ally=preview?batch.previewValues[0]:batch.total_pago_aliados;
+    const retail=preview?batch.previewRetail:batch.total_pago_tiendas;
+    if(ally==null||retail==null)return 'No informado';
+    return `${money(Number(ally)+Number(retail))}<small>Aliados: ${money(ally)}</small><small>Tiendas: ${money(retail)}</small>${preview?'<small>Automático · sin aprobar</small>':''}`;
   }
 
   function updateActions() {
@@ -855,6 +872,8 @@
   $('refreshBatches').onclick = loadBatches;
   function setListMode(mode) {
     listMode = mode;
+    $('showWeek').classList.toggle('active', mode === 'week');
+    if(mode==='history'&&!$('historyFrom').value&&!$('historyUntil').value){const period=Summary.periodos();$('historyFrom').value=period.mesDesde;$('historyUntil').value=period.hoy;}
     $('showPending').classList.toggle('active', mode === 'pending');
     $('showHistory').classList.toggle('active', mode === 'history');
     historyTools.classList.toggle('hidden',mode!=='history');
@@ -864,6 +883,7 @@
     renderBatches();
   }
   $('showPending').onclick = () => setListMode('pending');
+  $('showWeek').onclick = () => setListMode('week');
   $('showHistory').onclick = () => setListMode('history');
 
   $('newImport').onclick = () => $('importModal').classList.add('show');

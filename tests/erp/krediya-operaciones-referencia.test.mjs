@@ -74,6 +74,7 @@ function batchSummary(batch) {
   const metricRenderer = app.slice(app.indexOf('  function renderMetrics('), app.indexOf('  async function openDetail('));
   const context = {
     $, batches: [batch], selected: batch, listMode: 'pending', esc: escapeHtml,
+    Summary:createRequire(import.meta.url)('../../creditek/erp/liquidaciones-resumen.js'),
     money: (value) => `COP ${Number(value)}`, state: String, platformName: String,
     UX: { fechaAuditoria: String, fechaCorta: String, traducirEstado: String },
     document: { querySelectorAll: () => [] }

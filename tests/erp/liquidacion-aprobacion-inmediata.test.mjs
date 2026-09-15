@@ -30,7 +30,7 @@ test('lista Krediya consulta utilidad automática, sin inventar totales si falta
  const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:''});return nodes.get(id);};
  const batch={id:'k',plataforma:'krediya',estado:'con_novedades',liquidation_operations:[{id:'a',reconocida:true,tipo_establecimiento:'aliado'},{id:'p',reconocida:true,tipo_establecimiento:'propia'}]};
  const c={$ ,batchesRequest:0,batches:[],PENDING_STATES:['con_novedades'],isHistoricalBatch:()=>false,awaitingCalculation:()=>true,renderBatches(){},Intl,
- sb:{from:()=>({select:()=>({order:async()=>({data:[structuredClone(batch)]})})}),rpc:async()=>({data:[{operation_id:'a',automatica:{disponible:true,giro:100,bonos:20,utilidad_neta:-5}},{operation_id:'p',automatica:{disponible:true,giro:300,bonos:0,utilidad_neta:50}}]})}};
+ sb:{from:()=>{const query={select:()=>query,order:()=>query,range:async()=>({data:[structuredClone(batch)]})};return query;},rpc:async()=>({data:[{operation_id:'a',automatica:{disponible:true,giro:100,bonos:20,utilidad_neta:-5}},{operation_id:'p',automatica:{disponible:true,giro:300,bonos:0,utilidad_neta:50}}]})}};
  vm.createContext(c);vm.runInContext(app.slice(app.indexOf('  async function loadBatches()'),app.indexOf('  function renderBatches()')),c);
  await c.loadBatches();assert.deepEqual(Array.from(c.batches[0].previewValues),[100,20,45,120]);
  c.sb.rpc=async()=>({error:{message:'error'}});await c.loadBatches();assert.equal(c.batches[0].previewValues,undefined);assert.equal(c.batches[0].previewError,'No se pudo consultar');

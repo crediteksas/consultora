@@ -96,11 +96,11 @@ test('Tesorería diferencia saldo contable, compensaciones y utilidad real', asy
   for (const text of [
     'Compensaciones Retail calculadas para B2B',
     'Compensaciones pendientes de aplicar a B2B',
-    'Saldo contable B2B disponible',
     'Utilidad de liquidaciones asignada a Tercerización',
     'Pagos y ajustes descontados de Tercerización',
     'Saldo neto de Tercerización disponible',
   ]) assert.match(app, new RegExp(text));
+  assert.doesNotMatch(app, /Saldo contable B2B disponible|Compensaciones aplicadas menos pagos B2B/);
   assert.match(app, /!x\.applied_at && !x\.reversed_at/);
   assert.match(app, /total_outsourcing_commission/);
 });

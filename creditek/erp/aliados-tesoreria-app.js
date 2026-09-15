@@ -577,8 +577,7 @@
     }
     if(["cobros","clients","preparation","expenses"].includes(treasuryView))return;
     renderPaymentHistory();
-    const b2b = data.balances.find((x) => x.unit === "b2b")?.balance || 0,
-      out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
+    const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
         (x) =>
           !isClosedPayment(x) &&
@@ -620,7 +619,6 @@
       { label: "Pagos pendientes a ejecutivos", value: exec.reduce((n, x) => n + Number(x.valor), 0), detail: "Bonificaciones aún no cerradas." },
       { label: "Compensaciones Retail calculadas para B2B", value: comp, detail: "Incluye valores aplicados y pendientes. No es utilidad B2B.", className: "metric-b2b" },
       { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
-      { label: "Saldo contable B2B disponible", value: b2b, detail: "Compensaciones aplicadas menos pagos B2B. No es utilidad de ventas.", className: "metric-b2b" },
       { label: "Utilidad de liquidaciones asignada a Tercerización", value: outsourcingGenerated, detail: "Utilidad generada antes de pagos y ajustes de Tesorería.", className: "metric-outsourcing" },
       { label: "Pagos y ajustes descontados de Tercerización", value: expenses, detail: "Incluye pagos a ejecutivos y ajustes contabilizados.", className: "metric-outsourcing" },
       { label: "Saldo neto de Tercerización disponible", value: Math.max(0, out), detail: "Utilidad asignada menos pagos, ajustes y salidas.", className: "metric-outsourcing" },

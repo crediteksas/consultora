@@ -74,7 +74,7 @@ test('la interfaz concentra Tesorería en pagos, compensaciones y utilidad', asy
     readFile('creditek/erp/aliados-tesoreria.html','utf8'),readFile('creditek/erp/aliados-tesoreria-app.js','utf8'),
     readFile('creditek/erp/sidebar.js','utf8'),readFile('creditek/erp/kora-access-control.js','utf8'),
   ]);
-  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Compensaciones pendientes','Histórico de abonos aplicados','Utilidad del negocio por créditos de tiendas propias']) assert.match(html,new RegExp(label));
+  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Compensaciones pendientes','Histórico de abonos aplicados']) assert.match(html,new RegExp(label));
   assert.doesNotMatch(html,/Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(sidebar,/Tesorería/);
   assert.match(guard,/aliados-tesoreria\.html/);
@@ -89,10 +89,13 @@ test('Tesorería diferencia saldo contable, compensaciones y utilidad real', asy
     readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
   ]);
   for (const text of [
-    'No corresponde a la utilidad de las ventas B2B',
+    'Cómo leer estos saldos',
+    'balanceGuide',
+    'balance-guide',
     'Ver utilidad B2B por día',
     'Ver utilidad por liquidación',
-  ]) assert.match(html, new RegExp(text));
+  ]) assert.doesNotMatch(html, new RegExp(text));
+  assert.doesNotMatch(app, /balanceGuide/);
   for (const text of [
     'Compensaciones Retail calculadas para B2B',
     'Compensaciones pendientes de aplicar a B2B',

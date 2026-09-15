@@ -391,18 +391,6 @@
               <option>conciliado</option></select
             ><input id="search" placeholder="Beneficiario, tienda o concepto" />
           </section>
-          <section id="balanceGuide" class="card balance-guide" aria-label="Cómo leer los saldos de Tesorería">
-            <div>
-              <h2>Cómo leer estos saldos</h2>
-              <p><strong>B2B:</strong> muestra compensaciones de ventas Retail destinadas a B2B. No corresponde a la utilidad de las ventas B2B.</p>
-              <p><strong>Utilidad B2B:</strong> Utilidad del negocio por créditos de tiendas propias, consultada por separado en Resultado B2B.</p>
-              <p><strong>Tercerización:</strong> muestra la utilidad de liquidaciones menos pagos a ejecutivos, ajustes y otras salidas registradas.</p>
-            </div>
-            <div class="actions">
-              <a class="btn secondary" href="utilidad-creditek.html">Ver utilidad B2B por día</a>
-              <a class="btn secondary" href="aliados-liquidaciones.html?vista=historial">Ver utilidad por liquidación</a>
-            </div>
-          </section>
           <section id="metrics" class="metrics"></section>
           <div class="treasury-grid">
             <div id="paymentSections" class="treasury-grid">
@@ -647,15 +635,10 @@
       .history-person {border:1px solid #dce5ee;border-radius:12px;padding:12px;background:#f8fafc;min-width:0}
       .history-person strong,.history-person span {display:block;overflow-wrap:anywhere}
       .history-person small {color:#64748b}
-      .balance-guide {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;margin-bottom:18px;background:#f8fbfd}
-      .balance-guide h2 {margin:0 0 6px;font-size:18px}
-      .balance-guide p {margin:4px 0;color:#475569;line-height:1.5}
-      .balance-guide .actions {justify-content:flex-end}
       .metric .metric-detail {display:block;margin-top:8px;color:#64748b;font-size:11px;line-height:1.4}
       .metric.metric-b2b {border-top:3px solid #2563eb}
       .metric.metric-outsourcing {border-top:3px solid #00aeb5}
       @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
-      @media (max-width:760px){.balance-guide{grid-template-columns:1fr}.balance-guide .actions{justify-content:stretch}.balance-guide .btn{width:100%}}
     </style>
     <script src="aliados-tesoreria-domain.js?v=1.6.0"></script>
     <script src="cobros-plataformas.js?v=1.0.0"></script>
@@ -675,6 +658,6 @@
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
     <script src="finanzas-programadas-domain.js?v=1.0.1"></script>
     <script src="tesoreria-gastos.js?v=1.1.1"></script>
-    <script src="aliados-tesoreria-app.js?v=2.17.1"></script>
+    <script src="aliados-tesoreria-app.js?v=2.17.2"></script>
   </body>
 </html>

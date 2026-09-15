@@ -567,7 +567,6 @@
     $("#paymentSections").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#generalFilters").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#metrics").classList.toggle("hidden", treasuryView === "storeMovements");
-    $("#balanceGuide").classList.toggle("hidden", treasuryView === "storeMovements");
     $("#showClients").classList.toggle("active",treasuryView==="clients");
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");

@@ -1,6 +1,7 @@
 /* Scoped layout only: ledger values and payment rules remain unchanged. */
 body:has(#modal-proveedor) .main-content { width:100%; min-width:0; }
 #app { width:100%; min-width:0; }
+#app .kora-shell-content { padding:24px; }
 body:has(#modal-proveedor) > header .max-w-7xl { flex-wrap:wrap; gap:12px; }
 body:has(#modal-proveedor) > header .flex { min-width:0; flex-wrap:wrap; }
 .proveedores-heading, .proveedores-panel-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
@@ -53,6 +54,7 @@ body:has(#modal-proveedor) > header .flex { min-width:0; flex-wrap:wrap; }
 }
 @media(max-width:600px) {
   #app { padding:16px 12px; }
+  #app .kora-shell-content { padding:16px 12px; }
   .proveedores-heading h2 { font-size:21px; }
   .proveedores-actions { width:100%; }
   .proveedores-actions button { flex:1 1 140px; }

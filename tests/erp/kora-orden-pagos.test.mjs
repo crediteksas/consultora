@@ -38,7 +38,7 @@ test('Tesorería produce una orden imprimible con la cuenta completa y el total'
   assert.match(app, /payment_kind\s*:\s*p\.payment_kind/);
   assert.match(app, /shared\/branding\/creditek-logo\.png/);
   assert.match(app, /Trazabilidad KORA/);
-  assert.match(app, /PO-\$\{shortId\(p\.id\)\}/);
+  assert.match(app, /esc\(p.report_ref\)/);
   assert.match(app, /LQ-\$\{shortId\(p\.liquidation_id\)\}/);
   assert.match(app, /SUPORTE|soporte/i);
   assert.match(app, /Negocio \/ titular/);

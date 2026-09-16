@@ -53,7 +53,7 @@
       ["otro_movimiento_autorizado", "Otro movimiento autorizado"],
     ],
   };
-  let preparation, financialExpenses;
+  let preparation, financialExpenses, financialRecorder, pendingFinancialId = null, financialAccessError = false;
   let sb,
     profile,
     data = {},
@@ -189,12 +189,12 @@
     }
     return data || [];
   }
-  async function loadCompensations(tableName = "retail_b2b_compensations") {
+  async function loadCompensations(tableName = "retail_b2b_compensations", columns = "*") {
     const rows = [], ids = new Set();
     let total;
     do {
       const result = await sb.from(tableName)
-        .select("*", { count: "exact" })
+        .select(columns, { count: "exact" })
         .order("created_at", { ascending: false }).order("id", { ascending: false })
         .range(rows.length, rows.length + 499);
       if (result.error) throw result.error;
@@ -278,16 +278,12 @@
       recoveryApplications,
       reversions,
       currentStoreBalances,
+      financialEntries,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
-      safe(
-        sb
-          .from("payment_orders")
-          .select(
+      loadCompensations("payment_orders",
             "*,liquidation_beneficiaries(id,nombre,identificacion,tipo,origen_codigo),beneficiary_bank_accounts(id,banco,tipo_cuenta,numero_cuenta,validada),liquidations(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by),payment_items(operation_id,concepto,valor,liquidation_operations(ejecutivo_id,ejecutivos(nombre)))",
-          )
-          .order("created_at", { ascending: false }),
       ),
       safe(
         sb
@@ -311,6 +307,7 @@
       loadRecoveryRows('aliados_cruces_recuperacion'),
       loadRecoveryRows('aliados_reversiones'),
       loadCurrentStoreBalances(),
+      financialExpenses ? loadCompensations('financial_entries') : Promise.resolve([]),
     ]);
     data = {
       balances,
@@ -329,6 +326,7 @@
       reversions,
       recoveryApplications,
       currentStoreBalances,
+      financialEntries,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -637,12 +635,13 @@
         return treasuryView === "history" ? closed : !closed;
       });
     const expenseMovements = treasuryView === "history" ? filtered(expenseSource) : expenseSource;
-    $("#expensePayments").innerHTML = table(
+    const financialPending = (data.financialEntries || []).filter(window.CreditekPagosUnificados.approved);
+    $("#expensePayments").innerHTML = (treasuryView === "history" ? '' : window.CreditekPagosUnificados.cards(financialPending,cop)) + (expenseMovements.length ? table(
       ["Fecha", "Beneficiario", "Concepto", "Cuenta destino", "Valor", "Estado", "Autorización", "Acción"],
       expenseMovements.map(
         (x) => `<tr><td>${date(x.movement_date)}</td><td>${esc(x.beneficiary)}</td><td>${esc(x.concept)}</td><td class="account">${esc(x.destination_account)}</td><td>${cop(x.amount)}</td><td>${badge(x.status)}</td><td>${x.authorized_by ? `<span class="approval-ok">Autorizado por ${esc(approverName(x))}</span>` : '<span class="approval-pending">Pendiente de Oscar</span>'}</td><td>${movementActions(x)}</td></tr>`,
       ),
-    );
+    ) : financialPending.length && treasuryView !== 'history' ? '' : '<div class="empty">No hay gastos autorizados pendientes de soporte en esta vista.</div>');
     $("#showOperational").classList.toggle(
       "active",
       treasuryView === "operational",
@@ -744,7 +743,7 @@
     $("#openStoreLedger").disabled = !selected;
     $("#allyCount").textContent = ally.length;
     $("#executiveCount").textContent = exec.length;
-    $("#expenseCount").textContent = expenseMovements.length;
+    $("#expenseCount").textContent = expenseMovements.length + (treasuryView === 'history' ? 0 : financialPending.length);
     $("#compensationCount").textContent = visibleCompensations.length;
     $("#retailCommissionCount").textContent = retailCommissions.length;
     bindActions();
@@ -765,6 +764,7 @@
     return "";
   }
   function bindActions() {
+    document.querySelectorAll('[data-financial-support]').forEach(button=>button.onclick=()=>openFinancialSupport(button.dataset.financialSupport));
     $("#applyCompensations").onclick = async () => {
       const ids = [...document.querySelectorAll('[data-pending-compensation]:checked')].map(x => x.dataset.pendingCompensation);
       if (!ids.length) return notice('Selecciona los abonos que revisaste.', true);
@@ -919,6 +919,7 @@
     return path;
   }
   function closePaymentSupport() {
+    pendingFinancialId = null;
     pendingPaymentIds = [];
     $("#paymentSupportForm").reset();
     $("#paymentSupportSelected").classList.add("hidden");
@@ -926,6 +927,7 @@
     hidePaymentModal($("#paymentSupportModal"));
   }
   function openPaymentSupport(ids) {
+    pendingFinancialId = null;
     pendingPaymentIds = Array.isArray(ids) ? ids : [ids];
     const payments = pendingPaymentIds
       .map((id) => data.payments.find((x) => x.id === id))
@@ -941,8 +943,30 @@
     showPaymentModal($("#paymentSupportModal"));
     $("#paymentSupportFile").focus();
   }
+  function openFinancialSupport(id) {
+    const row=data.financialEntries?.find(x=>x.id===id);
+    if(!financialRecorder||!row||!window.CreditekPagosUnificados.approved(row))return notice('Actualiza los gastos antes de registrar el pago.',true);
+    closePaymentSupport();
+    pendingFinancialId=id;
+    $("#paymentSupportSummary").textContent=`${row.beneficiary} · ${row.concept} · ${cop(row.amount)}. Adjunta el comprobante del giro realizado.`;
+    showPaymentModal($("#paymentSupportModal"));
+    $("#paymentSupportFile").focus();
+  }
   async function submitPaymentSupport(event) {
     event.preventDefault();
+    if($("#savePaymentSupport").disabled)return;
+    if(pendingFinancialId){
+      const id=pendingFinancialId,button=$("#savePaymentSupport"),errorBox=$("#paymentSupportError");
+      button.disabled=true;button.textContent='Subiendo soporte…';errorBox.classList.add('hidden');
+      try{
+        await financialRecorder.record(id,$("#paymentSupportFile").files[0]);
+        closePaymentSupport();notice('Pago registrado con evidencia. Se conserva la autorización original.');
+        await load().catch(()=>notice('Pago confirmado. Actualiza Tesorería para consultar el estado.',true));
+        await financialExpenses.refreshSummary();
+      }catch(error){errorBox.textContent=error.message||'No se confirmó el registro. Actualiza antes de reintentar.';errorBox.classList.remove('hidden');}
+      finally{button.disabled=false;button.textContent='Subir soporte y registrar pago';}
+      return;
+    }
     const file = $("#paymentSupportFile").files[0],
       validation = validateSupport(file),
       errorBox = $("#paymentSupportError"),
@@ -1057,19 +1081,25 @@
     notice("Pago actualizado y auditado.");
     await load();
   }
-  function paymentReport() {
-    const rows = filtered(data.payments || []).filter(
-      (p) => p.estado === "programado" && window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready,
-    );
+  async function paymentReport() {
+    if(financialAccessError)return notice('No se pudo verificar el acceso a gastos. Actualiza la página antes de generar una orden completa.',true);
+    const button=$("#paymentReport");
+    if(button.disabled)return;
+    button.disabled=true;
+    try { await load(); }
+    catch { notice('No se pudo consultar la orden completa. No se generó un documento parcial; actualiza Tesorería.',true);return; }
+    finally {button.disabled=false;}
+    // One order for every authorized unpaid item. Platform/date filters only affect consultation.
+    const rows = window.CreditekPagosUnificados.reportRows(data.payments || [],data.financialEntries || [],data.movements || [],window.CreditekTesoreriaTercerizacion.paymentReadiness);
     if (!rows.length)
       return notice(
         "No hay órdenes listas para pagar con estos filtros. Revisa la aprobación de los lotes y sus autorizaciones.",
         true,
       );
-    const incomplete = rows.filter((p) => missingPaymentData(p).length);
+    const incomplete = rows.filter((p) => missingPaymentData(p).length || !Number.isFinite(Number(p.valor)) || Number(p.valor)<=0);
     if (incomplete.length) {
       notice(
-        `${incomplete.length} pago(s) tienen datos incompletos. Usa “Completar datos” en la tabla y vuelve a generar el informe.`,
+        `No se generó una orden parcial. Revisa beneficiario, identificación, cuenta o valor: ${incomplete.map(p=>p.concept || p.beneficiary_name).join(', ')}.`,
         true,
       );
       document
@@ -1124,7 +1154,7 @@
     if (!report)
       return notice("No fue posible abrir la orden. Cierra la vista e intenta nuevamente.", true);
     report.document.write(
-      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}<br>Estado: programado · pendiente de pago y soporte</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Negocio / titular</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Plataforma / corte</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}<br><span class="ref">PO-${shortId(p.id)}</span></td><td><strong>${esc(paymentBusinessName(p) || "No aplica")}</strong><br><span class="muted">Titular: ${esc(p.bank_snapshot.holder || p.beneficiary_name)}</span></td><td>${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span></td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join("")}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map((p) => `PO-${shortId(p.id)}`).join(", ")}<br>Liquidaciones: ${liquidationRefs.length ? liquidationRefs.map((l) => `LQ-${shortId(l.id)}${l.approvedAt ? ` (aprobada ${esc(bogotaDateTime(l.approvedAt))})` : ""}`).join(", ") : "No asociadas"}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #00C4CC;padding-bottom:12px}.brand{display:flex;align-items:center;gap:18px}.head img{width:155px;max-height:60px;object-fit:contain}.head h1{margin:0;font-size:23px}.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#4b6b7e;margin-bottom:5px}.meta{font-size:10px;color:#536176;line-height:1.55;text-align:right}.meta strong{color:#0B1E3D}.summary{display:flex;gap:12px;margin:14px 0}.pill{background:#eefbfd;border:1px solid #00C4CC;border-radius:9px;padding:8px 13px;min-width:135px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.pill strong{display:block;font-size:17px;margin-top:3px;letter-spacing:0;text-transform:none}table{width:100%;border-collapse:collapse;font-size:9.5px}thead{display:table-header-group}th{background:#0B1E3D;color:#fff;padding:7px;text-align:left}td{padding:7px;border-bottom:1px solid #dfe5ec;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}.money{text-align:right;font-weight:700;white-space:nowrap}.ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px;white-space:nowrap}.muted{color:#64748b;font-size:8.5px}.total td{font-size:13px;font-weight:800;border-top:3px solid #00C4CC;background:#eefbfd}.trace{margin-top:14px;padding:10px 12px;border:1px solid #d8e2ea;border-radius:8px;background:#f8fafc;font-size:9px;line-height:1.5}.trace strong{color:#0B1E3D}.foot{display:flex;justify-content:space-between;gap:20px;margin-top:12px;padding-top:9px;border-top:1px solid #ccd6e0;font-size:8.5px;color:#536176}.tools{position:fixed;right:18px;bottom:18px;display:flex;align-items:center;gap:10px}.print-note{background:#fff7df;border:1px solid #e6b84a;border-radius:8px;padding:9px 12px;font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media print{.no-print{display:none!important}}</style></head><body><header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería · Documento operativo</div><h1>Orden de pagos autorizados</h1></div></div><div class="meta"><strong>${esc(reportId)}</strong><br>Generado: ${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}<br>Estado: autorizado · pendiente de pago y soporte<br>Incluye todos los pagos autorizados; no aplica filtros de consulta</div></header><section class="summary"><div class="pill">Pagos incluidos<strong>${rows.length}</strong></div><div class="pill">Valor total<strong>${cop(total)}</strong></div><div class="pill">Liquidaciones<strong>${liquidationRefs.length}</strong></div></section><table><thead><tr><th># / orden</th><th>Negocio / titular</th><th>Identificación</th><th>Banco / tipo</th><th>Número de cuenta</th><th>Origen / fecha</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}<br><span class="ref">${esc(p.report_ref)}</span></td><td><strong>${esc(p.report_business || paymentBusinessName(p) || "No aplica")}</strong><br><span class="muted">Titular: ${esc(p.bank_snapshot.holder || p.beneficiary_name)}</span></td><td>${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</td><td>${esc(p.bank_snapshot.bank)}<br><span class="muted">${esc(p.bank_snapshot.account_type)}</span></td><td class="ref">${esc(p.bank_snapshot.account_number)}</td><td>${p.liquidation_id ? `${esc(platformName(p.platform_snapshot))}<br><span class="muted">Corte ${date(p.cutoff_snapshot)} · LQ-${shortId(p.liquidation_id)}</span>` : `${esc(p.report_kind)}<br><span class="muted">${esc(p.report_date)}</span>`}</td><td>${esc(p.concept)}</td><td class="money">${cop(p.valor)}</td></tr>`).join("")}<tr class="total"><td colspan="7">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table><section class="trace"><strong>Trazabilidad KORA</strong><br>Orden: ${esc(reportId)} · Órdenes de pago: ${rows.map((p) => `${esc(p.report_ref)}`).join(", ")}<br>Liquidaciones: ${liquidationRefs.length ? liquidationRefs.map((l) => `LQ-${shortId(l.id)}${l.approvedAt ? ` (aprobada ${esc(bogotaDateTime(l.approvedAt))})` : ""}`).join(", ") : "No asociadas"}<br>Control: cada pago debe volver a KORA con soporte antes de marcarse como pagado y posteriormente conciliado.</section><footer class="foot"><div><strong>Creditek S.A.S. · NIT 901.259.859-0</strong><br>Documento generado electrónicamente por KORA.</div><div style="text-align:right">Conserve este código para auditoría: <strong>${esc(reportId)}</strong><br>Página de control interno · valores en COP</div></footer><div class="tools no-print"><div class="print-note">Para un PDF limpio, en <strong>Más ajustes</strong> desactiva “Encabezados y pies de página”.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
     );
     report.document.close();
   }
@@ -1252,8 +1282,10 @@
     profile = window.creditekSidebar.perfil;
     try {
       const access = await sb.rpc('es_controlador_financiero');
+      if(access.error)throw access.error;
       if (!access.error && access.data === true) {
         financialExpenses = window.CreditekTesoreriaGastos.create({sb,profile,domain:window.KoraFinancialDomain,onSummary:summary=>window.CreditekTesoreriaGastos.paintIndicator($("#showFinancialExpenses"),summary)});
+        financialRecorder = window.CreditekPagosUnificados.createRecorder(sb);
         $("#showFinancialExpenses").classList.remove('hidden');
         await financialExpenses.refreshSummary();
         // Read-only refresh: never replace an approval form while it is being edited.
@@ -1263,7 +1295,7 @@
         document.addEventListener('visibilitychange',refreshExpenseIndicator);
         window.addEventListener('pagehide',()=>clearInterval(expenseTimer),{once:true});
       }
-    } catch (error) { console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
+    } catch (error) { financialAccessError=true;console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
       cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:profile.rol==='gerencia',canVoid:profile.rol==='gerencia'});
       $("#showCobros").classList.remove("hidden");
@@ -1368,7 +1400,7 @@
   async function showPaymentView(view) {
     if (!canViewOutgoing()) return;
     treasuryView = view;
-    try { if (!Array.isArray(data.payments)) await load(); else render(); }
+    try { await load(); }
     catch { notice('No fue posible cargar los pagos. Pulsa Actualizar para reintentar.',true); }
   }
   $("#showOperational").onclick = () => showPaymentView('operational');

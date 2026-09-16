@@ -151,7 +151,7 @@ async function boot(records = rows, options = {}) {
   };
   const location = { href: '' };
   const context = {
-    window: { creditekSidebar: { sb, perfil: { rol: 'gerencia', activo: true } }, CreditekTesoreriaTercerizacion: domain, CreditekCobrosPlataformas: { create: () => ({}) } },
+    window: { creditekSidebar: { sb, perfil: { rol: 'gerencia', activo: true } }, CreditekPagosUnificados: require('../../creditek/erp/tesoreria-pagos-unificados.js'), CreditekTesoreriaTercerizacion: domain, CreditekCobrosPlataformas: { create: () => ({}) } },
     document: { querySelector: node, querySelectorAll: selector => selector === '[data-compensation-select]' ? node('#compensations').children : [], addEventListener: (k, fn) => listeners.set(k, fn) },
     location, URLSearchParams, console: { error() {} }, Intl, Date, Set, Map, setTimeout() {},
   };
@@ -266,7 +266,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.17.2/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.0/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

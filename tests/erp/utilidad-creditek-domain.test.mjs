@@ -12,7 +12,7 @@ const context = { window: {} };
 vm.runInNewContext(source, context);
 const domain = context.window.CreditekUtilidadDomain;
 
-test('B2B conserva Dashboard y retira Resultado duplicado sin cambiar acceso ni reportes', async () => {
+test('B2B conserva un único Dashboard sin accesos duplicados Resultado o Reportes', async () => {
   const ctx={window:{}};
   vm.runInNewContext(await readFile(path.join(root,'creditek/erp/kora-access-control.js'),'utf8'),ctx);
   for(const rol of ['gerencia','auditoria']){
@@ -20,10 +20,11 @@ test('B2B conserva Dashboard y retira Resultado duplicado sin cambiar acceso ni 
     assert.equal(items.filter(i=>i.label==='Dashboard B2B').length,1);
     assert.equal(items.some(i=>i.label==='Resultado B2B'),false);
     assert.equal(items.find(i=>i.label==='Dashboard B2B').href,'utilidad-creditek.html#dashboard');
-    assert.ok(items.some(i=>i.label==='Reportes B2B'));
+    assert.equal(items.some(i=>i.label==='Reportes B2B'),false);
+    assert.equal(items.filter(i=>i.href.split('#')[0]==='utilidad-creditek.html').length,1);
   }
   const sidebar=await readFile(path.join(root,'creditek/erp/sidebar.js'),'utf8');
-  assert.doesNotMatch(sidebar,/label: 'Resultado B2B'/);
+  assert.doesNotMatch(sidebar,/label: '(?:Resultado|Reportes) B2B'/);
   assert.match(sidebar,/label: 'Dashboard B2B'/);
 });
 

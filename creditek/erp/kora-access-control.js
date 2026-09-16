@@ -66,7 +66,6 @@
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output' },
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', icon: 'book-open-check' },
       { label: 'Consignaciones', href: 'cuenta-corriente.html#consignaciones', icon: 'landmark' },
-      { label: 'Reportes B2B', href: 'utilidad-creditek.html#reportes', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'CREDITEK ALIADOS', icon: 'handshake', capability: 'aliados', items: [
       { label: 'Dashboard Aliados', href: 'aliados-dashboard.html', icon: 'layout-dashboard' },

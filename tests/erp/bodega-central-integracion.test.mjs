@@ -11,8 +11,8 @@ test('bodega conserva el dominio y agrega configuración y shell KORA', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="bodega-domain\.js"><\/script>/);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.25"><\/script>/);
-  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.25" data-kora-shell="1\.0\.0"><\/script>/);
+  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.26"><\/script>/);
+  assert.match(html, /<script src="sidebar\.js\?v=2\.0\.26" data-kora-shell="1\.0\.0"><\/script>/);
   assert.match(html, /const bodegaDomain = window\.CreditekBodegaDomain/);
 });
 

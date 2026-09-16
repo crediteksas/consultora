@@ -7,6 +7,9 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 ALLOWED_ORIGIN = "https://registro.crediteksas.com"
 ALLOW_LEGACY_REGISTRATION_LINKS = "true"
+# Las ocho plantillas reporte_cierre_ordenado_*_v2 están activas en Meta.
+# Mantiene cada tienda, movimiento y total en un párrafo independiente.
+REPORTES_FORMATO_ORDENADO = "true"
 
 # Secretos requeridos (Oscar los pone con `wrangler secret put <NOMBRE>`,
 # nunca en este archivo ni en el chat):

@@ -27,15 +27,12 @@ La fuente exacta del cuerpo fijo es `cuerpoPlantillaReporte` en
 ## Entrega y activación
 
 La opción `REPORTES_FORMATO_ORDENADO=true` habilita el nuevo formato. Sin ella
-continúan usándose las tres plantillas anteriores. No activar hasta verificar
-en Meta que **las ocho** variantes están activas en `es_CO` y conservan el cuerpo.
-La revisión de Meta no equivale a aprobación ni a entrega real.
+continúan usándose las tres plantillas anteriores.
 
-Estado comprobado el 11 de septiembre: variantes 1, 3 y 4 activas; variantes
-2, 5, 6, 7 y 8 en revisión. La opción sigue sin habilitar y el cambio todavía
-no se ha desplegado. Actualizar esta nota al verificar la aprobación restante
-y activar el envío. La vista previa de Meta de ocho filas fue revisada: cada
-tienda queda en un párrafo separado y el total en otro.
+Estado comprobado el 16 de septiembre: las ocho variantes están activas en
+`es_CO` y conservan el cuerpo aprobado. La opción quedó habilitada en la
+configuración productiva del Worker. Los reportes presentan primero su resumen
+y total; luego separan cada tienda y, en gastos, cada movimiento.
 
 Se guarda confirmación por tipo de reporte, destinatario y parte. La primera
 confirmación conserva la composición del informe para reintentos. Los reportes

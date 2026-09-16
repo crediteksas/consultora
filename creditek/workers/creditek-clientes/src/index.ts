@@ -853,39 +853,55 @@ function fmtCOP(n: number): string {
   return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
 }
 
-function encabezadoEstado(
+function fmtDiferenciaCOP(n: number): string {
+  if (!n) return fmtCOP(0);
+  return `${n > 0 ? '+' : '-'}${fmtCOP(Math.abs(n))}`;
+}
+
+export function encabezadoEstado(
   completo: boolean, nombresFaltantes: string[], hhmm: string
 ): string {
   return completo
-    ? '✅ Las tiendas cerraron caja'
-    : `⚠️ Falta cerrar caja (enviado a las ${hhmm}):\n${nombresFaltantes.map(nombre => `• ${nombre}: cierre pendiente`).join('\n')}`;
+    ? '✅ CIERRES DE CAJA • Todas las tiendas completaron'
+    : [
+        `⚠️ CIERRES DE CAJA • ${nombresFaltantes.length} ${nombresFaltantes.length === 1 ? 'tienda pendiente' : 'tiendas pendientes'} al corte de las ${hhmm}`,
+        `PENDIENTES • ${nombresFaltantes.join(', ')}`,
+      ].join('\n');
 }
 
-function formatearGastos(
+export function formatearGastos(
   gastos: any[], fechaLarga: string, encabezado: string
 ): string {
   const ordenados = [...gastos].sort((a, b) =>
     String(a.origen?.nombre || a.tienda_codigo)
       .localeCompare(String(b.origen?.nombre || b.tienda_codigo), 'es'));
-  const lineas = ordenados.map((g) => {
-    const tienda = g.origen?.nombre || g.tienda_codigo;
-    const concepto = g.concepto?.nombre || '—';
-    const desc = g.descripcion ? ` — ${g.descripcion}` : '';
-    return `• ${tienda}: ${fmtCOP(Number(g.monto))} — ${concepto}${desc}`;
-  });
   const total = gastos.reduce((s, g) => s + Number(g.monto || 0), 0);
-  const body = lineas.length ? lineas.join('\n') : '_Sin gastos aprobados el día de hoy._';
+  const porTienda = new Map<string, any[]>();
+  for (const gasto of ordenados) {
+    const tienda = String(gasto.origen?.nombre || gasto.tienda_codigo || 'Sin tienda');
+    if (!porTienda.has(tienda)) porTienda.set(tienda, []);
+    porTienda.get(tienda)!.push(gasto);
+  }
+  const detalle = Array.from(porTienda.entries()).flatMap(([tienda, movimientos]) => {
+    const subtotal = movimientos.reduce((s, g) => s + Number(g.monto || 0), 0);
+    return [
+      `${tienda.toUpperCase()} • ${movimientos.length} ${movimientos.length === 1 ? 'gasto' : 'gastos'} • ${fmtCOP(subtotal)}`,
+      ...movimientos.map((g) => {
+        const concepto = g.concepto?.nombre || 'Sin concepto';
+        const descripcion = String(g.descripcion || '').trim();
+        return `↳ ${concepto}${descripcion ? ` · ${descripcion}` : ''} • ${fmtCOP(Number(g.monto))}`;
+      }),
+    ];
+  });
   return [
-    `📊 *GASTOS DE HOY* — ${fechaLarga}`,
+    `🧾 CIERRE DE GASTOS • ${fechaLarga}`,
+    `RESUMEN • ${gastos.length} ${gastos.length === 1 ? 'movimiento' : 'movimientos'} • TOTAL ${fmtCOP(total)}`,
     encabezado,
-    '',
-    body,
-    '',
-    `*Total del día:* ${fmtCOP(total)}`,
+    ...(detalle.length ? detalle : ['SIN GASTOS • No hay movimientos aprobados para este día']),
   ].join('\n');
 }
 
-function formatearVentas(ventas: any[], fechaLarga: string): string {
+export function formatearVentas(ventas: any[], fechaLarga: string): string {
   // Agrupar por tienda
   const porTienda: Record<string, { nombre: string; num: number; total: number }> = {};
   for (const v of ventas) {
@@ -896,37 +912,35 @@ function formatearVentas(ventas: any[], fechaLarga: string): string {
   }
   const filas = Object.values(porTienda)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-    .map((t) => `• ${t.nombre}: ${t.num} ventas — ${fmtCOP(t.total)}`);
+    .map((t) => `${t.nombre.toUpperCase()} • ${t.num} ${t.num === 1 ? 'venta' : 'ventas'} • ${fmtCOP(t.total)}`);
   const totalOps = ventas.length;
   const totalVal = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
-  const body = filas.length ? filas.join('\n') : '_Sin ventas registradas el día de hoy._';
   return [
-    `💰 *VENTAS DE HOY* — ${fechaLarga}`,
-    '',
-    body,
-    '',
-    `*Total vendido:* ${fmtCOP(totalVal)}  ·  *Operaciones:* ${totalOps}`,
+    `💰 CIERRE DE VENTAS • ${fechaLarga}`,
+    `RESUMEN • ${totalOps} ${totalOps === 1 ? 'venta' : 'ventas'} • TOTAL ${fmtCOP(totalVal)}`,
+    ...(filas.length ? filas : ['SIN VENTAS • No hay operaciones registradas para este día']),
   ].join('\n');
 }
 
-function formatearCaja(cierres: any[], fechaLarga: string): string {
-  const lineas = cierres.map((c) => {
+export function formatearCaja(cierres: any[], fechaLarga: string): string {
+  const lineas = [...cierres].sort((a, b) =>
+    String(a.origen?.nombre || a.tienda_codigo)
+      .localeCompare(String(b.origen?.nombre || b.tienda_codigo), 'es')).map((c) => {
     const nombre = c.origen?.nombre || c.tienda_codigo;
     const efectivo = fmtCOP(Number(c.efectivo_contado || 0));
+    const esperado = fmtCOP(Number(c.efectivo_esperado || 0));
     const diff = Number(c.diferencia || 0);
     const marca = diff === 0
-      ? ''
-      : ` ⚠️ Diferencia: ${diff > 0 ? '+' : ''}${fmtCOP(diff)}`;
-    return `• ${nombre}: ${efectivo} disponible${marca}`;
+      ? '✅ CUADRA'
+      : `⚠️ DIFERENCIA ${fmtDiferenciaCOP(diff)}`;
+    return `${String(nombre).toUpperCase()} • Contado ${efectivo} • Esperado ${esperado} • ${marca}`;
   });
   const total = cierres.reduce((s, c) => s + Number(c.efectivo_contado || 0), 0);
-  const body = lineas.length ? lineas.join('\n') : '_Ninguna caja cerrada aún._';
+  const diferencias = cierres.filter(c => Number(c.diferencia || 0) !== 0).length;
   return [
-    `💵 *CIERRE DE CAJA* — ${fechaLarga}`,
-    '',
-    body,
-    '',
-    `*Total efectivo en tiendas:* ${fmtCOP(total)}`,
+    `💵 CIERRE DE CAJA • ${fechaLarga}`,
+    `RESUMEN • ${cierres.length} ${cierres.length === 1 ? 'caja cerrada' : 'cajas cerradas'} • EFECTIVO ${fmtCOP(total)} • ${diferencias ? `${diferencias} con diferencia` : 'TODAS CUADRAN'}`,
+    ...(lineas.length ? lineas : ['SIN CIERRES • Ninguna tienda ha cerrado caja']),
   ].join('\n');
 }
 

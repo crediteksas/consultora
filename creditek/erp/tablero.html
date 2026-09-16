@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.2">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
-<script src="tablero-utilidad.js?v=1.0.0"></script>
+<script src="tablero-utilidad.js?v=1.0.1"></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -658,7 +658,7 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
     const result = await CreditekTableroUtilidad.load(sb,business,{store:tiendaFiltro,creditData:business==='aliados'?obtenerCreditosLiquidaciones():undefined});
     if(request!==utilidadConsulta)return;
     total.textContent = fmtCOP(result.total)+(result.missing?' · parcial':'');
-    const scope = business==='aliados' ? 'Todos los aliados' : tiendaFiltro ? nombreTienda(tiendaFiltro) : 'Todas las tiendas';
+    const scope = business==='aliados' ? 'Ambos canales · todas las tiendas y terceros' : tiendaFiltro ? nombreTienda(tiendaFiltro) : 'Todas las tiendas';
     context.textContent = result.description+' '+scope+' · '+result.period.start+' a '+result.today+'. Escala automática.'+(result.missing?' '+result.missing+' registro(s) sin utilidad calculada.':'');
     budget.textContent = result.budget===null ? '' : 'Presupuesto mensual Retail: '+fmtCOP(result.budget)+' · referencia; no modifica la escala.';
     canvas.hidden=false;

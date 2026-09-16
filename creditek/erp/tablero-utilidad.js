@@ -4,7 +4,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(credits){
   'use strict';
   const names={retail:'Retail',b2b:'B2B',aliados:'Aliados'};
-  const descriptions={retail:'Utilidad de ventas de tiendas, antes de gastos.',b2b:'Margen de remisiones: facturado a tiendas menos costo congelado, antes de gastos.',aliados:'Utilidad registrada en liquidaciones de Aliados, antes de gastos generales.'};
+  const descriptions={retail:'Utilidad de ventas de tiendas, antes de gastos.',b2b:'Margen de remisiones: facturado a tiendas menos costo congelado, antes de gastos.',aliados:'Utilidad del negocio Aliados: canales tiendas propias y terceros. Fuente: Liquidaciones de PayJoy, ALO Credit y Krediya; antes de gastos generales.'};
   const day=value=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
   function series(rows,now=new Date()){
     const today=day(now),period=credits.month(now);
@@ -44,7 +44,9 @@
       rows=(await rpcRows(sb,period,today)).filter(r=>!store||r.tienda_codigo===store).map(r=>({date:r.fecha,value:r.utilidad}));
     }else{
       const data=await (creditData||credits.loadCreditData(sb));
-      rows=credits.credits(data,period).filter(o=>o.tipo_establecimiento==='aliado').map(o=>({date:o.operation_at,value:o.utilidad_creditek}));
+      // Aliados es el negocio completo: ambos canales aportan la utilidad
+      // ya calculada por cada motor. No recalcular ni excluir tiendas propias.
+      rows=credits.credits(data,period).map(o=>({date:o.operation_at,value:o.utilidad_creditek}));
     }
     return {...series(rows,now),business,name:names[business],description:descriptions[business],budget};
   }

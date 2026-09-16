@@ -28,10 +28,20 @@ test('B2B usa RPC existente, pagina más de 500 filas y no confunde otra tienda'
  let calls=0;const sb={rpc(name,params){assert.equal(name,'consultar_utilidad_creditek_rango');assert.equal(params.p_hasta,'2026-09-16');return {order(){return this},range:async(a)=>{calls++;return {data:Array.from({length:a===0?500:2},(_,i)=>({fecha:'2026-09-01',tienda_codigo:i?'t':'otra',utilidad:10}))}}}}};
  const result=await domain.load(sb,'b2b',{now,store:'t'});assert.equal(calls,2);assert.equal(result.total,5000);assert.equal(result.budget,null);
 });
-test('Aliados usa liquidaciones propias del negocio, sin Retail ni doble operación',async()=>{
+test('Aliados suma terceros y tiendas propias sin doble operación ni filtro Retail',async()=>{
  const op={id:'a',external_id:'a',plataforma:'payjoy',operation_at:'2026-09-01',tipo_establecimiento:'aliado',utilidad_creditek:100};
  const result=await domain.load({},'aliados',{now,store:'tienda-retail',creditData:{operations:[op,{...op,id:'copy'},{...op,id:'retail',external_id:'b',tipo_establecimiento:'propia',utilidad_creditek:999},{...op,id:'pending',external_id:'c',utilidad_creditek:null}],reversions:[]}});
- assert.equal(result.total,100);assert.equal(result.missing,1);assert.equal(result.budget,null);
+ assert.equal(result.total,1099);assert.equal(result.missing,1);assert.equal(result.budget,null);
+ assert.match(result.description,/tiendas propias y terceros/);
+});
+test('Aliados conserva utilidades de los tres motores y solo acumula ventas del mes hasta hoy',async()=>{
+ const operations=['payjoy','alo','krediya'].flatMap((plataforma,i)=>['propia','aliado'].map((tipo_establecimiento,j)=>({id:`${i}-${j}`,external_id:`${i}-${j}`,plataforma,tipo_establecimiento,operation_at:'2026-09-16T23:00:00-05:00',utilidad_creditek:(i+1)*100.25+j})));
+ const sample=operations[0];
+ operations.push({...sample,id:'agosto',external_id:'agosto',operation_at:'2026-09-01T04:59:59Z',utilidad_creditek:9999},{...sample,id:'futuro',external_id:'futuro',operation_at:'2026-09-17T00:00:00-05:00',utilidad_creditek:9999},{...sample,id:'seguimiento',external_id:'seguimiento',utilidad_creditek:null,normalized_data:{seguimientoPagoKrediya:'krediya_pago_pendiente'}});
+ const before=JSON.stringify(operations);
+ const result=await domain.load({},'aliados',{now,creditData:{operations,reversions:[]}});
+ assert.equal(result.total,1206);assert.equal(result.missing,0);assert.equal(result.values[15],1206);assert.equal(result.values[16],null);
+ assert.equal(JSON.stringify(operations),before,'El resumen no modifica los cálculos guardados');
 });
 test('errores de fuente se propagan; no muestran cero ficticio',async()=>{
  await assert.rejects(domain.load({},'invalido',{now}),/Negocio/);

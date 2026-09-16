@@ -145,6 +145,9 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .inventario-form .form-actions button { flex: 1; border: 0; border-radius: 999px; padding: 11px; font-weight: 700; cursor: pointer; }
 .inventario-form .form-actions .primary { background: var(--turquesa); color: white; }
 .inventario-form .form-actions .secondary { background: var(--bg); color: var(--text2); }
+.btn-costo { border:1px solid rgba(11,30,61,.12); background:#fff; color:var(--azul); border-radius:10px; min-height:38px; padding:0 12px; font:700 12px 'DM Sans',sans-serif; cursor:pointer; }
+.btn-costo:hover { border-color:var(--turquesa); color:#04777c; }
+.cost-note { background:#eefbfc; border-left:3px solid var(--turquesa); border-radius:8px; color:#475569; font-size:12px; line-height:1.5; padding:10px 12px; }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -212,7 +215,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Costo unitario</th><th>Fecha ingreso</th></tr></thead>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Costo unitario</th><th>Fecha ingreso</th><th id="thAccionCostoCel" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyCelulares"></tbody>
         </table>
         <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
@@ -228,7 +231,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </div>
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Costo unitario</th><th id="thValorTotalAcc">Valor total al costo</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Costo unitario</th><th id="thValorTotalAcc">Valor total al costo</th><th id="thAccionCostoAcc" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -247,6 +250,30 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   </div>
 </div>
 
+<div class="modal-bg" id="modalCosto" role="dialog" aria-modal="true" aria-labelledby="costoTitulo">
+  <div class="modal-box">
+    <h2 id="costoTitulo">Modificar costo de inventario</h2>
+    <div class="modal-sub" id="costoSub"></div>
+    <form class="inventario-form" id="formCosto">
+      <div class="cost-note">El costo de tienda valora el inventario Retail. El costo interno corresponde al costo real de Creditek. El cambio aplica al inventario vigente y a ventas futuras; no modifica ventas anteriores ni cantidades.</div>
+      <label>Costo de tienda
+        <input id="costoTienda" type="number" min="1" step="1" inputmode="numeric" required>
+      </label>
+      <label>Costo interno Creditek
+        <input id="costoInterno" type="number" min="1" step="1" inputmode="numeric" required>
+      </label>
+      <label>Motivo del cambio
+        <textarea id="costoMotivo" minlength="8" required placeholder="Ej. corrección del costo informado por la tienda"></textarea>
+      </label>
+      <div class="form-error" id="costoError"></div>
+      <div class="form-actions">
+        <button class="secondary" id="btnCancelarCosto" type="button">Cancelar</button>
+        <button class="primary" id="btnGuardarCosto" type="submit">Guardar costo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const KORA_ENV = window.__KORA_ENV__;
 const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
@@ -262,8 +289,15 @@ let stockCache = [];
 let productosCache = [];
 let tiendasCache = [];
 let tabActual = 'celulares';
+let costoObjetivo = null;
+
+const EDITORES_COSTO = new Set([
+  'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
+  '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
+]);
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
+function puedeEditarCostos() { return !!currentPerfil?.activo && EDITORES_COSTO.has(currentPerfil.id); }
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -323,6 +357,8 @@ function initPagina() {
     document.getElementById('filtroTiendaCel').style.display = '';
     document.getElementById('filtroTiendaAcc').style.display = '';
   }
+  document.getElementById('thAccionCostoCel').style.display = puedeEditarCostos() ? '' : 'none';
+  document.getElementById('thAccionCostoAcc').style.display = puedeEditarCostos() ? '' : 'none';
   actualizarEtiquetasCosto();
   controlConteos = KoraConteosUI.init({ sb, XLSX, tiendaActual: tiendaActiva, refrescar: cargarTodo });
   document.getElementById('btnControlConteos').addEventListener('click', () => controlConteos.abrir());
@@ -341,6 +377,8 @@ function initPagina() {
   window.addEventListener('creditek:tienda-cambiada', aplicarTiendaSidebar);
 
   document.getElementById('btnCerrarHistorial').addEventListener('click', () => document.getElementById('modalHistorial').classList.remove('show'));
+  document.getElementById('btnCancelarCosto').addEventListener('click', cerrarEditorCosto);
+  document.getElementById('formCosto').addEventListener('submit', guardarCosto);
   document.getElementById('btnExportarInventario').addEventListener('click', () => descargarInventario(false));
   document.getElementById('btnExportarConteo').addEventListener('click', () => descargarInventario(true));
 
@@ -535,10 +573,24 @@ function renderCelulares() {
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
       <td>${inventarioDomain.valorVisibleUnidad(u, esCentral()) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, esCentral()))}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
+      ${puedeEditarCostos() ? `<td><button type="button" class="btn-costo" data-costo-unidad="${u.id}">Modificar costo</button></td>` : ''}
     </tr>
   `).join('');
 
-  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirHistorial(tr.dataset.id)));
+  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', evento => {
+    if (evento.target.closest('[data-costo-unidad]')) return;
+    abrirHistorial(tr.dataset.id);
+  }));
+  tbody.querySelectorAll('[data-costo-unidad]').forEach(btn => btn.addEventListener('click', evento => {
+    evento.stopPropagation();
+    const unidad = unidadesCache.find(item => item.id === btn.dataset.costoUnidad);
+    if (unidad) abrirEditorCosto({
+      tipo: 'unidad', productoId: unidad.producto_id, unidadId: unidad.id,
+      tiendaCodigo: unidad.tienda_actual, nombre: unidad.productos?.nombre,
+      detalle: `IMEI ${unidad.imei}`, costoTienda: unidad.precio_tienda,
+      costoInterno: unidad.costo_remision,
+    });
+  }));
 }
 
 function renderAccesorios() {
@@ -566,9 +618,70 @@ function renderAccesorios() {
         <td>${r.cantidad}${bajoStock ? ' ⚠️' : ''}</td>
         <td>${costoVisible === null ? 'Pendiente' : fmtCOP(costoVisible)}</td>
         <td>${costoVisible === null ? 'Pendiente' : fmtCOP(r.cantidad * costoVisible)}</td>
+        ${puedeEditarCostos() ? `<td><button type="button" class="btn-costo" data-costo-producto="${r.producto_id}" data-costo-tienda="${escapeHtml(r.tienda_codigo)}">Modificar costo</button></td>` : ''}
       </tr>
     `;
   }).join('');
+  tbody.querySelectorAll('[data-costo-producto]').forEach(btn => btn.addEventListener('click', () => {
+    const registro = stockCache.find(item => item.producto_id === btn.dataset.costoProducto && item.tienda_codigo === btn.dataset.costoTienda);
+    if (registro) abrirEditorCosto({
+      tipo: 'stock', productoId: registro.producto_id, unidadId: null,
+      tiendaCodigo: registro.tienda_codigo, nombre: registro.productos?.nombre,
+      detalle: `${registro.cantidad} unidades`, costoTienda: registro.precio_tienda,
+      costoInterno: registro.costo_promedio,
+    });
+  }));
+}
+
+function abrirEditorCosto(objetivo) {
+  if (!puedeEditarCostos()) return;
+  costoObjetivo = objetivo;
+  const tienda = tiendasCache.find(item => item.codigo === objetivo.tiendaCodigo);
+  document.getElementById('costoSub').textContent = `${objetivo.nombre || 'Producto'} · ${tienda?.nombre || objetivo.tiendaCodigo} · ${objetivo.detalle || ''}`;
+  document.getElementById('costoTienda').value = Number(objetivo.costoTienda || 0) || '';
+  document.getElementById('costoInterno').value = Number(objetivo.costoInterno || 0) || '';
+  document.getElementById('costoMotivo').value = '';
+  document.getElementById('costoError').textContent = '';
+  document.getElementById('modalCosto').classList.add('show');
+  document.getElementById('costoTienda').focus();
+}
+
+function cerrarEditorCosto() {
+  document.getElementById('modalCosto').classList.remove('show');
+  costoObjetivo = null;
+}
+
+async function guardarCosto(evento) {
+  evento.preventDefault();
+  if (!costoObjetivo || !puedeEditarCostos()) return;
+  const costoTienda = Number(document.getElementById('costoTienda').value);
+  const costoInterno = Number(document.getElementById('costoInterno').value);
+  const motivo = document.getElementById('costoMotivo').value.trim();
+  const errorEl = document.getElementById('costoError');
+  if (!(costoTienda > 0) || !(costoInterno > 0) || motivo.length < 8) {
+    errorEl.textContent = 'Completa ambos costos y explica el motivo con mínimo 8 caracteres.';
+    return;
+  }
+  const boton = document.getElementById('btnGuardarCosto');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  errorEl.textContent = '';
+  const { error } = await sb.rpc('inventario_ajustar_costo', {
+    p_tienda_codigo: costoObjetivo.tiendaCodigo,
+    p_producto_id: costoObjetivo.productoId,
+    p_costo_tienda: costoTienda,
+    p_costo_interno: costoInterno,
+    p_motivo: motivo,
+    p_unidad_id: costoObjetivo.unidadId,
+  });
+  boton.disabled = false;
+  boton.textContent = 'Guardar costo';
+  if (error) {
+    errorEl.textContent = error.message;
+    return;
+  }
+  cerrarEditorCosto();
+  await cargarTodo();
 }
 
 async function abrirHistorial(unidadId) {

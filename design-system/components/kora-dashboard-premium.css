@@ -101,6 +101,24 @@ body[data-kora-dashboard="1.0.0"] {
   background: color-mix(in srgb, var(--ctk-color-secondary-500) 3%, transparent);
 }
 
+body[data-kora-dashboard] .dashboard-executives .dashboard-table th.centro,
+body[data-kora-dashboard] .dashboard-executives .dashboard-table td.centro {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-kora-dashboard] .dashboard-executives .dashboard-table th.num,
+body[data-kora-dashboard] .dashboard-executives .dashboard-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-executives-note {
+  margin: 12px 0 0;
+  color: var(--ctk-color-text-muted);
+  font-size: 12px;
+}
+
 .dashboard-table .fila-total td,
 .dashboard-table tfoot td {
   background: color-mix(in srgb, var(--ctk-color-primary-900) 2%, transparent);

@@ -11,7 +11,9 @@
 <script src="kora-access-control.js?v=2.0.23"></script>
 <script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
-<link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.1">
+<script src="aliados-reversiones-domain.js?v=1.0.0"></script>
+<script src="tablero-ejecutivos.js?v=1.0.0"></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -194,11 +196,12 @@
     </div>
     <div class="tabla-wrap" tabindex="0" role="region" aria-label="Desempeño ejecutivo; desplaza horizontalmente para ver todas las columnas">
       <table class="dashboard-table">
-        <thead><tr><th>Ejecutivo</th><th class="num">Aliadas activas</th><th class="num">Créditos del mes</th><th>Comisión</th></tr></thead>
+        <thead><tr><th>Ejecutivo</th><th class="centro">Aliadas activas</th><th class="centro">Créditos del mes</th><th class="num">Comisión registrada</th></tr></thead>
         <tbody id="tbodyEjecutivos"></tbody>
       </table>
       <div class="empty-state" id="emptyEjecutivos" style="display:none;">No hay ejecutivos registrados.</div>
     </div>
+    <p class="dashboard-executives-note" id="ejecutivosNota" role="status">Créditos por fecha de venta. Comisión registrada en liquidaciones; no indica pagos realizados.</p>
   </section>
 </template>
 
@@ -721,31 +724,24 @@ function renderAlertas(alertas) {
 
 // ─── Ejecutivos ────────────────────────────────────────────────────────
 async function cargarEjecutivos() {
-  const { data: ejecutivos } = await sb.from('ejecutivos').select('*').eq('activo', true).order('nombre');
-  const { data: aliadas } = await sb.from('origenes').select('codigo, ejecutivo_id, activo').eq('tipo', 'aliado');
-  const hoy = new Date();
-  const inicioMes = fechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
-  const finMes = fechaISO(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1));
-  const codigosAliadas = (aliadas || []).map(a => a.codigo);
-  let ventasAliadas = [];
-  if (codigosAliadas.length) {
-    const { data } = await sb.from('ventas').select('tienda_codigo, tipo, fecha').in('tienda_codigo', codigosAliadas).gte('fecha', inicioMes).lt('fecha', finMes).eq('anulada', false).eq('tipo', 'credito');
-    ventasAliadas = data || [];
-  }
-
   const tbody = document.getElementById('tbodyEjecutivos');
   const empty = document.getElementById('emptyEjecutivos');
-  if (!ejecutivos || !ejecutivos.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-
-  tbody.innerHTML = ejecutivos.map(e => {
-    const susAliadas = (aliadas || []).filter(a => a.ejecutivo_id === e.id);
-    const activas = susAliadas.filter(a => a.activo).length;
-    const codigos = susAliadas.map(a => a.codigo);
-    const creditosMes = ventasAliadas.filter(v => codigos.includes(v.tienda_codigo)).length;
-    const comision = e.esquema_comision ? 'Ver esquema' : 'Pendiente esquema';
-    return `<tr><td>${escapeHtml(e.nombre)}</td><td class="num">${activas}</td><td class="num">${creditosMes} créditos</td><td>${comision}</td></tr>`;
-  }).join('');
+  const note = document.getElementById('ejecutivosNota');
+  try {
+    const {list, unassigned} = await CreditekTableroEjecutivos.load(sb);
+    empty.style.display = list.length ? 'none' : 'block';
+    empty.textContent = 'No hay ejecutivos activos registrados.';
+    tbody.innerHTML = list.sort((a,b) => a.name.localeCompare(b.name, 'es')).map(e =>
+      `<tr><td>${escapeHtml(e.name)}</td><td class="centro">${e.activeAllies}</td><td class="centro">${e.credits}</td><td class="num">${fmtCOP(e.commission)}</td></tr>`
+    ).join('');
+    note.textContent = 'Créditos por fecha de venta. Comisión registrada en liquidaciones; no indica pagos realizados.' + (unassigned ? ` ${unassigned} crédito(s) de aliados sin ejecutivo activo asignado.` : '');
+  } catch (error) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'No fue posible consultar el desempeño ejecutivo. Actualiza para reintentar.';
+    note.textContent = 'Datos no disponibles; no se presentan ceros como si no hubiera ventas.';
+    console.error('Desempeño ejecutivo:', error);
+  }
 }
 </script>
 </body>

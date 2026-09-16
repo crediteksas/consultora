@@ -123,6 +123,35 @@ test('una factura que vence hoy permanece por vencer', () => {
   });
 });
 
+test('agenda ordena vencidas, hoy, próximas y sin fecha, sin incluir pagadas ni otros proveedores', () => {
+  const facturas = [
+    {id:'sin',proveedor_id:'p',saldo:20,fecha_vencimiento:null},
+    {id:'futura',proveedor_id:'p',saldo:40,fecha_vencimiento:'2026-09-30'},
+    {id:'vencida',proveedor_id:'p',saldo:10,fecha_vencimiento:'2026-09-15'},
+    {id:'hoy',proveedor_id:'p',saldo:30,fecha_vencimiento:'2026-09-16'},
+    {id:'pagada',proveedor_id:'p',saldo:0,fecha_vencimiento:'2026-09-01'},
+    {id:'otro',proveedor_id:'otro',saldo:50,fecha_vencimiento:'2026-09-01'},
+  ];
+  const copia = JSON.stringify(facturas);
+  const args = {facturas:[...facturas,facturas[2]],proveedorIds:['p'],hoy:'2026-09-16'};
+  const filas = proveedores.ordenarVencimientos(args);
+  assert.equal(filas.map(f=>f.id).join(','),'vencida,hoy,futura,sin');
+  for(const estado of ['vencidas','porVencer','sinVencimiento']){
+    const seleccion = proveedores.ordenarVencimientos({...args,estado});
+    const resumen = proveedores.resumirCartera(args)[estado];
+    assert.equal(seleccion.length,resumen.cantidad);
+    assert.equal(seleccion.reduce((s,f)=>s+f.saldo,0),resumen.valor);
+  }
+  assert.equal(JSON.stringify(facturas),copia,'no muta fechas, saldos ni facturas');
+});
+
+test('consulta todas las páginas y propaga errores sin devolver totales parciales',async()=>{
+  const data = Array.from({length:1205},(_,id)=>({id})), llamadas=[];
+  const filas = await proveedores.leerTodas(()=>({range:async(a,b)=>{llamadas.push([a,b]);return {data:data.slice(a,b+1)};}}));
+  assert.equal(filas.length,1205); assert.deepEqual(llamadas,[[0,499],[500,999],[1000,1499]]);
+  await assert.rejects(()=>proveedores.leerTodas(()=>({range:async a=>a===0?{data:data.slice(0,500)}:{error:{message:'fallo'}}})),/fallo/);
+});
+
 test('la pantalla integra detalle y pago de cuentas por pagar', () => {
   assert.match(proveedoresHtml, /proveedores-domain\.js/);
   assert.match(proveedoresHtml, /obtener_detalle_factura_proveedor/);

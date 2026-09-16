@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config/kora-environment.generated.js"></script>
-  <script src="proveedores-domain.js"></script>
+  <script src="proveedores-domain.js?v=1.1.0"></script>
   <script src="proveedores-saldo-inicial.js?v=1.0.0"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -42,6 +42,7 @@
   </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
+<link rel="stylesheet" href="proveedores.css?v=1.0.0">
 <script src="kora-access-control.js?v=2.0.23"></script>
 <script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
 </head>
@@ -53,7 +54,7 @@
     <div class="flex items-center gap-3">
       <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
       <h1 class="text-xl font-bold text-gray-800">Cartera de Proveedores</h1>
-      <span class="text-xs text-gray-500">Master data (datos maestros) de la cadena de compra</span>
+      <span class="text-xs text-gray-500">Facturas, vencimientos y saldos pendientes</span>
     </div>
     <div id="usuario-info" class="text-sm text-gray-600"></div>
   </div>
@@ -71,6 +72,16 @@
   <!-- Toast de notificación -->
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
+  <section class="proveedores-heading">
+    <div><h2>Cartera de proveedores</h2><p>Consulta los saldos y organiza las facturas pendientes por vencimiento.</p></div>
+    <div class="proveedores-actions">
+      <button id="btn-actualizar" type="button">Actualizar</button>
+      <button id="btn-vencimientos" type="button" aria-expanded="false" aria-controls="panel-vencimientos">Gestionar vencimientos</button>
+      <button id="btn-nuevo-proveedor" type="button">+ Nuevo proveedor</button>
+    </div>
+  </section>
+  <p id="error-cartera" role="alert" class="hidden"></p>
+
   <section aria-label="Resumen de cartera" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
     <article id="card-total-por-pagar" class="bg-white rounded-lg shadow-sm border-l-4 border-blue-600 p-4">
       <p class="text-sm font-medium text-gray-600">Total por pagar</p>
@@ -78,7 +89,7 @@
       <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas pendientes</p>
     </article>
     <article id="card-por-vencer" class="bg-white rounded-lg shadow-sm border-l-4 border-yellow-400 p-4">
-      <p class="text-sm font-medium text-gray-600">Por vencer</p>
+      <p class="text-sm font-medium text-gray-600">Por vencer · desde hoy</p>
       <p data-valor class="mt-2 text-2xl font-bold text-yellow-700">$ 0</p>
       <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
     </article>
@@ -94,10 +105,10 @@
     </article>
   </section>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="proveedores-content">
 
     <!-- ---------- COLUMNA 1: FORMULARIO ---------- -->
-    <section class="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <dialog id="modal-proveedor" aria-labelledby="form-titulo">
       <h2 id="form-titulo" class="text-lg font-semibold mb-4 text-gray-800">Nuevo proveedor</h2>
       <form id="form-proveedor" class="space-y-3">
         <input type="hidden" id="prov-id" />
@@ -141,22 +152,23 @@
             Guardar
           </button>
           <button type="button" id="btn-cancelar"
-                  class="hidden px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded transition">
+                  class="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 rounded transition">
             Cancelar
           </button>
         </div>
+        <p id="error-proveedor" class="hidden text-sm text-red-700" role="alert"></p>
       </form>
 
       <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
         <p><b>Tip:</b> el proveedor debe existir antes de registrar la primera compra (factura de proveedor).</p>
       </div>
-    </section>
+    </dialog>
 
     <!-- ---------- COLUMNA 2-3: LISTADO + FACTURAS ---------- -->
-    <section class="lg:col-span-2 space-y-6">
+    <section class="proveedores-listado space-y-6">
 
       <!-- Filtros -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
+      <div class="proveedores-filtros bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-center gap-3">
         <input id="filtro-texto" type="text" placeholder="Buscar por nombre o NIT..."
                class="flex-1 min-w-[200px] border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <select id="filtro-estado" class="border border-gray-300 rounded px-3 py-2 text-sm">
@@ -167,26 +179,32 @@
         <span id="contador" class="text-xs text-gray-500 ml-auto"></span>
       </div>
 
-      <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        Consulta las compras, saldos y pagos desde <b>Ver compras</b>.
-      </div>
+      <section id="panel-vencimientos" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 p-5" tabindex="-1" aria-labelledby="vencimientos-titulo">
+        <div class="proveedores-panel-heading">
+          <div><h2 id="vencimientos-titulo" class="text-lg font-semibold">Gestionar vencimientos</h2><p class="text-sm text-gray-500">Primero las vencidas, luego las próximas. Las facturas sin fecha aparecen al final. Se respetan los filtros de proveedor.</p></div>
+          <button id="btn-cerrar-vencimientos" type="button">Cerrar</button>
+        </div>
+        <label class="vencimientos-filtro">Mostrar
+          <select id="filtro-vencimiento"><option value="pendientes">Todas las pendientes</option><option value="vencidas">Vencidas</option><option value="porVencer">Por vencer (incluye hoy)</option><option value="sinVencimiento">Sin fecha de vencimiento</option></select>
+        </label>
+        <p id="vencimientos-resumen" class="text-sm text-gray-600" aria-live="polite"></p>
+        <div class="proveedores-table"><table class="w-full text-sm"><thead><tr><th>Proveedor</th><th>Factura</th><th>Vencimiento</th><th>Situación</th><th class="text-right">Saldo pendiente</th><th>Acción</th></tr></thead><tbody id="tbody-vencimientos"></tbody></table></div>
+      </section>
 
       <!-- Tabla de proveedores -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div class="proveedores-table bg-white rounded-lg shadow-sm border border-gray-200">
         <table class="w-full text-sm">
           <thead class="bg-gray-100 text-gray-700 text-left">
             <tr>
-              <th class="px-4 py-3 font-semibold">Nombre</th>
-              <th class="px-4 py-3 font-semibold">NIT</th>
+              <th class="px-4 py-3 font-semibold">Proveedor / NIT</th>
               <th class="px-4 py-3 font-semibold">Contacto</th>
-              <th class="px-4 py-3 font-semibold">Teléfono</th>
               <th class="px-4 py-3 font-semibold text-right">Saldo pendiente</th>
               <th class="px-4 py-3 font-semibold text-center">Estado</th>
               <th class="px-4 py-3 font-semibold text-center">Acciones</th>
             </tr>
           </thead>
           <tbody id="tbody-proveedores">
-            <tr><td colspan="7" class="text-center py-8 text-gray-400">Cargando...</td></tr>
+            <tr><td colspan="5" class="text-center py-8 text-gray-400">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -197,7 +215,7 @@
           Facturas de <span id="facturas-prov-nombre" class="text-blue-700"></span>
         </h2>
         <p class="text-xs text-gray-500 mb-4">Historial de compras registradas y saldo pendiente por documento.</p>
-        <div class="overflow-x-auto">
+        <div class="proveedores-table">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 text-left">
               <tr>
@@ -227,7 +245,7 @@
         <div id="detalle-factura-resumen" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
 
         <h3 class="font-semibold text-sm text-gray-700 mb-2">Productos comprados</h3>
-        <div class="overflow-x-auto mb-5">
+        <div class="proveedores-table mb-5">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 text-left">
               <tr>
@@ -242,7 +260,7 @@
         </div>
 
         <h3 class="font-semibold text-sm text-gray-700 mb-2">Pagos aplicados</h3>
-        <div class="overflow-x-auto mb-5">
+        <div class="proveedores-table mb-5">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 text-left">
               <tr>
@@ -258,7 +276,7 @@
 
         <h3 class="font-semibold text-sm text-gray-700 mb-2">Aplicación FIFO de consignaciones</h3>
         <p class="text-xs text-gray-500 mb-2">Las consignaciones se aplican desde la factura más antigua hasta la más nueva.</p>
-        <div class="overflow-x-auto mb-5">
+        <div class="proveedores-table mb-5">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 text-left">
               <tr>
@@ -418,25 +436,44 @@ let overflowAntesSaldoInicial = '';
 // CARGA DE DATOS
 // ============================================================
 async function cargarProveedores() {
-  const { data, error } = await SB
+  const aviso = document.getElementById('error-cartera');
+  const actualizar = document.getElementById('btn-actualizar');
+  actualizar.disabled = true;
+  try {
+  const data = await proveedoresDomain.leerTodas(() => SB
     .from('proveedores')
     .select('id, nombre, nit, telefono, contacto, activo')
-    .order('nombre', { ascending: true });
-  if (error) { toast('Error cargando proveedores: ' + error.message, 'error'); return; }
-  proveedores = data || [];
+    .order('nombre', { ascending: true }).order('id'));
 
   // Saldos pendientes agregados
-  const { data: fact, error: fErr } = await SB
+  const fact = await proveedoresDomain.leerTodas(() => SB
     .from('facturas_proveedor')
-    .select('id, proveedor_id, total, saldo, fecha_vencimiento, origen_registro');
-  if (fErr) { toast('Error cargando facturas: ' + fErr.message, 'error'); return; }
+    .select('id, proveedor_id, numero, fecha, total, saldo, fecha_vencimiento, origen_registro').order('id'));
+  proveedores = data || [];
   facturas = fact || [];
   saldoPorProveedor = {};
   facturas.forEach(f => {
     saldoPorProveedor[f.proveedor_id] = (saldoPorProveedor[f.proveedor_id] || 0) + Number(f.saldo || 0);
   });
-
+  aviso.classList.add('hidden');
   render();
+  } catch (error) {
+    aviso.textContent = 'No se pudo actualizar la cartera. Los datos visibles pueden estar desactualizados: ' + error.message;
+    aviso.classList.remove('hidden');
+    if (!proveedores.length) {
+      document.querySelectorAll('[data-valor]').forEach(e => { e.textContent = '—'; });
+      document.getElementById('tbody-proveedores').innerHTML = '<tr><td colspan="5">No fue posible cargar los proveedores. Pulsa Actualizar para reintentar.</td></tr>';
+    }
+  } finally { actualizar.disabled = false; }
+}
+
+function etiquetarTablas() {
+  document.querySelectorAll('#app .proveedores-table table').forEach(tabla => {
+    const etiquetas = Array.from(tabla.querySelectorAll('thead th'), th => th.textContent.trim());
+    tabla.querySelectorAll('tbody tr').forEach(tr => Array.from(tr.cells).forEach((td, i) => {
+      if (td.colSpan === 1) td.dataset.label = etiquetas[i] || '';
+    }));
+  });
 }
 
 // ============================================================
@@ -460,37 +497,60 @@ function render() {
   document.getElementById('contador').textContent =
     filtrados.length + ' de ' + proveedores.length + ' proveedores';
   renderResumen(filtrados);
+  renderVencimientos(filtrados);
 
   if (filtrados.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">Sin resultados</td></tr>';
     return;
   }
 
   tbody.innerHTML = filtrados.map(p => {
     const saldo = saldoPorProveedor[p.id] || 0;
-    const semaforo = p.activo ? 'semaforo-verde' : 'semaforo-gris';
     const seleccionado = proveedorSeleccionado === p.id ? 'seleccionado' : '';
     const tieneSaldoInicial = facturas.some(f => f.proveedor_id === p.id && f.origen_registro === 'saldo_inicial');
     return `
       <tr class="${seleccionado}" data-id="${p.id}">
-        <td class="px-4 py-3 font-medium text-gray-800">${esc(p.nombre)}</td>
-        <td class="px-4 py-3 text-gray-600">${esc(p.nit) || '—'}</td>
-        <td class="px-4 py-3 text-gray-600">${esc(p.contacto) || '—'}</td>
-        <td class="px-4 py-3 text-gray-600">${esc(p.telefono) || '—'}</td>
+        <td class="px-4 py-3 font-medium text-gray-800"><span>${esc(p.nombre)}</span><span class="proveedor-secundario">NIT: ${esc(p.nit) || '—'}</span></td>
+        <td class="px-4 py-3 text-gray-600"><span>${esc(p.contacto) || '—'}</span><span class="proveedor-secundario">${esc(p.telefono) || 'Sin teléfono'}</span></td>
         <td class="px-4 py-3 text-right font-mono ${saldo > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'}">
           ${saldo > 0 ? money(saldo) : '—'}
         </td>
         <td class="px-4 py-3 text-center">
-          <span class="inline-block w-3 h-3 rounded-full ${semaforo}" title="${p.activo ? 'Activo' : 'Inactivo'}"></span>
+          <span>${p.activo ? 'Activo' : 'Inactivo'}</span>
         </td>
-        <td class="px-4 py-3 text-center whitespace-nowrap">
+        <td class="px-4 py-3"><div class="proveedor-acciones">
           <button data-facturas="${p.id}" class="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-3">Ver compras</button>
           ${tieneSaldoInicial ? '<span class="text-xs text-gray-400 mr-3">Saldo inicial cargado</span>' : `<button data-saldo-inicial="${p.id}" class="text-teal-600 hover:text-teal-800 text-xs font-semibold mr-3">Saldo inicial</button>`}
           <button data-editar="${p.id}" class="text-gray-600 hover:text-gray-800 text-xs">Editar</button>
-        </td>
+        </div></td>
       </tr>
     `;
   }).join('');
+  etiquetarTablas();
+}
+
+function renderVencimientos(filtrados) {
+  const hoy = proveedoresDomain.fechaCalendarioLocal(new Date());
+  const filas = proveedoresDomain.ordenarVencimientos({ facturas, proveedorIds:filtrados.map(p => p.id), hoy, estado:document.getElementById('filtro-vencimiento').value });
+  const nombres = new Map(filtrados.map(p => [p.id, p.nombre]));
+  document.getElementById('vencimientos-resumen').textContent = `${filas.length} facturas · Saldo pendiente: ${money(filas.reduce((s, f) => s + Number(f.saldo), 0))}`;
+  document.getElementById('tbody-vencimientos').innerHTML = filas.length ? filas.map(f => `<tr>
+    <td>${esc(nombres.get(f.proveedor_id))}</td>
+    <td><span>${esc(f.numero) || 'Sin número'}</span>${f.origen_registro === 'saldo_inicial' ? '<span class="proveedor-secundario">Saldo inicial</span>' : ''}</td>
+    <td>${f.fecha_vencimiento ? fecha(f.fecha_vencimiento) : 'Sin fecha'}</td>
+    <td><span class="vencimiento-badge vencimiento-${f.situacion}">${f.situacion === 'vencidas' ? 'Vencida' : f.situacion === 'sinVencimiento' ? 'Sin vencimiento' : f.fecha_vencimiento === hoy ? 'Vence hoy' : 'Por vencer'}</span></td>
+    <td class="text-right">${money(f.saldo)}</td>
+    <td><button type="button" data-detalle-factura="${esc(f.id)}" data-proveedor-id="${esc(f.proveedor_id)}">Ver factura</button></td>
+  </tr>`).join('') : '<tr><td colspan="6">No hay facturas pendientes para estos filtros.</td></tr>';
+  etiquetarTablas();
+}
+
+function abrirVencimientos() {
+  document.getElementById('panel-vencimientos').classList.remove('hidden');
+  document.getElementById('btn-vencimientos').setAttribute('aria-expanded', 'true');
+  const panel = document.getElementById('panel-vencimientos');
+  panel.focus({preventScroll:true});
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function renderResumen(proveedoresFiltrados) {
@@ -574,6 +634,7 @@ async function mostrarFacturas(provId) {
   }
 
   const panel = document.getElementById('panel-facturas');
+  etiquetarTablas();
   panel.classList.remove('hidden');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -640,6 +701,7 @@ function renderDetalleFactura(datos) {
   document.getElementById('pago-fecha').value =
     proveedoresDomain.fechaCalendarioLocal(new Date());
   pagoIdempotencyKey = crypto.randomUUID();
+  etiquetarTablas();
 }
 
 async function cargarAplicacionesFifo(facturaId) {
@@ -666,9 +728,13 @@ async function cargarAplicacionesFifo(facturaId) {
       </tr>`;
     }).join('')
     : '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-400">Sin aplicaciones de consignación.</td></tr>';
+  etiquetarTablas();
 }
 
 async function mostrarDetalleFactura(facturaId) {
+  detalleFacturaActual = null;
+  document.getElementById('form-pago-proveedor').classList.add('hidden');
+  for (const id of ['detalle-factura-resumen','tbody-detalle-lineas','tbody-detalle-pagos','tbody-aplicaciones-fifo','detalle-factura-nota']) document.getElementById(id).textContent = '';
   document.getElementById('btn-remisionar-factura').classList.add('hidden');
   const panel = document.getElementById('panel-detalle-factura');
   panel.classList.remove('hidden');
@@ -832,7 +898,19 @@ function resetForm() {
   document.getElementById('prov-contacto').value = '';
   document.getElementById('prov-telefono').value = '';
   document.getElementById('prov-activo').checked = true;
-  document.getElementById('btn-cancelar').classList.add('hidden');
+  document.getElementById('error-proveedor').classList.add('hidden');
+}
+
+function abrirFormularioProveedor() {
+  document.getElementById('error-proveedor').classList.add('hidden');
+  document.getElementById('modal-proveedor').showModal();
+  document.getElementById('prov-nombre').focus();
+}
+
+function cerrarFormularioProveedor() {
+  if (document.getElementById('btn-guardar').disabled) return;
+  document.getElementById('modal-proveedor').close();
+  resetForm();
 }
 
 function cargarEnForm(p) {
@@ -843,8 +921,7 @@ function cargarEnForm(p) {
   document.getElementById('prov-contacto').value = p.contacto || '';
   document.getElementById('prov-telefono').value = p.telefono || '';
   document.getElementById('prov-activo').checked = !!p.activo;
-  document.getElementById('btn-cancelar').classList.remove('hidden');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  abrirFormularioProveedor();
 }
 
 async function guardar(e) {
@@ -877,11 +954,13 @@ async function guardar(e) {
   btn.disabled = false; btn.textContent = 'Guardar';
 
   if (error) {
-    toast('Error: ' + error.message, 'error');
+    const aviso = document.getElementById('error-proveedor');
+    aviso.textContent = 'No se pudo guardar: ' + error.message;
+    aviso.classList.remove('hidden');
     return;
   }
   toast(id ? 'Proveedor actualizado' : 'Proveedor creado');
-  resetForm();
+  cerrarFormularioProveedor();
   await cargarProveedores();
 }
 
@@ -889,7 +968,24 @@ async function guardar(e) {
 // EVENT LISTENERS
 // ============================================================
 document.getElementById('form-proveedor').addEventListener('submit', guardar);
-document.getElementById('btn-cancelar').addEventListener('click', resetForm);
+document.getElementById('btn-cancelar').addEventListener('click', cerrarFormularioProveedor);
+document.getElementById('modal-proveedor').addEventListener('cancel', e => { e.preventDefault(); cerrarFormularioProveedor(); });
+document.getElementById('btn-nuevo-proveedor').addEventListener('click', () => { resetForm(); abrirFormularioProveedor(); });
+document.getElementById('btn-actualizar').addEventListener('click', cargarProveedores);
+document.getElementById('btn-vencimientos').addEventListener('click', abrirVencimientos);
+document.getElementById('btn-cerrar-vencimientos').addEventListener('click', () => {
+  document.getElementById('panel-vencimientos').classList.add('hidden');
+  document.getElementById('btn-vencimientos').setAttribute('aria-expanded', 'false');
+  document.getElementById('btn-vencimientos').focus();
+});
+document.getElementById('filtro-vencimiento').addEventListener('change', render);
+document.getElementById('tbody-vencimientos').addEventListener('click', e => {
+  const btn = e.target.closest('[data-detalle-factura]');
+  if (!btn) return;
+  proveedorSeleccionado = btn.dataset.proveedorId;
+  document.getElementById('panel-facturas').classList.add('hidden');
+  mostrarDetalleFactura(btn.dataset.detalleFactura);
+});
 document.getElementById('filtro-texto').addEventListener('input', render);
 document.getElementById('filtro-estado').addEventListener('change', render);
 document.getElementById('btn-cerrar-detalle-factura').addEventListener('click', () => {

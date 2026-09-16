@@ -1,0 +1,61 @@
+/* Scoped layout only: ledger values and payment rules remain unchanged. */
+body:has(#modal-proveedor) .main-content { width:100%; min-width:0; }
+#app { width:100%; min-width:0; }
+body:has(#modal-proveedor) > header .max-w-7xl { flex-wrap:wrap; gap:12px; }
+body:has(#modal-proveedor) > header .flex { min-width:0; flex-wrap:wrap; }
+.proveedores-heading, .proveedores-panel-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+.proveedores-heading h2 { font-size:24px; font-weight:750; color:#0c203f; }
+.proveedores-heading p { color:#64748b; font-size:14px; margin-top:4px; }
+.proveedores-actions { display:flex; flex-wrap:wrap; gap:8px; }
+#app .proveedores-actions button, #app #btn-cerrar-vencimientos { padding:10px 14px; }
+#app #btn-actualizar, #app #btn-cerrar-vencimientos { background:white; color:#0c203f; border:1px solid #dfe6ef; }
+.proveedores-content, .proveedores-listado { min-width:0; width:100%; }
+.proveedores-filtros input { min-width:0; flex:1 1 240px; }
+#modal-proveedor { width:min(520px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:24px; margin:auto; border:1px solid #dfe6ef; border-radius:16px; overflow:auto; color:#0c203f; background:#fff; }
+#modal-proveedor::backdrop { background:rgba(12,32,63,.4); }
+#modal-proveedor input { min-width:0; max-width:100%; }
+#error-cartera, #error-proveedor { padding:12px; border-radius:8px; background:#fff5f5; color:#9b1c1c; margin-bottom:16px; }
+#panel-vencimientos, #panel-facturas, #panel-detalle-factura { scroll-margin-top:110px; }
+.vencimientos-filtro { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:16px 0 10px; font-size:14px; }
+#vencimientos-resumen { margin-bottom:16px; }
+.proveedores-table { container-type:inline-size; min-width:0; width:100%; }
+#app .proveedores-table .kora-table-region { overflow:visible; }
+#app .proveedores-table table { width:100%; min-width:0; table-layout:fixed; }
+#app .proveedores-table table :is(th,td) { white-space:normal; overflow-wrap:anywhere; padding:12px; }
+#app .proveedores-table table th { position:static; text-align:left; }
+#app .proveedores-table table .text-right { text-align:right; font-variant-numeric:tabular-nums; }
+#app .proveedores-table table button { white-space:normal; margin:0; }
+#app .proveedores-table td:last-child { white-space:normal; }
+#app table:has(#tbody-proveedores) th:nth-child(1) { width:25%; }
+#app table:has(#tbody-proveedores) th:nth-child(2) { width:19%; }
+#app table:has(#tbody-proveedores) th:nth-child(3) { width:19%; }
+#app table:has(#tbody-proveedores) th:nth-child(4) { width:12%; }
+#app table:has(#tbody-proveedores) th:nth-child(5) { width:25%; }
+.proveedor-secundario { display:block; font-size:12px; color:#64748b; margin-top:4px; }
+.proveedor-acciones { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#app .proveedor-acciones button { font-size:12px; padding:7px 10px; min-height:34px; }
+#app .proveedor-acciones [data-editar], #app .proveedor-acciones [data-saldo-inicial] { color:#0c203f; background:white; border:1px solid #dfe6ef; }
+.vencimiento-badge { display:inline-block; padding:4px 8px; border-radius:8px; background:#edf5f7; color:#30535f; font-size:12px; }
+.vencimiento-vencidas { background:#fff1f2; color:#9f1239; }
+.vencimiento-sinVencimiento { background:#f1f5f9; color:#475569; }
+@container (max-width:760px) {
+  #app .proveedores-table table, #app .proveedores-table tbody, #app .proveedores-table tr { display:block; width:100%; }
+  #app .proveedores-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  #app .proveedores-table tr { padding:12px; border-bottom:1px solid #dfe6ef; }
+  #app .proveedores-table td { display:grid; grid-template-columns:minmax(100px,35%) minmax(0,1fr); gap:8px 12px; text-align:left; border:0; padding:7px 0; height:auto; min-height:32px; }
+  #app .proveedores-table td::before { content:attr(data-label); color:#64748b; font-size:12px; font-weight:600; text-align:left; }
+  #app .proveedores-table td[colspan] { display:block; }
+  #app .proveedores-table td[colspan]::before { content:none; }
+  #app .proveedores-table td > * { min-width:0; }
+  #app .proveedores-table .vencimiento-badge { justify-self:start; }
+  #app .proveedores-table td .proveedor-secundario { grid-column:2; }
+  #app .proveedores-table td .proveedor-acciones { grid-column:2; }
+}
+@media(max-width:600px) {
+  #app { padding:16px 12px; }
+  .proveedores-heading h2 { font-size:21px; }
+  .proveedores-actions { width:100%; }
+  .proveedores-actions button { flex:1 1 140px; }
+  .vencimientos-filtro select { width:100%; }
+  .proveedores-filtros input, .proveedores-filtros select { width:100%; }
+}

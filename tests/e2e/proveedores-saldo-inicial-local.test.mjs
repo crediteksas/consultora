@@ -85,7 +85,7 @@ test('Saldo inicial: modal adaptable, errores visibles y reintento sin repetir s
         auth: {getSession:() => {throw new Error('El QA local no debe autenticar');}},
         from(table) {
           if (!['proveedores','facturas_proveedor'].includes(table)) throw new Error(`Tabla no permitida en QA: ${table}`);
-          const q = {select(){return q;},order(){return q;},eq(){return q;},then(resolve,reject){
+          const q = {select(){return q;},order(){return q;},eq(){return q;},range(){return q;},then(resolve,reject){
             const data = table === 'proveedores' ? [provider] : window.qa.registered ? [{id:'qa-invoice',proveedor_id:provider.id,numero:'QA-SIN-DATOS-REALES',total:17,saldo:17,fecha:'2026-09-01',fecha_vencimiento:null,origen_registro:'saldo_inicial'}] : [];
             return Promise.resolve({data,error:null}).then(resolve,reject);
           }};

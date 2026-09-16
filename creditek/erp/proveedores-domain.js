@@ -104,7 +104,35 @@
     return resumen;
   }
 
+  // Read-only agenda. Uses the same saldo and date boundaries as resumirCartera.
+  function ordenarVencimientos({ facturas, proveedorIds, hoy, estado = 'pendientes' }) {
+    const ids = new Set(proveedorIds || []);
+    const unicas = new Map();
+    (facturas || []).forEach(f => {
+      if (f?.id != null && ids.has(f.proveedor_id)) unicas.set(f.id, f);
+    });
+    return [...unicas.values()].filter(f => numero(f.saldo) > 0).map(f => ({
+      ...f,
+      situacion: !f.fecha_vencimiento ? 'sinVencimiento' : f.fecha_vencimiento < hoy ? 'vencidas' : 'porVencer',
+    })).filter(f => estado === 'pendientes' || f.situacion === estado)
+      .sort((a, b) => (a.fecha_vencimiento || '9999-12-31').localeCompare(b.fecha_vencimiento || '9999-12-31')
+        || String(a.numero || '').localeCompare(String(b.numero || ''), 'es', {numeric:true})
+        || String(a.id).localeCompare(String(b.id)));
+  }
+
+  async function leerTodas(consulta) {
+    const filas = [];
+    for (let desde = 0; ; desde += 500) {
+      const { data, error } = await consulta().range(desde, desde + 499);
+      if (error) throw new Error(error.message);
+      filas.push(...(data || []));
+      if (!data || data.length < 500) return filas;
+    }
+  }
+
   global.CreditekProveedoresDomain = Object.freeze({
+    ordenarVencimientos,
+    leerTodas,
     normalizarDetalle,
     validarPago,
     normalizarFechaLocal,

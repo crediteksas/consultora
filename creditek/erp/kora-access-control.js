@@ -12,7 +12,7 @@
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
     'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html', 'cartera-b2b.html',
-    'utilidad-creditek.html',
+    'utilidad-creditek.html', 'resumen-saldos-b2b.html',
   ]);
   const ALLIES_ROUTES = new Set([
     'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
@@ -59,6 +59,7 @@
     ] },
     { title: 'CREDITEK B2B', icon: 'warehouse', capability: 'b2b', items: [
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', icon: 'layout-dashboard' },
+      { label: 'Resumen de saldos B2B', href: 'resumen-saldos-b2b.html', icon: 'scale' },
       { label: 'Pedidos y abastecimiento', href: 'pedidos-b2b.html', icon: 'shopping-bag' },
       { label: 'Compras', href: 'compra-proveedor.html', icon: 'package-plus' },
       { label: 'Proveedores y cartera', href: 'proveedores.html', icon: 'hand-coins' },

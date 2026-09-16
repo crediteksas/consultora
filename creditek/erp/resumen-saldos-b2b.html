@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Resumen de saldos B2B</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <link rel="stylesheet" href="resumen-saldos-b2b.css?v=1.0.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.27"></script>
+  <script src="sidebar.js?v=2.0.27" data-kora-shell="1.0.0"></script>
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <script src="cuenta-corriente-domain.js?v=1.0.0"></script>
+  <script src="proveedores-domain.js?v=1.0.1"></script>
+  <script src="resumen-saldos-b2b-domain.js?v=1.0.0"></script>
+  <script src="resumen-saldos-b2b-app.js?v=1.0.0" defer></script>
+</head>
+<body>
+  <p id="acceso" role="status">Validando acceso…</p>
+  <div id="app" hidden><div class="main-content"><main class="saldos-page">
+    <header class="saldos-heading">
+      <div><h1>Resumen de saldos B2B</h1><p>Lo que nos deben y lo que debemos. Saldos actuales, no compras del mes.</p></div>
+      <button type="button" class="saldos-button primary" id="actualizar">Actualizar</button>
+    </header>
+    <p id="actualizado" class="saldos-muted" role="status" aria-live="polite">Cargando saldos…</p>
+    <p id="error" class="saldos-error" role="alert" hidden></p>
+    <section class="saldos-kpis" aria-label="Resumen de carteras">
+      <article class="saldos-card"><h2>Por cobrar a tiendas y clientes</h2><strong id="porCobrar">—</strong><p id="carteraNota">Saldo neto de cargos y abonos aplicados.</p></article>
+      <article class="saldos-card"><h2>Por pagar a proveedores</h2><strong id="porPagar">—</strong><p>Saldo pendiente de las facturas registradas.</p></article>
+      <article class="saldos-card saldo-diferencia"><h2>Cartera menos proveedores</h2><strong id="diferencia">—</strong><p>No es utilidad ni efectivo disponible.</p></article>
+    </section>
+    <p class="saldos-scope">La diferencia no incluye inventario, caja ni bancos; no representa el capital de trabajo completo.</p>
+    <section class="saldos-section" aria-labelledby="tituloTiendas">
+      <div class="saldos-section-head"><div><h2 id="tituloTiendas">Saldos de tiendas y clientes</h2><p id="resumenTiendas" class="saldos-muted">Cargando…</p></div><a class="saldos-button" href="cartera-b2b.html">Ver movimientos de cartera</a></div>
+      <label class="saldos-search">Buscar tienda o cliente<input id="buscarTiendas" type="search" placeholder="Nombre de la tienda o cliente" autocomplete="off"></label>
+      <div class="saldos-table"><table><thead><tr><th>Tienda / cliente</th><th>Tipo</th><th class="num">Saldo actual</th></tr></thead><tbody id="tiendasRows"></tbody></table></div>
+    </section>
+    <section class="saldos-section" aria-labelledby="tituloProveedores">
+      <div class="saldos-section-head"><div><h2 id="tituloProveedores">Saldos de proveedores</h2><p id="resumenProveedores" class="saldos-muted">Cargando…</p></div><a class="saldos-button" href="proveedores.html">Gestionar facturas y vencimientos</a></div>
+      <label class="saldos-search">Buscar proveedor<input id="buscarProveedores" type="search" placeholder="Nombre del proveedor" autocomplete="off"></label>
+      <div class="saldos-table"><table><thead><tr><th>Proveedor</th><th class="num">Facturas pendientes</th><th>Primer vencimiento pendiente</th><th class="num">Saldo actual</th></tr></thead><tbody id="proveedoresRows"></tbody></table></div>
+    </section>
+    <details class="saldos-sources"><summary>Origen de los saldos</summary><p>Tiendas: cuenta corriente, con saldos iniciales, cargos y abonos ya aplicados. Clientes B2B: cartera de clientes. Proveedores: saldo pendiente de sus facturas, incluidos saldos iniciales.</p><p>Los saldos a favor de clientes se conservan con signo negativo. Las búsquedas filtran cada tabla; los indicadores superiores siempre muestran el total general. No se crean movimientos desde esta pantalla.</p></details>
+  </main></div></div>
+</body>
+</html>

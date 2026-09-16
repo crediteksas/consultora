@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.1">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
-<script src="tablero-ejecutivos.js?v=1.0.0"></script>
+<script src="tablero-ejecutivos.js?v=1.1.0"></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -100,7 +100,7 @@
     <article class="dashboard-metric">
       <div class="dashboard-metric__header">
         <span class="dashboard-metric__icon"><i data-lucide="credit-card"></i></span>
-        <span class="kpi-label">Créditos otorgados</span>
+        <span class="kpi-label">Créditos en liquidaciones</span>
       </div>
       <div class="kpi-valor" id="kpiCreditos">—</div>
       <div class="kpi-var" id="kpiCreditosVar"></div>
@@ -131,7 +131,7 @@
           <p class="dashboard-section-heading__eyebrow">Operación comercial</p>
           <h2>Rendimiento por tienda</h2>
         </div>
-        <span class="dashboard-section-heading__meta">Cumplimiento del mes</span>
+        <span class="dashboard-section-heading__meta">Créditos de Liquidaciones · mes en curso</span>
       </div>
       <div class="tabla-wrap tabla-wrap--tiendas" role="region" aria-label="Rendimiento por tienda del mes vigente">
       <table class="dashboard-table dashboard-store-table">
@@ -173,6 +173,7 @@
         <span class="dashboard-section-heading__icon"><i data-lucide="bar-chart-3"></i></span>
       </div>
       <div class="grafico-box"><canvas id="chartCreditos"></canvas></div>
+      <p class="dashboard-executives-note" id="creditosFuente" role="status">Fuente: Liquidaciones · todas las plataformas · fecha de venta.</p>
     </article>
     <article class="dashboard-panel dashboard-chart-panel dashboard-chart-panel--primary">
       <div class="dashboard-section-heading">
@@ -196,12 +197,12 @@
     </div>
     <div class="tabla-wrap" tabindex="0" role="region" aria-label="Desempeño ejecutivo; desplaza horizontalmente para ver todas las columnas">
       <table class="dashboard-table">
-        <thead><tr><th>Ejecutivo</th><th class="centro">Aliadas activas</th><th class="centro">Créditos del mes</th><th class="num">Comisión registrada</th></tr></thead>
+        <thead><tr><th>Ejecutivo</th><th class="centro">Aliadas activas</th><th class="centro">PayJoy</th><th class="centro">ALO Credit</th><th class="centro">Krediya</th><th class="centro">Créditos del mes</th><th class="num">Comisión registrada</th></tr></thead>
         <tbody id="tbodyEjecutivos"></tbody>
       </table>
       <div class="empty-state" id="emptyEjecutivos" style="display:none;">No hay ejecutivos registrados.</div>
     </div>
-    <p class="dashboard-executives-note" id="ejecutivosNota" role="status">Créditos por fecha de venta. Comisión registrada en liquidaciones; no indica pagos realizados.</p>
+    <p class="dashboard-executives-note" id="ejecutivosNota" role="status">Fuente: Liquidaciones, por fecha de venta. Comisión registrada; no indica pagos realizados.</p>
   </section>
 </template>
 
@@ -349,13 +350,30 @@ function rangoComparacion(rango) {
   return { desde: desplazar(rango.desde), hasta: desplazar(rango.hasta) };
 }
 
+let creditosLiquidacionesPromise;
+function obtenerCreditosLiquidaciones() {
+  if (!creditosLiquidacionesPromise) creditosLiquidacionesPromise = CreditekTableroEjecutivos.loadCreditData(sb).catch(error => {
+    creditosLiquidacionesPromise = null;
+    throw error;
+  });
+  return creditosLiquidacionesPromise;
+}
+function creditosTiendas(data, period, tiendas) {
+  const codes = new Set(tiendas.map(t => t.codigo));
+  return CreditekTableroEjecutivos.credits(data, period).filter(o => o.tipo_establecimiento === 'propia' && codes.has(o.origen_codigo));
+}
 async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
   let qv = sb.from('ventas').select('id, total, tipo').gte('fecha', desde).lte('fecha', hasta).eq('anulada', false);
   if (tienda) qv = qv.eq('tienda_codigo', tienda);
   const { data: ventas } = await qv;
   const ids = (ventas || []).map(v => v.id);
   const totalVentas = (ventas || []).reduce((s, v) => s + Number(v.total || 0), 0);
-  const totalCreditos = (ventas || []).filter(v => v.tipo === 'credito').length;
+  let totalCreditos = null;
+  try {
+    const end = new Date(hasta + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 1);
+    const records = creditosTiendas(await obtenerCreditosLiquidaciones(), {start:desde,end:end.toISOString().slice(0,10)}, tienda ? tiendasCache.filter(t => t.codigo === tienda) : tiendasCache);
+    totalCreditos = CreditekReversiones.creditCount(records);
+  } catch (error) { console.error('Créditos en Liquidaciones:', error); }
 
   let totalUtilidad = 0;
   if (ids.length) {
@@ -386,8 +404,9 @@ async function cargarKPIs() {
 
   document.getElementById('kpiVentas').textContent = fmtCOP(actual.ventas);
   pintarVariacion('kpiVentasVar', actual.ventas, anterior.ventas);
-  document.getElementById('kpiCreditos').textContent = `${actual.creditos} uds`;
-  pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos);
+  document.getElementById('kpiCreditos').textContent = actual.creditos === null ? 'No disponible' : `${actual.creditos} uds`;
+  if (actual.creditos !== null && anterior.creditos !== null) pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos);
+  else document.getElementById('kpiCreditosVar').textContent = 'No se pudo consultar Liquidaciones.';
   document.getElementById('kpiUtilidad').textContent = fmtCOP(actual.utilidad);
   pintarVariacion('kpiUtilidadVar', actual.utilidad, anterior.utilidad);
 
@@ -409,6 +428,24 @@ async function cargarTiendas_Tabla() {
 
   const tiendas = tiendaFiltro ? tiendasCache.filter(t => t.codigo === tiendaFiltro) : tiendasCache;
 
+  let operacionesMes;
+  try {
+    operacionesMes = creditosTiendas(await obtenerCreditosLiquidaciones(), {start:inicioMesStr,end:finMesStr}, tiendas);
+    document.getElementById('chartCreditos').hidden = false;
+    document.getElementById('creditosFuente').textContent = 'Fuente: Liquidaciones · todas las plataformas · fecha de venta.';
+  } catch (error) {
+    document.getElementById('tbodyTiendas').innerHTML = '';
+    document.getElementById('tfootTotal').innerHTML = '';
+    const empty = document.getElementById('emptyTiendas');
+    empty.style.display = 'block';
+    empty.textContent = 'No se pudo consultar Liquidaciones. Actualiza para reintentar.';
+    if (chartCreditosObj) { chartCreditosObj.destroy(); chartCreditosObj = null; }
+    document.getElementById('chartCreditos').hidden = true;
+    document.getElementById('creditosFuente').textContent = 'Créditos no disponibles. No se sustituyen por ventas de tienda.';
+    console.error('Cumplimiento desde Liquidaciones:', error);
+    return;
+  }
+
   const { data: ventasMes } = await sb.from('ventas').select('id, tienda_codigo, tipo, total, fecha').gte('fecha', inicioMesStr).lt('fecha', finMesStr).eq('anulada', false);
   const idsVentas = (ventasMes || []).map(v => v.id);
   let itemsMes = [];
@@ -424,7 +461,7 @@ async function cargarTiendas_Tabla() {
 
   const filas = tiendas.map(t => {
     const ventasTienda = (ventasMes || []).filter(v => v.tienda_codigo === t.codigo);
-    const creditosMes = ventasTienda.filter(v => v.tipo === 'credito').length;
+    const creditosMes = CreditekReversiones.creditCount(operacionesMes.filter(o => o.origen_codigo === t.codigo));
     const contadoMes = ventasTienda.filter(v => v.tipo === 'contado').reduce((s, v) => s + Number(v.total || 0), 0);
     const utilidadMes = ventasTienda.reduce((s, v) => s + (utilidadPorVenta[v.id] || 0), 0);
     const metaMes = (presupuestoMes || []).filter(p => p.tienda_codigo === t.codigo).reduce((s, p) => s + Number(p.meta_creditos || 0), 0);
@@ -728,13 +765,13 @@ async function cargarEjecutivos() {
   const empty = document.getElementById('emptyEjecutivos');
   const note = document.getElementById('ejecutivosNota');
   try {
-    const {list, unassigned} = await CreditekTableroEjecutivos.load(sb);
+    const {list, unassigned} = await CreditekTableroEjecutivos.load(sb, new Date(), obtenerCreditosLiquidaciones());
     empty.style.display = list.length ? 'none' : 'block';
     empty.textContent = 'No hay ejecutivos activos registrados.';
     tbody.innerHTML = list.sort((a,b) => a.name.localeCompare(b.name, 'es')).map(e =>
-      `<tr><td>${escapeHtml(e.name)}</td><td class="centro">${e.activeAllies}</td><td class="centro">${e.credits}</td><td class="num">${fmtCOP(e.commission)}</td></tr>`
+      `<tr><td>${escapeHtml(e.name)}</td><td class="centro">${e.activeAllies}</td><td class="centro">${e.platforms.payjoy}</td><td class="centro">${e.platforms.alo}</td><td class="centro">${e.platforms.krediya}</td><td class="centro">${e.credits}</td><td class="num">${fmtCOP(e.commission)}</td></tr>`
     ).join('');
-    note.textContent = 'Créditos por fecha de venta. Comisión registrada en liquidaciones; no indica pagos realizados.' + (unassigned ? ` ${unassigned} crédito(s) de aliados sin ejecutivo activo asignado.` : '');
+    note.textContent = 'Fuente: Liquidaciones, por fecha de venta. Comisión registrada; no indica pagos realizados.' + (unassigned ? ` ${unassigned} crédito(s) de aliados sin ejecutivo activo asignado.` : '');
   } catch (error) {
     tbody.innerHTML = '';
     empty.style.display = 'block';

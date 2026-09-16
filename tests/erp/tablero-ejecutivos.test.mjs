@@ -7,10 +7,11 @@ const period={start:'2026-09-01',end:'2026-10-01'};
 const op=(id,extra={})=>({id,external_id:id,plataforma:'payjoy',operation_at:'2026-09-05T12:00:00-05:00',ejecutivo_id:'luis',tipo_establecimiento:'aliado',...extra});
 const data=()=>({executives:[{id:'luis',nombre:'Luis',activo:true},{id:'mayte',nombre:'Mayte',activo:true}],origins:[{codigo:'a',ejecutivo_id:'luis',activo:true,tipo:'aliado'},{codigo:'b',ejecutivo_id:'luis',activo:false,tipo:'aliado'}],operations:[],historical:[],bonuses:[],beneficiaries:[{id:'b',ejecutivo_id:'luis'},{id:'m',ejecutivo_id:'mayte'}],reversions:[]});
 
-test('créditos de Aliados: todas las plataformas, mes Bogotá, duplicados, históricos y pendientes de asignación',()=>{
+test('créditos de Aliados: fuente única Liquidaciones, todas las plataformas, mes Bogotá y duplicados',()=>{
  const d=data(); d.operations=[op('p'),op('a',{plataforma:'alo'}),op('k',{plataforma:'krediya'}),op('copy',{external_id:'p'}),op('retail',{tipo_establecimiento:'propia'}),op('aug',{operation_at:'2026-09-01T04:59:00Z'}),op('oct',{operation_at:'2026-10-01T05:00:00Z'}),op('unassigned',{ejecutivo_id:null}),op('tracking',{normalized_data:{seguimientoPagoKrediya:true}})];
  d.historical=[{id:'h1',codigo_credito:'p',plataforma:'payjoy',fecha_credito:'2026-09-05',ejecutivo_historico_id:'luis',tipo_establecimiento:'aliado'},{id:'h2',codigo_credito:'other',plataforma:'alo',fecha_credito:'2026-09-02',ejecutivo_historico_id:'luis',tipo_establecimiento:'aliado'}];
- const result=domain.summarize(d,period); assert.equal(result.list[0].credits,4);assert.equal(result.list[0].activeAllies,1);assert.equal(result.unassigned,1);
+ const result=domain.summarize(d,period); assert.equal(result.list[0].credits,3);assert.equal(result.list[0].activeAllies,1);assert.equal(result.unassigned,1);
+ assert.deepEqual(result.list[0].platforms,{payjoy:1,alo:1,krediya:1});
  assert.deepEqual(domain.month(new Date('2026-10-01T04:59:00Z')),period);
 });
 test('comisión por operación y beneficiario, sin mezclar meses ni confundir gestión con créditos propios',()=>{
@@ -32,7 +33,7 @@ test('lectura paginada completa y errores no convertidos a ceros',async()=>{
 test('UI consulta el dominio correcto, alinea encabezados y valores, y muestra error de lectura',async()=>{
  const html=fs.readFileSync('creditek/erp/tablero.html','utf8');const source=html.slice(html.indexOf('async function cargarEjecutivos()'),html.lastIndexOf('</script>'));
  const nodes=Object.fromEntries(['tbodyEjecutivos','emptyEjecutivos','ejecutivosNota'].map(id=>[id,{style:{}}]));
- const ctx={document:{getElementById:id=>nodes[id]},sb:{},CreditekTableroEjecutivos:{load:async()=>({list:[{name:'Luis',credits:26,activeAllies:16,commission:550000}],unassigned:0})},fmtCOP:n=>'$ '+n,escapeHtml:String,console:{error(){}}};vm.runInNewContext(source,ctx);await ctx.cargarEjecutivos();assert.match(nodes.tbodyEjecutivos.innerHTML,/<td class="centro">26<\/td>/);assert.match(nodes.tbodyEjecutivos.innerHTML,/550000/);
+ const ctx={document:{getElementById:id=>nodes[id]},sb:{},obtenerCreditosLiquidaciones:()=>Promise.resolve({}),CreditekTableroEjecutivos:{load:async()=>({list:[{name:'Luis',credits:26,activeAllies:16,commission:550000,platforms:{payjoy:21,alo:5,krediya:0}}],unassigned:0})},fmtCOP:n=>'$ '+n,escapeHtml:String,console:{error(){}}};vm.runInNewContext(source,ctx);await ctx.cargarEjecutivos();assert.match(nodes.tbodyEjecutivos.innerHTML,/<td class="centro">26<\/td>/);assert.match(nodes.tbodyEjecutivos.innerHTML,/550000/);
  ctx.CreditekTableroEjecutivos.load=async()=>{throw Error('no disponible');};await ctx.cargarEjecutivos();assert.equal(nodes.tbodyEjecutivos.innerHTML,'');assert.match(nodes.emptyEjecutivos.textContent,/No fue posible/);
- assert.match(html,/<th class="centro">Aliadas activas<\/th><th class="centro">Créditos del mes<\/th><th class="num">Comisión registrada/);
+ assert.match(html,/<th class="centro">Aliadas activas<\/th><th class="centro">PayJoy<\/th><th class="centro">ALO Credit<\/th><th class="centro">Krediya<\/th><th class="centro">Créditos del mes<\/th><th class="num">Comisión registrada/);
 });

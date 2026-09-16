@@ -14,12 +14,17 @@
     }
   }
 
-  function reunir(origenes, clientesB2B, corriente, libroB2B) {
+  const esCargaInicial = m => m.tipo === 'cargo' && m.referencia_tipo === 'saldo_inicial';
+
+  function reunir(origenes, clientesB2B, corriente, libroB2B, saldosIniciales = []) {
+    // Metadata only: the initial amount is already posted in cuenta_corriente.
+    const cortes = new Map(saldosIniciales.map(s => [`${s.tienda_codigo}:${s.id}`, s.fecha_corte]));
     const cuentas = new Map(clientesB2B.map(c => [c.cuenta_id, c.cliente_codigo]));
     const tipos = new Map(origenes.map(o => [o.codigo, o.tipo]));
     const movimientos = [
       ...corriente.filter(m => tipos.get(m.tienda_codigo) === 'propia').map(m => ({
         ...m, id:`tienda:${m.id}`, fecha:fechaBogota(m.created_at), responsable:m.usuario,
+        fecha_corte:esCargaInicial(m) ? cortes.get(`${m.tienda_codigo}:${m.referencia_id}`) || null : null,
       })),
       ...libroB2B.filter(m => cuentas.has(m.cuenta_id)).map(m => ({
         ...m, id:`cliente:${m.id}`, tienda_codigo:cuentas.get(m.cuenta_id),
@@ -43,11 +48,14 @@
     return clientes.filter(c => (!codigo || c.cliente_codigo === codigo) && normalizar(c.cliente).includes(normalizar(busqueda)))
       .map(c => {
         const ms = periodo.filter(m => m.tienda_codigo === c.cliente_codigo);
-        return {...c, inicial:anteriores[c.cliente_codigo]?.saldo || 0,
-          cargos:ms.filter(m => m.tipo === 'cargo').reduce((s,m) => s + Number(m.monto),0),
+        const cargasIniciales = ms.filter(esCargaInicial);
+        const inicialArrastrado = anteriores[c.cliente_codigo]?.saldo || 0;
+        const inicialCargado = cargasIniciales.reduce((s,m) => s + Number(m.monto),0);
+        return {...c, inicial:inicialArrastrado + inicialCargado, inicialArrastrado, inicialCargado, cargasIniciales,
+          cargos:ms.filter(m => m.tipo === 'cargo' && !esCargaInicial(m)).reduce((s,m) => s + Number(m.monto),0),
           abonos:ms.filter(m => m.tipo === 'abono').reduce((s,m) => s + Number(m.monto),0),
           saldo:cierre[c.cliente_codigo]?.saldo || 0, movimientos:ms.length};
       }).sort((a,b) => a.cliente.localeCompare(b.cliente,'es'));
   }
-  global.CreditekCarteraB2BDomain = Object.freeze({leerTodas, reunir, resumir});
+  global.CreditekCarteraB2BDomain = Object.freeze({leerTodas, reunir, resumir, esCargaInicial});
 })(typeof window !== 'undefined' ? window : globalThis);

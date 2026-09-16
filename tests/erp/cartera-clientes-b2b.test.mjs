@@ -11,6 +11,41 @@ const context={window:{}};
 for(const f of ['cuenta-corriente-domain.js','cartera-b2b-domain.js'])vm.runInNewContext(readFileSync(new URL('../../creditek/erp/'+f,import.meta.url),'utf8'),context);
 const D=context.window.CreditekCarteraB2BDomain;
 
+test('Chinucell: carga inicial separada, corte vinculado y saldo aplicado sin cambios',()=>{
+ const origenes=[{codigo:'T',nombre:'Chinucell',tipo:'propia',activo:true}];
+ const ledger=[
+  {id:1,tienda_codigo:'T',tipo:'cargo',monto:26177371,created_at:'2026-09-04T12:00:00Z',referencia_tipo:'saldo_inicial',referencia_id:'s1'},
+  {id:2,tienda_codigo:'T',tipo:'cargo',monto:4550600,created_at:'2026-09-10T12:00:00Z'},
+  {id:3,tienda_codigo:'T',tipo:'abono',monto:3099920,created_at:'2026-09-02T12:00:00Z'},
+ ];
+ const data=D.reunir(origenes,[],ledger,[],[{id:'s1',tienda_codigo:'T',fecha_corte:'2026-09-03',monto:26177371},{id:'unused',tienda_codigo:'T',monto:999999}]);
+ assert.equal(data.movimientos.length,3);
+ assert.equal(data.movimientos[0].fecha,'2026-09-04');
+ assert.equal(data.movimientos[0].fecha_corte,'2026-09-03');
+ const r=D.resumir(data.clientes,data.movimientos,'2026-09-01','2026-09-16')[0];
+ assert.equal(r.inicial,26177371);assert.equal(r.inicialArrastrado,0);assert.equal(r.inicialCargado,26177371);
+ assert.equal(r.cargos,4550600);assert.equal(r.abonos,3099920);assert.equal(r.saldo,27628051);
+ // Applied abonos, even before the cutoff, are never removed or counted twice.
+ for(const [desde,hasta] of [['2026-09-01','2026-09-03'],['2026-09-04','2026-09-04'],['2026-09-05','2026-09-16'],['2026-10-01','2026-10-31']]){
+  const s=D.resumir(data.clientes,data.movimientos,desde,hasta)[0];
+  assert.equal(s.inicial+s.cargos-s.abonos,s.saldo);
+ }
+ const oct=D.resumir(data.clientes,data.movimientos,'2026-10-01','2026-10-31')[0];
+ assert.equal(oct.inicial,27628051);assert.equal(oct.inicialCargado,0);assert.equal(oct.cargos,0);
+ assert.equal(D.resumir(data.clientes,data.movimientos,'2026-09-01','2026-09-03')[0].inicial,0);
+ assert.equal(ledger[0].fecha_corte,undefined);
+});
+
+test('solo referencia explícita de cargo identifica carga inicial; no infiere por concepto o por otra tienda',()=>{
+ assert.equal(D.esCargaInicial({tipo:'abono',referencia_tipo:'saldo_inicial'}),false);
+ assert.equal(D.esCargaInicial({tipo:'cargo',concepto:'Saldo inicial'}),false);
+ const data=D.reunir([{codigo:'T',nombre:'Tienda',tipo:'propia',activo:true}],[],[{id:1,tienda_codigo:'T',tipo:'cargo',monto:100,referencia_tipo:'saldo_inicial',referencia_id:'s1',created_at:'2026-09-04T12:00:00Z'}],[],[{id:'s1',tienda_codigo:'OTRA',fecha_corte:'2026-09-03'}]);
+ assert.equal(data.movimientos[0].fecha_corte,null);
+ assert.equal(D.resumir(data.clientes,data.movimientos,'2026-09-01','2026-09-16')[0].inicial,100);
+ assert.match(page,/sb.from\('saldos_iniciales_cartera'\)/);
+ assert.match(page,/Composición del saldo inicial/);
+});
+
 test('reúne libros sin duplicarlos y usa la fecha de cada fuente',()=>{
  const origenes=[{codigo:'T',nombre:'Tienda',tipo:'propia',activo:true},{codigo:'C',nombre:'Cliente',tipo:'cliente_b2b',activo:true}];
  const clientes=[{cuenta_id:'cuenta',cliente_codigo:'C'}];

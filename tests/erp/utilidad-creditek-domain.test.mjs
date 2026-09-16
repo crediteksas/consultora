@@ -103,23 +103,42 @@ test('elige granularidad automática según duración', () => {
 });
 
 test('la pantalla existente integra rangos, filtros, comparación y exportación', () => {
-  for (const id of ['fecha-desde', 'fecha-hasta', 'comparativo', 'filtro-tienda', 'filtro-plataforma', 'filtro-referencia', 'btn-exportar']) {
+  for (const id of ['fecha-desde', 'fecha-hasta', 'comparativo', 'filtro-tienda', 'filtro-referencia', 'btn-exportar']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /xlsx\.full\.min\.js/);
   assert.match(app, /consultar_utilidad_creditek_rango/);
   assert.match(app, /XLSX\.writeFile/);
   assert.match(app, /'Por tienda'/);
-  assert.match(app, /'Por plataforma'/);
+  assert.doesNotMatch(app, /'Por plataforma'|filtro-plataforma|renderTabla\('plataforma'/);
+  assert.doesNotMatch(html, /Resumen por plataforma|filtro-plataforma/);
   assert.match(app, /'Por referencia'/);
 });
 
-test('el selector de tienda usa el catálogo de tiendas propias activas', () => {
-  assert.match(app, /SB\.from\('origenes'\)\.select\('codigo, nombre'\)\.eq\('tipo', 'propia'\)\.eq\('activo', true\)\.order\('nombre'\)/);
-  assert.match(app, /llenarSelectTiendas\(tiendas\)/);
+test('el selector incluye destinos históricos y usa nombres reales en filtros, tablas y exportación', () => {
+  assert.match(app, /SB\.from\('origenes'\)\.select\('codigo, nombre, tipo, activo'\)\.order\('nombre'\)/);
+  assert.match(app, /destinos\.has\(t.codigo\) \|\| \(t.tipo === 'propia' && t.activo\)/);
   assert.doesNotMatch(app, /llenarSelect\('filtro-tienda', estado\.filas\.map/);
-  assert.match(app, /llenarSelect\('filtro-plataforma', estado\.filas\.map\(f => f\.plataforma\)\)/);
-  assert.match(app, /llenarSelect\('filtro-referencia', estado\.filas\.map\(f => f\.referencia\)\)/);
+  assert.match(app, /valor: f.referencia, nombre: f.referencia_nombre/);
+  assert.match(app, /Tienda:f.tienda_nombre/);
+  assert.match(app, /Referencia:f.referencia_nombre/);
+  assert.match(html, /position:sticky; left:0/);
+});
+
+test('los nombres no mezclan tiendas ni referencias distintas y conservan los importes', () => {
+  const datos = [
+    {...filas[0], tienda_nombre:'Móvil Shopping', referencia_nombre:'Equipo A'},
+    {...filas[1], tienda_nombre:'Móvil Shopping', referencia_nombre:'Equipo A'},
+    {...filas[2], tienda_nombre:'Móvil Shopping', referencia_nombre:'Equipo A'},
+  ];
+  const tiendas = domain.agruparDimension(datos, 'tienda_codigo', 'tienda_nombre');
+  assert.equal(tiendas.length, 2);
+  assert.equal(tiendas[0].nombre, 'Móvil Shopping');
+  assert.equal(tiendas.reduce((s, r) => s + r.facturado, 0), 2250);
+  const refs = domain.agruparDimension(datos, 'referencia', 'referencia_nombre');
+  assert.equal(refs.length, 2);
+  assert.equal(refs[0].nombre, 'Equipo A');
+  assert.equal(refs.reduce((s, r) => s + r.utilidad, 0), 750);
 });
 
 test('la aplicación avisa al shell compartido cuando terminó de autenticar', () => {

@@ -106,13 +106,14 @@
     return [...mapa.values()].sort((a, b) => a.periodo.localeCompare(b.periodo));
   }
 
-  function agruparDimension(filas, campo) {
+  function agruparDimension(filas, campo, campoNombre = campo) {
     const total = resumir(filas).facturado;
     const mapa = new Map();
     filas.forEach(fila => {
-      const nombre = fila[campo] || 'Sin asignar';
-      if (!mapa.has(nombre)) mapa.set(nombre, { nombre, facturado: 0, costo: 0, utilidad: 0, margen: null, participacion: null, unidades: 0 });
-      const grupo = mapa.get(nombre);
+      const clave = fila[campo] || 'Sin asignar';
+      const nombre = fila[campoNombre] || 'Nombre pendiente';
+      if (!mapa.has(clave)) mapa.set(clave, { nombre, facturado: 0, costo: 0, utilidad: 0, margen: null, participacion: null, unidades: 0 });
+      const grupo = mapa.get(clave);
       grupo.facturado += n(fila.facturado);
       grupo.costo += n(fila.costo);
       grupo.utilidad = grupo.facturado - grupo.costo;

@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="utilidad-creditek-domain.js"></script>
+  <script src="utilidad-creditek-domain.js?v=1.0.1"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <script src="kora-access-control.js?v=2.0.23"></script>
 <script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
@@ -33,6 +33,7 @@
     .refresh-btn:hover { background:rgba(255,255,255,.14); }
     .user-pill { max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:9px 12px; border-radius:9px; background:rgba(255,255,255,.08); }
     .dashboard { padding:24px 0 34px; display:grid; gap:18px; }
+    .dashboard > * { min-width:0; }
     .surface { background:white; border:1px solid var(--line); border-radius:14px; box-shadow:0 7px 22px rgba(25,45,75,.055); }
     .filter-bar { padding:14px; display:grid; grid-template-columns:1.05fr 1.05fr 1.35fr 1fr 1fr 1fr auto auto; gap:10px; align-items:end; }
     .field-label { display:block; margin:0 0 6px; color:#627089; font-size:10px; font-weight:700; letter-spacing:.035em; text-transform:uppercase; }
@@ -62,14 +63,14 @@
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:18px 20px 12px; }
     .panel-title { margin:0; color:var(--navy); font-size:15px; font-weight:700; }
     .panel-sub { margin:4px 0 0; color:#8290a4; font-size:10px; }
-    .chart-actions { display:flex; align-items:center; gap:8px; }
+    .chart-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
     .segment { display:flex; padding:3px; border:1px solid #dce4ee; border-radius:9px; background:#f6f8fb; }
     .granularidad { min-width:58px; padding:7px 11px; border-radius:6px; color:#69778d; font-size:11px; font-weight:700; }
     .granularidad.active { background:var(--navy); color:#fff; box-shadow:0 3px 8px rgba(11,30,61,.18); }
     .export-btn { display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 14px; border-radius:8px; background:var(--teal); color:var(--navy); font-size:11px; font-weight:800; }
     .export-btn:hover { background:#30d7dd; }
     #chart-container { position:relative; height:380px; padding:0 14px 14px; }
-    .summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
     .summary-panel { min-width:0; overflow:hidden; }
     .summary-panel .panel-head { align-items:center; padding-bottom:13px; border-bottom:1px solid #edf1f6; }
     .view-all { color:#008d94; font-size:10px; font-weight:700; white-space:nowrap; }
@@ -79,6 +80,8 @@
     .compact-table th { padding:9px 10px; background:#f6f8fb; color:#6c798d; font-size:8.5px; font-weight:700; letter-spacing:.02em; white-space:nowrap; }
     .compact-table td { padding:9px 10px; border-top:1px solid #f0f3f7; color:#344159; white-space:nowrap; }
     .compact-table td:first-child { color:var(--navy); font-weight:600; }
+    .compact-table th:first-child, .compact-table td:first-child { position:sticky; left:0; z-index:1; min-width:180px; max-width:260px; white-space:normal; background:#fff; }
+    .compact-table th:first-child { background:var(--navy); color:#fff; }
     .period-strip { display:grid; grid-template-columns:1.45fr repeat(5,1fr); align-items:stretch; overflow:hidden; }
     .period-intro { padding:18px 20px; background:var(--navy); color:#fff; }
     .period-intro .panel-title { color:#fff; }
@@ -88,8 +91,7 @@
     .period-value { margin-top:7px; color:var(--navy); font-size:16px; font-weight:700; }
     @media (max-width:1200px) {
       .filter-bar { grid-template-columns:repeat(4,minmax(0,1fr)); }
-      .summary-grid { grid-template-columns:1fr 1fr; }
-      .summary-panel:last-child { grid-column:1 / -1; }
+      .summary-grid { grid-template-columns:1fr; }
       .period-strip { grid-template-columns:repeat(3,1fr); }
       .period-intro { grid-column:1 / -1; }
     }
@@ -157,7 +159,6 @@
     <label><span class="field-label">Fecha final</span><input id="fecha-hasta" type="date" class="control" /></label>
     <label><span class="field-label">Comparar con</span><select id="comparativo" class="control"><option value="sin">Sin comparación</option><option value="anterior">Período anterior equivalente</option><option value="mes_anterior">Mes anterior</option><option value="anio_anterior">Mismo período del año anterior</option></select></label>
     <label><span class="field-label">Tienda</span><select id="filtro-tienda" class="control"><option value="">Todas</option></select></label>
-    <label><span class="field-label">Plataforma</span><select id="filtro-plataforma" class="control"><option value="">Todas</option></select></label>
     <label><span class="field-label">Referencia</span><select id="filtro-referencia" class="control"><option value="">Todas</option></select></label>
     <button id="btn-filtros-avanzados" class="filter-action advanced-btn" aria-expanded="false">Filtros avanzados</button>
     <button id="btn-aplicar" class="filter-action apply-btn">Aplicar</button>
@@ -190,9 +191,8 @@
   </section>
 
   <section class="summary-grid">
-    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Resumen por tienda</h2><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
-    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Resumen por plataforma</h2><button class="view-all" data-ver-todas="plataforma">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-plataforma"></thead><tbody id="tbody-plataforma"></tbody></table></div></article>
-    <article class="surface summary-panel"><div class="panel-head"><h2 class="panel-title">Top 5 referencias por utilidad</h2><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Resumen por tienda</h2><p class="panel-sub">Remisiones despachadas por B2B</p></div><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Top 5 referencias por utilidad</h2><p class="panel-sub">Utilidad de las remisiones B2B</p></div><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
   </section>
 
   <section class="surface period-strip" aria-label="Resumen del período">
@@ -205,6 +205,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js"></script>
+<script src="utilidad-creditek-app.js?v=1.0.1"></script>
 </body>
 </html>

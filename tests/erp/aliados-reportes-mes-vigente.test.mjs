@@ -24,7 +24,7 @@ test('Reportes comparte fuente, filtros y cálculo del dashboard', () => {
 test('histórico se incluye para consulta sin pagos nuevos', () => {
   assert.match(app, /dashboardOperations\(\)\.filter/);
   assert.match(app, /Incluye históricos sin duplicar créditos ni generar pagos/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.32/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.33/);
 });
 test('utilidad bruta y final se distinguen sin margen Retail', () => {
   assert.match(app, /Utilidad bruta del negocio/);

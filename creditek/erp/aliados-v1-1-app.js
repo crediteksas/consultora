@@ -518,10 +518,16 @@
     const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Los gastos operativos son los aprobados y registrados; no incluyen costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
     const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
-      return {platform, count:CreditekReversiones.creditCount(credits), sales:sum(credits,'monto_base')};
+      const components = credits.map(dashboardBreakdown);
+      return {
+        platform, count:CreditekReversiones.creditCount(credits), sales:sum(credits,'monto_base'),
+        complete:components.every(x => x.complete),
+        bonuses:components.reduce((total, x) => total + (x.bonus ?? 0), 0),
+        utility:components.reduce((total, x) => total + (x.net ?? 0), 0),
+      };
     });
-    const platformSummary = `<section class="card"><h2>Ventas por financiera</h2>${table(['Financiera','Créditos','Valor financiado'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales)]))}</section>`;
-    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + reconciliationHtml + platformSummary + $("#content").innerHTML;
+    const platformSummary = `<section class="card" id="resumen-plataformas"><h2>Resumen por plataforma</h2><p class="muted">Liquidaciones por fecha de venta · incluye tiendas propias y terceros según los filtros. Utilidad registrada en las liquidaciones, antes de gastos operativos del período; no depende de la fecha de pago.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales),x=>x.complete?cop(x.bonuses):'Pendiente de cálculo',x=>x.complete?cop(x.utility):'Pendiente de cálculo']))}</section>`;
+    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + platformSummary + reconciliationHtml + $("#content").innerHTML;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();

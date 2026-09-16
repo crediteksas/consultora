@@ -76,3 +76,24 @@ test('no presenta utilidad final numérica cuando el desglose falta',()=>{
  const {ctx,db}=fixture();db.operations=[{id:'x',plataforma:'krediya',operation_at:'2026-08-15',monto_base:100,utilidad_creditek:100}];ctx.renderDashboard();
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'No disponible · revisar datos');
 });
+
+test('resumen por plataforma vive en Aliados y suma bonos y utilidad guardados por fecha de venta',()=>{
+ const {ctx,db,nodes}=fixture();
+ nodes['#dashboardFrom'].value='2026-09-01';nodes['#dashboardTo'].value='2026-09-16';
+ db.operations=[
+  {id:'a',external_id:'a',plataforma:'payjoy',operation_at:'2026-09-03',tipo_establecimiento:'aliado',monto_base:1000,bonos_aplicados:20,utilidad_creditek:111},
+  {id:'b',external_id:'b',plataforma:'payjoy',operation_at:'2026-09-04',tipo_establecimiento:'propia',monto_base:2000,bonos_aplicados:30,utilidad_creditek:222},
+  {id:'c',external_id:'c',plataforma:'alo',operation_at:'2026-09-05',tipo_establecimiento:'aliado',monto_base:4000,bonos_aplicados:40,utilidad_creditek:444},
+  {id:'old',external_id:'old',plataforma:'payjoy',operation_at:'2026-08-31',fecha_pagada:'2026-09-10',monto_base:9000,bonos_aplicados:90,utilidad_creditek:999},
+ ];
+ const before=JSON.stringify(db);ctx.renderDashboard();
+ const summary=nodes['#content'].innerHTML.split('id="resumen-plataformas"')[1].split('</section>')[0];
+ assert.match(summary,/Resumen por plataforma/);
+ assert.match(summary,/payjoy\|2\|3000\|50\|333/);
+ assert.match(summary,/alo\|1\|4000\|40\|444/);
+ assert.doesNotMatch(summary,/999|9000/);
+ assert.equal(JSON.stringify(db),before);
+ nodes['#dashboardBusiness'].value='propia';ctx.renderDashboard();
+ assert.match(nodes['#content'].innerHTML,/payjoy\|1\|2000\|30\|222/);
+ assert.doesNotMatch(nodes['#content'].innerHTML,/alo\|1\|4000/);
+});

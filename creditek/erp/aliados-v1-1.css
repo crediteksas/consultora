@@ -57,6 +57,7 @@ body[data-aliados-view="reports"] .metric strong{margin-top:auto;line-height:1.0
 .btn.danger{background:#FEE4E2;color:var(--rojo)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .table-wrap{overflow:auto}
+#resumen-plataformas th:not(:first-child),#resumen-plataformas td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:12px 14px;border-bottom:1px solid var(--borde);text-align:left;white-space:nowrap}
 th{font-size:10.5px;color:var(--muted);text-transform:uppercase;background:#FAFAFB}

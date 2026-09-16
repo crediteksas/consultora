@@ -66,17 +66,18 @@
       desde: rango?.desde || document.getElementById('fecha-desde').value,
       hasta: rango?.hasta || document.getElementById('fecha-hasta').value,
       tienda: document.getElementById('filtro-tienda').value,
-      plataforma: document.getElementById('filtro-plataforma').value,
       referencia: document.getElementById('filtro-referencia').value,
     };
   }
 
-  function llenarSelect(id, valores) {
+  function llenarSelect(id, opciones) {
     const select = document.getElementById(id);
     const actual = select.value;
     const etiqueta = select.options[0].textContent;
     select.innerHTML = `<option value="">${etiqueta}</option>` +
-      [...new Set(valores.filter(Boolean))].sort().map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      [...new Map(opciones.filter(o => o.valor).map(o => [o.valor, o])).values()]
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+        .map(o => `<option value="${escapeHtml(o.valor)}">${escapeHtml(o.nombre)}</option>`).join('');
     if ([...select.options].some(o => o.value === actual)) select.value = actual;
   }
 
@@ -104,18 +105,21 @@
         p_desde: consultaDesde,
         p_hasta: consultaHasta,
       }),
-      SB.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+      SB.from('origenes').select('codigo, nombre, tipo, activo').order('nombre'),
     ]);
     if (error) throw error;
     if (tiendasError) throw tiendasError;
+    const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
     estado.filas = (data || []).map(fila => ({
       ...fila,
+      tienda_nombre: nombresTiendas.get(fila.tienda_codigo)?.trim() || 'Tienda sin nombre registrado',
+      referencia_nombre: fila.producto_nombre?.trim() || 'Referencia sin nombre registrado',
       cantidad: Number(fila.cantidad), facturado: Number(fila.facturado),
       costo: Number(fila.costo), utilidad: Number(fila.facturado) - Number(fila.costo),
     }));
-    llenarSelectTiendas(tiendas);
-    llenarSelect('filtro-plataforma', estado.filas.map(f => f.plataforma));
-    llenarSelect('filtro-referencia', estado.filas.map(f => f.referencia));
+    const destinos = new Set(estado.filas.map(f => f.tienda_codigo));
+    llenarSelectTiendas((tiendas || []).filter(t => destinos.has(t.codigo) || (t.tipo === 'propia' && t.activo)));
+    llenarSelect('filtro-referencia', estado.filas.map(f => ({ valor: f.referencia, nombre: f.referencia_nombre })));
     aplicar();
     document.getElementById('ultima-actualizacion').textContent = `Actualizado ${new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}`;
   }
@@ -197,12 +201,10 @@
   function renderTodo(base, rangoCmp) {
     const resumen = renderKpis(rangoCmp);
     renderChart(base);
-    const porTienda = D.agruparDimension(estado.filtradas, 'tienda_codigo');
-    const porPlataforma = D.agruparDimension(estado.filtradas, 'plataforma');
-    const porReferencia = D.agruparDimension(estado.filtradas, 'referencia')
+    const porTienda = D.agruparDimension(estado.filtradas, 'tienda_codigo', 'tienda_nombre');
+    const porReferencia = D.agruparDimension(estado.filtradas, 'referencia', 'referencia_nombre')
       .sort((a, b) => b.utilidad - a.utilidad);
     renderTabla('tienda', 'Tienda', porTienda);
-    renderTabla('plataforma', 'Plataforma', porPlataforma);
     renderTabla('referencia', 'Referencia', porReferencia);
     document.getElementById('resumen-rango').textContent = `${base.desde} a ${base.hasta}`;
     document.getElementById('res-dias').textContent = intFmt.format(D.dias(base.desde, base.hasta));
@@ -219,7 +221,8 @@
     return [
       ['CREDITEK S.A.S.'], ['Informe de utilidad'], ['Código de trazabilidad', id], ['Generado desde', 'KORA'], ['Fecha de generación', ahora],
       [], ['Rango', `${base.desde} a ${base.hasta}`],
-      ['Tienda', base.tienda || 'Todas'], ['Plataforma', base.plataforma || 'Todas'], ['Referencia', base.referencia || 'Todas'],
+      ['Tienda', document.getElementById('filtro-tienda').selectedOptions[0]?.textContent || 'Todas'],
+      ['Referencia', document.getElementById('filtro-referencia').selectedOptions[0]?.textContent || 'Todas'],
       [], ['Indicador', 'Valor'], ['Facturado', r.facturado], ['Costo real', r.costo], ['Utilidad', r.utilidad],
       ['Margen %', r.margen], ['Días', D.dias(base.desde, base.hasta)], ['Tiendas', r.tiendas], ['Unidades', r.unidades],
       ['Despachos', r.despachos], ['Ticket promedio', r.ticketPromedio],
@@ -228,8 +231,8 @@
 
   function filasExportacion(filas) {
     return filas.map(f => ({
-      Fecha:f.fecha, Despacho:f.consecutivo, Tienda:f.tienda_codigo, Plataforma:f.plataforma || 'Sin asignar',
-      Referencia:f.referencia, Producto:f.producto_nombre, Cantidad:f.cantidad,
+      Fecha:f.fecha, Despacho:f.consecutivo, Tienda:f.tienda_nombre,
+      Referencia:f.referencia_nombre, Cantidad:f.cantidad,
       Facturado:f.facturado, 'Costo real':f.costo, Utilidad:f.facturado - f.costo,
       'Margen %':f.facturado ? (f.facturado - f.costo) / f.facturado : null,
     }));
@@ -244,9 +247,8 @@
     const libro = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(hojaResumen(base)), 'Resumen');
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasExportacion(estado.filtradas)), 'Detalle');
-    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'tienda_codigo'))), 'Por tienda');
-    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'plataforma'))), 'Por plataforma');
-    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'referencia'))), 'Por referencia');
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'tienda_codigo', 'tienda_nombre'))), 'Por tienda');
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'referencia', 'referencia_nombre'))), 'Por referencia');
     XLSX.writeFile(libro, `utilidad-creditek_${base.desde}_${base.hasta}.xlsx`);
   }
 
@@ -268,7 +270,7 @@
     }));
     document.getElementById('btn-aplicar').addEventListener('click', () => cargar().catch(e => toast(e.message, true)));
     document.getElementById('btn-refresh').addEventListener('click', () => cargar().catch(e => toast(e.message, true)));
-    ['filtro-tienda','filtro-plataforma','filtro-referencia'].forEach(id => document.getElementById(id).addEventListener('change', aplicar));
+    ['filtro-tienda','filtro-referencia'].forEach(id => document.getElementById(id).addEventListener('change', aplicar));
     document.querySelectorAll('[data-granularidad]').forEach(btn => btn.addEventListener('click', () => {
       if (btn.disabled) return;
       estado.granularidad = btn.dataset.granularidad;

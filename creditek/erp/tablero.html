@@ -11,9 +11,10 @@
 <script src="kora-access-control.js?v=2.0.23"></script>
 <script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
-<link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.1">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.2">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
+<script src="tablero-utilidad.js?v=1.0.0"></script>
 <script src="/design-system/components/kora-product.js" defer></script>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -179,11 +180,21 @@
       <div class="dashboard-section-heading">
         <div>
           <p class="dashboard-section-heading__eyebrow">Rentabilidad</p>
-          <h2>Utilidad acumulada vs. presupuesto</h2>
+          <h2 id="utilidadTitulo">Utilidad acumulada · Retail</h2>
         </div>
         <span class="dashboard-section-heading__icon"><i data-lucide="trending-up"></i></span>
       </div>
-      <div class="grafico-box"><canvas id="chartUtilidad"></canvas></div>
+      <div class="dashboard-profit-tabs" role="tablist" aria-label="Negocio de la utilidad">
+        <button type="button" role="tab" id="utilidadTab-retail" data-utilidad-negocio="retail" aria-selected="true" aria-controls="utilidadPanel">Retail</button>
+        <button type="button" role="tab" id="utilidadTab-b2b" data-utilidad-negocio="b2b" aria-selected="false" aria-controls="utilidadPanel" tabindex="-1">B2B</button>
+        <button type="button" role="tab" id="utilidadTab-aliados" data-utilidad-negocio="aliados" aria-selected="false" aria-controls="utilidadPanel" tabindex="-1">Aliados</button>
+      </div>
+      <div id="utilidadPanel" role="tabpanel" aria-labelledby="utilidadTab-retail">
+        <p class="dashboard-profit-total" id="utilidadTotal" aria-live="polite">Consultando…</p>
+        <p class="dashboard-profit-context" id="utilidadContexto"></p>
+        <div class="grafico-box"><canvas id="chartUtilidad" role="img"></canvas></div>
+        <p class="dashboard-profit-context" id="utilidadPresupuesto"></p>
+      </div>
     </article>
   </section>
 
@@ -217,6 +228,8 @@ let currentPerfil = null;
 let tiendasCache = [];
 let chartCreditosObj = null;
 let chartUtilidadObj = null;
+let utilidadNegocio = 'retail';
+let utilidadConsulta = 0;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -302,6 +315,17 @@ function initPagina() {
   document.getElementById('rangoDesde').addEventListener('change', cargarKPIs);
   document.getElementById('rangoHasta').addEventListener('change', cargarKPIs);
   document.getElementById('filtroTienda').addEventListener('change', () => { cargarKPIs(); cargarTiendas_Tabla(); });
+  const profitTabs = [...document.querySelectorAll('[data-utilidad-negocio]')];
+  profitTabs.forEach((button,index) => {
+    button.addEventListener('click', () => {
+      utilidadNegocio = button.dataset.utilidadNegocio;
+      actualizarUtilidad();
+    });
+    button.addEventListener('keydown', event => {
+      const target = event.key === 'ArrowRight' ? (index+1)%profitTabs.length : event.key === 'ArrowLeft' ? (index+profitTabs.length-1)%profitTabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? profitTabs.length-1 : -1;
+      if(target>=0){event.preventDefault();profitTabs[target].focus();profitTabs[target].click();}
+    });
+  });
 
   cargarTiendasSelect().then(() => {
     cargarKPIs();
@@ -609,88 +633,43 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
   cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurridos, tiendaFiltro);
 }
 
+function actualizarUtilidad() {
+  const hoy = new Date();
+  return cargarSerieUtilidadAcumulada(new Date(hoy.getFullYear(),hoy.getMonth(),1),0,0,document.getElementById('filtroTienda').value);
+}
 async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurridos, tiendaFiltro) {
-  const inicioStr = fechaISO(inicioMes);
-  const finStr = fechaISO(new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 1));
-
-  let qv = sb.from('ventas').select('id, fecha').gte('fecha', inicioStr).lt('fecha', finStr).eq('anulada', false);
-  if (tiendaFiltro) qv = qv.eq('tienda_codigo', tiendaFiltro);
-  const { data: ventas } = await qv;
-  const idsVentas = (ventas || []).map(v => v.id);
-  let items = [];
-  if (idsVentas.length) {
-    const { data } = await sb.from('venta_items_lectura').select('venta_id, utilidad').in('venta_id', idsVentas);
-    items = data || [];
-  }
-  const utilidadPorVenta = {};
-  items.forEach(i => { utilidadPorVenta[i.venta_id] = (utilidadPorVenta[i.venta_id] || 0) + Number(i.utilidad || 0); });
-  const utilidadPorDia = {};
-  (ventas || []).forEach(v => { utilidadPorDia[v.fecha] = (utilidadPorDia[v.fecha] || 0) + (utilidadPorVenta[v.id] || 0); });
-
-  let qp = sb.from('presupuestos').select('fecha, meta_utilidad').gte('fecha', inicioStr).lt('fecha', finStr);
-  if (tiendaFiltro) qp = qp.eq('tienda_codigo', tiendaFiltro);
-  const { data: presupuestos } = await qp;
-  const metaPorDia = {};
-  (presupuestos || []).forEach(p => { metaPorDia[p.fecha] = (metaPorDia[p.fecha] || 0) + Number(p.meta_utilidad || 0); });
-
-  const labels = []; const real = []; const meta = [];
-  let acumReal = 0, acumMeta = 0;
-  for (let d = 1; d <= diasDelMes; d++) {
-    const fecha = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), d);
-    const fechaStr = fechaISO(fecha);
-    labels.push(d);
-    if (d <= diasTranscurridos) { acumReal += utilidadPorDia[fechaStr] || 0; real.push(acumReal); }
-    else real.push(null);
-    acumMeta += metaPorDia[fechaStr] || 0;
-    meta.push(acumMeta);
-  }
-
-  const ctx2 = document.getElementById('chartUtilidad');
-  if (chartUtilidadObj) chartUtilidadObj.destroy();
-  chartUtilidadObj = new Chart(ctx2, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Utilidad real (acumulada)',
-          data: real,
-          borderColor: tokenColor('--ctk-color-secondary-500'),
-          backgroundColor: tokenColor('--ctk-color-secondary-50'),
-          borderWidth: 3,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          tension: 0.3,
-          fill: true,
-          spanGaps: false,
-        },
-        {
-          label: 'Presupuesto (acumulado)',
-          data: meta,
-          borderColor: tokenColor('--ctk-color-primary-900'),
-          borderDash: [5, 4],
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.3,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', align: 'start', labels: { usePointStyle: true, boxWidth: 8, padding: 18 } },
-      },
-      scales: {
-        x: { grid: { display: false }, border: { display: false } },
-        y: {
-          grid: { color: tokenColor('--ctk-color-neutral-100') },
-          border: { display: false },
-          ticks: { callback: v => fmtCorto(v) },
-        },
-      },
-    },
+  const request = ++utilidadConsulta;
+  const business = utilidadNegocio;
+  const names = {retail:'Retail',b2b:'B2B',aliados:'Aliados'};
+  const canvas = document.getElementById('chartUtilidad');
+  const total = document.getElementById('utilidadTotal');
+  const context = document.getElementById('utilidadContexto');
+  const budget = document.getElementById('utilidadPresupuesto');
+  document.querySelectorAll('[data-utilidad-negocio]').forEach(button => {
+    const selected = button.dataset.utilidadNegocio === business;
+    button.setAttribute('aria-selected',String(selected));
+    button.tabIndex = selected ? 0 : -1;
   });
+  document.getElementById('utilidadPanel').setAttribute('aria-labelledby','utilidadTab-'+business);
+  document.getElementById('utilidadTitulo').textContent = 'Utilidad acumulada · '+names[business];
+  if(chartUtilidadObj){chartUtilidadObj.destroy();chartUtilidadObj=null;}
+  canvas.hidden=true;total.textContent='Consultando…';context.textContent='';budget.textContent='';
+  try {
+    const result = await CreditekTableroUtilidad.load(sb,business,{store:tiendaFiltro,creditData:business==='aliados'?obtenerCreditosLiquidaciones():undefined});
+    if(request!==utilidadConsulta)return;
+    total.textContent = fmtCOP(result.total)+(result.missing?' · parcial':'');
+    const scope = business==='aliados' ? 'Todos los aliados' : tiendaFiltro ? nombreTienda(tiendaFiltro) : 'Todas las tiendas';
+    context.textContent = result.description+' '+scope+' · '+result.period.start+' a '+result.today+'. Escala automática.'+(result.missing?' '+result.missing+' registro(s) sin utilidad calculada.':'');
+    budget.textContent = result.budget===null ? '' : 'Presupuesto mensual Retail: '+fmtCOP(result.budget)+' · referencia; no modifica la escala.';
+    canvas.hidden=false;
+    canvas.setAttribute('aria-label',names[business]+': utilidad acumulada '+fmtCOP(result.total)+', del '+result.period.start+' al '+result.today+(result.missing?', cálculo parcial':''));
+    chartUtilidadObj=new Chart(canvas,CreditekTableroUtilidad.chartConfig(result,{money:fmtCOP,shortMoney:fmtCorto,color:tokenColor}));
+  } catch(error) {
+    if(request!==utilidadConsulta)return;
+    total.textContent='No disponible';
+    context.textContent='No se pudo consultar la utilidad de '+names[business]+'. Selecciona la pestaña para reintentar.';
+    console.error('Utilidad por negocio:',error);
+  }
 }
 
 // ─── Alertas ───────────────────────────────────────────────────────────

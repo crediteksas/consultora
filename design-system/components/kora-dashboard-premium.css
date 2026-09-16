@@ -119,6 +119,39 @@ body[data-kora-dashboard] .dashboard-executives .dashboard-table td.num {
   font-size: 12px;
 }
 
+body[data-kora-dashboard] .dashboard-profit-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 16px;
+  border-radius: 10px;
+  background: var(--ctk-color-neutral-50);
+  border: 1px solid var(--dashboard-premium-border);
+}
+body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button {
+  min-height: 36px;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ctk-color-neutral-600);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button[aria-selected="true"] {
+  color: var(--ctk-color-primary-900);
+  background: var(--ctk-color-neutral-0);
+  box-shadow: 0 1px 3px rgb(11 30 61 / 10%);
+}
+body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button:focus-visible {
+  outline: 2px solid var(--ctk-color-secondary-500);
+  outline-offset: 2px;
+}
+.dashboard-profit-total { margin: 0 0 4px; color: var(--ctk-color-primary-900); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dashboard-profit-context { margin: 4px 0 12px; color: var(--ctk-color-text-muted); font-size: 12px; line-height: 1.5; }
+
 .dashboard-table .fila-total td,
 .dashboard-table tfoot td {
   background: color-mix(in srgb, var(--ctk-color-primary-900) 2%, transparent);

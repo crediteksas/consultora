@@ -510,8 +510,39 @@ function renderTablaTiendas(filas) {
 function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tiendaFiltro) {
   const ctx1 = document.getElementById('chartCreditos');
   if (chartCreditosObj) chartCreditosObj.destroy();
+  const etiquetasCreditos = filas.map(f => Number(f.metaMes) > 0
+    ? `${f.creditosMes} de ${f.metaMes}`
+    : `${f.creditosMes} · sin meta`);
+  const fuenteEtiquetas = `11px ${Chart.defaults.font.family}`;
+  const contextoEtiquetas = ctx1.getContext('2d');
+  contextoEtiquetas.save();
+  contextoEtiquetas.font = fuenteEtiquetas;
+  const espacioEtiquetas = Math.ceil(Math.max(0, ...etiquetasCreditos.map(texto => contextoEtiquetas.measureText(texto).width))) + 16;
+  contextoEtiquetas.restore();
+  ctx1.setAttribute('role', 'img');
+  ctx1.setAttribute('aria-label', `Créditos logrados frente a meta: ${filas.map((f, i) => `${f.tienda.nombre}: ${etiquetasCreditos[i]}`).join('; ')}`);
   chartCreditosObj = new Chart(ctx1, {
     type: 'bar',
+    plugins: [{
+      id: 'creditos-logrado-meta',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales } = chart;
+        ctx.save();
+        ctx.font = fuenteEtiquetas;
+        ctx.fillStyle = tokenColor('--ctk-color-neutral-600');
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        etiquetasCreditos.forEach((texto, i) => {
+          const extremos = chart.data.datasets.flatMap((_, datasetIndex) => {
+            const barra = chart.getDatasetMeta(datasetIndex).data[i];
+            return chart.isDatasetVisible(datasetIndex) && barra ? [barra.x] : [];
+          });
+          const fin = Math.max(scales.x.getPixelForValue(0), ...extremos);
+          ctx.fillText(texto, fin + 8, scales.y.getPixelForValue(i));
+        });
+        ctx.restore();
+      },
+    }],
     data: {
       labels: filas.map(f => f.tienda.nombre),
       datasets: [
@@ -523,6 +554,7 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { right: espacioEtiquetas } },
       plugins: {
         legend: { position: 'bottom', align: 'start', labels: { usePointStyle: true, boxWidth: 8, padding: 18 } },
       },

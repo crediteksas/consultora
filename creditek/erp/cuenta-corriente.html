@@ -376,6 +376,8 @@ let imeisCompensaciones = new Map();
 let abonosCache = [];
 let saldosInicialesCache = [];
 let tiendasCache = [];
+let nombresTiendas = new Map();
+function nombreTienda(codigo) { return nombresTiendas.get(codigo) || 'Nombre de tienda no disponible'; }
 let tiendaDetalleActual = null;
 let fotoAbonoBlob = null;
 let modalAnteriorAbono = null;
@@ -430,7 +432,7 @@ async function entrarApp(user) {
 function pintarNavUser() {
   document.getElementById('navNombre').textContent = currentPerfil.nombre || currentUser.email;
   const rolLabel = { gerencia: 'Gerencia', auditoria: 'Auditoría', admin_tienda: 'Admin tienda', asesor: 'Asesor' }[currentPerfil.rol] || currentPerfil.rol;
-  document.getElementById('navRolTienda').textContent = currentPerfil.tienda_codigo ? `${rolLabel} · ${currentPerfil.tienda_codigo}` : rolLabel;
+  document.getElementById('navRolTienda').textContent = currentPerfil.tienda_codigo ? `${rolLabel} · ${nombreTienda(currentPerfil.tienda_codigo)}` : rolLabel;
 }
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
@@ -529,8 +531,17 @@ document.addEventListener('keydown', event => {
 });
 
 async function cargarTodo() {
-  const { data: tiendas } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
-  tiendasCache = tiendas || [];
+  const { data: tiendas, error: errorTiendas } = await sb.from('origenes').select('codigo, nombre, activo').eq('tipo', 'propia').order('nombre');
+  if (errorTiendas) {
+    const empty = document.getElementById('emptyState');
+    empty.style.display = 'block';
+    empty.textContent = 'No se pudieron cargar los nombres de las tiendas. Actualiza la pantalla para reintentar.';
+    return;
+  }
+  // Preserve historical names without enabling new instructions for inactive stores.
+  nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
+  tiendasCache = (tiendas || []).filter(t => t.activo);
+  pintarNavUser();
   if (esCentral()) {
     const { data: proveedores } = await sb.from('proveedores').select('id, nombre').eq('activo', true).order('nombre');
     proveedoresCache = proveedores || [];
@@ -591,7 +602,6 @@ function renderTablaTiendas() {
   const resumen = calcularResumenPorTienda();
   // Para central: mostrar todas las tiendas propias (aunque tengan saldo 0). Para tienda: solo aparecerá la suya en `resumen` (RLS ya filtra).
   const codigosTienda = esCentral() ? tiendasCache.map(t => t.codigo) : Object.keys(resumen);
-  const nombrePorCodigo = Object.fromEntries(tiendasCache.map(t => [t.codigo, t.nombre]));
 
   const tbody = document.getElementById('tbodyTiendas');
   const empty = document.getElementById('emptyState');
@@ -602,7 +612,7 @@ function renderTablaTiendas() {
     const r = resumen[codigo] || { saldo: 0, ultimoCargo: null, ultimoAbono: null };
     return `
       <tr data-tienda="${codigo}">
-        <td>${escapeHtml(nombrePorCodigo[codigo] || codigo)}</td>
+        <td>${escapeHtml(nombreTienda(codigo))}</td>
         <td class="${r.saldo > 0 ? 'saldo-alto' : ''}">${fmtCOP(r.saldo)}</td>
         <td>${r.ultimoCargo ? `${escapeHtml(r.ultimoCargo.concepto)} — ${new Date(r.ultimoCargo.created_at).toLocaleDateString('es-CO')}` : '—'}</td>
         <td>${r.ultimoAbono ? `${fmtCOP(r.ultimoAbono.monto)} — ${new Date(r.ultimoAbono.created_at).toLocaleDateString('es-CO')}` : '—'}</td>
@@ -610,7 +620,7 @@ function renderTablaTiendas() {
     `;
   }).join('');
 
-  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirDetalleTienda(tr.dataset.tienda, nombrePorCodigo[tr.dataset.tienda])));
+  tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirDetalleTienda(tr.dataset.tienda, nombreTienda(tr.dataset.tienda))));
 }
 
 async function cargarCompensacionesRecibidas(codigo) {
@@ -636,7 +646,7 @@ async function cargarCompensacionesRecibidas(codigo) {
 function abrirDetalleTienda(codigo, nombre) {
   tiendaDetalleActual = { codigo, nombre };
   cargarCompensacionesRecibidas(codigo);
-  document.getElementById('detalleTitulo').textContent = nombre || codigo;
+  document.getElementById('detalleTitulo').textContent = nombre || nombreTienda(codigo);
   document.getElementById('btnAbrirAbono').style.display = esCentral() ? 'inline-block' : 'none';
 
   const movs = movimientosCC.filter(m => m.tienda_codigo === codigo);
@@ -832,7 +842,7 @@ async function cargarInstrucciones() {
       : '';
     return `<tr>
       <td>${escapeHtml(i.fecha)}</td>
-      <td>${escapeHtml(i.tienda_codigo)}</td>
+      <td>${escapeHtml(nombreTienda(i.tienda_codigo))}</td>
       <td>${escapeHtml(i.banco)}</td>
       <td>${escapeHtml(destino || '—')}</td>
       <td>${fmtCOP(i.valor_esperado)}</td>
@@ -1028,7 +1038,7 @@ function abrirModalAbono() {
   modalAnteriorAbono = document.activeElement;
   cerrarModal('modalDetalle');
   const codigo = esCentral() ? tiendaDetalleActual.codigo : currentPerfil.tienda_codigo;
-  const nombre = esCentral() ? tiendaDetalleActual.nombre : (tiendasCache.find(t => t.codigo === codigo)?.nombre || codigo);
+  const nombre = nombreTienda(codigo);
   document.getElementById('abonoTiendaTexto').textContent = 'Tienda: ' + nombre;
   document.getElementById('abonoMonto').value = '';
   document.getElementById('abonoFecha').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });

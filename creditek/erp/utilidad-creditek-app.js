@@ -170,20 +170,56 @@
       btn.classList.toggle('opacity-40', btn.disabled);
       btn.classList.toggle('active', tipo === estado.granularidad);
     });
-    const grupos = D.agruparTiempo(estado.filtradas, estado.granularidad);
-    document.getElementById('chart-sub').textContent = `Agrupado por ${estado.granularidad} · ${base.desde} a ${base.hasta}`;
+    const grupos = D.serieAcumulada(estado.filtradas, base.desde, base.hasta, estado.granularidad);
+    const esMes = base.desde.endsWith('-01') && base.desde.slice(0, 7) === base.hasta.slice(0, 7);
+    document.getElementById('chart-title').textContent = `Utilidad B2B acumulada ${esMes ? 'del mes' : 'del período'}`;
+    document.getElementById('chart-sub').textContent = `Valores en pesos (COP) · ${base.desde} a ${base.hasta}`;
     if (estado.chart) estado.chart.destroy();
-    estado.chart = new Chart(document.getElementById('chart-utilidad'), {
+    estado.chart = null;
+    document.getElementById('chart-container').classList.toggle('hidden', !grupos.length);
+    document.getElementById('chart-empty').classList.toggle('hidden', !!grupos.length);
+    const canvas = document.getElementById('chart-utilidad');
+    canvas.setAttribute('aria-label', `Utilidad B2B acumulada del ${base.desde} al ${base.hasta}: ${money(grupos.at(-1)?.utilidad || 0)} pesos colombianos.`);
+    if (!grupos.length) return;
+    estado.chart = new Chart(canvas, {
+      type: 'line',
       data: {
         labels: grupos.map(g => g.periodo),
-        datasets: [
-          { type:'bar', label:'Facturado', data:grupos.map(g => g.facturado), backgroundColor:'#0B1E3D', borderRadius:5 },
-          { type:'bar', label:'Costo real', data:grupos.map(g => g.costo), backgroundColor:'#f59e0b', borderRadius:5 },
-          { type:'bar', label:'Utilidad', data:grupos.map(g => g.utilidad), backgroundColor:'#00C4CC', borderRadius:5 },
-          { type:'line', label:'Margen %', data:grupos.map(g => g.margen == null ? null : g.margen * 100), borderColor:'#7459d9', backgroundColor:'#7459d9', borderWidth:2.5, pointRadius:3, tension:.3, yAxisID:'y1' },
-        ],
+        datasets: [{
+          label:'Utilidad B2B acumulada', data:grupos.map(g => g.utilidad),
+          borderColor:'#00C4CC', backgroundColor:'#00C4CC', borderWidth:3, tension:0,
+          pointRadius:grupos.map((_, i) => i === grupos.length - 1 ? 4 : 0), pointHitRadius:12,
+        }],
       },
-      options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom'}}, scales:{ y:{beginAtZero:true}, y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>`${v}%`}} } },
+      plugins: [{
+        id: 'b2b-valor-final',
+        afterDatasetsDraw(chart) {
+          const punto = chart.getDatasetMeta(0).data.at(-1);
+          if (!punto) return;
+          const { ctx, chartArea: area } = chart;
+          const texto = money(grupos.at(-1).utilidad);
+          ctx.save();
+          ctx.font = '600 13px sans-serif';
+          const ancho = ctx.measureText(texto).width;
+          const x = Math.max(area.left + 4, Math.min(punto.x - ancho / 2, area.right - ancho - 4));
+          const y = punto.y - 14 < area.top + 14 ? punto.y + 22 : punto.y - 14;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(x - 3, y - 13, ancho + 6, 18);
+          ctx.fillStyle = '#0B1E3D';
+          ctx.textAlign = 'left';
+          ctx.fillText(texto, x, y);
+          ctx.restore();
+        },
+      }],
+      options: {
+        responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+        layout:{padding:{top:12,right:8}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label: item => `Acumulado: ${money(item.parsed.y)}`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{maxTicksLimit:7,maxRotation:0,callback:(_, i) => grupos[i].periodo.slice(5).split('-').reverse().join('/')}},
+          y:{beginAtZero:true,grace:'15%',grid:{color:'#edf1f7'},ticks:{maxTicksLimit:5,callback:v=>money(v)}},
+        },
+      },
     });
   }
 

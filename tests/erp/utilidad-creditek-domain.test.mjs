@@ -89,6 +89,32 @@ test('agrupa por día, semana y mes conservando totales', () => {
   }
 });
 
+test('el acumulado conserva los días sin actividad y coincide con el indicador', () => {
+  const serie = domain.serieAcumulada(filas, '2026-07-01', '2026-07-08');
+  assert.deepEqual(Array.from(serie, p => p.utilidad), [200, 500, 500, 500, 500, 500, 500, 750]);
+  for (const granularidad of ['dia', 'semana', 'mes']) {
+    const puntos = domain.serieAcumulada(filas, '2026-07-01', '2026-07-08', granularidad);
+    assert.equal(puntos.at(-1).utilidad, domain.resumir(filas.slice(0, 3)).utilidad);
+    assert.equal(puntos.at(-1).periodo, '2026-07-08');
+    assert.ok(puntos.every(p => p.periodo >= '2026-07-01' && p.periodo <= '2026-07-08'));
+  }
+});
+
+test('el acumulado respeta el inicio seleccionado, deduplica y no inventa actividad', () => {
+  assert.deepEqual(Array.from(domain.serieAcumulada([...filas, filas[2]], '2026-07-06', '2026-07-08'), p => p.utilidad), [0, 0, 250]);
+  assert.equal(domain.serieAcumulada([], '2026-07-01', '2026-07-08').length, 0);
+  assert.equal(domain.serieAcumulada(filas, '2026-08-01', '2026-08-08').length, 0);
+  assert.equal(domain.serieAcumulada(filas, '2026-07-08', '2026-07-08')[0].utilidad, 250);
+});
+
+test('el acumulado no oculta pérdidas ni saldos cero', () => {
+  const datos = [
+    {...filas[0], facturado:100, costo:200},
+    {...filas[1], facturado:100, costo:0},
+  ];
+  assert.deepEqual(Array.from(domain.serieAcumulada(datos, '2026-07-01', '2026-07-03'), p => p.utilidad), [-100, 0, 0]);
+});
+
 test('resume dimensiones con participación sobre el total', () => {
   const tiendas = domain.agruparDimension(filas.slice(0, 3), 'tienda_codigo');
   assert.equal(tiendas[0].facturado, 1250);

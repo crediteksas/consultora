@@ -124,6 +124,22 @@
     return [...mapa.values()].sort((a, b) => b.facturado - a.facturado);
   }
 
+  function serieAcumulada(filas, desde, hasta, granularidad = 'dia') {
+    const incluidas = filtrarFilas(filas, { desde, hasta });
+    if (!incluidas.length) return [];
+    const diarios = new Map(agruparTiempo(incluidas, 'dia').map(f => [f.periodo, f]));
+    const puntos = new Map();
+    let facturado = 0, costo = 0;
+    for (let fecha = desde; fecha <= hasta; fecha = moverDias(fecha, 1)) {
+      const movimiento = diarios.get(fecha);
+      facturado += movimiento?.facturado || 0;
+      costo += movimiento?.costo || 0;
+      // Cada punto es el saldo al cierre; los días sin remisiones lo conservan.
+      puntos.set(claveTiempo(fecha, granularidad), { periodo: fecha, utilidad: facturado - costo });
+    }
+    return [...puntos.values()];
+  }
+
   function granularidadAutomatica(desde, hasta) {
     const cantidad = dias(desde, hasta);
     if (cantidad <= 45) return 'dia';
@@ -137,6 +153,7 @@
     rangoComparacion,
     comparar,
     agruparTiempo,
+    serieAcumulada,
     agruparDimension,
     granularidadAutomatica,
     dias,

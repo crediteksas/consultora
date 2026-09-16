@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="utilidad-creditek-domain.js?v=1.0.1"></script>
+  <script src="utilidad-creditek-domain.js?v=1.0.2"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <script src="kora-access-control.js?v=2.0.23"></script>
 <script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
@@ -69,7 +69,8 @@
     .granularidad.active { background:var(--navy); color:#fff; box-shadow:0 3px 8px rgba(11,30,61,.18); }
     .export-btn { display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 14px; border-radius:8px; background:var(--teal); color:var(--navy); font-size:11px; font-weight:800; }
     .export-btn:hover { background:#30d7dd; }
-    #chart-container { position:relative; height:380px; padding:0 14px 14px; }
+    #chart-container { position:relative; height:300px; padding:0 14px 14px; }
+    #chart-empty { padding:48px 20px; text-align:center; color:#64748b; }
     .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
     .summary-panel { min-width:0; overflow:hidden; }
     .summary-panel .panel-head { align-items:center; padding-bottom:13px; border-bottom:1px solid #edf1f6; }
@@ -119,7 +120,7 @@
       .kpi-card { min-height:145px; }
       .panel-head { flex-direction:column; align-items:stretch; }
       .chart-actions { justify-content:space-between; }
-      #chart-container { height:310px; padding:0 4px 12px; }
+      #chart-container { height:260px; padding:0 4px 12px; }
       .period-intro { grid-column:auto; }
       .period-stat { min-height:68px; border-left:0; border-top:1px solid var(--line); }
     }
@@ -181,13 +182,14 @@
 
   <section class="surface">
     <div class="panel-head">
-      <div><h2 class="panel-title">Evolución del período</h2><p id="chart-sub" class="panel-sub"></p></div>
+      <div><h2 id="chart-title" class="panel-title">Utilidad B2B acumulada del mes</h2><p id="chart-sub" class="panel-sub"></p></div>
       <div class="chart-actions">
         <div class="segment"><button class="granularidad" data-granularidad="dia">Día</button><button class="granularidad" data-granularidad="semana">Semana</button><button class="granularidad" data-granularidad="mes">Mes</button></div>
         <button id="btn-exportar" class="export-btn"><span aria-hidden="true">⇩</span> Exportar</button>
       </div>
     </div>
-    <div id="chart-container"><canvas id="chart-utilidad"></canvas></div>
+    <div id="chart-container"><canvas id="chart-utilidad" role="img" aria-label="Utilidad B2B acumulada"></canvas></div>
+    <p id="chart-empty" class="hidden">Sin remisiones en el período seleccionado.</p>
   </section>
 
   <section class="summary-grid">
@@ -205,6 +207,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.1"></script>
+<script src="utilidad-creditek-app.js?v=1.0.2"></script>
 </body>
 </html>

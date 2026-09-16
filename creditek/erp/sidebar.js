@@ -276,7 +276,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
       { label: 'Inventario Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de Creditek B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', lucide: 'book-open-check', description: 'Consulta cargos, abonos, saldos y soportes de clientes comerciales B2B.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Resultado B2B', href: 'utilidad-creditek.html', lucide: 'chart-no-axes-column-increasing', description: 'Analiza facturación, costo congelado, gastos y retiros B2B.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', lucide: 'layout-dashboard', description: 'Consulta facturación, costos y utilidad B2B en un solo resumen.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CRÉDITOS Y CARTERA', icono: '💳', lucide: 'badge-dollar-sign', description: 'Autorizaciones Nova, pagos del cliente y gestión operativa de Cobra.', items: [
       { label: 'Cartera de créditos', href: 'creditos-cartera.html', lucide: 'book-open-check', description: 'Consulta créditos, pagos, mora y resultados para retroalimentar a Nova.', roles: ['gerencia','auditoria','admin_tienda','asesor'] },

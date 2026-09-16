@@ -26,7 +26,7 @@ test('cada opción operativa repetitiva tiene icono y descripción semánticos',
     ['Proveedores y cartera', 'hand-coins'],
     ['Compra proveedor', 'package-plus'],
     ['Inventario Central', 'warehouse'],
-    ['Resultado B2B', 'chart-no-axes-column-increasing'],
+    ['Dashboard B2B', 'layout-dashboard'],
     ['Registrar cliente', 'user-plus'],
     ['Validación', 'badge-check'],
   ];

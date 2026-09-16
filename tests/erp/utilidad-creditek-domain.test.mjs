@@ -12,6 +12,21 @@ const context = { window: {} };
 vm.runInNewContext(source, context);
 const domain = context.window.CreditekUtilidadDomain;
 
+test('B2B conserva Dashboard y retira Resultado duplicado sin cambiar acceso ni reportes', async () => {
+  const ctx={window:{}};
+  vm.runInNewContext(await readFile(path.join(root,'creditek/erp/kora-access-control.js'),'utf8'),ctx);
+  for(const rol of ['gerencia','auditoria']){
+    const items=ctx.window.KoraAccessControl.navigationFor({rol,activo:true},{}).flatMap(s=>s.items);
+    assert.equal(items.filter(i=>i.label==='Dashboard B2B').length,1);
+    assert.equal(items.some(i=>i.label==='Resultado B2B'),false);
+    assert.equal(items.find(i=>i.label==='Dashboard B2B').href,'utilidad-creditek.html#dashboard');
+    assert.ok(items.some(i=>i.label==='Reportes B2B'));
+  }
+  const sidebar=await readFile(path.join(root,'creditek/erp/sidebar.js'),'utf8');
+  assert.doesNotMatch(sidebar,/label: 'Resultado B2B'/);
+  assert.match(sidebar,/label: 'Dashboard B2B'/);
+});
+
 const filas = [
   { fecha: '2026-07-01', remision_id: 'r1', tienda_codigo: 'T1', plataforma: 'PayJoy', referencia: 'A1', producto_nombre: 'Equipo A', cantidad: 1, facturado: 600, costo: 400, utilidad: 200 },
   { fecha: '2026-07-02', remision_id: 'r2', tienda_codigo: 'T2', plataforma: 'Addi', referencia: 'B1', producto_nombre: 'Equipo B', cantidad: 2, facturado: 1000, costo: 700, utilidad: 300 },

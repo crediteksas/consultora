@@ -13,9 +13,9 @@ test('el shell KORA se activa en las pantallas principales autenticadas', async 
     read('creditek/erp/catalogo.html'),
   ]);
 
-  assert.match(tablero, /sidebar\.js\?v=2\.0\.23" data-kora-shell="1\.0\.0"/);
-  assert.match(utilidad, /sidebar\.js\?v=2\.0\.23" data-kora-shell="1\.0\.0"/);
-  assert.match(catalogo, /sidebar\.js\?v=2\.0\.23" data-kora-shell="1\.0\.0"/);
+  assert.match(tablero, /sidebar\.js\?v=2\.0\.24" data-kora-shell="1\.0\.0"/);
+  assert.match(utilidad, /sidebar\.js\?v=2\.0\.24" data-kora-shell="1\.0\.0"/);
+  assert.match(catalogo, /sidebar\.js\?v=2\.0\.24" data-kora-shell="1\.0\.0"/);
 });
 
 test('la navegación KORA usa Design System, Lucide fijado y no estilos inline', async () => {
@@ -39,7 +39,7 @@ test('preserva rutas y roles verificables del ERP', async () => {
     /Resumen ejecutivo', href: 'tablero\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Stock', href: 'inventario\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
     /Ventas', href: 'ventas\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
-    /Cartera de Proveedores', href: 'proveedores\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
+    /Proveedores y cartera', href: 'proveedores\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Resultado B2B', href: 'utilidad-creditek\.html'[^}\n]*roles: \['gerencia', 'auditoria'\]/,
     /Análisis e informes', href: 'reportes\.html'[^}\n]*roles: \['gerencia', 'auditoria', 'admin_tienda', 'asesor'\]/,
   ];

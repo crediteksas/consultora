@@ -18,7 +18,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cartera de Proveedores · Creditek</title>
+  <title>Proveedores y cartera · Creditek</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config/kora-environment.generated.js"></script>
@@ -43,8 +43,8 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
 <link rel="stylesheet" href="proveedores.css?v=1.0.0">
-<script src="kora-access-control.js?v=2.0.23"></script>
-<script src="sidebar.js?v=2.0.23" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.24"></script>
+<script src="sidebar.js?v=2.0.24" data-kora-shell="1.0.0"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -53,7 +53,7 @@
   <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <a href="app.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; Volver</a>
-      <h1 class="text-xl font-bold text-gray-800">Cartera de Proveedores</h1>
+      <h1 class="text-xl font-bold text-gray-800">Proveedores y cartera</h1>
       <span class="text-xs text-gray-500">Facturas, vencimientos y saldos pendientes</span>
     </div>
     <div id="usuario-info" class="text-sm text-gray-600"></div>
@@ -73,7 +73,7 @@
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 
   <section class="proveedores-heading">
-    <div><h2>Cartera de proveedores</h2><p>Consulta los saldos y organiza las facturas pendientes por vencimiento.</p></div>
+    <div><h2>Proveedores y cartera</h2><p>Administra proveedores, consulta sus saldos y organiza las facturas pendientes por vencimiento.</p></div>
     <div class="proveedores-actions">
       <button id="btn-actualizar" type="button">Actualizar</button>
       <button id="btn-vencimientos" type="button" aria-expanded="false" aria-controls="panel-vencimientos">Gestionar vencimientos</button>

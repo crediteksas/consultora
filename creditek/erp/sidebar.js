@@ -272,7 +272,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     // ?remision_id=<uuid> desde el listado de remisiones.html (link por fila).
     { titulo: 'CREDITEK B2B', b2b: true, icono: '🏭', lucide: 'warehouse', description: 'Compras, proveedores, inventario central y resultado del negocio B2B.', items: [
       { label: 'Pedidos y abastecimiento', href: 'pedidos-b2b.html', lucide: 'shopping-bag', description: 'Gestiona pedidos de tiendas, órdenes al proveedor y recepción con trazabilidad.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Cartera de Proveedores', href: 'proveedores.html', lucide: 'hand-coins', description: 'Consulta obligaciones, pagos y saldos pendientes con proveedores.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Proveedores y cartera', href: 'proveedores.html', lucide: 'hand-coins', description: 'Administra proveedores, facturas, vencimientos, pagos y saldos pendientes.', roles: ['gerencia', 'auditoria'] },
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
       { label: 'Inventario Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de Creditek B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', lucide: 'book-open-check', description: 'Consulta cargos, abonos, saldos y soportes de clientes comerciales B2B.', roles: ['gerencia', 'auditoria'] },

@@ -160,10 +160,24 @@ test('la pantalla integra detalle y pago de cuentas por pagar', () => {
   assert.match(proveedoresHtml, /Registrar pago/);
 });
 
-test('el módulo se presenta como Cartera de Proveedores', () => {
-  assert.match(proveedoresHtml, /<title>Cartera de Proveedores · Creditek<\/title>/);
-  assert.match(proveedoresHtml, />Cartera de Proveedores<\/h1>/);
-  assert.match(sidebarJs, /label: 'Cartera de Proveedores', href: 'proveedores\.html'/);
+test('el módulo se presenta como Proveedores y cartera', () => {
+  assert.match(proveedoresHtml, /<title>Proveedores y cartera · Creditek<\/title>/);
+  assert.match(proveedoresHtml, />Proveedores y cartera<\/h1>/);
+  assert.match(sidebarJs, /label: 'Proveedores y cartera', href: 'proveedores\.html'/);
+});
+
+test('B2B ofrece una sola entrada de proveedores con cartera, sin ampliar permisos', async () => {
+  const ctx={window:{}};
+  vm.runInNewContext(await readFile(new URL('../../creditek/erp/kora-access-control.js',import.meta.url),'utf8'),ctx);
+  for(const rol of ['gerencia','auditoria']){
+    const links=ctx.window.KoraAccessControl.navigationFor({rol,activo:true},{}).flatMap(s=>s.items).filter(i=>i.href.startsWith('proveedores.html'));
+    assert.equal(links.length,1);
+    assert.equal(links[0].label,'Proveedores y cartera');
+    assert.equal(links[0].href,'proveedores.html');
+  }
+  const store=ctx.window.KoraAccessControl.navigationFor({rol:'admin_tienda',activo:true,tienda_codigo:'CK-02'},{}).flatMap(s=>s.items);
+  assert.equal(store.some(i=>i.href.startsWith('proveedores.html')),false);
+  for(const id of ['btn-nuevo-proveedor','btn-vencimientos','card-total-por-pagar'])assert.ok(proveedoresHtml.includes('id="'+id+'"'));
 });
 
 test('la interfaz incluye las cuatro tarjetas y captura el vencimiento al comprar', () => {

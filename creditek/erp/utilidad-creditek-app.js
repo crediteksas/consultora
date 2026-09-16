@@ -231,7 +231,7 @@
     const boton = document.querySelector(`[data-ver-todas="${prefijo}"]`);
     boton.textContent = expandidas ? 'Ver top 5' : 'Ver todas';
     boton.classList.toggle('invisible', filas.length <= 5);
-    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td class="text-right font-mono">${money(f.facturado)}</td><td class="text-right font-mono">${money(f.costo)}</td><td class="text-right font-mono">${money(f.utilidad)}</td><td class="text-right">${porcentaje(f.margen)}</td><td class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
+    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Utilidad" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
   }
 
   function renderTodo(base, rangoCmp) {

@@ -69,20 +69,33 @@
     .granularidad.active { background:var(--navy); color:#fff; box-shadow:0 3px 8px rgba(11,30,61,.18); }
     .export-btn { display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 14px; border-radius:8px; background:var(--teal); color:var(--navy); font-size:11px; font-weight:800; }
     .export-btn:hover { background:#30d7dd; }
-    #chart-container { position:relative; height:300px; padding:0 14px 14px; }
+    #chart-container { position:relative; height:220px; padding:0 14px 14px; }
     #chart-empty { padding:48px 20px; text-align:center; color:#64748b; }
-    .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-    .summary-panel { min-width:0; overflow:hidden; }
+    .summary-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+    .summary-panel { min-width:0; overflow:hidden; container-type:inline-size; }
     .summary-panel .panel-head { align-items:center; padding-bottom:13px; border-bottom:1px solid #edf1f6; }
     .view-all { color:#008d94; font-size:10px; font-weight:700; white-space:nowrap; }
     .view-all:hover { text-decoration:underline; }
+    .summary-panel .view-all.invisible { display:none; }
     .table-wrap { overflow-x:auto; }
-    .compact-table { width:100%; min-width:540px; border-collapse:collapse; font-size:9.5px; }
+    .compact-table { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:12px; }
     .compact-table th { padding:9px 10px; background:#f6f8fb; color:#6c798d; font-size:8.5px; font-weight:700; letter-spacing:.02em; white-space:nowrap; }
     .compact-table td { padding:9px 10px; border-top:1px solid #f0f3f7; color:#344159; white-space:nowrap; }
     .compact-table td:first-child { color:var(--navy); font-weight:600; }
-    .compact-table th:first-child, .compact-table td:first-child { position:sticky; left:0; z-index:1; min-width:180px; max-width:260px; white-space:normal; background:#fff; }
+    #app .compact-table th, #app .compact-table td { padding:12px 10px; white-space:normal; overflow-wrap:anywhere; }
+    #app .compact-table th:first-child, #app .compact-table td:first-child { width:28%; background:#fff; }
+    #app .compact-table .text-right { text-align:right; }
     .compact-table th:first-child { background:var(--navy); color:#fff; }
+    @container (max-width:760px) {
+      #app .summary-panel .panel-head { flex-direction:row; align-items:center; }
+      #app .compact-table, #app .compact-table tbody { display:block; }
+      #app .compact-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+      #app .compact-table tbody tr { display:block; padding:12px 16px; border-bottom:1px solid var(--line); }
+      #app .compact-table tbody tr:last-child { border-bottom:0; }
+      #app .compact-table tbody td { display:flex; justify-content:space-between; gap:16px; width:100%; height:auto; padding:5px 0; border:0; }
+      #app .compact-table tbody td:first-child { width:100%; padding-bottom:10px; text-align:left; }
+      #app .compact-table td[data-label]::before { content:attr(data-label); color:#64748b; font-family:"Montserrat",sans-serif; font-weight:400; text-align:left; }
+    }
     .period-strip { display:grid; grid-template-columns:1.45fr repeat(5,1fr); align-items:stretch; overflow:hidden; }
     .period-intro { padding:18px 20px; background:var(--navy); color:#fff; }
     .period-intro .panel-title { color:#fff; }
@@ -120,7 +133,7 @@
       .kpi-card { min-height:145px; }
       .panel-head { flex-direction:column; align-items:stretch; }
       .chart-actions { justify-content:space-between; }
-      #chart-container { height:260px; padding:0 4px 12px; }
+      #chart-container { height:220px; padding:0 4px 12px; }
       .period-intro { grid-column:auto; }
       .period-stat { min-height:68px; border-left:0; border-top:1px solid var(--line); }
     }
@@ -193,20 +206,20 @@
   </section>
 
   <section class="summary-grid">
-    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Resumen por tienda</h2><p class="panel-sub">Remisiones despachadas por B2B</p></div><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
-    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Top 5 referencias por utilidad</h2><p class="panel-sub">Utilidad de las remisiones B2B</p></div><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Resumen por tienda</h2><p class="panel-sub">Remisiones despachadas por B2B</p></div><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap kora-table-region" role="region" aria-label="Resumen por tienda B2B"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Top 5 referencias por utilidad</h2><p class="panel-sub">Utilidad de las remisiones B2B</p></div><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap kora-table-region" role="region" aria-label="Referencias por utilidad B2B"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
   </section>
 
-  <section class="surface period-strip" aria-label="Resumen del período">
-    <div class="period-intro"><h2 class="panel-title">Resumen del período</h2><p id="resumen-rango" class="panel-sub"></p></div>
+  <section class="surface period-strip" aria-label="Resumen B2B del período">
+    <div class="period-intro"><h2 class="panel-title">Resumen B2B del período</h2><p id="resumen-rango" class="panel-sub"></p></div>
     <div class="period-stat"><span class="period-label">Días</span><span id="res-dias" class="period-value"></span></div>
-    <div class="period-stat"><span class="period-label">Tiendas activas</span><span id="res-tiendas" class="period-value"></span></div>
-    <div class="period-stat"><span class="period-label">Productos vendidos</span><span id="res-unidades" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Tiendas atendidas</span><span id="res-tiendas" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Unidades despachadas</span><span id="res-unidades" class="period-value"></span></div>
     <div class="period-stat"><span class="period-label">Despachos</span><span id="res-despachos" class="period-value"></span></div>
-    <div class="period-stat"><span class="period-label">Ticket promedio</span><span id="res-ticket" class="period-value"></span></div>
+    <div class="period-stat"><span class="period-label">Promedio por despacho</span><span id="res-ticket" class="period-value"></span></div>
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.2"></script>
+<script src="utilidad-creditek-app.js?v=1.0.3"></script>
 </body>
 </html>

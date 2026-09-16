@@ -148,7 +148,9 @@ test('el selector incluye destinos históricos y usa nombres reales en filtros, 
   assert.match(app, /valor: f.referencia, nombre: f.referencia_nombre/);
   assert.match(app, /Tienda:f.tienda_nombre/);
   assert.match(app, /Referencia:f.referencia_nombre/);
-  assert.match(html, /position:sticky; left:0/);
+  assert.match(html, /grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(html, /Resumen B2B del período/);
+  assert.match(app, /data-label="Participación"/);
 });
 
 test('los nombres no mezclan tiendas ni referencias distintas y conservan los importes', () => {

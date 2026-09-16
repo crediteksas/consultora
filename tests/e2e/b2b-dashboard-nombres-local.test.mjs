@@ -55,7 +55,7 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
   assert.equal(book[1].sheet[0].Tienda,'Móvil Shopping');
   assert.equal(book[1].sheet[0].Referencia,'Samsung Galaxy A17 128GB');
   await page.locator('#filtro-referencia').selectOption('');
-  for(const width of [390,768,1280]){
+  for(const width of [390,768,1024,1280,1600]){
    await page.setViewportSize({width,height:1000});
    if(realChart){
     await page.locator('#chart-container').scrollIntoViewIfNeeded();
@@ -74,12 +74,16 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
    await page.screenshot({path:`/tmp/kora-b2b-nombres-${width}.png`});
    const overflow=await page.evaluate(()=>({width:innerWidth,total:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(e=>[e.id,e.className,e.getBoundingClientRect().width])}));
    assert.ok(overflow.total<=width+1,JSON.stringify(overflow));
-   await page.locator('#tbody-tienda').evaluate(e=>{e.closest('.table-wrap').scrollLeft=1000});
-   const visible=await page.locator('#tbody-tienda td').first().evaluate(e=>{
-    const a=e.getBoundingClientRect(),b=e.closest('.table-wrap').getBoundingClientRect();return a.left>=b.left-1 && a.right<=b.right+1;
+   const layout=await page.evaluate(()=>{
+    const panels=[...document.querySelectorAll('.summary-panel')].map(e=>e.getBoundingClientRect());
+    return {stacked:panels[1].top>=panels[0].bottom,chartHeight:document.querySelector('#chart-container').getBoundingClientRect().height,
+     tables:[...document.querySelectorAll('.summary-panel .table-wrap')].map(e=>({width:e.clientWidth,total:e.scrollWidth,
+      cells:[...e.querySelectorAll('tbody td')].every(td=>td.scrollWidth<=td.clientWidth+1 && td.getBoundingClientRect().right<=e.getBoundingClientRect().right+1)}))};
    });
-   assert.ok(visible,'el nombre permanece visible al desplazar la tabla');
-   await page.locator('#tbody-tienda').evaluate(e=>{e.closest('.table-wrap').scrollLeft=0});
+   assert.ok(layout.stacked,'los informes van uno debajo del otro');
+   assert.ok(layout.chartHeight<=220,'el gráfico es compacto');
+   assert.ok(layout.tables.every(t=>t.total<=t.width+1&&t.cells),JSON.stringify(layout));
+   assert.match(await page.locator('.period-intro').textContent(),/Resumen B2B/);
    await page.screenshot({path:`/tmp/kora-b2b-nombres-${width}.png`});
   }
   await page.locator('#filtro-tienda').selectOption('CK-06');

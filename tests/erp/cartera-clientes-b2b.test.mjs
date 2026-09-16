@@ -11,6 +11,21 @@ const context={window:{}};
 for(const f of ['cuenta-corriente-domain.js','cartera-b2b-domain.js'])vm.runInNewContext(readFileSync(new URL('../../creditek/erp/'+f,import.meta.url),'utf8'),context);
 const D=context.window.CreditekCarteraB2BDomain;
 
+test('Meico: saldo inicial de cliente separado de remisión y ajuste, sin duplicar deuda',()=>{
+ const ledger=[
+  {id:'inicial',cuenta_id:'meico',efecto:'debito',monto:7380000,referencia_tipo:'saldo_inicial',fecha_efectiva:'2026-09-11',metadatos:{fecha_corte:'2026-09-11'}},
+  {id:'remision',cuenta_id:'meico',efecto:'debito',monto:959700,referencia_tipo:'remision_cliente_b2b',fecha_efectiva:'2026-09-11'},
+  {id:'ajuste',cuenta_id:'meico',efecto:'debito',monto:150300,referencia_tipo:'ajuste_precio_remision_cliente_b2b',fecha_efectiva:'2026-09-11'},
+ ];
+ const data=D.reunir([{codigo:'CK-14',nombre:'Meico',tipo:'cliente_b2b',activo:true}],[{cuenta_id:'meico',cliente_codigo:'CK-14'}],[],ledger);
+ const r=D.resumir(data.clientes,data.movimientos,'2026-09-01','2026-09-16')[0];
+ assert.equal(r.inicial,7380000);assert.equal(r.cargos,1110000);assert.equal(r.abonos,0);assert.equal(r.saldo,8490000);
+ assert.equal(r.cargasIniciales[0].fecha_corte,'2026-09-11');assert.equal(r.movimientos,3);
+ assert.equal(D.resumir(data.clientes,data.movimientos,'2026-10-01','2026-10-31')[0].inicial,8490000);
+ assert.equal(ledger[0].fecha_corte,undefined);
+ assert.match(page,/from\('movimientos_cartera'\)\.select\('[^']*referencia_tipo,referencia_id/);
+});
+
 test('Chinucell: carga inicial separada, corte vinculado y saldo aplicado sin cambios',()=>{
  const origenes=[{codigo:'T',nombre:'Chinucell',tipo:'propia',activo:true}];
  const ledger=[

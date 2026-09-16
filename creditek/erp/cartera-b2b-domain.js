@@ -29,6 +29,7 @@
       ...libroB2B.filter(m => cuentas.has(m.cuenta_id)).map(m => ({
         ...m, id:`cliente:${m.id}`, tienda_codigo:cuentas.get(m.cuenta_id),
         tipo:m.efecto === 'debito' ? 'cargo' : 'abono', fecha:m.fecha_efectiva,
+        fecha_corte:m.efecto === 'debito' && m.referencia_tipo === 'saldo_inicial' ? m.metadatos?.fecha_corte || m.fecha_efectiva : null,
         responsable:m.metadatos?.registrado_por || m.creado_por,
       })),
     ];

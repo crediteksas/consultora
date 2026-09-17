@@ -52,5 +52,6 @@ test('la impresión recupera la tabla desde las tarjetas móviles y totaliza sol
   assert.match(documento, /#app table td::before \{ display: none !important/);
   assert.match(documento, /#app table th:nth-child\(3\) \{ width: 36%/);
   assert.doesNotMatch(documento, /display: table-footer-group/);
-  assert.match(documento, /#app \.firma-grid \{ break-inside: avoid/);
+  assert.match(documento, /#app \.firma-grid \{ display: grid !important;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important;\s*break-inside: avoid/);
+  assert.match(documento, /height: auto !important; padding: 1mm !important/);
 });

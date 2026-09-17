@@ -54,6 +54,7 @@ const erp = [
   'tests/erp/remisiones-editor-productos.test.mjs',
   'tests/erp/bodega-carga-completa.test.mjs',
   'tests/erp/remisiones-correccion.test.mjs',
+  'tests/erp/remisiones-visual-impresion.test.mjs',
   'tests/erp/remision-proveedor-producto.test.mjs',
   'tests/erp/creditos-cartera-domain.test.mjs',
   'tests/erp/creditos-cartera-migration.test.mjs',

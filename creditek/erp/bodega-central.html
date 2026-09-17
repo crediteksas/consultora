@@ -79,7 +79,7 @@
     tbody tr { transition: background-color 150ms ease; }
 
     /* Capa visual premium · Bodega Central */
-    #app > section:first-of-type > div {
+    .kora-bodega-page > section:first-of-type > div {
       position: relative;
       overflow: hidden;
       background: #FFFFFF !important;
@@ -88,23 +88,23 @@
       box-shadow: 0 4px 16px rgba(11,30,61,.06);
       transition: transform .2s ease, box-shadow .2s ease;
     }
-    #app > section:first-of-type > div::before {
+    .kora-bodega-page > section:first-of-type > div::before {
       content: '';
       position: absolute;
       inset: 0 auto 0 0;
       width: 3px;
       background: #00C4CC;
     }
-    #app > section:first-of-type > div:hover {
+    .kora-bodega-page > section:first-of-type > div:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 24px rgba(11,30,61,.09);
     }
-    #app > section:first-of-type > .card-rojo {
+    .kora-bodega-page > section:first-of-type > .card-rojo {
       background: #FFF5F5 !important;
       border-color: #FCA5A5 !important;
       box-shadow: 0 4px 14px rgba(220,38,38,.08);
     }
-    #app > section:first-of-type > .card-rojo::before { background: #DC2626; }
+    .kora-bodega-page > section:first-of-type > .card-rojo::before { background: #DC2626; }
     #app section:has(#panel-despacho),
     #app section:has(#filtro-texto),
     #app section:has(#tbody-alerta) {
@@ -114,6 +114,7 @@
       box-shadow: 0 8px 24px rgba(11,30,61,.06) !important;
       overflow: hidden;
     }
+    #app section:has(#panel-despacho) { border-top: 2px solid #00C4CC !important; }
     #app section:has(#panel-despacho) { padding: 24px !important; }
     #despacho-tienda, #despacho-nota, #despacho-input-buscar,
     #filtro-texto, #filtro-descuadre, #filtro-tipo, #filtro-factura {
@@ -232,7 +233,7 @@
 
 <!-- ============================================================ CONTENIDO -->
 <main id="app" class="hidden">
-  <div class="main-content"><div class="page space-y-5">
+  <div class="main-content"><div class="page kora-page-inset kora-bodega-page space-y-5">
 
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50 fade-in"></div>
 

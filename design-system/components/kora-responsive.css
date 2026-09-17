@@ -190,6 +190,10 @@ body.kora-responsive-ready table :where(th, td) {
 }
 
 body.kora-product-page .app.kora-shell-root { padding: 0; max-width: none; }
+body.kora-responsive-ready .main-content > .page.kora-page-inset { padding: 24px; }
+@media (max-width: 47.999rem) {
+  body.kora-responsive-ready .main-content > .page.kora-page-inset { padding: 16px 12px; }
+}
 body.kora-product-page .main-content :is(.btn-ver, .btn-editar, .btn-recibir) { min-width: 4rem; padding-inline: .75rem; }
 
 /* Selection must remain visible despite the generic primary-button theme. */

@@ -74,3 +74,22 @@ test('el título de navegación distingue las vistas general y retail de gastos'
   ctx.window.location.search = '?vista=retail';
   assert.equal(ctx.koraCurrentItem(modules).label, 'Gastos periódicos');
 });
+
+test('las páginas incorporadas conservan separación lateral y título del documento', async () => {
+  for (const name of ['pedidos-b2b', 'bodega-central', 'reportes', 'compra-proveedor']) {
+    assert.match(await read(`creditek/erp/${name}.html`), /class="page kora-page-inset/);
+  }
+  assert.match(css, /\.page\.kora-page-inset \{ padding: 24px; \}/);
+  assert.match(css, /\.page\.kora-page-inset \{ padding: 16px 12px; \}/);
+  const shell = await read('creditek/erp/sidebar.js');
+  const fn = shell.slice(shell.indexOf('  function koraCurrentItem'), shell.indexOf('  function modulesForProfile'));
+  const ctx = vm.createContext({ paginaActual: () => 'documento-remision.html', document: { querySelector: () => null }, window: { location: { search: '?remision_id=test', hash: '' } } });
+  vm.runInContext(fn, ctx);
+  assert.equal(ctx.koraCurrentItem([]).label, 'Remisión');
+});
+
+test('los formularios y reportes operativos conservan el ámbito del diseño compartido', async () => {
+  for (const name of ['compra-proveedor', 'proveedores', 'utilidad-creditek', 'bodega-central', 'pedidos-b2b']) {
+    assert.match(await read(`creditek/erp/${name}.html`), /class="[^"]*main-content/);
+  }
+});

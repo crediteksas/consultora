@@ -577,7 +577,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraResponsiveStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-responsive.css?v=1.0.6';
+      link.href = '/design-system/components/kora-responsive.css?v=1.0.7';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraResponsive')) {
@@ -658,7 +658,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     return items.find(item => item.href === current + window.location.search + window.location.hash)
       || items.find(item => item.href === current + window.location.hash)
       || items.find(item => item.href?.split(/[?#]/)[0] === current)
-      || { label: document.querySelector('#app h1:not(.kora-topbar__title)')?.textContent.trim() || 'KORA', href: current, group: 'Consulta' };
+      || { label: document.querySelector('#app h1:not(.kora-topbar__title)')?.textContent.trim() || (current === 'documento-remision.html' ? 'Remisión' : 'KORA'), href: current, group: 'Consulta' };
   }
 
   function modulesForProfile(profile) {

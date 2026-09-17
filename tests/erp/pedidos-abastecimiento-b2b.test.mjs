@@ -14,7 +14,7 @@ const [page, access, sidebar, aura, migration, extras] = await Promise.all([
 
 test('tiendas crean pedidos dentro de KORA y el acceso queda por tienda', () => {
   assert.match(access, /'pedidos-b2b\.html'/);
-  assert.match(page, /crear_pedido_b2b/);
+  assert.match(page, /crear_pedido_catalogo_b2b/);
   assert.match(migration, /tienda_codigo = \(select tienda_codigo from public\.perfiles/);
 });
 

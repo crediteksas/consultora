@@ -110,7 +110,7 @@
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards', roles: ['admin_tienda'] },
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2', roles: ['admin_tienda'] },
       { label: 'Inventario', href: 'inventario.html', icon: 'package', roles: ['admin_tienda', 'asesor'] },
-      { label: 'Pedidos B2B', href: 'pedidos-b2b.html', icon: 'shopping-bag', roles: ['admin_tienda', 'asesor'] },
+      { label: 'Pedidos a Creditek', href: 'pedidos-b2b.html', icon: 'shopping-bag', roles: ['admin_tienda', 'asesor'] },
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output', roles: ['admin_tienda'] },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt', roles: ['admin_tienda'] },
       { label: 'Cartera', href: 'cuenta-corriente.html', icon: 'book-open-check', roles: ['admin_tienda'] },

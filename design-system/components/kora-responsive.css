@@ -210,7 +210,7 @@ body.kora-product-page.kora-responsive-ready .main-content :is(.tabs, .tab-bar, 
 
 /* The legacy utility panels and new dashboard panels use the same subtle
  * turquoise edge. Do not decorate nested fields, alerts or table rows. */
-body.kora-product-page .main-content :is(.card, .panel, .ctk-panel, .dashboard-panel, .form-card, section.bg-white) {
+body.kora-product-page .main-content :is(.card, .panel, .ctk-panel, .dashboard-panel, .form-card, section.bg-white, .kpi-card, .metric, .resumen-card, .stat) {
   border-top: 2px solid var(--ctk-color-secondary-500);
   border-radius: 16px;
 }

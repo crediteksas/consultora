@@ -31,7 +31,7 @@ test('las 42 pantallas del shell declaran un viewport adaptable', async () => {
 test('el shell carga una única capa responsive transversal', async () => {
   const shell = await read('creditek/erp/sidebar.js');
   assert.match(shell, /koraResponsiveStyles/);
-  assert.match(shell, /kora-responsive\.css\?v=1\.0\.7/);
+  assert.match(shell, /kora-responsive\.css\?v=1\.0\.8/);
   assert.match(shell, /koraResponsive/);
   assert.match(shell, /kora-responsive\.js\?v=1\.0\.2/);
 });
@@ -123,5 +123,5 @@ test('cabeceras principales usan una sola superficie redondeada en las 40 pantal
   assert.match(css, /overflow:\s*hidden/);
   assert.match(css, /A header action row is part of the surface above/);
   assert.match(css, /> :where\(\.actions, \.action-row, \.botones, \.button-row\)[\s\S]*background:\s*transparent;[\s\S]*border:\s*0;[\s\S]*padding:\s*0;/);
-  assert.match(shell, /kora-responsive\.css\?v=1\.0\.7/);
+  assert.match(shell, /kora-responsive\.css\?v=1\.0\.8/);
 });

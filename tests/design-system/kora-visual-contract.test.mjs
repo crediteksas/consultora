@@ -31,7 +31,7 @@ test('interacciones visibles respetan estado deshabilitado y movimiento reducido
   assert.match(css, /transform: translateY\(-2px\)/);
   assert.match(css, /transform: translateY\(1px\) scale\(\.985\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition: none/);
-  assert.match(css, /\.dashboard-panel, \.form-card, section\.bg-white\)[\s\S]*?border-top: 2px solid var\(--ctk-color-secondary-500\)/);
+  assert.match(css, /\.dashboard-panel, \.form-card, section\.bg-white, \.kpi-card, \.metric, \.resumen-card, \.stat\)[\s\S]*?border-top: 2px solid var\(--ctk-color-secondary-500\)/);
 });
 
 test('inventario reserva ancho para los importes y conserva contraste en enlaces botón', async () => {
@@ -91,5 +91,14 @@ test('las páginas incorporadas conservan separación lateral y título del docu
 test('los formularios y reportes operativos conservan el ámbito del diseño compartido', async () => {
   for (const name of ['compra-proveedor', 'proveedores', 'utilidad-creditek', 'bodega-central', 'pedidos-b2b']) {
     assert.match(await read(`creditek/erp/${name}.html`), /class="[^"]*main-content/);
+  }
+});
+
+test('B2B usa un encabezado de contenido sin duplicar la barra de navegación', async () => {
+  const html = await read('creditek/erp/utilidad-creditek.html');
+  assert.doesNotMatch(html, /<header class="topbar">/);
+  assert.match(html, /<header class="page-head">/);
+  for (const id of ['btn-refresh', 'ultima-actualizacion', 'usuario-info']) {
+    assert.equal((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, id);
   }
 });

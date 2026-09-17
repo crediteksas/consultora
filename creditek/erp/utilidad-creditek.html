@@ -144,27 +144,16 @@
 </head>
 <body>
 <div data-kora-shell-root>
-<header class="topbar">
-  <div class="page-shell topbar-inner">
-    <div class="brand-block">
-      <a href="app.html" class="back-link">&larr; ERP</a>
-      <div class="brand-mark">C</div>
-      <div><h1 class="page-title">Utilidad Creditek</h1><p class="page-description">Facturado a tiendas menos costo real congelado de remisiones</p></div>
-    </div>
-    <div class="topbar-actions">
-      <span id="ultima-actualizacion"></span>
-      <button id="btn-refresh" class="refresh-btn"><span aria-hidden="true">↻</span> Actualizar</button>
-      <div id="usuario-info" class="user-pill"></div>
-    </div>
-  </div>
-</header>
-
 <div id="auth-guard" class="hidden page-shell mt-6 p-4 bg-red-50 border border-red-200 rounded">
   <p class="text-red-800 font-semibold">No autorizado.</p>
   <p class="text-red-700 text-sm">Panel interno solo para gerencia o auditoría.</p>
 </div>
 
 <main id="app" class="hidden page-shell dashboard main-content">
+  <header class="page-head">
+    <div><h1>Dashboard B2B</h1><p>Facturado a tiendas menos costo real congelado de remisiones</p></div>
+    <div class="actions"><span id="ultima-actualizacion"></span><button id="btn-refresh" class="refresh-btn"><span aria-hidden="true">↻</span> Actualizar</button><span id="usuario-info" hidden></span></div>
+  </header>
   <div id="toast" class="hidden fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white text-sm z-50"></div>
 
   <section class="surface filter-bar" aria-label="Filtros de utilidad">

@@ -2,9 +2,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
-import {deliver,renderReport,buildRaw} from '../../supabase/functions/krediya-report-mail/core.mjs';
+import {deliver,renderReport,buildRaw,profitSummary} from '../../supabase/functions/krediya-report-mail/core.mjs';
 const id='00000000-0000-4000-8000-000000000001';
 const report={liquidation_id:id,report_status:'preparado',operation_count:2,contexts:[1,2].map(()=>({referencia:'15 PRO <b>',pvp_guardado:1000000,pvp_recibido:719900}))};
+test('utilidad suma todos los créditos calculables, conserva pérdidas y no confunde faltantes con cero',()=>{
+ const base={referencia:'Equipo <img>',pvp_guardado:100,pvp_recibido:100,automatica:{disponible:true,pvp:100,pagamos:80,utilidad_neta:12.34}};
+ const contexts=[base,base,{...base,automatica:{...base.automatica,utilidad_neta:-2.01}},
+  {...base,automatica:{disponible:false,motivo:'Falta: PAGAMOS'},credito:'C<1>'},
+  {...base,reconocida:false,automatica:{disponible:false,motivo:'Operación excluida'}}];
+ const s=profitSummary(contexts);assert.equal(s.total,22.67);assert.equal(s.calculated,3);assert.equal(s.pending.length,1);assert.equal(s.excluded,1);
+ assert.equal(s.groups.length,1);assert.equal(s.groups[0].n,3);assert.equal(s.groups[0].totalCents,2267);
+ const html=renderReport({...report,created_at:'2026-09-17T02:03:00Z',operation_count:5,contexts});
+ assert.match(html,/Subtotal estimado \(parcial\)/);assert.match(html,/22,67/);assert.match(html,/Falta: PAGAMOS/);
+ assert.match(html,/Consulta al 16/);assert.ok(!html.includes('<img>'));assert.match(html,/C&lt;1&gt;/);
+ assert.match(html,/0 con diferencias/);assert.match(html,/3 créditos calculados/);
+});
+test('estimación ausente no inventa utilidad; cero conocido sí es calculable; no agrupa tarifas distintas',()=>{
+ assert.match(renderReport(report),/Utilidad no disponible/);
+ const c={referencia:'X',automatica:{disponible:true,pvp:100,pagamos:90,utilidad_neta:0}};
+ const s=profitSummary([c,{...c,automatica:{...c.automatica,pagamos:80}},{automatica:{disponible:true,utilidad_neta:null}}]);
+ assert.equal(s.calculated,2);assert.equal(s.total,0);assert.equal(s.groups.length,2);assert.equal(s.pending.length,1);
+ assert.match(renderReport({...report,contexts:[c]}),/Total estimado:/);
+});
 test('correo separa diferencia individual y acumulada y fija destinatarios',()=>{
  const html=renderReport(report);assert.match(html,/280\.100/);assert.match(html,/560\.200/);assert.match(html,/&lt;b&gt;/);assert.match(html,/2 con diferencias/);
  const raw=Buffer.from(buildRaw({...report,recipients:['attacker@example.com']}),'base64url').toString();

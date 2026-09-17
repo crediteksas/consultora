@@ -49,6 +49,39 @@ test('Tesorería produce una orden imprimible con la cuenta completa y el total'
   assert.match(html, /Descargar informe/);
 });
 
+test('la orden impresa numera los pagos y abrevia solo las referencias internas', async () => {
+  const app = await readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8');
+  const template = app.match(/report\.document\.write\(\s*(`<!doctype html>[\s\S]*?`),\s*\);/)[1];
+  const rows = ['PO', 'FIN', 'TM'].map((prefix, i) => ({
+    report_ref: `${prefix}-12345678-1234-1234-1234-12345678ab0${i}`,
+    report_business: 'Tienda de prueba', report_kind: 'Gasto', report_date: '2026-09-17',
+    beneficiary_name: 'Titular de prueba', beneficiary_identification: '109876543210',
+    bank_snapshot: {holder: 'Titular de prueba', bank: 'Banco de prueba', account_type: 'Ahorros', account_number: '00123456789012345678'},
+    concept: 'Pago autorizado', valor: 1000000 + i,
+  }));
+  const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
+  const cop = value => `$ ${Number(value).toLocaleString('es-CO')}`;
+  const context = {rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
+  const html = new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));
+  const table = html.match(/<table>[\s\S]*?<\/table>/)[0];
+  for (const [i, row] of rows.entries()) {
+    assert.ok(table.includes(`<span class="payment-number">${i + 1}</span>`));
+    assert.ok(table.includes(`Ref.<br>AB0${i}</span>`));
+    assert.ok(table.includes(`<td class="account">${row.bank_snapshot.account_number}</td>`));
+    assert.ok(table.includes(`<td>${row.beneficiary_identification}</td>`));
+    assert.ok(table.includes(cop(row.valor)));
+    // The full identifier remains in the screen tooltip, never in printed text.
+    assert.ok(table.includes(`title="${row.report_ref}"`));
+    assert.ok(!table.replace(/<[^>]*>/g, '').includes(row.report_ref));
+  }
+  assert.ok(html.includes(cop(context.total)));
+  assert.match(html, /<details class="no-print"><summary>Trazabilidad KORA/);
+  assert.match(html, /@media print\{\.no-print\{display:none!important\}\}/);
+  assert.match(html, /table\{[^}]*font-size:11\.5px/);
+  assert.match(html, /\.account\{font-size:12px/);
+  assert.match(html, /\.total td\{font-size:14px/);
+});
+
 test('el informe de giros se obtiene por cualquier rango y consolida por persona', () => {
   const base = {
     estado:'pagado', fecha_pagada:'2026-09-10T18:00:00Z',

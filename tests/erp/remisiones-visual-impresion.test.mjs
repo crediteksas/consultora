@@ -34,3 +34,23 @@ test('el documento contiene identidad, datos, productos, responsables y firmas',
   assert.match(documento, /print-color-adjust:\s*exact/);
   assert.match(documento, /productos\(id, codigo, nombre/);
 });
+
+test('la remisión impresa libera el ancho del shell y no imprime su barra', () => {
+  const print = documento.slice(documento.indexOf('@media print'), documento.indexOf('button,input,select'));
+  assert.match(print, /#app \.kora-sidebar, #app \.kora-topbar/);
+  assert.match(print, /main#app:not\(\.hidden\), #app \.kora-shell-main, #app \.kora-shell-content/);
+  assert.match(print, /display: block !important; position: static !important/);
+  assert.match(print, /width: 100% !important; max-width: none !important/);
+  assert.match(print, /height: auto !important; min-height: 0 !important; max-height: none !important/);
+});
+
+test('la impresión recupera la tabla desde las tarjetas móviles y totaliza solo al final', () => {
+  assert.match(documento, /#app table \{ display: table !important; table-layout: fixed !important/);
+  assert.match(documento, /#app table tbody, #app table tfoot \{ display: table-row-group !important/);
+  assert.match(documento, /#app table tr \{ display: table-row !important/);
+  assert.match(documento, /#app table :is\(th, td\) \{ display: table-cell !important/);
+  assert.match(documento, /#app table td::before \{ display: none !important/);
+  assert.match(documento, /#app table th:nth-child\(3\) \{ width: 36%/);
+  assert.doesNotMatch(documento, /display: table-footer-group/);
+  assert.match(documento, /#app \.firma-grid \{ break-inside: avoid/);
+});

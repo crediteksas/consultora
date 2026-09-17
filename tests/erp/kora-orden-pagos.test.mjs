@@ -41,8 +41,8 @@ test('Tesorería produce una orden imprimible con la cuenta completa y el total'
   assert.match(app, /esc\(p.report_ref\)/);
   assert.match(app, /LQ-\$\{shortId\(p\.liquidation_id\)\}/);
   assert.match(app, /SUPORTE|soporte/i);
-  assert.match(app, /Negocio \/ titular/);
-  assert.match(app, /Titular:/);
+  assert.match(app, /<th>Beneficiario<\/th>/);
+  assert.match(app, /<th>Cuenta destino<\/th>/);
   assert.match(html, /Histórico de giros por persona/);
   assert.match(html, /Fecha desde/);
   assert.match(html, /Fecha hasta/);
@@ -66,9 +66,9 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   const table = html.match(/<table>[\s\S]*?<\/table>/)[0];
   for (const [i, row] of rows.entries()) {
     assert.ok(table.includes(`<span class="payment-number">${i + 1}</span>`));
-    assert.ok(table.includes(`Ref.<br>AB0${i}</span>`));
-    assert.ok(table.includes(`<td class="account">${row.bank_snapshot.account_number}</td>`));
-    assert.ok(table.includes(`<td>${row.beneficiary_identification}</td>`));
+    assert.ok(table.includes(`Ref. AB0${i}</span>`));
+    assert.ok(table.includes(`<span class="account">${row.bank_snapshot.account_number}</span>`));
+    assert.ok(table.includes(`<span class="muted">${row.beneficiary_identification}</span>`));
     assert.ok(table.includes(cop(row.valor)));
     // The full identifier remains in the screen tooltip, never in printed text.
     assert.ok(table.includes(`title="${row.report_ref}"`));
@@ -80,6 +80,28 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   assert.match(html, /table\{[^}]*font-size:11\.5px/);
   assert.match(html, /\.account\{font-size:12px/);
   assert.match(html, /\.total td\{font-size:14px/);
+  assert.match(html, /@page\{size:A4 portrait;margin:10mm\}/);
+  assert.equal((table.match(/<th(?:\s|>)/g) || []).length, 5);
+  const render = row => {
+    const result = new Function(...Object.keys(context), `return ${template};`)(...Object.values({...context, rows:[{...rows[0], liquidation_id:'liquidacion-1', platform_snapshot:'PayJoy', cutoff_snapshot:'2026-09-16', ...row}]}));
+    return result.match(/<table>[\s\S]*?<\/table>/)[0];
+  };
+  for (const [concept, label] of [
+    ['Pago de 1 créditos PayJoy — corte 2026-09-16', '1 crédito PayJoy'],
+    ['Pago de 3 créditos PayJoy — corte 2026-09-16', '3 créditos PayJoy'],
+    ['Bonos y comisiones / payjoy / corte 2026-09-16', 'Bonos y comisiones'],
+  ]) {
+    const compact = render({concept});
+    assert.ok(compact.includes(`<td>${label}<span`));
+    assert.ok(!compact.includes('corte 2026-09-16'));
+    assert.ok(compact.includes('2026-09-16'));
+  }
+  for (const concept of ['Nómina del 1 al 15 / Ajuste pendiente', 'Pago de 3 créditos Krediya — corte 2026-09-16', 'Pago de 3 créditos PayJoy — corte 2026-08-16', 'Reembolso <script>alert(1)</script>']) {
+    assert.ok(render({concept}).includes(esc(concept)), 'El concepto no estándar o discrepante no se recorta');
+  }
+  assert.ok(!render({concept:'Pago', report_business:'No aplica'}).includes('No aplica'));
+  const sameName = render({concept:'Pago', report_business:'Titular de prueba'});
+  assert.equal((sameName.match(/Titular de prueba/g) || []).length, 1);
 });
 
 test('el informe de giros se obtiene por cualquier rango y consolida por persona', () => {

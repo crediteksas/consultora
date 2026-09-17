@@ -33,7 +33,7 @@
    if(!r.producto_id||!r.proveedor_id)errors.push(prefix+'vincula la referencia y el proveedor.');
    if(!(r.costo>0)||!(r.precio_tienda>0)||!Number.isFinite(r.costo)||!Number.isFinite(r.precio_tienda)||Math.abs(r.costo*100-Math.round(r.costo*100))>1e-5||Math.abs(r.precio_tienda*100-Math.round(r.precio_tienda*100))>1e-5)errors.push(prefix+'falta un costo real o precio válido (hasta dos decimales).');
    if(r.precio_tienda-r.costo!==20000&&!r.motivo.trim())errors.push(prefix+'indica el motivo del margen especial.');
-   const id=r.producto_id+'|'+r.proveedor_id;if(seen.has(id))errors.push(prefix+'referencia y proveedor duplicados.');seen.add(id);
+   if(r.producto_id&&r.proveedor_id){const id=r.producto_id+'|'+r.proveedor_id;if(seen.has(id))errors.push(prefix+'referencia y proveedor duplicados.');seen.add(id);}
   }
   return errors;
  }

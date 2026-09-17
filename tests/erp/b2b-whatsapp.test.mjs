@@ -13,6 +13,7 @@ test('WhatsApp: texto íntegro, pesos colombianos, IVA sin sumarlo otra vez, dup
  const unknown=W.parse('Encabezado\nREDMI 17 4+128GB $482.000🇨🇴','s',products);assert.equal(unknown.length,2);assert.equal(unknown[1].costo,482000);
  const duplicate=W.parse('REDMI 17 4+128GB $482.000\nREDMI 17 4+128GB $483.000','s',products);assert.ok(W.validate(duplicate).some(s=>s.includes('duplicados')));
  const used=W.parse('REDMI 17 USADO $482.000','s',products);assert.equal(used[0].included,false);
+ assert.ok(!W.validate(rows).some(s=>s.includes('duplicados')),'Las referencias sin vincular no son duplicados entre sí');
 });
 test('memoria por proveedor y variante, Aura conservada, comparativo global',()=>{
  const rule={proveedor_id:'s',referencia_key:'17 4+128',producto_id:'p',margen:15000,motivo:'Excepción aprobada'};

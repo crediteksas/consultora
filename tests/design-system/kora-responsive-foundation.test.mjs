@@ -67,6 +67,20 @@ test('la cabecera móvil separa contexto y acciones sin recortar nombres', async
   assert.match(css, /@media \(max-width: 79\.999rem\)[\s\S]*\.kora-command[\s\S]*display:\s*none/);
 });
 
+test('el menú lateral y su espacio se animan juntos sin acelerar otros controles', async () => {
+  const css = await read('design-system/components/kora-shell.css');
+  const animations = await read('design-system/styles/animations.css');
+  assert.match(css, /\.kora-shell-root\s*\{[^}]*--kora-sidebar-duration:\s*420ms;/);
+  assert.match(css, /--kora-sidebar-ease:\s*cubic-bezier\(0\.4, 0, 0\.2, 1\)/);
+  for (const property of ['grid-template-columns', 'width', 'transform']) {
+    assert.ok(css.includes(`transition: ${property} var(--kora-sidebar-duration) var(--kora-sidebar-ease)`), property);
+  }
+  assert.match(css, /\.kora-nav-link\s*\{[^}]*transition: background var\(--ctk-duration-2\)/);
+  const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+  assert.match(reduced, /\.kora-shell-root, \.kora-sidebar/);
+  assert.match(animations, /prefers-reduced-motion: reduce[\s\S]*transition-duration:\s*0?\.01ms !important/);
+});
+
 test('el drawer móvil abierto prevalece sobre la preferencia compacta del escritorio', async () => {
   const [shell, css] = await Promise.all([
     read('creditek/erp/sidebar.js'),

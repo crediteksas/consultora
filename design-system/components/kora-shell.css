@@ -23,11 +23,14 @@ html.creditek-shell-pending body::after {
 }
 
 .kora-shell-root {
+  --kora-sidebar-duration: 420ms;
+  --kora-sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--ctk-color-background);
   display: grid !important;
   grid-template-columns: var(--ctk-width-sidebar) minmax(0, 1fr);
   min-height: 100dvh;
   overflow-x: clip;
+  transition: grid-template-columns var(--kora-sidebar-duration) var(--kora-sidebar-ease);
 }
 .kora-shell-root[data-sidebar-collapsed="true"] { grid-template-columns: var(--ctk-width-sidebar-collapsed) minmax(0, 1fr); }
 .kora-shell-main { min-width: 0; }
@@ -44,7 +47,7 @@ html.creditek-shell-pending body::after {
   height: 100dvh;
   position: sticky;
   top: 0;
-  transition: width var(--ctk-duration-3) var(--ctk-ease-standard);
+  transition: width var(--kora-sidebar-duration) var(--kora-sidebar-ease);
   width: var(--ctk-width-sidebar);
   z-index: var(--ctk-z-drawer);
 }
@@ -296,7 +299,7 @@ body.kora-product-page .kora-shell-root .kora-icon-button {
   html.creditek-shell-pending body::after { left: 0; }
   .kora-shell-root, .kora-shell-root[data-sidebar-collapsed="true"] { display: block !important; }
   .kora-sidebar,
-  .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar { box-shadow: var(--ctk-shadow-3); left: 0; position: fixed; transform: translateX(-100%); transition: transform var(--ctk-duration-4) var(--ctk-ease-standard); width: var(--ctk-width-sidebar); }
+  .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar { box-shadow: var(--ctk-shadow-3); left: 0; position: fixed; transform: translateX(-100%); transition: transform var(--kora-sidebar-duration) var(--kora-sidebar-ease); width: var(--ctk-width-sidebar); }
   /* La preferencia compacta de escritorio no puede ocultar el drawer móvil abierto. */
   .kora-sidebar[data-open="true"],
   .kora-shell-root[data-sidebar-collapsed="true"] .kora-sidebar[data-open="true"] { transform: translateX(0); }
@@ -332,5 +335,5 @@ body.kora-product-page .kora-shell-root .kora-icon-button {
   .kora-command { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kora-sidebar, .kora-nav-link, .kora-nav-group__label .lucide-chevron-down { transition-duration: var(--ctk-duration-1); }
+  .kora-shell-root, .kora-sidebar, .kora-nav-link, .kora-nav-group__label .lucide-chevron-down { transition-duration: var(--ctk-duration-1); }
 }

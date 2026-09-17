@@ -170,6 +170,42 @@ body.kora-responsive-ready table :where(th, td) {
   word-break: normal;
 }
 
+/* Shared visual contract: visible labels and values must share an axis.
+ * Mobile read-only cards retain their label/value layout below. */
+@media (min-width: 48rem) {
+  body.kora-responsive-ready table :is(th, td)[data-kora-align="left"] { text-align: left !important; }
+  body.kora-responsive-ready table :is(th, td)[data-kora-align="center"] { text-align: center !important; }
+  body.kora-responsive-ready table :is(th, td)[data-kora-align="right"] { text-align: right !important; font-variant-numeric: tabular-nums; }
+}
+
+/* The legacy utility panels and new dashboard panels use the same subtle
+ * turquoise edge. Do not decorate nested fields, alerts or table rows. */
+body.kora-product-page .main-content :is(.card, .panel, .ctk-panel, .dashboard-panel, section.bg-white) {
+  border-top: 2px solid var(--ctk-color-secondary-500);
+  border-radius: 16px;
+}
+
+/* Specific enough to survive local legacy button rules, without recoloring
+ * destructive/secondary actions or animating data cards. */
+body.kora-product-page :is(button, .btn, .ctk-button, .kora-icon-button, [role="button"]) {
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  body.kora-product-page :is(button, .btn, .ctk-button, .kora-icon-button, [role="button"]):hover:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(11, 30, 61, .14);
+  }
+}
+body.kora-product-page :is(button, .btn, .ctk-button, .kora-icon-button, [role="button"]):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(1px) scale(.985);
+  box-shadow: inset 0 1px 3px rgba(11, 30, 61, .14);
+}
+body.kora-product-page :is(button, .btn, .ctk-button, [role="button"]):is(:disabled, [aria-disabled="true"]) { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  body.kora-product-page :is(button, .btn, .ctk-button, .kora-icon-button, [role="button"]) { transition: none; }
+  body.kora-product-page :is(button, .btn, .ctk-button, .kora-icon-button, [role="button"]):is(:hover, :active) { transform: none; }
+}
+
 /* A grid child must shrink with its card; otherwise the entire table escapes
  * the viewport even when its own scroll container is configured correctly. */
 body.kora-responsive-ready :where(.grid, .treasury-grid, .dashboard-grid, .layout-grid) > * {
@@ -476,6 +512,10 @@ body.kora-responsive-ready :where(
 
   body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td:last-child {
     border-bottom: 0;
+  }
+
+  body.kora-responsive-ready table.kora-responsive-cards :is(tbody, tfoot) td[data-kora-align] {
+    text-align: left !important;
   }
 
   body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td::before {

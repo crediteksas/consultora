@@ -16,10 +16,33 @@
       || table.dataset.koraResponsive === 'scroll';
   }
 
+  // Presentation only. Keep each column's label and values on the same axis.
+  // Never infer financial values or change the contents of a cell.
+  function columnAlignment(label) {
+    const name = cleanLabel(label).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/^(estado|situacion|accion|acciones|autorizacion|foto|cantidad|cant\.?|unidades|operaciones|creditos|aliadas activas|payjoy|alo credit|krediya|caja)(\b|$)/.test(name)) return 'center';
+    if (/^(saldo|costo|precio|pvp|pagamos|pago a|total a pagar|valor|monto|importe|facturado|utilidad|comision|bonificacion|bonos|abonos|cargos|contado|margen|participacion|sub\.)(\b|\s|$)/.test(name)) return 'right';
+    return 'left';
+  }
+
+  function alignColumns(table, headers) {
+    // Grouped headers and merged body rows have their own presentation.
+    if (table.querySelector('thead [rowspan], thead [colspan]')) return;
+    const alignments = headers.map(columnAlignment);
+    table.querySelectorAll('thead tr:last-child th').forEach((cell, index) => {
+      cell.dataset.koraAlign = alignments[index];
+    });
+    table.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
+      if (row.cells.length !== headers.length || Array.from(row.cells).some(cell => cell.colSpan > 1 || cell.rowSpan > 1)) return;
+      Array.from(row.cells).forEach((cell, index) => { cell.dataset.koraAlign = alignments[index]; });
+    });
+  }
+
   function enhanceTable(table) {
     if (!(table instanceof HTMLTableElement)) return;
     const headers = tableHeaders(table);
     if (headers.length < 2) return;
+    alignColumns(table, headers);
 
     const layout = isComplexTable(table, headers) ? 'scroll' : 'cards';
     table.classList.toggle('kora-responsive-cards', layout === 'cards');
@@ -79,7 +102,7 @@
 
   window.KoraResponsive = Object.freeze({
     enhance: enhanceTables,
-    version: '1.0.0',
+    version: '1.0.1',
   });
 
   if (document.readyState === 'loading') {

@@ -76,9 +76,19 @@
       width: 100%;
     }
     body.kora-product-page #search-results .compra-producto-opcion:last-child { border-bottom: 0; }
-    .compra-items-table { min-width: 1180px; }
-    .compra-costo-input { min-width: 120px; }
-    .compra-margen-valor { min-width: 88px; }
+    body.kora-product-page .main-content .compra-items-table { min-width: 1180px; }
+    body.kora-product-page .main-content .compra-items-table input { padding-inline: 8px; }
+    body.kora-product-page .main-content .compra-costo-input,
+    body.kora-product-page .main-content [data-campo="precio_remision"] { min-width: 120px; }
+    body.kora-product-page .main-content .compra-margen-valor { min-width: 112px; width: 112px; flex: 1 0 112px; }
+    body.kora-product-page .main-content [data-campo="margen_tipo"] { min-width: 60px; width: 60px; flex: 0 0 60px; padding-inline: 8px; }
+    body.kora-product-page .main-content [data-campo="cantidad"] { min-width: 64px; }
+    body.kora-product-page #btn-agregar-item { flex-shrink: 0; white-space: nowrap; }
+    body.kora-product-page .main-content > section + section { margin-top: 20px; }
+    @media (max-width: 767px) {
+      #btn-agregar-item { margin-top: 12px; }
+      .compra-items-heading { flex-wrap: wrap; }
+    }
     input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input:not([type="checkbox"]):not([type="radio"]),select,button{min-height:44px}.rounded,.rounded-lg{border-radius:12px!important}.bg-blue-600{background-color:#0B1E3D!important}.hover\:bg-blue-700:hover{background-color:#132D55!important}button{transition:transform 120ms ease}button:active:not(:disabled){transform:scale(.985)}
   </style>
@@ -201,7 +211,7 @@
 
   <!-- =========================== 2. ÍTEMS DE LA FACTURA =========================== -->
   <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-    <div class="flex justify-between items-start mb-1">
+    <div class="compra-items-heading flex justify-between items-start mb-1">
       <div>
         <h2 class="text-lg font-semibold text-gray-800">2. Productos comprados</h2>
         <p class="text-xs text-gray-500">Cantidad, costo real y precio remisión (lo que la tienda ve como su costo). El margen se pre-llena desde la categoría del producto — Mayte lo puede ajustar. Los IMEIs se digitan cuando la tienda reciba el equipo.</p>

@@ -19,8 +19,9 @@ test('el buscador de productos queda por encima de la tabla y mantiene opciones 
 
 test('la fila de compra reserva espacio suficiente para costo y margen', () => {
   assert.match(html, /\.compra-items-table\s*\{[^}]*min-width:\s*1180px/s);
-  assert.match(html, /\.compra-costo-input\s*\{[^}]*min-width:\s*120px/s);
-  assert.match(html, /\.compra-margen-valor\s*\{[^}]*min-width:\s*88px/s);
+  assert.match(html, /\.compra-costo-input[^{}]*\{[^}]*min-width:\s*120px/s);
+  assert.match(html, /\.compra-margen-valor\s*\{[^}]*min-width:\s*112px[^}]*flex:\s*1 0 112px/s);
+  assert.match(html, /\[data-campo="margen_tipo"\]\s*\{[^}]*min-width:\s*60px/s);
   assert.match(html, /data-campo="costo_unitario"[\s\S]*class="[^"]*compra-costo-input[^"]*"/);
   assert.match(html, /data-campo="margen_valor"[\s\S]*class="[^"]*compra-margen-valor[^"]*"/);
 });

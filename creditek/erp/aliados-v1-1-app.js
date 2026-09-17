@@ -292,6 +292,8 @@
       incidents,
       historicalCredits,
       expenses,
+      financialExpenses,
+      financialExpensesReadable,
       platformGoals,
       reversions,
     ] = await Promise.all([
@@ -314,6 +316,8 @@
         "id,plataforma,codigo_credito,fecha_credito,monto_credito,establecimiento,vendedor,tipo_establecimiento,ejecutivo_historico_id,valor_comercial_historico,pagamos_historico,pago_neto_historico,bonos_historicos,utilidad_antes_bonos_historica,utilidad_neta_historica,gasto_financiero_historico,gasto_operativo_referencia_historico,provision_historica,utilidad_final_historica,resultado_cerrado_historico,cierre_utilidad_at,cierre_utilidad_motivo,calculo_historico_estado,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion",
       ),
       allRows("aliados_gastos_operativos", "*"),
+      view === "dashboard" ? allRows("financial_entries", "id,entry_type,business_unit,store_code,due_date,amount,source_period_from,source_period_to,status") : [],
+      view === "dashboard" ? sb.rpc('es_controlador_financiero').then(({data,error}) => { if(error) throw error; return data === true; }) : false,
       allRows("aliados_metas_plataforma", "*"),
       allRows("aliados_reversiones", "*"),
     ]);
@@ -336,6 +340,8 @@
       incidents,
       historicalCredits,
       expenses,
+      financialExpenses,
+      financialExpensesReadable,
       platformGoals,
     };
     if (view === "dashboard") populateDashboardFilters();
@@ -400,6 +406,33 @@
     }).join('');
     return header + '<p class="muted">Turquesa: logrado · gris: faltante. Se conserva la meta completa, sin prorratearla ni cambiarla. Los incentivos no se suman a la utilidad.</p><div class="dashboard-goal-list">' + items + '</div></section>';
   }
+  function dashboardExpenses({from,to,business,platform,executive,establishment,city,paymentState}) {
+    const financial = (db.financialExpenses || [])
+      .filter(x => x.business_unit === 'aliados' && x.entry_type === 'gasto')
+      .map(x => ({id:`financial:${x.id}`, estado:x.status,
+        // Devengo registrado; sin período explícito, fecha del gasto, nunca fecha del giro.
+        fecha:x.source_period_to || x.source_period_from || x.due_date,
+        origen_codigo:x.store_code, valor:x.amount, general:true}));
+    const seen = new Set();
+    let unallocated = 0;
+    const rows = [...(db.expenses || []).map(x=>({...x,id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
+      if (x.id && seen.has(x.id)) return false;
+      if (x.id) seen.add(x.id);
+      const day = date(x.fecha), origin = originFor(x.origen_codigo);
+      if (!['aprobado','pagado'].includes(x.estado) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day < OPERATION_CUTOFF || (from && day < from) || (to && day > to)) return false;
+      // Un gasto general del negocio no se distribuye arbitrariamente por plataforma/canal.
+      if (x.general && (business || platform || executive || establishment || city || paymentState)) {
+        unallocated += Number(x.valor);
+        return false;
+      }
+      return (!platform || x.plataforma === platform) &&
+        (!executive || origin?.ejecutivo_id === executive) &&
+        (!establishment || x.origen_codigo === establishment) &&
+        (!city || origin?.ciudad === city) &&
+        (!business || origin?.tipo === business || (!origin && business === 'aliado'));
+    });
+    return {rows, unallocated, restricted:db.financialExpensesReadable === false};
+  }
   function renderDashboard(selection) {
     if(db.loadError) return;
     const {from,to,business,platform,executive,establishment,city,paymentState} = selection?.report === true ? selection : {
@@ -429,23 +462,9 @@
         x.pagado_antes_inicio &&
         selectedCreditKeys.has(`${x.plataforma}|${String(x.codigo_credito).trim().toLowerCase()}`),
     );
+    const expenseSelection = dashboardExpenses({from,to,business,platform,executive,establishment,city,paymentState});
     const newUtility = ops.reduce((n, x) => n + operationUtilityAvailable(x), 0),
-      approvedExpenses = (db.expenses || []).filter((x) => {
-        const day = date(x.fecha),
-          origin = originFor(x.origen_codigo);
-        return (
-          x.estado === "aprobado" &&
-          day >= OPERATION_CUTOFF &&
-          (!from || day >= from) &&
-          (!to || day <= to) &&
-          (!platform || x.plataforma === platform) &&
-          (!executive || origin?.ejecutivo_id === executive) &&
-          (!establishment || x.origen_codigo === establishment) &&
-          (!city || origin?.ciudad === city) &&
-          business !== "propia"
-        );
-      }),
-      expenseTotal = sum(approvedExpenses, "valor");
+      expenseTotal = sum(expenseSelection.rows, "valor");
     const breakdown = ops.map(dashboardBreakdown);
     const complete = breakdown.every(x => x.complete);
     const component = field => breakdown.reduce((n, x) => n + (x[field] ?? 0), 0);
@@ -458,7 +477,7 @@
       ["Ventas del periodo", cop(sum(ops, "monto_base"))],
       ["Bonificaciones del periodo", amount(component('bonus'))],
       ["Provisión calculada del periodo", amount(component('provision'))],
-      ["Utilidad final del periodo", amount(finalUtility)],
+      [expenseSelection.unallocated || expenseSelection.restricted ? "Utilidad antes de gastos generales" : "Utilidad final del periodo", amount(finalUtility)],
     ]);
     const grouped = [
       ...ops
@@ -532,12 +551,12 @@
       ['Menos: gastos financieros', -component('financial')],
       ['Menos: gastos operativos aprobados', -expenseTotal],
       ['Menos: provisión calculada', -component('provision')],
-      ['Utilidad final del periodo', finalUtility],
+      [expenseSelection.unallocated || expenseSelection.restricted ? 'Utilidad antes de gastos generales' : 'Utilidad final del periodo', finalUtility],
       ['Menos: resultado ya cerrado / retirado', -closedUtility],
       ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
     ];
     const formatExact = v => complete ? new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(v) : 'No disponible · revisar datos';
-    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Los gastos operativos son los aprobados y registrados; no incluyen costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
+    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados aprobados y pagados, sin retiros de utilidad. Se usa el fin del período registrado o, si falta, la fecha del gasto; nunca la fecha del giro. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted">Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted">${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
     const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
       const components = credits.map(dashboardBreakdown);

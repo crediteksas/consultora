@@ -12,6 +12,25 @@ function fixture(){
  const ctx={db,$:s=>nodes[s],establishmentKey:v=>String(v||'').toLowerCase(),operationSaleDay:o=>String(o.operation_at).slice(0,10),date:v=>String(v).slice(0,10),businessType:o=>o.tipo_establecimiento,operationCity:o=>db.origins.find(x=>x.codigo===o.origen_codigo)?.ciudad||'',operationName:o=>o.establishment_name,operationUtilityAvailable:o=>Number(o.utilidad_creditek||0)-Number(o.resultado_cerrado||0),historicalUtilityOriginal:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0),historicalUtilityClosed:o=>Number(o.resultado_cerrado_historico||0),historicalUtilityAvailable:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0)-Number(o.resultado_cerrado_historico||0),sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),metrics:x=>ctx.cards=x,cop:String,esc:String,badge:String,platformName:String,execName:String,paymentValue:o=>Number(o.pago_neto_beneficiario||0),rows:(a,c)=>a.map(x=>c.map(f=>f(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n'),OPERATION_CUTOFF:'2026-09-01',originFor:()=>null};
  ctx.CreditekReversiones=CreditekReversiones;vm.runInNewContext(source,ctx);return {ctx,db,nodes};
 }
+
+test('gastos generales de Aliados: aprobados y pagados una sola vez, sin retiros ni otros negocios',()=>{
+ const {ctx,db,nodes}=fixture();nodes['#dashboardFrom'].value='2026-09-01';nodes['#dashboardTo'].value='2026-09-17';
+ const expense={id:'luis',business_unit:'aliados',entry_type:'gasto',due_date:'2026-09-15',status:'pagado',amount:750000,paid_at:'2026-10-01'};
+ db.financialExpenses=[expense,{...expense},{...expense,id:'yeimi',status:'aprobado'},
+ {...expense,id:'withdraw',entry_type:'retiro_utilidad'}, {...expense,id:'retail',business_unit:'retail'},
+ {...expense,id:'pending',status:'pendiente'}, {...expense,id:'rejected',status:'rechazado'},
+ {...expense,id:'previous',source_period_to:'2026-08-31'}, {...expense,id:'future',due_date:'2026-09-30'}];
+ const before=JSON.stringify(db);ctx.renderDashboard();
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'-1500000');
+ assert.match(nodes['#content'].innerHTML,/-\$\s*1\.500\.000,00/);
+ assert.equal(JSON.stringify(db),before);
+ nodes['#dashboardPlatform'].value='payjoy';ctx.renderDashboard();
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad antes de gastos generales')[1],'0');
+ assert.match(nodes['#content'].innerHTML,/1500000 de gastos generales de Aliados no se distribuyen/);
+ nodes['#dashboardPlatform'].value='';db.financialExpensesReadable=false;ctx.renderDashboard();
+ assert.ok(ctx.cards.some(x=>x[0]==='Utilidad antes de gastos generales'));
+ assert.match(nodes['#content'].innerHTML,/requieren permiso financiero/);
+});
 test('Krediya concilia margen antes de bonos, gasto financiero y provisión sin doble descuento',()=>{
  const {ctx,db,nodes}=fixture();
  db.operations=[{id:'k',external_id:'K',plataforma:'krediya',operation_at:'2026-08-20',tipo_establecimiento:'aliado',monto_base:14476977,bonos_aplicados:1100000,utilidad_creditek:2369089.49,policy_snapshot:{krediya_v2:{gasto_financiero:57907.91,provision:921312.60,utilidad_bruta:3290402.09}}}];

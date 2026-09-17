@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 import D from '../../creditek/erp/b2b-listas-domain.js';
-const migration=readFileSync(new URL('../../supabase/migrations/20260917152621_listas_precios_pedidos_kora.sql',import.meta.url),'utf8');
+const migration=readFileSync(new URL('../../supabase/migrations/20260917174237_listas_precios_pedidos_kora.sql',import.meta.url),'utf8');
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 test('importación conserva costo real, margen variable, precio final y errores de origen',()=>{
  const products=[{id:'p',codigo:'SM17',nombre:'SM17 4/128GB'}],providers=[{id:'s',nombre:'Proveedor A'}];
@@ -75,4 +75,6 @@ test('pantalla consulta solo catálogo publicado para tiendas y no manda pedidos
  const store=page.slice(page.indexOf('async function loadStore'),page.indexOf('function renderCatalog'));
  assert.match(store,/catalogo_pedidos_b2b/);assert.doesNotMatch(store,/from\('productos'\)/);assert.doesNotMatch(page,/LEGACY_NOTICE_URL|guardar_pedido|script.google.com/);
  assert.match(page,/Descargar pedidos pendientes/);assert.match(page,/crear_pedido_catalogo_b2b/);
+ assert.match(page,/id="loadIssue".*role="alert"/);assert.match(page,/catch\(showLoadError\)/);
+ assert.match(page,/catch\(e\)\{showLoadError\(e\);\}/);assert.match(page,/Creditek aún no ha publicado referencias/);
 });

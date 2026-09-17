@@ -89,7 +89,9 @@ tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: rgba(11,30,61,0.02); }
 .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
 .badge.despachado { background: #FEF3C7; color: #92400E; }
+.badge.recibido_pendiente_aprobacion { background: #DBEAFE; color: #1D4ED8; }
 .badge.recibido { background: #DCFCE7; color: #166534; }
+.badge.cerrado { background: #DCFCE7; color: #166534; }
 .badge.anulado { background: #FEE2E2; color: #991B1B; }
 .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .row-actions button { border: none; background: none; color: var(--turquesa); font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 4px 6px; }
@@ -194,15 +196,18 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     </div>
 
     <div class="flujo-info">
-      <b>¿Qué significa “Despachado”?</b> La mercancía queda “En traslado” y no se puede vender.
-      Solo vuelve a estar disponible cuando la tienda de destino confirma que la recibió.
+      <b>Flujo protegido:</b> la tienda origen despacha, la tienda destino confirma la recepción
+      y Gerencia/Auditoría valida los IMEIs y costos de remisión. La mercancía solo queda disponible
+      y la cartera solo se mueve después del visto bueno final.
     </div>
 
     <div class="filters">
       <select id="filtroEstado">
         <option value="">Todos los estados</option>
         <option value="despachado">Despachado</option>
-        <option value="recibido">Recibido</option>
+        <option value="recibido_pendiente_aprobacion">Recibido · pendiente de visto bueno</option>
+        <option value="cerrado">Cerrado</option>
+        <option value="recibido">Cerrado (histórico)</option>
         <option value="anulado">Anulado</option>
       </select>
       <select id="filtroTienda" style="display:none;"><option value="">Todas las tiendas</option></select>
@@ -270,6 +275,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCerrarVerTraslado">Cerrar</button>
       <button class="btn-guardar" id="btnConfirmarRecepcionTra" style="display:none;">Confirmar recepción</button>
+      <button class="btn-guardar" id="btnAprobarRecepcionTra" style="display:none;">Dar visto bueno y cerrar</button>
     </div>
   </div>
 </div>
@@ -370,6 +376,7 @@ function initPagina() {
   document.getElementById('btnConfirmarDespacho').addEventListener('click', confirmarDespacho);
   document.getElementById('btnCerrarVerTraslado').addEventListener('click', () => document.getElementById('modalVerTraslado').classList.remove('show'));
   document.getElementById('btnConfirmarRecepcionTra').addEventListener('click', confirmarRecepcionTraslado);
+  document.getElementById('btnAprobarRecepcionTra').addEventListener('click', aprobarRecepcionTraslado);
   document.getElementById('btnCerrarScanner').addEventListener('click', cerrarScanner);
 
   cargarDatosBase();
@@ -427,8 +434,10 @@ function renderTablaTraslados() {
     const puedeRecibir = currentPerfil.rol === 'admin_tienda' &&
       t.estado === 'despachado' &&
       currentPerfil.tienda_codigo === t.tienda_destino;
-    const puedeAnular = t.estado === 'despachado' && esCentral();
+    const puedeAprobar = esCentral() && t.estado === 'recibido_pendiente_aprobacion';
+    const puedeAnular = ['despachado', 'recibido_pendiente_aprobacion'].includes(t.estado) && esCentral();
     if (puedeRecibir) acciones = `<button class="accion-recibir btn-recibir" data-id="${t.id}">Recibir</button>` + acciones;
+    if (puedeAprobar) acciones = `<button class="accion-recibir btn-aprobar" data-id="${t.id}">Dar visto bueno</button>` + acciones;
     if (puedeAnular) acciones += `<button class="accion-anular btn-anular" data-id="${t.id}">Anular</button>`;
     return `
       <tr>
@@ -443,14 +452,22 @@ function renderTablaTraslados() {
     `;
   }).join('');
 
-  tbody.querySelectorAll('.btn-ver, .btn-recibir').forEach(btn => btn.addEventListener('click', () => {
+  tbody.querySelectorAll('.btn-ver, .btn-recibir, .btn-aprobar').forEach(btn => btn.addEventListener('click', () => {
     const t = trasladosCache.find(x => x.id === btn.dataset.id);
     if (t) abrirModalVerTraslado(t);
   }));
   tbody.querySelectorAll('.btn-anular').forEach(btn => btn.addEventListener('click', () => anularTraslado(btn.dataset.id)));
 }
 
-function etiquetaEstado(e) { return { despachado: 'Despachado', recibido: 'Recibido', anulado: 'Anulado' }[e] || e; }
+function etiquetaEstado(e) {
+  return {
+    despachado: 'Despachado',
+    recibido_pendiente_aprobacion: 'Recibido · pendiente de visto bueno',
+    recibido: 'Cerrado',
+    cerrado: 'Cerrado',
+    anulado: 'Anulado',
+  }[e] || e;
+}
 
 // ─── Nuevo traslado (despacho) ──────────────────────────────────────────
 function abrirModalTraslado() {
@@ -648,10 +665,12 @@ async function abrirModalVerTraslado(t) {
 
   document.getElementById('verTrasladoTitulo').textContent = `Traslado #${t.consecutivo}`;
   const destino = t.destino?.nombre || t.tienda_destino;
-  const pendienteDestino = t.estado === 'despachado'
+  const detallePendiente = t.estado === 'despachado'
     ? ` · Pendiente de aceptación en ${destino}`
-    : '';
-  document.getElementById('verTrasladoSub').textContent = `${t.origen?.nombre || t.tienda_origen} → ${destino} · ${etiquetaEstado(t.estado)}${pendienteDestino}`;
+    : t.estado === 'recibido_pendiente_aprobacion'
+      ? ' · Mercancía bloqueada hasta validar IMEIs y costos'
+      : '';
+  document.getElementById('verTrasladoSub').textContent = `${t.origen?.nombre || t.tienda_origen} → ${destino} · ${etiquetaEstado(t.estado)}${detallePendiente}`;
   document.getElementById('modalVerTrasladoErr').classList.remove('show');
 
   document.getElementById('verTrasladoItems').innerHTML = (items || []).map(it => `
@@ -670,14 +689,16 @@ async function abrirModalVerTraslado(t) {
   const puedeRecibir = currentPerfil.rol === 'admin_tienda' &&
     t.estado === 'despachado' &&
     currentPerfil.tienda_codigo === t.tienda_destino;
+  const puedeAprobar = esCentral() && t.estado === 'recibido_pendiente_aprobacion';
   document.getElementById('btnConfirmarRecepcionTra').style.display = puedeRecibir ? 'inline-block' : 'none';
+  document.getElementById('btnAprobarRecepcionTra').style.display = puedeAprobar ? 'inline-block' : 'none';
 
   document.getElementById('modalVerTraslado').classList.add('show');
 }
 
 async function confirmarRecepcionTraslado() {
   if (!trasladoActual) return;
-  if (!confirm(`¿Confirmas la recepción del traslado #${trasladoActual.consecutivo}? Si falta algo, se corrige después con un ajuste.`)) return;
+  if (!confirm(`¿Confirmas que recibiste físicamente el traslado #${trasladoActual.consecutivo}? Quedará bloqueado hasta el visto bueno de Gerencia/Auditoría.`)) return;
 
   const err = document.getElementById('modalVerTrasladoErr');
   err.classList.remove('show');
@@ -691,7 +712,27 @@ async function confirmarRecepcionTraslado() {
   if (error) { err.textContent = 'No se pudo confirmar: ' + error.message; err.classList.add('show'); return; }
 
   document.getElementById('modalVerTraslado').classList.remove('show');
-  mostrarBanner(`✅ Traslado #${data.consecutivo} recibido correctamente.`);
+  mostrarBanner(`✅ Traslado #${data.consecutivo} recibido. Quedó pendiente del visto bueno de Maite u Oscar.`);
+  trasladoActual = null;
+  cargarTraslados();
+}
+
+async function aprobarRecepcionTraslado() {
+  if (!trasladoActual) return;
+  if (!confirm(`¿Dar visto bueno al traslado #${trasladoActual.consecutivo}? KORA validará IMEIs y costos de remisión, moverá el inventario y registrará el abono/cargo entre tiendas.`)) return;
+
+  const err = document.getElementById('modalVerTrasladoErr');
+  err.classList.remove('show');
+  const btn = document.getElementById('btnAprobarRecepcionTra');
+  btn.disabled = true; btn.textContent = 'Validando y cerrando...';
+
+  const { data, error } = await sb.rpc('aprobar_traslado_recepcion', { p_traslado_id: trasladoActual.id });
+
+  btn.disabled = false; btn.textContent = 'Dar visto bueno y cerrar';
+  if (error) { err.textContent = 'No se pudo aprobar: ' + error.message; err.classList.add('show'); return; }
+
+  document.getElementById('modalVerTraslado').classList.remove('show');
+  mostrarBanner(`✅ Traslado #${data.consecutivo} cerrado. Abono y cargo registrados por ${fmtCOP(data.total)}.`);
   trasladoActual = null;
   cargarTraslados();
 }

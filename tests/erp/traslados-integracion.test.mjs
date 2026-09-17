@@ -21,11 +21,18 @@ test('solo admin de la tienda destino puede confirmar recepción', () => {
   assert.doesNotMatch(html, /puedeRecibir = t\.estado === 'despachado' && \(esCentral\(\)/);
 });
 
+test('el visto bueno central queda separado de la recepción física', () => {
+  assert.match(html, /t\.estado === 'recibido_pendiente_aprobacion'/);
+  assert.match(html, /sb\.rpc\('aprobar_traslado_recepcion'/);
+  assert.match(html, /Dar visto bueno y cerrar/);
+  assert.match(html, /Mercancía bloqueada hasta validar IMEIs y costos/);
+});
+
 test('conserva resumen, bloqueos y textos operativos', () => {
   assert.match(html, /KoraTrasladosDomain\.resumir\(items \|\| \[\]\)/);
   assert.match(html, /resumen\.duplicados\.length/);
   assert.match(html, /resumen\.novedades\.length/);
   assert.match(html, /sb\.rpc\('ejecutar_traslado_despacho'/);
-  assert.match(html, /La mercancía queda “En traslado” y no se puede vender/);
+  assert.match(html, /La mercancía solo queda disponible/);
   assert.match(html, /Pendiente de aceptación en \$\{destino\}/);
 });

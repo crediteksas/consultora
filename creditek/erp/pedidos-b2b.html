@@ -12,6 +12,8 @@
   <script src="b2b-listas-domain.js?v=1.0.0"></script>
   <script src="b2b-listas-ui.js?v=1.0.0"></script>
   <link rel="stylesheet" href="b2b-pedidos.css?v=1.0.0">
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <script src="/design-system/components/kora-product.js" defer></script>
   <script src="https://unpkg.com/lucide@1.27.0/dist/umd/lucide.min.js" defer></script>
   <style>
     :root{--navy:#0b1e3d;--cyan:#00c4cc;--bg:#f5f7fa;--line:#dfe6ef;--muted:#64748b;--good:#087f5b;--warn:#b45309}
@@ -25,8 +27,11 @@
 </head>
 <body>
 <main id="app" class="app">
+  <div class="main-content"><div class="page">
+  <header class="page-head"><div>
   <h1>Pedidos y abastecimiento B2B</h1>
   <p class="sub" id="subtitle">Pedido, compra, recepción e inventario en una sola trazabilidad.</p>
+  </div></header>
   <div class="tabs" id="tabs"></div>
   <section id="loadIssue" class="panel hidden" role="alert"><h2>No se pudo cargar Pedidos</h2><p id="loadIssueMessage"></p><p class="sub">No se interpreta un error de carga como un catálogo vacío. No se ha creado ni modificado ningún pedido.</p><button class="btn" id="retryLoad">Reintentar carga</button></section>
 
@@ -45,6 +50,7 @@
     <div class="panel"><div class="list-heading"><h2>Solicitudes de tiendas</h2><button class="btn" id="downloadRequests">Descargar pedidos pendientes</button></div><div id="pendingLines" class="table-wrap"></div></div>
     <div class="panel"><h2>Órdenes de compra</h2><div id="purchaseOrders" class="table-wrap"></div></div>
   </section>
+  </div></div>
 </main>
 
 <div id="cartModal" class="modal"><section class="modal-card"><div class="modal-head"><div><h2>Confirmar pedido</h2><p class="sub">Los precios quedan congelados como referencia del pedido.</p></div><button class="btn" data-close="cartModal">Cerrar</button></div><div id="cartLines"></div><div class="field"><label>Nota</label><textarea id="cartNote"></textarea></div><div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" id="submitOrder">Enviar pedido</button></div></section></div>

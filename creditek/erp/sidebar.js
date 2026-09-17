@@ -577,7 +577,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraResponsiveStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-responsive.css?v=1.0.5';
+      link.href = '/design-system/components/kora-responsive.css?v=1.0.6';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraResponsive')) {
@@ -655,9 +655,10 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraCurrentItem(modules) {
     const current = paginaActual();
     const items = modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })));
-    return items.find(item => item.href === current + window.location.hash)
-      || items.find(item => item.href?.split('#')[0] === current)
-      || modules[0]?.items[0];
+    return items.find(item => item.href === current + window.location.search + window.location.hash)
+      || items.find(item => item.href === current + window.location.hash)
+      || items.find(item => item.href?.split(/[?#]/)[0] === current)
+      || { label: document.querySelector('#app h1:not(.kora-topbar__title)')?.textContent.trim() || 'KORA', href: current, group: 'Consulta' };
   }
 
   function modulesForProfile(profile) {
@@ -808,6 +809,12 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     main.className = 'kora-shell-main';
     const content = document.createElement('div');
     content.className = 'kora-shell-content';
+    // Legacy pages used #app as their content area. After mounting the shell,
+    // keep that scope on the content, not on navigation and the top bar.
+    if (root.classList.contains('main-content')) {
+      root.classList.remove('main-content');
+      content.classList.add('main-content');
+    }
     children.forEach(child => content.appendChild(child));
     main.innerHTML = `<header class="kora-topbar">
       <button class="kora-icon-button kora-navigation-toggle ghost" type="button" aria-label="Colapsar navegación"

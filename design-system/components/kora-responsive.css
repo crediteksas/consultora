@@ -186,6 +186,22 @@ body.kora-responsive-ready table :where(th, td) {
   body.kora-responsive-ready table :is(th, td)[data-kora-align="left"] { text-align: left !important; }
   body.kora-responsive-ready table :is(th, td)[data-kora-align="center"] { text-align: center !important; }
   body.kora-responsive-ready table :is(th, td)[data-kora-align="right"] { text-align: right !important; font-variant-numeric: tabular-nums; }
+  body.kora-responsive-ready table td[data-kora-align="center"] > :is(.row-actions, .actions) { justify-content: center; }
+}
+
+body.kora-product-page .app.kora-shell-root { padding: 0; max-width: none; }
+body.kora-product-page .main-content :is(.btn-ver, .btn-editar, .btn-recibir) { min-width: 4rem; padding-inline: .75rem; }
+
+/* Selection must remain visible despite the generic primary-button theme. */
+body.kora-product-page.kora-responsive-ready .main-content :is(.tabs, .tab-bar, .tabs-nav) > :is(button, .tab, .tab-btn, [role="tab"]) {
+  background: var(--ctk-color-surface);
+  border-color: var(--ctk-color-border);
+  color: var(--ctk-color-text-secondary);
+}
+body.kora-product-page.kora-responsive-ready .main-content :is(.tabs, .tab-bar, .tabs-nav) > :is(button, .tab, .tab-btn, [role="tab"]):is(.active, .activo, [aria-selected="true"]) {
+  background: var(--ctk-color-primary-900);
+  border-color: var(--ctk-color-primary-900);
+  color: var(--ctk-color-neutral-0);
 }
 
 /* The legacy utility panels and new dashboard panels use the same subtle
@@ -196,9 +212,13 @@ body.kora-product-page .main-content :is(.card, .panel, .ctk-panel, .dashboard-p
 }
 
 body.kora-product-page .main-content :is(.resumen-card, .metric, .kpi-card, .stat)::before { display: none; }
+body.kora-product-page .main-content .kora-incidents-kpi { border-top: 2px solid var(--ctk-color-secondary-500); }
+body.kora-product-page .main-content .kora-incidents-table button { white-space: nowrap; }
+body.kora-product-page .main-content [data-notice]:empty { display: none; }
+body.kora-product-page .main-content a.btn { text-decoration: none; }
 
 /* Six dashboard indicators must form balanced rows, not five plus one. */
-body.kora-responsive-ready[data-aliados-view="dashboard"] .metrics {
+body.kora-responsive-ready:is([data-aliados-view="dashboard"], [data-aliados-view="bonuses"]) .metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 body.kora-responsive-ready[data-aliados-view="dashboard"] .metric {
@@ -210,10 +230,14 @@ body.kora-responsive-ready[data-aliados-view="dashboard"] .metric small { min-he
 body.kora-responsive-ready[data-aliados-view="dashboard"] .metric strong { margin-top: auto; font-variant-numeric: tabular-nums; }
 body.kora-responsive-ready[data-aliados-view="budget"] .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 47.999rem) {
-  body.kora-responsive-ready:is([data-aliados-view="dashboard"], [data-aliados-view="budget"]) .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.kora-responsive-ready:is([data-aliados-view="dashboard"], [data-aliados-view="bonuses"], [data-aliados-view="budget"]) .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 32rem) {
-  body.kora-responsive-ready:is([data-aliados-view="dashboard"], [data-aliados-view="budget"]) .metrics { grid-template-columns: minmax(0, 1fr); }
+  body.kora-responsive-ready:is([data-aliados-view="dashboard"], [data-aliados-view="bonuses"], [data-aliados-view="budget"]) .metrics { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 64rem) {
+  body.kora-product-page .kora-shell-root .kora-drawer-close { display: none; }
 }
 
 /* Specific enough to survive local legacy button rules, without recoloring

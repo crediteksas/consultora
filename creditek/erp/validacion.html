@@ -118,28 +118,29 @@ header.topbar {
   </div>
 </div>
 
-<div id="app">
-  <header class="topbar">
+<div id="app" class="main-content">
+  <header class="topbar" style="display:none">
     <div data-kora-brand data-variant="public"></div>
     <div class="right">
       <span id="userEmail"></span>
       <button class="logout" id="btnLogout">Salir</button>
     </div>
   </header>
+  <header class="page-head"><h1>Validación de solicitudes</h1></header>
 
   <div class="counter-bar">Pendientes de hoy: <b id="counterHoy">—</b></div>
 
   <div class="filters">
-    <select id="filtroEstado">
+    <select id="filtroEstado" aria-label="Estado de la solicitud">
       <option value="pendiente">Pendientes</option>
       <option value="verde">Aprobados</option>
       <option value="amarillo">Dudosos</option>
       <option value="rojo">Rechazados</option>
       <option value="todos">Todos</option>
     </select>
-    <select id="filtroOrigen"><option value="">Todos los orígenes</option></select>
-    <input type="date" id="filtroFecha">
-    <button id="btnLimpiarFiltros" style="border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;background:white;cursor:pointer;">Limpiar filtros</button>
+    <select id="filtroOrigen" aria-label="Origen de la solicitud"><option value="">Todos los orígenes</option></select>
+    <input type="date" id="filtroFecha" aria-label="Fecha de la solicitud">
+    <button id="btnLimpiarFiltros" class="secondary" style="border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;background:white;cursor:pointer;">Limpiar filtros</button>
   </div>
 
   <div class="list" id="list">

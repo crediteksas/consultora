@@ -17,8 +17,8 @@
 <body data-incident-mode="admin" data-kora-requires-auth="true">
 <div id="app" class="hidden">
   <main class="main-content">
-    <section class="kora-incidents-page">
-      <header><p data-incident-breadcrumb>KORA / Administración</p><h1 data-incident-title>Centro de Incidencias</h1><p data-incident-subtitle>Seguimiento operativo y técnico de KORA.</p></header>
+    <section class="kora-incidents-page page">
+      <header class="page-head"><div><p data-incident-breadcrumb>KORA / Administración</p><h1 data-incident-title>Centro de Incidencias</h1><p data-incident-subtitle>Seguimiento operativo y técnico de KORA.</p></div></header>
       <div class="kora-incidents-kpis" aria-label="Indicadores de incidencias">
         <article class="kora-incidents-kpi"><span>Nuevas</span><strong data-kpi="new">—</strong></article>
         <article class="kora-incidents-kpi"><span>Críticas</span><strong data-kpi="critical">—</strong></article>
@@ -27,7 +27,7 @@
         <article class="kora-incidents-kpi"><span>Cerradas este mes</span><strong data-kpi="closed">—</strong></article>
         <article class="kora-incidents-kpi"><span>Tiempo promedio</span><strong data-kpi="average">—</strong></article>
       </div>
-      <form class="kora-incidents-filters" data-incident-filters>
+      <form class="kora-incidents-filters filters" data-incident-filters>
         <input type="search" data-incident-filter="code" aria-label="Código o título" placeholder="Código o título">
         <select data-incident-filter="status" aria-label="Estado"><option value="">Todos los estados</option></select>
         <select data-incident-filter="priority" aria-label="Prioridad"><option value="">Todas las prioridades</option><option>baja</option><option>media</option><option>alta</option><option>critica</option></select>

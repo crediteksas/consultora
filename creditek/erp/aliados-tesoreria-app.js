@@ -1178,7 +1178,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
 </style></head><body>
 <header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería</div><h1>Orden de pagos</h1></div></div><div class="meta">${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}</div></header>
 <section class="summary"><span><strong>${rows.length}</strong> pagos autorizados</span><span>${liquidationRefs.length} liquidaciones</span><span>Total <strong class="money">${cop(total)}</strong></span></section>
-<table><colgroup><col style="width:5.5%"><col style="width:33%"><col style="width:24%"><col style="width:23%"><col style="width:14.5%"></colgroup><thead><tr><th>N.º</th><th>Beneficiario</th><th>Cuenta destino</th><th>Concepto y fecha</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows.map((p, i) => {
+<table><colgroup><col style="width:7%"><col style="width:33%"><col style="width:22.5%"><col style="width:23%"><col style="width:14.5%"></colgroup><thead><tr><th>N.º</th><th>Beneficiario</th><th>Cuenta destino</th><th>Concepto y fecha</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows.map((p, i) => {
         const holder = p.bank_snapshot.holder || p.beneficiary_name;
         const business = p.report_business || paymentBusinessName(p);
         const platform = p.liquidation_id ? platformName(p.platform_snapshot) : "";

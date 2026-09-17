@@ -17,27 +17,40 @@ export function profitSummary(contexts){
  }
  return {groups:[...groups.values()].sort((a,b)=>a.ref.localeCompare(b.ref)),pending,excluded,calculated,total:totalCents/100};
 }
-function profitHtml(report){
- const s=profitSummary(report.contexts),date=new Date(report.created_at);
- const asOf=Number.isFinite(date.getTime())?new Intl.DateTimeFormat('es-CO',{timeZone:'America/Bogota',dateStyle:'medium',timeStyle:'short'}).format(date):'fecha de preparación no disponible';
- const rows=s.groups.map(g=>`<tr><td>${escape(g.ref)}<br><small>PVP: ${g.pvp===null?'No disponible':money(g.pvp)} · PAGAMOS: ${g.pagamos===null?'No disponible':money(g.pagamos)}</small></td><td>${g.n}</td><td>${money(g.totalCents/100)}</td></tr>`).join('');
- return `<h3>Utilidad neta estimada al liquidar</h3><p>Consulta al ${escape(asOf)} (Colombia). Se usa el PVP del archivo y el PAGAMOS aplicable a la fecha de cada venta, con las reglas registradas al preparar este informe.</p><p><strong>${s.calculated?`${s.pending.length?'Subtotal estimado (parcial)':'Total estimado'}: ${money(s.total)}`:'Utilidad no disponible: no hay créditos calculables.'}</strong><br>${s.calculated} créditos calculados · ${s.pending.length} sin estimación · ${s.excluded} excluidos de liquidación.</p>${rows?`<table cellpadding="8" border="1" style="border-collapse:collapse;width:100%"><tr><th>Equipo y base de liquidación</th><th>Créditos</th><th>Utilidad neta total</th></tr>${rows}</table>`:''}${s.pending.length?`<p>No se presenta un total completo: faltan datos en los siguientes créditos; su utilidad no se considera cero.</p><ul>${s.pending.map(p=>`<li>${escape(p.ref)} · Crédito ${escape(p.credit)}: ${escape(p.reason)}</li>`).join('')}</ul>`:''}<p>Ya descuenta los bonos aplicables, el gasto financiero y la provisión del motor Krediya. Cada fila suma la utilidad de sus créditos, sin promediarla. Incluye también créditos sin diferencias de PVP. Es una estimación, no una liquidación aprobada ni dinero recibido.</p>`;
+export function reportRows(contexts){
+ const groups=new Map();
+ for(const c of contexts){
+  const ref=String(c.referencia||c.modelo||'Referencia pendiente'),k=price(c.pvp_guardado),r=price(c.pvp_recibido);
+  const key=JSON.stringify([ref,k,r]),g=groups.get(key)||{ref,k,r,n:0,contexts:[]};
+  g.n++;g.contexts.push(c);groups.set(key,g);
+ }
+ return [...groups.values()].sort((a,b)=>a.ref.localeCompare(b.ref));
+}
+function profitCell(contexts){
+ const s=profitSummary(contexts);
+ const value=s.calculated?(s.pending.length?'Subtotal: ':'')+money(s.total):(s.excluded===contexts.length?'Excluidos':'No disponible');
+ const status=s.pending.length||s.excluded?`<br><small>${s.calculated} calculados · ${s.pending.length} pendientes · ${s.excluded} excluidos</small>`:'';
+ const reasons=s.pending.map(p=>`<br><small>Crédito ${escape(p.credit)}: ${escape(p.reason)}</small>`).join('');
+ return value+status+reasons;
 }
 export function renderReport(report){
- const groups=new Map();let missing=0,compared=0,affected=0;
+ const rows=reportRows(report.contexts),s=profitSummary(report.contexts);
+ let missing=0,compared=0,affected=0;
  for(const c of report.contexts){
   const k=price(c.pvp_guardado),r=price(c.pvp_recibido);
   if(k===null||r===null){missing++;continue;}
-  compared++; if(Math.abs(k-r)<0.005)continue;
-  affected++;
-  const ref=String(c.referencia||c.modelo||'Referencia pendiente');
-  const key=JSON.stringify([ref,k,r]);
-  const g=groups.get(key)||{ref,k,r,n:0};g.n++;groups.set(key,g);
+  compared++;if(Math.abs(k-r)>=0.005)affected++;
  }
- const rows=[...groups.values()].sort((a,b)=>a.ref.localeCompare(b.ref));
- const head='<tr><th>Equipo</th><th>Créditos</th><th>PVP KORA</th><th>PVP archivo</th><th>Diferencia por crédito</th><th>Diferencia total</th></tr>';
- const table=rows.map(g=>`<tr><td>${escape(g.ref)}</td><td>${g.n}</td><td>${money(g.k)}</td><td>${money(g.r)}</td><td>${money(g.r-g.k)}</td><td>${money((g.r-g.k)*g.n)}</td></tr>`).join('');
- return `<html><body style="font-family:Arial,sans-serif;color:#10213e"><h2>Krediya · Revisión de PVP</h2><p>Lote: ${escape(report.liquidation_id)}</p>${profitHtml(report)}<h3>Diferencias de PVP</h3><p>${report.operation_count} créditos importados · ${compared} comparados · ${affected} con diferencias · ${missing} sin comparación completa.</p>${rows.length?'<p>Favor revisar estos PVP y su configuración en la plataforma Krediya.</p><table cellpadding="8" border="1" style="border-collapse:collapse">'+head+table+'</table>':'<p>No se encontraron diferencias en los PVP que pudieron compararse.</p>'}${missing?'<p>Hay '+missing+' créditos sin datos completos para comparar; no se consideran diferencias de cero.</p>':''}<p>Diferencia = PVP del archivo menos PVP de KORA vigente en la fecha de venta. La última columna suma las diferencias de todos los créditos de esa fila.</p><p><strong>La liquidación continúa. PAGAMOS se mantiene: es la promesa al aliado.</strong> Estas diferencias no son una pérdida o ganancia bancaria confirmada ni autorizan pagos.</p></body></html>`;
+ const date=new Date(report.created_at);
+ const asOf=Number.isFinite(date.getTime())?new Intl.DateTimeFormat('es-CO',{timeZone:'America/Bogota',dateStyle:'medium',timeStyle:'short'}).format(date):'fecha de preparación no disponible';
+ const amount=n=>n===null?'No disponible':money(n);
+ const head='<tr><th>Equipo</th><th>Créditos</th><th>PVP KORA</th><th>PVP archivo</th><th>Diferencia por crédito</th><th>Diferencia total</th><th>Utilidad neta estimada (total)</th></tr>';
+ const table=rows.map(g=>{
+  const delta=g.k===null||g.r===null?null:g.r-g.k;
+  return `<tr><td>${escape(g.ref)}</td><td>${g.n}</td><td>${amount(g.k)}</td><td>${amount(g.r)}</td><td>${amount(delta)}</td><td>${amount(delta===null?null:delta*g.n)}</td><td>${profitCell(g.contexts)}</td></tr>`;
+ }).join('');
+ const total=s.calculated?`${s.pending.length?'Subtotal estimado (parcial)':'Total estimado'}: ${money(s.total)}`:'Utilidad no disponible: no hay créditos calculables.';
+ return `<html><body style="font-family:Arial,sans-serif;color:#10213e"><h2>Krediya · Revisión de PVP y utilidad</h2><p>Lote: ${escape(report.liquidation_id)}</p><p>Consulta al ${escape(asOf)} (Colombia).</p><p>${report.operation_count} créditos importados · ${compared} comparados · ${affected} con diferencias · ${missing} sin comparación completa.</p><p>El mismo detalle de PVP, con la utilidad neta estimada en la última columna. Se incluyen también los créditos sin diferencias para mostrar el lote completo.</p><div style="max-width:100%;overflow-x:auto"><table cellpadding="8" border="1" style="border-collapse:collapse">${head}${table}</table></div><p><strong>${total}</strong><br>${s.calculated} créditos calculados · ${s.pending.length} sin estimación · ${s.excluded} excluidos de liquidación.</p>${s.pending.length?'<p>El subtotal es parcial: los pendientes se identifican en su fila y no se consideran utilidad cero.</p>':''}<p>Diferencia = PVP del archivo menos PVP KORA vigente en la fecha de venta. La diferencia total y la utilidad total corresponden a los créditos de cada fila, sin promediar.</p><p>La utilidad usa el PVP del archivo y el PAGAMOS aplicable a cada venta, descontando los bonos, el gasto financiero y la provisión del motor Krediya. Es una estimación al preparar el informe, no una liquidación aprobada ni dinero recibido. <strong>PAGAMOS se mantiene y este informe no autoriza pagos.</strong></p></body></html>`;
 }
 function base64(s){const bytes=new TextEncoder().encode(s);let text='';for(const b of bytes)text+=String.fromCharCode(b);return btoa(text);}
 export function buildRaw(report){

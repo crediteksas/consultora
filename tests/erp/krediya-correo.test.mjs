@@ -2,9 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
-import {deliver,renderReport,buildRaw,profitSummary} from '../../supabase/functions/krediya-report-mail/core.mjs';
+import {deliver,renderReport,buildRaw,profitSummary,reportRows} from '../../supabase/functions/krediya-report-mail/core.mjs';
 const id='00000000-0000-4000-8000-000000000001';
 const report={liquidation_id:id,report_status:'preparado',operation_count:2,contexts:[1,2].map(()=>({referencia:'15 PRO <b>',pvp_guardado:1000000,pvp_recibido:719900}))};
+test('una sola tabla mantiene todas las columnas PVP y añade utilidad en la misma fila',()=>{
+ const c={referencia:'Equipo A',pvp_guardado:100,pvp_recibido:90,automatica:{disponible:true,pvp:90,pagamos:70,utilidad_neta:12.34}};
+ const contexts=[c,c,{...c,referencia:'Equipo B',pvp_guardado:90},{...c,referencia:'Equipo C',pvp_guardado:null,automatica:{disponible:false,motivo:'Falta: PAGAMOS'}}];
+ const html=renderReport({...report,operation_count:4,contexts});
+ assert.equal((html.match(/<table /g)||[]).length,1);
+ assert.match(html,/<th>Equipo<\/th><th>Créditos<\/th><th>PVP KORA<\/th><th>PVP archivo<\/th><th>Diferencia por crédito<\/th><th>Diferencia total<\/th><th>Utilidad neta estimada \(total\)<\/th>/);
+ const row=html.match(/<tr><td>Equipo A<\/td>[\s\S]*?<\/tr>/)[0];
+ assert.equal((row.match(/<td>/g)||[]).length,7);assert.match(row,/24,68/);assert.match(row,/-\$\s*20/);
+ assert.match(html,/Equipo B/);assert.match(html,/Equipo C/);assert.match(html,/Falta: PAGAMOS/);
+ assert.equal(reportRows(contexts).reduce((n,r)=>n+r.n,0),4);
+ assert.equal(profitSummary(contexts).total,37.02);
+});
 test('utilidad suma todos los créditos calculables, conserva pérdidas y no confunde faltantes con cero',()=>{
  const base={referencia:'Equipo <img>',pvp_guardado:100,pvp_recibido:100,automatica:{disponible:true,pvp:100,pagamos:80,utilidad_neta:12.34}};
  const contexts=[base,base,{...base,automatica:{...base.automatica,utilidad_neta:-2.01}},

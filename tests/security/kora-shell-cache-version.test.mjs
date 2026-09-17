@@ -30,7 +30,7 @@ test('todas las páginas ERP versionan el shell y su guard con el mismo identifi
 
 test('el build conserva la versión única vigente del shell', async () => {
   const buildScript = await readFile(new URL('../../scripts/build-public.mjs', import.meta.url), 'utf8');
-  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2.0.29'/);
-  assert.match(buildScript, /const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.29'/);
+  assert.match(buildScript, /const KORA_SHELL_ASSET_VERSION = '2\.0\.29'/);
+  assert.match(buildScript, /const KORA_ACCESS_CONTROL_ASSET_VERSION = '2\.0\.29'/);
   assert.doesNotMatch(buildScript, /KORA_SHELL_ASSET_VERSION = '2\.0\.4'/);
 });

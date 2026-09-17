@@ -19,6 +19,7 @@ const erp = [
   'tests/erp/reportes-query-cache.test.mjs',
   'tests/erp/aliados-dashboard-presupuesto.test.mjs',
   'tests/erp/b2b-listas.test.mjs',
+  'tests/erp/b2b-whatsapp.test.mjs',
   'tests/erp/pedidos-abastecimiento-b2b.test.mjs',
   'tests/erp/proveedores-domain.test.mjs',
   'tests/erp/proveedores-integracion.test.mjs',

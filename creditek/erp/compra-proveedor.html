@@ -285,11 +285,16 @@
     <div class="ctk-modal__body">
       <label for="input-buscar" class="ctk-sr-only">Nombre, categoría o SKU</label>
       <div class="ctk-search-wrap">
-      <input id="input-buscar" type="text" autofocus
+      <input id="input-buscar" type="text" autofocus autocomplete="off"
              class="ctk-search"
              placeholder="Nombre, categoría o SKU..." />
       </div>
       <div id="search-results" class="search-results ctk-dropdown" aria-label="Resultados de productos"></div>
+      <div class="flex items-center justify-between gap-2 mt-3" aria-label="Páginas del catálogo">
+        <button id="productos-anterior" type="button" class="secondary" disabled>Anterior</button>
+        <span id="productos-total" role="status" class="text-sm text-gray-500"></span>
+        <button id="productos-siguiente" type="button" class="secondary" disabled>Siguiente</button>
+      </div>
     </div>
   </section>
 </div>
@@ -400,6 +405,8 @@ async function verificarAuth() {
 // ============================================================
 let proveedores = [];   // [{id, nombre, nit}]
 let productos = [];     // [{id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor}]
+let estadoProductos = 'pendiente';
+let paginaProductos = 0;
 let categorias = [];    // [{codigo, nombre, margen_tipo, margen_valor}]
 // SPEC v2 · items ahora incluye margen y precio_remision
 let items = [];         // [{tempId, producto_id, producto_nombre, producto_tipo, cantidad, costo_unitario, margen_tipo, margen_valor, precio_remision, precio_manual}]
@@ -409,16 +416,42 @@ let compraIdempotencyKey = crypto.randomUUID();
 // ============================================================
 // CARGA INICIAL DE CATÁLOGOS
 // ============================================================
+async function cargarProductos() {
+  estadoProductos = 'cargando';
+  renderBusqueda(document.getElementById('input-buscar').value);
+  try {
+    const completos = [];
+    for (let desde = 0; ; desde += 500) {
+      const {data, error} = await SB.from('productos')
+        .select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor')
+        .eq('activo', true).order('categoria').order('nombre').order('id')
+        .range(desde, desde + 499);
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error('Respuesta incompleta del catálogo');
+      completos.push(...data);
+      if (data.length < 500) break;
+    }
+    productos = completos;
+    estadoProductos = 'listo';
+    return {data: productos, error: null};
+  } catch (error) {
+    productos = [];
+    estadoProductos = 'error';
+    return {data: null, error};
+  } finally {
+    renderBusqueda(document.getElementById('input-buscar').value);
+  }
+}
 async function cargarCatalogos() {
   const [pv, pr, cr] = await Promise.all([
     SB.from('proveedores').select('id, nombre, nit').eq('activo', true).order('nombre'),
     // SPEC v2 · traer margen_tipo, margen_valor por producto (default de la ficha).
-    SB.from('productos').select('id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor').eq('activo', true).order('categoria').order('nombre'),
+    cargarProductos(),
     SB.from('categorias_producto').select('codigo, nombre, margen_tipo, margen_valor, orden').order('orden')
   ]);
 
   if (pv.error) { toast('Error cargando proveedores: ' + pv.error.message, 'error'); return; }
-  if (pr.error) { toast('Error cargando productos: ' + pr.error.message, 'error'); return; }
+  if (pr.error) toast('Error cargando productos: ' + pr.error.message, 'error');
   if (cr.error) { toast('Error cargando categorías: ' + cr.error.message, 'error'); return; }
 
   proveedores = pv.data || [];
@@ -605,17 +638,37 @@ function cerrarBuscador() {
   document.getElementById('modal-buscar').classList.add('hidden');
   indiceItemActivo = null;
 }
-function renderBusqueda(q) {
+function renderBusqueda(q, pagina = 0) {
   const filtro = q.trim().toLowerCase();
   const res = document.getElementById('search-results');
-  const hits = productos.filter(p => {
+  const anterior = document.getElementById('productos-anterior');
+  const siguiente = document.getElementById('productos-siguiente');
+  const total = document.getElementById('productos-total');
+  anterior.disabled = siguiente.disabled = true;
+  total.textContent = '';
+  if (estadoProductos !== 'listo') {
+    res.innerHTML = estadoProductos === 'error'
+      ? '<p role="alert">No se pudo cargar el catálogo completo. Reintenta antes de buscar o crear una referencia.</p><button type="button" id="reintentar-productos" class="secondary">Reintentar carga</button>'
+      : '<p role="status">Cargando catálogo completo…</p>';
+    return;
+  }
+  const coincidencias = productos.filter(p => {
     if (!filtro) return true;
     return (p.codigo + ' ' + p.nombre + ' ' + p.categoria).toLowerCase().includes(filtro);
-  }).slice(0, 30);
+  });
+  paginaProductos = Math.max(0, Math.min(pagina, Math.ceil(coincidencias.length / 30) - 1));
+  const inicio = paginaProductos * 30;
+  const hits = coincidencias.slice(inicio, inicio + 30);
+  anterior.disabled = paginaProductos === 0;
+  siguiente.disabled = inicio + hits.length >= coincidencias.length;
+  total.textContent = coincidencias.length
+    ? `${inicio + 1}–${inicio + hits.length} de ${coincidencias.length} referencias`
+    : '0 coincidencias';
+  res.scrollTop = 0;
 
   if (hits.length === 0) {
     res.innerHTML = `
-      <p class="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
+      <p class="p-3 text-sm text-gray-400 text-center">Sin coincidencias en el catálogo activo. Prueba por nombre o código antes de crear una referencia.</p>
       <button type="button" id="btn-crear-referencia" class="secondary w-full">+ Crear referencia nueva</button>
     `;
     return;
@@ -653,6 +706,7 @@ function seleccionarProducto(prodId, precioSugerido = null) {
 }
 
 function abrirCrearReferencia() {
+  if (estadoProductos !== 'listo') return;
   if (rolActual !== 'gerencia' && rolActual !== 'auditoria') return;
   const busqueda = document.getElementById('input-buscar').value.trim();
   document.getElementById('referencia-nombre').value = busqueda;
@@ -890,8 +944,11 @@ document.getElementById('modal-buscar').addEventListener('click', e => {
   if (e.target.id === 'modal-buscar') cerrarBuscador();
 });
 document.getElementById('input-buscar').addEventListener('input', e => renderBusqueda(e.target.value));
+document.getElementById('productos-anterior').addEventListener('click', () => renderBusqueda(document.getElementById('input-buscar').value, paginaProductos - 1));
+document.getElementById('productos-siguiente').addEventListener('click', () => renderBusqueda(document.getElementById('input-buscar').value, paginaProductos + 1));
 
 document.getElementById('search-results').addEventListener('click', e => {
+  if (e.target.closest('#reintentar-productos')) return cargarProductos();
   if (e.target.closest('#btn-crear-referencia')) return abrirCrearReferencia();
   const btn = e.target.closest('[data-prod-id]');
   if (btn) seleccionarProducto(btn.getAttribute('data-prod-id'));

@@ -79,7 +79,6 @@
       { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
       { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign' },
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
-      { label: 'Reportes Aliados', href: 'aliados-reportes.html', icon: 'file-chart-column-increasing' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
       { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', icon: 'hand-coins', users: [...FINANCIAL_CONTROLLERS] },

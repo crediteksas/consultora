@@ -1,6 +1,11 @@
 (function () {
   "use strict";
   const view = document.body.dataset.aliadosView;
+  // Keep old bookmarks working without maintaining a second dashboard.
+  if (view === "reports") {
+    window.location.replace("aliados-dashboard.html");
+    return;
+  }
   const $ = (s) => document.querySelector(s);
   const esc = (v) =>
     String(v ?? "—").replace(
@@ -378,6 +383,23 @@
     const reconciled = !complete || gross === null || Math.abs(gross - reconstructed) <= 0.02;
     return {net, bonus, financial, provision, complete: complete && reconciled, gross};
   }
+  function dashboardGoalCharts(ops, selection) {
+    const {from,to,platform,business,executive,establishment,city,paymentState} = selection;
+    const header = '<section class="card dashboard-goals"><div class="head"><div><h2>Cumplimiento del presupuesto</h2><p class="muted">Créditos de liquidaciones por fecha de venta · tiendas propias y aliados. No depende de la fecha de pago.</p></div><a class="btn secondary" href="aliados-presupuesto.html">Ver presupuesto</a></div>';
+    if (business || executive || establishment || city || paymentState) return header + '<p class="muted">Las metas cargadas son globales por plataforma. Quita los filtros de canal, ejecutivo, tienda, ciudad o pago para comparar la misma población; no se asigna la meta global a una sola tienda.</p></section>';
+    const goals = (db.platformGoals || []).filter(g => g.estado === 'vigente' && (!platform || g.plataforma === platform) && (!from || g.periodo_hasta >= from) && (!to || g.periodo_desde <= to));
+    if (!goals.length) return header + '<p class="muted">No hay presupuesto cargado para este periodo y plataforma. No se interpreta una meta ausente como cero.</p></section>';
+    const items = goals.map(g => {
+      const credits = ops.filter(o => o.plataforma === g.plataforma && operationSaleDay(o) >= g.periodo_desde && operationSaleDay(o) <= g.periodo_hasta && (o.reconocida === true || o.historical || o.utilidad_creditek != null));
+      const actual = CreditekReversiones.creditCount(credits), target = Number(g.meta_creditos);
+      const pct = target > 0 ? actual / target * 100 : null;
+      const label = `${platformName(g.plataforma)}: ${actual} de ${target} créditos`;
+      const visibleFrom = from && from > g.periodo_desde ? from : g.periodo_desde;
+      const visibleTo = to && to < g.periodo_hasta ? to : g.periodo_hasta;
+      return `<article class="dashboard-goal"><div class="dashboard-goal-heading"><h3>${esc(platformName(g.plataforma))}</h3><strong>${actual} de ${target} <small>créditos</small></strong></div><p class="muted">Meta: ${esc(g.periodo_desde)} a ${esc(g.periodo_hasta)} · Avance: ${esc(visibleFrom)} a ${esc(visibleTo)}</p><div class="dashboard-goal-track" role="img" aria-label="${esc(label)}"><span style="width:${pct == null ? 0 : Math.max(0,Math.min(pct,100))}%"></span></div><div class="dashboard-goal-heading"><span>${pct == null ? 'Meta no válida' : `${pct.toLocaleString('es-CO',{maximumFractionDigits:1})}% de cumplimiento`}</span><span>${actual >= target ? `Meta alcanzada · ${actual-target} adicionales` : `Faltan ${target-actual}`}</span></div></article>`;
+    }).join('');
+    return header + '<p class="muted">Turquesa: logrado · gris: faltante. Se conserva la meta completa, sin prorratearla ni cambiarla. Los incentivos no se suman a la utilidad.</p><div class="dashboard-goal-list">' + items + '</div></section>';
+  }
   function renderDashboard(selection) {
     if(db.loadError) return;
     const {from,to,business,platform,executive,establishment,city,paymentState} = selection?.report === true ? selection : {
@@ -527,7 +549,7 @@
       };
     });
     const platformSummary = `<section class="card" id="resumen-plataformas"><h2>Resumen por plataforma</h2><p class="muted">Liquidaciones por fecha de venta · incluye tiendas propias y terceros según los filtros. Utilidad registrada en las liquidaciones, antes de gastos operativos del período; no depende de la fecha de pago.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales),x=>x.complete?cop(x.bonuses):'Pendiente de cálculo',x=>x.complete?cop(x.utility):'Pendiente de cálculo']))}</section>`;
-    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + platformSummary + reconciliationHtml + $("#content").innerHTML;
+    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + $("#content").innerHTML;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();
@@ -1054,7 +1076,7 @@
       })
       .join("");
     $("#content").innerHTML =
-      `<div class="card"><p class="muted"><b>Periodo operativo:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business === "propia" ? "solo tiendas propias" : business === "aliado" ? "solo aliados" : "tiendas propias y aliados"}. Los valores corresponden a la fecha real de venta. Abre una plataforma para consultar el detalle. La utilidad se analiza en Reportes Aliados y las metas en Presupuesto.</p></div><section class="platform-grid">${cardHtml}</section>`;
+      `<div class="card"><p class="muted"><b>Periodo operativo:</b> ${esc(from)} a ${esc(to)} · <b>Negocio:</b> ${business === "propia" ? "solo tiendas propias" : business === "aliado" ? "solo aliados" : "tiendas propias y aliados"}. Los valores corresponden a la fecha real de venta. Abre una plataforma para consultar el detalle. La utilidad y el cumplimiento se consultan en Dashboard Aliados; las metas se administran en Presupuesto.</p></div><section class="platform-grid">${cardHtml}</section>`;
   }
 
   function renderPlatformGoals() {

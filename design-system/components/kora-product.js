@@ -392,6 +392,9 @@
 
     document.querySelectorAll('input, select, textarea').forEach((control, index) => {
       if (control.id && document.querySelector(`label[for="${CSS.escape(control.id)}"]`)) return;
+      // A wrapping label already supplies the accessible name. Do not replace
+      // it with a generic placeholder such as "Campo 4".
+      if (control.closest('label')) return;
       if (control.getAttribute('aria-label') || control.getAttribute('aria-labelledby')) return;
       const placeholder = control.getAttribute('placeholder');
       const name = control.getAttribute('name');

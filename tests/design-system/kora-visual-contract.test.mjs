@@ -14,7 +14,7 @@ test('cabeceras y valores usan ejes consistentes sin alterar su contenido', () =
   for (const label of ['Estado', 'Acciones', 'Cantidad', 'Créditos / meta', 'PayJoy', 'Aliadas activas']) {
     assert.equal(context.columnAlignment(label), 'center', label);
   }
-  for (const label of ['Saldo inicial', 'Costo unit.', 'Comisión registrada', 'Valor', 'Utilidad', 'Margen %']) {
+  for (const label of ['Saldo inicial', 'Costo unit.', 'Comisión registrada', 'Valor', 'Utilidad', 'Margen %', 'Financiado', 'Iniciales', 'Gastos', 'Salidas explícitas', 'Esperado actualizado', 'Diferencia al cerrar']) {
     assert.equal(context.columnAlignment(label), 'right', label);
   }
   for (const label of ['Tienda', 'Proveedor / NIT', 'Concepto', 'Beneficiario', 'Fecha']) {
@@ -31,5 +31,20 @@ test('interacciones visibles respetan estado deshabilitado y movimiento reducido
   assert.match(css, /transform: translateY\(-2px\)/);
   assert.match(css, /transform: translateY\(1px\) scale\(\.985\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition: none/);
-  assert.match(css, /\.dashboard-panel, section\.bg-white\)[\s\S]*?border-top: 2px solid var\(--ctk-color-secondary-500\)/);
+  assert.match(css, /\.dashboard-panel, \.form-card, section\.bg-white\)[\s\S]*?border-top: 2px solid var\(--ctk-color-secondary-500\)/);
+});
+
+test('inventario reserva ancho para los importes y conserva contraste en enlaces botón', async () => {
+  const html = await read('creditek/erp/inventario.html');
+  assert.match(html, /minmax\(min\(100%, 270px\), 1fr\)/);
+  assert.match(html, /a\.btn-export[^}]*color:#fff;[^}]*text-decoration:none/);
+  assert.match(html, /font-size:clamp\(1\.5rem,2vw,1\.75rem\)/);
+});
+
+test('filtros conservan etiquetas nativas y métricas forman filas equilibradas', async () => {
+  const js = await read('design-system/components/kora-product.js');
+  assert.match(js, /if \(control\.closest\('label'\)\) return;/);
+  assert.match(css, /label:not\(:has\(input\[type="checkbox"\], input\[type="radio"\]\)\)/);
+  assert.match(css, /\[data-aliados-view="dashboard"\] \.metrics\s*\{\s*grid-template-columns: repeat\(3/);
+  assert.match(css, /\[data-aliados-view="budget"\] \.metrics\s*\{\s*grid-template-columns: repeat\(4/);
 });

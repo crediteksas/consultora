@@ -21,7 +21,7 @@
   function columnAlignment(label) {
     const name = cleanLabel(label).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (/^(estado|situacion|accion|acciones|autorizacion|foto|cantidad|cant\.?|unidades|operaciones|creditos|aliadas activas|payjoy|alo credit|krediya|caja)(\b|$)/.test(name)) return 'center';
-    if (/^(saldo|costo|precio|pvp|pagamos|pago a|total a pagar|valor|monto|importe|facturado|utilidad|comision|bonificacion|bonos|abonos|cargos|contado|margen|participacion|sub\.)(\b|\s|$)/.test(name)) return 'right';
+    if (/^(saldo|costo|precio|pvp|pagamos|pago a|total a pagar|valor|monto|importe|facturado|utilidad|comision|bonificacion|bonos|abonos|cargos|contado|financiado|iniciales|gastos|salidas explicitas|esperado actualizado|diferencia al cerrar|margen|participacion|sub\.)(\b|\s|$)/.test(name)) return 'right';
     return 'left';
   }
 
@@ -102,7 +102,7 @@
 
   window.KoraResponsive = Object.freeze({
     enhance: enhanceTables,
-    version: '1.0.1',
+    version: '1.0.2',
   });
 
   if (document.readyState === 'loading') {

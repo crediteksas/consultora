@@ -68,7 +68,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .btn-export:hover { border-color: var(--turquesa); }
 .btn-export:active { transform: scale(.985); }
 
-.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 14px; margin-bottom: 22px; }
 .resumen-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: var(--shadow-sm); transition: border-color 180ms ease, box-shadow 180ms ease; }
 .resumen-card:hover { border-color: rgba(11,30,61,.14); box-shadow: var(--shadow-md); }
 .resumen-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); font-weight: 700; margin-bottom: 6px; }
@@ -105,7 +105,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .resumen-card { background:#fff; border:1px solid rgba(11,30,61,.06); border-radius:16px; box-shadow:0 1px 3px rgba(11,30,61,.04); overflow:hidden; padding:24px; position:relative; transition:border-color .3s ease,box-shadow .3s ease,transform .3s cubic-bezier(.25,.46,.45,.94); }
 .resumen-card::before { background:linear-gradient(90deg,#00C4CC,#00D4DC); border-radius:0 0 3px 3px; content:""; height:3px; left:24px; position:absolute; right:24px; top:0; }
 .resumen-card:hover { border-color:rgba(0,196,204,.15); box-shadow:0 8px 24px rgba(11,30,61,.1); transform:translateY(-2px); }
-.resumen-card .valor { color:#0B1E3D; font-size:clamp(1.75rem,3vw,2.25rem); font-weight:700; letter-spacing:-.02em; }
+.resumen-card .valor { color:#0B1E3D; font-size:clamp(1.5rem,2vw,1.75rem); font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .resumen-card .label { color:#64748B; font-size:11px; font-weight:600; letter-spacing:.06em; }
 .tabs { border-radius:12px; gap:4px; padding:4px; }
 .tabs button { border:1.5px solid transparent; border-radius:10px; color:#64748B; min-height:44px; padding:0 20px; transition:background .2s ease,color .2s ease,transform 80ms ease; }
@@ -116,6 +116,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .filters select:focus-visible,.filters input:focus-visible { border-color:#00C4CC; box-shadow:0 0 0 3px rgba(0,196,204,.12); outline:none; }
 .btn-export { background:linear-gradient(135deg,#0B1E3D,#142d54); border:0; border-radius:12px; box-shadow:0 2px 8px rgba(11,30,61,.2); color:#fff; font-size:14px; padding:0 20px; }
 .btn-export:hover { border-color:transparent; box-shadow:0 4px 16px rgba(11,30,61,.3); transform:translateY(-1px); }
+body.kora-product-page a.btn-export { display:inline-flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; text-align:center; }
 .tabla-wrap { border:1px solid rgba(11,30,61,.06); border-radius:16px; box-shadow:0 1px 3px rgba(11,30,61,.04); }
 .tabla-wrap th { background:#0B1E3D; color:#fff; font-size:11px; letter-spacing:.06em; padding:14px 16px; text-transform:uppercase; }
 .tabla-wrap td { border-bottom:1px solid rgba(11,30,61,.04); color:#1E293B; font-size:14px; padding:14px 16px; }

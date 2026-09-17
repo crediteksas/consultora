@@ -142,8 +142,10 @@ test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tien
   assert.deepEqual(Array.from(navigation, section => section.title), ['MI TIENDA']);
   assert.ok(Array.from(navigation[0].items, item => item.href).includes('catalogo.html'));
   assert.ok(Array.from(navigation[0].items, item => item.href).includes('creditos-cartera.html'));
+  assert.ok(Array.from(navigation[0].items, item => item.href).includes('traslados.html'));
   assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
   assert.equal(access.authorize(profile, 'creditos-cartera.html', { cartera: true }).allowed, true);
+  assert.equal(access.authorize(profile, 'traslados.html').allowed, true);
   assert.equal(access.authorize(profile, 'incidencias.html').allowed, true);
   for (const route of ['utilidad-creditek.html', 'aliados-liquidaciones.html']) {
     assert.equal(access.authorize(profile, route).allowed, false, route);

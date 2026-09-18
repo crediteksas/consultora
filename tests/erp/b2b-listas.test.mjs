@@ -3,8 +3,32 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 import D from '../../creditek/erp/b2b-listas-domain.js';
+import W from '../../creditek/erp/b2b-whatsapp-domain.js';
+import C from '../../creditek/erp/b2b-comparativo.js';
 const migration=readFileSync(new URL('../../supabase/migrations/20260917174237_listas_precios_pedidos_kora.sql',import.meta.url),'utf8');
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+test('utilidad por costo: límite de 150000, WhatsApp, Excel, memoria y comparativo',()=>{
+ const products=[{id:'p',codigo:'ACC',nombre:'Accesorio'}],providers=[{id:'s',nombre:'Proveedor'}];
+ for(const [cost,margin] of [[35000,4200],[60000,7200],[85000,10200],[120000,14400],[149999.99,18000],[150000,20000],[150000.01,20000]]){
+  assert.equal(D.defaultMargin(cost),margin);
+  const map={header:0,reference:0,provider:1,cost:2,price:-1,margin:-1};
+  const [excel]=D.prepare([['r','p','c'],['ACC','Proveedor',cost]],map,products,providers);
+  assert.equal(excel.precio_tienda,Math.round((cost+margin)*100)/100);assert.deepEqual(D.validate([excel]),[]);
+  const rules=[{proveedor_id:'s',referencia_key:'ACC',producto_id:'p',margen:20000,motivo:''}];
+  const [wa]=W.parse('ACC $'+cost,'s',products,rules);
+  assert.equal(wa.precio_tienda,excel.precio_tienda,'La memoria de equivalencias no congela el margen estándar');
+  const report=C.build({providers,products,offers:[],winners:[],drafts:[{id:'d',proveedor_id:'s',creado_at:'2026-09-18',filas:[wa]}]});
+  assert.equal(report.drafts.length,1);
+ }
+ const row={row:1,producto_id:'p',proveedor_id:'s',costo:35000,precio_tienda:55000,motivo:'',included:true};
+ assert.ok(D.validate([row]).some(x=>x.includes('margen especial')));
+ assert.ok(D.validate([{...row,motivo:D.marginPolicy}]).length);
+ assert.deepEqual(D.validate([{...row,motivo:'Excepción autorizada'}]),[]);
+ const learned={proveedor_id:'s',referencia_key:'ACC',producto_id:'p',margen:10000,motivo:D.marginPolicy};
+ assert.equal(W.parse('ACC $150000','s',products,[learned])[0].precio_tienda,170000);
+ assert.equal(W.parse('ACC $35000','s',products,[{...learned,margen:15000,motivo:'Excepción autorizada'}])[0].precio_tienda,50000);
+});
+
 test('importación conserva costo real, margen variable, precio final y errores de origen',()=>{
  const products=[{id:'p',codigo:'SM17',nombre:'SM17 4/128GB'}],providers=[{id:'s',nombre:'Proveedor A'}];
  const map={header:0,reference:0,provider:1,cost:2,price:3,margin:4};
@@ -77,4 +101,37 @@ test('pantalla consulta solo catálogo publicado para tiendas y no manda pedidos
  assert.match(page,/Descargar pedidos pendientes/);assert.match(page,/crear_pedido_catalogo_b2b/);
  assert.match(page,/id="loadIssue".*role="alert"/);assert.match(page,/catch\(showLoadError\)/);
  assert.match(page,/catch\(e\)\{showLoadError\(e\);\}/);assert.match(page,/Creditek aún no ha publicado referencias/);
+});
+
+test('migración de utilidad: respalda borradores, preserva costos/publicados y valida en servidor',async()=>{
+ const db=new PGlite();try{
+  const source=readFileSync(new URL('./b2b-listas.test.mjs',import.meta.url),'utf8');
+  const start=source.indexOf('await db.'+'exec(`create role anon');
+  const fixture=source.slice(start+15,source.indexOf('`);',start)).replace(/\$\{uid\((\d+)\)\}/g,(_,n)=>uid(n));
+  await db.exec(fixture);await db.exec('create schema kora_private;');
+  await db.exec(migration);
+  await db.exec(readFileSync(new URL('../../supabase/migrations/20260917220853_b2b_catalogo_whatsapp_memoria.sql',import.meta.url),'utf8'));
+  await db.exec(`select set_config('request.jwt.claim.sub','${uid(1)}',false);`);
+  const line=(cost,margin=20000,motivo='')=>({row:1,reference:'ACC1',producto_id:uid(11),proveedor_id:uid(20),costo:cost,precio_tienda:cost+margin,motivo,included:true});
+  const original=[line(35000),line(60000),line(85000),line(150000),line(35000,15000,'Excepción autorizada'),{...line(0),costo:null}];
+  const q=async(sql,args=[])=>(await db.query(sql,args)).rows;
+  const [{id}]=await q('select guardar_borrador_catalogo_b2b($1,$2,$3::jsonb) id',[uid(20),'Lista original',JSON.stringify(original)]);
+  const [{r:published}]=await q('select publicar_lista_b2b($1,$2,$3,$4::jsonb) r',['viejo','a'.repeat(64),'proveedores',JSON.stringify([line(35000)])]);
+  const [{id:oldId}]=await q('select guardar_borrador_catalogo_b2b($1,$2,$3::jsonb) id',[uid(20),'Ya publicada',JSON.stringify([line(35000)])]);
+  await q('update b2b_catalogo_borradores set lista_id=$1 where id=$2',[published.id,oldId]);
+  await db.exec(readFileSync(new URL('../../supabase/migrations/20260918163447_b2b_margen_12pct_menor_150mil.sql',import.meta.url),'utf8'));
+  const [{filas}]=await q('select filas from b2b_catalogo_borradores where id=$1',[id]);
+  assert.deepEqual(filas.map(r=>r.precio_tienda),[39200,67200,95200,170000,50000,20000]);
+  assert.deepEqual(filas.map(r=>r.costo),original.map(r=>r.costo));
+  assert.deepEqual((await q('select filas_antes from kora_private.b2b_margen_20260918_respaldo'))[0].filas_antes,original);
+  assert.equal((await q('select filas from b2b_catalogo_borradores where id=$1',[oldId]))[0].filas[0].precio_tienda,55000);
+  assert.equal(Number((await q('select precio_tienda from b2b_ofertas'))[0].precio_tienda),55000);
+  await db.exec('set role authenticated');
+  await assert.rejects(()=>q('select * from kora_private.b2b_margen_20260918_respaldo'),/permission denied/);
+  const publish=rows=>q('select publicar_lista_b2b($1,$2,$3,$4::jsonb) r',['actual','b'.repeat(64),'proveedores',JSON.stringify(rows)]);
+  await assert.rejects(()=>publish([line(35000)]),/margen especial/);
+  await assert.rejects(()=>publish([line(35000,20000,D.marginPolicy)]),/margen especial/);
+  assert.ok((await publish([line(35000,4200)]))[0].r.id);
+  await q('select guardar_regla_catalogo_b2b($1,$2,$3,$4,$5)',[uid(20),'ACC1',uid(11),4200,D.marginPolicy]);
+ }finally{await db.close();}
 });

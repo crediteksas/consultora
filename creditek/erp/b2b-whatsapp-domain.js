@@ -28,9 +28,10 @@
    const expected=remembered.length===1?remembered[0].canonica:'';
    const exact=products.filter(p=>[p.nombre,p.codigo].some(v=>D.key(v)===D.key(r.reference)||(expected&&legacyKey(v)===legacyKey(expected))));
    const blocked=/\b(AGOTADO|SIN STOCK|USADO|REACONDICIONADO|REFURBISHED|SOBRE PEDIDO|POR ENCARGO)\b/i.test(r.reference);
-   const margin=rule?Number(rule.margen):20000;
+   const special=rule&&!D.isDefaultReason(rule.motivo);
+   const margin=special?Number(rule.margen):D.defaultMargin(r.costo);
    return {...r,proveedor_id:provider,producto_id:rule?.producto_id||(exact.length===1?exact[0].id:''),
-    precio_tienda:r.costo==null?null:Math.round((r.costo+margin)*100)/100,motivo:rule?.motivo||'',
+    precio_tienda:r.costo==null?null:Math.round((r.costo+margin)*100)/100,motivo:special?rule.motivo:'',
     learned:!!rule||(!!expected&&exact.length===1),legacyExpected:expected,remember:false,included:!blocked,exclusion:blocked?'No disponible como equipo nuevo para entrega':'',
     priceWarning:r.costo!==null&&r.costo<10000?'Precio bajo: confirma si el proveedor lo expresó en miles. No se multiplica automáticamente.':''};
   }

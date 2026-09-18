@@ -3,6 +3,7 @@
  const D=typeof module==='object'&&module.exports?require('./b2b-listas-domain.js'):root.KoraB2BListas;
  const W=typeof module==='object'&&module.exports?require('./b2b-whatsapp-domain.js'):root.KoraB2BWhatsApp;
  const PAGE_SIZE=20;
+ const identityMap={id:value=>value,offer:row=>({...row}),name:(_id,fallback)=>fallback};
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(n);
  const normalize=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -18,11 +19,17 @@
   const query=normalize(search),names=new Map(products.map(p=>[p.id,`${p.nombre} ${p.codigo}`]));
   return classify(rows).filter(({r,state})=>(mode==='all'?state!=='headers':state===mode)&&(!query||normalize(`${r.reference} ${r.original} ${names.get(r.producto_id)||''} ${r.exclusion||''}`).includes(query)));
  }
+ function comparisonRows(rows,offers,provider,referenceMap=identityMap){
+  const wanted=new Set(rows.filter(r=>r.included).map(r=>referenceMap.id(r.producto_id)));
+  const candidates=[...offers.filter(o=>o.proveedor_id!==provider).map(o=>({...o,included:true})),...rows.filter(r=>r.included)]
+   .map(row=>referenceMap.offer(row)).sort((a,b)=>a.costo-b.costo||a.precio_tienda-b.precio_tienda||String(a.proveedor_id).localeCompare(String(b.proveedor_id))||String(a.id||a.row||'').localeCompare(String(b.id||b.row||'')));
+  return D.winners(candidates).filter(o=>wanted.has(o.producto_id));
+ }
  async function all(query){let result=[];for(let from=0;;from+=500){const {data,error}=await query().range(from,from+499);if(error)throw error;if(!Array.isArray(data))throw Error('No se recibió la información de la consulta.');result.push(...data);if(data.length<500)return result;}}
  function mount(ctx){
   const {container,sb}=ctx;
   if(container.refreshContext){container.refreshContext(ctx);return;}
-  let products=ctx.products,providers=ctx.providers,onPublished=ctx.onPublished,onSaved=ctx.onSaved;
+  let products=ctx.products,providers=ctx.providers,onPublished=ctx.onPublished,onSaved=ctx.onSaved,referenceMap=ctx.referenceMap||identityMap;
   let rows=[],offers=[],page=0,busy=false,draft=null,loadedId=null,historyOffset=0,sourceProvider='',sourceText='',dirty=false,published=false,mode='pending',expanded=null,focusAfter=null;
   container.innerHTML=`<div class="list-heading"><div><h2 data-editor-heading>Revisar lista del proveedor</h2><p class="sub">Abre una referencia para editarla. Guardar conserva el avance; publicar la hace visible para las tiendas.</p></div></div>
    <details class="wa-source-form" data-source><summary>Proveedor y mensaje original</summary><div class="grid"><label>Proveedor<select data-provider><option value="">Selecciona proveedor</option>${providers.map(p=>`<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('')}</select></label></div><label>Mensaje completo del proveedor<textarea data-text rows="7" maxlength="200000" placeholder="Pega aquí la lista tal como llegó por WhatsApp"></textarea></label><div class="actions"><button type="button" class="btn primary" data-analyze>Analizar lista</button></div><p class="sub">Utilidad: 12% sobre costos menores de $150.000; $20.000 desde ese valor, salvo excepciones confirmadas.</p></details>
@@ -37,7 +44,7 @@
   const label=id=>{const p=products.find(p=>p.id===id);return p?`${p.codigo} · ${p.nombre}`:'';};
   const filtered=()=>selectRows(rows,mode,$('[data-search]').value,products);
   const notifyOpen=()=>container.dispatchEvent(new CustomEvent('b2b:draft-open',{bubbles:true,detail:{id:loadedId,published}}));
-  container.refreshContext=c=>{products=c.products;providers=c.providers;onPublished=c.onPublished;onSaved=c.onSaved;const datalist=$('#wa-products');if(datalist)datalist.innerHTML=products.map(p=>`<option value="${esc(label(p.id))}"></option>`).join('');};
+  container.refreshContext=c=>{products=c.products;providers=c.providers;onPublished=c.onPublished;onSaved=c.onSaved;referenceMap=c.referenceMap||identityMap;const datalist=$('#wa-products');if(datalist)datalist.innerHTML=products.map(p=>`<option value="${esc(label(p.id))}"></option>`).join('');};
   container.hasUnsavedChanges=()=>dirty;
   function invalidate(){rows=[];draft=null;loadedId=null;dirty=true;published=false;$('[data-review]').classList.add('hidden');status('Texto o proveedor cambiado: analiza la lista antes de continuar.');}
   $('[data-provider]').onchange=invalidate;$('[data-text]').oninput=invalidate;
@@ -66,8 +73,8 @@
   }
   function comparison(){
    if(W.validate(rows).length){$('[data-comparison]').textContent='Resuelve las dudas para ver el comparativo completo.';return;}
-   const winners=W.compare(rows,offers,sourceProvider).filter(o=>rows.some(r=>r.included&&r.producto_id===o.producto_id));
-   $('[data-comparison]').innerHTML='<div class="table-wrap"><table class="list-preview"><thead><tr><th>Referencia</th><th>Proveedor ganador</th><th>Costo</th><th>Precio retail</th></tr></thead><tbody>'+winners.map(o=>`<tr><td data-label="Referencia">${esc(label(o.producto_id))}</td><td data-label="Proveedor">${esc(providers.find(p=>p.id===o.proveedor_id)?.nombre)}</td><td data-label="Costo">${money(o.costo)}</td><td data-label="Precio retail">${money(o.precio_tienda)}</td></tr>`).join('')+'</tbody></table></div>';
+   const winners=comparisonRows(rows,offers,sourceProvider,referenceMap);
+   $('[data-comparison]').innerHTML='<p class="sub">Vista propuesta sin distinguir colores; conserva las ofertas originales. Solo cambia el catálogo al publicar.</p><div class="table-wrap"><table class="list-preview"><thead><tr><th>Referencia</th><th>Proveedor ganador</th><th>Costo</th><th>Precio retail</th></tr></thead><tbody>'+winners.map(o=>`<tr><td data-label="Referencia">${esc(referenceMap.name(o.producto_id,label(o.producto_id)))}</td><td data-label="Proveedor">${esc(providers.find(p=>p.id===o.proveedor_id)?.nombre)}</td><td data-label="Costo">${money(o.costo)}</td><td data-label="Precio retail">${money(o.precio_tienda)}</td></tr>`).join('')+'</tbody></table></div>';
   }
   function controls(){
    const errors=rows.length?W.validate(rows):[];
@@ -138,5 +145,5 @@
   root.addEventListener?.('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
   controls();
  }
- const api={mount,classify,selectRows,isAuxiliary,referenceParts,PAGE_SIZE};if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BWhatsAppUI=api;
+ const api={mount,classify,selectRows,isAuxiliary,referenceParts,comparisonRows,PAGE_SIZE};if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BWhatsAppUI=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

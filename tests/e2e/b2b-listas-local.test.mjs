@@ -17,21 +17,23 @@ test('KORA: administración importa con revisión y retail pide sin datos del pr
   const p={id:'00000000-0000-4000-8000-000000000010',codigo:'SM17',nombre:'Samsung A17 4/128GB',categoria:'CELULAR',precio_guia:450000,version_precio:'00000000-0000-4000-8000-000000000020'};
   const provider={id:'00000000-0000-4000-8000-000000000030',nombre:'Proveedor A',nit:'900001'};
   window.calls=[];window.writes=[];
-  const tables={productos:[p],proveedores:[provider],origenes:[{codigo:'A',nombre:'Tienda A'}],pedido_b2b_items:[],ordenes_compra:[],b2b_pedido_fuente:[],b2b_mejor_oferta:[],pedidos_b2b:[]};
+  const tables={productos:[p],proveedores:[provider],origenes:[{codigo:'A',nombre:'Tienda A'}],pedido_b2b_items:[],ordenes_compra:[],b2b_pedido_fuente:[],b2b_mejor_oferta:[],pedidos_b2b:[],b2b_referencias_catalogo:[]};
   const query=data=>{const q={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,range:async(start,end)=>({data:data.slice(start,end+1)}),maybeSingle:async()=>({data:{id:'u',rol:role,tienda_codigo:'A',activo:true}})};return q;};
-  window.SB={auth:{getSession:async()=>({data:{session:{user:{id:'u'}}}})},from:name=>{window.calls.push(name);return query(tables[name]||[]);},rpc:(name,payload)=>{window.calls.push(name);if(name==='catalogo_pedidos_b2b')return query([p]);window.writes.push({name,payload});return Promise.resolve({data:{id:'ok',numero:'PED-000001',filas:1}});}};
+  window.SB={auth:{getSession:async()=>({data:{session:{user:{id:'u'}}}})},from:name=>{window.calls.push(name);return query(tables[name]||[]);},rpc:(name,payload)=>{window.calls.push(name);if(name==='catalogo_pedidos_b2b')return query([p]);if(name==='vista_previa_cierre_b2b')return Promise.resolve({data:{items:[],pedidos:0,pedido_ids:[]}});window.writes.push({name,payload});return Promise.resolve({data:{id:'ok',numero:'PED-000001',filas:1}});}};
  },{role});
  await page.goto(origin+'/creditek/erp/pedidos-b2b.html');
  if(['auditoria','gerencia'].includes(role)){
+  await page.locator('#excelImport > summary').click();
+  const editor=page.locator('#listasPrecios');
   await page.getByRole('button',{name:'Cargar lista de precios',exact:true}).click();
-  await page.locator('[data-file]').setInputFiles({name:'precios.csv',mimeType:'text/csv',buffer:Buffer.from('Referencia;Proveedor;Costo real;Precio retail\nSM17;Proveedor A;430000;445000\n')});
+  await editor.locator('[data-file]').setInputFiles({name:'precios.csv',mimeType:'text/csv',buffer:Buffer.from('Referencia;Proveedor;Costo real;Precio retail\nSM17;Proveedor A;430000;445000\n')});
   await page.waitForFunction(()=>document.querySelector('[data-map="cost"]').value==='2');
   await page.getByRole('button',{name:'Revisar filas',exact:true}).click();
-  assert.equal(await page.locator('[data-row]').count(),1);assert.match(await page.locator('[data-margin]').innerText(),/15.000/);
-  assert.equal(await page.locator('[data-publish]').isDisabled(),true);
-  await page.locator('[data-confirm]').check();assert.equal(await page.locator('[data-publish]').isEnabled(),true);
+  assert.equal(await editor.locator('[data-row]').count(),1);assert.match(await editor.locator('[data-margin]').innerText(),/15.000/);
+  assert.equal(await editor.locator('[data-publish]').isDisabled(),true);
+  await editor.locator('[data-confirm]').check();assert.equal(await editor.locator('[data-publish]').isEnabled(),true);
   await page.screenshot({path:`/tmp/kora-b2b-${role}.png`,fullPage:true});
-  await page.locator('[data-publish]').click();await page.waitForFunction(()=>window.writes.length===1);
+  await editor.locator('[data-publish]').click();await page.waitForFunction(()=>window.writes.length===1);
   const write=await page.evaluate(()=>window.writes[0]);assert.equal(write.name,'publicar_lista_b2b');assert.equal(write.payload.p_filas[0].costo,430000);assert.equal(write.payload.p_filas[0].precio_tienda,445000);assert.equal(write.payload.p_huella.length,64);
  }else{
   await page.getByRole('button',{name:'Agregar',exact:true}).click();await page.getByRole('button',{name:/Ver pedido/}).click();

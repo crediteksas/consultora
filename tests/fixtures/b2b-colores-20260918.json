@@ -1,0 +1,338 @@
+[
+  {
+    "codigo": "BHR08OJGL",
+    "nombre": "Audifonos Redmi Buds 8 Lite Blue",
+    "canonical": "K26-1E0C63353C4B",
+    "nombre_pedido": "Redmi Buds 8 Lite"
+  },
+  {
+    "codigo": "2GE3003",
+    "nombre": "AUDIFONOS REDMI BUDS 8 LITE WHITE",
+    "canonical": "K26-1E0C63353C4B",
+    "nombre_pedido": "Redmi Buds 8 Lite"
+  },
+  {
+    "codigo": "K26-1E0C63353C4B",
+    "nombre": "XIAOMI REDMI BUDS 8 LITE",
+    "canonical": "K26-1E0C63353C4B",
+    "nombre_pedido": "Redmi Buds 8 Lite"
+  },
+  {
+    "codigo": "BHR08GJGL",
+    "nombre": "Audifonos REDMI Buds 8 Pro Cloud White",
+    "canonical": "K26-D664E4E49C90",
+    "nombre_pedido": "Redmi Buds 8 Pro"
+  },
+  {
+    "codigo": "BHR08GMGL",
+    "nombre": "audifonos REDMI Buds 8 Pro Glacier Blue",
+    "canonical": "K26-D664E4E49C90",
+    "nombre_pedido": "Redmi Buds 8 Pro"
+  },
+  {
+    "codigo": "BHR08GOGL",
+    "nombre": "Audifonos REDMI Buds 8 Pro Obsidian Black",
+    "canonical": "K26-D664E4E49C90",
+    "nombre_pedido": "Redmi Buds 8 Pro"
+  },
+  {
+    "codigo": "K26-D664E4E49C90",
+    "nombre": "XIAOMI REDMI BUDS 8 PRO",
+    "canonical": "K26-D664E4E49C90",
+    "nombre_pedido": "Redmi Buds 8 Pro"
+  },
+  {
+    "codigo": "BHR09GTGL",
+    "nombre": "Audifonos Xiaomi Buds 6 Nebula Purple",
+    "canonical": "K26-731FA4078FC6",
+    "nombre_pedido": "Xiaomi Buds 6"
+  },
+  {
+    "codigo": "BHR08OGGL",
+    "nombre": "Audifonos Xiaomi Buds 6 Pearl White",
+    "canonical": "K26-731FA4078FC6",
+    "nombre_pedido": "Xiaomi Buds 6"
+  },
+  {
+    "codigo": "BHR08OHGL",
+    "nombre": "Audifonos Xiaomi Buds 6 Titan Gray",
+    "canonical": "K26-731FA4078FC6",
+    "nombre_pedido": "Xiaomi Buds 6"
+  },
+  {
+    "codigo": "K26-731FA4078FC6",
+    "nombre": "XIAOMI BUDS 6",
+    "canonical": "K26-731FA4078FC6",
+    "nombre_pedido": "Xiaomi Buds 6"
+  },
+  {
+    "codigo": "BHR8930GL",
+    "nombre": "Audifonos Xiaomi Type-C Earphones Black",
+    "canonical": "BHR8930GL",
+    "nombre_pedido": "Xiaomi Type-C Earphones"
+  },
+  {
+    "codigo": "BHR8931GL",
+    "nombre": "Audifonos Xiaomi Type-C Earphones White",
+    "canonical": "BHR8930GL",
+    "nombre_pedido": "Xiaomi Type-C Earphones"
+  },
+  {
+    "codigo": "BHR08W6GL",
+    "nombre": "DIADEMA REDMI Headphones Neo Mist Blue",
+    "canonical": "K26-0817FCC59C92",
+    "nombre_pedido": "Redmi Headphones Neo"
+  },
+  {
+    "codigo": "BHR08W5GL",
+    "nombre": "DIADEMA REDMI Headphones Neo Obsidian Black",
+    "canonical": "K26-0817FCC59C92",
+    "nombre_pedido": "Redmi Headphones Neo"
+  },
+  {
+    "codigo": "BHR08W2GL",
+    "nombre": "DIADEMA REDMI Headphones Neo Sand White",
+    "canonical": "K26-0817FCC59C92",
+    "nombre_pedido": "Redmi Headphones Neo"
+  },
+  {
+    "codigo": "K26-0817FCC59C92",
+    "nombre": "XIAOMI REDMI HEADPHONES NEO",
+    "canonical": "K26-0817FCC59C92",
+    "nombre_pedido": "Redmi Headphones Neo"
+  },
+  {
+    "codigo": "K26-9A216E403B7F",
+    "nombre": "JBL Boombox 4",
+    "canonical": "K26-9A216E403B7F",
+    "nombre_pedido": "JBL Boombox 4"
+  },
+  {
+    "codigo": "K26-796CEAB7DA35",
+    "nombre": "JBL Boombox 4 Camuflado",
+    "canonical": "K26-9A216E403B7F",
+    "nombre_pedido": "JBL Boombox 4"
+  },
+  {
+    "codigo": "K26-5CCF39569FBB",
+    "nombre": "JBL Boombox 4 Negro",
+    "canonical": "K26-9A216E403B7F",
+    "nombre_pedido": "JBL Boombox 4"
+  },
+  {
+    "codigo": "BHR08UFGL",
+    "nombre": "REDMI Buds 8 Black",
+    "canonical": "K26-DC47A4F8E931",
+    "nombre_pedido": "Redmi Buds 8"
+  },
+  {
+    "codigo": "BHR08UJGL",
+    "nombre": "REDMI Buds 8 Green",
+    "canonical": "K26-DC47A4F8E931",
+    "nombre_pedido": "Redmi Buds 8"
+  },
+  {
+    "codigo": "BHR08UHGL",
+    "nombre": "REDMI Buds 8 White",
+    "canonical": "K26-DC47A4F8E931",
+    "nombre_pedido": "Redmi Buds 8"
+  },
+  {
+    "codigo": "K26-DC47A4F8E931",
+    "nombre": "XIAOMI REDMI BUDS 8",
+    "canonical": "K26-DC47A4F8E931",
+    "nombre_pedido": "Redmi Buds 8"
+  },
+  {
+    "codigo": "BHR09CXGL",
+    "nombre": "REDMI Watch 6 Active Matte Silver",
+    "canonical": "K26-7BA0CC3726E5",
+    "nombre_pedido": "Redmi Watch 6 Active"
+  },
+  {
+    "codigo": "K26-7BA0CC3726E5",
+    "nombre": "XIAOMI REDMI WATCH 6 ACTIVE",
+    "canonical": "K26-7BA0CC3726E5",
+    "nombre_pedido": "Redmi Watch 6 Active"
+  },
+  {
+    "codigo": "K26-9DCAE66151E9",
+    "nombre": "REDMI Watch 6 Lite",
+    "canonical": "K26-9DCAE66151E9",
+    "nombre_pedido": "Redmi Watch 6 Lite"
+  },
+  {
+    "codigo": "BHR09CWGL",
+    "nombre": "REDMI Watch 6 Lite Black",
+    "canonical": "K26-9DCAE66151E9",
+    "nombre_pedido": "Redmi Watch 6 Lite"
+  },
+  {
+    "codigo": "BHR09CVGL",
+    "nombre": "REDMI Watch 6 Lite Steel Gray",
+    "canonical": "K26-9DCAE66151E9",
+    "nombre_pedido": "Redmi Watch 6 Lite"
+  },
+  {
+    "codigo": "BHR08CWGL",
+    "nombre": "RELOJ REDMI Watch 6 Glacier Blue",
+    "canonical": "BHR08CWGL",
+    "nombre_pedido": "Redmi Watch 6"
+  },
+  {
+    "codigo": "BHR08CUGL",
+    "nombre": "Reloj REDMI Watch 6 Silver Gray",
+    "canonical": "BHR08CWGL",
+    "nombre_pedido": "Redmi Watch 6"
+  },
+  {
+    "codigo": "BHR07WRGL",
+    "nombre": "Reloj Xiaomi Watch 5 Black Strap",
+    "canonical": "K26-B7F938B78B93",
+    "nombre_pedido": "Xiaomi Watch 5"
+  },
+  {
+    "codigo": "K26-B7F938B78B93",
+    "nombre": "XIAOMI WATCH 5",
+    "canonical": "K26-B7F938B78B93",
+    "nombre_pedido": "Xiaomi Watch 5"
+  },
+  {
+    "codigo": "K26-4629CE8A9C29",
+    "nombre": "XIAOMI SMART BAND 10",
+    "canonical": "K26-4629CE8A9C29",
+    "nombre_pedido": "Xiaomi Smart Band 10"
+  },
+  {
+    "codigo": "BHR07PYGL",
+    "nombre": "Xiaomi Smart Band 10 Midnight Black",
+    "canonical": "K26-4629CE8A9C29",
+    "nombre_pedido": "Xiaomi Smart Band 10"
+  },
+  {
+    "codigo": "K26-D060FDB7D52F",
+    "nombre": "XIAOMI SMART BAND 10 PRO",
+    "canonical": "K26-D060FDB7D52F",
+    "nombre_pedido": "Xiaomi Smart Band 10 Pro"
+  },
+  {
+    "codigo": "BHR08WBGL",
+    "nombre": "Xiaomi Smart Band 10 Pro Glacier Silver",
+    "canonical": "K26-D060FDB7D52F",
+    "nombre_pedido": "Xiaomi Smart Band 10 Pro"
+  },
+  {
+    "codigo": "BHR08WGGL",
+    "nombre": "Xiaomi Smart Band 10 Pro Lavender pink",
+    "canonical": "K26-D060FDB7D52F",
+    "nombre_pedido": "Xiaomi Smart Band 10 Pro"
+  },
+  {
+    "codigo": "BHR08W9GL",
+    "nombre": "Xiaomi Smart Band 10 Pro Midnight Black",
+    "canonical": "K26-D060FDB7D52F",
+    "nombre_pedido": "Xiaomi Smart Band 10 Pro"
+  },
+  {
+    "codigo": "K26-A48F572E7E8D",
+    "nombre": "XIAOMI ULTRATHIN MAGNETIC POWER BANK 5000 15W",
+    "canonical": "K26-A48F572E7E8D",
+    "nombre_pedido": "Xiaomi UltraThin Magnetic Power Bank 5000 15W"
+  },
+  {
+    "codigo": "BHR08Z2GL",
+    "nombre": "Xiaomi UltraThin Magnetic Power Bank 5000 15W Glacier Silver",
+    "canonical": "K26-A48F572E7E8D",
+    "nombre_pedido": "Xiaomi UltraThin Magnetic Power Bank 5000 15W"
+  },
+  {
+    "codigo": "BHR0913GL",
+    "nombre": "Xiaomi UltraThin Magnetic Power Bank 5000 15W Graphite Black",
+    "canonical": "K26-A48F572E7E8D",
+    "nombre_pedido": "Xiaomi UltraThin Magnetic Power Bank 5000 15W"
+  },
+  {
+    "codigo": "BHR8143US",
+    "nombre": "Aspiradora Xiaomi Robot Vacuum E5 (White) US",
+    "canonical": "BHR8143US",
+    "nombre_pedido": "Aspiradora Xiaomi Robot Vacuum E5 US"
+  },
+  {
+    "codigo": "BHR08ITGL",
+    "nombre": "Reloj Xiaomi Watch S5 46mm Ceramic Blue",
+    "canonical": "BHR08ITGL",
+    "nombre_pedido": "Xiaomi Watch S5 46mm · bisel cerámico y correa de cuero"
+  },
+  {
+    "codigo": "BHR08IXGL",
+    "nombre": "RELOJ Xiaomi Watch S5 46mm Jungle Green",
+    "canonical": "BHR08IXGL",
+    "nombre_pedido": "Xiaomi Watch S5 46mm · bisel de carbono y correas de fluoroelastómero y nylon"
+  },
+  {
+    "codigo": "BHR08ISGL",
+    "nombre": "Reloj Xiaomi Watch S5 46mm Silver",
+    "canonical": "BHR08ISGL",
+    "nombre_pedido": "Xiaomi Watch S5 46mm · edición estándar"
+  },
+  {
+    "codigo": "K26-D70952A1ACDF",
+    "nombre": "TCL Barra de Sonido Q65H Negro",
+    "canonical": "K26-D70952A1ACDF",
+    "nombre_pedido": "TCL Barra de Sonido Q65H"
+  },
+  {
+    "codigo": "K26-EDC818D585FC",
+    "nombre": "TCL Barra de Sonido S45H Negro",
+    "canonical": "K26-EDC818D585FC",
+    "nombre_pedido": "TCL Barra de Sonido S45H"
+  },
+  {
+    "codigo": "K26-4EF5D994A793",
+    "nombre": "TCL Barra de Sonido S55H Negro",
+    "canonical": "K26-4EF5D994A793",
+    "nombre_pedido": "TCL Barra de Sonido S55H"
+  },
+  {
+    "codigo": "K26-812EB67674F5",
+    "nombre": "TCL Parlante TP200K 220W Negro",
+    "canonical": "K26-812EB67674F5",
+    "nombre_pedido": "TCL Parlante TP200K 220W"
+  },
+  {
+    "codigo": "K26-456A96497FBA",
+    "nombre": "TCL Parlante TP300K 340W Negro",
+    "canonical": "K26-456A96497FBA",
+    "nombre_pedido": "TCL Parlante TP300K 340W"
+  },
+  {
+    "codigo": "BHR084CUS",
+    "nombre": "Xiaomi Air Fryer 6.5L Black US",
+    "canonical": "BHR084CUS",
+    "nombre_pedido": "Xiaomi Air Fryer 6.5L US"
+  },
+  {
+    "codigo": "BHR07Y5GL",
+    "nombre": "Xiaomi Smart Band 10 Ceramic Edition Pearl White",
+    "canonical": "BHR07Y5GL",
+    "nombre_pedido": "Xiaomi Smart Band 10 Ceramic Edition"
+  },
+  {
+    "codigo": "BHR07VRGL",
+    "nombre": "Xiaomi Watch S4 41mm Fluororubber Strap(Black)",
+    "canonical": "BHR07VRGL",
+    "nombre_pedido": "Xiaomi Watch S4 41mm · correa de fluoroelastómero"
+  },
+  {
+    "codigo": "BHR07VUGL",
+    "nombre": "Xiaomi Watch S4 41mm Leather Strap(White)",
+    "canonical": "BHR07VUGL",
+    "nombre_pedido": "Xiaomi Watch S4 41mm · correa de cuero"
+  },
+  {
+    "codigo": "K26-C5B581051999",
+    "nombre": "XIAOMI WATCH S4 41MM SUNSET GOLD MILANESE",
+    "canonical": "K26-C5B581051999",
+    "nombre_pedido": "Xiaomi Watch S4 41mm · correa Milanese"
+  }
+]

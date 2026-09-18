@@ -37,6 +37,9 @@
   const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);
   const awaitingKrediyaCalculation = (batch) => batch.plataforma === 'krediya' && ['importada','validada','con_novedades'].includes(batch.estado);
   const awaitingCalculation = (batch) => ['importada','validada','con_novedades'].includes(batch.estado);
+  const operationCount = (batch) => awaitingCalculation(batch)
+    ? (batch.liquidation_operations || []).filter((operation) => batch.plataforma !== 'krediya' || operation.reconocida).length
+    : Number(batch.operaciones_tiendas || 0) + Number(batch.operaciones_aliados || 0);
   const provisionalBatch = batch => (batch.liquidation_operations || []).some(o=>o.reconocida && o.tipo_establecimiento==='aliado' && !o.ejecutivo_id);
   const KREDIYA_FOLLOWUP_TYPES = new Set(['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente','novedad_administrativa']);
 
@@ -141,9 +144,12 @@
   function renderBatches() {
     const periodo=Summary.periodos();
     const month=Summary.utilidadMes(batches,periodo);
+    const weeklyBatches=batches.filter(batch=>Summary.deSemana(batch,periodo));
+    const weeklyOperations=weeklyBatches.reduce((total,batch)=>total+operationCount(batch),0);
     $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad liquidada · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · ${esc($('filterPlatform').value?platformName($('filterPlatform').value):'Todas las plataformas')}</p></div><strong class="monthly-utility">${month.total==null?'No disponible':money(month.total)}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Antes de gastos, retiros y ajustes posteriores; no es saldo bancario.${month.faltantes?' Hay liquidaciones sin utilidad informada.':''}</p>`;
-    $('showWeek').textContent=`Esta semana (${batches.filter(b=>Summary.deSemana(b,periodo)).length})`;
-    $('listPeriod').textContent=listMode==='week'?`Cortes del ${UX.fechaCorta(periodo.semanaDesde)} al ${UX.fechaCorta(periodo.semanaHasta)}`:listMode==='pending'?'Pendientes de todas las fechas, para no omitir gestiones.':'Consulta liquidaciones anteriores por fecha de corte.';
+    $('showWeek').textContent=`Liquidado esta semana (${weeklyBatches.length})`;
+    $('listPeriod').textContent=listMode==='week'?`Aprobadas del ${UX.fechaCorta(periodo.semanaDesde)} al ${UX.fechaCorta(periodo.semanaHasta)} · ${weeklyBatches.length} liquidaciones · ${weeklyOperations} operaciones. El corte se muestra solo como referencia.`:listMode==='pending'?'Pendientes de todas las fechas, para no omitir gestiones.':'Consulta liquidaciones anteriores por fecha de corte.';
+    $('batchDateHeader').textContent=listMode==='pending'?'Importación':'Liquidada';
     $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
     $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     const search = $('filterSearch').value.trim().toLowerCase();
@@ -154,8 +160,8 @@
     const from=$('historyFrom')?.value,until=$('historyUntil')?.value;
     if(listMode==='history')rows.splice(0,rows.length,...rows.filter(b=>(!from||b.fecha_corte>=from)&&(!until||b.fecha_corte<=until)));
     $('batches').innerHTML = rows.map((b) => `<tr>
-      <td>${UX.fechaAuditoria(b.imported_at)}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
-      <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${awaitingCalculation(b) ? (b.liquidation_operations || []).filter(o=>b.plataforma!=='krediya'||o.reconocida).length : Number(b.operaciones_tiendas || 0) + Number(b.operaciones_aliados || 0)}</td>
+      <td>${UX.fechaAuditoria(listMode==='pending'?b.imported_at:(b.approved_at||b.imported_at))}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
+      <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${operationCount(b)}</td>
       ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${i===0?commercePayment(b):awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : v==null?'No informado':money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'week' ? 'No hay liquidaciones en esta semana. Puedes consultar otras fechas en el historial.' : listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial para este rango.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });

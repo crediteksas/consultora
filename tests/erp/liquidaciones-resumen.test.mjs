@@ -29,14 +29,24 @@ function render(batches,mode='week',filters={}){
   context.renderBatches();return {context,$};
 }
 test('principal muestra solo semana; antiguos por consulta y pendientes antiguos no desaparecen',()=>{
-  const rows=[approved('current','2026-09-14',50),approved('old','2026-09-07',10),approved('pending','2026-09-05',null,{estado:'calculada',approved_at:null})];
+  const rows=[approved('current','2026-09-07',50,{approved_at:'2026-09-14T16:00:00Z',operaciones_tiendas:21}),approved('old','2026-09-14',10,{approved_at:'2026-09-13T20:00:00Z'}),approved('pending','2026-09-15',null,{estado:'calculada',approved_at:null})];
   const week=render(rows);assert.match(week.$('batches').innerHTML,/data-open="current"/);assert.doesNotMatch(week.$('batches').innerHTML,/data-open="old"|data-open="pending"/);
+  assert.equal(week.$('showWeek').textContent,'Liquidado esta semana (1)');assert.match(week.$('listPeriod').textContent,/1 liquidaciones · 21 operaciones/);assert.doesNotMatch(week.$('listPeriod').textContent,/Cortes del/);
+  assert.equal(week.$('batchDateHeader').textContent,'Liquidada');assert.equal(render(rows,'pending').$('batchDateHeader').textContent,'Importación');
   assert.match(render(rows,'pending').$('batches').innerHTML,/data-open="pending"/);
-  const history=render(rows,'history',{historyFrom:'2026-09-01',historyUntil:'2026-09-10'});
+  const history=render(rows,'history',{historyFrom:'2026-09-14',historyUntil:'2026-09-14'});
   assert.match(history.$('batches').innerHTML,/data-open="old"/);assert.doesNotMatch(history.$('batches').innerHTML,/data-open="current"/);
   assert.match(week.$('monthlySummary').innerHTML,/\$ 60/);
   assert.match(render(rows,'week',{filterSearch:'missing'}).$('monthlySummary').innerHTML,/\$ 60/);
   assert.match(app,/let listMode = 'week'/);assert.match(html,/id="showWeek"/);assert.doesNotMatch(app,/Últimas 4 aprobadas/);
+});
+test('semana usa la fecha de aprobación en Bogotá y nunca la fecha de corte',()=>{
+  const previousBogota=approved('before-midnight','2026-09-14',10,{approved_at:'2026-09-14T03:59:59Z'});
+  const mondayBogota=approved('after-midnight','2026-09-01',10,{approved_at:'2026-09-14T05:00:00Z'});
+  const voided=approved('voided','2026-09-15',10,{approved_at:'2026-09-15T12:00:00Z',estado:'anulada'});
+  assert.equal(Summary.deSemana(previousBogota,period),false);
+  assert.equal(Summary.deSemana(mondayBogota,period),true);
+  assert.equal(Summary.deSemana(voided,period),false);
 });
 test('retail muestra sus importes aunque pago a aliados y bonos sean cero; no altera totales',()=>{
   const rows=[approved('six','2026-09-06',175440,{total_pago_tiendas:455560,total_pagar:455560}),approved('seven','2026-09-07',711960,{total_pago_tiendas:1704465,total_pagar:1704465,operaciones_tiendas:4})];

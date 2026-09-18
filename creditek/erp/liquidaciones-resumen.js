@@ -18,6 +18,17 @@
     const faltantes=rows.filter(b=>b.total_utilidad_creditek==null||!Number.isFinite(Number(b.total_utilidad_creditek))).length;
     return {cantidad:rows.length,faltantes,total:faltantes?null:rows.reduce((n,b)=>n+Number(b.total_utilidad_creditek),0)};
   }
-  function deSemana(batch,periodo){return batch.fecha_corte>=periodo.semanaDesde&&batch.fecha_corte<=periodo.semanaHasta;}
-  return {periodos,utilidadMes,deSemana};
+  function fechaBogota(value){
+    if(!value)return null;
+    const date=new Date(value);
+    if(Number.isNaN(date.getTime()))return null;
+    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+    const part=type=>parts.find(item=>item.type===type)?.value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
+  function deSemana(batch,periodo){
+    const liquidada=fechaBogota(batch.approved_at);
+    return batch.estado!=='anulada'&&Boolean(liquidada)&&liquidada>=periodo.semanaDesde&&liquidada<=periodo.semanaHasta;
+  }
+  return {periodos,utilidadMes,fechaBogota,deSemana};
 });

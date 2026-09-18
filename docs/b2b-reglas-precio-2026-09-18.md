@@ -16,3 +16,5 @@ La revisión encontró 46 equivalencias guardadas (todas con margen de $20.000, 
 ## Regla histórica pendiente de recuperar
 
 El usuario recuerda un análisis que permitía mayor utilidad cuando un proveedor ofrecía un costo muy inferior a la media de los demás. La búsqueda local y en las hojas originales del portal no ha recuperado todavía su fórmula, umbral ni límites. Esto no demuestra que la regla no existiera. No se implementa una fórmula nueva ni se da por completa la recuperación de políticas. Debe verificarse también su precedencia frente al límite nuevo del 12% para costos menores de $150.000.
+
+El usuario aclaró posteriormente que estos casos deben presentarse a Óscar o Maite para decidir el margen manualmente. «Revisar oportunidades de margen» compara el menor costo con la media de los otros proveedores y muestra la diferencia, sin cambiar precios. Separa publicados de borradores, deduplica proveedores y no inventa un umbral de aprobación. En borradores abre la referencia concreta para justificar el ajuste y guardarlo; publicar sigue siendo explícito. Esto no equivale a haber recuperado una fórmula histórica automática.

@@ -82,3 +82,10 @@ test('Botón en Administración; descarga sin mutaciones ni publicación',()=>{
  const source=readFileSync(new URL('../../creditek/erp/b2b-comparativo.js',import.meta.url),'utf8');
  assert.doesNotMatch(source,/\.rpc\(|\.insert\(|\.update\(|\.delete\(|service_role/);
 });
+test('Precios y catálogo lleva a las descargas, sin saltarse el comparativo',()=>{
+ const page=readFileSync(new URL('../../creditek/erp/pedidos-b2b.html',import.meta.url),'utf8');
+ assert.match(page,/href="#comparativoProveedores">Precios y catálogo<\/a>/);
+ assert.match(page,/#cierrePedidos,#comparativoProveedores,#listasWhatsApp,#gestionCompras\{scroll-margin-top:110px\}/);
+ assert.match(page,/\['#cierrePedidos','#comparativoProveedores','#gestionCompras'\]\.includes\(location.hash\)/);
+ assert.ok(page.indexOf('id="comparativoProveedores"')<page.indexOf('id="listasWhatsApp"'));
+});

@@ -23,16 +23,31 @@
   if(out.length>5000)throw Error('La lista supera 5000 líneas. Divídela; no se publicará truncada.');
   return out;
   function make(r){
-   const rule=rules.find(x=>x.proveedor_id===provider&&x.referencia_key===D.key(r.reference)&&products.some(p=>p.id===x.producto_id));
+   // Supplier metadata is useful evidence, not part of the product's display name.
+   // Keep it intact on the row while resolving only exact, unambiguous identities.
+   const title=r.reference.split(';')[0].trim();
+   const usable=p=>p&&p.activo!==false&&p.activo!==0&&D.key(p.activo)!=='FALSE';
+   const saved=rules.filter(x=>x.proveedor_id===provider&&x.referencia_key===D.key(r.reference));
+   const rule=saved.length===1&&usable(products.find(p=>p.id===saved[0].producto_id))?saved[0]:null;
    const remembered=legacy.filter(x=>legacyKey(x.referencia)===legacyKey(r.reference)&&x.activa==='SI');
    const expected=remembered.length===1?remembered[0].canonica:'';
-   const exact=products.filter(p=>[p.nombre,p.codigo].some(v=>D.key(v)===D.key(r.reference)||(expected&&legacyKey(v)===legacyKey(expected))));
+   const parts=[...new Set(r.reference.split(';').slice(1).map(segment=>D.key(segment).match(/^(?:NUMERO DE PARTE|SKU|PART NUMBER)(?:\s*[:#=]\s*|\s+)([A-Z0-9][A-Z0-9._\/-]*)$/)?.[1]).filter(Boolean))];
+   const sku=parts.length===1?products.filter(p=>[p.codigo,p.sku,p.numero_parte,p.part_number].some(v=>D.key(v)===parts[0])):[];
+   const exact=products.filter(p=>[p.nombre,p.codigo].some(v=>D.key(v)===D.key(r.reference)||D.key(v)===D.key(title)));
+   const legacyMatches=expected?products.filter(p=>[p.nombre,p.codigo].some(v=>legacyKey(v)===legacyKey(expected))):[];
+   let productId='',fromLegacy=false;
+   if(rule)productId=rule.producto_id;
+   else if(saved.length>0){/* Do not replace a conflicting or inactive remembered identity. */}
+   else if(parts.length>1){/* Conflicting part numbers require review. */}
+   else if(sku.length)productId=sku.length===1&&usable(sku[0])?sku[0].id:'';
+   else if(exact.length)productId=exact.length===1&&usable(exact[0])?exact[0].id:'';
+   else if(legacyMatches.length===1&&usable(legacyMatches[0])){productId=legacyMatches[0].id;fromLegacy=true;}
    const blocked=/\b(AGOTADO|SIN STOCK|USADO|REACONDICIONADO|REFURBISHED|SOBRE PEDIDO|POR ENCARGO)\b/i.test(r.reference);
    const special=rule&&!D.isDefaultReason(rule.motivo);
    const margin=special?Number(rule.margen):D.defaultMargin(r.costo);
-   return {...r,proveedor_id:provider,producto_id:rule?.producto_id||(exact.length===1?exact[0].id:''),
+   return {...r,proveedor_id:provider,producto_id:productId,
     precio_tienda:r.costo==null?null:Math.round((r.costo+margin)*100)/100,motivo:special?rule.motivo:'',
-    learned:!!rule||(!!expected&&exact.length===1),legacyExpected:expected,remember:false,included:!blocked,exclusion:blocked?'No disponible como equipo nuevo para entrega':'',
+    learned:!!rule||fromLegacy,legacyExpected:expected,remember:false,included:!blocked,exclusion:blocked?'No disponible como equipo nuevo para entrega':'',
     priceWarning:r.costo!==null&&r.costo<10000?'Precio bajo: confirma si el proveedor lo expresó en miles. No se multiplica automáticamente.':''};
   }
  }

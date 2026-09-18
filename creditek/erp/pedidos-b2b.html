@@ -13,6 +13,7 @@
   <script src="b2b-listas-ui.js?v=1.0.0"></script>
   <script src="b2b-whatsapp-domain.js?v=1.0.0"></script>
   <script src="b2b-whatsapp-ui.js?v=1.0.0"></script>
+  <script src="b2b-comparativo.js?v=1.0.0"></script>
   <link rel="stylesheet" href="b2b-pedidos.css?v=1.1.0">
   <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="/design-system/components/kora-product.js" defer></script>
@@ -45,6 +46,7 @@
   </section>
 
   <section id="managementView" class="hidden">
+    <div class="panel" id="comparativoProveedores"></div>
     <div class="panel" id="listasWhatsApp"></div>
     <details class="panel"><summary>Importar desde Excel o CSV (opcional)</summary><div id="listasPrecios"></div></details>
     <div class="panel"><div class="list-heading"><h2>Catálogo publicado para pedidos</h2><button class="btn" id="refreshManagement">Actualizar</button></div><div id="publishedCatalog" class="table-wrap"></div></div>
@@ -106,6 +108,7 @@ $('addExtra').onclick=async()=>{if(!activeOrder||!$('extraProduct').value||!$('e
 $('confirmReceipt').onclick=async()=>{if(!activeOrder)return;const file=$('invoiceFile').files[0];if(!file)return toast('Adjunta la factura o soporte');if(!$('invoiceNumber').value||!$('invoiceDate').value)return toast('Completa los datos de factura');const btn=$('confirmReceipt');btn.disabled=true;try{const ext=(file.name.split('.').pop()||'bin').toLowerCase(),path=`compras/${activeOrder.id}/${crypto.randomUUID()}.${ext}`;const up=await SB.storage.from('productos-fotos').upload(path,file,{upsert:false});if(up.error)throw up.error;const items=activeOrder.orden_compra_items.map(i=>({orden_item_id:i.id,cantidad_recibida:Number($(`rec-${i.id}`).value),costo_facturado:Number($(`fcost-${i.id}`).value),precio_tienda_final:Number($(`fsale-${i.id}`).value),motivo_ajuste:$(`reason-${i.id}`).value||null}));const {error}=await SB.rpc('confirmar_recepcion_orden_b2b',{p_orden_id:activeOrder.id,p_numero_factura:$('invoiceNumber').value,p_fecha:$('invoiceDate').value,p_tipo_compra:$('purchaseType').value,p_fecha_vencimiento:$('purchaseType').value==='credito'?$('dueDate').value||null:null,p_fuente_fondos:$('purchaseType').value==='contado'?'banco_corporativo':null,p_soporte_path:path,p_items:items,p_nota:$('receiveNote').value||null,p_idempotency_key:crypto.randomUUID()});if(error)throw error;closeModal('receiveModal');toast('Recepción confirmada: inventario, cuenta y remisiones creados');await loadManagement()}catch(e){toast(e.message)}finally{btn.disabled=false}};
 $('downloadRequests').onclick=()=>{if(!pending.length)return toast('No hay pedidos pendientes para descargar');KoraB2BListsUI.download([['Pedido','Tienda','Referencia','Proveedor','Cantidad pendiente','Costo unitario proveedor','Precio unitario retail','Total costo','Total retail'],...pending.map(x=>{const s=sources.get(x.id),qty=x.cantidad_solicitada-x.cantidad_ordenada;return['PED-'+String(x.pedidos_b2b.consecutivo).padStart(6,'0'),x.pedidos_b2b.origenes?.nombre||'Tienda no identificada',x.productos.nombre,s?.proveedores?.nombre||'Pendiente',qty,s?.costo??'',x.precio_catalogo,s?qty*Number(s.costo):'',qty*Number(x.precio_catalogo)];})],'Pedidos-Creditek.csv');};
 $('refreshManagement').onclick=()=>loadManagement().catch(showLoadError);
+KoraB2BComparativo.mount({sb:SB,profile:()=>profile,container:$('comparativoProveedores')});
 $('refreshStore').onclick=async()=>{if(cart.size&&!confirm('Actualizar vaciará el pedido sin enviar para que revises los precios vigentes. ¿Continuar?'))return;cart.clear();requestKey=null;updateCart();try{await loadStore();toast('Catálogo y pedidos actualizados');}catch(e){showLoadError(e);}};
 boot().catch(e=>{console.error(e);showLoadError(e);});
 </script>

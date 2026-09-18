@@ -6,6 +6,8 @@
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(n);
  const normalize=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ // Presentation only: keep the saved reference and its matching key untouched.
+ function referenceParts(reference){const parts=String(reference||'Referencia pendiente').split(';').map(s=>s.trim()).filter(Boolean);return {title:parts.shift()||'Referencia pendiente',details:parts.join(' · ')};}
  const isAuxiliary=r=>r.included===false&&/\b(encabezados?|separador(?:es)?|contactos?|saludos?|despedida|texto informativo|informacion de contacto|pie de pagina)\b/.test(normalize(r.exclusion));
  function classify(rows){
   const counts=new Map();
@@ -26,7 +28,7 @@
    <details class="wa-source-form" data-source><summary>Proveedor y mensaje original</summary><div class="grid"><label>Proveedor<select data-provider><option value="">Selecciona proveedor</option>${providers.map(p=>`<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('')}</select></label></div><label>Mensaje completo del proveedor<textarea data-text rows="7" maxlength="200000" placeholder="Pega aquí la lista tal como llegó por WhatsApp"></textarea></label><div class="actions"><button type="button" class="btn primary" data-analyze>Analizar lista</button></div><p class="sub">Utilidad: 12% sobre costos menores de $150.000; $20.000 desde ese valor, salvo excepciones confirmadas.</p></details>
    <details class="wa-history"><summary>Consultar versiones anteriores y originales de Aura</summary><button type="button" class="btn" data-history>Cargar historial</button><div data-history-list></div></details>
    <p data-status role="status"></p><section data-review class="hidden"><div data-published class="wa-published-note" hidden><p>Lista publicada · consulta de la versión guardada. Abrirla no modifica el catálogo.</p><button type="button" class="btn" data-update>Preparar actualización</button></div>
-   <p data-errors class="list-errors" role="alert"></p><div data-edit-actions><label class="list-confirm"><input type="checkbox" data-confirm> Revisé referencias, costos y exclusiones. Publicar reemplaza la lista vigente de este proveedor, no las de los demás.</label><div class="actions wa-save-actions"><button type="button" class="btn" data-save>Guardar borrador</button><button type="button" class="btn primary" data-publish disabled>Publicar para tiendas</button></div></div>
+   <div data-errors class="list-errors" role="alert"></div><div data-edit-actions><label class="list-confirm"><input type="checkbox" data-confirm><span>Revisé referencias, costos y exclusiones. Publicar reemplaza la lista vigente de este proveedor, no las de los demás.</span></label><div class="actions wa-save-actions"><button type="button" class="btn" data-save>Guardar borrador</button><button type="button" class="btn primary" data-publish disabled>Publicar para tiendas</button></div></div>
    <div class="wa-review-toolbar"><label>Buscar en esta lista<input type="search" data-search placeholder="Referencia, código o texto del proveedor"></label><div class="wa-filters actions" role="group" aria-label="Filtrar referencias">${[['pending','Dudas'],['all','Todos los productos'],['ready','Listos'],['excluded','Excluidos'],['headers','Textos auxiliares']].map(([value,title])=>`<button type="button" class="btn" data-mode="${value}" aria-pressed="false">${title} <span data-count="${value}">0</span></button>`).join('')}</div></div>
    <p class="sub" data-filter-help></p><div class="actions wa-pagination"><button type="button" class="btn" data-prev>Anterior</button><span data-page aria-live="polite"></span><button type="button" class="btn" data-next>Siguiente</button></div><div data-rows></div>
    <details class="wa-comparison"><summary>Ver mejor costo entre proveedores</summary><p>Solo administración ve costos y proveedores. No cambia precios al consultarlo.</p><div data-comparison></div></details>
@@ -50,7 +52,7 @@
    sourceProvider=provider;sourceText=text;offers=current.filter(o=>products.some(p=>p.id===o.producto_id)&&providers.some(p=>p.id===o.proveedor_id));rows=parsed;draft=null;loadedId=null;published=false;dirty=true;chooseDefault();$('[data-source]').open=false;$('[data-review]').classList.remove('hidden');render();return true;
   });
   const stateLabel=state=>({pending:'Por revisar',ready:'Lista',excluded:'Excluida',headers:'Texto auxiliar'})[state];
-  function summary(r,state){return `<span class="wa-row-title"><strong>${esc(r.reference||'Referencia pendiente')}</strong><small>Línea ${esc(r.row)}${r.learned?' · Equivalencia recordada':''}</small></span><span class="wa-row-state wa-state-${state}">${stateLabel(state)}</span><span class="wa-row-prices"><span>Costo <strong>${money(r.costo)}</strong></span><span>Retail <strong>${money(r.precio_tienda)}</strong></span></span><span class="wa-row-edit">${published?'Ver detalle':'Revisar / editar'}</span>`;}
+  function summary(r,state){const ref=referenceParts(r.reference);return `<span class="wa-row-title"><strong>${esc(ref.title)}</strong>${ref.details?`<span class="wa-row-description">${esc(ref.details)}</span>`:''}<small>Línea ${esc(r.row)}${r.learned?' · Equivalencia recordada':''}</small></span><span class="wa-row-state wa-state-${state}">${stateLabel(state)}</span><span class="wa-row-prices"><span><span>Costo</span><strong>${money(r.costo)}</strong></span><span><span>Retail</span><strong>${money(r.precio_tienda)}</strong></span></span><span class="wa-row-edit">${published?'Ver detalle':'Revisar / editar'}</span>`;}
   function updateCounts(){const classified=classify(rows);for(const button of container.querySelectorAll('[data-mode]')){const value=button.dataset.mode;button.setAttribute('aria-pressed',String(mode===value));button.querySelector('[data-count]').textContent=value==='all'?classified.filter(x=>x.state!=='headers').length:classified.filter(x=>x.state===value).length;}}
   function render(){
    $('[data-confirm]').checked=false;const selected=filtered();page=Math.max(0,Math.min(page,Math.max(0,Math.ceil(selected.length/PAGE_SIZE)-1)));const visible=selected.slice(page*PAGE_SIZE,page*PAGE_SIZE+PAGE_SIZE);
@@ -68,7 +70,9 @@
    $('[data-comparison]').innerHTML='<div class="table-wrap"><table class="list-preview"><thead><tr><th>Referencia</th><th>Proveedor ganador</th><th>Costo</th><th>Precio retail</th></tr></thead><tbody>'+winners.map(o=>`<tr><td data-label="Referencia">${esc(label(o.producto_id))}</td><td data-label="Proveedor">${esc(providers.find(p=>p.id===o.proveedor_id)?.nombre)}</td><td data-label="Costo">${money(o.costo)}</td><td data-label="Precio retail">${money(o.precio_tienda)}</td></tr>`).join('')+'</tbody></table></div>';
   }
   function controls(){
-   const errors=rows.length?W.validate(rows):[];$('[data-errors]').textContent=published?'':errors.slice(0,3).join(' ')+(errors.length>3?` Y ${errors.length-3} más. Abre «Dudas» para revisarlas.`:'');
+   const errors=rows.length?W.validate(rows):[];
+   const errorHtml=published||!errors.length?'':`<p>Hay ${errors.length} ${errors.length===1?'dato por revisar':'datos por revisar'}. Abre «Dudas» para resolverlos.</p><details><summary>Ver motivos</summary><ul>${errors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul></details>`;
+   if($('[data-errors]').innerHTML!==errorHtml)$('[data-errors]').innerHTML=errorHtml;
    $('[data-publish]').disabled=busy||published||!rows.length||errors.length>0||!$('[data-confirm]').checked;
    for(const sel of ['[data-provider]','[data-text]','[data-analyze]','[data-save]'])$(sel).disabled=busy||published;
    for(const el of container.querySelectorAll('[data-rows] input,[data-confirm]'))el.disabled=busy||published;
@@ -134,5 +138,5 @@
   root.addEventListener?.('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
   controls();
  }
- const api={mount,classify,selectRows,isAuxiliary,PAGE_SIZE};if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BWhatsAppUI=api;
+ const api={mount,classify,selectRows,isAuxiliary,referenceParts,PAGE_SIZE};if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BWhatsAppUI=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import UI from '../../creditek/erp/b2b-whatsapp-ui.js';
+import {readFileSync} from 'node:fs';
 
 const row=(n,extra={})=>({row:n,reference:`Equipo ${n}`,original:`Equipo ${n} $200.000`,producto_id:`p${n}`,proveedor_id:'s',costo:200000,precio_tienda:220000,included:true,...extra});
 test('Revisión separa productos excluidos de encabezados explícitos y conserva todos los datos',()=>{
@@ -52,4 +53,29 @@ test('Datos incompletos no se convierten en una lista vacía y no provocan guard
  const h=harness({id:'d',proveedor_id:'s',texto_original:'original',filas:[null],lista_id:null});try{
   assert.equal(await h.container.openDraft('d'),false);assert.match(h.el('[data-status]').textContent,/no contiene filas válidas/);assert.equal(h.writes.length,0);assert.equal(h.container.hasUnsavedChanges(),false);
  }finally{h.cleanup();}
+});
+test('Títulos largos separan metadatos sin modificar la referencia guardada ni sus precios',async()=>{
+ const reference='REDMI Watch 6 Active Matte Silver ; Número de parte BHR09CXGL ; IVA INCLUIDO ; DISPONIBLES ; Garantía 1 año';
+ assert.deepEqual(UI.referenceParts(reference),{title:'REDMI Watch 6 Active Matte Silver',details:'Número de parte BHR09CXGL · IVA INCLUIDO · DISPONIBLES · Garantía 1 año'});
+ assert.deepEqual(UI.referenceParts('Modelo sin separadores'),{title:'Modelo sin separadores',details:''});
+ const saved={id:'d',proveedor_id:'s',texto_original:reference,filas:[row(1,{reference,costo:145000,precio_tienda:162400})],lista_id:'live'},before=JSON.stringify(saved),h=harness(saved);
+ try{
+  await h.container.openDraft('d','all');const html=h.el('[data-rows]').innerHTML;
+  assert.match(html,/<strong>REDMI Watch 6 Active Matte Silver<\/strong>/);assert.match(html,/class="wa-row-description">Número de parte/);
+  assert.match(html,/<span>Costo<\/span><strong>/);assert.match(html,/<span>Retail<\/span><strong>/);
+  assert.equal(JSON.stringify(saved),before);assert.equal(h.writes.length,0);
+  h.el('[data-update]').onclick();await h.el('[data-save]').onclick();assert.deepEqual(h.writes[0].args.p_filas,saved.filas);
+ }finally{h.cleanup();}
+});
+test('Motivos completos están disponibles y el texto del proveedor se escapa al presentar',async()=>{
+ const h=harness({id:'d',proveedor_id:'s',texto_original:'original',filas:Array.from({length:5},(_,i)=>row(i+1,{producto_id:'',reference:'Modelo <img> ; IVA <script>'})),lista_id:null});try{
+  await h.container.openDraft('d','all');assert.match(h.el('[data-errors]').innerHTML,/Hay 5 datos por revisar/);assert.equal((h.el('[data-errors]').innerHTML.match(/<li>/g)||[]).length,5);
+  assert.match(h.el('[data-rows]').innerHTML,/Modelo &lt;img&gt;/);assert.doesNotMatch(h.el('[data-rows]').innerHTML,/<script>/);assert.equal(h.el('[data-publish]').disabled,true);assert.equal(h.writes.length,0);
+ }finally{h.cleanup();}
+});
+test('Resumen usa dos bandas y adapta precios al ancho disponible del editor',()=>{
+ const css=readFileSync(new URL('../../creditek/erp/b2b-pedidos.css',import.meta.url),'utf8');
+ assert.match(css,/\.wa-row-summary\{[^}]*display:grid/);assert.match(css,/\.wa-row-title\{[^}]*grid-column:1\/-1/);
+ assert.match(css,/@container\(max-width:640px\)/);assert.match(css,/\.wa-row-prices\{[^}]*grid-row:3/);
+ assert.match(css,/label>input:not\(\[type=checkbox\]\)[^{]*\{[^}]*margin-top:8px/);
 });

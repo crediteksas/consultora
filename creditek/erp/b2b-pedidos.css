@@ -40,27 +40,45 @@
 #listasWhatsApp .wa-source-form{border:1px solid #dfe6ef;border-radius:10px;padding:14px;background:#f8fafc;margin:15px 0}
 #listasWhatsApp .wa-source-form>summary{cursor:pointer;font-weight:700}
 #listasWhatsApp .wa-source-form[open]>summary{margin-bottom:16px}
-#listasWhatsApp .wa-review-toolbar{display:grid;gap:12px;margin:18px 0}
+#listasWhatsApp{min-width:0;container-type:inline-size}
+#listasWhatsApp label{line-height:1.5}
+#listasWhatsApp label>input:not([type=checkbox]),#listasWhatsApp label>select,#listasWhatsApp label>textarea{display:block;margin-top:8px}
+#listasWhatsApp .list-confirm{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;line-height:1.6}
+#listasWhatsApp .list-confirm input{margin:2px 0 0}
+#listasWhatsApp :is(input,select,textarea):focus-visible{outline:2px solid #00aeb9;outline-offset:2px;box-shadow:none}
+#listasWhatsApp .list-errors:empty{display:none}
+#listasWhatsApp .list-errors{font-size:14px;line-height:1.6}
+#listasWhatsApp .list-errors p{margin:0 0 6px}
+#listasWhatsApp .list-errors summary{cursor:pointer;font-size:13px}
+#listasWhatsApp .list-errors ul{max-height:180px;overflow:auto;padding-left:22px;margin:10px 0}
+#listasWhatsApp .list-errors li{margin:6px 0}
+#listasWhatsApp .wa-review-toolbar{display:grid;gap:18px;margin:26px 0 18px}
 #listasWhatsApp .wa-filters{display:flex;gap:7px;flex-wrap:wrap}
-#listasWhatsApp .wa-filters .btn{padding:8px 12px;font-size:13px;flex:none}
+#listasWhatsApp .wa-filters .btn{padding:8px 12px;font-size:13px;flex:none;gap:8px}
+#listasWhatsApp .wa-filters [data-count]{font-variant-numeric:tabular-nums}
 #listasWhatsApp .wa-filters [aria-pressed=true]{background:#0b1e3d;color:white;border-color:#0b1e3d}
-#listasWhatsApp .wa-row{padding:0;margin:8px 0}
-#listasWhatsApp .wa-row-summary{cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px;list-style:none}
+#listasWhatsApp .wa-row{padding:0;margin:12px 0;min-width:0}
+#listasWhatsApp .wa-row-summary{cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px 24px;padding:18px;list-style:none;line-height:1.5}
 #listasWhatsApp .wa-row-summary::-webkit-details-marker{display:none}
-#listasWhatsApp .wa-row-summary:after{content:'+';font-size:22px;font-weight:400;color:#64748b;flex:none}
-#listasWhatsApp .wa-row[open]>.wa-row-summary:after{content:'−'}
-#listasWhatsApp .wa-row-title{flex:1;min-width:0;overflow-wrap:anywhere}
-#listasWhatsApp .wa-row-title small{display:block;color:#64748b;font-weight:400;margin-top:4px}
-#listasWhatsApp .wa-row-state{font-size:12px;color:#64748b;flex:none}
-#listasWhatsApp .wa-row-prices{font-size:13px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
-#listasWhatsApp .wa-row-prices small{display:block;color:#64748b}
-#listasWhatsApp .wa-row-prices>span{display:block}#listasWhatsApp .wa-row-edit{font-size:12px;color:#087d8b;flex:none}
+#listasWhatsApp .wa-row-summary:after{content:none}
+#listasWhatsApp .wa-row-title{grid-column:1/-1;min-width:0;overflow-wrap:anywhere}
+#listasWhatsApp .wa-row-title>strong{display:block;font-size:15px;line-height:1.5;font-weight:650}
+#listasWhatsApp .wa-row-description{display:block;color:#52637a;font-size:13px;font-weight:400;line-height:1.6;margin-top:6px}
+#listasWhatsApp .wa-row-title small{display:block;color:#64748b;font-size:12px;font-weight:400;margin-top:6px}
+#listasWhatsApp .wa-row-state{font-size:12px;color:#64748b;justify-self:start;white-space:nowrap}
+#listasWhatsApp .wa-row-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;justify-self:start;min-width:0;font-size:14px;text-align:left;font-variant-numeric:tabular-nums}
+#listasWhatsApp .wa-row-prices>span{display:grid;gap:3px;min-width:0}
+#listasWhatsApp .wa-row-prices>span>span{color:#64748b;font-size:12px}
+#listasWhatsApp .wa-row-prices strong{white-space:nowrap;font-weight:650}
+#listasWhatsApp .wa-row-edit{font-size:13px;color:#087d8b;white-space:nowrap;justify-self:end;display:flex;align-items:center;gap:10px;min-height:36px}
+#listasWhatsApp .wa-row-edit:after{content:'+';font-size:20px;font-weight:400}
+#listasWhatsApp .wa-row[open] .wa-row-edit:after{content:'−'}
 #listasWhatsApp .wa-state-pending,#listasWhatsApp .wa-state-excluded{color:#9a4f08;background:#fff5e6;padding:4px 8px;border-radius:20px}
 #listasWhatsApp .wa-state-ready{color:#087f5b;background:#e6fffb;padding:4px 8px;border-radius:20px}
 #listasWhatsApp .wa-row-body{padding:16px;border-top:1px solid #dfe6ef;background:#f8fafc;border-radius:0 0 12px 12px}
 @media(max-width:1000px){#managementView .saved-lists-table .actions{flex-direction:column;align-items:stretch}#managementView .saved-lists-table th:last-child{width:23%}#managementView .saved-lists-table th:first-child{width:24%}}
 @media(max-width:850px){#managementView .saved-lists-table{table-layout:auto}#managementView .saved-lists-table td{padding:6px 3px;text-align:left!important}#managementView .saved-lists-table td:first-child{font-size:16px}#managementView .saved-lists-table .actions{flex-direction:row;width:100%}#managementView .saved-lists-table .btn{flex:1}#managementView .saved-lists-table td:last-child:before{display:none}#managementView .purchase-controls{grid-template-columns:1fr}#managementView .purchase-controls button{max-width:none}}
-@media(max-width:600px){#managementView .workspace-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#managementView .workspace-nav .tab{font-size:13px}#managementView .panel{padding:15px}#managementView .list-heading{align-items:flex-start}#listasWhatsApp .wa-row-summary{gap:8px;flex-wrap:wrap}#listasWhatsApp .wa-row-title{flex-basis:calc(100% - 35px)}#listasWhatsApp .wa-row-summary:after{order:-1}#listasWhatsApp .wa-row-state{flex:1}#listasWhatsApp .wa-row-prices{text-align:left}#listasWhatsApp .wa-row-body{padding:12px}#listasWhatsApp .wa-filters .btn{flex:1}#managementView .saved-lists-table .actions{display:grid;grid-template-columns:1fr 1fr}#managementView .saved-lists-table .actions>.primary{grid-column:1/-1}}
+@media(max-width:600px){#managementView .workspace-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#managementView .workspace-nav .tab{font-size:13px}#managementView .panel{padding:15px}#managementView .list-heading{align-items:flex-start}#listasWhatsApp .wa-row-body{padding:12px}#listasWhatsApp .wa-filters .btn{flex:1}#managementView .saved-lists-table .actions{display:grid;grid-template-columns:1fr 1fr}#managementView .saved-lists-table .actions>.primary{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){#managementView .btn{transition:none}#managementView .btn:hover:not(:disabled),#managementView .btn:active:not(:disabled){transform:none}}
 @media(max-width:850px){#managementView .list-preview td{height:auto;min-height:40px}#managementView .saved-lists-table td:first-child{align-items:flex-start}#managementView .saved-lists-table td:last-child{padding-top:12px;padding-bottom:10px}#managementView .saved-lists-table .actions{flex-shrink:0}}
-@media(max-width:600px){#listasWhatsApp .wa-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#listasWhatsApp .wa-filters .btn{width:100%;min-width:0;justify-content:center}#listasWhatsApp .wa-pagination{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}#listasWhatsApp .wa-pagination .btn{width:auto;min-width:0;padding:8px}#listasWhatsApp .wa-row-state{flex:0 0 auto;white-space:nowrap;font-size:11px}#listasWhatsApp .wa-row-edit{font-size:11px}}
+@container(max-width:640px){#listasWhatsApp .wa-row-summary{grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:14px}#listasWhatsApp .wa-row-title{grid-column:1/-1}#listasWhatsApp .wa-row-state{grid-column:1;grid-row:2}#listasWhatsApp .wa-row-edit{grid-column:2;grid-row:2}#listasWhatsApp .wa-row-prices{grid-column:1/-1;grid-row:3;justify-self:stretch;border-top:1px solid #e7edf3;padding-top:12px;gap:12px}#listasWhatsApp .wa-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#listasWhatsApp .wa-filters .btn{width:100%;min-width:0;justify-content:center}#listasWhatsApp .wa-pagination{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}#listasWhatsApp .wa-pagination .btn{width:auto;min-width:0;padding:8px}}

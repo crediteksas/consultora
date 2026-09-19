@@ -5,6 +5,7 @@ import {
   formatearGastos,
   formatearVentas,
 } from '../src/index';
+import { paginarReporte, renderizarPaginaReporte } from '../src/reportes-formato';
 
 describe('presentación ejecutiva de cierres por WhatsApp', () => {
   it('pone total y estado antes del detalle de gastos y agrupa por tienda', () => {
@@ -20,7 +21,7 @@ describe('presentación ejecutiva de cierres por WhatsApp', () => {
     expect(lineas[2]).toBe('⚠️ CIERRES DE CAJA • 1 tienda pendiente al corte de las 19:00');
     expect(lineas[3]).toBe('PENDIENTES • Sonivox');
     expect(mensaje).toContain('MÓVIL SHOPPING • 2 gastos • $100.000');
-    expect(mensaje).toContain('↳ Nómina · Turno tarde • $80.000');
+    expect(mensaje).not.toContain('Turno tarde');
     expect(mensaje).not.toContain('• •');
   });
 
@@ -45,7 +46,7 @@ describe('presentación ejecutiva de cierres por WhatsApp', () => {
       { efectivo_contado: 780_000, efectivo_esperado: 800_000, diferencia: -20_000, tienda_codigo: 'CK-02', origen: { nombre: 'Móvil Shopping' } },
     ], 'miércoles 16 de septiembre de 2026');
 
-    expect(mensaje).toContain('RESUMEN • 2 cajas cerradas • EFECTIVO $1.680.000 • 1 con diferencia');
+    expect(mensaje).toContain('RESUMEN • 2 cajas recibidas • EFECTIVO $1.680.000 • 1 con diferencia');
     expect(mensaje).toContain('CELFIAO • Contado $900.000 • Esperado $900.000 • ✅ CUADRA');
     expect(mensaje).toContain('MÓVIL SHOPPING • Contado $780.000 • Esperado $800.000 • ⚠️ DIFERENCIA -$20.000');
   });
@@ -57,5 +58,38 @@ describe('presentación ejecutiva de cierres por WhatsApp', () => {
       .toContain('SIN VENTAS • No hay operaciones registradas para este día');
     expect(formatearCaja([], 'fecha'))
       .toContain('SIN CIERRES • Ninguna tienda ha cerrado caja');
+  });
+
+  it('mantiene gastos, ventas y caja en un mensaje independiente por informe', () => {
+    const tiendas = Array.from({ length: 10 }, (_, i) => ({
+      tienda_codigo: `CK-${i + 1}`,
+      origen: { nombre: `Tienda ${i + 1}` },
+    }));
+    const gastos = Array.from({ length: 16 }, (_, i) => ({
+      ...tiendas[i % tiendas.length],
+      monto: 10_000 + i,
+      descripcion: `Detalle operativo ${i}`,
+      concepto: { nombre: 'Otros' },
+    }));
+    const ventas = Array.from({ length: 30 }, (_, i) => ({
+      ...tiendas[i % tiendas.length],
+      total: 100_000 + i,
+    }));
+    const cierres = tiendas.map((tienda, i) => ({
+      ...tienda,
+      efectivo_contado: 100_000 + i,
+      efectivo_esperado: 100_000 + i,
+      diferencia: 0,
+    }));
+    const mensajes = [
+      formatearGastos(gastos, 'fecha', encabezadoEstado(true, [], '19:00')),
+      formatearVentas(ventas, 'fecha'),
+      formatearCaja(cierres, 'fecha'),
+    ];
+    for (const mensaje of mensajes) {
+      const paginas = paginarReporte(mensaje);
+      expect(paginas).toHaveLength(1);
+      expect(renderizarPaginaReporte(paginas[0]).length).toBeLessThanOrEqual(1024);
+    }
   });
 });

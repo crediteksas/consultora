@@ -19,15 +19,15 @@ function simular(fallaEn = -1) {
 }
 
 describe('entrega del reporte ordenado', () => {
-  it('confirma cada página para cada destinatario y no la repite', async () => {
+  it('envía exactamente un mensaje por informe a cada destinatario y no lo repite', async () => {
     const enviados = simular();
     const resultados: any[] = [];
     await enviarReporteATodos('2026-09-11', 'reporte_ventas_diario', mensaje, resultados, env);
-    expect(enviados).toHaveLength(6);
-    expect(resultados).toHaveLength(6);
-    expect(new Set(resultados.map(r => `${r.plantilla}:${r.destinatario}`)).size).toBe(6);
+    expect(enviados).toHaveLength(2);
+    expect(resultados).toHaveLength(2);
+    expect(new Set(resultados.map(r => `${r.plantilla}:${r.destinatario}`)).size).toBe(2);
     await enviarReporteATodos('2026-09-11', 'reporte_ventas_diario', mensaje, resultados, env);
-    expect(enviados).toHaveLength(6);
+    expect(enviados).toHaveLength(2);
   });
   it('retoma el contenido original después de un fallo parcial', async () => {
     const enviados = simular(2);
@@ -35,9 +35,9 @@ describe('entrega del reporte ordenado', () => {
     await expect(enviarReporteATodos('2026-09-11', 'reporte_ventas_diario', mensaje, resultados, env)).rejects.toThrow('meta_template_rejected');
     expect(resultados).toHaveLength(1);
     await enviarReporteATodos('2026-09-11', 'reporte_ventas_diario', 'VENTAS\nTienda nueva: $999', resultados, env);
-    expect(enviados).toHaveLength(7);
+    expect(enviados).toHaveLength(3);
     expect(JSON.stringify(enviados)).not.toContain('Tienda nueva');
-    expect(resultados).toHaveLength(6);
+    expect(resultados).toHaveLength(2);
   });
   it('no vuelve a enviar reportes confirmados con el formato anterior', async () => {
     const enviados = simular();

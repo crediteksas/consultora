@@ -8,18 +8,20 @@ describe('informes WhatsApp separados por tienda', () => {
     expect(renderizarPaginaReporte(p)).toContain('Celfiao: 9 ventas — $2.847.000\n\n• Sonivox: 1 venta — $246.500');
     expect(p.parametros.every(p => !/[\r\n\t]/.test(p))).toBe(true);
   });
-  it('conserva todas las tiendas, gastos, alertas y total al paginar', () => {
-    const filas = Array.from({ length: 37 }, (_, i) => `Tienda ${i}: $${i + 1}.000 — concepto ${i}`);
+  it('conserva todas las tiendas y genera exactamente un mensaje', () => {
+    const filas = Array.from({ length: 12 }, (_, i) => `Tienda ${i}: $${i + 1}.000`);
     const paginas = paginarReporte(['GASTOS — 11 septiembre', ...filas, 'Total del día: $703.000'].join('\n'));
-    expect(paginas.length).toBeGreaterThan(1);
-    expect(paginas.flatMap(p => p.parametros.slice(1))).toEqual([...filas, 'Total del día: $703.000']);
-    expect(paginas.every(p => renderizarPaginaReporte(p).length <= 1024)).toBe(true);
-    expect(paginas[0].parametros[0]).toContain(`Parte 1/${paginas.length}`);
+    expect(paginas).toHaveLength(1);
+    const renderizado = renderizarPaginaReporte(paginas[0]);
+    for (const fila of filas) expect(renderizado).toContain(fila);
+    expect(renderizado).toContain('Total del día: $703.000');
+    expect(renderizado).not.toContain('Parte ');
+    expect(renderizado.length).toBeLessThanOrEqual(1024);
   });
-  it('no elimina descripciones largas', () => {
+  it('rechaza un informe imposible de enviar completo en un solo mensaje', () => {
     const largo = 'concepto ' .repeat(220).trim();
-    const paginas = paginarReporte(`GASTOS\n${largo}\nTotal: $1.000`);
-    expect(paginas.flatMap(p => p.parametros.slice(1)).join(' ')).toBe(`${largo} Total: $1.000`);
+    expect(() => paginarReporte(`GASTOS\n${largo}\nTotal: $1.000`))
+      .toThrow('report_too_long_for_single_message');
   });
   it('permite informes sin operaciones sin inventar tiendas', () => {
     const [p] = paginarReporte('CAJA\nNinguna caja cerrada aún.\nTotal efectivo: $0');

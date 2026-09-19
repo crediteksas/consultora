@@ -8,7 +8,7 @@ ENVIRONMENT = "production"
 ALLOWED_ORIGIN = "https://registro.crediteksas.com"
 ALLOW_LEGACY_REGISTRATION_LINKS = "true"
 # Las ocho plantillas reporte_cierre_ordenado_*_v2 están activas en Meta.
-# Mantiene cada tienda, movimiento y total en un párrafo independiente.
+# Cada tipo de cierre usa una sola plantilla y un solo mensaje por destinatario.
 REPORTES_FORMATO_ORDENADO = "true"
 
 # Secretos requeridos (Oscar los pone con `wrangler secret put <NOMBRE>`,

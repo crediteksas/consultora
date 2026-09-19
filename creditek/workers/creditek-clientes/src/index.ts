@@ -882,16 +882,9 @@ export function formatearGastos(
     if (!porTienda.has(tienda)) porTienda.set(tienda, []);
     porTienda.get(tienda)!.push(gasto);
   }
-  const detalle = Array.from(porTienda.entries()).flatMap(([tienda, movimientos]) => {
+  const detalle = Array.from(porTienda.entries()).map(([tienda, movimientos]) => {
     const subtotal = movimientos.reduce((s, g) => s + Number(g.monto || 0), 0);
-    return [
-      `${tienda.toUpperCase()} • ${movimientos.length} ${movimientos.length === 1 ? 'gasto' : 'gastos'} • ${fmtCOP(subtotal)}`,
-      ...movimientos.map((g) => {
-        const concepto = g.concepto?.nombre || 'Sin concepto';
-        const descripcion = String(g.descripcion || '').trim();
-        return `↳ ${concepto}${descripcion ? ` · ${descripcion}` : ''} • ${fmtCOP(Number(g.monto))}`;
-      }),
-    ];
+    return `${tienda.toUpperCase()} • ${movimientos.length} ${movimientos.length === 1 ? 'gasto' : 'gastos'} • ${fmtCOP(subtotal)}`;
   });
   return [
     `🧾 CIERRE DE GASTOS • ${fechaLarga}`,
@@ -937,9 +930,14 @@ export function formatearCaja(cierres: any[], fechaLarga: string): string {
   });
   const total = cierres.reduce((s, c) => s + Number(c.efectivo_contado || 0), 0);
   const diferencias = cierres.filter(c => Number(c.diferencia || 0) !== 0).length;
+  const conciliacion = !cierres.length
+    ? 'SIN CAJAS RECIBIDAS'
+    : diferencias
+      ? `${diferencias} con diferencia`
+      : `LAS ${cierres.length} RECIBIDAS CUADRAN`;
   return [
     `💵 CIERRE DE CAJA • ${fechaLarga}`,
-    `RESUMEN • ${cierres.length} ${cierres.length === 1 ? 'caja cerrada' : 'cajas cerradas'} • EFECTIVO ${fmtCOP(total)} • ${diferencias ? `${diferencias} con diferencia` : 'TODAS CUADRAN'}`,
+    `RESUMEN • ${cierres.length} ${cierres.length === 1 ? 'caja recibida' : 'cajas recibidas'} • EFECTIVO ${fmtCOP(total)} • ${conciliacion}`,
     ...(lineas.length ? lineas : ['SIN CIERRES • Ninguna tienda ha cerrado caja']),
   ].join('\n');
 }

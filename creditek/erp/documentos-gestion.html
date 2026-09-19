@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KORA · Editar o anular documentos</title>
+  <link rel="stylesheet" href="/design-system/components/kora-product.css">
+  <link rel="stylesheet" href="documentos-gestion.css?v=1.0.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/kora-environment.generated.js"></script>
+  <script src="kora-access-control.js?v=2.0.30"></script>
+  <script src="sidebar.js?v=2.0.30" data-kora-shell="1.0.0"></script>
+  <script src="/design-system/components/kora-product.js" defer></script>
+  <script src="documentos-gestion-domain.js?v=1.0.0" defer></script>
+  <script src="documentos-gestion-app.js?v=1.0.0" defer></script>
+</head>
+<body>
+  <div id="app" hidden><main class="main-content"><div class="doc-page">
+    <header class="doc-heading">
+      <div><p class="doc-eyebrow">Gerencia y Gestión</p><h1>Editar o anular documentos</h1><p>Busca el documento y abre sus opciones de corrección, sin perder el historial.</p></div>
+      <a class="doc-button" href="tablero.html">Volver al tablero</a>
+    </header>
+    <section class="doc-panel doc-search" aria-labelledby="docSearchTitle">
+      <h2 id="docSearchTitle">¿Qué documento necesitas revisar?</h2>
+      <div class="doc-types" id="docTypes" aria-label="Tipo de documento"></div>
+      <p class="doc-help" id="docHelp"></p>
+      <form id="docFilters" class="doc-filters">
+        <div class="doc-field doc-query"><label for="docQuery" id="docQueryLabel">Número o IMEI</label><input id="docQuery" type="search" placeholder="Ej.: 11 o 357113744396318" autocomplete="off" maxlength="50"><small id="docQueryHint">También puedes buscar sin fechas para consultar todo el historial.</small></div>
+        <div class="doc-field"><label for="docStore">Tienda</label><select id="docStore"><option value="">Todas las tiendas</option></select></div>
+        <div class="doc-field"><label for="docFrom">Desde</label><input id="docFrom" type="date"></div>
+        <div class="doc-field"><label for="docTo">Hasta</label><input id="docTo" type="date"></div>
+        <div class="doc-filter-actions"><button class="doc-button doc-primary" type="submit">Buscar documentos</button><button class="doc-button" id="docClear" type="button">Limpiar filtros</button></div>
+      </form>
+    </section>
+    <div id="docNotice" class="doc-notice" role="status" aria-live="polite" hidden></div>
+    <section class="doc-results" aria-labelledby="docResultsTitle" aria-busy="false" id="docResults">
+      <div class="doc-results-heading"><h2 id="docResultsTitle">Documentos</h2><span id="docCount"></span></div>
+      <div id="docRows"></div>
+      <nav class="doc-pagination" aria-label="Páginas de documentos" id="docPagination" hidden><button id="docPrevious" class="doc-button">Anterior</button><span id="docPage"></span><button id="docNext" class="doc-button">Siguiente</button></nav>
+    </section>
+    <section class="doc-panel doc-other" aria-labelledby="docOtherTitle"><h2 id="docOtherTitle">Otros documentos y pagos</h2><p>Estos procesos se gestionan en su módulo. Abrirlos no anula ni modifica ninguna operación.</p>
+      <div class="doc-other-links" id="docOtherLinks"></div>
+      <p class="doc-caution">Las facturas de proveedor no tienen una anulación general habilitada. Un pago realizado, una liquidación cerrada o un documento con movimientos asociados necesita su procedimiento de revisión o reversión, no un borrado.</p>
+    </section>
+    <p class="doc-footnote">Acceso de Óscar y Maythe. Las acciones disponibles dependen del tipo, estado y permisos del documento; se validan nuevamente al confirmar.</p>
+  </div></main></div>
+  <noscript>Activa JavaScript para consultar y gestionar documentos.</noscript>
+</body>
+</html>

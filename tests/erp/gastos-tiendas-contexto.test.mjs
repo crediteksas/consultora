@@ -13,6 +13,6 @@ test('Gastos filtra cada tienda y muestra la procedencia de cada fila', () => {
     elementos.filtroTienda.value=`CK-${i}`;
     vm.runInContext('renderTablaGastos()',context);
     assert.match(elementos.tbodyGastos.innerHTML,new RegExp(`Tienda ${i}`));
-    assert.equal((elementos.tbodyGastos.innerHTML.match(/<tr>/g)||[]).length,1);
+    assert.equal((elementos.tbodyGastos.innerHTML.match(/<tr(?:\s[^>]*)?>/g)||[]).length,1);
   }
 });

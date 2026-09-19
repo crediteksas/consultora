@@ -11,8 +11,8 @@
 <script src="recepcion-origen.js?v=1"></script>
 <script src="bodega-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
-<script src="kora-access-control.js?v=2.0.29"></script>
-<script src="sidebar.js?v=2.0.29" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.30"></script>
+<script src="sidebar.js?v=2.0.30" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -445,7 +445,27 @@ async function cargarDatosBase() {
   const selFiltroTienda = document.getElementById('filtroTienda');
   selFiltroTienda.innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
 
-  cargarRemisiones();
+  await cargarRemisiones();
+  await abrirDocumentoSolicitado();
+}
+
+// Consulta exacta independiente del filtro y sin ejecutar acciones al navegar.
+let documentoEnlaceProcesado = false;
+async function abrirDocumentoSolicitado() {
+  const id = new URLSearchParams(location.search).get('documento');
+  if (!id || documentoEnlaceProcesado) return;
+  documentoEnlaceProcesado = true;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    mostrarBanner('El enlace del documento no es válido.'); return;
+  }
+  const { data, error } = await sb.from('remisiones')
+    .select('*, origenes(nombre), remision_items(cantidad, precio_remision)')
+    .eq('id', id).maybeSingle();
+  if (error || !data) { mostrarBanner('No se pudo consultar la remisión. Puede no existir o no estar disponible para tu perfil.'); return; }
+  remisionesCache = [data, ...remisionesCache.filter(r => r.id !== data.id)];
+  ['filtroTienda', 'filtroEstado', 'filtroFecha'].forEach(filtro => { document.getElementById(filtro).value = ''; });
+  renderTablaRemisiones();
+  abrirModalRemision(data, esCentral() ? 'contenido' : 'lectura');
 }
 
 async function cargarRemisiones() {
@@ -536,11 +556,11 @@ let puedeCorregirRemisiones = false;
 let remisionEnEdicion = null;
 function abrirModalRemision(rem, modo = 'contenido') {
   remisionEnEdicion = rem ? { ...rem, modoEdicion: modo } : null;
-  const correccionRecepcion = !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
-  const correccionB2B = !!rem && rem.estado === 'cartera_b2b' && puedeCorregirRemisiones;
+  const correccionRecepcion = modo !== 'lectura' && !!rem && rem.estado === 'despachada' && !rem.recibida_at && puedeCorregirRemisiones;
+  const correccionB2B = modo !== 'lectura' && !!rem && rem.estado === 'cartera_b2b' && puedeCorregirRemisiones;
   const soloDestino = correccionRecepcion && modo === 'destino';
   const correccion = correccionRecepcion || correccionB2B;
-  const soloLectura = !!rem && rem.estado !== 'borrador' && !correccion;
+  const soloLectura = modo === 'lectura' || (!!rem && rem.estado !== 'borrador' && !correccion);
   document.getElementById('modalRemisionTitulo').textContent = !rem ? 'Nueva remisión' : (soloLectura ? `Remisión #${rem.consecutivo}` : (correccionB2B ? `Ajustar precio · Remisión #${rem.consecutivo}` : (soloDestino ? `Cambiar destino · Remisión #${rem.consecutivo}` : `Editar remisión #${rem.consecutivo}`)));
   document.getElementById('modalRemisionSub').textContent = soloLectura ? 'Esta remisión ya no se puede editar.' : 'Se guarda como borrador — puedes seguir editando hasta despachar.';
   if (correccionRecepcion) document.getElementById('modalRemisionSub').textContent = 'Corrección antes de recepción. Conserva el número de remisión, ajusta las reservas de bodega y deja historial. La tienda deberá revisar los cambios antes de aceptar.';

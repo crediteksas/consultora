@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
-<script src="kora-access-control.js?v=2.0.29"></script>
-<script src="sidebar.js?v=2.0.29" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.30"></script>
+<script src="sidebar.js?v=2.0.30" data-kora-shell="1.0.0"></script>
 <script src="traslados-domain.js?v=1.0.0"></script>
 <style>
 :root {
@@ -137,6 +137,14 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .modal-actions button:hover { transform: translateY(-1px); }
 .modal-actions .btn-cancelar { background: var(--bg); color: var(--text2); flex: 0 0 auto; padding: 12px 20px; }
 .modal-actions .btn-guardar { background: var(--turquesa); color: white; box-shadow: 0 6px 16px -4px rgba(0,196,204,0.5); }
+.modal-actions .btn-anular-traslado { background: #fff1f2; color: #991b1b; border: 1px solid #fecdd3; }
+.anular-traslado-dialog { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; border: 1px solid var(--border); border-top: 3px solid var(--turquesa); border-radius: 20px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); overflow-y: auto; }
+.anular-traslado-dialog::backdrop { background: rgba(11,30,61,.45); }
+.anular-traslado-dialog h2 { font-size: 18px; margin-bottom: 10px; }
+.anular-traslado-dialog .advertencia-anulacion { margin: 14px 0; padding: 12px; background: #fff7ed; border-radius: 10px; line-height: 1.6; }
+.anular-traslado-dialog .confirmar-anulacion { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+.anular-traslado-dialog .confirmar-anulacion input { flex: 0 0 auto; margin-top: 5px; }
+@media (max-width: 480px) { .anular-traslado-dialog .modal-actions, #modalVerTraslado .modal-actions { flex-wrap: wrap; } .anular-traslado-dialog .modal-actions button, #modalVerTraslado .modal-actions button { flex-basis: 100%; } }
 .modal-err { color: var(--rojo); font-size: 12.5px; margin-top: 8px; display: none; }
 .modal-err.show { display: block; }
 .traslado-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
@@ -232,8 +240,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="modal-sub">Envía mercancía a otra tienda. El costo se transfiere tal cual — sin margen.</div>
 
     <div class="campo">
-      <label>Tienda destino</label>
-      <select id="traTiendaDestino"></select>
+      <label for="traTiendaDestino">Tienda destino</label>
+      <select id="traTiendaDestino" required></select>
     </div>
 
     <div class="add-item-botones">
@@ -274,11 +282,30 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="modal-err" id="modalVerTrasladoErr"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCerrarVerTraslado">Cerrar</button>
+      <button type="button" class="btn-anular-traslado" id="btnAnularDetalleTraslado" style="display:none;">Anular traslado</button>
       <button class="btn-guardar" id="btnConfirmarRecepcionTra" style="display:none;">Confirmar recepción</button>
       <button class="btn-guardar" id="btnAprobarRecepcionTra" style="display:none;">Dar visto bueno y cerrar</button>
     </div>
   </div>
 </div>
+
+<dialog class="anular-traslado-dialog" id="dialogAnularTraslado" aria-labelledby="anularTrasladoTitulo" aria-describedby="anularTrasladoResumen anularTrasladoAviso">
+  <form id="formAnularTraslado">
+    <h2 id="anularTrasladoTitulo">Anular traslado</h2>
+    <p id="anularTrasladoResumen"></p>
+    <p class="advertencia-anulacion" id="anularTrasladoAviso"><strong>Se anulará todo el traslado, no solo un teléfono.</strong> Todos sus productos volverán al inventario de la tienda de origen. El documento y los movimientos quedarán en el historial. Esta acción no crea un nuevo envío ni registra un pago.</p>
+    <div class="campo">
+      <label for="anularTrasladoMotivo">Motivo de la anulación</label>
+      <textarea id="anularTrasladoMotivo" rows="3" required minlength="5" maxlength="1000" placeholder="Ejemplo: se seleccionó una tienda de destino incorrecta." autofocus></textarea>
+    </div>
+    <label class="confirmar-anulacion" for="anularTrasladoConfirmacion"><input type="checkbox" id="anularTrasladoConfirmacion" required>Confirmo que revisé el número, el origen y el destino, y quiero anular todo este traslado.</label>
+    <p class="modal-err" id="anularTrasladoErr" role="alert" aria-live="assertive"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancelar" id="btnCancelarAnulacionTraslado">Volver sin anular</button>
+      <button type="submit" class="btn-anular-traslado" id="btnConfirmarAnulacionTraslado">Confirmar anulación</button>
+    </div>
+  </form>
+</dialog>
 
 <!-- Escáner de código de barras (BarcodeDetector nativo, opcional) -->
 <div class="scanner-overlay" id="scannerOverlay">
@@ -301,9 +328,12 @@ let productosCache = [];
 let tiendasCache = [];
 let itemsTraslado = [];
 let trasladoActual = null;
+let trasladoParaAnular = null;
+let anulacionEnCurso = false;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function puedeDespachar() { return !!currentPerfil && currentPerfil.rol === 'admin_tienda'; }
+function puedeAnularTraslado(traslado) { return esCentral() && !!traslado && ['despachado', 'recibido_pendiente_aprobacion'].includes(traslado.estado); }
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -377,6 +407,11 @@ function initPagina() {
   document.getElementById('btnCerrarVerTraslado').addEventListener('click', () => document.getElementById('modalVerTraslado').classList.remove('show'));
   document.getElementById('btnConfirmarRecepcionTra').addEventListener('click', confirmarRecepcionTraslado);
   document.getElementById('btnAprobarRecepcionTra').addEventListener('click', aprobarRecepcionTraslado);
+  document.getElementById('btnAnularDetalleTraslado').addEventListener('click', () => { if (trasladoActual) anularTraslado(trasladoActual.id); });
+  document.getElementById('formAnularTraslado').addEventListener('submit', confirmarAnulacionTraslado);
+  document.getElementById('btnCancelarAnulacionTraslado').addEventListener('click', cerrarAnulacionTraslado);
+  document.getElementById('dialogAnularTraslado').addEventListener('cancel', event => { if (anulacionEnCurso) event.preventDefault(); });
+  document.getElementById('dialogAnularTraslado').addEventListener('close', () => { if (!anulacionEnCurso) trasladoParaAnular = null; });
   document.getElementById('btnCerrarScanner').addEventListener('click', cerrarScanner);
 
   cargarDatosBase();
@@ -390,7 +425,27 @@ async function cargarDatosBase() {
   productosCache = productos || [];
   tiendasCache = tiendas || [];
   document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
-  cargarTraslados();
+  await cargarTraslados();
+  await abrirDocumentoSolicitado();
+}
+
+// Enlace de consulta: nunca recibe, aprueba ni anula al abrir una URL.
+let documentoEnlaceProcesado = false;
+async function abrirDocumentoSolicitado() {
+  const id = new URLSearchParams(location.search).get('documento');
+  if (!id || documentoEnlaceProcesado) return;
+  documentoEnlaceProcesado = true;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    mostrarBanner('El enlace del documento no es válido.'); return;
+  }
+  const { data, error } = await sb.from('traslados')
+    .select('*, origen:tienda_origen(nombre), destino:tienda_destino(nombre), traslado_items:traslado_items_lectura(cantidad, productos(nombre))')
+    .eq('id', id).maybeSingle();
+  if (error || !data) { mostrarBanner('No se pudo consultar el traslado. Puede no existir o no estar disponible para tu perfil.'); return; }
+  trasladosCache = [data, ...trasladosCache.filter(t => t.id !== data.id)];
+  ['filtroEstado', 'filtroTienda', 'filtroFecha'].forEach(filtro => { document.getElementById(filtro).value = ''; });
+  renderTablaTraslados();
+  await abrirModalVerTraslado(data);
 }
 
 async function cargarTraslados() {
@@ -435,7 +490,7 @@ function renderTablaTraslados() {
       t.estado === 'despachado' &&
       currentPerfil.tienda_codigo === t.tienda_destino;
     const puedeAprobar = esCentral() && t.estado === 'recibido_pendiente_aprobacion';
-    const puedeAnular = ['despachado', 'recibido_pendiente_aprobacion'].includes(t.estado) && esCentral();
+    const puedeAnular = puedeAnularTraslado(t);
     if (puedeRecibir) acciones = `<button class="accion-recibir btn-recibir" data-id="${t.id}">Recibir</button>` + acciones;
     if (puedeAprobar) acciones = `<button class="accion-recibir btn-aprobar" data-id="${t.id}">Dar visto bueno</button>` + acciones;
     if (puedeAnular) acciones += `<button class="accion-anular btn-anular" data-id="${t.id}">Anular</button>`;
@@ -475,7 +530,8 @@ function abrirModalTraslado() {
   document.getElementById('modalTrasladoErr').classList.remove('show');
   document.getElementById('traNota').value = '';
   const sel = document.getElementById('traTiendaDestino');
-  sel.innerHTML = tiendasCache.filter(t => t.codigo !== currentPerfil.tienda_codigo).map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  sel.innerHTML = '<option value="">Selecciona la tienda destino</option>' + tiendasCache.filter(t => t.codigo !== currentPerfil.tienda_codigo).map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  sel.value = '';
   document.getElementById('itemsTrasladoContainer').innerHTML = '';
   actualizarTotalTraslado();
   document.getElementById('modalTraslado').classList.add('show');
@@ -660,7 +716,7 @@ async function confirmarDespacho() {
 // ─── Ver / recibir traslado ─────────────────────────────────────────────
 async function abrirModalVerTraslado(t) {
   trasladoActual = t;
-  const { data: items, error } = await sb.from('traslado_items_lectura').select('*, productos(nombre)').eq('traslado_id', t.id);
+  const { data: items, error } = await sb.from('traslado_items_lectura').select('*, productos(nombre), unidades(imei)').eq('traslado_id', t.id);
   if (error) { alert('No se pudieron cargar los productos: ' + error.message); return; }
 
   document.getElementById('verTrasladoTitulo').textContent = `Traslado #${t.consecutivo}`;
@@ -676,6 +732,7 @@ async function abrirModalVerTraslado(t) {
   document.getElementById('verTrasladoItems').innerHTML = (items || []).map(it => `
     <div class="item-recepcion">
       <div class="nombre-prod">${escapeHtml(it.productos?.nombre || '—')}${it.unidad_id ? '' : ` ×${it.cantidad}`}</div>
+      ${it.unidad_id ? `<div class="meta"><strong>IMEI:</strong> ${escapeHtml(it.unidades?.imei || 'No disponible · verifica el equipo antes de continuar')}</div>` : ''}
       <div class="meta">Costo de remisión: ${fmtCOP(it.precio_tienda)}${it.unidad_id ? ' · Serializado' : ''}</div>
     </div>
   `).join('') || '<div class="empty-state">Sin productos.</div>';
@@ -692,6 +749,7 @@ async function abrirModalVerTraslado(t) {
   const puedeAprobar = esCentral() && t.estado === 'recibido_pendiente_aprobacion';
   document.getElementById('btnConfirmarRecepcionTra').style.display = puedeRecibir ? 'inline-block' : 'none';
   document.getElementById('btnAprobarRecepcionTra').style.display = puedeAprobar ? 'inline-block' : 'none';
+  document.getElementById('btnAnularDetalleTraslado').style.display = puedeAnularTraslado(t) ? 'inline-block' : 'none';
 
   document.getElementById('modalVerTraslado').classList.add('show');
 }
@@ -737,13 +795,64 @@ async function aprobarRecepcionTraslado() {
   cargarTraslados();
 }
 
-async function anularTraslado(id) {
-  const motivo = prompt('Motivo de la anulación (obligatorio):');
-  if (!motivo || !motivo.trim()) { if (motivo !== null) alert('El motivo es obligatorio.'); return; }
-  const { data, error } = await sb.rpc('anular_traslado', { p_traslado_id: id, p_motivo: motivo.trim() });
-  if (error) { alert('No se pudo anular: ' + error.message); return; }
-  mostrarBanner(`Traslado #${data.consecutivo} anulado.`);
-  cargarTraslados();
+function anularTraslado(id) {
+  if (anulacionEnCurso) return;
+  const traslado = trasladosCache.find(t => t.id === id) || (trasladoActual?.id === id ? trasladoActual : null);
+  if (!puedeAnularTraslado(traslado)) { mostrarBanner('Este traslado no permite anulación para tu perfil o estado actual.'); return; }
+  trasladoParaAnular = traslado;
+  document.getElementById('formAnularTraslado').reset();
+  document.getElementById('anularTrasladoTitulo').textContent = `Anular traslado #${traslado.consecutivo}`;
+  document.getElementById('anularTrasladoResumen').textContent = `${traslado.origen?.nombre || traslado.tienda_origen} → ${traslado.destino?.nombre || traslado.tienda_destino} · ${etiquetaEstado(traslado.estado)}`;
+  document.getElementById('anularTrasladoErr').classList.remove('show');
+  document.getElementById('dialogAnularTraslado').showModal();
+}
+
+function cerrarAnulacionTraslado() {
+  if (anulacionEnCurso) return;
+  document.getElementById('dialogAnularTraslado').close();
+  trasladoParaAnular = null;
+}
+
+async function confirmarAnulacionTraslado(event) {
+  event.preventDefault();
+  if (anulacionEnCurso || !puedeAnularTraslado(trasladoParaAnular)) return;
+  const err = document.getElementById('anularTrasladoErr');
+  err.classList.remove('show');
+  const motivo = document.getElementById('anularTrasladoMotivo').value.trim();
+  if (motivo.length < 5 || motivo.length > 1000 || !document.getElementById('anularTrasladoConfirmacion').checked) {
+    err.textContent = 'Escribe el motivo (5 a 1000 caracteres) y confirma que quieres anular todo el traslado.';
+    err.classList.add('show'); return;
+  }
+  const traslado = trasladoParaAnular;
+  const btn = document.getElementById('btnConfirmarAnulacionTraslado');
+  const volver = document.getElementById('btnCancelarAnulacionTraslado');
+  const form = document.getElementById('formAnularTraslado');
+  anulacionEnCurso = true;
+  btn.disabled = true; volver.disabled = true; btn.textContent = 'Anulando…';
+  form.setAttribute('aria-busy', 'true');
+  let resultado;
+  try {
+    const { data, error } = await sb.rpc('anular_traslado', { p_traslado_id: traslado.id, p_motivo: motivo });
+    if (error) throw error;
+    if (data?.ok !== true) throw new Error('El sistema no confirmó la anulación. Consulta el estado antes de reintentar.');
+    resultado = data;
+  } catch (error) {
+    err.textContent = 'No se pudo confirmar la anulación: ' + (error.message || 'revisa la conexión y consulta el estado del traslado.');
+    err.classList.add('show');
+  } finally {
+    anulacionEnCurso = false;
+    btn.disabled = false; volver.disabled = false; btn.textContent = 'Confirmar anulación';
+    form.removeAttribute('aria-busy');
+  }
+  if (!resultado) return;
+  document.getElementById('dialogAnularTraslado').close();
+  document.getElementById('modalVerTraslado').classList.remove('show');
+  trasladoParaAnular = null;
+  trasladoActual = null;
+  trasladosCache = trasladosCache.map(t => t.id === traslado.id ? { ...t, estado: 'anulado' } : t);
+  renderTablaTraslados();
+  mostrarBanner(`Traslado #${resultado.consecutivo} anulado. Todos sus productos regresaron a ${traslado.origen?.nombre || traslado.tienda_origen}; no se creó otro envío.`);
+  await cargarTraslados();
 }
 
 // ─── Escáner de código de barras (BarcodeDetector nativo) ──────────────

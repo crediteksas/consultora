@@ -98,6 +98,44 @@ test('un perfil inactivo, desconocido o sin tienda nunca obtiene una ruta proteg
   }
 });
 
+test('gestión documental se limita a Óscar y Maite activos con rol corporativo', () => {
+  const managers = [
+    { id: '6de0ad26-64af-4966-8cd9-d468880af627', rol: 'gerencia', activo: true },
+    { id: 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', rol: 'auditoria', activo: true },
+  ];
+  for (const profile of managers) {
+    assert.equal(access.canManageDocuments(profile), true);
+    for (const route of ['documentos-gestion.html', '/creditek/erp/documentos-gestion?tipo=traslado']) {
+      assert.equal(access.authorize(profile, route).allowed, true);
+    }
+    const links = access.navigationFor(profile).flatMap(section => Array.from(section.items));
+    assert.equal(links.filter(item => item.href === 'documentos-gestion.html').length, 1);
+    assert.equal(links.find(item => item.href === 'documentos-gestion.html').label, 'Editar o anular documentos');
+  }
+  for (const profile of [
+    null,
+    { ...managers[0], activo: false },
+    { ...managers[1], activo: false },
+    { ...managers[0], rol: 'admin_tienda', tienda_codigo: 'CK-01' },
+    { ...managers[1], rol: 'asesor', tienda_codigo: 'CK-01' },
+    { ...managers[0], id: 'otro-gerente' },
+    { ...managers[1], id: 'otra-auditoria' },
+  ]) {
+    assert.equal(access.canManageDocuments(profile), false);
+    assert.equal(access.authorize(profile, 'documentos-gestion.html').allowed, false);
+    const links = access.navigationFor(profile).flatMap(section => Array.from(section.items));
+    assert.ok(!links.some(item => item.href === 'documentos-gestion.html'));
+  }
+});
+
+test('el tablero ofrece tarjeta documental oculta hasta validar el permiso específico', async () => {
+  const tablero = await readFile(new URL('../../creditek/erp/tablero.html', import.meta.url), 'utf8');
+  const sidebar = await readFile(new URL('../../creditek/erp/sidebar.js', import.meta.url), 'utf8');
+  assert.match(tablero, /id="documentosGestionAcceso"[^>]+href="documentos-gestion\.html"[^>]+hidden/);
+  assert.match(tablero, /documentosGestionAcceso'\)\.hidden = !window\.KoraAccessControl\?\.canManageDocuments\(currentPerfil\)/);
+  assert.match(sidebar, /label: 'Editar o anular documentos', href: 'documentos-gestion\.html'[\s\S]*?users: \['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'\]/);
+});
+
 test('la navegación renderizada usa las unidades oficiales y no términos heredados', () => {
   const corporate = access.navigationFor(
     { rol: 'gerencia', activo: true },

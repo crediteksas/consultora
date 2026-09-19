@@ -7,6 +7,10 @@
     'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
     '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
   ]);
+  const DOCUMENT_MANAGERS = new Set([
+    'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
+    '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
+  ]);
   const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html']);
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
@@ -25,7 +29,7 @@
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
-    'incidencias.html', 'compartir-instalacion.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
+    'incidencias.html', 'compartir-instalacion.html', 'documentos-gestion.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
     ...CREDIT_PORTFOLIO_ROUTES, ...FINANCIAL_CONTROLLER_ROUTES,
   ]);
   const STORE_ROUTES_BY_ROLE = Object.freeze({
@@ -81,6 +85,7 @@
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Editar o anular documentos', href: 'documentos-gestion.html', icon: 'file-pen-line', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', icon: 'hand-coins', users: [...FINANCIAL_CONTROLLERS] },
       { label: 'Compartir instalación', href: 'compartir-instalacion.html', icon: 'share-2', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', icon: 'bug', roles: ['gerencia'] },
@@ -144,6 +149,12 @@
     return null;
   }
 
+  function canManageDocuments(profile) {
+    return Boolean(profile?.activo === true
+      && CORPORATE_ROLES.has(profile.rol)
+      && DOCUMENT_MANAGERS.has(profile.id));
+  }
+
   function authorize(profile, route, capabilities = {}) {
     const normalized = normalizeRoute(route);
     if (PUBLIC_ROUTES.has(normalized)) return { allowed: true, route: normalized, experience: resolveExperience(profile) };
@@ -155,6 +166,9 @@
     const hasFullCorporateAccess = profile.rol === 'gerencia';
     const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
     if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
+    if (normalized === 'documentos-gestion.html' && !canManageDocuments(profile)) {
+      return { allowed: false, route: normalized, experience };
+    }
     if (FINANCIAL_CONTROLLER_ROUTES.has(normalized) && !FINANCIAL_CONTROLLERS.has(profile.id)) {
       return { allowed: false, route: normalized, experience };
     }
@@ -195,6 +209,7 @@
 
   global.KoraAccessControl = Object.freeze({
     authorize,
+    canManageDocuments,
     homeFor,
     navigationFor,
     normalizeRoute,

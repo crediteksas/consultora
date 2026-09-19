@@ -23,6 +23,8 @@ El panel está reservado a los perfiles activos de Óscar y Maite con rol corpor
 
 La migración `20260919222329_ventas_ajustes_guardas_documentos.sql` agrega únicamente comprobaciones previas a los dos RPC administrativos de venta. No ejecuta anulaciones/correcciones de documentos ni cambia cálculos existentes. En producción se verificó que, al retirar las guardas añadidas, ambas definiciones son idénticas a las anteriores.
 
+La migración `20260919224627_permitir_reverso_movimientos_anulacion.sql` corrige una incompatibilidad detectada en la anulación autenticada: el RPC escribía `reverso`, pero `movimientos_tipo_check` había omitido ese tipo. Conserva el predicado anterior y agrega solamente `reverso`, sin modificar el RPC ni ejecutar anulaciones. No se sustituye por `ajuste_entrada`, porque los cierres existentes reconocen la reversión por su tipo y vínculo `reverso_de`. El reemplazo del CHECK es atómico y valida todas las filas; un fallo revierte toda la migración.
+
 ## Verificación
 
 - `npm run test:local`: incluye búsqueda, permisos, enlaces, anulación y guardas SQL ejecutables en PGlite.

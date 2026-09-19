@@ -8,7 +8,7 @@ function cliente(filas, fallar = false) {
     assert.equal(tabla, 'stock_cantidad_lectura');
     const filtros = {};
     return {
-      select(campos) { assert.match(campos, /productos!inner/); return this; },
+      select(campos) { assert.match(campos, /productos!inner\([^)]*precio_guia/); return this; },
       eq(campo, valor) { filtros[campo] = valor; return this; },
       gt(campo, valor) { assert.equal(campo, 'cantidad'); assert.equal(valor, 0); return this; },
       order(campo) { assert.equal(campo, 'producto_id'); return this; },
@@ -26,7 +26,7 @@ function cliente(filas, fallar = false) {
 test('carga todas las páginas de la tienda, incluyendo vidrios después del registro 1000', async () => {
   const filas = Array.from({ length: 1001 }, (_, i) => ({
     cantidad: 12, precio_tienda: 10000, costo_promedio: 3600,
-    productos: { id: String(i), codigo: `ACC${i}`, nombre: i === 1000 ? 'VIDRIO' : 'SILICONA', tipo: 'cantidad' },
+    productos: { id: String(i), codigo: `ACC${i}`, nombre: i === 1000 ? 'VIDRIO' : 'SILICONA', tipo: 'cantidad', precio_guia: 18000 },
   }));
   const sb = cliente(filas);
   const productos = await globalThis.CreditekVentasDomain.accesoriosDeTienda(sb, 'CK-03');
@@ -35,6 +35,8 @@ test('carga todas las páginas de la tienda, incluyendo vidrios después del reg
   assert.equal(productos.find(p => p.nombre === 'VIDRIO').cantidad, 12);
   assert.equal(productos[0].precio_tienda, 10000);
   assert.equal(productos[0].costo_promedio, 10000);
+  assert.equal(productos[0].precio_guia, 18000);
+  assert.equal(globalThis.CreditekVentasDomain.precioSugerido(productos[0]), 18000);
 });
 
 test('no convierte errores de inventario en stock cero ni consulta sin tienda', async () => {

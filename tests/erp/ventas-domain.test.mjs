@@ -47,8 +47,17 @@ test('consultas de venta omiten costo, utilidad y comodines', () => {
   assert.match(ventas.columnasDetalleItems(), /precio_venta/);
 });
 
-test('consulta de unidad trae costo real y precio sugerido por separado', () => {
-  assert.match(ventas.columnasUnidadVenta(), /costo_remision/);
-  assert.doesNotMatch(ventas.columnasUnidadVenta(), /precio_guia|\*/);
+test('consulta de unidad separa costo Retail de precio comercial sin pedir costo central', () => {
+  assert.match(ventas.columnasUnidadVenta(), /productos\(nombre,precio_guia\)/);
+  assert.doesNotMatch(ventas.columnasUnidadVenta(), /costo_remision|\*/);
   assert.match(ventas.columnasUnidadVenta(), /precio_tienda/);
+});
+
+test('una corrección de costo no cambia el precio sugerido de venta', () => {
+  assert.equal(ventas.precioSugerido({ precio_guia: 25000, precio_tienda: 9700 }), 25000);
+  assert.equal(ventas.precioSugerido([{ precio_guia: '565000', precio_tienda: 455000 }]), 565000);
+  for (const precio_guia of [null, undefined, 0, -1, '', 'inválido', Infinity]) {
+    assert.equal(ventas.precioSugerido({ precio_guia, precio_tienda: 9700 }), null);
+  }
+  assert.equal(ventas.precioSugerido(null), null);
 });

@@ -10,13 +10,19 @@
     return Number.isFinite(convertido) ? convertido : 0;
   }
 
+  function precioSugerido(producto) {
+    // El precio comercial no es el costo Retail guardado en precio_tienda.
+    const precio = numero(relacionUnica(producto)?.precio_guia);
+    return precio > 0 ? precio : null;
+  }
+
   async function accesoriosDeTienda(sb, tienda) {
     if (!tienda) throw new Error('Selecciona una tienda para consultar su inventario.');
     const filas = [];
     const tamano = 500;
     for (let desde = 0; ; desde += tamano) {
       const { data, error } = await sb.from('stock_cantidad_lectura')
-        .select('producto_id,cantidad,precio_tienda,productos!inner(id,codigo,nombre,tipo,activo)')
+        .select('producto_id,cantidad,precio_tienda,productos!inner(id,codigo,nombre,tipo,activo,precio_guia)')
         .eq('tienda_codigo', tienda).eq('productos.activo', true)
         .eq('productos.tipo', 'cantidad').gt('cantidad', 0)
         .order('producto_id').range(desde, desde + tamano - 1);
@@ -69,7 +75,7 @@
       'estado',
       'tienda_actual',
       'precio_tienda',
-      'productos(nombre)',
+      'productos(nombre,precio_guia)',
     ].join(',');
   }
 
@@ -115,6 +121,7 @@
 
   global.CreditekVentasDomain = Object.freeze({
     accesoriosDeTienda,
+    precioSugerido,
     columnasListaVentas,
     columnasDetalleItems,
     columnasUnidadVenta,

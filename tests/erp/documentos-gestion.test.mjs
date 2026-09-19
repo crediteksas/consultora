@@ -86,5 +86,6 @@ test('hub es de consulta, restringe enlaces por permisos y no ofrece borrado gen
   assert.match(html,/facturas de proveedor no tienen una anulación general/i);
   assert.match(html,/id="docFrom"/);assert.match(html,/id="docTo"/);
   assert.match(html,/docNotice.*role="status"/);assert.match(html,/app" hidden/);
+  assert.match(html,/<body data-kora-requires-auth="true">/,'sin sesión se abre el login compartido, no una página vacía');
   new vm.Script(app);new vm.Script(domain);
 });

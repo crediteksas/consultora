@@ -1339,6 +1339,33 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
       window.creditekSidebar = { perfil, tiendas: tiendas || [], sb: pageClient, authorization };
+      if (perfil.rol === 'admin_tienda' && perfil.tienda_codigo) {
+        let consultandoCaja = false;
+        const comprobarCaja = async () => {
+          if (consultandoCaja || document.hidden) return;
+          consultandoCaja = true;
+          try {
+            const { data, error } = await pageClient.rpc('estado_apertura_caja', { p_tienda_codigo: perfil.tienda_codigo });
+            if (error) return; // El servidor protege las operaciones aunque el aviso no cargue.
+            let aviso = document.getElementById('koraCajaPendiente');
+            if (!data?.bloqueada) { aviso?.remove(); return; }
+            if (!aviso) {
+              aviso = document.createElement('div'); aviso.id = 'koraCajaPendiente';
+              aviso.setAttribute('role', 'status');
+              aviso.style.cssText = 'padding:12px 18px;margin:12px;border:1px solid #b4e8eb;border-top:2px solid #00bcc8;border-radius:12px;background:#eefcfc;color:#102444;display:flex;flex-wrap:wrap;gap:12px;align-items:center';
+              const texto = document.createElement('span');
+              const link = document.createElement('a'); link.href = 'caja.html'; link.textContent = 'Validar efectivo anterior';
+              aviso.append(texto, link);
+              const destino = appEl.querySelector('main, .main-content, .content') || appEl;
+              destino.prepend(aviso);
+            }
+            aviso.firstChild.textContent = `Caja: falta validar el ${data.fecha_pendiente}. Puedes consultar informes y registrar los gastos de ese día.`;
+          } finally { consultandoCaja = false; }
+        };
+        comprobarCaja().catch(() => {});
+        window.addEventListener?.('focus', () => comprobarCaja().catch(() => {}));
+        window.setInterval?.(() => comprobarCaja().catch(() => {}), 60000);
+      }
       if (typeof CustomEvent === 'function') {
         document.dispatchEvent?.(new CustomEvent('kora-sidebar-ready'));
       }

@@ -754,6 +754,28 @@ async function obtenerCajaHoy(fechaISO: string, env: Env): Promise<Array<any>> {
   return (await r.json()) as any[];
 }
 
+export async function obtenerCorteOperativo(fechaISO: string, env: Env): Promise<any[]> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/generar_cortes_caja`, {
+    method: 'POST', headers: sbHeaders(env), body: JSON.stringify({ p_fecha: fechaISO }),
+  });
+  if (!r.ok) throw new Error(`corte_operativo_failed:${r.status}`);
+  const cortes: unknown = await r.json();
+  if (!Array.isArray(cortes) || cortes.some(c => !c || typeof c.tienda_codigo !== 'string' || !Number.isFinite(Number(c.efectivo_esperado)))) {
+    throw new Error('corte_operativo_invalid_response');
+  }
+  return cortes;
+}
+
+export function formatearCorteCaja(cortes: any[], fechaLarga: string): string {
+  const pendientes = cortes.filter(c => c.efectivo_contado == null).length;
+  return [
+    `CAJA · CORTE OPERATIVO · ${fechaLarga}`,
+    `${pendientes} pendientes de arqueo. Esperado no significa contado.`,
+    ...cortes.map(c => `${c.origen?.nombre || c.tienda_codigo}: esperado ${fmtCOP(Number(c.efectivo_esperado))}`
+      + (c.efectivo_contado == null ? ' · Sin contar' : ` · Contado ${fmtCOP(Number(c.efectivo_contado))} · Diferencia ${fmtDiferenciaCOP(Number(c.diferencia))}`)),
+  ].join('\n');
+}
+
 type ResultadoReporte = {
   plantilla: string;
   destinatario: string;
@@ -820,7 +842,7 @@ async function reservarEnvioDelDia(
     return null;
   }
   const reabrir = await fetch(
-    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}&status=eq.${existente.status || 'error'}`,
+    `${SUPABASE_URL}/rest/v1/reportes_diarios_enviados?fecha=eq.${fechaISO}&status=eq.${existente.status || 'error'}&attempts=eq.${Number(existente.attempts || 0)}`,
     {
       method: 'PATCH',
       headers: sbHeaders(env, { Prefer: 'return=representation' }),
@@ -1053,7 +1075,7 @@ export async function enviarReporteATodos(
 
 // ─── Entry point del scheduled ──────────────────────────────────────────
 
-async function ejecutarReportesDiarios(env: Env): Promise<void> {
+export async function ejecutarReportesDiarios(env: Env): Promise<void> {
   const hoy = fechaColombiaHoy();
   const { hh, mm, hhmm } = horaColombiaAhora();
 
@@ -1062,16 +1084,19 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   const minutosDelDia = hh * 60 + mm;
   if (minutosDelDia < 11 * 60 || minutosDelDia > 19 * 60 + 55) return;
 
+  // Se informa al horario existente aunque falten arqueos físicos.
+  const domingoOFestivo = await esDomingoOFestivo(hoy, env);
+  const limiteHora = domingoOFestivo ? 15 : 19;
+  if (hh < limiteHora) return;
+
   // Idempotencia rápida por consulta (chequeo optimista; la reserva atómica es la definitiva).
   if (await yaSeEnvioHoy(hoy, env)) return;
 
   let tiendas: Array<{ codigo: string; nombre: string }>;
   let cerradas: string[];
   try {
-    [tiendas, cerradas] = await Promise.all([
-      obtenerTiendasPropiasActivas(env),
-      obtenerCerradasHoy(hoy, env),
-    ]);
+    tiendas = await obtenerTiendasPropiasActivas(env);
+    cerradas = []; // El conteo se valida mañana, no condiciona los informes de hoy.
   } catch (e) {
     console.error('[REPORTES-DIARIOS] error en carga inicial:', e);
     return;
@@ -1081,38 +1106,32 @@ async function ejecutarReportesDiarios(env: Env): Promise<void> {
   const nombresFaltantes = tiendas.filter((t) => faltantes.includes(t.codigo)).map((t) => t.nombre);
 
   // Decidir si es hora de enviar
-  const domingoOFestivo = await esDomingoOFestivo(hoy, env);
-  const limiteHora = domingoOFestivo ? 15 : 19;
   const debeMandarCompleto = faltantes.length === 0;
-  const debeMandarIncompleto = !debeMandarCompleto && hh >= limiteHora;
-  if (!debeMandarCompleto && !debeMandarIncompleto) return;
 
   // Reserva ATÓMICA — evita duplicados si dos crons corren muy juntos.
   const reservado = await reservarEnvioDelDia(hoy, debeMandarCompleto, faltantes, env);
   if (!reservado) return;
   const resultados = Array.isArray(reservado.resultados) ? reservado.resultados : [];
 
-  // Componer mensajes
-  const [gastos, ventas, cajas] = await Promise.all([
-    obtenerGastosHoy(hoy, env),
-    obtenerVentasHoy(hoy, env),
-    obtenerCajaHoy(hoy, env),
-  ]);
   const fechaLarga = fechaFormateadaLarga(hoy);
-  const encabezado = encabezadoEstado(debeMandarCompleto, nombresFaltantes, hhmm);
-
-  const msg1 = formatearGastos(gastos, fechaLarga, encabezado);
-  const msg2 = formatearVentas(ventas, fechaLarga);
-  const msg3 = formatearCaja(cajas, fechaLarga);
+  const encabezado = `Corte ${hhmm} Colombia · Gastos aprobados. Arqueo pendiente no impide informar ventas.`;
 
   // Enviar secuencialmente y persistir cada confirmación antes de continuar.
   // No usamos esperas largas: Cloudflare cancela las tareas waitUntil que no
   // terminan dentro de su ventana posterior a la invocación.
   console.log('[REPORTES-DIARIOS] Enviando reporte del', hoy, 'completo=', debeMandarCompleto);
   try {
-    await enviarReporteATodos(hoy, REPORT_TEMPLATES.gastos, msg1, resultados, env);
-    await enviarReporteATodos(hoy, REPORT_TEMPLATES.ventas, msg2, resultados, env);
-    await enviarReporteATodos(hoy, REPORT_TEMPLATES.caja, msg3, resultados, env);
+    const errores: string[] = [];
+    const informes = [
+      { plantilla: REPORT_TEMPLATES.ventas, componer: async () => formatearVentas(await obtenerVentasHoy(hoy, env), fechaLarga) },
+      { plantilla: REPORT_TEMPLATES.gastos, componer: async () => formatearGastos(await obtenerGastosHoy(hoy, env), fechaLarga, encabezado) },
+      { plantilla: REPORT_TEMPLATES.caja, componer: async () => formatearCorteCaja(await obtenerCorteOperativo(hoy, env), fechaLarga) },
+    ];
+    for (const informe of informes) {
+      try { await enviarReporteATodos(hoy, informe.plantilla, await informe.componer(), resultados, env); }
+      catch (e) { errores.push(`${informe.plantilla}:${e instanceof Error ? e.message : 'error'}`); }
+    }
+    if (errores.length) throw new Error(errores.join(';').slice(0, 240));
     await guardarEstadoReporte(hoy, {
       status: 'sent',
       completed_at: new Date().toISOString(),

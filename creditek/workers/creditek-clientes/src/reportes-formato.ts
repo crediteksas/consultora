@@ -45,6 +45,21 @@ export function paginarReporte(mensaje: string): PaginaReporte[] {
     plantilla: `reporte_cierre_ordenado_${filas.length}_v2`,
     parametros: [titulo, ...filas],
   };
-  if (renderizarPaginaReporte(pagina).length > 1024) throw new Error('report_too_long_for_single_message');
-  return [pagina];
+  if (renderizarPaginaReporte(pagina).length <= 1024) return [pagina];
+  // Solo dividir cuando es imposible conservar el detalle en un mensaje.
+  // Una fila individual imposible sigue siendo un error visible, nunca se trunca.
+  const paginas: PaginaReporte[] = [];
+  let bloque: string[] = [];
+  const crear = (detalle: string[]): PaginaReporte => ({
+    plantilla: `reporte_cierre_ordenado_${detalle.length}_v2`, parametros: [titulo, ...detalle],
+  });
+  for (const linea of lineas) {
+    if (renderizarPaginaReporte(crear([linea])).length > 1024) throw new Error('report_too_long_for_single_message');
+    if (bloque.length && (bloque.length === MAX_FILAS_REPORTE || renderizarPaginaReporte(crear([...bloque, linea])).length > 1024)) {
+      paginas.push(crear(bloque)); bloque = [];
+    }
+    bloque.push(linea);
+  }
+  if (bloque.length) paginas.push(crear(bloque));
+  return paginas;
 }

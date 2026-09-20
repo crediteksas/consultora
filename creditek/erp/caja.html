@@ -12,6 +12,14 @@
 <script src="sidebar.js?v=2.0.30" data-kora-shell="1.0.0"></script>
 <script src="caja-piloto-domain.js"></script>
 <style>
+.caja-ciclo-panel { line-height:1.5; }
+.caja-ciclo-panel h2 { font-size:20px; }
+.caja-ciclo-panel p { margin:10px 0; }
+.caja-ciclo-panel label { display:grid;gap:6px;font-size:14px;font-weight:600; }
+.caja-ciclo-panel input,.caja-ciclo-panel textarea { border:1px solid #dce2eb;border-radius:10px;padding:10px 12px;font:inherit;color:#0b1e3d; }
+.caja-ciclo-panel input:focus,.caja-ciclo-panel textarea:focus { outline:2px solid #00bcc8;outline-offset:2px; }
+.caja-ciclo-panel button { min-height:44px;white-space:normal; }
+.caja-ciclo-panel a { color:#087d88;text-underline-offset:3px; }
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
   --border: rgba(11,30,61,0.08); --text2: #6E6E76; --verde: #16A34A; --amarillo: #D97706; --rojo: #DC2626;
@@ -207,6 +215,7 @@ tr.fila-abierta { background: #FEF2F2; }
   </div>
 </div>
 
+<script src="caja-ciclo-ui.js"></script>
 <script>
 const KORA_ENV = window.__KORA_ENV__;
 const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
@@ -264,7 +273,8 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtUtilidad(n) { return n === null ? 'Pendiente de cálculo' : fmtCOP(n); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -277,7 +287,12 @@ document.getElementById('btnCerrarBanner').addEventListener('click', () => docum
 
 // ─── Página: Caja ───────────────────────────────────────────────────
 function initPagina() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = window.CreditekCajaCiclo.fechaColombia();
+  const ciclo = document.createElement('section');
+  ciclo.style.cssText = 'padding:20px;margin-bottom:20px;border-top:2px solid #00bcc8;border-radius:14px;background:white';
+  const vista = document.getElementById(esCentral() ? 'vistaCentral' : 'vistaTienda');
+  vista.prepend(ciclo);
+  window.CreditekCajaCiclo.montar({ sb, perfil: currentPerfil, contenedor: ciclo });
 
   if (esCentral()) {
     document.getElementById('vistaCentral').style.display = 'block';
@@ -321,16 +336,16 @@ async function calcularCuadrito(tienda, fecha) {
   if (movimientosCajaError) throw movimientosCajaError;
 
   const ventasList = ventas || [];
-  const gastosValidos = (gastos || []).filter(g => g.conceptos_gasto?.preautorizado || g.estado === 'aprobado');
+  const gastosValidos = (gastos || []).filter(g => (g.conceptos_gasto?.preautorizado && g.estado === 'registrado') || g.estado === 'aprobado');
   const telefonos = [];
   const accesoriosMap = {};
   let totalUtilidad = 0;
+  let utilidadCompleta = true;
   ventasList.forEach(v => {
     (v.venta_items || []).forEach(it => {
       if (it.utilidad === null || it.utilidad === undefined || it.utilidad === '' || !Number.isFinite(Number(it.utilidad))) {
-        throw new Error(`La venta ${v.id} tiene una línea sin utilidad calculada.`);
-      }
-      totalUtilidad += Number(it.utilidad);
+        utilidadCompleta = false;
+      } else totalUtilidad += Number(it.utilidad);
       if (it.productos?.tipo === 'serializado') {
         telefonos.push({ nombre: it.productos.nombre, tipo: v.tipo, monto: v.tipo === 'credito' ? (v.creditos?.[0]?.cuota_inicial ?? v.creditos?.cuota_inicial ?? 0) : it.precio_venta });
       } else {
@@ -371,7 +386,7 @@ async function calcularCuadrito(tienda, fecha) {
     gastosEfectivo: totalGastos,
     salidasExplicitas,
   });
-  if (esperado !== Number(cuadre.esperado || 0)) {
+  if (Math.abs(esperado - Number(cuadre.esperado || 0)) > 0.005) {
     throw new Error('El cálculo de caja del servidor no coincide con sus componentes.');
   }
 
@@ -388,7 +403,8 @@ async function calcularCuadrito(tienda, fecha) {
     otrosIngresos,
     totalGastos,
     salidasExplicitas,
-    totalUtilidad,
+    totalUtilidad: utilidadCompleta ? totalUtilidad : null,
+    fechaInicioCiclo: cuadre.fecha_inicio_ciclo,
     esperado,
     aperturaCierreAnterior: Number(cuadre.apertura_cierre_anterior ?? apertura),
     ajusteArrastre: Number(cuadre.ajuste_arrastre_movimientos || 0),
@@ -399,6 +415,10 @@ async function calcularCuadrito(tienda, fecha) {
 
 // ─── Vista tienda ───────────────────────────────────────────────────
 async function cargarCuadrito(tienda, fecha) {
+  try { await cargarCuadritoDatos(tienda, fecha); }
+  catch (e) { document.getElementById('cuadritoCont').textContent = `No se pudo cargar la caja: ${e.message}. Vuelve a seleccionar la fecha para reintentar.`; }
+}
+async function cargarCuadritoDatos(tienda, fecha) {
   const cont = document.getElementById('cuadritoCont');
   cont.innerHTML = '<div class="empty-state">Cargando...</div>';
   const [c, origenResult] = await Promise.all([
@@ -456,7 +476,7 @@ async function cargarCuadrito(tienda, fecha) {
           <div class="cuadrito-linea"><span class="izq">Total iniciales</span><span class="der">${fmtCOP(c.totalIniciales)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
-          <div class="cuadrito-linea"><span class="izq">Utilidad del día</span><span class="der">${fmtCOP(c.totalUtilidad)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Utilidad del día</span><span class="der">${fmtUtilidad(c.totalUtilidad)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Salidas explícitas</span><span class="der">-${fmtCOP(c.salidasExplicitas)}</span></div>
           <div class="cuadrito-linea esperado ${c.esperado < 0 ? 'negativo' : ''}"><span class="izq">Efectivo esperado</span><span class="der">${fmtCOP(c.esperado)}</span></div>
         </div>
@@ -488,7 +508,7 @@ async function cargarCuadrito(tienda, fecha) {
             ${c.caja.nota ? `<div class="cuadrito-vacio" style="margin-top:6px;">Nota: ${escapeHtml(c.caja.nota)}</div>` : ''}
             <button class="btn-primary" id="btnCompartirWA" style="margin-top:14px;">Compartir por WhatsApp</button>
           </div>
-        ` : (currentPerfil.rol === 'admin_tienda' ? `
+        ` : (currentPerfil.rol === 'admin_tienda' && fecha < c.fechaInicioCiclo ? `
           <div class="cierre-box">
             <div class="campo"><label>Efectivo contado (arqueo físico)</label><input type="number" id="efectivoContado" min="0" placeholder="0"></div>
             <div class="diferencia-preview" id="diferenciaPreview"></div>
@@ -496,7 +516,7 @@ async function cargarCuadrito(tienda, fecha) {
             <div class="modal-err" id="cierreErr"></div>
             <button class="btn-primary" id="btnCerrarCaja">Cerrar caja</button>
           </div>
-        ` : '')}
+        ` : '<p class="meta">Corte operativo independiente del arqueo. La validación del efectivo se realiza al día siguiente en el recuadro superior, antes de nuevos movimientos.</p>')}
       </div>
     </div>
   `;
@@ -527,7 +547,7 @@ async function cargarCuadrito(tienda, fecha) {
   renderMovimientosCaja('');
   document.getElementById('filtroMovimientosCaja').addEventListener('input', event => renderMovimientosCaja(event.target.value));
 
-  if (!cerrada && currentPerfil.rol === 'admin_tienda') {
+  if (document.getElementById('efectivoContado')) {
     const inputContado = document.getElementById('efectivoContado');
     inputContado.addEventListener('input', () => {
       const contado = Number(inputContado.value || 0);
@@ -627,6 +647,13 @@ function fechasEnRango(desde, hasta) {
 }
 
 async function cargarConsolidado() {
+  try { await cargarConsolidadoDatos(); }
+  catch (e) {
+    const aviso = document.getElementById('emptyConsolidado'); aviso.style.display = 'block';
+    aviso.textContent = `No se pudo cargar el informe: ${e.message}. Pulsa Actualizar para reintentar.`;
+  }
+}
+async function cargarConsolidadoDatos() {
   const empty = document.getElementById('emptyConsolidado');
   empty.style.display = 'block';
   empty.textContent = 'Cargando...';
@@ -672,7 +699,7 @@ async function cargarConsolidado() {
       <td>${fmtCOP(f.financiado)}</td>
       <td>${fmtCOP(f.iniciales)}</td>
       <td>${fmtCOP(f.gastos)}</td>
-      <td>${fmtCOP(f.utilidad)}</td>
+      <td>${fmtUtilidad(f.utilidad)}</td>
       <td>${fmtCOP(f.salidasExplicitas)}</td>
       <td>${fmtCOP(f.esperado)}${f.saldoActualizado ? '<div class="meta">Actualizado tras el cierre</div>' : ''}</td>
       <td>${f.contadoReal !== null ? fmtCOP(f.contadoReal) : '—'}</td>

@@ -593,6 +593,10 @@ function abrirModalGasto() {
   document.getElementById('gastoFecha').value = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'America/Bogota',
   }).format(new Date());
+  const fechaArqueo = new URLSearchParams(location.search).get('fecha');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaArqueo || '') && fechaArqueo <= document.getElementById('gastoFecha').value) {
+    document.getElementById('gastoFecha').value = fechaArqueo;
+  }
   document.getElementById('gastoMonto').value = '';
   document.getElementById('gastoDescripcion').value = '';
   document.getElementById('gastoResponsable').value = currentPerfil.nombre || currentUser.email || '';

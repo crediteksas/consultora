@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {chromium,webkit} from '@playwright/test';
 
-for(const engine of ['chromium','webkit'])test(`Gestión retira un lote y descarta vista previa; responsive ${engine}`,async()=>{
+for(const engine of (process.env.KORA_TEST_CHROME_ONLY?['chromium']:['chromium','webkit']))test(`Gestión retira un lote y descarta vista previa; responsive ${engine}`,async()=>{
   const browser=await (engine==='chromium'?chromium:webkit).launch(engine==='chromium'?{channel:'chrome',headless:true}:{headless:true});
   const root=process.cwd(),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
   page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
@@ -22,8 +22,8 @@ for(const engine of ['chromium','webkit'])test(`Gestión retira un lote y descar
       window.testCalls=[];window.testFailure=false;window.testApprove=false;window.testRemoved=false;
       const fixture=()=>({id:'lote-alo',plataforma:'alo',estado:window.testApprove?'aprobada':'con_novedades',fecha_corte:'2026-09-06',imported_at:'2026-09-07T15:00:00Z',liquidation_operations:[],liquidation_imported_files:[{original_name:'ALO CREDIT - ARCHIVO ERRONEO DE PRUEBA.xlsx'}]});
       window.creditekSidebar={perfil:{rol:'auditoria'},sb:{
-        auth:{getSession:async()=>({data:{session:{user:{id:'gestion'}}}})},
-        from(table){let single=false;const query={select(){return query;},eq(){return query;},order(){return query;},maybeSingle(){single=true;return query;},then(ok,bad){const rows=table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?(window.testRemoved?[]:[fixture()]):[];return Promise.resolve({data:single?(rows[0]||null):rows,error:null}).then(ok,bad);}};return query;},
+        auth:{getSession:async()=>({data:{session:{user:{id:'gestion'},expires_at:window.testExpired?1:9999999999}}}),getUser:async()=>({data:{user:{id:'gestion'}}})},
+        from(table){let single=false;const query={select(){return query;},eq(){return query;},order(){return query;},range(){return query;},maybeSingle(){single=true;return query;},then(ok,bad){const rows=table==='origenes'?[{codigo:'A',nombre:'Local'}]:table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?(window.testRemoved?[]:[fixture()]):[];return Promise.resolve(table==='origenes'&&window.testOriginsError?{data:null,error:{message:'Consulta de comercios fallida'}}:{data:single?(rows[0]||null):rows,error:null}).then(ok,bad);}};return query;},
         async rpc(name,params){window.testCalls.push({name,params});
           if(name==='tiene_capacidad_aliados')return {data:true};
           if(name!=='aliados_eliminar_importacion')throw Error('Mutación no esperada: '+name);
@@ -34,8 +34,10 @@ for(const engine of ['chromium','webkit'])test(`Gestión retira un lote y descar
       // Parser doble: prueba la protección de la vista previa, no el formato Excel.
       window.XLSX={read:()=>({Sheets:{Worksheet:{}},SheetNames:['Worksheet']}),utils:{sheet_to_json:()=>[]}};
     });
+    await page.addInitScript(()=>{const original=window.creditekSidebar.sb.from;window.creditekSidebar.sb.from=function(table){const query=original.call(this,table);query.contains=()=>query;return query;};});
     await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');
     await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
+    await page.locator('#showPending').click();
     await page.locator('[data-open="lote-alo"]').click();
     await page.getByText('Otras acciones',{exact:true}).click();
     await page.locator('#removeImport').click();
@@ -75,6 +77,36 @@ for(const engine of ['chromium','webkit'])test(`Gestión retira un lote y descar
     await page.locator('#validateImport').click();await page.waitForFunction(()=>!document.getElementById('saveImport').disabled);
     await page.locator('#cutoff').fill('2026-09-07');await page.locator('#periodFrom').focus();
     assert.equal(await page.locator('#saveImport').isDisabled(),true);
+    await page.evaluate(()=>window.testExpired=true);
+    await page.locator('#validateImport').click();
+    await page.waitForFunction(()=>document.getElementById('importError').textContent.includes('iniciar sesión'));
+    assert.equal(await page.locator('#saveImport').isDisabled(),true);
+    assert.equal(await page.locator('#preview').isVisible(),false);
+    await page.locator('#importPlatform').selectOption('krediya');
+    await page.evaluate(()=>{window.XLSX.utils.sheet_to_json=()=>[
+      ['# Crédito','IMEI','Cédula','Tienda','Monto a Financiar','Estado del contrato','Estado del Pago'],
+      ['PRUEBA-K1','123456789012345','123','Local',500000,'Firmado','Pagado']
+    ];});
+    await page.evaluate(()=>{window.testExpired=false;window.testOriginsError=true;});
+    await page.locator('#validateImport').click();
+    await page.waitForFunction(()=>document.getElementById('importError').textContent.includes('Consulta de comercios fallida'));
+    assert.equal(await page.locator('#preview').isVisible(),false);
+    assert.equal(await page.locator('#saveImport').isDisabled(),true);
+    await page.evaluate(()=>window.testOriginsError=false);
+    await page.locator('#validateImport').click();await page.waitForFunction(()=>!document.getElementById('saveImport').disabled);
+    await page.evaluate(()=>window.testExpired=true);await page.locator('#saveImport').click();
+    await page.waitForFunction(()=>document.getElementById('importError').textContent.includes('iniciar sesión'));
+    assert.equal(await page.locator('#saveImport').isDisabled(),true);
+    assert.equal(await page.locator('#preview').isVisible(),false);
+    assert.ok(!(await page.evaluate(()=>window.testCalls)).some(c=>c.name==='aliados_importar_liquidacion'));
+    await page.evaluate(()=>{window.testExpired=false;window.XLSX.utils.sheet_to_json=()=>[
+      ['# Crédito','IMEI','Cédula','Tienda','Monto a Financiar','Estado del contrato','Estado del Pago'],
+      ['PRUEBA-K2','123456789012345','123','Local por vincular',500000,'Firmado','Pagado']
+    ];});
+    // Evita coincidencia parcial con el comercio de prueba llamado Local.
+    await page.evaluate(()=>{const original=window.XLSX.utils.sheet_to_json;window.XLSX.utils.sheet_to_json=()=>{const rows=original();rows[1][3]='Comercio nuevo XYZ';return rows;};});
+    await page.locator('#validateImport').click();await page.waitForFunction(()=>!document.getElementById('saveImport').disabled);
+    assert.match(await page.locator('#previewIssues').textContent(),/Comercio nuevo XYZ.*PRUEBA-K2/);
     await page.locator('#discardImportFile').click();assert.equal(await page.locator('#file').inputValue(),'');
     assert.equal(await page.locator('#saveImport').isDisabled(),true);
     assert.deepEqual(errors,[]);

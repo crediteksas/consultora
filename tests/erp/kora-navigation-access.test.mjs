@@ -169,9 +169,21 @@ test('matriz equivalente de Maite conserva Corporativo y aplica capacidades exis
   assert.equal(access.resolveExperience(profile), 'corporate');
   assert.ok(Array.from(navigation, section => section.title).includes('CREDITEK B2B'));
   assert.ok(Array.from(retail.items, item => item.href).includes('catalogo.html'));
+  assert.ok(Array.from(retail.items, item => item.href).includes('traslados.html'));
   assert.equal(access.authorize(profile, 'ventas.html').allowed, true);
   assert.equal(access.authorize(profile, 'catalogo.html').allowed, true);
   assert.equal(access.authorize(profile, 'utilidad-creditek.html', { b2b: false }).allowed, true);
+});
+
+test('Óscar y Maite ven Traslados dentro de Creditek Retail', () => {
+  for (const rol of ['gerencia', 'auditoria']) {
+    const navigation = access.navigationFor({ rol, activo: true }, { b2b: true, aliados: true });
+    const retail = Array.from(navigation).find(section => section.title === 'CREDITEK RETAIL');
+    const traslados = Array.from(retail.items).find(item => item.href === 'traslados.html');
+    assert.equal(traslados?.label, 'Traslados', rol);
+    assert.equal(traslados?.icon, 'arrow-left-right', rol);
+    assert.equal(access.authorize({ rol, activo: true }, 'traslados.html').allowed, true, rol);
+  }
 });
 
 test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tienda', () => {

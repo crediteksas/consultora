@@ -53,6 +53,7 @@
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards' },
       { label: 'Catálogo', href: 'catalogo.html', icon: 'grid-2x2' },
       { label: 'Inventario Retail', href: 'inventario.html', icon: 'package' },
+      { label: 'Traslados', href: 'traslados.html', icon: 'arrow-left-right' },
       { label: 'Gastos', href: 'gastos.html', icon: 'receipt' },
       { label: 'Gastos periódicos', href: 'finanzas-programadas.html?vista=retail', icon: 'calendar-clock', users: [...FINANCIAL_CONTROLLERS] },
       { label: 'Cartera Retail', href: 'cuenta-corriente.html#retail', icon: 'book-open-check' },

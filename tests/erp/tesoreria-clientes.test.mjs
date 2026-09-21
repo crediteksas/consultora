@@ -68,6 +68,16 @@ test('cuenta reciente activa y número enmascarado sin perder ceros',()=>{
   const rows=domain.directory([origin],[holder],[bank,{...bank,id:'b',numero_cuenta:'009999999',created_at:'2026-09-02'},{...bank,id:'c',activo:false,created_at:'2026-09-03'}]);
   assert.equal(rows[0].account.id,'b'); assert.equal(domain.masked(bank),'Banco · ahorros · •••• 4567');
 });
+test('solo Mayte y Oscar reciben el control para editar el número destino',()=>{
+  assert.equal(domain.canEditDestination({id:'d1782db6-bacc-4caf-af6f-ce1b8d1c0391',rol:'auditoria',activo:true}),true);
+  assert.equal(domain.canEditDestination({id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia',activo:true}),true);
+  assert.equal(domain.canEditDestination({id:'d1782db6-bacc-4caf-af6f-ce1b8d1c0391',rol:'auditoria',activo:false}),false);
+  assert.equal(domain.canEditDestination({id:'00000000-0000-0000-0000-000000000099',rol:'gerencia',activo:true}),false);
+  const app=readFileSync('creditek/erp/tesoreria-clientes.js','utf8');
+  assert.match(app,/Editar número destino/);
+  assert.match(app,/tesoreria_editar_cuenta_destino/);
+  assert.match(app,/orden\(es\) pendiente\(s\) sin autorizar/);
+});
 test('guardado independiente de pagos, capacidad real y snapshots históricos',()=>{
   const sql=readFileSync('supabase/migrations/20260906154913_tesoreria_clientes_cuentas.sql','utf8');
   const app=readFileSync('creditek/erp/tesoreria-clientes.js','utf8');

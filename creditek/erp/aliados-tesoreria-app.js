@@ -1351,7 +1351,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     try {
       const clientAccess = await sb.rpc('tiene_capacidad_aliados', {p_capacidad:'revisor'});
       if (!clientAccess.error && clientAccess.data === true) {
-        clients = window.CreditekTesoreriaClientes.create({sb});
+        clients = window.CreditekTesoreriaClientes.create({sb,profile});
         preparation = window.CreditekTesoreriaPreparacion.create({sb});
         $("#showPreparation").classList.remove("hidden");
         $("#showClients").classList.remove("hidden");

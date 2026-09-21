@@ -1686,7 +1686,7 @@
         if(access.data===true){
           document.querySelector('.toolbar').classList.add('hidden');
           $("#metrics").classList.add('hidden');
-          const directory=window.CreditekTesoreriaClientes.create({sb});
+          const directory=window.CreditekTesoreriaClientes.create({sb,profile});
           await directory.mount($("#content"));
           return;
         }

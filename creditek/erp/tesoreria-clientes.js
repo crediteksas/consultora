@@ -6,6 +6,8 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fold = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const DESTINATION_ACCOUNT_EDITORS = new Set(['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627']);
+  const canEditDestination = profile => Boolean(profile?.activo && DESTINATION_ACCOUNT_EDITORS.has(profile.id) && ['gerencia','auditoria'].includes(profile.rol));
   const masked = account => account ? `${account.banco} · ${account.tipo_cuenta} · •••• ${account.numero_cuenta.slice(-4)}` : 'Sin cuenta registrada';
   function directory(origins, beneficiaries, accounts, sites = [], clients = []) {
     return origins.filter(o => o.tipo === 'aliado' && o.activo).map(origin => {
@@ -28,8 +30,8 @@
     ].join(' ')).includes(q)));
   }
   const labels = {completo:'Cuenta verificada',sin_titular:'Falta titular',sin_cuenta:'Falta cuenta',sin_validar:'Cuenta sin verificar',revisar:'Revisar titulares duplicados'};
-  function create({sb}) {
-    let host, origins = [], beneficiaries = [], accounts = [], rows = [], page = 0, query = '', status = '', loaded = false, saving = false, returnFocus;
+  function create({sb,profile}) {
+    let host, origins = [], beneficiaries = [], accounts = [], rows = [], page = 0, query = '', status = '', loaded = false, saving = false, returnFocus, currentBankBeneficiary;
     const $ = s => host.querySelector(s);
     async function all(table, columns, order) {
       const result = [];
@@ -77,12 +79,37 @@
       const bank = accounts.filter(a=>a.beneficiary_id===b?.id && a.activo)
         .sort((a,c)=>String(c.validada_at||c.created_at).localeCompare(String(a.validada_at||a.created_at)))[0];
       const f = $('#clientForm').elements;
+      currentBankBeneficiary = b || null;
+      $('#clientForm').dataset.account = bank?.id || '';
+      $('#clientForm').dataset.editing = 'false';
       f.name.value = b?.nombre || ''; f.identification.value = b?.identificacion || '';
       f.bank.value = bank?.banco || ''; f.accountType.value = bank?.tipo_cuenta || 'ahorros'; f.accountNumber.value = bank?.numero_cuenta || '';
+      f.reason.value = '';
       f.verified.checked = false;
       f.name.readOnly=!!b;f.identification.readOnly=!!b;
+      f.bank.readOnly=!!bank;f.accountType.disabled=!!bank;f.accountNumber.readOnly=!!bank;
+      $('#clientEditAccount').hidden=!bank || !canEditDestination(profile);
+      $('#clientEditAccount').textContent='Editar número destino';
+      $('#clientEditReason').hidden=true;
+      $('#clientSave').hidden=!!bank;
+      $('#clientSave').textContent='Guardar cliente y cuenta';
       const related=rows.filter(r=>r.beneficiary?.id===b?.id && b);
       $('#clientSharedAccount').textContent=related.length ? `Titular relacionado con ${related.length} local(es): ${related.map(r=>r.origin.nombre).join(', ')}. Editar su cuenta cambia la cuenta maestra para futuras liquidaciones de todos ellos; no cambia órdenes anteriores.` : 'Puedes seleccionar un titular existente sin trasladarlo de sus otros locales.';
+    }
+    function toggleDestinationEdit() {
+      const form=$('#clientForm'), editing=form.dataset.editing!=='true';
+      if(!form.dataset.account || !canEditDestination(profile))return;
+      if(!editing){bankFields(currentBankBeneficiary);return;}
+      form.dataset.editing='true';
+      form.elements.accountNumber.readOnly=false;
+      form.elements.accountNumber.focus();
+      form.elements.accountNumber.select();
+      form.elements.verified.checked=false;
+      $('#clientEditReason').hidden=false;
+      $('#clientSave').hidden=false;
+      $('#clientSave').textContent='Guardar nuevo número destino';
+      $('#clientEditAccount').textContent='Cancelar edición';
+      $('#clientSharedAccount').textContent='La cuenta nueva se usará en futuras liquidaciones y en órdenes pendientes sin autorizar. Los pagos autorizados o pagados conservarán su cuenta histórica.';
     }
     function open(code, trigger) {
       const row = rows.find(r=>r.origin.codigo===code);
@@ -174,6 +201,22 @@
       event.preventDefault();
       if (saving) return;
       const form = event.currentTarget, values = Object.fromEntries(new FormData(form));
+      if(form.dataset.editing==='true'){
+        if(!canEditDestination(profile)){ $('#clientEditorError').textContent='Solo Mayte y Oscar pueden editar el número destino.';return; }
+        if(!/^[0-9]{5,30}$/.test(String(values.accountNumber || ''))){$('#clientEditorError').textContent='El número de cuenta debe tener entre 5 y 30 dígitos.';return;}
+        if(String(values.reason || '').trim().length<5){$('#clientEditorError').textContent='Escribe el motivo de la corrección.';return;}
+        if(!values.verified){$('#clientEditorError').textContent='Verifica el nuevo número antes de guardar.';return;}
+        saving=true;$('#clientSave').disabled=true;$('#clientClose').disabled=true;$('#clientEditorError').textContent='';let saved=false;
+        try{
+          const response=await sb.rpc('tesoreria_editar_cuenta_destino',{p_cuenta_id:form.dataset.account,p_numero_cuenta:values.accountNumber,p_motivo:values.reason.trim()});
+          if(response.error)throw response.error;
+          saved=true;$('#clientDialog').close();await refresh();
+          const count=Number(response.data?.ordenes_pendientes_actualizadas || 0);
+          message(`Cuenta destino actualizada y auditada. ${count} orden(es) pendiente(s) sin autorizar quedaron con el nuevo destino; los pagos históricos no cambiaron.`);
+        }catch(error){if(saved)message('La cuenta se guardó. Pulsa Actualizar; no vuelvas a guardar.',true);else $('#clientEditorError').textContent=error.message||'No fue posible editar la cuenta destino.';}
+        finally{saving=false;$('#clientSave').disabled=false;$('#clientClose').disabled=false;}
+        return;
+      }
       const check = window.CreditekAliadosCuentas.validateNewBeneficiary({...values,originCode:form.dataset.origin || form.dataset.executive});
       if (!check.ok) { $('#clientEditorError').textContent = check.errors.join(' '); return; }
       if (!values.verified) { $('#clientEditorError').textContent = 'Verifica los datos del titular y de la cuenta antes de guardar.'; return; }
@@ -240,7 +283,9 @@
             <label>Tipo de cuenta<select name="accountType"><option value="ahorros">Ahorros</option><option value="corriente">Corriente</option></select></label>
             <label class="tc-wide">Número completo de cuenta<input name="accountNumber" inputmode="numeric" required pattern="[0-9]{5,30}" maxlength="30" autocomplete="off"></label></div>
             <p id="clientSharedAccount" class="tc-help"></p><label class="tc-check"><input type="checkbox" name="verified" required><span>He verificado el titular, la cuenta y los locales que la comparten.</span></label>
-            <p class="tc-help">Guardar no autoriza ni registra pagos. Las órdenes ya creadas conservan sus datos; los cambios se usarán en futuras liquidaciones.</p>
+            <div class="tc-account-actions"><button id="clientEditAccount" type="button" class="btn secondary" hidden>Editar número destino</button></div>
+            <label id="clientEditReason" class="tc-wide" hidden>Motivo de la corrección<textarea name="reason" minlength="5" maxlength="300" rows="2" placeholder="Ej. El titular confirmó un nuevo número de cuenta"></textarea></label>
+            <p class="tc-help">Guardar no autoriza ni registra pagos. Una corrección de cuenta solo actualiza órdenes pendientes sin autorizar; las órdenes autorizadas o pagadas conservan sus datos.</p>
             <p id="clientEditorError" class="tc-error" role="alert"></p>
             <button id="clientSave" type="submit" class="btn primary">Guardar cliente y cuenta</button>
           </form><details><summary>Cuentas registradas</summary><ul id="clientAccountHistory"></ul></details></section>
@@ -262,6 +307,7 @@
         $('#clientDialog').onclose = () => returnFocus?.focus();
         $('#clientDialog').oncancel = e => {if(saving)e.preventDefault();};
         $('#clientHolder').onchange = e => bankFields(beneficiaries.find(b=>b.id===e.target.value));
+        $('#clientEditAccount').onclick=toggleDestinationEdit;
         $('#clientForm').onsubmit = save;
         $('#clientProfile').onsubmit=saveProfile;
         $('#clientProfileTab').onclick=()=>setPanel('profile');$('#clientBankTab').onclick=()=>setPanel('bank');
@@ -274,5 +320,5 @@
     }
     return {mount,openBeneficiary,openOrigin:code=>open(code)};
   }
-  return {directory,filterRows,masked,create};
+  return {directory,filterRows,masked,canEditDestination,create};
 }));

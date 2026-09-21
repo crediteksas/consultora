@@ -766,6 +766,10 @@ export async function obtenerCorteOperativo(fechaISO: string, env: Env): Promise
   return cortes;
 }
 
+export function esHoraCorteAutomatico(hh: number, mm: number, limiteHora: number): boolean {
+  return hh * 60 + mm === limiteHora * 60 - 5;
+}
+
 export function formatearCorteCaja(cortes: any[], fechaLarga: string): string {
   const pendientes = cortes.filter(c => c.efectivo_contado == null).length;
   return [
@@ -1087,6 +1091,15 @@ export async function ejecutarReportesDiarios(env: Env): Promise<void> {
   // Se informa al horario existente aunque falten arqueos físicos.
   const domingoOFestivo = await esDomingoOFestivo(hoy, env);
   const limiteHora = domingoOFestivo ? 15 : 19;
+
+  // Cinco minutos antes del informe se congela el corte de las tiendas que
+  // todavía no hicieron cierre manual. Es idempotente y no inventa un conteo:
+  // el efectivo físico continúa nulo y queda vivo para arqueo.
+  if (esHoraCorteAutomatico(hh, mm, limiteHora)) {
+    try { await obtenerCorteOperativo(hoy, env); }
+    catch (e) { console.error('[REPORTES-DIARIOS] no se pudo generar el corte automático previo:', e); }
+    return;
+  }
   if (hh < limiteHora) return;
 
   // Idempotencia rápida por consulta (chequeo optimista; la reserva atómica es la definitiva).

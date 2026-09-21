@@ -13,8 +13,10 @@
     const central = ['gerencia', 'auditoria'].includes(perfil.rol);
     if (!central && perfil.rol !== 'admin_tienda') return;
     contenedor.classList.add('caja-ciclo-panel');
-    contenedor.replaceChildren(elemento('h2', 'Validación del efectivo anterior'));
-    contenedor.append(elemento('p', 'El informe de ventas no espera este arqueo. Antes de nuevos movimientos, cuenta el efectivo y registra los gastos pendientes con la fecha del día correspondiente.'));
+    contenedor.replaceChildren(elemento('h2', 'Cierre y arqueo de caja'));
+    contenedor.append(elemento('p', central
+      ? 'Aquí ves los arqueos pendientes de las tiendas. Las diferencias permanecen visibles hasta que Gestión las resuelva.'
+      : 'Al terminar la jornada, cuenta el efectivo y cierra la caja de hoy en el resumen inferior. Si no alcanzas a hacerlo, KORA realiza el corte automático cinco minutos antes del informe y el arqueo queda pendiente.'));
     const actualizar = elemento('button', 'Actualizar arqueos', 'btn-primary');
     actualizar.type = 'button';
     const lista = elemento('div');
@@ -92,7 +94,20 @@
           form.addEventListener('submit', e => { e.preventDefault(); enviar(false); });
           autorizar?.addEventListener('click', () => enviar(true));
         }
-        if (!pendientes && !resultados.some(r => r.error)) lista.append(elemento('p', 'No hay arqueos anteriores pendientes. Las operaciones del día están habilitadas.'));
+        if (!pendientes && !resultados.some(r => r.error)) {
+          if (central) lista.append(elemento('p', 'No hay arqueos anteriores pendientes. Las operaciones del día están habilitadas.'));
+          else {
+            const hoy = elemento('section', undefined, 'cierre-box');
+            hoy.style.cssText = 'border:1px solid #dce2eb;padding:18px;border-radius:14px;background:#f8fbfc';
+            hoy.append(elemento('h3', 'Caja de hoy abierta'));
+            hoy.append(elemento('p', 'Cuando termines ventas y gastos, baja al resumen de hoy, ingresa el efectivo contado y pulsa “Cerrar caja”.'));
+            const ir = elemento('a', 'Ir al cierre de hoy', 'btn-primary');
+            ir.href = '#cierreCajaHoy';
+            ir.style.cssText = 'display:inline-flex;text-decoration:none;margin-top:4px';
+            hoy.append(ir);
+            lista.append(hoy);
+          }
+        }
       } catch (e) { lista.replaceChildren(elemento('p', `No se pudo consultar el estado de caja: ${e.message}. Pulsa Actualizar para reintentar.`)); }
       finally { actualizar.disabled = false; }
     }

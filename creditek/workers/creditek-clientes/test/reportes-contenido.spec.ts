@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   encabezadoEstado,
+  esHoraCorteAutomatico,
   formatearCaja,
   formatearGastos,
   formatearVentas,
@@ -8,6 +9,12 @@ import {
 import { paginarReporte, renderizarPaginaReporte } from '../src/reportes-formato';
 
 describe('presentación ejecutiva de cierres por WhatsApp', () => {
+  it('genera el corte automático cinco minutos antes del informe', () => {
+    expect(esHoraCorteAutomatico(18, 55, 19)).toBe(true);
+    expect(esHoraCorteAutomatico(14, 55, 15)).toBe(true);
+    expect(esHoraCorteAutomatico(19, 0, 19)).toBe(false);
+  });
+
   it('pone total y estado antes del detalle de gastos y agrupa por tienda', () => {
     const mensaje = formatearGastos([
       { monto: 20_000, descripcion: 'Mensajería', tienda_codigo: 'CK-02', origen: { nombre: 'Móvil Shopping' }, concepto: { nombre: 'Domicilios' } },

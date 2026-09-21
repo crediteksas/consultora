@@ -37,6 +37,7 @@ before(async()=>{
  `);
  await db.exec(await readFile(new URL('../../supabase/migrations/20260906191354_caja_arrastre_movimientos_retroactivos.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260920181612_caja_corte_arqueo_apertura.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../supabase/migrations/20260921231517_caja_cierre_manual_y_corte_automatico.sql',import.meta.url),'utf8'));
  const d=(await query("select (now() at time zone 'America/Bogota')::date::text hoy, ((now() at time zone 'America/Bogota')::date-1)::text ayer, ((now() at time zone 'America/Bogota')::date-2)::text antes, ((now() at time zone 'America/Bogota')::date-3)::text ancla")).rows[0];
  ({hoy,ayer,antes,ancla}=d);
 });
@@ -129,8 +130,15 @@ test('reintento no duplica arqueos ni contabiliza el mismo saldo otra vez',async
  assert.equal((await query('select count(*) n from caja_arqueo_intentos')).rows[0].n,1);
  await assert.rejects(validar(351,null,false,key),/Identificador/);
 });
-test('fecha futura y día actual no sirven para arqueo',async()=>{
- await assert.rejects(query('select validar_arqueo_caja($1,$2,350,$3,null,false)',['TEST-A',hoy,randomUUID()]),/día anterior/);
+test('la tienda puede cerrar el día actual; una fecha futura no sirve para arqueo',async()=>{
+ await validar(350);
+ await venta(hoy,10);
+ const cierre=(await query('select validar_arqueo_caja($1,$2,360,$3,null,false) c',['TEST-A',hoy,randomUUID()])).rows[0].c;
+ assert.equal(cierre.ok,true);
+ assert.match(cierre.mensaje,/Caja cerrada por la tienda/);
+ const fila=(await query("select estado,efectivo_contado from caja_diaria where tienda_codigo='TEST-A' and fecha=$1",[hoy])).rows[0];
+ assert.equal(fila.estado,'cerrada'); assert.equal(fila.efectivo_contado,'360');
+ await assert.rejects(query('select validar_arqueo_caja($1,$2::date+1,360,$3,null,false)',['TEST-A',hoy,randomUUID()]),/fechas futuras/);
  await assert.rejects(query("select calcular_efectivo_esperado_tienda('TEST-A',$1::date+1)",[hoy]),/fecha futura/);
 });
 test('no se reescriben días ya arqueados y los RPC antiguos no saltan la validación',async()=>{

@@ -508,15 +508,17 @@ async function cargarCuadritoDatos(tienda, fecha) {
             ${c.caja.nota ? `<div class="cuadrito-vacio" style="margin-top:6px;">Nota: ${escapeHtml(c.caja.nota)}</div>` : ''}
             <button class="btn-primary" id="btnCompartirWA" style="margin-top:14px;">Compartir por WhatsApp</button>
           </div>
-        ` : (currentPerfil.rol === 'admin_tienda' && fecha < c.fechaInicioCiclo ? `
-          <div class="cierre-box">
-            <div class="campo"><label>Efectivo contado (arqueo físico)</label><input type="number" id="efectivoContado" min="0" placeholder="0"></div>
+        ` : (currentPerfil.rol === 'admin_tienda' && fecha <= window.CreditekCajaCiclo.fechaColombia() ? `
+          <div class="cierre-box" id="cierreCajaHoy">
+            <h3>${fecha === window.CreditekCajaCiclo.fechaColombia() ? 'Cerrar caja de hoy' : 'Completar cierre pendiente'}</h3>
+            <p class="meta">Cuenta el dinero físico. KORA comparará ese valor con el efectivo esperado y conservará la trazabilidad del cierre.</p>
+            <div class="campo"><label>Efectivo contado (arqueo físico)</label><input type="number" id="efectivoContado" min="0" step="0.01" placeholder="0"></div>
             <div class="diferencia-preview" id="diferenciaPreview"></div>
             <div class="campo" id="campoNota" style="display:none;"><label>¿Por qué no cuadra?</label><textarea id="notaDiferencia" rows="2"></textarea></div>
             <div class="modal-err" id="cierreErr"></div>
-            <button class="btn-primary" id="btnCerrarCaja">Cerrar caja</button>
+            <button class="btn-primary" id="btnCerrarCaja">${fecha === window.CreditekCajaCiclo.fechaColombia() ? 'Cerrar caja' : 'Registrar arqueo pendiente'}</button>
           </div>
-        ` : '<p class="meta">Corte operativo independiente del arqueo. La validación del efectivo se realiza al día siguiente en el recuadro superior, antes de nuevos movimientos.</p>')}
+        ` : '<p class="meta">Consulta del corte operativo. Solo la administración de la tienda registra el arqueo físico.</p>')}
       </div>
     </div>
   `;
@@ -557,7 +559,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
       prev.className = 'diferencia-preview ' + (dif === 0 ? 'ok' : 'mal');
       document.getElementById('campoNota').style.display = dif !== 0 ? 'block' : 'none';
     });
-    document.getElementById('btnCerrarCaja').addEventListener('click', () => cerrarCajaAccion(tienda, fecha, c.esperado));
+    document.getElementById('btnCerrarCaja').addEventListener('click', () => cerrarCajaAccion(tienda, fecha, c.esperado, c.fechaInicioCiclo));
   }
 
   if (cerrada) {
@@ -565,7 +567,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
   }
 }
 
-async function cerrarCajaAccion(tienda, fecha, esperado) {
+async function cerrarCajaAccion(tienda, fecha, esperado, fechaInicioCiclo) {
   const efectivo = Number(document.getElementById('efectivoContado').value || '');
   const nota = document.getElementById('notaDiferencia')?.value.trim() || null;
   const err = document.getElementById('cierreErr');
@@ -584,24 +586,35 @@ async function cerrarCajaAccion(tienda, fecha, esperado) {
   if (!confirm('¿Confirmas el cierre de caja? No se puede cerrar dos veces el mismo día.')) return;
 
   const btn = document.getElementById('btnCerrarCaja');
+  const textoOriginal = btn.textContent;
   const idempotencyKey = btn.dataset.idempotencyKey || crypto.randomUUID();
   btn.dataset.idempotencyKey = idempotencyKey;
   btn.disabled = true; btn.textContent = 'Cerrando...';
 
-  const { data, error } = await sb.rpc('cerrar_caja_piloto', {
+  const cicloNuevo = fecha >= fechaInicioCiclo;
+  const rpc = cicloNuevo ? 'validar_arqueo_caja' : 'cerrar_caja_piloto';
+  const payload = {
     p_tienda_codigo: tienda,
     p_fecha: fecha,
     p_efectivo_contado: efectivo,
     p_idempotency_key: idempotencyKey,
     p_nota: nota,
-  });
+    ...(cicloNuevo ? { p_autorizar: false } : {}),
+  };
+  const { data, error } = await sb.rpc(rpc, payload);
 
-  btn.disabled = false; btn.textContent = 'Cerrar caja';
+  btn.disabled = false; btn.textContent = textoOriginal;
 
   if (error) { err.textContent = 'No se pudo cerrar: ' + error.message; err.classList.add('show'); return; }
 
+  if (!data?.ok && cicloNuevo) {
+    delete btn.dataset.idempotencyKey;
+    err.textContent = data?.mensaje || 'El arqueo quedó pendiente de revisión.';
+    err.classList.add('show');
+    return;
+  }
   delete btn.dataset.idempotencyKey;
-  mostrarBanner(`✅ Caja cerrada — Diferencia: ${fmtCOP(data.diferencia)}`);
+  mostrarBanner(`✅ ${data?.mensaje || 'Caja cerrada'} — Diferencia: ${fmtCOP(data.diferencia)}`);
   cargarCuadrito(tienda, fecha);
 }
 

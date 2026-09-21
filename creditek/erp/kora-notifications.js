@@ -5,7 +5,7 @@
   function pendingSources(profile, financialAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
-    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','corregido','reabierto']]]}];
+    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central) {
       sources.push(
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},

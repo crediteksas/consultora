@@ -6,6 +6,18 @@ const source=readFileSync('creditek/erp/kora-notifications.js','utf8');
 const context=vm.createContext({window:{},document:{dispatchEvent(){}},CustomEvent:class{}});
 vm.runInContext(source,context);
 const {pendingSources,pendingCount}=context.window.KoraNotifications;
+test('resueltas no cuentan como pendientes para gerencia, Maythe ni tiendas; reabiertas sí',async()=>{
+  for(const rol of ['gerencia','auditoria','admin_tienda']){
+    const spec=pendingSources({id:'a',rol,tienda_codigo:'CK-02'})[0];
+    const statuses=spec.filters[0][2];
+    for(const status of ['corregido','cerrado','rechazado','duplicado','no_reproducible'])assert.ok(!statuses.includes(status));
+    for(const status of ['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto'])assert.ok(statuses.includes(status));
+    const rows=Array(6).fill('corregido');
+    const sb={from(){const q={select(){return q;},in(column,allowed){assert.equal(column,'status');return Promise.resolve({count:rows.filter(s=>allowed.includes(s)).length,error:null});}};return q;}};
+    assert.equal((await pendingCount(sb,spec)).count,0);
+    rows.push('reabierto');assert.equal((await pendingCount(sb,spec)).count,1);
+  }
+});
 test('tienda solo recibe alertas de traslados destino y gastos propios devueltos',()=>{
   const sources=pendingSources({id:'a',rol:'admin_tienda',tienda_codigo:'CK-02'});
   const transfers=sources.find(s=>s.key==='transfers');

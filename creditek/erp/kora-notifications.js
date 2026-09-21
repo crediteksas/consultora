@@ -1,6 +1,38 @@
 (function (global) {
   'use strict';
 
+  // Consultas de solo lectura: RLS sigue siendo la autoridad sobre lo visible.
+  function pendingSources(profile, financialAccess = false) {
+    if (!profile?.id || profile.activo === false) return [];
+    const central = ['gerencia', 'auditoria'].includes(profile.rol);
+    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','corregido','reabierto']]]}];
+    if (central) {
+      sources.push(
+        {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
+        {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html',filters:[['eq','estado','registrado']]},
+        {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
+      );
+    } else if (profile.rol === 'admin_tienda' && profile.tienda_codigo) {
+      sources.push(
+        {key:'transfers',table:'traslados',title:'Traslados por recibir',path:'/creditek/erp/traslados.html',filters:[['eq','estado','despachado'],['eq','tienda_destino',profile.tienda_codigo]]},
+        {key:'expense-corrections',table:'gastos',title:'Gastos devueltos · corregir y reenviar',path:'/creditek/erp/gastos.html',filters:[['eq','correccion_pendiente',true],['eq','tienda_codigo',profile.tienda_codigo]]},
+      );
+    }
+    if (financialAccess) sources.push(
+      {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','pendiente_aprobacion']]},
+      {key:'financial-payment',table:'financial_entries',title:'Gastos autorizados · falta registrar pago',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','aprobado']]},
+    );
+    return sources;
+  }
+
+  async function pendingCount(sb, source) {
+    let query = sb.from(source.table).select('id', {count:'exact', head:true});
+    for (const [method, column, value] of source.filters) query = query[method](column, value);
+    const result = await query;
+    if (result.error || !Number.isInteger(result.count)) throw new Error('No se pudieron consultar todos los pendientes.');
+    return {...source, count:result.count};
+  }
+
   const formatDate = value => new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -41,6 +73,8 @@
     document.body.append(panel);
 
     let notifications = [];
+    let pending = [];
+    let incomplete = false;
     let loading = false;
 
     function setStatus(message, isError = false) {
@@ -51,12 +85,13 @@
 
     function updateCount() {
       const unread = notifications.filter(item => !item.read_at).length;
-      count.textContent = unread > 99 ? '99+' : String(unread);
-      count.hidden = unread === 0;
-      trigger.setAttribute('aria-label', unread ? `Notificaciones, ${unread} sin leer` : 'Notificaciones');
-      panel.querySelector('[data-kora-notifications-summary]').textContent = unread
-        ? `${unread} sin leer`
-        : 'Todo al día';
+      const tasks = pending.reduce((sum,item)=>sum+item.count,0);
+      const total = tasks + unread;
+      count.textContent = incomplete ? (total ? `${total}+` : '!') : total > 99 ? '99+' : String(total);
+      count.hidden = total === 0 && !incomplete;
+      const summary = `${tasks} pendientes · ${unread} avisos sin leer${incomplete?' · consulta incompleta':''}`;
+      trigger.setAttribute('aria-label', `Notificaciones, ${summary}`);
+      panel.querySelector('[data-kora-notifications-summary]').textContent = total || incomplete ? summary : 'Sin pendientes ni avisos nuevos';
     }
 
     function safePath(item) {
@@ -83,11 +118,24 @@
     function render() {
       const list = panel.querySelector('[data-kora-notifications-list]');
       list.replaceChildren();
+      if (pending.some(item=>item.count>0)) {
+        list.append(element('p','Pendientes por gestionar · se retiran al resolver el trámite, no al leerlos.','kora-notifications-empty'));
+        pending.filter(item=>item.count>0).forEach(item=>{
+          const button=element('button',undefined,'kora-notification-item ghost');
+          button.type='button';
+          button.dataset.pending=item.key;
+          button.dataset.unread='true';
+          button.append(element('strong',`${item.count} · ${item.title}`),element('span','Abrir pendientes','kora-notification-item__link'));
+          button.addEventListener('click',()=>location.assign(item.path));
+          list.append(button);
+        });
+      }
       if (!notifications.length) {
-        list.append(element('p', 'No tienes notificaciones.', 'kora-notifications-empty'));
+        if (!pending.some(item=>item.count>0)) list.append(element('p', incomplete?'No se pudo comprobar si estás al día.':'No tienes notificaciones ni trámites pendientes.', 'kora-notifications-empty'));
         updateCount();
         return;
       }
+      list.append(element('p','Avisos · leerlos no resuelve trámites.','kora-notifications-empty'));
       notifications.forEach(item => {
         const button = element('button', undefined, 'kora-notification-item ghost');
         button.type = 'button';
@@ -121,15 +169,31 @@
       if (loading) return;
       loading = true;
       try {
-        const { data, error } = await sb.from('kora_notifications')
+        const results = await Promise.allSettled([sb.from('kora_notifications')
           .select('id,type,title,message,incident_id,read_at,created_at,metadata')
           .order('created_at', { ascending: false })
-          .limit(50);
-        if (error) throw error;
-        notifications = data || [];
+          .limit(50),
+          ['gerencia','auditoria'].includes(profile.rol)?sb.rpc('es_controlador_financiero'):Promise.resolve({data:false}),
+        ]);
+        incomplete = false;
+        const notices=results[0];
+        if(notices.status==='rejected'||notices.value.error||!Array.isArray(notices.value.data)) incomplete=true;
+        else notifications=notices.value.data;
+        const access=results[1];
+        const financialAccess=access.status==='fulfilled'&&!access.value.error&&access.value.data===true;
+        if(access.status==='rejected'||access.value.error) incomplete=true;
+        const sources=pendingSources(profile,financialAccess);
+        const counts=await Promise.allSettled(sources.map(source=>pendingCount(sb,source)));
+        pending=counts.map((result,i)=>{
+          if(result.status==='fulfilled')return result.value;
+          incomplete=true;
+          return pending.find(item=>item.key===sources[i].key)||{...sources[i],count:0};
+        });
         render();
-        setStatus('');
+        setStatus(incomplete?'No se pudieron actualizar todos los pendientes. Vuelve a abrir la campana para reintentar.':'',incomplete);
       } catch (error) {
+        incomplete=true;
+        updateCount();
         setStatus(error.message || 'No fue posible cargar las notificaciones.', true);
       } finally {
         loading = false;
@@ -175,9 +239,13 @@
     });
     document.addEventListener('kora-notifications-refresh', load);
     window.addEventListener('focus', load);
+    const refreshVisible=()=>{if(!document.hidden)load();};
+    document.addEventListener('visibilitychange',refreshVisible);
+    const timer=window.setInterval(refreshVisible,60000);
+    window.addEventListener('pagehide',()=>window.clearInterval(timer),{once:true});
     load();
   }
 
-  global.KoraNotifications = Object.freeze({ mount });
+  global.KoraNotifications = Object.freeze({ mount, pendingSources, pendingCount });
   document.dispatchEvent(new CustomEvent('kora-notifications-ready'));
 })(window);

@@ -600,7 +600,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraIncidentStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-incident-center.css?v=1.1.1';
+      link.href = '/design-system/components/kora-incident-center.css?v=1.1.2';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraContextHelpStyles')) {
@@ -619,7 +619,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraNotifications')) {
       const notifications = document.createElement('script');
       notifications.id = 'koraNotifications';
-      notifications.src = '/creditek/erp/kora-notifications.js?v=1.1.2';
+      notifications.src = '/creditek/erp/kora-notifications.js?v=1.2.0';
       document.head.appendChild(notifications);
     }
     if (!document.getElementById('koraReportExport')) {

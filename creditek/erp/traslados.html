@@ -417,14 +417,34 @@ function initPagina() {
   cargarDatosBase();
 }
 
+async function cargarCatalogoTraslado() {
+  const productos = [];
+  for (let desde = 0; ; desde += 500) {
+    const { data, error } = await sb.from('productos').select('id,codigo,nombre,tipo').eq('activo', true)
+      .order('nombre').order('id').range(desde, desde + 499);
+    if (error || !Array.isArray(data)) throw new Error('No se pudo cargar el catálogo completo. Actualiza la pantalla para intentar nuevamente.');
+    productos.push(...data);
+    if (data.length < 500) return productos;
+  }
+}
+
 async function cargarDatosBase() {
-  const [{ data: productos }, { data: tiendas }] = await Promise.all([
-    sb.from('productos').select('*').eq('activo', true).order('nombre'),
-    sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
-  ]);
-  productosCache = productos || [];
-  tiendasCache = tiendas || [];
-  document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  const boton = document.getElementById('btnNuevoTraslado');
+  boton.disabled = true;
+  try {
+    const [productos, { data: tiendas, error }] = await Promise.all([
+      cargarCatalogoTraslado(),
+      sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre'),
+    ]);
+    if (error || !Array.isArray(tiendas)) throw new Error('No se pudieron cargar las tiendas. Actualiza la pantalla para intentar nuevamente.');
+    productosCache = productos;
+    tiendasCache = tiendas;
+    boton.disabled = false;
+    document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
+  } catch (error) {
+    productosCache = [];
+    mostrarBanner(error.message);
+  }
   await cargarTraslados();
   await abrirDocumentoSolicitado();
 }
@@ -559,9 +579,9 @@ function agregarItemAccesorioTra() {
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
     if (!q) { resultadosCont.innerHTML = ''; return; }
-    const encontrados = accesorios.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 8);
+    const encontrados = accesorios.filter(p => String(p.nombre || '').toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q));
     resultadosCont.innerHTML = encontrados.length
-      ? `<div class="buscador-resultados">${encontrados.map(p => `<button data-id="${p.id}">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</button>`).join('')}</div>`
+      ? `<small role="status">${encontrados.length} coincidencias · Desplázate en la lista para verlas todas.</small><div class="buscador-resultados">${encontrados.map(p => `<button type="button" data-id="${p.id}">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</button>`).join('')}</div>`
       : '<div class="buscador-resultados"><button disabled>Sin resultados</button></div>';
     resultadosCont.querySelectorAll('button[data-id]').forEach(btn => {
       btn.addEventListener('click', () => {

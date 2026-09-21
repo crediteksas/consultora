@@ -141,7 +141,7 @@
     const field = (label, name, type = 'text', extra = '', value = '') => `<label class="cobros-field">${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
     const platformField = () => `<label class="cobros-field">Plataforma<select name="plataforma" required>${options(state.platform)}</select></label>`;
     const moneyField = (label = 'Importe recibido (COP)', extra = '') => field(label, 'importe', 'number', `required min="0.01" step="0.01" inputmode="decimal" placeholder="Ej. 1250000" ${extra}`);
-    const supportField = () => field('Soporte (enlace o referencia; no adjunta archivos)', 'soporte', 'text', 'required minlength="3" maxlength="1500" placeholder="Enlace al soporte o número de documento"');
+    const supportField = (optional = false) => field(optional ? 'Referencia adicional (opcional)' : 'Soporte (enlace o referencia; no adjunta archivos)', 'soporte', 'text', `${optional ? '' : 'required minlength="3"'} maxlength="1500" placeholder="${optional ? 'Puedes dejarlo vacío' : 'Enlace al soporte o número de documento'}"`);
 
     function support(value) {
       if (!value) return '<span class="cobros-muted">Sin soporte</span>';
@@ -194,10 +194,10 @@
       return `<div class="cobros-entry-grid">
         <details class="cobros-entry"><summary>Agregar cobro esperado</summary>
           <form data-cobros-form="expected" class="cobros-form">
-            <p class="cobros-form-wide cobros-muted">Registra el importe que la plataforma debe consignar, con su corte y soporte. Fuente de esta entrada: manual documentada.</p>
+            <p class="cobros-form-wide cobros-muted">Registra el importe que la plataforma debe consignar, con su corte. El soporte es opcional; el ingreso se valida al registrar el abono bancario.</p>
             ${platformField()}${field('Corte', 'corte', 'date', 'required')}
             ${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Importe esperado (COP)')}
-            ${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"')}${supportField()}
+            ${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"')}${supportField(true)}
             <div class="cobros-form-actions"><button type="submit" class="btn primary">Guardar cobro esperado</button></div>
           </form>
         </details>
@@ -217,7 +217,7 @@
     function candidates() {
       const rows = state.data.candidates.filter(row => !state.platform || row.plataforma === state.platform);
       if (!rows.length) return '';
-      return `<section class="cobros-candidates"><h3>Liquidaciones por confirmar</h3><p class="cobros-muted">La base del archivo no equivale al abono bancario. Confirma el neto que la plataforma debe consignar con su soporte; hasta entonces estas liquidaciones no suman al esperado ni al pendiente.</p><div class="cobros-candidate-grid">${rows.map(row => `<article class="cobros-record"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><p>${esc(row.concepto || 'Liquidación pendiente de confirmar')}</p><dl class="cobros-record-fields"><div><dt>Base estimada del archivo</dt><dd>${row.baseAmount == null ? 'Sin base disponible' : cash(row.baseAmount)}</dd></div><div><dt>Operaciones</dt><dd>${esc(row.operaciones ?? 'Sin información')}</dd></div><div><dt>Estado de liquidación</dt><dd>${esc(row.estado_liquidacion || 'Sin información')}</dd></div></dl>${canEdit ? `<details class="cobros-entry"><summary>Confirmar neto esperado</summary><form data-cobros-form="candidate" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">El neto inicia vacío y debe confirmarse según el soporte de ${esc(platformName(row.plataforma))}.</p>${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Neto esperado confirmado (COP)')}${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"', row.concepto || `Liquidación ${row.corte}`)}${supportField()}<div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar cobro esperado</button></div></form></details>` : '<p class="cobros-muted">Pendiente de confirmación por Gerencia.</p>'}</article>`).join('')}</div></section>`;
+      return `<section class="cobros-candidates"><h3>Liquidaciones por confirmar</h3><p class="cobros-muted">La base del archivo no equivale al abono bancario. Confirma el neto que la plataforma debe consignar ; hasta entonces estas liquidaciones no suman al esperado ni al pendiente.</p><div class="cobros-candidate-grid">${rows.map(row => `<article class="cobros-record"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><p>${esc(row.concepto || 'Liquidación pendiente de confirmar')}</p><dl class="cobros-record-fields"><div><dt>Base estimada del archivo</dt><dd>${row.baseAmount == null ? 'Sin base disponible' : cash(row.baseAmount)}</dd></div><div><dt>Operaciones</dt><dd>${esc(row.operaciones ?? 'Sin información')}</dd></div><div><dt>Estado de liquidación</dt><dd>${esc(row.estado_liquidacion || 'Sin información')}</dd></div></dl>${canEdit ? `<details class="cobros-entry"><summary>Confirmar neto esperado</summary><form data-cobros-form="candidate" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">El neto inicia vacío y debe confirmarse para ${esc(platformName(row.plataforma))}. No requiere soporte; el ingreso se valida con el banco.</p>${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Neto esperado confirmado (COP)')}${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"', row.concepto || `Liquidación ${row.corte}`)}${supportField(true)}<div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar cobro esperado</button></div></form></details>` : '<p class="cobros-muted">Pendiente de confirmación por Gerencia.</p>'}</article>`).join('')}</div></section>`;
     }
 
     function history() {
@@ -319,10 +319,10 @@
           const candidate = state.data.candidates.find(row => String(row.liquidation_id) === form.dataset.liquidation);
           if (!candidate) throw new Error('La liquidación ya no está disponible para confirmar. Actualiza la consulta.');
           name = 'cobros_crear_esperado';
-          args = { p_plataforma: candidate.plataforma, p_corte: candidate.corte, p_fecha_esperada: dateOnly(value('fecha_esperada')), p_concepto: textValue('concepto', 'El concepto', 3, 300), p_importe: positiveValue(value('importe')), p_soporte: textValue('soporte', 'El soporte', 3, 1500), p_liquidation_id: candidate.liquidation_id, p_idempotency_key: idempotencyKey(form) };
+          args = { p_plataforma: candidate.plataforma, p_corte: candidate.corte, p_fecha_esperada: dateOnly(value('fecha_esperada')), p_concepto: textValue('concepto', 'El concepto', 3, 300), p_importe: positiveValue(value('importe')), p_soporte: textValue('soporte', 'La referencia adicional', 0, 1500), p_liquidation_id: candidate.liquidation_id, p_idempotency_key: idempotencyKey(form) };
         } else if (type === 'expected') {
           name = 'cobros_crear_esperado';
-          args = { p_plataforma: value('plataforma'), p_corte: dateOnly(value('corte')), p_fecha_esperada: dateOnly(value('fecha_esperada')), p_concepto: textValue('concepto', 'El concepto', 3, 300), p_importe: positiveValue(value('importe')), p_soporte: textValue('soporte', 'El soporte', 3, 1500), p_liquidation_id: null, p_idempotency_key: idempotencyKey(form) };
+          args = { p_plataforma: value('plataforma'), p_corte: dateOnly(value('corte')), p_fecha_esperada: dateOnly(value('fecha_esperada')), p_concepto: textValue('concepto', 'El concepto', 3, 300), p_importe: positiveValue(value('importe')), p_soporte: textValue('soporte', 'La referencia adicional', 0, 1500), p_liquidation_id: null, p_idempotency_key: idempotencyKey(form) };
         } else if (type === 'deposit') {
           if (!/^\d{4}$/.test(value('cuenta_ultimos4'))) throw new Error('Ingresa exactamente los últimos cuatro dígitos de la cuenta.');
           name = 'cobros_registrar_abono';

@@ -176,9 +176,11 @@ test('neto de candidato inicia vacío y se confirma una sola vez ligado a la liq
   assert.match(host.innerHTML, /La base del archivo no equivale al abono bancario/);
   const candidateHtml = host.innerHTML.split('data-cobros-form="candidate"')[1].split('</form>')[0];
   assert.match(candidateHtml, /name="importe" type="number" value=""/);
-  await submit(host, form('candidate', expectedFields, { liquidation: 'l1' }));
+  assert.doesNotMatch(candidateHtml.match(/<input name="soporte"[^>]*>/)[0], /required/);
+  await submit(host, form('candidate', {...expectedFields, soporte:''}, { liquidation: 'l1' }));
   const saved = calls.find(([name]) => name === 'cobros_crear_esperado')[1];
   assert.equal(saved.p_liquidation_id, 'l1');
+  assert.equal(saved.p_soporte, '');
   assert.equal(saved.p_importe, 100);
   assert.equal(saved.p_corte, '2026-08-31');
   assert.match(saved.p_idempotency_key, /^[\da-f-]{36}$/);

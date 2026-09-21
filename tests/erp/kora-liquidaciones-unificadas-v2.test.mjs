@@ -30,7 +30,7 @@ test('normaliza PayJoy y ALO a crédito, inicial y valor comercial sin duplicar 
   assert.deepEqual({ credito:alo.valorCredito, inicial:alo.inicialPlataforma, comercial:alo.valorComercial }, { credito:1_000_000, inicial:200_000, comercial:1_200_000 });
   assert.equal(alo.accesorios, 50_000);
   const payjoy = domain.normalizarOperacion(operation({ plataforma:'payjoy', montoCredito:780_000, montoBase:780_000, inicial:117_000 }));
-  assert.equal(payjoy.valorComercial, 897_000);
+  assert.equal(payjoy.valorComercial, 780_000);
 });
 
 test('aplica 76 % a Retail y 77 % a Aliados sobre crédito más inicial', () => {

@@ -135,5 +135,6 @@ const erp = [
   'tests/erp/finanzas-programadas.test.mjs',
   'tests/erp/finanzas-programadas-db.test.mjs',
   'tests/erp/tesoreria-gastos.test.mjs',
+  'tests/erp/payjoy-neto-real.test.mjs',
 ];
 execFileSync(process.execPath, ['--test', ...security, ...responsive, ...erp], { stdio: 'inherit' });

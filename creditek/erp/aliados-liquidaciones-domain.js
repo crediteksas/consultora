@@ -134,7 +134,7 @@
       operacion.montoCredito = operacion.montoBase;
       operacion.valorCredito = operacion.montoCredito;
       operacion.inicialPlataforma = operacion.inicial;
-      operacion.valorComercial = operacion.valorCredito + operacion.inicialPlataforma;
+      operacion.valorComercial = operacion.valorCredito;
       operaciones.push(operacion);
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));
     }
@@ -256,7 +256,7 @@
       ...operation,
       valorCredito,
       inicialPlataforma,
-      valorComercial: valorCredito + inicialPlataforma,
+      valorComercial: operation.plataforma === 'payjoy' ? valorCredito : valorCredito + inicialPlataforma,
       accesoriosCantidad: Number(operation.accesoriosCantidad || 0),
       accesorios: dinero(operation.accesorios),
     };
@@ -275,7 +275,7 @@
       const pagoNeto = Math.round((pagamos - operation.inicialPlataforma) * 100) / 100;
       const bonuses = bonos.filter(bonus => bonus.operationKey === operation.sourceKey && bonus.estado !== 'anulado');
       const totalBonos = bonuses.reduce((sum, bonus) => sum + dinero(bonus.valor), 0);
-      const ingresoUtilidad = operation.plataforma === 'alo' ? operation.valorCredito : operation.valorComercial;
+      const ingresoUtilidad = operation.plataforma === 'payjoy' ? operation.valorCredito - operation.inicialPlataforma : operation.plataforma === 'alo' ? operation.valorCredito : operation.valorComercial;
       const utilidadCreditek = Math.round((ingresoUtilidad - pagoNeto - totalBonos) * 100) / 100;
       const incidencias = [];
       if (pagoNeto < 0 || utilidadCreditek < 0) incidencias.push('valor_negativo_imposible');
@@ -323,7 +323,8 @@
       const pagoAliado = Math.round((pagamos - operation.inicial) * 100) / 100;
       const bonosOperacion = bonos.filter(bonus => bonus.operationKey === operation.sourceKey && bonus.estado !== 'anulado');
       const totalBonos = bonosOperacion.reduce((sum, bonus) => sum + dinero(bonus.valor), 0);
-      const utilidadCreditek = Math.round((baseLiquidable - pagoAliado - totalBonos) * 100) / 100;
+      const ingresoNeto = baseLiquidable - (operation.plataforma === 'payjoy' ? operation.inicial : 0);
+      const utilidadCreditek = Math.round((ingresoNeto - pagoAliado - totalBonos) * 100) / 100;
       const incidencias = [];
       if (pagoAliado < 0 || utilidadCreditek < 0) incidencias.push('valor_negativo_imposible');
       if (!operation.ejecutivo) incidencias.push('aliado_sin_ejecutivo');

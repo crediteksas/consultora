@@ -21,7 +21,8 @@ test('PayJoy y ALO muestran una tarjeta, sin las once columnas que parten palabr
   for(const plataforma of ['payjoy','alo']){
     const result=render({...row,plataforma});
     assert.equal(result.head,''); assert.match(result.html,/<article/); assert.doesNotMatch(result.html,/<th[ >]/);
-    for(const value of ['773.500','100.000','873.500','587.860','487.860','185.640','76 %']) assert.ok(result.html.includes(value));
+    for(const value of ['773.500','100.000',plataforma==='payjoy'?'673.500':'873.500','587.860','487.860','185.640','76 %']) assert.ok(result.html.includes(value));
+    if(plataforma==='payjoy') assert.match(result.html,/Neto esperado de PayJoy/);
     assert.match(result.html,/Equipo de prueba/); assert.match(result.html,/350901801498184/);
   }
 });

@@ -419,6 +419,9 @@
       const payField = isOwn && !future && operator.capacidad === 'aprobador' && !selected.frozen_at
         ? `<div class="actions"><input class="control" data-pagamos-input="${row.id}" inputmode="numeric" value="${Number(row.pagamos || 0)}" aria-label="Pagamos"><button class="btn secondary" data-save-pagamos="${row.id}">Guardar</button></div>`
         : (row.pagamos ?? calculation?.pagamos) == null ? '<span class="value-pending">Pendiente de calcular</span>' : money(row.pagamos ?? calculation?.pagamos);
+      const isPayJoy = row.plataforma === 'payjoy' || selected.plataforma === 'payjoy';
+      const sourceAmount = row.monto_credito ?? row.monto_base;
+      const payjoyNet = sourceAmount == null || row.inicial == null ? null : Number(sourceAmount) - Number(row.inicial);
       const commercial = row.valor_comercial ?? calculation?.explanation?.valor_comercial ?? calculation?.explanation?.base_liquidable;
       const appliedPercent = row.porcentaje_politica ?? calculation?.policy_snapshot?.porcentaje;
       const percent = appliedPercent ?? row.configured_percentage;
@@ -437,7 +440,7 @@
         <header class="operation-heading"><div><h3>${esc(row.establishment_name || 'Comercio no informado')}</h3><p>${esc(row.referencia || row.modelo || 'Referencia no informada')} · ${missingCommerce ? 'Comercio pendiente de vincular' : isOwn ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">Liquidación: ${state(selected.estado)}</span></header>
         ${executiveIdentity(row)}
         <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
-        <dl class="operation-values">${metric('Crédito financiado', row.monto_credito ?? row.monto_base)}${metric('Inicial', row.inicial)}${metric('Valor comercial', commercial)}<div><dt>${percentLabel}</dt><dd><strong class="${percent == null ? 'value-pending' : 'operation-amount'}">${percentText}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
+        <dl class="operation-values">${metric(isPayJoy ? 'Importe del archivo PayJoy' : 'Crédito financiado', sourceAmount)}${metric('Inicial', row.inicial)}${isPayJoy ? metric('Neto esperado de PayJoy', payjoyNet) : metric('Valor comercial', commercial)}<div><dt>${percentLabel}</dt><dd><strong class="${percent == null ? 'value-pending' : 'operation-amount'}">${percentText}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
         ${commissionPending ? '<p class="value-pending">Bonos conocidos mostrados; falta el bono del ejecutivo. Utilidad final pendiente de esa asignación en Tesorería.</p>' : ''}
         ${isOwn ? `<details class="operation-reconciliation"><summary>Conciliación de la inicial</summary><dl class="operation-values">${metric('Inicial registrada en KORA', row.inicial_kora)}${metric('Diferencia de inicial', row.diferencia_inicial)}</dl></details>` : ''}
         ${missingCommerce && awaitingCalculation(selected) ? `<aside class="operation-notice"><div><strong>Falta vincular el comercio</strong><p>Vincula una tienda existente o registra el nuevo local antes de completar su cuenta.</p></div><button class="btn secondary" data-commerce="${row.id}">Vincular comercio</button></aside>` : issues}

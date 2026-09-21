@@ -15,6 +15,8 @@
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
 <script src="tablero-utilidad.js?v=1.0.1"></script>
+<script src="alertas-celulares.js?v=1.0.0"></script>
+<link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
 <script src="/design-system/components/kora-product.js" defer></script>
 <style>
 .dashboard-document-access {
@@ -190,6 +192,7 @@
           <span>Consultando alertas operativas…</span>
         </div>
       </div>
+      <section id="alertasCelulares" class="kora-phone-alerts" aria-label="Alertas de celulares" hidden></section>
     </aside>
   </div>
 
@@ -337,6 +340,7 @@ function initPagina() {
   const cont = document.getElementById('pageContenido');
   cont.innerHTML = '';
   cont.appendChild(document.getElementById('tplTablero').content.cloneNode(true));
+  KoraAlertasCelulares.mount(document.getElementById('alertasCelulares'), sb, currentPerfil);
   document.getElementById('documentosGestionAcceso').hidden = !window.KoraAccessControl?.canManageDocuments(currentPerfil);
   pintarIconos();
 

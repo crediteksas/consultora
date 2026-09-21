@@ -1,0 +1,27 @@
+.kora-phone-alerts { min-width:0; max-width:100%; box-sizing:border-box; background:#fff; border:1px solid #e2e8f0; border-top:2px solid #00bfcc; border-radius:16px; padding:18px; color:#0c203e; margin:18px 0; font-size:13px; line-height:1.5; }
+.kora-phone-alerts[hidden] { display:none; }
+.kora-phone-alerts header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.kora-phone-alerts h2 { font-size:17px; margin:3px 0; line-height:1.3; }
+.kora-phone-alerts small,.kora-phone-period { color:#52647e; font-size:12px; }
+.kora-phone-alerts button { border:1px solid #cbd5e1; border-radius:10px; background:white; color:#0c203e; padding:8px 10px; font:inherit; font-weight:600; cursor:pointer; transition:transform 150ms,box-shadow 150ms; }
+.kora-phone-alerts button:hover { transform:translateY(-1px); box-shadow:0 3px 8px #0c203e18; }
+.kora-phone-alerts button:active { transform:translateY(1px); }
+.kora-phone-alerts button[aria-pressed="true"] { color:white; background:#0c203e; }
+.kora-phone-alerts :is(button,summary):focus-visible { outline:2px solid #0099a6; outline-offset:3px; }
+.kora-phone-alerts nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.kora-phone-alerts ul { list-style:none; padding:0; margin:0; }
+.kora-phone-row { border-top:1px solid #e2e8f0; padding:13px 0; overflow-wrap:anywhere; }
+.kora-phone-title strong { display:block; font-size:13px; }
+.kora-phone-title small { display:block; margin-top:3px; }
+.kora-phone-state { display:inline-block; border-radius:14px; background:#f1f5f9; color:#465875; padding:3px 8px; margin:6px 0; font-size:12px; }
+.kora-phone-state[data-level="0"] { background:#fff1f2; color:#b42335; }
+.kora-phone-state[data-level="1"] { background:#fff7e6; color:#925600; }
+.kora-phone-state[data-level="2"] { background:#e9fafb; color:#006d78; }
+.kora-phone-alerts dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:5px 0; }
+.kora-phone-alerts dt { font-size:11px; color:#52647e; line-height:1.3; min-height:2.6em; }
+.kora-phone-alerts dd { font-weight:700; font-size:16px; margin:4px 0 0; font-variant-numeric:tabular-nums; }
+.kora-phone-row p { margin:6px 0 0; font-size:12px; color:#52647e; }
+.kora-phone-alerts summary { cursor:pointer; padding:8px 0; color:#007985; font-weight:600; }
+.kora-phone-method { margin-top:8px; border-top:1px solid #e2e8f0; }
+@media(min-width:760px) { .kora-phone-alerts--wide > ul,.kora-phone-alerts--wide > details > ul { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px; } }
+@media(prefers-reduced-motion:reduce) { .kora-phone-alerts button { transition:none; transform:none!important; } }

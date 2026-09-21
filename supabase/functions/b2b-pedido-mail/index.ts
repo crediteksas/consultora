@@ -7,6 +7,7 @@ Deno.serve(async(req:Request)=>{
  try{
   const body=await req.text();if(body.length>500)return new Response('Invalid',{status:400});
   const {id,token,kind='pedido'}=JSON.parse(body);if(!uuid.test(id)||!uuid.test(token)||!['pedido','cierre'].includes(kind))return new Response('Invalid',{status:400});
+  if(kind!=='cierre')return new Response('Individual order email retired',{status:410});
   const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const rpc=async(name:string,args:unknown)=>{
    const r=await fetch(Deno.env.get('SUPABASE_URL')+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:service,authorization:'Bearer '+service,'content-type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});

@@ -13,13 +13,28 @@ export function renderClosure(r){
  const total=r.items.reduce((s,i)=>s+i.cantidad*i.costo,0),retail=r.items.reduce((s,i)=>s+i.cantidad*i.precio,0);
  let body='';
  for(const [provider,cities] of [...providers].sort(([a],[b])=>a.localeCompare(b,'es'))){body+=`<h3>${esc(provider)}</h3>`;
-  for(const [city,items] of [...cities].sort(([a],[b])=>a.localeCompare(b,'es'))){body+=`<h4>${esc(city)}</h4><table cellpadding="8" border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Tienda / pedido</th><th>Referencia</th><th>Cantidad</th><th>Costo unitario</th><th>Total proveedor</th><th>Precio retail unitario</th></tr></thead><tbody>${items.map(i=>`<tr><td>${esc(i.tienda)}<br>${esc(i.numero)}</td><td>${esc(i.referencia)}</td><td>${i.cantidad}</td><td>${money(i.costo)}</td><td>${money(i.cantidad*i.costo)}</td><td>${money(i.precio)}</td></tr>`).join('')}</tbody></table>`;}
+  for(const [city,items] of [...cities].sort(([a],[b])=>a.localeCompare(b,'es'))){
+   body+=`<h4>${esc(city)} · Un solo pedido para esta ciudad</h4><table cellpadding="8" border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Referencia</th><th>Cantidad total</th><th>Costos cotizados</th><th>Total proveedor</th></tr></thead><tbody>${summarizeReferences(items).map(i=>`<tr><td>${esc(i.referencia)}</td><td>${i.cantidad}</td><td>${i.costos.map(c=>`${c.cantidad} × ${money(c.costo)}`).join('<br>')}</td><td>${money(i.total)}</td></tr>`).join('')}</tbody></table><p>El proveedor organiza el despacho de esta ciudad. No se asigna una tienda receptora.</p>`;
+  }
   body+=`<p><b>Total ${esc(provider)}: ${money([...cities.values()].flat().reduce((s,i)=>s+i.cantidad*i.costo,0))}</b></p>`;
  }
- return `<html><body style="font-family:Arial,sans-serif;color:#0b1e3d"><h2>KORA · Cierre de período ${esc(r.numero)}</h2><p>${esc(new Date(r.fecha).toLocaleString('es-CO',{timeZone:'America/Bogota'}))} · ${new Set(r.items.map(i=>i.pedido_id)).size} pedidos · ${r.items.reduce((s,i)=>s+i.cantidad,0)} unidades</p>${body}<h3>Total costo proveedor: ${money(total)}</h3><p>Total retail: ${money(retail)} · Margen de estos pedidos: ${money(retail-total)}</p><p>Reporte conservado en el historial de cierres. Cerrar este período no confirma recepción, no crea facturas y no mueve inventario ni cartera.</p><p><a href="https://kora.crediteksas.com/creditek/erp/pedidos-b2b#cierrePedidos">Consultar cierre en KORA</a></p></body></html>`;
+ const detail=`<h2>Detalle interno por tienda · no son despachos separados</h2><table cellpadding="8" border="1" style="border-collapse:collapse;width:100%"><tr><th>Tienda / ciudad</th><th>Pedido</th><th>Proveedor / referencia</th><th>Cantidad</th><th>Precio retail</th></tr>${[...r.items].sort((a,b)=>String(a.tienda).localeCompare(String(b.tienda),'es')).map(i=>`<tr><td>${esc(i.tienda)} · ${esc(i.ciudad)}</td><td>${esc(i.numero)}</td><td>${esc(i.proveedor)} · ${esc(i.referencia)}</td><td>${i.cantidad}</td><td>${money(i.precio)}</td></tr>`).join('')}</table>`;
+ return `<html><body style="font-family:Arial,sans-serif;color:#0b1e3d"><h2>KORA · Cierre de período ${esc(r.numero)}</h2><p>${esc(new Date(r.fecha).toLocaleString('es-CO',{timeZone:'America/Bogota'}))} · ${new Set(r.items.map(i=>i.pedido_id)).size} pedidos · ${r.items.reduce((s,i)=>s+i.cantidad,0)} unidades</p>${body}<h3>Total costo proveedor: ${money(total)}</h3><p>Total retail: ${money(retail)} · Margen de estos pedidos: ${money(retail-total)}</p>${detail}<p>Reporte conservado en el historial de cierres. Cerrar este período no confirma recepción, no crea facturas y no mueve inventario ni cartera.</p><p><a href="https://kora.crediteksas.com/creditek/erp/pedidos-b2b#cierrePedidos">Consultar cierre en KORA</a></p></body></html>`;
+}
+export function summarizeReferences(items){
+ const refs=new Map();
+ for(const i of items){
+  const key=i.producto_id||i.referencia;
+  if(!refs.has(key))refs.set(key,{referencia:i.referencia,cantidad:0,total:0,costs:new Map()});
+  const row=refs.get(key),quantity=Number(i.cantidad),cost=Number(i.costo);
+  row.cantidad+=quantity;row.total+=quantity*cost;
+  row.costs.set(cost,(row.costs.get(cost)||0)+quantity);
+ }
+ return [...refs.values()].sort((a,b)=>String(a.referencia).localeCompare(String(b.referencia),'es')).map(({costs,...r})=>({...r,costos:[...costs].map(([costo,cantidad])=>({costo,cantidad}))}));
 }
 export function buildRaw(r){const body=base64(renderReport(r)).match(/.{1,76}/g).join('\r\n');return base64(['From: KORA <comercial@crediteksas.com>','To: '+RECIPIENTS.join(', '),'Subject: =?UTF-8?B?'+base64('KORA · '+r.numero+' · '+r.tienda)+'?=','Message-ID: <b2b-pedido-'+r.id+'@crediteksas.com>','MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',body].join('\r\n')).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 export async function deliver(report,env,request=fetch){
+ if(report.tipo!=='cierre')return {outcome:'failed'};
  if(!report.id||!report.tienda||!Array.isArray(report.items)||!report.items.length||report.items.some(i=>!Number.isFinite(Number(i.precio))||!Number.isFinite(Number(i.costo))||!(i.cantidad>0)))return {outcome:'failed'};
  let raw;try{raw=buildRaw(report);}catch{return {outcome:'failed'};}
  let token;

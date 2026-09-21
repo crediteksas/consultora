@@ -68,7 +68,7 @@ test('correo: destinatarios fijos, nombres, valores del pedido, escape y envío 
  const r={id:'test',numero:'PED-000001',tienda:'Chinucell',ciudad:'Chinú',fecha:'2026-09-17T15:00:00Z',nota:'<script>alert(1)</script>',items:[{referencia:'REDMI 17',cantidad:2,precio:502000,costo:482000,proveedor:'MPS'}]};
  const html=renderReport(r);assert.match(html,/Chinucell/);assert.match(html,/1.004.000/);assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
  assert.deepEqual(RECIPIENTS,['gestion@crediteksas.com','comercial@crediteksas.com']);assert.ok(buildRaw(r));
- let calls=0;const result=await deliver(r,{},async()=>{calls++;return calls===1?new Response(JSON.stringify({access_token:'mock'})):new Response('',{status:503});});assert.equal(result.outcome,'ambiguous');assert.equal(calls,2);
+ let calls=0;const result=await deliver(r,{},async()=>{calls++;});assert.equal(result.outcome,'failed');assert.equal(calls,0,'los pedidos individuales no generan correo');
 });
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 test('base: memoria e historia privadas, publicación idempotente y avisos exactamente una vez por pedido',async()=>{

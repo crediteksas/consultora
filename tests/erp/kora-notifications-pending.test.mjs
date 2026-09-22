@@ -33,6 +33,7 @@ test('Maythe y gerencia ven autorización después de recibir, no antes',()=>{
     const sources=pendingSources({id:'a',rol},true);
     assert.equal(sources.find(s=>s.key==='transfers').filters[0][2],'recibido_pendiente_aprobacion');
     assert.ok(sources.some(s=>s.key==='store-expenses'));
+    assert.equal(sources.find(s=>s.key==='store-expenses').path,'/creditek/erp/gastos.html?pendientes=1');
     assert.ok(sources.some(s=>s.key==='financial-payment'));
     assert.ok(!pendingSources({id:'a',rol},false).some(s=>s.table==='financial_entries'));
   }

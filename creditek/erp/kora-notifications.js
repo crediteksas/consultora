@@ -9,7 +9,7 @@
     if (central) {
       sources.push(
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
-        {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html',filters:[['eq','estado','registrado']]},
+        {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
         {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
       );
     } else if (profile.rol === 'admin_tienda' && profile.tienda_codigo) {

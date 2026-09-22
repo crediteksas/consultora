@@ -619,7 +619,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraNotifications')) {
       const notifications = document.createElement('script');
       notifications.id = 'koraNotifications';
-      notifications.src = '/creditek/erp/kora-notifications.js?v=1.2.1';
+      notifications.src = '/creditek/erp/kora-notifications.js?v=1.2.2';
       document.head.appendChild(notifications);
     }
     if (!document.getElementById('koraReportExport')) {

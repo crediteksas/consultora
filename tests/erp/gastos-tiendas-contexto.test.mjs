@@ -16,3 +16,9 @@ test('Gastos filtra cada tienda y muestra la procedencia de cada fila', () => {
     assert.equal((elementos.tbodyGastos.innerHTML.match(/<tr(?:\s[^>]*)?>/g)||[]).length,1);
   }
 });
+
+test('el enlace de la campana abre todos los gastos pendientes aunque hubiera una tienda seleccionada', () => {
+  assert.match(html, /new URLSearchParams\(location\.search\)\.get\('pendientes'\) === '1'/);
+  assert.match(html, /abrirPendientes \? ''/);
+  assert.match(html, /if \(!abrirPendientes\) localStorage\.setItem/);
+});

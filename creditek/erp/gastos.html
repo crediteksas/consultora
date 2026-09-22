@@ -390,9 +390,10 @@ async function cargarDatosBase() {
 
   document.getElementById('filtroTienda').innerHTML = '<option value="">Todas las tiendas</option>' + tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
   if (esCentral()) {
+    const abrirPendientes = new URLSearchParams(location.search).get('pendientes') === '1';
     const guardada = localStorage.getItem('creditek_sidebar_tienda') || '';
-    document.getElementById('filtroTienda').value = tiendasCache.some(t => t.codigo === guardada) ? guardada : '';
-    localStorage.setItem('creditek_sidebar_tienda', document.getElementById('filtroTienda').value);
+    document.getElementById('filtroTienda').value = abrirPendientes ? '' : (tiendasCache.some(t => t.codigo === guardada) ? guardada : '');
+    if (!abrirPendientes) localStorage.setItem('creditek_sidebar_tienda', document.getElementById('filtroTienda').value);
     const cabecera = document.getElementById('koraStoreSelector');
     if (cabecera) cabecera.value = document.getElementById('filtroTienda').value;
   }

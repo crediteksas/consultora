@@ -64,6 +64,32 @@
  function rows(report,kind){
   return [['Referencia','Código',...report.suppliers.map(p=>'Costo · '+p.nombre),'Menor costo','Proveedor de menor costo','Proveedor elegido / propuesto','Costo elegido','Margen elegido','Precio retail elegido / propuesto','Precio publicado que ve la tienda','Validación'],...report[kind].map(r=>[r.product.nombre,r.product.codigo,...r.cells.map(c=>c.length?c.map(x=>x.costo).join(' | '):''),r.best.costo,report.suppliers.find(p=>p.id===r.best.proveedor_id)?.nombre,report.suppliers.find(p=>p.id===r.chosen?.proveedor_id)?.nombre,r.chosen?.costo??'',r.chosen?r.chosen.precio_tienda-r.chosen.costo:'',r.chosen?.precio_tienda??'',r.actual?.precio_tienda??'',r.status+(r.ties>1?' · empate en costo':'')])];
  }
+ function excelMatrix(report,kind,heading){
+  const list=report[kind],indexes=report.suppliers.map((provider,index)=>({provider,index})).filter(({index})=>list.some(row=>row.cells[index]?.length));
+  if(!list.length||!indexes.length)return null;
+  return {
+   heading,
+   headers:['Referencia','Código',...indexes.map(({provider})=>provider.nombre),'Menor costo','Proveedor menor costo','Precio retail vigente','Estado'],
+   rows:list.map(row=>[
+    row.product.nombre,
+    row.product.codigo||'',
+    ...indexes.map(({index})=>row.cells[index]?.[0]?.costo??''),
+    row.best?.costo??'',
+    report.suppliers.find(provider=>provider.id===row.best?.proveedor_id)?.nombre||'',
+    row.actual?.precio_tienda??'',
+    row.status+(row.ties>1?' · empate en costo':'')
+   ])
+  };
+ }
+ function excelTables(report){
+  const tables=[
+   excelMatrix(report,'published','Comparativo vigente'),
+   excelMatrix(report,'drafts','Borradores por revisar')
+  ].filter(Boolean);
+  if(report.unresolved.length)tables.push({heading:'Pendientes y excluidas',headers:['Proveedor','Referencia original','Costo','Precio retail propuesto','Estado / motivo','Línea','Guardado en KORA'],rows:report.unresolved.map(row=>[row.provider,row.reference,row.cost??'',row.price??'',row.reason,row.line,date(row.date)])});
+  tables.push({heading:'Fuentes utilizadas',headers:['Proveedor','Estado','Guardado o publicado en KORA','Archivo','ID de trazabilidad'],rows:report.sources.map(source=>[source.provider,source.state,date(source.date),source.file||'Lista de WhatsApp',source.id])});
+  return tables;
+ }
  function csv(report){
   return D.csv([['KORA · Comparativo de proveedores'],['Consulta (Colombia)',date(report.generatedAt)],['Moneda','COP. Costos registrados, sin agregar IVA. No incluye cambios sin guardar.'],...O.rows(report),[],['PUBLICADO: LO QUE VE LA TIENDA'],...rows(report,'published'),[],['BORRADORES: ÚLTIMA LISTA GUARDADA POR PROVEEDOR, NO PUBLICADA'],['Comparación parcial: no incluye ofertas publicadas ni filas pendientes/excluidas; no reemplaza el precio de la tienda.'],...rows(report,'drafts'),[],['PENDIENTES Y EXCLUIDAS'],['Proveedor','Referencia original','Costo','Precio retail propuesto','Estado / motivo','Línea','Guardado en KORA'],...report.unresolved.map(r=>[r.provider,r.reference,r.cost,r.price,r.reason,r.line,date(r.date)]),[],['FUENTES'],['Proveedor','Estado','Guardado / publicado en KORA','Archivo','ID de trazabilidad'],...report.sources.map(s=>[s.provider,s.state,date(s.date),s.file||'',s.id])]);
  }
@@ -95,11 +121,18 @@
  function mount({sb,profile,container}){
   container.innerHTML='<div class="list-heading"><div><h2>Comparativo de proveedores</h2><p class="sub">Compara costos y comprueba el precio de la tienda. Lo publicado y las propuestas se muestran por separado.</p></div><div class="actions"><button class="btn primary" data-comparison="html">Descargar informe visual</button><button class="btn" data-comparison="csv">Descargar para Excel (CSV)</button><button class="btn" data-comparison="opportunities">Revisar oportunidades de margen</button></div></div><p data-comparison-status role="status" aria-live="polite"></p><div data-opportunities></div>';
   container.querySelector('[data-opportunities]').onclick=e=>{const button=e.target.closest('[data-opportunity-draft]');if(button)root.document.getElementById('listasWhatsApp')?.openDraft?.(button.dataset.opportunityDraft,button.dataset.opportunityProduct);};
+  const previousReportData=root.KoraReportData;
+  root.KoraReportData={async prepareExcel(baseReport){
+   const active=!root.document.getElementById('workspace-listas')?.hidden;
+   if(!active)return previousReportData?.prepareExcel?previousReportData.prepareExcel(baseReport):baseReport;
+   const comparison=await load(sb,profile());
+   return {...baseReport,title:'Comparativo de listas de proveedores',tables:excelTables(comparison)};
+  }};
   container.querySelectorAll('[data-comparison]').forEach(button=>button.onclick=async()=>{
    const buttons=container.querySelectorAll('button'),status=container.querySelector('[data-comparison-status]');buttons.forEach(b=>b.disabled=true);status.textContent='Consultando todas las listas guardadas…';
    try{const report=await load(sb,profile()),format=button.dataset.comparison;if(format==='opportunities'){container.querySelector('[data-opportunities]').innerHTML=O.html(report,true);status.textContent='Consulta actualizada. Ningún precio fue modificado.';return;}download(format==='csv'?csv(report):html(report),format==='csv'?'text/csv;charset=utf-8':'text/html;charset=utf-8','KORA-Comparativo-proveedores-'+report.generatedAt.slice(0,10)+'.'+format);status.textContent='Informe descargado: '+report.published.length+' referencias publicadas, '+report.drafts.length+' comparables en borrador y '+report.unresolved.length+' filas pendientes o excluidas. No se modificaron precios.';}catch(error){status.textContent='No se pudo descargar: '+error.message;}finally{buttons.forEach(b=>b.disabled=false);}
   });
  }
- const api={latestDrafts,build,rows,csv,html,all,load,mount};
+ const api={latestDrafts,build,rows,excelMatrix,excelTables,csv,html,all,load,mount};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BComparativo=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

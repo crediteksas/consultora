@@ -16,6 +16,18 @@ test('Todos los proveedores en columnas, menor costo y precio realmente publicad
  assert.match(r.status,/Coincide/);assert.match(C.html(report),/Sin oferta/);
  assert.match(C.html(report),/class="num best"/);assert.equal(C.rows(report,'published')[1][9],20000);
 });
+test('Excel de listas guardadas cruza referencias en filas y solo proveedores con precios en columnas',()=>{
+ const report=build(),tables=C.excelTables(report),matrix=tables.find(table=>table.heading==='Comparativo vigente');
+ assert.deepEqual(matrix.headers,['Referencia','Código','Proveedor A','Proveedor B','Menor costo','Proveedor menor costo','Precio retail vigente','Estado']);
+ assert.equal(matrix.rows.length,1);assert.equal(matrix.rows[0][0],'Equipo 4/128');assert.equal(matrix.rows[0][2],400000);assert.equal(matrix.rows[0][3],420000);
+ assert.ok(!matrix.headers.includes('Sin lista'));assert.equal(matrix.rows[0][4],400000);assert.equal(matrix.rows[0][5],'Proveedor A');
+});
+test('Excel separa borradores y conserva pendientes sin convertir datos faltantes en cero',()=>{
+ const report=build({drafts:[draft('d','a',[draftRow({producto_id:'q'}),draftRow({producto_id:'',reference:'Pendiente',costo:null,precio_tienda:null,row:2})])]});
+ const tables=C.excelTables(report),draftTable=tables.find(table=>table.heading==='Borradores por revisar'),pending=tables.find(table=>table.heading==='Pendientes y excluidas');
+ assert.equal(draftTable.rows[0][0],'Equipo 8/128');assert.equal(draftTable.rows[0][2],350000);
+ assert.equal(pending.rows[0][0],'Proveedor A');assert.equal(pending.rows[0][2],'');assert.equal(pending.rows[0][3],'');
+});
 test('No sustituye la selección publicada por una propuesta más barata',()=>{
  const report=build({drafts:[draft('d','a',[draftRow()])]});
  assert.equal(report.published[0].chosen.costo,400000);
@@ -81,6 +93,7 @@ test('Botón en Administración; descarga sin mutaciones ni publicación',()=>{
  assert.match(page,/profile:\(\)=>profile/);
  const source=readFileSync(new URL('../../creditek/erp/b2b-comparativo.js',import.meta.url),'utf8');
  assert.doesNotMatch(source,/\.rpc\(|\.insert\(|\.update\(|\.delete\(|service_role/);
+ assert.match(source,/title:'Comparativo de listas de proveedores'/);assert.match(source,/workspace-listas/);
 });
 test('Listas y precios conserva descargas visibles dentro de su propia vista',()=>{
  const page=readFileSync(new URL('../../creditek/erp/pedidos-b2b.html',import.meta.url),'utf8');

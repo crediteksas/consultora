@@ -58,7 +58,15 @@
    }).sort((a,b)=>a.product.nombre.localeCompare(b.product.nombre,'es'));
   }
   const publishedSources=published.map(o=>({provider:supplierMap.get(o.proveedor_id).nombre,id:o.lista_id,date:o.b2b_listas_precios?.creado_at,state:'Oferta vigente publicada',file:o.b2b_listas_precios?.archivo||''}));
-  const uniqueSources=[...new Map([...publishedSources,...sources].map(s=>[s.provider+'|'+s.id+'|'+s.state,s])).values()];
+  // Una lista publicada también deja un borrador cerrado. Ambos registros
+  // describen la misma fuente canónica y no deben duplicarse en el informe.
+  // Conservamos primero la fuente publicada porque incluye archivo y estado vigente.
+  const canonicalSources=new Map();
+  for(const source of [...publishedSources,...sources]){
+   const key=source.id?String(source.id):[source.provider,source.file||'',source.date||''].join('|');
+   if(!canonicalSources.has(key))canonicalSources.set(key,source);
+  }
+  const uniqueSources=[...canonicalSources.values()];
   return {suppliers,published:matrix(published,true),drafts:matrix(draftOffers,false),unresolved,sources:uniqueSources,generatedAt};
  }
  function rows(report,kind){
@@ -69,7 +77,7 @@
   if(!list.length||!indexes.length)return null;
   return {
    heading,
-   headers:['Referencia','Código',...indexes.map(({provider})=>provider.nombre),'Menor costo','Proveedor menor costo','Precio retail vigente','Estado'],
+   headers:['Referencia','Código',...indexes.map(({provider})=>'Costo · '+provider.nombre),'Menor costo','Proveedor menor costo','Precio retail vigente','Ahorro vs retail','Estado'],
    rows:list.map(row=>[
     row.product.nombre,
     row.product.codigo||'',
@@ -77,8 +85,10 @@
     row.best?.costo??'',
     report.suppliers.find(provider=>provider.id===row.best?.proveedor_id)?.nombre||'',
     row.actual?.precio_tienda??'',
+    row.actual?.precio_tienda!=null&&row.best?.costo!=null?row.actual.precio_tienda-row.best.costo:'',
     row.status+(row.ties>1?' · empate en costo':'')
-   ])
+   ]),
+   sumColumns:indexes.map((_,index)=>index+2).concat([indexes.length+2,indexes.length+4,indexes.length+5])
   };
  }
  function excelTables(report){
@@ -89,6 +99,12 @@
   if(report.unresolved.length)tables.push({heading:'Pendientes y excluidas',headers:['Proveedor','Referencia original','Costo','Precio retail propuesto','Estado / motivo','Línea','Guardado en KORA'],rows:report.unresolved.map(row=>[row.provider,row.reference,row.cost??'',row.price??'',row.reason,row.line,date(row.date)])});
   tables.push({heading:'Fuentes utilizadas',headers:['Proveedor','Estado','Guardado o publicado en KORA','Archivo','ID de trazabilidad'],rows:report.sources.map(source=>[source.provider,source.state,date(source.date),source.file||'Lista de WhatsApp',source.id])});
   return tables;
+ }
+ function excelReport(baseReport,comparison){
+  const scope={label:'Global — todas las tiendas',code:'',restricted:false};
+  const filters=(baseReport.filters||[]).filter(([label])=>!/^Alcance del informe$/i.test(String(label||''))&&!/^Tienda$/i.test(String(label||'')));
+  filters.unshift(['Alcance del informe',scope.label]);
+  return {...baseReport,title:'Comparativo de listas de proveedores',scope,filters,tables:excelTables(comparison)};
  }
  function csv(report){
   return D.csv([['KORA · Comparativo de proveedores'],['Consulta (Colombia)',date(report.generatedAt)],['Moneda','COP. Costos registrados, sin agregar IVA. No incluye cambios sin guardar.'],...O.rows(report),[],['PUBLICADO: LO QUE VE LA TIENDA'],...rows(report,'published'),[],['BORRADORES: ÚLTIMA LISTA GUARDADA POR PROVEEDOR, NO PUBLICADA'],['Comparación parcial: no incluye ofertas publicadas ni filas pendientes/excluidas; no reemplaza el precio de la tienda.'],...rows(report,'drafts'),[],['PENDIENTES Y EXCLUIDAS'],['Proveedor','Referencia original','Costo','Precio retail propuesto','Estado / motivo','Línea','Guardado en KORA'],...report.unresolved.map(r=>[r.provider,r.reference,r.cost,r.price,r.reason,r.line,date(r.date)]),[],['FUENTES'],['Proveedor','Estado','Guardado / publicado en KORA','Archivo','ID de trazabilidad'],...report.sources.map(s=>[s.provider,s.state,date(s.date),s.file||'',s.id])]);
@@ -126,13 +142,13 @@
    const active=!root.document.getElementById('workspace-listas')?.hidden;
    if(!active)return previousReportData?.prepareExcel?previousReportData.prepareExcel(baseReport):baseReport;
    const comparison=await load(sb,profile());
-   return {...baseReport,title:'Comparativo de listas de proveedores',tables:excelTables(comparison)};
+   return excelReport(baseReport,comparison);
   }};
   container.querySelectorAll('[data-comparison]').forEach(button=>button.onclick=async()=>{
    const buttons=container.querySelectorAll('button'),status=container.querySelector('[data-comparison-status]');buttons.forEach(b=>b.disabled=true);status.textContent='Consultando todas las listas guardadas…';
    try{const report=await load(sb,profile()),format=button.dataset.comparison;if(format==='opportunities'){container.querySelector('[data-opportunities]').innerHTML=O.html(report,true);status.textContent='Consulta actualizada. Ningún precio fue modificado.';return;}download(format==='csv'?csv(report):html(report),format==='csv'?'text/csv;charset=utf-8':'text/html;charset=utf-8','KORA-Comparativo-proveedores-'+report.generatedAt.slice(0,10)+'.'+format);status.textContent='Informe descargado: '+report.published.length+' referencias publicadas, '+report.drafts.length+' comparables en borrador y '+report.unresolved.length+' filas pendientes o excluidas. No se modificaron precios.';}catch(error){status.textContent='No se pudo descargar: '+error.message;}finally{buttons.forEach(b=>b.disabled=false);}
   });
  }
- const api={latestDrafts,build,rows,excelMatrix,excelTables,csv,html,all,load,mount};
+ const api={latestDrafts,build,rows,excelMatrix,excelTables,excelReport,csv,html,all,load,mount};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.KoraB2BComparativo=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

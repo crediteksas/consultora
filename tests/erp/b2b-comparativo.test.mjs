@@ -18,9 +18,23 @@ test('Todos los proveedores en columnas, menor costo y precio realmente publicad
 });
 test('Excel de listas guardadas cruza referencias en filas y solo proveedores con precios en columnas',()=>{
  const report=build(),tables=C.excelTables(report),matrix=tables.find(table=>table.heading==='Comparativo vigente');
- assert.deepEqual(matrix.headers,['Referencia','Código','Proveedor A','Proveedor B','Menor costo','Proveedor menor costo','Precio retail vigente','Estado']);
+ assert.deepEqual(matrix.headers,['Referencia','Código','Costo · Proveedor A','Costo · Proveedor B','Menor costo','Proveedor menor costo','Precio retail vigente','Ahorro vs retail','Estado']);
  assert.equal(matrix.rows.length,1);assert.equal(matrix.rows[0][0],'Equipo 4/128');assert.equal(matrix.rows[0][2],400000);assert.equal(matrix.rows[0][3],420000);
- assert.ok(!matrix.headers.includes('Sin lista'));assert.equal(matrix.rows[0][4],400000);assert.equal(matrix.rows[0][5],'Proveedor A');
+ assert.ok(!matrix.headers.some(header=>header.includes('Sin lista')));assert.equal(matrix.rows[0][4],400000);assert.equal(matrix.rows[0][5],'Proveedor A');
+ assert.equal(matrix.rows[0][7],20000);assert.deepEqual(matrix.sumColumns,[2,3,4,6,7]);
+});
+test('El Excel comparativo siempre declara alcance global y elimina la tienda heredada',()=>{
+ const base={title:'Pedidos',scope:{label:'Sonivox',code:'CK-07'},filters:[['Alcance del informe','Sonivox · CK-07'],['Tienda','Sonivox'],['Estado','Activas']]};
+ const result=C.excelReport(base,build());
+ assert.deepEqual(result.scope,{label:'Global — todas las tiendas',code:'',restricted:false});
+ assert.deepEqual(result.filters,[['Alcance del informe','Global — todas las tiendas'],['Estado','Activas']]);
+ assert.doesNotMatch(JSON.stringify(result),/Sonivox|CK-07/);
+});
+test('Fuentes publicadas no se duplican como borradores cerrados',()=>{
+ const published={...offer('a'),lista_id:'lista-a',b2b_listas_precios:{creado_at:'2026-09-18T10:00:00Z',archivo:'proveedor-a.xlsx'}};
+ const closed={...draft('cerrado','a',[draftRow()]),lista_id:'lista-a',id:'lista-a'};
+ const report=build({offers:[published],winners:[offer('a')],drafts:[closed]});
+ assert.equal(report.sources.length,1);assert.equal(report.sources[0].state,'Oferta vigente publicada');assert.equal(report.sources[0].file,'proveedor-a.xlsx');
 });
 test('Excel separa borradores y conserva pendientes sin convertir datos faltantes en cero',()=>{
  const report=build({drafts:[draft('d','a',[draftRow({producto_id:'q'}),draftRow({producto_id:'',reference:'Pendiente',costo:null,precio_tienda:null,row:2})])]});

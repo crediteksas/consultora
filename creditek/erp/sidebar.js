@@ -625,7 +625,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraReportExport')) {
       const reports = document.createElement('script');
       reports.id = 'koraReportExport';
-      reports.src = '/creditek/erp/kora-report-export.js?v=1.2.1';
+      reports.src = '/creditek/erp/kora-report-export.js?v=1.2.2';
       document.head.appendChild(reports);
     }
     if (!document.getElementById('koraInstall')) {

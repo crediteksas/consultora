@@ -9,12 +9,24 @@ test('el shell instala informes Excel y PDF en todas las pantallas KORA', async 
     read('creditek/erp/sidebar.js'),
     read('creditek/erp/kora-report-export.js'),
   ]);
-  assert.match(shell, /kora-report-export\.js\?v=1\.1\.0/);
+  assert.match(shell, /kora-report-export\.js\?v=1\.2\.0/);
   assert.match(shell, /KoraReportExport\?\.mount/);
   assert.match(exporter, /data-format="xlsx"/);
   assert.match(exporter, /data-format="pdf"/);
   assert.match(exporter, /ExcelJS/);
+  assert.match(exporter, /Descargar Excel completo/);
   assert.match(exporter, /window\.print\(\)/);
+});
+
+test('el Excel común usa datos tipados, fórmulas, tablas y no exporta botones de acciones', async () => {
+  const exporter = await read('creditek/erp/kora-report-export.js');
+  assert.match(exporter, /function typedCell/);
+  assert.match(exporter, /SUBTOTAL\(109/);
+  assert.match(exporter, /SUBTOTAL\(103/);
+  assert.match(exporter, /addTable/);
+  assert.match(exporter, /Control del archivo/);
+  assert.match(exporter, /!\/\^acciones\?\$\/i/);
+  assert.doesNotMatch(exporter, /slice\(0,10000\)/);
 });
 
 test('cada informe conserva marca, parámetros y trazabilidad', async () => {

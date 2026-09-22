@@ -34,24 +34,32 @@
   async function loadAddiFollowup() {
     const status = $('addiFollowupStatus');
     const body = $('addiFollowupRows');
-    const { data, error } = await sb.rpc('addi_liquidaciones_listar');
-    if (error || !Array.isArray(data)) {
-      status.textContent = 'No se pudo consultar Addi. Actualiza para reintentar; no asumas que no hay ventas.';
+    const [{ data, error }, stores] = await Promise.all([
+      sb.rpc('addi_liquidaciones_listar'),
+      sb.from('origenes').select('codigo,nombre,ciudad'),
+    ]);
+    if (error || !Array.isArray(data) || stores.error || !Array.isArray(stores.data)) {
+      status.textContent = 'No se pudieron consultar las liquidaciones o los nombres de las tiendas. Actualiza para reintentar.';
       body.innerHTML = '';
       return;
     }
+    const storeByCode = new Map(stores.data.map(store => [store.codigo, store]));
     const rows = data.filter(row => row.estado !== 'anulada');
     const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
     status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
     body.innerHTML = rows.map(row => {
-      const action = row.estado === 'pendiente_revision'
+      const store = storeByCode.get(row.tienda_codigo);
+      const storeName = String(store?.nombre || '').trim();
+      const location = String(store?.ciudad || '').trim();
+      const action = !storeName ? 'Revisar nombre de tienda en catálogo'
+        : row.estado === 'pendiente_revision'
         ? `<button class="btn secondary" data-addi-action="revisar" data-addi-venta="${esc(row.venta_id)}">Marcar revisada</button>`
         : row.estado === 'revisada' && profile?.rol === 'gerencia'
           ? `<button class="btn primary" data-addi-action="aprobar" data-addi-venta="${esc(row.venta_id)}">Aprobar y pasar a Tesorería</button>`
           : row.estado === 'revisada' ? 'Espera aprobación de Gerencia'
             : '<a href="aliados-tesoreria.html?vista=cobros">Ver en Tesorería</a>';
       const stateName = { pendiente_revision:'Pendiente de revisión', revisada:'Revisada', aprobada:'Aprobada' }[row.estado] || row.estado;
-      return `<tr><td>#${esc(row.consecutivo)} · ${esc(row.tienda_codigo)}</td><td>${esc(row.fecha_venta)}</td><td>${money(row.credito_bruto)}</td><td>${money(row.tarifa_addi)}</td><td>${money(row.iva_tarifa)}</td><td>${money(row.neto_estimado)}</td><td>${esc(row.fecha_esperada)}</td><td>${esc(stateName)}</td><td>${action}</td></tr>`;
+      return `<tr><td>#${esc(row.consecutivo)} · ${storeName ? `${esc(storeName)}${location ? ` · ${esc(location)}` : ''}` : 'Tienda sin identificar'}</td><td>${esc(row.fecha_venta)}</td><td>${money(row.credito_bruto)}</td><td>${money(row.tarifa_addi)}</td><td>${money(row.iva_tarifa)}</td><td>${money(row.neto_estimado)}</td><td>${esc(row.fecha_esperada)}</td><td>${esc(stateName)}</td><td>${action}</td></tr>`;
     }).join('');
   }
   async function actOnAddi(event) {

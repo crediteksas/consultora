@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 const migration = await readFile(new URL('../../supabase/migrations/20260922193359_addi_venta_cobro_estimado.sql', import.meta.url), 'utf8');
+const namesMigration = await readFile(new URL('../../supabase/migrations/20260922234405_addi_cobros_nombre_tienda.sql', import.meta.url), 'utf8');
 const maite = '00000000-0000-4000-8000-000000000001';
 const oscar = '00000000-0000-4000-8000-000000000002';
 const ventas = [
@@ -22,6 +23,9 @@ test('cuatro créditos Addi pasan por revisión antes de generar cobros en Tesor
       create function auth.uid() returns uuid language sql stable as
         $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       create table public.perfiles(id uuid primary key,rol text not null,activo boolean not null default true);
+      create table public.origenes(codigo text primary key,nombre text not null,ciudad text);
+      insert into public.origenes(codigo,nombre,ciudad) values
+        ('MOVIL','Móvil Shopping','Corozal'),('SONIVOX','Sonivox','Chinú'),('CELFIAO','Celfiao','Corozal');
       insert into public.perfiles(id,rol) values ('${maite}','auditoria'),('${oscar}','gerencia');
       create function cobros_private.autorizado(p_escritura boolean default false)
         returns boolean language sql stable as $$
@@ -49,6 +53,7 @@ test('cuatro créditos Addi pasan por revisión antes de generar cobros en Tesor
         [id, 'Addi', credit, initial]);
     }
     await db.exec(migration);
+    await db.exec(namesMigration);
     const queued = await db.query("select count(*)::int as n from public.addi_liquidaciones where estado='pendiente_revision'");
     assert.equal(queued.rows[0].n, 4);
     assert.equal((await db.query('select count(*)::int as n from public.cobros_expected')).rows[0].n, 0);
@@ -60,12 +65,13 @@ test('cuatro créditos Addi pasan por revisión antes de generar cobros en Tesor
 
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [oscar]);
     await db.query('select public.addi_liquidacion_aprobar($1)', [ventas[0][0]]);
-    const expected = await db.query('select importe::numeric as neto,fecha_esperada,fuente_tipo,estado from public.cobros_expected');
+    const expected = await db.query('select importe::numeric as neto,fecha_esperada,fuente_tipo,estado,concepto from public.cobros_expected');
     assert.equal(expected.rows.length, 1);
     assert.equal(Number(expected.rows[0].neto), 212204.75);
     assert.equal(expected.rows[0].fecha_esperada.toISOString().slice(0, 10), '2026-09-17');
     assert.equal(expected.rows[0].fuente_tipo, 'estimacion_venta');
     assert.equal(expected.rows[0].estado, 'activo');
+    assert.equal(expected.rows[0].concepto, 'Venta Addi #37 · Móvil Shopping');
     await assert.rejects(() => db.query('select public.addi_liquidacion_aprobar($1)', [ventas[0][0]]), /debe estar revisada/);
     assert.equal((await db.query('select count(*)::int as n from public.cobros_expected')).rows[0].n, 1);
   } finally { await db.close(); }

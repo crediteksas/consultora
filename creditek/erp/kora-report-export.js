@@ -94,19 +94,22 @@
   function loadScript(id,src,globalName){if(window[globalName])return Promise.resolve(window[globalName]);return new Promise((resolve,reject)=>{const prior=document.getElementById(id);if(prior){prior.addEventListener('load',()=>resolve(window[globalName]),{once:true});prior.addEventListener('error',reject,{once:true});return}const script=document.createElement('script');script.id=id;script.src=src;script.onload=()=>resolve(window[globalName]);script.onerror=()=>reject(new Error('No fue posible cargar el generador de Excel.'));document.head.appendChild(script)})}
   async function logoBase64(){const response=await fetch(LOGO);if(!response.ok)throw new Error('No fue posible cargar el logo Creditek.');const blob=await response.blob();return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)})}
   function filename(report,extension){return `${report.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'informe-kora'}-${report.id}.${extension}`}
-  function structuredSheet(workbook, table, index, report) {
+  function structuredSheet(workbook, table, index, report, imageId) {
     const lastColumn = excelColumn(table.headers.length - 1);
     const sheet = workbook.addWorksheet(`${String(index+1).padStart(2,'0')} ${table.heading}`.slice(0,31), {
       views: [{state:'frozen', ySplit:5, xSplit:3, showGridLines:false}]
     });
     sheet.columns = table.columns.map(([,width,format], i) => ({width, style:{numFmt:format || (i>=6 && i<=22 ? table.moneyFormat : 'General')}}));
-    sheet.getCell('A2').value = `${table.heading} · ${report.id}`;
-    sheet.getCell('A2').font = {name:'Arial',size:14,bold:true,color:{argb:COLORS.navy}};
-    sheet.mergeCells('A2:K2');
-    sheet.getCell('A3').value = table.note;
-    sheet.mergeCells(`A3:${lastColumn}3`);
-    sheet.getCell('A3').alignment = {wrapText:true,vertical:'middle'};
-    sheet.getRow(3).height = 30;
+    if(imageId!==null)sheet.addImage(imageId,{tl:{col:.15,row:.2},ext:{width:150,height:44}});
+    sheet.getCell('D2').value = `${table.heading} · ${report.id}`;
+    sheet.getCell('D2').font = {name:'Arial',size:14,bold:true,color:{argb:COLORS.navy}};
+    sheet.getCell('D2').alignment = {vertical:'middle'};
+    sheet.mergeCells(`D2:${lastColumn}2`);
+    sheet.getCell('D3').value = table.note;
+    sheet.mergeCells(`D3:${lastColumn}3`);
+    sheet.getCell('D3').alignment = {wrapText:true,vertical:'middle'};
+    sheet.getRow(2).height = 24;
+    sheet.getRow(3).height = 34;
     const header = sheet.getRow(5);header.values = table.headers;header.height = 42;
     header.eachCell(cell => {
       cell.font={name:'Arial',size:10,bold:true,color:{argb:COLORS.white}};
@@ -143,7 +146,7 @@
     let row=12;if(report.filters.length){summary.getCell(`A${row}`).value='Parámetros aplicados';summary.getCell(`A${row}`).font={bold:true,color:{argb:COLORS.white}};summary.getCell(`A${row}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};summary.mergeCells(`A${row}:D${row}`);row++;report.filters.forEach(([label,value])=>{summary.getCell(`A${row}`).value=label;summary.getCell(`B${row}`).value=value;row++});row++}if(report.metrics.length){summary.getCell(`A${row}`).value='Indicadores visibles';summary.getCell(`A${row}`).font={bold:true,color:{argb:COLORS.white}};summary.getCell(`A${row}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};summary.mergeCells(`A${row}:D${row}`);row++;report.metrics.forEach(([label,value])=>{summary.getCell(`A${row}`).value=label;summary.getCell(`B${row}`).value=value;row++})}
     const controls=[];
     report.tables.forEach((table,index)=>{
-      if(table.structured){structuredSheet(workbook,table,index,report);controls.push({sheet:workbook.worksheets.at(-1),heading:table.heading,last:table.rows.length+5,structured:true});return;}
+      if(table.structured){structuredSheet(workbook,table,index,report,imageId);controls.push({sheet:workbook.worksheets.at(-1),heading:table.heading,last:table.rows.length+5,structured:true});return;}
       const sheet=workbook.addWorksheet(`${String(index+1).padStart(2,'0')} ${table.heading}`.slice(0,31),{views:[{state:'frozen',ySplit:5,xSplit:Math.min(2,table.headers.length),showGridLines:false}]});
       const columns=Math.max(table.headers.length,2);sheet.mergeCells(1,1,2,columns);if(imageId!==null)sheet.addImage(imageId,{tl:{col:.1,row:.1},ext:{width:150,height:44}});sheet.mergeCells(4,1,4,columns);sheet.getCell(4,1).value=`${table.heading} · ${report.id}`;sheet.getCell(4,1).font={bold:true,size:14,color:{argb:COLORS.navy}};
       const header=sheet.addRow(table.headers);header.height=34;header.eachCell(cell=>{cell.font={bold:true,color:{argb:COLORS.white}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true}});

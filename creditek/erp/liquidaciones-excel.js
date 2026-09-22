@@ -12,7 +12,8 @@
     ['Utilidad antes de provisión', 20], ['Tasa provisión', 16, '0.00%'], ['Provisión', 18],
     ['Utilidad neta calculada', 20], ['Utilidad guardada KORA', 20], ['Diferencia giro', 18], ['Diferencia utilidad', 19],
     ['Validación', 27], ['Estado del cálculo', 32], ['ID operación', 39],
-    ['Lote', 39, '@'], ['Corte', 13, 'dd/mm/yyyy'], ['Vendedor del comercio', 28], ['Código del crédito', 22, '@']
+    ['Lote', 39, '@'], ['Corte', 13, 'dd/mm/yyyy'], ['Vendedor del comercio', 28], ['Código del crédito', 22, '@'],
+    ['Ejecutivo Creditek / tipo', 28]
   ];
   function build(batch, operations) {
     if (!names[batch.plataforma]) throw new Error('Plataforma no soportada para el informe formulado.');
@@ -67,7 +68,8 @@
         { formula: `IF(F${row}<>"Sí","No incluida",IF(COUNT(V${row}:W${row})<>2,"Faltan datos",IF(OR(ABS(V${row})>0.01,ABS(W${row})>0.01),"REVISAR DIFERENCIA","Coincide")))`, result: validation },
         status, String(o.id), String(o.liquidation_id || batch.id || ''),
         o.liquidation_cut ? new Date(String(o.liquidation_cut).slice(0,10) + 'T00:00:00Z') : batch.fecha_corte ? new Date(String(batch.fecha_corte).slice(0,10) + 'T00:00:00Z') : null,
-        o.normalized_data?.vendedorNombre || '', String(o.external_id || o.normalized_data?.externalId || '')
+        o.normalized_data?.vendedorNombre || '', String(o.external_id || o.normalized_data?.externalId || ''),
+        o.tipo_establecimiento === 'propia' ? 'Tienda propia (Retail)' : o.ejecutivos?.nombre || 'Sin ejecutivo asignado'
       ];
     });
     const batchIds = [...new Set(operations.map(o => o.liquidation_id || batch.id).filter(Boolean))];
@@ -82,7 +84,7 @@
     };
   }
   async function readOperations(sb, batch) {
-    const fields = 'id,liquidation_id,external_id,normalized_data,operation_at,establishment_name,imei,referencia,modelo,cliente_nombre,reconocida,tipo_establecimiento,ejecutivo_id,monto_credito,monto_base,inicial,valor_comercial,pagamos,pago_neto_beneficiario,pago_neto_tienda,bonos_aplicados,utilidad_creditek,liquidation_calculations(pagamos,pago_aliado,total_bonos,utilidad_creditek,policy_snapshot,explanation)';
+    const fields = 'id,liquidation_id,external_id,normalized_data,operation_at,establishment_name,imei,referencia,modelo,cliente_nombre,reconocida,tipo_establecimiento,ejecutivo_id,ejecutivos(nombre),monto_credito,monto_base,inicial,valor_comercial,pagamos,pago_neto_beneficiario,pago_neto_tienda,bonos_aplicados,utilidad_creditek,liquidation_calculations(pagamos,pago_aliado,total_bonos,utilidad_creditek,policy_snapshot,explanation)';
     const operations = [];
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await sb.from('liquidation_operations').select(fields).eq('liquidation_id', batch.id).order('id').range(offset, offset + 499);

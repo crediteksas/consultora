@@ -30,11 +30,13 @@ test('Krediya separa bonos, gasto financiero y provisión de la política guarda
   assert.equal(value(r,16),2805);assert.equal(value(r,17),135195);assert.equal(value(r,19),37854.6);
   assert.equal(value(r,20),97340.4);assert.equal(value(r,24),'Coincide');
 });
-test('todas las plataformas exportan vendedor, código, lote y corte sin confundirlos con el ejecutivo',()=>{
-  const t=build(batch('krediya'),[op({ejecutivo_id:'ejecutivo-creditek'})]),r=t.rows[0];
-  assert.equal(t.headers.slice(-4).join('|'),'Lote|Corte|Vendedor del comercio|Código del crédito');
-  assert.equal(r.at(-2),'Luisa Pérez');assert.equal(r.at(-1),'CRED-001');assert.equal(r.at(-4),'lote');
-  assert.notEqual(r.at(-2),'ejecutivo-creditek');
+test('todas las plataformas exportan vendedor, código, lote y responsable sin confundir vendedor y ejecutivo',()=>{
+  const t=build(batch('krediya'),[op({tipo_establecimiento:'aliado',ejecutivo_id:'ejecutivo-creditek',ejecutivos:{nombre:'Alexander Fernández'}})]),r=t.rows[0];
+  assert.equal(t.headers.slice(-5).join('|'),'Lote|Corte|Vendedor del comercio|Código del crédito|Ejecutivo Creditek / tipo');
+  assert.equal(r.at(-3),'Luisa Pérez');assert.equal(r.at(-2),'CRED-001');assert.equal(r.at(-5),'lote');
+  assert.equal(r.at(-1),'Alexander Fernández');assert.notEqual(r.at(-3),r.at(-1));
+  const retail=build(batch('payjoy'),[op({tipo_establecimiento:'propia'})]).rows[0];
+  assert.equal(retail.at(-1),'Tienda propia (Retail)');
 });
 test('faltantes y bono pendiente no se convierten en cero; diferencias no se ocultan',()=>{
   let r=build(batch('payjoy'),[op({inicial:null})]).rows[0];assert.equal(value(r,20),'Faltan datos');assert.equal(value(r,24),'Faltan datos');
@@ -62,7 +64,7 @@ test('genera una hoja consolidada por financiera para todos los lotes visibles',
   const sb={from(){return this;},select(){return this;},eq(_key,id){this.id=id;return this;},order(){return this;},async range(){return {data:[op({id:`op-${this.id}`,liquidation_id:this.id})]};}};
   const tables=await loadMany(sb,batches);
   assert.equal(tables.map(table=>table.heading).join('|'),'Krediya|PayJoy|ALO Credit');
-  assert.ok(tables.every(table=>table.headers.includes('Vendedor del comercio')&&table.headers.includes('Código del crédito')));
+  assert.ok(tables.every(table=>table.headers.includes('Vendedor del comercio')&&table.headers.includes('Código del crédito')&&table.headers.includes('Ejecutivo Creditek / tipo')));
 });
 test('integración sustituye solo tarjetas y conserva resumen y otras tablas',()=>{
   const app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
@@ -70,5 +72,7 @@ test('integración sustituye solo tarjetas y conserva resumen y otras tablas',()
   assert.match(app,/sourceId === 'detailBody'/);assert.match(app,/loadMany\(sb, exportBatches\)/);
   assert.match(app,/Hojas por financiera/);
   assert.match(exporter,/await window.KoraReportData.prepareExcel/);assert.match(exporter,/fullCalcOnLoad=true/);
+  assert.match(exporter,/structuredSheet\(workbook,table,index,report,imageId\)/);
+  assert.match(exporter,/sheet\.addImage\(imageId/);
   assert.match(exporter,/addWorksheet\('Resumen'/);assert.match(exporter,/addConditionalFormatting/);
 });

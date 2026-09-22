@@ -1360,6 +1360,9 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       console.error('No se pudo comprobar el acceso al directorio bancario', error);
     }
     const route = new URLSearchParams(location.search);
+    if (route.get('vista') === 'cobros' && cobros) {
+      treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));return;
+    }
     if (route.get('vista') === 'gastos' && financialExpenses) {
       treasuryView='expenses';render();await financialExpenses.mount($("#financialExpensesContent"));return;
     }

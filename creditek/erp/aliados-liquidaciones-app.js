@@ -31,6 +31,45 @@
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = UX.formatoCOP;
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
+  async function loadAddiFollowup() {
+    const status = $('addiFollowupStatus');
+    const body = $('addiFollowupRows');
+    const { data, error } = await sb.rpc('addi_liquidaciones_listar');
+    if (error || !Array.isArray(data)) {
+      status.textContent = 'No se pudo consultar Addi. Actualiza para reintentar; no asumas que no hay ventas.';
+      body.innerHTML = '';
+      return;
+    }
+    const rows = data.filter(row => row.estado !== 'anulada');
+    const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
+    status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
+    body.innerHTML = rows.map(row => {
+      const action = row.estado === 'pendiente_revision'
+        ? `<button class="btn secondary" data-addi-action="revisar" data-addi-venta="${esc(row.venta_id)}">Marcar revisada</button>`
+        : row.estado === 'revisada' && profile?.rol === 'gerencia'
+          ? `<button class="btn primary" data-addi-action="aprobar" data-addi-venta="${esc(row.venta_id)}">Aprobar y pasar a Tesorería</button>`
+          : row.estado === 'revisada' ? 'Espera aprobación de Gerencia'
+            : '<a href="aliados-tesoreria.html?vista=cobros">Ver en Tesorería</a>';
+      const stateName = { pendiente_revision:'Pendiente de revisión', revisada:'Revisada', aprobada:'Aprobada' }[row.estado] || row.estado;
+      return `<tr><td>#${esc(row.consecutivo)} · ${esc(row.tienda_codigo)}</td><td>${esc(row.fecha_venta)}</td><td>${money(row.credito_bruto)}</td><td>${money(row.tarifa_addi)}</td><td>${money(row.iva_tarifa)}</td><td>${money(row.neto_estimado)}</td><td>${esc(row.fecha_esperada)}</td><td>${esc(stateName)}</td><td>${action}</td></tr>`;
+    }).join('');
+  }
+  async function actOnAddi(event) {
+    const button = event.target.closest('button[data-addi-action]');
+    if (!button) return;
+    const approve = button.dataset.addiAction === 'aprobar';
+    if (approve && !confirm('¿Aprobar esta liquidación Addi y enviarla a Tesorería como cobro esperado?')) return;
+    button.disabled = true;
+    const { error } = await sb.rpc(approve ? 'addi_liquidacion_aprobar' : 'addi_liquidacion_revisar', {
+      p_venta_id: button.dataset.addiVenta,
+    });
+    if (error) {
+      $('addiFollowupStatus').textContent = `No se completó la ${approve ? 'aprobación' : 'revisión'}: ${error.message}`;
+      button.disabled = false;
+      return;
+    }
+    await loadAddiFollowup();
+  }
   const state = (value) => `<span class="badge ${esc(value)}" title="${esc(UX.traducirEstado(value))}">${value === 'con_novedades' ? 'Revisar' : esc(UX.traducirEstado(value))}</span>`;
   // Export the complete selected lot, not the paginated text of its cards.
   window.KoraReportData = {
@@ -121,6 +160,9 @@
     $('openKrediyaTariff').onclick = () => tarifarioKrediya.openTariff();
     gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management'), onOperation:openInstructionOperation });
     $('liquidationsContent').classList.remove('hidden');
+    $('refreshBatches').addEventListener('click', loadAddiFollowup);
+    $('addiFollowupRows').addEventListener('click', actOnAddi);
+    await loadAddiFollowup();
     await loadBatches();
     const requestedBatch=new URLSearchParams(location.search).get('lote');
     if(new URLSearchParams(location.search).get('vista')==='historial')setListMode('history');

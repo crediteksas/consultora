@@ -10,7 +10,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const active = row => !VOID_STATES.has(String(row.estado || '').toLowerCase());
   const platformName = value => PLATFORMS[value] || value;
-  const sourceName = value => ({ neto_confirmado: 'Neto confirmado', manual: 'Manual documentada' })[value] || value || 'Manual documentada';
+  const sourceName = value => ({ neto_confirmado: 'Neto confirmado', estimacion_venta: 'Estimación de venta (sin pago confirmado)', manual: 'Manual documentada' })[value] || value || 'Manual documentada';
 
   function cents(value) {
     if (typeof value !== 'number' && typeof value !== 'string') throw new Error('Importe inválido.');

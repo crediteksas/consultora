@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="ventas-domain.js"></script>
+<script src="addi-liquidacion.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.31"></script>
 <script src="sidebar.js?v=2.0.31" data-kora-shell="1.0.0"></script>
@@ -498,8 +499,9 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
           <option value="addi">Addi</option>
         </select>
       </div>
-      <div class="campo"><label>Cuota inicial</label><input type="number" id="creditoInicial" min="0" placeholder="0"></div>
-      <div class="campo"><label>Valor esperado de la financiera</label><input type="number" id="creditoValorEsperado" min="0" placeholder="0"></div>
+      <div class="campo"><label for="creditoInicial">Cuota inicial</label><input type="number" id="creditoInicial" min="0" placeholder="0"></div>
+      <div class="campo"><label for="creditoValorEsperado" id="creditoValorEsperadoLabel">Valor esperado de la financiera</label><input type="number" id="creditoValorEsperado" min="0" step="0.01" placeholder="0"></div>
+      <div class="aviso-validacion" id="addiLiquidacionVista" role="status" aria-live="polite" hidden></div>
       <div class="campo">
         <label>Plazo</label>
         <select id="creditoPlazo">
@@ -913,6 +915,8 @@ function abrirWizard() {
   document.getElementById('itemsVentaContainer').innerHTML = '';
   document.getElementById('creditoInicial').value = '';
   document.getElementById('creditoValorEsperado').value = '';
+  document.getElementById('creditoFinanciera').value = 'payjoy';
+  actualizarVistaAddi();
   actualizarTotalParcial();
   mostrarPaso(1);
   document.getElementById('modalVenta').classList.add('show');
@@ -937,6 +941,31 @@ function seleccionarTipo(tipo) {
   document.getElementById('btnTipoContado').classList.toggle('seleccionado', tipo === 'contado');
   document.getElementById('btnTipoCredito').classList.toggle('seleccionado', tipo === 'credito');
 }
+
+function actualizarVistaAddi() {
+  const esAddi = document.getElementById('creditoFinanciera').value === 'addi';
+  const inicial = document.getElementById('creditoInicial');
+  const campo = document.getElementById('creditoValorEsperado');
+  const vista = document.getElementById('addiLiquidacionVista');
+  const total = venta.items.reduce((s, item) => s + Number(item.precio_venta || 0) * Number(item.cantidad || 1), 0);
+  document.getElementById('creditoValorEsperadoLabel').textContent = esAddi ? 'Valor del crédito aprobado por Addi' : 'Valor esperado de la financiera';
+  inicial.readOnly = esAddi;
+  inicial.closest('.campo').style.display = esAddi ? 'none' : '';
+  document.getElementById('creditoPlazo').closest('.campo').style.display = esAddi ? 'none' : '';
+  if (!esAddi) { vista.hidden = true; return; }
+  const credito = Number(campo.value || 0);
+  inicial.value = credito > 0 && credito <= total ? String(Math.round((total - credito) * 100) / 100) : '';
+  vista.hidden = false;
+  if (!campo.value) { vista.textContent = 'Ingresa el valor del crédito: aquí verás lo que Addi consignaría y la fecha estimada de pago.'; return; }
+  if (credito > total) { vista.textContent = 'El crédito no puede superar el total de la venta.'; return; }
+  try {
+    const resultado = window.CreditekAddiLiquidacion.calcular(credito);
+    vista.textContent = `Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA sobre la tarifa. Recibirás aproximadamente ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario de la venta. Quedará pendiente de confirmar con el reporte de Addi y el banco.`;
+  } catch (error) { vista.textContent = error.message; }
+}
+
+document.getElementById('creditoFinanciera').addEventListener('change', actualizarVistaAddi);
+document.getElementById('creditoValorEsperado').addEventListener('input', actualizarVistaAddi);
 
 function avanzarPaso() {
   const err = document.getElementById('modalVentaErr');
@@ -964,8 +993,13 @@ function avanzarPaso() {
     return;
   }
   if (pasoActual === 4) {
+    actualizarVistaAddi();
     const inicial = Number(document.getElementById('creditoInicial').value || 0);
     const esperado = Number(document.getElementById('creditoValorEsperado').value || 0);
+    if (document.getElementById('creditoFinanciera').value === 'addi') {
+      try { window.CreditekAddiLiquidacion.calcular(esperado); }
+      catch (error) { err.textContent = error.message; err.classList.add('show'); return; }
+    }
     if (esperado <= 0) { err.textContent = 'Ingresa el valor esperado de la financiera.'; err.classList.add('show'); return; }
     const totalVenta = venta.items.reduce(
       (suma, item) => suma + Number(item.precio_venta || 0) * Number(item.cantidad || 1),
@@ -986,7 +1020,7 @@ function avanzarPaso() {
       financiera: document.getElementById('creditoFinanciera').value,
       cuota_inicial: inicial,
       valor_esperado: esperado,
-      plazo_meses: Number(document.getElementById('creditoPlazo').value),
+      plazo_meses: document.getElementById('creditoFinanciera').value === 'addi' ? null : Number(document.getElementById('creditoPlazo').value),
     };
     mostrarPaso(5);
     return;
@@ -1250,8 +1284,15 @@ function renderResumenFinal() {
       <div class="linea"><span>Financiera</span><span>${escapeHtml(venta.credito.financiera)}</span></div>
       <div class="linea"><span>Cuota inicial</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
       <div class="linea"><span>Valor esperado</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
-      <div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>
+      ${venta.credito.financiera === 'addi' ? '' : `<div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>`}
     `;
+    if (venta.credito.financiera === 'addi') {
+      const addi = window.CreditekAddiLiquidacion.calcular(venta.credito.valor_esperado);
+      creditoHtml += `<div class="linea"><span>Tarifa Addi (7,5%)</span><span>${fmtCOP(addi.tarifa)}</span></div>
+        <div class="linea"><span>IVA sobre tarifa</span><span>${fmtCOP(addi.ivaTarifa)}</span></div>
+        <div class="linea"><strong>Neto estimado a recibir</strong><strong>${fmtCOP(addi.netoEstimado)}</strong></div>
+        <div class="linea"><span>Pago estimado</span><span>15 días calendario después de la venta</span></div>`;
+    }
   }
   document.getElementById('resumenFinal').innerHTML = `
     <div class="linea"><span>Cliente</span><span>${venta.clienteInfo ? escapeHtml(venta.clienteInfo.nombre_completo) : 'Cliente general'}</span></div>

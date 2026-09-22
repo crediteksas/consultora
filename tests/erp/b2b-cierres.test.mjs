@@ -75,6 +75,7 @@ test('Correo consolidado agrupa proveedor y ciudad; no confunde cierre con entre
 test('Cierre visible, confirmación explícita e historial sin borrar datos',()=>{
  const page=readFileSync(new URL('../../creditek/erp/pedidos-b2b.html',import.meta.url),'utf8');assert.match(page,/Pedidos y cierre/);assert.match(page,/id="cierrePedidos"/);assert.match(page,/id="brand"/);
  const ui=readFileSync(new URL('../../creditek/erp/b2b-cierres.js',import.meta.url),'utf8');assert.match(ui,/dialog.showModal/);assert.match(ui,/p_huella:preview.huella/);assert.doesNotMatch(ui,/\.delete\(|\.update\(/);
+ assert.match(ui,/class="close-toolbar"/);assert.match(ui,/Ver pedidos por proveedor/);
  // Parse every inline script as JavaScript, catching regressions in the static page.
  for(const [,script] of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new Function(script);
 });

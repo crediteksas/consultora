@@ -76,3 +76,24 @@
   .cobros-actions .btn { flex: 1 1 160px; }
   .cobros-form-actions .btn { width: 100%; }
 }
+.cobros-cut-list { border: 1px solid #dce5ee; border-radius: 12px; }
+.cobros-cut + .cobros-cut { border-top: 1px solid #dce5ee; }
+.cobros-cut > summary { display: grid; grid-template-columns: 1.1fr repeat(3, 1fr) auto auto; align-items: center; gap: 18px; padding: 20px 18px; background: #fff; }
+.cobros-cut:nth-child(even) > summary { background: #f7fafc; }
+.cobros-cut > summary:hover { background: #edfafa; }
+.cobros-cut > summary small { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500; color: #526176; }
+.cobros-cut > summary strong { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.cobros-cut > summary > span:nth-child(n+2):nth-child(-n+4) { text-align: right; }
+.cobros-cut-link { color: #006e76; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.cobros-status--ok { color: #067647; background: #ecfdf3; }
+.cobros-cut-detail { padding: 18px; background: #f7fafc; border-top: 1px solid #dce5ee; }
+.cobros-cut-detail > h4 { margin: 20px 0 12px; }
+.cobros-plataformas input[type="checkbox"] { display: inline-block; width: 18px; min-height: 18px; vertical-align: middle; margin-right: 8px; }
+@media (max-width: 1100px) {
+  .cobros-cut > summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .cobros-cut > summary > span:nth-child(n+2):nth-child(-n+4) { text-align: left; }
+}
+@media (max-width: 520px) {
+  .cobros-cut > summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; }
+  .cobros-cut-detail { padding: 10px; }
+}

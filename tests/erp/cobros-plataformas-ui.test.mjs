@@ -263,3 +263,15 @@ test('CSS mantiene valores y etiquetas visibles en móviles sin recortes forzado
   assert.match(css, /overflow-wrap: anywhere/);
   assert.doesNotMatch(css, /text-overflow:\s*ellipsis|line-clamp|white-space:\s*nowrap|overflow:\s*hidden/);
 });
+test('vista por corte vincula solo sus abonos y oculta trazabilidad en detalle', async () => {
+  const host = container();
+  const raw = dataset({ expected: [expected('e1', 100), expected('e2', 200, { corte: '2026-09-05' })], deposits: [deposit('d1', 100, { referencia: 'ABONO-UNO' }), deposit('d2', 200, { referencia: 'ABONO-DOS' })], allocations: [allocation('a1', 'e1', 'd1', 100), allocation('a2', 'e2', 'd2', 200)] });
+  await domain.create({ sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const cuts = host.innerHTML.split('<details class="cobros-cut">').slice(1);
+  assert.equal(cuts.length, 2);
+  assert.match(cuts[0].split('Consultar todos los abonos')[0], /ABONO-DOS/);
+  assert.doesNotMatch(cuts[0], /ABONO-UNO/);
+  assert.match(cuts[0].split('</summary>')[0], /Recibido aplicado/);
+  assert.doesNotMatch(cuts[0].split('</summary>')[0], /Anular|Fuente|Soporte/);
+  assert.match(cuts[1], /ABONO-UNO/);
+});

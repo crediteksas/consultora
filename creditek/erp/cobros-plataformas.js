@@ -295,7 +295,7 @@
       if (!state.container) return;
       state.view = state.data ? monthView(state.data, state.month) : null;
       const total = state.platform ? state.view?.platforms.find(row => row.plataforma === state.platform) : state.view?.totals;
-      state.container.innerHTML = `<section class="cobros-plataformas" aria-label="Cobros de plataformas"><div class="cobros-heading"><div><h2>Cobros de plataformas</h2><p class="cobros-muted">Control de consignaciones y saldos pendientes por corte. Importes en COP.</p></div><div class="cobros-actions"><button type="button" class="btn secondary" data-cobros-action="refresh">Actualizar</button>${state.data ? '<button type="button" class="btn secondary" data-cobros-action="export">Exportar para Excel (CSV)</button>' : ''}</div></div><div data-cobros-notice class="cobros-notice" role="status" aria-live="polite" hidden></div>${state.data ? `<label class="cobros-filter">Mes del corte<input type="month" data-cobros-month value="${esc(state.month)}"></label><p class="cobros-muted">Vista por mes de corte. Los abonos compartidos muestran solo el importe aplicado a los cortes de este mes. Borra el mes para consultar todo el histórico.</p><label class="cobros-filter">Plataforma<select data-cobros-filter><option value="">Todas las plataformas</option>${options(state.platform)}</select></label>${total ? metrics(total) : ''}<p class="cobros-muted cobros-definition">Pendiente = esperado menos aplicaciones activas. Vencido = pendiente con fecha esperada anterior al ${shortDate(state.data.today)}. Recibido incluye los abonos sin aplicar; las aplicaciones no suman nuevos ingresos. Este control no modifica saldos de Tesorería ni pagos.</p>${entryForms()}${candidates()}<div class="cobros-platforms">${state.view.platforms.filter(row => !state.platform || row.plataforma === state.platform).map(platformCard).join('')}</div>${history()}` : `<p class="cobros-empty">${state.notice ? 'Los saldos no están disponibles. Actualiza para volver a consultar.' : 'Consultando cobros de plataformas…'}</p>`}</section>`;
+      state.container.innerHTML = `<section class="cobros-plataformas" aria-label="Cobros de plataformas"><div class="cobros-heading"><div><h2>Cobros de plataformas</h2><p class="cobros-muted">Control de consignaciones y saldos pendientes por corte. Importes en COP.</p></div><div class="cobros-actions"><button type="button" class="btn secondary" data-cobros-action="refresh">Actualizar</button>${state.data ? '<button type="button" class="btn secondary" data-cobros-action="export">Exportar para Excel (CSV)</button>' : ''}</div></div><div data-cobros-notice class="cobros-notice" role="status" aria-live="polite" hidden></div>${state.data ? `${periodTabs()}<label class="cobros-filter">Mes del corte<input type="month" data-cobros-month value="${esc(state.month)}"></label><p class="cobros-muted">Vista por mes de corte. Los abonos compartidos muestran solo el importe aplicado a los cortes de este mes. Borra el mes para consultar todo el histórico.</p><label class="cobros-filter">Plataforma<select data-cobros-filter><option value="">Todas las plataformas</option>${options(state.platform)}</select></label>${total ? metrics(total) : ''}<p class="cobros-muted cobros-definition">Pendiente = esperado menos aplicaciones activas. Vencido = pendiente con fecha esperada anterior al ${shortDate(state.data.today)}. Recibido incluye los abonos sin aplicar; las aplicaciones no suman nuevos ingresos. Este control no modifica saldos de Tesorería ni pagos.</p>${entryForms()}${candidates()}<div class="cobros-platforms">${state.view.platforms.filter(row => !state.platform || row.plataforma === state.platform).map(platformCard).join('')}</div>${history()}` : `<p class="cobros-empty">${state.notice ? 'Los saldos no están disponibles. Actualiza para volver a consultar.' : 'Consultando cobros de plataformas…'}</p>`}</section>`;
       showNotice(state.notice, state.error);
       setBusy(state.busy);
     }
@@ -412,9 +412,20 @@
       } finally { if (generation === state.generation) setBusy(false); }
     }
 
+    function periodTabs() {
+      const current = todayBogota().slice(0, 7);
+      const [year, month] = current.split('-').map(Number);
+      const previous = `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}`;
+      return `<div class="cobros-actions" role="group" aria-label="Consulta por fecha">${[[current, 'Mes en curso'], [previous, 'Mes anterior'], ['custom', 'Consultar otro mes']].map(([value, label]) => `<button type="button" class="btn ${state.month === value ? 'primary' : 'secondary'}" aria-pressed="${state.month === value}" data-cobros-action="period" data-month="${value}">${label}</button>`).join('')}</div>`;
+    }
+
     function onClick(event) {
       const button = event.target.closest('[data-cobros-action]');
       if (!button || !state.container?.contains(button) || state.busy) return;
+      if (button.dataset.cobrosAction === 'period') {
+        if (button.dataset.month === 'custom') { state.container.querySelector('[data-cobros-month]')?.focus(); return; }
+        state.month = button.dataset.month; render(); return;
+      }
       if (button.dataset.cobrosAction === 'refresh') { void refresh(); return; }
       if (button.dataset.cobrosAction === 'export' && state.data && !state.stale) {
         const blob = new Blob([exportCsv(state.view, state.platform)], { type: 'text/csv;charset=utf-8;' });

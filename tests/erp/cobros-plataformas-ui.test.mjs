@@ -283,3 +283,12 @@ test('mes por corte excluye agosto aunque se confirmó en septiembre y no duplic
  const host=container(); await domain.create({sb:{rpc:async()=>({data:dataset(),error:null})}}).mount(host);
  assert(host.innerHTML.includes('data-cobros-month value="'+domain.todayBogota().slice(0,7)+'"'));
 });
+test('pestañas de fecha cambian al mes anterior y regresan al actual', async () => {
+ const host=container(); await domain.create({sb:{rpc:async()=>({data:dataset(),error:null})}}).mount(host);
+ assert.match(host.innerHTML,/Mes en curso/); assert.match(host.innerHTML,/Consultar otro mes/);
+ const current=domain.todayBogota().slice(0,7);
+ const previous=host.innerHTML.match(/data-month="([0-9-]+)">Mes anterior/)[1];
+ const click=month=>host.listeners.get('click')({target:{closest:()=>({dataset:{cobrosAction:'period',month}})}});
+ click(previous); assert(host.innerHTML.includes('data-cobros-month value="'+previous+'"'));
+ click(current); assert(host.innerHTML.includes('data-cobros-month value="'+current+'"'));
+});

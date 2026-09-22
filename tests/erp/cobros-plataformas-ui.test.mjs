@@ -138,7 +138,7 @@ const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_espera
 test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{
  const calls=[];const host=container();
  const raw=dataset({expected:[expected('e1',100)]});
- await domain.create({canEdit:true,sb:{rpc:async(name,args)=>{calls.push([name,args]);return {data:name==='cobros_plataformas_resumen'?raw:'d1',error:null};}}}).mount(host);
+ await domain.create({ initialMonth: '',canEdit:true,sb:{rpc:async(name,args)=>{calls.push([name,args]);return {data:name==='cobros_plataformas_resumen'?raw:'d1',error:null};}}}).mount(host);
  assert.match(host.innerHTML,/Confirmar recibido y conciliar/);
  await submit(host,form('received',{}, {expected:'e1'}));
  assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
@@ -152,7 +152,7 @@ test('recibido verificado concilia desde el corte sin otra asociación ni fecha 
 test('monta con la sesión recibida sin consultar al crear y escapa contenido remoto', async () => {
   const calls = [];
   const sb = { rpc: async (...args) => { calls.push(args); return { data: dataset({ expected: [expected('e1', 100, { concepto: '<img src=x onerror=alert(1)>', soporte: 'javascript:alert(1)' })] }), error: null }; } };
-  const instance = domain.create({ sb });
+  const instance = domain.create({ initialMonth: '', sb });
   assert.equal(calls.length, 0);
   const host = container();
   await instance.mount(host);
@@ -167,7 +167,7 @@ test('monta con la sesión recibida sin consultar al crear y escapa contenido re
 
 test('error inicial presenta indisponibilidad en vez de métricas con cero', async () => {
   const host = container();
-  await domain.create({ sb: { rpc: async () => ({ data: null, error: { message: 'Sin permiso' } }) } }).mount(host);
+  await domain.create({ initialMonth: '', sb: { rpc: async () => ({ data: null, error: { message: 'Sin permiso' } }) } }).mount(host);
   assert.match(host.notice.textContent, /No se pudieron consultar.*Sin permiso/);
   assert.match(host.innerHTML, /Los saldos no están disponibles/);
   assert.doesNotMatch(host.innerHTML, /cobros-metric|Exportar para Excel/);
@@ -175,7 +175,7 @@ test('error inicial presenta indisponibilidad en vez de métricas con cero', asy
 
 test('el historial muestra el motivo JSON de anulaciones y el actor', async () => {
   const host = container();
-  await domain.create({ sb: { rpc: async () => ({ data: dataset({ events: [{ tipo: 'deposit_anulado', registro_id: 'd1', detalle: { motivo: 'Comprobante duplicado' }, actor_nombre: 'Gerencia', created_at: '2026-09-04T12:00:00Z' }] }), error: null }) } }).mount(host);
+  await domain.create({ initialMonth: '', sb: { rpc: async () => ({ data: dataset({ events: [{ tipo: 'deposit_anulado', registro_id: 'd1', detalle: { motivo: 'Comprobante duplicado' }, actor_nombre: 'Gerencia', created_at: '2026-09-04T12:00:00Z' }] }), error: null }) } }).mount(host);
   assert.match(host.innerHTML, /Abono anulado/);
   assert.match(host.innerHTML, /Comprobante duplicado/);
   assert.match(host.innerHTML, /Gerencia/);
@@ -186,7 +186,7 @@ test('neto de candidato inicia vacío y se confirma una sola vez ligado a la liq
   const calls = [];
   const raw = dataset({ candidates: [{ liquidation_id: 'l1', plataforma: 'payjoy', corte: '2026-08-31', concepto: 'Lote 1', base_estimada: 9000, operaciones: 2 }] });
   const host = container();
-  await domain.create({ canEdit: true, sb: { rpc: async (name, args) => { calls.push([name, args]); return { data: name === 'cobros_plataformas_resumen' ? raw : { id: 'e1' }, error: null }; } } }).mount(host);
+  await domain.create({ initialMonth: '', canEdit: true, sb: { rpc: async (name, args) => { calls.push([name, args]); return { data: name === 'cobros_plataformas_resumen' ? raw : { id: 'e1' }, error: null }; } } }).mount(host);
   assert.match(host.innerHTML, /La base del archivo no equivale al abono bancario/);
   const candidateHtml = host.innerHTML.split('data-cobros-form="candidate"')[1].split('</form>')[0];
   assert.match(candidateHtml, /name="importe" type="number" value=""/);
@@ -210,7 +210,7 @@ test('solicitud en curso bloquea doble envío; el reintento conserva idempotenci
     if (!finish) return new Promise(resolve => { finish = resolve; });
     return { data: { id: 'e1' }, error: null };
   } };
-  await domain.create({ sb, canEdit: true }).mount(host);
+  await domain.create({ initialMonth: '', sb, canEdit: true }).mount(host);
   const target = form('expected', expectedFields);
   const pending = submit(host, target);
   await submit(host, target);
@@ -227,7 +227,7 @@ test('si se guarda pero falla la recarga bloquea nuevas escrituras hasta actuali
   let reads = 0;
   let writes = 0;
   const host = container();
-  const instance = domain.create({ canEdit: true, sb: { rpc: async name => {
+  const instance = domain.create({ initialMonth: '', canEdit: true, sb: { rpc: async name => {
     if (name !== 'cobros_plataformas_resumen') { writes += 1; return { data: { id: 'e1' }, error: null }; }
     reads += 1;
     return reads === 2 ? { data: null, error: { message: 'Red no disponible' } } : { data: dataset(), error: null };
@@ -246,7 +246,7 @@ test('anular requiere canVoid y conserva el motivo; lectura no admite submits in
   for (const permissions of [{ canEdit: false, canVoid: false }, { canEdit: true, canVoid: false }, { canEdit: true, canVoid: true }]) {
     const calls = [];
     const host = container();
-    await domain.create({ ...permissions, sb: { rpc: async (name, args) => { calls.push([name, args]); return { data: dataset({ expected: [expected('e1', 100)] }), error: null }; } } }).mount(host);
+    await domain.create({ initialMonth: '', ...permissions, sb: { rpc: async (name, args) => { calls.push([name, args]); return { data: dataset({ expected: [expected('e1', 100)] }), error: null }; } } }).mount(host);
     await submit(host, form('void', { motivo: 'Duplicado confirmado' }, { kind: 'expected', id: 'e1' }));
     const writes = calls.filter(([name]) => name === 'cobros_anular_registro');
     assert.equal(writes.length, permissions.canVoid ? 1 : 0);
@@ -266,7 +266,7 @@ test('CSS mantiene valores y etiquetas visibles en móviles sin recortes forzado
 test('vista por corte vincula solo sus abonos y oculta trazabilidad en detalle', async () => {
   const host = container();
   const raw = dataset({ expected: [expected('e1', 100), expected('e2', 200, { corte: '2026-09-05' })], deposits: [deposit('d1', 100, { referencia: 'ABONO-UNO' }), deposit('d2', 200, { referencia: 'ABONO-DOS' })], allocations: [allocation('a1', 'e1', 'd1', 100), allocation('a2', 'e2', 'd2', 200)] });
-  await domain.create({ sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  await domain.create({ initialMonth: '', sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
   const cuts = host.innerHTML.split('<details class="cobros-cut">').slice(1);
   assert.equal(cuts.length, 2);
   assert.match(cuts[0].split('Consultar todos los abonos')[0], /ABONO-DOS/);
@@ -274,4 +274,12 @@ test('vista por corte vincula solo sus abonos y oculta trazabilidad en detalle',
   assert.match(cuts[0].split('</summary>')[0], /Recibido aplicado/);
   assert.doesNotMatch(cuts[0].split('</summary>')[0], /Anular|Fuente|Soporte/);
   assert.match(cuts[1], /ABONO-UNO/);
+});
+test('mes por corte excluye agosto aunque se confirmó en septiembre y no duplica abonos compartidos', async () => {
+ const full = domain.summarize(dataset({expected:[expected('aug',100),expected('sep',200,{corte:'2026-09-05'})],deposits:[deposit('d',300)],allocations:[allocation('a','aug','d',100),allocation('b','sep','d',200)]}));
+ const view=domain.monthView(full,'2026-09');
+ assert.equal(view.expected.length,1); assert.equal(view.totals.received,20000); assert.equal(view.totals.expected,20000);
+ assert.equal(full.totals.received,30000); assert.equal(domain.monthView(full,'').expected.length,2);
+ const host=container(); await domain.create({sb:{rpc:async()=>({data:dataset(),error:null})}}).mount(host);
+ assert(host.innerHTML.includes('data-cobros-month value="'+domain.todayBogota().slice(0,7)+'"'));
 });

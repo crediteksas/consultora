@@ -101,6 +101,27 @@
     return { expected, deposits, allocations, candidates, events: Array.isArray(raw.events) ? raw.events : [], platforms, totals, today };
   }
 
+
+  function monthView(data, month) {
+    if (!month) return data;
+    const expected = data.expected.filter(r => String(r.corte || '').startsWith(month));
+    const ids = new Set(expected.map(r => r.id));
+    const allocations = data.allocations.filter(r => ids.has(r.expected_id));
+    const deposits = data.deposits.map(r => {
+      const applied = sum(allocations.filter(a => active(a) && a.deposit_id === r.id).map(a => a.amount));
+      const remaining = String(r.day || r.created_at || '').startsWith(month) ? r.remaining : 0;
+      return { ...r, amount: applied + remaining, applied, remaining };
+    }).filter(r => r.amount > 0);
+    const platforms = data.platforms.map(p => {
+      const rows = expected.filter(r => active(r) && r.plataforma === p.plataforma);
+      const payments = deposits.filter(r => active(r) && r.plataforma === p.plataforma);
+      return { plataforma: p.plataforma, expected: sum(rows.map(r => r.amount)), received: sum(payments.map(r => r.amount)), applied: sum(rows.map(r => r.applied)), pending: sum(rows.map(r => r.remaining)), overdue: sum(rows.filter(r => r.overdue).map(r => r.remaining)), unapplied: sum(payments.map(r => r.remaining)) };
+    });
+    const totals = {};
+    ['expected','received','applied','pending','overdue','unapplied'].forEach(k => totals[k] = sum(platforms.map(p => p[k])));
+    return { ...data, expected, deposits, allocations, platforms, totals, candidates: data.candidates.filter(r => String(r.corte || '').startsWith(month)), events: data.events.filter(r => String(r.created_at || '').startsWith(month)) };
+  }
+
   function validateAllocation(summary, depositId, expectedId, value) {
     const deposit = summary.deposits.find(row => row.id === String(depositId) && active(row));
     const expected = summary.expected.find(row => row.id === String(expectedId) && active(row));
@@ -131,10 +152,10 @@
     return `\uFEFF${rows.map(row => row.map(csvCell).join(';')).join('\r\n')}\r\n`;
   }
 
-  function create({ sb, money, canEdit = false, canVoid = false } = {}) {
+  function create({ sb, money, canEdit = false, canVoid = false, initialMonth = todayBogota().slice(0, 7) } = {}) {
     if (!sb || typeof sb.rpc !== 'function') throw new Error('Se necesita la sesión actual de Tesorería para consultar cobros.');
     const formatMoney = money || (value => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(value));
-    const state = { container: null, data: null, platform: '', busy: false, stale: false, notice: '', error: false, generation: 0 };
+    const state = { container: null, data: null, platform: '', month: initialMonth, view: null, busy: false, stale: false, notice: '', error: false, generation: 0 };
     const cash = value => esc(formatMoney(value / 100));
     const options = selected => (state.data?.platforms || Object.keys(PLATFORMS).map(plataforma => ({ plataforma }))).map(row => `<option value="${esc(row.plataforma)}"${row.plataforma === selected ? ' selected' : ''}>${esc(platformName(row.plataforma))}</option>`).join('');
     const shortDate = value => value ? esc(String(value).slice(0, 10)) : 'Sin fecha';
@@ -175,27 +196,27 @@
 
     function allocationForm(deposit) {
       if (!canEdit || !active(deposit) || deposit.remaining <= 0) return '';
-      const available = state.data.expected.filter(row => active(row) && row.plataforma === deposit.plataforma && row.remaining > 0);
+      const available = state.view.expected.filter(row => active(row) && row.plataforma === deposit.plataforma && row.remaining > 0);
       if (!available.length) return '<p class="cobros-muted">El saldo queda sin aplicar hasta registrar un cobro esperado pendiente de esta plataforma.</p>';
       return `<details class="cobros-entry"><summary>Aplicar a un corte</summary><form data-cobros-form="allocate" data-deposit="${esc(deposit.id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">Disponible: ${cash(deposit.remaining)}. Puedes aplicar una parte y repetir en otros cortes de ${esc(platformName(deposit.plataforma))}.</p><label class="cobros-field cobros-form-wide">Cobro esperado<select name="expected_id" required><option value="">Selecciona un corte</option>${available.map(row => `<option value="${esc(row.id)}">${esc(row.corte)} · ${esc(row.concepto || 'Cobro esperado')} · pendiente ${cash(row.remaining)}</option>`).join('')}</select></label>${moneyField('Importe a aplicar (COP)', `max="${deposit.remaining / 100}"`)}<div class="cobros-form-actions"><button type="submit" class="btn primary">Aplicar abono</button></div></form></details>`;
     }
 
     function depositCard(row) {
-      const applications = state.data.allocations.filter(item => item.deposit_id === row.id);
+      const applications = state.view.allocations.filter(item => item.deposit_id === row.id);
       const allocationList = applications.length ? `<details class="cobros-history"><summary>Aplicaciones de este abono (${applications.length})</summary><ul>${applications.map(item => {
-        const expected = state.data.expected.find(expectedRow => expectedRow.id === item.expected_id);
+        const expected = state.view.expected.find(expectedRow => expectedRow.id === item.expected_id);
         return `<li><p>Corte ${esc(expected?.corte || item.expected_id)} · ${cash(item.amount)} · ${active(item) ? 'Aplicada' : 'Anulada'}</p>${active(item) ? voidForm('allocation', item.id) : ''}</li>`;
       }).join('')}</ul></details>` : '';
       return `<article class="cobros-record${!active(row) ? ' cobros-record--void' : ''}"><div class="cobros-record-head"><h4>${row.fuente_tipo === 'confirmacion_gerencia' ? 'Recepción confirmada por Gerencia' : `Abono del ${shortDate(row.day)}`}</h4><span class="cobros-status">${!active(row) ? 'Anulado' : row.remaining === 0 ? 'Aplicado' : row.applied ? 'Parcialmente aplicado' : 'Sin aplicar'}</span></div><dl class="cobros-record-fields"><div><dt>Recibido</dt><dd>${cash(row.amount)}</dd></div><div><dt>Sin aplicar</dt><dd>${active(row) ? cash(row.remaining) : 'No aplica'}</dd></div>${row.fuente_tipo === 'confirmacion_gerencia' ? `<div><dt>Confirmado el</dt><dd>${shortDate(row.created_at)} · fecha bancaria no informada</dd></div>` : ''}<div><dt>Banco / cuenta</dt><dd>${esc(row.banco || 'Sin banco')} · •••• ${esc(row.cuenta_ultimos4 || '—')}</dd></div><div><dt>Referencia</dt><dd>${esc(row.referencia || 'Sin referencia')}</dd></div><div><dt>Soporte</dt><dd>${support(row.soporte)}</dd></div></dl>${allocationForm(row)}${allocationList}${active(row) ? voidForm('deposit', row.id) : `<p class="cobros-muted">${esc(row.motivo_anulacion || 'Anulado; consulta el historial de cambios.')}</p>`}</article>`;
     }
 
     function platformCard(item) {
-      const expected = state.data.expected.filter(row => row.plataforma === item.plataforma);
-      const deposits = state.data.deposits.filter(row => row.plataforma === item.plataforma);
+      const expected = state.view.expected.filter(row => row.plataforma === item.plataforma);
+      const deposits = state.view.deposits.filter(row => row.plataforma === item.plataforma);
       const renderGroup = (rows, renderer, empty) => rows.length ? rows.map(renderer).join('') : `<p class="cobros-empty">${empty}</p>`;
       const cuts = expected.filter(active).sort((a, b) => b.corte.localeCompare(a.corte));
       const cutRows = cuts.map(row => {
-        const linkedIds = new Set(state.data.allocations.filter(a => active(a) && a.expected_id === row.id).map(a => a.deposit_id));
+        const linkedIds = new Set(state.view.allocations.filter(a => active(a) && a.expected_id === row.id).map(a => a.deposit_id));
         const linked = deposits.filter(d => active(d) && linkedIds.has(d.id));
         const label = row.remaining === 0 ? 'Conciliado' : row.applied > 0 ? 'Parcial' : 'Por recibir';
         return `<details class="cobros-cut"><summary><span class="cobros-cut-date"><small>Corte</small><strong>${esc(row.corte)}</strong></span><span><small>Esperado</small><strong>${cash(row.amount)}</strong></span><span><small>Recibido aplicado</small><strong>${cash(row.applied)}</strong></span><span><small>Pendiente</small><strong>${cash(row.remaining)}</strong></span><span class="cobros-status ${row.remaining === 0 ? 'cobros-status--ok' : row.overdue ? 'cobros-status--alert' : ''}">${label}</span><span class="cobros-cut-link">Ver detalle</span></summary><div class="cobros-cut-detail">${expectedCard(row)}<h4>Abonos vinculados a este corte</h4>${renderGroup(linked, depositCard, 'No hay abonos aplicados a este corte.')}</div></details>`;
@@ -230,14 +251,14 @@
     }
 
     function candidates() {
-      const rows = state.data.candidates.filter(row => !state.platform || row.plataforma === state.platform);
+      const rows = state.view.candidates.filter(row => !state.platform || row.plataforma === state.platform);
       if (!rows.length) return '';
       return `<section class="cobros-candidates"><h3>Liquidaciones por confirmar</h3><p class="cobros-muted">La base del archivo no equivale al abono bancario. Si ya verificaste la recepción, confirma recibido y queda conciliado. Si aún no llegó, registra solo el esperado.</p><div class="cobros-candidate-grid">${rows.map(row => `<article class="cobros-record"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><p>${esc(row.concepto || 'Liquidación pendiente de confirmar')}</p><dl class="cobros-record-fields"><div><dt>${row.plataforma === 'payjoy' ? 'Neto estimado PayJoy · inicial descontada' : 'Base estimada del archivo'}</dt><dd>${row.baseAmount == null ? 'Sin base disponible' : cash(row.baseAmount)}</dd></div><div><dt>Operaciones</dt><dd>${esc(row.operaciones ?? 'Sin información')}</dd></div><div><dt>Estado de liquidación</dt><dd>${esc(row.estado_liquidacion || 'Sin información')}</dd></div></dl>${canEdit ? `<details class="cobros-entry"><summary>Ya lo verifiqué recibido en banco</summary><form data-cobros-form="candidate-bank" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">Registra el total recibido de este corte y lo concilia en una sola acción. No lo registres otra vez como abono.</p>${moneyField('Total recibido y verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Verifiqué el total recibido de este corte en banco; no es un pago parcial.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form></details><details class="cobros-entry"><summary>Solo registrar lo esperado (aún no recibido)</summary><form data-cobros-form="candidate" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">Este registro es solo una previsión de cobro para ${esc(platformName(row.plataforma))}. No registra dinero recibido. Si ya llegó al banco, usa «Confirmar recibido y conciliar».</p>${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Importe previsto, aún no recibido (COP)')}${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"', row.concepto || `Liquidación ${row.corte}`)}${supportField(true)}<div class="cobros-form-actions"><button type="submit" class="btn primary">Guardar previsión (no recibido)</button></div></form></details>` : '<p class="cobros-muted">Pendiente de confirmación por Gerencia.</p>'}</article>`).join('')}</div></section>`;
     }
 
     function history() {
       const records = [...state.data.expected, ...state.data.deposits, ...state.data.allocations];
-      const events = state.data.events.filter(event => {
+      const events = state.view.events.filter(event => {
         const platform = event.plataforma || event.detalle?.plataforma || records.find(row => row.id === event.registro_id)?.plataforma;
         return !state.platform || platform === state.platform;
       });
@@ -272,8 +293,9 @@
 
     function render() {
       if (!state.container) return;
-      const total = state.platform ? state.data?.platforms.find(row => row.plataforma === state.platform) : state.data?.totals;
-      state.container.innerHTML = `<section class="cobros-plataformas" aria-label="Cobros de plataformas"><div class="cobros-heading"><div><h2>Cobros de plataformas</h2><p class="cobros-muted">Control de consignaciones y saldos pendientes por corte. Importes en COP.</p></div><div class="cobros-actions"><button type="button" class="btn secondary" data-cobros-action="refresh">Actualizar</button>${state.data ? '<button type="button" class="btn secondary" data-cobros-action="export">Exportar para Excel (CSV)</button>' : ''}</div></div><div data-cobros-notice class="cobros-notice" role="status" aria-live="polite" hidden></div>${state.data ? `<label class="cobros-filter">Plataforma<select data-cobros-filter><option value="">Todas las plataformas</option>${options(state.platform)}</select></label>${total ? metrics(total) : ''}<p class="cobros-muted cobros-definition">Pendiente = esperado menos aplicaciones activas. Vencido = pendiente con fecha esperada anterior al ${shortDate(state.data.today)}. Recibido incluye los abonos sin aplicar; las aplicaciones no suman nuevos ingresos. Este control no modifica saldos de Tesorería ni pagos.</p>${entryForms()}${candidates()}<div class="cobros-platforms">${state.data.platforms.filter(row => !state.platform || row.plataforma === state.platform).map(platformCard).join('')}</div>${history()}` : `<p class="cobros-empty">${state.notice ? 'Los saldos no están disponibles. Actualiza para volver a consultar.' : 'Consultando cobros de plataformas…'}</p>`}</section>`;
+      state.view = state.data ? monthView(state.data, state.month) : null;
+      const total = state.platform ? state.view?.platforms.find(row => row.plataforma === state.platform) : state.view?.totals;
+      state.container.innerHTML = `<section class="cobros-plataformas" aria-label="Cobros de plataformas"><div class="cobros-heading"><div><h2>Cobros de plataformas</h2><p class="cobros-muted">Control de consignaciones y saldos pendientes por corte. Importes en COP.</p></div><div class="cobros-actions"><button type="button" class="btn secondary" data-cobros-action="refresh">Actualizar</button>${state.data ? '<button type="button" class="btn secondary" data-cobros-action="export">Exportar para Excel (CSV)</button>' : ''}</div></div><div data-cobros-notice class="cobros-notice" role="status" aria-live="polite" hidden></div>${state.data ? `<label class="cobros-filter">Mes del corte<input type="month" data-cobros-month value="${esc(state.month)}"></label><p class="cobros-muted">Vista por mes de corte. Los abonos compartidos muestran solo el importe aplicado a los cortes de este mes. Borra el mes para consultar todo el histórico.</p><label class="cobros-filter">Plataforma<select data-cobros-filter><option value="">Todas las plataformas</option>${options(state.platform)}</select></label>${total ? metrics(total) : ''}<p class="cobros-muted cobros-definition">Pendiente = esperado menos aplicaciones activas. Vencido = pendiente con fecha esperada anterior al ${shortDate(state.data.today)}. Recibido incluye los abonos sin aplicar; las aplicaciones no suman nuevos ingresos. Este control no modifica saldos de Tesorería ni pagos.</p>${entryForms()}${candidates()}<div class="cobros-platforms">${state.view.platforms.filter(row => !state.platform || row.plataforma === state.platform).map(platformCard).join('')}</div>${history()}` : `<p class="cobros-empty">${state.notice ? 'Los saldos no están disponibles. Actualiza para volver a consultar.' : 'Consultando cobros de plataformas…'}</p>`}</section>`;
       showNotice(state.notice, state.error);
       setBusy(state.busy);
     }
@@ -395,7 +417,7 @@
       if (!button || !state.container?.contains(button) || state.busy) return;
       if (button.dataset.cobrosAction === 'refresh') { void refresh(); return; }
       if (button.dataset.cobrosAction === 'export' && state.data && !state.stale) {
-        const blob = new Blob([exportCsv(state.data, state.platform)], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([exportCsv(state.view, state.platform)], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = state.container.ownerDocument.createElement('a');
         link.href = url;
@@ -406,6 +428,7 @@
     }
 
     function onChange(event) {
+      if (event.target.matches('[data-cobros-month]') && !state.busy) { state.month = event.target.value; render(); return; }
       if (!event.target.matches('[data-cobros-filter]') || state.busy) return;
       state.platform = event.target.value;
       render();
@@ -436,5 +459,5 @@
     return { mount, refresh, destroy };
   }
 
-  return { create, summarize, validateAllocation, exportCsv, csvCell, cents, todayBogota };
+  return { create, summarize, monthView, validateAllocation, exportCsv, csvCell, cents, todayBogota };
 });

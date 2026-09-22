@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+
+const sql = await readFile(new URL('../../supabase/migrations/20260922020943_cobros_confirmacion_bancaria_un_paso.sql',import.meta.url),'utf8');
+test('confirmación bancaria atómica, autorizada, idempotente y sin datos bancarios inventados',async()=>{
+ const db=await PGlite.create();
+ try {
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create table public.perfiles(id uuid primary key,nombre text,rol text,activo boolean);
+ insert into perfiles values('11111111-1111-4111-8111-111111111111','Gerencia','gerencia',true),('22222222-2222-4222-8222-222222222222','Auditoría','auditoria',true);
+ create table liquidations(id uuid primary key,plataforma text,fecha_corte date,estado text);
+ create table liquidation_operations(liquidation_id uuid,monto_credito numeric,reconocida boolean);
+ select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);`);
+ await db.exec(await readFile(new URL('../../supabase/migrations/20260905044108_cobros_plataformas_independiente.sql',import.meta.url),'utf8'));
+ await db.exec(`alter table cobros_expected drop constraint cobros_expected_soporte_check;`);
+ await db.exec(sql);
+ const get=async(q,p=[]) => (await db.query(q,p)).rows[0];
+ const make=async(amount=100)=> (await get(`select public.cobros_crear_esperado('payjoy','2026-09-16','2026-09-17','Corte prueba',$1,'',null,gen_random_uuid()) id`,[amount])).id;
+ const eid=await make(); const key='33333333-3333-4333-8333-333333333333';
+ const confirm=(id,amount,verified,k=key)=>get('select public.cobros_confirmar_recibido($1,$2,$3,$4) id',[id,amount,verified,k]);
+ await assert.rejects(confirm(eid,100,false),/verificaste/);
+ await assert.rejects(confirm(eid,90,true),/difiere/);
+ await db.exec(`select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false)`);
+ await assert.rejects(confirm(eid,100,true),/Solo Gerencia/);
+ await db.exec(`select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);set role authenticated;`);
+ const first=await confirm(eid,100,true);
+ assert.equal((await confirm(eid,100,true)).id,first.id);
+ assert.equal((await confirm(eid,100,true,'44444444-4444-4444-8444-444444444444')).id,first.id);
+ await db.exec('reset role');
+ const d=await get('select * from cobros_deposits');
+ assert.equal(d.fecha,null);assert.equal(d.banco,null);assert.equal(d.cuenta_ultimos4,null);
+ assert.equal(d.fuente_tipo,'confirmacion_gerencia');
+ assert.equal((await get('select count(*) n from cobros_deposits')).n,1);
+ assert.equal((await get('select count(*) n from cobros_allocations')).n,1);
+ assert.equal((await get('select count(*) n from cobros_events')).n,3);
+ const second=await make(200);
+ await assert.rejects(confirm(second,200,true),/solicitud ya/);
+ await db.query(`select public.cobros_registrar_abono('payjoy','2026-09-16','Banco','1234','AB-1',50,'Ref prueba',gen_random_uuid())`);
+ await assert.rejects(confirm(second,200,true,'55555555-5555-4555-8555-555555555555'),/sin aplicar/);
+ await db.exec(`insert into liquidations values('66666666-6666-4666-8666-666666666666','alo','2026-09-14','aprobada')`);
+ const ck='77777777-7777-4777-8777-777777777777';
+ const cq=`select public.cobros_confirmar_corte_banco('66666666-6666-4666-8666-666666666666','2026-09-14',500,true,$1) id`;
+ const c=await get(cq,[ck]);assert.equal((await get(cq,[ck])).id,c.id);
+ assert.equal((await get("select count(*) n from cobros_expected where plataforma='alo'")).n,1);
+ assert.equal((await get("select count(*) n from cobros_deposits where plataforma='alo'")).n,1);
+ await db.exec(`select set_config('request.jwt.claim.sub','',false)`);
+ await assert.rejects(confirm(second,200,true),/Solo Gerencia/);
+ } finally {await db.close();}
+});

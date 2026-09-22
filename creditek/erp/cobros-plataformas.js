@@ -52,7 +52,8 @@
         ids.add(String(row.id));
         const amount = cents(row.importe);
         if (!amount || !row.plataforma) throw new Error('Hay un registro de cobros sin importe o plataforma válidos.');
-        return { ...row, id: String(row.id), plataforma: String(row.plataforma).toLowerCase(), amount, applied: 0, remaining: amount, day: dateOnly(kind === 'expected' ? row.fecha_esperada : row.fecha) };
+        const unknownBankDate = kind === 'deposit' && row.fuente_tipo === 'confirmacion_gerencia' && !row.fecha;
+        return { ...row, id: String(row.id), plataforma: String(row.plataforma).toLowerCase(), amount, applied: 0, remaining: amount, day: unknownBankDate ? '' : dateOnly(kind === 'expected' ? row.fecha_esperada : row.fecha) };
       });
     };
     const expected = normalize(raw.expected, 'expected');
@@ -124,7 +125,7 @@
     const matches = row => !platform || row.plataforma === platform;
     const decimal = value => (value / 100).toFixed(2);
     summary.expected.filter(matches).forEach(row => rows.push(['Cobro esperado', platformName(row.plataforma), row.id, row.corte, row.day, row.concepto, decimal(row.amount), decimal(row.applied), active(row) ? decimal(row.remaining) : '0.00', row.overdue ? decimal(row.remaining) : '0.00', '', '', '', row.soporte, active(row) ? (row.remaining ? 'Pendiente' : 'Cobrado') : 'Anulado', '', '', row.fuente_tipo || 'manual']));
-    summary.deposits.filter(matches).forEach(row => rows.push(['Abono recibido', platformName(row.plataforma), row.id, '', row.day, '', decimal(row.amount), decimal(row.applied), active(row) ? decimal(row.remaining) : '0.00', '', row.banco, row.cuenta_ultimos4 ? `•••• ${row.cuenta_ultimos4}` : '', row.referencia, row.soporte, active(row) ? 'Activo' : 'Anulado', '', '', 'abono']));
+    summary.deposits.filter(matches).forEach(row => rows.push(['Abono recibido', platformName(row.plataforma), row.id, '', row.day, '', decimal(row.amount), decimal(row.applied), active(row) ? decimal(row.remaining) : '0.00', '', row.banco, row.cuenta_ultimos4 ? `•••• ${row.cuenta_ultimos4}` : '', row.referencia, row.soporte, active(row) ? 'Activo' : 'Anulado', '', '', row.fuente_tipo || 'abono']));
     summary.allocations.filter(matches).forEach(row => rows.push(['Aplicación (no sumar a recibido)', platformName(row.plataforma), row.id, summary.expected.find(item => item.id === row.expected_id)?.corte || '', '', '', decimal(row.amount), '', '', '', '', '', '', '', active(row) ? 'Activa' : 'Anulada', row.expected_id, row.deposit_id, 'aplicacion']));
     (summary.candidates || []).filter(matches).forEach(row => rows.push(['Base estimada (no sumar a esperado)', platformName(row.plataforma), row.liquidation_id, row.corte, '', row.concepto, row.baseAmount == null ? '' : decimal(row.baseAmount), '', '', '', '', '', '', '', 'Por confirmar neto', '', '', 'archivo_liquidacion']));
     return `\uFEFF${rows.map(row => row.map(csvCell).join(';')).join('\r\n')}\r\n`;
@@ -162,8 +163,14 @@
     }
 
     function expectedCard(row) {
-      const status = !active(row) ? 'Anulado' : row.remaining === 0 ? 'Cobrado' : row.overdue ? 'Vencido' : row.applied > 0 ? 'Parcial' : 'Pendiente';
-      return `<article class="cobros-record${!active(row) ? ' cobros-record--void' : ''}"><div class="cobros-record-head"><h4>Corte ${esc(row.corte || 'sin corte')}</h4><span class="cobros-status${row.overdue ? ' cobros-status--alert' : ''}">${status}</span></div><p>${esc(row.concepto || 'Cobro de plataforma')}</p><dl class="cobros-record-fields"><div><dt>Fecha esperada</dt><dd>${shortDate(row.day)}</dd></div><div><dt>Esperado</dt><dd>${cash(row.amount)}</dd></div><div><dt>Aplicado</dt><dd>${cash(row.applied)}</dd></div><div><dt>Pendiente</dt><dd>${active(row) ? cash(row.remaining) : 'No aplica'}</dd></div><div><dt>Fuente</dt><dd>${esc(sourceName(row.fuente_tipo))}${row.liquidation_id ? ` · ${esc(row.liquidation_id)}` : ''}</dd></div><div><dt>Soporte</dt><dd>${support(row.soporte)}</dd></div></dl>${active(row) ? voidForm('expected', row.id) : `<p class="cobros-muted">${esc(row.motivo_anulacion || 'Anulado; consulta el historial de cambios.')}</p>`}</article>`;
+      const status = !active(row) ? 'Anulado' : row.remaining === 0 ? 'Conciliado' : row.overdue ? 'Pendiente de confirmar · fecha vencida' : row.applied > 0 ? 'Parcial' : 'Pendiente';
+      return `<article class="cobros-record${!active(row) ? ' cobros-record--void' : ''}"><div class="cobros-record-head"><h4>Corte ${esc(row.corte || 'sin corte')}</h4><span class="cobros-status${row.overdue ? ' cobros-status--alert' : ''}">${status}</span></div><p>${esc(row.concepto || 'Cobro de plataforma')}</p><dl class="cobros-record-fields"><div><dt>Fecha esperada</dt><dd>${shortDate(row.day)}</dd></div><div><dt>Esperado</dt><dd>${cash(row.amount)}</dd></div><div><dt>Aplicado</dt><dd>${cash(row.applied)}</dd></div><div><dt>Pendiente</dt><dd>${active(row) ? cash(row.remaining) : 'No aplica'}</dd></div><div><dt>Fuente</dt><dd>${esc(sourceName(row.fuente_tipo))}${row.liquidation_id ? ` · ${esc(row.liquidation_id)}` : ''}</dd></div><div><dt>Soporte</dt><dd>${support(row.soporte)}</dd></div></dl>${confirmReceivedForm(row)}${active(row) ? voidForm('expected', row.id) : `<p class="cobros-muted">${esc(row.motivo_anulacion || 'Anulado; consulta el historial de cambios.')}</p>`}</article>`;
+    }
+
+    function confirmReceivedForm(row) {
+      if (!canEdit || !active(row) || row.remaining <= 0) return '';
+      if (row.applied > 0) return '<p class="cobros-muted">Tiene abonos parciales; revisa el saldo en Abonos recibidos.</p>';
+      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form"><p class="cobros-form-wide">¿Ya verificaste ${cash(row.amount)} recibidos en banco? Esta confirmación registra el ingreso y lo cruza con este corte, sin repetir la asociación.</p><label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este valor recibido en banco y no lo he registrado como otro abono.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
     }
 
     function allocationForm(deposit) {
@@ -179,7 +186,7 @@
         const expected = state.data.expected.find(expectedRow => expectedRow.id === item.expected_id);
         return `<li><p>Corte ${esc(expected?.corte || item.expected_id)} · ${cash(item.amount)} · ${active(item) ? 'Aplicada' : 'Anulada'}</p>${active(item) ? voidForm('allocation', item.id) : ''}</li>`;
       }).join('')}</ul></details>` : '';
-      return `<article class="cobros-record${!active(row) ? ' cobros-record--void' : ''}"><div class="cobros-record-head"><h4>Abono del ${shortDate(row.day)}</h4><span class="cobros-status">${!active(row) ? 'Anulado' : row.remaining === 0 ? 'Aplicado' : row.applied ? 'Parcialmente aplicado' : 'Sin aplicar'}</span></div><dl class="cobros-record-fields"><div><dt>Recibido</dt><dd>${cash(row.amount)}</dd></div><div><dt>Sin aplicar</dt><dd>${active(row) ? cash(row.remaining) : 'No aplica'}</dd></div><div><dt>Banco / cuenta</dt><dd>${esc(row.banco || 'Sin banco')} · •••• ${esc(row.cuenta_ultimos4 || '—')}</dd></div><div><dt>Referencia</dt><dd>${esc(row.referencia || 'Sin referencia')}</dd></div><div><dt>Soporte</dt><dd>${support(row.soporte)}</dd></div></dl>${allocationForm(row)}${allocationList}${active(row) ? voidForm('deposit', row.id) : `<p class="cobros-muted">${esc(row.motivo_anulacion || 'Anulado; consulta el historial de cambios.')}</p>`}</article>`;
+      return `<article class="cobros-record${!active(row) ? ' cobros-record--void' : ''}"><div class="cobros-record-head"><h4>${row.fuente_tipo === 'confirmacion_gerencia' ? 'Recepción confirmada por Gerencia' : `Abono del ${shortDate(row.day)}`}</h4><span class="cobros-status">${!active(row) ? 'Anulado' : row.remaining === 0 ? 'Aplicado' : row.applied ? 'Parcialmente aplicado' : 'Sin aplicar'}</span></div><dl class="cobros-record-fields"><div><dt>Recibido</dt><dd>${cash(row.amount)}</dd></div><div><dt>Sin aplicar</dt><dd>${active(row) ? cash(row.remaining) : 'No aplica'}</dd></div>${row.fuente_tipo === 'confirmacion_gerencia' ? `<div><dt>Confirmado el</dt><dd>${shortDate(row.created_at)} · fecha bancaria no informada</dd></div>` : ''}<div><dt>Banco / cuenta</dt><dd>${esc(row.banco || 'Sin banco')} · •••• ${esc(row.cuenta_ultimos4 || '—')}</dd></div><div><dt>Referencia</dt><dd>${esc(row.referencia || 'Sin referencia')}</dd></div><div><dt>Soporte</dt><dd>${support(row.soporte)}</dd></div></dl>${allocationForm(row)}${allocationList}${active(row) ? voidForm('deposit', row.id) : `<p class="cobros-muted">${esc(row.motivo_anulacion || 'Anulado; consulta el historial de cambios.')}</p>`}</article>`;
     }
 
     function platformCard(item) {
@@ -217,7 +224,7 @@
     function candidates() {
       const rows = state.data.candidates.filter(row => !state.platform || row.plataforma === state.platform);
       if (!rows.length) return '';
-      return `<section class="cobros-candidates"><h3>Liquidaciones por confirmar</h3><p class="cobros-muted">La base del archivo no equivale al abono bancario. Confirma el neto que la plataforma debe consignar ; hasta entonces estas liquidaciones no suman al esperado ni al pendiente.</p><div class="cobros-candidate-grid">${rows.map(row => `<article class="cobros-record"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><p>${esc(row.concepto || 'Liquidación pendiente de confirmar')}</p><dl class="cobros-record-fields"><div><dt>${row.plataforma === 'payjoy' ? 'Neto estimado PayJoy · inicial descontada' : 'Base estimada del archivo'}</dt><dd>${row.baseAmount == null ? 'Sin base disponible' : cash(row.baseAmount)}</dd></div><div><dt>Operaciones</dt><dd>${esc(row.operaciones ?? 'Sin información')}</dd></div><div><dt>Estado de liquidación</dt><dd>${esc(row.estado_liquidacion || 'Sin información')}</dd></div></dl>${canEdit ? `<details class="cobros-entry"><summary>Confirmar neto esperado</summary><form data-cobros-form="candidate" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">El neto inicia vacío y debe confirmarse para ${esc(platformName(row.plataforma))}. No requiere soporte; el ingreso se valida con el banco.</p>${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Neto esperado confirmado (COP)')}${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"', row.concepto || `Liquidación ${row.corte}`)}${supportField(true)}<div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar cobro esperado</button></div></form></details>` : '<p class="cobros-muted">Pendiente de confirmación por Gerencia.</p>'}</article>`).join('')}</div></section>`;
+      return `<section class="cobros-candidates"><h3>Liquidaciones por confirmar</h3><p class="cobros-muted">La base del archivo no equivale al abono bancario. Si ya verificaste la recepción, confirma recibido y queda conciliado. Si aún no llegó, registra solo el esperado.</p><div class="cobros-candidate-grid">${rows.map(row => `<article class="cobros-record"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><p>${esc(row.concepto || 'Liquidación pendiente de confirmar')}</p><dl class="cobros-record-fields"><div><dt>${row.plataforma === 'payjoy' ? 'Neto estimado PayJoy · inicial descontada' : 'Base estimada del archivo'}</dt><dd>${row.baseAmount == null ? 'Sin base disponible' : cash(row.baseAmount)}</dd></div><div><dt>Operaciones</dt><dd>${esc(row.operaciones ?? 'Sin información')}</dd></div><div><dt>Estado de liquidación</dt><dd>${esc(row.estado_liquidacion || 'Sin información')}</dd></div></dl>${canEdit ? `<details class="cobros-entry"><summary>Ya lo verifiqué recibido en banco</summary><form data-cobros-form="candidate-bank" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">Registra el total recibido de este corte y lo concilia en una sola acción. No lo registres otra vez como abono.</p>${moneyField('Total recibido y verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Verifiqué el total recibido de este corte en banco; no es un pago parcial.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form></details><details class="cobros-entry"><summary>Solo registrar lo esperado (aún no recibido)</summary><form data-cobros-form="candidate" data-liquidation="${esc(row.liquidation_id)}" class="cobros-form"><p class="cobros-form-wide cobros-muted">El neto inicia vacío y debe confirmarse para ${esc(platformName(row.plataforma))}. No requiere soporte; el ingreso se valida con el banco.</p>${field('Fecha esperada de pago', 'fecha_esperada', 'date', 'required')}${moneyField('Neto esperado confirmado (COP)')}${field('Concepto', 'concepto', 'text', 'required minlength="3" maxlength="300"', row.concepto || `Liquidación ${row.corte}`)}${supportField(true)}<div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar cobro esperado</button></div></form></details>` : '<p class="cobros-muted">Pendiente de confirmación por Gerencia.</p>'}</article>`).join('')}</div></section>`;
     }
 
     function history() {
@@ -226,7 +233,7 @@
         const platform = event.plataforma || event.detalle?.plataforma || records.find(row => row.id === event.registro_id)?.plataforma;
         return !state.platform || platform === state.platform;
       });
-      const names = { expected_creado: 'Cobro esperado registrado', deposit_creado: 'Abono registrado', allocation_creada: 'Abono aplicado a un corte', expected_anulado: 'Cobro esperado anulado', deposit_anulado: 'Abono anulado', allocation_anulado: 'Aplicación anulada' };
+      const names = { expected_creado: 'Cobro esperado registrado', deposit_creado: 'Abono registrado', deposit_confirmado_banco: 'Recepción verificada en banco por Gerencia', allocation_creada: 'Abono aplicado a un corte', expected_anulado: 'Cobro esperado anulado', deposit_anulado: 'Abono anulado', allocation_anulado: 'Aplicación anulada' };
       return `<details class="cobros-history"><summary>Historial de cambios (${events.length})</summary>${events.length ? `<ol>${events.map(event => {
         const kind = event.accion || event.tipo || event.event_type || 'Cambio registrado';
         const detail = event.detalle && typeof event.detalle === 'object' ? event.detalle : {};
@@ -315,7 +322,19 @@
           if (text.length < min || text.length > max) throw new Error(`${label} debe tener entre ${min} y ${max} caracteres.`);
           return text;
         };
-        if (type === 'candidate') {
+        if (type === 'received') {
+          const row = state.data.expected.find(item => item.id === form.dataset.expected && active(item));
+          if (!row || row.remaining !== row.amount) throw new Error('El saldo cambió; actualiza antes de confirmar.');
+          if (value('verificado') !== 'on') throw new Error('Confirma que verificaste el dinero en banco.');
+          name = 'cobros_confirmar_recibido';
+          args = { p_expected_id: row.id, p_importe: row.amount / 100, p_verificado: true, p_idempotency_key: idempotencyKey(form) };
+        } else if (type === 'candidate-bank') {
+          const row = state.data.candidates.find(item => String(item.liquidation_id) === form.dataset.liquidation);
+          if (!row) throw new Error('La liquidación ya no está disponible; actualiza.');
+          if (value('verificado') !== 'on') throw new Error('Confirma que verificaste el dinero en banco.');
+          name = 'cobros_confirmar_corte_banco';
+          args = { p_liquidation_id: row.liquidation_id, p_fecha_esperada: row.corte, p_importe: positiveValue(value('importe')), p_verificado: true, p_idempotency_key: idempotencyKey(form) };
+        } else if (type === 'candidate') {
           const candidate = state.data.candidates.find(row => String(row.liquidation_id) === form.dataset.liquidation);
           if (!candidate) throw new Error('La liquidación ya no está disponible para confirmar. Actualiza la consulta.');
           name = 'cobros_crear_esperado';
@@ -352,7 +371,7 @@
         if (generation !== state.generation) return;
         state.data = summarize(raw);
         state.stale = false;
-        state.notice = type === 'void' ? 'Registro anulado. El historial conserva la trazabilidad.' : 'Registro guardado. Los saldos están actualizados.';
+        state.notice = type === 'void' ? 'Registro anulado. El historial conserva la trazabilidad.' : ['received', 'candidate-bank'].includes(type) ? 'Recibido confirmado contra banco y conciliado con su corte. No debes asociarlo otra vez.' : 'Registro guardado. Los saldos están actualizados.';
         state.error = false;
         state.busy = false;
         render();

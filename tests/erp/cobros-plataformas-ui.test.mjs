@@ -135,6 +135,20 @@ function form(type, fields, dataset = {}) {
 const submit = (element, target) => element.listeners.get('submit')({ target, preventDefault() {} });
 const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-05', concepto: 'Neto de corte', importe: '100', soporte: 'Comprobante 1' };
 
+test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{
+ const calls=[];const host=container();
+ const raw=dataset({expected:[expected('e1',100)]});
+ await domain.create({canEdit:true,sb:{rpc:async(name,args)=>{calls.push([name,args]);return {data:name==='cobros_plataformas_resumen'?raw:'d1',error:null};}}}).mount(host);
+ assert.match(host.innerHTML,/Confirmar recibido y conciliar/);
+ await submit(host,form('received',{}, {expected:'e1'}));
+ assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
+ await submit(host,form('received',{verificado:'on'}, {expected:'e1'}));
+ assert.equal(calls.find(c=>c[0]==='cobros_confirmar_recibido')[1].p_importe,100);
+ const summary=domain.summarize(dataset({expected:[expected('e1',100)],deposits:[deposit('d1',100,{fecha:null,banco:null,cuenta_ultimos4:null,fuente_tipo:'confirmacion_gerencia'})],allocations:[allocation('a1','e1','d1',100)]}),'2026-09-21');
+ assert.equal(summary.totals.pending,0);assert.equal(summary.totals.overdue,0);assert.equal(summary.deposits[0].day,'');
+ assert.match(domain.exportCsv(summary),/confirmacion_gerencia/);
+});
+
 test('monta con la sesión recibida sin consultar al crear y escapa contenido remoto', async () => {
   const calls = [];
   const sb = { rpc: async (...args) => { calls.push(args); return { data: dataset({ expected: [expected('e1', 100, { concepto: '<img src=x onerror=alert(1)>', soporte: 'javascript:alert(1)' })] }), error: null }; } };

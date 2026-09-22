@@ -11,7 +11,8 @@
     ['Bonos', 17], ['Tasa gasto financiero', 18, '0.00%'], ['Gasto financiero', 18],
     ['Utilidad antes de provisión', 20], ['Tasa provisión', 16, '0.00%'], ['Provisión', 18],
     ['Utilidad neta calculada', 20], ['Utilidad guardada KORA', 20], ['Diferencia giro', 18], ['Diferencia utilidad', 19],
-    ['Validación', 27], ['Estado del cálculo', 32], ['ID operación', 39]
+    ['Validación', 27], ['Estado del cálculo', 32], ['ID operación', 39],
+    ['Lote', 39, '@'], ['Corte', 13, 'dd/mm/yyyy'], ['Vendedor del comercio', 28], ['Código del crédito', 22, '@']
   ];
   function build(batch, operations) {
     if (!names[batch.plataforma]) throw new Error('Plataforma no soportada para el informe formulado.');
@@ -64,18 +65,24 @@
         formula(`ROUND(L${row}-M${row},2)`, ['L','M'], deltaGiro),
         formula(`ROUND(T${row}-U${row},2)`, ['T','U'], deltaUtility),
         { formula: `IF(F${row}<>"Sí","No incluida",IF(COUNT(V${row}:W${row})<>2,"Faltan datos",IF(OR(ABS(V${row})>0.01,ABS(W${row})>0.01),"REVISAR DIFERENCIA","Coincide")))`, result: validation },
-        status, String(o.id)
+        status, String(o.id), String(o.liquidation_id || batch.id || ''),
+        o.liquidation_cut ? new Date(String(o.liquidation_cut).slice(0,10) + 'T00:00:00Z') : batch.fecha_corte ? new Date(String(batch.fecha_corte).slice(0,10) + 'T00:00:00Z') : null,
+        o.normalized_data?.vendedorNombre || '', String(o.external_id || o.normalized_data?.externalId || '')
       ];
     });
+    const batchIds = [...new Set(operations.map(o => o.liquidation_id || batch.id).filter(Boolean))];
+    const cuts = [...new Set(operations.map(o => o.liquidation_cut || batch.fecha_corte).filter(Boolean))].sort();
     return {
-      heading: `${names[batch.plataforma]} ${batch.fecha_corte || ''}`, structured: true,
+      heading: batch.multi ? names[batch.plataforma] : `${names[batch.plataforma]} ${batch.fecha_corte || ''}`, structured: true,
       headers: columns.map(c => c[0]), columns, rows,
-      note: `Lote completo ${batch.id}. Estado: ${batch.estado}. COP. Neto esperado no acredita recepción bancaria. Azul: datos guardados; negro: fórmulas. No incluidas fuera de totales.`,
+      note: batch.multi
+        ? `${batchIds.length} lote(s) liquidados${cuts.length ? ` · cortes ${cuts.join(', ')}` : ''}. COP. Cada fila conserva lote, vendedor y código del crédito. Neto esperado no acredita recepción bancaria. Azul: datos guardados; negro: fórmulas. No incluidas fuera de totales.`
+        : `Lote completo ${batch.id}. Estado: ${batch.estado}. COP. Neto esperado no acredita recepción bancaria. Azul: datos guardados; negro: fórmulas. No incluidas fuera de totales.`,
       totals: ['G','H','I','J','K','L','M','N','P','Q','S','T','U','V','W'], moneyFormat
     };
   }
-  async function load(sb, batch) {
-    const fields = 'id,operation_at,establishment_name,imei,referencia,modelo,cliente_nombre,reconocida,tipo_establecimiento,ejecutivo_id,monto_credito,monto_base,inicial,valor_comercial,pagamos,pago_neto_beneficiario,pago_neto_tienda,bonos_aplicados,utilidad_creditek,liquidation_calculations(pagamos,pago_aliado,total_bonos,utilidad_creditek,policy_snapshot,explanation)';
+  async function readOperations(sb, batch) {
+    const fields = 'id,liquidation_id,external_id,normalized_data,operation_at,establishment_name,imei,referencia,modelo,cliente_nombre,reconocida,tipo_establecimiento,ejecutivo_id,monto_credito,monto_base,inicial,valor_comercial,pagamos,pago_neto_beneficiario,pago_neto_tienda,bonos_aplicados,utilidad_creditek,liquidation_calculations(pagamos,pago_aliado,total_bonos,utilidad_creditek,policy_snapshot,explanation)';
     const operations = [];
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await sb.from('liquidation_operations').select(fields).eq('liquidation_id', batch.id).order('id').range(offset, offset + 499);
@@ -84,7 +91,23 @@
       if (!data || data.length < 500) break;
     }
     if (!operations.length) throw new Error('El lote no tiene operaciones disponibles para exportar.');
-    return build(batch, operations);
+    return operations.map(operation => ({ ...operation, liquidation_cut: batch.fecha_corte }));
   }
-  root.CreditekLiquidacionesExcel = { build, load };
+  async function load(sb, batch) {
+    return build(batch, await readOperations(sb, batch));
+  }
+  async function loadMany(sb, batches) {
+    const groups = new Map();
+    for (const batch of batches || []) {
+      if (!names[batch.plataforma]) continue;
+      const operations = await readOperations(sb, batch);
+      if (!groups.has(batch.plataforma)) groups.set(batch.plataforma, []);
+      groups.get(batch.plataforma).push(...operations);
+    }
+    const order = ['krediya', 'payjoy', 'alo'];
+    return order.filter(platform => groups.has(platform)).map(platform => build({
+      id: 'varios-lotes', plataforma: platform, estado: 'liquidados', multi: true
+    }, groups.get(platform)));
+  }
+  root.CreditekLiquidacionesExcel = { build, load, loadMany };
 })(typeof window === 'undefined' ? globalThis : window);

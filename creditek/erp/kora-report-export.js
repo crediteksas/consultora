@@ -95,6 +95,7 @@
   async function logoBase64(){const response=await fetch(LOGO);if(!response.ok)throw new Error('No fue posible cargar el logo Creditek.');const blob=await response.blob();return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)})}
   function filename(report,extension){return `${report.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'informe-kora'}-${report.id}.${extension}`}
   function structuredSheet(workbook, table, index, report) {
+    const lastColumn = excelColumn(table.headers.length - 1);
     const sheet = workbook.addWorksheet(`${String(index+1).padStart(2,'0')} ${table.heading}`.slice(0,31), {
       views: [{state:'frozen', ySplit:5, xSplit:3, showGridLines:false}]
     });
@@ -103,7 +104,7 @@
     sheet.getCell('A2').font = {name:'Arial',size:14,bold:true,color:{argb:COLORS.navy}};
     sheet.mergeCells('A2:K2');
     sheet.getCell('A3').value = table.note;
-    sheet.mergeCells('A3:Z3');
+    sheet.mergeCells(`A3:${lastColumn}3`);
     sheet.getCell('A3').alignment = {wrapText:true,vertical:'middle'};
     sheet.getRow(3).height = 30;
     const header = sheet.getRow(5);header.values = table.headers;header.height = 42;
@@ -128,7 +129,7 @@
     });
     sheet.getRow(total).height=30;
     sheet.getRow(total).eachCell(cell=>{cell.font={name:'Arial',size:10,bold:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.pale}};});
-    sheet.autoFilter={from:'A5',to:`Z${last}`};
+    sheet.autoFilter={from:'A5',to:`${lastColumn}${last}`};
     sheet.addConditionalFormatting({ref:`V6:W${last}`,rules:[{type:'expression',formulae:['AND(ISNUMBER(V6),ABS(V6)>0.01)'],style:{font:{bold:true,color:{argb:'B42318'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFF1F2'}}}}]});
     sheet.addConditionalFormatting({ref:`X6:X${last}`,rules:[{type:'expression',formulae:['X6<>"Coincide"'],style:{font:{bold:true,color:{argb:'B42318'}}}}]});
     sheet.pageSetup={orientation:'landscape',paperSize:8,fitToPage:true,fitToWidth:0,fitToHeight:0,printTitlesRow:'1:5',printTitlesColumn:'A:C'};

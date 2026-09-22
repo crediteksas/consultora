@@ -35,14 +35,14 @@
   // Export the complete selected lot, not the paginated text of its cards.
   window.KoraReportData = {
     async prepareExcel(report) {
-      if (!selected) return report;
-      const batch = { ...selected };
       const exportTab = activeTab;
-      const table = await window.CreditekLiquidacionesExcel.load(sb, batch);
-      if (selected?.id !== batch.id) throw new Error('Cambió el lote durante la descarga. Vuelve a generar el informe.');
+      const exportBatches = batchesForExport().map(batch => ({ ...batch }));
+      if (!exportBatches.length) return report;
+      const tablesByPlatform = await window.CreditekLiquidacionesExcel.loadMany(sb, exportBatches);
       const tables = report.tables.filter(t => !(exportTab === 'operations' && t.sourceId === 'detailBody'));
-      tables.push(table);
-      return { ...report, filters:[...report.filters,['Detalle formulado',`${platformName(batch.plataforma)} · ${batch.fecha_corte} · lote completo`]], tables };
+      tables.push(...tablesByPlatform);
+      const platforms = tablesByPlatform.map(table => table.heading).join(', ');
+      return { ...report, filters:[...report.filters,['Hojas por financiera',`${platforms} · ${exportBatches.length} lote(s) liquidados`]], tables };
     }
   };
 
@@ -64,6 +64,20 @@
 
   function statesForMode() {
     return listMode === 'pending' ? PENDING_STATES : listMode === 'history' ? HISTORY_STATES : [...PENDING_STATES,...HISTORY_STATES];
+  }
+
+  function batchesForExport() {
+    const period = Summary.periodos();
+    const stateFilter = $('filterState')?.value || '';
+    const search = ($('filterSearch')?.value || '').trim().toLowerCase();
+    let rows = batches.filter(batch => listMode === 'week' ? Summary.deSemana(batch, period) : listMode === 'history' ? isHistoricalBatch(batch) : !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado));
+    rows = rows.filter(batch => !stateFilter || batch.estado === stateFilter)
+      .filter(batch => !search || [batch.id,batch.plataforma,batch.fecha_corte,UX.traducirEstado(batch.estado),...(batch.liquidation_operations||[]).flatMap(operation=>[operation.establishment_name,operation.origen_codigo,operation.imei])].some(value=>String(value||'').toLowerCase().includes(search)));
+    if (listMode === 'history') {
+      const from = $('historyFrom')?.value, until = $('historyUntil')?.value;
+      rows = rows.filter(batch => (!from || batch.fecha_corte >= from) && (!until || batch.fecha_corte <= until));
+    }
+    return rows;
   }
 
   function updateStateFilter() {

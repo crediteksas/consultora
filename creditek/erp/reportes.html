@@ -30,6 +30,7 @@
   <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="reportes-query-cache.js?v=1.0.1"></script>
+<script src="reportes-historico.js?v=1.0.0"></script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
   .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -943,6 +944,7 @@
         <span class="text-xs text-gray-400">▾</span>
       </summary>
       <div class="p-4 border-t border-gray-100">
+        <p id="crecimiento-fuente" class="text-xs text-gray-500 mb-2">Fuente: ventas operativas e histórico mensual por código único de tienda.</p>
         <div class="chart-wrapper mb-4"><canvas id="chart-crecimiento"></canvas></div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -1708,42 +1710,47 @@ async function cargarCrecimiento() {
   const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
   let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(inicioAnio)).neq('anulada', true);
   q = aplicarFiltroTienda(q);
-  // 2025 desde historico_mensual
-  let qHist = sb.from('historico_mensual').select('mes, venta_total, venta_total_dia, tienda_codigo').eq('anio', 2025);
+  // Meses anteriores desde la fuente mensual canónica. El mes operativo
+  // siempre prevalece para no sumar dos veces ventas ya migradas.
+  let qHist = sb.from('historico_mensual').select('anio, mes, venta_total, venta_total_dia, tienda_codigo').in('anio', [2025, 2026]);
   qHist = aplicarFiltroTienda(qHist);
 
   const [ventasRes, histRes] = await Promise.all([q, qHist]);
   exigirRespuestas(ventasRes, histRes);
   if (ventasRes.error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(ventasRes.error.message)}</td></tr>`; return; }
 
-  // Serie 2026 por mes
-  const porMes2026 = {};
-  (ventasRes.data || []).forEach(v => {
-    const m = Number(v.fecha.slice(5, 7));
-    porMes2026[m] = (porMes2026[m] || 0) + Number(v.total || 0);
-  });
-  // Serie 2025 por mes
+  // Series históricas por mes y por tienda_codigo exacto.
   const porMes2025 = {};
   const porDia2025 = {};
   (histRes.data || []).forEach(h => {
-    porMes2025[h.mes] = (porMes2025[h.mes] || 0) + Number(h.venta_total || 0);
-    porDia2025[h.mes] = (porDia2025[h.mes] || 0) + Number(h.venta_total_dia || 0);
+    if (Number(h.anio) === 2025) {
+      porMes2025[h.mes] = (porMes2025[h.mes] || 0) + Number(h.venta_total || 0);
+      porDia2025[h.mes] = (porDia2025[h.mes] || 0) + Number(h.venta_total_dia || 0);
+    }
   });
+  const serie2026 = CreditekReportesHistorico.serie2026(ventasRes.data || [], histRes.data || [], hoy.getMonth() + 1);
 
   const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const filas = meses.map((nombre, idx) => {
     const m = idx + 1;
     const esMesVigente = m === hoy.getMonth() + 1;
     const v2025 = esMesVigente ? (porDia2025[m] || 0) * hoy.getDate() : porMes2025[m] || null;
-    const v2026 = porMes2026[m] || null;
+    const actual2026 = serie2026[idx];
+    const v2026 = actual2026.total;
+    const fuente2026 = actual2026.fuente;
     const delta = v2025 && v2026 ? ((v2026 - v2025) / v2025) * 100 : null;
-    return { mes: nombre, mesNum: m, v2025, v2026, delta };
+    return { mes: nombre, mesNum: m, v2025, v2026, delta, fuente2026 };
   });
+
+  const faltantes = filas.filter(f => f.mesNum < hoy.getMonth() + 1 && f.v2026 == null).map(f => f.mes);
+  document.getElementById('crecimiento-fuente').textContent = faltantes.length
+    ? `Fuente: ventas operativas e histórico mensual por código único de tienda. Sin fuente cargada: ${faltantes.join(', ')}.`
+    : 'Fuente: ventas operativas e histórico mensual por código único de tienda. Sin duplicar meses migrados.';
 
   document.getElementById('tbody-crecimiento').innerHTML = filas.map(f => `<tr>
     <td class="px-3 py-2 font-medium">${f.mes}</td>
     <td class="px-3 py-2 text-right font-mono text-gray-500">${f.v2025 ? money(f.v2025) : '<span class="text-gray-400">—</span>'}</td>
-    <td class="px-3 py-2 text-right font-mono">${f.v2026 ? money(f.v2026) : '<span class="text-gray-400">—</span>'}</td>
+    <td class="px-3 py-2 text-right font-mono" title="${esc(f.fuente2026)}">${f.v2026 != null ? money(f.v2026) : f.fuente2026 === 'futuro' ? '<span class="text-gray-400">—</span>' : '<span class="text-gray-400">Sin fuente</span>'}</td>
     <td class="px-3 py-2 text-right ${f.delta == null ? 'text-gray-400' : f.delta >= 0 ? 'text-emerald-700' : 'text-red-700'}">${f.delta == null ? '—' : (f.delta >= 0 ? '↑' : '↓') + ' ' + Math.abs(f.delta).toFixed(1) + '%'}</td>
   </tr>`).join('');
 

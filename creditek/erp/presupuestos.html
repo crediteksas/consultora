@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="kora-access-control.js?v=2.0.31"></script>
 <script src="sidebar.js?v=2.0.31" data-kora-shell="1.0.0"></script>
+<script src="tiendas-canonicas.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -344,8 +345,7 @@ function porcentajesValidos() {
 }
 
 async function cargarTiendas() {
-  const { data } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
-  tiendasCache = data || [];
+  tiendasCache = await CreditekTiendasCanonicas.cargar(sb);
   const selector = document.getElementById('genTienda');
   if (selector) selector.innerHTML = '<option value="">Selecciona una tienda</option>' + tiendasCache.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
 }

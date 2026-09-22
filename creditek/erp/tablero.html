@@ -16,6 +16,7 @@
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
 <script src="tablero-utilidad.js?v=1.0.1"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
+<script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
 <script src="/design-system/components/kora-product.js" defer></script>
 <style>
@@ -376,8 +377,7 @@ function onCambioFiltro() {
 }
 
 async function cargarTiendasSelect() {
-  const { data } = await sb.from('origenes').select('codigo, nombre').eq('tipo', 'propia').eq('activo', true).order('nombre');
-  tiendasCache = data || [];
+  tiendasCache = await CreditekTiendasCanonicas.cargar(sb);
   document.getElementById('filtroTienda').innerHTML = '<option value="">Consolidado (todas)</option>' +
     tiendasCache.map(t => `<option value="${t.codigo}">${escapeHtml(t.nombre)}</option>`).join('');
 }

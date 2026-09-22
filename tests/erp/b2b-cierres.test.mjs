@@ -61,9 +61,11 @@ test('Cierre: copia inmutable, corte exacto, idempotencia, doble cierre, RLS y c
  }finally{await db.close();}
 });
 test('Consolidado conserva nombres, ciudad, proveedor, totales y costo faltante',()=>{
- const items=[{pedido_id:'a',cantidad:2,costo:400000,precio:420000,tienda:'Chinucell',ciudad:'Chinú',proveedor:'MPS'},{pedido_id:'a',cantidad:1,costo:300000,precio:320000,tienda:'Chinucell',ciudad:'Chinú',proveedor:'INITY'}];
- assert.deepEqual(C.totals(items),{pedidos:1,unidades:3,costo:1100000,retail:1160000});assert.equal(C.groups(items,'ciudad').length,1);assert.equal(C.groups(items,'proveedor').length,2);
- assert.equal(C.totals([{...items[0],costo:null}]).costo,null);assert.match(C.grouped(items,'tienda'),/Chinucell/);assert.equal(C.exportRows(items).length,3);
+ const items=[{pedido_id:'a',numero:'PED-1',producto_id:'x',referencia:'Equipo X',cantidad:2,costo:400000,precio:420000,tienda:'Chinucell',ciudad:'Chinú',proveedor:'MPS'},{pedido_id:'b',numero:'PED-2',producto_id:'x',referencia:'Equipo X',cantidad:1,costo:400000,precio:420000,tienda:'Creditel Chinú',ciudad:'Chinú',proveedor:'MPS'},{pedido_id:'a',numero:'PED-1',producto_id:'y',referencia:'Equipo Y',cantidad:1,costo:300000,precio:320000,tienda:'Chinucell',ciudad:'Chinú',proveedor:'INITY'}];
+ assert.deepEqual(C.totals(items),{pedidos:2,unidades:4,costo:1500000,retail:1580000});assert.equal(C.groups(items,'ciudad').length,1);assert.equal(C.groups(items,'proveedor').length,2);
+ assert.equal(C.totals([{...items[0],costo:null}]).costo,null);assert.match(C.grouped(items,'tienda'),/Chinucell/);assert.equal(C.exportRows(items).length,4);
+ const report=C.providerReportTables(items),mps=report.find(table=>table.heading==='Proveedor MPS'),distribution=report.find(table=>table.heading==='Distribución interna');assert.equal(mps.rows.length,1);assert.deepEqual(mps.rows[0].slice(0,3),['Chinú','Equipo X',3]);assert.equal(mps.rows[0][4],1200000);assert.equal(distribution.rows.length,3);assert.ok(distribution.rows.some(row=>row[2]==='Creditel Chinú'));
+ assert.equal(C.providerExportRows(items).length,3);assert.equal(C.summarizeReferences([{...items[0],costo:null}])[0].total,null);
  assert.equal(C.brand('Redmi 17 4/128'),'XIAOMI');assert.equal(C.brand('Moto G06'),'MOTOROLA');assert.equal(C.brand('Cable sin marca'),'OTRAS');
 });
 test('Correo consolidado agrupa proveedor y ciudad; no confunde cierre con entrega',async()=>{
@@ -76,6 +78,8 @@ test('Cierre visible, confirmación explícita e historial sin borrar datos',()=
  const page=readFileSync(new URL('../../creditek/erp/pedidos-b2b.html',import.meta.url),'utf8');assert.match(page,/Pedidos y cierre/);assert.match(page,/id="cierrePedidos"/);assert.match(page,/id="brand"/);
  const ui=readFileSync(new URL('../../creditek/erp/b2b-cierres.js',import.meta.url),'utf8');assert.match(ui,/dialog.showModal/);assert.match(ui,/p_huella:preview.huella/);assert.doesNotMatch(ui,/\.delete\(|\.update\(/);
  assert.match(ui,/class="close-toolbar"/);assert.match(ui,/Ver pedidos por proveedor/);
+ assert.match(ui,/Distribución interna/);assert.match(ui,/providerReportTables/);
+ assert.match(page,/supplierOrderLines/);assert.match(page,/confirmar la recepción, crea las remisiones en borrador/);
  // Parse every inline script as JavaScript, catching regressions in the static page.
  for(const [,script] of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new Function(script);
 });

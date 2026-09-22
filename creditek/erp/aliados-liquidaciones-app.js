@@ -32,6 +32,20 @@
   const money = UX.formatoCOP;
   const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
   const state = (value) => `<span class="badge ${esc(value)}" title="${esc(UX.traducirEstado(value))}">${value === 'con_novedades' ? 'Revisar' : esc(UX.traducirEstado(value))}</span>`;
+  // Export the complete selected lot, not the paginated text of its cards.
+  window.KoraReportData = {
+    async prepareExcel(report) {
+      if (!selected) return report;
+      const batch = { ...selected };
+      const exportTab = activeTab;
+      const table = await window.CreditekLiquidacionesExcel.load(sb, batch);
+      if (selected?.id !== batch.id) throw new Error('Cambió el lote durante la descarga. Vuelve a generar el informe.');
+      const tables = report.tables.filter(t => !(exportTab === 'operations' && t.sourceId === 'detailBody'));
+      tables.push(table);
+      return { ...report, filters:[...report.filters,['Detalle formulado',`${platformName(batch.plataforma)} · ${batch.fecha_corte} · lote completo`]], tables };
+    }
+  };
+
   const ownStoreUtility = (liquidation) => Number(liquidation.total_utilidad_tiendas || 0);
   const allyUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0) - ownStoreUtility(liquidation);
   const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);

@@ -9,7 +9,8 @@ test('suma referencias de tiendas por ciudad sin cambiar costos distintos ni per
  const html=renderClosure({numero:'CIE-1',fecha:'2026-09-21',items:[...items,{...items[0],ciudad:'Chinú',cantidad:1}]});
  assert.match(html,/Corozal · Un solo pedido/);assert.match(html,/Chinú · Un solo pedido/);
  assert.match(html,/<td>Celular<\/td><td>5<\/td>/);assert.match(html,/Tienda 1/);assert.match(html,/Tienda 2/);
- assert.match(html,/Detalle interno por tienda/);assert.match(html,/No se asigna una tienda receptora/);
+ assert.match(html,/Distribución interna por tienda/);assert.match(html,/Tienda 1 · Chinú/);assert.match(html,/Tienda 2 · Corozal/);
+ assert.match(html,/Costo estimado/);assert.match(html,/Preparar compra/);assert.match(html,/No se asigna una tienda receptora/);
 });
 test('retira disparador y cron individual, bloquea trabajos en tránsito y conserva cierre e historia',async()=>{
  const db=new PGlite();try{

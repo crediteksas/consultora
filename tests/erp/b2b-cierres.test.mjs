@@ -79,6 +79,8 @@ test('Cierre visible, confirmación explícita e historial sin borrar datos',()=
  const ui=readFileSync(new URL('../../creditek/erp/b2b-cierres.js',import.meta.url),'utf8');assert.match(ui,/dialog.showModal/);assert.match(ui,/p_huella:preview.huella/);assert.doesNotMatch(ui,/\.delete\(|\.update\(/);
  assert.match(ui,/class="close-toolbar"/);assert.match(ui,/Ver pedidos por proveedor/);
  assert.match(ui,/Distribución interna/);assert.match(ui,/providerReportTables/);
+ assert.match(ui,/b2b:prepare-closure-provider/);assert.match(page,/b2b:prepare-closure-provider/);
+ assert.match(page,/no se ha creado ninguna remisión/);
  assert.match(page,/supplierOrderLines/);assert.match(page,/confirmar la recepción, crea las remisiones en borrador/);
  // Parse every inline script as JavaScript, catching regressions in the static page.
  for(const [,script] of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new Function(script);

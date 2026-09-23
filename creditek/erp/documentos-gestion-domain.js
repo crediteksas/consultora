@@ -12,7 +12,7 @@
       help: 'Abre el detalle para la corrección administrativa o la anulación con motivo. El sistema valida los permisos y las condiciones de la operación al confirmar.' },
     gastos: { label: 'Gastos de tiendas', singular: 'Gasto', route: 'gastos.html', date: 'fecha', dateOnly: true,
       select: 'id,fecha,created_at,tienda_codigo,estado,correccion_pendiente,monto,descripcion,conceptos_gasto(nombre),origenes:tienda_codigo(nombre)',
-      help: 'Revisa el gasto, su soporte y su estado. Usa las opciones de corrección, devolución o rechazo disponibles en el detalle; no se elimina el historial.' },
+      help: 'Selecciona un gasto para revisar y corregir sus datos aquí mismo. El motivo queda registrado y el gasto corregido vuelve a aprobación; no se elimina el historial.' },
   });
   const PAGE_SIZE = 20;
   function type(key) { if (!Object.hasOwn(TYPES, key)) throw new Error('Selecciona un tipo de documento válido.'); return TYPES[key]; }

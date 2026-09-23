@@ -35,7 +35,8 @@ test('gestión documental: consulta, permisos, enlaces y presentación sin desbo
         traslado_items_lectura: [{ traslado_id: id(11), unidad_id: id(999) }],
         remisiones: [{ id: id(101), consecutivo: 28, estado: 'despachada', created_at: '2026-09-19T17:30:00Z', tienda_codigo: 'CK-01', origenes: { nombre: 'Tienda de prueba' } }],
         ventas: [{ id: id(201), consecutivo: 37, fecha: '2026-09-19', tienda_codigo: 'CK-01', anulada: false, total: 1280000, clientes: { nombre_completo: '<script>no ejecutar</script>' }, origen: { nombre: 'Tienda de prueba' } }],
-        gastos: [{ id: id(301), fecha: '2026-09-19', tienda_codigo: 'CK-01', estado: 'pendiente', monto: 32000, conceptos_gasto: { nombre: 'Transporte de prueba' }, origenes: { nombre: 'Tienda de prueba' } }],
+        gastos: [{ id: id(301), revision: 0, fecha: '2026-09-19', tienda_codigo: 'CK-01', estado: 'aprobado', concepto_id: id(401), monto: 32000, descripcion: 'Taxi', conceptos_gasto: { nombre: 'Transporte de prueba' }, origenes: { nombre: 'Tienda de prueba' } }],
+        conceptos_gasto: [{ id: id(401), nombre: 'Transporte de prueba', preautorizado: true, activo: true }],
       };
       window.qa.sb = {
         from(table) {
@@ -46,6 +47,7 @@ test('gestión documental: consulta, permisos, enlaces y presentación sin desbo
             in(field, values) { rows = rows.filter(row => values.includes(row[field])); return q; },
             or() { return q; }, gte() { return q; }, lte() { return q; }, lt() { return q; }, order() { return q; },
             limit(count) { end = count - 1; return q; }, range(a, b) { begin = a; end = b; return q; },
+            maybeSingle() { window.qa.reads.push(table); return Promise.resolve({ data: rows[0] || null, error: null }); },
             insert() { throw new Error('Escritura no permitida en prueba de consulta'); },
             update() { throw new Error('Escritura no permitida en prueba de consulta'); },
             delete() { throw new Error('Escritura no permitida en prueba de consulta'); },
@@ -56,7 +58,7 @@ test('gestión documental: consulta, permisos, enlaces y presentación sin desbo
           };
           return q;
         },
-        rpc() { throw new Error('Ningún RPC de escritura debe ejecutarse desde el buscador'); },
+        rpc(name, args) { window.qa.writes.push({ name, args }); return Promise.resolve({ data: { id: args.p_id }, error: null }); },
       };
       if (location.search.includes('preliminary=1')) window.creditekSidebar = {
         perfil: { id: '6de0ad26-64af-4966-8cd9-d468880af627', rol: 'gerencia', activo: true },
@@ -115,6 +117,15 @@ test('gestión documental: consulta, permisos, enlaces y presentación sin desbo
     assert.equal(await page.locator('#docRows script').count(), 0);
     await page.locator('#docTypes [data-type="gastos"]').click();
     await expect(page.locator('.doc-row')).toContainText('Transporte de prueba');
+    await page.getByRole('button', { name: /Editar Gasto.*aquí/ }).click();
+    await expect(page.locator('[data-expense-form]')).toBeVisible();
+    await expect(page.locator('#docExpenseAmount')).toHaveValue('32000');
+    await page.locator('#docExpenseAmount').fill('30000');
+    await page.locator('#docExpenseReason').fill('El soporte indica treinta mil pesos');
+    await page.getByRole('button', { name: 'Guardar corrección' }).click();
+    await expect(page.locator('#docNotice')).toContainText('pendiente de aprobación');
+    assert.deepEqual(await page.evaluate(() => window.qa.writes.map(w => w.name)), ['editar_gasto_administrativo']);
+    await page.evaluate(() => { window.qa.writes = []; });
     await page.locator('#docQuery').fill('8');
     await page.getByRole('button', { name: 'Buscar documentos', exact: true }).click();
     await expect(page.locator('#docNotice')).toContainText('Los gastos no tienen consecutivo');

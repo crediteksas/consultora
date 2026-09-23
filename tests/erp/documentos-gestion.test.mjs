@@ -77,10 +77,15 @@ test('muestra nombre de tiendas, estado y enlace sin acción automática ni UUID
   assert.equal(D.documentView('gastos',{id,estado:'pendiente',correccion_pendiente:true}).status,'Corrección pendiente');
   assert.equal(D.documentView('ventas',{id,consecutivo:4,anulada:true}).status,'Anulada');
 });
-test('hub es de consulta, restringe enlaces por permisos y no ofrece borrado general',()=>{
+test('hub restringe acceso y la edición integrada de gastos usa RPC auditada sin DML directo',()=>{
   const app=readFileSync(base+'documentos-gestion-app.js','utf8'), html=readFileSync(base+'documentos-gestion.html','utf8');
   const domain=readFileSync(base+'documentos-gestion-domain.js','utf8');
-  for(const source of [app,domain])assert.doesNotMatch(source,/\.(rpc|insert|update|delete|upsert)\s*\(/);
+  assert.doesNotMatch(domain,/\.(rpc|insert|update|delete|upsert)\s*\(/);
+  assert.doesNotMatch(app,/\.(insert|update|delete|upsert)\s*\(/);
+  assert.match(app,/data-edit-expense/);
+  assert.match(app,/data-expense-form/);
+  assert.match(app,/rpc\('editar_gasto_administrativo'/);
+  assert.match(app,/rpc\('corregir_gasto'/);
   assert.match(app,/authorization\?\.allowed/);assert.match(app,/canManageDocuments/);assert.match(app,/KoraAccessControl.authorize/);
   assert.match(app,/current!==generation/);assert.match(app,/replaceChildren/);
   assert.match(html,/facturas de proveedor no tienen una anulación general/i);

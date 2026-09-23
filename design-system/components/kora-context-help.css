@@ -135,9 +135,101 @@
 .kora-context-help__footer {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding: 16px 24px;
   border-top: 1px solid var(--ctk-color-border, #E2E8F0);
   background: var(--ctk-color-surface, #FFFFFF);
+}
+
+.kora-store-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+.kora-store-tour__spot {
+  position: fixed;
+  border: 3px solid var(--ctk-color-accent, #00C4CC);
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(5, 20, 41, .58), 0 0 0 6px rgba(0, 196, 204, .25);
+  pointer-events: none;
+}
+
+.kora-store-tour__card {
+  position: fixed;
+  box-sizing: border-box;
+  max-height: min(310px, calc(100vh - 24px));
+  overflow: auto;
+  padding: 17px;
+  border: 1px solid var(--ctk-color-border, #E2E8F0);
+  border-radius: 16px;
+  background: var(--ctk-color-surface, #FFFFFF);
+  box-shadow: 0 18px 50px rgba(5, 20, 41, .28);
+  color: var(--ctk-color-text, #0B1E3D);
+  pointer-events: auto;
+}
+
+.kora-store-tour__arrow {
+  position: fixed;
+  color: var(--ctk-color-accent, #00C4CC);
+  font-size: 20px;
+  line-height: 1;
+  transform: translateX(-50%);
+}
+
+.kora-store-tour__count {
+  margin: 0 0 8px;
+  color: var(--ctk-color-accent-strong, #008F96);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.kora-store-tour__text {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.kora-store-tour__hint,
+.kora-store-tour__status {
+  margin: 0 0 8px;
+  color: var(--ctk-color-text-muted, #526075);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.kora-store-tour__status:empty { display: none; }
+
+.kora-store-tour__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.kora-store-tour__actions button {
+  padding: 8px 10px;
+  border: 1px solid var(--ctk-color-border, #E2E8F0);
+  border-radius: 9px;
+  background: var(--ctk-color-surface, #FFFFFF);
+  color: var(--ctk-color-text, #0B1E3D);
+  cursor: pointer;
+}
+
+.kora-store-tour__actions button.primary {
+  border-color: var(--ctk-color-primary, #0B1E3D);
+  background: var(--ctk-color-primary, #0B1E3D);
+  color: #FFFFFF;
+}
+
+.kora-store-tour__actions button:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 640px) {
+  .kora-store-tour__card { max-height: min(290px, calc(100vh - 24px)); }
+  .kora-store-tour__text { font-size: 14px; }
 }
 
 @media (max-width: 640px) {

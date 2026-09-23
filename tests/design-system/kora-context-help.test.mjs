@@ -22,9 +22,10 @@ const protectedRoutes = [
 test('el shell instala el botón de guía junto a las acciones superiores', () => {
   assert.match(shellSource, /data-kora-help aria-label="Guía de esta pantalla"/);
   assert.match(shellSource, /data-lucide="circle-help"/);
-  assert.match(shellSource, /kora-context-help\.css\?v=1\.0\.0/);
-  assert.match(shellSource, /kora-context-help\.js\?v=1\.0\.0/);
+  assert.match(shellSource, /kora-context-help\.css\?v=1\.1\.0/);
+  assert.match(shellSource, /kora-context-help\.js\?v=1\.1\.0/);
   assert.match(shellSource, /KoraContextHelp\?\.mount/);
+  assert.match(shellSource, /mountContextHelp.*profile/s);
 });
 
 test('la guía cubre todas las rutas operativas protegidas de KORA', () => {
@@ -56,5 +57,19 @@ test('la presentación usa el sistema visual compartido y responde en móvil', (
 
 test('la ayuda no cambia permisos ni consulta datos del negocio', () => {
   assert.doesNotMatch(helpSource, /supabase|\.from\(|\.rpc\(|fetch\(|localStorage|sessionStorage/i);
-  assert.doesNotMatch(helpSource, /insert|update|delete|post|put/i);
+  assert.doesNotMatch(helpSource, /\.(?:insert|update|delete)\s*\(|method\s*:\s*['"](?:post|put|delete)['"]/i);
+});
+
+test('las tiendas tienen un recorrido señalado sobre controles reales y sin clics automáticos', () => {
+  [
+    'reportes.html', 'ventas.html', 'registro-interno.html', 'creditos-cartera.html',
+    'caja.html', 'catalogo.html', 'inventario.html', 'pedidos-b2b.html',
+    'remisiones.html', 'traslados.html', 'gastos.html', 'cuenta-corriente.html',
+    'incidencias.html',
+  ].forEach(route => assert.match(helpSource, new RegExp(`['"]${route.replace('.', '\\.')}['"]\\s*:\\s*\\[`), route));
+  assert.match(helpSource, /if \(tour\) \{\s*startStoreTour\(tour, button\);\s*return;/);
+  assert.match(helpSource, /kora-store-tour__spot/);
+  assert.match(helpSource, /kora-store-tour__arrow/);
+  assert.match(helpSource, /\['admin_tienda', 'asesor'\]\.includes\(options\.profile\?\.rol\)/);
+  assert.doesNotMatch(helpSource, /target\.click\(|candidate\.click\(/);
 });

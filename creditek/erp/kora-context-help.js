@@ -39,6 +39,72 @@
     'incidencias.html': guide('Centro de Incidencias', 'Permite reportar, asignar, responder, resolver y cerrar problemas encontrados en KORA.', ['Usa los filtros para localizar una incidencia existente.', 'Abre el detalle y revisa evidencia e historial.', 'Asigna responsable, prioridad y estado.', 'Documenta la solución y solicita validación antes del cierre.'], ['No cierres una incidencia solo porque fue asignada.', 'Si el problema continúa, conserva la incidencia abierta o en validación.']),
   });
 
+  // Recorridos sobre controles reales. No simulan clics ni guardan operaciones.
+  const STORE_TOURS = Object.freeze({
+    'reportes.html': [
+      ['[data-periodo="hoy"]', 'Elige el periodo que quieres consultar.'],
+      ['#btnTiendas', 'Comprueba que estás viendo tu tienda antes de leer las cifras.'],
+    ],
+    'ventas.html': [
+      ['#btnNuevaVenta', 'Pulsa Nueva venta para comenzar.'],
+      ['#btnTipoCredito', 'Si el cliente compra a crédito, elige Crédito. Para contado, usa la opción de al lado.'],
+      ['#clienteCedula', 'Busca al cliente por cédula antes de agregar productos.'],
+      ['#btnSiguiente', 'Continúa al paso de productos cuando los datos del cliente estén completos.'],
+      ['#btnAgregarCelular', 'Agrega el celular por IMEI o usa Accesorio, según lo que entregas.'],
+    ],
+    'registro-interno.html': [
+      ['#cedula', 'Comienza con la cédula correcta del cliente.'],
+      ['#autorizacion', 'Confirma que el cliente dio la autorización indicada en pantalla.'],
+      ['#guardar', 'Revisa los datos y pulsa Registrar cliente una sola vez.'],
+    ],
+    'creditos-cartera.html': [
+      ['[data-tab="portfolio"]', 'En Cartera consultas el estado de los créditos.'],
+      ['[data-tab="nova"]', 'Autorizaciones Nova solo se usa cuando esté habilitado para tu tienda.'],
+      ['[data-tab="cobra"]', 'Gestión Cobra muestra el seguimiento permitido a tu perfil.'],
+    ],
+    'caja.html': [
+      ['#fechaTienda', 'Comprueba la fecha de la caja que vas a cerrar.'],
+      ['#efectivoContado', 'Cuenta físicamente el dinero y escribe el efectivo contado.'],
+      ['#btnCerrarCaja', 'Revisa la diferencia antes de pulsar Cerrar caja. La guía no lo pulsa por ti.'],
+    ],
+    'catalogo.html': [
+      ['#filtroBusqueda', 'Busca primero la referencia para evitar duplicados.'],
+      ['#filtroCategoria', 'Filtra por categoría si hay muchos resultados.'],
+      ['#btnNuevoProducto', 'Crea una referencia solo si confirmaste que no existe.'],
+    ],
+    'inventario.html': [
+      ['#tabCelulares', 'Abre Celulares para consultar las unidades por IMEI.'],
+      ['#filtroImei', 'Escribe el IMEI y verifica estado y tienda.'],
+      ['#tabAccesorios', 'Cambia a Accesorios para consultar referencias y cantidades.'],
+    ],
+    'pedidos-b2b.html': [
+      ['#search', 'Busca la referencia que necesitas pedir.'],
+      ['#openCart', 'Revisa cantidades y valores en Ver pedido antes de enviarlo.'],
+      ['#historialTienda', 'En Mis pedidos podrás seguir su número y estado.'],
+    ],
+    'remisiones.html': [
+      ['#filtroEstado', 'Filtra las remisiones que necesita revisar tu tienda.'],
+      ['.btn-ver', 'Abre el documento y compara productos, cantidades e IMEIs con lo recibido.'],
+    ],
+    'traslados.html': [
+      ['#btnNuevoTraslado', 'Pulsa Nuevo traslado para elegir la tienda de destino.'],
+      ['#btnAgregarCelularTra', 'Selecciona el celular por IMEI o cambia a Accesorio.'],
+      ['#btnConfirmarDespacho', 'Confirma el despacho solo después de revisar destino, unidades y costos.'],
+    ],
+    'gastos.html': [
+      ['#btnNuevoGasto', 'Pulsa Registrar gasto para iniciar la solicitud.'],
+      ['#btnGuardarGasto', 'Comprueba concepto, monto y descripción antes de guardar.'],
+    ],
+    'cuenta-corriente.html': [
+      ['#tbodyTiendas', 'Consulta aquí el saldo y los movimientos de tu tienda.'],
+      ['#tbodyInstrucciones', 'Antes de consignar, revisa tienda, proveedor, cuenta y valor de la instrucción.'],
+    ],
+    'incidencias.html': [
+      ['[data-incident-filter="code"]', 'Busca primero si ya existe una incidencia por este problema.'],
+      ['[data-incident-list]', 'Abre el caso para leer su estado y responder en el mismo hilo.'],
+    ],
+  });
+
   function guide(title, purpose, steps, tips) {
     return Object.freeze({ title, purpose, steps: Object.freeze(steps), tips: Object.freeze(tips) });
   }
@@ -67,10 +133,101 @@
     return `<ol class="${className}">${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol>`;
   }
 
+  function startStoreTour(steps, opener) {
+    let index = 0;
+    const root = document.createElement('div');
+    root.className = 'kora-store-tour';
+    root.innerHTML = '<div class="kora-store-tour__spot" aria-hidden="true"></div><div class="kora-store-tour__arrow" aria-hidden="true"></div><section class="kora-store-tour__card" role="dialog" aria-label="Guía visual de esta pantalla"></section>';
+    document.body.appendChild(root);
+    const spot = root.querySelector('.kora-store-tour__spot');
+    const arrow = root.querySelector('.kora-store-tour__arrow');
+    const card = root.querySelector('.kora-store-tour__card');
+    let target = null;
+
+    const visible = selector => {
+      const candidate = document.querySelector(selector);
+      return candidate && candidate.getClientRects().length && getComputedStyle(candidate).visibility !== 'hidden' ? candidate : null;
+    };
+    const position = () => {
+      if (!target || !target.isConnected) return;
+      const rect = target.getBoundingClientRect();
+      const pad = 7;
+      spot.style.left = `${Math.max(4, rect.left - pad)}px`;
+      spot.style.top = `${Math.max(4, rect.top - pad)}px`;
+      spot.style.width = `${Math.min(innerWidth - 8, rect.width + pad * 2)}px`;
+      spot.style.height = `${Math.min(innerHeight - 8, rect.height + pad * 2)}px`;
+      const width = Math.min(340, innerWidth - 24);
+      card.style.width = `${width}px`;
+      const below = innerHeight - rect.bottom >= card.offsetHeight + 28;
+      card.dataset.side = below ? 'below' : 'above';
+      card.style.left = `${Math.max(12, Math.min(innerWidth - width - 12, rect.left + rect.width / 2 - width / 2))}px`;
+      card.style.top = `${below ? rect.bottom + 20 : Math.max(12, rect.top - card.offsetHeight - 20)}px`;
+      arrow.textContent = below ? '▲' : '▼';
+      arrow.style.left = `${Math.max(12, Math.min(innerWidth - 12, rect.left + rect.width / 2))}px`;
+      arrow.style.top = `${below ? rect.bottom + 5 : Math.max(8, rect.top - 19)}px`;
+    };
+    const close = () => {
+      window.removeEventListener('resize', position);
+      window.removeEventListener('scroll', position, true);
+      document.removeEventListener('keydown', onKey);
+      root.remove();
+      opener?.focus?.();
+    };
+    const onKey = event => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+    };
+    const show = () => {
+      target = visible(steps[index][0]);
+      if (!target) {
+        spot.hidden = true;
+        arrow.hidden = true;
+        card.style.width = `${Math.min(340, innerWidth - 24)}px`;
+        card.style.left = '12px';
+        card.style.top = '12px';
+        card.innerHTML = `<p class="kora-store-tour__count">Paso ${index + 1} de ${steps.length}</p><p class="kora-store-tour__text">Todavía no aparece el control de este paso.</p><p class="kora-store-tour__hint">Espera a que cargue la pantalla o abre la opción indicada y vuelve a intentarlo.</p><div class="kora-store-tour__actions"><button type="button" data-tour-close>Salir</button><button type="button" class="primary" data-tour-retry>Reintentar</button></div>`;
+        card.querySelector('[data-tour-close]').addEventListener('click', close);
+        card.querySelector('[data-tour-retry]').addEventListener('click', show);
+        return false;
+      }
+      spot.hidden = false;
+      arrow.hidden = false;
+      const last = index === steps.length - 1;
+      card.innerHTML = `<p class="kora-store-tour__count">Paso ${index + 1} de ${steps.length}</p>
+        <p class="kora-store-tour__text">${escapeHtml(steps[index][1])}</p>
+        <p class="kora-store-tour__hint">La flecha señala el control real. Puedes pulsarlo; esta guía no realiza la operación por ti.</p>
+        <p class="kora-store-tour__status" data-tour-status role="status"></p>
+        <div class="kora-store-tour__actions"><button type="button" data-tour-close>Salir</button><button type="button" data-tour-prev ${index ? '' : 'disabled'}>Anterior</button><button type="button" class="primary" data-tour-next>${last ? 'Terminar' : 'Siguiente'}</button></div>`;
+      card.querySelector('[data-tour-close]').addEventListener('click', close);
+      card.querySelector('[data-tour-prev]').addEventListener('click', () => { index--; show(); });
+      card.querySelector('[data-tour-next]').addEventListener('click', () => {
+        if (last) { close(); return; }
+        if (!visible(steps[index + 1][0])) {
+          card.querySelector('[data-tour-status]').textContent = 'Pulsa o completa el paso señalado para que aparezca el siguiente control.';
+          return;
+        }
+        index++;
+        show();
+      });
+      target.scrollIntoView({ block: 'center', inline: 'nearest' });
+      requestAnimationFrame(position);
+      card.querySelector('[data-tour-next]').focus();
+      return true;
+    };
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+    document.addEventListener('keydown', onKey);
+    show();
+  }
+
   function mount(options = {}) {
     const button = options.button || document.querySelector('[data-kora-help]');
     if (!button || button.dataset.koraHelpMounted === 'true') return;
     button.dataset.koraHelpMounted = 'true';
+    if (['admin_tienda', 'asesor'].includes(options.profile?.rol) && STORE_TOURS[currentRoute()]) {
+      button.setAttribute('aria-label', 'Guía visual paso a paso');
+      button.title = 'Guía visual paso a paso';
+      button.dataset.koraTooltip = 'Guía visual paso a paso';
+    }
 
     const dialog = document.createElement('dialog');
     dialog.className = 'kora-context-help-dialog';
@@ -79,6 +236,11 @@
 
     let opener = null;
     const open = () => {
+      const tour = ['admin_tienda', 'asesor'].includes(options.profile?.rol) ? STORE_TOURS[currentRoute()] : null;
+      if (tour) {
+        startStoreTour(tour, button);
+        return;
+      }
       const content = HELP_LIBRARY[currentRoute()] || fallbackGuide(options);
       dialog.innerHTML = `<article class="kora-context-help">
         <header class="kora-context-help__header">
@@ -117,6 +279,6 @@
     dialog.addEventListener('close', () => opener?.focus?.());
   }
 
-  window.KoraContextHelp = Object.freeze({ mount, library: HELP_LIBRARY, version: '1.0.0' });
+  window.KoraContextHelp = Object.freeze({ mount, library: HELP_LIBRARY, version: '1.1.0' });
   document.dispatchEvent(new CustomEvent('kora-context-help-ready'));
 })();

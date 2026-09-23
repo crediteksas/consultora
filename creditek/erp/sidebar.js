@@ -607,13 +607,13 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       const link = document.createElement('link');
       link.id = 'koraContextHelpStyles';
       link.rel = 'stylesheet';
-      link.href = '/design-system/components/kora-context-help.css?v=1.0.0';
+      link.href = '/design-system/components/kora-context-help.css?v=1.1.0';
       document.head.appendChild(link);
     }
     if (!document.getElementById('koraContextHelp')) {
       const help = document.createElement('script');
       help.id = 'koraContextHelp';
-      help.src = '/creditek/erp/kora-context-help.js?v=1.0.0';
+      help.src = '/creditek/erp/kora-context-help.js?v=1.1.0';
       document.head.appendChild(help);
     }
     if (!document.getElementById('koraNotifications')) {
@@ -1069,6 +1069,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     }
     const mountContextHelp = () => window.KoraContextHelp?.mount?.({
       button: main.querySelector('[data-kora-help]'),
+      profile,
       title: current?.label,
       description: current?.description,
     });

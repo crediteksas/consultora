@@ -24,7 +24,8 @@
     const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Movimientos');return book;
   }
   function approvedRows(rows) {
-    const approved=rows.filter(row => row.status==='aprobado');
+    // Store-funded Retail withdrawals have their own instructions, not a second central giro.
+    const approved=rows.filter(row => row.status==='aprobado' && !(row.entry_type==='retiro_utilidad' && row.business_unit==='retail'));
     if(!approved.length) throw new Error('No hay movimientos aprobados pendientes de pago con estos filtros.');
     const incomplete=approved.filter(row => !row.id || !row.beneficiary || !row.beneficiary_document || !destination(row.destination_account).complete || !Number.isFinite(Number(row.amount)) || Number(row.amount)<=0);
     if(incomplete.length) throw new Error(`No se generó la orden: ${incomplete.map(row=>row.concept || 'Movimiento sin concepto').join(', ')} requiere verificar beneficiario, identificación, banco, tipo, cuenta o valor. No se modificó ningún pago.`);

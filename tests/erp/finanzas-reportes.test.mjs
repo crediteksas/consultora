@@ -8,6 +8,13 @@ const ctx={Intl};ctx.globalThis=ctx;
 for(const file of ['finanzas-programadas-domain.js','finanzas-reportes.js']) vm.runInNewContext(readFileSync(new URL('../../creditek/erp/'+file,import.meta.url),'utf8'),ctx);
 const D=ctx.KoraFinancialDomain,R=ctx.KoraFinancialReports;
 const row={id:'test-id',due_date:'2026-09-14',business_unit:'b2b',category:'contador',concept:'Prueba',beneficiary:'Beneficiaria de prueba',beneficiary_document:'00123456',destination_account:'Banco de prueba · Ahorros · 001234567890',amount:800000,status:'aprobado'};
+test('retiro Retail permanece en histórico pero nunca en la orden central de pago',()=>{
+  const retail={...row,id:'retail-store-funded',business_unit:'retail',entry_type:'retiro_utilidad'};
+  assert.equal(R.table([retail],D).length,2);
+  assert.equal(R.approvedRows([row,retail]).length,1);
+  assert.doesNotMatch(R.reportBody([row,retail],D),/retail-store-funded/);
+  assert.throws(()=>R.approvedRows([retail]),/No hay movimientos aprobados/);
+});
 test('Excel real: columnas, cuentas e identificaciones como texto y valor numérico',()=>{
   const original=JSON.stringify(row),book=R.workbook([row],D,XLSX);
   const roundtrip=XLSX.read(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{type:'buffer'}).Sheets.Movimientos;

@@ -31,7 +31,7 @@ test('la tienda solo envía comprobante y nunca decide el destino', async () => 
   const sql = (await readFile(migrationPath, 'utf8')).toLowerCase();
 
   assert.match(html, /id="tbodyInstrucciones"/);
-  assert.match(html, /rpc\('enviar_comprobante_consignacion'/);
+  assert.match(html, /rpc\(esRetiro \? 'enviar_comprobante_retiro_retail' : 'enviar_comprobante_consignacion'/);
   assert.match(sql, /create or replace function public\.enviar_comprobante_consignacion/);
   assert.match(sql, /v_instruccion\.tienda_codigo <> v_perfil\.tienda_codigo/);
   assert.doesNotMatch(

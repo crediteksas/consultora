@@ -335,7 +335,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label>Banco</label><input id="instruccionBanco" maxlength="120"></div>
     <div class="campo"><label>Número de cuenta</label><input id="instruccionCuenta" maxlength="120"></div>
     <div class="campo"><label for="instruccionValor">Valor esperado</label><input type="text" id="instruccionValor" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="Ej: 1556000"></div>
-    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR</option></select></div>
+    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR · flujo B2B</option></select><p>Para un socio de Retail: <a href="finanzas-programadas.html?vista=general">Gastos y retiros → Nuevo retiro → Retail</a>. Las instrucciones se generan después de la aprobación de Oscar; no uses OSCAR para ese retiro.</p></div>
     <div class="campo" id="campoInstruccionProveedor"><label>Proveedor</label><select id="instruccionProveedor"></select></div>
     <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
     <div class="modal-err" id="modalInstruccionErr"></div>
@@ -352,6 +352,7 @@ body.modal-open { overflow: hidden; }
     <h2 id="comprobanteTitulo">Enviar comprobante</h2>
     <div class="modal-sub" id="comprobanteDestino"></div>
     <div class="campo"><label>Valor consignado</label><input type="number" id="comprobanteValor" min="1"></div>
+    <div class="campo" id="comprobanteFechaCampo" hidden><label for="comprobanteFecha">Fecha real del pago al socio</label><input type="date" id="comprobanteFecha"><small>La salida se registra en esta fecha, no en la fecha de la instrucción. Adjunta soporte de ese pago.</small></div>
     <div class="campo"><label>Foto del comprobante</label><input type="file" id="comprobanteFoto" accept="image/*" capture="environment"></div>
     <img class="foto-preview" id="comprobantePreview">
     <div class="modal-err" id="modalComprobanteErr"></div>
@@ -841,10 +842,10 @@ async function cargarInstrucciones() {
       ? `<br><small>${escapeHtml(i.tipo_destino || '')}${i.proveedor_nombre ? ` · ${escapeHtml(i.proveedor_nombre)}` : ''}</small>`
       : '';
     return `<tr>
-      <td>${escapeHtml(i.fecha)}</td>
+      <td>${escapeHtml(i.fecha)}${i.fecha_pago?`<br><small>Pago: ${escapeHtml(i.fecha_pago)}</small>`:''}</td>
       <td>${escapeHtml(nombreTienda(i.tienda_codigo))}</td>
       <td>${escapeHtml(i.banco)}</td>
-      <td>${escapeHtml(destino || '—')}</td>
+      <td>${escapeHtml(destino || '—')}${i.beneficiario_socio?`<br><strong>Socio: ${escapeHtml(i.beneficiario_socio)}</strong><br><small>Retiro Retail ${escapeHtml(i.financial_entry_id||'')}</small>`:''}</td>
       <td>${fmtCOP(i.valor_esperado)}</td>
       <td>${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : '—'}</td>
       <td>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</td>
@@ -933,6 +934,11 @@ function abrirComprobante(id) {
   document.getElementById('comprobanteDestino').textContent =
     `${destino} · ${fmtCOP(instruccionComprobanteActual.valor_esperado)}`;
   document.getElementById('comprobanteValor').value = instruccionComprobanteActual.valor_esperado;
+  document.getElementById('comprobanteFechaCampo').hidden = !instruccionComprobanteActual.financial_entry_id;
+  const fechaPago = document.getElementById('comprobanteFecha');
+  fechaPago.value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  fechaPago.max = fechaPago.value;
+  fechaPago.min = instruccionComprobanteActual.fecha;
   document.getElementById('comprobanteFoto').value = '';
   document.getElementById('comprobantePreview').style.display = 'none';
   document.getElementById('modalComprobanteErr').classList.remove('show');
@@ -954,6 +960,12 @@ async function enviarComprobante() {
   const err = document.getElementById('modalComprobanteErr');
   err.classList.remove('show');
   const valor = Number(document.getElementById('comprobanteValor').value || 0);
+  const esRetiro = !!instruccionComprobanteActual.financial_entry_id;
+  const fechaPago = document.getElementById('comprobanteFecha');
+  if (esRetiro && (!fechaPago.value || !fechaPago.checkValidity())) {
+    err.textContent = 'Confirma la fecha real del pago al socio, entre la instrucción y hoy.';
+    err.classList.add('show'); return;
+  }
   if (valor <= 0 || !fotoComprobanteBlob) {
     err.textContent = 'Confirma el valor y adjunta la foto del comprobante.';
     err.classList.add('show');
@@ -966,7 +978,10 @@ async function enviarComprobante() {
     err.classList.add('show');
     return;
   }
-  const { data, error } = await sb.rpc('enviar_comprobante_consignacion', {
+  const { data, error } = await sb.rpc(esRetiro ? 'enviar_comprobante_retiro_retail' : 'enviar_comprobante_consignacion', esRetiro ? {
+    p_id: instruccionComprobanteActual.id, p_valor: valor, p_soporte: path,
+    p_fecha_pago: fechaPago.value, p_request: comprobanteIdempotencyKey,
+  } : {
     p_instruccion_id: instruccionComprobanteActual.id,
     p_valor_confirmado: valor,
     p_soporte_path: path,

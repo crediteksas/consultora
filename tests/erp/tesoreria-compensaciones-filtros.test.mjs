@@ -29,6 +29,11 @@ test('Addi aprobado aparece en Tesorería sin presentar el cobro esperado como r
   assert.match(panel, /#37 · Móvil Shopping/);
   assert.match(panel, /Pendiente de abono bancario/);
   assert.doesNotMatch(panel, /data-addi-prepare=/);
+  await ui.node('#showStoreMovements').onclick();
+  assert.equal(ui.node('#addiStoreMovementsPanel').classList.contains('hidden'), false);
+  assert.match(ui.node('#addiStoreMovementsPanel').innerHTML, /#37 · Móvil Shopping/);
+  assert.match(ui.node('#addiStoreMovementsPanel').innerHTML, /Ver cobro/);
+  assert.equal(ui.node('#pendingCompensationCount').textContent, 0, 'un cobro sin banco no es un abono aplicable');
   assert.deepEqual(ui.writes, []);
 });
 
@@ -280,7 +285,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.2/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.3/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

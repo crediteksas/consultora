@@ -93,6 +93,7 @@ test('cobros se adapta a 390/768/1128/1440 con HTML, CSS y tipografía reales de
       await window.CreditekCobrosPlataformas.create({ sb, canEdit: true, canVoid: true }).mount(document.querySelector('#cobrosContent'));
       await document.fonts.ready;
     });
+    await page.locator('[data-cobros-month]').fill('');
     await page.locator('[data-cobros-filter]').selectOption('payjoy');
     assert.equal(await page.locator('[data-cobros-form="candidate"] [name="importe"]').inputValue(), '', 'el neto confirmado inicia vacío');
     assert.match(await page.locator('.cobros-plataformas > .cobros-metrics .cobros-metric').first().textContent(), /20[.]000[.]000/, 'la base estimada no se agrega al esperado');
@@ -119,16 +120,16 @@ test('cobros se adapta a 390/768/1128/1440 con HTML, CSS y tipografía reales de
         assert.equal(layout.interLoaded, true, 'la fuente real Inter debe cargar; verifica acceso a fonts.googleapis.com/fonts.gstatic.com');
         await page.screenshot({ path: path.join(screenshots, `cobros-${width}.png`), fullPage: true });
 
-        await page.locator('.cobros-entry, .cobros-history, .cobros-void').evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));
+        await page.locator('.cobros-cut, .cobros-entry, .cobros-history, .cobros-void').evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));
         const expanded = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
           overflow: [...document.querySelectorAll('.cobros-field')].filter(node => node.scrollWidth > node.clientWidth + 1).map(node => node.textContent.trim()),
         }));
         assert(expanded.scrollWidth <= width + 1, 'abrir los formularios no ensancha la página');
         assert.deepEqual(expanded.overflow, [], 'las etiquetas de formularios se muestran completas');
-        assert.equal(await page.locator('[data-cobros-form="allocate"]').isVisible(), true);
+        assert.equal(await page.locator('[data-cobros-form="allocate"]').first().isVisible(), true);
         await page.screenshot({ path: path.join(screenshots, `cobros-${width}-formularios.png`), fullPage: true });
-        await page.locator('.cobros-entry, .cobros-history, .cobros-void').evaluateAll(nodes => nodes.forEach(node => { node.open = false; }));
+        await page.locator('.cobros-cut, .cobros-entry, .cobros-history, .cobros-void').evaluateAll(nodes => nodes.forEach(node => { node.open = false; }));
       });
     }
     assert.deepEqual(errors, [], 'el componente no produce errores de JavaScript');

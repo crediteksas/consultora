@@ -135,6 +135,22 @@ function form(type, fields, dataset = {}) {
 const submit = (element, target) => element.listeners.get('submit')({ target, preventDefault() {} });
 const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-05', concepto: 'Neto de corte', importe: '100', soporte: 'Comprobante 1' };
 
+test('Addi aparece arriba para confirmar el banco como las demás liquidaciones', async () => {
+  const host = container();
+  const raw = dataset({ expected: [
+    expected('payjoy-1', 50, { corte: '2026-09-16', liquidation_id: 'payjoy-lote' }),
+    expected('addi-1', 100, { plataforma: 'addi', corte: '2026-09-19', venta_id: 'addi-venta', fuente_tipo: 'estimacion_venta' }),
+  ] });
+  await domain.create({ initialMonth: '2026-09', canEdit: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const queue = host.innerHTML.match(/<section class="cobros-bank-queue"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(queue, 'la cola de confirmación bancaria aparece arriba');
+  assert.ok(host.innerHTML.indexOf('cobros-bank-queue') < host.innerHTML.indexOf('cobros-platforms'));
+  assert.match(queue, /Addi · Corte 2026-09-19/);
+  assert.match(queue, /PayJoy · Corte 2026-09-16/);
+  assert.match(queue, /data-cobros-form="received" data-expected="addi-1"/);
+  assert.match(queue, /data-cobros-form="received" data-expected="payjoy-1"/);
+});
+
 test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{
  const calls=[];const host=container();
  const raw=dataset({expected:[expected('e1',100)]});

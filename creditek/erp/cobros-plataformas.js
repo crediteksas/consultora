@@ -191,7 +191,7 @@
     function confirmReceivedForm(row) {
       if (!canEdit || !active(row) || row.remaining <= 0) return '';
       if (row.applied > 0) return '<p class="cobros-muted">Tiene abonos parciales; revisa el saldo en Abonos recibidos.</p>';
-      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form"><p class="cobros-form-wide">¿Ya verificaste ${cash(row.amount)} recibidos en banco? Esta confirmación registra el ingreso y lo cruza con este corte, sin repetir la asociación.</p><label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este valor recibido en banco y no lo he registrado como otro abono.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
+      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form"><p class="cobros-form-wide">Compara el abono real con ${cash(row.amount)} esperados. Solo confirma si recibiste exactamente ese importe; si difiere, registra el abono real por separado y revisa la diferencia.</p>${moneyField('Importe verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este importe recibido en banco y no lo he registrado como otro abono.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
     }
 
     function allocationForm(deposit) {
@@ -257,9 +257,9 @@
     }
 
     function bankConfirmationQueue() {
-      const rows = state.view.expected.filter(row => active(row) && (row.liquidation_id || (row.plataforma === 'addi' && row.venta_id)) && row.remaining > 0 && (!state.platform || row.plataforma === state.platform));
+      const rows = state.data.expected.filter(row => active(row) && (row.liquidation_id || (row.plataforma === 'addi' && row.venta_id)) && row.remaining > 0 && (!state.platform || row.plataforma === state.platform)).sort((a, b) => a.day.localeCompare(b.day));
       if (!rows.length) return '';
-      return `<section class="cobros-bank-queue" aria-label="Liquidaciones pendientes de confirmación bancaria"><h3>Liquidaciones pendientes de confirmación bancaria · ${rows.length}</h3><p class="cobros-muted">Compara cada valor esperado con el abono real en el banco. Confirmar registra el ingreso y lo concilia; si no coincide o aún no llegó, déjalo pendiente y revisa la diferencia.</p><div class="cobros-bank-grid">${rows.map(row => `<article class="cobros-record"><div class="cobros-record-head"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte)}</h4><span class="cobros-status${row.overdue ? ' cobros-status--alert' : ''}">${row.overdue ? 'Vencido · sin confirmar' : row.applied ? 'Abono parcial' : 'Pendiente de banco'}</span></div><dl class="cobros-record-fields"><div><dt>Debe ingresar al banco</dt><dd>${cash(row.amount)}</dd></div><div><dt>Fecha prevista</dt><dd>${shortDate(row.day)}</dd></div><div><dt>Ya aplicado</dt><dd>${cash(row.applied)}</dd></div><div><dt>Falta por confirmar</dt><dd>${cash(row.remaining)}</dd></div></dl>${confirmReceivedForm(row)}</article>`).join('')}</div></section>`;
+      return `<section class="cobros-bank-queue" aria-label="Liquidaciones pendientes de confirmación bancaria"><h3>Liquidaciones pendientes de confirmación bancaria · ${rows.length}</h3><p class="cobros-muted">Esta cola incluye todos los meses, aunque los indicadores de arriba correspondan al mes seleccionado. Compara cada valor esperado con el abono real en el banco; si no coincide o aún no llegó, déjalo pendiente y revisa la diferencia.</p><div class="cobros-bank-grid">${rows.map(row => `<article class="cobros-record"><div class="cobros-record-head"><h4>${esc(platformName(row.plataforma))} · Corte ${esc(row.corte || 'sin fecha')}</h4><span class="cobros-status${row.overdue ? ' cobros-status--alert' : ''}">${row.overdue ? (row.applied ? 'Vencido · abono parcial' : 'Vencido · sin confirmar') : row.applied ? 'Abono parcial' : 'Pendiente de banco'}</span></div><dl class="cobros-record-fields"><div><dt>Debe ingresar al banco</dt><dd>${cash(row.amount)}</dd></div><div><dt>Fecha prevista</dt><dd>${shortDate(row.day)}</dd></div><div><dt>Ya aplicado</dt><dd>${cash(row.applied)}</dd></div><div><dt>Falta por confirmar</dt><dd>${cash(row.remaining)}</dd></div></dl>${confirmReceivedForm(row)}</article>`).join('')}</div></section>`;
     }
 
     function history() {
@@ -362,8 +362,10 @@
           const row = state.data.expected.find(item => item.id === form.dataset.expected && active(item));
           if (!row || row.remaining !== row.amount) throw new Error('El saldo cambió; actualiza antes de confirmar.');
           if (value('verificado') !== 'on') throw new Error('Confirma que verificaste el dinero en banco.');
+          const receivedAmount = positiveValue(value('importe'));
+          if (cents(receivedAmount) !== row.amount) throw new Error('El valor recibido difiere del esperado. Registra el abono real por separado y revisa la diferencia.');
           name = 'cobros_confirmar_recibido';
-          args = { p_expected_id: row.id, p_importe: row.amount / 100, p_verificado: true, p_idempotency_key: idempotencyKey(form) };
+          args = { p_expected_id: row.id, p_importe: receivedAmount, p_verificado: true, p_idempotency_key: idempotencyKey(form) };
         } else if (type === 'candidate-bank') {
           const row = state.data.candidates.find(item => String(item.liquidation_id) === form.dataset.liquidation);
           if (!row) throw new Error('La liquidación ya no está disponible; actualiza.');

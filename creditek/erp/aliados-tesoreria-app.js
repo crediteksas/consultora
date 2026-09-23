@@ -556,8 +556,8 @@
     const addiRows = data.addiLiquidations || [];
     addiPanel.classList.toggle("hidden", treasuryView !== "operational" || !addiRows.length);
     const addiStorePanel = $("#addiStoreMovementsPanel");
-    addiStorePanel.classList.toggle("hidden", treasuryView !== "storeMovements" || !addiRows.length);
-    const addiMarkup = addiRows.length ? `<h2>Addi · por confirmar en banco</h2>
+    if (addiStorePanel) addiStorePanel.classList.toggle("hidden", treasuryView !== "storeMovements" || !addiRows.length);
+    const addiMarkup = addiRows.length ? `<h2>Addi · seguimiento de cobros y compensaciones</h2>
       <p>Estas liquidaciones aprobadas todavía no son abonos aplicables. Confirma el ingreso real en «Cobros de plataformas»; después prepara la compensación para que aparezca en «Compensaciones pendientes» y Gestión la aplique a la cartera de la tienda.</p>
       ${table(
         ["Venta / tienda", "Crédito", "Neto Addi", "Recibido", "A tienda", "Utilidad", "Estado", "Acción"],
@@ -584,7 +584,7 @@
         })
       )}` : "";
     addiPanel.innerHTML = addiMarkup;
-    addiStorePanel.innerHTML = addiMarkup;
+    if (addiStorePanel) addiStorePanel.innerHTML = addiMarkup;
     let recoverySummary=$('#recoverySummary');
     if(!recoverySummary){recoverySummary=document.createElement('section');recoverySummary.id='recoverySummary';recoverySummary.className='card';$('#outgoingContent').before(recoverySummary);}
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));

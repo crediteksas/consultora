@@ -107,6 +107,7 @@ test('CSV lleva BOM, trazabilidad multicorte y neutraliza fórmulas de Excel', (
   assert.match(csv, /"'  @SUM/);
   assert.match(csv, /"'\t=1\+1"/);
   assert.match(csv, /Aplicación \(no sumar a recibido\)/);
+  assert.equal((csv.match(/Aplicación \(no sumar a recibido\)/g) || []).length, 1, 'cada aplicación aparece una sola vez en la exportación');
   assert.match(csv, /"e1";"d1";"aplicacion"/);
   assert.doesNotMatch(csv, /ALO Credit/);
   assert.match(csv, /•••• 1234/);
@@ -149,6 +150,17 @@ test('Addi aparece arriba para confirmar el banco como las demás liquidaciones'
   assert.match(queue, /PayJoy · Corte 2026-09-16/);
   assert.match(queue, /data-cobros-form="received" data-expected="addi-1"/);
   assert.match(queue, /data-cobros-form="received" data-expected="payjoy-1"/);
+  assert.match(queue, /name="importe" type="number" value=""/);
+  assert.match(queue, /todos los meses/);
+});
+
+test('la cola bancaria conserva vencidos de otros meses sin mezclarlos con los indicadores del mes', async () => {
+  const host = container();
+  const raw = dataset({ expected: [expected('addi-agosto', 100, { plataforma: 'addi', corte: '2026-08-19', venta_id: 'venta-agosto' })] });
+  await domain.create({ initialMonth: '2026-09', canEdit: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const queue = host.innerHTML.match(/<section class="cobros-bank-queue"[\s\S]*?<\/section>/)?.[0];
+  assert.match(queue, /Addi · Corte 2026-08-19/);
+  assert.match(queue, /Vencido · sin confirmar/);
 });
 
 test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{
@@ -158,7 +170,9 @@ test('recibido verificado concilia desde el corte sin otra asociación ni fecha 
  assert.match(host.innerHTML,/Confirmar recibido y conciliar/);
  await submit(host,form('received',{}, {expected:'e1'}));
  assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
- await submit(host,form('received',{verificado:'on'}, {expected:'e1'}));
+ await submit(host,form('received',{verificado:'on',importe:'90'}, {expected:'e1'}));
+ assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
+ await submit(host,form('received',{verificado:'on',importe:'100'}, {expected:'e1'}));
  assert.equal(calls.find(c=>c[0]==='cobros_confirmar_recibido')[1].p_importe,100);
  const summary=domain.summarize(dataset({expected:[expected('e1',100)],deposits:[deposit('d1',100,{fecha:null,banco:null,cuenta_ultimos4:null,fuente_tipo:'confirmacion_gerencia'})],allocations:[allocation('a1','e1','d1',100)]}),'2026-09-21');
  assert.equal(summary.totals.pending,0);assert.equal(summary.totals.overdue,0);assert.equal(summary.deposits[0].day,'');

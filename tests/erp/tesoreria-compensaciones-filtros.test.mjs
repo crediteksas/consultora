@@ -37,6 +37,16 @@ test('Addi aprobado aparece en Tesorería sin presentar el cobro esperado como r
   assert.deepEqual(ui.writes, []);
 });
 
+test('Tesorería sigue cargando si una página antigua no trae el panel Addi nuevo', async () => {
+  const ui = await boot([], { withoutAddiPanel: true, addiLiquidations: [{
+    id: 'addi-37', consecutivo: 37, tienda: 'Móvil Shopping', tipo_tienda: 'propia',
+    credito_bruto: 258800, neto_estimado: 235702.10, recibido: 0,
+    pago_tienda: 196688, utilidad_creditek: 39014.10, cobro_estado: 'activo',
+  }] });
+  assert.match(ui.node('#addiTreasuryPanel').innerHTML, /#37 · Móvil Shopping/);
+  assert.deepEqual(ui.writes, []);
+});
+
 test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => {
   const inputs = [{ ...rows[0], created_at: '2026-09-12T04:59:00Z' }, { ...rows[1], created_at: '2026-09-12T05:00:00Z' }];
   assert.deepEqual(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-11', hasta: '2026-09-11' }).rows, [inputs[0]]);
@@ -129,6 +139,7 @@ async function boot(records = rows, options = {}) {
   const nodes = new Map(), queries = [], writes = [], listeners = new Map();
   function node(selector) {
     if (options.withoutLegacyForm && selector.startsWith('#movementForm')) return null;
+    if (options.withoutAddiPanel && selector === '#addiStoreMovementsPanel') return null;
     if (nodes.has(selector)) return nodes.get(selector);
     const classes = new Set(), attrs = {}, handlers = {};
     const n = {
@@ -285,7 +296,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.3/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.4/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

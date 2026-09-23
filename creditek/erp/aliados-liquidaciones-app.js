@@ -41,12 +41,15 @@
     if (error || !Array.isArray(data) || stores.error || !Array.isArray(stores.data)) {
       status.textContent = 'No se pudieron consultar las liquidaciones o los nombres de las tiendas. Actualiza para reintentar.';
       body.innerHTML = '';
+      $('addiFollowupTotals').innerHTML = '';
       return;
     }
     const storeByCode = new Map(stores.data.map(store => [store.codigo, store]));
     const rows = data.filter(row => row.estado !== 'anulada');
     const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
     status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
+    const fields = ['credito_bruto','tarifa_addi','iva_tarifa','neto_estimado','inicial_tienda','pago_tienda','utilidad_creditek'];
+    const totals = Object.fromEntries(fields.map(field => [field, rows.reduce((sum,row) => sum + Number(row[field] || 0), 0)]));
     body.innerHTML = rows.map(row => {
       const store = storeByCode.get(row.tienda_codigo);
       const storeName = String(store?.nombre || '').trim();
@@ -59,8 +62,12 @@
           : row.estado === 'revisada' ? 'Espera aprobación de Gerencia'
             : '<a href="aliados-tesoreria.html?vista=cobros">Ver en Tesorería</a>';
       const stateName = { pendiente_revision:'Pendiente de revisión', revisada:'Revisada', aprobada:'Aprobada' }[row.estado] || row.estado;
-      return `<tr><td>#${esc(row.consecutivo)} · ${storeName ? `${esc(storeName)}${location ? ` · ${esc(location)}` : ''}` : 'Tienda sin identificar'}</td><td>${esc(row.fecha_venta)}</td><td>${money(row.credito_bruto)}</td><td>${money(row.tarifa_addi)}</td><td>${money(row.iva_tarifa)}</td><td>${money(row.neto_estimado)}</td><td>${esc(row.fecha_esperada)}</td><td>${esc(stateName)}</td><td>${action}</td></tr>`;
+      const difference = Number(row.diferencia_base || 0);
+      const baseNote = difference ? `<small class="muted">KORA: ${money(row.credito_kora)} · diferencia: ${money(difference)}</small>` : '';
+      const sourceNote = row.base_fuente === 'credito_kora_sin_reporte_addi' ? '<small class="muted">Sin reporte de Addi; verificar base</small>' : row.referencia_addi ? `<small class="muted">Ref. Addi ${esc(row.referencia_addi)}</small>` : '<small class="muted">Base confirmada por Gerencia</small>';
+      return `<tr><td>#${esc(row.consecutivo)} · ${storeName ? `${esc(storeName)}${location ? ` · ${esc(location)}` : ''}` : 'Tienda sin identificar'}</td><td>${esc(row.fecha_venta)}</td><td>${money(row.credito_bruto)}${sourceNote}${baseNote}</td><td>${money(row.tarifa_addi)}</td><td>${money(row.iva_tarifa)}</td><td>${money(row.neto_estimado)}</td><td>${esc(Number(row.porcentaje_politica || 0) * 100)} % ${row.tipo_establecimiento === 'aliado' ? 'aliado' : 'propia'}</td><td>${money(row.inicial_tienda)}</td><td>${money(row.pago_tienda)}</td><td>${money(row.utilidad_creditek)}</td><td>${esc(row.rentabilidad_pct)} %</td><td>${esc(row.fecha_esperada)}</td><td>${esc(stateName)}${difference ? '<small class="muted">Base distinta de KORA; revisar</small>' : ''}</td><td>${action}</td></tr>`;
     }).join('');
+    $('addiFollowupTotals').innerHTML = rows.length ? `<tr><th colspan="2">TOTAL ${rows.length} operaciones</th><th>${money(totals.credito_bruto)}</th><th>${money(totals.tarifa_addi)}</th><th>${money(totals.iva_tarifa)}</th><th>${money(totals.neto_estimado)}</th><th>—</th><th>${money(totals.inicial_tienda)}</th><th>${money(totals.pago_tienda)}</th><th>${money(totals.utilidad_creditek)}</th><th>${totals.credito_bruto ? (100 * totals.utilidad_creditek / totals.credito_bruto).toFixed(2) : '0.00'} %</th><th colspan="3"></th></tr>` : '';
   }
   async function actOnAddi(event) {
     const button = event.target.closest('button[data-addi-action]');

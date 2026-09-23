@@ -63,6 +63,8 @@ const erp = [
   'tests/erp/bodega-central-integracion.test.mjs',
   'tests/erp/compensaciones-gestion.test.mjs',
   'tests/erp/gastos-correccion.test.mjs',
+  'tests/erp/gastos-limite-efectivo-diario.test.mjs',
+  'tests/erp/gastos-edicion-administrativa.test.mjs',
   'tests/erp/recepcion-origen.test.mjs',
   'tests/erp/compra-tipo-inventario.test.mjs',
   'tests/erp/kora-2026-000032-crear-referencia-factura.test.mjs',

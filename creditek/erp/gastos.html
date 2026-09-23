@@ -239,6 +239,10 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="aviso-adicional" id="avisoAdicional">Este concepto no está preautorizado — quedará en cola para que Mayte lo apruebe.</div>
     <div class="campo"><label>Monto</label><input type="number" id="gastoMonto" min="1" placeholder="0"></div>
     <div class="campo"><label id="labelDescripcion">Descripción (opcional)</label><textarea id="gastoDescripcion" rows="2" placeholder="Detalle del gasto..."></textarea></div>
+    <div class="campo" id="campoMotivoEdicion" style="display:none">
+      <label for="gastoMotivoEdicion">Motivo de la corrección administrativa</label>
+      <textarea id="gastoMotivoEdicion" rows="2" placeholder="Explica qué dato estaba incorrecto y por qué" ></textarea>
+    </div>
     <div class="campo">
       <label for="gastoResponsable">Usuario responsable</label>
       <input type="text" id="gastoResponsable" readonly aria-readonly="true">
@@ -279,6 +283,7 @@ let tiendasCache = [];
 let gastoIdParaRechazar = null;
 let devolverParaCorreccion = false;
 let gastoEditando = null;
+let gastoEditandoAdministrativo = false;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function puedeRegistrarGasto() {
@@ -439,8 +444,10 @@ async function abrirDocumentoSolicitado() {
   fila?.focus({ preventScroll: true });
   if (data.correccion_pendiente && puedeRegistrarGasto() && (esCentral() || currentPerfil.tienda_codigo === data.tienda_codigo)) {
     abrirCorreccionGasto(data.id);
+  } else if (esCentral() && ['registrado', 'aprobado'].includes(data.estado)) {
+    abrirEdicionAdministrativa(data.id);
   } else {
-    mostrarBanner('Gasto seleccionado. Usa las acciones disponibles según su estado; no se modificó ningún dato.');
+    mostrarBanner('Este gasto no admite edición en su estado actual. Consulta el historial; no se modificó ningún dato.');
   }
 }
 
@@ -551,19 +558,41 @@ function renderTablaGastos() {
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>
       <td><span class="badge ${g.estado}">${g.correccion_pendiente ? 'Devuelto para corrección' : g.estado}</span>
         ${g.correccion_pendiente && puedeRegistrarGasto() ? `<button type="button" data-corregir="${g.id}">Corregir y reenviar</button>` : ''}
+        ${esCentral() && !g.correccion_pendiente && ['registrado', 'aprobado'].includes(g.estado) ? `<button type="button" data-editar-gasto="${g.id}">Editar gasto</button>` : ''}
         <details><summary data-historial="${g.id}">Historial</summary><div></div></details>
       </td>
       <td>${escapeHtml(g.registrado?.nombre || '—')}</td>
     </tr>
   `).join('');
   tbody.querySelectorAll('[data-corregir]').forEach(btn => btn.addEventListener('click', () => abrirCorreccionGasto(btn.dataset.corregir)));
+  tbody.querySelectorAll('[data-editar-gasto]').forEach(btn => btn.addEventListener('click', () => abrirEdicionAdministrativa(btn.dataset.editarGasto)));
   tbody.querySelectorAll('[data-historial]').forEach(btn => btn.addEventListener('click', () => cargarHistorialGasto(btn)));
 }
 
 async function cargarHistorialGasto(btn) {
   const cont = btn.nextElementSibling;
   const { data, error } = await sb.from('gastos_historial').select('*').eq('gasto_id', btn.dataset.historial).order('creado_at');
-  cont.innerHTML = error ? 'No se pudo consultar el historial.' : (data || []).map(h => `<p>${escapeHtml(new Date(h.creado_at).toLocaleString('es-CO'))}<br>${escapeHtml(h.anterior.estado)} → ${escapeHtml(h.posterior.correccion_pendiente ? 'Devuelto para corrección' : h.posterior.estado)}<br>${fmtCOP(h.anterior.monto)} → ${fmtCOP(h.posterior.monto)}<br>${escapeHtml(h.posterior.nota_rechazo || h.posterior.descripcion || '')}</p>`).join('') || 'Sin cambios registrados.';
+  cont.innerHTML = error ? 'No se pudo consultar el historial.' : (data || []).map(h => `<p>${escapeHtml(new Date(h.creado_at).toLocaleString('es-CO'))}<br>${escapeHtml(h.anterior.estado)} → ${escapeHtml(h.posterior.correccion_pendiente ? 'Devuelto para corrección' : h.posterior.estado)}<br>${fmtCOP(h.anterior.monto)} → ${fmtCOP(h.posterior.monto)}<br>${escapeHtml(h.posterior.motivo_correccion_administrativa || h.posterior.nota_rechazo || h.posterior.descripcion || '')}</p>`).join('') || 'Sin cambios registrados.';
+}
+
+function abrirEdicionAdministrativa(id) {
+  const g = gastosCache.find(item => item.id === id);
+  if (!esCentral() || !g || g.correccion_pendiente || !['registrado', 'aprobado'].includes(g.estado)) return;
+  abrirModalGasto();
+  gastoEditando = g;
+  gastoEditandoAdministrativo = true;
+  document.querySelector('#modalGasto h2').textContent = 'Editar gasto de ' + (g.origenes?.nombre || g.tienda_codigo);
+  document.getElementById('gastoFecha').value = g.fecha;
+  document.getElementById('gastoMonto').value = g.monto;
+  document.getElementById('gastoDescripcion').value = g.descripcion || '';
+  document.getElementById('gastoConcepto').value = g.concepto_id;
+  document.getElementById('gastoTienda').value = g.tienda_codigo;
+  document.getElementById('gastoTienda').disabled = true;
+  document.getElementById('campoMotivoEdicion').style.display = '';
+  document.getElementById('btnGuardarGasto').textContent = 'Guardar y enviar a aprobación';
+  const aviso = document.getElementById('avisoAdicional');
+  aviso.textContent = 'La corrección queda en el historial. Si el gasto estaba aprobado, volverá a la cola de aprobación.';
+  aviso.classList.add('show');
 }
 
 function abrirCorreccionGasto(id) {
@@ -587,6 +616,9 @@ function abrirCorreccionGasto(id) {
 // ─── Registrar gasto ─────────────────────────────────────────────────
 function abrirModalGasto() {
   gastoEditando = null;
+  gastoEditandoAdministrativo = false;
+  document.getElementById('campoMotivoEdicion').style.display = 'none';
+  document.getElementById('gastoMotivoEdicion').value = '';
   document.querySelector('#modalGasto h2').textContent = 'Registrar gasto';
   document.getElementById('gastoTienda').disabled = false;
   document.getElementById('btnGuardarGasto').textContent = 'Guardar';
@@ -622,6 +654,7 @@ async function guardarGasto() {
   const fechaSeleccionada = document.getElementById('gastoFecha').value;
   const monto = Number(document.getElementById('gastoMonto').value || 0);
   const descripcion = document.getElementById('gastoDescripcion').value.trim();
+  const motivoEdicion = document.getElementById('gastoMotivoEdicion').value.trim();
   const sel = document.getElementById('gastoConcepto');
   const preautorizado = sel.options[sel.selectedIndex]?.dataset.preautorizado === 'true';
 
@@ -629,6 +662,7 @@ async function guardarGasto() {
   if (!concepto_id) { err.textContent = 'Selecciona una categoría o concepto.'; err.classList.add('show'); return; }
   if (monto <= 0) { err.textContent = 'Ingresa un monto válido.'; err.classList.add('show'); return; }
   if (!preautorizado && !descripcion) { err.textContent = 'La descripción es obligatoria para gastos adicionales.'; err.classList.add('show'); return; }
+  if (gastoEditandoAdministrativo && !motivoEdicion) { err.textContent = 'Explica el motivo de la corrección.'; err.classList.add('show'); return; }
 
   // FIX 22-jul-2026 · FEATURE_ReportesDiarios: si es_central, usar la
   // tienda seleccionada en el modal (incluye CENTRAL). Si no, la tienda
@@ -639,10 +673,29 @@ async function guardarGasto() {
     : currentPerfil.tienda_codigo;
   if (!tiendaSeleccionada) { err.textContent = 'Selecciona una tienda.'; err.classList.add('show'); return; }
 
+  if (tiendaSeleccionada !== 'CENTRAL') {
+    const { data: saldo, error: saldoError } = await sb.rpc('saldo_gastos_tienda', {
+      p_tienda: tiendaSeleccionada,
+      p_fecha: fechaSeleccionada,
+      p_excluir: gastoEditando?.id || null,
+    });
+    if (saldoError || !saldo) {
+      err.textContent = 'No se pudo comprobar el efectivo disponible. Actualiza e intenta de nuevo.';
+      err.classList.add('show'); return;
+    }
+    if (monto > Number(saldo.disponible)) {
+      err.textContent = `No se puede registrar: ventas de contado ${fmtCOP(saldo.ventas_contado)}, gastos del día ${fmtCOP(saldo.gastos_registrados)}; disponible ${fmtCOP(saldo.disponible)}. El gasto solicitado es ${fmtCOP(monto)}.`;
+      err.classList.add('show'); return;
+    }
+  }
+
   const btn = document.getElementById('btnGuardarGasto');
   btn.disabled = true; btn.textContent = 'Guardando...';
 
-  const { error } = gastoEditando ? await sb.rpc('corregir_gasto', {
+  const { error } = gastoEditandoAdministrativo ? await sb.rpc('editar_gasto_administrativo', {
+    p_id: gastoEditando.id, p_revision: gastoEditando.revision,
+    p_datos: { fecha: fechaSeleccionada, concepto_id, monto, descripcion, motivo: motivoEdicion }
+  }) : gastoEditando ? await sb.rpc('corregir_gasto', {
     p_id: gastoEditando.id, p_revision: gastoEditando.revision, p_accion: 'reenviar',
     p_datos: { fecha: fechaSeleccionada, concepto_id, monto, descripcion }
   }) : await sb.from('gastos').insert({
@@ -657,7 +710,7 @@ async function guardarGasto() {
   if (error) { err.textContent = 'No se pudo registrar: ' + error.message; err.classList.add('show'); return; }
 
   document.getElementById('modalGasto').classList.remove('show');
-  mostrarBanner(gastoEditando ? 'Gasto corregido y reenviado a aprobación, sin duplicarlo.' : preautorizado ? '✅ Gasto registrado.' : '✅ Gasto registrado — queda en cola de aprobación.');
+  mostrarBanner(gastoEditandoAdministrativo ? 'Gasto editado con motivo e historial; vuelve a aprobación.' : gastoEditando ? 'Gasto corregido y reenviado a aprobación, sin duplicarlo.' : preautorizado ? '✅ Gasto registrado.' : '✅ Gasto registrado — queda en cola de aprobación.');
   cargarGastos();
 }
 </script>

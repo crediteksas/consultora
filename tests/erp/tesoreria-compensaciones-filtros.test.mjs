@@ -19,6 +19,19 @@ const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
 });
 const rows = [row('uno', 'A', '2026-09-02', 100), row('dos', 'B', '2026-09-03', 200), row('tres', 'A', '2026-09-04', 300)];
 
+test('Addi aprobado aparece en Tesorería sin presentar el cobro esperado como recibido', async () => {
+  const ui = await boot([], { addiLiquidations: [{
+    id: 'addi-37', consecutivo: 37, tienda: 'Móvil Shopping', tipo_tienda: 'propia',
+    credito_bruto: 258800, neto_estimado: 235702.10, recibido: 0,
+    pago_tienda: 196688, utilidad_creditek: 39014.10, cobro_estado: 'activo',
+  }] });
+  const panel = ui.node('#addiTreasuryPanel').innerHTML;
+  assert.match(panel, /#37 · Móvil Shopping/);
+  assert.match(panel, /Pendiente de abono bancario/);
+  assert.doesNotMatch(panel, /data-addi-prepare=/);
+  assert.deepEqual(ui.writes, []);
+});
+
 test('fecha del registro en Bogotá no se confunde con corte ni con UTC', () => {
   const inputs = [{ ...rows[0], created_at: '2026-09-12T04:59:00Z' }, { ...rows[1], created_at: '2026-09-12T05:00:00Z' }];
   assert.deepEqual(domain.filtrarMovimientosTiendas(inputs, { desde: '2026-09-11', hasta: '2026-09-11' }).rows, [inputs[0]]);
@@ -146,6 +159,7 @@ async function boot(records = rows, options = {}) {
     },
     rpc(...args) {
       if (['tiene_capacidad_aliados','es_controlador_financiero'].includes(args[0])) return Promise.resolve({data:false,error:null});
+      if (args[0] === 'addi_tesoreria_listar') return Promise.resolve({data: options.addiLiquidations || [],error:null});
       writes.push(args); throw new Error('No se permite escribir desde filtros');
     },
   };

@@ -31,6 +31,8 @@
         ? "PayJoy"
         : v === "krediya"
           ? "Krediya"
+          : v === "addi"
+            ? "Addi"
           : String(v || "—");
   const bogotaDateTime = (v) =>
     v
@@ -110,6 +112,12 @@
     ];
   }
   function commissionCompensation(movement) {
+    if (movement.compensation_id) {
+      const linked = data.compensations?.find(
+        (item) => item.id === movement.compensation_id,
+      );
+      if (linked) return linked;
+    }
     const operationId = String(movement.idempotency_key || "").replace(
       "commission-operation:",
       "",
@@ -279,6 +287,7 @@
       reversions,
       currentStoreBalances,
       financialEntries,
+      addiLiquidations,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -308,6 +317,9 @@
       loadRecoveryRows('aliados_reversiones'),
       loadCurrentStoreBalances(),
       financialExpenses ? loadCompensations('financial_entries') : Promise.resolve([]),
+      ['gerencia', 'auditoria'].includes(profile?.rol)
+        ? safe(sb.rpc('addi_tesoreria_listar'))
+        : Promise.resolve([]),
     ]);
     data = {
       balances,
@@ -327,6 +339,7 @@
       recoveryApplications,
       currentStoreBalances,
       financialEntries,
+      addiLiquidations,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -533,6 +546,41 @@
       .join("")}</div>`;
   }
   function render() {
+    let addiPanel = $("#addiTreasuryPanel");
+    if (!addiPanel) {
+      addiPanel = document.createElement("section");
+      addiPanel.id = "addiTreasuryPanel";
+      addiPanel.className = "card";
+      $("#outgoingContent").before(addiPanel);
+    }
+    const addiRows = data.addiLiquidations || [];
+    addiPanel.classList.toggle("hidden", treasuryView !== "operational" || !addiRows.length);
+    addiPanel.innerHTML = addiRows.length ? `<h2>Addi · cobros aprobados y compensación</h2>
+      <p>La aprobación registra un cobro esperado; no es dinero recibido. La compensación se prepara solo después de aplicar el abono bancario completo en «Cobros de plataformas».</p>
+      ${table(
+        ["Venta / tienda", "Crédito", "Neto Addi", "Recibido", "A tienda", "Utilidad", "Estado", "Acción"],
+        addiRows.map((a) => {
+          const complete = a.cobro_estado === "activo"
+            && Number(a.recibido) >= Number(a.neto_estimado)
+            && Number(a.neto_estimado) > 0;
+          const status = a.compensacion_aplicada
+            ? "Compensación aplicada"
+            : a.compensacion_id
+              ? "Lista para aplicar"
+              : complete
+                ? "Cobro conciliado"
+                : "Pendiente de abono bancario";
+          const action = a.compensacion_id
+            ? '<button class="btn secondary" type="button" data-addi-compensations>Ver compensaciones</button>'
+            : complete && a.tipo_tienda === "propia" && canAuthorize()
+              ? `<button class="btn primary" type="button" data-addi-prepare="${esc(a.id)}">Preparar compensación</button>`
+              : '<button class="btn secondary" type="button" data-addi-cobros>Ver cobro</button>';
+          return `<tr><td>#${esc(a.consecutivo)} · ${esc(a.tienda)}</td><td>${cop(a.credito_bruto)}</td>
+            <td>${cop(a.neto_estimado)}</td><td>${cop(a.recibido)}</td>
+            <td>${cop(a.pago_tienda)}</td><td>${cop(a.utilidad_creditek)}</td>
+            <td>${esc(status)}</td><td>${action}</td></tr>`;
+        })
+      )}` : "";
     let recoverySummary=$('#recoverySummary');
     if(!recoverySummary){recoverySummary=document.createElement('section');recoverySummary.id='recoverySummary';recoverySummary.className='card';$('#outgoingContent').before(recoverySummary);}
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
@@ -590,18 +638,24 @@
     const received = data.destinations.reduce(
         (n, x) => n + Number(x.received_from_platform || 0),
         0,
+      ) + (data.addiLiquidations || []).reduce(
+        (n, x) => n + Number(x.neto_estimado || 0), 0,
       ),
       comp = data.destinations.reduce(
         (n, x) => n + Number(x.total_b2b_compensations || 0),
         0,
-      ),
+      ) + data.compensations.filter(
+        (x) => x.platform === "addi" && !x.reversed_at,
+      ).reduce((n, x) => n + Number(x.compensation_value || 0), 0),
       pendingB2B = data.compensations
         .filter((x) => !x.applied_at && !x.reversed_at)
         .reduce((n, x) => n + Number(x.compensation_value || 0), 0),
       outsourcingGenerated = data.destinations.reduce(
         (n, x) => n + Number(x.total_outsourcing_commission || 0),
         0,
-      ),
+      ) + data.compensations.filter(
+        (x) => x.platform === "addi" && x.applied_at && !x.reversed_at,
+      ).reduce((n, x) => n + Number(x.outsourcing_commission || 0), 0),
       expenses = data.movements
         .filter(
           (x) =>
@@ -1427,6 +1481,31 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     if(!cobros)return;
     treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));
   };
+  document.addEventListener("click", async (event) => {
+    const prepare = event.target.closest("[data-addi-prepare]");
+    if (event.target.closest("[data-addi-cobros]")) {
+      if (cobros) await $("#showCobros").onclick();
+      return;
+    }
+    if (event.target.closest("[data-addi-compensations]")) {
+      $("#showStoreMovements").click();
+      return;
+    }
+    if (!prepare || !canAuthorize()) return;
+    if (!confirm("¿Preparar la compensación Addi ya conciliada para revisión y aplicación por Gestión?")) return;
+    prepare.disabled = true;
+    try {
+      const { error } = await sb.rpc("addi_preparar_compensacion", {
+        p_addi_id: prepare.dataset.addiPrepare,
+      });
+      if (error) throw error;
+      await load();
+      notice("Compensación Addi preparada. Está en «Compensaciones y movimientos de tiendas» para aplicarla.");
+    } catch (error) {
+      notice(error.message || "No fue posible preparar la compensación Addi.", true);
+      prepare.disabled = false;
+    }
+  });
   $("#showClients").onclick = async () => {
     if (!clients) return;
     treasuryView = 'clients';

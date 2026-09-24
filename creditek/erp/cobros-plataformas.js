@@ -191,7 +191,7 @@
     function confirmReceivedForm(row) {
       if (!canEdit || !active(row) || row.remaining <= 0) return '';
       if (row.applied > 0) return '<p class="cobros-muted">Tiene abonos parciales; revisa el saldo en Abonos recibidos.</p>';
-      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form"><p class="cobros-form-wide">Compara el abono real con ${cash(row.amount)} esperados. Solo confirma si recibiste exactamente ese importe; si difiere, registra el abono real por separado y revisa la diferencia.</p>${moneyField('Importe verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este importe recibido en banco y no lo he registrado como otro abono.</label><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
+      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form" novalidate><p class="cobros-form-wide">Compara el abono real con ${cash(row.amount)} esperados. Solo confirma si recibiste exactamente ese importe; si difiere, registra el abono real por separado y revisa la diferencia.</p>${moneyField('Importe verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este importe recibido en banco y no lo he registrado como otro abono.</label><p class="cobros-form-wide cobros-notice cobros-notice--error" data-cobros-feedback role="alert" hidden></p><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
     }
 
     function allocationForm(deposit) {
@@ -289,6 +289,11 @@
       }
     }
 
+    function showFormFeedback(form, message) {
+      const node = form?.querySelector?.('[data-cobros-feedback]');
+      if (node) { node.textContent = message; node.hidden = !message; }
+    }
+
     function setBusy(busy) {
       state.busy = busy;
       if (!state.container) return;
@@ -348,7 +353,11 @@
       if (state.busy || state.stale || !state.data) return;
       const type = form.dataset.cobrosForm;
       if ((type === 'void' && !canVoid) || (type !== 'void' && !canEdit)) return;
-      if (!form.reportValidity()) return;
+      if (!form.reportValidity()) {
+        showFormFeedback(form, 'Completa el importe y marca la verificación bancaria antes de continuar.');
+        return;
+      }
+      showFormFeedback(form, '');
       let name, args;
       try {
         const fields = new FormData(form);
@@ -396,7 +405,7 @@
         const signature = JSON.stringify({ name, args });
         if (form.dataset.requestSignature && form.dataset.requestSignature !== signature) throw new Error('Ya se intentó guardar este formulario. Reintenta con los mismos datos o actualiza para consultar el resultado antes de registrar otro movimiento.');
         form.dataset.requestSignature = signature;
-      } catch (error) { showNotice(error.message, true); return; }
+      } catch (error) { showFormFeedback(form, error.message); showNotice(error.message, true); return; }
       const generation = state.generation;
       setBusy(true);
       showNotice('Guardando…');
@@ -416,7 +425,9 @@
       } catch (error) {
         if (generation !== state.generation) return;
         if (saved) state.stale = true;
-        showNotice(saved ? `El registro se guardó, pero no fue posible actualizar los saldos. Pulsa Actualizar antes de continuar. ${error.message}` : `No se pudo confirmar el registro. ${error.message} Puedes reintentar con los mismos datos o actualizar para verificar el resultado.`, true);
+        const message = saved ? `El registro se guardó, pero no fue posible actualizar los saldos. Pulsa Actualizar antes de continuar. ${error.message}` : `No se pudo confirmar el registro. ${error.message} Puedes reintentar con los mismos datos o actualizar para verificar el resultado.`;
+        showFormFeedback(form, message);
+        showNotice(message, true);
       } finally { if (generation === state.generation) setBusy(false); }
     }
 

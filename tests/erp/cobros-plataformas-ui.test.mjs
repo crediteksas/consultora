@@ -130,8 +130,10 @@ function container() {
   };
 }
 
-function form(type, fields, dataset = {}) {
-  return { dataset: { cobrosForm: type, ...dataset }, fields, reportValidity() { return true; }, closest() { return this; } };
+function form(type, fields, dataset = {}, valid = true) {
+  const feedback = { textContent: '', hidden: true };
+  return { dataset: { cobrosForm: type, ...dataset }, fields, feedback,
+    reportValidity() { return valid; }, querySelector(selector) { return selector === '[data-cobros-feedback]' ? feedback : null; }, closest() { return this; } };
 }
 const submit = (element, target) => element.listeners.get('submit')({ target, preventDefault() {} });
 const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-05', concepto: 'Neto de corte', importe: '100', soporte: 'Comprobante 1' };
@@ -152,6 +154,8 @@ test('Addi aparece arriba como resumen y conserva una sola confirmación en el d
   assert.match(queue, /data-cobros-action="detail" data-expected-id="payjoy-1"/);
   assert.doesNotMatch(queue, /data-cobros-form="received"/);
   assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-1"/g) || []).length, 1);
+  assert.match(host.innerHTML, /data-cobros-form="received" data-expected="addi-1"[^>]*novalidate/);
+  assert.match(host.innerHTML, /data-cobros-feedback role="alert" hidden/);
   assert.match(host.innerHTML, /name="importe" type="number" value=""/);
   assert.match(queue, /todos los meses/);
 });
@@ -184,6 +188,19 @@ test('recibido verificado concilia desde el corte sin otra asociación ni fecha 
  const summary=domain.summarize(dataset({expected:[expected('e1',100)],deposits:[deposit('d1',100,{fecha:null,banco:null,cuenta_ultimos4:null,fuente_tipo:'confirmacion_gerencia'})],allocations:[allocation('a1','e1','d1',100)]}),'2026-09-21');
  assert.equal(summary.totals.pending,0);assert.equal(summary.totals.overdue,0);assert.equal(summary.deposits[0].day,'');
  assert.match(domain.exportCsv(summary),/confirmacion_gerencia/);
+});
+
+test('Addi muestra el error del botón junto al formulario sin registrar dinero', async () => {
+ const calls=[]; const host=container();
+ const raw=dataset({expected:[expected('addi-1',100,{plataforma:'addi',venta_id:'venta-1'})]});
+ await domain.create({initialMonth:'',canEdit:true,sb:{rpc:async(name,args)=>{calls.push([name,args]);return {data:raw,error:null};}}}).mount(host);
+ const invalid=form('received',{importe:'',verificado:''},{expected:'addi-1'},false);
+ await submit(host,invalid);
+ assert.match(invalid.feedback.textContent,/Completa el importe/);
+ const different=form('received',{importe:'90',verificado:'on'},{expected:'addi-1'});
+ await submit(host,different);
+ assert.match(different.feedback.textContent,/difiere del esperado/);
+ assert.equal(calls.filter(([name])=>name==='cobros_confirmar_recibido').length,0);
 });
 
 test('monta con la sesión recibida sin consultar al crear y escapa contenido remoto', async () => {

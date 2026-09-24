@@ -67,6 +67,26 @@ test('una respuesta incompleta o importes inválidos no se convierten en ceros',
   assert.equal(domain.cents(0.29), 29);
 });
 
+test('el importe recibido se muestra como pesos y conserva centavos exactos', () => {
+  assert.equal(domain.formatCurrencyDraft('500913'), '$ 500.913');
+  assert.equal(domain.formatCurrencyDraft('$ 500.913,50'), '$ 500.913,50');
+  assert.equal(domain.currencyCents('$ 500.913'), 50091300);
+  assert.equal(domain.currencyCents('$ 500.913,50'), 50091350);
+  assert.throws(() => domain.currencyCents('$ 500,913'), /centavos/);
+  assert.throws(() => domain.currencyCents('$ -500'), /pesos/);
+});
+
+test('al escribir Addi agrupa miles y muestra el signo pesos de inmediato', async () => {
+  const host = container();
+  const raw = dataset({ expected: [expected('addi-1', 500913, { plataforma: 'addi', venta_id: 'venta-1' })] });
+  await domain.create({ initialMonth: '', canEdit: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const feedback = { textContent: 'Error anterior', hidden: false };
+  const input = { value: '500913', matches: selector => selector === '[data-cobros-currency]', closest: () => ({ querySelector: () => feedback }) };
+  host.listeners.get('input')({ target: input });
+  assert.equal(input.value, '$ 500.913');
+  assert.equal(feedback.hidden, true);
+});
+
 test('rechaza sobreaplicaciones, duplicados y cruces entre plataformas', () => {
   const data = dataset({ expected: [expected('e1', 100)], deposits: [deposit('d1', 80)], allocations: [allocation('a1', 'e1', 'd1', 81)] });
   assert.throws(() => domain.summarize(data, '2026-09-04'), /superan/);
@@ -156,7 +176,7 @@ test('Addi aparece arriba como resumen y conserva una sola confirmación en el d
   assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-1"/g) || []).length, 1);
   assert.match(host.innerHTML, /data-cobros-form="received" data-expected="addi-1"[^>]*novalidate/);
   assert.match(host.innerHTML, /data-cobros-feedback role="alert" hidden/);
-  assert.match(host.innerHTML, /name="importe" type="number" value=""/);
+  assert.match(host.innerHTML, /name="importe" type="text" value=""[^>]*data-cobros-currency/);
   assert.match(queue, /todos los meses/);
 });
 
@@ -181,9 +201,9 @@ test('recibido verificado concilia desde el corte sin otra asociación ni fecha 
  assert.match(host.innerHTML,/Confirmar recibido y conciliar/);
  await submit(host,form('received',{}, {expected:'e1'}));
  assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
- await submit(host,form('received',{verificado:'on',importe:'90'}, {expected:'e1'}));
+ await submit(host,form('received',{verificado:'on',importe:'$ 90'}, {expected:'e1'}));
  assert.equal(calls.filter(c=>c[0]==='cobros_confirmar_recibido').length,0);
- await submit(host,form('received',{verificado:'on',importe:'100'}, {expected:'e1'}));
+ await submit(host,form('received',{verificado:'on',importe:'$ 100'}, {expected:'e1'}));
  assert.equal(calls.find(c=>c[0]==='cobros_confirmar_recibido')[1].p_importe,100);
  const summary=domain.summarize(dataset({expected:[expected('e1',100)],deposits:[deposit('d1',100,{fecha:null,banco:null,cuenta_ultimos4:null,fuente_tipo:'confirmacion_gerencia'})],allocations:[allocation('a1','e1','d1',100)]}),'2026-09-21');
  assert.equal(summary.totals.pending,0);assert.equal(summary.totals.overdue,0);assert.equal(summary.deposits[0].day,'');
@@ -197,7 +217,7 @@ test('Addi muestra el error del botón junto al formulario sin registrar dinero'
  const invalid=form('received',{importe:'',verificado:''},{expected:'addi-1'},false);
  await submit(host,invalid);
  assert.match(invalid.feedback.textContent,/Completa el importe/);
- const different=form('received',{importe:'90',verificado:'on'},{expected:'addi-1'});
+ const different=form('received',{importe:'$ 90',verificado:'on'},{expected:'addi-1'});
  await submit(host,different);
  assert.match(different.feedback.textContent,/difiere del esperado/);
  assert.equal(calls.filter(([name])=>name==='cobros_confirmar_recibido').length,0);

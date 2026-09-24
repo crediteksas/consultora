@@ -21,6 +21,25 @@
     return result;
   }
 
+  function currencyCents(value) {
+    const text = String(value ?? '').trim().replace(/^\$\s*/, '').replace(/\s/g, '');
+    if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/.test(text)) {
+      throw new Error('Escribe el valor en pesos, por ejemplo $ 500.913. Usa coma solo para centavos.');
+    }
+    const [whole, fraction = ''] = text.split(',');
+    return cents(`${whole.replace(/\./g, '')}.${fraction.padEnd(2, '0')}`);
+  }
+
+  function formatCurrencyDraft(value) {
+    const raw = String(value ?? '');
+    const clean = raw.replace(/[.$\s\u00a0]/g, '');
+    if (!/^\d*(?:,\d{0,2})?$/.test(clean)) return raw;
+    if (!clean) return '';
+    const [integer, fraction] = clean.split(',');
+    const whole = (integer.replace(/^0+(?=\d)/, '') || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `$ ${whole}${fraction === undefined ? '' : `,${fraction}`}`;
+  }
+
   function sum(values) {
     const result = values.reduce((total, value) => total + value, 0);
     if (!Number.isSafeInteger(result)) throw new Error('El total supera el importe admitido.');
@@ -163,6 +182,7 @@
     const field = (label, name, type = 'text', extra = '', value = '') => `<label class="cobros-field">${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
     const platformField = () => `<label class="cobros-field">Plataforma<select name="plataforma" required>${options(state.platform)}</select></label>`;
     const moneyField = (label = 'Importe recibido (COP)', extra = '') => field(label, 'importe', 'number', `required min="0.01" step="0.01" inputmode="decimal" placeholder="Ej. 1250000" ${extra}`);
+    const currencyField = label => field(label, 'importe', 'text', 'required inputmode="decimal" autocomplete="off" data-cobros-currency placeholder="$ 0"');
     const supportField = (optional = false) => field(optional ? 'Referencia adicional (opcional)' : 'Soporte (enlace o referencia; no adjunta archivos)', 'soporte', 'text', `${optional ? '' : 'required minlength="3"'} maxlength="1500" placeholder="${optional ? 'Puedes dejarlo vacío' : 'Enlace al soporte o número de documento'}"`);
 
     function support(value) {
@@ -191,7 +211,7 @@
     function confirmReceivedForm(row) {
       if (!canEdit || !active(row) || row.remaining <= 0) return '';
       if (row.applied > 0) return '<p class="cobros-muted">Tiene abonos parciales; revisa el saldo en Abonos recibidos.</p>';
-      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form" novalidate><p class="cobros-form-wide">Compara el abono real con ${cash(row.amount)} esperados. Solo confirma si recibiste exactamente ese importe; si difiere, registra el abono real por separado y revisa la diferencia.</p>${moneyField('Importe verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este importe recibido en banco y no lo he registrado como otro abono.</label><p class="cobros-form-wide cobros-notice cobros-notice--error" data-cobros-feedback role="alert" hidden></p><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
+      return `<form data-cobros-form="received" data-expected="${esc(row.id)}" class="cobros-form" novalidate><p class="cobros-form-wide">Compara el abono real con ${cash(row.amount)} esperados. Solo confirma si recibiste exactamente ese importe; si difiere, registra el abono real por separado y revisa la diferencia.</p>${currencyField('Importe verificado en banco (COP)')}<label class="cobros-form-wide"><input type="checkbox" name="verificado" required> Sí, comprobé este importe recibido en banco y no lo he registrado como otro abono.</label><p class="cobros-form-wide cobros-notice cobros-notice--error" data-cobros-feedback role="alert" hidden></p><div class="cobros-form-actions"><button type="submit" class="btn primary">Confirmar recibido y conciliar</button></div></form>`;
     }
 
     function allocationForm(deposit) {
@@ -371,7 +391,8 @@
           const row = state.data.expected.find(item => item.id === form.dataset.expected && active(item));
           if (!row || row.remaining !== row.amount) throw new Error('El saldo cambió; actualiza antes de confirmar.');
           if (value('verificado') !== 'on') throw new Error('Confirma que verificaste el dinero en banco.');
-          const receivedAmount = positiveValue(value('importe'));
+          const receivedAmount = currencyCents(value('importe')) / 100;
+          if (!receivedAmount) throw new Error('El importe recibido debe ser mayor que cero.');
           if (cents(receivedAmount) !== row.amount) throw new Error('El valor recibido difiere del esperado. Registra el abono real por separado y revisa la diferencia.');
           name = 'cobros_confirmar_recibido';
           args = { p_expected_id: row.id, p_importe: receivedAmount, p_verificado: true, p_idempotency_key: idempotencyKey(form) };
@@ -474,12 +495,19 @@
       render();
     }
 
+    function onInput(event) {
+      if (!event.target.matches?.('[data-cobros-currency]') || state.busy) return;
+      event.target.value = formatCurrencyDraft(event.target.value);
+      showFormFeedback(event.target.closest('form'), '');
+    }
+
     function destroy() {
       state.generation += 1;
       if (state.container) {
         state.container.removeEventListener('click', onClick);
         state.container.removeEventListener('submit', onSubmit);
         state.container.removeEventListener('change', onChange);
+        state.container.removeEventListener('input', onInput);
       }
       state.container = null;
       state.busy = false;
@@ -492,6 +520,7 @@
       container.addEventListener('click', onClick);
       container.addEventListener('submit', onSubmit);
       container.addEventListener('change', onChange);
+      container.addEventListener('input', onInput);
       render();
       await refresh();
     }
@@ -499,5 +528,5 @@
     return { mount, refresh, destroy };
   }
 
-  return { create, summarize, monthView, validateAllocation, exportCsv, csvCell, cents, todayBogota };
+  return { create, summarize, monthView, validateAllocation, exportCsv, csvCell, cents, currencyCents, formatCurrencyDraft, todayBogota };
 });

@@ -212,6 +212,8 @@ body.modal-open { overflow: hidden; }
     </div>
     <details class="cuadrito-vacio"><summary>¿Cómo funcionan los abonos?</summary><p>El abono reduce la cuenta corriente. Solo descuenta Caja cuando seleccionas “Efectivo de la tienda”; las demás fuentes no alteran el efectivo.</p></details>
 
+    <section id="ajustesSaldosAuditados" class="cuadrito-vacio" style="display:none;margin:16px 0;" aria-live="polite"></section>
+
     <div class="tabla-wrap">
       <table>
         <thead><tr><th>Tienda</th><th>Saldo actual</th><th>Último cargo</th><th>Último abono</th></tr></thead>
@@ -393,6 +395,7 @@ let saldoInicialIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function esGerencia() { return !!currentPerfil && currentPerfil.rol === 'gerencia'; }
+function puedeAutorizarAjusteSaldos() { return esGerencia() && currentPerfil.activo && currentUser?.id === '6de0ad26-64af-4966-8cd9-d468880af627'; }
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
 document.getElementById('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') hacerLogin(); });
@@ -550,12 +553,65 @@ async function cargarTodo() {
     document.getElementById('btnSaldoInicial').style.display = 'inline-block';
   }
   await cargarMovimientosCC();
+  if (puedeAutorizarAjusteSaldos()) await cargarAjustesAuditados();
   await cargarInstrucciones();
   const tiendaSolicitada = new URLSearchParams(location.search).get('tienda');
   if (tiendaSolicitada) {
     const tienda = tiendasCache.find(item => item.codigo === tiendaSolicitada);
     if (tienda) abrirDetalleTienda(tienda.codigo, tienda.nombre);
   }
+}
+
+async function cargarAjustesAuditados() {
+  const panel = document.getElementById('ajustesSaldosAuditados');
+  panel.style.display = 'block';
+  panel.textContent = 'Cargando ajustes auditados…';
+  const { data: propuestas, error } = await sb.from('saldo_ajustes_auditoria')
+    .select('id,referencia,tienda_codigo,fecha_corte,caja_base,deuda_base,caja_objetivo,deuda_objetivo,motivo,estado,autorizado_at')
+    .order('created_at', { ascending: false }).limit(10);
+  if (error) { panel.textContent = 'No se pudo consultar el ajuste. Actualiza la pantalla antes de autorizar.'; return; }
+  if (!propuestas?.length) { panel.style.display = 'none'; return; }
+  const saldos = calcularResumenPorTienda();
+  const filas = await Promise.all(propuestas.map(async propuesta => {
+    const { data: caja, error: cajaError } = await sb.rpc('calcular_efectivo_esperado_tienda', {
+      p_tienda_codigo: propuesta.tienda_codigo,
+      p_fecha: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
+    });
+    const actualCaja = Number(caja?.esperado);
+    const actualDeuda = Number(saldos[propuesta.tienda_codigo]?.saldo || 0);
+    const vigente = !cajaError && Number.isFinite(actualCaja)
+      && actualCaja === Number(propuesta.caja_base)
+      && actualDeuda === Number(propuesta.deuda_base);
+    return { propuesta, actualCaja, actualDeuda, vigente, cajaError };
+  }));
+  panel.innerHTML = '<h2 style="font-size:18px;margin:0 0 6px;">Ajustes de saldos auditados · autorización de Gerencia</h2>'
+    + '<p style="margin:0 0 12px;">Este ajuste no es venta, ingreso, abono bancario ni consignación. Conserva los cierres originales y deja tu autorización en el historial.</p>'
+    + filas.map(({ propuesta:p, actualCaja, actualDeuda, vigente, cajaError }) => `
+      <article style="border:1px solid #dbe3ee;border-radius:10px;padding:14px;margin:10px 0;background:white;">
+        <strong>${escapeHtml(nombreTienda(p.tienda_codigo))} · ${escapeHtml(p.referencia)}</strong>
+        <p style="margin:8px 0;">Caja en KORA: ${cajaError ? 'No disponible' : fmtCOP(actualCaja)} → Caja auditada: <strong>${fmtCOP(p.caja_objetivo)}</strong><br>
+        Deuda en KORA: ${fmtCOP(actualDeuda)} → Deuda auditada: <strong>${fmtCOP(p.deuda_objetivo)}</strong></p>
+        <p style="margin:8px 0;">${escapeHtml(p.motivo)}</p>
+        ${p.estado === 'aplicado'
+          ? `<strong>Aplicado con autorización de Gerencia · ${escapeHtml(new Date(p.autorizado_at).toLocaleString('es-CO', { timeZone:'America/Bogota' }))}</strong>`
+          : vigente
+            ? `<button class="btn-primary" type="button" data-autorizar-ajuste="${escapeHtml(p.id)}">Autorizar ajuste de ambos saldos</button>`
+            : '<strong style="color:#a33;">Los saldos cambiaron o no se pudieron consultar. No se puede aplicar esta propuesta; requiere nueva revisión.</strong>'}
+      </article>`).join('');
+  panel.querySelectorAll('[data-autorizar-ajuste]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const fila = filas.find(item => item.propuesta.id === button.dataset.autorizarAjuste);
+      if (!fila || !fila.vigente || fila.propuesta.estado !== 'pendiente') return;
+      const p = fila.propuesta;
+      if (!confirm(`¿Autorizas el ajuste auditado de ${nombreTienda(p.tienda_codigo)}?\n\nCaja: ${fmtCOP(fila.actualCaja)} → ${fmtCOP(p.caja_objetivo)}\nDeuda: ${fmtCOP(fila.actualDeuda)} → ${fmtCOP(p.deuda_objetivo)}\n\nNo registra pago bancario ni modifica cierres anteriores.`)) return;
+      button.disabled = true;
+      const { error: aplicarError } = await sb.rpc('autorizar_ajuste_saldos_auditados', { p_id: p.id });
+      if (aplicarError) { alert(aplicarError.message || 'No se aplicó el ajuste.'); button.disabled = false; return; }
+      mostrarBanner('Ajuste autorizado y aplicado con trazabilidad. Caja y deuda actualizadas.');
+      await cargarMovimientosCC();
+      await cargarAjustesAuditados();
+    });
+  });
 }
 
 async function cargarMovimientosCC() {

@@ -375,6 +375,7 @@ async function calcularCuadrito(tienda, fecha) {
   const saldoPorCobrar = Number(cuadre.saldo_por_cobrar || 0);
   const totalIniciales = Number(cuadre.iniciales || 0);
   const otrosIngresos = Number(cuadre.otros_ingresos || 0);
+  const ajustesAuditoria = Number(cuadre.ajustes_auditoria || 0);
   const totalGastos = Number(cuadre.gastos_efectivo || 0);
   const salidasExplicitas = Number(cuadre.salidas_explicitas || 0);
   const esperado = cajaPiloto.calcularEfectivoEsperado({
@@ -382,7 +383,7 @@ async function calcularCuadrito(tienda, fecha) {
     ventasContado: totalContado,
     financiadoRecibido: totalFinanciado,
     iniciales: totalIniciales,
-    otrosIngresos,
+    otrosIngresos: otrosIngresos + ajustesAuditoria,
     gastosEfectivo: totalGastos,
     salidasExplicitas,
   });
@@ -401,6 +402,7 @@ async function calcularCuadrito(tienda, fecha) {
     saldoPorCobrar,
     totalIniciales,
     otrosIngresos,
+    ajustesAuditoria,
     totalGastos,
     salidasExplicitas,
     totalUtilidad: utilidadCompleta ? totalUtilidad : null,
@@ -475,6 +477,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
           <div class="cuadrito-linea"><span class="izq">Saldo por cobrar</span><span class="der">${fmtCOP(c.saldoPorCobrar)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Total iniciales</span><span class="der">${fmtCOP(c.totalIniciales)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
+          ${c.ajustesAuditoria !== 0 ? `<div class="cuadrito-linea"><span class="izq">Ajuste de saldo autorizado por Gerencia · no es ingreso</span><span class="der">${fmtCOP(c.ajustesAuditoria)}</span></div>` : ''}
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Utilidad del día</span><span class="der">${fmtUtilidad(c.totalUtilidad)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Salidas explícitas</span><span class="der">-${fmtCOP(c.salidasExplicitas)}</span></div>
@@ -632,7 +635,7 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += `\n\n*GASTOS*\n`;
   texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
   if (c.ajusteArrastre !== 0) texto += `\n\nAjuste por movimientos de días anteriores (incluido en apertura): ${fmtCOP(c.ajusteArrastre)}`;
-  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO ACTUALIZADO: ${fmtCOP(c.esperado)}*\n\nREGISTRO DEL CIERRE ORIGINAL\nEsperado al cerrar: ${fmtCOP(c.caja.efectivo_esperado)}\nEfectivo registrado al cerrar: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia al cerrar: ${fmtCOP(c.caja.diferencia)}`;
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nAjuste de saldo autorizado (no ingreso): ${fmtCOP(c.ajustesAuditoria)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO ACTUALIZADO: ${fmtCOP(c.esperado)}*\n\nREGISTRO DEL CIERRE ORIGINAL\nEsperado al cerrar: ${fmtCOP(c.caja.efectivo_esperado)}\nEfectivo registrado al cerrar: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia al cerrar: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');

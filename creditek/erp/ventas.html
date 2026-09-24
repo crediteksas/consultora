@@ -500,8 +500,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
         </select>
       </div>
       <div class="campo"><label for="creditoInicial">Cuota inicial</label><input type="number" id="creditoInicial" min="0" placeholder="0"></div>
-      <div class="campo"><label for="creditoValorEsperado" id="creditoValorEsperadoLabel">Valor esperado de la financiera</label><input type="number" id="creditoValorEsperado" min="0" step="0.01" placeholder="0"></div>
+      <div class="campo"><label for="creditoValorEsperado" id="creditoValorEsperadoLabel">Valor esperado de la financiera</label><input type="number" id="creditoValorEsperado" min="0" step="1" placeholder="0"></div>
       <div class="aviso-validacion" id="addiLiquidacionVista" role="status" aria-live="polite" hidden></div>
+      <div class="campo" id="addiComplementoGrupo" style="display:none"><label for="addiComplemento">Falta cobrar al cliente por otro medio</label><input type="number" id="addiComplemento" readonly></div>
+      <div class="campo" id="addiMedioGrupo" style="display:none"><label for="addiMedio">¿Cómo pagó el cliente esa diferencia?</label><select id="addiMedio"><option value="">Selecciona el medio de pago</option><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro medio</option></select></div>
+      <div class="campo" id="addiReferenciaGrupo" style="display:none"><label for="addiReferencia">Referencia del pago complementario</label><input type="text" id="addiReferencia" maxlength="120" placeholder="Número de comprobante o transacción"></div>
       <div class="campo">
         <label>Plazo</label>
         <select id="creditoPlazo">
@@ -776,7 +779,7 @@ async function abrirDetalleVenta(ventaId) {
       .eq('venta_id', ventaId)
       .order('id'),
     sb.from('creditos')
-      .select('financiera,cuota_inicial,valor_esperado_financiera,contrato_ref,plazo_meses,estado_conciliacion')
+      .select('financiera,cuota_inicial,valor_esperado_financiera,medio_pago_complementario,referencia_pago_complementario,contrato_ref,plazo_meses,estado_conciliacion')
       .eq('venta_id', ventaId)
       .maybeSingle(),
     sb.from('movimientos_lectura')
@@ -818,9 +821,7 @@ async function abrirDetalleVenta(ventaId) {
     <div class="detalle-credito">
       <b>Crédito</b><br>
       Financiera: ${escapeHtml(detalle.credito.financiera || '—')} ·
-      Cuota inicial: ${fmtCOP(detalle.credito.cuotaInicial)} ·
-      Valor esperado: ${fmtCOP(detalle.credito.valorEsperado)} ·
-      Plazo: ${detalle.credito.plazoMeses || '—'} cuotas
+      ${detalle.credito.financiera === 'addi' ? `Otro pago al vender: ${fmtCOP(detalle.credito.cuotaInicial)} (${escapeHtml(detalle.credito.medioPagoComplementario || 'medio no registrado')}) · Crédito Addi: ${fmtCOP(detalle.credito.valorEsperado)}` : `Cuota inicial: ${fmtCOP(detalle.credito.cuotaInicial)} · Valor esperado: ${fmtCOP(detalle.credito.valorEsperado)} · Plazo: ${detalle.credito.plazoMeses || '—'} cuotas`}
     </div>
   ` : '';
   const movimientos = resultadoMovimientos.data || [];
@@ -915,6 +916,8 @@ function abrirWizard() {
   document.getElementById('itemsVentaContainer').innerHTML = '';
   document.getElementById('creditoInicial').value = '';
   document.getElementById('creditoValorEsperado').value = '';
+  document.getElementById('addiMedio').value = '';
+  document.getElementById('addiReferencia').value = '';
   document.getElementById('creditoFinanciera').value = 'payjoy';
   actualizarVistaAddi();
   actualizarTotalParcial();
@@ -948,25 +951,32 @@ function actualizarVistaAddi() {
   const campo = document.getElementById('creditoValorEsperado');
   const vista = document.getElementById('addiLiquidacionVista');
   const total = venta.items.reduce((s, item) => s + Number(item.precio_venta || 0) * Number(item.cantidad || 1), 0);
-  document.getElementById('creditoValorEsperadoLabel').textContent = esAddi ? 'Valor del crédito aprobado por Addi' : 'Valor esperado de la financiera';
+  const medio = document.getElementById('addiMedio');
+  document.getElementById('creditoValorEsperadoLabel').textContent = esAddi ? 'Valor por el que se está haciendo el crédito Addi' : 'Valor esperado de la financiera';
   inicial.readOnly = esAddi;
   inicial.closest('.campo').style.display = esAddi ? 'none' : '';
   document.getElementById('creditoPlazo').closest('.campo').style.display = esAddi ? 'none' : '';
-  if (!esAddi) { vista.hidden = true; return; }
+  document.getElementById('addiComplementoGrupo').style.display = esAddi ? '' : 'none';
+  if (!esAddi) { vista.hidden = true; document.getElementById('addiMedioGrupo').style.display = 'none'; document.getElementById('addiReferenciaGrupo').style.display = 'none'; return; }
   const credito = Number(campo.value || 0);
-  inicial.value = credito > 0 && credito <= total ? String(Math.round((total - credito) * 100) / 100) : '';
+  inicial.value = '0';
   vista.hidden = false;
-  if (!campo.value) { vista.textContent = 'Ingresa el valor del crédito: aquí verás el pago pactado a la tienda y el neto que Addi consignaría.'; return; }
-  if (credito > total) { vista.textContent = 'El crédito no puede superar el total de la venta.'; return; }
+  document.getElementById('addiComplemento').value = '';
+  document.getElementById('addiMedioGrupo').style.display = 'none';
+  document.getElementById('addiReferenciaGrupo').style.display = 'none';
+  if (!campo.value) { vista.textContent = `Valor de venta del artículo: ${fmtCOP(total)}. Ingresa el valor bruto del crédito Addi para calcular cuánto recibirá la tienda y qué falta cobrar.`; return; }
   try {
-    const resultado = window.CreditekAddiLiquidacion.calcular(credito);
-    const otroPago = Math.max(0, total - credito);
-    vista.textContent = `Pago del crédito a la tienda: ${fmtCOP(resultado.pagoTienda)} (${resultado.porcentajeTienda * 100}% del crédito). ${otroPago ? `Diferencia del artículo: ${fmtCOP(otroPago)}, otra forma de pago en tienda; no se descuenta de Addi. ` : ''}Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA. Neto estimado que Addi consignará: ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario. Pendiente de confirmar con el reporte y el banco.`;
+    const resultado = window.CreditekAddiLiquidacion.calcularVenta(total, credito);
+    document.getElementById('addiComplemento').value = String(resultado.porCobrar);
+    document.getElementById('addiMedioGrupo').style.display = resultado.porCobrar > 0 ? '' : 'none';
+    document.getElementById('addiReferenciaGrupo').style.display = resultado.porCobrar > 0 && medio.value !== 'efectivo' && medio.value !== '' ? '' : 'none';
+    vista.textContent = `Crédito Addi: ${fmtCOP(credito)}. La tienda recibirá por ese crédito ${fmtCOP(resultado.pagoTienda)} (${resultado.porcentajeTienda * 100}%). Debe cobrar al cliente ${fmtCOP(resultado.porCobrar)} por otro medio para completar el valor del artículo (${fmtCOP(total)}). Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA; consignación estimada a Creditek: ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario.`;
   } catch (error) { vista.textContent = error.message; }
 }
 
 document.getElementById('creditoFinanciera').addEventListener('change', actualizarVistaAddi);
 document.getElementById('creditoValorEsperado').addEventListener('input', actualizarVistaAddi);
+document.getElementById('addiMedio').addEventListener('change', actualizarVistaAddi);
 
 function avanzarPaso() {
   const err = document.getElementById('modalVentaErr');
@@ -997,20 +1007,25 @@ function avanzarPaso() {
     actualizarVistaAddi();
     const inicial = Number(document.getElementById('creditoInicial').value || 0);
     const esperado = Number(document.getElementById('creditoValorEsperado').value || 0);
-    if (document.getElementById('creditoFinanciera').value === 'addi') {
-      try { window.CreditekAddiLiquidacion.calcular(esperado); }
-      catch (error) { err.textContent = error.message; err.classList.add('show'); return; }
-    }
     if (esperado <= 0) { err.textContent = 'Ingresa el valor esperado de la financiera.'; err.classList.add('show'); return; }
     const totalVenta = venta.items.reduce(
       (suma, item) => suma + Number(item.precio_venta || 0) * Number(item.cantidad || 1),
       0
     );
+    const esAddi = document.getElementById('creditoFinanciera').value === 'addi';
+    let complemento = 0;
+    let medioComplementario = null;
+    let referenciaComplementaria = null;
     try {
-      ventasPagos.clasificarVentaCredito({
-        totalVenta,
-        cuotaInicial: inicial,
-        saldoPendiente: esperado,
+      if (esAddi) {
+        const calculo = window.CreditekAddiLiquidacion.calcularVenta(totalVenta, esperado);
+        complemento = calculo.porCobrar;
+        medioComplementario = complemento > 0 ? document.getElementById('addiMedio').value : null;
+        referenciaComplementaria = complemento > 0 && medioComplementario !== 'efectivo' ? document.getElementById('addiReferencia').value.trim() : null;
+        if (complemento > 0 && !medioComplementario) throw new Error('Selecciona cómo pagó el cliente la diferencia.');
+        if (complemento > 0 && medioComplementario !== 'efectivo' && !referenciaComplementaria) throw new Error('Ingresa la referencia del pago complementario.');
+      } else ventasPagos.clasificarVentaCredito({
+        totalVenta, cuotaInicial: inicial, saldoPendiente: esperado,
       });
     } catch (error) {
       err.textContent = error.message;
@@ -1019,9 +1034,10 @@ function avanzarPaso() {
     }
     venta.credito = {
       financiera: document.getElementById('creditoFinanciera').value,
-      cuota_inicial: inicial,
+      cuota_inicial: esAddi ? complemento : inicial,
       valor_esperado: esperado,
-      plazo_meses: document.getElementById('creditoFinanciera').value === 'addi' ? null : Number(document.getElementById('creditoPlazo').value),
+      plazo_meses: esAddi ? null : Number(document.getElementById('creditoPlazo').value),
+      ...(esAddi ? { medio_pago_complementario: medioComplementario, referencia_pago_complementario: referenciaComplementaria } : {}),
     };
     mostrarPaso(5);
     return;
@@ -1283,8 +1299,8 @@ function renderResumenFinal() {
   if (venta.tipo === 'credito' && venta.credito) {
     creditoHtml = `
       <div class="linea"><span>Financiera</span><span>${escapeHtml(venta.credito.financiera)}</span></div>
-      <div class="linea"><span>${venta.credito.financiera === 'addi' ? 'Otra forma de pago de la venta' : 'Cuota inicial'}</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
-      <div class="linea"><span>Valor esperado</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
+      <div class="linea"><span>${venta.credito.financiera === 'addi' ? `Cobrado al cliente (${escapeHtml(venta.credito.medio_pago_complementario || 'ninguno')})` : 'Cuota inicial'}</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
+      <div class="linea"><span>${venta.credito.financiera === 'addi' ? 'Valor bruto del crédito Addi' : 'Valor esperado'}</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
       ${venta.credito.financiera === 'addi' ? '' : `<div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>`}
     `;
     if (venta.credito.financiera === 'addi') {

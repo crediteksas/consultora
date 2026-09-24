@@ -37,6 +37,16 @@
     });
   }
 
+  function calcularVenta(valorArticulo, valorCredito, tipoTienda = 'propia') {
+    const articulo = centavos(valorArticulo);
+    if (articulo % 100 !== 0) throw new Error('El valor del artículo debe estar en pesos enteros.');
+    if (centavos(valorCredito) % 100 !== 0) throw new Error('El crédito Addi debe estar en pesos enteros.');
+    const liquidacion = calcular(valorCredito, tipoTienda);
+    const porCobrar = articulo / 100 - liquidacion.pagoTienda;
+    if (porCobrar < 0) throw new Error('El pago pactado por Addi supera el valor del artículo. Revisa el precio o el crédito.');
+    return Object.freeze({ ...liquidacion, valorArticulo: articulo / 100, porCobrar });
+  }
+
   global.CreditekAddiLiquidacion = Object.freeze({
     TARIFA_INTERMEDIACION,
     IVA_TARIFA,
@@ -44,5 +54,6 @@
     PORCENTAJE_TIENDA_PROPIA,
     PORCENTAJE_TIENDA_ALIADA,
     calcular,
+    calcularVenta,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

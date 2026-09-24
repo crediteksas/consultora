@@ -16,7 +16,7 @@
       'tipo',
       'total',
       'clientes(nombre_completo)',
-      'creditos(financiera,cuota_inicial)',
+      'creditos(financiera,cuota_inicial,valor_esperado_financiera,medio_pago_complementario)',
       'venta_items:venta_items_lectura(cantidad,precio_venta,utilidad,productos(nombre,tipo))',
     ].join(',');
   }
@@ -36,6 +36,7 @@
           telefonos.push({
             nombre: item.productos?.nombre || 'Teléfono',
             tipo: venta.tipo,
+            financiera: credito?.financiera || '',
             monto: venta.tipo === 'credito' ? numero(credito?.cuota_inicial) : precio,
           });
         } else {
@@ -59,7 +60,10 @@
           producto: celular?.productos?.nombre || '—',
           financiera: credito?.financiera || '—',
           inicial: numero(credito?.cuota_inicial),
-          financiado: numero(venta.total) - numero(credito?.cuota_inicial),
+          medioComplementario: credito?.medio_pago_complementario || '',
+          financiado: credito?.financiera === 'addi'
+            ? numero(credito?.valor_esperado_financiera)
+            : numero(venta.total) - numero(credito?.cuota_inicial),
         };
       });
 
@@ -72,7 +76,8 @@
       totalContado: (ventas || [])
         .filter(venta => venta.tipo === 'contado')
         .reduce((total, venta) => total + numero(venta.total), 0),
-      totalIniciales: creditosDelDia.reduce((total, credito) => total + credito.inicial, 0),
+      totalIniciales: creditosDelDia.reduce((total, credito) => total +
+        (credito.financiera === 'addi' && credito.medioComplementario && credito.medioComplementario !== 'efectivo' ? 0 : credito.inicial), 0),
       totalUtilidad,
     };
   }
@@ -85,7 +90,7 @@
     texto += '*TELÉFONOS*\n';
     texto += datos.telefonos.length
       ? datos.telefonos.map(telefono =>
-          `${telefono.nombre} (${telefono.tipo}) — ${telefono.tipo === 'credito' ? 'Inicial: ' : ''}${moneda(telefono.monto)}`
+          `${telefono.nombre} (${telefono.tipo}) — ${telefono.tipo === 'credito' ? (telefono.financiera === 'addi' ? 'Otro pago: ' : 'Inicial: ') : ''}${moneda(telefono.monto)}`
         ).join('\n')
       : 'Sin ventas.';
     texto += '\n\n*ACCESORIOS*\n';
@@ -95,7 +100,7 @@
     texto += '\n\n*CRÉDITOS*\n';
     texto += datos.creditosDelDia.length
       ? datos.creditosDelDia.map(credito =>
-          `${credito.cliente} — ${credito.producto} — ${credito.financiera}\n  Inicial: ${moneda(credito.inicial)} | Financiado: ${moneda(credito.financiado)}`
+          `${credito.cliente} — ${credito.producto} — ${credito.financiera}\n  ${credito.financiera === 'addi' ? `Otro pago (${credito.medioComplementario || 'sin identificar'})` : 'Inicial'}: ${moneda(credito.inicial)} | Crédito: ${moneda(credito.financiado)}`
         ).join('\n')
       : 'Sin créditos.';
     texto += '\n\n*GASTOS*\n';

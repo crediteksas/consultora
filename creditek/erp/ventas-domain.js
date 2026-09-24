@@ -112,6 +112,8 @@
             financiera: credito.financiera || '',
             cuotaInicial: numero(credito.cuota_inicial),
             valorEsperado: numero(credito.valor_esperado_financiera),
+            medioPagoComplementario: credito.medio_pago_complementario || '',
+            referenciaPagoComplementario: credito.referencia_pago_complementario || '',
             plazoMeses: numero(credito.plazo_meses),
             estadoConciliacion: credito.estado_conciliacion || '',
           }

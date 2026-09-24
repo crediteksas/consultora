@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
-const migration = await readFile(new URL('../../supabase/migrations/20260924042359_addi_autorizacion_pago_antes_compensacion.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../../supabase/migrations/20260924043449_addi_autorizacion_pago_antes_compensacion.sql', import.meta.url), 'utf8');
 const oscar = '00000000-0000-4000-8000-000000000002';
 const maite = '00000000-0000-4000-8000-000000000001';
 const addiId = '00000000-0000-4000-8000-000000000163';

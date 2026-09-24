@@ -7,6 +7,7 @@ import {PGlite} from '@electric-sql/pglite';
 const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const U=createRequire(import.meta.url)('../../creditek/erp/tesoreria-pagos-unificados.js');
 const migration=read('supabase/migrations/20260923215357_retiros_retail_desde_cajas.sql');
+const creditekMigration=read('supabase/migrations/20260924232333_abono_tienda_creditek.sql');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391',storeA='00000000-0000-4000-8000-000000000001',storeB='00000000-0000-4000-8000-000000000002';
 let db,date;
 const sql=async(s,p=[])=>db.query(s,p);
@@ -40,6 +41,7 @@ before(async()=>{
  create table proveedores(id uuid primary key,nombre text,activo boolean);
  create table movimientos_caja_tienda(id uuid primary key default gen_random_uuid(),tienda_codigo text,fecha date,tipo text,monto numeric,soporte_path text,observacion text,autorizado_por uuid,creado_por uuid,idempotency_key uuid unique);
  create table abonos(id uuid);create table movimientos_tesoreria_central(id uuid);create table facturas_proveedor(id uuid);
+ create table cuenta_corriente(tienda_codigo text,tipo text,concepto text,monto numeric,usuario uuid,referencia_tipo text,referencia_id uuid);
  create table caja_diaria(id uuid primary key default gen_random_uuid(),tienda_codigo text,fecha date,estado text default 'abierta',
  apertura numeric default 0,contado_ventas numeric default 0,financiado_ventas numeric default 0,iniciales numeric default 0,
  otros_ingresos numeric default 0,gastos_efectivo numeric default 0,salidas_explicitas numeric default 0,
@@ -59,10 +61,18 @@ before(async()=>{
  await db.exec('create trigger instrucciones_consignacion_snapshot_inmutable before update on instrucciones_consignacion for each row execute function proteger_snapshot_instruccion_consignacion()');
  await db.exec(read('tests/fixtures/retiros-retail-cash-cycle.sql'));
  await db.exec(migration);
+ await db.exec('alter table abonos add primary key(id)');
+ await db.exec(`alter table abonos alter column id set default gen_random_uuid();
+   alter table abonos add column tienda_codigo text,add column monto numeric,
+     add column soporte_path text,add column registrado_por uuid,add column fecha date,
+     add column tipo_movimiento text,add column tercero text,add column concepto text,
+     add column fuente_fondos text,add column observacion text,add column idempotency_key uuid,
+     add column instruccion_id uuid,add column movimiento_caja_id uuid;`);
+ await db.exec(creditekMigration);
  date=(await sql("select to_char(now() at time zone 'America/Bogota','YYYY-MM-DD') d")).rows[0].d;
 });
 beforeEach(async()=>{
- await db.exec('reset role;truncate financial_entries,instrucciones_consignacion,comprobantes_consignacion,movimientos_caja_tienda,audit_log,storage.objects,caja_arqueo_intentos,caja_cortes,caja_diaria,creditos,venta_items,ventas,gastos cascade');
+ await db.exec('reset role;truncate financial_entries,instrucciones_consignacion,comprobantes_consignacion,movimientos_caja_tienda,cuenta_corriente,audit_log,storage.objects,caja_arqueo_intentos,caja_cortes,caja_diaria,creditos,venta_items,ventas,gastos cascade');
  await sql('update caja_ciclo_config set fecha_inicio=$1',[date]);
  await user(oscar);await db.exec('reset role');await sql("insert into ventas(tienda_codigo,fecha,tipo,total) values('A',$1,'contado',1000),('B',$1,'contado',1000)",[date]);
  await user(maite);
@@ -124,6 +134,39 @@ test('instrucciones tradicionales respetan reservas de socios, incluso con sopor
  await support(a,storeA);await user(maite);await validate(a.id,randomUUID(),'rechazado');
  await assert.rejects(sql("select crear_instruccion_consignacion('A',$1,'Banco prueba','1234567890',950,'OSCAR')",[date]),/supera el efectivo/);
  const r=await sql("select crear_instruccion_consignacion('A',$1,'Banco prueba','1234567890',900,'OSCAR') x",[date]);assert.equal(r.rows[0].x.ok,true);
+});
+test('Creditek conserva el destino bancario, exige deuda y no permite que una tienda emita instrucciones',async()=>{
+ await db.exec('reset role');
+ await sql("insert into cuenta_corriente(tienda_codigo,tipo,concepto,monto,usuario) values('A','cargo','Deuda de prueba',300,$1)",[oscar]);
+ await user(storeA);
+ await assert.rejects(sql("select crear_instruccion_recaudo_creditek('A',$1,100,null,$2)",[date,randomUUID()]),/Solo Maythe u Oscar/);
+ await user(maite);
+ const key=randomUUID();
+ const first=(await sql("select crear_instruccion_recaudo_creditek('A',$1,100,'Abono a Creditek',$2) x",[date,key])).rows[0].x;
+ const repeated=(await sql("select crear_instruccion_recaudo_creditek('A',$1,100,'Abono a Creditek',$2) x",[date,key])).rows[0].x;
+ assert.equal(first.instruccion_id,repeated.instruccion_id);
+ await db.exec('reset role');
+ const row=(await sql('select * from instrucciones_consignacion where id=$1',[first.instruccion_id])).rows[0];
+ assert.equal(row.tipo_destino,'CREDITEK');
+ assert.equal(row.numero_cuenta,'87600004006');
+ assert.equal(row.banco,'Bancolombia · Ahorros');
+ await user(maite);
+ await assert.rejects(sql("select crear_instruccion_recaudo_creditek('A',$1,301,null,$2)",[date,randomUUID()]),/supera la deuda/);
+ const path=`A/consignaciones/${row.id}/${randomUUID()}.jpg`;
+ await user(storeA);
+ await sql('select enviar_comprobante_consignacion($1,100,$2,$3)',[row.id,path,randomUUID()]);
+ await user(maite);
+ const decision=randomUUID();
+ await sql("select decidir_instruccion_consignacion($1,'validado',null,$2)",[row.id,decision]);
+ await sql("select decidir_instruccion_consignacion($1,'validado',null,$2)",[row.id,decision]);
+ await db.exec('reset role');
+ const totals=(await sql(`select
+   (select count(*)::int from abonos where instruccion_id=$1) as abonos,
+   (select count(*)::int from cuenta_corriente where referencia_tipo='abono') as cartera,
+   (select count(*)::int from movimientos_caja_tienda where tipo='consignacion') as caja,
+   (select count(*)::int from kora_private.recaudos_creditek_tienda where instruccion_id=$1) as recaudos,
+   (select count(*)::int from movimientos_tesoreria_central) as b2b`,[row.id])).rows[0];
+ assert.deepEqual(totals,{abonos:1,cartera:1,caja:1,recaudos:1,b2b:0});
 });
 test('retiro antiguo sin distribución no se aprueba y un duplicado con otra clave no descuenta dos veces',async()=>{
  const old=(await sql("select * from finanzas_registrar_movimiento('retiro_utilidad','retail',$1,'retiro','Prueba antigua','Socio prueba',null,null,10,$1,$1,null)",[date])).rows[0];

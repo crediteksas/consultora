@@ -226,6 +226,15 @@ body.modal-open { overflow: hidden; }
       <h1 style="font-size:18px;">Instrucciones de consignación</h1>
       <button class="btn-primary" id="btnNuevaInstruccion" style="display:none;">+ Nueva instrucción</button>
     </div>
+    <section id="cuentaCreditekPanel" class="cuadrito-vacio" style="display:none;margin-bottom:16px;">
+      <h2 style="font-size:16px;margin:0 0 8px;">Cuenta de recaudo · Creditek S.A.S.</h2>
+      <p>NIT 901.259.859-0. Solo Maythe u Oscar pueden configurar esta cuenta. Cada instrucción conserva el destino bancario usado al crearla.</p>
+      <div class="campo"><label for="cuentaCreditekBanco">Banco</label><input id="cuentaCreditekBanco" maxlength="100" autocomplete="off"></div>
+      <div class="campo"><label for="cuentaCreditekTipo">Tipo de cuenta</label><select id="cuentaCreditekTipo"><option value="">Selecciona tipo</option><option>Ahorros</option><option>Corriente</option><option>Billetera digital</option></select></div>
+      <div class="campo"><label for="cuentaCreditekNumero">Número de cuenta</label><input id="cuentaCreditekNumero" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" autocomplete="off"></div>
+      <button class="btn-primary" id="btnGuardarCuentaCreditek" type="button">Guardar cuenta verificada</button>
+      <p id="cuentaCreditekEstado" role="status" aria-live="polite">Consultando cuenta…</p>
+    </section>
     <div class="tabla-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Tienda</th><th>Banco</th><th>Cuenta destino</th><th>Valor</th><th>Comprobante</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -337,7 +346,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label>Banco</label><input id="instruccionBanco" maxlength="120"></div>
     <div class="campo"><label>Número de cuenta</label><input id="instruccionCuenta" maxlength="120"></div>
     <div class="campo"><label for="instruccionValor">Valor esperado</label><input type="text" id="instruccionValor" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="Ej: 1556000"></div>
-    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="OSCAR">OSCAR · flujo B2B</option></select><p>Para un socio de Retail: <a href="finanzas-programadas.html?vista=general">Gastos y retiros → Nuevo retiro → Retail</a>. Las instrucciones se generan después de la aprobación de Oscar; no uses OSCAR para ese retiro.</p></div>
+    <div class="campo"><label>Tipo de destino</label><select id="instruccionTipo"><option value="PROVEEDOR">PROVEEDOR</option><option value="CREDITEK">CREDITEK · abono de cartera Retail</option><option value="OSCAR">OSCAR · flujo B2B</option></select><p>Para abonar la deuda de la tienda con Creditek, elige CREDITEK. Para un socio de Retail: <a href="finanzas-programadas.html?vista=general">Gastos y retiros → Nuevo retiro → Retail</a>; no uses OSCAR para ese retiro.</p></div>
     <div class="campo" id="campoInstruccionProveedor"><label>Proveedor</label><select id="instruccionProveedor"></select></div>
     <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
     <div class="modal-err" id="modalInstruccionErr"></div>
@@ -387,6 +396,8 @@ let modalAnteriorAbono = null;
 let abonoIdempotencyKey = null;
 let instrucciones = [];
 let proveedoresCache = [];
+let cuentaCreditekCache = null;
+let instruccionCreditekRequestId = null;
 let instruccionComprobanteActual = null;
 let fotoComprobanteBlob = null;
 let comprobanteIdempotencyKey = null;
@@ -395,6 +406,7 @@ let saldoInicialIdempotencyKey = null;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 function esGerencia() { return !!currentPerfil && currentPerfil.rol === 'gerencia'; }
+function puedeConfigurarCuentaCreditek() { return !!currentPerfil?.activo && ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'].includes(currentUser?.id); }
 function puedeAutorizarAjusteSaldos() { return esGerencia() && currentPerfil.activo && currentUser?.id === '6de0ad26-64af-4966-8cd9-d468880af627'; }
 
 document.getElementById('btnLogin').addEventListener('click', hacerLogin);
@@ -492,6 +504,7 @@ function initPagina() {
   document.getElementById('btnNuevaInstruccion').addEventListener('click', abrirNuevaInstruccion);
   document.getElementById('btnCancelarInstruccion').addEventListener('click', () => cerrarModal('modalInstruccion'));
   document.getElementById('btnGuardarInstruccion').addEventListener('click', guardarInstruccion);
+  document.getElementById('btnGuardarCuentaCreditek').addEventListener('click', guardarCuentaCreditek);
   document.getElementById('instruccionTipo').addEventListener('change', actualizarTipoInstruccion);
   document.getElementById('instruccionTienda').addEventListener('change', cargarEfectivoDisponible);
   document.getElementById('instruccionFecha').addEventListener('change', cargarEfectivoDisponible);
@@ -551,6 +564,12 @@ async function cargarTodo() {
     proveedoresCache = proveedores || [];
     document.getElementById('btnNuevaInstruccion').style.display = 'inline-block';
     document.getElementById('btnSaldoInicial').style.display = 'inline-block';
+    if (puedeConfigurarCuentaCreditek()) {
+      document.getElementById('cuentaCreditekPanel').style.display = 'block';
+      await cargarCuentaCreditek();
+    } else {
+      document.querySelector('#instruccionTipo option[value="CREDITEK"]').disabled = true;
+    }
   }
   await cargarMovimientosCC();
   if (puedeAutorizarAjusteSaldos()) await cargarAjustesAuditados();
@@ -878,6 +897,48 @@ function etiquetaEstadoInstruccion(estado) {
   }[estado] || estado;
 }
 
+async function cargarCuentaCreditek() {
+  const estado = document.getElementById('cuentaCreditekEstado');
+  const { data, error } = await sb.rpc('ver_cuenta_recaudo_creditek');
+  if (error || !data) {
+    cuentaCreditekCache = null;
+    estado.textContent = 'No se pudo consultar la cuenta de Creditek. No se emitirán instrucciones hasta verificarla.';
+    return;
+  }
+  cuentaCreditekCache = data;
+  document.getElementById('cuentaCreditekBanco').value = data.banco || '';
+  document.getElementById('cuentaCreditekTipo').value = data.tipo_cuenta || '';
+  document.getElementById('cuentaCreditekNumero').value = data.numero_cuenta || '';
+  estado.textContent = data.activa
+    ? `Destino activo: ${data.titular} · NIT ${data.nit} · ${data.banco} ${data.tipo_cuenta} · cuenta terminada en ${String(data.numero_cuenta).slice(-4)}.`
+    : 'Cuenta incompleta: guarda banco, tipo y número antes de emitir instrucciones.';
+}
+
+async function guardarCuentaCreditek() {
+  if (!puedeConfigurarCuentaCreditek()) return;
+  const banco = document.getElementById('cuentaCreditekBanco').value.trim();
+  const tipo = document.getElementById('cuentaCreditekTipo').value;
+  const numero = document.getElementById('cuentaCreditekNumero').value.trim();
+  const estado = document.getElementById('cuentaCreditekEstado');
+  if (banco.length < 2 || !['Ahorros','Corriente','Billetera digital'].includes(tipo) || !/^\d{6,20}$/.test(numero)) {
+    estado.textContent = 'Confirma banco, tipo y número de cuenta antes de guardar.';
+    return;
+  }
+  if (!confirm(`¿Confirmas que ${banco} · ${tipo} · terminada en ${numero.slice(-4)} pertenece a Creditek S.A.S.? Las nuevas instrucciones usarán esta cuenta.`)) return;
+  const btn = document.getElementById('btnGuardarCuentaCreditek');
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.rpc('guardar_cuenta_recaudo_creditek', {
+      p_banco: banco, p_tipo_cuenta: tipo, p_numero_cuenta: numero,
+    });
+    if (error || !data?.ok) {
+      estado.textContent = 'No se guardó la cuenta: ' + (error?.message || 'respuesta inválida');
+      return;
+    }
+    await cargarCuentaCreditek();
+  } finally { btn.disabled = false; }
+}
+
 async function cargarInstrucciones() {
   const empty = document.getElementById('emptyInstrucciones');
   const tbody = document.getElementById('tbodyInstrucciones');
@@ -897,11 +958,13 @@ async function cargarInstrucciones() {
     const interno = esCentral()
       ? `<br><small>${escapeHtml(i.tipo_destino || '')}${i.proveedor_nombre ? ` · ${escapeHtml(i.proveedor_nombre)}` : ''}</small>`
       : '';
+    const beneficiario = i.tipo_destino === 'CREDITEK'
+      ? '<br><strong>Creditek S.A.S. · NIT 901.259.859-0</strong>' : '';
     return `<tr>
       <td>${escapeHtml(i.fecha)}${i.fecha_pago?`<br><small>Pago: ${escapeHtml(i.fecha_pago)}</small>`:''}</td>
       <td>${escapeHtml(nombreTienda(i.tienda_codigo))}</td>
       <td>${escapeHtml(i.banco)}</td>
-      <td>${escapeHtml(destino || '—')}${i.beneficiario_socio?`<br><strong>Socio: ${escapeHtml(i.beneficiario_socio)}</strong><br><small>Retiro Retail ${escapeHtml(i.financial_entry_id||'')}</small>`:''}</td>
+      <td>${escapeHtml(destino || '—')}${beneficiario}${i.beneficiario_socio?`<br><strong>Socio: ${escapeHtml(i.beneficiario_socio)}</strong><br><small>Retiro Retail ${escapeHtml(i.financial_entry_id||'')}</small>`:''}</td>
       <td>${fmtCOP(i.valor_esperado)}</td>
       <td>${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : '—'}</td>
       <td>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</td>
@@ -927,6 +990,7 @@ function abrirNuevaInstruccion() {
   document.getElementById('instruccionCuenta').value = '';
   document.getElementById('instruccionValor').value = '';
   document.getElementById('instruccionTipo').value = 'PROVEEDOR';
+  instruccionCreditekRequestId = crypto.randomUUID();
   document.getElementById('instruccionObservacion').value = '';
   document.getElementById('modalInstruccionErr').classList.remove('show');
   actualizarTipoInstruccion();
@@ -935,8 +999,19 @@ function abrirNuevaInstruccion() {
 }
 
 function actualizarTipoInstruccion() {
+  const creditek = document.getElementById('instruccionTipo').value === 'CREDITEK';
   document.getElementById('campoInstruccionProveedor').style.display =
     document.getElementById('instruccionTipo').value === 'PROVEEDOR' ? 'block' : 'none';
+  for (const id of ['instruccionBanco','instruccionCuenta']) document.getElementById(id).readOnly = creditek;
+  if (creditek) {
+    document.getElementById('instruccionBanco').value = cuentaCreditekCache?.activa
+      ? `${cuentaCreditekCache.banco} · ${cuentaCreditekCache.tipo_cuenta}` : '';
+    document.getElementById('instruccionCuenta').value = cuentaCreditekCache?.activa
+      ? cuentaCreditekCache.numero_cuenta : '';
+  } else {
+    document.getElementById('instruccionBanco').value = '';
+    document.getElementById('instruccionCuenta').value = '';
+  }
 }
 
 async function cargarEfectivoDisponible() {
@@ -959,6 +1034,11 @@ async function guardarInstruccion() {
   const err = document.getElementById('modalInstruccionErr');
   err.classList.remove('show');
   const tipo = document.getElementById('instruccionTipo').value;
+  if (tipo === 'CREDITEK' && !cuentaCreditekCache?.activa) {
+    err.textContent = 'Configura y verifica primero la cuenta de recaudo de Creditek.';
+    err.classList.add('show');
+    return;
+  }
   const payload = {
     p_tienda_codigo: document.getElementById('instruccionTienda').value,
     p_fecha: document.getElementById('instruccionFecha').value,
@@ -971,7 +1051,15 @@ async function guardarInstruccion() {
   };
   const btn = document.getElementById('btnGuardarInstruccion');
   btn.disabled = true;
-  const { data, error } = await sb.rpc('crear_instruccion_consignacion', payload);
+  const { data, error } = tipo === 'CREDITEK'
+    ? await sb.rpc('crear_instruccion_recaudo_creditek', {
+        p_tienda_codigo: payload.p_tienda_codigo,
+        p_fecha: payload.p_fecha,
+        p_valor_esperado: payload.p_valor_esperado,
+        p_observacion: payload.p_observacion,
+        p_request_id: instruccionCreditekRequestId,
+      })
+    : await sb.rpc('crear_instruccion_consignacion', payload);
   btn.disabled = false;
   if (error || !data?.ok) {
     err.textContent = error?.message || 'El servidor no confirmó la instrucción.';

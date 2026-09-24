@@ -19,31 +19,28 @@ const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
 });
 const rows = [row('uno', 'A', '2026-09-02', 100), row('dos', 'B', '2026-09-03', 200), row('tres', 'A', '2026-09-04', 300)];
 
-test('Addi aprobado aparece en Tesorería sin presentar el cobro esperado como recibido', async () => {
+test('Addi aprobado sin compensación aparece en la cola común de liquidaciones sin abono', async () => {
   const ui = await boot([], { addiLiquidations: [{
     id: 'addi-37', consecutivo: 37, tienda: 'Móvil Shopping', tipo_tienda: 'propia',
     credito_bruto: 258800, neto_estimado: 235702.10, recibido: 0,
     pago_tienda: 196688, utilidad_creditek: 39014.10, cobro_estado: 'activo',
   }] });
-  const panel = ui.node('#addiTreasuryPanel').innerHTML;
-  assert.match(panel, /#37 · Móvil Shopping/);
-  assert.match(panel, /Pendiente de abono bancario/);
-  assert.doesNotMatch(panel, /data-addi-prepare=/);
+  assert.match(ui.node('#unlinkedCompensations').innerHTML, /Venta Addi #37/);
+  assert.match(ui.node('#unlinkedCompensations').innerHTML, /Sin abono preparado/);
   await ui.node('#showStoreMovements').onclick();
-  assert.equal(ui.node('#addiStoreMovementsPanel').classList.contains('hidden'), false);
-  assert.match(ui.node('#addiStoreMovementsPanel').innerHTML, /#37 · Móvil Shopping/);
-  assert.match(ui.node('#addiStoreMovementsPanel').innerHTML, /Ver cobro/);
+  assert.doesNotMatch(html, /addiStoreMovementsPanel/);
+  assert.doesNotMatch(ui.node('#unlinkedCompensations').innerHTML, /data-addi-prepare/);
   assert.equal(ui.node('#pendingCompensationCount').textContent, 0, 'un cobro sin banco no es un abono aplicable');
   assert.deepEqual(ui.writes, []);
 });
 
-test('Tesorería sigue cargando si una página antigua no trae el panel Addi nuevo', async () => {
-  const ui = await boot([], { withoutAddiPanel: true, addiLiquidations: [{
+test('Addi con compensación preparada no se duplica en la cola común', async () => {
+  const ui = await boot([], { addiLiquidations: [{
     id: 'addi-37', consecutivo: 37, tienda: 'Móvil Shopping', tipo_tienda: 'propia',
     credito_bruto: 258800, neto_estimado: 235702.10, recibido: 0,
-    pago_tienda: 196688, utilidad_creditek: 39014.10, cobro_estado: 'activo',
+    pago_tienda: 196688, utilidad_creditek: 39014.10, cobro_estado: 'activo', compensacion_id: 'comp-37',
   }] });
-  assert.match(ui.node('#addiTreasuryPanel').innerHTML, /#37 · Móvil Shopping/);
+  assert.doesNotMatch(ui.node('#unlinkedCompensations').innerHTML, /Venta Addi #37/);
   assert.deepEqual(ui.writes, []);
 });
 
@@ -139,7 +136,6 @@ async function boot(records = rows, options = {}) {
   const nodes = new Map(), queries = [], writes = [], listeners = new Map();
   function node(selector) {
     if (options.withoutLegacyForm && selector.startsWith('#movementForm')) return null;
-    if (options.withoutAddiPanel && selector === '#addiStoreMovementsPanel') return null;
     if (nodes.has(selector)) return nodes.get(selector);
     const classes = new Set(), attrs = {}, handlers = {};
     const n = {
@@ -296,7 +292,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.4/);
+  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.5/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

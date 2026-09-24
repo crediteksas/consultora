@@ -6,7 +6,7 @@ const app = await readFile(new URL('../../creditek/erp/aliados-liquidaciones-app
 const page = await readFile(new URL('../../creditek/erp/aliados-liquidaciones.html', import.meta.url), 'utf8');
 
 test('Liquidaciones Addi usa el nombre oficial y la ciudad, no el código CK', () => {
-  assert.match(app, /sb\.from\('origenes'\)\.select\('codigo,nombre,ciudad'\)/);
+  assert.match(app, /sb\.from\('origenes'\)\.select\('codigo,nombre,ciudad,tipo'\)/);
   assert.match(app, /storeByCode\.get\(row\.tienda_codigo\)/);
   assert.match(app, /esc\(storeName\)/);
   assert.match(app, /esc\(location\)/);
@@ -18,9 +18,13 @@ test('un nombre no resuelto bloquea la acción y nunca se presenta como código 
   assert.match(app, /'Tienda sin identificar'/);
 });
 
-test('el cuadro Addi compacta columnas sin esconder el IVA ni la utilidad', () => {
-  const section = page.match(/<section class="card" id="addiFollowup"[\s\S]*?<\/section>/)?.[0];
+test('Addi aparece en el listado común; su fórmula queda en el detalle', () => {
+  const section = page.match(/<section class="card hidden" id="addiFollowup"[\s\S]*?<\/section>/)?.[0];
   assert.ok(section);
+  assert.ok(page.indexOf('id="batches"') < page.indexOf('id="addiFollowup"'));
+  assert.match(page, /<option value="addi">Addi<\/option>/);
+  assert.match(app, /data-open-addi=/);
+  assert.match(app, /selectedAddiId=String\(id\)/);
   assert.equal((section.match(/<th>/g) || []).length, 8);
   assert.doesNotMatch(section, /<th>Política<\/th>/);
   assert.match(section, /<th>Descuento Addi<\/th>/);

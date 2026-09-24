@@ -476,6 +476,8 @@
       ["Utilidad bruta del negocio", amount(component('gross'))],
       ["Ventas del periodo", cop(sum(ops, "monto_base"))],
       ["Bonificaciones del periodo", amount(component('bonus'))],
+      ["Gastos financieros del periodo", amount(component('financial'))],
+      ["Gastos aplicados a esta vista", cop(expenseTotal)],
       ["Provisión calculada del periodo", amount(component('provision'))],
       [expenseSelection.unallocated || expenseSelection.restricted ? "Utilidad antes de gastos generales" : "Utilidad final del periodo", amount(finalUtility)],
     ]);

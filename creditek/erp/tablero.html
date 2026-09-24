@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KORA · Dashboard ejecutivo</title>
 <link rel="stylesheet" href="/design-system/components/kora-dashboard.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="kora-access-control.js?v=2.0.31"></script>
@@ -421,11 +421,12 @@ function creditosTiendas(data, period, tiendas) {
   return CreditekTableroEjecutivos.credits(data, period).filter(o => o.tipo_establecimiento === 'propia' && codes.has(o.origen_codigo));
 }
 async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
-  let qv = sb.from('ventas').select('id, total, tipo').gte('fecha', desde).lte('fecha', hasta).eq('anulada', false);
-  if (tienda) qv = qv.eq('tienda_codigo', tienda);
-  const { data: ventas } = await qv;
-  const ids = (ventas || []).map(v => v.id);
-  const totalVentas = (ventas || []).reduce((s, v) => s + Number(v.total || 0), 0);
+  const ventas = await CreditekTableroEjecutivos.allRows(sb, 'ventas', 'id,total,tipo', 'id', q => {
+    q = q.gte('fecha', desde).lte('fecha', hasta).eq('anulada', false);
+    return tienda ? q.eq('tienda_codigo', tienda) : q;
+  });
+  const ids = ventas.map(v => v.id);
+  const totalVentas = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
   let totalCreditos = null;
   try {
     const end = new Date(hasta + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 1);
@@ -435,8 +436,11 @@ async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
 
   let totalUtilidad = 0;
   if (ids.length) {
-    const { data: items } = await sb.from('venta_items_lectura').select('utilidad, venta_id').in('venta_id', ids);
-    totalUtilidad = (items || []).reduce((s, i) => s + Number(i.utilidad || 0), 0);
+    for (let from = 0; from < ids.length; from += 400) {
+      const batch = ids.slice(from, from + 400);
+      const items = await CreditekTableroEjecutivos.allRows(sb, 'venta_items_lectura', 'id,utilidad,venta_id', 'id', q => q.in('venta_id', batch));
+      totalUtilidad += items.reduce((s, i) => s + Number(i.utilidad || 0), 0);
+    }
   }
   return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad };
 }

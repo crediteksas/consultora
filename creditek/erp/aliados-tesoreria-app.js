@@ -546,45 +546,6 @@
       .join("")}</div>`;
   }
   function render() {
-    let addiPanel = $("#addiTreasuryPanel");
-    if (!addiPanel) {
-      addiPanel = document.createElement("section");
-      addiPanel.id = "addiTreasuryPanel";
-      addiPanel.className = "card";
-      $("#outgoingContent").before(addiPanel);
-    }
-    const addiRows = data.addiLiquidations || [];
-    addiPanel.classList.toggle("hidden", treasuryView !== "operational" || !addiRows.length);
-    const addiStorePanel = $("#addiStoreMovementsPanel");
-    if (addiStorePanel) addiStorePanel.classList.toggle("hidden", treasuryView !== "storeMovements" || !addiRows.length);
-    const addiMarkup = addiRows.length ? `<h2>Addi · seguimiento de cobros y compensaciones</h2>
-      <p>Estas liquidaciones aprobadas todavía no son abonos aplicables. Confirma el ingreso real en «Cobros de plataformas»; después prepara la compensación para que aparezca en «Compensaciones pendientes» y Gestión la aplique a la cartera de la tienda.</p>
-      ${table(
-        ["Venta / tienda", "Crédito", "Neto Addi", "Recibido", "A tienda", "Utilidad", "Estado", "Acción"],
-        addiRows.map((a) => {
-          const complete = a.cobro_estado === "activo"
-            && Number(a.recibido) >= Number(a.neto_estimado)
-            && Number(a.neto_estimado) > 0;
-          const status = a.compensacion_aplicada
-            ? "Compensación aplicada"
-            : a.compensacion_id
-              ? "Lista para aplicar"
-              : complete
-                ? "Cobro conciliado"
-                : "Pendiente de abono bancario";
-          const action = a.compensacion_id
-            ? '<button class="btn secondary" type="button" data-addi-compensations>Ver compensaciones</button>'
-            : complete && a.tipo_tienda === "propia" && canAuthorize()
-              ? `<button class="btn primary" type="button" data-addi-prepare="${esc(a.id)}">Preparar compensación</button>`
-              : '<button class="btn secondary" type="button" data-addi-cobros>Ver cobro</button>';
-          return `<tr><td>#${esc(a.consecutivo)} · ${esc(a.tienda)}</td><td>${cop(a.credito_bruto)}</td>
-            <td>${cop(a.neto_estimado)}</td><td>${cop(a.recibido)}</td>
-            <td>${cop(a.pago_tienda)}</td><td>${cop(a.utilidad_creditek)}</td>
-            <td>${esc(status)}</td><td>${action}</td></tr>`;
-        })
-      )}` : "";
-    addiPanel.innerHTML = addiMarkup;
-    if (addiStorePanel) addiStorePanel.innerHTML = addiMarkup;
     let recoverySummary=$('#recoverySummary');
     if(!recoverySummary){recoverySummary=document.createElement('section');recoverySummary.id='recoverySummary';recoverySummary.className='card';$('#outgoingContent').before(recoverySummary);}
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
@@ -654,12 +615,9 @@
       pendingB2B = data.compensations
         .filter((x) => !x.applied_at && !x.reversed_at)
         .reduce((n, x) => n + Number(x.compensation_value || 0), 0),
-      outsourcingGenerated = data.destinations.reduce(
-        (n, x) => n + Number(x.total_outsourcing_commission || 0),
-        0,
-      ) + data.compensations.filter(
-        (x) => x.platform === "addi" && x.applied_at && !x.reversed_at,
-      ).reduce((n, x) => n + Number(x.outsourcing_commission || 0), 0),
+      outsourcingCredits = data.movements
+        .filter((x) => x.unit === "tercerizacion" && x.direction === "credit" && ["pagado", "conciliado"].includes(x.status))
+        .reduce((n, x) => n + Number(x.amount), 0),
       expenses = data.movements
         .filter(
           (x) =>
@@ -674,10 +632,12 @@
       { label: "Pagos pendientes a ejecutivos", value: exec.reduce((n, x) => n + Number(x.valor), 0), detail: "Bonificaciones aún no cerradas." },
       { label: "Compensaciones Retail calculadas para B2B", value: comp, detail: "Incluye valores aplicados y pendientes. No es utilidad B2B.", className: "metric-b2b" },
       { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
-      { label: "Utilidad de liquidaciones asignada a Tercerización", value: outsourcingGenerated, detail: "Utilidad generada antes de pagos y ajustes de Tesorería.", className: "metric-outsourcing" },
-      { label: "Pagos y ajustes descontados de Tercerización", value: expenses, detail: "Incluye pagos a ejecutivos y ajustes contabilizados.", className: "metric-outsourcing" },
-      { label: "Saldo neto de Tercerización disponible", value: Math.max(0, out), detail: "Utilidad asignada menos pagos, ajustes y salidas.", className: "metric-outsourcing" },
+      { label: "Créditos contabilizados en Tercerización", value: outsourcingCredits, detail: "Suma de movimientos de crédito pagados o conciliados, incluidos los ajustes registrados.", className: "metric-outsourcing" },
+      { label: "Débitos contabilizados en Tercerización", value: expenses, detail: "Incluye pagos a ejecutivos, reversiones y otros débitos pagados o conciliados.", className: "metric-outsourcing" },
+      { label: "Saldo neto de Tercerización disponible", value: Math.max(0, out), detail: "Saldo contable de Tesorería; debe conciliar con créditos menos débitos.", className: "metric-outsourcing" },
     ];
+    const outsourcingDifference = outsourcingCredits - expenses - out;
+    if (Math.abs(outsourcingDifference) > 0.01) metrics.push({ label: "Diferencia por conciliar · Tercerización", value: outsourcingDifference, detail: "Los movimientos no coinciden con el saldo contable. Revisar antes de usar este saldo.", className: "metric-outsourcing" });
     if (out < 0) metrics.push({ label: "Faltante operativo por anulaciones", value: -out, detail: "Valor por cubrir antes de nuevas salidas.", className: "metric-outsourcing" });
     $("#metrics").innerHTML = metrics
       .map(
@@ -712,6 +672,17 @@
     const unlinkedOperations = (data.ownStoreOperations || []).filter(
       x => x.reconocida !== false && !compensatedOperationIds.has(x.id),
     );
+    for (const addi of data.addiLiquidations || []) {
+      if (addi.tipo_tienda === 'propia' && !addi.compensacion_id) {
+        unlinkedOperations.push({
+          origen_codigo: addi.tienda_codigo,
+          imei: `Venta Addi #${addi.consecutivo}`,
+          addi_id: addi.id,
+          liquidation_id: null,
+          liquidations: { plataforma: 'addi', estado: 'aprobada', fecha_corte: addi.fecha_venta },
+        });
+      }
+    }
     const pendingCompensations = data.compensations.filter(x => !x.applied_at && !x.reversed_at);
     const awaitingAcceptance = data.compensations.filter(x => x.applied_at && !x.accepted_at && !x.reversed_at && !x.legacy_applied);
     $("#awaitingAcceptanceCount").textContent = awaitingAcceptance.length;
@@ -732,7 +703,7 @@
         const liquidation = x.liquidations || {};
         const detail = [x.imei, x.referencia || x.modelo].filter(Boolean).join(" · ") || "Sin referencia";
         const historical = ['cerrada','pagada'].includes(liquidation.estado);
-        return `<tr><td>${esc(storeName(x.origen_codigo))}</td><td>${esc(platformName(liquidation.plataforma))}</td><td>${date(liquidation.fecha_corte || x.operation_at)}</td><td>${esc(detail)}</td><td>${badge(liquidation.estado || "pendiente", historical ? "Histórico por conciliar" : "Sin abono preparado")}</td><td><a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(x.liquidation_id)}">Consultar liquidación</a></td></tr>`;
+        return `<tr><td>${esc(storeName(x.origen_codigo))}</td><td>${esc(platformName(liquidation.plataforma))}</td><td>${date(liquidation.fecha_corte || x.operation_at)}</td><td>${esc(detail)}</td><td>${badge(liquidation.estado || "pendiente", x.liquidation_id && historical ? "Histórico por conciliar" : "Sin abono preparado")}</td><td><a class="btn secondary" href="${x.liquidation_id ? `aliados-liquidaciones.html?lote=${encodeURIComponent(x.liquidation_id)}` : `aliados-liquidaciones.html?plataforma=addi&addi=${encodeURIComponent(x.addi_id)}`}">Consultar liquidación</a></td></tr>`;
       }),
     );
     $("#compensationFilterError").classList.toggle("hidden", !rangoInvalido);
@@ -1485,31 +1456,6 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     if(!cobros)return;
     treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));
   };
-  document.addEventListener("click", async (event) => {
-    const prepare = event.target.closest("[data-addi-prepare]");
-    if (event.target.closest("[data-addi-cobros]")) {
-      if (cobros) await $("#showCobros").onclick();
-      return;
-    }
-    if (event.target.closest("[data-addi-compensations]")) {
-      $("#showStoreMovements").click();
-      return;
-    }
-    if (!prepare || !canAuthorize()) return;
-    if (!confirm("¿Preparar la compensación Addi ya conciliada para revisión y aplicación por Gestión?")) return;
-    prepare.disabled = true;
-    try {
-      const { error } = await sb.rpc("addi_preparar_compensacion", {
-        p_addi_id: prepare.dataset.addiPrepare,
-      });
-      if (error) throw error;
-      await load();
-      notice("Compensación Addi preparada. Está en «Compensaciones y movimientos de tiendas» para aplicarla.");
-    } catch (error) {
-      notice(error.message || "No fue posible preparar la compensación Addi.", true);
-      prepare.disabled = false;
-    }
-  });
   $("#showClients").onclick = async () => {
     if (!clients) return;
     treasuryView = 'clients';

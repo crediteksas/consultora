@@ -196,13 +196,14 @@
     const operaciones = ordered.map(({row,index}) => {
       const externalId = texto(valor(row, '# Crédito', 'Credito', 'Crédito'));
       let sourceKey = `krediya|${externalId}`;
-      if(sourceKeys.has(sourceKey)) sourceKey += `|fila:${index+2}`;
-      sourceKeys.add(sourceKey);
+      if(sourceKeys.has(sourceKey.toLowerCase())) sourceKey += `|fila:${index+2}`;
+      sourceKeys.add(sourceKey.toLowerCase());
       const clasificacion = clasificarEstablecimiento(valor(row, 'Tienda', 'Aliado'), establecimientos);
       const problemas = [];
       const eligible = finalizada(row);
-      if (!externalId || (eligible && vistos.has(externalId.toLowerCase()))) problemas.push('operacion_duplicada');
-      if(eligible) vistos.add(externalId.toLowerCase());
+      const anulada = clave(valor(row, 'Estado del contrato')) === 'anulado';
+      if (!externalId || (!anulada && vistos.has(externalId.toLowerCase()))) problemas.push('operacion_duplicada');
+      if (externalId && !anulada) vistos.add(externalId.toLowerCase());
       if (!texto(valor(row, 'IMEI'))) problemas.push('imei_vacio');
       if (!texto(valor(row, 'Cédula', 'Cedula'))) problemas.push('documento_vacio');
       if (clasificacion.incidencia) problemas.push(clasificacion.incidencia);

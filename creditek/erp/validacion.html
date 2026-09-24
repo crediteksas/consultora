@@ -6,7 +6,7 @@
 <title>KORA · Panel de Validación — Creditek</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <style>
 :root {
@@ -301,7 +301,7 @@ function renderFotoSlot(label, tipo, disponible) {
     <div class="foto-slot">
       <div class="foto-slot-label">${label}</div>
       <button class="foto-btn" data-tipo="${tipo}">Ver</button>
-      <br><img class="foto-preview" />
+      <br><img class="foto-preview" alt="Vista previa del soporte de validación" />
     </div>
   `;
 }

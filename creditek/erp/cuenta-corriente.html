@@ -6,7 +6,7 @@
 <title>Creditek · Cuenta Corriente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="cuenta-corriente-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.31"></script>
@@ -314,7 +314,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo">
       <label>Foto del soporte de consignación (obligatoria)</label>
       <input type="file" id="abonoFoto" accept="image/*" capture="environment">
-      <img class="foto-preview" id="abonoFotoPreview">
+    <img class="foto-preview" id="abonoFotoPreview" alt="Vista previa del soporte del abono">
     </div>
     <div class="modal-err" id="modalAbonoErr"></div>
     <div class="modal-actions">
@@ -354,7 +354,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label>Valor consignado</label><input type="number" id="comprobanteValor" min="1"></div>
     <div class="campo" id="comprobanteFechaCampo" hidden><label for="comprobanteFecha">Fecha real del pago al socio</label><input type="date" id="comprobanteFecha"><small>La salida se registra en esta fecha, no en la fecha de la instrucción. Adjunta soporte de ese pago.</small></div>
     <div class="campo"><label>Foto del comprobante</label><input type="file" id="comprobanteFoto" accept="image/*" capture="environment"></div>
-    <img class="foto-preview" id="comprobantePreview">
+    <img class="foto-preview" id="comprobantePreview" alt="Vista previa del comprobante">
     <div class="modal-err" id="modalComprobanteErr"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" id="btnCancelarComprobante">Cancelar</button>

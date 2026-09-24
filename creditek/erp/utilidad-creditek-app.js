@@ -325,6 +325,8 @@
     document.getElementById('btn-exportar').addEventListener('click', exportar);
   }
 
+  document.getElementById('btn-error-retry')?.addEventListener('click', () => location.reload());
+
   (async () => {
     try {
       if (!await verificarAuth()) return;

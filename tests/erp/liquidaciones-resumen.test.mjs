@@ -21,9 +21,9 @@ test('resumen mensual suma snapshots aprobados por corte, no mes de aprobación 
   assert.equal(Summary.utilidadMes([approved('missing','2026-09-14',null)],period).total,null);
   assert.equal(Summary.utilidadMes([approved('zero','2026-09-14',0)],period).total,0);
 });
-function render(batches,mode='week',filters={}){
+function render(batches,mode='week',filters={},addiRecords=[]){
   const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{value:filters[id]||'',textContent:'',innerHTML:''});return nodes.get(id);};
-  const context={$ ,batches,listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
+  const context={$ ,batches,addiRecords,addiStores:new Map([['CK-02',{nombre:'Móvil Shopping',tipo:'propia'}]]),listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
   vm.createContext(context);
   vm.runInContext(app.slice(app.indexOf('  const ownStoreUtility ='),app.indexOf('  function statesForMode('))+'\n'+app.slice(app.indexOf('  function renderBatches()'),app.indexOf('  function updateActions()')),context);
   context.renderBatches();return {context,$};
@@ -47,6 +47,19 @@ test('semana usa la fecha de aprobación en Bogotá y nunca la fecha de corte',(
   assert.equal(Summary.deSemana(previousBogota,period),false);
   assert.equal(Summary.deSemana(mondayBogota,period),true);
   assert.equal(Summary.deSemana(voided,period),false);
+});
+test('Addi comparte la lista, los contadores y el filtro de las otras plataformas',()=>{
+  const addi=[{id:'addi-1',consecutivo:163,tienda_codigo:'CK-02',fecha_venta:'2026-09-15',
+    aprobada_at:'2026-09-15T20:00:00Z',estado:'aprobada',credito_bruto:550000,
+    pago_tienda:386600,utilidad_creditek:114312.5}];
+  const rows=[approved('payjoy-1','2026-09-15',100)];
+  const all=render(rows,'week',{},addi);
+  assert.match(all.$('batches').innerHTML,/data-open="payjoy-1"/);
+  assert.match(all.$('batches').innerHTML,/data-open-addi="addi-1"/);
+  assert.equal(all.$('showWeek').textContent,'Liquidado esta semana (2)');
+  assert.match(all.$('monthlySummary').innerHTML,/Addi aparece en la lista, pero su utilidad no se suma/);
+  assert.doesNotMatch(render(rows,'week',{filterPlatform:'payjoy'},addi).$('batches').innerHTML,/data-open-addi/);
+  assert.match(render([], 'week',{filterPlatform:'addi'},addi).$('batches').innerHTML,/data-open-addi="addi-1"/);
 });
 test('retail muestra sus importes aunque pago a aliados y bonos sean cero; no altera totales',()=>{
   const rows=[approved('six','2026-09-06',175440,{total_pago_tiendas:455560,total_pagar:455560}),approved('seven','2026-09-07',711960,{total_pago_tiendas:1704465,total_pagar:1704465,operaciones_tiendas:4})];

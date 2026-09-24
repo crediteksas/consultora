@@ -27,8 +27,7 @@ test('deduplica antes del filtro temporal y respeta Bogotá y las anulaciones',(
 });
 test('KPI y gráfica usan el mismo conteo aunque la tienda haya registrado veinte créditos',async()=>{
  const ctx=scope({operations:[op('p'),op('a',{plataforma:'alo'})],reversions:[]});
- const query={select(){return this},gte(){return this},lte(){return this},eq(){return this},in(){return this},then(resolve){resolve({data:Array.from({length:20},(_,i)=>({id:i,tipo:'credito',total:100,utilidad:10}))})}};
- ctx.sb.from=()=>query;
+ ctx.CreditekTableroEjecutivos.allRows=async(_sb,table)=>Array.from({length:20},(_,i)=>table==='ventas'?{id:i,tipo:'credito',total:100}:{id:i,venta_id:i,utilidad:10});
  const result=await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','t');
  assert.equal(result.creditos,2);assert.equal(result.ventas,2000);assert.equal(result.utilidad,200);
  assert.match(html,/const creditosMes = CreditekReversiones.creditCount\(operacionesMes.filter/);
@@ -37,11 +36,26 @@ test('KPI y gráfica usan el mismo conteo aunque la tienda haya registrado veint
 test('error de Liquidaciones no se sustituye por ventas ni cero, permite reintentar',async()=>{
  const ctx=scope({operations:[],reversions:[]});
  ctx.CreditekTableroEjecutivos.loadCreditData=async()=>{throw Error('denegado')};
- const query={select(){return this},gte(){return this},lte(){return this},eq(){return this},then(resolve){resolve({data:[]})}};ctx.sb.from=()=>query;
+ ctx.CreditekTableroEjecutivos.allRows=async()=>[];
  assert.equal((await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','')).creditos,null);
  ctx.CreditekTableroEjecutivos.loadCreditData=async()=>({operations:[op('ok')],reversions:[]});
  assert.equal((await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','')).creditos,1);
  assert.match(html,/Créditos no disponibles. No se sustituyen por ventas de tienda/);
+});
+test('KPI pagina ventas y artículos sin truncar la utilidad del mes',async()=>{
+ const ctx=scope({operations:[],reversions:[]});
+ const sales=Array.from({length:1100},(_,i)=>({id:`v${String(i).padStart(4,'0')}`,total:100}));
+ const items=sales.map((sale,i)=>({id:`i${String(i).padStart(4,'0')}`,venta_id:sale.id,utilidad:25}));
+ const calls=[];
+ ctx.sb.from=table=>{
+  let rows=table==='ventas'?sales:items;
+  const q={select(){return q},gte(){return q},lte(){return q},eq(){return q},in(key,ids){rows=rows.filter(r=>ids.includes(r[key]));return q},order(key){rows=[...rows].sort((a,b)=>String(a[key]).localeCompare(String(b[key])));return q},range:async(from,to)=>{calls.push({table,from,to});return {data:rows.slice(from,to+1)}}};
+  return q;
+ };
+ const result=await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','');
+ assert.equal(result.ventas,110000);assert.equal(result.utilidad,27500);
+ assert.ok(calls.some(x=>x.table==='ventas'&&x.from===1000));
+ assert.equal(calls.filter(x=>x.table==='venta_items_lectura'&&x.from===0).length,3);
 });
 test('consulta paginada de fuente única, sin tablas de ventas ni históricos',async()=>{
  const tables=[];const sb={from(table){tables.push(table);return {select(){return this},order(){return this},range:async()=>({data:[]})}}};

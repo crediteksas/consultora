@@ -16,6 +16,9 @@
   let comercios;
   let preparacion;
   let batches = [];
+  let addiRecords = [];
+  let addiStores = new Map();
+  let selectedAddiId = null;
   let batchesRequest = 0;
   let selected;
   let activeTab = 'operations';
@@ -30,22 +33,26 @@
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = UX.formatoCOP;
-  const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : 'PayJoy';
+  const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : value === 'addi' ? 'Addi' : 'PayJoy';
   async function loadAddiFollowup() {
     const status = $('addiFollowupStatus');
     const body = $('addiFollowupRows');
     const [{ data, error }, stores] = await Promise.all([
       sb.rpc('addi_liquidaciones_listar'),
-      sb.from('origenes').select('codigo,nombre,ciudad'),
+      sb.from('origenes').select('codigo,nombre,ciudad,tipo'),
     ]);
     if (error || !Array.isArray(data) || stores.error || !Array.isArray(stores.data)) {
       status.textContent = 'No se pudieron consultar las liquidaciones o los nombres de las tiendas. Actualiza para reintentar.';
       body.innerHTML = '';
       $('addiFollowupTotals').innerHTML = '';
+      addiRecords = [];
+      renderBatches();
       return;
     }
     const storeByCode = new Map(stores.data.map(store => [store.codigo, store]));
+    addiStores = storeByCode;
     const rows = data.filter(row => row.estado !== 'anulada');
+    addiRecords = rows;
     const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
     status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
     const fields = ['credito_bruto','tarifa_addi','iva_tarifa','neto_estimado','inicial_tienda','pago_tienda','utilidad_creditek'];
@@ -67,9 +74,11 @@
       const baseNote = difference || row.base_fuente === 'credito_kora_sin_reporte_addi'
         ? `<details class="addi-base-detail"><summary>${difference ? '⚠ Diferencia' : 'Verificar base'}</summary><span>KORA: ${money(row.credito_kora)}<br>Diferencia: ${money(difference)}<br>${sourceNote}</span></details>` : '';
       const shortDate = String(row.fecha_esperada || '').slice(2,10);
-      return `<tr><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${money(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${money(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${money(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${money(row.neto_estimado)}</span></td><td data-label="A tienda"><span class="addi-primary">${money(row.pago_tienda)}</span><span class="addi-secondary">Inicial ${money(row.inicial_tienda)}</span></td><td data-label="Utilidad"><span class="addi-primary">${money(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
+      return `<tr data-addi-id="${esc(row.id)}"><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${money(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${money(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${money(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${money(row.neto_estimado)}</span></td><td data-label="A tienda"><span class="addi-primary">${money(row.pago_tienda)}</span><span class="addi-secondary">Inicial ${money(row.inicial_tienda)}</span></td><td data-label="Utilidad"><span class="addi-primary">${money(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
     }).join('');
     $('addiFollowupTotals').innerHTML = rows.length ? `<tr><th>TOTAL ${rows.length}</th><th>${money(totals.credito_bruto)}</th><th>${money(totals.tarifa_addi)}<span class="addi-secondary">IVA ${money(totals.iva_tarifa)}</span></th><th>${money(totals.neto_estimado)}</th><th>${money(totals.pago_tienda)}<span class="addi-secondary">Inicial ${money(totals.inicial_tienda)}</span></th><th>${money(totals.utilidad_creditek)}<span class="addi-secondary">${totals.credito_bruto ? (100 * totals.utilidad_creditek / totals.credito_bruto).toFixed(2) : '0.00'} %</span></th><th>—</th><th>—</th></tr>` : '';
+    renderBatches();
+    if (selectedAddiId) showAddiDetail(selectedAddiId, false);
   }
   async function actOnAddi(event) {
     const button = event.target.closest('button[data-addi-action]');
@@ -106,7 +115,7 @@
   const allyUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0) - ownStoreUtility(liquidation);
   const businessUtility = (liquidation) => Number(liquidation.total_utilidad_creditek || 0);
   const awaitingKrediyaCalculation = (batch) => batch.plataforma === 'krediya' && ['importada','validada','con_novedades'].includes(batch.estado);
-  const awaitingCalculation = (batch) => ['importada','validada','con_novedades'].includes(batch.estado);
+  const awaitingCalculation = (batch) => batch.plataforma !== 'addi' && ['importada','validada','con_novedades'].includes(batch.estado);
   const operationCount = (batch) => awaitingCalculation(batch)
     ? (batch.liquidation_operations || []).filter((operation) => batch.plataforma !== 'krediya' || operation.reconocida).length
     : Number(batch.operaciones_tiendas || 0) + Number(batch.operaciones_aliados || 0);
@@ -116,7 +125,7 @@
   const PENDING_STATES = ['importada', 'validada', 'con_novedades', 'calculada', 'revisada'];
   const HISTORY_STATES = ['aprobada', 'programada', 'pagada', 'conciliada', 'cerrada', 'anulada'];
   const isHistoricalBatch = (batch) => Boolean(batch.approved_at) || HISTORY_STATES.includes(batch.estado) ||
-    (batch.plataforma !== 'krediya' && String(batch.fecha_corte || '') < '2026-09-01');
+    (batch.plataforma !== 'addi' && batch.plataforma !== 'krediya' && String(batch.fecha_corte || '') < '2026-09-01');
 
   function statesForMode() {
     return listMode === 'pending' ? PENDING_STATES : listMode === 'history' ? HISTORY_STATES : [...PENDING_STATES,...HISTORY_STATES];
@@ -179,10 +188,14 @@
     $('liquidationsContent').classList.remove('hidden');
     $('refreshBatches').addEventListener('click', loadAddiFollowup);
     $('addiFollowupRows').addEventListener('click', actOnAddi);
+    const requestedPlatform=new URLSearchParams(location.search).get('plataforma');
+    if(['payjoy','alo','krediya','addi'].includes(requestedPlatform))$('filterPlatform').value=requestedPlatform;
     await loadAddiFollowup();
     await loadBatches();
     const requestedBatch=new URLSearchParams(location.search).get('lote');
+    const requestedAddi=new URLSearchParams(location.search).get('addi');
     if(new URLSearchParams(location.search).get('vista')==='historial')setListMode('history');
+    if(requestedAddi && addiRecords.some(row=>String(row.id)===requestedAddi))showAddiDetail(requestedAddi);
     if(requestedBatch && batches.some(b=>b.id===requestedBatch)) {
       await openDetail(requestedBatch);
       if(new URLSearchParams(location.search).get('tab')==='incidents')await loadTab('incidents');
@@ -230,28 +243,62 @@
 
   function renderBatches() {
     const periodo=Summary.periodos();
-    const month=Summary.utilidadMes(batches,periodo);
-    const weeklyBatches=batches.filter(batch=>Summary.deSemana(batch,periodo));
+    const addiInList=(typeof addiRecords==='undefined'?[]:addiRecords).map(row=>{
+      const store=addiStores.get(row.tienda_codigo)||{};
+      return {id:`addi:${row.id}`,addiId:row.id,consecutivo:row.consecutivo,
+        plataforma:'addi',fecha_corte:row.fecha_venta,imported_at:row.created_at||`${row.fecha_venta}T12:00:00Z`,
+        approved_at:row.aprobada_at,estado:row.estado==='pendiente_revision'?'validada':row.estado,
+        addiEstado:row.estado,operaciones_tiendas:1,operaciones_aliados:0,
+        total_pago_aliados:0,total_pago_tiendas:row.pago_tienda,total_bonos:0,
+        total_utilidad_creditek:row.utilidad_creditek,total_pagar:row.pago_tienda,
+        liquidation_operations:[{establishment_name:store.nombre,origen_codigo:row.tienda_codigo}],
+        storeName:store.nombre||'Tienda sin identificar',
+        calculoPendiente:row.estado==='aprobada' && store.tipo==='propia'
+          && Number(row.pago_tienda)!==Math.round(Number(row.credito_bruto)*0.76*100)/100};
+    });
+    const platformFilter=$('filterPlatform').value;
+    const visibleBatches=[...batches,...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];
+    const addiNeedsCorrection=addiInList.some(batch=>batch.calculoPendiente);
+    const month=Summary.utilidadMes(addiNeedsCorrection?visibleBatches.filter(batch=>!batch.addiId):visibleBatches,periodo);
+    const weeklyBatches=visibleBatches.filter(batch=>Summary.deSemana(batch,periodo));
     const weeklyOperations=weeklyBatches.reduce((total,batch)=>total+operationCount(batch),0);
-    $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad liquidada · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · ${esc($('filterPlatform').value?platformName($('filterPlatform').value):'Todas las plataformas')}</p></div><strong class="monthly-utility">${month.total==null?'No disponible':money(month.total)}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Antes de gastos, retiros y ajustes posteriores; no es saldo bancario.${month.faltantes?' Hay liquidaciones sin utilidad informada.':''}</p>`;
+    $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad liquidada · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · ${esc(platformFilter?platformName(platformFilter):'Todas las plataformas')}</p></div><strong class="monthly-utility">${addiNeedsCorrection&&platformFilter==='addi'?'Pendiente de rectificación':month.total==null?'No disponible':money(month.total)}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Antes de gastos, retiros y ajustes posteriores; no es saldo bancario.${month.faltantes?' Hay liquidaciones sin utilidad informada.':''}${addiNeedsCorrection?' Addi aparece en la lista, pero su utilidad no se suma hasta rectificar los importes aprobados.':''}</p>`;
     $('showWeek').textContent=`Liquidado esta semana (${weeklyBatches.length})`;
     $('listPeriod').textContent=listMode==='week'?`Aprobadas del ${UX.fechaCorta(periodo.semanaDesde)} al ${UX.fechaCorta(periodo.semanaHasta)} · ${weeklyBatches.length} liquidaciones · ${weeklyOperations} operaciones. El corte se muestra solo como referencia.`:listMode==='pending'?'Pendientes de todas las fechas, para no omitir gestiones.':'Consulta liquidaciones anteriores por fecha de corte.';
     $('batchDateHeader').textContent=listMode==='pending'?'Importación':'Liquidada';
-    $('showPending').textContent = `Pendientes (${batches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
-    $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
+    $('showPending').textContent = `Pendientes (${visibleBatches.filter((batch) => !isHistoricalBatch(batch) && PENDING_STATES.includes(batch.estado)).length})`;
+    $('showHistory').textContent = `Consultar historial (${visibleBatches.filter(isHistoricalBatch).length})`;
     const search = $('filterSearch').value.trim().toLowerCase();
     const stateFilter = $('filterState').value;
-    const rows = batches.filter((b) => listMode === 'week' ? Summary.deSemana(b,periodo) : listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
+    const rows = visibleBatches.filter((b) => listMode === 'week' ? Summary.deSemana(b,periodo) : listMode === 'history' ? isHistoricalBatch(b) : !isHistoricalBatch(b) && PENDING_STATES.includes(b.estado))
       .filter((b) => !stateFilter || b.estado === stateFilter)
       .filter((b) => !search || [b.id,b.plataforma,b.fecha_corte,UX.traducirEstado(b.estado),...(b.liquidation_operations||[]).flatMap(o=>[o.establishment_name,o.origen_codigo,o.imei])].some(value=>String(value||'').toLowerCase().includes(search)));
     const from=$('historyFrom')?.value,until=$('historyUntil')?.value;
     if(listMode==='history')rows.splice(0,rows.length,...rows.filter(b=>(!from||b.fecha_corte>=from)&&(!until||b.fecha_corte<=until)));
-    $('batches').innerHTML = rows.map((b) => `<tr>
+    $('batches').innerHTML = rows.map((b) => b.addiId ? `<tr>
+      <td>${UX.fechaAuditoria(b.approved_at||b.imported_at)}</td><td>Addi<small>#${esc(b.consecutivo)} · ${esc(b.storeName)}</small></td><td>${UX.fechaCorta(b.fecha_corte)}</td>
+      <td>${b.calculoPendiente?'<span class="badge con_novedades">Revisar cálculo</span>':state(b.estado)}</td><td>1</td><td>${money(b.total_pago_tiendas)}<small>${b.calculoPendiente?'Pendiente de rectificación':'Tiendas: '+money(b.total_pago_tiendas)}</small></td>
+      <td>${money(0)}</td><td>${b.calculoPendiente?'Por rectificar':money(b.total_utilidad_creditek)}</td><td>${money(b.total_pagar)}</td>
+      <td><button class="btn secondary" data-open-addi="${esc(b.addiId)}">Ver detalle</button></td></tr>` : `<tr>
       <td>${UX.fechaAuditoria(listMode==='pending'?b.imported_at:(b.approved_at||b.imported_at))}</td><td>${platformName(b.plataforma)}</td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${state(b.approved_at?'aprobada':b.estado)}</td><td>${operationCount(b)}</td>
       ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${i===0?commercePayment(b):awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : v==null?'No informado':money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'week' ? 'No hay liquidaciones en esta semana. Puedes consultar otras fechas en el historial.' : listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial para este rango.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
+    document.querySelectorAll('[data-open-addi]').forEach((button) => { button.onclick = () => showAddiDetail(button.dataset.openAddi); });
+  }
+
+  function showAddiDetail(id, scroll=true) {
+    $('detail').classList.add('hidden');
+    const row=addiRecords.find(item=>String(item.id)===String(id));
+    if(!row)return;
+    selectedAddiId=String(id);
+    const panel=$('addiFollowup');
+    panel.classList.remove('hidden');
+    $('addiFollowupStatus').textContent=`Venta #${row.consecutivo} · ${addiStores.get(row.tienda_codigo)?.nombre||'Tienda sin identificar'} · ${row.estado==='aprobada'?'Aprobada':row.estado==='revisada'?'Revisada':'Pendiente de revisión'}`;
+    $('addiFollowupTotals').classList.add('hidden');
+    panel.querySelectorAll('[data-addi-id]').forEach(item=>item.classList.toggle('hidden',item.dataset.addiId!==String(id)));
+    if(scroll)panel.scrollIntoView({behavior:'smooth',block:'start'});
   }
 
   function commercePayment(batch){
@@ -340,6 +387,8 @@
   }
 
   async function openDetail(id) {
+    selectedAddiId=null;
+    $('addiFollowup').classList.add('hidden');
     krediyaMissingPayees = 0;
     selected = batches.find((batch) => batch.id === id) || selected;
     $('detail').dataset.platform=selected.plataforma;
@@ -953,7 +1002,7 @@
   $('approve').onclick = () => { const message = `Confirma la aprobación de ${platformName(selected.plataforma)}\nFecha de corte: ${UX.fechaCorta(selected.fecha_corte)}\nOperaciones de tiendas propias: ${selected.operaciones_tiendas || 0}\nOperaciones de aliados: ${selected.operaciones_aliados || 0}\nPago tiendas: ${money(selected.total_pago_tiendas)}\nPago aliados: ${money(selected.total_pago_aliados)}\nBonos: ${money(selected.total_bonos)}\nUtilidad total del negocio: ${money(businessUtility(selected))}\nTotal a girar: ${money(selected.total_pagar)}${selected.plataforma === 'krediya' ? '\n\nLas diferencias comerciales quedan en un único informe de 7 días y no modifican PAGAMOS.' : ''}`; if (confirm(message)) stateRpc('aprobada'); };
   document.querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => loadTab(button.dataset.tab); });
   document.querySelectorAll('[data-model]').forEach((button) => { button.onclick = () => { activeModel = button.dataset.model; document.querySelectorAll('[data-model]').forEach((item) => item.classList.toggle('active', item === button)); loadTab('operations'); }; });
-  $('filterPlatform').onchange = loadBatches;
+  $('filterPlatform').onchange = () => { selectedAddiId=null; $('addiFollowup').classList.add('hidden'); loadBatches(); };
   $('filterState').onchange = renderBatches;
   $('filterSearch').oninput = renderBatches;
   const historyTools=document.createElement('div');historyTools.className='filters hidden';historyTools.id='historyTools';
@@ -970,6 +1019,8 @@
   $('refreshBatches').onclick = loadBatches;
   function setListMode(mode) {
     listMode = mode;
+    selectedAddiId=null;
+    $('addiFollowup').classList.add('hidden');
     $('showWeek').classList.toggle('active', mode === 'week');
     if(mode==='history'&&!$('historyFrom').value&&!$('historyUntil').value){const period=Summary.periodos();$('historyFrom').value=period.mesDesde;$('historyUntil').value=period.hoy;}
     $('showPending').classList.toggle('active', mode === 'pending');

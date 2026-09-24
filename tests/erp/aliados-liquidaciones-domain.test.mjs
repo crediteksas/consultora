@@ -47,6 +47,19 @@ test('Krediya deduplica por número de crédito y conserva su fórmula de archiv
   assert.equal(result.operaciones[0].pagoNetoArchivo + result.operaciones[0].bonoArchivo + result.operaciones[0].utilidadArchivo, result.operaciones[0].montoCredito);
 });
 
+test('Krediya marca el segundo crédito repetido aunque ambas filas estén por validar', () => {
+  const headers = ['Fecha', '# Crédito', 'Cédula', 'IMEI', 'Monto a Financiar', 'Tienda', 'Estado del contrato', 'Estado del Pago'];
+  const first = ['23/09/2026', 'credito-prueba-1', '1000000000', '000000000000001', 500000, 'CREDITEK CIENAGA DE ORO 1', 'PENDIENTE', 'PENDIENTE'];
+  const second = [...first];
+  second[1] = 'CREDITO-PRUEBA-1';
+  const result = domain.importarKrediya([headers, first, second], establecimientos);
+  assert.equal(result.operaciones.length, 2);
+  assert.equal(result.operaciones[0].reconocida, false);
+  assert.equal(result.operaciones[1].reconocida, false);
+  assert.ok(!result.operaciones[0].incidencias.includes('operacion_duplicada'));
+  assert.ok(result.operaciones[1].incidencias.includes('operacion_duplicada'));
+});
+
 test('Krediya acepta el archivo original sin columnas manuales de liquidación', () => {
   const headers = ['Fecha','# Crédito','Cédula','Nombres','Apellidos','IMEI','Modelo','Descripción','Precio','Monto a Financiar','Abono (moneda)','Tienda','Estado del contrato'];
   const row = ['3/09/2026','codnjm6','1062961763','Yonatan','Domico','356251203448807','TECNO KN3','TECNO SPARK GO 3 64GB 4RAM',402500,342125,60375,'A DIGI MOVIL CANTACLARO','FIRMADO'];

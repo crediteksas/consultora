@@ -15,6 +15,7 @@
   }
 
   const esCargaInicial = m => m.tipo === 'cargo' && m.referencia_tipo === 'saldo_inicial';
+  const esAjusteAuditoria = m => m.referencia_tipo === 'ajuste_auditoria_b2b';
 
   function reunir(origenes, clientesB2B, corriente, libroB2B, saldosIniciales = []) {
     // Metadata only: the initial amount is already posted in cuenta_corriente.
@@ -53,10 +54,11 @@
         const inicialArrastrado = anteriores[c.cliente_codigo]?.saldo || 0;
         const inicialCargado = cargasIniciales.reduce((s,m) => s + Number(m.monto),0);
         return {...c, inicial:inicialArrastrado + inicialCargado, inicialArrastrado, inicialCargado, cargasIniciales,
-          cargos:ms.filter(m => m.tipo === 'cargo' && !esCargaInicial(m)).reduce((s,m) => s + Number(m.monto),0),
-          abonos:ms.filter(m => m.tipo === 'abono').reduce((s,m) => s + Number(m.monto),0),
+          cargos:ms.filter(m => m.tipo === 'cargo' && !esCargaInicial(m) && !esAjusteAuditoria(m)).reduce((s,m) => s + Number(m.monto),0),
+          abonos:ms.filter(m => m.tipo === 'abono' && !esAjusteAuditoria(m)).reduce((s,m) => s + Number(m.monto),0),
+          ajustes:ms.filter(esAjusteAuditoria).reduce((s,m) => s + (m.tipo === 'cargo' ? 1 : -1)*Number(m.monto),0),
           saldo:cierre[c.cliente_codigo]?.saldo || 0, movimientos:ms.length};
       }).sort((a,b) => a.cliente.localeCompare(b.cliente,'es'));
   }
-  global.CreditekCarteraB2BDomain = Object.freeze({leerTodas, reunir, resumir, esCargaInicial});
+  global.CreditekCarteraB2BDomain = Object.freeze({leerTodas, reunir, resumir, esCargaInicial, esAjusteAuditoria});
 })(typeof window !== 'undefined' ? window : globalThis);

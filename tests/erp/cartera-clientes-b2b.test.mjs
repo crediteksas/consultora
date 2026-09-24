@@ -83,6 +83,20 @@ test('saldo inicial, cargos y abonos respetan el período y conservan la regla e
  assert.equal(D.resumir(clientes,movimientos,'2026-09-01','2026-09-16','otro').length,0);
 });
 
+test('el ajuste auditado aumenta deuda sin presentarse como venta ni abono',()=>{
+ const clientes=[{cliente_codigo:'CK-13',cliente:'Luis'}];
+ const movimientos=[
+  {fecha:'2026-09-17',tipo:'cargo',monto:7684000,tienda_codigo:'CK-13',referencia_tipo:'remision_cliente_b2b'},
+  {fecha:'2026-09-24',tipo:'cargo',monto:8198540,tienda_codigo:'CK-13',referencia_tipo:'ajuste_auditoria_b2b'},
+ ];
+ const r=D.resumir(clientes,movimientos,'2026-09-01','2026-09-30')[0];
+ assert.equal(r.cargos,7684000);assert.equal(r.abonos,0);assert.equal(r.ajustes,8198540);
+ assert.equal(r.saldo,15882540);
+ assert.equal(r.inicial+r.cargos-r.abonos+r.ajustes,r.saldo);
+ assert.match(page,/Ajustes de auditoría/);
+ assert.match(page,/Autorizar ajuste de deuda/);
+});
+
 test('incluye tiendas sin movimientos e inactivas con historial',()=>{
  const origenes=[{codigo:'A',nombre:'Activa',tipo:'propia',activo:true},{codigo:'I',nombre:'Inactiva',tipo:'propia',activo:false},{codigo:'V',nombre:'Vacía',tipo:'propia',activo:false}];
  const data=D.reunir(origenes,[],[{id:1,tienda_codigo:'I',tipo:'abono',monto:10,created_at:'2026-09-01T12:00:00Z'}],[]);

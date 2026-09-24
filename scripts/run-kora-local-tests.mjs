@@ -102,6 +102,7 @@ const erp = [
   'tests/erp/liquidaciones-eliminar-importacion.test.mjs',
   'tests/erp/caja-arrastre-retroactivos.test.mjs',
   'tests/erp/saldos-auditados-gerencia.test.mjs',
+  'tests/erp/ajuste-auditado-cartera-b2b.test.mjs',
   'tests/erp/tesoreria-clientes.test.mjs',
   'tests/erp/clientes-pagos-unificados.test.mjs',
   'tests/erp/clientes-multilocal.test.mjs',

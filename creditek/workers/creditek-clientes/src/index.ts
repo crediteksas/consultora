@@ -778,7 +778,7 @@ export function formatearCorteCaja(cortes: any[], fechaLarga: string): string {
     `CAJA · CORTE OPERATIVO · ${fechaLarga} · TOTAL DISPONIBLE CONTADO ${fmtCOP(totalContado)} (${contadas.length} ${contadas.length === 1 ? 'arqueada' : 'arqueadas'}; pendientes excluidas)`,
     ...contadas.map(c => `${c.origen?.nombre || c.tienda_codigo}: contado ${fmtCOP(Number(c.efectivo_contado))} · esperado ${fmtCOP(Number(c.efectivo_esperado))} · diferencia ${fmtDiferenciaCOP(Number(c.diferencia))}`),
     ...(pendientes.length ? [
-      `PENDIENTES (${pendientes.length}) · ${pendientes.map(c => `${c.origen?.nombre || c.tienda_codigo}: esperado ${fmtCOP(Number(c.efectivo_esperado))}, Sin contar`).join(' / ')}`,
+      `CAJAS SIN ARQUEO (${pendientes.length}) · ${pendientes.map(c => `${c.origen?.nombre || c.tienda_codigo}: esperado ${fmtCOP(Number(c.efectivo_esperado))}, Sin contar`).join(' / ')}`,
     ] : []),
   ].join('\n');
 }

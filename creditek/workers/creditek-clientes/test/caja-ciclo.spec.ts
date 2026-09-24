@@ -18,7 +18,7 @@ it('muestra el total contado sin sumar tiendas pendientes y conserva un solo inf
   }));
   const mensaje = formatearCorteCaja([...contadas, ...pendientes], 'miércoles, 23 de septiembre de 2026');
   expect(mensaje).toContain('TOTAL DISPONIBLE CONTADO $700.021 (7 arqueadas; pendientes excluidas)');
-  expect(mensaje).toContain('PENDIENTES (3)');
+  expect(mensaje).toContain('CAJAS SIN ARQUEO (3)');
   const paginas = paginarReporte(mensaje);
   expect(paginas).toHaveLength(1);
   expect(paginas[0].parametros).toHaveLength(9);
@@ -38,6 +38,7 @@ it('mantiene el corte real de diez tiendas en un mensaje sin pegar cajas contada
   ].map(([nombre, esperado]) => ({ origen: { nombre }, efectivo_contado: null, efectivo_esperado: esperado, diferencia: null }));
   const mensaje = formatearCorteCaja([...arqueadas, ...sinArqueo], 'miércoles, 23 de septiembre de 2026');
   expect(mensaje).toContain('TOTAL DISPONIBLE CONTADO $12.848.432');
+  expect(mensaje.split('\n').at(-1)).toContain('CAJAS SIN ARQUEO (3)');
   const [pagina] = paginarReporte(mensaje);
   expect(pagina.parametros).toHaveLength(9);
   expect(renderizarPaginaReporte(pagina).length).toBeLessThanOrEqual(1024);

@@ -294,6 +294,13 @@
 
         <form id="form-pago-proveedor" class="hidden border-t border-gray-200 pt-4 space-y-3">
           <h3 class="font-semibold text-gray-800">Registrar pago</h3>
+          <p class="text-sm text-gray-600">Si un cliente B2B consignó directamente al proveedor, registra el abono en <a class="underline text-teal-700" href="cartera-b2b.html">Cartera clientes B2B</a>; allí bajan ambas deudas sin tocar Tesorería. Este formulario es para pagos hechos con dinero de Creditek.</p>
+          <label class="text-sm block">Origen del dinero
+            <select id="pago-origen" required class="mt-1 w-full border rounded px-3 py-2">
+              <option value="saldo_b2b">Saldo B2B de Tesorería: descontar saldo y factura juntos</option>
+              <option value="otro_registrado">Otro origen ya registrado: solo bajar factura</option>
+            </select>
+          </label>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label class="text-sm">Monto
               <input id="pago-monto" type="number" min="1" step="1" required class="mt-1 w-full border rounded px-3 py-2" />
@@ -427,6 +434,7 @@ let facturas = [];
 let proveedorSeleccionado = null;
 let detalleFacturaActual = null;
 let pagoIdempotencyKey = null;
+let pagoSoportePath = null;
 let saldoInicialIdempotencyKey = null;
 let registroSaldoInicial = null;
 let saldoInicialEnCurso = false;
@@ -702,6 +710,7 @@ function renderDetalleFactura(datos) {
   document.getElementById('pago-fecha').value =
     proveedoresDomain.fechaCalendarioLocal(new Date());
   pagoIdempotencyKey = crypto.randomUUID();
+  pagoSoportePath = null;
   etiquetarTablas();
 }
 
@@ -757,6 +766,7 @@ async function mostrarDetalleFactura(facturaId) {
 async function subirSoportePago() {
   const archivo = document.getElementById('pago-soporte').files?.[0];
   if (!archivo) return null;
+  if (pagoSoportePath) return pagoSoportePath;
   const extension = (archivo.name.split('.').pop() || 'bin').toLowerCase();
   const path = `pagos-proveedores/${pagoIdempotencyKey}.${extension}`;
   const { error } = await SB.storage.from(BUCKET_SOPORTES).upload(path, archivo, {
@@ -764,7 +774,8 @@ async function subirSoportePago() {
     upsert: false,
   });
   if (error) throw new Error('No se pudo subir el soporte: ' + error.message);
-  return path;
+  pagoSoportePath = path;
+  return pagoSoportePath;
 }
 
 async function registrarPago(event) {
@@ -781,12 +792,24 @@ async function registrarPago(event) {
       fecha: document.getElementById('pago-fecha').value,
     });
     soportePath = await subirSoportePago();
-    const { data, error } = await SB.rpc('registrar_pago_proveedor', {
+    const desdeB2B = document.getElementById('pago-origen').value === 'saldo_b2b';
+    const referencia = document.getElementById('pago-referencia').value.trim();
+    if (desdeB2B && (!soportePath || !referencia)) throw new Error('Para descontar Tesorería B2B adjunta el comprobante e indica su referencia.');
+    const { data, error } = desdeB2B ? await SB.rpc('registrar_pago_proveedor_desde_saldo_b2b', {
+      p_id: pagoIdempotencyKey,
       p_factura_id: detalleFacturaActual.factura.id,
       p_monto: pago.monto,
       p_fecha: pago.fecha,
       p_metodo: document.getElementById('pago-metodo').value.trim() || null,
-      p_referencia: document.getElementById('pago-referencia').value.trim() || null,
+      p_referencia: referencia,
+      p_soporte_path: soportePath,
+      p_nota: document.getElementById('pago-nota').value.trim() || null,
+    }) : await SB.rpc('registrar_pago_proveedor', {
+      p_factura_id: detalleFacturaActual.factura.id,
+      p_monto: pago.monto,
+      p_fecha: pago.fecha,
+      p_metodo: document.getElementById('pago-metodo').value.trim() || null,
+      p_referencia: referencia || null,
       p_soporte_path: soportePath,
       p_nota: document.getElementById('pago-nota').value.trim() || null,
       p_idempotency_key: pagoIdempotencyKey,
@@ -1001,6 +1024,7 @@ document.getElementById('panel-detalle-factura').addEventListener('click', event
   if (btn) abrirSoporte(btn.dataset.soporte);
 });
 document.getElementById('form-pago-proveedor').addEventListener('submit', registrarPago);
+document.getElementById('pago-soporte').addEventListener('change', () => { pagoSoportePath = null; pagoIdempotencyKey = crypto.randomUUID(); });
 document.getElementById('form-saldo-inicial').addEventListener('submit', registrarSaldoInicial);
 document.getElementById('form-saldo-inicial').addEventListener('invalid', event => {
   estadoSaldoInicial(event.target.validationMessage || 'Revisa los campos obligatorios del formulario.', true);

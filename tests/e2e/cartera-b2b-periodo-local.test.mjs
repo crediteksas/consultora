@@ -13,7 +13,7 @@ test('cartera completa: período, detalle, errores, exportación y diseño sin s
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
    if(u.hostname!=='kora.test')return route.abort();
-   if(/sidebar\.js|kora-access-control\.js|kora-environment/.test(u.pathname))return route.fulfill({contentType:'text/javascript',body:''});
+   if(/sidebar\.js|kora-access-control\.js|kora-environment|supabase-js/.test(u.pathname))return route.fulfill({contentType:'text/javascript',body:''});
    const f=resolve(process.cwd(),'.'+u.pathname);
    if(!f.startsWith(process.cwd()+'/'))return route.abort();
    try{await route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[extname(f)]||'application/octet-stream',body:await readFile(f)});}catch{await route.fulfill({status:404,body:''});}
@@ -26,18 +26,29 @@ test('cartera completa: período, detalle, errores, exportación y diseño sin s
     cuenta_corriente:[{id:1,tienda_codigo:'T',tipo:'cargo',monto:1000000,created_at:'2026-08-31T12:00:00Z',concepto:'Saldo previo'},{id:2,tienda_codigo:'T',tipo:'cargo',monto:300000,created_at:'2026-09-01T12:00:00Z',concepto:'Remisión'},{id:3,tienda_codigo:'T',tipo:'abono',monto:200000,created_at:'2026-09-16T12:00:00Z',concepto:'Compensación aplicada'},{id:4,tienda_codigo:'T',tipo:'cargo',monto:900000,created_at:'2026-09-17T12:00:00Z',concepto:'Fuera de período'}],
     movimientos_cartera:[{id:'a',cuenta_id:'c1',tienda_codigo:'C',efecto:'debito',monto:500000,fecha_efectiva:'2026-09-02',concepto:'Remisión cliente'}],
     saldos_iniciales_cartera:[{id:'s1',tienda_codigo:'T',fecha_corte:'2026-09-03'}],
+    proveedores:[{id:'p1',nombre:'Proveedor de prueba'}],
    };
    Object.assign(data.cuenta_corriente[0],{created_at:'2026-09-04T12:00:00Z',referencia_tipo:'saldo_inicial',referencia_id:'s1',concepto:'Carga inicial'});
    window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:{user:{id:'test'}}}})},from(table){window.calls.push(table);return {select(){return this},eq(){return this},in(){return this},order(){return this},single:async()=>({data:{rol:'gerencia'}}),range:async(a,b)=>window.failTable===table?{error:{message:'Fallo de prueba'}}:{data:data[table].slice(a,b+1)}}}})};
   });
   await page.goto('https://kora.test/creditek/erp/cartera-b2b.html');
-  await page.locator('#rows').getByText('Móvil Shopping').waitFor();
+  try { await page.locator('#rows').getByText('Móvil Shopping').waitFor({timeout:8000}); }
+  catch (error) { throw new Error(`La cartera no cargó: ${await page.locator('#loadError').textContent()} · ${errors.join(' · ')}`, {cause:error}); }
   assert.equal(await page.locator('#rows tr').count(),3);
   assert.match(await page.locator('#kInicial').textContent(),/1\.000\.000/);
   assert.match(await page.locator('#kCargos').textContent(),/800\.000/);
   assert.match(await page.locator('#kAbonos').textContent(),/200\.000/);
   assert.match(await page.locator('#kSaldo').textContent(),/1\.600\.000/);
   assert.equal(await page.locator('#fCliente option').count(),1);
+  await page.locator('#nuevo').click();
+  assert.equal(await page.locator('#fDestinoWrap').isVisible(),true);
+  await page.locator('#fDestino').selectOption('proveedor');
+  assert.equal(await page.locator('#fProveedorWrap').isVisible(),true);
+  assert.equal(await page.locator('#fProveedor option').count(),2);
+  await page.locator('#fEfecto').selectOption('debito');
+  assert.equal(await page.locator('#fDestinoWrap').isVisible(),false);
+  assert.equal(await page.locator('#fConceptoWrap').isVisible(),true);
+  await page.locator('[data-close="form"]').click();
   assert.match(await page.locator('#rows').textContent(),/corte 2026-09-03/);
   for(const width of [390,768,1280]){
    await page.setViewportSize({width,height:1000});

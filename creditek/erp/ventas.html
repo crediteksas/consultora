@@ -956,11 +956,12 @@ function actualizarVistaAddi() {
   const credito = Number(campo.value || 0);
   inicial.value = credito > 0 && credito <= total ? String(Math.round((total - credito) * 100) / 100) : '';
   vista.hidden = false;
-  if (!campo.value) { vista.textContent = 'Ingresa el valor del crédito: aquí verás lo que Addi consignaría y la fecha estimada de pago.'; return; }
+  if (!campo.value) { vista.textContent = 'Ingresa el valor del crédito: aquí verás el pago pactado a la tienda y el neto que Addi consignaría.'; return; }
   if (credito > total) { vista.textContent = 'El crédito no puede superar el total de la venta.'; return; }
   try {
     const resultado = window.CreditekAddiLiquidacion.calcular(credito);
-    vista.textContent = `Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA sobre la tarifa. Recibirás aproximadamente ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario de la venta. Quedará pendiente de confirmar con el reporte de Addi y el banco.`;
+    const otroPago = Math.max(0, total - credito);
+    vista.textContent = `Pago del crédito a la tienda: ${fmtCOP(resultado.pagoTienda)} (${resultado.porcentajeTienda * 100}% del crédito). ${otroPago ? `Diferencia del artículo: ${fmtCOP(otroPago)}, otra forma de pago en tienda; no se descuenta de Addi. ` : ''}Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA. Neto estimado que Addi consignará: ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario. Pendiente de confirmar con el reporte y el banco.`;
   } catch (error) { vista.textContent = error.message; }
 }
 
@@ -1282,7 +1283,7 @@ function renderResumenFinal() {
   if (venta.tipo === 'credito' && venta.credito) {
     creditoHtml = `
       <div class="linea"><span>Financiera</span><span>${escapeHtml(venta.credito.financiera)}</span></div>
-      <div class="linea"><span>Cuota inicial</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
+      <div class="linea"><span>${venta.credito.financiera === 'addi' ? 'Otra forma de pago de la venta' : 'Cuota inicial'}</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
       <div class="linea"><span>Valor esperado</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
       ${venta.credito.financiera === 'addi' ? '' : `<div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>`}
     `;
@@ -1290,7 +1291,8 @@ function renderResumenFinal() {
       const addi = window.CreditekAddiLiquidacion.calcular(venta.credito.valor_esperado);
       creditoHtml += `<div class="linea"><span>Tarifa Addi (7,5%)</span><span>${fmtCOP(addi.tarifa)}</span></div>
         <div class="linea"><span>IVA sobre tarifa</span><span>${fmtCOP(addi.ivaTarifa)}</span></div>
-        <div class="linea"><strong>Neto estimado a recibir</strong><strong>${fmtCOP(addi.netoEstimado)}</strong></div>
+        <div class="linea"><strong>Pago pactado a la tienda por el crédito</strong><strong>${fmtCOP(addi.pagoTienda)}</strong></div>
+        <div class="linea"><span>Neto estimado que consignará Addi</span><span>${fmtCOP(addi.netoEstimado)}</span></div>
         <div class="linea"><span>Pago estimado</span><span>15 días calendario después de la venta</span></div>`;
     }
   }

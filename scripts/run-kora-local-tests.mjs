@@ -109,6 +109,8 @@ const erp = [
   'tests/erp/saldo-inicial-proveedores-b2b.test.mjs',
   'tests/erp/cobros-plataformas-ui.test.mjs',
   'tests/erp/addi-pesos.test.mjs',
+  'tests/erp/addi-liquidacion.test.mjs',
+  'tests/erp/addi-credito-sin-inicial.test.mjs',
   'tests/erp/cobros-confirmacion-banco.test.mjs',
   'tests/erp/cobros-plataformas-contrato.test.mjs',
   'tests/erp/krediya-flujo-tarifario.test.mjs',

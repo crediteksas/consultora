@@ -60,7 +60,7 @@
     addiRecords = rows;
     const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
     status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
-    const fields = ['credito_bruto','tarifa_addi','iva_tarifa','neto_estimado','inicial_tienda','pago_tienda','utilidad_creditek'];
+    const fields = ['credito_bruto','tarifa_addi','iva_tarifa','neto_estimado','otra_forma_pago_venta','pago_tienda','utilidad_creditek'];
     const totals = Object.fromEntries(fields.map(field => [field, rows.reduce((sum,row) => sum + Number(row[field] || 0), 0)]));
     body.innerHTML = rows.map(row => {
       const store = storeByCode.get(row.tienda_codigo);
@@ -83,9 +83,9 @@
         - (addiPesos(row.credito_bruto) - addiPesos(row.tarifa_addi) - addiPesos(row.iva_tarifa));
       const roundingNote = displayedRounding
         ? `<span class="addi-secondary">Redondeo ${displayedRounding > 0 ? '+' : '−'}${money(Math.abs(displayedRounding))}</span>` : '';
-      return `<tr data-addi-id="${esc(row.id)}"><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${addiMoney(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${addiMoney(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${addiMoney(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${addiMoney(row.neto_estimado)}</span>${roundingNote}</td><td data-label="A tienda"><span class="addi-primary">${addiMoney(row.pago_tienda)}</span><span class="addi-secondary">Inicial ${addiMoney(row.inicial_tienda)}</span></td><td data-label="Utilidad"><span class="addi-primary">${addiMoney(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
+      return `<tr data-addi-id="${esc(row.id)}"><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${addiMoney(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${addiMoney(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${addiMoney(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${addiMoney(row.neto_estimado)}</span>${roundingNote}</td><td data-label="A tienda"><span class="addi-primary">${addiMoney(row.pago_tienda)}</span>${Number(row.otra_forma_pago_venta) ? `<span class="addi-secondary" title="Parte de la venta cobrada por otro medio; no reduce el pago del crédito Addi">Otro pago en venta ${addiMoney(row.otra_forma_pago_venta)}</span>` : ''}</td><td data-label="Utilidad"><span class="addi-primary">${addiMoney(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
     }).join('');
-    $('addiFollowupTotals').innerHTML = rows.length ? `<tr><th>TOTAL ${rows.length}</th><th>${addiMoney(totals.credito_bruto)}</th><th>${addiMoney(totals.tarifa_addi)}<span class="addi-secondary">IVA ${addiMoney(totals.iva_tarifa)}</span></th><th>${addiMoney(totals.neto_estimado)}</th><th>${addiMoney(totals.pago_tienda)}<span class="addi-secondary">Inicial ${addiMoney(totals.inicial_tienda)}</span></th><th>${addiMoney(totals.utilidad_creditek)}<span class="addi-secondary">${totals.credito_bruto ? (100 * totals.utilidad_creditek / totals.credito_bruto).toFixed(2) : '0.00'} %</span></th><th>—</th><th>—</th></tr>` : '';
+    $('addiFollowupTotals').innerHTML = rows.length ? `<tr><th>TOTAL ${rows.length}</th><th>${addiMoney(totals.credito_bruto)}</th><th>${addiMoney(totals.tarifa_addi)}<span class="addi-secondary">IVA ${addiMoney(totals.iva_tarifa)}</span></th><th>${addiMoney(totals.neto_estimado)}</th><th>${addiMoney(totals.pago_tienda)}${totals.otra_forma_pago_venta ? `<span class="addi-secondary">Otros pagos de venta ${addiMoney(totals.otra_forma_pago_venta)}</span>` : ''}</th><th>${addiMoney(totals.utilidad_creditek)}<span class="addi-secondary">${totals.credito_bruto ? (100 * totals.utilidad_creditek / totals.credito_bruto).toFixed(2) : '0.00'} %</span></th><th>—</th><th>—</th></tr>` : '';
     renderBatches();
     if (selectedAddiId) showAddiDetail(selectedAddiId, false);
   }
@@ -262,8 +262,8 @@
         total_utilidad_creditek:row.utilidad_creditek,total_pagar:row.pago_tienda,
         liquidation_operations:[{establishment_name:store.nombre,origen_codigo:row.tienda_codigo}],
         storeName:store.nombre||'Tienda sin identificar',
-        calculoPendiente:row.estado==='aprobada' && store.tipo==='propia'
-          && Number(row.pago_tienda)!==Math.round(Number(row.credito_bruto)*0.76*100)/100};
+        calculoPendiente:row.estado==='aprobada'
+          && Number(row.pago_tienda)!==Math.round(Number(row.credito_bruto)*Number(row.porcentaje_politica)*100)/100};
     });
     const platformFilter=$('filterPlatform').value;
     const visibleBatches=[...batches,...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];

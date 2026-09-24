@@ -51,13 +51,15 @@ test('semana usa la fecha de aprobación en Bogotá y nunca la fecha de corte',(
 test('Addi comparte la lista, los contadores y el filtro de las otras plataformas',()=>{
   const addi=[{id:'addi-1',consecutivo:163,tienda_codigo:'CK-02',fecha_venta:'2026-09-15',
     aprobada_at:'2026-09-15T20:00:00Z',estado:'aprobada',credito_bruto:550000,
-    pago_tienda:386600,utilidad_creditek:114312.5}];
+    porcentaje_politica:0.76,pago_tienda:418000,utilidad_creditek:82912}];
   const rows=[approved('payjoy-1','2026-09-15',100)];
   const all=render(rows,'week',{},addi);
   assert.match(all.$('batches').innerHTML,/data-open="payjoy-1"/);
   assert.match(all.$('batches').innerHTML,/data-open-addi="addi-1"/);
   assert.equal(all.$('showWeek').textContent,'Liquidado esta semana (2)');
-  assert.match(all.$('monthlySummary').innerHTML,/Addi aparece en la lista, pero su utilidad no se suma/);
+  assert.doesNotMatch(all.$('batches').innerHTML,/Revisar cálculo/);
+  assert.doesNotMatch(all.$('monthlySummary').innerHTML,/su utilidad no se suma/);
+  assert.match(all.$('monthlySummary').innerHTML,/83012/);
   assert.doesNotMatch(render(rows,'week',{filterPlatform:'payjoy'},addi).$('batches').innerHTML,/data-open-addi/);
   assert.match(render([], 'week',{filterPlatform:'addi'},addi).$('batches').innerHTML,/data-open-addi="addi-1"/);
 });

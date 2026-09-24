@@ -711,12 +711,14 @@
       $(`#${id}`).setAttribute("aria-invalid", String(rangoInvalido));
     }
     if (!visibleCompensations.some(x => x.id === selectedCompensationId)) selectedCompensationId = null;
+    const acceptedCompensations = visibleCompensations.filter(x => x.accepted_at).length;
+    const legacyCompensations = visibleCompensations.filter(x => !x.accepted_at && x.legacy_applied).length;
     $("#compensationSummary").textContent = rangoInvalido
       ? "Corrige el rango para consultar los abonos."
-      : `${visibleCompensations.length} de ${data.compensations.filter(x => x.applied_at && !x.reversed_at && (x.accepted_at || x.legacy_applied)).length} abonos · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
+      : `${visibleCompensations.length} de ${data.compensations.filter(x => x.applied_at && !x.reversed_at && (x.accepted_at || x.legacy_applied)).length} abonos a cartera · ${acceptedCompensations} con aceptación de tienda · ${legacyCompensations} antiguos sin constancia · Total aplicado de los resultados: ${cop(visibleCompensations.reduce((sum, x) => sum + Number(x.compensation_value || 0), 0))}`;
     const comps = visibleCompensations.map(
         (x) =>
-          `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", x.legacy_applied ? "Aplicada histórica · sin aceptación registrada" : x.accepted_at ? "Aceptada por tienda" : "Aplicada a cartera · pendiente de aceptación")}</td></tr>`,
+          `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td><input type="checkbox" data-compensation-select="${x.id}" aria-label="Seleccionar compensación de ${esc(storeName(x.store_code))}" ${selectedCompensationId === x.id ? "checked" : ""}></td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.compensation_value)}</td><td>${data.currentStoreBalances === null ? 'Saldo no disponible' : cop(data.currentStoreBalances?.get(x.store_code) ?? 0)}</td><td>${badge("pagado", x.accepted_at ? "Aceptado por la tienda" : x.legacy_applied ? "Aplicado antes del control · sin aceptación registrada" : "Aplicado a cartera · falta aceptación")}</td></tr>`,
       );
     $("#compensations").innerHTML = table(
       [
@@ -748,7 +750,7 @@
         }),
     ).rows.map(
       (x) =>
-        `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.direction === "debit" ? -Number(x.amount) : x.amount)}${x.platform === "krediya" ? '<small>Margen antes de bonos y gastos</small>' : ''}</td><td>${badge(x.status, "Reconocida")}</td></tr>`,
+        `<tr><td>${esc(window.CreditekTesoreriaTercerizacion.diaBogota(x.created_at) || 'No disponible')}</td><td>${esc(storeName(x.store_code))}</td><td>${esc(platformName(x.platform))}</td><td>${date(x.cutoff_date || x.movement_date)}</td><td>${esc(x.imei || "—")}</td><td>${cop(x.commercial_value)}</td><td>${cop(x.direction === "debit" ? -Number(x.amount) : x.amount)}${x.platform === "krediya" ? '<small>Margen antes de bonos y gastos</small>' : ''}</td><td>${badge(x.status, x.direction === "debit" ? "Ajuste contable" : "Utilidad contabilizada")}</td></tr>`,
     );
     $("#retailCommissions").innerHTML = table(
       [
@@ -758,8 +760,8 @@
         "Corte",
         "IMEI",
         "Valor comercial",
-        "Movimiento de Tercerización",
-        "Estado",
+        "Utilidad / ajuste de Tercerización",
+        "Registro contable",
       ],
       retailCommissions,
     );

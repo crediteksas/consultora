@@ -74,7 +74,7 @@ test('la interfaz concentra Tesorería en pagos, compensaciones y utilidad', asy
     readFile('creditek/erp/aliados-tesoreria.html','utf8'),readFile('creditek/erp/aliados-tesoreria-app.js','utf8'),
     readFile('creditek/erp/sidebar.js','utf8'),readFile('creditek/erp/kora-access-control.js','utf8'),
   ]);
-  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Compensaciones pendientes','Histórico de abonos aplicados']) assert.match(html,new RegExp(label));
+  for (const label of ['Pagos a Aliados','Pagos a Ejecutivos','Abonos pendientes de aplicar a cartera','Histórico de abonos aplicados']) assert.match(html,new RegExp(label));
   assert.doesNotMatch(html,/Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(sidebar,/Tesorería/);
   assert.match(guard,/aliados-tesoreria\.html/);
@@ -99,11 +99,11 @@ test('Tesorería diferencia saldo contable, compensaciones y utilidad real', asy
   for (const text of [
     'Compensaciones Retail calculadas para B2B',
     'Compensaciones pendientes de aplicar a B2B',
-    'Utilidad de liquidaciones asignada a Tercerización',
-    'Pagos y ajustes descontados de Tercerización',
+    'Créditos contabilizados en Tercerización',
+    'Débitos contabilizados en Tercerización',
     'Saldo neto de Tercerización disponible',
   ]) assert.match(app, new RegExp(text));
   assert.doesNotMatch(app, /Saldo contable B2B disponible|Compensaciones aplicadas menos pagos B2B/);
   assert.match(app, /!x\.applied_at && !x\.reversed_at/);
-  assert.match(app, /total_outsourcing_commission/);
+  assert.match(app, /outsourcingCredits - expenses - out/);
 });

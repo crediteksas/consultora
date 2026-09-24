@@ -23,7 +23,7 @@ test('resumen mensual suma snapshots aprobados por corte, no mes de aprobación 
 });
 function render(batches,mode='week',filters={},addiRecords=[]){
   const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{value:filters[id]||'',textContent:'',innerHTML:''});return nodes.get(id);};
-  const context={$ ,batches,addiRecords,addiStores:new Map([['CK-02',{nombre:'Móvil Shopping',tipo:'propia'}]]),listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
+  const context={$ ,batches,addiRecords,addiStores:new Map([['CK-02',{nombre:'Móvil Shopping',tipo:'propia'}]]),listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,addiPesos:v=>Math.floor(v)+(v-Math.floor(v)>0.50?1:0),platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
   vm.createContext(context);
   vm.runInContext(app.slice(app.indexOf('  const ownStoreUtility ='),app.indexOf('  function statesForMode('))+'\n'+app.slice(app.indexOf('  function renderBatches()'),app.indexOf('  function updateActions()')),context);
   context.renderBatches();return {context,$};
@@ -62,6 +62,8 @@ test('Addi comparte la lista, los contadores y el filtro de las otras plataforma
   assert.match(all.$('monthlySummary').innerHTML,/83012/);
   assert.doesNotMatch(render(rows,'week',{filterPlatform:'payjoy'},addi).$('batches').innerHTML,/data-open-addi/);
   assert.match(render([], 'week',{filterPlatform:'addi'},addi).$('batches').innerHTML,/data-open-addi="addi-1"/);
+  const fractional=[{...addi[0],credito_bruto:101,pago_tienda:77,utilidad_creditek:15}];
+  assert.doesNotMatch(render([], 'week',{},fractional).$('batches').innerHTML,/Revisar cálculo/);
 });
 test('retail muestra sus importes aunque pago a aliados y bonos sean cero; no altera totales',()=>{
   const rows=[approved('six','2026-09-06',175440,{total_pago_tiendas:455560,total_pagar:455560}),approved('seven','2026-09-07',711960,{total_pago_tiendas:1704465,total_pagar:1704465,operaciones_tiendas:4})];

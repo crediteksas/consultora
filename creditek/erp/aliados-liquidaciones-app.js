@@ -263,7 +263,7 @@
         liquidation_operations:[{establishment_name:store.nombre,origen_codigo:row.tienda_codigo}],
         storeName:store.nombre||'Tienda sin identificar',
         calculoPendiente:row.estado==='aprobada'
-          && Number(row.pago_tienda)!==Math.round(Number(row.credito_bruto)*Number(row.porcentaje_politica)*100)/100};
+          && Number(row.pago_tienda)!==addiPesos(Number(row.credito_bruto)*Number(row.porcentaje_politica))};
     });
     const platformFilter=$('filterPlatform').value;
     const visibleBatches=[...batches,...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];

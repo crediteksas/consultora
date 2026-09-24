@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 
 const id = n => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const base = readFileSync('supabase/migrations/20260912221445_gastos_devolver_corregir.sql', 'utf8');
-const edit = readFileSync('supabase/migrations/20260923215650_editar_gasto_administrativo.sql', 'utf8');
+const edit = readFileSync('supabase/migrations/20260924181122_editar_gasto_administrativo.sql', 'utf8');
 
 test('edición administrativa conserva identidad, motivo e historial y exige nueva aprobación', async () => {
   const db = new PGlite();

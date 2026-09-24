@@ -243,6 +243,18 @@ test('Addi muestra el error del botón junto al formulario sin registrar dinero'
  assert.equal(calls.filter(([name])=>name==='cobros_confirmar_recibido').length,0);
 });
 
+test('Addi confirma el neto pactado en pesos enteros y rechaza centavos', async () => {
+ const calls=[]; const host=container();
+ const raw=dataset({expected:[expected('addi-286','712206.00',{plataforma:'addi',venta_id:'venta-286'})]});
+ await domain.create({initialMonth:'',canEdit:true,sb:{rpc:async(name,args)=>{calls.push([name,args]);return {data:raw,error:null};}}}).mount(host);
+ const withCents=form('received',{importe:'$ 712.206,50',verificado:'on'},{expected:'addi-286'});
+ await submit(host,withCents);
+ assert.match(withCents.feedback.textContent,/pesos enteros/);
+ assert.equal(calls.filter(([name])=>name==='cobros_confirmar_recibido').length,0);
+ await submit(host,form('received',{importe:'$ 712.206',verificado:'on'},{expected:'addi-286'}));
+ assert.equal(calls.find(([name])=>name==='cobros_confirmar_recibido')[1].p_importe,712206);
+});
+
 test('monta con la sesión recibida sin consultar al crear y escapa contenido remoto', async () => {
   const calls = [];
   const sb = { rpc: async (...args) => { calls.push(args); return { data: dataset({ expected: [expected('e1', 100, { concepto: '<img src=x onerror=alert(1)>', soporte: 'javascript:alert(1)' })] }), error: null }; } };

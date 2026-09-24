@@ -394,7 +394,11 @@
           const row = state.data.expected.find(item => item.id === form.dataset.expected && active(item));
           if (!row || row.remaining !== row.amount) throw new Error('El saldo cambió; actualiza antes de confirmar.');
           if (value('verificado') !== 'on') throw new Error('Confirma que verificaste el dinero en banco.');
-          const receivedAmount = currencyCents(value('importe')) / 100;
+          const receivedCents = currencyCents(value('importe'));
+          if (row.plataforma === 'addi' && receivedCents % 100 !== 0) {
+            throw new Error('Confirma Addi en pesos enteros, sin centavos.');
+          }
+          const receivedAmount = receivedCents / 100;
           if (!receivedAmount) throw new Error('El importe recibido debe ser mayor que cero.');
           if (cents(receivedAmount) !== row.amount) throw new Error('El valor recibido difiere del esperado. Registra el abono real por separado y revisa la diferencia.');
           name = 'cobros_confirmar_recibido';

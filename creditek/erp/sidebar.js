@@ -292,6 +292,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', lucide: 'file-pen-line', description: 'Busca documentos y abre las correcciones o anulaciones autorizadas, conservando su trazabilidad.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
+      { label: 'Ajustes de Gerencia', href: 'ajustes-gerencia.html', lucide: 'scale', description: 'Maite prepara ajustes auditados de caja y cartera; Óscar los autoriza.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', lucide: 'hand-coins', description: 'Controla gastos generales por negocio y retiros de utilidad por separado.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Compartir instalación', href: 'compartir-instalacion.html', lucide: 'share-2', description: 'Comparte el acceso oficial para instalar KORA en un dispositivo autorizado.', roles: ['gerencia', 'auditoria'] },
       { label: 'Centro de Incidencias', href: 'incidencias.html', lucide: 'bug', description: 'Gestiona responsables, prioridades, estados y soluciones.', roles: ['gerencia'] },

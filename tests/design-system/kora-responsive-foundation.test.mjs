@@ -13,7 +13,7 @@ test('tablas no ensanchan hijos de grid y resumen de compensaciones conserva bor
   assert.match(html, /#storeMovementsContent table :is\(th, td\) \{ text-align: center/);
 });
 
-test('las 43 pantallas del shell declaran un viewport adaptable', async () => {
+test('las 44 pantallas del shell declaran un viewport adaptable', async () => {
   const directory = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(directory)).filter(name => name.endsWith('.html'));
   let shellPages = 0;
@@ -25,7 +25,7 @@ test('las 43 pantallas del shell declaran un viewport adaptable', async () => {
     assert.match(html, /<meta\s+name="viewport"\s+content="[^"]*width=device-width/i, file);
   }
 
-  assert.equal(shellPages, 43);
+  assert.equal(shellPages, 44);
 });
 
 test('el shell carga una única capa responsive transversal', async () => {

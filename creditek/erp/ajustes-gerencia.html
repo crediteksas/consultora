@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KORA · Ajustes de Gerencia</title>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/creditek/erp/supabase-js-2.110.8.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.32"></script>
+<script src="sidebar.js?v=2.0.32" data-kora-shell="1.0.0"></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<style>
+  body{margin:0;background:#f6f9fd;color:#10213b;font-family:Inter,Arial,sans-serif}
+  .page{max-width:1120px;margin:auto;padding:28px 24px 60px}.panel{background:#fff;border:1px solid #dce5f0;border-top:3px solid #14b8c8;border-radius:16px;padding:22px;margin:18px 0;box-shadow:0 3px 12px #10213b08}
+  h1{font-size:29px;margin:0 0 9px}h2{font-size:20px;margin:0 0 10px}p{line-height:1.5;color:#516176}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:16px 0}.field{display:flex;flex-direction:column;gap:7px;font-weight:650}.field input,.field select,.field textarea{font:inherit;color:#10213b;border:1px solid #cbd7e5;border-radius:10px;padding:11px 12px;background:#fff}.field textarea{min-height:90px;resize:vertical}.wide{grid-column:1/-1}.btn{border:1px solid #cbd7e5;border-radius:10px;background:#fff;color:#10213b;padding:10px 16px;font-weight:700;cursor:pointer}.btn.primary{background:#10213b;color:#fff;border-color:#10213b}.btn:disabled{opacity:.45;cursor:not-allowed}.card{border:1px solid #dce5f0;border-radius:12px;padding:16px;margin:12px 0}.card strong{color:#10213b}.tag{display:inline-block;background:#e9f4fc;border-radius:16px;padding:4px 10px;font-size:13px}.tag.aplicado{background:#d9faec}.tag.rechazado{background:#ffe5e5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.muted{font-size:13px}.error{color:#a32b24}.ok{color:#176d4e}#app[hidden]{display:none!important}
+</style>
+</head><body data-kora-requires-auth="true"><div id="app" hidden><main class="main-content"><div class="page">
+  <h1>Ajustes de Gerencia</h1>
+  <p>Maite prepara una corrección auditada; Óscar la revisa y autoriza. Preparar no cambia caja ni cartera. La aprobación crea un ajuste identificado, no una venta ni un pago. La cartera de las tiendas se refleja en Retail y en el informe B2B desde un único libro.</p>
+  <section class="panel" id="prepararPanel" hidden><h2>Preparar solicitud</h2>
+    <div class="grid"><label class="field">Saldo a ajustar<select id="tipo"><option value="">Selecciona</option><option value="caja_retail">Caja Retail</option><option value="cartera_retail">Cartera de tienda Retail</option><option value="cartera_b2b">Cartera de cliente B2B</option></select></label>
+      <label class="field">Tienda o cliente<select id="codigo"><option value="">Selecciona el tipo primero</option></select></label>
+      <label class="field">Saldo actual comprobado<input id="actual" readonly></label>
+      <label class="field">Nuevo saldo (COP)<input id="objetivo" type="number" inputmode="numeric" min="0" step="1" placeholder="Pesos enteros"></label>
+      <label class="field wide">Motivo de auditoría (mínimo 20 caracteres)<textarea id="motivo" maxlength="500" minlength="20" placeholder="Explica la evidencia y por qué corresponde el ajuste"></textarea></label>
+    </div><p id="vistaPrevia" aria-live="polite">Selecciona el tipo y la cuenta para consultar su saldo.</p>
+    <button class="btn primary" id="preparar" disabled>Enviar a Óscar para autorización</button>
+    <p id="prepararEstado" role="status" aria-live="polite"></p>
+  </section>
+  <section class="panel"><h2>Solicitudes pendientes</h2><p>La autorización comprueba otra vez el saldo; si cambió, no aplica nada y Maite debe preparar una nueva propuesta.</p><div id="pendientes" aria-live="polite">Cargando…</div></section>
+  <section class="panel"><h2>Historial de decisiones</h2><div id="historial">Cargando…</div></section>
+</div></main></div>
+<script src="ajustes-gerencia.js?v=1.0.0" defer></script>
+</body></html>

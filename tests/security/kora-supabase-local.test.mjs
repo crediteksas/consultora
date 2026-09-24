@@ -17,5 +17,5 @@ test('KORA sirve una versión local e inmutable de supabase-js', async () => {
     assert.doesNotMatch(html, /cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2(?:["/]|$)/, name);
     if (html.includes(`/creditek/erp/${bundleName}`)) consumers++;
   }
-  assert.equal(consumers, 44);
+  assert.equal(consumers, 45);
 });

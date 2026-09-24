@@ -5,7 +5,7 @@
   function pendingSources(profile, financialAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
-    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
+    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Son incidencias generales. Salen de la campana al cerrar la incidencia, no al abrirla.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central) {
       sources.push(
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
@@ -20,7 +20,7 @@
     }
     if (financialAccess) sources.push(
       {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','pendiente_aprobacion']]},
-      {key:'financial-payment',table:'financial_entries',title:'Gastos autorizados · falta registrar pago',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','aprobado']]},
+      {key:'financial-payment',table:'financial_entries',title:'Gastos y retiros aprobados · pago sin registrar',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','aprobado']]},
     );
     return sources;
   }
@@ -125,7 +125,9 @@
           button.type='button';
           button.dataset.pending=item.key;
           button.dataset.unread='true';
-          button.append(element('strong',`${item.count} · ${item.title}`),element('span','Abrir pendientes','kora-notification-item__link'));
+          button.append(element('strong',`${item.count} · ${item.title}`));
+          if (item.hint) button.append(element('span',item.hint,'kora-notification-item__detail'));
+          button.append(element('span','Abrir pendientes','kora-notification-item__link'));
           button.addEventListener('click',()=>location.assign(item.path));
           list.append(button);
         });

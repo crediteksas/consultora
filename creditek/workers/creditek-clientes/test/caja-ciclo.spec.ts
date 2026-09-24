@@ -7,6 +7,44 @@ it('corte sin arqueo no informa contado cero ni caja cuadrada', () => {
   const msg = formatearCorteCaja([{ tienda_codigo: 'A', efectivo_esperado: 123, efectivo_contado: null, diferencia: null }], 'día');
   expect(msg).toContain('Sin contar'); expect(msg).not.toContain('CUADRA'); expect(msg).not.toContain('Contado $0');
 });
+it('muestra el total contado sin sumar tiendas pendientes y conserva un solo informe legible', () => {
+  const contadas = Array.from({ length: 7 }, (_, i) => ({
+    tienda_codigo: `T${i}`, origen: { nombre: `Tienda ${i}` },
+    efectivo_esperado: 100_000 + i, efectivo_contado: 100_000 + i, diferencia: 0,
+  }));
+  const pendientes = Array.from({ length: 3 }, (_, i) => ({
+    tienda_codigo: `P${i}`, origen: { nombre: `Pendiente ${i}` },
+    efectivo_esperado: -100_000 - i, efectivo_contado: null, diferencia: null,
+  }));
+  const mensaje = formatearCorteCaja([...contadas, ...pendientes], 'miércoles, 23 de septiembre de 2026');
+  expect(mensaje).toContain('TOTAL DISPONIBLE CONTADO $700.021 (7 arqueadas; pendientes excluidas)');
+  expect(mensaje).toContain('PENDIENTES (3)');
+  const paginas = paginarReporte(mensaje);
+  expect(paginas).toHaveLength(1);
+  expect(paginas[0].parametros).toHaveLength(9);
+  expect(renderizarPaginaReporte(paginas[0]).length).toBeLessThanOrEqual(1024);
+  for (const tienda of [...contadas, ...pendientes]) {
+    expect(renderizarPaginaReporte(paginas[0])).toContain(tienda.origen.nombre);
+  }
+});
+it('mantiene el corte real de diez tiendas en un mensaje sin pegar cajas contadas', () => {
+  const arqueadas = [
+    ['Celfiao Tolú', 3_082_700], ['Móvil Shopping', 1_132_864],
+    ['Celfiao', 2_745_318], ['Creditel Store', 4_306_090],
+    ['Sonivox', 651_800], ['Orocel', 804_000], ['Kredisinu', 125_660],
+  ].map(([nombre, valor]) => ({ origen: { nombre }, efectivo_contado: valor, efectivo_esperado: valor, diferencia: 0 }));
+  const sinArqueo = [
+    ['Chinucell', -526_856], ['Creditel Chinú', -1_237_400], ['Creditel Coveñas', 0],
+  ].map(([nombre, esperado]) => ({ origen: { nombre }, efectivo_contado: null, efectivo_esperado: esperado, diferencia: null }));
+  const mensaje = formatearCorteCaja([...arqueadas, ...sinArqueo], 'miércoles, 23 de septiembre de 2026');
+  expect(mensaje).toContain('TOTAL DISPONIBLE CONTADO $12.848.432');
+  const [pagina] = paginarReporte(mensaje);
+  expect(pagina.parametros).toHaveLength(9);
+  expect(renderizarPaginaReporte(pagina).length).toBeLessThanOrEqual(1024);
+  for (const caja of arqueadas) {
+    expect(pagina.parametros.some(p => p.startsWith(`${caja.origen.nombre}: contado`))).toBe(true);
+  }
+});
 it('valida la forma de la respuesta JSON del RPC', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ error: 'not_an_array' }));
   await expect(obtenerCorteOperativo('2026-09-20', env)).rejects.toThrow('invalid_response');

@@ -771,12 +771,15 @@ export function esHoraCorteAutomatico(hh: number, mm: number, limiteHora: number
 }
 
 export function formatearCorteCaja(cortes: any[], fechaLarga: string): string {
-  const pendientes = cortes.filter(c => c.efectivo_contado == null).length;
+  const contadas = cortes.filter(c => c.efectivo_contado != null);
+  const pendientes = cortes.filter(c => c.efectivo_contado == null);
+  const totalContado = contadas.reduce((total, c) => total + Number(c.efectivo_contado), 0);
   return [
-    `CAJA · CORTE OPERATIVO · ${fechaLarga}`,
-    `${pendientes} pendientes de arqueo. Esperado no significa contado.`,
-    ...cortes.map(c => `${c.origen?.nombre || c.tienda_codigo}: esperado ${fmtCOP(Number(c.efectivo_esperado))}`
-      + (c.efectivo_contado == null ? ' · Sin contar' : ` · Contado ${fmtCOP(Number(c.efectivo_contado))} · Diferencia ${fmtDiferenciaCOP(Number(c.diferencia))}`)),
+    `CAJA · CORTE OPERATIVO · ${fechaLarga} · TOTAL DISPONIBLE CONTADO ${fmtCOP(totalContado)} (${contadas.length} ${contadas.length === 1 ? 'arqueada' : 'arqueadas'}; pendientes excluidas)`,
+    ...contadas.map(c => `${c.origen?.nombre || c.tienda_codigo}: contado ${fmtCOP(Number(c.efectivo_contado))} · esperado ${fmtCOP(Number(c.efectivo_esperado))} · diferencia ${fmtDiferenciaCOP(Number(c.diferencia))}`),
+    ...(pendientes.length ? [
+      `PENDIENTES (${pendientes.length}) · ${pendientes.map(c => `${c.origen?.nombre || c.tienda_codigo}: esperado ${fmtCOP(Number(c.efectivo_esperado))}, Sin contar`).join(' / ')}`,
+    ] : []),
   ].join('\n');
 }
 

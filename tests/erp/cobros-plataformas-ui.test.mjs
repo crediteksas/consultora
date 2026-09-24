@@ -136,7 +136,7 @@ function form(type, fields, dataset = {}) {
 const submit = (element, target) => element.listeners.get('submit')({ target, preventDefault() {} });
 const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-05', concepto: 'Neto de corte', importe: '100', soporte: 'Comprobante 1' };
 
-test('Addi aparece arriba para confirmar el banco como las demás liquidaciones', async () => {
+test('Addi aparece arriba como resumen y conserva una sola confirmación en el detalle', async () => {
   const host = container();
   const raw = dataset({ expected: [
     expected('payjoy-1', 50, { corte: '2026-09-16', liquidation_id: 'payjoy-lote' }),
@@ -148,9 +148,11 @@ test('Addi aparece arriba para confirmar el banco como las demás liquidaciones'
   assert.ok(host.innerHTML.indexOf('cobros-bank-queue') < host.innerHTML.indexOf('cobros-platforms'));
   assert.match(queue, /Addi · Corte 2026-09-19/);
   assert.match(queue, /PayJoy · Corte 2026-09-16/);
-  assert.match(queue, /data-cobros-form="received" data-expected="addi-1"/);
-  assert.match(queue, /data-cobros-form="received" data-expected="payjoy-1"/);
-  assert.match(queue, /name="importe" type="number" value=""/);
+  assert.match(queue, /data-cobros-action="detail" data-expected-id="addi-1"/);
+  assert.match(queue, /data-cobros-action="detail" data-expected-id="payjoy-1"/);
+  assert.doesNotMatch(queue, /data-cobros-form="received"/);
+  assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-1"/g) || []).length, 1);
+  assert.match(host.innerHTML, /name="importe" type="number" value=""/);
   assert.match(queue, /todos los meses/);
 });
 
@@ -161,6 +163,11 @@ test('la cola bancaria conserva vencidos de otros meses sin mezclarlos con los i
   const queue = host.innerHTML.match(/<section class="cobros-bank-queue"[\s\S]*?<\/section>/)?.[0];
   assert.match(queue, /Addi · Corte 2026-08-19/);
   assert.match(queue, /Vencido · sin confirmar/);
+  assert.doesNotMatch(host.innerHTML, /data-cobros-cut="addi-agosto"/);
+  const button = { dataset: { cobrosAction: 'detail', expectedId: 'addi-agosto' } };
+  host.listeners.get('click')({ target: { closest: () => button } });
+  assert.match(host.innerHTML, /data-cobros-cut="addi-agosto"/);
+  assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-agosto"/g) || []).length, 1);
 });
 
 test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{
@@ -297,7 +304,7 @@ test('vista por corte vincula solo sus abonos y oculta trazabilidad en detalle',
   const host = container();
   const raw = dataset({ expected: [expected('e1', 100), expected('e2', 200, { corte: '2026-09-05' })], deposits: [deposit('d1', 100, { referencia: 'ABONO-UNO' }), deposit('d2', 200, { referencia: 'ABONO-DOS' })], allocations: [allocation('a1', 'e1', 'd1', 100), allocation('a2', 'e2', 'd2', 200)] });
   await domain.create({ initialMonth: '', sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
-  const cuts = host.innerHTML.split('<details class="cobros-cut">').slice(1);
+  const cuts = host.innerHTML.split(/<details class="cobros-cut" data-cobros-cut="[^"]+">/).slice(1);
   assert.equal(cuts.length, 2);
   assert.match(cuts[0].split('Consultar todos los abonos')[0], /ABONO-DOS/);
   assert.doesNotMatch(cuts[0], /ABONO-UNO/);

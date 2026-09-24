@@ -112,6 +112,7 @@ const erp = [
   'tests/erp/addi-liquidacion.test.mjs',
   'tests/erp/addi-credito-sin-inicial.test.mjs',
   'tests/erp/addi-autorizacion-compensacion.test.mjs',
+  'tests/erp/pagos-con-soporte-conciliacion.test.mjs',
   'tests/erp/cobros-confirmacion-banco.test.mjs',
   'tests/erp/cobros-plataformas-contrato.test.mjs',
   'tests/erp/krediya-flujo-tarifario.test.mjs',

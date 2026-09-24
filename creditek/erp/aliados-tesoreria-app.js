@@ -417,8 +417,6 @@
     if (window.CreditekTesoreriaTercerizacion.paymentReadiness(p).ready)
       return `<button class="btn primary" data-payment="${p.id}" data-next="pagado">Adjuntar soporte y registrar</button>`;
     if (p.estado === 'programado') return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}</span>`;
-    if (p.estado === "pagado" && canAuthorize())
-      return `<button class="btn secondary" data-payment="${p.id}" data-next="conciliado">Conciliar</button>`;
     return "";
   }
   function isClosedPayment(p) {

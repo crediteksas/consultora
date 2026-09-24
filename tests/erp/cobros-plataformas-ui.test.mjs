@@ -158,7 +158,7 @@ function form(type, fields, dataset = {}, valid = true) {
 const submit = (element, target) => element.listeners.get('submit')({ target, preventDefault() {} });
 const expectedFields = { plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-05', concepto: 'Neto de corte', importe: '100', soporte: 'Comprobante 1' };
 
-test('Addi aparece arriba como resumen y conserva una sola confirmación en el detalle', async () => {
+test('Addi se confirma directamente arriba y el formulario no se duplica abajo', async () => {
   const host = container();
   const raw = dataset({ expected: [
     expected('payjoy-1', 50, { corte: '2026-09-16', liquidation_id: 'payjoy-lote' }),
@@ -170,9 +170,9 @@ test('Addi aparece arriba como resumen y conserva una sola confirmación en el d
   assert.ok(host.innerHTML.indexOf('cobros-bank-queue') < host.innerHTML.indexOf('cobros-platforms'));
   assert.match(queue, /Addi · Corte 2026-09-19/);
   assert.match(queue, /PayJoy · Corte 2026-09-16/);
-  assert.match(queue, /data-cobros-action="detail" data-expected-id="addi-1"/);
-  assert.match(queue, /data-cobros-action="detail" data-expected-id="payjoy-1"/);
-  assert.doesNotMatch(queue, /data-cobros-form="received"/);
+  assert.match(queue, /data-cobros-form="received" data-expected="addi-1"/);
+  assert.match(queue, /data-cobros-form="received" data-expected="payjoy-1"/);
+  assert.doesNotMatch(queue, /data-cobros-action="detail"/);
   assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-1"/g) || []).length, 1);
   assert.match(host.innerHTML, /data-cobros-form="received" data-expected="addi-1"[^>]*novalidate/);
   assert.match(host.innerHTML, /data-cobros-feedback role="alert" hidden/);
@@ -188,10 +188,30 @@ test('la cola bancaria conserva vencidos de otros meses sin mezclarlos con los i
   assert.match(queue, /Addi · Corte 2026-08-19/);
   assert.match(queue, /Vencido · sin confirmar/);
   assert.doesNotMatch(host.innerHTML, /data-cobros-cut="addi-agosto"/);
-  const button = { dataset: { cobrosAction: 'detail', expectedId: 'addi-agosto' } };
-  host.listeners.get('click')({ target: { closest: () => button } });
-  assert.match(host.innerHTML, /data-cobros-cut="addi-agosto"/);
+  assert.match(queue, /data-cobros-form="received" data-expected="addi-agosto"/);
+  assert.doesNotMatch(queue, /data-cobros-action="detail"/);
   assert.equal((host.innerHTML.match(/data-cobros-form="received" data-expected="addi-agosto"/g) || []).length, 1);
+});
+
+test('las dos liquidaciones Krediya siguen pendientes y visibles junto a Addi arriba', async () => {
+  const host = container();
+  const raw = dataset({
+    expected: [expected('addi-1', 500913, { plataforma: 'addi', corte: '2026-09-15', venta_id: 'venta-1' })],
+    candidates: [
+      { liquidation_id: 'krediya-28', plataforma: 'krediya', corte: '2026-09-20', base_estimada: 16533565, operaciones: 28, estado_liquidacion: 'pagada' },
+      { liquidation_id: 'krediya-3', plataforma: 'krediya', corte: '2026-09-20', base_estimada: 1807900, operaciones: 3, estado_liquidacion: 'pagada' },
+    ],
+  });
+  await domain.create({ initialMonth: '2026-09', canEdit: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const queue = host.innerHTML.match(/<section class="cobros-bank-queue"[\s\S]*?<\/section>/)?.[0];
+  assert.match(queue, /Liquidaciones pendientes de confirmación bancaria · 3/);
+  assert.match(queue, /Addi · Corte 2026-09-15/);
+  assert.equal((queue.match(/Krediya · Corte 2026-09-20/g) || []).length, 2);
+  assert.match(queue, /Base estimada del archivo<\/dt><dd>\$\s16\.533\.565/);
+  assert.match(queue, /Base estimada del archivo<\/dt><dd>\$\s1\.807\.900/);
+  assert.equal((host.innerHTML.match(/data-cobros-form="candidate-bank"/g) || []).length, 2);
+  assert.equal((host.innerHTML.match(/data-cobros-form="candidate"/g) || []).length, 2);
+  assert.ok(host.innerHTML.indexOf('data-liquidation="krediya-28"') < host.innerHTML.indexOf('cobros-platforms'));
 });
 
 test('recibido verificado concilia desde el corte sin otra asociación ni fecha bancaria inventada',async()=>{

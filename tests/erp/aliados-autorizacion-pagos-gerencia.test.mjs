@@ -138,6 +138,8 @@ test('Tesorería separa compensaciones aplicadas y utilidad sin duplicar el mód
   assert.match(html, /Abonos pendientes de aplicar a cartera/);
   assert.match(html, /Histórico de abonos aplicados/);
   assert.match(html, /Utilidad y ajustes contables de tiendas propias/);
+  assert.match(html, /Addi · autorizar pago pactado a tiendas propias/);
+  assert.match(app, /sb\.rpc\('addi_pago_autorizar'/);
   assert.match(html, /no son otro abono a la tienda ni prueban su aceptación/);
   assert.match(app, /con aceptación de tienda/);
   assert.match(app, /antiguos sin constancia/);

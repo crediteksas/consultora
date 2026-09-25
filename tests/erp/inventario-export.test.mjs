@@ -130,8 +130,8 @@ test('el Excel de celulares respeta el orden obligatorio de columnas', () => {
 });
 
 test('la pantalla muestra costo y no precio de venta', () => {
-  assert.match(html, /Costo unitario/);
-  assert.match(html, /Valor total al costo/);
+  assert.match(html, /Costo de remisión/);
+  assert.match(html, /Total al costo de remisión/);
   assert.match(conteos, /Costo de la tienda/);
   assert.doesNotMatch(conteos, /costo_promedio|costo_remision/);
   assert.doesNotMatch(html, /Precio de venta unitario/);

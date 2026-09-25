@@ -37,13 +37,16 @@ test('consultas y resumen usan exclusivamente el contrato aprobado del dominio',
 
 test('costos faltantes permanecen pendientes y nunca se presentan como cero', () => {
   assert.match(html, /inventarioDomain\.valorVisibleUnidad\(u\) === null \? 'Pendiente'/);
-  assert.match(html, /const costoVisible = inventarioDomain\.valorVisibleStock\(r\)/);
-  assert.match(html, /costoVisible === null \? 'Pendiente' : fmtCOP\(costoVisible\)/);
-  assert.match(html, /costoVisible === null \? 'Pendiente' : fmtCOP\(r\.cantidad \* costoVisible\)/);
+  assert.match(html, /const costoRemision = inventarioDomain\.valorVisibleStock\(r\)/);
+  assert.match(html, /costoRemision === null \? 'Pendiente' : fmtCOP\(costoRemision\)/);
+  assert.match(html, /costoRemision === null \? 'Pendiente' : fmtCOP\(r\.cantidad \* costoRemision\)/);
 });
 
 test('las etiquetas de costo se actualizan de forma coherente por rol', () => {
   assert.match(html, /actualizarEtiquetasCosto\(\)/);
   assert.match(html, /thCostoCel/);
   assert.match(html, /thCostoAcc/);
+  assert.match(html, /thCostoInternoCel'\)\.style\.display = esCentral\(\) \? '' : 'none'/);
+  assert.match(html, /thCostoInternoAcc'\)\.style\.display = esCentral\(\) \? '' : 'none'/);
+  assert.match(html, /Valor inventario al costo de remisión/);
 });

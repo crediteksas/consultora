@@ -764,23 +764,17 @@
       ],
       retailCommissions,
     );
-    const addiPayouts = (data.addiLiquidations || []).filter(x => x.tipo_tienda === 'propia');
-    const addiPending = addiPayouts.filter(x => !x.pago_autorizado_at);
+    const addiPending = (data.addiLiquidations || []).filter(x => x.tipo_tienda === 'propia' && !x.pago_autorizado_at);
     $("#addiAuthorizationCount").textContent = addiPending.length;
-    $("#addiPaymentAuthorizations").innerHTML = addiPayouts.length
-      ? addiPayouts.map(x => {
+    $("#addiPaymentAuthorizations").innerHTML = addiPending.length
+      ? addiPending.map(x => {
         const bankReady = x.cobro_estado === 'activo' && Number(x.recibido) === Number(x.neto_estimado);
-        const state = x.compensacion_aplicada ? 'Compensado a cartera'
-          : x.compensacion_id ? 'Autorizado · pendiente de compensar'
-          : x.pago_autorizado_at ? 'Autorizado · revisar preparación'
-          : bankReady ? 'Pendiente de tu autorización' : 'Pendiente de banco';
-        const action = !x.pago_autorizado_at && bankReady && canAuthorize()
-          ? `<button class="btn primary" data-authorize-addi="${esc(x.id)}">Autorizar ${cop(x.pago_tienda)} a tienda</button>`
-          : x.compensacion_id && !x.compensacion_aplicada
-            ? '<button class="btn secondary" data-open-addi-compensations="1">Ver para compensar</button>' : '';
-        return `<article class="payment-card"><div class="payment-card__top"><div><strong class="payment-card__title">Venta #${esc(x.consecutivo)} · ${esc(x.tienda || storeName(x.tienda_codigo))}</strong><div class="payment-card__ref">Addi · ${date(x.fecha_venta)} · ${esc(state)}</div></div>${badge(x.compensacion_aplicada ? 'pagado' : x.pago_autorizado_at ? 'programado' : 'pendiente', state)}</div><div class="payment-card__grid"><div class="payment-field"><small>Crédito Addi</small><strong>${cop(x.credito_bruto)}</strong></div><div class="payment-field"><small>Recibido en banco</small><strong>${cop(x.recibido)} / ${cop(x.neto_estimado)}</strong></div><div class="payment-field"><small>Valor pactado a tienda</small><strong>${cop(x.pago_tienda)}</strong></div><div class="payment-field"><small>Autorización individual</small><strong>${x.pago_autorizado_at ? bogotaDateTime(x.pago_autorizado_at) : 'No autorizada'}</strong></div></div><div class="payment-card__actions"><span class="${x.pago_autorizado_at ? 'approval-ok' : 'approval-pending'}">${esc(state)} · ${x.pago_autorizado_at ? 'No vuelve a autorizarse ni descontarse' : 'Autorizar no aplica el abono'}</span><div class="payment-actions">${action}</div></div></article>`;
+        const state = bankReady ? 'Pendiente de tu autorización' : 'Pendiente de banco';
+        const action = bankReady && canAuthorize()
+          ? `<button class="btn primary" data-authorize-addi="${esc(x.id)}">Autorizar ${cop(x.pago_tienda)} a tienda</button>` : '';
+        return `<article class="payment-card"><div class="payment-card__top"><div><strong class="payment-card__title">Venta #${esc(x.consecutivo)} · ${esc(x.tienda || storeName(x.tienda_codigo))}</strong><div class="payment-card__ref">Addi · ${date(x.fecha_venta)} · ${esc(state)}</div></div>${badge('pendiente', state)}</div><div class="payment-card__grid"><div class="payment-field"><small>Crédito Addi</small><strong>${cop(x.credito_bruto)}</strong></div><div class="payment-field"><small>Recibido en banco</small><strong>${cop(x.recibido)} / ${cop(x.neto_estimado)}</strong></div><div class="payment-field"><small>Valor pactado a tienda</small><strong>${cop(x.pago_tienda)}</strong></div><div class="payment-field"><small>Autorización individual</small><strong>No autorizada</strong></div></div><div class="payment-card__actions"><span class="approval-pending">${esc(state)} · Autorizar no aplica el abono</span><div class="payment-actions">${action}</div></div></article>`;
       }).join('')
-      : '<p class="section-copy">No hay liquidaciones Addi de tiendas propias aprobadas.</p>';
+      : '<p class="section-copy">No hay pagos Addi pendientes de autorización. Los abonos ya aplicados y aceptados por las tiendas están en Compensaciones y movimientos de tiendas → Histórico de abonos aplicados.</p><button class="btn secondary" type="button" data-open-addi-history="1">Ver histórico Addi</button>';
     const selected = visibleCompensations.find(
       (x) => x.id === selectedCompensationId,
     );
@@ -828,8 +822,14 @@
         }
       };
     });
-    document.querySelectorAll('[data-open-addi-compensations]').forEach(button => {
-      button.onclick = () => { treasuryView = 'storeMovements'; render(); };
+    document.querySelectorAll('[data-open-addi-history]').forEach(button => {
+      button.onclick = () => {
+        for (const id of ['compensationStore', 'compensationFrom', 'compensationTo', 'compensationImei', 'compensationAmount']) $(`#${id}`).value = '';
+        $('#compensationPlatform').value = 'addi';
+        treasuryView = 'storeMovements';
+        render();
+        $('#appliedCompensationsHistory').scrollIntoView({ block: 'start' });
+      };
     });
     document.querySelectorAll('[data-financial-support]').forEach(button=>button.onclick=()=>openFinancialSupport(button.dataset.financialSupport));
     $("#applyCompensations").onclick = async () => {

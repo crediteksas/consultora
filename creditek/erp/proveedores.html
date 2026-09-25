@@ -294,10 +294,9 @@
 
         <form id="form-pago-proveedor" class="hidden border-t border-gray-200 pt-4 space-y-3">
           <h3 class="font-semibold text-gray-800">Registrar pago</h3>
-          <p class="text-sm text-gray-600">Si un cliente B2B consignó directamente al proveedor, registra el abono en <a class="underline text-teal-700" href="cartera-b2b.html">Cartera clientes B2B</a>; allí bajan ambas deudas sin tocar Tesorería. Este formulario es para pagos hechos con dinero de Creditek.</p>
+          <p class="text-sm text-gray-600">Para pagar con la cuenta bancaria de Creditek, solicita el monto por proveedor en <a class="underline text-teal-700" href="banco-creditek.html">Banco Creditek</a>: Maite solicita, Óscar autoriza y, con el giro comprobado, KORA aplica automáticamente las facturas más antiguas. Si un cliente B2B consignó directamente al proveedor, usa <a class="underline text-teal-700" href="cartera-b2b.html">Cartera clientes B2B</a>. Este formulario solo registra otros pagos cuyo origen ya fue contabilizado.</p>
           <label class="text-sm block">Origen del dinero
             <select id="pago-origen" required class="mt-1 w-full border rounded px-3 py-2">
-              <option value="saldo_b2b">Saldo B2B de Tesorería: descontar saldo y factura juntos</option>
               <option value="otro_registrado">Otro origen ya registrado: solo bajar factura</option>
             </select>
           </label>

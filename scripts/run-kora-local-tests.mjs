@@ -43,6 +43,7 @@ const erp = [
   'tests/erp/pedidos-abastecimiento-b2b.test.mjs',
   'tests/erp/proveedores-domain.test.mjs',
   'tests/erp/proveedores-integracion.test.mjs',
+  'tests/erp/banco-creditek-proveedores.test.mjs',
   'tests/erp/cartera-clientes-b2b.test.mjs',
   'tests/erp/resumen-saldos-b2b.test.mjs',
   'tests/erp/cuenta-corriente-nombres.test.mjs',

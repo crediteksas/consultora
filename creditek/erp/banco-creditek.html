@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KORA · Banco Creditek</title>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/creditek/erp/supabase-js-2.110.8.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.32"></script>
+<script src="sidebar.js?v=2.0.32" data-kora-shell="1.0.0"></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<style>
+body{margin:0;background:#f6f9fd;color:#10213b;font-family:Inter,Arial,sans-serif}
+.page{max-width:1120px;margin:auto;padding:28px 24px 60px}.panel{background:#fff;border:1px solid #dce5f0;border-top:3px solid #14b8c8;border-radius:16px;padding:22px;margin:18px 0;box-shadow:0 3px 12px #10213b08}
+h1{font-size:29px;margin:0 0 9px}h2{font-size:20px;margin:0 0 10px}p{line-height:1.5;color:#516176}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:16px 0}.field{display:flex;flex-direction:column;gap:7px;font-weight:650}.field input,.field select,.field textarea{box-sizing:border-box;width:100%;font:inherit;color:#10213b;border:1px solid #cbd7e5;border-radius:10px;padding:11px 12px;background:#fff}.field textarea{min-height:80px;resize:vertical}.wide{grid-column:1/-1}.btn{border:1px solid #cbd7e5;border-radius:10px;background:#fff;color:#10213b;padding:10px 16px;font-weight:700;cursor:pointer}.btn.primary{background:#10213b;color:#fff;border-color:#10213b}.btn:disabled{opacity:.45;cursor:not-allowed}.card{border:1px solid #dce5f0;border-radius:12px;padding:16px;margin:12px 0}.tag{display:inline-block;background:#e9f4fc;border-radius:16px;padding:4px 10px;font-size:13px}.tag.pagado{background:#d9faec}.tag.rechazado{background:#ffe5e5}.tag.autorizado{background:#fff3d6}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.muted{font-size:13px}.error{color:#a32b24}.ok{color:#176d4e}#app[hidden]{display:none!important}
+</style>
+</head><body data-kora-requires-auth="true"><div id="app" hidden><main class="main-content"><div class="page">
+<h1>Banco Creditek</h1>
+<p>Cuenta empresarial terminada en 4006. Este libro bancario es distinto de la cuenta corriente de las tiendas y del saldo interno B2B. Maite solicita un monto por proveedor sin escoger factura; Óscar autoriza; el pago solo descuenta Banco y facturas cuando Maite registra el giro real con su comprobante.</p>
+<section class="panel"><h2>Cuenta de origen</h2><div id="cuentaEstado" aria-live="polite">Cargando…</div></section>
+<p class="muted">El saldo de control parte del corte que registre Gerencia y descuenta los giros a proveedores hechos por este módulo. Otros ingresos y salidas bancarias aún deben conciliarse; no se presentan aquí como movimientos verificados.</p>
+<section class="panel" id="solicitarPanel" hidden><h2>Solicitar abono a proveedor</h2>
+<p>La aplicación a facturas será automática: de la más antigua a la siguiente. La solicitud no mueve dinero.</p>
+<div class="grid"><label class="field">Proveedor<select id="proveedor"><option value="">Selecciona</option></select></label>
+<label class="field">Deuda documentada<input id="deuda" readonly></label>
+<label class="field">Monto a solicitar (COP)<input id="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="Pesos enteros"></label>
+<label class="field wide">Concepto<textarea id="concepto" maxlength="300" placeholder="Motivo del abono"></textarea></label></div>
+<button class="btn primary" id="solicitar" disabled>Enviar a Óscar para autorización</button><p id="solicitarEstado" role="status" aria-live="polite"></p>
+</section>
+<section class="panel"><h2>Solicitudes pendientes de Gerencia</h2><div id="pendientes" aria-live="polite">Cargando…</div></section>
+<section class="panel"><h2>Autorizados · por girar</h2><p>Autorizado no significa pagado. El giro se registra únicamente después de ejecutarlo en el banco y cargar su soporte.</p><div id="autorizados">Cargando…</div></section>
+<section class="panel"><h2>Pagos realizados y trazabilidad</h2><div id="historial">Cargando…</div></section>
+</div></main></div><script src="banco-creditek.js?v=1.0.0" defer></script></body></html>

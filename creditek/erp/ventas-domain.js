@@ -10,10 +10,12 @@
     return Number.isFinite(convertido) ? convertido : 0;
   }
 
-  function precioSugerido(producto) {
-    // El precio comercial no es el costo Retail guardado en precio_tienda.
+  function precioSugerido(producto, costoTienda) {
+    // Nunca sugerir un precio de venta tomado del costo interno o inferior al
+    // costo de la remisión que gobierna el inventario Retail.
     const precio = numero(relacionUnica(producto)?.precio_guia);
-    return precio > 0 ? precio : null;
+    const costo = numero(costoTienda);
+    return costo > 0 && precio > costo ? precio : null;
   }
 
   async function accesoriosDeTienda(sb, tienda) {

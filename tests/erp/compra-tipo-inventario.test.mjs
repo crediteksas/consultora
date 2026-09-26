@@ -16,5 +16,5 @@ for(const tipo of ['cantidad','serializado','']) test(`guarda selección ${tipo|
   let payload;
   const ctx={document:{getElementById:id=>fields[id]},rolActual:'auditoria',categorias:[{codigo:'PARLANTES'}],productoFoto:{buscarProductoPorCodigo:async()=>null},SB:{from:()=>({insert:p=>{payload=p;return {select:()=>({maybeSingle:async()=>({data:{id:'test',...p}})})};}})},productos:[],seleccionarProducto(){},toast(){},Number};
   vm.createContext(ctx);vm.runInContext(body,ctx);await ctx.guardarCrearReferencia();
-  if(tipo)assert.equal(payload.tipo,tipo);else assert.equal(payload,undefined);
+  if(tipo){assert.equal(payload.tipo,tipo);assert.equal(payload.precio_guia,null);}else assert.equal(payload,undefined);
 });

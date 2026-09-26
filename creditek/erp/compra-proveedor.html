@@ -778,7 +778,8 @@ async function guardarCrearReferencia() {
       nombre,
       categoria,
       tipo,
-      precio_guia: precio,
+      // El precio de remisión es costo Retail, no precio comercial de venta.
+      precio_guia: null,
       margen_tipo: categoriaActual?.margen_tipo || 'porcentaje',
       margen_valor: Number(categoriaActual?.margen_valor || 0),
       foto_url: null,

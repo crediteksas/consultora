@@ -36,7 +36,7 @@ test('carga todas las páginas de la tienda, incluyendo vidrios después del reg
   assert.equal(productos[0].precio_tienda, 10000);
   assert.equal(productos[0].costo_promedio, 10000);
   assert.equal(productos[0].precio_guia, 18000);
-  assert.equal(globalThis.CreditekVentasDomain.precioSugerido(productos[0]), 18000);
+  assert.equal(globalThis.CreditekVentasDomain.precioSugerido(productos[0], productos[0].precio_tienda), 18000);
 });
 
 test('no convierte errores de inventario en stock cero ni consulta sin tienda', async () => {

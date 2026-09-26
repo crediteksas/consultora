@@ -53,11 +53,14 @@ test('consulta de unidad separa costo Retail de precio comercial sin pedir costo
   assert.match(ventas.columnasUnidadVenta(), /precio_tienda/);
 });
 
-test('una corrección de costo no cambia el precio sugerido de venta', () => {
-  assert.equal(ventas.precioSugerido({ precio_guia: 25000, precio_tienda: 9700 }), 25000);
-  assert.equal(ventas.precioSugerido([{ precio_guia: '565000', precio_tienda: 455000 }]), 565000);
+test('solo sugiere un precio comercial superior al costo de remisión Retail', () => {
+  assert.equal(ventas.precioSugerido({ precio_guia: 25000 }, 9700), 25000);
+  assert.equal(ventas.precioSugerido([{ precio_guia: '565000' }], 455000), 565000);
+  assert.equal(ventas.precioSugerido({ precio_guia: 356108 }, 382000), null);
+  assert.equal(ventas.precioSugerido({ precio_guia: 382000 }, 382000), null);
+  assert.equal(ventas.precioSugerido({ precio_guia: 450000 }, null), null);
   for (const precio_guia of [null, undefined, 0, -1, '', 'inválido', Infinity]) {
-    assert.equal(ventas.precioSugerido({ precio_guia, precio_tienda: 9700 }), null);
+    assert.equal(ventas.precioSugerido({ precio_guia }, 9700), null);
   }
-  assert.equal(ventas.precioSugerido(null), null);
+  assert.equal(ventas.precioSugerido(null, 9700), null);
 });

@@ -77,6 +77,7 @@ const erp = [
   'tests/erp/inventario-fusion-tolu-costos.test.mjs',
   'tests/erp/ventas-domain.test.mjs',
   'tests/erp/ventas-precio-sugerido.test.mjs',
+  'tests/erp/retail-costo-remision-precio-guia-a07.test.mjs',
   'tests/erp/remisiones-cartera-b2b.test.mjs',
   'tests/erp/conciliacion-retail-no-bloqueante.test.mjs',
   'tests/erp/remisiones-editor-productos.test.mjs',

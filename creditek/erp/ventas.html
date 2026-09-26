@@ -996,6 +996,7 @@ function avanzarPaso() {
     if (!venta.items.length) { err.textContent = 'Agrega al menos un producto.'; err.classList.add('show'); return; }
     for (const it of venta.items) {
       if (it.tipoProducto === 'serializado' && !it.unidad_id) { err.textContent = 'Falta validar el IMEI de un celular.'; err.classList.add('show'); return; }
+      if (!(Number(it.costo_unitario) > 0)) { err.textContent = 'Falta el costo de remisión de un producto. Revisa su inventario antes de vender.'; err.classList.add('show'); return; }
       if (!it.precio_venta || it.precio_venta <= 0) { err.textContent = 'Revisa el precio de venta de todos los productos.'; err.classList.add('show'); return; }
       // precio_guia propone el precio habitual, pero no bloquea promociones.
       // La venta conserva exactamente el precio real digitado por el vendedor.
@@ -1145,7 +1146,7 @@ async function agregarItemAccesorio() {
         div.remove();
         // El precio comercial del catálogo es una sugerencia editable, no el costo.
         const stockTienda = prod;
-        const precioAcc = ventasDomain.precioSugerido(prod);
+        const precioAcc = ventasDomain.precioSugerido(prod, stockTienda?.precio_tienda);
         venta.items.push({
           tipoProducto: 'cantidad', producto_id: prod.id, unidad_id: null,
           cantidad: 1, precio_venta: precioAcc, nombreProducto: prod.nombre,
@@ -1177,12 +1178,13 @@ async function renderItemsVenta() {
           <button class="btn-scan" data-idx="${idx}" style="display:none;">📷</button>
         </div>
         <div class="imei-estado" id="imeiEstado${idx}"></div>
-        ${it.unidad_id ? `<div class="campo" style="margin-top:8px;"><label>Precio de venta</label><input type="number" class="precio-input" min="0" value="${it.precio_venta || ''}"></div>` : ''}
+        ${it.unidad_id ? `<div class="campo" style="margin-top:8px;"><span>Costo de remisión de la tienda: ${it.costo_unitario > 0 ? fmtCOP(it.costo_unitario) : 'Pendiente de registrar'}</span><label>Precio de venta al cliente</label><input type="number" class="precio-input" min="0" value="${it.precio_venta || ''}"></div>` : ''}
       `;
     } else {
       div.innerHTML = `
         <button class="btn-quitar-item" data-idx="${idx}">✕</button>
         <div class="nombre-prod">${escapeHtml(it.nombreProducto)}</div>
+        <div class="campo"><span>Costo de remisión de la tienda: ${it.costo_unitario > 0 ? fmtCOP(it.costo_unitario) : 'Pendiente de registrar'}</span></div>
         <div class="fila2">
           <div><label style="font-size:11px;color:var(--text2);">Cantidad</label><input type="number" class="cantidad-input" min="1" value="${it.cantidad}"></div>
           <div><label style="font-size:11px;color:var(--text2);">Precio de venta (c/u)</label><input type="number" class="precio-input" min="0" value="${it.precio_venta || ''}"></div>
@@ -1267,7 +1269,7 @@ async function validarImei(idx, imei, silencioso) {
   venta.items[idx].producto_id = unidad.producto_id;
   venta.items[idx].nombreProducto = unidad.productos?.nombre || null;
   // precio_guia es el precio sugerido; el vendedor puede modificarlo por promoción.
-  const precioSugerido = ventasDomain.precioSugerido(unidad.productos);
+  const precioSugerido = ventasDomain.precioSugerido(unidad.productos, unidad.precio_tienda);
   if (!venta.items[idx].precio_venta) venta.items[idx].precio_venta = precioSugerido;
   venta.items[idx].precio_sugerido = precioSugerido || 0;
   venta.items[idx].costo_unitario = unidad.precio_tienda ?? null;

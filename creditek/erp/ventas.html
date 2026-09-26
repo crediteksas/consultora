@@ -349,6 +349,13 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
   .filters input[type="date"],
   .filters button { transition: none; }
 }
+.autorizaciones-ventas { border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px; background:var(--card,white); }
+.autorizaciones-ventas p { color:var(--text2); margin:8px 0; }
+.autorizaciones-ventas details { border-top:1px solid var(--border); padding:12px 0; }
+.autorizaciones-ventas summary { cursor:pointer; font-weight:600; line-height:1.5; }
+.autorizaciones-ventas button { padding:8px 12px; margin:4px; cursor:pointer; }
+.autorizaciones-ventas li { margin:8px 0; overflow-wrap:anywhere; }
+#avisoAutorizacionVenta { padding:12px; background:#fff6db; color:#694700; border-radius:8px; }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -391,6 +398,12 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       <button class="btn-primary" id="btnNuevaVenta" style="display:none;">+ Nueva venta</button>
     </div>
 
+    <section class="autorizaciones-ventas" aria-labelledby="tituloAutorizaciones">
+      <div class="tabla-section-head"><h2 id="tituloAutorizaciones">Autorizaciones de ventas</h2><button type="button" id="btnActualizarAutorizaciones">Actualizar</button></div>
+      <p>Obsequios y precios inferiores al costo de remisión. Mayte u Óscar revisan cada movimiento.</p>
+      <div id="autorizacionesVentasEstado" role="status"></div>
+      <div id="autorizacionesVentasLista"></div>
+    </section>
     <div class="filters" aria-label="Filtros de ventas">
       <div class="filter-field"><label for="filtroDesde">Desde</label><input type="date" id="filtroDesde"></div>
       <div class="filter-field"><label for="filtroHasta">Hasta</label><input type="date" id="filtroHasta"></div>
@@ -518,6 +531,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <!-- Paso 5: confirmar -->
     <div class="paso" id="paso5">
       <div class="resumen-venta" id="resumenFinal"></div>
+      <p id="avisoAutorizacionVenta" role="status" hidden>Hay un obsequio o un precio inferior al costo de remisión. El movimiento quedará cargado, pendiente de autorización de Mayte u Óscar. La venta, el inventario y la caja se actualizarán al aprobarlo.</p>
     </div>
 
     <div class="modal-err" id="modalVentaErr"></div>
@@ -648,6 +662,8 @@ function initPagina() {
   document.getElementById('btnAplicarAjuste').addEventListener('click', aplicarAjusteVenta);
   document.getElementById('ajusteTipo').addEventListener('change', actualizarCamposAjuste);
 
+  document.getElementById('btnActualizarAutorizaciones').addEventListener('click', cargarAutorizacionesVentas);
+  cargarAutorizacionesVentas();
   cargarDatosBase();
 }
 
@@ -902,6 +918,51 @@ async function aplicarAjusteVenta(){
   await cargarVentas();
 }
 
+// La base de datos controla el acceso y calcula costos; el navegador solo presenta.
+let autorizacionesVentasCargando = false;
+async function cargarAutorizacionesVentas() {
+  if (autorizacionesVentasCargando) return;
+  autorizacionesVentasCargando = true;
+  const lista = document.getElementById('autorizacionesVentasLista');
+  const estado = document.getElementById('autorizacionesVentasEstado');
+  estado.textContent = 'Cargando autorizaciones…';
+  try {
+    const [{ data: pendientes, error }, { data: puede, error: permisoError }, { data: recientes, error: recientesError }] = await Promise.all([
+      sb.from('ventas_autorizaciones').select('*').eq('estado','pendiente').order('creado_en', { ascending: false }),
+      sb.rpc('puede_autorizar_venta_excepcional'),
+      sb.from('ventas_autorizaciones').select('*').in('estado',['aprobada','rechazada']).order('resuelto_en', { ascending: false }).limit(20),
+    ]);
+    if (error || permisoError || recientesError) throw error || permisoError || recientesError;
+    const solicitudes = [...(pendientes || []), ...(recientes || [])];
+    estado.textContent = `${(pendientes || []).length} pendientes de autorización`;
+    lista.innerHTML = solicitudes.map(r => `<details>
+      <summary>${escapeHtml(r.tienda_codigo)} · ${escapeHtml(r.id.slice(0,8).toUpperCase())} · ${escapeHtml(r.estado)} · ${fmtCOP(r.total)}</summary>
+      <p>Cargado: ${escapeHtml(new Date(r.creado_en).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} · ${escapeHtml(r.tipo)}</p>
+      <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio propuesto: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
+      ${r.nota ? `<p>${escapeHtml(r.nota)}</p>` : ''}
+      ${r.motivo ? `<p>Motivo: ${escapeHtml(r.motivo)}</p>` : ''}
+      ${r.estado === 'pendiente' && puede ? `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Autorizar movimiento</button><button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
+    </details>`).join('');
+    lista.querySelectorAll('button[data-solicitud]').forEach(btn => btn.addEventListener('click', async () => {
+      const aprobar = btn.dataset.aprobar === 'true';
+      const motivo = aprobar ? null : prompt('Motivo del rechazo:');
+      if (!aprobar && !motivo?.trim()) return;
+      if (aprobar && !confirm('¿Autorizar este movimiento y registrar la venta con estos precios? Se actualizarán inventario y caja.')) return;
+      const botones = btn.closest('details').querySelectorAll('button');
+      botones.forEach(b => { b.disabled = true; });
+      try {
+        const { data, error: resolverError } = await sb.rpc('resolver_autorizacion_venta', { p_id: btn.dataset.solicitud, p_aprobar: aprobar, p_motivo: motivo });
+        if (resolverError) throw resolverError;
+        mostrarBanner(data.estado === 'aprobada' ? `Movimiento autorizado. Venta #${data.consecutivo} registrada.` : 'Movimiento rechazado.');
+        await cargarAutorizacionesVentas();
+        await cargarVentas();
+      } catch (e) { estado.textContent = e.message; }
+      finally { botones.forEach(b => { b.disabled = false; }); }
+    }));
+  } catch (e) { estado.textContent = 'No se pudieron cargar las autorizaciones: ' + e.message; }
+  finally { autorizacionesVentasCargando = false; }
+}
+
 // ─── Wizard de nueva venta ──────────────────────────────────────────────
 let venta = {};
 let pasoActual = 1;
@@ -936,7 +997,12 @@ function mostrarPaso(n) {
   if (n === 2) {
     document.getElementById('labelCliente').textContent = venta.tipo === 'credito' ? 'Cliente (obligatorio para crédito)' : 'Cliente (opcional — vacío = Cliente general)';
   }
-  if (n === 5) renderResumenFinal();
+  if (n === 5) {
+    renderResumenFinal();
+    const pendiente = ventaRequiereAutorizacion();
+    document.getElementById('avisoAutorizacionVenta').hidden = !pendiente;
+    document.getElementById('btnSiguiente').textContent = pendiente ? 'Cargar para autorización' : 'Registrar venta';
+  }
 }
 
 function seleccionarTipo(tipo) {
@@ -997,7 +1063,7 @@ function avanzarPaso() {
     for (const it of venta.items) {
       if (it.tipoProducto === 'serializado' && !it.unidad_id) { err.textContent = 'Falta validar el IMEI de un celular.'; err.classList.add('show'); return; }
       if (!(Number(it.costo_unitario) > 0)) { err.textContent = 'Falta el costo de remisión de un producto. Revisa su inventario antes de vender.'; err.classList.add('show'); return; }
-      if (!it.precio_venta || it.precio_venta <= 0) { err.textContent = 'Revisa el precio de venta de todos los productos.'; err.classList.add('show'); return; }
+      if (it.precio_venta === null || it.precio_venta === '' || !Number.isFinite(Number(it.precio_venta)) || Number(it.precio_venta) < 0) { err.textContent = 'Ingresa un precio válido en todos los productos; usa 0 para un obsequio.'; err.classList.add('show'); return; }
       // precio_guia propone el precio habitual, pero no bloquea promociones.
       // La venta conserva exactamente el precio real digitado por el vendedor.
     }
@@ -1178,7 +1244,7 @@ async function renderItemsVenta() {
           <button class="btn-scan" data-idx="${idx}" style="display:none;">📷</button>
         </div>
         <div class="imei-estado" id="imeiEstado${idx}"></div>
-        ${it.unidad_id ? `<div class="campo" style="margin-top:8px;"><span>Costo de remisión de la tienda: ${it.costo_unitario > 0 ? fmtCOP(it.costo_unitario) : 'Pendiente de registrar'}</span><label>Precio de venta al cliente</label><input type="number" class="precio-input" min="0" value="${it.precio_venta || ''}"></div>` : ''}
+        ${it.unidad_id ? `<div class="campo" style="margin-top:8px;"><span>Costo de remisión de la tienda: ${it.costo_unitario > 0 ? fmtCOP(it.costo_unitario) : 'Pendiente de registrar'}</span><label>Precio de venta al cliente</label><input type="number" class="precio-input" min="0" value="${it.precio_venta ?? ''}"></div>` : ''}
       `;
     } else {
       div.innerHTML = `
@@ -1187,7 +1253,7 @@ async function renderItemsVenta() {
         <div class="campo"><span>Costo de remisión de la tienda: ${it.costo_unitario > 0 ? fmtCOP(it.costo_unitario) : 'Pendiente de registrar'}</span></div>
         <div class="fila2">
           <div><label style="font-size:11px;color:var(--text2);">Cantidad</label><input type="number" class="cantidad-input" min="1" value="${it.cantidad}"></div>
-          <div><label style="font-size:11px;color:var(--text2);">Precio de venta (c/u)</label><input type="number" class="precio-input" min="0" value="${it.precio_venta || ''}"></div>
+          <div><label style="font-size:11px;color:var(--text2);">Precio de venta (c/u)</label><input type="number" class="precio-input" min="0" value="${it.precio_venta ?? ''}"></div>
         </div>
         <div class="stock-hint" id="stockHint${idx}">Consultando stock...</div>
       `;
@@ -1199,7 +1265,7 @@ async function renderItemsVenta() {
       imeiInput.addEventListener('change', () => validarImei(idx, imeiInput.value.trim()));
       if (it.unidad_id) {
         div.querySelector('.precio-input').addEventListener('input', (e) => {
-          const v = Number(e.target.value || 0);
+          const v = e.target.value === '' ? null : Number(e.target.value);
           venta.items[idx].precio_venta = v;
           e.target.style.borderColor = '';
           e.target.style.background = '';
@@ -1215,7 +1281,7 @@ async function renderItemsVenta() {
       if (it.imei) validarImei(idx, it.imei, true);
     } else {
       div.querySelector('.cantidad-input').addEventListener('input', (e) => { venta.items[idx].cantidad = Number(e.target.value || 1); actualizarTotalParcial(); verificarStockAccesorio(idx); });
-      div.querySelector('.precio-input').addEventListener('input', (e) => { venta.items[idx].precio_venta = Number(e.target.value || 0); actualizarTotalParcial(); });
+      div.querySelector('.precio-input').addEventListener('input', (e) => { venta.items[idx].precio_venta = e.target.value === '' ? null : Number(e.target.value); actualizarTotalParcial(); });
       verificarStockAccesorio(idx);
     }
   }
@@ -1270,7 +1336,7 @@ async function validarImei(idx, imei, silencioso) {
   venta.items[idx].nombreProducto = unidad.productos?.nombre || null;
   // precio_guia es el precio sugerido; el vendedor puede modificarlo por promoción.
   const precioSugerido = ventasDomain.precioSugerido(unidad.productos, unidad.precio_tienda);
-  if (!venta.items[idx].precio_venta) venta.items[idx].precio_venta = precioSugerido;
+  if (venta.items[idx].precio_venta == null) venta.items[idx].precio_venta = precioSugerido;
   venta.items[idx].precio_sugerido = precioSugerido || 0;
   venta.items[idx].costo_unitario = unidad.precio_tienda ?? null;
   if (estadoDiv) { estadoDiv.textContent = `✓ ${unidad.productos?.nombre || 'Producto'} — disponible`; estadoDiv.className = 'imei-estado ok'; }
@@ -1319,8 +1385,15 @@ function renderResumenFinal() {
   `;
 }
 
+function ventaRequiereAutorizacion() {
+  return venta.items.some(it => it.precio_venta != null && (Number(it.precio_venta) === 0 || Number(it.precio_venta) < Number(it.costo_unitario)));
+}
+
 async function confirmarVenta() {
-  if (!confirm('¿Deseas registrar esta venta?')) return;
+  const btn = document.getElementById('btnSiguiente');
+  if (btn.disabled) return;
+  const pendiente = ventaRequiereAutorizacion();
+  if (!confirm(pendiente ? '¿Cargar este movimiento para autorización de Mayte u Óscar?' : '¿Deseas registrar esta venta?')) return;
   const err = document.getElementById('modalVentaErr');
   err.classList.remove('show');
 
@@ -1334,10 +1407,14 @@ async function confirmarVenta() {
   let nota = null;
   if (venta.saltoValidacion) nota = 'Cliente vendido sin validación previa (autorizado por el vendedor).';
 
-  const btn = document.getElementById('btnSiguiente');
-  btn.disabled = true; btn.textContent = 'Registrando...';
+  // La misma carga se puede reintentar tras un fallo de red sin duplicarla.
+  const firma = JSON.stringify([currentPerfil.tienda_codigo, venta.tipo, venta.cliente_id, items, venta.credito, nota]);
+  if (venta.firmaSolicitud !== firma) { venta.solicitudId = crypto.randomUUID(); venta.firmaSolicitud = firma; }
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
 
-  const { data, error } = await sb.rpc('registrar_venta', {
+  const { data, error } = await sb.rpc('registrar_venta_con_autorizacion', {
+    p_solicitud_id: venta.solicitudId,
     p_tienda_codigo: currentPerfil.tienda_codigo,
     p_tipo: venta.tipo,
     p_cliente_id: venta.cliente_id,
@@ -1346,13 +1423,22 @@ async function confirmarVenta() {
     p_nota: nota,
   });
 
-  btn.disabled = false; btn.textContent = 'Registrar venta';
-
   if (error) { err.textContent = 'No se pudo registrar: ' + error.message; err.classList.add('show'); return; }
 
   cerrarWizard();
-  mostrarBanner(`✅ Venta #${data.consecutivo} registrada — Total ${fmtCOP(data.total)}`);
+  mostrarBanner(data.estado === 'pendiente'
+    ? `Movimiento ${data.solicitud_id.slice(0,8).toUpperCase()} cargado — Pendiente de autorización de Mayte u Óscar.`
+    : data.estado === 'rechazada' ? 'Esta solicitud fue rechazada. Revisa el motivo en Autorizaciones de ventas.'
+    : `✅ Venta #${data.consecutivo} registrada — Total ${fmtCOP(data.total)}`);
   cargarVentas();
+  cargarAutorizacionesVentas();
+  } catch (error) {
+    err.textContent = 'No se pudo confirmar la carga. Puedes reintentar: ' + error.message;
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = pendiente ? 'Cargar para autorización' : 'Registrar venta';
+  }
 }
 
 // ─── Escáner de IMEI (BarcodeDetector nativo) ──────────────────────────

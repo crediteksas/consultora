@@ -19,14 +19,14 @@ test('el precio configurado es sugerido y permite promociones', () => {
 test('la sugerencia comercial no reutiliza el costo y conserva precios digitados', () => {
   assert.match(html, /const precioAcc = ventasDomain\.precioSugerido\(prod, stockTienda\?\.precio_tienda\)/);
   assert.match(html, /const precioSugerido = ventasDomain\.precioSugerido\(unidad\.productos, unidad\.precio_tienda\)/);
-  assert.match(html, /if \(!venta\.items\[idx\]\.precio_venta\) venta\.items\[idx\]\.precio_venta = precioSugerido/);
+  assert.match(html, /if \(venta\.items\[idx\]\.precio_venta == null\) venta\.items\[idx\]\.precio_venta = precioSugerido/);
   assert.match(html, /venta\.items\[idx\]\.costo_unitario = unidad\.precio_tienda \?\? null/);
   assert.match(html, /costo_unitario: stockTienda\?\.costo_promedio \?\? null/);
   assert.doesNotMatch(html, /precio_sugerido:\s*stockTienda\?\.precio_tienda|precio_sugerido = unidad\.precio_tienda/);
 });
 
-test('la venta sigue exigiendo un precio positivo', () => {
-  assert.match(html, /!it\.precio_venta \|\| it\.precio_venta <= 0/);
+test('la venta acepta obsequios y exige un precio válido', () => {
+  assert.match(html, /Number\(it\.precio_venta\) < 0/);
   assert.match(html, /Falta el costo de remisión de un producto/);
   assert.match(html, /Costo de remisión de la tienda:/);
   assert.match(html, /Precio de venta al cliente/);
@@ -34,7 +34,7 @@ test('la venta sigue exigiendo un precio positivo', () => {
 
 test('validar IMEI mantiene el precio comercial y no sobrescribe la promoción digitada', async () => {
   const funcion = html.slice(html.indexOf('async function validarImei('), html.indexOf('\nfunction actualizarTotalParcial('));
-  for (const [precioDigitado, precioGuia, esperado] of [[null, 565000, 565000], [550000, 565000, 550000], [null, 356108, null], [null, null, null]]) {
+  for (const [precioDigitado, precioGuia, esperado] of [[0, 565000, 0], [null, 565000, 565000], [550000, 565000, 550000], [null, 356108, null], [null, null, null]]) {
     const unidad = { id: 'u1', producto_id: 'p1', tienda_actual: 'CK-01', estado: 'disponible',
       precio_tienda: 455000, productos: { nombre: 'Samsung A17', precio_guia: precioGuia } };
     const context = vm.createContext({

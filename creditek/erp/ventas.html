@@ -970,7 +970,7 @@ function actualizarVistaAddi() {
     document.getElementById('addiComplemento').value = String(resultado.porCobrar);
     document.getElementById('addiMedioGrupo').style.display = resultado.porCobrar > 0 ? '' : 'none';
     document.getElementById('addiReferenciaGrupo').style.display = resultado.porCobrar > 0 && medio.value !== 'efectivo' && medio.value !== '' ? '' : 'none';
-    vista.textContent = `Crédito Addi: ${fmtCOP(credito)}. La tienda recibirá por ese crédito ${fmtCOP(resultado.pagoTienda)} (${resultado.porcentajeTienda * 100}%). Debe cobrar al cliente ${fmtCOP(resultado.porCobrar)} por otro medio para completar el valor del artículo (${fmtCOP(total)}). Addi descontará ${fmtCOP(resultado.tarifa)} de tarifa y ${fmtCOP(resultado.ivaTarifa)} de IVA; consignación estimada a Creditek: ${fmtCOP(resultado.netoEstimado)} a los ${resultado.diasPago} días calendario.`;
+    vista.textContent = `Crédito Addi: ${fmtCOP(credito)}. La tienda recibirá por ese crédito ${fmtCOP(resultado.pagoTienda)}. Debe cobrar al cliente ${fmtCOP(resultado.porCobrar)} por otro medio para completar el valor del artículo (${fmtCOP(total)}).`;
   } catch (error) { vista.textContent = error.message; }
 }
 
@@ -1307,11 +1307,7 @@ function renderResumenFinal() {
     `;
     if (venta.credito.financiera === 'addi') {
       const addi = window.CreditekAddiLiquidacion.calcular(venta.credito.valor_esperado);
-      creditoHtml += `<div class="linea"><span>Tarifa Addi (7,5%)</span><span>${fmtCOP(addi.tarifa)}</span></div>
-        <div class="linea"><span>IVA sobre tarifa</span><span>${fmtCOP(addi.ivaTarifa)}</span></div>
-        <div class="linea"><strong>Pago pactado a la tienda por el crédito</strong><strong>${fmtCOP(addi.pagoTienda)}</strong></div>
-        <div class="linea"><span>Neto estimado que consignará Addi</span><span>${fmtCOP(addi.netoEstimado)}</span></div>
-        <div class="linea"><span>Pago estimado</span><span>15 días calendario después de la venta</span></div>`;
+      creditoHtml += `<div class="linea"><strong>Pago pactado a la tienda por el crédito</strong><strong>${fmtCOP(addi.pagoTienda)}</strong></div>`;
     }
   }
   document.getElementById('resumenFinal').innerHTML = `

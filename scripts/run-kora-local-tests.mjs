@@ -23,6 +23,7 @@ const erp = [
   'tests/erp/liquidaciones-import-validation.test.mjs',
   'tests/erp/alertas-celulares.test.mjs',
   'tests/erp/caja-ciclo-automatico.test.mjs',
+  'tests/erp/caja-primera-apertura.test.mjs',
   'tests/erp/caja-libro.test.mjs',
   'tests/erp/caja-movimientos-acumulados.test.mjs',
   'tests/erp/documentos-gestion.test.mjs',

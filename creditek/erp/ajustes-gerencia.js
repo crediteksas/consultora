@@ -105,6 +105,7 @@
     if(origen.error){$('pendientes').textContent='No se pudieron consultar tiendas y clientes: '+origen.error.message;return;}
     origenes=origen.data||[];if(p.id===MAITE)$('prepararPanel').hidden=false;
     $('app').hidden=false;
+    window.CreditekCajaLibroUI.montar({sb,perfil:p,contenedor:$('libroCajaGerencia'),tiendas:origenes.filter(o=>o.tipo==='propia')});
     $('tipo').onchange=cambiarTipo;$('codigo').onchange=saldoActual;
     $('objetivo').oninput=()=>{requestId=null;preview()};$('motivo').oninput=()=>{requestId=null;preview()};
     $('preparar').onclick=preparar;

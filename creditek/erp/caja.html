@@ -11,6 +11,8 @@
 <script src="kora-access-control.js?v=2.0.32"></script>
 <script src="sidebar.js?v=2.0.32" data-kora-shell="1.0.0"></script>
 <script src="caja-piloto-domain.js"></script>
+<script src="caja-libro-domain.js"></script>
+<script src="caja-libro-ui.js"></script>
 <style>
 .caja-ciclo-panel { line-height:1.5; }
 .caja-ciclo-panel h2 { font-size:20px; }
@@ -317,18 +319,17 @@ async function calcularCuadrito(tienda, fecha) {
     { data: cuadre, error: cuadreError },
     { data: movimientosCaja, error: movimientosCajaError },
   ] = await Promise.all([
-    sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items:venta_items_lectura(*, productos(nombre, tipo))')
-      .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false),
-    sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha),
+    window.CreditekCajaLibroUI.todas(() => sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items:venta_items_lectura(*, productos(nombre, tipo))')
+      .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false)).then(data => ({ data })),
+    window.CreditekCajaLibroUI.todas(() => sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha)).then(data => ({ data })),
     sb.rpc('calcular_efectivo_esperado_tienda', {
       p_tienda_codigo: tienda,
       p_fecha: fecha,
     }),
-    sb.from('movimientos_caja_tienda')
+    window.CreditekCajaLibroUI.todas(() => sb.from('movimientos_caja_tienda')
       .select('id, fecha, tipo, monto, observacion, creado_por, created_at')
       .eq('tienda_codigo', tienda)
-      .eq('fecha', fecha)
-      .order('created_at', { ascending: true }),
+      .eq('fecha', fecha)).then(data => ({ data })),
   ]);
   if (ventasError) throw ventasError;
   if (gastosError) throw gastosError;
@@ -413,6 +414,7 @@ async function calcularCuadrito(tienda, fecha) {
     ajusteArrastre: Number(cuadre.ajuste_arrastre_movimientos || 0),
     caja: cuadre.caja || null,
     movimientosCaja: movimientosCaja || [],
+    libroCaja: window.CreditekCajaLibro.construir({ cuadre, ventas:ventas || [], gastos:gastos || [], movimientos:movimientosCaja || [] }),
   };
 }
 
@@ -489,7 +491,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
           <div class="page-top" style="margin-bottom:10px;">
             <div>
               <h3 id="movimientosCajaTitulo">Movimientos y saldo acumulado</h3>
-              <div class="meta">Incluye únicamente movimientos explícitos de caja de la fecha seleccionada.</div>
+              <div class="meta">Incluye ventas y otros cobros en efectivo, gastos aplicados, consignaciones, retiros y ajustes de la fecha seleccionada. Los filtros no recalculan los saldos.</div>
             </div>
             <input id="filtroMovimientosCaja" type="search" placeholder="Filtrar por tipo, usuario o concepto" aria-label="Filtrar movimientos de caja" style="max-width:280px;">
           </div>
@@ -500,6 +502,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
             </table>
           </div>
           <div class="cuadrito-vacio" style="margin-top:8px;">Saldo inicial ${fmtCOP(c.apertura)} · Saldo actual esperado ${fmtCOP(c.esperado)}</div>
+          ${!c.libroCaja.cuadra ? '<p role="alert" style="color:var(--rojo)">El detalle no coincide con el saldo oficial. Actualiza la consulta y revisa los movimientos; no se modificó ningún saldo.</p>' : ''}
         </div>
 
         ${cerrada ? `
@@ -527,28 +530,22 @@ async function cargarCuadritoDatos(tienda, fecha) {
     </div>
   `;
 
-  const tiposSalida = new Set(['transferencia_central', 'pago_directo_central', 'retiro', 'consignacion', 'devolucion_efectivo']);
   const renderMovimientosCaja = filtro => {
-    let saldo = c.apertura;
-    const filas = c.movimientosCaja.map(m => {
-      const salida = tiposSalida.has(m.tipo);
-      saldo += salida ? -Number(m.monto) : Number(m.monto);
-      return { ...m, salida, saldo };
-    }).filter(m => {
-      const texto = `${m.tipo} ${m.observacion || ''} ${m.creado_por || ''}`.toLowerCase();
+    const filas = c.libroCaja.filas.filter(m => {
+      const texto = `${m.tipo} ${m.concepto || ''} ${m.usuario || ''}`.toLowerCase();
       return !filtro || texto.includes(filtro.toLowerCase());
     });
     document.getElementById('tbodyMovimientosCaja').innerHTML = filas.length ? filas.map(m => `
       <tr>
-        <td>${new Date(m.created_at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}</td>
-        <td>${escapeHtml(m.tipo.replaceAll('_', ' '))}</td>
-        <td>${escapeHtml(m.observacion || '—')}</td>
-        <td class="font-mono">${escapeHtml(m.creado_por || '—')}</td>
-        <td>${m.salida ? '' : fmtCOP(m.monto)}</td>
-        <td>${m.salida ? fmtCOP(m.monto) : ''}</td>
+        <td>${new Date(m.registro).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', timeZone:'America/Bogota' })}</td>
+        <td>${escapeHtml(m.tipo)}</td>
+        <td>${escapeHtml(m.concepto || '—')}</td>
+        <td class="font-mono">${escapeHtml(m.usuario || '—')}</td>
+        <td>${m.importe > 0 ? fmtCOP(m.importe) : ''}</td>
+        <td>${m.importe < 0 ? fmtCOP(-m.importe) : ''}</td>
         <td>${fmtCOP(m.saldo)}</td>
       </tr>
-    `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text2);">Sin movimientos explícitos para esta fecha.</td></tr>';
+    `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text2);">Sin movimientos de efectivo para estos filtros.</td></tr>';
   };
   renderMovimientosCaja('');
   document.getElementById('filtroMovimientosCaja').addEventListener('input', event => renderMovimientosCaja(event.target.value));

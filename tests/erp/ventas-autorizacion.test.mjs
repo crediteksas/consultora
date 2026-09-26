@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { PGlite } from '@electric-sql/pglite';
-const sql = await readFile(new URL('../../supabase/migrations/20260926214250_ventas_obsequios_autorizacion.sql', import.meta.url),'utf8');
+const sql = await readFile(new URL('../../supabase/migrations/20260926221304_ventas_obsequios_autorizacion.sql', import.meta.url),'utf8');
 const original = await readFile(new URL('./fixtures/registrar-venta-auditada-20260910.sql',import.meta.url),'utf8');
 const html = await readFile(new URL('../../creditek/erp/ventas.html',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627', mayte='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';

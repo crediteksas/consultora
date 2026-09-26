@@ -47,6 +47,7 @@ const erp = [
   'tests/erp/cartera-clientes-b2b.test.mjs',
   'tests/erp/resumen-saldos-b2b.test.mjs',
   'tests/erp/cuenta-corriente-nombres.test.mjs',
+  'tests/erp/cuenta-corriente-comprobantes.test.mjs',
   'tests/erp/tablero-utilidad.test.mjs',
   'tests/erp/tablero-creditos-liquidaciones.test.mjs',
   'tests/erp/tablero-ejecutivos.test.mjs',

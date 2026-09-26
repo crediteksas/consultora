@@ -157,6 +157,24 @@ body.modal-open { overflow: hidden; }
 .btn-primary { min-height: 44px; border-radius: 12px; padding-inline: 18px; }
 .btn-primary:active, .tabla-wrap button:active, details summary:active { transform: scale(.985); }
 .historial-controles select, .campo input, .campo select { min-height: 44px; border-radius: 12px; }
+/* KORA-2026-000060: el comprobante no depende de una columna fuera de pantalla. */
+#tablaInstrucciones { table-layout: fixed; width: 100%; min-width: 0; }
+#tablaInstrucciones th, #tablaInstrucciones td {
+  white-space: normal; overflow-wrap: anywhere; vertical-align: top; padding: 12px 8px;
+}
+#tablaInstrucciones th:nth-child(4) { width: 22%; }
+#tablaInstrucciones th:nth-child(6) { width: 18%; }
+#tablaInstrucciones .instruccion-acciones { display: flex; flex-direction: column; gap: 8px; }
+#tablaInstrucciones button { white-space: normal; max-width: 100%; min-height: 44px; margin: 0; }
+#tablaInstrucciones [data-enviar] { background: var(--azul); color: white; border: 0; border-radius: 10px; padding: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+@media (max-width: 900px) {
+  #tablaInstrucciones, #tablaInstrucciones tbody { display: block; }
+  #tablaInstrucciones thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  #tablaInstrucciones tr { display: block; padding: 12px; border-bottom: 1px solid var(--border); cursor: default; }
+  #tablaInstrucciones td { display: grid; grid-template-columns: minmax(90px, 32%) minmax(0, 1fr); gap: 12px; padding: 7px 0; border: 0; }
+  #tablaInstrucciones td::before { content: attr(data-label); font-weight: 700; color: var(--text2); font-size: 12px; }
+  #tablaInstrucciones td > div { min-width: 0; }
+}
 @keyframes carteraFadeInUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -236,8 +254,8 @@ body.modal-open { overflow: hidden; }
       <p id="cuentaCreditekEstado" role="status" aria-live="polite">Consultando cuenta…</p>
     </section>
     <div class="tabla-wrap">
-      <table>
-        <thead><tr><th>Fecha</th><th>Tienda</th><th>Banco</th><th>Cuenta destino</th><th>Valor</th><th>Comprobante</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <table id="tablaInstrucciones">
+        <thead><tr><th>Fecha</th><th>Tienda</th><th>Banco</th><th>Cuenta destino</th><th>Valor</th><th>Comprobante</th><th>Estado</th></tr></thead>
         <tbody id="tbodyInstrucciones"></tbody>
       </table>
       <div class="empty-state" id="emptyInstrucciones" style="display:none;">No hay instrucciones.</div>
@@ -961,17 +979,17 @@ async function cargarInstrucciones() {
     const beneficiario = i.tipo_destino === 'CREDITEK'
       ? '<br><strong>Creditek S.A.S. · NIT 901.259.859-0</strong>' : '';
     return `<tr>
-      <td>${escapeHtml(i.fecha)}${i.fecha_pago?`<br><small>Pago: ${escapeHtml(i.fecha_pago)}</small>`:''}</td>
-      <td>${escapeHtml(nombreTienda(i.tienda_codigo))}</td>
-      <td>${escapeHtml(i.banco)}</td>
-      <td>${escapeHtml(destino || '—')}${beneficiario}${i.beneficiario_socio?`<br><strong>Socio: ${escapeHtml(i.beneficiario_socio)}</strong><br><small>Retiro Retail ${escapeHtml(i.financial_entry_id||'')}</small>`:''}</td>
-      <td>${fmtCOP(i.valor_esperado)}</td>
-      <td>${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : '—'}</td>
-      <td>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</td>
-      <td>
-        ${puedeEnviar ? `<button class="link-chico" data-enviar="${i.id}">Enviar</button>` : ''}
-        ${puedeDecidir ? `<button class="link-chico" data-aprobar="${i.id}">Aprobar</button><button class="link-chico" data-rechazar="${i.id}">Rechazar</button>` : ''}
-      </td>
+      <td data-label="Fecha"><div>${escapeHtml(i.fecha)}${i.fecha_pago?`<br><small>Pago: ${escapeHtml(i.fecha_pago)}</small>`:''}</div></td>
+      <td data-label="Tienda"><div>${escapeHtml(nombreTienda(i.tienda_codigo))}</div></td>
+      <td data-label="Banco"><div>${escapeHtml(i.banco)}</div></td>
+      <td data-label="Cuenta destino"><div>${escapeHtml(destino || '—')}${beneficiario}${i.beneficiario_socio?`<br><strong>Socio: ${escapeHtml(i.beneficiario_socio)}</strong><br><small>Retiro Retail ${escapeHtml(i.financial_entry_id||'')}</small>`:''}</div></td>
+      <td data-label="Valor"><div>${fmtCOP(i.valor_esperado)}</div></td>
+      <td data-label="Comprobante"><div class="instruccion-acciones">
+        ${i.soporte_path ? `<button class="link-chico" data-soporte="${escapeHtml(i.soporte_path)}">Ver comprobante</button>` : puedeEnviar ? '' : 'Sin comprobante'}
+        ${puedeEnviar ? `<button type="button" data-enviar="${escapeHtml(i.id)}">${i.estado === 'rechazado' ? 'Reenviar comprobante' : 'Subir comprobante'}</button>` : ''}
+        ${puedeDecidir ? `<button class="link-chico" data-aprobar="${escapeHtml(i.id)}">Aprobar</button><button class="link-chico" data-rechazar="${escapeHtml(i.id)}">Rechazar</button>` : ''}
+      </div></td>
+      <td data-label="Estado"><div>${escapeHtml(etiquetaEstadoInstruccion(i.estado))}${interno}${i.motivo_decision ? `<br><small>${escapeHtml(i.motivo_decision)}</small>` : ''}</div></td>
     </tr>`;
   }).join('');
   tbody.querySelectorAll('[data-enviar]').forEach(btn => btn.addEventListener('click', () => abrirComprobante(btn.dataset.enviar)));

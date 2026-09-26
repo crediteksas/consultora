@@ -38,6 +38,8 @@ test('resolver mantiene bucket histórico y usa privado solo para el prefijo nue
   }
   const path = 'proveedores/saldos-iniciales/nuevo.pdf';
   assert.deepEqual(domain.resolverSoporte(path), {bucket:'soportes',path});
+  const pago = 'proveedores/pagos/nuevo.pdf';
+  assert.deepEqual(domain.resolverSoporte(pago), {bucket:'soportes',path:pago});
 });
 
 test('archivo faltante, vacío, MIME distinto, formato prohibido o >10 MB no llega a red', async () => {
@@ -171,4 +173,14 @@ test('formulario usa flujo privado, error inline persistente y capas oficiales K
   assert.match(html,/resolverSoporte\(path\)/);
   const submit = html.slice(html.indexOf('async function registrarSaldoInicial'), html.indexOf('// FORMULARIO —'));
   assert.doesNotMatch(submit,/\.storage\./);
+});
+
+test('abono a proveedor acepta PDF e imágenes en bucket privado sin romper soportes históricos', async () => {
+  const html = await readFile(new URL('../../creditek/erp/proveedores.html',import.meta.url),'utf8');
+  assert.match(html,/const BUCKET_SOPORTES = 'soportes'/);
+  const upload = html.slice(html.indexOf('async function subirSoportePago'), html.indexOf('async function registrarPago'));
+  assert.match(upload,/CreditekSaldoInicialProveedor\.validarArchivo\(archivo\)/);
+  assert.match(upload,/`proveedores\/pagos\/\$\{pagoIdempotencyKey\}\.\$\{extension\}`/);
+  assert.match(upload,/SB\.storage\.from\(BUCKET_SOPORTES\)\.upload\(path, archivo, \{\s*contentType,/);
+  assert.doesNotMatch(upload,/pagos-proveedores/);
 });

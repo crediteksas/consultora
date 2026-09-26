@@ -316,7 +316,8 @@
               <input id="pago-referencia" type="text" maxlength="120" class="mt-1 w-full border rounded px-3 py-2" />
             </label>
             <label class="text-sm">Soporte
-              <input id="pago-soporte" type="file" accept="image/*,application/pdf" class="mt-1 w-full border rounded px-3 py-2" />
+              <input id="pago-soporte" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" class="mt-1 w-full border rounded px-3 py-2" />
+              <span class="block mt-1 text-xs text-gray-500">PDF, JPG, PNG o WebP; hasta 10 MB.</span>
             </label>
           </div>
           <label class="block text-sm">Nota
@@ -364,7 +365,7 @@ const SB = (function () {
   return window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
 })();
 const proveedoresDomain = window.CreditekProveedoresDomain;
-const BUCKET_SOPORTES = 'productos-fotos';
+const BUCKET_SOPORTES = 'soportes';
 
 // ============================================================
 // HELPERS DE FORMATO — Colombia
@@ -766,9 +767,10 @@ async function subirSoportePago() {
   const archivo = document.getElementById('pago-soporte').files?.[0];
   if (!archivo) return null;
   if (pagoSoportePath) return pagoSoportePath;
-  const extension = (archivo.name.split('.').pop() || 'bin').toLowerCase();
-  const path = `pagos-proveedores/${pagoIdempotencyKey}.${extension}`;
+  const { extension, contentType } = window.CreditekSaldoInicialProveedor.validarArchivo(archivo);
+  const path = `proveedores/pagos/${pagoIdempotencyKey}.${extension}`;
   const { error } = await SB.storage.from(BUCKET_SOPORTES).upload(path, archivo, {
+    contentType,
     cacheControl: '3600',
     upsert: false,
   });

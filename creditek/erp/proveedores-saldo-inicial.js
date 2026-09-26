@@ -4,6 +4,7 @@
   const BUCKET = 'soportes';
   // El prefijo identifica el bucket sin alterar rutas de facturas históricas.
   const PREFIX = 'proveedores/saldos-iniciales/';
+  const PREFIX_PAGOS = 'proveedores/pagos/';
   const MAX_BYTES = 10 * 1024 * 1024;
   const TIPOS = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 
@@ -51,7 +52,8 @@
   }
 
   function resolverSoporte(path) {
-    return { bucket: String(path || '').startsWith(PREFIX) ? BUCKET : 'productos-fotos', path };
+    const ruta = String(path || '');
+    return { bucket: ruta.startsWith(PREFIX) || ruta.startsWith(PREFIX_PAGOS) ? BUCKET : 'productos-fotos', path };
   }
 
   function crearRegistro({ sb, idempotencyKey = global.crypto.randomUUID(), timeoutMs = 45000 }) {

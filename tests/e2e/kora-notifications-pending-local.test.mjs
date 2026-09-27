@@ -9,20 +9,24 @@ test('campana conserva trámites al leer avisos y actualiza estados sin mutar do
     await page.setContent('<button data-kora-notifications>Campana</button>');
     await page.addStyleTag({content:await readFile('design-system/components/kora-incident-center.css','utf8')});
     await page.evaluate(()=>{
-      window.counts={kora_incidents:2,traslados:6,gastos:4,aliados_gastos_operativos:1,financial_entries:2};
+      window.counts={kora_incidents:2,traslados:6,gastos:4,aliados_gastos_operativos:1,financial_entries:2,ventas_autorizaciones:3};
       window.writes=[];window.fail=false;
       window.sb={rpc:async()=>({data:true}),from(table){let count=false,update=false;const q={select(fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},is(){return q;},order(){return q;},limit(){return q;},update(){window.writes.push(table);update=true;return q;},then(ok,bad){return Promise.resolve(update?{error:null}:count?{count:window.fail&&table==='traslados'?null:window.counts[table],error:window.fail&&table==='traslados'?{message:'Network error'}:null}:{data:[{id:'n1',type:'incident_resolved',title:'Incidencia corregida',message:'Prueba',incident_id:'00000000-0000-0000-0000-000000000001',read_at:null,created_at:'2026-09-21T12:00:00Z'}],error:null}).then(ok,bad);}};return q;}};
     });
     await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
     await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'a',activo:true,rol:'gerencia'}}));
-    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='18');
+    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='21');
     await page.locator('[data-kora-notifications]').click();
     await page.locator('[data-kora-notifications-read-all]').click();
-    assert.equal(await page.locator('[data-kora-notification-count]').textContent(),'17');
+    assert.equal(await page.locator('[data-kora-notification-count]').textContent(),'20');
     assert.equal(await page.locator('[data-pending="transfers"]').count(),1);
+    assert.equal(await page.locator('[data-pending="sales-approval"]').count(),1);
     assert.deepEqual(await page.evaluate(()=>writes),['kora_notifications']);
     await page.evaluate(()=>{counts.traslados=0;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
     await page.waitForFunction(()=>!document.querySelector('[data-pending="transfers"]'));
+    await page.evaluate(()=>{counts.ventas_autorizaciones=0;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
+    await page.waitForFunction(()=>!document.querySelector('[data-pending="sales-approval"]'));
+    assert.equal(await page.locator('[data-pending="store-expenses"]').count(),1,'conserva los otros trámites');
     await page.evaluate(()=>{fail=true;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
     await page.waitForFunction(()=>document.querySelector('[data-kora-notifications-status]').dataset.kind==='error');
     assert.match(await page.locator('[data-kora-notifications-summary]').textContent(),/incompleta/);
@@ -32,5 +36,47 @@ test('campana conserva trámites al leer avisos y actualiza estados sin mutar do
       await page.locator('.kora-notifications-list button').last().scrollIntoViewIfNeeded();
     }
     assert.deepEqual(await page.evaluate(()=>writes),['kora_notifications']);
+  }finally{await browser.close();}
+});
+
+test('ventas en campana: permiso del servidor, error visible y enlace directo sin autorizar',async()=>{
+  const browser=await chromium.launch({channel:'chrome',headless:true});
+  try{
+    for(const rol of ['gerencia','auditoria']){
+      const page=await browser.newPage({viewport:{width:390,height:700}});
+      await page.route('https://kora.test/**',route=>route.fulfill({contentType:'text/html',body:'<button data-kora-notifications>Campana</button><h2 id="tituloAutorizaciones">Autorizaciones de ventas</h2>'}));
+      await page.goto('https://kora.test/creditek/erp/ventas.html');
+      await page.evaluate(()=>{
+        window.allowed=false;window.failPermission=false;window.failCount=false;window.calls=[];
+        window.sb={rpc:async name=>{
+          calls.push(name);
+          if(name==='puede_autorizar_venta_excepcional')return failPermission?{error:{message:'Error de permiso'}}:{data:allowed};
+          if(name==='es_controlador_financiero')return {data:false};
+          throw new Error('RPC de escritura no permitido');
+        },from(table){calls.push(table);let count=false;const q={
+          select(_fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},order(){return q;},limit(){return q;},
+          then(ok,bad){return Promise.resolve(count?(table==='ventas_autorizaciones'&&failCount?{error:{message:'Sin conexión'}}:{count:table==='ventas_autorizaciones'?1:0}):{data:[]}).then(ok,bad);}
+        };return q;}};
+      });
+      await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
+      await page.evaluate(rol=>KoraNotifications.mount({sb,profile:{id:'usuario',activo:true,rol}}),rol);
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notifications-summary]').textContent==='Sin pendientes ni avisos nuevos');
+      assert.equal(await page.evaluate(()=>calls.includes('ventas_autorizaciones')),false);
+      await page.evaluate(()=>{failPermission=true;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notifications-status]').dataset.kind==='error');
+      assert.equal(await page.locator('[data-kora-notification-count]').textContent(),'!');
+      await page.evaluate(()=>{failPermission=false;allowed=true;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='1');
+      await page.locator('[data-kora-notifications]').click();
+      const sale=page.locator('[data-pending="sales-approval"]');
+      assert.match(await sale.textContent(),/1 · Ventas bajo costo u obsequios por autorizar/);
+      await page.evaluate(()=>{failCount=true;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='1+');
+      assert.equal(await sale.count(),1,'un error no borra la alerta anterior');
+      await sale.click();
+      await page.waitForURL('https://kora.test/creditek/erp/ventas.html#tituloAutorizaciones');
+      assert.equal(await page.evaluate(()=>calls.some(n=>n==='resolver_autorizacion_venta')),false);
+      await page.close();
+    }
   }finally{await browser.close();}
 });

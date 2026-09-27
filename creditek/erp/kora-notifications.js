@@ -2,7 +2,7 @@
   'use strict';
 
   // Consultas de solo lectura: RLS sigue siendo la autoridad sobre lo visible.
-  function pendingSources(profile, financialAccess = false) {
+  function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
     const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Son incidencias generales. Salen de la campana al cerrar la incidencia, no al abrirla.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
@@ -11,6 +11,9 @@
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
         {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
         {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
+      );
+      if (salesApprovalAccess) sources.push(
+        {key:'sales-approval',table:'ventas_autorizaciones',title:'Ventas bajo costo u obsequios por autorizar',hint:'Pendientes del visto bueno de Mayte u Óscar. Se retiran al aprobar o rechazar, no al leerlas.',path:'/creditek/erp/ventas.html#tituloAutorizaciones',filters:[['eq','estado','pendiente']]},
       );
     } else if (profile.rol === 'admin_tienda' && profile.tienda_codigo) {
       sources.push(
@@ -176,6 +179,7 @@
           .order('created_at', { ascending: false })
           .limit(50),
           ['gerencia','auditoria'].includes(profile.rol)?sb.rpc('es_controlador_financiero'):Promise.resolve({data:false}),
+          ['gerencia','auditoria'].includes(profile.rol)&&profile.activo!==false?sb.rpc('puede_autorizar_venta_excepcional'):Promise.resolve({data:false}),
         ]);
         incomplete = false;
         const notices=results[0];
@@ -184,7 +188,10 @@
         const access=results[1];
         const financialAccess=access.status==='fulfilled'&&!access.value.error&&access.value.data===true;
         if(access.status==='rejected'||access.value.error) incomplete=true;
-        const sources=pendingSources(profile,financialAccess);
+        const salesAccess=results[2];
+        const salesApprovalAccess=salesAccess.status==='fulfilled'&&!salesAccess.value.error&&salesAccess.value.data===true;
+        if(salesAccess.status==='rejected'||salesAccess.value.error) incomplete=true;
+        const sources=pendingSources(profile,financialAccess,salesApprovalAccess);
         const counts=await Promise.allSettled(sources.map(source=>pendingCount(sb,source)));
         pending=counts.map((result,i)=>{
           if(result.status==='fulfilled')return result.value;

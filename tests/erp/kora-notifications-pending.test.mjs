@@ -50,3 +50,31 @@ test('conteos exactos sin descargar datos ni convertir errores en cero',async()=
   await assert.rejects(pendingCount(sb,spec),/pendientes/);
   assert.ok(calls.every(t=>t==='kora_incidents'));
 });
+
+test('ventas excepcionales solo alertan a quien el servidor permite autorizar',()=>{
+  for(const rol of ['gerencia','auditoria']){
+    assert.ok(!pendingSources({id:'a',rol},true).some(s=>s.key==='sales-approval'));
+    const sources=pendingSources({id:'a',rol},false,true);
+    const sales=sources.find(s=>s.key==='sales-approval');
+    assert.equal(sales.table,'ventas_autorizaciones');
+    assert.equal(JSON.stringify(sales.filters),JSON.stringify([['eq','estado','pendiente']]));
+    assert.equal(sales.path,'/creditek/erp/ventas.html#tituloAutorizaciones');
+    assert.match(readFileSync('creditek/erp/ventas.html','utf8'),/id="tituloAutorizaciones"/);
+    assert.match(sales.hint,/aprobar o rechazar, no al leerlas/);
+    assert.ok(!sources.some(s=>s.table==='financial_entries'),'no depende del acceso financiero');
+  }
+  for(const rol of ['admin_tienda','asesor'])assert.ok(!pendingSources({id:'a',rol,tienda_codigo:'CK-02'},true,true).some(s=>s.key==='sales-approval'));
+  assert.equal(pendingSources({id:'a',rol:'gerencia',activo:false},true,true).length,0);
+});
+
+test('campana cuenta todas las ventas pendientes, no aprobadas/rechazadas ni solo el mes actual',async()=>{
+  const rows=[{estado:'pendiente',fecha:'2026-08-01'},{estado:'pendiente',fecha:'2026-09-27'},{estado:'aprobada'},{estado:'rechazada'},{estado:'registrada'}];
+  const calls=[];
+  const sb={from(table){assert.equal(table,'ventas_autorizaciones');const q={
+    select(columns,options){assert.equal(columns,'id');assert.equal(options.count,'exact');assert.equal(options.head,true);return q;},
+    eq(column,value){calls.push([column,value]);return Promise.resolve({count:rows.filter(r=>r[column]===value).length,error:null});}
+  };return q;}};
+  const spec=pendingSources({id:'a',rol:'gerencia'},false,true).find(s=>s.key==='sales-approval');
+  assert.equal((await pendingCount(sb,spec)).count,2);
+  assert.deepEqual(calls,[['estado','pendiente']]);
+});

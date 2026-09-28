@@ -4,13 +4,14 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { PGlite } from '@electric-sql/pglite';
 const sql = await readFile(new URL('../../supabase/migrations/20260926221304_ventas_obsequios_autorizacion.sql', import.meta.url),'utf8');
+const registroSql = await readFile(new URL('../../supabase/migrations/20260928121506_ventas_registro_antes_contabilizacion.sql', import.meta.url),'utf8');
 const original = await readFile(new URL('./fixtures/registrar-venta-auditada-20260910.sql',import.meta.url),'utf8');
 const html = await readFile(new URL('../../creditek/erp/ventas.html',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627', mayte='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const seller='10000000-0000-4000-8000-000000000001', other='10000000-0000-4000-8000-000000000002';
 const product='20000000-0000-4000-8000-000000000001', phone='20000000-0000-4000-8000-000000000002', unit='30000000-0000-4000-8000-000000000001';
 const request='40000000-0000-4000-8000-000000000001';
-async function setup(){
+async function setup(upgrade=true){
  const db=await PGlite.create();
  await db.exec(`create role anon; create role authenticated; create schema auth; create schema kora_private;
  create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -18,10 +19,13 @@ async function setup(){
  create function rol_actual() returns text language sql security definer as $$select rol from public.perfiles where id=auth.uid() and activo$$;
  create function tienda_actual() returns text language sql security definer as $$select tienda_codigo from public.perfiles where id=auth.uid() and activo$$;
  create function es_central() returns boolean language sql security definer as $$select coalesce(public.rol_actual() in ('gerencia','auditoria'),false)$$;
+ create table clientes(id uuid primary key,nombre_completo text,cedula text);
+ create table origenes(codigo text primary key,nombre text);
+ insert into origenes values('CK-01','Tienda prueba');
  create table productos(id uuid primary key,nombre text,tipo text);
  create table unidades(id uuid primary key,producto_id uuid,tienda_actual text,estado text,costo_remision numeric,precio_tienda numeric,imei text);
  create table stock_cantidad(producto_id uuid,tienda_codigo text,cantidad int,costo_promedio numeric,updated_at timestamptz);
- create table ventas(id uuid primary key default gen_random_uuid(),consecutivo bigserial,tienda_codigo text,vendedor uuid,tipo text,cliente_id uuid,total numeric,anulada boolean,nota text,fecha date default current_date);
+ create table ventas(id uuid primary key default gen_random_uuid(),consecutivo bigint generated always as identity,tienda_codigo text,vendedor uuid,tipo text,cliente_id uuid,total numeric,anulada boolean,nota text,fecha date default current_date);
  create table venta_items(venta_id uuid,producto_id uuid,unidad_id uuid,cantidad int,precio_venta numeric,costo_congelado numeric);
  create table movimientos(tipo text,tienda_codigo text,producto_id uuid,unidad_id uuid,cantidad int,costo numeric,precio numeric,referencia_tipo text,referencia_id text,usuario uuid);
  create table creditos(venta_id uuid,financiera text,cuota_inicial numeric,valor_esperado_financiera numeric,plazo_meses int,estado_conciliacion text);
@@ -33,6 +37,7 @@ async function setup(){
  await db.exec(protection.slice(protection.indexOf('create or replace function public.proteger_registro_venta_confirmada()'),protection.indexOf('create or replace function public.corregir_venta_administrativa(')));
  await db.exec(original);
  await db.exec(sql);
+ if(upgrade) await db.exec(registroSql);
  await db.exec('grant usage on schema public,auth to authenticated');
  await login(db,seller);
  return db;
@@ -47,14 +52,21 @@ async function count(db,table){return Number((await db.query(`select count(*) n 
 
 test('obsequio cargado, autorizado por Mayte, conserva vendedor y no duplica inventario ni venta',async()=>{
  const db=await setup();try{
-  assert.equal((await register(db)).estado,'pendiente');
-  assert.equal((await register(db)).estado,'pendiente');
+  const registrada = await register(db);
+  assert.equal(registrada.estado,'pendiente');
+  assert.equal(registrada.registrada,true);assert.equal(registrada.contabilizada,false);assert.ok(registrada.consecutivo);
+  assert.deepEqual(await register(db),registrada);
+  const lista=(await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r;
+  assert.equal(lista.length,1);assert.equal(lista[0].consecutivo,registrada.consecutivo);
+  assert.equal(lista[0].venta_items[0].precio_venta,0);
   assert.equal(await count(db,'ventas_autorizaciones'),1);
   for(const t of ['ventas','venta_items','movimientos','creditos']) assert.equal(await count(db,t),0);
   assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,10);
   await assert.rejects(resolve(db),/Solo Mayte/);
   await login(db,other);await assert.rejects(resolve(db),/Solo Mayte/);
   await login(db,mayte);const result=await resolve(db);assert.equal(result.estado,'aprobada');assert.equal(Number(result.total),0);
+  assert.equal(result.consecutivo,registrada.consecutivo);assert.equal(result.venta_id,registrada.venta_id);assert.equal(result.contabilizada,true);
+  assert.deepEqual((await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r,[]);
   assert.deepEqual(await resolve(db),result);
   assert.equal(await count(db,'ventas'),1);assert.equal(await count(db,'movimientos'),1);
   assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,9);
@@ -73,6 +85,9 @@ test('venta mixta conserva celular y vidrio de regalo sin contabilizar antes de 
  const db=await setup();try{
   const result=await register(db,0,request,[{producto_id:phone,unidad_id:unit,cantidad:1,precio_venta:530000},...items(0)]);
   assert.equal(result.estado,'pendiente');assert.equal(Number(result.total),530000);assert.equal(await count(db,'ventas'),0);
+  const registro=(await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r[0];
+  assert.equal(registro.id,result.venta_id);assert.equal(registro.consecutivo,result.consecutivo);
+  assert.deepEqual(registro.venta_items.map(i=>Number(i.precio_venta)).sort((a,b)=>a-b),[0,530000]);
   await login(db,oscar);await resolve(db);assert.equal(await count(db,'venta_items'),2);
   assert.equal(Number((await db.query('select total from ventas')).rows[0].total),530000);
  }finally{await db.close();}
@@ -92,6 +107,7 @@ test('rechazo no descuenta stock, es auditable y la cuenta desactivada no puede 
   await register(db,1000);await login(db,oscar);await db.exec(`update perfiles set activo=false where id='${oscar}'`);
   await assert.rejects(resolve(db),/Solo Mayte/);await login(db,mayte);
   assert.equal((await resolve(db,false)).estado,'rechazada');assert.equal((await resolve(db)).estado,'rechazada');
+  const registros=(await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r;assert.equal(registros.length,1);assert.equal(registros[0].estado_contabilizacion,'rechazada');
   assert.equal(await count(db,'ventas'),0);assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,10);
  }finally{await db.close();}
 });
@@ -132,8 +148,26 @@ test('RLS muestra solo solicitudes de la tienda y ninguna a un perfil desactivad
   await assert.rejects(db.exec("update ventas_autorizaciones set estado='aprobada'"),/permission denied/);
   await db.exec('reset role');await db.exec(`update perfiles set tienda_codigo='CK-02' where id='${seller}'`);await db.exec('set role authenticated');
   assert.equal(await count(db,'ventas_autorizaciones'),0);
+  assert.deepEqual((await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r,[]);
   await login(db,mayte);assert.equal(await count(db,'ventas_autorizaciones'),1);
   await db.exec('reset role');await db.exec(`update perfiles set activo=false where id='${mayte}'`);await db.exec('set role authenticated');
   assert.equal(await count(db,'ventas_autorizaciones'),0);
+ }finally{await db.close();}
+});
+
+test('listado incluye registradas y reserva los indicadores para ventas contabilizadas',()=>{
+ assert.match(html,/listar_ventas_registradas_sin_contabilizar/);
+ assert.match(html,/!v.anulada && !v.sin_contabilizar/);
+ assert.match(html,/Venta #\$\{data.consecutivo\} registrada con los precios ingresados/);
+ assert.doesNotMatch(html,/Cargar para autorización/);
+ assert.match(html,/Registrar venta/);
+});
+
+test('ventas pendientes anteriores adquieren número sin contabilizar ni alterar precios',async()=>{
+ const db=await setup(false);try{
+  await register(db,0);await db.exec(registroSql);
+  const r=(await db.query('select listar_ventas_registradas_sin_contabilizar() as r')).rows[0].r[0];
+  assert.ok(r.consecutivo);assert.equal(r.venta_items[0].precio_venta,0);assert.equal(await count(db,'ventas'),0);
+  await login(db,mayte);const aprobado=await resolve(db);assert.equal(aprobado.consecutivo,r.consecutivo);assert.equal(aprobado.venta_id,r.id);
  }finally{await db.close();}
 });

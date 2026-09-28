@@ -11,7 +11,7 @@ const modules = [
   { page: 'gastos', cache: 'gastosCache', next: 'cargarGastos', open: 'abrirCorreccionGasto' },
 ];
 
-function harness(module, { search = `?documento=${ID}`, data = { id: ID }, error = null, central = true } = {}) {
+function harness(module, { search = `?documento=${ID}`, data = { id: ID }, error = null, central = true, registrada = null } = {}) {
   const html = readFileSync(`creditek/erp/${module.page}.html`, 'utf8');
   const start = html.indexOf('let documentoEnlaceProcesado = false;');
   const end = html.indexOf(`async function ${module.next}()`, start);
@@ -25,7 +25,7 @@ function harness(module, { search = `?documento=${ID}`, data = { id: ID }, error
   };
   const context = vm.createContext({
     URLSearchParams, location: { search },
-    sb: { from(table) { queries.push(['from', table]); return query; } },
+    sb: { from(table) { queries.push(['from', table]); return query; }, async rpc(name, params) { assert.equal(name, 'listar_ventas_registradas_sin_contabilizar'); assert.equal(params.p_id, ID); queries.push(['rpc', name]); return { data: registrada ? [registrada] : [], error }; } },
     [module.cache]: [],
     currentPerfil: { rol: central ? 'gerencia' : 'admin_tienda', tienda_codigo: 'CK-01' },
     esCentral: () => central,
@@ -49,7 +49,7 @@ function harness(module, { search = `?documento=${ID}`, data = { id: ID }, error
 }
 
 for (const module of modules) {
-  test(`${module.page}: enlace exacto fuera de filtros o página, sin RPC ni escritura`, async () => {
+  test(`${module.page}: enlace exacto fuera de filtros o página, solo lectura y sin operaciones de escritura`, async () => {
     const h = harness(module);
     await h.run();
     assert.deepEqual(h.queries.filter(x => x[0] === 'from'), [['from', module.page]]);
@@ -57,7 +57,8 @@ for (const module of modules) {
     assert.ok(h.queries.some(x => x[0] === 'maybeSingle'));
     assert.equal(h.context[module.cache][0].id, ID);
     assert.ok([...h.elements.values()].every(e => e.value === ''));
-    assert.doesNotMatch(h.body, /\.rpc\(|\.(update|delete|insert|upsert)\(|confirm\(|anularTraslado\(|aplicarAjusteVenta\(/);
+    const lectura = module.page === 'ventas' ? h.body.replace("sb.rpc('listar_ventas_registradas_sin_contabilizar', { p_id: id })", 'lecturaRegistrada') : h.body;
+    assert.doesNotMatch(lectura, /\.rpc\(|\.(update|delete|insert|upsert)\(|confirm\(|anularTraslado\(|aplicarAjusteVenta\(/);
     if (module.page !== 'gastos') assert.equal(h.opened.length, 1);
     else assert.equal(h.opened.length, 0);
     const count = h.queries.length;
@@ -108,4 +109,10 @@ test('gastos: devuelve al editor existente solo un gasto devuelto y permitido', 
   const otherStore = harness(modules[3], { central: false, data: { id: ID, correccion_pendiente: true, tienda_codigo: 'CK-02' } });
   await otherStore.run();
   assert.equal(otherStore.opened.length, 0);
+});
+
+test('ventas: abre el registro comercial pendiente por su ID sin contabilizar ni modificarlo',async()=>{
+ const h=harness(modules[2],{data:null,registrada:{id:ID,consecutivo:901,sin_contabilizar:true}});
+ await h.run();assert.deepEqual(h.opened,[[ID]]);assert.equal(h.context.ventasCache[0].sin_contabilizar,true);
+ assert.deepEqual(h.queries.filter(q=>q[0]==='rpc'),[['rpc','listar_ventas_registradas_sin_contabilizar']]);
 });

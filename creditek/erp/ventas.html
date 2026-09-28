@@ -400,7 +400,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <section class="autorizaciones-ventas" aria-labelledby="tituloAutorizaciones">
       <div class="tabla-section-head"><h2 id="tituloAutorizaciones">Autorizaciones de ventas</h2><button type="button" id="btnActualizarAutorizaciones">Actualizar</button></div>
-      <p>Obsequios y precios inferiores al costo de remisión. Mayte u Óscar revisan cada movimiento.</p>
+      <p>Ventas ya registradas que requieren el visto bueno de Mayte u Óscar para contabilizarse por su costo.</p>
       <div id="autorizacionesVentasEstado" role="status"></div>
       <div id="autorizacionesVentasLista"></div>
     </section>
@@ -416,8 +416,8 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     </div>
 
     <section class="ventas-resumen" aria-label="Resumen del periodo">
-      <div class="ventas-kpi"><span>Ventas</span><strong id="resumenCantidad">0</strong></div>
-      <div class="ventas-kpi"><span>Valor vendido</span><strong id="resumenTotal">$ 0</strong></div>
+      <div class="ventas-kpi"><span>Ventas contabilizadas</span><strong id="resumenCantidad">0</strong></div>
+      <div class="ventas-kpi"><span>Valor contabilizado</span><strong id="resumenTotal">$ 0</strong></div>
       <div class="ventas-kpi"><span>Contado</span><strong id="resumenContado">$ 0</strong></div>
       <div class="ventas-kpi"><span>Crédito</span><strong id="resumenCredito">$ 0</strong></div>
     </section>
@@ -531,7 +531,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <!-- Paso 5: confirmar -->
     <div class="paso" id="paso5">
       <div class="resumen-venta" id="resumenFinal"></div>
-      <p id="avisoAutorizacionVenta" role="status" hidden>Hay un obsequio o un precio inferior al costo de remisión. El movimiento quedará cargado, pendiente de autorización de Mayte u Óscar. La venta, el inventario y la caja se actualizarán al aprobarlo.</p>
+      <p id="avisoAutorizacionVenta" role="status" hidden>La venta quedará registrada con estos precios. Por el obsequio o el precio inferior al costo, quedará pendiente de contabilizar hasta recibir el visto bueno de Mayte u Óscar.</p>
     </div>
 
     <div class="modal-err" id="modalVentaErr"></div>
@@ -689,11 +689,16 @@ async function abrirDocumentoSolicitado() {
   const { data, error } = await sb.from('ventas')
     .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items:venta_items_lectura(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
     .eq('id', id).maybeSingle();
-  if (error || !data) { mostrarBanner('No se pudo consultar la venta. Puede no existir o no estar disponible para tu perfil.'); return; }
-  ventasCache = [data, ...ventasCache.filter(v => v.id !== data.id)];
+  let documento = data;
+  if (!documento) {
+    const registro = await sb.rpc('listar_ventas_registradas_sin_contabilizar', { p_id: id });
+    documento = registro.data?.[0];
+  }
+  if (!documento) { mostrarBanner('No se pudo consultar la venta. Puede no existir o no estar disponible para tu perfil.'); return; }
+  ventasCache = [documento, ...ventasCache.filter(v => v.id !== documento.id)];
   ['filtroDesde', 'filtroHasta', 'filtroTienda', 'filtroTipo'].forEach(filtro => { document.getElementById(filtro).value = ''; });
   renderTablaVentas();
-  await abrirDetalleVenta(data.id);
+  await abrirDetalleVenta(documento.id);
 }
 
 async function cargarVentas() {
@@ -712,16 +717,22 @@ async function cargarVentas() {
   if (hasta) q = q.lte('fecha', hasta);
   if (tienda) q = q.eq('tienda_codigo', tienda);
 
-  const { data, error } = await q;
-  if (error) { empty.textContent = 'Error cargando ventas: ' + error.message; return; }
-  ventasCache = data || [];
+  const [{ data, error }, registros] = await Promise.all([
+    q,
+    sb.rpc('listar_ventas_registradas_sin_contabilizar', { p_desde: desde || null, p_hasta: hasta || null, p_tienda: tienda || null }),
+  ]);
+  if (error || registros.error) { empty.textContent = 'Error cargando ventas: ' + (error || registros.error).message; return; }
+  const contabilizadas = data || [];
+  const ids = new Set(contabilizadas.map(v => v.id));
+  ventasCache = [...contabilizadas, ...(registros.data || []).filter(v => !ids.has(v.id))]
+    .sort((a,b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   renderTablaVentas();
 }
 
 function renderTablaVentas() {
   const tipo = document.getElementById('filtroTipo').value;
   const filtradas = ventasCache.filter(v => !tipo || v.tipo === tipo);
-  const activas = filtradas.filter(v => !v.anulada);
+  const activas = filtradas.filter(v => !v.anulada && !v.sin_contabilizar);
   const total = activas.reduce((s,v) => s + Number(v.total || 0), 0);
   document.getElementById('resumenCantidad').textContent = new Set(activas.map(v => v.id)).size;
   document.getElementById('resumenTotal').textContent = fmtCOP(total);
@@ -750,7 +761,7 @@ function renderTablaVentas() {
         : Number(v.total || 0);
       return `
       <tr data-id="${v.id}" data-line-id="${it?.id || ''}" class="${v.anulada ? 'venta-anulada' : ''}" data-venta-nueva="${itemIndex===0}" tabindex="0" aria-label="Abrir detalle de venta ${v.consecutivo}, línea ${itemIndex+1}">
-        <td data-label="Venta"><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')} ${v.anulada ? '<span class="tag anulada">Anulada</span>' : ''}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
+        <td data-label="Venta"><span class="venta-ref"><strong>#${escapeHtml(v.consecutivo || '—')} ${v.anulada ? '<span class="tag anulada">Anulada</span>' : ''}${v.sin_contabilizar ? '<span class="tag credito">Registrada · ' + (v.estado_contabilizacion === 'rechazada' ? 'contabilización rechazada' : 'pendiente de contabilizar') + '</span>' : ''}</strong><small>${escapeHtml(String(v.id).slice(0,8).toUpperCase())}</small></span></td>
         <td data-label="Línea">${itemIndex+1}/${items.length}${it?.id ? `<br><span class="trace-id">${escapeHtml(String(it.id).slice(0,8).toUpperCase())}</span>` : ''}</td>
         <td data-label="Fecha">${fecha}</td>
         <td data-label="Tienda">${tienda}</td>
@@ -788,6 +799,21 @@ async function abrirDetalleVenta(ventaId) {
   contenido.textContent = 'Cargando detalle...';
   err.classList.remove('show');
   modal.classList.add('show');
+
+  if (ventaSeleccionada.sin_contabilizar) {
+    detalleVentaActiva = null;
+    detalleCreditoActivo = null;
+    document.getElementById('btnGestionarVenta').style.display = 'none';
+    contenido.className = '';
+    contenido.innerHTML = `<p><strong>Venta registrada · ${ventaSeleccionada.estado_contabilizacion === 'rechazada' ? 'contabilización rechazada' : 'pendiente de contabilizar'}</strong></p>
+      <p>Los precios ingresados están guardados. La contabilización requiere el visto bueno de Mayte u Óscar por el costo.</p>
+      <div class="detalle-tabla"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
+      ${(ventaSeleccionada.venta_items || []).map(i => `<tr><td>${escapeHtml(i.productos?.nombre || 'Producto')}${i.unidades?.imei ? '<br>IMEI ' + escapeHtml(i.unidades.imei) : ''}</td><td>${escapeHtml(i.cantidad)}</td><td>${fmtCOP(i.precio_venta)}</td><td>${fmtCOP(Number(i.precio_venta) * Number(i.cantidad))}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${ventaSeleccionada.motivo ? `<p>Motivo: ${escapeHtml(ventaSeleccionada.motivo)}</p>` : ''}
+      <div class="detalle-total"><span>Total registrado</span><span>${fmtCOP(ventaSeleccionada.total)}</span></div>`;
+    return;
+  }
 
   const [resultadoItems, resultadoCredito, resultadoMovimientos] = await Promise.all([
     sb.from('venta_items_lectura')
@@ -934,26 +960,26 @@ async function cargarAutorizacionesVentas() {
     ]);
     if (error || permisoError || recientesError) throw error || permisoError || recientesError;
     const solicitudes = [...(pendientes || []), ...(recientes || [])];
-    estado.textContent = `${(pendientes || []).length} pendientes de autorización`;
+    estado.textContent = `${(pendientes || []).length} ventas registradas pendientes de contabilizar`;
     lista.innerHTML = solicitudes.map(r => `<details>
-      <summary>${escapeHtml(r.tienda_codigo)} · ${escapeHtml(r.id.slice(0,8).toUpperCase())} · ${escapeHtml(r.estado)} · ${fmtCOP(r.total)}</summary>
+      <summary>${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
       <p>Cargado: ${escapeHtml(new Date(r.creado_en).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} · ${escapeHtml(r.tipo)}</p>
-      <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio propuesto: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
+      <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio registrado: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
       ${r.nota ? `<p>${escapeHtml(r.nota)}</p>` : ''}
       ${r.motivo ? `<p>Motivo: ${escapeHtml(r.motivo)}</p>` : ''}
-      ${r.estado === 'pendiente' && puede ? `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Autorizar movimiento</button><button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
+      ${r.estado === 'pendiente' && puede ? `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button><button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
     </details>`).join('');
     lista.querySelectorAll('button[data-solicitud]').forEach(btn => btn.addEventListener('click', async () => {
       const aprobar = btn.dataset.aprobar === 'true';
       const motivo = aprobar ? null : prompt('Motivo del rechazo:');
       if (!aprobar && !motivo?.trim()) return;
-      if (aprobar && !confirm('¿Autorizar este movimiento y registrar la venta con estos precios? Se actualizarán inventario y caja.')) return;
+      if (aprobar && !confirm('¿Dar el visto bueno y contabilizar esta venta ya registrada? Se conservarán su número y sus precios.')) return;
       const botones = btn.closest('details').querySelectorAll('button');
       botones.forEach(b => { b.disabled = true; });
       try {
         const { data, error: resolverError } = await sb.rpc('resolver_autorizacion_venta', { p_id: btn.dataset.solicitud, p_aprobar: aprobar, p_motivo: motivo });
         if (resolverError) throw resolverError;
-        mostrarBanner(data.estado === 'aprobada' ? `Movimiento autorizado. Venta #${data.consecutivo} registrada.` : 'Movimiento rechazado.');
+        mostrarBanner(data.estado === 'aprobada' ? `Venta #${data.consecutivo} contabilizada. Se conservaron los precios registrados.` : 'Contabilización rechazada. La venta permanece registrada.');
         await cargarAutorizacionesVentas();
         await cargarVentas();
       } catch (e) { estado.textContent = e.message; }
@@ -1001,7 +1027,7 @@ function mostrarPaso(n) {
     renderResumenFinal();
     const pendiente = ventaRequiereAutorizacion();
     document.getElementById('avisoAutorizacionVenta').hidden = !pendiente;
-    document.getElementById('btnSiguiente').textContent = pendiente ? 'Cargar para autorización' : 'Registrar venta';
+    document.getElementById('btnSiguiente').textContent = 'Registrar venta';
   }
 }
 
@@ -1393,7 +1419,7 @@ async function confirmarVenta() {
   const btn = document.getElementById('btnSiguiente');
   if (btn.disabled) return;
   const pendiente = ventaRequiereAutorizacion();
-  if (!confirm(pendiente ? '¿Cargar este movimiento para autorización de Mayte u Óscar?' : '¿Deseas registrar esta venta?')) return;
+  if (!confirm('¿Registrar la venta con los precios ingresados?')) return;
   const err = document.getElementById('modalVentaErr');
   err.classList.remove('show');
 
@@ -1427,8 +1453,8 @@ async function confirmarVenta() {
 
   cerrarWizard();
   mostrarBanner(data.estado === 'pendiente'
-    ? `Movimiento ${data.solicitud_id.slice(0,8).toUpperCase()} cargado — Pendiente de autorización de Mayte u Óscar.`
-    : data.estado === 'rechazada' ? 'Esta solicitud fue rechazada. Revisa el motivo en Autorizaciones de ventas.'
+    ? `Venta #${data.consecutivo} registrada con los precios ingresados — Pendiente de contabilizar con el visto bueno de Mayte u Óscar.`
+    : data.estado === 'rechazada' ? 'La venta sigue registrada, sin contabilizar. Revisa el motivo del rechazo en Autorizaciones de ventas.'
     : `✅ Venta #${data.consecutivo} registrada — Total ${fmtCOP(data.total)}`);
   cargarVentas();
   cargarAutorizacionesVentas();
@@ -1437,7 +1463,7 @@ async function confirmarVenta() {
     err.classList.add('show');
   } finally {
     btn.disabled = false;
-    btn.textContent = pendiente ? 'Cargar para autorización' : 'Registrar venta';
+    btn.textContent = 'Registrar venta';
   }
 }
 

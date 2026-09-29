@@ -59,6 +59,15 @@ body[data-kora-dashboard="1.0.0"] {
   margin: 8px 0 4px;
 }
 
+/* Los importes completos prevalecen sobre la elipsis del estilo base. */
+.dashboard-metric .kpi-valor--moneda {
+  font-size: clamp(1.25rem, 1.7vw, 1.625rem);
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .kpi-label {
   color: var(--ctk-color-neutral-500);
   font-size: 12px;

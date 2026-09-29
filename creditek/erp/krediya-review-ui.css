@@ -43,6 +43,11 @@
 #krediyaFlow .missing-payee{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #E2E8F0}
 #liquidationsContent .compact-krediya[data-pvp-difference="lower"]{--pvp-ink:#991b1b;--pvp-bg:#fff1f2;--pvp-border:#fda4af}
 #liquidationsContent .compact-krediya[data-pvp-difference="higher"]{--pvp-ink:#115e59;--pvp-bg:#ecfdf5;--pvp-border:#2dd4bf}
+#liquidationsContent .compact-krediya[data-krediya-attention="true"]{border-color:#fda4af;background:#fffafb}
+#liquidationsContent .compact-krediya[data-krediya-attention="true"] .operation-status{color:#9f1239;font-weight:700}
+#liquidationsContent .compact-krediya .krediya-attention-notice{display:flex;flex-direction:column;gap:4px;flex:1 1 300px;min-width:0;padding:12px 14px;background:#fff1f2;color:#9f1239;border:1px solid #fda4af;border-left:4px solid #be123c;border-radius:8px;line-height:1.5;overflow-wrap:anywhere}
+#liquidationsContent .compact-krediya .krediya-attention-notice strong{font-size:15px;color:inherit}
+#liquidationsContent .compact-krediya .krediya-attention-notice span{font-size:13px;color:inherit}
 #liquidationsContent .compact-krediya .pvp-difference-notice{display:flex;flex-direction:column;gap:4px;flex:1 1 300px;min-width:0;padding:12px 14px;background:var(--pvp-bg);color:var(--pvp-ink);border:1px solid var(--pvp-border);border-left:4px solid var(--pvp-ink);border-radius:8px;line-height:1.5;overflow-wrap:anywhere}
 #liquidationsContent .compact-krediya .pvp-difference-notice strong{font-size:15px;color:inherit}
 #liquidationsContent .compact-krediya .pvp-difference-notice span{font-size:13px;color:inherit}

@@ -5,13 +5,13 @@ import vm from 'node:vm';
 
 const app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
 const source=app.slice(app.indexOf('  function renderKrediyaOperations('),app.indexOf('  async function reviewReversal('));
-function render(delta,overrides={}){
+function render(delta,overrides={},contextOverrides={},incidents=[]){
   const nodes=new Map();
   const node=id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',classList:{add(){},remove(){}}});return nodes.get(id);};
   const row={id:'one',referencia:'Samsung A17',establishment_name:'Tienda',origen_codigo:'T',reconocida:true,inicial:0,...overrides};
-  const ctx={operation_id:'one',pvp_guardado:850000,pvp_recibido:825000,pagamos_guardado:637000,diferencia_pvp:delta};
+  const ctx={operation_id:'one',pvp_guardado:850000,pvp_recibido:825000,pagamos_guardado:637000,diferencia_pvp:delta,...contextOverrides};
   const before=JSON.stringify([row,ctx]);
-  vm.runInNewContext(source+';renderKrediyaOperations(rows,contexts,[],null)',{rows:[row],contexts:[ctx],selected:{},$:node,document:{querySelector:()=>node('root'),querySelectorAll:()=>[]},Review:{filterOperations:r=>r},money:v=>String(v),esc:String,executiveIdentity:()=>''});
+  vm.runInNewContext(source+';renderKrediyaOperations(rows,contexts,incidents,null)',{rows:[row],contexts:[ctx],incidents,selected:{},$:node,document:{querySelector:()=>node('root'),querySelectorAll:()=>[]},Review:{filterOperations:r=>r},money:v=>String(v),esc:String,executiveIdentity:()=>''});
   assert.equal(JSON.stringify([row,ctx]),before);
   return node('detailBody').innerHTML;
 }
@@ -28,4 +28,22 @@ test('diferencia negativa y positiva visibles sin cambiar valores ni bloquear',(
 test('cero, dato ausente o inválido y operación excluida no crean falsa alerta',()=>{
   for(const delta of [0,null,undefined,'no-numero',Infinity])assert.doesNotMatch(render(delta),/class="pvp-difference-notice"/);
   assert.doesNotMatch(render(-25000,{reconocida:false}),/class="pvp-difference-notice"/);
+});
+test('PVP o PAGAMOS faltante resalta la tarjeta en rosado sin inventar importes',()=>{
+  for(const values of [{pvp_guardado:null},{pagamos_guardado:null}]){
+    const html=render(null,{},values);
+    assert.match(html,/data-krediya-attention="true"/);
+    assert.match(html,/class="krediya-attention-notice" role="status"/);
+    assert.match(html,/Faltan datos para liquidar/);
+    assert.match(html,/Falta completar PVP o PAGAMOS/);
+  }
+  assert.doesNotMatch(render(null,{},{}),/class="krediya-attention-notice"/);
+  assert.doesNotMatch(render(null,{reconocida:false},{pvp_guardado:null}),/class="krediya-attention-notice"/);
+});
+test('un error bloqueante se destaca sin ocultar una diferencia de PVP',()=>{
+  const html=render(-25000,{}, {},[{operation_id:'one',tipo:'krediya_formula_inconsistente',bloquea_aprobacion:true,descripcion:'Revisar fórmula'}]);
+  assert.match(html,/Error por revisar/);
+  assert.match(html,/Revisar fórmula/);
+  assert.match(html,/Revisar diferencia PVP/);
+  assert.match(html,/data-krediya-attention="true"/);
 });

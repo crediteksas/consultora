@@ -522,7 +522,7 @@
       const names = new Map((executives.data || []).map(executive => [executive.id, executive.nombre]));
       rows.forEach(row => { row.executive_display_name = executives.error ? 'No se pudo consultar' : names.get(row.ejecutivo_id); });
     }
-    const { data: rowIssues, error: rowIssueError } = await sb.from('liquidation_incidents').select('operation_id,tipo,descripcion').eq('liquidation_id', selected.id).eq('estado','abierta');
+    const { data: rowIssues, error: rowIssueError } = await sb.from('liquidation_incidents').select('operation_id,tipo,descripcion,bloquea_aprobacion').eq('liquidation_id', selected.id).eq('estado','abierta');
     if (!isCurrent()) return;
     if (rowIssueError) throw rowIssueError;
     if (selected.plataforma === 'krediya') {
@@ -630,6 +630,9 @@
       const delta = c.diferencia_pvp;
       const differenceTone = row.reconocida && pvp != null && c.pvp_guardado != null && delta != null && Number.isFinite(Number(delta)) && Number(delta) !== 0 ? (Number(delta) < 0 ? 'lower' : 'higher') : '';
       const differenceNotice = differenceTone ? `<div class="pvp-difference-notice"><strong>Revisar diferencia PVP: ${esc(money(delta))}</strong><span>PVP de Krediya ${differenceTone === 'lower' ? 'menor' : 'mayor'} que PVP KORA. Seguimiento, no bloquea. Se respeta PAGAMOS.</span></div>` : '';
+      const missingData = row.reconocida && (pendingExecutive || c.pvp_guardado == null || paid == null || pvp == null || (!calculated && automatic?.disponible === false));
+      const blockingIssue = row.reconocida && openIssues.find((issue) => issue.bloquea_aprobacion === true && !['krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(issue.tipo));
+      const needsAttention = missingData || blockingIssue;
       const note = !row.reconocida ? 'Excluida del cálculo. Consulta su novedad.'
         : paid == null || c.pvp_guardado == null ? 'Falta completar PVP o PAGAMOS de esta referencia.'
         : pvp == null ? 'Falta PVP recibido de Krediya para calcular.'
@@ -638,11 +641,12 @@
       const priceAction = !selected.frozen_at && row.reconocida
         ? `<button class="btn secondary" data-open-tariff="${row.id}">${c.pvp_guardado==null||c.pagamos_guardado==null?'Crear datos · PVP y PAGAMOS':'Editar PVP y PAGAMOS'}</button>`
         : openIssues.length ? `<button class="btn secondary" data-manage-issue="${row.id}">Ver novedad</button>` : '';
-      return `<tr><td><article class="krediya-operation compact-krediya" data-pvp-difference="${differenceTone}" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
+      const attentionNotice = needsAttention ? `<div class="krediya-attention-notice" role="status"><strong>${missingData ? 'Faltan datos para liquidar' : 'Error por revisar'}</strong><span>${esc(pendingExecutive ? 'Falta el bono del ejecutivo para obtener la utilidad final.' : missingData ? note : blockingIssue.descripcion || 'Esta operación tiene una novedad que requiere revisión.')}</span></div>` : '';
+      return `<tr><td><article class="krediya-operation compact-krediya" data-pvp-difference="${differenceTone}" data-krediya-attention="${needsAttention ? 'true' : 'false'}" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
         <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
         ${executiveIdentity(row)}
         <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
-        <footer class="operation-footer">${differenceNotice || `<p>${esc(note)}</p>`}<div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
+        <footer class="operation-footer">${attentionNotice}${differenceNotice || (needsAttention ? '' : `<p>${esc(note)}</p>`)}<div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
         ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>
         <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>

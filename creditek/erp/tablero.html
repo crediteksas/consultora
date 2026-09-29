@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.3">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
-<script src="tablero-utilidad.js?v=1.0.2"></script>
+<script src="tablero-utilidad.js?v=1.0.3"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
 <script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
@@ -146,7 +146,7 @@
       </div>
       <div class="kpi-valor kpi-valor--moneda" id="kpiUtilidad">—</div>
       <div class="kpi-var" id="kpiUtilidadVar"></div>
-      <span class="kpi-var flat">Margen de ventas − gastos aprobados · período seleccionado</span>
+      <span class="kpi-var flat">Cada tienda: margen − gastos propios. Consolidado: también descuenta gastos generales.</span>
     </article>
     <article class="dashboard-metric">
       <div class="dashboard-metric__header">
@@ -436,7 +436,7 @@ async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
     totalCreditos = CreditekReversiones.creditCount(records);
   } catch (error) { console.error('Créditos en Liquidaciones:', error); }
 
-  const totalUtilidad = retail.rows.reduce((s,row)=>s+(Number(row.value)||0),0);
+  const totalUtilidad = retail.generalAvailable===false?null:retail.rows.reduce((s,row)=>s+(Number(row.value)||0),0);
   return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad, missing:retail.missing };
 }
 
@@ -474,9 +474,9 @@ async function cargarKPIs() {
   document.getElementById('kpiCreditos').textContent = actual.creditos === null ? 'No disponible' : `${actual.creditos} uds`;
   if (actual.creditos !== null && anterior.creditos !== null) pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos);
   else document.getElementById('kpiCreditosVar').textContent = 'No se pudo consultar Liquidaciones.';
-  document.getElementById('kpiUtilidad').textContent = fmtCOP(actual.utilidad)+(actual.missing?' · parcial':'');
+  document.getElementById('kpiUtilidad').textContent = actual.utilidad===null?'No disponible':fmtCOP(actual.utilidad)+(actual.missing?' · parcial':'');
   const profitContext = document.getElementById('kpiUtilidadVar');
-  profitContext.textContent = actual.missing ? `${actual.missing} artículo(s) sin utilidad calculada` : 'Margen de ventas − gastos aprobados · período seleccionado';
+  profitContext.textContent = actual.utilidad===null?'No se pueden consultar los gastos generales Retail con este usuario':actual.missing ? `${actual.missing} artículo(s) sin utilidad calculada` : tienda?'Margen − gastos de esta tienda · período seleccionado':'Margen − gastos de tiendas − generales aprobados o pagados · período seleccionado';
   profitContext.className = 'kpi-var flat';
 
   let qp = sb.from('solicitudes').select('id', { count: 'exact', head: true }).eq('estado_validacion', 'pendiente');
@@ -574,12 +574,12 @@ async function cargarTiendas_Tabla() {
     return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, margenMes, gastosMes, utilidadMes, utilidadFaltante, cajaOk, semaforo, pctRunRate };
   });
 
-  renderTablaTiendas(filas);
+  renderTablaTiendas(filas,{generalExpenses:periodoRetail.generalExpenses||[],generalAvailable:periodoRetail.generalAvailable!==false,includeGeneral:!tiendaFiltro});
   dibujarGraficos(filas, inicioMes, diasDelMes, hoy.getDate(), tiendaFiltro);
   calcularAlertas(filas, ventasMes, hoy);
 }
 
-function renderTablaTiendas(filas) {
+function renderTablaTiendas(filas,{generalExpenses=[],generalAvailable=true,includeGeneral=true}={}) {
   const tbody = document.getElementById('tbodyTiendas');
   const empty = document.getElementById('emptyTiendas');
   if (!filas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay tiendas para mostrar.'; document.getElementById('tfootTotal').innerHTML = ''; return; }
@@ -624,7 +624,8 @@ function renderTablaTiendas(filas) {
   const totalCreditos = filas.reduce((s, f) => s + f.creditosMes, 0);
   const totalMeta = filas.reduce((s, f) => s + f.metaMes, 0);
   const totalContado = filas.reduce((s, f) => s + f.contadoMes, 0);
-  const totalUtilidad = filas.reduce((s, f) => s + f.utilidadMes, 0);
+  const totalGeneral = includeGeneral ? generalExpenses.reduce((s,g)=>s+Number(g.amount||0),0) : 0;
+  const totalUtilidad = generalAvailable ? filas.reduce((s, f) => s + f.utilidadMes, 0)-totalGeneral : null;
   const totalMargen = filas.reduce((s, f) => s + f.margenMes, 0);
   const totalGastos = filas.reduce((s, f) => s + f.gastosMes, 0);
   const totalFaltantes = filas.reduce((s, f) => s + f.utilidadFaltante, 0);
@@ -633,7 +634,7 @@ function renderTablaTiendas(filas) {
     <tr class="fila-total">
       <td>TOTAL</td><td class="centro store-goal"><strong>${totalCreditos}</strong><span>/ ${totalMeta || '—'}</span></td>
       <td class="store-progress"><strong>${totalMeta > 0 ? totalPct + '%' : '—'}</strong></td>
-      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${fmtCOP(totalUtilidad)}${totalFaltantes?' *':''}<span class="store-profit-detail">Margen ${fmtCOP(totalMargen)} − gastos ${fmtCOP(totalGastos)}${totalFaltantes?` · ${totalFaltantes} sin costo`:''}</span></td><td class="centro">—</td>
+      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${totalUtilidad===null?'No disponible':fmtCOP(totalUtilidad)}${totalFaltantes?' *':''}<span class="store-profit-detail">${totalUtilidad===null?'Los gastos generales Retail no son visibles con este usuario':`Margen ${fmtCOP(totalMargen)} − gastos de tiendas ${fmtCOP(totalGastos)}${includeGeneral?` − generales ${fmtCOP(totalGeneral)}`:''}`}${totalFaltantes?` · ${totalFaltantes} sin costo`:''}</span></td><td class="centro">—</td>
     </tr>
   `;
   pintarIconos();

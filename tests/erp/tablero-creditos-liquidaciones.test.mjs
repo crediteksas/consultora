@@ -48,9 +48,10 @@ test('KPI pagina ventas y artículos sin truncar la utilidad del mes',async()=>{
  const sales=Array.from({length:1100},(_,i)=>({id:`v${String(i).padStart(4,'0')}`,total:100}));
  const items=sales.map((sale,i)=>({id:`i${String(i).padStart(4,'0')}`,venta_id:sale.id,utilidad:25}));
  const calls=[];
+ ctx.sb.rpc=async(name)=>{assert.equal(name,'es_controlador_financiero');return {data:true,error:null}};
  ctx.sb.from=table=>{
   let rows=table==='ventas'?sales:table==='venta_items_lectura'?items:[];
-  const q={select(){return q},gte(){return q},lte(){return q},eq(){return q},in(key,ids){rows=rows.filter(r=>ids.includes(r[key]));return q},order(key){rows=[...rows].sort((a,b)=>String(a[key]).localeCompare(String(b[key])));return q},range:async(from,to)=>{calls.push({table,from,to});return {data:rows.slice(from,to+1)}}};
+  const q={select(){return q},gte(){return q},lte(){return q},lt(){return q},eq(){return q},in(key,ids){rows=rows.filter(r=>ids.includes(r[key]));return q},order(key){rows=[...rows].sort((a,b)=>String(a[key]).localeCompare(String(b[key])));return q},range:async(from,to)=>{calls.push({table,from,to});return {data:rows.slice(from,to+1)}}};
   return q;
  };
  const result=await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','');

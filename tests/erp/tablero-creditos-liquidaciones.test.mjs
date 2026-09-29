@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import domain from '../../creditek/erp/tablero-ejecutivos.js';
+import profit from '../../creditek/erp/tablero-utilidad.js';
 import reversions from '../../creditek/erp/aliados-reversiones-domain.js';
 const period={start:'2026-09-01',end:'2026-10-01'};
 const op=(id,extra={})=>({id,external_id:id,plataforma:'payjoy',origen_codigo:'t',tipo_establecimiento:'propia',operation_at:'2026-09-05T12:00:00-05:00',...extra});
 const html=fs.readFileSync('creditek/erp/tablero.html','utf8');
 const helper=html.slice(html.indexOf('let creditosLiquidacionesPromise'),html.indexOf('function pintarVariacion('));
 function scope(data) {
- const ctx={CreditekTableroEjecutivos:{...domain,loadCreditData:async()=>data},CreditekReversiones:reversions,sb:{},tiendasCache:[{codigo:'t'}],console:{error(){}}};
+ const ctx={CreditekTableroEjecutivos:{...domain,loadCreditData:async()=>data},CreditekTableroUtilidad:{...profit},CreditekReversiones:reversions,sb:{},tiendasCache:[{codigo:'t'}],console:{error(){}}};
  vm.runInNewContext(helper,ctx); return ctx;
 }
 test('solo Liquidaciones: las tres plataformas por tienda, sin históricos ni ventas locales',()=>{
@@ -27,7 +28,7 @@ test('deduplica antes del filtro temporal y respeta Bogotá y las anulaciones',(
 });
 test('KPI y gráfica usan el mismo conteo aunque la tienda haya registrado veinte créditos',async()=>{
  const ctx=scope({operations:[op('p'),op('a',{plataforma:'alo'})],reversions:[]});
- ctx.CreditekTableroEjecutivos.allRows=async(_sb,table)=>Array.from({length:20},(_,i)=>table==='ventas'?{id:i,tipo:'credito',total:100}:{id:i,venta_id:i,utilidad:10});
+ ctx.CreditekTableroUtilidad.retailData=async()=>({sales:Array.from({length:20},(_,i)=>({id:i,tipo:'credito',total:100})),rows:Array.from({length:20},()=>({value:10})),missing:0});
  const result=await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','t');
  assert.equal(result.creditos,2);assert.equal(result.ventas,2000);assert.equal(result.utilidad,200);
  assert.match(html,/const creditosMes = CreditekReversiones.creditCount\(operacionesMes.filter/);
@@ -36,7 +37,7 @@ test('KPI y gráfica usan el mismo conteo aunque la tienda haya registrado veint
 test('error de Liquidaciones no se sustituye por ventas ni cero, permite reintentar',async()=>{
  const ctx=scope({operations:[],reversions:[]});
  ctx.CreditekTableroEjecutivos.loadCreditData=async()=>{throw Error('denegado')};
- ctx.CreditekTableroEjecutivos.allRows=async()=>[];
+ ctx.CreditekTableroUtilidad.retailData=async()=>({sales:[],rows:[],missing:0});
  assert.equal((await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','')).creditos,null);
  ctx.CreditekTableroEjecutivos.loadCreditData=async()=>({operations:[op('ok')],reversions:[]});
  assert.equal((await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','')).creditos,1);
@@ -48,14 +49,14 @@ test('KPI pagina ventas y artículos sin truncar la utilidad del mes',async()=>{
  const items=sales.map((sale,i)=>({id:`i${String(i).padStart(4,'0')}`,venta_id:sale.id,utilidad:25}));
  const calls=[];
  ctx.sb.from=table=>{
-  let rows=table==='ventas'?sales:items;
+  let rows=table==='ventas'?sales:table==='venta_items_lectura'?items:[];
   const q={select(){return q},gte(){return q},lte(){return q},eq(){return q},in(key,ids){rows=rows.filter(r=>ids.includes(r[key]));return q},order(key){rows=[...rows].sort((a,b)=>String(a[key]).localeCompare(String(b[key])));return q},range:async(from,to)=>{calls.push({table,from,to});return {data:rows.slice(from,to+1)}}};
   return q;
  };
  const result=await ctx.sumVentasCreditosUtilidad('2026-09-01','2026-09-30','');
  assert.equal(result.ventas,110000);assert.equal(result.utilidad,27500);
  assert.ok(calls.some(x=>x.table==='ventas'&&x.from===1000));
- assert.equal(calls.filter(x=>x.table==='venta_items_lectura'&&x.from===0).length,3);
+ assert.equal(calls.filter(x=>x.table==='venta_items_lectura'&&x.from===0).length,Math.ceil(sales.length/200));
 });
 test('consulta paginada de fuente única, sin tablas de ventas ni históricos',async()=>{
  const tables=[];const sb={from(table){tables.push(table);return {select(){return this},order(){return this},range:async()=>({data:[]})}}};

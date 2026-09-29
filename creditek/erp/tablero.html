@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.2">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
-<script src="tablero-utilidad.js?v=1.0.1"></script>
+<script src="tablero-utilidad.js?v=1.0.2"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
 <script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
@@ -38,6 +38,7 @@
 .dashboard-document-access:active { transform: translateY(0); }
 .dashboard-document-access:focus-visible { outline: 3px solid var(--ctk-color-secondary-500); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .dashboard-document-access { transition: none; transform: none; } }
+.store-profit-detail { display:block; font-size:11px; font-weight:400; color:var(--ctk-color-neutral-500); white-space:normal; }
 </style>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -141,11 +142,11 @@
     <article class="dashboard-metric">
       <div class="dashboard-metric__header">
         <span class="dashboard-metric__icon"><i data-lucide="chart-no-axes-combined"></i></span>
-        <span class="kpi-label">Utilidad estimada</span>
+        <span class="kpi-label">Resultado operativo Retail</span>
       </div>
       <div class="kpi-valor" id="kpiUtilidad">—</div>
       <div class="kpi-var" id="kpiUtilidadVar"></div>
-      <a href="utilidad-creditek.html" class="kpi-link">Consultar utilidad mensual</a>
+      <span class="kpi-var flat">Margen de ventas − gastos aprobados · período seleccionado</span>
     </article>
     <article class="dashboard-metric">
       <div class="dashboard-metric__header">
@@ -164,13 +165,13 @@
           <p class="dashboard-section-heading__eyebrow">Operación comercial</p>
           <h2>Rendimiento por tienda</h2>
         </div>
-        <span class="dashboard-section-heading__meta">Créditos de Liquidaciones · mes en curso</span>
+        <span class="dashboard-section-heading__meta">Créditos y metas: mes en curso · contado y resultado: período seleccionado</span>
       </div>
-      <div class="tabla-wrap tabla-wrap--tiendas" role="region" aria-label="Rendimiento por tienda del mes vigente">
+      <div class="tabla-wrap tabla-wrap--tiendas" role="region" aria-label="Rendimiento por tienda: créditos del mes y resultado operativo del período seleccionado">
       <table class="dashboard-table dashboard-store-table">
         <thead><tr>
           <th>Tienda</th><th class="centro">Créditos / meta</th><th>Avance y proyección</th>
-          <th class="num">Contado</th><th class="num">Utilidad</th><th class="centro">Caja</th>
+          <th class="num">Contado</th><th class="num">Resultado operativo</th><th class="centro">Caja</th>
         </tr></thead>
         <tbody id="tbodyTiendas"></tbody>
         <tfoot id="tfootTotal"></tfoot>
@@ -213,7 +214,7 @@
       <div class="dashboard-section-heading">
         <div>
           <p class="dashboard-section-heading__eyebrow">Rentabilidad</p>
-          <h2 id="utilidadTitulo">Utilidad acumulada · Retail</h2>
+          <h2 id="utilidadTitulo">Resultado operativo acumulado · Retail</h2>
         </div>
         <span class="dashboard-section-heading__icon"><i data-lucide="trending-up"></i></span>
       </div>
@@ -263,6 +264,8 @@ let chartCreditosObj = null;
 let chartUtilidadObj = null;
 let utilidadNegocio = 'retail';
 let utilidadConsulta = 0;
+let kpiConsulta = 0;
+let tablaConsulta = 0;
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -347,9 +350,9 @@ function initPagina() {
 
   document.getElementById('fechaHoy').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   document.getElementById('filtroPeriodo').addEventListener('change', onCambioFiltro);
-  document.getElementById('rangoDesde').addEventListener('change', cargarKPIs);
-  document.getElementById('rangoHasta').addEventListener('change', cargarKPIs);
-  document.getElementById('filtroTienda').addEventListener('change', () => { cargarKPIs(); cargarTiendas_Tabla(); });
+  document.getElementById('rangoDesde').addEventListener('change', actualizarPeriodo);
+  document.getElementById('rangoHasta').addEventListener('change', actualizarPeriodo);
+  document.getElementById('filtroTienda').addEventListener('change', actualizarPeriodo);
   const profitTabs = [...document.querySelectorAll('[data-utilidad-negocio]')];
   profitTabs.forEach((button,index) => {
     button.addEventListener('click', () => {
@@ -365,6 +368,7 @@ function initPagina() {
   cargarTiendasSelect().then(() => {
     cargarKPIs();
     cargarTiendas_Tabla();
+    actualizarUtilidad();
     cargarEjecutivos();
   });
 }
@@ -373,8 +377,10 @@ function onCambioFiltro() {
   const periodo = document.getElementById('filtroPeriodo').value;
   document.getElementById('campoRangoDesde').style.display = periodo === 'rango' ? 'block' : 'none';
   document.getElementById('campoRangoHasta').style.display = periodo === 'rango' ? 'block' : 'none';
-  if (periodo !== 'rango') cargarKPIs();
+  if (periodo !== 'rango') actualizarPeriodo();
 }
+
+function actualizarPeriodo() { cargarKPIs(); cargarTiendas_Tabla(); actualizarUtilidad(); }
 
 async function cargarTiendasSelect() {
   tiendasCache = await CreditekTiendasCanonicas.cargar(sb);
@@ -421,12 +427,8 @@ function creditosTiendas(data, period, tiendas) {
   return CreditekTableroEjecutivos.credits(data, period).filter(o => o.tipo_establecimiento === 'propia' && codes.has(o.origen_codigo));
 }
 async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
-  const ventas = await CreditekTableroEjecutivos.allRows(sb, 'ventas', 'id,total,tipo', 'id', q => {
-    q = q.gte('fecha', desde).lte('fecha', hasta).eq('anulada', false);
-    return tienda ? q.eq('tienda_codigo', tienda) : q;
-  });
-  const ids = ventas.map(v => v.id);
-  const totalVentas = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
+  const retail = await CreditekTableroUtilidad.retailData(sb,{start:desde,end:hasta,store:tienda});
+  const totalVentas = retail.sales.reduce((s, v) => s + Number(v.total || 0), 0);
   let totalCreditos = null;
   try {
     const end = new Date(hasta + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 1);
@@ -434,15 +436,8 @@ async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
     totalCreditos = CreditekReversiones.creditCount(records);
   } catch (error) { console.error('Créditos en Liquidaciones:', error); }
 
-  let totalUtilidad = 0;
-  if (ids.length) {
-    for (let from = 0; from < ids.length; from += 400) {
-      const batch = ids.slice(from, from + 400);
-      const items = await CreditekTableroEjecutivos.allRows(sb, 'venta_items_lectura', 'id,utilidad,venta_id', 'id', q => q.in('venta_id', batch));
-      totalUtilidad += items.reduce((s, i) => s + Number(i.utilidad || 0), 0);
-    }
-  }
-  return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad };
+  const totalUtilidad = retail.rows.reduce((s,row)=>s+(Number(row.value)||0),0);
+  return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad, missing:retail.missing };
 }
 
 function pintarVariacion(elId, actual, anterior) {
@@ -455,22 +450,34 @@ function pintarVariacion(elId, actual, anterior) {
 }
 
 async function cargarKPIs() {
+  const request=++kpiConsulta;
   const tienda = document.getElementById('filtroTienda').value;
   const rango = rangoSeleccionado();
   const comp = rangoComparacion(rango);
-
-  const [actual, anterior] = await Promise.all([
-    sumVentasCreditosUtilidad(rango.desde, rango.hasta, tienda),
-    sumVentasCreditosUtilidad(comp.desde, comp.hasta, tienda),
-  ]);
+  document.getElementById('kpiUtilidad').textContent='Consultando…';
+  let actual,anterior;
+  try {
+    [actual, anterior] = await Promise.all([
+      sumVentasCreditosUtilidad(rango.desde, rango.hasta, tienda),
+      sumVentasCreditosUtilidad(comp.desde, comp.hasta, tienda),
+    ]);
+  } catch(error) {
+    if(request!==kpiConsulta)return;
+    for(const id of ['kpiVentas','kpiCreditos','kpiUtilidad'])document.getElementById(id).textContent='No disponible';
+    console.error('Indicadores Retail:',error);
+    return;
+  }
+  if(request!==kpiConsulta)return;
 
   document.getElementById('kpiVentas').textContent = fmtCOP(actual.ventas);
   pintarVariacion('kpiVentasVar', actual.ventas, anterior.ventas);
   document.getElementById('kpiCreditos').textContent = actual.creditos === null ? 'No disponible' : `${actual.creditos} uds`;
   if (actual.creditos !== null && anterior.creditos !== null) pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos);
   else document.getElementById('kpiCreditosVar').textContent = 'No se pudo consultar Liquidaciones.';
-  document.getElementById('kpiUtilidad').textContent = fmtCOP(actual.utilidad);
-  pintarVariacion('kpiUtilidadVar', actual.utilidad, anterior.utilidad);
+  document.getElementById('kpiUtilidad').textContent = fmtCOP(actual.utilidad)+(actual.missing?' · parcial':'');
+  const profitContext = document.getElementById('kpiUtilidadVar');
+  profitContext.textContent = actual.missing ? `${actual.missing} artículo(s) sin utilidad calculada` : 'Margen de ventas − gastos aprobados · período seleccionado';
+  profitContext.className = 'kpi-var flat';
 
   let qp = sb.from('solicitudes').select('id', { count: 'exact', head: true }).eq('estado_validacion', 'pendiente');
   const { count } = await qp;
@@ -479,7 +486,9 @@ async function cargarKPIs() {
 
 // ─── Tabla de tiendas: cumplimiento del mes ──────────────────────────────
 async function cargarTiendas_Tabla() {
+  const request=++tablaConsulta;
   const tiendaFiltro = document.getElementById('filtroTienda').value;
+  const rango = rangoSeleccionado();
   const hoy = new Date();
   const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
@@ -493,9 +502,11 @@ async function cargarTiendas_Tabla() {
   let operacionesMes;
   try {
     operacionesMes = creditosTiendas(await obtenerCreditosLiquidaciones(), {start:inicioMesStr,end:finMesStr}, tiendas);
+    if(request!==tablaConsulta)return;
     document.getElementById('chartCreditos').hidden = false;
     document.getElementById('creditosFuente').textContent = 'Fuente: Liquidaciones · todas las plataformas · fecha de venta.';
   } catch (error) {
+    if(request!==tablaConsulta)return;
     document.getElementById('tbodyTiendas').innerHTML = '';
     document.getElementById('tfootTotal').innerHTML = '';
     const empty = document.getElementById('emptyTiendas');
@@ -508,24 +519,41 @@ async function cargarTiendas_Tabla() {
     return;
   }
 
-  const { data: ventasMes } = await sb.from('ventas').select('id, tienda_codigo, tipo, total, fecha').gte('fecha', inicioMesStr).lt('fecha', finMesStr).eq('anulada', false);
-  const idsVentas = (ventasMes || []).map(v => v.id);
-  let itemsMes = [];
-  if (idsVentas.length) {
-    const { data } = await sb.from('venta_items_lectura').select('venta_id, utilidad').in('venta_id', idsVentas);
-    itemsMes = data || [];
+  let periodoRetail, ventasMes, presupuestoMes, cajasMes;
+  try {
+    [periodoRetail,ventasMes,presupuestoMes,cajasMes] = await Promise.all([
+      CreditekTableroUtilidad.retailData(sb,{start:rango.desde,end:rango.hasta,store:tiendaFiltro}),
+      CreditekTableroEjecutivos.allRows(sb,'ventas','id,tienda_codigo,tipo,total,fecha','id',q=>q.gte('fecha',inicioMesStr).lt('fecha',finMesStr).eq('anulada',false)),
+      CreditekTableroEjecutivos.allRows(sb,'presupuestos','id,tienda_codigo,meta_creditos','id',q=>q.gte('fecha',inicioMesStr).lt('fecha',finMesStr)),
+      CreditekTableroEjecutivos.allRows(sb,'caja_diaria','id,tienda_codigo,fecha,estado','id',q=>q.gte('fecha',inicioMesStr).lt('fecha',finMesStr)),
+    ]);
+    if(request!==tablaConsulta)return;
+  } catch(error) {
+    if(request!==tablaConsulta)return;
+    document.getElementById('tbodyTiendas').innerHTML='';
+    document.getElementById('tfootTotal').innerHTML='';
+    const empty=document.getElementById('emptyTiendas');
+    empty.style.display='block';
+    empty.textContent='No se pudo calcular el resultado operativo. Actualiza para reintentar.';
+    console.error('Resultado Retail por tienda:',error);
+    return;
   }
-  const { data: presupuestoMes } = await sb.from('presupuestos').select('tienda_codigo, meta_creditos').gte('fecha', inicioMesStr).lt('fecha', finMesStr);
-  const { data: cajasMes } = await sb.from('caja_diaria').select('tienda_codigo, fecha, estado').gte('fecha', inicioMesStr).lt('fecha', finMesStr);
 
-  const utilidadPorVenta = {};
-  itemsMes.forEach(i => { utilidadPorVenta[i.venta_id] = (utilidadPorVenta[i.venta_id] || 0) + Number(i.utilidad || 0); });
+  const margenPorTienda=new Map(),gastoPorTienda=new Map(),faltantesPorTienda=new Map();
+  periodoRetail.itemRows.forEach(row=>{
+    if(row.value===null||row.value===undefined||!Number.isFinite(Number(row.value))) faltantesPorTienda.set(row.store,(faltantesPorTienda.get(row.store)||0)+1);
+    else margenPorTienda.set(row.store,(margenPorTienda.get(row.store)||0)+Number(row.value));
+  });
+  periodoRetail.expenses.forEach(g=>gastoPorTienda.set(g.tienda_codigo,(gastoPorTienda.get(g.tienda_codigo)||0)+Number(g.monto)));
 
   const filas = tiendas.map(t => {
     const ventasTienda = (ventasMes || []).filter(v => v.tienda_codigo === t.codigo);
     const creditosMes = CreditekReversiones.creditCount(operacionesMes.filter(o => o.origen_codigo === t.codigo));
-    const contadoMes = ventasTienda.filter(v => v.tipo === 'contado').reduce((s, v) => s + Number(v.total || 0), 0);
-    const utilidadMes = ventasTienda.reduce((s, v) => s + (utilidadPorVenta[v.id] || 0), 0);
+    const contadoMes = periodoRetail.sales.filter(v => v.tienda_codigo === t.codigo && v.tipo === 'contado').reduce((s, v) => s + Number(v.total || 0), 0);
+    const margenMes = margenPorTienda.get(t.codigo)||0;
+    const gastosMes = gastoPorTienda.get(t.codigo)||0;
+    const utilidadMes = margenMes-gastosMes;
+    const utilidadFaltante = faltantesPorTienda.get(t.codigo)||0;
     const metaMes = (presupuestoMes || []).filter(p => p.tienda_codigo === t.codigo).reduce((s, p) => s + Number(p.meta_creditos || 0), 0);
     const pct = metaMes > 0 ? (creditosMes / metaMes) * 100 : null;
     const runRate = (creditosMes / diasTranscurridos) * diasDelMes;
@@ -543,7 +571,7 @@ async function cargarTiendas_Tabla() {
     let semaforo = 'neutral';
     if (pctRunRate !== null) semaforo = pctRunRate >= 90 ? 'success' : pctRunRate >= 70 ? 'warning' : 'danger';
 
-    return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, utilidadMes, cajaOk, semaforo, pctRunRate };
+    return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, margenMes, gastosMes, utilidadMes, utilidadFaltante, cajaOk, semaforo, pctRunRate };
   });
 
   renderTablaTiendas(filas);
@@ -583,7 +611,7 @@ function renderTablaTiendas(filas) {
         </div>
       </td>
       <td class="num">${fmtCorto(f.contadoMes)}</td>
-      <td class="num">${fmtCorto(f.utilidadMes)}</td>
+      <td class="num">${fmtCOP(f.utilidadMes)}${f.utilidadFaltante?' *':''}<span class="store-profit-detail">Margen ${fmtCorto(f.margenMes)} − gastos ${fmtCorto(f.gastosMes)}${f.utilidadFaltante?` · ${f.utilidadFaltante} sin costo`:''}</span></td>
       <td class="centro">
         <span class="status-indicator status-indicator--${f.cajaOk ? 'success' : 'warning'}">
           <i data-lucide="${f.cajaOk ? 'circle-check' : 'triangle-alert'}"></i>
@@ -597,12 +625,15 @@ function renderTablaTiendas(filas) {
   const totalMeta = filas.reduce((s, f) => s + f.metaMes, 0);
   const totalContado = filas.reduce((s, f) => s + f.contadoMes, 0);
   const totalUtilidad = filas.reduce((s, f) => s + f.utilidadMes, 0);
+  const totalMargen = filas.reduce((s, f) => s + f.margenMes, 0);
+  const totalGastos = filas.reduce((s, f) => s + f.gastosMes, 0);
+  const totalFaltantes = filas.reduce((s, f) => s + f.utilidadFaltante, 0);
   const totalPct = totalMeta > 0 ? Math.round((totalCreditos / totalMeta) * 100) : 0;
   document.getElementById('tfootTotal').innerHTML = `
     <tr class="fila-total">
       <td>TOTAL</td><td class="centro store-goal"><strong>${totalCreditos}</strong><span>/ ${totalMeta || '—'}</span></td>
       <td class="store-progress"><strong>${totalMeta > 0 ? totalPct + '%' : '—'}</strong></td>
-      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${fmtCorto(totalUtilidad)}</td><td class="centro">—</td>
+      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${fmtCOP(totalUtilidad)}${totalFaltantes?' *':''}<span class="store-profit-detail">Margen ${fmtCOP(totalMargen)} − gastos ${fmtCOP(totalGastos)}${totalFaltantes?` · ${totalFaltantes} sin costo`:''}</span></td><td class="centro">—</td>
     </tr>
   `;
   pintarIconos();
@@ -667,8 +698,6 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
     },
   });
 
-  // Utilidad acumulada del mes (real) vs presupuesto acumulado, para la tienda filtrada o consolidado
-  cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurridos, tiendaFiltro);
 }
 
 function actualizarUtilidad() {
@@ -689,11 +718,11 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
     button.tabIndex = selected ? 0 : -1;
   });
   document.getElementById('utilidadPanel').setAttribute('aria-labelledby','utilidadTab-'+business);
-  document.getElementById('utilidadTitulo').textContent = 'Utilidad acumulada · '+names[business];
+  document.getElementById('utilidadTitulo').textContent = (business==='retail'?'Resultado operativo acumulado':'Utilidad acumulada')+' · '+names[business];
   if(chartUtilidadObj){chartUtilidadObj.destroy();chartUtilidadObj=null;}
   canvas.hidden=true;total.textContent='Consultando…';context.textContent='';budget.textContent='';
   try {
-    const result = await CreditekTableroUtilidad.load(sb,business,{store:tiendaFiltro,creditData:business==='aliados'?obtenerCreditosLiquidaciones():undefined});
+    const result = await CreditekTableroUtilidad.load(sb,business,{store:tiendaFiltro,range:rangoSeleccionado(),creditData:business==='aliados'?obtenerCreditosLiquidaciones():undefined});
     if(request!==utilidadConsulta)return;
     total.textContent = fmtCOP(result.total)+(result.missing?' · parcial':'');
     const scope = business==='aliados' ? 'Ambos canales · todas las tiendas y terceros' : tiendaFiltro ? nombreTienda(tiendaFiltro) : 'Todas las tiendas';

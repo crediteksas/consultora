@@ -20,9 +20,30 @@ test('escala automática basada solo en utilidad, sin límite de 60M ni presupue
 function database(tables){
  const calls=[];return {calls,from(table){calls.push(table);let records=tables[table]||[];const q={select(){return q},order(){return q},gte(k,v){records=records.filter(r=>r[k]>=v);return q},lt(k,v){records=records.filter(r=>r[k]<v);return q},lte(k,v){records=records.filter(r=>r[k]<=v);return q},eq(k,v){records=records.filter(r=>r[k]===v);return q},in(k,v){records=records.filter(r=>v.includes(r[k]));return q},range:async(a,b)=>({data:records.slice(a,b+1)})};return q}};
 }
-test('Retail conserva margen de ventas y presupuesto solo como referencia; filtro de tienda',async()=>{
- const sb=database({ventas:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',anulada:false},{id:2,fecha:'2026-09-01',tienda_codigo:'otra',anulada:false},{id:3,fecha:'2026-09-02',tienda_codigo:'t',anulada:true}],venta_items_lectura:[{id:1,venta_id:1,utilidad:100},{id:2,venta_id:2,utilidad:500},{id:3,venta_id:3,utilidad:1000}],presupuestos:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',meta_utilidad:134500782}]});
- const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,100);assert.equal(result.budget,134500782);assert.equal(sb.calls.includes('liquidation_operations'),false);
+test('Retail muestra margen menos gastos aprobados; excluye rechazados y otras tiendas',async()=>{
+ const sb=database({ventas:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',anulada:false},{id:2,fecha:'2026-09-01',tienda_codigo:'otra',anulada:false},{id:3,fecha:'2026-09-02',tienda_codigo:'t',anulada:true}],venta_items_lectura:[{id:1,venta_id:1,utilidad:100},{id:2,venta_id:2,utilidad:500},{id:3,venta_id:3,utilidad:1000}],gastos:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',monto:40,estado:'aprobado'},{id:2,fecha:'2026-09-01',tienda_codigo:'t',monto:70,estado:'rechazado'},{id:3,fecha:'2026-09-01',tienda_codigo:'otra',monto:30,estado:'aprobado'}],presupuestos:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',meta_utilidad:134500782}]});
+ const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,60);assert.equal(result.budget,134500782);assert.equal(sb.calls.includes('liquidation_operations'),false);
+ const detail=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16',store:'t'});assert.equal(detail.expenses.length,1);assert.equal(detail.itemRows.length,1);
+});
+test('Retail pagina todos los artículos, incluso después de mil, y respeta el rango seleccionado',async()=>{
+ const items=Array.from({length:1201},(_,i)=>({id:i+1,venta_id:1,utilidad:1}));
+ const sb=database({ventas:[{id:1,fecha:'2026-09-10',tienda_codigo:'t',anulada:false}],venta_items_lectura:items,gastos:[{id:1,fecha:'2026-09-10',tienda_codigo:'t',monto:201,estado:'aprobado'}]});
+ const result=await domain.load(sb,'retail',{now,range:{desde:'2026-09-10',hasta:'2026-09-11'}});
+ assert.equal(result.total,1000);assert.equal(result.values.length,2);assert.equal(result.values[0],1000);assert.equal(result.values[1],1000);
+ assert.deepEqual(result.labels,['10/09','11/09']);
+});
+test('Retail consulta artículos en lotes de hasta 200 ventas para no exceder la URL de PostgREST',async()=>{
+ const ventas=Array.from({length:201},(_,i)=>({id:i+1,fecha:'2026-09-10',tienda_codigo:'t',anulada:false}));
+ const items=ventas.map(v=>({id:v.id,venta_id:v.id,utilidad:1}));
+ const sb=database({ventas,venta_items_lectura:items});
+ const from=sb.from.bind(sb),sizes=[];
+ sb.from=table=>{const query=from(table);if(table==='venta_items_lectura'){
+  const originalIn=query.in;
+  query.in=(key,ids)=>{sizes.push(ids.length);return originalIn(key,ids)};
+ }return query};
+ const result=await domain.retailData(sb,{start:'2026-09-10',end:'2026-09-10'});
+ assert.equal(result.itemRows.length,201);
+ assert.deepEqual(sizes,[200,1]);
 });
 test('B2B usa RPC existente, pagina más de 500 filas y no confunde otra tienda',async()=>{
  let calls=0;const sb={rpc(name,params){assert.equal(name,'consultar_utilidad_creditek_rango');assert.equal(params.p_hasta,'2026-09-16');return {order(){return this},range:async(a)=>{calls++;return {data:Array.from({length:a===0?500:2},(_,i)=>({fecha:'2026-09-01',tienda_codigo:i?'t':'otra',utilidad:10}))}}}}};
@@ -51,7 +72,7 @@ test('UI no mezcla respuestas al cambiar rápido de pestaña y elimina gráfica 
  const html=fs.readFileSync('creditek/erp/tablero.html','utf8');
  const source=html.slice(html.indexOf('async function cargarSerieUtilidadAcumulada('),html.indexOf('// ─── Alertas'));
  const nodes={};for(const id of ['chartUtilidad','utilidadTotal','utilidadContexto','utilidadPresupuesto','utilidadPanel','utilidadTitulo'])nodes[id]={setAttribute(){}};
- const pending=[];const ctx={utilidadConsulta:0,utilidadNegocio:'retail',chartUtilidadObj:null,sb:{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},CreditekTableroUtilidad:{load:()=>new Promise((resolve,reject)=>pending.push({resolve,reject})),chartConfig:()=>({})},fmtCOP:String,fmtCorto:String,tokenColor:String,nombreTienda:String,Chart:function(){},console:{error(){}}};
+ const pending=[];const ctx={utilidadConsulta:0,utilidadNegocio:'retail',chartUtilidadObj:null,sb:{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},CreditekTableroUtilidad:{load:()=>new Promise((resolve,reject)=>pending.push({resolve,reject})),chartConfig:()=>({})},rangoSeleccionado:()=>({desde:'2026-09-01',hasta:'2026-09-16'}),fmtCOP:String,fmtCorto:String,tokenColor:String,nombreTienda:String,Chart:function(){},console:{error(){}}};
  vm.runInNewContext(source,ctx);const first=ctx.cargarSerieUtilidadAcumulada();ctx.utilidadNegocio='b2b';const second=ctx.cargarSerieUtilidadAcumulada();
  const result={name:'B2B',total:70,missing:0,period:{start:'2026-09-01'},today:'2026-09-16',budget:null};pending[1].resolve(result);await second;pending[0].resolve({...result,total:10});await first;
  assert.equal(nodes.utilidadTotal.textContent,'70');assert.match(nodes.utilidadTitulo.textContent,/B2B/);

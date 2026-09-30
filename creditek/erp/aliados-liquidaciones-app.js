@@ -18,6 +18,7 @@
   let batches = [];
   let addiRecords = [];
   let addiStores = new Map();
+  let addiBuyerDocuments = new Map();
   let monthlyExpenses = null;
   let monthlyExpensesError = '';
   let selectedAddiId = null;
@@ -59,9 +60,24 @@
     const storeByCode = new Map(stores.data.map(store => [store.codigo, store]));
     addiStores = storeByCode;
     const rows = data.filter(row => row.estado !== 'anulada');
+    addiBuyerDocuments = new Map();
+    let buyerLookupFailed = false;
+    const saleIds = [...new Set(rows.map(row => row.venta_id).filter(Boolean))];
+    if (saleIds.length) {
+      const sales = await Promise.all(Array.from({ length: Math.ceil(saleIds.length / 200) }, (_, i) =>
+        sb.from('ventas').select('id,cliente:clientes(cedula)').in('id', saleIds.slice(i * 200, (i + 1) * 200))
+      ));
+      if (sales.some(result => result.error)) {
+        buyerLookupFailed = true;
+      } else {
+        for (const sale of sales.flatMap(result => result.data || [])) {
+          addiBuyerDocuments.set(sale.id, sale.cliente?.cedula || null);
+        }
+      }
+    }
     addiRecords = rows;
     const pending = rows.filter(row => row.estado === 'pendiente_revision' || row.estado === 'revisada').length;
-    status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas` : 'No hay ventas Addi registradas.';
+    status.textContent = rows.length ? `${pending} pendiente(s) · ${rows.length} venta(s) Addi registradas${buyerLookupFailed ? ' · No se pudo consultar la cédula; actualiza para reintentar' : ''}` : 'No hay ventas Addi registradas.';
     const fields = ['credito_bruto','tarifa_addi','iva_tarifa','neto_estimado','otra_forma_pago_venta','pago_tienda','utilidad_creditek'];
     const totals = Object.fromEntries(fields.map(field => [field, rows.reduce((sum,row) => sum + Number(row[field] || 0), 0)]));
     body.innerHTML = rows.map(row => {
@@ -85,7 +101,7 @@
         - (addiPesos(row.credito_bruto) - addiPesos(row.tarifa_addi) - addiPesos(row.iva_tarifa));
       const roundingNote = displayedRounding
         ? `<span class="addi-secondary">Redondeo ${displayedRounding > 0 ? '+' : '−'}${money(Math.abs(displayedRounding))}</span>` : '';
-      return `<tr data-addi-id="${esc(row.id)}"><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${addiMoney(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${addiMoney(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${addiMoney(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${addiMoney(row.neto_estimado)}</span>${roundingNote}</td><td data-label="A tienda"><span class="addi-primary">${addiMoney(row.pago_tienda)}</span>${Number(row.otra_forma_pago_venta) ? `<span class="addi-secondary" title="Parte de la venta cobrada por otro medio; no reduce el pago del crédito Addi">Otro pago en venta ${addiMoney(row.otra_forma_pago_venta)}</span>` : ''}</td><td data-label="Utilidad"><span class="addi-primary">${addiMoney(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
+      return `<tr data-addi-id="${esc(row.id)}"><td data-label="Venta / tienda"><span class="addi-primary">#${esc(row.consecutivo)} · ${storeName ? esc(storeName) : 'Tienda sin identificar'}</span><span class="addi-secondary">${esc(location)} · ${esc(row.fecha_venta)}</span><span class="addi-secondary">Cédula del comprador: ${esc(buyerLookupFailed ? 'No disponible' : addiBuyerDocuments.get(row.venta_id) || 'No informada')}</span><span class="addi-secondary">Referencia Addi: ${esc(row.referencia_addi || 'No informada')}</span><span class="addi-secondary">ID crédito KORA: ${esc(row.credito_id || 'No informado')}</span></td><td data-label="Crédito"><span class="addi-primary" title="${sourceNote}">${addiMoney(row.credito_bruto)}</span>${baseNote}</td><td data-label="Descuento Addi"><span class="addi-primary">${addiMoney(row.tarifa_addi)}</span><span class="addi-secondary">IVA ${addiMoney(row.iva_tarifa)}</span></td><td data-label="Neto Addi"><span class="addi-primary">${addiMoney(row.neto_estimado)}</span>${roundingNote}</td><td data-label="A tienda"><span class="addi-primary">${addiMoney(row.pago_tienda)}</span>${Number(row.otra_forma_pago_venta) ? `<span class="addi-secondary" title="Parte de la venta cobrada por otro medio; no reduce el pago del crédito Addi">Otro pago en venta ${addiMoney(row.otra_forma_pago_venta)}</span>` : ''}</td><td data-label="Utilidad"><span class="addi-primary">${addiMoney(row.utilidad_creditek)}</span><span class="addi-secondary">${esc(row.rentabilidad_pct)} %</span></td><td data-label="Pago Addi" title="${esc(row.fecha_esperada)}"><span class="addi-primary">${esc(shortDate)}</span></td><td data-label="Estado / acción"><span class="addi-action"><span>${esc(stateName)}</span>${action}</span></td></tr>`;
     }).join('');
     $('addiFollowupTotals').innerHTML = rows.length ? `<tr><th>TOTAL ${rows.length}</th><th>${addiMoney(totals.credito_bruto)}</th><th>${addiMoney(totals.tarifa_addi)}<span class="addi-secondary">IVA ${addiMoney(totals.iva_tarifa)}</span></th><th>${addiMoney(totals.neto_estimado)}</th><th>${addiMoney(totals.pago_tienda)}${totals.otra_forma_pago_venta ? `<span class="addi-secondary">Otros pagos de venta ${addiMoney(totals.otra_forma_pago_venta)}</span>` : ''}</th><th>${addiMoney(totals.utilidad_creditek)}<span class="addi-secondary">${totals.credito_bruto ? (100 * totals.utilidad_creditek / totals.credito_bruto).toFixed(2) : '0.00'} %</span></th><th>—</th><th>—</th></tr>` : '';
     renderBatches();
@@ -562,6 +578,11 @@
     return `<p class="operation-executive">Ejecutivo responsable: ${esc(name)}</p>`;
   }
 
+  function operationIdentity(row, saleDate) {
+    const creditLabel = row.plataforma === 'payjoy' ? 'Identificador PayJoy (device)' : 'Identificador del crédito';
+    return `<div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span>Cédula del comprador: ${esc(row.cliente_documento || 'No informada')}</span><span>${creditLabel}: ${esc(row.external_id || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(saleDate || 'No informada')}</span></div>`;
+  }
+
   function renderStandardOperations(rows, rowIssues) {
     document.querySelector('#detail > .table-wrap')?.classList.add('operations-cards');
     $('detailHead').innerHTML = '';
@@ -596,7 +617,7 @@
       return `<tr><td><article class="krediya-operation standard-operation" aria-label="${esc(row.establishment_name || 'Comercio no informado')}">
         <header class="operation-heading"><div><h3>${esc(row.establishment_name || 'Comercio no informado')}</h3><p>${esc(row.referencia || row.modelo || 'Referencia no informada')} · ${missingCommerce ? 'Comercio pendiente de vincular' : isOwn ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">Liquidación: ${state(selected.estado)}</span></header>
         ${executiveIdentity(row)}
-        <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(String(row.operation_at || '').slice(0, 10) || 'No informada')}</span></div>
+        ${operationIdentity(row, String(row.operation_at || '').slice(0, 10))}
         <dl class="operation-values">${metric(isPayJoy ? 'Importe del archivo PayJoy' : 'Crédito financiado', sourceAmount)}${metric('Inicial', row.inicial)}${isPayJoy ? metric('Neto esperado de PayJoy', payjoyNet) : metric('Valor comercial', commercial)}<div><dt>${percentLabel}</dt><dd><strong class="${percent == null ? 'value-pending' : 'operation-amount'}">${percentText}</strong></dd></div><div><dt>Pagamos</dt><dd class="operation-amount">${payField}</dd></div>${metric('Pago neto', net)}${metric('Bonos', bonuses)}${metric('Utilidad', utility)}</dl>
         ${commissionPending ? '<p class="value-pending">Bonos conocidos mostrados; falta el bono del ejecutivo. Utilidad final pendiente de esa asignación en Tesorería.</p>' : ''}
         ${isOwn ? `<details class="operation-reconciliation"><summary>Conciliación de la inicial</summary><dl class="operation-values">${metric('Inicial registrada en KORA', row.inicial_kora)}${metric('Diferencia de inicial', row.diferencia_inicial)}</dl></details>` : ''}
@@ -657,11 +678,11 @@
       return `<tr><td><article class="krediya-operation compact-krediya" data-pvp-difference="${differenceTone}" data-krediya-attention="${needsAttention ? 'true' : 'false'}" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
         <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
         ${executiveIdentity(row)}
+        ${operationIdentity(row, c.fecha || String(row.operation_at || '').slice(0,10))}
         <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
         <footer class="operation-footer">${attentionNotice}${differenceNotice || (needsAttention ? '' : `<p>${esc(note)}</p>`)}<div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
         ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>
-        <div class="operation-identity"><span>Comprador del celular: ${esc(row.cliente_nombre || 'No informado')}</span><span class="operation-imei">IMEI: ${esc(row.imei || 'No informado')}</span><span>Venta: ${esc(c.fecha || String(row.operation_at || '').slice(0,10))}</span></div>
         <dl class="operation-values">${metric(calculated ? 'PVP liquidado' : 'PVP recibido para liquidar', pvp)}${metric('PVP configurado de referencia', c.pvp_guardado)}${metric('PVP recibido de Krediya', c.pvp_recibido, 'No informado')}${metric('Pagamos antes de inicial', paid)}${metric('Inicial', row.inicial, 'No informada')}${metric(calculated ? 'Pago neto liquidado' : 'Pagamos − inicial · estimado', net, row.reconocida ? 'Pendiente de tarifa' : 'No aplica: operación excluida')}${metric('Crédito financiado', row.monto_credito ?? row.monto_base, 'No informado')}</dl>
         <div class="operation-totals"><span>Bonos ${pendingExecutive ? 'conocidos' : calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(pendingExecutive ? null : calc.policy_snapshot?.provision, pendingExecutive ? 'Pendiente de bono' : 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated && !pendingExecutive ? calc.utilidad_creditek : null, pendingExecutive ? 'Pendiente de bono' : 'Pendiente de calcular')}</span></div>
         <p>${priceIssue ? 'La diferencia queda en el informe consolidado de 7 días. ' : ''}${!calculated && paid != null && row.reconocida ? 'El giro es estimado; no es un pago autorizado.' : ''}</p></details>

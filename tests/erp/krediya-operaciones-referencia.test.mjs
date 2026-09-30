@@ -90,6 +90,9 @@ const row = {
   modelo: 'Redmi 15C',
   imei: '861234567890123',
   cliente_nombre: 'Cliente de prueba',
+  cliente_documento: '123456789',
+  external_id: 'CO12345',
+  plataforma: 'krediya',
   establishment_name: 'Comercio de prueba',
   tipo_establecimiento: 'aliado',
   operation_at: '2026-08-28T14:30:00Z',
@@ -120,6 +123,8 @@ test('cada operación identifica referencia completa e IMEI sin cabeceras de la 
   assert.match(result.html, /<h3>XIAOMI REDMI 15C 256GB 8 RAM<\/h3>/);
   assert.match(result.html, /IMEI: 861234567890123/);
   assert.match(result.html, /Comprador del celular: Cliente de prueba/);
+  assert.match(result.html, /Cédula del comprador: 123456789/);
+  assert.match(result.html, /Identificador del crédito: CO12345/);
   assert.match(result.html, /Comercio de prueba · Aliado/);
   assert.equal(result.$('detailHead').innerHTML, '');
   assert.doesNotMatch(result.html, /<th\b|Cliente \/ IMEI|% aplicado|Estado \/ novedad/);

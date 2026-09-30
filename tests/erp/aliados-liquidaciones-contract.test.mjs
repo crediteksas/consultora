@@ -20,8 +20,25 @@ test('tarjetas muestran el ejecutivo de la operación separado del comprador en 
   assert.equal(identity({tipo_establecimiento:'propia'},escape),'');
   assert.doesNotMatch(identity({tipo_establecimiento:'aliado',ejecutivo_id:'otro',executive_display_name:'<script>'},escape),/<script>/);
   assert.equal((app.match(/\$\{executiveIdentity\(row\)\}/g)||[]).length,2);
-  assert.equal((app.match(/Comprador del celular:/g)||[]).length,2);
+  assert.equal((app.match(/\$\{operationIdentity\(row,/g)||[]).length,2);
+  assert.match(app,/Cédula del comprador: \$\{esc\(row\.cliente_documento \|\| 'No informada'\)\}/);
+  assert.match(app,/Identificador PayJoy \(device\)/);
+  assert.match(app,/Identificador del crédito/);
+  assert.match(app,/Cédula del comprador: \$\{esc\(buyerLookupFailed \? 'No disponible' : addiBuyerDocuments\.get\(row\.venta_id\) \|\| 'No informada'\)\}/);
+  assert.match(app,/Referencia Addi: \$\{esc\(row\.referencia_addi \|\| 'No informada'\)\}/);
   assert.match(app,/from\('ejecutivos'\)\.select\('id,nombre'\)\.in\('id', executiveIds\)/);
+});
+
+test('las tarjetas identifican comprador y crédito sin confundir el device de PayJoy con un contrato', () => {
+  const body = app.match(/function operationIdentity\(row, saleDate\) \{([\s\S]*?)\n  \}/)[1];
+  const identity = new Function('row', 'saleDate', 'esc', body);
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const common = {cliente_nombre:'Cliente',cliente_documento:'123456',imei:'123456789012345'};
+  assert.match(identity({...common,plataforma:'payjoy',external_id:'DMPJSVW'},'2026-09-30',escape),/Identificador PayJoy \(device\): DMPJSVW/);
+  assert.match(identity({...common,plataforma:'alo',external_id:'CON-7'},'2026-09-30',escape),/Identificador del crédito: CON-7/);
+  assert.match(identity({...common,plataforma:'krediya',external_id:'CO-8'},'2026-09-30',escape),/Cédula del comprador: 123456/);
+  assert.match(identity({plataforma:'alo'},'',escape),/Identificador del crédito: No informado/);
+  assert.doesNotMatch(identity({...common,plataforma:'alo',external_id:'<script>'},'',escape),/<script>/);
 });
 
 test('la migración reutiliza maestros, auditoría y bucket sin crear duplicados', () => {

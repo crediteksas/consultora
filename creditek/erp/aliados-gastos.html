@@ -75,11 +75,35 @@
                 required
                 placeholder="Persona o empresa que recibirá el pago" /></label
             ><label
-              >Cuenta destino<input
+              >CC / NIT del beneficiario<input
+                id="expenseDocument"
+                class="control"
+                required
+                minlength="5"
+                placeholder="Identificación del titular" /></label
+            ><label
+              >Banco o billetera<select id="expenseBank" class="control" required>
+                <option value="">Selecciona</option>
+                <option>Bancolombia</option><option>Nequi</option><option>Daviplata</option>
+                <option>Davivienda</option><option>Banco de Bogotá</option><option>BBVA</option>
+                <option value="Otro">Otro</option>
+              </select></label
+            ><label
+              >Nombre del banco (si elegiste Otro)<input id="expenseOtherBank" class="control" /></label
+            ><label
+              >Tipo de cuenta<select id="expenseAccountType" class="control" required>
+                <option value="">Selecciona</option><option>Ahorros</option>
+                <option>Corriente</option><option>Billetera digital</option>
+              </select></label
+            ><label
+              >Número de cuenta o celular<input
                 id="expenseAccount"
                 class="control"
                 required
-                placeholder="Banco, tipo y número de cuenta" /></label
+                inputmode="numeric"
+                pattern="[0-9]{6,20}"
+                maxlength="20"
+                placeholder="Solo dígitos" /></label
             ><label
               >Soporte del gasto<input
                 id="expenseSupport"
@@ -102,6 +126,6 @@
         </div>
       </main>
     </div>
-    <script src="aliados-reversiones-domain.js?v=1"></script><script src="aliados-v1-1-app.js?v=1.1.30"></script>
+    <script src="aliados-reversiones-domain.js?v=1"></script><script src="payment-destination.js?v=1.0.0"></script><script src="aliados-v1-1-app.js?v=1.1.31"></script>
   </body>
 </html>

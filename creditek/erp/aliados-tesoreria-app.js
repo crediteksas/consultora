@@ -288,6 +288,7 @@
       currentStoreBalances,
       financialEntries,
       addiLiquidations,
+      paymentDestinationCorrections,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -301,7 +302,7 @@
       ),
       loadCompensations(),
       loadOwnStoreOperations(),
-      loadCompensations("treasury_movements"),
+      loadCompensations("treasury_movements", "*,aliados_gastos_operativos!treasury_movements_aliados_gasto_id_fkey(plataforma)"),
       safe(sb.from("proveedores").select("id,nombre").eq("activo", true)),
       safe(
         sb
@@ -320,6 +321,7 @@
       ['gerencia', 'auditoria'].includes(profile?.rol)
         ? safe(sb.rpc('addi_tesoreria_listar'))
         : Promise.resolve([]),
+      loadRecoveryRows('payment_destination_corrections'),
     ]);
     data = {
       balances,
@@ -340,6 +342,7 @@
       currentStoreBalances,
       financialEntries,
       addiLiquidations,
+      paymentDestinationCorrections,
     };
     data.payments = payments.map(normalizePayment);
     fillCompensationStores();
@@ -989,6 +992,7 @@
     pendingFinancialId = null;
     pendingPaymentIds = [];
     $("#paymentSupportForm").reset();
+    $("#financialPaymentSourceRow").classList.add("hidden");
     $("#paymentSupportSelected").classList.add("hidden");
     $("#paymentSupportError").classList.add("hidden");
     hidePaymentModal($("#paymentSupportModal"));
@@ -1015,6 +1019,7 @@
     if(!financialRecorder||!row||!window.CreditekPagosUnificados.approved(row))return notice('Actualiza los gastos antes de registrar el pago.',true);
     closePaymentSupport();
     pendingFinancialId=id;
+    $("#financialPaymentSourceRow").classList.remove("hidden");
     $("#paymentSupportSummary").textContent=`${row.beneficiary} · ${row.concept} · ${cop(row.amount)}. Adjunta el comprobante del giro realizado.`;
     showPaymentModal($("#paymentSupportModal"));
     $("#paymentSupportFile").focus();
@@ -1024,9 +1029,11 @@
     if($("#savePaymentSupport").disabled)return;
     if(pendingFinancialId){
       const id=pendingFinancialId,button=$("#savePaymentSupport"),errorBox=$("#paymentSupportError");
+      const source=$("#financialPaymentSource").value;
+      if(!source){errorBox.textContent='Selecciona si el giro salió de Banco Creditek o de otra fuente.';errorBox.classList.remove('hidden');return;}
       button.disabled=true;button.textContent='Subiendo soporte…';errorBox.classList.add('hidden');
       try{
-        await financialRecorder.record(id,$("#paymentSupportFile").files[0]);
+        await financialRecorder.record(id,$("#paymentSupportFile").files[0],source==='banco');
         closePaymentSupport();notice('Pago registrado con evidencia. Se conserva la autorización original.');
         await load().catch(()=>notice('Pago confirmado. Actualiza Tesorería para consultar el estado.',true));
         await financialExpenses.refreshSummary();
@@ -1148,6 +1155,110 @@
     notice("Pago actualizado y auditado.");
     await load();
   }
+  function authorizedReportRows() {
+    return window.CreditekPagosUnificados.reportRows(
+      data.payments || [], data.financialEntries || [], data.movements || [],
+      window.CreditekTesoreriaTercerizacion.paymentReadiness,
+    );
+  }
+  function reportMissing(p) {
+    const missing = missingPaymentData(p);
+    if (/^(FIN|TM)-/.test(p.report_ref || '')) {
+      if (p.beneficiary_identification && !/^[0-9.-]{5,20}$/.test(String(p.beneficiary_identification).trim())) missing.push('identificación válida');
+      if (p.bank_snapshot?.account_type && !['Ahorros','Corriente','Billetera digital'].includes(p.bank_snapshot.account_type)) missing.push('tipo de cuenta válido');
+    }
+    if (!Number.isFinite(Number(p.valor)) || Number(p.valor) <= 0) missing.push('valor positivo');
+    return missing;
+  }
+  function reportSignature(p) {
+    return JSON.stringify([p.report_ref,p.valor,p.beneficiary_name,p.beneficiary_identification,
+      p.bank_snapshot?.bank,p.bank_snapshot?.account_type,p.bank_snapshot?.account_number,
+      p.concept,p.report_platform,p.report_date,p.report_business]);
+  }
+  function pendingDestinationCorrection(p) {
+    const kind=p.report_ref?.startsWith('FIN-')?'financial_entry':p.report_ref?.startsWith('TM-')?'treasury_movement':null;
+    return kind ? (data.paymentDestinationCorrections || []).find(x=>x.status==='pendiente'&&x.item_kind===kind&&x.item_id===p.id) : null;
+  }
+  function destinationCorrectionForm(p) {
+    const kind=p.report_ref?.startsWith('FIN-')?'financial_entry':'treasury_movement';
+    const existing=window.KoraPaymentDestination.parse(
+      (kind==='financial_entry'?data.financialEntries:data.movements).find(x=>x.id===p.id)?.destination_account,
+    );
+    const banks=['Bancolombia','Nequi','Daviplata','Davivienda','Banco de Bogotá','BBVA'];
+    const selected=banks.includes(existing.bank)?existing.bank:existing.bank?'Otro':'';
+    return `<details><summary>Completar destino · Maite</summary><form data-destination-form data-kind="${kind}" data-id="${esc(p.id)}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px">
+      <label>CC / NIT<input name="document" required minlength="5" value="${esc(p.beneficiary_identification||'')}" class="control"></label>
+      <label>Banco o billetera<select name="bank" required class="control"><option value="">Selecciona</option>${banks.map(b=>`<option ${selected===b?'selected':''}>${esc(b)}</option>`).join('')}<option value="Otro" ${selected==='Otro'?'selected':''}>Otro</option></select></label>
+      <label>Si elegiste Otro<input name="other_bank" class="control" value="${esc(selected==='Otro'?existing.bank:'')}"></label>
+      <label>Tipo<select name="account_type" required class="control"><option value="">Selecciona</option>${['Ahorros','Corriente','Billetera digital'].map(t=>`<option ${existing.accountType===t?'selected':''}>${t}</option>`).join('')}</select></label>
+      <label>Número<input name="number" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" required class="control" value="${esc(existing.number)}"></label>
+      <button class="btn primary" type="submit">Enviar a Óscar para confirmar</button>
+    </form></details>`;
+  }
+  function openPaymentSelection(rows) {
+    document.getElementById('treasuryPaymentSelectionDialog')?.remove();
+    const dialog=document.createElement('dialog');
+    dialog.id='treasuryPaymentSelectionDialog';
+    dialog.setAttribute('aria-label','Seleccionar pagos autorizados para la orden');
+    dialog.style.cssText='width:94vw;max-width:1000px;max-height:88vh;overflow:auto;padding:18px;border:1px solid #cbd5e1;border-radius:12px';
+    dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
+      <p>La orden es un documento, no registra el pago. Selecciona solo los renglones que vas a girar; los incompletos requieren revisión del destino.</p>
+      <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
+      <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
+      <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;
+    document.body.appendChild(dialog);
+    const chosen=new Set();
+    const status=message=>{dialog.querySelector('[data-selection-error]').textContent=message||'';};
+    const visible=()=>rows.filter(p=>{const platform=dialog.querySelector('[data-report-platform]').value;return !platform||
+      (platform==='sin_plataforma'?!p.report_platform:p.report_platform===platform);});
+    const render=()=>{
+      const list=visible();
+      dialog.querySelector('[data-selection-rows]').innerHTML=list.length?list.map(p=>{
+        const missing=reportMissing(p),pending=pendingDestinationCorrection(p),eligible=!missing.length&&!pending;
+        const kind=p.report_ref?.startsWith('FIN-')||p.report_ref?.startsWith('TM-');
+        const action=pending?`<p>Destino propuesto por Maite: ${esc(pending.proposed_account)} · ${esc(pending.proposed_document)}. Pendiente de confirmación de Gerencia.</p>${canAuthorize()?`<button type="button" class="btn primary" data-confirm-destination="${esc(pending.id)}">Confirmar destino</button> <button type="button" class="btn secondary" data-reject-destination="${esc(pending.id)}">Rechazar</button>`:''}`:
+          missing.length&&kind&&profile?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'?destinationCorrectionForm(p):'';
+        return `<article style="border:1px solid #dbe3ea;border-radius:10px;padding:12px;margin:8px 0"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-report-ref="${esc(p.report_ref)}" ${chosen.has(p.report_ref)&&eligible?'checked':''} ${eligible?'':'disabled'}><strong>${esc(p.beneficiary_name||p.concept)}</strong> · ${cop(p.valor)} · ${esc(p.report_kind)}${p.report_platform?' · '+esc(platformName(p.report_platform)):''}</label><small>${esc(p.concept||'')}</small>${missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>'}${action}</article>`;
+      }).join(''):'<p>No hay pagos autorizados para esta plataforma.</p>';
+      dialog.querySelector('[data-selection-summary]').textContent=`${chosen.size} seleccionado(s) · ${cop(rows.filter(p=>chosen.has(p.report_ref)).reduce((n,p)=>n+Number(p.valor||0),0))}`;
+      dialog.querySelector('[data-generate-selected]').disabled=!chosen.size;
+    };
+    dialog.querySelector('[data-close-selection]').onclick=()=>dialog.close();
+    dialog.addEventListener('close',()=>dialog.remove());
+    dialog.querySelector('[data-report-platform]').onchange=render;
+    dialog.querySelector('[data-select-visible]').onclick=()=>{for(const p of visible())if(!reportMissing(p).length&&!pendingDestinationCorrection(p))chosen.add(p.report_ref);render();};
+    dialog.addEventListener('change',event=>{const checkbox=event.target.closest('[data-report-ref]');if(!checkbox)return;if(checkbox.checked)chosen.add(checkbox.dataset.reportRef);else chosen.delete(checkbox.dataset.reportRef);render();});
+    dialog.addEventListener('submit',async event=>{
+      const form=event.target.closest('[data-destination-form]');if(!form)return;event.preventDefault();status('');
+      const fields=new FormData(form),bank=fields.get('bank')==='Otro'?fields.get('other_bank'):fields.get('bank');
+      try{window.KoraPaymentDestination.format(bank,fields.get('account_type'),fields.get('number'));
+        const {error}=await sb.rpc('payment_destination_prepare',{p_kind:form.dataset.kind,p_item_id:form.dataset.id,p_document:fields.get('document'),p_bank:bank,p_account_type:fields.get('account_type'),p_number:fields.get('number')});
+        if(error)throw error;dialog.close();await load();openPaymentSelection(authorizedReportRows());
+      }catch(error){status(error?.message||'No se pudo solicitar la revisión del destino.');}
+    });
+    dialog.addEventListener('click',async event=>{
+      const confirm=event.target.closest('[data-confirm-destination]'),reject=event.target.closest('[data-reject-destination]');
+      if(!confirm&&!reject)return;
+      const id=confirm?.dataset.confirmDestination||reject.dataset.rejectDestination;
+      const reason=reject?window.prompt('Motivo del rechazo (mínimo 10 caracteres):',''):null;
+      if(reject&&reason===null)return;
+      status('');
+      const {error}=await sb.rpc('payment_destination_decide',{p_id:id,p_approve:Boolean(confirm),p_reason:reason});
+      if(error)return status(error.message);
+      dialog.close();await load();openPaymentSelection(authorizedReportRows());
+    });
+    dialog.querySelector('[data-generate-selected]').onclick=async()=>{
+      const selected=rows.filter(p=>chosen.has(p.report_ref));
+      if(!selected.length)return status('Selecciona al menos un pago.');
+      const signatures=new Map(selected.map(p=>[p.report_ref,reportSignature(p)]));
+      try{await load();}catch{return status('No se pudo actualizar la lista. No se generó la orden.');}
+      const latest=authorizedReportRows().filter(p=>signatures.has(p.report_ref));
+      if(latest.length!==selected.length||latest.some(p=>reportMissing(p).length||pendingDestinationCorrection(p)||reportSignature(p)!==signatures.get(p.report_ref)))
+        return status('Algún pago cambió desde la selección. Cierra y vuelve a revisar los datos antes de generar.');
+      dialog.close();renderPaymentReport(latest);
+    };
+    render();dialog.showModal();
+  }
   async function paymentReport() {
     if(financialAccessError)return notice('No se pudo verificar el acceso a gastos. Actualiza la página antes de generar una orden completa.',true);
     const button=$("#paymentReport");
@@ -1156,24 +1267,15 @@
     try { await load(); }
     catch { notice('No se pudo consultar la orden completa. No se generó un documento parcial; actualiza Tesorería.',true);return; }
     finally {button.disabled=false;}
-    // One order for every authorized unpaid item. Platform/date filters only affect consultation.
-    const rows = window.CreditekPagosUnificados.reportRows(data.payments || [],data.financialEntries || [],data.movements || [],window.CreditekTesoreriaTercerizacion.paymentReadiness);
+    const rows=authorizedReportRows();
     if (!rows.length)
       return notice(
-        "No hay órdenes listas para pagar con estos filtros. Revisa la aprobación de los lotes y sus autorizaciones.",
+        "No hay pagos autorizados pendientes de giro para preparar una orden.",
         true,
       );
-    const incomplete = rows.filter((p) => missingPaymentData(p).length || !Number.isFinite(Number(p.valor)) || Number(p.valor)<=0);
-    if (incomplete.length) {
-      notice(
-        `No se generó una orden parcial. Revisa beneficiario, identificación, cuenta o valor: ${incomplete.map(p=>p.concept || p.beneficiary_name).join(', ')}.`,
-        true,
-      );
-      document
-        .querySelector(`[data-complete="${incomplete[0].id}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    openPaymentSelection(rows);
+  }
+  function renderPaymentReport(rows) {
     const now = new Date(),
       total = rows.reduce((n, p) => n + Number(p.valor || 0), 0),
       generated = new Intl.DateTimeFormat("es-CO", {

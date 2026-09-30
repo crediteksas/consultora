@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 const migration=await readFile(new URL('../../supabase/migrations/20260925161938_banco_abonos_proveedores_final.sql',import.meta.url),'utf8');
+const realMovements=await readFile(new URL('../../supabase/migrations/20260930213125_banco_movimientos_reales.sql',import.meta.url),'utf8');
 const page=await readFile(new URL('../../creditek/erp/banco-creditek.html',import.meta.url),'utf8');
 const app=await readFile(new URL('../../creditek/erp/banco-creditek.js',import.meta.url),'utf8');
 const treasury=await readFile(new URL('../../creditek/erp/aliados-tesoreria.html',import.meta.url),'utf8');
@@ -74,6 +75,23 @@ test('Maite solicita, Óscar autoriza y solo el giro comprobado descuenta Banco 
         ('${second}','${supplier}','F-SIGUIENTE','2026-09-01',200);
     `);
     await db.exec(migration);
+    await db.exec(`
+      create table public.cobros_deposits(id uuid primary key,estado text,created_by uuid,fuente_tipo text,
+        cuenta_ultimos4 text,importe numeric,created_at timestamptz,plataforma text,referencia text,soporte text);
+      create table public.payment_orders(id uuid primary key,estado text,fecha_pagada timestamptz,
+        authorized_by uuid,soporte_path text,historico_inicial boolean,bank_snapshot jsonb,
+        payment_kind text,valor numeric,concept text,paid_by uuid);
+      create table public.treasury_movements(id uuid primary key,type text,direction text,status text,
+        paid_by uuid,support_path text,amount numeric,updated_at timestamptz,created_at timestamptz,concept text);
+      create table public.financial_entries(id uuid primary key,status text,business_unit text,
+        paid_at timestamptz,paid_by uuid,support_path text,amount numeric,concept text);
+      create function public.finanzas_registrar_pago(p_id uuid,p_support_path text)
+        returns public.financial_entries language plpgsql as $$
+      declare v public.financial_entries%rowtype;
+      begin update public.financial_entries set status='pagado',paid_at=now(),
+        paid_by=auth.uid(),support_path=p_support_path where id=p_id returning * into v;return v;end $$;
+    `);
+    await db.exec(realMovements);
     const account=(await db.query('select numero_cuenta,saldo_actual from public.banco_creditek_cuentas')).rows[0];
     assert.equal(account.numero_cuenta,'87600004006');
     assert.equal(account.saldo_actual,null);
@@ -119,6 +137,28 @@ test('Maite solicita, Óscar autoriza y solo el giro comprobado descuenta Banco 
     assert.equal(retried.estado,'pagado');
     assert.equal((await db.query('select count(*)::int n from public.banco_creditek_movimientos')).rows[0].n,2);
     assert.equal((await db.query('select count(*)::int n from public.pagos_proveedor')).rows[0].n,2);
+    await db.exec(`insert into public.cobros_deposits values
+      ('11111111-1111-4111-8111-111111111111','activo','${oscar}',
+       'confirmacion_gerencia',null,100.25,'2026-09-25 15:00:00+00','Addi','Corte','Soporte')`);
+    assert.equal(Number((await db.query('select saldo_actual from public.banco_creditek_cuentas')).rows[0].saldo_actual),450.25);
+    await db.exec(`insert into public.payment_orders values
+      ('22222222-2222-4222-8222-222222222222','conciliado','2026-09-25 16:00:00+00',
+       '${oscar}','soporte',false,'{"account_number":"87600004006"}',
+       'aliado',443,'Torito Cell','${maite}')`);
+    assert.equal(Number((await db.query('select saldo_actual from public.banco_creditek_cuentas')).rows[0].saldo_actual),450.25);
+    await db.exec(`insert into public.payment_orders values
+      ('33333333-3333-4333-8333-333333333333','conciliado','2026-09-25 17:00:00+00',
+       '${oscar}','soporte',false,'{"account_number":"123456789"}',
+       'ejecutivo',20,'Bono ejecutivo','${maite}')`);
+    assert.equal(Number((await db.query('select saldo_actual from public.banco_creditek_cuentas')).rows[0].saldo_actual),430.25);
+    await db.exec(`insert into public.financial_entries(id,status,business_unit,amount,concept)
+      values('44444444-4444-4444-8444-444444444444','aprobado','aliados',5,'Gasto central')`);
+    await db.exec(`set request.jwt.claim.sub='${oscar}'`);
+    await db.query('select public.finanzas_registrar_pago_con_origen($1,$2,true)',
+      ['44444444-4444-4444-8444-444444444444','finanzas/soporte.pdf']);
+    assert.equal(Number((await db.query('select saldo_actual from public.banco_creditek_cuentas')).rows[0].saldo_actual),425.25);
+    assert.equal((await db.query('select count(*)::int n from public.banco_creditek_movimientos')).rows[0].n,5);
+    await db.exec(`set request.jwt.claim.sub='${maite}'`);
     await assert.rejects(db.query('select public.banco_creditek_registrar_giro_proveedor($1,$2,$3,$4)',
       [request,'2026-09-25','OTRA-REF','aliados/tesoreria/soporte.pdf']),/otra evidencia/);
   }finally{await db.close()}

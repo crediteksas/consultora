@@ -260,7 +260,23 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .tabla-wrap::-webkit-scrollbar-track { background:rgba(11,30,61,.06); }
 .tabla-wrap::-webkit-scrollbar-thumb { background:rgba(11,30,61,.34); border:2px solid #FFF; border-radius:999px; }
 
-#tablaVentas { min-width:1120px; }
+#tablaVentas { min-width:1120px; table-layout:fixed; }
+#tablaVentas th:nth-child(1) { width:90px; }
+#tablaVentas th:nth-child(2) { width:70px; }
+#tablaVentas th:nth-child(3) { width:105px; }
+#tablaVentas th:nth-child(4) { width:105px; }
+#tablaVentas th:nth-child(5) { width:155px; }
+#tablaVentas th:nth-child(6) { width:175px; }
+#tablaVentas th:nth-child(7) { width:135px; }
+#tablaVentas th:nth-child(8) { width:95px; }
+#tablaVentas th:nth-child(9) { width:105px; }
+#tablaVentas th:nth-child(10) { width:85px; }
+#tablaVentas th,
+#tablaVentas td:nth-child(4),
+#tablaVentas td:nth-child(5),
+#tablaVentas td:nth-child(6),
+#tablaVentas td:nth-child(10) { white-space:normal; overflow-wrap:anywhere; line-height:1.35; }
+#tablaVentas td:nth-child(7) { font-size:12px; }
 #tablaVentas th:first-child,
 #tablaVentas td:first-child { background:#FFF; box-shadow:1px 0 0 rgba(11,30,61,.08); left:0; position:sticky; z-index:2; }
 #tablaVentas thead th:first-child { background:#0B1E3D; z-index:3; }

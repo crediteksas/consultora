@@ -1588,6 +1588,9 @@
   }
   async function saveExpense(event) {
     event.preventDefault();
+    const bank = $("#expenseBank").value === 'Otro' ? $("#expenseOtherBank").value.trim() : $("#expenseBank").value;
+    try { window.KoraPaymentDestination.format(bank, $("#expenseAccountType").value, $("#expenseAccount").value); }
+    catch (validation) { return notice(validation.message, true); }
     const file = $("#expenseSupport").files[0];
     let path = "";
     if (file) {
@@ -1604,7 +1607,7 @@
           true,
         );
     }
-    const { error } = await sb.rpc("aliados_registrar_gasto", {
+    const { error } = await sb.rpc("aliados_registrar_gasto_v2", {
       p_fecha: $("#expenseDate").value,
       p_plataforma: $("#expensePlatform").value,
       p_origen_codigo: $("#expenseOrigin").value,
@@ -1612,7 +1615,10 @@
       p_descripcion: $("#expenseDescription").value,
       p_valor: Number($("#expenseValue").value),
       p_beneficiario: $("#expenseBeneficiary").value,
-      p_cuenta_destino: $("#expenseAccount").value,
+      p_documento: $("#expenseDocument").value,
+      p_banco: bank,
+      p_tipo_cuenta: $("#expenseAccountType").value,
+      p_numero_cuenta: $("#expenseAccount").value,
       p_soporte_path: path,
     });
     if (error) return notice(error.message, true);

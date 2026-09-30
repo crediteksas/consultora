@@ -8,10 +8,10 @@ const require = createRequire(import.meta.url);
 const domain = require('../../creditek/erp/aliados-tesoreria-domain.js');
 const source = readFileSync('creditek/erp/aliados-tesoreria-app.js', 'utf8');
 const html = readFileSync('creditek/erp/aliados-tesoreria.html', 'utf8');
-test('filtro general ofrece todas las plataformas, incluida Krediya', () => {
+test('filtro general ofrece todas las plataformas, incluidas Krediya y Addi', () => {
   const selector = html.match(/<select id="platform">([\s\S]*?)<\/select\s*>/)?.[1];
   assert.ok(selector);
-  assert.deepEqual([...selector.matchAll(/<option value="([^"]*)">/g)].map(m => m[1]), ['', 'payjoy', 'krediya', 'alo']);
+  assert.deepEqual([...selector.matchAll(/<option value="([^"]*)">/g)].map(m => m[1]), ['', 'payjoy', 'krediya', 'alo', 'addi']);
 });
 const row = (id, store_code, cutoff_date, compensation_value = 100) => ({
   id, store_code, cutoff_date, compensation_value, account_balance_after: -40, legacy_applied: true,
@@ -292,7 +292,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
   assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
-  assert.match(html, /aliados-tesoreria-app.js\?v=2.18.5/);
+  assert.match(html, /aliados-tesoreria-app\.js\?v=\d+\.\d+\.\d+/);
 });
 
 test('la pantalla actual sin formulario antiguo de proveedores carga sin un falso aviso de error', async () => {

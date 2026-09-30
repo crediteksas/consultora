@@ -39,9 +39,11 @@ test('HTML escapa contenido y genera solo lectura sin marcar pagos',()=>{
   const html=R.reportBody([{...row,concept:'<script>alert(1)</script>'}],D);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
   const source=readFileSync(new URL('../../creditek/erp/finanzas-reportes.js',import.meta.url),'utf8');assert.doesNotMatch(source,/\.rpc\(|\.update\(|window\.open/);assert.match(source,/dialog\.showModal\(\)/);
 });
-test('la orden unificada abre dentro de KORA y consulta todos los pagos sin filtros parciales',()=>{
+test('la orden unificada abre dentro de KORA solo con pagos autorizados y seleccionados',()=>{
   const source=readFileSync(new URL('../../creditek/erp/aliados-tesoreria-app.js',import.meta.url),'utf8');
-  const report=source.slice(source.indexOf('  async function paymentReport()'),source.indexOf('  async function changeMovement'));
+  const report=source.slice(source.indexOf('  function authorizedReportRows()'),source.indexOf('  async function changeMovement'));
   assert.match(report,/reportDialog\.showModal\(\)/);assert.match(report,/contentWindow/);assert.doesNotMatch(report,/window\.open/);
-  assert.match(report,/await load\(\)/);assert.match(report,/CreditekPagosUnificados.reportRows/);assert.match(report,/missingPaymentData/);assert.doesNotMatch(report,/filtered\(data.payments/);
+  assert.match(report,/await load\(\)/);assert.match(report,/CreditekPagosUnificados.reportRows/);assert.match(report,/missingPaymentData/);
+  assert.match(report,/data-report-ref/);assert.match(report,/data-generate-selected/);assert.match(report,/reportSignature/);
+  assert.doesNotMatch(report,/filtered\(data.payments/);
 });

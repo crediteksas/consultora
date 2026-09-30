@@ -6,14 +6,14 @@
   const storeFunded=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
   function account(value){const parts=String(value||'').split(' · ').map(s=>s.trim());return {bank:parts.length===3?parts[0]:'',account_type:parts.length===3?parts[1]:'',account_number:parts.length===3&&/^\d{6,20}$/.test(parts[2])?parts[2]:''};}
   function reportRows(payments,entries,movements,ready){
-    const result=payments.filter(p=>p.estado==='programado'&&ready(p).ready).map(p=>({...p,report_ref:`PO-${p.id}`,report_kind:'Liquidación'}));
+    const result=payments.filter(p=>p.estado==='programado'&&ready(p).ready).map(p=>({...p,report_ref:`PO-${p.id}`,report_kind:'Liquidación',report_platform:p.platform_snapshot||p.liquidations?.plataforma||''}));
     for(const row of entries.filter(row=>approved(row)&&!storeFunded(row))) result.push({
       id:row.id,report_ref:`FIN-${row.id}`,report_kind:row.category==='nomina'?'Nómina':row.entry_type==='retiro_utilidad'?'Retiro':'Gasto',
-      report_business:business[row.business_unit]||row.business_unit,report_date:row.due_date,
+      report_business:business[row.business_unit]||row.business_unit,report_date:row.due_date,report_platform:'',
       beneficiary_name:row.beneficiary,beneficiary_identification:row.beneficiary_document,bank_snapshot:account(row.destination_account),valor:row.amount,concept:row.concept,
     });
-    for(const row of movements.filter(r=>r.direction==='debit'&&r.status==='programado'&&r.authorized_by&&!r.paid_at&&!r.support_path)) result.push({
-      id:row.id,report_ref:`TM-${row.id}`,report_kind:'Gasto de Tesorería',report_business:business[row.unit]||row.unit,report_date:row.movement_date,
+    for(const row of movements.filter(r=>r.direction==='debit'&&r.status==='programado'&&r.authorized_by&&!r.support_path)) result.push({
+      id:row.id,report_ref:`TM-${row.id}`,report_kind:'Gasto de Tesorería',report_business:business[row.unit]||row.unit,report_date:row.movement_date,report_platform:row.aliados_gastos_operativos?.plataforma||'',
       beneficiary_name:row.beneficiary,beneficiary_identification:row.beneficiary_document,bank_snapshot:account(row.destination_account),valor:row.amount,concept:row.concept,
     });
     const seen=new Set();return result.filter(row=>{if(seen.has(row.report_ref))return false;seen.add(row.report_ref);return true;});
@@ -22,27 +22,29 @@
   function createRecorder(sb){
     const busy=new Set(),attempts=new Map();
     const read=async id=>{const r=await sb.from('financial_entries').select('*').eq('id',id).single();if(r.error)throw r.error;return r.data;};
-    async function record(id,file){
+    async function record(id,file,fromBank){
       if(busy.has(id))throw new Error('El soporte ya se está procesando.');
       busy.add(id);
       try{
         const row=await read(id),previous=attempts.get(id);
         if(storeFunded(row))throw new Error('Este retiro se paga desde las tiendas. Valida sus instrucciones; no registres otro giro central.');
-        if(row.status==='pagado'&&previous&&row.support_path===previous)return row;
+        if(typeof fromBank!=='boolean')throw new Error('Indica si el pago salió de Banco Creditek.');
+        if(previous&&previous.fromBank!==fromBank)throw new Error('Conserva el origen de fondos en este intento; actualiza antes de cambiarlo.');
+        if(row.status==='pagado'&&previous&&row.support_path===previous.path&&row.pagado_desde_banco_creditek===fromBank)return row;
         if(!approved(row))throw new Error('El gasto ya fue pagado o no está aprobado. Actualiza Tesorería.');
         const mime={'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png'};
         if(!file||!mime[file.type]||!file.size||file.size>10*1024*1024)throw new Error('Selecciona un PDF, JPG o PNG de hasta 10 MB.');
         // Keep an uncertain attempt's support. Never delete evidence after a lost RPC response.
-        let path=previous;
-        if(!path){path=`finanzas/${root.crypto.randomUUID()}.${mime[file.type]}`;const upload=await sb.storage.from('soportes').upload(path,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;attempts.set(id,path);}
-        const result=await sb.rpc('finanzas_registrar_pago',{p_id:id,p_support_path:path});
-        if(!result.error&&result.data?.status==='pagado'&&result.data?.support_path===path)return result.data;
+        let path=previous?.path;
+        if(!path){path=`finanzas/${root.crypto.randomUUID()}.${mime[file.type]}`;const upload=await sb.storage.from('soportes').upload(path,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;attempts.set(id,{path,fromBank});}
+        const result=await sb.rpc('finanzas_registrar_pago_con_origen',{p_id:id,p_support_path:path,p_desde_banco_creditek:fromBank});
+        if(!result.error&&result.data?.status==='pagado'&&result.data?.support_path===path&&result.data?.pagado_desde_banco_creditek===fromBank)return result.data;
         const confirmed=await read(id);
-        if(confirmed.status==='pagado'&&confirmed.support_path===path)return confirmed;
+        if(confirmed.status==='pagado'&&confirmed.support_path===path&&confirmed.pagado_desde_banco_creditek===fromBank)return confirmed;
         throw result.error||new Error('No se confirmó el pago. Conservamos el soporte; actualiza antes de reintentar.');
       }catch(error){
         // A network exception may happen after the server committed the payment.
-        if(attempts.has(id)){try{const confirmed=await read(id);if(confirmed.status==='pagado'&&confirmed.support_path===attempts.get(id))return confirmed;}catch{}}
+        if(attempts.has(id)){try{const confirmed=await read(id),attempt=attempts.get(id);if(confirmed.status==='pagado'&&confirmed.support_path===attempt.path&&confirmed.pagado_desde_banco_creditek===attempt.fromBank)return confirmed;}catch{}}
         throw error;
       }finally{busy.delete(id);}
     }

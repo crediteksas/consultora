@@ -378,7 +378,8 @@
               <option value="">Todas las plataformas</option>
               <option value="payjoy">PayJoy</option>
               <option value="krediya">Krediya</option>
-              <option value="alo">ALO Credit</option></select
+              <option value="alo">ALO Credit</option>
+              <option value="addi">Addi</option></select
             ><input
               id="cutoff"
               type="date"
@@ -581,6 +582,14 @@
           </button>
         </div>
         <form id="paymentSupportForm">
+          <label id="financialPaymentSourceRow" class="hidden" style="display:grid;gap:8px;margin:12px 0;font-weight:700">
+            ¿De dónde salió este pago?
+            <select id="financialPaymentSource" style="min-height:44px;border:1px solid #d8e2ea;border-radius:10px;padding:8px">
+              <option value="">Selecciona el origen</option>
+              <option value="banco">Banco Creditek · Bancolombia •••• 4006</option>
+              <option value="otro">Otra fuente (no mueve Banco Creditek)</option>
+            </select>
+          </label>
           <label
             style="display: grid; gap: 8px; font-size: 13px; font-weight: 700"
             >Comprobante del pago
@@ -674,8 +683,9 @@
     <script src="tesoreria-preparacion.js?v=1.2.0"></script>
     <script src="finanzas-programadas-domain.js?v=1.0.1"></script>
     <script src="tesoreria-gastos.js?v=1.2.0"></script>
-    <script src="tesoreria-pagos-unificados.js?v=1.1.0"></script>
+    <script src="payment-destination.js?v=1.0.0"></script>
+    <script src="tesoreria-pagos-unificados.js?v=1.2.0"></script>
     <script src="banco-proveedores-tesoreria.js?v=1.0.0"></script>
-    <script src="aliados-tesoreria-app.js?v=2.18.5"></script>
+    <script src="aliados-tesoreria-app.js?v=2.19.0"></script>
   </body>
 </html>

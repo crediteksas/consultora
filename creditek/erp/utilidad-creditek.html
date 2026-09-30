@@ -12,6 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="utilidad-creditek-domain.js?v=1.0.2"></script>
+  <script src="aliados-reversiones-domain.js"></script>
+  <script src="tablero-ejecutivos.js"></script>
+  <script src="tablero-utilidad.js?v=1.0.4"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <script src="kora-access-control.js?v=2.0.32"></script>
 <script src="sidebar.js?v=2.0.32" data-kora-shell="1.0.0"></script>
@@ -178,13 +181,13 @@
   <section class="kpi-grid">
     <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><p id="kpi-facturado" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-costo"><div class="kpi-head"><span class="kpi-icon">⌁</span><span class="kpi-name">Costo real</span></div><p id="kpi-costo" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-costo" class="kpi-delta">Sin comparación</p></article>
-    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad</span></div><p id="kpi-utilidad" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad neta B2B</span></div><p id="kpi-utilidad" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="kpi-utilidad-detalle" class="kpi-period">Margen menos gastos autorizados</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-margen"><div class="kpi-head"><span class="kpi-icon">%</span><span class="kpi-name">Margen %</span></div><p id="kpi-margen" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-margen" class="kpi-delta">Sin comparación</p></article>
   </section>
 
   <section class="surface">
     <div class="panel-head">
-      <div><h2 id="chart-title" class="panel-title">Utilidad B2B acumulada del mes</h2><p id="chart-sub" class="panel-sub"></p></div>
+      <div><h2 id="chart-title" class="panel-title">Utilidad neta B2B acumulada del mes</h2><p id="chart-sub" class="panel-sub"></p></div>
       <div class="chart-actions">
         <div class="segment"><button class="granularidad" data-granularidad="dia">Día</button><button class="granularidad" data-granularidad="semana">Semana</button><button class="granularidad" data-granularidad="mes">Mes</button></div>
         <button id="btn-exportar" class="export-btn"><span aria-hidden="true">⇩</span> Exportar</button>
@@ -196,7 +199,7 @@
 
   <section class="summary-grid">
     <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Resumen por tienda</h2><p class="panel-sub">Remisiones despachadas por B2B</p></div><button class="view-all" data-ver-todas="tienda">Ver todas</button></div><div class="table-wrap kora-table-region" role="region" aria-label="Resumen por tienda B2B"><table class="compact-table"><thead id="thead-tienda"></thead><tbody id="tbody-tienda"></tbody></table></div></article>
-    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Top 5 referencias por utilidad</h2><p class="panel-sub">Utilidad de las remisiones B2B</p></div><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap kora-table-region" role="region" aria-label="Referencias por utilidad B2B"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
+    <article class="surface summary-panel"><div class="panel-head"><div><h2 class="panel-title">Top 5 referencias por margen</h2><p class="panel-sub">Margen de remisiones B2B, sin distribuir gastos generales</p></div><button class="view-all" data-ver-todas="referencia">Ver todas</button></div><div class="table-wrap kora-table-region" role="region" aria-label="Referencias por margen B2B"><table class="compact-table"><thead id="thead-referencia"></thead><tbody id="tbody-referencia"></tbody></table></div></article>
   </section>
 
   <section class="surface period-strip" aria-label="Resumen B2B del período">
@@ -209,6 +212,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.3"></script>
+<script src="utilidad-creditek-app.js?v=1.0.4"></script>
 </body>
 </html>

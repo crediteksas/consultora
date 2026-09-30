@@ -9,17 +9,17 @@ function fixture(){
  const nodes={}; for(const id of ['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity','dashboardFilterSummary','content'])nodes['#'+id]={value:''};
  nodes['#dashboardFrom'].value='2026-08-01';nodes['#dashboardTo'].value='2026-08-31';
  const db={operations:[],historicalCredits:[],origins:[],sites:[],expenses:[],incidents:[]};
- const ctx={db,$:s=>nodes[s],establishmentKey:v=>String(v||'').toLowerCase(),operationSaleDay:o=>String(o.operation_at).slice(0,10),date:v=>String(v).slice(0,10),businessType:o=>o.tipo_establecimiento,operationCity:o=>db.origins.find(x=>x.codigo===o.origen_codigo)?.ciudad||'',operationName:o=>o.establishment_name,operationUtilityAvailable:o=>Number(o.utilidad_creditek||0)-Number(o.resultado_cerrado||0),historicalUtilityOriginal:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0),historicalUtilityClosed:o=>Number(o.resultado_cerrado_historico||0),historicalUtilityAvailable:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0)-Number(o.resultado_cerrado_historico||0),sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),metrics:x=>ctx.cards=x,cop:String,esc:String,badge:String,platformName:String,execName:String,paymentValue:o=>Number(o.pago_neto_beneficiario||0),rows:(a,c)=>a.map(x=>c.map(f=>f(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n'),OPERATION_CUTOFF:'2026-09-01',originFor:()=>null};
+ const ctx={db,$:s=>nodes[s],establishmentKey:v=>String(v||'').toLowerCase(),operationSaleDay:o=>String(o.operation_at).slice(0,10),date:v=>String(v).slice(0,10),approvalDay:v=>String(v).slice(0,10),businessType:o=>o.tipo_establecimiento,operationCity:o=>db.origins.find(x=>x.codigo===o.origen_codigo)?.ciudad||'',operationName:o=>o.establishment_name,operationUtilityAvailable:o=>Number(o.utilidad_creditek||0)-Number(o.resultado_cerrado||0),historicalUtilityOriginal:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0),historicalUtilityClosed:o=>Number(o.resultado_cerrado_historico||0),historicalUtilityAvailable:o=>Number(o.utilidad_final_historica??o.utilidad_neta_historica??0)-Number(o.resultado_cerrado_historico||0),sum:(a,k)=>a.reduce((n,x)=>n+Number(x[k]||0),0),metrics:x=>ctx.cards=x,cop:String,esc:String,badge:String,platformName:String,execName:String,paymentValue:o=>Number(o.pago_neto_beneficiario||0),rows:(a,c)=>a.map(x=>c.map(f=>f(x)).join('|')),table:(h,r)=>h.join('|')+r.join('\n'),OPERATION_CUTOFF:'2026-09-01',originFor:()=>null};
  ctx.CreditekReversiones=CreditekReversiones;vm.runInNewContext(source,ctx);return {ctx,db,nodes};
 }
 
 test('gastos generales de Aliados: aprobados y pagados una sola vez, sin retiros ni otros negocios',()=>{
  const {ctx,db,nodes}=fixture();nodes['#dashboardFrom'].value='2026-09-01';nodes['#dashboardTo'].value='2026-09-17';
- const expense={id:'luis',business_unit:'aliados',entry_type:'gasto',due_date:'2026-09-15',status:'pagado',amount:750000,paid_at:'2026-10-01'};
+ const expense={id:'luis',business_unit:'aliados',scope:'business_general',entry_type:'gasto',approved_at:'2026-09-15T15:00:00Z',status:'pagado',amount:750000,paid_at:'2026-10-01'};
  db.financialExpenses=[expense,{...expense},{...expense,id:'yeimi',status:'aprobado'},
  {...expense,id:'withdraw',entry_type:'retiro_utilidad'}, {...expense,id:'retail',business_unit:'retail'},
  {...expense,id:'pending',status:'pendiente'}, {...expense,id:'rejected',status:'rechazado'},
- {...expense,id:'previous',source_period_to:'2026-08-31'}, {...expense,id:'future',due_date:'2026-09-30'}];
+ {...expense,id:'previous',approved_at:'2026-08-31T15:00:00Z'}, {...expense,id:'future',approved_at:'2026-09-30T15:00:00Z'}];
  const before=JSON.stringify(db);ctx.renderDashboard();
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'-1500000');
  assert.match(nodes['#content'].innerHTML,/-\$\s*1\.500\.000,00/);
@@ -40,7 +40,7 @@ test('Krediya concilia margen antes de bonos, gasto financiero y provisión sin 
  assert.match(nodes['#content'].innerHTML,/4\.448\.310,00/);
  assert.match(nodes['#content'].innerHTML,/57\.907,91/);
  assert.match(nodes['#content'].innerHTML,/921\.312,60/);
- db.expenses=[{estado:'aprobado',fecha:'2026-09-02',valor:100}];nodes['#dashboardTo'].value='2026-09-30';ctx.renderDashboard();
+ db.expenses=[{estado:'aprobado',aprobado_at:'2026-09-02T15:00:00Z',valor:100}];nodes['#dashboardTo'].value='2026-09-30';ctx.renderDashboard();
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'2368989.49');
 });
 test('todas las plataformas incluye agosto histórico, deduplica contrato y no reabre resultado cerrado',()=>{
@@ -115,4 +115,15 @@ test('resumen por plataforma vive en Aliados y suma bonos y utilidad guardados p
  nodes['#dashboardBusiness'].value='propia';ctx.renderDashboard();
  assert.match(nodes['#content'].innerHTML,/payjoy\|1\|2000\|30\|222/);
  assert.doesNotMatch(nodes['#content'].innerHTML,/alo\|1\|4000/);
+});
+
+test('Addi aprobado entra una sola vez al resultado Aliados sin inventar una operación del motor de lotes',()=>{
+ const {ctx,db,nodes}=fixture();
+ nodes['#dashboardFrom'].value='2026-09-01';nodes['#dashboardTo'].value='2026-09-30';
+ db.addiLiquidations=[{id:'a',venta_id:163,estado:'aprobada',fecha_venta:'2026-09-15',tienda_codigo:'CK-02',credito_bruto:550000,pago_tienda:418000,utilidad_creditek:114312},
+  {id:'b',venta_id:212,estado:'pendiente',fecha_venta:'2026-09-16',tienda_codigo:'CK-07',credito_bruto:600000,pago_tienda:456000,utilidad_creditek:229950}];
+ ctx.renderDashboard();
+ assert.equal(ctx.cards.find(x=>x[0]==='Créditos del periodo')[1],1);
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'114312');
+ assert.match(nodes['#content'].innerHTML,/addi\|1\|550000\|0\|114312/);
 });

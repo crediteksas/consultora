@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.3">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.0"></script>
-<script src="tablero-utilidad.js?v=1.0.3"></script>
+<script src="tablero-utilidad.js?v=1.0.4"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
 <script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
@@ -142,7 +142,7 @@
     <article class="dashboard-metric">
       <div class="dashboard-metric__header">
         <span class="dashboard-metric__icon"><i data-lucide="chart-no-axes-combined"></i></span>
-        <span class="kpi-label">Resultado operativo Retail</span>
+        <span class="kpi-label">Utilidad neta Retail</span>
       </div>
       <div class="kpi-valor kpi-valor--moneda" id="kpiUtilidad">—</div>
       <div class="kpi-var" id="kpiUtilidadVar"></div>
@@ -214,7 +214,7 @@
       <div class="dashboard-section-heading">
         <div>
           <p class="dashboard-section-heading__eyebrow">Rentabilidad</p>
-          <h2 id="utilidadTitulo">Resultado operativo acumulado · Retail</h2>
+          <h2 id="utilidadTitulo">Utilidad neta acumulada · Retail</h2>
         </div>
         <span class="dashboard-section-heading__icon"><i data-lucide="trending-up"></i></span>
       </div>
@@ -476,7 +476,7 @@ async function cargarKPIs() {
   else document.getElementById('kpiCreditosVar').textContent = 'No se pudo consultar Liquidaciones.';
   document.getElementById('kpiUtilidad').textContent = actual.utilidad===null?'No disponible':fmtCOP(actual.utilidad)+(actual.missing?' · parcial':'');
   const profitContext = document.getElementById('kpiUtilidadVar');
-  profitContext.textContent = actual.utilidad===null?'No se pueden consultar los gastos generales Retail con este usuario':actual.missing ? `${actual.missing} artículo(s) sin utilidad calculada` : tienda?'Margen − gastos de esta tienda · período seleccionado':'Margen − gastos de tiendas − generales aprobados o pagados · período seleccionado';
+  profitContext.textContent = actual.utilidad===null?'No se pueden consultar los gastos generales Retail con este usuario':actual.missing ? `${actual.missing} artículo(s) sin margen calculado` : tienda?'Margen − gastos cargados de esta tienda · período seleccionado':'Margen − gastos cargados en tiendas − generales autorizados · período seleccionado';
   profitContext.className = 'kpi-var flat';
 
   let qp = sb.from('solicitudes').select('id', { count: 'exact', head: true }).eq('estado_validacion', 'pendiente');
@@ -719,7 +719,7 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
     button.tabIndex = selected ? 0 : -1;
   });
   document.getElementById('utilidadPanel').setAttribute('aria-labelledby','utilidadTab-'+business);
-  document.getElementById('utilidadTitulo').textContent = (business==='retail'?'Resultado operativo acumulado':'Utilidad acumulada')+' · '+names[business];
+  document.getElementById('utilidadTitulo').textContent = 'Utilidad neta acumulada · '+names[business];
   if(chartUtilidadObj){chartUtilidadObj.destroy();chartUtilidadObj=null;}
   canvas.hidden=true;total.textContent='Consultando…';context.textContent='';budget.textContent='';
   try {
@@ -730,12 +730,12 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
     context.textContent = result.description+' '+scope+' · '+result.period.start+' a '+result.today+'. Escala automática.'+(result.missing?' '+result.missing+' registro(s) sin utilidad calculada.':'');
     budget.textContent = result.budget===null ? '' : 'Presupuesto mensual Retail: '+fmtCOP(result.budget)+' · referencia; no modifica la escala.';
     canvas.hidden=false;
-    canvas.setAttribute('aria-label',names[business]+': utilidad acumulada '+fmtCOP(result.total)+', del '+result.period.start+' al '+result.today+(result.missing?', cálculo parcial':''));
+    canvas.setAttribute('aria-label',names[business]+': utilidad neta acumulada '+fmtCOP(result.total)+', del '+result.period.start+' al '+result.today+(result.missing?', cálculo parcial':''));
     chartUtilidadObj=new Chart(canvas,CreditekTableroUtilidad.chartConfig(result,{money:fmtCOP,shortMoney:fmtCorto,color:tokenColor}));
   } catch(error) {
     if(request!==utilidadConsulta)return;
     total.textContent='No disponible';
-    context.textContent='No se pudo consultar la utilidad de '+names[business]+'. Selecciona la pestaña para reintentar.';
+    context.textContent=/^(La utilidad neta B2B|No se puede mostrar la utilidad neta)/.test(error.message) ? error.message : 'No se pudo consultar la utilidad neta de '+names[business]+'. Selecciona la pestaña para reintentar.';
     console.error('Utilidad por negocio:',error);
   }
 }

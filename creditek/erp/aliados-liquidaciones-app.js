@@ -18,6 +18,8 @@
   let batches = [];
   let addiRecords = [];
   let addiStores = new Map();
+  let monthlyExpenses = null;
+  let monthlyExpensesError = '';
   let selectedAddiId = null;
   let batchesRequest = 0;
   let selected;
@@ -195,7 +197,7 @@
     $('openKrediyaTariff').onclick = () => tarifarioKrediya.openTariff();
     gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management'), onOperation:openInstructionOperation });
     $('liquidationsContent').classList.remove('hidden');
-    $('refreshBatches').addEventListener('click', loadAddiFollowup);
+    $('refreshBatches').addEventListener('click', async()=>{await loadAddiFollowup();await loadBatches();});
     $('addiFollowupRows').addEventListener('click', actOnAddi);
     const requestedPlatform=new URLSearchParams(location.search).get('plataforma');
     if(['payjoy','alo','krediya','addi'].includes(requestedPlatform))$('filterPlatform').value=requestedPlatform;
@@ -218,7 +220,6 @@
     const data=[];let error;
     for(let from=0;;from+=500){
       let query = sb.from('liquidations').select('*,liquidation_operations(id,reconocida,monto_credito,monto_base,inicial,tipo_establecimiento,origen_codigo,ejecutivo_id,establishment_name,referencia,imei)').order('imported_at', { ascending: false }).order('id').range(from,from+499);
-      if ($('filterPlatform').value) query = query.eq('plataforma', $('filterPlatform').value);
       const page=await query;
       if(request!==batchesRequest)return;
       if(page.error||!Array.isArray(page.data)){error=page.error||{message:'Respuesta incompleta'};break;}
@@ -231,6 +232,15 @@
     $('showHistory').textContent = `Consultar historial (${batches.filter(isHistoricalBatch).length})`;
     $('lastUpdated').textContent = `Actualizado ${new Intl.DateTimeFormat('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(new Date())}`;
     renderBatches();
+    try {
+      const period=Summary.periodos();
+      monthlyExpenses=await CreditekTableroUtilidad.authorizedExpenses(sb,'aliados',period.mesDesde,period.hoy);
+      monthlyExpensesError='';
+    } catch(expenseError) {
+      monthlyExpenses=null;
+      monthlyExpensesError=expenseError.message || 'No se pudieron consultar los gastos.';
+    }
+    if(request===batchesRequest)renderBatches();
     await Promise.all(batches.filter(b=>b.plataforma==='krediya'&&awaitingCalculation(b)&&!b.approved_at&&!b.frozen_at).map(async b=>{
       try {
         const result=await sb.rpc('aliados_contextos_precios_krediya',{p_liquidation_id:b.id});
@@ -266,12 +276,14 @@
           && Number(row.pago_tienda)!==addiPesos(Number(row.credito_bruto)*Number(row.porcentaje_politica))};
     });
     const platformFilter=$('filterPlatform').value;
-    const visibleBatches=[...batches,...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];
+    const visibleBatches=[...batches.filter(batch=>!platformFilter||batch.plataforma===platformFilter),...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];
     const addiNeedsCorrection=addiInList.some(batch=>batch.calculoPendiente);
-    const month=Summary.utilidadMes(addiNeedsCorrection?visibleBatches.filter(batch=>!batch.addiId):visibleBatches,periodo);
+    const month=Summary.utilidadMes(addiNeedsCorrection?batches:[...batches,...addiInList],periodo);
+    const expensesTotal=monthlyExpenses?.reduce((total,row)=>total-row.value,0);
+    const netAvailable=!addiNeedsCorrection&&month.total!==null&&monthlyExpenses!==null;
     const weeklyBatches=visibleBatches.filter(batch=>Summary.deSemana(batch,periodo));
     const weeklyOperations=weeklyBatches.reduce((total,batch)=>total+operationCount(batch),0);
-    $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad liquidada · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · ${esc(platformFilter?platformName(platformFilter):'Todas las plataformas')}</p></div><strong class="monthly-utility">${addiNeedsCorrection&&platformFilter==='addi'?'Pendiente de rectificación':month.total==null?'No disponible':money(month.total)}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Antes de gastos, retiros y ajustes posteriores; no es saldo bancario.${month.faltantes?' Hay liquidaciones sin utilidad informada.':''}${addiNeedsCorrection?' Addi aparece en la lista, pero su utilidad no se suma hasta rectificar los importes aprobados.':''}</p>`;
+    $('monthlySummary').innerHTML=`<div class="page-top"><div><h2>Utilidad neta de Aliados · ${esc(periodo.mesEtiqueta)}</h2><p class="muted">${month.cantidad} liquidaciones aprobadas · por fecha de corte · todas las plataformas</p></div><strong class="monthly-utility">${netAvailable?money(month.total-expensesTotal):'No disponible'}</strong></div><p class="muted">Del ${UX.fechaCorta(periodo.mesDesde)} al ${UX.fechaCorta(periodo.hoy)}. Margen liquidado ${month.total==null?'no disponible':money(month.total)}${monthlyExpenses===null?'':` − gastos autorizados ${money(expensesTotal)}`}. Los gastos se reconocen en la fecha de autorización; los retiros no son gasto ni saldo bancario.${month.faltantes?' Hay liquidaciones sin margen informado.':''}${addiNeedsCorrection?' La utilidad de Addi requiere rectificación antes de incluirla.':''}${monthlyExpensesError?' No se pudieron verificar todos los gastos; actualiza o consulta a Gerencia.':''}</p>`;
     $('showWeek').textContent=`Liquidado esta semana (${weeklyBatches.length})`;
     $('listPeriod').textContent=listMode==='week'?`Aprobadas del ${UX.fechaCorta(periodo.semanaDesde)} al ${UX.fechaCorta(periodo.semanaHasta)} · ${weeklyBatches.length} liquidaciones · ${weeklyOperations} operaciones. El corte se muestra solo como referencia.`:listMode==='pending'?'Pendientes de todas las fechas, para no omitir gestiones.':'Consulta liquidaciones anteriores por fecha de corte.';
     $('batchDateHeader').textContent=listMode==='pending'?'Importación':'Liquidada';

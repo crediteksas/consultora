@@ -878,7 +878,7 @@ function despachoActualizarTotal() {
     if (el) el.textContent = money(sub);
   });
   document.getElementById('despacho-total').textContent = money(total);
-  document.getElementById('despacho-valoracion').textContent = `Costo proveedor de lo seleccionado: ${money(costo)} · Remisión a tienda: ${money(total)} · Utilidad bruta B2B: ${money(total - costo)}. El precio ya incluye la utilidad; no se suma nuevamente. La tienda recibe y acepta la remisión.`;
+  document.getElementById('despacho-valoracion').textContent = `Costo proveedor de lo seleccionado: ${money(costo)} · Remisión a tienda: ${money(total)} · Margen de esta remisión, antes de gastos generales: ${money(total - costo)}. El precio ya incluye ese margen; no se suma nuevamente. La tienda recibe y acepta la remisión.`;
 }
 
 function despachoRender() {

@@ -10,7 +10,7 @@ test('Retail muestra rentabilidad, gastos y créditos por plataforma sin alterar
   assert.match(html, /id="kpi-gastos-venta"/);
   assert.match(html, /id="kpi-creditos"/);
   assert.match(html, /Venta menos costo congelado/);
-  assert.match(html, /Margen menos gastos aprobados/);
+  assert.match(html, /Margen menos gastos cargados y generales autorizados/);
   assert.match(html, /\.eq\('estado', 'aprobado'\)/);
   assert.match(html, /sb\.from\('creditos'\).*ventas!inner/s);
 });
@@ -20,7 +20,7 @@ test('Retail compara los KPI soportados contra el histórico 2025', () => {
   assert.match(html, /cel_uds, acc_uds, utilidad_bruta/);
   assert.match(html, /utilidad_neta_dia/);
   assert.match(html, /\['Unidades vendidas', unidades, ref2025\.unidades/);
-  assert.match(html, /\['Utilidad operativa', utilidad, ref2025\.utilidad/);
+  assert.match(html, /\['Utilidad neta', utilidad, ref2025\.utilidad/);
 });
 
 test('cumplimiento usa la meta de venta y no cruza ventas contra meta de utilidad', () => {

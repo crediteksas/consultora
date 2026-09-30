@@ -23,7 +23,7 @@ test('resumen mensual suma snapshots aprobados por corte, no mes de aprobación 
 });
 function render(batches,mode='week',filters={},addiRecords=[]){
   const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{value:filters[id]||'',textContent:'',innerHTML:''});return nodes.get(id);};
-  const context={$ ,batches,addiRecords,addiStores:new Map([['CK-02',{nombre:'Móvil Shopping',tipo:'propia'}]]),listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,addiPesos:v=>Math.floor(v)+(v-Math.floor(v)>0.50?1:0),platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
+  const context={$ ,batches,addiRecords,monthlyExpenses:[],monthlyExpensesError:'',addiStores:new Map([['CK-02',{nombre:'Móvil Shopping',tipo:'propia'}]]),listMode:mode,Summary:{...Summary,periodos:()=>period},esc:v=>String(v??'').replaceAll('<','&lt;'),money:v=>'$ '+v,addiPesos:v=>Math.floor(v)+(v-Math.floor(v)>0.50?1:0),platformName:String,state:String,UX:{fechaAuditoria:String,fechaCorta:String,traducirEstado:String},document:{querySelectorAll:()=>[]}};
   vm.createContext(context);
   vm.runInContext(app.slice(app.indexOf('  const ownStoreUtility ='),app.indexOf('  function statesForMode('))+'\n'+app.slice(app.indexOf('  function renderBatches()'),app.indexOf('  function updateActions()')),context);
   context.renderBatches();return {context,$};
@@ -77,7 +77,7 @@ test('consulta encuentra tienda y cargue completo pagina sin escribir',async()=>
   assert.match(render([row],'week',{filterSearch:'alfaberso'}).$('batches').innerHTML,/data-open="match"/);
   const nodes=new Map(),$=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:''});return nodes.get(id);};
   const ranges=[];
-  const context={$ ,batchesRequest:0,batches:[],PENDING_STATES:[],isHistoricalBatch:()=>true,awaitingCalculation:()=>false,renderBatches(){},sb:{from(){const q={select:()=>q,order:()=>q,range(from,to){ranges.push([from,to]);return Promise.resolve({data:from===0?Array.from({length:500},(_,id)=>({...row,id})):[]});}};return q;}}};
+  const context={$ ,batchesRequest:0,batches:[],PENDING_STATES:[],isHistoricalBatch:()=>true,awaitingCalculation:()=>false,renderBatches(){},Summary:{periodos:()=>period},CreditekTableroUtilidad:{authorizedExpenses:async()=>[]},sb:{from(){const q={select:()=>q,order:()=>q,range(from,to){ranges.push([from,to]);return Promise.resolve({data:from===0?Array.from({length:500},(_,id)=>({...row,id})):[]});}};return q;}}};
   vm.createContext(context);vm.runInContext(app.slice(app.indexOf('  async function loadBatches()'),app.indexOf('  function renderBatches()')),context);await context.loadBatches();
   assert.equal(context.batches.length,500);assert.deepEqual(ranges,[[0,499],[500,999]]);
 });

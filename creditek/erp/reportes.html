@@ -31,6 +31,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="reportes-query-cache.js?v=1.0.1"></script>
 <script src="reportes-historico.js?v=1.0.0"></script>
+<script src="aliados-reversiones-domain.js"></script>
+<script src="tablero-ejecutivos.js"></script>
+<script src="tablero-utilidad.js?v=1.0.4"></script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
   .fade-in { animation: fadeIn 0.15s ease-out; }
@@ -693,7 +696,7 @@
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Celulares vendidos</div><div class="valor font-mono" id="kpi-celulares">—</div><div class="delta">Unidades serializadas</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Accesorios vendidos</div><div class="valor font-mono" id="kpi-accesorios">—</div><div class="delta">Unidades no serializadas</div></div>
     <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Margen bruto</div><div class="valor font-mono" id="kpi-margen">—</div><div class="delta" id="kpi-margen-sub">Venta menos costo congelado</div></div>
-    <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Utilidad operativa</div><div class="valor font-mono" id="kpi-utilidad">—</div><div class="delta" id="kpi-utilidad-sub">Margen menos gastos aprobados</div></div>
+    <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Utilidad neta Retail</div><div class="valor font-mono" id="kpi-utilidad">—</div><div class="delta" id="kpi-utilidad-sub">Margen menos gastos cargados y generales autorizados</div></div>
     <div class="kpi-card bg-white border border-gray-200 solo-central"><div class="label">Gastos / venta</div><div class="valor font-mono" id="kpi-gastos-venta">—</div><div class="delta" id="kpi-gastos-sub">Gastos aprobados del período</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Créditos por plataforma</div><div class="valor font-mono" id="kpi-creditos">—</div><div class="delta" id="kpi-creditos-sub">—</div></div>
     <div class="kpi-card bg-white border border-gray-200"><div class="label">Cartera pendiente</div><div class="valor font-mono" id="kpi-cartera">—</div><div class="delta" id="kpi-cartera-sub">—</div></div>
@@ -1237,7 +1240,7 @@ function crearCacheRefresco() {
       )),
     ]),
     gastos: () => queryCache.todas(() => filtrar(
-      sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado').order('id'),
+      sb.from('gastos').select('tienda_codigo, monto, created_at').gte('created_at', `${desde}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${hasta}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`).eq('estado', 'aprobado').order('id'),
     )),
     creditos: () => queryCache.todas(() => filtrar(
       sb.from('creditos').select('financiera, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id'),
@@ -1324,7 +1327,11 @@ async function cargarKPIs(cache) {
   const unidades = celulares + accesorios;
   const unidadesPorFactura = ventas.length ? unidades / ventas.length : 0;
   const margen = totalV - costo;
-  const gastos = (gRes.data || []).reduce((s, g) => s + Number(g.monto || 0), 0);
+  const gastosTiendas = (gRes.data || []).reduce((s, g) => s + Number(g.monto || 0), 0);
+  const generales = esCentral() && !tiendasFiltro.length
+    ? (await window.CreditekTableroUtilidad.authorizedExpenses(sb, 'retail', desde, hasta)).reduce((s, g) => s - g.value, 0)
+    : 0;
+  const gastos = gastosTiendas + generales;
   const utilidad = margen - gastos;
   const gastosVenta = totalV ? (gastos / totalV) * 100 : 0;
   const plataformas = (crRes.data || []).reduce((acc, credito) => {
@@ -1345,7 +1352,9 @@ async function cargarKPIs(cache) {
   document.getElementById('kpi-margen').textContent = money(margen);
   document.getElementById('kpi-margen-sub').textContent = `${pct(margen, totalV)} sobre ventas`;
   document.getElementById('kpi-utilidad').textContent = money(utilidad);
-  document.getElementById('kpi-utilidad-sub').textContent = `${money(gastos)} en gastos aprobados`;
+  document.getElementById('kpi-utilidad-sub').textContent = tiendasFiltro.length
+    ? `${money(gastosTiendas)} en gastos de tiendas; generales sin distribuir`
+    : `${money(gastosTiendas)} tiendas + ${money(generales)} generales autorizados`;
   document.getElementById('kpi-gastos-venta').textContent = `${gastosVenta.toFixed(1)}%`;
   document.getElementById('kpi-gastos-sub').textContent = `${money(gastos)} / ${money(totalV)}`;
   document.getElementById('kpi-creditos').textContent = num(crRes.data?.length || 0);
@@ -1378,7 +1387,7 @@ async function cargarKPIs(cache) {
     ['Accesorios', accesorios, ref2025.accesorios, valor => num(Math.round(valor))],
     ['Margen bruto', margen, ref2025.margen, money],
     ['Gastos aprobados', gastos, ref2025.gastos, money],
-    ['Utilidad operativa', utilidad, ref2025.utilidad, money],
+    ['Utilidad neta', utilidad, ref2025.utilidad, money],
   ];
   document.getElementById('tbody-comparativo-kpis').innerHTML = comparables.map(([nombre, actual, anterior, formato]) => {
     const variacion = anterior ? ((actual - anterior) / anterior) * 100 : null;
@@ -1625,9 +1634,9 @@ async function cargarRentabilidadTienda() {
   if (!esCentral()) return;
   const { desde, hasta } = getPeriodo();
   const [vRes, viRes, gRes] = await Promise.all([
-    sb.from('ventas').select('id, tienda_codigo, total, origen:tienda_codigo(nombre)').gte('fecha', desde).lte('fecha', hasta).neq('anulada', true),
-    sb.from('venta_items_lectura').select('venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true),
-    sb.from('gastos').select('tienda_codigo, monto').gte('fecha', desde).lte('fecha', hasta).eq('estado', 'aprobado'),
+    queryCache.todas(() => sb.from('ventas').select('id, tienda_codigo, total, origen:tienda_codigo(nombre)').gte('fecha', desde).lte('fecha', hasta).neq('anulada', true).order('id')),
+    queryCache.todas(() => sb.from('venta_items_lectura').select('id, venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id')),
+    queryCache.todas(() => sb.from('gastos').select('id, tienda_codigo, monto').gte('created_at', `${desde}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${hasta}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`).eq('estado', 'aprobado').order('id')),
   ]);
   exigirRespuestas(vRes, viRes, gRes);
   const porTienda = {};
@@ -1642,7 +1651,8 @@ async function cargarRentabilidadTienda() {
     porTienda[tc].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado || 0);
   });
   (gRes.data || []).forEach(g => {
-    if (!porTienda[g.tienda_codigo]) return;
+    if (g.tienda_codigo === 'CENTRAL' || !tiendaVisible(g.tienda_codigo)) return;
+    if (!porTienda[g.tienda_codigo]) porTienda[g.tienda_codigo] = { nombre: tiendasCache.find(t => t.codigo === g.tienda_codigo)?.nombre || g.tienda_codigo, ingresos: 0, costo: 0, gastos: 0 };
     porTienda[g.tienda_codigo].gastos += Number(g.monto || 0);
   });
 

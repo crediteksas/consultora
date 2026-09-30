@@ -145,7 +145,7 @@ test('Tesorería separa compensaciones aplicadas y utilidad sin duplicar el mód
   assert.match(app, /antiguos sin constancia/);
   assert.match(app, /Utilidad contabilizada/);
   assert.doesNotMatch(app, /badge\(x\.status, "Reconocida"\)/);
-  assert.match(html, /Krediya, el margen se muestra antes de bonos y gastos/);
+  assert.match(html, /Krediya, este margen por operación se muestra antes de bonos y gastos generales; la utilidad neta del negocio se consulta en el resumen mensual/);
   assert.doesNotMatch(html, /Otros movimientos de Tesorería|Registrar movimiento/);
   assert.match(ledger, /new URLSearchParams\(location\.search\)\.get\('tienda'\)/);
 });

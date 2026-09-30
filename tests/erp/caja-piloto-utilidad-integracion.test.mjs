@@ -13,24 +13,24 @@ test('caja usa el cálculo autoritativo del piloto y valida contra el servidor',
   assert.match(html, /rpc\('calcular_efectivo_esperado_tienda'/);
   assert.match(html, /from\('movimientos_caja_tienda'\)/);
   assert.match(html, /cajaPiloto\.calcularEfectivoEsperado\(\{/);
-  assert.match(html, /esperado !== Number\(cuadre\.esperado \|\| 0\)/);
+  assert.match(html, /Math\.abs\(esperado - Number\(cuadre\.esperado \|\| 0\)\) > 0\.005/);
 });
 
 test('utilidad informativa exige un valor calculado en cada línea', () => {
   assert.match(html, /it\.utilidad === null \|\| it\.utilidad === undefined \|\| it\.utilidad === ''/);
   assert.match(html, /!Number\.isFinite\(Number\(it\.utilidad\)\)/);
-  assert.match(html, /throw new Error\(`La venta \$\{v\.id\} tiene una línea sin utilidad calculada\.`\)/);
+  assert.match(html, /utilidadCompleta = false/);
   assert.match(html, /totalUtilidad \+= Number\(it\.utilidad\)/);
   assert.doesNotMatch(html, /Number\(it\.utilidad \|\| 0\)/);
 });
 
 test('utilidad y salidas explícitas permanecen separadas en las tres vistas', () => {
-  assert.match(html, /Utilidad del día[\s\S]*fmtCOP\(c\.totalUtilidad\)/);
+  assert.match(html, /Utilidad neta de tienda del día[\s\S]*fmtUtilidad\(c\.totalUtilidad\)/);
   assert.match(html, /Salidas explícitas[\s\S]*fmtCOP\(c\.salidasExplicitas\)/);
-  assert.match(html, /Utilidad del día: \$\{fmtCOP\(c\.totalUtilidad\)\}/);
+  assert.match(html, /Utilidad neta de tienda del día: \$\{fmtUtilidad\(c\.totalUtilidad\)\}/);
   assert.match(html, /Salidas explícitas: -\$\{fmtCOP\(c\.salidasExplicitas\)\}/);
   assert.match(html, /utilidad: c\.totalUtilidad/);
   assert.match(html, /salidasExplicitas: c\.salidasExplicitas/);
-  assert.match(html, /fmtCOP\(f\.utilidad\)/);
+  assert.match(html, /fmtUtilidad\(f\.utilidad\)/);
   assert.match(html, /fmtCOP\(f\.salidasExplicitas\)/);
 });

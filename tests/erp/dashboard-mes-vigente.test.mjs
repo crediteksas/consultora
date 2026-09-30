@@ -26,9 +26,9 @@ test('B2B abre con el acumulado del mes vigente', async () => {
 test('Aliados inicializa fechas del mes vigente en horario de Colombia', async () => {
   const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
 
-  assert.match(app, /timeZone:'America\/Bogota'/);
-  assert.match(app, /monthStart:`\$\{parts\.year\}-\$\{parts\.month\}-01`/);
-  assert.match(app, /function populateDashboardFilters\(\)\{setCurrentMonthDashboardRange\(\);/);
-  assert.match(app, /day>=from/);
-  assert.match(app, /day<=to/);
+  assert.match(app, /timeZone:\s*["']America\/Bogota["']/);
+  assert.match(app, /monthStart:\s*`\$\{parts\.year\}-\$\{parts\.month\}-01`/);
+  assert.match(app, /function populateDashboardFilters\(\)\s*\{\s*setCurrentMonthDashboardRange\(\);/);
+  assert.match(app, /day\s*>=\s*from/);
+  assert.match(app, /day\s*<=\s*to/);
 });

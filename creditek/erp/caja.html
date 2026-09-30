@@ -316,12 +316,14 @@ async function calcularCuadrito(tienda, fecha) {
   const [
     { data: ventas, error: ventasError },
     { data: gastos, error: gastosError },
+    { data: gastosResultado, error: gastosResultadoError },
     { data: cuadre, error: cuadreError },
     { data: movimientosCaja, error: movimientosCajaError },
   ] = await Promise.all([
     window.CreditekCajaLibroUI.todas(() => sb.from('ventas').select('*, clientes(nombre_completo), creditos(*), venta_items:venta_items_lectura(*, productos(nombre, tipo))')
       .eq('tienda_codigo', tienda).eq('fecha', fecha).eq('anulada', false)).then(data => ({ data })),
     window.CreditekCajaLibroUI.todas(() => sb.from('gastos').select('*, conceptos_gasto(nombre, preautorizado)').eq('tienda_codigo', tienda).eq('fecha', fecha)).then(data => ({ data })),
+    window.CreditekCajaLibroUI.todas(() => sb.from('gastos').select('id,monto,estado,created_at').eq('tienda_codigo', tienda).eq('estado', 'aprobado').gte('created_at', `${fecha}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${fecha}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`)).then(data => ({ data })),
     sb.rpc('calcular_efectivo_esperado_tienda', {
       p_tienda_codigo: tienda,
       p_fecha: fecha,
@@ -333,6 +335,7 @@ async function calcularCuadrito(tienda, fecha) {
   ]);
   if (ventasError) throw ventasError;
   if (gastosError) throw gastosError;
+  if (gastosResultadoError) throw gastosResultadoError;
   if (cuadreError) throw cuadreError;
   if (movimientosCajaError) throw movimientosCajaError;
 
@@ -379,6 +382,7 @@ async function calcularCuadrito(tienda, fecha) {
   const otrosIngresos = Number(cuadre.otros_ingresos || 0);
   const ajustesAuditoria = Number(cuadre.ajustes_auditoria || 0);
   const totalGastos = Number(cuadre.gastos_efectivo || 0);
+  const totalGastosResultado = (gastosResultado || []).reduce((sum, gasto) => sum + Number(gasto.monto || 0), 0);
   const salidasExplicitas = Number(cuadre.salidas_explicitas || 0);
   const esperado = cajaPiloto.calcularEfectivoEsperado({
     apertura,
@@ -406,8 +410,9 @@ async function calcularCuadrito(tienda, fecha) {
     otrosIngresos,
     ajustesAuditoria,
     totalGastos,
+    totalGastosResultado,
     salidasExplicitas,
-    totalUtilidad: utilidadCompleta ? totalUtilidad : null,
+    totalUtilidad: utilidadCompleta ? totalUtilidad - totalGastosResultado : null,
     fechaInicioCiclo: cuadre.fecha_inicio_ciclo,
     esperado,
     aperturaCierreAnterior: Number(cuadre.apertura_cierre_anterior ?? apertura),
@@ -482,7 +487,8 @@ async function cargarCuadritoDatos(tienda, fecha) {
           <div class="cuadrito-linea"><span class="izq">Otros ingresos</span><span class="der">${fmtCOP(c.otrosIngresos)}</span></div>
           ${c.ajustesAuditoria !== 0 ? `<div class="cuadrito-linea"><span class="izq">Ajuste de saldo autorizado por Gerencia · no es ingreso</span><span class="der">${fmtCOP(c.ajustesAuditoria)}</span></div>` : ''}
           <div class="cuadrito-linea"><span class="izq">Total gastos</span><span class="der">-${fmtCOP(c.totalGastos)}</span></div>
-          <div class="cuadrito-linea"><span class="izq">Utilidad del día</span><span class="der">${fmtUtilidad(c.totalUtilidad)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Gastos aprobados cargados hoy (utilidad)</span><span class="der">-${fmtCOP(c.totalGastosResultado)}</span></div>
+          <div class="cuadrito-linea"><span class="izq">Utilidad neta de tienda del día</span><span class="der">${fmtUtilidad(c.totalUtilidad)}</span></div>
           <div class="cuadrito-linea"><span class="izq">Salidas explícitas</span><span class="der">-${fmtCOP(c.salidasExplicitas)}</span></div>
           <div class="cuadrito-linea esperado ${c.esperado < 0 ? 'negativo' : ''}"><span class="izq">Efectivo esperado</span><span class="der">${fmtCOP(c.esperado)}</span></div>
         </div>
@@ -633,7 +639,7 @@ function compartirCuadritoWA(tiendaNombre, fecha, c) {
   texto += `\n\n*GASTOS*\n`;
   texto += c.gastos.length ? c.gastos.map(g => `${g.conceptos_gasto?.nombre} — ${fmtCOP(g.monto)}`).join('\n') : 'Sin gastos.';
   if (c.ajusteArrastre !== 0) texto += `\n\nAjuste por movimientos de días anteriores (incluido en apertura): ${fmtCOP(c.ajusteArrastre)}`;
-  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nAjuste de saldo autorizado (no ingreso): ${fmtCOP(c.ajustesAuditoria)}\nTotal gastos: -${fmtCOP(c.totalGastos)}\nUtilidad del día: ${fmtCOP(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO ACTUALIZADO: ${fmtCOP(c.esperado)}*\n\nREGISTRO DEL CIERRE ORIGINAL\nEsperado al cerrar: ${fmtCOP(c.caja.efectivo_esperado)}\nEfectivo registrado al cerrar: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia al cerrar: ${fmtCOP(c.caja.diferencia)}`;
+  texto += `\n\n━━━━━━━━━━━━━\nApertura: ${fmtCOP(c.apertura)}\nTotal contado: ${fmtCOP(c.totalContado)}\nFinanciado recibido en tienda: ${fmtCOP(c.totalFinanciado)}\nSaldo por cobrar: ${fmtCOP(c.saldoPorCobrar)}\nTotal iniciales: ${fmtCOP(c.totalIniciales)}\nOtros ingresos: ${fmtCOP(c.otrosIngresos)}\nAjuste de saldo autorizado (no ingreso): ${fmtCOP(c.ajustesAuditoria)}\nGastos en efectivo de caja: -${fmtCOP(c.totalGastos)}\nGastos aprobados cargados hoy (utilidad): -${fmtCOP(c.totalGastosResultado)}\nUtilidad neta de tienda del día: ${fmtUtilidad(c.totalUtilidad)}\nSalidas explícitas: -${fmtCOP(c.salidasExplicitas)}\n*EFECTIVO ESPERADO ACTUALIZADO: ${fmtCOP(c.esperado)}*\n\nREGISTRO DEL CIERRE ORIGINAL\nEsperado al cerrar: ${fmtCOP(c.caja.efectivo_esperado)}\nEfectivo registrado al cerrar: ${fmtCOP(c.caja.efectivo_contado)}\nDiferencia al cerrar: ${fmtCOP(c.caja.diferencia)}`;
 
   navigator.clipboard?.writeText(texto).then(() => {
     alert('Cuadrito copiado al portapapeles. Se abrirá WhatsApp para pegarlo.');

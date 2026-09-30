@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   const D = window.CreditekUtilidadDomain;
+  const U = window.CreditekTableroUtilidad;
   const env = window.__KORA_ENV__;
   const SB = window.SB || window.supabase.createClient(env.KORA_ERP_SUPABASE_URL, env.KORA_ERP_SUPABASE_ANON_KEY);
   const moneyFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
@@ -16,6 +17,7 @@
     filas: [],
     filtradas: [],
     comparacion: [],
+    gastosGenerales: [],
     granularidad: 'dia',
     chart: null,
     tablasExpandidas: new Set(),
@@ -100,15 +102,17 @@
     const rangoCmp = D.rangoComparacion(document.getElementById('comparativo').value, desde, hasta);
     const consultaDesde = rangoCmp && rangoCmp.desde < desde ? rangoCmp.desde : desde;
     const consultaHasta = rangoCmp && rangoCmp.hasta > hasta ? rangoCmp.hasta : hasta;
-    const [{ data, error }, { data: tiendas, error: tiendasError }] = await Promise.all([
+    const [{ data, error }, { data: tiendas, error: tiendasError }, gastosGenerales] = await Promise.all([
       SB.rpc('consultar_utilidad_creditek_rango', {
         p_desde: consultaDesde,
         p_hasta: consultaHasta,
       }),
       SB.from('origenes').select('codigo, nombre, tipo, activo').order('nombre'),
+      U.authorizedExpenses(SB, 'b2b', consultaDesde, consultaHasta),
     ]);
     if (error) throw error;
     if (tiendasError) throw tiendasError;
+    estado.gastosGenerales = gastosGenerales;
     const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
     estado.filas = (data || []).map(fila => ({
       ...fila,
@@ -144,16 +148,33 @@
     el.className = `kpi-delta ${resultado.diferencia >= 0 ? 'text-green-700' : 'text-red-700'}`;
   }
 
+  function resultadoNeto(filas, desde, hasta) {
+    const margen = D.resumir(filas).utilidad;
+    const gastos = estado.gastosGenerales.filter(g => g.date >= desde && g.date <= hasta).reduce((n, g) => n - g.value, 0);
+    return { margen, gastos, neto: margen - gastos };
+  }
+
+  function sinDistribucion() {
+    const { tienda, referencia } = filtros();
+    return Boolean(tienda || referencia);
+  }
+
   function renderKpis(rangoCmp) {
     const actual = D.resumir(estado.filtradas);
     const previo = rangoCmp ? D.resumir(estado.comparacion) : null;
     document.getElementById('kpi-facturado').textContent = money(actual.facturado);
     document.getElementById('kpi-costo').textContent = money(actual.costo);
-    document.getElementById('kpi-utilidad').textContent = money(actual.utilidad);
+    const base = filtros();
+    const neto = resultadoNeto(estado.filtradas, base.desde, base.hasta);
+    const netoPrevio = rangoCmp ? resultadoNeto(estado.comparacion, rangoCmp.desde, rangoCmp.hasta) : null;
+    document.getElementById('kpi-utilidad').textContent = sinDistribucion() ? 'No disponible' : money(neto.neto);
+    document.getElementById('kpi-utilidad-detalle').textContent = sinDistribucion()
+      ? 'Los gastos generales y la nómina no se reparten por tienda o referencia.'
+      : `Margen ${money(neto.margen)} − gastos autorizados ${money(neto.gastos)} (fecha de autorización).`;
     document.getElementById('kpi-margen').textContent = porcentaje(actual.margen);
     delta('delta-facturado', actual.facturado, previo?.facturado, 'dinero', !!rangoCmp);
     delta('delta-costo', actual.costo, previo?.costo, 'dinero', !!rangoCmp);
-    delta('delta-utilidad', actual.utilidad, previo?.utilidad, 'dinero', !!rangoCmp);
+    delta('delta-utilidad', neto.neto, netoPrevio?.neto, 'dinero', !!rangoCmp && !sinDistribucion());
     delta('delta-margen', actual.margen, previo?.margen, 'porcentaje', !!rangoCmp);
     return actual;
   }
@@ -170,10 +191,12 @@
       btn.classList.toggle('opacity-40', btn.disabled);
       btn.classList.toggle('active', tipo === estado.granularidad);
     });
-    const grupos = D.serieAcumulada(estado.filtradas, base.desde, base.hasta, estado.granularidad);
+    const graficoDisponible = !sinDistribucion();
+    const gastos = graficoDisponible ? estado.gastosGenerales.filter(g => g.date >= base.desde && g.date <= base.hasta).map(g => ({ id:`gasto-${g.source}-${g.id}`, fecha:g.date, facturado:0, costo:-g.value })) : [];
+    const grupos = graficoDisponible ? D.serieAcumulada([...estado.filtradas, ...gastos], base.desde, base.hasta, estado.granularidad) : [];
     const esMes = base.desde.endsWith('-01') && base.desde.slice(0, 7) === base.hasta.slice(0, 7);
-    document.getElementById('chart-title').textContent = `Utilidad B2B acumulada ${esMes ? 'del mes' : 'del período'}`;
-    document.getElementById('chart-sub').textContent = `Valores en pesos (COP) · ${base.desde} a ${base.hasta}`;
+    document.getElementById('chart-title').textContent = `Utilidad neta B2B acumulada ${esMes ? 'del mes' : 'del período'}`;
+    document.getElementById('chart-sub').textContent = graficoDisponible ? `Margen de remisiones menos gastos autorizados · ${base.desde} a ${base.hasta}` : 'Los gastos generales no se reparten por tienda o referencia.';
     if (estado.chart) estado.chart.destroy();
     estado.chart = null;
     document.getElementById('chart-container').classList.toggle('hidden', !grupos.length);
@@ -186,7 +209,7 @@
       data: {
         labels: grupos.map(g => g.periodo),
         datasets: [{
-          label:'Utilidad B2B acumulada', data:grupos.map(g => g.utilidad),
+          label:'Utilidad neta B2B acumulada', data:grupos.map(g => g.utilidad),
           borderColor:'#00C4CC', backgroundColor:'#00C4CC', borderWidth:3, tension:0,
           pointRadius:grupos.map((_, i) => i === grupos.length - 1 ? 4 : 0), pointHitRadius:12,
         }],
@@ -223,7 +246,7 @@
     });
   }
 
-  const cabecera = titulo => `<tr class="bg-gray-100 text-left"><th class="px-4 py-2">${titulo}</th><th class="px-4 py-2 text-right">Facturado</th><th class="px-4 py-2 text-right">Costo real</th><th class="px-4 py-2 text-right">Utilidad</th><th class="px-4 py-2 text-right">Margen %</th><th class="px-4 py-2 text-right">Participación</th></tr>`;
+  const cabecera = titulo => `<tr class="bg-gray-100 text-left"><th class="px-4 py-2">${titulo}</th><th class="px-4 py-2 text-right">Facturado</th><th class="px-4 py-2 text-right">Costo real</th><th class="px-4 py-2 text-right">Margen de remisiones</th><th class="px-4 py-2 text-right">Margen %</th><th class="px-4 py-2 text-right">Participación</th></tr>`;
   function renderTabla(prefijo, titulo, filas) {
     document.getElementById(`thead-${prefijo}`).innerHTML = cabecera(titulo);
     const expandidas = estado.tablasExpandidas.has(prefijo);
@@ -231,7 +254,7 @@
     const boton = document.querySelector(`[data-ver-todas="${prefijo}"]`);
     boton.textContent = expandidas ? 'Ver top 5' : 'Ver todas';
     boton.classList.toggle('invisible', filas.length <= 5);
-    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Utilidad" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
+    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Margen de remisiones" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
   }
 
   function renderTodo(base, rangoCmp) {
@@ -259,7 +282,9 @@
       [], ['Rango', `${base.desde} a ${base.hasta}`],
       ['Tienda', document.getElementById('filtro-tienda').selectedOptions[0]?.textContent || 'Todas'],
       ['Referencia', document.getElementById('filtro-referencia').selectedOptions[0]?.textContent || 'Todas'],
-      [], ['Indicador', 'Valor'], ['Facturado', r.facturado], ['Costo real', r.costo], ['Utilidad', r.utilidad],
+      [], ['Indicador', 'Valor'], ['Facturado', r.facturado], ['Costo real', r.costo], ['Margen de remisiones', r.utilidad],
+      ['Gastos generales autorizados', sinDistribucion() ? 'No distribuidos' : resultadoNeto(estado.filtradas, base.desde, base.hasta).gastos],
+      ['Utilidad neta B2B', sinDistribucion() ? 'No disponible por filtro' : resultadoNeto(estado.filtradas, base.desde, base.hasta).neto],
       ['Margen %', r.margen], ['Días', D.dias(base.desde, base.hasta)], ['Tiendas', r.tiendas], ['Unidades', r.unidades],
       ['Despachos', r.despachos], ['Ticket promedio', r.ticketPromedio],
     ];
@@ -269,13 +294,13 @@
     return filas.map(f => ({
       Fecha:f.fecha, Despacho:f.consecutivo, Tienda:f.tienda_nombre,
       Referencia:f.referencia_nombre, Cantidad:f.cantidad,
-      Facturado:f.facturado, 'Costo real':f.costo, Utilidad:f.facturado - f.costo,
+      Facturado:f.facturado, 'Costo real':f.costo, 'Margen de remisión':f.facturado - f.costo,
       'Margen %':f.facturado ? (f.facturado - f.costo) / f.facturado : null,
     }));
   }
 
   function hojaDimension(filas) {
-    return filas.map(f => ({ Nombre:f.nombre, Facturado:f.facturado, 'Costo real':f.costo, Utilidad:f.utilidad, 'Margen %':f.margen, Participación:f.participacion }));
+    return filas.map(f => ({ Nombre:f.nombre, Facturado:f.facturado, 'Costo real':f.costo, 'Margen de remisiones':f.utilidad, 'Margen %':f.margen, Participación:f.participacion }));
   }
 
   function exportar() {

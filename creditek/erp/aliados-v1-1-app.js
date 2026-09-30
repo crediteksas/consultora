@@ -26,6 +26,7 @@
       maximumFractionDigits: 0,
     }).format(Number(v) || 0);
   const date = (v) => (v ? String(v).slice(0, 10) : "—");
+  const approvalDay = (value) => value ? new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value)) : '';
   const badge = (v) =>
     `<span class="badge ${esc(v)}">${esc(String(v || "—").replaceAll("_", " "))}</span>`;
   const sum = (xs, key) => xs.reduce((n, x) => n + Number(x[key] || 0), 0);
@@ -294,6 +295,7 @@
       expenses,
       financialExpenses,
       financialExpensesReadable,
+      addiLiquidations,
       platformGoals,
       reversions,
     ] = await Promise.all([
@@ -316,8 +318,9 @@
         "id,plataforma,codigo_credito,fecha_credito,monto_credito,establecimiento,vendedor,tipo_establecimiento,ejecutivo_historico_id,valor_comercial_historico,pagamos_historico,pago_neto_historico,bonos_historicos,utilidad_antes_bonos_historica,utilidad_neta_historica,gasto_financiero_historico,gasto_operativo_referencia_historico,provision_historica,utilidad_final_historica,resultado_cerrado_historico,cierre_utilidad_at,cierre_utilidad_motivo,calculo_historico_estado,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion",
       ),
       allRows("aliados_gastos_operativos", "*"),
-      view === "dashboard" ? allRows("financial_entries", "id,entry_type,business_unit,store_code,due_date,amount,source_period_from,source_period_to,status") : [],
+      view === "dashboard" ? allRows("financial_entries", "id,entry_type,business_unit,store_code,scope,approved_at,amount,status") : [],
       view === "dashboard" ? sb.rpc('es_controlador_financiero').then(({data,error}) => { if(error) throw error; return data === true; }) : false,
+      view === "dashboard" ? sb.rpc('addi_liquidaciones_listar').then(({data,error}) => { if(error) throw error; if(!Array.isArray(data)) throw Error('Respuesta incompleta de Addi'); return data; }) : [],
       allRows("aliados_metas_plataforma", "*"),
       allRows("aliados_reversiones", "*"),
     ]);
@@ -342,6 +345,7 @@
       expenses,
       financialExpenses,
       financialExpensesReadable,
+      addiLiquidations,
       platformGoals,
     };
     if (view === "dashboard") populateDashboardFilters();
@@ -371,6 +375,14 @@
         resultado_cerrado: h.resultado_cerrado_historico, historical: h,
       };
       records.set(key(o), o);
+    }
+    for(const row of db.addiLiquidations || []){
+      if(row.estado!=='aprobada')continue;
+      const o={id:`addi:${row.id}`,external_id:`addi:${row.venta_id}`,plataforma:'addi',operation_at:row.fecha_venta,
+        origen_codigo:row.tienda_codigo,tipo_establecimiento:'propia',reconocida:true,
+        monto_base:row.credito_bruto,pago_neto_tienda:row.pago_tienda,
+        bonos_aplicados:0,utilidad_creditek:row.utilidad_creditek};
+      records.set(key(o),o);
     }
     return [...records.values()];
   }
@@ -409,13 +421,14 @@
   function dashboardExpenses({from,to,business,platform,executive,establishment,city,paymentState}) {
     const financial = (db.financialExpenses || [])
       .filter(x => x.business_unit === 'aliados' && x.entry_type === 'gasto')
+      .filter(x => x.scope === 'business_general')
       .map(x => ({id:`financial:${x.id}`, estado:x.status,
-        // Devengo registrado; sin período explícito, fecha del gasto, nunca fecha del giro.
-        fecha:x.source_period_to || x.source_period_from || x.due_date,
+        // El gasto afecta la utilidad cuando Gerencia lo autoriza, no al pagarlo.
+        fecha:approvalDay(x.approved_at),
         origen_codigo:x.store_code, valor:x.amount, general:true}));
     const seen = new Set();
     let unallocated = 0;
-    const rows = [...(db.expenses || []).map(x=>({...x,id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
+    const rows = [...(db.expenses || []).map(x=>({...x,fecha:approvalDay(x.aprobado_at),id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
       if (x.id && seen.has(x.id)) return false;
       if (x.id) seen.add(x.id);
       const day = date(x.fecha), origin = originFor(x.origen_codigo);
@@ -558,7 +571,7 @@
       ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
     ];
     const formatExact = v => complete ? new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(v) : 'No disponible · revisar datos';
-    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados aprobados y pagados, sin retiros de utilidad. Se usa el fin del período registrado o, si falta, la fecha del gasto; nunca la fecha del giro. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted">Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted">${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
+    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted">Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted">${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
     const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
       const components = credits.map(dashboardBreakdown);

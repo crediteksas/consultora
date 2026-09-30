@@ -32,7 +32,7 @@
   const sum = (xs, key) => xs.reduce((n, x) => n + Number(x[key] || 0), 0);
   let db = {},
     sb,
-    profile;
+    profile, expensePersonPicker=null, expenseSaving=false;
   const OPERATION_CUTOFF = "2026-09-01";
 
   function rows(items, columns) {
@@ -349,7 +349,9 @@
       platformGoals,
     };
     if (view === "dashboard") populateDashboardFilters();
-    if (view === "expenses") populateExpenseForm();
+    if (view === "expenses") {populateExpenseForm();
+      expensePersonPicker=window.KoraFinancialBeneficiary.mount($("#expensePersonPicker"),sb);
+    }
     render();
   }
 
@@ -1588,9 +1590,12 @@
   }
   async function saveExpense(event) {
     event.preventDefault();
-    const bank = $("#expenseBank").value === 'Otro' ? $("#expenseOtherBank").value.trim() : $("#expenseBank").value;
-    try { window.KoraPaymentDestination.format(bank, $("#expenseAccountType").value, $("#expenseAccount").value); }
-    catch (validation) { return notice(validation.message, true); }
+    if(expenseSaving)return;
+    expenseSaving=true;
+    const submit=event.target.querySelector('button[type="submit"]');submit.disabled=true;
+    try {
+    if(!expensePersonPicker)throw Error('Espera a que carguen las personas.');
+    const person=await (await expensePersonPicker).resolve();
     const file = $("#expenseSupport").files[0];
     let path = "";
     if (file) {
@@ -1614,17 +1619,19 @@
       p_concepto: $("#expenseConcept").value,
       p_descripcion: $("#expenseDescription").value,
       p_valor: Number($("#expenseValue").value),
-      p_beneficiario: $("#expenseBeneficiary").value,
-      p_documento: $("#expenseDocument").value,
-      p_banco: bank,
-      p_tipo_cuenta: $("#expenseAccountType").value,
-      p_numero_cuenta: $("#expenseAccount").value,
+      p_beneficiario: person.name,
+      p_documento: person.document,
+      p_banco: person.bank,
+      p_tipo_cuenta: person.accountType,
+      p_numero_cuenta: person.number,
       p_soporte_path: path,
     });
     if (error) return notice(error.message, true);
     event.target.reset();
     notice("Gasto registrado. Al aprobarse se enviará a Tesorería para autorizar y soportar el pago.");
     await load();
+    }catch(error){notice(error.message,true);}
+    finally{expenseSaving=false;submit.disabled=false;}
   }
   function renderReports() {
     if(db.loadError) return;

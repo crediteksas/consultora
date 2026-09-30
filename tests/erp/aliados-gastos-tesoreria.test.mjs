@@ -20,11 +20,10 @@ test('Gastos captura destino y Tesorería muestra la obligación separada', asyn
     read('creditek/erp/aliados-tesoreria.html'),
     read('creditek/erp/aliados-tesoreria-app.js'),
   ]);
-  assert.match(expensesHtml, /expenseBeneficiary/);
-  assert.match(expensesHtml, /expenseDocument/);
-  assert.match(expensesHtml, /expenseBank/);
-  assert.match(expensesHtml, /expenseAccountType/);
-  assert.match(expensesHtml, /expenseAccount/);
+  assert.match(expensesHtml, /expensePersonPicker/);
+  assert.match(expensesHtml, /financial-beneficiary-picker\.js/);
+  assert.match(expensesJs, /person\.document/);
+  assert.match(expensesJs, /person\.accountType/);
   assert.match(expensesJs, /p_beneficiario/);
   assert.match(expensesJs, /aliados_registrar_gasto_v2/);
   assert.match(expensesJs, /p_documento/);

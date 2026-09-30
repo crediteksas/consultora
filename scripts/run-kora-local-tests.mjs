@@ -59,6 +59,7 @@ const erp = [
   'tests/erp/tesoreria-pagos-unificados.test.mjs',
   'tests/erp/payment-destination.test.mjs',
   'tests/erp/payment-destination-sql.test.mjs',
+  'tests/erp/financial-beneficiary.test.mjs',
   'tests/erp/aliados-gastos-tesoreria.test.mjs',
   'tests/erp/ventas-tabla-compacta.test.mjs',
   'tests/erp/caja-arrastre-ajuste-auditoria.test.mjs',

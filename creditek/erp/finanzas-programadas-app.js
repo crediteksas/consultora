@@ -4,7 +4,7 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const view=D.normalizeView(new URLSearchParams(location.search).get('vista'));
   const scope=D.scopeForView(view);
-  let sb,profile,entries=[],templates=[],stores=[],modalAction=null,retailRequest=null,retailPayload=null;
+  let sb,profile,entries=[],templates=[],stores=[],modalAction=null,retailRequest=null,retailPayload=null,personPicker=null;
   const retailWithdrawal=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
 
   function waitForShell(){if(window.creditekSidebar?.sb)return Promise.resolve(window.creditekSidebar);return new Promise(resolve=>document.addEventListener('kora-sidebar-ready',()=>resolve(window.creditekSidebar),{once:true}));}
@@ -16,10 +16,20 @@
   function empty(text){return `<div class="empty">${esc(text)}</div>`;}
   function field(label,name,type='text',attrs='',value=''){return `<div class="field"><label for="f_${name}">${esc(label)}</label><input id="f_${name}" name="${esc(name)}" class="control" type="${esc(type)}" value="${esc(value)}" ${attrs}></div>`;}
   function select(label,name,options,value='',attrs=''){return `<div class="field"><label for="f_${name}">${esc(label)}</label><select id="f_${name}" name="${esc(name)}" class="control" ${attrs}>${options.map(([key,text])=>`<option value="${esc(key)}" ${key===value?'selected':''}>${esc(text)}</option>`).join('')}</select></div>`;}
-  function closeModal(){$('modalBg').hidden=true;$('form').reset();modalAction=null;}
-  function openModal(kind,record=null){if(kind==='decision')return;modalAction=kind;$('formKind').value=kind;$('recordId').value=record?.id||'';$('formError').hidden=true;
+  function closeModal(){$('modalBg').hidden=true;$('form').reset();modalAction=null;personPicker=null;}
+  function openModal(kind,record=null){if(kind==='decision')return;modalAction=kind;personPicker=null;$('formKind').value=kind;$('recordId').value=record?.id||'';$('formError').hidden=true;
     if(kind==='template')renderTemplateForm(record);else if(kind==='manual')renderManualForm(record);else if(kind==='decision')renderDecisionForm(record);else renderPaymentForm(record);
     $('modalBg').hidden=false;
+  }
+  function reuseBeneficiary(record){
+    const slot=document.createElement('div');slot.className='field full';slot.id='personPicker';
+    $('f_beneficiary').closest('.field').before(slot);
+    // The legacy fields remain only for the separate Retail withdrawal workflow.
+    // Expense and recurring forms submit the directory snapshot, never these controls.
+    for(const key of ['beneficiary','document','bank','other_bank','account_type','account']){
+      const input=$('f_'+key);input.disabled=true;input.required=false;input.closest('.field').classList.add('hidden');
+    }
+    personPicker=window.KoraFinancialBeneficiary.mount(slot,sb,record);
   }
 
   function renderTemplateForm(record){$('modalTitle').textContent=record?'Editar obligación periódica':'Nueva obligación periódica';$('save').textContent='Guardar configuración';
@@ -46,6 +56,7 @@
     $('f_amount').disabled=amountMode==='variable';
     const toggleOtherBank=()=>{$('f_other_bank').required=$('f_bank').value==='Otro';};
     $('f_bank').addEventListener('change',toggleOtherBank);toggleOtherBank();
+    reuseBeneficiary(record);
   }
 
   function renderManualForm(record){const withdrawal=record?.entry_type==='retiro_utilidad';retailRequest=crypto.randomUUID();retailPayload=null;$('modalTitle').textContent=withdrawal?'Nuevo retiro de utilidad':'Nuevo gasto general';$('save').textContent='Enviar a aprobación';
@@ -68,6 +79,7 @@
     $('f_business').addEventListener('change',toggleDestination);
     $('f_bank').addEventListener('change',toggleDestination);
     toggleDestination();
+    if(!withdrawal)reuseBeneficiary();
   }
 
   function renderDecisionForm(record){$('modalTitle').textContent='Revisar movimiento';$('save').textContent='Confirmar decisión';$('formFields').innerHTML=
@@ -108,7 +120,12 @@
   async function saveDecision(){return {error:{message:'La aprobación se realiza en Tesorería → Gastos y retiros.'}};}
   async function savePayment(data){const source=data.get('payment_source');if(!['banco','otro'].includes(source))return {error:{message:'Selecciona el origen del dinero.'}};const file=data.get('support');if(!file||file.size<1)return {error:{message:'Selecciona el soporte.'}};if(file.size>10*1024*1024)return {error:{message:'El soporte supera 10 MB.'}};const ext=(file.name.split('.').pop()||'pdf').toLowerCase();if(!['pdf','jpg','jpeg','png'].includes(ext))return {error:{message:'Usa PDF, JPG o PNG.'}};const path=`finanzas/${crypto.randomUUID()}.${ext}`;const upload=await sb.storage.from('soportes').upload(path,file,{upsert:false,contentType:file.type});if(upload.error)return upload;const result=await sb.rpc('finanzas_registrar_pago_con_origen',{p_id:data.get('id'),p_support_path:path,p_desde_banco_creditek:source==='banco'});if(result.error)await sb.storage.from('soportes').remove([path]);return result;}
   async function submit(event){event.preventDefault();if($('save').disabled)return;$('save').disabled=true;
-    try{const data=new FormData(event.currentTarget);let result;if(modalAction==='template')result=await saveTemplate(data);else if(modalAction==='manual')result=await saveManual(data);else if(modalAction==='decision')result=await saveDecision(data);else result=await savePayment(data);if(result.error)throw result.error;closeModal();await load();}
+    try{const data=new FormData(event.currentTarget);
+      if(personPicker){const person=await (await personPicker).resolve();
+        for(const [key,value] of Object.entries({beneficiary:person.name,document:person.document,
+          bank:person.bank,account_type:person.accountType,account:person.number}))data.set(key,value);
+      }
+      let result;if(modalAction==='template')result=await saveTemplate(data);else if(modalAction==='manual')result=await saveManual(data);else if(modalAction==='decision')result=await saveDecision(data);else result=await savePayment(data);if(result.error)throw result.error;closeModal();await load();}
     catch(error){$('formError').textContent=errorText(error);$('formError').hidden=false;}
     finally{$('save').disabled=false;}
   }

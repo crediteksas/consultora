@@ -1163,8 +1163,8 @@
   }
   function reportMissing(p) {
     const missing = missingPaymentData(p);
+    if (p.beneficiary_identification && !/^[0-9.-]{5,20}$/.test(String(p.beneficiary_identification).trim())) missing.push('identificación válida');
     if (/^(FIN|TM)-/.test(p.report_ref || '')) {
-      if (p.beneficiary_identification && !/^[0-9.-]{5,20}$/.test(String(p.beneficiary_identification).trim())) missing.push('identificación válida');
       if (p.bank_snapshot?.account_type && !['Ahorros','Corriente','Billetera digital'].includes(p.bank_snapshot.account_type)) missing.push('tipo de cuenta válido');
     }
     if (!Number.isFinite(Number(p.valor)) || Number(p.valor) <= 0) missing.push('valor positivo');
@@ -1203,6 +1203,7 @@
     dialog.style.cssText='width:94vw;max-width:1000px;max-height:88vh;overflow:auto;padding:18px;border:1px solid #cbd5e1;border-radius:12px';
     dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
       <p>La orden es un documento, no registra el pago. Selecciona solo los renglones que vas a girar; los incompletos requieren revisión del destino.</p>
+      <p>Para nóminas y gastos incompletos, Maite entra aquí con su usuario y abre «Completar destino · Maite». Después Óscar confirma el destino en esta misma ventana; el importe conserva su autorización.</p>
       <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
       <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
       <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;

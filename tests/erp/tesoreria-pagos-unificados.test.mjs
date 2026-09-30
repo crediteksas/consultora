@@ -70,3 +70,14 @@ test('preparación consulta de nuevo y aborta si está desconectada',async()=>{
   ctx.load=async()=>{throw Error('Offline');};await ctx.runReport();assert.equal(opened,1);assert.match(notice,/No se generó un documento parcial/);
   ctx.financialAccessError=true;await ctx.runReport();assert.equal(opened,1);assert.match(notice,/verificar el acceso/);
 });
+
+test('orden no presenta una identificación temporal de ejecutivo como documento válido',()=>{
+  const source=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');
+  const body=source.slice(source.indexOf('  function reportMissing(p)'),source.indexOf('  function reportSignature(p)'));
+  const ctx={missingPaymentData:()=>[]};
+  vm.runInNewContext(body+';globalThis.validate=reportMissing;',ctx);
+  for(const prefix of ['PO','FIN','TM']){
+    assert.ok(ctx.validate({report_ref:prefix+'-test',valor:400000,beneficiary_identification:'EJECUTIVO-TEMP-MAYTHE-REYES'}).includes('identificación válida'));
+    assert.equal(ctx.validate({report_ref:prefix+'-test',valor:400000,beneficiary_identification:'22624685'}).length,0);
+  }
+});

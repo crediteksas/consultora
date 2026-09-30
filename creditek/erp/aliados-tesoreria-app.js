@@ -1203,7 +1203,7 @@
     dialog.style.cssText='width:94vw;max-width:1000px;max-height:88vh;overflow:auto;padding:18px;border:1px solid #cbd5e1;border-radius:12px';
     dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
       <p>La orden es un documento, no registra el pago. Selecciona solo los renglones que vas a girar; los incompletos requieren revisión del destino.</p>
-      <p>Para nóminas y gastos incompletos, Maite entra aquí con su usuario y abre «Completar destino · Maite». Después Óscar confirma el destino en esta misma ventana; el importe conserva su autorización.</p>
+      <p>Maite prepara identificación y cuenta una sola vez. Si ya aparece «Destino preparado», Óscar revisa beneficiario, valor y cuenta y autoriza el pago con esos datos. Autorizar no realiza ningún giro.</p>
       <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
       <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
       <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;
@@ -1217,9 +1217,10 @@
       dialog.querySelector('[data-selection-rows]').innerHTML=list.length?list.map(p=>{
         const missing=reportMissing(p),pending=pendingDestinationCorrection(p),eligible=!missing.length&&!pending;
         const kind=p.report_ref?.startsWith('FIN-')||p.report_ref?.startsWith('TM-');
-        const action=pending?`<p>Destino propuesto por Maite: ${esc(pending.proposed_account)} · ${esc(pending.proposed_document)}. Pendiente de confirmación de Gerencia.</p>${canAuthorize()?`<button type="button" class="btn primary" data-confirm-destination="${esc(pending.id)}">Confirmar destino</button> <button type="button" class="btn secondary" data-reject-destination="${esc(pending.id)}">Rechazar</button>`:''}`:
+        const action=pending?`<p>Destino preparado por Maite: ${esc(pending.proposed_account)} · identificación ${esc(pending.proposed_document)}. Pendiente de tu autorización del pago; Maite no debe repetir el registro.</p>${canAuthorize()?`<button type="button" class="btn primary" data-confirm-destination="${esc(pending.id)}">Autorizar pago con este destino</button> <button type="button" class="btn secondary" data-reject-destination="${esc(pending.id)}">Rechazar</button>`:''}`:
           missing.length&&kind&&profile?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'?destinationCorrectionForm(p):'';
-        return `<article style="border:1px solid #dbe3ea;border-radius:10px;padding:12px;margin:8px 0"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-report-ref="${esc(p.report_ref)}" ${chosen.has(p.report_ref)&&eligible?'checked':''} ${eligible?'':'disabled'}><strong>${esc(p.beneficiary_name||p.concept)}</strong> · ${cop(p.valor)} · ${esc(p.report_kind)}${p.report_platform?' · '+esc(platformName(p.report_platform)):''}</label><small>${esc(p.concept||'')}</small>${missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>'}${action}</article>`;
+        const validation=pending?'<p>Destino preparado completo · falta autorizar el pago con estos datos.</p>':missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>';
+        return `<article style="border:1px solid #dbe3ea;border-radius:10px;padding:12px;margin:8px 0"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-report-ref="${esc(p.report_ref)}" ${chosen.has(p.report_ref)&&eligible?'checked':''} ${eligible?'':'disabled'}><strong>${esc(p.beneficiary_name||p.concept)}</strong> · ${cop(p.valor)} · ${esc(p.report_kind)}${p.report_platform?' · '+esc(platformName(p.report_platform)):''}</label><small>${esc(p.concept||'')}</small>${validation}${action}</article>`;
       }).join(''):'<p>No hay pagos autorizados para esta plataforma.</p>';
       dialog.querySelector('[data-selection-summary]').textContent=`${chosen.size} seleccionado(s) · ${cop(rows.filter(p=>chosen.has(p.report_ref)).reduce((n,p)=>n+Number(p.valor||0),0))}`;
       dialog.querySelector('[data-generate-selected]').disabled=!chosen.size;
@@ -1243,6 +1244,12 @@
       const id=confirm?.dataset.confirmDestination||reject.dataset.rejectDestination;
       const reason=reject?window.prompt('Motivo del rechazo (mínimo 10 caracteres):',''):null;
       if(reject&&reason===null)return;
+      if(confirm){
+        const proposal=(data.paymentDestinationCorrections||[]).find(x=>x.id===id&&x.status==='pendiente');
+        const payment=rows.find(p=>p.id===proposal?.item_id);
+        if(!proposal||!payment||!canAuthorize())return status('Actualiza las órdenes antes de autorizar.');
+        if(!window.confirm(`¿Autorizar el pago de ${cop(payment.valor)} a ${payment.beneficiary_name} con destino ${proposal.proposed_account} e identificación ${proposal.proposed_document}?\n\nEsta acción no realiza el giro.`))return;
+      }
       status('');
       const {error}=await sb.rpc('payment_destination_decide',{p_id:id,p_approve:Boolean(confirm),p_reason:reason});
       if(error)return status(error.message);

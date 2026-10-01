@@ -40,13 +40,17 @@ test('doble clic no repite decisión y los errores quedan visibles',async()=>{
   const first=f.host.onsubmit(event);assert.ok(release);const original=release;await f.host.onsubmit(event);assert.equal(release,original);
   release({error:{message:'Ya decidido'}});await first;assert.match(f.host.querySelector('[data-message]').textContent,/Ya decidido/);
 });
-test('Gastos remite a Tesorería y ya no llama a la API de aprobación',()=>{
+test('Gastos autoriza el movimiento en Administración y Tesorería gestiona el pago',()=>{
   const app=readFileSync(new URL('../../creditek/erp/finanzas-programadas-app.js',import.meta.url),'utf8');
   const treasury=readFileSync(new URL('../../creditek/erp/aliados-tesoreria-app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(app,/sb\.rpc\('finanzas_decidir_movimiento'/);
-  assert.match(app,/aliados-tesoreria.html\?vista=gastos/);
+  const treasuryHtml=readFileSync(new URL('../../creditek/erp/aliados-tesoreria.html',import.meta.url),'utf8');
+  assert.match(app,/sb\.rpc\('finanzas_decidir_movimiento'/);
+  assert.match(app,/aliados-tesoreria.html/);
   assert.match(treasury,/sb\.rpc\('es_controlador_financiero'\)/);
   assert.match(treasury,/route.get\('vista'\) === 'gastos'/);
+  assert.doesNotMatch(treasuryHtml,/id="showFinancialExpenses"/);
+  assert.match(treasuryHtml,/expense-movement-card/);
+  assert.match(treasury,/Autorizado por Gerencia/);
 });
 test('indicador discreto alerta solo aprobaciones, no pagos ya autorizados',()=>{
   assert.deepEqual(summarize(['pendiente_aprobacion','aprobado','aprobado','pagado','rechazado','anulado'].map(status=>({status}))),{pending:1,approved:2});

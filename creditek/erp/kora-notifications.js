@@ -22,8 +22,8 @@
       );
     }
     if (financialAccess) sources.push(
-      {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','pendiente_aprobacion']]},
-      {key:'financial-payment',table:'financial_entries',title:'Gastos y retiros aprobados · pago sin registrar',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=gastos',filters:[['eq','status','aprobado']]},
+      {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general',filters:[['eq','status','pendiente_aprobacion']]},
+      {key:'financial-payment',table:'financial_entries',title:'Gastos y retiros aprobados · pago sin registrar',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html',filters:[['eq','status','aprobado']]},
     );
     return sources;
   }

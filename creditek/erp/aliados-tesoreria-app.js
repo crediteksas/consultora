@@ -55,7 +55,7 @@
       ["otro_movimiento_autorizado", "Otro movimiento autorizado"],
     ],
   };
-  let preparation, financialExpenses, financialRecorder, pendingFinancialId = null, financialAccessError = false;
+  let preparation, financialRecorder, pendingFinancialId = null, financialAccessError = false;
   let sb,
     profile,
     data = {},
@@ -317,7 +317,7 @@
       loadRecoveryRows('aliados_cruces_recuperacion'),
       loadRecoveryRows('aliados_reversiones'),
       loadCurrentStoreBalances(),
-      financialExpenses ? loadCompensations('financial_entries') : Promise.resolve([]),
+      financialRecorder ? loadCompensations('financial_entries') : Promise.resolve([]),
       ['gerencia', 'auditoria'].includes(profile?.rol)
         ? safe(sb.rpc('addi_tesoreria_listar'))
         : Promise.resolve([]),
@@ -399,12 +399,6 @@
       valor: $("#compensationAmount").value,
     });
   }
-  function approverName(p) {
-    return (
-      data.profiles?.find((x) => x.id === p.authorized_by)?.nombre ||
-      "Oscar Pacheco"
-    );
-  }
   function paymentAction(p, missing) {
     if (p.historico_inicial) return "";
     if (p.estado === 'pagado' && !p.soporte_path)
@@ -412,7 +406,7 @@
     if (missing.length)
       return `<button class="btn primary" data-complete="${p.id}">Completar datos</button>`;
     if (!window.CreditekTesoreriaTercerizacion.loteAutorizado(p))
-      return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}. Primero: Mayte revisa y Oscar aprueba la liquidación.</span>`;
+      return `<span class="approval-pending">${esc(window.CreditekTesoreriaTercerizacion.paymentReadiness(p).reason)}. Primero: Auditoría revisa y Gerencia aprueba la liquidación.</span>`;
     if (['pendiente','programado'].includes(p.estado) && !window.CreditekTesoreriaTercerizacion.pagoAutorizado(p))
       return canAuthorize()
         ? `<button class="btn primary" data-authorize-payment="${p.id}">Autorizar pago</button>`
@@ -552,7 +546,7 @@
     const recoveries=(data.recoveries||[]).filter(d=>d.origen==='beneficio_entregado'&&Number(d.importe)>Number(d.recuperado));
     const debtGroups=new Map();
     for(const d of recoveries){const amount=Number(d.importe)-Number(d.recuperado);debtGroups.set(d.beneficiary_id,(debtGroups.get(d.beneficiary_id)||0)+amount);}
-    recoverySummary.hidden=!recoveries.length||treasuryView==='expenses';
+    recoverySummary.hidden=!recoveries.length;
     recoverySummary.innerHTML=`<h2>Dinero por recuperar · todos los cortes</h2><p>Se cruza con los próximos pagos del mismo beneficiario. Si no tiene pagos, Gestión debe cobrarlo. No representa dinero ya recuperado.</p><strong>${cop([...debtGroups.values()].reduce((n,v)=>n+v,0))}</strong><details><summary>Ver ${debtGroups.size} beneficiarios</summary>${[...debtGroups].map(([id,value])=>`<p>${esc(data.beneficiaries.find(b=>b.id===id)?.nombre||'Beneficiario sin nombre')} · ${cop(value)}</p>`).join('')}</details>`;
     let correction = $("#rectificationSummary");
     if (!correction) {
@@ -567,11 +561,9 @@
     correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
-    $("#financialExpensesContent").classList.toggle("hidden",treasuryView!=="expenses");
-    $("#showFinancialExpenses").classList.toggle("active",treasuryView==="expenses");
     $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");
     $("#showPreparation").classList.toggle("active",treasuryView==="preparation");
-    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation","expenses"].includes(treasuryView));
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
     $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
     $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
     $("#showStoreMovements").classList.toggle("active", treasuryView === "storeMovements");
@@ -584,10 +576,7 @@
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(treasuryView==='expenses'){
-      correction.classList.add('hidden');
-    }
-    if(["cobros","clients","preparation","expenses"].includes(treasuryView))return;
+    if(["cobros","clients","preparation"].includes(treasuryView))return;
     renderPaymentHistory();
     const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
@@ -656,12 +645,13 @@
       });
     const expenseMovements = treasuryView === "history" ? filtered(expenseSource) : expenseSource;
     const financialPending = (data.financialEntries || []).filter(window.CreditekPagosUnificados.approved);
-    $("#expensePayments").innerHTML = (treasuryView === "history" ? '' : window.CreditekPagosUnificados.cards(financialPending,cop)) + (expenseMovements.length ? table(
-      ["Fecha", "Beneficiario", "Concepto", "Cuenta destino", "Valor", "Estado", "Autorización", "Acción"],
-      expenseMovements.map(
-        (x) => `<tr><td>${date(x.movement_date)}</td><td>${esc(x.beneficiary)}</td><td>${esc(x.concept)}</td><td class="account">${esc(x.destination_account)}</td><td>${cop(x.amount)}</td><td>${badge(x.status)}</td><td>${x.authorized_by ? `<span class="approval-ok">Autorizado por ${esc(approverName(x))}</span>` : '<span class="approval-pending">Pendiente de Oscar</span>'}</td><td>${movementActions(x)}</td></tr>`,
-      ),
-    ) : financialPending.length && treasuryView !== 'history' ? '' : '<div class="empty">No hay gastos autorizados pendientes de soporte en esta vista.</div>');
+    $("#expensePayments").innerHTML = (treasuryView === "history" ? '' : window.CreditekPagosUnificados.cards(financialPending,cop)) + (expenseMovements.length ? `<div class="expense-movement-list">${expenseMovements.map(x=>`<article class="expense-movement-card">
+      <div><small>Beneficiario · ${date(x.movement_date)}</small><strong>${esc(x.beneficiary)}</strong><span>${esc(x.concept)}</span></div>
+      <div><small>Cuenta destino</small><span class="account">${esc(x.destination_account||'Sin cuenta registrada')}</span></div>
+      <div><small>Valor</small><strong>${cop(x.amount)}</strong></div>
+      <div><small>Estado</small>${badge(x.status)}</div>
+      <div class="expense-movement-action">${x.authorized_by?'<span class="approval-ok">Autorizado por Gerencia</span>':'<span class="approval-pending">Pendiente de Gerencia</span>'}<div>${movementActions(x)}</div></div>
+    </article>`).join('')}</div>` : financialPending.length && treasuryView !== 'history' ? '' : '<div class="empty">No hay gastos autorizados pendientes de soporte en esta vista.</div>');
     $("#showOperational").classList.toggle(
       "active",
       treasuryView === "operational",
@@ -798,7 +788,7 @@
       if ((m.type === "retiro_socios" || m.aliados_gasto_id) && !m.authorized_by)
         return canAuthorize()
           ? `<button class="btn primary" data-authorize="${m.id}">Autorizar pago</button>`
-          : '<span class="approval-pending">Esperando autorización de Oscar</span>';
+          : '<span class="approval-pending">Esperando autorización de Gerencia</span>';
       return `<button class="btn secondary" data-movement="${m.id}" data-next="programado">Programar</button>`;
     }
     if (m.status === "programado")
@@ -905,7 +895,7 @@
     const { error } = await sb.rpc("aliados_autorizar_pago_con_cruce", { p_id: id,p_neto_esperado:Number(v.neto) });
     if (error)
       return notice(
-        error.message || "Solo Oscar Pacheco puede autorizar este pago.",
+        error.message || "Solo Gerencia puede autorizar este pago.",
         true,
       );
     notice(Number(v.neto)===0?'Cruce registrado. No hay giro ni se requiere un comprobante bancario ficticio.':"Pago neto autorizado por Gerencia. Maite ya puede adjuntar el soporte.");
@@ -944,7 +934,7 @@
  <div><small>Operaciones incluidas</small><strong>${p.operations_count}</strong></div><div><small>Valor autorizado</small><strong>${cop(p.valor)}</strong></div>
  <div><small>Banco / tipo</small><strong>${esc(bank.bank || "Pendiente")} · ${esc(bank.account_type || "Pendiente")}</strong></div><div><small>Número de cuenta</small><strong class="account">${esc(bank.account_number || "Pendiente")}</strong></div>
  <div><small>Titular de la cuenta</small><strong>${esc(bank.holder || p.beneficiary_name)}</strong></div><div><small>Identificación del titular</small><strong>${esc(bank.holder_identification || p.beneficiary_identification)}</strong></div>
- <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized ? "approval-ok" : "approval-pending"}">${authorized ? `Pago autorizado por Gerencia · ${esc(bogotaDateTime(p.authorized_at))}` : "Pendiente de autorización de Oscar Pacheco"}</strong></div>
+ <div class="wide"><small>Concepto</small><strong>${esc(p.concept)}</strong></div><div class="wide"><small>Autorización de Gerencia</small><strong class="${authorized ? "approval-ok" : "approval-pending"}">${authorized ? `Pago autorizado por Gerencia · ${esc(bogotaDateTime(p.authorized_at))}` : "Pendiente de autorización de Gerencia"}</strong></div>
  </div>`;
     showPaymentModal($("#paymentDetailModal"));
     $("#closePaymentDetail").focus();
@@ -1036,7 +1026,6 @@
         await financialRecorder.record(id,$("#paymentSupportFile").files[0],source==='banco');
         closePaymentSupport();notice('Pago registrado con evidencia. Se conserva la autorización original.');
         await load().catch(()=>notice('Pago confirmado. Actualiza Tesorería para consultar el estado.',true));
-        await financialExpenses.refreshSummary();
       }catch(error){errorBox.textContent=error.message||'No se confirmó el registro. Actualiza antes de reintentar.';errorBox.classList.remove('hidden');}
       finally{button.disabled=false;button.textContent='Subir soporte y registrar pago';}
       return;
@@ -1186,13 +1175,13 @@
     );
     const banks=['Bancolombia','Nequi','Daviplata','Davivienda','Banco de Bogotá','BBVA'];
     const selected=banks.includes(existing.bank)?existing.bank:existing.bank?'Otro':'';
-    return `<details><summary>Completar destino · Maite</summary><form data-destination-form data-kind="${kind}" data-id="${esc(p.id)}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px">
+    return `<details><summary>Completar datos de pago · Maite</summary><form data-destination-form data-kind="${kind}" data-id="${esc(p.id)}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px">
       <label>CC / NIT<input name="document" required minlength="5" value="${esc(p.beneficiary_identification||'')}" class="control"></label>
       <label>Banco o billetera<select name="bank" required class="control"><option value="">Selecciona</option>${banks.map(b=>`<option ${selected===b?'selected':''}>${esc(b)}</option>`).join('')}<option value="Otro" ${selected==='Otro'?'selected':''}>Otro</option></select></label>
       <label>Si elegiste Otro<input name="other_bank" class="control" value="${esc(selected==='Otro'?existing.bank:'')}"></label>
       <label>Tipo<select name="account_type" required class="control"><option value="">Selecciona</option>${['Ahorros','Corriente','Billetera digital'].map(t=>`<option ${existing.accountType===t?'selected':''}>${t}</option>`).join('')}</select></label>
       <label>Número<input name="number" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20" required class="control" value="${esc(existing.number)}"></label>
-      <button class="btn primary" type="submit">Enviar a Óscar para confirmar</button>
+      <button class="btn primary" type="submit">Guardar datos de este pago</button>
     </form></details>`;
   }
   function openPaymentSelection(rows) {
@@ -1203,7 +1192,7 @@
     dialog.style.cssText='width:94vw;max-width:1000px;max-height:88vh;overflow:auto;padding:18px;border:1px solid #cbd5e1;border-radius:12px';
     dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
       <p>La orden es un documento, no registra el pago. Selecciona solo los renglones que vas a girar; los incompletos requieren revisión del destino.</p>
-      <p>Maite prepara identificación y cuenta una sola vez. Si ya aparece «Destino preparado», Óscar revisa beneficiario, valor y cuenta y autoriza el pago con esos datos. Autorizar no realiza ningún giro.</p>
+      <p>Maite administra la ficha y las cuentas del beneficiario. Gerencia autoriza el pago; crear una cuenta no requiere una aprobación aparte.</p>
       <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
       <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
       <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;
@@ -1217,9 +1206,9 @@
       dialog.querySelector('[data-selection-rows]').innerHTML=list.length?list.map(p=>{
         const missing=reportMissing(p),pending=pendingDestinationCorrection(p),eligible=!missing.length&&!pending;
         const kind=p.report_ref?.startsWith('FIN-')||p.report_ref?.startsWith('TM-');
-        const action=pending?`<p>Destino preparado por Maite: ${esc(pending.proposed_account)} · identificación ${esc(pending.proposed_document)}. Pendiente de tu autorización del pago; Maite no debe repetir el registro.</p>${canAuthorize()?`<button type="button" class="btn primary" data-confirm-destination="${esc(pending.id)}">Autorizar pago con este destino</button> <button type="button" class="btn secondary" data-reject-destination="${esc(pending.id)}">Rechazar</button>`:''}`:
+        const action=pending?`<p>Datos ya preparados por Maite; actualiza la lista. No hay una autorización separada del destino.</p>`:
           missing.length&&kind&&profile?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'?destinationCorrectionForm(p):'';
-        const validation=pending?'<p>Destino preparado completo · falta autorizar el pago con estos datos.</p>':missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>';
+        const validation=pending?'<p>Datos preparados · sincronización pendiente.</p>':missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>';
         return `<article style="border:1px solid #dbe3ea;border-radius:10px;padding:12px;margin:8px 0"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-report-ref="${esc(p.report_ref)}" ${chosen.has(p.report_ref)&&eligible?'checked':''} ${eligible?'':'disabled'}><strong>${esc(p.beneficiary_name||p.concept)}</strong> · ${cop(p.valor)} · ${esc(p.report_kind)}${p.report_platform?' · '+esc(platformName(p.report_platform)):''}</label><small>${esc(p.concept||'')}</small>${validation}${action}</article>`;
       }).join(''):'<p>No hay pagos autorizados para esta plataforma.</p>';
       dialog.querySelector('[data-selection-summary]').textContent=`${chosen.size} seleccionado(s) · ${cop(rows.filter(p=>chosen.has(p.report_ref)).reduce((n,p)=>n+Number(p.valor||0),0))}`;
@@ -1236,24 +1225,7 @@
       try{window.KoraPaymentDestination.format(bank,fields.get('account_type'),fields.get('number'));
         const {error}=await sb.rpc('payment_destination_prepare',{p_kind:form.dataset.kind,p_item_id:form.dataset.id,p_document:fields.get('document'),p_bank:bank,p_account_type:fields.get('account_type'),p_number:fields.get('number')});
         if(error)throw error;dialog.close();await load();openPaymentSelection(authorizedReportRows());
-      }catch(error){status(error?.message||'No se pudo solicitar la revisión del destino.');}
-    });
-    dialog.addEventListener('click',async event=>{
-      const confirm=event.target.closest('[data-confirm-destination]'),reject=event.target.closest('[data-reject-destination]');
-      if(!confirm&&!reject)return;
-      const id=confirm?.dataset.confirmDestination||reject.dataset.rejectDestination;
-      const reason=reject?window.prompt('Motivo del rechazo (mínimo 10 caracteres):',''):null;
-      if(reject&&reason===null)return;
-      if(confirm){
-        const proposal=(data.paymentDestinationCorrections||[]).find(x=>x.id===id&&x.status==='pendiente');
-        const payment=rows.find(p=>p.id===proposal?.item_id);
-        if(!proposal||!payment||!canAuthorize())return status('Actualiza las órdenes antes de autorizar.');
-        if(!window.confirm(`¿Autorizar el pago de ${cop(payment.valor)} a ${payment.beneficiary_name} con destino ${proposal.proposed_account} e identificación ${proposal.proposed_document}?\n\nEsta acción no realiza el giro.`))return;
-      }
-      status('');
-      const {error}=await sb.rpc('payment_destination_decide',{p_id:id,p_approve:Boolean(confirm),p_reason:reason});
-      if(error)return status(error.message);
-      dialog.close();await load();openPaymentSelection(authorizedReportRows());
+      }catch(error){status(error?.message||'No se pudieron guardar los datos del pago.');}
     });
     dialog.querySelector('[data-generate-selected]').onclick=async()=>{
       const selected=rows.filter(p=>chosen.has(p.report_ref));
@@ -1401,7 +1373,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       p_id: id,
     });
     if (error)
-      return notice("Solo Óscar puede autorizar este movimiento.", true);
+      return notice("Solo Gerencia puede autorizar este movimiento.", true);
     notice("Movimiento autorizado.");
     await load();
   }
@@ -1503,23 +1475,14 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       const access = await sb.rpc('es_controlador_financiero');
       if(access.error)throw access.error;
       if (!access.error && access.data === true) {
-        financialExpenses = window.CreditekTesoreriaGastos.create({sb,profile,domain:window.KoraFinancialDomain,onSummary:summary=>window.CreditekTesoreriaGastos.paintIndicator($("#showFinancialExpenses"),summary)});
         financialRecorder = window.CreditekPagosUnificados.createRecorder(sb);
-        $("#showFinancialExpenses").classList.remove('hidden');
-        await financialExpenses.refreshSummary();
-        // Read-only refresh: never replace an approval form while it is being edited.
-        const refreshExpenseIndicator=()=>{if(!document.hidden)financialExpenses.refreshSummary();};
-        const expenseTimer=setInterval(refreshExpenseIndicator,60000);
-        window.addEventListener('focus',refreshExpenseIndicator);
-        document.addEventListener('visibilitychange',refreshExpenseIndicator);
-        window.addEventListener('pagehide',()=>clearInterval(expenseTimer),{once:true});
       }
     } catch (error) { financialAccessError=true;console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
       cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:profile.rol==='gerencia',canVoid:profile.rol==='gerencia'});
       $("#showCobros").classList.remove("hidden");
     }
-    if (!canViewOutgoing() && !cobros && !financialExpenses) {
+    if (!canViewOutgoing() && !cobros && !financialRecorder) {
       $("#accessDenied").classList.remove("hidden");
       return;
     }
@@ -1540,9 +1503,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     if (route.get('vista') === 'cobros' && cobros) {
       treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));return;
     }
-    if (route.get('vista') === 'gastos' && financialExpenses) {
-      treasuryView='expenses';render();await financialExpenses.mount($("#financialExpensesContent"));return;
-    }
+    if (route.get('vista') === 'gastos') { location.replace('finanzas-programadas.html?vista=general'); return; }
     if (route.get('vista') === 'preparacion' && preparation) {
       treasuryView='preparation';render();await preparation.mount($("#preparationContent"));return;
     }
@@ -1590,11 +1551,9 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
   };
   $("#refresh").onclick = async () => {
     try {
-      if(treasuryView!=='expenses')await financialExpenses?.refreshSummary();
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
       else if (treasuryView === 'preparation') await preparation?.mount($("#preparationContent"));
-      else if (treasuryView === 'expenses') await financialExpenses?.mount($("#financialExpensesContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1613,10 +1572,6 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
   $("#showPreparation").onclick = async () => {
     if(!preparation)return;
     treasuryView='preparation';render();await preparation.mount($("#preparationContent"));
-  };
-  $("#showFinancialExpenses").onclick = async () => {
-    if(!financialExpenses)return;
-    treasuryView='expenses';render();await financialExpenses.mount($("#financialExpensesContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   async function showPaymentView(view) {

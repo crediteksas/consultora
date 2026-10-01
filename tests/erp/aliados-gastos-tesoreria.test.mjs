@@ -30,7 +30,7 @@ test('Gastos captura destino y Tesorería muestra la obligación separada', asyn
   assert.match(expensesJs, /p_banco/);
   assert.match(expensesJs, /p_tipo_cuenta/);
   assert.match(expensesJs, /p_numero_cuenta/);
-  assert.match(treasuryHtml, /Gastos y retiros de Tesorería/);
+  assert.doesNotMatch(treasuryHtml, /Gastos y retiros de Tesorería/);
   assert.match(treasuryJs, /aliados_gasto_id/);
   assert.match(treasuryJs, /Autorizar pago/);
 });

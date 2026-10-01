@@ -27,7 +27,7 @@
       else {rows.push(previous);selected=previous;}
     }
     const id=`beneficiary-${root.crypto.randomUUID()}`;
-    container.innerHTML=`<label for="${id}">Persona o empresa beneficiaria</label><select id="${id}" class="control" required><option value="">Selecciona una persona guardada</option>${rows.map((r,i)=>`<option value="${i}">${esc(r.name)} · ${esc(validDocument(r.document)?r.document:'sin identificación')} · ${esc(r.bank||'cuenta por completar')} ${esc(r.number?'•••• '+r.number.slice(-4):'')}${complete(r)?'':' · completar ficha'}</option>`).join('')}<option value="new">＋ Crear persona nueva</option></select><div data-person-fields></div>`;
+    container.innerHTML=`<label for="${id}">Persona o empresa beneficiaria</label><select id="${id}" class="control" required><option value="">Selecciona una persona y su cuenta</option>${rows.map((r,i)=>`<option value="${i}">${esc(r.name)} · ${esc(validDocument(r.document)?r.document:'sin identificación')} · ${esc(r.bank||'cuenta por completar')} ${esc(r.number?'•••• '+r.number.slice(-4):'')}${complete(r)?'':' · completar ficha'}</option>`).join('')}<option value="new">＋ Añadir persona o nueva cuenta</option></select><div data-person-fields></div>`;
     const select=container.querySelector('select'),fields=container.querySelector('[data-person-fields]');
     const input=(label,key,value,attrs='',locked=false)=>`<label style="display:block;margin:10px 0">${esc(label)}<input class="control" data-person="${key}" value="${esc(value)}" ${attrs} ${locked?'readonly':''}></label>`;
     function render(){
@@ -35,7 +35,7 @@
       if(select.value===''){selected=null;fields.innerHTML='';return;}
       if(complete(selected)){fields.innerHTML=`<p>${esc(selected.name)} · ${esc(selected.document)}<br>${esc(selected.bank)} · ${esc(selected.accountType)} · ${esc(selected.number)}</p><small>Datos tomados de la ficha. Solo completa los datos del gasto. No cambia pagos anteriores.</small>`;return;}
       const r=selected||{};
-      fields.innerHTML=`<p>${selected?'Completa esta ficha una sola vez. Conservamos los datos que ya existen.':'Nueva persona: sus datos quedarán guardados para próximos gastos.'}</p>`+
+      fields.innerHTML=`<p>${selected?'Completa esta ficha una sola vez. Conservamos los datos que ya existen.':'Si la persona ya existe, usa su misma identificación para añadir otra cuenta. No se cambian pagos anteriores.'}</p>`+
         input('Nombre / razón social','name',r.name||'','required minlength="3"',!!r.beneficiaryId)+
         input('CC / NIT','document',validDocument(r.document)?r.document:'','required pattern="[0-9.\\-]{5,20}"',validDocument(r.document))+
         input('Banco o billetera','bank',r.bank||'','required minlength="2" maxlength="60"',!!r.bank)+

@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 
 const migration = readFileSync('supabase/migrations/20260930213145_payment_destination_review.sql', 'utf8');
 const authorizationMigration = readFileSync('supabase/migrations/20260930232337_autorizar_pago_con_destino_preparado.sql', 'utf8');
+const unifiedMigration = readFileSync('supabase/migrations/20261001023032_resolver_destinos_preparados_sin_aprobacion_extra.sql', 'utf8');
 const maite = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const oscar = '6de0ad26-64af-4966-8cd9-d468880af627';
 const entry = '77777777-7777-4777-8777-777777777777';
@@ -155,4 +156,38 @@ test('gasto de Aliados nuevo conserva identificación y destino hasta Tesorería
     assert.equal(rows.rows[0].amount, '20000');
     assert.equal(rows.rows[0].status, 'pendiente');
   } finally { await db.close(); }
+});
+
+test('flujo unificado: Maite guarda datos sin otra autorización ni giro', async () => {
+  const db = await fixture();
+  try {
+    const definition = unifiedMigration.match(/create or replace function public\.payment_destination_prepare\([\s\S]*?end \$\$;/i)?.[0];
+    assert.ok(definition, 'La migración debe definir el guardado directo');
+    await db.exec(definition);
+    await db.query(`set request.jwt.claim.sub = '${maite}'`);
+    const before = await db.query('select amount,status,approved_by,approved_at from financial_entries where id=$1', [entry]);
+    const result = await db.query('select public.payment_destination_prepare($1,$2,$3,$4,$5,$6) as result',
+      ['financial_entry', entry, '22624685', 'Bancolombia', 'Ahorros', '69228312835']);
+    assert.equal(result.rows[0].result.status, 'guardado');
+    const after = await db.query('select amount,status,approved_by,approved_at,beneficiary_document,destination_account,paid_by,paid_at,support_path from financial_entries where id=$1', [entry]);
+    assert.deepEqual(after.rows[0].amount, before.rows[0].amount);
+    assert.equal(after.rows[0].status, before.rows[0].status);
+    assert.equal(after.rows[0].approved_by, before.rows[0].approved_by);
+    assert.deepEqual(after.rows[0].approved_at, before.rows[0].approved_at);
+    assert.equal(after.rows[0].beneficiary_document, '22624685');
+    assert.equal(after.rows[0].destination_account, 'Bancolombia · Ahorros · 69228312835');
+    assert.equal(after.rows[0].paid_by, null);
+    assert.equal(after.rows[0].paid_at, null);
+    assert.equal(after.rows[0].support_path, null);
+    await assert.rejects(db.query('select public.payment_destination_prepare($1,$2,$3,$4,$5,$6)',
+      ['financial_entry', entry, '22624685', 'Bancolombia', 'Corriente', '69228312835']),
+    /destino completo.*no se reemplaza/);
+  } finally { await db.close(); }
+});
+
+test('flujo unificado: no autoriza destinos por separado y conserva pagos cerrados', () => {
+  assert.match(unifiedMigration, /revoke all on function public\.payment_destination_decide/);
+  assert.match(unifiedMigration, /po\.estado='programado' and po\.paid_by is null and po\.fecha_pagada is null/);
+  assert.match(unifiedMigration, /if processed<>7 then raise exception/);
+  assert.match(unifiedMigration, /if fixed<>2 or total_orders<>3 then/);
 });

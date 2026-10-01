@@ -41,7 +41,7 @@ test('Tesorería muestra pagos completos sin tablas partidas', async () => {
   assert.match(app, /Ver detalle completo/);
   assert.match(app, /Número de cuenta/);
   assert.match(app, /Autorización de Gerencia/);
-  assert.match(app, /Esperando autorización de Oscar/);
+  assert.match(app, /Esperando autorización de Gerencia/);
   assert.match(app, /aliados_autorizar_pago/);
   assert.doesNotMatch(app, /table\(\['Aliado','Plataforma','Corte'/);
 });
@@ -77,7 +77,7 @@ test('no permite autorizar ni pagar antes de aprobar y fondear la liquidación',
   assert.match(sql, /liquidation_treasury_destinations/);
   assert.match(sql, /Primero Mayte debe revisar y Oscar aprobar la liquidación/);
   assert.match(app, /liquidations\(id,plataforma,fecha_corte,estado,frozen_at,approved_at,approved_by\)/);
-  assert.match(app, /Primero: Mayte revisa y Oscar aprueba la liquidación/);
+  assert.match(app, /Primero: Auditoría revisa y Gerencia aprueba la liquidación/);
   assert.match(app, /storage\s*\.from\(["']soportes["']\)\s*\.remove\(\[support\]\)/);
 });
 

@@ -100,7 +100,7 @@
       <p data-detalle class="mt-1 text-xs text-gray-500">0 facturas</p>
     </article>
     <article id="card-pagadas" class="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4">
-      <p class="text-sm font-medium text-gray-600">Pagadas</p>
+      <p class="text-sm font-medium text-gray-600">Sin saldo pendiente</p>
       <p data-valor class="mt-2 text-2xl font-bold text-green-700">0</p>
       <p data-detalle class="mt-1 text-xs text-gray-500">$ 0 en facturas</p>
     </article>
@@ -626,8 +626,9 @@ async function mostrarFacturas(provId) {
       const estado = Number(f.saldo) > 0 ? 'pendiente' : 'pagada';
       const badge = estado === 'pendiente'
         ? '<span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800">Pendiente</span>'
-        : '<span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">Pagada</span>';
-      const origen = f.origen_registro === 'saldo_inicial' ? '<span class="ml-1 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">Saldo inicial</span>' : '';
+        : '<span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">Sin saldo</span>';
+      const origen = f.origen_registro === 'saldo_inicial' ? '<span class="ml-1 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">Saldo inicial</span>' :
+        f.origen_registro === 'ajuste_gerencia' ? '<span class="ml-1 px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">Ajuste de apertura · no es compra</span>' : '';
       return `
         <tr>
           <td class="px-3 py-2 font-mono text-xs">${esc(f.numero) || '—'}${origen}</td>
@@ -759,6 +760,22 @@ async function mostrarDetalleFactura(facturaId) {
     return;
   }
   renderDetalleFactura(data);
+  const {data:ajustes,error:ajustesError}=await SB.from('proveedores_ajustes_detalle')
+    .select('solicitud_id,diferencia,saldo_anterior,saldo_nuevo').eq('factura_id',facturaId);
+  if(detalleFacturaActual?.factura?.id!==facturaId)return;
+  const puedeConsultarAjustes=(usuarioActual?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'&&rolActual==='auditoria')||
+    (usuarioActual?.id==='6de0ad26-64af-4966-8cd9-d468880af627'&&rolActual==='gerencia');
+  const resumenAjustes=document.createElement('div');
+  resumenAjustes.className='rounded bg-blue-50 p-3';
+  resumenAjustes.textContent=!puedeConsultarAjustes?'Ajustes de Gerencia: desglose reservado a Maite y Óscar.':
+    ajustesError?'Ajustes de Gerencia: no se pudieron consultar; actualiza para verificar el desglose.':
+    `Ajustes de Gerencia (no son pagos): ${money((ajustes||[]).reduce((total,a)=>total+Number(a.diferencia),0))}`;
+  document.getElementById('detalle-factura-resumen').append(resumenAjustes);
+  if(ajustes?.length){
+    const enlace=document.createElement('a');enlace.href='ajustes-gerencia.html';
+    enlace.textContent='Ver autorización y motivo en Ajustes de Gerencia';
+    enlace.className='block text-blue-600 text-sm';resumenAjustes.append(enlace);
+  }
   await cargarAplicacionesFifo(facturaId);
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

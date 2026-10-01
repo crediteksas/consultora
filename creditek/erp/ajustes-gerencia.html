@@ -16,15 +16,16 @@
 </style>
 </head><body data-kora-requires-auth="true"><div id="app" hidden><main class="main-content"><div class="page">
   <h1>Ajustes de Gerencia</h1>
-  <p>Maite prepara una corrección auditada; Óscar la revisa y autoriza. Preparar no cambia caja ni cartera. La aprobación crea un ajuste identificado, no una venta ni un pago. La cartera de las tiendas se refleja en Retail y en el informe B2B desde un único libro.</p>
+  <p>Maite prepara una corrección auditada; Óscar la revisa y autoriza. Preparar no cambia caja, cartera ni deuda con proveedores. La aprobación crea un ajuste identificado, no una venta ni un pago. La cartera de las tiendas se refleja en Retail y en el informe B2B desde un único libro.</p>
   <details class="panel"><summary><strong>Consultar libro de caja por tienda</strong></summary><div id="libroCajaGerencia"></div></details>
   <section class="panel" id="prepararPanel" hidden><h2>Preparar solicitud</h2>
-    <div class="grid"><label class="field">Saldo a ajustar<select id="tipo"><option value="">Selecciona</option><option value="caja_retail">Caja Retail</option><option value="cartera_retail">Cartera de tienda Retail</option><option value="cartera_b2b">Cartera de cliente B2B</option></select></label>
-      <label class="field">Tienda o cliente<select id="codigo"><option value="">Selecciona el tipo primero</option></select></label>
+    <div class="grid"><label class="field">Saldo a ajustar<select id="tipo"><option value="">Selecciona</option><option value="caja_retail">Caja Retail</option><option value="cartera_retail">Cartera de tienda Retail</option><option value="cartera_b2b">Cartera de cliente B2B</option><option value="proveedor">Deuda con proveedor</option></select></label>
+      <label class="field">Tienda, cliente o proveedor<select id="codigo"><option value="">Selecciona el tipo primero</option></select></label>
       <label class="field">Saldo actual comprobado<input id="actual" readonly></label>
       <label class="field">Nuevo saldo (COP)<input id="objetivo" type="number" inputmode="numeric" min="0" step="1" placeholder="Pesos enteros"></label>
       <label class="field wide">Motivo de auditoría (mínimo 20 caracteres)<textarea id="motivo" maxlength="500" minlength="20" placeholder="Explica la evidencia y por qué corresponde el ajuste"></textarea></label>
     </div><p id="vistaPrevia" aria-live="polite">Selecciona el tipo y la cuenta para consultar su saldo.</p>
+    <p id="avisoProveedor" hidden>El ajuste de proveedores no mueve Banco, Caja ni inventario y no es un pago. Si disminuye la deuda, se propone distribuirlo entre los documentos más antiguos; si aumenta, se crea un documento de ajuste de apertura, no una compra. Óscar verá el detalle antes de autorizar. El nuevo saldo debe ser el neto auditado: no vuelvas a descontar retenciones ya incluidas.</p>
     <button class="btn primary" id="preparar" disabled>Enviar a Óscar para autorización</button>
     <p id="prepararEstado" role="status" aria-live="polite"></p>
   </section>
@@ -33,5 +34,5 @@
 </div></main></div>
 <script src="caja-libro-domain.js" defer></script>
 <script src="caja-libro-ui.js" defer></script>
-<script src="ajustes-gerencia.js?v=1.0.1" defer></script>
+<script src="ajustes-gerencia.js?v=1.1.0" defer></script>
 </body></html>

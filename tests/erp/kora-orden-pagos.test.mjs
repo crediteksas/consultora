@@ -32,7 +32,7 @@ test('Tesorería produce una orden imprimible con la cuenta completa y el total'
     readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
   ]);
   assert.match(html, /Generar orden de pagos/);
-  for (const field of ['Beneficiario','Identificación','Banco','Número de cuenta','TOTAL A GIRAR']) assert.match(app, new RegExp(field));
+  for (const field of ['Beneficiario','Identificación','Banco','Número de cuenta','TOTAL DE LA ORDEN']) assert.match(app, new RegExp(field));
   assert.match(app, /window\.print/);
   assert.match(app, /p\.estado\s*===\s*["']programado["']/);
   assert.match(app, /payment_kind\s*:\s*p\.payment_kind/);
@@ -63,6 +63,10 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   const cop = value => `$ ${Number(value).toLocaleString('es-CO')}`;
   const context = {dispatch:{consecutive:7,issued_by_name:'Prueba'},rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
   const html = new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));
+  context.dispatch.payment_dispatch_items=[{reported_paid:true}];
+  const paidHtml=new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));
+  assert.match(paidHtml,/GIROS YA REALIZADOS · NO VOLVER A PAGAR/);
+  assert.match(paidHtml,/TOTAL GIRADO INFORMADO/);
   const table = html.match(/<table>[\s\S]*?<\/table>/)[0];
   for (const [i, row] of rows.entries()) {
     assert.ok(table.includes(`<span class="payment-number">${i + 1}</span>`));

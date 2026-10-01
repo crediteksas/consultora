@@ -997,14 +997,18 @@ async function cargarAutorizacionesVentas() {
     estado.textContent = `${(pendientes || []).length} ventas registradas pendientes de contabilizar`;
     lista.innerHTML = solicitudes.map(r => {
       const cierre = r.estado === 'pendiente' ? cierrePosterior(r) : null;
+      const obsequioSinEfectivo = r.tipo === 'contado' && Number(r.total) === 0 && !r.credito
+        && Array.isArray(r.items) && r.items.length > 0 && r.items.every(i => Number(i.precio_venta) === 0);
+      const bloqueadaPorCierre = cierre && !obsequioSinEfectivo;
       return `<details>
-      <summary>${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'Tienda sin nombre registrado')} · ${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? cierre ? 'registrada · arqueo cerrado' : 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
+      <summary>${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'Tienda sin nombre registrado')} · ${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? bloqueadaPorCierre ? 'registrada · arqueo cerrado' : 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
       <p>Cargado: ${escapeHtml(new Date(r.creado_en).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} · ${escapeHtml(r.tipo)}</p>
       <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio registrado: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
       ${r.nota ? `<p>${escapeHtml(r.nota)}</p>` : ''}
       ${r.motivo ? `<p>Motivo: ${escapeHtml(r.motivo)}</p>` : ''}
-      ${cierre ? `<p class="autorizacion-error" role="status">La caja de ${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'esta tienda')} ya tiene arqueo validado desde ${escapeHtml(cierre.fecha)}. Esta venta no se puede contabilizar retroactivamente sin una corrección auditable; el cierre original no se modifica.</p>` : ''}
-      ${r.estado === 'pendiente' && puede ? `${cierre ? '' : `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button>`}<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
+      ${bloqueadaPorCierre ? `<p class="autorizacion-error" role="status">La caja de ${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'esta tienda')} ya tiene arqueo validado desde ${escapeHtml(cierre.fecha)}. Esta venta no se puede contabilizar retroactivamente sin una corrección auditable; el cierre original no se modifica.</p>` : ''}
+      ${cierre && obsequioSinEfectivo ? `<p role="status">Arqueo validado el ${escapeHtml(cierre.fecha)}. Este obsequio de $0 puede recibir el visto bueno de Mayte u Óscar: descuenta inventario, no mueve efectivo ni modifica el cierre.</p>` : ''}
+      ${r.estado === 'pendiente' && puede ? `${bloqueadaPorCierre ? '' : `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button>`}<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
       <p class="autorizacion-error" role="alert" hidden></p>
     </details>`;
     }).join('');
@@ -1012,9 +1016,9 @@ async function cargarAutorizacionesVentas() {
       const aprobar = btn.dataset.aprobar === 'true';
       const motivo = aprobar ? null : prompt('Motivo del rechazo:');
       if (!aprobar && !motivo?.trim()) return;
-      if (aprobar && !confirm('¿Dar el visto bueno y contabilizar esta venta ya registrada? Se conservarán su número y sus precios.')) return;
+      if (aprobar && !confirm('¿Dar el visto bueno y contabilizar esta venta ya registrada? Se conservarán su número y sus precios. Si es un obsequio de $0, no moverá efectivo ni modificará el arqueo.')) return;
       const detalle = btn.closest('details');
-      const avisoError = detalle.querySelector('.autorizacion-error');
+      const avisoError = detalle.querySelector('.autorizacion-error[role="alert"]');
       avisoError.hidden = true;
       const botones = detalle.querySelectorAll('button');
       botones.forEach(b => { b.disabled = true; });

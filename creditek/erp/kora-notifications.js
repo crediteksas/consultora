@@ -13,7 +13,7 @@
         {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
       );
       if (salesApprovalAccess) sources.push(
-        {key:'sales-approval',table:'ventas_autorizaciones',title:'Ventas bajo costo u obsequios por autorizar',hint:'Pendientes del visto bueno de Mayte u Óscar. Se retiran al aprobar o rechazar, no al leerlas.',path:'/creditek/erp/ventas.html#tituloAutorizaciones',filters:[['eq','estado','pendiente']]},
+        {key:'sales-approval',table:'ventas_autorizaciones',title:'Ventas bajo costo u obsequios por autorizar',hint:'Mayte y Óscar reciben este mismo pendiente. Incluye ventas de $0; se retira al aprobar o rechazar, no al leerlo.',path:'/creditek/erp/ventas.html#tituloAutorizaciones',filters:[['eq','estado','pendiente']]},
       );
     } else if (profile.rol === 'admin_tienda' && profile.tienda_codigo) {
       sources.push(

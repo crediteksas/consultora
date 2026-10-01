@@ -60,7 +60,8 @@ test('ventas excepcionales solo alertan a quien el servidor permite autorizar',(
     assert.equal(JSON.stringify(sales.filters),JSON.stringify([['eq','estado','pendiente']]));
     assert.equal(sales.path,'/creditek/erp/ventas.html#tituloAutorizaciones');
     assert.match(readFileSync('creditek/erp/ventas.html','utf8'),/id="tituloAutorizaciones"/);
-    assert.match(sales.hint,/aprobar o rechazar, no al leerlas/);
+    assert.match(sales.hint,/Mayte y Óscar reciben este mismo pendiente/);
+    assert.match(sales.hint,/aprobar o rechazar, no al leerlo/);
     assert.ok(!sources.some(s=>s.table==='financial_entries'),'no depende del acceso financiero');
   }
   for(const rol of ['admin_tienda','asesor'])assert.ok(!pendingSources({id:'a',rol,tienda_codigo:'CK-02'},true,true).some(s=>s.key==='sales-approval'));

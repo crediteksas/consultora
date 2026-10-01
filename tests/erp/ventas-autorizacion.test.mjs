@@ -6,6 +6,8 @@ import { PGlite } from '@electric-sql/pglite';
 const sql = await readFile(new URL('../../supabase/migrations/20260926221304_ventas_obsequios_autorizacion.sql', import.meta.url),'utf8');
 const registroSql = await readFile(new URL('../../supabase/migrations/20260928121506_ventas_registro_antes_contabilizacion.sql', import.meta.url),'utf8');
 const fechaSql = await readFile(new URL('../../supabase/migrations/20261001030322_ventas_fecha_bogota_autorizacion.sql', import.meta.url),'utf8');
+const ceroTrasArqueoSql = await readFile(new URL('../../supabase/migrations/20261001042000_venta_cero_autorizada_tras_arqueo.sql', import.meta.url),'utf8');
+const ceroDecimalSql = await readFile(new URL('../../supabase/migrations/20261001044500_venta_cero_arqueo_total_decimal.sql', import.meta.url),'utf8');
 const original = await readFile(new URL('./fixtures/registrar-venta-auditada-20260910.sql',import.meta.url),'utf8');
 const html = await readFile(new URL('../../creditek/erp/ventas.html',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627', mayte='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
@@ -26,7 +28,7 @@ async function setup(upgrade=true){
  create table productos(id uuid primary key,nombre text,tipo text);
  create table unidades(id uuid primary key,producto_id uuid,tienda_actual text,estado text,costo_remision numeric,precio_tienda numeric,imei text);
  create table stock_cantidad(producto_id uuid,tienda_codigo text,cantidad int,costo_promedio numeric,updated_at timestamptz);
- create table ventas(id uuid primary key default gen_random_uuid(),consecutivo bigint generated always as identity,tienda_codigo text,vendedor uuid,tipo text,cliente_id uuid,total numeric,anulada boolean,nota text,fecha date default current_date);
+ create table ventas(id uuid primary key default gen_random_uuid(),consecutivo bigint generated always as identity,tienda_codigo text,vendedor uuid,tipo text,cliente_id uuid,total numeric(14,2),anulada boolean,nota text,fecha date default current_date);
  create table venta_items(venta_id uuid,producto_id uuid,unidad_id uuid,cantidad int,precio_venta numeric,costo_congelado numeric);
  create table movimientos(tipo text,tienda_codigo text,producto_id uuid,unidad_id uuid,cantidad int,costo numeric,precio numeric,referencia_tipo text,referencia_id text,usuario uuid);
  create table creditos(venta_id uuid,financiera text,cuota_inicial numeric,valor_esperado_financiera numeric,plazo_meses int,estado_conciliacion text);
@@ -51,6 +53,36 @@ async function register(db,price=0,id=request,lines=items(price)){
 }
 async function resolve(db,approve=true){return (await db.query('select public.resolver_autorizacion_venta($1,$2,$3) as r',[request,approve,approve?null:'No autorizado'])).rows[0].r;}
 async function count(db,table){return Number((await db.query(`select count(*) n from ${table}`)).rows[0].n);}
+async function activarArqueoValidado(db){
+ await db.exec(`create table caja_cortes(tienda_codigo text,fecha date,estado text,efectivo_contado numeric);
+ create function caja_exigir_apertura(p_tienda text,p_fecha date,p_es_gasto boolean default false)
+ returns void language plpgsql as $$begin
+   if exists(select 1 from caja_cortes where tienda_codigo=p_tienda and fecha>=p_fecha and estado='validada')
+   then raise exception 'El día ya tiene arqueo validado'; end if;
+ end$$;
+ create function caja_guardar_movimiento() returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+ declare fila jsonb; anterior jsonb; tienda text; fecha_mov date; venta uuid;
+ begin
+   fila:=case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end;
+   if tg_table_name='venta_items' then
+     venta:=(fila->>'venta_id')::uuid;
+     select tienda_codigo,fecha into tienda,fecha_mov from ventas where id=venta;
+   else tienda:=fila->>'tienda_codigo'; fecha_mov:=(fila->>'fecha')::date; end if;
+   -- Ambas tiendas/fechas se verifican al reasignar, no solo el destino nuevo.
+   if tg_op='UPDATE' then
+     anterior:=to_jsonb(old);
+     perform caja_exigir_apertura((anterior->>'tienda_codigo'),(anterior->>'fecha')::date,false);
+   end if;
+   perform caja_exigir_apertura(tienda,fecha_mov,false);
+   if tg_op='DELETE' then return old; else return new; end if;
+ end$$;
+ create trigger caja_ciclo_ventas before insert or update of total,tipo,fecha,tienda_codigo,anulada or delete on ventas
+ for each row execute function caja_guardar_movimiento();
+ create trigger caja_ciclo_items before insert or update of precio_venta,cantidad,venta_id or delete on venta_items
+ for each row execute function caja_guardar_movimiento();`);
+ await db.exec(ceroTrasArqueoSql);
+ await db.exec(ceroDecimalSql);
+}
 
 test('obsequio cargado, autorizado por Mayte, conserva vendedor y no duplica inventario ni venta',async()=>{
  const db=await setup();try{
@@ -83,6 +115,33 @@ test('la autorización contabiliza con la fecha de registro en Colombia, aunque 
   await login(db,mayte);
   assert.equal((await resolve(db)).estado,'aprobada');
   assert.equal((await db.query('select fecha::text from ventas where id=$1',[request])).rows[0].fecha,'2026-09-30');
+ }finally{await db.close();}
+});
+test('Mayte y Óscar pueden aprobar un obsequio $0 tras arqueo sin alterar Caja; una venta con valor sigue bloqueada',async()=>{
+ for(const autorizador of [mayte,oscar]){
+  const db=await setup();try{
+   await activarArqueoValidado(db);
+   await register(db);
+   const fecha=(await db.query("select (creado_en at time zone 'America/Bogota')::date as fecha from ventas_autorizaciones where id=$1",[request])).rows[0].fecha;
+   await db.query("insert into caja_cortes values('CK-01',$1,'validada',1781050)",[fecha]);
+   await login(db,autorizador);
+   const aprobado=await resolve(db);
+   assert.equal(aprobado.estado,'aprobada');
+   assert.equal(Number((await db.query('select total from ventas')).rows[0].total),0);
+   assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,9);
+   assert.equal((await db.query('select efectivo_contado from caja_cortes')).rows[0].efectivo_contado,'1781050');
+   assert.equal((await db.query('select resuelto_por from ventas_autorizaciones')).rows[0].resuelto_por,autorizador);
+  }finally{await db.close();}
+ }
+ const db=await setup();try{
+  await activarArqueoValidado(db);
+  await register(db,1000);
+  const fecha=(await db.query("select (creado_en at time zone 'America/Bogota')::date as fecha from ventas_autorizaciones where id=$1",[request])).rows[0].fecha;
+  await db.query("insert into caja_cortes values('CK-01',$1,'validada',1781050)",[fecha]);
+  await login(db,mayte);
+  await assert.rejects(resolve(db),/arqueo validado/);
+  assert.equal(await count(db,'ventas'),0);
+  assert.equal((await db.query('select estado from ventas_autorizaciones')).rows[0].estado,'pendiente');
  }finally{await db.close();}
 });
 test('precio por debajo del costo Retail solicita autorización de Óscar aunque supere costo central',async()=>{
@@ -175,6 +234,8 @@ test('listado incluye registradas y reserva los indicadores para ventas contabil
  assert.match(html,/nombresTiendas\.get\(r\.tienda_codigo\)/);
  assert.match(html,/caja_cortes/);
  assert.match(html,/arqueo validado/);
+ assert.match(html,/obsequioSinEfectivo/);
+ assert.match(html,/visto bueno de Mayte u Óscar/);
  assert.match(html,/class="autorizacion-error" role="alert" hidden/);
 });
 

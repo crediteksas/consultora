@@ -26,6 +26,9 @@ test('los informes de tienda identifican y restringen su alcance visible', async
   assert.match(exporter, /#koraStoreSelector/);
   assert.match(exporter, /summary\.getCell\('A9'\)\.value='Alcance'/);
   assert.match(exporter, /reportScope/);
+  assert.match(exporter, /includeStoreNames\(report,sb\)/);
+  assert.match(exporter, /from\('origenes'\)\.select\('codigo,nombre'\)/);
+  assert.match(exporter, /\$\{name\} · \$\{code\}/);
 });
 
 test('el Excel común usa datos tipados, fórmulas, tablas y no exporta botones de acciones', async () => {

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { PGlite } from '@electric-sql/pglite';
 const sql = await readFile(new URL('../../supabase/migrations/20260926221304_ventas_obsequios_autorizacion.sql', import.meta.url),'utf8');
 const registroSql = await readFile(new URL('../../supabase/migrations/20260928121506_ventas_registro_antes_contabilizacion.sql', import.meta.url),'utf8');
+const fechaSql = await readFile(new URL('../../supabase/migrations/20261001030322_ventas_fecha_bogota_autorizacion.sql', import.meta.url),'utf8');
 const original = await readFile(new URL('./fixtures/registrar-venta-auditada-20260910.sql',import.meta.url),'utf8');
 const html = await readFile(new URL('../../creditek/erp/ventas.html',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627', mayte='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
@@ -38,6 +39,7 @@ async function setup(upgrade=true){
  await db.exec(original);
  await db.exec(sql);
  if(upgrade) await db.exec(registroSql);
+ if(upgrade) await db.exec(fechaSql);
  await db.exec('grant usage on schema public,auth to authenticated');
  await login(db,seller);
  return db;
@@ -72,6 +74,15 @@ test('obsequio cargado, autorizado por Mayte, conserva vendedor y no duplica inv
   assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,9);
   assert.equal((await db.query('select vendedor from ventas')).rows[0].vendedor,seller);
   const audit=(await db.query('select * from ventas_autorizaciones')).rows[0];assert.equal(audit.resuelto_por,mayte);assert.ok(audit.resuelto_en);
+ }finally{await db.close();}
+});
+test('la autorización contabiliza con la fecha de registro en Colombia, aunque se apruebe después',async()=>{
+ const db=await setup();try{
+  await register(db);
+  await db.exec(`update ventas_autorizaciones set creado_en='2026-09-30 20:50:51+00' where id='${request}'`);
+  await login(db,mayte);
+  assert.equal((await resolve(db)).estado,'aprobada');
+  assert.equal((await db.query('select fecha::text from ventas where id=$1',[request])).rows[0].fecha,'2026-09-30');
  }finally{await db.close();}
 });
 test('precio por debajo del costo Retail solicita autorización de Óscar aunque supere costo central',async()=>{
@@ -161,6 +172,10 @@ test('listado incluye registradas y reserva los indicadores para ventas contabil
  assert.match(html,/Venta #\$\{data.consecutivo\} registrada con los precios ingresados/);
  assert.doesNotMatch(html,/Cargar para autorización/);
  assert.match(html,/Registrar venta/);
+ assert.match(html,/nombresTiendas\.get\(r\.tienda_codigo\)/);
+ assert.match(html,/caja_cortes/);
+ assert.match(html,/arqueo validado/);
+ assert.match(html,/class="autorizacion-error" role="alert" hidden/);
 });
 
 test('ventas pendientes anteriores adquieren número sin contabilizar ni alterar precios',async()=>{

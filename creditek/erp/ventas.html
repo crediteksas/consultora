@@ -371,6 +371,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 .autorizaciones-ventas summary { cursor:pointer; font-weight:600; line-height:1.5; }
 .autorizaciones-ventas button { padding:8px 12px; margin:4px; cursor:pointer; }
 .autorizaciones-ventas li { margin:8px 0; overflow-wrap:anywhere; }
+.autorizaciones-ventas .autorizacion-error { color:var(--rojo); background:#fff1f2; border:1px solid #fda4af; border-radius:8px; padding:10px 12px; font-weight:600; }
 #avisoAutorizacionVenta { padding:12px; background:#fff6db; color:#694700; border-radius:8px; }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
@@ -679,8 +680,8 @@ function initPagina() {
   document.getElementById('ajusteTipo').addEventListener('change', actualizarCamposAjuste);
 
   document.getElementById('btnActualizarAutorizaciones').addEventListener('click', cargarAutorizacionesVentas);
-  cargarAutorizacionesVentas();
   cargarDatosBase();
+  cargarAutorizacionesVentas();
 }
 
 async function cargarDatosBase() {
@@ -962,6 +963,11 @@ async function aplicarAjusteVenta(){
 
 // La base de datos controla el acceso y calcula costos; el navegador solo presenta.
 let autorizacionesVentasCargando = false;
+function fechaVentaColombia(fecha) {
+  const partes = new Intl.DateTimeFormat('en-US', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(fecha));
+  const valor = Object.fromEntries(partes.map(p => [p.type,p.value]));
+  return `${valor.year}-${valor.month}-${valor.day}`;
+}
 async function cargarAutorizacionesVentas() {
   if (autorizacionesVentasCargando) return;
   autorizacionesVentasCargando = true;
@@ -969,28 +975,48 @@ async function cargarAutorizacionesVentas() {
   const estado = document.getElementById('autorizacionesVentasEstado');
   estado.textContent = 'Cargando autorizaciones…';
   try {
-    const [{ data: pendientes, error }, { data: puede, error: permisoError }, { data: recientes, error: recientesError }] = await Promise.all([
+    const [{ data: pendientes, error }, { data: puede, error: permisoError }, { data: recientes, error: recientesError }, { data: tiendas, error: tiendasError }] = await Promise.all([
       sb.from('ventas_autorizaciones').select('*').eq('estado','pendiente').order('creado_en', { ascending: false }),
       sb.rpc('puede_autorizar_venta_excepcional'),
       sb.from('ventas_autorizaciones').select('*').in('estado',['aprobada','rechazada']).order('resuelto_en', { ascending: false }).limit(20),
+      sb.from('origenes').select('codigo,nombre'),
     ]);
-    if (error || permisoError || recientesError) throw error || permisoError || recientesError;
+    if (error || permisoError || recientesError || tiendasError) throw error || permisoError || recientesError || tiendasError;
     const solicitudes = [...(pendientes || []), ...(recientes || [])];
+    const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
+    const fechasPendientes = (pendientes || []).map(r => fechaVentaColombia(r.creado_en)).sort();
+    let cierresValidados = [];
+    if (fechasPendientes.length && puede) {
+      const { data: cierres, error: cierreError } = await sb.from('caja_cortes')
+        .select('tienda_codigo,fecha,estado').in('tienda_codigo',[...new Set(pendientes.map(r => r.tienda_codigo))])
+        .in('estado',['validada','autorizada']).gte('fecha',fechasPendientes[0]);
+      if (cierreError) throw cierreError;
+      cierresValidados = cierres || [];
+    }
+    const cierrePosterior = r => cierresValidados.find(c => c.tienda_codigo === r.tienda_codigo && c.fecha >= fechaVentaColombia(r.creado_en));
     estado.textContent = `${(pendientes || []).length} ventas registradas pendientes de contabilizar`;
-    lista.innerHTML = solicitudes.map(r => `<details>
-      <summary>${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
+    lista.innerHTML = solicitudes.map(r => {
+      const cierre = r.estado === 'pendiente' ? cierrePosterior(r) : null;
+      return `<details>
+      <summary>${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'Tienda sin nombre registrado')} · ${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? cierre ? 'registrada · arqueo cerrado' : 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
       <p>Cargado: ${escapeHtml(new Date(r.creado_en).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} · ${escapeHtml(r.tipo)}</p>
       <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio registrado: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
       ${r.nota ? `<p>${escapeHtml(r.nota)}</p>` : ''}
       ${r.motivo ? `<p>Motivo: ${escapeHtml(r.motivo)}</p>` : ''}
-      ${r.estado === 'pendiente' && puede ? `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button><button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
-    </details>`).join('');
+      ${cierre ? `<p class="autorizacion-error" role="status">La caja de ${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'esta tienda')} ya tiene arqueo validado desde ${escapeHtml(cierre.fecha)}. Esta venta no se puede contabilizar retroactivamente sin una corrección auditable; el cierre original no se modifica.</p>` : ''}
+      ${r.estado === 'pendiente' && puede ? `${cierre ? '' : `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button>`}<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
+      <p class="autorizacion-error" role="alert" hidden></p>
+    </details>`;
+    }).join('');
     lista.querySelectorAll('button[data-solicitud]').forEach(btn => btn.addEventListener('click', async () => {
       const aprobar = btn.dataset.aprobar === 'true';
       const motivo = aprobar ? null : prompt('Motivo del rechazo:');
       if (!aprobar && !motivo?.trim()) return;
       if (aprobar && !confirm('¿Dar el visto bueno y contabilizar esta venta ya registrada? Se conservarán su número y sus precios.')) return;
-      const botones = btn.closest('details').querySelectorAll('button');
+      const detalle = btn.closest('details');
+      const avisoError = detalle.querySelector('.autorizacion-error');
+      avisoError.hidden = true;
+      const botones = detalle.querySelectorAll('button');
       botones.forEach(b => { b.disabled = true; });
       try {
         const { data, error: resolverError } = await sb.rpc('resolver_autorizacion_venta', { p_id: btn.dataset.solicitud, p_aprobar: aprobar, p_motivo: motivo });
@@ -998,7 +1024,10 @@ async function cargarAutorizacionesVentas() {
         mostrarBanner(data.estado === 'aprobada' ? `Venta #${data.consecutivo} contabilizada. Se conservaron los precios registrados.` : 'Contabilización rechazada. La venta permanece registrada.');
         await cargarAutorizacionesVentas();
         await cargarVentas();
-      } catch (e) { estado.textContent = e.message; }
+      } catch (e) {
+        avisoError.textContent = `No se pudo ${aprobar ? 'contabilizar' : 'rechazar'} esta venta: ${e.message}`;
+        avisoError.hidden = false;
+      }
       finally { botones.forEach(b => { b.disabled = false; }); }
     }));
   } catch (e) { estado.textContent = 'No se pudieron cargar las autorizaciones: ' + e.message; }

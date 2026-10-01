@@ -5,7 +5,7 @@
   const approved=row=>row.status==='aprobado'&&!!row.approved_by&&!!row.approved_at&&!row.paid_at&&!row.support_path;
   const storeFunded=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
   function account(value){const parts=String(value||'').split(' · ').map(s=>s.trim());return {bank:parts.length===3?parts[0]:'',account_type:parts.length===3?parts[1]:'',account_number:parts.length===3&&/^\d{6,20}$/.test(parts[2])?parts[2]:''};}
-  function reportRows(payments,entries,movements,ready){
+  function reportRows(payments,entries,movements,ready,issued=new Set()){
     const result=payments.filter(p=>p.estado==='programado'&&ready(p).ready).map(p=>({...p,report_ref:`PO-${p.id}`,report_kind:'Liquidación',report_platform:p.platform_snapshot||p.liquidations?.plataforma||''}));
     for(const row of entries.filter(row=>approved(row)&&!storeFunded(row))) result.push({
       id:row.id,report_ref:`FIN-${row.id}`,report_kind:row.category==='nomina'?'Nómina':row.entry_type==='retiro_utilidad'?'Retiro':'Gasto',
@@ -16,7 +16,7 @@
       id:row.id,report_ref:`TM-${row.id}`,report_kind:'Gasto de Tesorería',report_business:business[row.unit]||row.unit,report_date:row.movement_date,report_platform:row.aliados_gastos_operativos?.plataforma||'',
       beneficiary_name:row.beneficiary,beneficiary_identification:row.beneficiary_document,bank_snapshot:account(row.destination_account),valor:row.amount,concept:row.concept,
     });
-    const seen=new Set();return result.filter(row=>{if(seen.has(row.report_ref))return false;seen.add(row.report_ref);return true;});
+    const seen=new Set();return result.filter(row=>{if(issued.has(row.report_ref)||seen.has(row.report_ref))return false;seen.add(row.report_ref);return true;});
   }
   function cards(entries,money){return entries.filter(approved).map(row=>`<article class="preparation-card"><h3>${esc(row.concept)}</h3><p>${esc(business[row.business_unit]||row.business_unit)} · ${esc(row.due_date)} · ${esc(row.category==='nomina'?'Nómina':'Gasto / retiro')}</p><p><strong>${esc(row.beneficiary)}</strong> · ${esc(row.beneficiary_document)}</p><p>Cuenta destino: ${esc(row.destination_account||'No informada')}</p><p>Valor: <strong>${esc(money(row.amount))}</strong></p><p class="approval-ok">Autorizado · pendiente de pago y soporte. No requiere otra aprobación.</p><div class="actions">${row.entry_type==='retiro_utilidad'&&row.business_unit==='retail'?'<a class="btn primary" href="cuenta-corriente.html#retail">Validar soportes de tiendas</a>':`<button class="btn primary" data-financial-support="${esc(row.id)}">Adjuntar soporte y registrar pago</button>`}</div></article>`).join('');}
   function createRecorder(sb){

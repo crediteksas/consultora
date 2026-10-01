@@ -289,6 +289,7 @@
       financialEntries,
       addiLiquidations,
       paymentDestinationCorrections,
+      dispatches,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -322,6 +323,7 @@
         ? safe(sb.rpc('addi_tesoreria_listar'))
         : Promise.resolve([]),
       loadRecoveryRows('payment_destination_corrections'),
+      loadCompensations('payment_dispatches','*,payment_dispatch_items(*)'),
     ]);
     data = {
       balances,
@@ -343,8 +345,10 @@
       financialEntries,
       addiLiquidations,
       paymentDestinationCorrections,
+      dispatches,
     };
     data.payments = payments.map(normalizePayment);
+    data.dispatches.forEach(d=>d.payment_dispatch_items.sort((a,b)=>a.position-b.position));
     fillCompensationStores();
     render();
     fillSuppliers();
@@ -578,6 +582,7 @@
     $("#showHistory").classList.toggle("active",treasuryView==="history");
     if(["cobros","clients","preparation"].includes(treasuryView))return;
     renderPaymentHistory();
+    renderDispatchHistory();
     const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
         (x) =>
@@ -649,7 +654,7 @@
       <div><small>Beneficiario · ${date(x.movement_date)}</small><strong>${esc(x.beneficiary)}</strong><span>${esc(x.concept)}</span></div>
       <div><small>Cuenta destino</small><span class="account">${esc(x.destination_account||'Sin cuenta registrada')}</span></div>
       <div><small>Valor</small><strong>${cop(x.amount)}</strong></div>
-      <div><small>Estado</small>${badge(x.status)}</div>
+      <div><small>Estado</small>${badge(x.status,x.status==='programado'&&dispatchItem(`TM-${x.id}`)?(dispatchItem(`TM-${x.id}`).reported_paid?'Girado · pendiente de soporte':'Orden emitida · pendiente de soporte'):null)}</div>
       <div class="expense-movement-action">${x.authorized_by?'<span class="approval-ok">Autorizado por Gerencia</span>':'<span class="approval-pending">Pendiente de Gerencia</span>'}<div>${movementActions(x)}</div></div>
     </article>`).join('')}</div>` : financialPending.length && treasuryView !== 'history' ? '' : '<div class="empty">No hay gastos autorizados pendientes de soporte en esta vista.</div>');
     $("#showOperational").classList.toggle(
@@ -792,7 +797,7 @@
       return `<button class="btn secondary" data-movement="${m.id}" data-next="programado">Programar</button>`;
     }
     if (m.status === "programado")
-      return `<button class="btn primary" data-movement="${m.id}" data-next="pagado">Registrar pago</button>`;
+      return `<button class="btn primary" data-movement="${m.id}" data-next="pagado">Adjuntar soporte del pago</button>`;
     if (m.status === "pagado")
       return `<button class="btn secondary" data-movement="${m.id}" data-next="conciliado">Conciliar</button>`;
     return "";
@@ -1144,10 +1149,28 @@
     notice("Pago actualizado y auditado.");
     await load();
   }
+  function dispatchItem(ref){return (data.dispatches||[]).flatMap(d=>d.payment_dispatch_items||[]).find(i=>i.report_ref===ref);}
+  function dispatchSupport(item){
+    const ref=item.report_ref,id=item.snapshot.id;
+    const row=(ref.startsWith('FIN-')?data.financialEntries:ref.startsWith('TM-')?data.movements:data.payments)?.find(x=>x.id===id);
+    return row?.support_path||row?.soporte_path;
+  }
+  function renderDispatchHistory(){
+    const slot=document.getElementById('paymentDispatchHistory');if(!slot)return;
+    slot.innerHTML=(data.dispatches||[]).map(d=>{
+      const items=d.payment_dispatch_items||[],pending=items.filter(i=>!dispatchSupport(i));
+      return `<article class="expense-movement-card"><div><strong>OP-${esc(String(d.consecutive).padStart(6,'0'))}</strong><span>${esc(bogotaDateTime(d.original_issued_at||d.created_at))}</span>${d.original_reference?`<span>Referencia anterior: ${esc(d.original_reference)}</span>`:''}<span>${items.length} pagos · ${cop(items.reduce((n,i)=>n+Number(i.snapshot.valor||0),0))}</span></div><div>${pending.length?`${pending.length} pendientes de soporte`:'Soportes completos'}<p>${esc(d.note||'Orden emitida; estos pagos no vuelven a ofrecerse en otra orden.')}</p></div><button class="btn secondary" data-open-dispatch="${esc(d.id)}">Consultar / descargar la misma orden</button><details><summary>Ver pagos y soportes</summary>${items.map(i=>`<p>${esc(i.snapshot.beneficiary_name)} · ${esc(i.snapshot.concept)} · ${cop(i.snapshot.valor)} · ${dispatchSupport(i)?'Soporte adjunto':i.reported_paid?'Girado · pendiente de soporte de Mayte':'Pendiente de soporte'}</p>`).join('')}</details></article>`;
+    }).join('')||'<p>No hay órdenes emitidas guardadas.</p>';
+    slot.querySelectorAll('[data-open-dispatch]').forEach(button=>button.onclick=()=>{
+      const d=data.dispatches.find(x=>x.id===button.dataset.openDispatch);
+      if(d)renderPaymentReport(d.payment_dispatch_items.map(i=>i.snapshot),d);
+    });
+  }
   function authorizedReportRows() {
     return window.CreditekPagosUnificados.reportRows(
       data.payments || [], data.financialEntries || [], data.movements || [],
       window.CreditekTesoreriaTercerizacion.paymentReadiness,
+      new Set((data.dispatches||[]).flatMap(d=>(d.payment_dispatch_items||[]).map(i=>i.report_ref))),
     );
   }
   function reportMissing(p) {
@@ -1191,13 +1214,13 @@
     dialog.setAttribute('aria-label','Seleccionar pagos autorizados para la orden');
     dialog.style.cssText='width:94vw;max-width:1000px;max-height:88vh;overflow:auto;padding:18px;border:1px solid #cbd5e1;border-radius:12px';
     dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
-      <p>La orden es un documento, no registra el pago. Selecciona solo los renglones que vas a girar; los incompletos requieren revisión del destino.</p>
+      <p>La orden se guarda con consecutivo. Sus pagos salen de esta selección y quedan pendientes de soporte; puedes consultar o reimprimir la misma orden sin emitir otra.</p>
       <p>Maite administra la ficha y las cuentas del beneficiario. Gerencia autoriza el pago; crear una cuenta no requiere una aprobación aparte.</p>
       <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
       <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
       <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;
     document.body.appendChild(dialog);
-    const chosen=new Set();
+    const chosen=new Set(),requestId=crypto.randomUUID();
     const status=message=>{dialog.querySelector('[data-selection-error]').textContent=message||'';};
     const visible=()=>rows.filter(p=>{const platform=dialog.querySelector('[data-report-platform]').value;return !platform||
       (platform==='sin_plataforma'?!p.report_platform:p.report_platform===platform);});
@@ -1228,14 +1251,29 @@
       }catch(error){status(error?.message||'No se pudieron guardar los datos del pago.');}
     });
     dialog.querySelector('[data-generate-selected]').onclick=async()=>{
+      const button=dialog.querySelector('[data-generate-selected]');if(button.disabled)return;
       const selected=rows.filter(p=>chosen.has(p.report_ref));
       if(!selected.length)return status('Selecciona al menos un pago.');
-      const signatures=new Map(selected.map(p=>[p.report_ref,reportSignature(p)]));
-      try{await load();}catch{return status('No se pudo actualizar la lista. No se generó la orden.');}
-      const latest=authorizedReportRows().filter(p=>signatures.has(p.report_ref));
-      if(latest.length!==selected.length||latest.some(p=>reportMissing(p).length||pendingDestinationCorrection(p)||reportSignature(p)!==signatures.get(p.report_ref)))
-        return status('Algún pago cambió desde la selección. Cierra y vuelve a revisar los datos antes de generar.');
-      dialog.close();renderPaymentReport(latest);
+      button.disabled=true;status('');
+      try{
+        const signatures=new Map(selected.map(p=>[p.report_ref,reportSignature(p)]));
+        await load();
+        const recovered=(data.dispatches||[]).find(d=>d.request_id===requestId);
+        if(recovered){dialog.close();return renderPaymentReport(recovered.payment_dispatch_items.map(i=>i.snapshot),recovered);}
+        const latest=authorizedReportRows().filter(p=>signatures.has(p.report_ref));
+        if(latest.length!==selected.length||latest.some(p=>reportMissing(p).length||pendingDestinationCorrection(p)||reportSignature(p)!==signatures.get(p.report_ref)))
+          throw Error('Algún pago cambió o ya tiene orden. Actualiza y consulta las órdenes guardadas.');
+        const result=await sb.rpc('payment_dispatch_create',{p_request:requestId,p_rows:latest});
+        if(result.error)throw result.error;
+        const saved=result.data;dialog.close();
+        renderPaymentReport(saved.payment_dispatch_items.map(i=>i.snapshot),saved);
+        try{await load();}catch{notice('Orden guardada. Actualiza la lista; no vuelvas a emitirla.',true);}
+      }catch(error){
+        try{await load();const saved=(data.dispatches||[]).find(d=>d.request_id===requestId);
+          if(saved){dialog.close();renderPaymentReport(saved.payment_dispatch_items.map(i=>i.snapshot),saved);return;}
+        }catch{}
+        status(error?.message||'No se pudo confirmar la emisión. Consulta las órdenes guardadas antes de reintentar.');
+      }finally{button.disabled=false;}
     };
     render();dialog.showModal();
   }
@@ -1256,7 +1294,9 @@
     openPaymentSelection(rows);
   }
   function renderPaymentReport(rows) {
-    const now = new Date(),
+    const dispatch=arguments[1];
+    if(!dispatch?.consecutive)throw Error('La orden debe estar guardada antes de imprimir.');
+    const now = new Date(dispatch.original_issued_at||dispatch.created_at),
       total = rows.reduce((n, p) => n + Number(p.valor || 0), 0),
       generated = new Intl.DateTimeFormat("es-CO", {
         dateStyle: "long",
@@ -1275,7 +1315,7 @@
       })
         .formatToParts(now)
         .reduce((o, x) => ((o[x.type] = x.value), o), {}),
-      reportId = `OP-${stamp.year}${stamp.month}${stamp.day}-${stamp.hour}${stamp.minute}${stamp.second}`,
+      reportId = `OP-${String(dispatch.consecutive).padStart(6,'0')}`,
       logo = new URL("../shared/branding/creditek-logo.png", location.href)
         .href;
     const liquidationRefs = [
@@ -1294,7 +1334,7 @@
     reportDialog.id = 'treasuryPaymentReportDialog';
     reportDialog.setAttribute('aria-label', 'Orden de pagos autorizados');
     reportDialog.style.cssText = 'width:96vw;max-width:1500px;padding:16px;border:1px solid #cbd5e1;border-radius:12px';
-    reportDialog.innerHTML = '<button type="button" class="btn secondary" data-close-report>Cerrar orden</button><p>Revisa el destino y utiliza «Imprimir / Guardar PDF» al final de la orden. Generar este documento no registra un pago.</p><iframe title="Orden de pagos autorizados para imprimir" style="width:100%;height:75vh;border:0"></iframe>';
+    reportDialog.innerHTML = '<button type="button" class="btn secondary" data-close-report>Cerrar orden</button><p>Revisa el destino y utiliza «Imprimir / Guardar PDF» al final de la orden. Esta es una orden guardada. Reimprimirla conserva su consecutivo y no genera otra orden.</p><iframe title="Orden de pagos autorizados para imprimir" style="width:100%;height:75vh;border:0"></iframe>';
     document.body.appendChild(reportDialog);
     reportDialog.querySelector('[data-close-report]').onclick = () => reportDialog.close();
     reportDialog.addEventListener('close', () => reportDialog.remove());
@@ -1325,7 +1365,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
 .print-note{font-size:11px;max-width:330px}.no-print button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
 @media print{.no-print{display:none!important}}
 </style></head><body>
-<header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería</div><h1>Orden de pagos</h1></div></div><div class="meta">${esc(generated)}<br>Responsable: ${esc(profile?.nombre || profile?.email || "Usuario KORA")}</div></header>
+<header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería</div><h1>Orden de pagos ${esc(reportId)}</h1></div></div><div class="meta">${esc(generated)}<br>Responsable: ${esc(dispatch.issued_by_name || "Registro de orden anterior")}</div></header>
 <section class="summary"><span><strong>${rows.length}</strong> pagos autorizados</span><span>${liquidationRefs.length} liquidaciones</span><span>Total <strong class="money">${cop(total)}</strong></span></section>
 <table><colgroup><col style="width:7%"><col style="width:33%"><col style="width:22.5%"><col style="width:23%"><col style="width:14.5%"></colgroup><thead><tr><th>N.º</th><th>Beneficiario</th><th>Cuenta destino</th><th>Concepto y fecha</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows.map((p, i) => {
         const holder = p.bank_snapshot.holder || p.beneficiary_name;
@@ -1343,7 +1383,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
         const separateBusiness = business && business !== "No aplica" && String(business).trim().toLowerCase() !== String(holder || "").trim().toLowerCase();
         return `<tr><td><span class="payment-number">${i + 1}</span><span class="internal-ref" title="${esc(p.report_ref)}">Ref. ${esc(String(p.report_ref || "").slice(-4).toUpperCase())}</span></td><td>${separateBusiness ? `<strong>${esc(business)}</strong><span class="muted">${esc(holder)}</span>` : `<strong>${esc(holder)}</strong>`}<span class="muted">${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</span></td><td><span class="account">${esc(p.bank_snapshot.account_number)}</span><span class="muted">${esc(p.bank_snapshot.bank)} ${esc(p.bank_snapshot.account_type)}</span></td><td>${esc(label)}<span class="muted">${p.liquidation_id ? `${shortCredit ? "" : esc(platform) + " "}${date(p.cutoff_snapshot)}` : `${esc(p.report_kind)} ${esc(p.report_date)}`}</span></td><td class="money">${cop(p.valor)}</td></tr>`;
       }).join("")}<tr class="total"><td colspan="4">TOTAL A GIRAR</td><td class="money">${cop(total)}</td></tr></tbody></table>
-<section class="trace">Pendientes de pago y soporte. La referencia corta es interna, no un comprobante bancario.<details class="no-print"><summary>Trazabilidad KORA · referencias completas</summary>${rows.map((p, i) => `<div>${i + 1}: ${esc(p.report_ref)}${p.liquidation_id ? ` · LQ-${shortId(p.liquidation_id)}` : ""} · ${esc(p.concept)}</div>`).join("")}</details></section>
+<section class="trace">Orden emitida · pendiente de soporte. ${dispatch.original_reference?`Referencia original: ${esc(dispatch.original_reference)}. `:''} La referencia corta es interna, no un comprobante bancario.<details class="no-print"><summary>Trazabilidad KORA · referencias completas</summary>${rows.map((p, i) => `<div>${i + 1}: ${esc(p.report_ref)}${p.liquidation_id ? ` · LQ-${shortId(p.liquidation_id)}` : ""} · ${esc(p.concept)}</div>`).join("")}</details></section>
 <footer class="foot"><span>Creditek S.A.S. · NIT 901.259.859-0 · Valores en COP</span><span>${esc(reportId)}</span></footer>
 <div class="tools no-print"><div class="print-note">Para un PDF limpio, desactiva “Encabezados y pies de página” en Más ajustes.</div><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`,
     );

@@ -57,7 +57,8 @@ test('orden imprime solo las filas elegidas y conserva referencias y nóminas',(
   let output='';const dom={innerHTML:'',setAttribute(){},style:{},addEventListener(){},showModal(){},querySelector(selector){return selector==='iframe'?{contentWindow:{document:{write(s){output=s;},close(){}}}}:{onclick:null};}};
   const ctx={document:{getElementById(){return null;},createElement(){return dom;},body:{appendChild(){}}},notice(){},esc:String,cop:String,profile:{nombre:'Oscar'},paymentBusinessName:()=>null,platformName:String,date:String,shortId:String,Intl,Date,URL,location:{href:'https://example.test/creditek/erp/aliados-tesoreria.html'}};
   vm.runInNewContext(report+';globalThis.renderReport=renderPaymentReport;',ctx);
-  ctx.renderReport(U.reportRows([], [expense], [], ready));
+  ctx.renderReport(U.reportRows([], [expense], [], ready),{consecutive:7,created_at:'2026-09-30T20:00:00Z',issued_by_name:'Oscar'});
+  assert.match(output,/OP-000007/);
   assert.match(output,/FIN-expense/);assert.match(output,/Nómina Luis/);assert.match(output,/750000/);assert.doesNotMatch(output,/LQ-undefined/);
 });
 test('preparación consulta de nuevo y aborta si está desconectada',async()=>{
@@ -80,4 +81,9 @@ test('orden no presenta una identificación temporal de ejecutivo como documento
     assert.ok(ctx.validate({report_ref:prefix+'-test',valor:400000,beneficiary_identification:'EJECUTIVO-TEMP-MAYTHE-REYES'}).includes('identificación válida'));
     assert.equal(ctx.validate({report_ref:prefix+'-test',valor:400000,beneficiary_identification:'22624685'}).length,0);
   }
+});
+
+test('pagos de una orden emitida no vuelven a ofrecerse, pero conservan el botón de soporte',()=>{
+ const rows=U.reportRows([], [expense], [], ready,new Set(['FIN-expense']));assert.deepEqual(rows,[]);
+ assert.match(U.cards([expense],String),/data-financial-support="expense"/);
 });

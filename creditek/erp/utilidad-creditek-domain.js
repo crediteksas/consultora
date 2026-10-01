@@ -124,6 +124,48 @@
     return [...mapa.values()].sort((a, b) => b.facturado - a.facturado);
   }
 
+  const marcasCelular = [
+    [/^(?:SAMSUNG|GALAXY|SM(?:\s|[-]|\d))\b/, 'Samsung'],
+    [/^(?:XIAOMI|REDMI|POCO|RM\s)/, 'Xiaomi'],
+    [/^(?:MOTOROLA|MOTO\s)/, 'Motorola'],
+    [/^HONOR\b/, 'Honor'], [/^TECNO\b/, 'Tecno'],
+    [/^INFINIX\b/, 'Infinix'], [/^ITEL\b/, 'Itel'],
+    [/^(?:IPHONE|APPLE)\b/, 'Apple'], [/^OPPO\b/, 'Oppo'],
+    [/^ZTE\b/, 'ZTE'], [/^ALCATEL\b/, 'Alcatel'],
+    [/^CUBOT\b/, 'Cubot'], [/^HOTWAV\b/, 'Hotwav'],
+    [/^VIVO\b/, 'Vivo'], [/^REALME\b/, 'Realme'],
+    [/^HUAWEI\b/, 'Huawei'], [/^NOKIA\b/, 'Nokia'],
+    [/^TCL\b/, 'TCL'], [/^CORN\b/, 'Corn'], [/^FLY\b/, 'Fly'],
+  ];
+  const noCelular = /\b(?:PENCIL|STYLUS|LAPIZ|IMPRESORA|AUDIFONO|CARGADOR|CABLE|VIDRIO|PROTECTOR|FUNDA|ESTUCHE|TABLET|PARLANTE|POWERBANK)\b/;
+
+  function normalizarNombre(valor) {
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  }
+
+  function clasificarCelular(fila) {
+    if (normalizarNombre(fila.categoria) !== 'CELULAR') return null;
+    const nombre = normalizarNombre(fila.producto_nombre || fila.referencia_nombre);
+    if (noCelular.test(nombre)) return null;
+    return marcasCelular.find(([patron]) => patron.test(nombre))?.[1] || 'Marca por revisar';
+  }
+
+  function resumirCelularesPorMarca(filas) {
+    const mapa = new Map();
+    for (const fila of filas || []) {
+      const marca = clasificarCelular(fila);
+      if (!marca) continue;
+      if (!mapa.has(marca)) mapa.set(marca, { marca, unidades: 0, facturado: 0, costo: 0, margen: 0, margenPorcentaje: null });
+      const grupo = mapa.get(marca);
+      grupo.unidades += n(fila.cantidad);
+      grupo.facturado += n(fila.facturado);
+      grupo.costo += n(fila.costo);
+      grupo.margen = grupo.facturado - grupo.costo;
+      grupo.margenPorcentaje = grupo.facturado ? grupo.margen / grupo.facturado : null;
+    }
+    return [...mapa.values()].sort((a, b) => b.unidades - a.unidades || a.marca.localeCompare(b.marca, 'es'));
+  }
+
   function serieAcumulada(filas, desde, hasta, granularidad = 'dia') {
     const incluidas = filtrarFilas(filas, { desde, hasta });
     if (!incluidas.length) return [];
@@ -155,6 +197,8 @@
     agruparTiempo,
     serieAcumulada,
     agruparDimension,
+    clasificarCelular,
+    resumirCelularesPorMarca,
     granularidadAutomatica,
     dias,
     moverDias,

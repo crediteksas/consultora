@@ -144,6 +144,30 @@ test('elige granularidad automática según duración', () => {
   assert.equal(domain.granularidadAutomatica('2025-01-01', '2026-07-01'), 'mes');
 });
 
+test('informe por marca cuenta solo celulares, excluye accesorios y no inventa marcas', () => {
+  const datos = [
+    { categoria:'CELULAR', producto_nombre:'SM A17 4+128GB', cantidad:2, facturado:1000, costo:700 },
+    { categoria:'CELULAR', producto_nombre:'SAMSUNG A07', cantidad:1, facturado:400, costo:300 },
+    { categoria:'CELULAR', producto_nombre:'REDMI 15C', cantidad:3, facturado:1500, costo:1200 },
+    { categoria:'CELULAR', producto_nombre:'NOTE 15 4G', cantidad:1, facturado:500, costo:400 },
+    { categoria:'CELULAR', producto_nombre:'PENCIL STYLUS (CC)', cantidad:2, facturado:100, costo:80 },
+    { categoria:'ACC_CELULAR', producto_nombre:'SAMSUNG CARGADOR', cantidad:4, facturado:200, costo:100 },
+  ];
+  const grupos = domain.resumirCelularesPorMarca(datos);
+  assert.deepEqual(Array.from(grupos, g => [g.marca, g.unidades]), [['Samsung',3],['Xiaomi',3],['Marca por revisar',1]]);
+  assert.equal(grupos.reduce((s, g) => s + g.facturado, 0), 3400);
+  assert.equal(grupos.reduce((s, g) => s + g.margen, 0), 800);
+  assert.equal(domain.clasificarCelular(datos[4]), null);
+  assert.equal(domain.clasificarCelular(datos[5]), null);
+});
+
+test('el informe visual por marca sigue filtros y se incluye en la exportación', () => {
+  assert.match(html, /Celulares despachados por marca/);
+  assert.match(html, /accesorios excluidos/);
+  assert.match(app, /D\.resumirCelularesPorMarca\(estado\.filtradas\)/);
+  assert.match(app, /'Celulares por marca'/);
+});
+
 test('la pantalla existente integra rangos, filtros, comparación y exportación', () => {
   for (const id of ['fecha-desde', 'fecha-hasta', 'comparativo', 'filtro-tienda', 'filtro-referencia', 'btn-exportar']) {
     assert.match(html, new RegExp(`id="${id}"`));

@@ -11,7 +11,7 @@
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="utilidad-creditek-domain.js?v=1.0.2"></script>
+  <script src="utilidad-creditek-domain.js?v=1.0.3"></script>
   <script src="aliados-reversiones-domain.js"></script>
   <script src="tablero-ejecutivos.js"></script>
   <script src="tablero-utilidad.js?v=1.0.4"></script>
@@ -74,6 +74,24 @@
     .export-btn:hover { background:#30d7dd; }
     #chart-container { position:relative; height:220px; padding:0 14px 14px; }
     #chart-empty { padding:48px 20px; text-align:center; color:#64748b; }
+    .brand-report { padding-bottom:16px; }
+    .brand-report .panel-head { border-bottom:1px solid #edf1f6; }
+    .brand-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:14px 20px 18px; }
+    .brand-metric { padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:#f8fbfe; }
+    .brand-metric span { display:block; color:#69778d; font-size:10px; font-weight:700; }
+    .brand-metric strong { display:block; margin-top:5px; color:var(--navy); font-size:17px; }
+    .brand-content { display:grid; grid-template-columns:minmax(250px,.8fr) minmax(0,1.2fr); gap:18px; padding:0 20px; }
+    .brand-bars { display:grid; align-content:start; gap:12px; }
+    .brand-bar-label { display:flex; justify-content:space-between; gap:8px; margin-bottom:5px; color:#30415d; font-size:11px; font-weight:700; }
+    .brand-bar-track { height:12px; overflow:hidden; border-radius:99px; background:#eaf0f7; }
+    .brand-bar-fill { height:100%; border-radius:99px; background:var(--teal); }
+    .brand-note { margin:12px 20px 0; color:#66758d; font-size:10px; line-height:1.5; }
+    .brand-note.attention { color:#9a5a14; }
+    .brand-table { width:100%; border-collapse:collapse; font-size:11px; }
+    .brand-table th { padding:9px 7px; background:#f6f8fb; color:#5f6e83; text-align:right; }
+    .brand-table th:first-child, .brand-table td:first-child { text-align:left; }
+    .brand-table td { padding:9px 7px; border-top:1px solid #edf1f6; color:#30415d; text-align:right; }
+    .brand-table tfoot td { color:var(--navy); font-weight:700; background:#f8fbfe; }
     .summary-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
     .summary-panel { min-width:0; overflow:hidden; container-type:inline-size; }
     .summary-panel .panel-head { align-items:center; padding-bottom:13px; border-bottom:1px solid #edf1f6; }
@@ -122,6 +140,8 @@
       .summary-grid { grid-template-columns:1fr; }
       .summary-panel:last-child { grid-column:auto; }
       .period-strip { grid-template-columns:1fr 1fr; }
+      .brand-metrics { grid-template-columns:1fr 1fr; }
+      .brand-content { grid-template-columns:1fr; }
     }
     @media (max-width:560px) {
       .page-shell { width:min(100% - 20px,1540px); }
@@ -139,6 +159,11 @@
       #chart-container { height:220px; padding:0 4px 12px; }
       .period-intro { grid-column:auto; }
       .period-stat { min-height:68px; border-left:0; border-top:1px solid var(--line); }
+      .brand-metrics { margin:12px; gap:7px; }
+      .brand-content { padding:0 12px; }
+      .brand-note { margin:12px; }
+      .brand-table { font-size:9px; }
+      .brand-table th, .brand-table td { padding:7px 3px; }
     }
     .refresh-btn,.filter-action,.export-btn,.preset-btn,.segmented button,input,select{min-height:44px}.surface,.kpi-card,.chart-card,.table-card{border-radius:12px}.refresh-btn,.filter-action,.export-btn,.preset-btn,.segmented button{transition:transform 120ms ease}.refresh-btn:active,.filter-action:active,.export-btn:active,.preset-btn:active,.segmented button:active{transform:scale(.985)}
   </style>
@@ -179,8 +204,8 @@
   </section>
 
   <section class="kpi-grid">
+    <article class="kpi-card kpi-costo"><div class="kpi-head"><span class="kpi-icon">⌁</span><span class="kpi-name">Costo real / compras</span></div><p id="kpi-costo" class="kpi-value">—</p><p class="kpi-period">Costo de mercancía despachada</p><p id="delta-costo" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><p id="kpi-facturado" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>
-    <article class="kpi-card kpi-costo"><div class="kpi-head"><span class="kpi-icon">⌁</span><span class="kpi-name">Costo real</span></div><p id="kpi-costo" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-costo" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad neta B2B</span></div><p id="kpi-utilidad" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="kpi-utilidad-detalle" class="kpi-period">Margen menos gastos autorizados</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-margen"><div class="kpi-head"><span class="kpi-icon">%</span><span class="kpi-name">Margen %</span></div><p id="kpi-margen" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-margen" class="kpi-delta">Sin comparación</p></article>
   </section>
@@ -195,6 +220,18 @@
     </div>
     <div id="chart-container"><canvas id="chart-utilidad" role="img" aria-label="Utilidad B2B acumulada"></canvas></div>
     <p id="chart-empty" class="hidden">Sin remisiones en el período seleccionado.</p>
+  </section>
+
+  <section class="surface brand-report" aria-label="Informe de celulares por marca">
+    <div class="panel-head"><div><h2 class="panel-title">Celulares despachados por marca</h2><p class="panel-sub">Unidades de remisiones B2B del período seleccionado · accesorios excluidos</p></div></div>
+    <div class="brand-metrics">
+      <div class="brand-metric"><span>Celulares</span><strong id="brand-unidades">—</strong></div>
+      <div class="brand-metric"><span>Facturado en celulares</span><strong id="brand-facturado">—</strong></div>
+      <div class="brand-metric"><span>Margen de celulares</span><strong id="brand-margen">—</strong></div>
+      <div class="brand-metric"><span>Marca líder en unidades</span><strong id="brand-lider">—</strong></div>
+    </div>
+    <div class="brand-content"><div id="brand-bars" class="brand-bars" role="img" aria-label="Unidades de celulares por marca"></div><div class="table-wrap kora-table-region" role="region" aria-label="Detalle de celulares por marca"><table class="brand-table"><thead><tr><th>Marca</th><th>Unidades</th><th>Facturado</th><th>Costo real</th><th>Margen</th><th>Margen %</th></tr></thead><tbody id="brand-rows"></tbody><tfoot id="brand-total"></tfoot></table></div></div>
+    <p id="brand-note" class="brand-note">La marca se identifica por el nombre de la referencia; el margen de remisión no reparte gastos generales.</p>
   </section>
 
   <section class="summary-grid">
@@ -212,6 +249,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.4"></script>
+<script src="utilidad-creditek-app.js?v=1.0.5"></script>
 </body>
 </html>

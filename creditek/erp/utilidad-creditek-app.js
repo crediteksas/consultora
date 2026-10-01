@@ -257,9 +257,41 @@
     document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Margen de remisiones" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
   }
 
+  function renderMarcasCelulares() {
+    const marcas = D.resumirCelularesPorMarca(estado.filtradas);
+    const totales = marcas.reduce((suma, marca) => ({
+      unidades: suma.unidades + marca.unidades,
+      facturado: suma.facturado + marca.facturado,
+      costo: suma.costo + marca.costo,
+      margen: suma.margen + marca.margen,
+    }), { unidades: 0, facturado: 0, costo: 0, margen: 0 });
+    const marcasIdentificadas = marcas.filter(marca => marca.marca !== 'Marca por revisar');
+    const lider = marcasIdentificadas[0];
+    document.getElementById('brand-unidades').textContent = intFmt.format(totales.unidades);
+    document.getElementById('brand-facturado').textContent = money(totales.facturado);
+    document.getElementById('brand-margen').textContent = money(totales.margen);
+    document.getElementById('brand-lider').textContent = lider ? `${lider.marca} · ${intFmt.format(lider.unidades)}` : '—';
+    const maximo = Math.max(1, ...marcas.map(marca => marca.unidades));
+    document.getElementById('brand-bars').innerHTML = marcas.length ? marcas.map(marca =>
+      `<div><div class="brand-bar-label"><span>${escapeHtml(marca.marca)}</span><span>${intFmt.format(marca.unidades)}</span></div><div class="brand-bar-track"><div class="brand-bar-fill" style="width:${(marca.unidades / maximo * 100).toFixed(1)}%"></div></div></div>`
+    ).join('') : '<p class="brand-note">No hay celulares despachados en este período.</p>';
+    document.getElementById('brand-bars').setAttribute('aria-label', marcas.map(marca => `${marca.marca}: ${marca.unidades} unidades`).join('; ') || 'Sin celulares despachados');
+    document.getElementById('brand-rows').innerHTML = marcas.length ? marcas.map(marca =>
+      `<tr><td>${escapeHtml(marca.marca)}</td><td>${intFmt.format(marca.unidades)}</td><td>${money(marca.facturado)}</td><td>${money(marca.costo)}</td><td>${money(marca.margen)}</td><td>${porcentaje(marca.margenPorcentaje)}</td></tr>`
+    ).join('') : '<tr><td colspan="6">Sin celulares despachados</td></tr>';
+    document.getElementById('brand-total').innerHTML = `<tr><td>Total celulares</td><td>${intFmt.format(totales.unidades)}</td><td>${money(totales.facturado)}</td><td>${money(totales.costo)}</td><td>${money(totales.margen)}</td><td>${porcentaje(totales.facturado ? totales.margen / totales.facturado : null)}</td></tr>`;
+    const pendientes = marcas.find(marca => marca.marca === 'Marca por revisar');
+    const nota = document.getElementById('brand-note');
+    nota.textContent = pendientes
+      ? `${intFmt.format(pendientes.unidades)} celular(es) sin marca inequívoca en el nombre; figuran en «Marca por revisar». La marca se infiere de la referencia y el margen no reparte gastos generales.`
+      : 'La marca se infiere del nombre de la referencia; el margen de remisión no reparte gastos generales.';
+    nota.classList.toggle('attention', !!pendientes);
+  }
+
   function renderTodo(base, rangoCmp) {
     const resumen = renderKpis(rangoCmp);
     renderChart(base);
+    renderMarcasCelulares();
     const porTienda = D.agruparDimension(estado.filtradas, 'tienda_codigo', 'tienda_nombre');
     const porReferencia = D.agruparDimension(estado.filtradas, 'referencia', 'referencia_nombre')
       .sort((a, b) => b.utilidad - a.utilidad);
@@ -310,6 +342,10 @@
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasExportacion(estado.filtradas)), 'Detalle');
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'tienda_codigo', 'tienda_nombre'))), 'Por tienda');
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(hojaDimension(D.agruparDimension(estado.filtradas, 'referencia', 'referencia_nombre'))), 'Por referencia');
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(D.resumirCelularesPorMarca(estado.filtradas).map(marca => ({
+      Marca: marca.marca, Unidades: marca.unidades, Facturado: marca.facturado,
+      'Costo real': marca.costo, 'Margen de remisión': marca.margen, 'Margen %': marca.margenPorcentaje,
+    }))), 'Celulares por marca');
     XLSX.writeFile(libro, `utilidad-creditek_${base.desde}_${base.hasta}.xlsx`);
   }
 

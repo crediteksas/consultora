@@ -18,6 +18,16 @@ try{
   window.picker=await KoraFinancialBeneficiary.mount(document.getElementById('picker'),sb);
  });
  const select=page.locator('#picker > select');
+ // Identification search reuses an existing person without requesting fields.
+ await page.locator('[data-person-search]').fill('12.345.678');
+ await page.locator('[data-person-search]').press('Tab');
+ assert.equal(await select.inputValue(),'0');assert.equal(await page.locator('[data-person]').count(),0);
+ assert.equal((await page.evaluate(()=>picker.resolve())).beneficiaryId,'saved');
+ await page.locator('[data-person-search]').fill('');await page.locator('[data-person-search]').press('Tab');
+ await select.selectOption('new');await page.locator('[data-person="document"]').fill('12345678');
+ await page.locator('[data-person="document"]').press('Tab');
+ assert.equal(await select.inputValue(),'0');assert.equal(await page.locator('[data-person]').count(),0);
+
  await select.selectOption('0');assert.equal(await page.locator('[data-person]').count(),0);
  const existing=await page.evaluate(()=>picker.resolve());assert.equal(existing.number,'0012345678');
  await select.selectOption('1');assert.equal(await page.locator('[data-person="document"]').inputValue(),'23456789');

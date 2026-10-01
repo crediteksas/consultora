@@ -61,7 +61,7 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   }));
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
   const cop = value => `$ ${Number(value).toLocaleString('es-CO')}`;
-  const context = {rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
+  const context = {dispatch:{consecutive:7,issued_by_name:'Prueba'},rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
   const html = new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));
   const table = html.match(/<table>[\s\S]*?<\/table>/)[0];
   for (const [i, row] of rows.entries()) {

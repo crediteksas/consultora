@@ -1156,12 +1156,12 @@
     return row?.support_path||row?.soporte_path;
   }
   function renderDispatchHistory(){
-    const slot=document.getElementById('paymentDispatchHistory');if(!slot)return;
+    const slot=$('#paymentDispatchHistory');if(!slot)return;
     slot.innerHTML=(data.dispatches||[]).map(d=>{
       const items=d.payment_dispatch_items||[],pending=items.filter(i=>!dispatchSupport(i));
       return `<article class="expense-movement-card"><div><strong>OP-${esc(String(d.consecutive).padStart(6,'0'))}</strong><span>${esc(bogotaDateTime(d.original_issued_at||d.created_at))}</span>${d.original_reference?`<span>Referencia anterior: ${esc(d.original_reference)}</span>`:''}<span>${items.length} pagos · ${cop(items.reduce((n,i)=>n+Number(i.snapshot.valor||0),0))}</span></div><div>${pending.length?`${pending.length} pendientes de soporte`:'Soportes completos'}<p>${esc(d.note||'Orden emitida; estos pagos no vuelven a ofrecerse en otra orden.')}</p></div><button class="btn secondary" data-open-dispatch="${esc(d.id)}">Consultar / descargar la misma orden</button><details><summary>Ver pagos y soportes</summary>${items.map(i=>`<p>${esc(i.snapshot.beneficiary_name)} · ${esc(i.snapshot.concept)} · ${cop(i.snapshot.valor)} · ${dispatchSupport(i)?'Soporte adjunto':i.reported_paid?'Girado · pendiente de soporte de Mayte':'Pendiente de soporte'}</p>`).join('')}</details></article>`;
     }).join('')||'<p>No hay órdenes emitidas guardadas.</p>';
-    slot.querySelectorAll('[data-open-dispatch]').forEach(button=>button.onclick=()=>{
+    document.querySelectorAll('#paymentDispatchHistory [data-open-dispatch]').forEach(button=>button.onclick=()=>{
       const d=data.dispatches.find(x=>x.id===button.dataset.openDispatch);
       if(d)renderPaymentReport(d.payment_dispatch_items.map(i=>i.snapshot),d);
     });

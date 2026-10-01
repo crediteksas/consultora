@@ -9,7 +9,7 @@ test('el shell instala informes Excel y PDF en todas las pantallas KORA', async 
     read('creditek/erp/sidebar.js'),
     read('creditek/erp/kora-report-export.js'),
   ]);
-  assert.match(shell, /kora-report-export\.js\?v=1\.2\.2/);
+  assert.match(shell, /kora-report-export\.js\?v=1\.2\.3/);
   assert.match(shell, /KoraReportExport\?\.mount/);
   assert.match(exporter, /data-format="xlsx"/);
   assert.match(exporter, /data-format="pdf"/);

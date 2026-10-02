@@ -10,12 +10,15 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     const source = fs.readFileSync('creditek/erp/presupuestos.html', 'utf8');
     const inline = [...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
     const html = source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
-    await page.route('**/*', route => route.request().resourceType() === 'document'
+    await page.route('**/*', route => route.request().url().endsWith('creditek-logo.png')
+      ? route.fulfill({ contentType: 'image/png', body: fs.readFileSync('creditek/shared/branding/creditek-logo.png') })
+      : route.request().resourceType() === 'document'
       ? route.fulfill({ contentType: 'text/html', body: html }) : route.abort());
     await page.goto('http://kora-local.test/creditek/erp/presupuestos.html');
     await page.evaluate(() => {
       const month = '2026-10';
       window.calls = [];
+      window.premios = [];
       window.__KORA_ENV__ = {};
       window.CreditekTiendasCanonicas = { cargar: async () => [
         { codigo: 'CK-01', nombre: 'Móvil Shopping' },
@@ -39,13 +42,18 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
             then(resolve) {
               return Promise.resolve({ data: table === 'perfiles'
                 ? [{ nombre: 'Ana Administradora', tienda_codigo: 'CK-01' },
-                  { nombre: 'Beatriz Administradora', tienda_codigo: 'CK-02' }] : saved, error: null }).then(resolve);
+                  { nombre: 'Beatriz Administradora', tienda_codigo: 'CK-02' }] : table === 'presupuesto_premios' ? window.premios : table === 'historico_mensual' ? [] : saved, error: null }).then(resolve);
             },
           };
           return query;
         },
         async rpc(name, params) {
           window.calls.push({ name, tienda: params.p_tienda });
+          if (name === 'guardar_presupuesto_premio') {
+            const data={tienda_codigo:params.p_tienda,mes:params.p_mes,activo:params.p_activo,estrategia:params.p_estrategia,premio_tres:params.p_premio_tres,premio_cuatro:params.p_premio_cuatro,revision:params.p_revision+1};
+            window.premios=[...window.premios.filter(p=>p.tienda_codigo!==data.tienda_codigo),data];
+            return {data,error:null};
+          }
           if (name === 'guardar_presupuesto_operativo_general')
             return { data: null, error: params.p_tienda === 'CK-02' ? { message: 'Fallo simulado' } : null };
           if (name !== 'proponer_presupuesto_operativo') throw Error('RPC inesperada.');
@@ -76,9 +84,22 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     await second.getByRole('heading', { name: 'Celfiao' }).waitFor();
     assert.match(await first.locator('body').innerText(), /Ana Administradora/);
     assert.match(await second.locator('body').innerText(), /Beatriz Administradora/);
-    assert.match(await first.locator('body').innerText(), /Detalle por día/);
+    assert.doesNotMatch(await first.locator('body').innerText(), /Detalle por día/);
     assert.doesNotMatch(await first.locator('body').innerText(), /Utilidad/);
-    assert.equal(await first.locator('tbody tr').count(), 32);
+    assert.equal(await first.locator('table').count(), 0);
+    const editor=page.locator('[data-carta-tienda="CK-01"]');
+    await editor.locator('summary').click();
+    await editor.locator('[name="activo"]').check();
+    await editor.locator('[name="estrategia"]').fill('Octubre ganador');
+    await editor.locator('[name="tres"]').fill('100000');
+    await editor.locator('[name="cuatro"]').fill('200000');
+    assert.doesNotMatch(await first.locator('body').innerText(),/Octubre ganador/);
+    await editor.getByRole('button',{name:'Guardar estrategia'}).click();
+    await first.getByRole('heading',{name:'Octubre ganador'}).waitFor();
+    assert.match(await first.locator('body').innerText(),/100.000/);
+    assert.doesNotMatch(await second.locator('body').innerText(),/Octubre ganador/);
+    await page.getByRole('button',{name:'Generar presupuestos',exact:true}).click();
+    await first.getByRole('heading',{name:'Octubre ganador'}).waitFor();
     assert.equal(page.context().pages().length, 1, 'Todas las cartas se ven sin abrir ventanas');
     await first.locator('body').evaluate(() => { window.print = () => { window.printRequested = true; }; });
     assert.equal(await first.locator('body').evaluate(() => !!window.printRequested), false);

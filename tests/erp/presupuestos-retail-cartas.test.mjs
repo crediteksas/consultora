@@ -51,12 +51,42 @@ test('premios se muestran solo guardados y activos, separados por nivel y con te
  assert.doesNotMatch(cartas.cartaHtml(c),/PREMIO POR CUMPLIMIENTO/);
  c.premio={activo:true,estrategia:'Octubre <especial>',premio_tres:100000,premio_cuatro:200000,revision:2};
  const html=cartas.cartaHtml(c);assert.match(html,/Octubre &lt;especial&gt;/);assert.match(html,/exactamente 3 de las 4/);assert.match(html,/Si cumples las 4/);assert.match(html,/no se suman/);assert.match(html,/100.000/);assert.match(html,/200.000/);
- const p=cartas.premioPayload(c,{activo:true,estrategia:'Octubre',tres:'100000',cuatro:'200000'});
- assert.equal(p.p_revision,2);assert.equal(p.p_tienda,'T');assert.equal(p.p_mes,'2026-10-01');
- for(const v of ['-1','NaN','0.001','1000000001'])assert.throws(()=>cartas.premioPayload(c,{activo:true,estrategia:'E',tres:v,cuatro:''}));
- assert.throws(()=>cartas.premioPayload(c,{activo:true,estrategia:'E',tres:'',cuatro:''}));
- assert.equal(cartas.premioPayload(c,{activo:false,estrategia:'E',tres:'',cuatro:''}).p_premio_tres,null);
+ const p=cartas.premioPayload(c.mes,c.premio,{activo:true,estrategia:'Octubre',tres:'100000',cuatro:'200000'});
+ assert.equal(p.p_revision,2);assert.equal(p.p_tienda,undefined);assert.equal(p.p_mes,'2026-10-01');
+ for(const v of ['-1','NaN','0.001','1000000001'])assert.throws(()=>cartas.premioPayload(c.mes,c.premio,{activo:true,estrategia:'E',tres:v,cuatro:''}));
+ assert.throws(()=>cartas.premioPayload(c.mes,c.premio,{activo:true,estrategia:'E',tres:'',cuatro:''}));
+ assert.equal(cartas.premioPayload(c.mes,c.premio,{activo:false,estrategia:'E',tres:'',cuatro:''}).p_premio_tres,null);
  c.accesoriosPendientes=true;assert.match(cartas.cartaHtml(c),/Pendiente de verificar/);assert.match(cartas.cartaHtml(c),/disabled title=/);
+});
+
+test('premio mensual: una configuración se conserva como borrador y Gerencia la activa para todas', async () => {
+ const {PGlite}=await import('@electric-sql/pglite');const {readFile}=await import('node:fs/promises');const db=await PGlite.create();
+ try {
+  await db.exec(`create role anon;create role authenticated;create schema auth;create schema presupuestos_control_private;
+  create table auth.users(id uuid primary key);insert into auth.users values('00000000-0000-4000-8000-000000000001');
+  create function auth.uid() returns uuid language sql as $$select '00000000-0000-4000-8000-000000000001'::uuid$$;
+  grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+  create function public.rol_actual() returns text language sql as $$select coalesce(current_setting('test.rol',true),'gerencia')$$;
+  create function public.es_central() returns boolean language sql as $$select public.rol_actual() in ('gerencia','auditoria')$$;
+  create table public.origenes(codigo text primary key,tipo text,activo boolean);
+  insert into origenes values('A','propia',true),('B','propia',true);`);
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261002201550_presupuesto_premios_por_cumplimiento.sql',import.meta.url),'utf8'));
+  await db.exec("insert into presupuesto_premios(tienda_codigo,mes,activo,estrategia,premio_tres,premio_cuatro,revision,actualizado_por) values('A','2026-10-01',false,'Premio guardado',300000,500000,1,'00000000-0000-4000-8000-000000000001')");
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261002205030_premio_mensual_retail.sql',import.meta.url),'utf8'));
+  await db.exec('set role authenticated');
+  const inicial=(await db.query("select * from presupuesto_premio_mensual where mes='2026-10-01'")).rows[0];
+  assert.equal(inicial.activo,false);assert.equal(inicial.premio_tres,'300000.00');assert.equal(inicial.revision,1);
+  const save=(revision=1,mes='2026-10-01')=>db.query("select guardar_presupuesto_premio_mensual($1,true,'Premio general',300000,500000,$2) r",[mes,revision]);
+  const guardado=(await save()).rows[0].r;assert.equal(guardado.activo,true);assert.equal(guardado.revision,2);
+  await assert.rejects(()=>save(),/otra sesión/);
+  await assert.rejects(()=>db.exec('update presupuesto_premio_mensual set premio_tres=1'),/permission denied/);
+  await db.exec("select set_config('test.rol','admin_tienda',false)");
+  await assert.rejects(()=>save(0,'2026-11-01'),/Solo Gerencia/);
+  assert.equal((await db.query('select count(*)::int n from presupuesto_premio_mensual')).rows[0].n,0);
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from presupuestos_control_private.premios_mensuales_historial')).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from presupuesto_premios')).rows[0].n,1,'ficha vieja se conserva sin alterarla');
+ } finally { await db.close(); }
 });
 
 test('premios: Gerencia guarda con auditoría, aislamiento y revisión; demás roles no escriben',async()=>{

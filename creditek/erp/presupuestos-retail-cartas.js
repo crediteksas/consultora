@@ -51,7 +51,8 @@
     };
   }
 
-  function premioPayload(carta, valores) {
+  function premioPayload(mes, premio, valores) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Selecciona un mes válido.');
     const importe = valor => {
       if (valor === '' || valor == null) return null;
       const n = Number(valor);
@@ -63,8 +64,8 @@
     if (!estrategia || estrategia.length > 120) throw new Error('Escribe un nombre de estrategia de hasta 120 caracteres.');
     const tres = importe(valores.tres), cuatro = importe(valores.cuatro);
     if (valores.activo && tres === null && cuatro === null) throw new Error('Ingresa al menos un premio para mostrar la estrategia.');
-    return { p_tienda: carta.tienda.codigo, p_mes: carta.mes + '-01', p_activo: !!valores.activo,
-      p_estrategia: estrategia, p_premio_tres: tres, p_premio_cuatro: cuatro, p_revision: carta.premio?.revision || 0 };
+    return { p_mes: mes + '-01', p_activo: !!valores.activo,
+      p_estrategia: estrategia, p_premio_tres: tres, p_premio_cuatro: cuatro, p_revision: premio?.revision || 0 };
   }
 
   function cartaHtml(carta) {

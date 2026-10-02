@@ -1330,21 +1330,30 @@
       ).values(),
     ];
     // Render inside KORA: installed apps and popup blockers must not hide the order.
-    document.getElementById('treasuryPaymentReportDialog')?.remove();
+    const previousReport = document.getElementById('treasuryPaymentReportDialog');
+    const previousTitle = previousReport?.dataset.pageTitle || document.title;
+    previousReport?.remove();
+    const printTitle = `Orden de pago ${reportId}`;
     const reportDialog = document.createElement('dialog');
     reportDialog.id = 'treasuryPaymentReportDialog';
+    reportDialog.dataset.pageTitle = previousTitle;
+    // Chromium uses the top-level title as the PDF filename when printing an iframe.
+    document.title = printTitle;
     reportDialog.setAttribute('aria-label', 'Orden de pagos autorizados');
     reportDialog.style.cssText = 'width:96vw;max-width:1500px;padding:16px;border:1px solid #cbd5e1;border-radius:12px';
     reportDialog.innerHTML = '<button type="button" class="btn secondary" data-close-report>Cerrar orden</button><p>Revisa el destino y utiliza «Imprimir / Guardar PDF» al final de la orden. Esta es una orden guardada. Reimprimirla conserva su consecutivo y no genera otra orden.</p><iframe title="Orden de pagos autorizados para imprimir" style="width:100%;height:75vh;border:0"></iframe>';
     document.body.appendChild(reportDialog);
     reportDialog.querySelector('[data-close-report]').onclick = () => reportDialog.close();
-    reportDialog.addEventListener('close', () => reportDialog.remove());
+    reportDialog.addEventListener('close', () => {
+      if (document.getElementById(reportDialog.id) === reportDialog) document.title = previousTitle;
+      reportDialog.remove();
+    });
     reportDialog.showModal();
     const report = reportDialog.querySelector('iframe').contentWindow;
     if (!report)
       return notice("No fue posible abrir la orden. Cierra la vista e intenta nuevamente.", true);
     report.document.write(
-      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(reportId)} · Orden de pagos Creditek</title><style>
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(printTitle)}</title><style>
 @page{size:A4 portrait;margin:10mm}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}

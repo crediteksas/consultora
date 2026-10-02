@@ -87,16 +87,12 @@
     const period=range?{start:range.desde,end:shiftDay(range.hasta,1)}:month;
     if(period.start>=period.end)throw Error('Rango inválido');
     if(period.start>day(now))throw Error('El período aún no tiene datos');
-    const today=[day(now),shiftDay(period.end,-1)].sort()[0];let rows=[],budget=null;
+    const today=[day(now),shiftDay(period.end,-1)].sort()[0];let rows=[];
     if(business==='retail'){
       if(today>=period.start){
         const retail=await retailData(sb,{start:period.start,end:today,store});
         if(!retail.generalAvailable)throw Error('No se puede mostrar el consolidado sin acceso a los gastos generales Retail');
         rows=retail.rows;
-      }
-      if(period.start===month.start&&period.end===month.end){
-        const budgets=await credits.allRows(sb,'presupuestos','id,meta_utilidad','id',q=>{q=q.gte('fecha',period.start).lt('fecha',period.end);return store?q.eq('tienda_codigo',store):q;});
-        if(budgets.length)budget=budgets.reduce((n,p)=>n+Number(p.meta_utilidad||0),0);
       }
     }else if(business==='b2b'){
       if(store)throw Error('La utilidad neta B2B solo está disponible para todo el negocio; los gastos generales no se reparten por tienda.');
@@ -111,7 +107,7 @@
       rows.push(...addi.map(o=>({date:o.fecha_venta,value:o.utilidad_creditek})));
       rows.push(...await authorizedExpenses(sb,'aliados',period.start,today));
     }
-    return {...series(rows,now,period),business,name:names[business],description:descriptions[business],budget};
+    return {...series(rows,now,period),business,name:names[business],description:descriptions[business]};
   }
   function chartConfig(result,{money,shortMoney,color}){
     return {type:'line',data:{labels:result.labels,datasets:[{label:`${result.name} · utilidad neta acumulada`,data:result.values,borderColor:color('--ctk-color-secondary-500'),backgroundColor:color('--ctk-color-secondary-50'),borderWidth:3,pointRadius:0,pointHoverRadius:4,tension:0,fill:'origin',spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>money(ctx.parsed.y)}}},scales:{x:{grid:{display:false},border:{display:false},title:{display:true,text:'Fecha'},ticks:{maxRotation:0,maxTicksLimit:8}},y:{beginAtZero:true,grace:'15%',grid:{color:color('--ctk-color-neutral-100')},border:{display:false},ticks:{callback:shortMoney,maxTicksLimit:6}}}}};

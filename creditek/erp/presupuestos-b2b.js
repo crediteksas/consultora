@@ -6,7 +6,7 @@
     const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit'}).formatToParts(now);
     return `${parts.find(p=>p.type==='year').value}-${parts.find(p=>p.type==='month').value}`;
   }
-  function validar({mes,ventas,utilidad,unidades,notas,revision}) {
+  function validar({mes,ventas,unidades,notas,revision}) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw Error('Selecciona un mes válido.');
     function entero(value, nombre, min, max) {
       if (String(value ?? '').trim()==='' || !Number.isSafeInteger(Number(value)) || Number(value)<min || Number(value)>max)
@@ -15,7 +15,6 @@
     }
     if (String(notas ?? '').length>1000) throw Error('La nota no debe superar 1.000 caracteres.');
     return {p_mes:`${mes}-01`,p_meta_ventas:entero(ventas,'Ventas',0,999999999999999),
-      p_meta_utilidad_neta:entero(utilidad,'Utilidad neta',-999999999999999,999999999999999),
       p_meta_unidades:String(unidades ?? '').trim()===''?null:entero(unidades,'Unidades',0,2147483647),
       p_notas:String(notas ?? '').trim(),p_revision:entero(revision,'Revisión',0,2147483646)};
   }
@@ -32,9 +31,8 @@
       <p id="b2bEstado" role="status" aria-live="polite">Consultando…</p><div id="b2bResumen" class="resultado"></div>
       <form id="b2bForm"><fieldset id="b2bCampos" style="border:0;padding:0" disabled>
       <div class="form-inline"><label class="campo">Meta de ventas (COP)<input id="b2bVentas" type="number" min="0" max="999999999999999" step="1" required></label>
-      <label class="campo">Meta de utilidad neta (COP)<input id="b2bUtilidad" type="number" min="-999999999999999" max="999999999999999" step="1" required></label>
       <label class="campo">Meta de unidades (opcional)<input id="b2bUnidades" type="number" min="0" max="2147483647" step="1"></label></div>
-      <p class="sub">La meta de utilidad es después de costos, gastos, nómina y demás descuentos del negocio. Deja unidades vacío si no deseas programar esa meta.</p>
+      <p class="sub">La utilidad neta se consulta como resultado real en el Dashboard B2B; no se presupuesta. Deja unidades vacío si no deseas programar esa meta.</p>
       <label class="campo">Notas de la programación<textarea id="b2bNotas" maxlength="1000"></textarea></label>
       <button class="btn-primary" type="submit" id="b2bGuardar"${editable?'':' hidden'}>Guardar presupuesto B2B</button>
       </fieldset></form>${editable?'':'<p class="sub">Solo Gerencia puede guardar las metas. Auditoría puede consultarlas.</p>'}</div>`;
@@ -47,10 +45,9 @@
     }
     function pintar(data) {
       actual=data;dirty=false;
-      $('b2bVentas').value=data?.meta_ventas??'';$('b2bUtilidad').value=data?.meta_utilidad_neta??'';
+      $('b2bVentas').value=data?.meta_ventas??'';
       $('b2bUnidades').value=data?.meta_unidades??'';$('b2bNotas').value=data?.notas??'';
       $('b2bResumen').innerHTML=data?`<p>Ventas<strong>${esc(money(data.meta_ventas))}</strong></p>
-        <p>Utilidad neta<strong>${esc(money(data.meta_utilidad_neta))}</strong></p>
         <p>Unidades<strong>${data.meta_unidades===null?'Sin programar':esc(data.meta_unidades)}</strong></p>`:'';
     }
     async function cargar() {
@@ -59,7 +56,7 @@
       if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)){estado('Selecciona un mes válido.',true);return;}
       estado('Consultando presupuesto B2B…');
       try{
-        const {data,error}=await sb.from('b2b_presupuestos').select('mes,meta_ventas,meta_utilidad_neta,meta_unidades,notas,revision,actualizado_at').eq('mes',`${mes}-01`).maybeSingle();
+        const {data,error}=await sb.from('b2b_presupuestos').select('mes,meta_ventas,meta_unidades,notas,revision,actualizado_at').eq('mes',`${mes}-01`).maybeSingle();
         if(turno!==secuencia)return;
         if(error)throw error;
         pintar(data);mesConsultado=mes;disponible=true;controles();
@@ -75,13 +72,13 @@
     $('b2bForm').onsubmit=async event=>{
       event.preventDefault();if(!editable||!disponible||busy)return;
       let payload;
-      try{payload=validar({mes:mesConsultado,ventas:$('b2bVentas').value,utilidad:$('b2bUtilidad').value,
+      try{payload=validar({mes:mesConsultado,ventas:$('b2bVentas').value,
         unidades:$('b2bUnidades').value,notas:$('b2bNotas').value,revision:actual?.revision??0});}
       catch(error){estado(error.message,true);return;}
-      if(!global.confirm(`¿Guardar presupuesto B2B de ${mesConsultado}?\nVentas: ${money(payload.p_meta_ventas)}\nUtilidad neta: ${money(payload.p_meta_utilidad_neta)}\nNo modifica saldos ni otros negocios.`))return;
+      if(!global.confirm(`¿Guardar presupuesto B2B de ${mesConsultado}?\nVentas: ${money(payload.p_meta_ventas)}\nNo modifica saldos ni otros negocios.`))return;
       busy=true;controles();estado('Guardando metas B2B…');
       try{
-        const {data,error}=await sb.rpc('guardar_presupuesto_b2b',payload);
+        const {data,error}=await sb.rpc('guardar_presupuesto_b2b_operativo',payload);
         if(error)throw error;
         if(!data||data.mes!==payload.p_mes)throw Error('No se recibió confirmación del presupuesto. Actualiza para verificar.');
         pintar(data);estado(`Presupuesto B2B guardado para ${mesConsultado} · revisión ${data.revision}.`);

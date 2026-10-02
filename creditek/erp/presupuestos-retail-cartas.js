@@ -10,7 +10,6 @@
     ['meta_creditos', 'Créditos', false],
     ['meta_uds_cel', 'Celulares de contado', false],
     ['meta_uds_acc', 'Accesorios', false],
-    ['meta_utilidad', 'Utilidad', true],
   ];
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

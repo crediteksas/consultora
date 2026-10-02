@@ -22,7 +22,7 @@ function database(tables){
 }
 test('Retail muestra margen menos gastos aprobados en el día del cargue; excluye rechazados y otras tiendas',async()=>{
  const sb=database({ventas:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',anulada:false},{id:2,fecha:'2026-09-01',tienda_codigo:'otra',anulada:false},{id:3,fecha:'2026-09-02',tienda_codigo:'t',anulada:true}],venta_items_lectura:[{id:1,venta_id:1,utilidad:100},{id:2,venta_id:2,utilidad:500},{id:3,venta_id:3,utilidad:1000}],gastos:[{id:1,fecha:'2026-08-31',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'t',monto:40,estado:'aprobado'},{id:2,fecha:'2026-09-01',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'t',monto:70,estado:'rechazado'},{id:3,fecha:'2026-09-01',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'otra',monto:30,estado:'aprobado'}],presupuestos:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',meta_utilidad:134500782}]});
- const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,60);assert.equal(result.budget,134500782);assert.equal(sb.calls.includes('liquidation_operations'),false);
+ const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,60);assert.equal(result.budget,undefined);assert.equal(sb.calls.includes('presupuestos'),false);assert.equal(sb.calls.includes('liquidation_operations'),false);
  const detail=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16',store:'t'});assert.equal(detail.expenses.length,1);assert.equal(detail.itemRows.length,1);
 });
 test('Retail pagina todos los artículos, incluso después de mil, y respeta el rango seleccionado',async()=>{
@@ -101,13 +101,13 @@ test('la fila total del tablero resta generales sin alterar la utilidad individu
 test('B2B usa RPC existente, pagina más de 500 filas y descuenta gastos autorizados una vez',async()=>{
  let calls=0;const sb=database({financial_entries:[{id:1,entry_type:'gasto',scope:'business_general',business_unit:'b2b',status:'pagado',amount:100,approved_at:'2026-09-14T15:00:00Z',paid_at:'2026-09-15T15:00:00Z'},{id:2,entry_type:'retiro_utilidad',scope:'business_general',business_unit:'b2b',status:'pagado',amount:500,approved_at:'2026-09-14T15:00:00Z'}]});
  sb.rpc=(name,params)=>name==='es_controlador_financiero'?Promise.resolve({data:true,error:null}):{order(){assert.equal(name,'consultar_utilidad_creditek_rango');assert.equal(params.p_hasta,'2026-09-16');return this},range:async(a)=>{calls++;return {data:Array.from({length:a===0?500:2},(_,i)=>({fecha:'2026-09-01',tienda_codigo:i?'t':'otra',utilidad:10}))}}};
- const result=await domain.load(sb,'b2b',{now});assert.equal(calls,2);assert.equal(result.total,4920);assert.equal(result.budget,null);
+ const result=await domain.load(sb,'b2b',{now});assert.equal(calls,2);assert.equal(result.total,4920);assert.equal(result.budget,undefined);
  await assert.rejects(domain.load(sb,'b2b',{now,store:'t'}),/no se reparten por tienda/);
 });
 test('Aliados suma terceros y tiendas propias sin doble operación ni filtro Retail',async()=>{
  const op={id:'a',external_id:'a',plataforma:'payjoy',operation_at:'2026-09-01',tipo_establecimiento:'aliado',utilidad_creditek:100};
  const result=await domain.load(database({}),'aliados',{now,store:'tienda-retail',creditData:{operations:[op,{...op,id:'copy'},{...op,id:'retail',external_id:'b',tipo_establecimiento:'propia',utilidad_creditek:999},{...op,id:'pending',external_id:'c',utilidad_creditek:null}],reversions:[]}});
- assert.equal(result.total,1099);assert.equal(result.missing,1);assert.equal(result.budget,null);
+ assert.equal(result.total,1099);assert.equal(result.missing,1);assert.equal(result.budget,undefined);
  assert.match(result.description,/tiendas propias y terceros/);
 });
 test('Aliados conserva utilidades de los tres motores y solo acumula ventas del mes hasta hoy',async()=>{

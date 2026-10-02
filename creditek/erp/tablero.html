@@ -227,7 +227,6 @@
         <p class="dashboard-profit-total" id="utilidadTotal" aria-live="polite">Consultando…</p>
         <p class="dashboard-profit-context" id="utilidadContexto"></p>
         <div class="grafico-box"><canvas id="chartUtilidad" role="img"></canvas></div>
-        <p class="dashboard-profit-context" id="utilidadPresupuesto"></p>
       </div>
     </article>
   </section>
@@ -712,7 +711,6 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
   const canvas = document.getElementById('chartUtilidad');
   const total = document.getElementById('utilidadTotal');
   const context = document.getElementById('utilidadContexto');
-  const budget = document.getElementById('utilidadPresupuesto');
   document.querySelectorAll('[data-utilidad-negocio]').forEach(button => {
     const selected = button.dataset.utilidadNegocio === business;
     button.setAttribute('aria-selected',String(selected));
@@ -721,14 +719,13 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
   document.getElementById('utilidadPanel').setAttribute('aria-labelledby','utilidadTab-'+business);
   document.getElementById('utilidadTitulo').textContent = 'Utilidad neta acumulada · '+names[business];
   if(chartUtilidadObj){chartUtilidadObj.destroy();chartUtilidadObj=null;}
-  canvas.hidden=true;total.textContent='Consultando…';context.textContent='';budget.textContent='';
+  canvas.hidden=true;total.textContent='Consultando…';context.textContent='';
   try {
     const result = await CreditekTableroUtilidad.load(sb,business,{store:tiendaFiltro,range:rangoSeleccionado(),creditData:business==='aliados'?obtenerCreditosLiquidaciones():undefined});
     if(request!==utilidadConsulta)return;
     total.textContent = fmtCOP(result.total)+(result.missing?' · parcial':'');
     const scope = business==='aliados' ? 'Ambos canales · todas las tiendas y terceros' : tiendaFiltro ? nombreTienda(tiendaFiltro) : 'Todas las tiendas';
     context.textContent = result.description+' '+scope+' · '+result.period.start+' a '+result.today+'. Escala automática.'+(result.missing?' '+result.missing+' registro(s) sin utilidad calculada.':'');
-    budget.textContent = result.budget===null ? '' : 'Presupuesto mensual Retail: '+fmtCOP(result.budget)+' · referencia; no modifica la escala.';
     canvas.hidden=false;
     canvas.setAttribute('aria-label',names[business]+': utilidad neta acumulada '+fmtCOP(result.total)+', del '+result.period.start+' al '+result.today+(result.missing?', cálculo parcial':''));
     chartUtilidadObj=new Chart(canvas,CreditekTableroUtilidad.chartConfig(result,{money:fmtCOP,shortMoney:fmtCorto,color:tokenColor}));

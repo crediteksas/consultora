@@ -109,7 +109,7 @@ td.dia-celda:hover { background: rgba(0,196,204,0.08); }
 td.finde { background: rgba(11,30,61,0.02); }
 td.manual { color: var(--turquesa); font-weight: 700; }
 .celda-input { width: 42px; text-align: center; border: 1px solid var(--turquesa); border-radius: 6px; padding: 3px; font-size: 12.5px; font-family: inherit; }
-.porcentajes-grid { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:10px; width:100%; margin-top:10px; }
+.porcentajes-grid { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:10px; width:100%; margin-top:10px; }
 .porcentajes-grid input { width:100%; }
 @media (max-width:900px) { .porcentajes-grid { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
 @media (max-width:520px) { .porcentajes-grid { grid-template-columns:1fr; } }
@@ -193,7 +193,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
       <div class="campo"><label>Mes</label><input type="month" id="genMes"></div>
       <button class="btn-primary" id="btnGenerar">Calcular propuesta</button>
       <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar indicador actual</button>
-      <button class="btn-primary" id="btnAprobarTodo">Aprobar los 5 indicadores</button>
+      <button class="btn-primary" id="btnAprobarTodo">Aprobar los 4 indicadores</button>
       <button class="btn-secundario" id="btnGenerarCartas">Generar presupuestos</button>
       <button class="btn-secundario" id="btnCancelarPropuesta" style="display:none;">Descartar</button>
       <button class="btn-secundario" id="btnImportarHistorico">Importar histórico (CSV)</button>
@@ -204,7 +204,6 @@ td.manual { color: var(--turquesa); font-weight: 700; }
       <div class="campo"><label>Créditos</label><input class="pct-metrica" data-metrica="meta_creditos" type="number" value="0" min="0" max="1000" step="1"></div>
       <div class="campo"><label>Celulares contado</label><input class="pct-metrica" data-metrica="meta_uds_cel" type="number" value="0" min="0" max="1000" step="1"></div>
       <div class="campo"><label>Accesorios</label><input class="pct-metrica" data-metrica="meta_uds_acc" type="number" value="0" min="0" max="1000" step="1"></div>
-      <div class="campo"><label>Utilidad</label><input class="pct-metrica" data-metrica="meta_utilidad" type="number" value="0" min="0" max="1000" step="1"></div>
     </div>
     <small id="genPctAyuda">Cada indicador conserva su propio porcentaje. 100% significa duplicar el resultado anterior.</small>
     <div class="modal-err" id="genErr"></div>
@@ -222,7 +221,6 @@ td.manual { color: var(--turquesa); font-weight: 700; }
     <button class="activo" id="tabCreditos" data-metrica="meta_creditos">Créditos</button>
     <button id="tabCelulares" data-metrica="meta_uds_cel">Celulares (contado)</button>
     <button id="tabAccesorios" data-metrica="meta_uds_acc">Accesorios</button>
-    <button id="tabUtilidad" data-metrica="meta_utilidad">Utilidad</button>
   </div>
 
   <div class="form-inline" style="margin-bottom:12px;">
@@ -431,7 +429,7 @@ async function generarPresupuesto() {
   let filas = [];
   try {
     const resultados = await Promise.all(tiendas.map(async tienda => {
-      const { data, error } = await sb.rpc('proponer_presupuesto_manual', {
+      const { data, error } = await sb.rpc('proponer_presupuesto_operativo', {
         p_tienda: tienda.codigo, p_mes: mesStr + '-01', p_metrica: metricaActual, p_pct_crecimiento: pct
       });
       if (error) throw new Error(`${tienda.nombre}: ${error.message}`);
@@ -466,7 +464,7 @@ function aplicarPropuestaEnVista() {
   propuestaActual.filas.forEach(f => {
     let reg = presupuestoCache.find(p => p.tienda_codigo === f.tienda_codigo && p.fecha === f.fecha);
     if (!reg) {
-      reg = { tienda_codigo: f.tienda_codigo, fecha: f.fecha, meta_creditos: 0, meta_uds_cel: 0, meta_uds_acc: 0, meta_utilidad: 0, meta_venta_total: 0 };
+      reg = { tienda_codigo: f.tienda_codigo, fecha: f.fecha, meta_creditos: 0, meta_uds_cel: 0, meta_uds_acc: 0, meta_venta_total: 0 };
       presupuestoCache.push(reg);
     }
     reg[propuestaActual.metrica] = Number(f.meta_propuesta || 0);
@@ -486,19 +484,18 @@ async function guardarTodosLosIndicadores() {
   if (!mesStr) { err.textContent = 'Selecciona un mes.'; err.classList.add('show'); return; }
   if (!porcentajesValidos()) { err.textContent = 'Todos los porcentajes deben estar entre 0% y 1000%.'; err.classList.add('show'); return; }
   if (currentPerfil.rol !== 'gerencia') { err.textContent = 'Solo Gerencia puede aprobar presupuestos.'; err.classList.add('show'); return; }
-  if (tiendas.length > 1 && !confirm(`¿Aprobar los cinco indicadores para ${tiendas.length} tiendas? Cada tienda se guarda por separado.`)) return;
+  if (tiendas.length > 1 && !confirm(`¿Aprobar los cuatro indicadores para ${tiendas.length} tiendas? Cada tienda se guarda por separado.`)) return;
   const btn = document.getElementById('btnAprobarTodo');
-  btn.disabled = true; btn.textContent = 'Guardando los 5...';
+  btn.disabled = true; btn.textContent = 'Guardando los 4...';
   const aprobadas = [], fallidas = [];
   for (const tienda of tiendas) {
     try {
-      const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
+      const { error } = await sb.rpc('guardar_presupuesto_operativo_general', {
         p_tienda: tienda.codigo, p_mes: mesStr + '-01',
         p_pct_ventas: leerPorcentaje('meta_venta_total'),
         p_pct_creditos: leerPorcentaje('meta_creditos'),
         p_pct_celulares: leerPorcentaje('meta_uds_cel'),
-        p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
-        p_pct_utilidad: leerPorcentaje('meta_utilidad')
+        p_pct_accesorios: leerPorcentaje('meta_uds_acc')
       });
       if (error) throw error;
       aprobadas.push(tienda.nombre);
@@ -506,7 +503,7 @@ async function guardarTodosLosIndicadores() {
       fallidas.push(`${tienda.nombre}: ${ex.message || 'sin confirmación del guardado'}`);
     }
   }
-  btn.disabled = false; btn.textContent = 'Aprobar los 5 indicadores';
+  btn.disabled = false; btn.textContent = 'Aprobar los 4 indicadores';
   propuestaActual = null;
   document.getElementById('btnAprobarPropuesta').style.display = 'none';
   document.getElementById('btnCancelarPropuesta').style.display = 'none';
@@ -514,7 +511,7 @@ async function guardarTodosLosIndicadores() {
   if (fallidas.length) {
     err.textContent = `Se aprobaron ${aprobadas.length} tienda(s). No se aprobaron ${fallidas.length}: ${fallidas.join('; ')}. Revisa antes de volver a intentar.`;
     err.classList.add('show');
-  } else mostrarBanner(`Los cinco indicadores quedaron aprobados para ${aprobadas.length} tienda(s).`);
+  } else mostrarBanner(`Los cuatro indicadores quedaron aprobados para ${aprobadas.length} tienda(s).`);
 }
 
 async function guardarPropuesta() {
@@ -527,7 +524,7 @@ async function guardarPropuesta() {
   const aprobadas = [], fallidas = [];
   for (const tienda of tiendas) {
     try {
-      const { error } = await sb.rpc('guardar_presupuesto_manual', {
+      const { error } = await sb.rpc('guardar_presupuesto_operativo', {
         p_tienda: tienda.codigo, p_mes: propuestaActual.mesStr + '-01',
         p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
       });
@@ -579,7 +576,7 @@ async function generarCartasPresupuesto() {
     const filas = [];
     for (let inicio = 0; ; inicio += 1000) {
       const { data, error } = await sb.from('presupuestos')
-        .select('tienda_codigo,fecha,meta_venta_total,meta_creditos,meta_uds_cel,meta_uds_acc,meta_utilidad')
+        .select('tienda_codigo,fecha,meta_venta_total,meta_creditos,meta_uds_cel,meta_uds_acc')
         .gte('fecha', mes + '-01').lt('fecha', fin).range(inicio, inicio + 999);
       if (error) throw error;
       filas.push(...(data || []));
@@ -602,7 +599,6 @@ async function generarCartasPresupuesto() {
         <dt>Créditos</dt><dd>${c.totales.meta_creditos}</dd>
         <dt>Celulares contado</dt><dd>${c.totales.meta_uds_cel}</dd>
         <dt>Accesorios</dt><dd>${c.totales.meta_uds_acc}</dd>
-        <dt>Utilidad</dt><dd>${fmtCOP(c.totales.meta_utilidad)}</dd>
       </dl>
       ${c.completo
         ? `<button type="button" class="btn-secundario" data-abrir-carta="${escapeHtml(c.tienda.codigo)}">Abrir carta / guardar PDF</button>`
@@ -728,7 +724,6 @@ function renderTabla() {
   const indicadores = [
     ['meta_venta_total', 'Ventas', true], ['meta_creditos', 'Créditos', false],
     ['meta_uds_cel', 'Celulares (contado)', false], ['meta_uds_acc', 'Accesorios', false],
-    ['meta_utilidad', 'Utilidad neta', true],
   ];
   const totales = Object.fromEntries(indicadores.map(([campo]) => [campo, 0]));
   const totalesDia = Array(dias).fill(0);
@@ -746,11 +741,11 @@ function renderTabla() {
       indicadores.forEach(([campo]) => { totales[campo] += Number(reg?.[campo] || 0); });
       const esFinde = new Date(y, m - 1, d).getDay() === 0;
       const esManual = reg && reg.generado_desde === 'manual';
-      const esDinero = metricaActual === 'meta_utilidad' || metricaActual === 'meta_venta_total';
+      const esDinero = metricaActual === 'meta_venta_total';
       const mostrar = esDinero ? fmtCOP(val).replace('$', '').replace(/\s/g, '') : val;
       fila += `<td class="dia-celda ${esFinde ? 'finde' : ''} ${esManual ? 'manual' : ''}" data-tienda="${t.codigo}" data-fecha="${fechaStr}" data-nombre="${escapeHtml(t.nombre)}" title="${esManual ? 'Editado manualmente' : 'Generado automáticamente'}">${mostrar}</td>`;
     }
-    const totalMostrar = (metricaActual === 'meta_utilidad' || metricaActual === 'meta_venta_total') ? fmtCOP(total) : total;
+    const totalMostrar = metricaActual === 'meta_venta_total' ? fmtCOP(total) : total;
     fila += `<td class="total-mes">${totalMostrar}</td>`;
     return `<tr>${fila}</tr>`;
   }).join('');
@@ -775,7 +770,7 @@ function renderTabla() {
 
 function abrirModalCelda(td) {
   celdaEnEdicion = { tienda: td.dataset.tienda, fecha: td.dataset.fecha, nombre: td.dataset.nombre };
-  const labels = { meta_venta_total: 'Meta de ventas', meta_creditos: 'Meta de créditos', meta_uds_cel: 'Meta de celulares (contado)', meta_uds_acc: 'Meta de accesorios', meta_utilidad: 'Meta de utilidad' };
+  const labels = { meta_venta_total: 'Meta de ventas', meta_creditos: 'Meta de créditos', meta_uds_cel: 'Meta de celulares (contado)', meta_uds_acc: 'Meta de accesorios' };
   document.getElementById('celdaLabel').textContent = labels[metricaActual];
   document.getElementById('celdaContexto').textContent = `${celdaEnEdicion.nombre} · ${new Date(celdaEnEdicion.fecha + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}`;
   const reg = presupuestoCache.find(p => p.tienda_codigo === celdaEnEdicion.tienda && p.fecha === celdaEnEdicion.fecha);
@@ -798,7 +793,6 @@ async function guardarCelda() {
     meta_creditos: reg ? reg.meta_creditos : 0,
     meta_uds_cel: reg ? reg.meta_uds_cel : 0,
     meta_uds_acc: reg ? reg.meta_uds_acc : 0,
-    meta_utilidad: reg ? reg.meta_utilidad : 0,
     meta_venta_total: reg ? reg.meta_venta_total : 0,
     generado_desde: 'manual',
   };

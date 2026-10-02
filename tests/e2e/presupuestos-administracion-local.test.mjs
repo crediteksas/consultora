@@ -29,10 +29,10 @@ async function fixture(browser, {role='gerencia',width=1100,error=null}={}) {
         }};
       },
       async rpc(name,p){
-        if(name!=='guardar_presupuesto_b2b')throw Error('No se permite otra escritura');
+        if(name!=='guardar_presupuesto_b2b_operativo')throw Error('No se permite otra escritura');
         window.saved.push({name,...p});
         if(window.writeError)return {data:null,error:{message:window.writeError}};
-        const data={mes:p.p_mes,meta_ventas:p.p_meta_ventas,meta_utilidad_neta:p.p_meta_utilidad_neta,
+        const data={mes:p.p_mes,meta_ventas:p.p_meta_ventas,
           meta_unidades:p.p_meta_unidades,notas:p.p_notas,revision:p.p_revision+1};
         window.goals[data.mes]=data;return {data,error:null};
       }
@@ -56,13 +56,12 @@ test('presupuestos: navegación unificada, metas B2B separadas y sin movimientos
     assert.match(await page.locator('#b2bEstado').innerText(),/No hay presupuesto/);
     const month=await page.locator('#b2bMes').inputValue();
     await page.locator('#b2bVentas').fill('85000000');
-    await page.locator('#b2bUtilidad').fill('12000000');
     await page.locator('#b2bNotas').fill('Meta mensual de prueba local');
     await page.getByRole('button',{name:'Guardar presupuesto B2B'}).click();
     await page.waitForFunction(()=>document.querySelector('#b2bEstado').textContent.includes('guardado para'));
     const calls=await page.evaluate(()=>window.saved);
-    assert.deepEqual(calls,[{name:'guardar_presupuesto_b2b',p_mes:month+'-01',p_meta_ventas:85000000,
-      p_meta_utilidad_neta:12000000,p_meta_unidades:null,p_notas:'Meta mensual de prueba local',p_revision:0}]);
+    assert.deepEqual(calls,[{name:'guardar_presupuesto_b2b_operativo',p_mes:month+'-01',p_meta_ventas:85000000,
+      p_meta_unidades:null,p_notas:'Meta mensual de prueba local',p_revision:0}]);
     assert.match(await page.locator('#b2bResumen').innerText(),/85\.000\.000/);
     await page.locator('#b2bMes').fill('2027-01');
     await page.locator('#b2bMes').dispatchEvent('change');
@@ -96,7 +95,7 @@ test('presupuestos: Auditoría solo consulta; errores y conflictos nunca se mues
     await page.evaluate(()=>{window.readError=null;});
     await page.locator('#b2bActualizar').click();
     await page.waitForFunction(()=>!document.querySelector('#b2bCampos').disabled);
-    await page.locator('#b2bVentas').fill('80000000');await page.locator('#b2bUtilidad').fill('9000000');
+    await page.locator('#b2bVentas').fill('80000000');
     await page.evaluate(()=>{window.writeError='El presupuesto cambió desde que lo consultaste. Actualiza antes de guardar';});
     await page.locator('#b2bGuardar').click();
     await page.waitForFunction(()=>document.querySelector('#b2bEstado').textContent.includes('No se confirmó el guardado'));

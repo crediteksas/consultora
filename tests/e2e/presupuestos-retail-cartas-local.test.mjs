@@ -46,9 +46,9 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
         },
         async rpc(name, params) {
           window.calls.push({ name, tienda: params.p_tienda });
-          if (name === 'guardar_presupuesto_manual_general')
+          if (name === 'guardar_presupuesto_operativo_general')
             return { data: null, error: params.p_tienda === 'CK-02' ? { message: 'Fallo simulado' } : null };
-          if (name !== 'proponer_presupuesto_manual') throw Error('RPC inesperada.');
+          if (name !== 'proponer_presupuesto_operativo') throw Error('RPC inesperada.');
           return { data: Array.from({ length: 31 }, (_, i) => ({
             fecha: month + '-' + String(i + 1).padStart(2, '0'),
             meta_propuesta: 2, fuente: 'histórico local',
@@ -72,6 +72,7 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     assert.match(await page.locator('.carta-preview').first().innerText(), /Ana Administradora/);
     assert.match(await page.locator('.carta-preview').first().innerText(), /31 de 31 días registrados/);
     assert.match(await page.locator('.carta-preview').first().innerText(), /Créditos\s+31/);
+    assert.doesNotMatch(await page.locator('.carta-preview').first().innerText(), /Utilidad/);
     await page.locator('#cartasPresupuesto').screenshot({ path: '/tmp/kora-presupuesto-cartas.png' });
     const popupPromise = page.waitForEvent('popup');
     await page.locator('[data-abrir-carta="CK-01"]').click();
@@ -79,11 +80,12 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     await popup.getByRole('heading', { name: 'Móvil Shopping' }).waitFor();
     assert.match(await popup.locator('body').innerText(), /Detalle por día/);
     assert.match(await popup.locator('body').innerText(), /Ana Administradora/);
+    assert.doesNotMatch(await popup.locator('body').innerText(), /Utilidad/);
     await popup.close();
     page.on('dialog', dialog => dialog.accept());
-    await page.getByRole('button', { name: 'Aprobar los 5 indicadores' }).click();
+    await page.getByRole('button', { name: 'Aprobar los 4 indicadores' }).click();
     await page.getByText(/Se aprobaron 1 tienda\(s\).*Fallo simulado/).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Aprobar los 5 indicadores' }).isEnabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Aprobar los 4 indicadores' }).isEnabled(), true);
   } finally {
     await browser.close();
   }

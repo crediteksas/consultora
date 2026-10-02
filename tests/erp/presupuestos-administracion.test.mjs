@@ -20,17 +20,17 @@ test('presupuestos: tres negocios comparten acceso sin ampliar permisos',()=>{
 test('presupuestos: las rutas anteriores conservan formularios y fuentes independientes',async()=>{
   const [retail,aliados,shell]=await Promise.all(['creditek/erp/presupuestos.html','creditek/erp/aliados-presupuesto.html','creditek/erp/sidebar.js'].map(read));
   for(const html of [retail,aliados])assert.match(html,/data-presupuestos-negocios/);
-  assert.match(retail,/guardar_presupuesto_manual/);
+  assert.match(retail,/guardar_presupuesto_operativo/);
   assert.match(retail,/KoraPresupuestoB2B\.montar/);
   assert.match(aliados,/data-aliados-view="budget"/);
   assert.match(shell,/paginaActual\(\) === 'aliados-presupuesto.html' \? 'presupuestos.html'/);
   assert.doesNotMatch(retail+aliados,/<iframe/i);
 });
-test('B2B: valida pesos completos, utilidad neta, unidades opcionales y mes Colombia',()=>{
-  const base={mes:'2026-10',ventas:'1000000',utilidad:'120000',unidades:'',notas:'Meta octubre',revision:0};
-  const p=b2b.validar(base);assert.equal(p.p_meta_ventas,1000000);assert.equal(p.p_meta_unidades,null);assert.equal(p.p_meta_utilidad_neta,120000);
-  for(const patch of [{ventas:''},{ventas:-1},{ventas:'NaN'},{ventas:1.2},{utilidad:''},{unidades:1.2},{mes:'2026-13'},{revision:-1}])
+test('B2B: valida ventas y unidades sin presupuestar utilidad',()=>{
+  const base={mes:'2026-10',ventas:'1000000',unidades:'',notas:'Meta octubre',revision:0};
+  const p=b2b.validar(base);assert.equal(p.p_meta_ventas,1000000);assert.equal(p.p_meta_unidades,null);assert.equal(p.p_meta_utilidad_neta,undefined);
+  for(const patch of [{ventas:''},{ventas:-1},{ventas:'NaN'},{ventas:1.2},{unidades:1.2},{mes:'2026-13'},{revision:-1}])
     assert.throws(()=>b2b.validar({...base,...patch}));
-  assert.equal(b2b.validar({...base,utilidad:-100,unidades:0}).p_meta_utilidad_neta,-100);
+  assert.equal(b2b.validar({...base,unidades:0}).p_meta_unidades,0);
   assert.equal(b2b.mesActual(new Date('2026-11-01T03:00:00Z')),'2026-10');
 });

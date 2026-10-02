@@ -11,7 +11,7 @@ test('selecciona una tienda o todas sin aceptar códigos inexistentes', () => {
   assert.throws(() => cartas.tiendasElegidas(tiendas, 'CK-99'));
 });
 
-test('la carta incluye cinco metas, cada día y el administrador sin mezclar tiendas', () => {
+test('la carta incluye cuatro metas operativas, cada día y el administrador sin mezclar tiendas', () => {
   const tienda = { codigo: 'CK-01', nombre: 'Móvil Shopping' };
   const filas = Array.from({ length: 31 }, (_, i) => ({
     tienda_codigo: 'CK-01', fecha: `2026-10-${String(i + 1).padStart(2, '0')}`,
@@ -27,11 +27,12 @@ test('la carta incluye cinco metas, cada día y el administrador sin mezclar tie
   assert.equal(resumen.totales.meta_creditos, 31);
   assert.equal(resumen.totales.meta_uds_cel, 62);
   assert.equal(resumen.totales.meta_uds_acc, 93);
-  assert.equal(resumen.totales.meta_utilidad, 3100);
+  assert.equal(resumen.totales.meta_utilidad, undefined);
   const html = cartas.cartaHtml(resumen);
   assert.match(html, /Ana &lt;Administradora&gt;/);
   assert.match(html, /Detalle por día/);
   assert.match(html, /Imprimir \/ guardar PDF/);
+  assert.doesNotMatch(html, /Utilidad/);
   assert.doesNotMatch(html, /999999/);
 });
 

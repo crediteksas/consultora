@@ -41,7 +41,7 @@ test('Presupuestos: Tienda y Total mes permanecen opacos al resaltar y desplazar
     assert.equal(await page.locator('[data-total-metrica="meta_uds_cel"]').innerText(),'1.860');
     assert.equal(await page.locator('[data-total-metrica="meta_uds_acc"]').innerText(),'2.480');
     assert.equal(await page.locator('[data-total-metrica="meta_creditos"]').innerText(),'1.240');
-    assert.match(await page.locator('[data-total-metrica="meta_utilidad"]').innerText(),/7\.653\.900/);
+    assert.equal(await page.locator('[data-total-metrica="meta_utilidad"]').count(),0);
     assert.ok(await page.locator('#totalesMes').isVisible());
     for(const fraction of [0,0.45,1]){
       await page.locator('.tabla-wrap').evaluate((el,f)=>{el.scrollLeft=(el.scrollWidth-el.clientWidth)*f;},fraction);
@@ -64,7 +64,7 @@ test('Presupuestos: Tienda y Total mes permanecen opacos al resaltar y desplazar
       await row.locator('.total-mes').hover();
       await page.screenshot({path:'/tmp/kora-presupuesto-columnas-fijas.png'});
     }
-    for(const metrica of ['meta_creditos','meta_uds_cel','meta_uds_acc','meta_utilidad']){
+    for(const metrica of ['meta_creditos','meta_uds_cel','meta_uds_acc']){
       await page.evaluate(m=>{window.metricaActual=m;renderTabla();},metrica);
       assert.equal(await page.locator('#tfootPresupuesto .total-mes').innerText(),await page.locator(`[data-total-metrica="${metrica}"]`).innerText());
     }

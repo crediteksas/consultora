@@ -118,6 +118,7 @@ const erp = [
   'tests/erp/krediya-bonos-plataforma.test.mjs',
   'tests/erp/autorizacion-unica-lote.test.mjs',
   'tests/erp/calculo-antes-tesoreria.test.mjs',
+  'tests/erp/tesoreria-sin-preparacion.test.mjs',
   'tests/erp/liquidaciones-comercios.test.mjs',
   'tests/erp/liquidaciones-eliminar-importacion.test.mjs',
   'tests/erp/caja-arrastre-retroactivos.test.mjs',

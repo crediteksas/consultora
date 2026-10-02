@@ -11,7 +11,21 @@
     if(incident.tipo==='bono_beneficiario_sin_cuenta')return {kind:'account',label:'Completar cuenta del bono',href:'aliados-tesoreria.html?vista=clientes'};
     return null;
   }
-  function create({sb,dialog,onRecalculate,onRetailSaved}){
+  const approvedRow=r=>['aprobada','programada'].includes(r.estado);
+  const missingData=r=>r.falta_comercio||r.falta_ejecutivo||r.falta_titular||r.falta_cuenta;
+  async function synchronizeApproved(sb,initial,lot) {
+    const candidates=initial.filter(r=>approvedRow(r)&&!missingData(r)&&r.requiere_recalcular);
+    for(const id of [...new Set(candidates.map(r=>r.liquidation_id))]) {
+      const result=await sb.rpc('tesoreria_completar_ordenes_aprobadas',{p_lote:id});
+      if(result.error)throw result.error;
+      if(result.data?.ok!==true)throw Error('No se confirmó la incorporación de pagos. Actualiza para verificar.');
+    }
+    let rows=initial;
+    if(candidates.length){const refreshed=await sb.rpc('tesoreria_pendientes_liquidacion',{p_lote:lot});if(refreshed.error)throw refreshed.error;rows=refreshed.data||[];}
+    if(rows.some(r=>approvedRow(r)&&!missingData(r)&&r.requiere_recalcular))throw Error('Hay una operación aprobada que no pudo incorporarse a pagos. Revisa el lote; las órdenes existentes se conservan.');
+    return rows.filter(r=>approvedRow(r)&&missingData(r));
+  }
+  function create({sb,dialog,onRecalculate,onRetailSaved,onSaved}){
     let container,rows=[],executives=[],revision=0;
     const route=new URLSearchParams(location.search),lot=route.get('lote')||null;
     async function saveExecutive(origin,previous,executive){
@@ -64,42 +78,35 @@
     }
     async function mount(node){
       container=node;const request=++revision;
-      container.innerHTML='<section class="card"><p role="status">Consultando preparación de pagos…</p></section>';
+      container.innerHTML='<section class="card"><p role="status">Comprobando datos de pagos…</p></section>';
       try{
         const [pending,execs]=await Promise.all([sb.rpc('tesoreria_pendientes_liquidacion',{p_lote:lot}),sb.from('ejecutivos').select('id,nombre').eq('activo',true).order('nombre')]);
         if(request!==revision)return;if(pending.error||execs.error)throw pending.error||execs.error;
-        rows=pending.data||[];executives=execs.data||[];
-        container.innerHTML='<section class="card"><h2>Preparación de pagos</h2><p>Completa ejecutivo y cuenta. Se actualizan los bonos pendientes sin cambiar el principal ni exigir otra aprobación del lote.</p><label>Buscar comercio, referencia, plataforma o corte<input class="control" type="search" data-search></label><p role="status" data-status></p><div data-rows></div></section>';
+        rows=await synchronizeApproved(sb,pending.data||[],lot);if(request!==revision)return;executives=execs.data||[];
+        if(!rows.length){container.innerHTML='';return;}
+        container.innerHTML='<section class="card"><h2>Datos pendientes de pagos</h2><p>Completa únicamente los datos indicados. Los pagos del lote aprobado se incorporan automáticamente al guardar y actualizar.</p><label>Buscar comercio, referencia, plataforma o corte<input class="control" type="search" data-search></label><p role="status" data-status></p><div data-rows></div></section>';
         container.querySelector('[data-search]').oninput=render;render();
       }catch(error){if(request===revision)container.innerHTML='<section class="card"><p role="alert">'+esc(error.message||'No se pudieron consultar los pendientes.')+'</p></section>';}
     }
     function render(){
       const q=container.querySelector('[data-search]').value.toLocaleLowerCase('es').trim();
       const list=rows.filter(r=>[r.comercio,r.referencia,r.plataforma,r.corte].join(' ').toLocaleLowerCase('es').includes(q));
-      container.querySelector('[data-status]').textContent=`${list.length} ${list.length===1?'operación':'operaciones'} por preparar`;
+      container.querySelector('[data-status]').textContent=`${list.length} ${list.length===1?'operación':'operaciones'} con datos pendientes`;
       container.querySelector('[data-rows]').innerHTML=list.map(r=>{
-        const approved=['aprobada','programada'].includes(r.estado);
         const missing=[r.falta_comercio?'Local en directorio':null,r.falta_ejecutivo?'Ejecutivo y bono pendiente':null,r.falta_titular?'Titular':null,r.falta_cuenta?'Cuenta verificada':null].filter(Boolean);
-        return `<article class="preparation-card" data-operation="${esc(r.id)}"><h3>${esc(r.comercio)}</h3><p>${esc(r.plataforma==='alo'?'ALO Credit':r.plataforma)} · Corte ${esc(r.corte)} · ${esc(r.referencia)}</p><p>Porcentaje: <strong>${r.porcentaje==null?'No aplica / sin regla':esc(Number(r.porcentaje)*100)+' %'}</strong> · Neto al aliado: <strong>${money(r.neto)}</strong></p><p>${missing.length?'Falta: '+esc(missing.join(' · ')):'Datos completos; actualiza el cálculo del lote.'}</p>
+        return `<article class="preparation-card" data-operation="${esc(r.id)}"><h3>${esc(r.comercio)}</h3><p>${esc(r.plataforma==='alo'?'ALO Credit':r.plataforma)} · Corte ${esc(r.corte)} · ${esc(r.referencia)}</p><p>Porcentaje: <strong>${r.porcentaje==null?'No aplica / sin regla':esc(Number(r.porcentaje)*100)+' %'}</strong> · Neto al aliado: <strong>${money(r.neto)}</strong></p><p>${missing.length?'Falta: '+esc(missing.join(' · ')):'Datos completos.'}</p>
           ${r.falta_ejecutivo&&r.origen_codigo?`<form data-origin="${esc(r.origen_codigo)}" data-previous="${esc(r.ejecutivo_actual)}"><label>Ejecutivo responsable<select class="control" name="executive" required><option value="">Selecciona el ejecutivo real</option>${executives.map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}</option>`).join('')}</select></label><button class="btn secondary" type="submit">Guardar ejecutivo</button><p role="alert"></p></form>`:''}
-          <div class="actions">${r.origen_codigo?`<a class="btn secondary" href="aliados-tesoreria.html?vista=clientes&amp;origen=${encodeURIComponent(r.origen_codigo)}">Cliente y cuenta</a>`:''}${approved?`<button class="btn primary" data-prepare-approved="${esc(r.liquidation_id)}">Preparar órdenes aprobadas</button><p role="alert"></p>`:`<a class="btn secondary" href="aliados-liquidaciones.html?lote=${encodeURIComponent(r.liquidation_id)}">${r.neto==null?'Liquidar lote':'Volver al lote / actualizar cálculo'}</a>`}</div></article>`;
+          <div class="actions">${r.origen_codigo?`<a class="btn secondary" href="aliados-tesoreria.html?vista=clientes&amp;origen=${encodeURIComponent(r.origen_codigo)}">Cliente y cuenta</a>`:''}</div></article>`;
       }).join('')||'<p>Sin pendientes para esta consulta.</p>';
-      container.querySelectorAll('[data-prepare-approved]').forEach(button=>button.onclick=async()=>{
-        button.disabled=true;
-        try {const result=await sb.rpc('tesoreria_completar_ordenes_aprobadas',{p_lote:button.dataset.prepareApproved});if(result.error)throw result.error;await mount(container);}
-        catch(error){button.parentElement.querySelector('[role=alert]').textContent=error.message;button.disabled=false;}
-      });
       container.querySelectorAll('form').forEach(form=>form.onsubmit=async event=>{
         event.preventDefault();if(!form.reportValidity())return;
         const button=form.querySelector('button');button.disabled=true;
         try{await saveExecutive(form.dataset.origin,form.dataset.previous,form.elements.executive.value);
-          const lots=[...new Set(rows.filter(r=>r.origen_codigo===form.dataset.origin&&['aprobada','programada'].includes(r.estado)).map(r=>r.liquidation_id))];
-          for(const id of lots){const result=await sb.rpc('tesoreria_completar_ordenes_aprobadas',{p_lote:id});if(result.error)throw result.error;}
-          await mount(container);}
+          await mount(container);if(onSaved)await onSaved();}
         catch(error){form.querySelector('[role=alert]').textContent=error.message;button.disabled=false;}
       });
     }
     return {mount,openExecutive};
   }
-  root.CreditekTesoreriaPreparacion={create,incidentAction};
+  root.CreditekTesoreriaPreparacion={create,incidentAction,synchronizeApproved};
 })(window);

@@ -175,7 +175,7 @@
           : null),
       beneficiary_name: p.bank_snapshot?.holder || b.nombre || "Sin nombre",
       beneficiary_identification: p.bank_snapshot?.holder_identification || b.identificacion || "—",
-      origin_code: b.origen_codigo || null,
+      origin_code: p.origen_operacion || p.business_snapshot?.code || b.origen_codigo || null,
       business_snapshot: p.business_snapshot || null,
       executive_names: [
         ...new Set(
@@ -269,6 +269,7 @@
     }
   }
   async function load() {
+    if (preparation && treasuryView === "operational") await preparation.mount($("#paymentDataPending"));
     const [
       balances,
       destinations,
@@ -562,13 +563,12 @@
     }
     const differences = (data.rectifications || []).filter(x => x.estado === "aprobado")
       .flatMap(x => (x.new_value?.diferencias_pagos || []).filter(d => d.estado === "pendiente_validacion_soporte"));
-    correction.classList.toggle("hidden", !differences.length || ["cobros", "clients", "preparation"].includes(treasuryView));
+    correction.classList.toggle("hidden", !differences.length || ["cobros", "clients"].includes(treasuryView));
     correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
     $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
-    $("#preparationContent").classList.toggle("hidden",treasuryView!=="preparation");
-    $("#showPreparation").classList.toggle("active",treasuryView==="preparation");
-    $("#outgoingContent").classList.toggle("hidden",["cobros","clients","preparation"].includes(treasuryView));
+    $("#paymentDataPending").classList.toggle("hidden",treasuryView!=="operational" || !$("#paymentDataPending").innerHTML);
+    $("#outgoingContent").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
     $("#paymentReport").classList.toggle("hidden",treasuryView!=="operational");
     $("#historyTools").classList.toggle("hidden",treasuryView!=="history");
     $("#showStoreMovements").classList.toggle("active", treasuryView === "storeMovements");
@@ -581,7 +581,7 @@
     $("#showCobros").classList.toggle("active",treasuryView==="cobros");
     $("#showOperational").classList.toggle("active",treasuryView==="operational");
     $("#showHistory").classList.toggle("active",treasuryView==="history");
-    if(["cobros","clients","preparation"].includes(treasuryView))return;
+    if(["cobros","clients"].includes(treasuryView))return;
     renderPaymentHistory();
     renderDispatchHistory();
     const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
@@ -1534,8 +1534,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       const clientAccess = await sb.rpc('tiene_capacidad_aliados', {p_capacidad:'revisor'});
       if (!clientAccess.error && clientAccess.data === true) {
         clients = window.CreditekTesoreriaClientes.create({sb,profile});
-        preparation = window.CreditekTesoreriaPreparacion.create({sb});
-        $("#showPreparation").classList.remove("hidden");
+        preparation = window.CreditekTesoreriaPreparacion.create({sb,onSaved:load});
         $("#showClients").classList.remove("hidden");
       }
     } catch (error) {
@@ -1546,9 +1545,8 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       treasuryView='cobros';render();await cobros.mount($("#cobrosContent"));return;
     }
     if (route.get('vista') === 'gastos') { location.replace('finanzas-programadas.html?vista=general'); return; }
-    if (route.get('vista') === 'preparacion' && preparation) {
-      treasuryView='preparation';render();await preparation.mount($("#preparationContent"));return;
-    }
+    // Old preparation links now open the normal payment flow.
+    if (route.get('vista') === 'preparacion') treasuryView='operational';
     if (route.get('vista') === 'clientes' && clients) {
       treasuryView='clients';render();await clients.mount($("#clientsContent"));
       if(route.get('origen'))clients.openOrigin(route.get('origen'));
@@ -1595,7 +1593,6 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     try {
       if (treasuryView === 'cobros') await cobros?.mount($("#cobrosContent"));
       else if (treasuryView === 'clients') await clients?.mount($("#clientsContent"));
-      else if (treasuryView === 'preparation') await preparation?.mount($("#preparationContent"));
       else await load();
     } catch (error) {
       notice("No fue posible actualizar Tesorería. Se conserva la consulta anterior; intenta nuevamente.", true);
@@ -1610,10 +1607,6 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     treasuryView = 'clients';
     render();
     await clients.mount($("#clientsContent"));
-  };
-  $("#showPreparation").onclick = async () => {
-    if(!preparation)return;
-    treasuryView='preparation';render();await preparation.mount($("#preparationContent"));
   };
   $("#paymentReport").onclick = paymentReport;
   async function showPaymentView(view) {

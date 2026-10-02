@@ -354,12 +354,11 @@
               </button>
               <button id="showClients" class="btn secondary hidden">Clientes y cuentas</button>
               <button id="showStoreMovements" class="btn secondary">Compensaciones y movimientos de tiendas</button>
-              <button id="showPreparation" class="btn secondary hidden">Preparación de pagos</button>
             </div>
           </section>
           <section id="cobrosContent" class="hidden" aria-label="Cobros de plataformas"></section>
           <section id="clientsContent" class="hidden" aria-label="Clientes y cuentas"></section>
-          <section id="preparationContent" class="hidden" aria-label="Preparación de pagos"></section>
+          <section id="paymentDataPending" class="hidden" aria-label="Datos pendientes de pagos"></section>
           <div id="outgoingContent">
           <section id="historyTools" class="card history-tools hidden" aria-label="Histórico de giros">
             <div>
@@ -682,14 +681,14 @@
       .preparation-card select {width:100%;max-width:100%}
       .preparation-card .actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
       #preparationContent .btn {white-space:normal;max-width:100%}
-      .actions:has(> #showPreparation) {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
-      .actions:has(> #showPreparation) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
+      .actions:has(> #showOperational) {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+      .actions:has(> #showOperational) .btn {white-space:normal;min-width:0;min-height:44px;height:auto}
     </style>
-    <script src="tesoreria-preparacion.js?v=1.2.0"></script>
+    <script src="tesoreria-preparacion.js?v=1.3.0"></script>
     <script src="finanzas-programadas-domain.js?v=1.0.1"></script>
     <script src="payment-destination.js?v=1.0.0"></script>
     <script src="tesoreria-pagos-unificados.js?v=20261001.1.0"></script>
     <script src="banco-proveedores-tesoreria.js?v=1.0.0"></script>
-    <script src="aliados-tesoreria-app.js?v=20261001.1.0"></script>
+    <script src="aliados-tesoreria-app.js?v=20261002.2.0"></script>
   </body>
 </html>

@@ -337,3 +337,21 @@ test('cuenta pendiente se completa sin reemplazar destinos ni repetir principal'
  await assert.rejects(()=>db.query("update payment_orders set bank_snapshot='{}' where id=$1",[po]),/autorizada o cerrada/);
  assert.equal((await db.query('select count(*)::int n from payment_items where payment_order_id=$1',[po])).rows[0].n,1);
 });
+
+test('incorporación automática no aumenta órdenes autorizadas, programadas ni emitidas',async()=>{
+ await db.exec('alter table payment_orders add column if not exists authorized_by uuid; create table if not exists payment_dispatch_items(report_ref text)');
+ await db.exec(`create function public.payment_orders_capture_business_snapshot() returns trigger language plpgsql as $$begin perform o.codigo from public.liquidation_beneficiaries b left join public.origenes o on o.codigo = b.origen_codigo; return new;end$$;`);
+ await db.exec(await read('../../supabase/migrations/20261002184746_completar_pagos_sin_modificar_autorizados.sql'));
+ const row=(await db.query("select p.id,p.liquidation_id from payment_orders p join liquidations l on l.id=p.liquidation_id where p.bank_account_id is not null and l.estado in ('aprobada','programada') and exists(select 1 from payment_items i where i.payment_order_id=p.id and i.bonus_id is null) limit 1")).rows[0];assert.ok(row);
+ for(const mode of ['authorized','programado','dispatch']){
+  await db.exec('begin');
+  await db.query('delete from payment_items where payment_order_id=$1',[row.id]);
+  await db.query("update payment_orders set estado=$2,authorized_at=case when $3 then now() else null end where id=$1",[row.id,mode==='programado'?'programado':'pendiente',mode==='authorized']);
+  if(mode==='dispatch')await db.query("insert into payment_dispatch_items values('PO-'||$1::text)",[row.id]);
+  const before=(await db.query('select to_jsonb(p) p from payment_orders p where id=$1',[row.id])).rows[0].p;
+  await db.query('select tesoreria_completar_ordenes_aprobadas($1)',[row.liquidation_id]);
+  assert.deepEqual((await db.query('select to_jsonb(p) p from payment_orders p where id=$1',[row.id])).rows[0].p,before);
+  assert.equal((await db.query('select count(*)::int n from payment_items where payment_order_id=$1',[row.id])).rows[0].n,0);
+  await db.exec('rollback');
+ }
+});

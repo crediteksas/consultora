@@ -1707,6 +1707,7 @@
       return;
     }
     $("#pageContent").classList.remove("hidden");
+    if (view === 'budget') window.KoraPresupuestosNav?.montar(document.querySelector('[data-presupuestos-negocios]'), profile);
     try {
       if (view === 'allies' && window.CreditekTesoreriaClientes && new URLSearchParams(location.search).get('vista') !== 'actividad') {
         const access=await sb.rpc('tiene_capacidad_aliados',{p_capacidad:'revisor'});

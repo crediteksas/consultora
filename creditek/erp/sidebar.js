@@ -242,7 +242,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Ejecutivos', href: 'tablero.html#ejecutivos', lucide: 'users-round', description: 'Compara el desempeño de los equipos y responsables comerciales.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ANÁLISIS', icono: '📈', lucide: 'chart-no-axes-combined', description: 'Informes históricos, comparativos y exportables del negocio.', items: [
-      { label: 'Presupuestos y metas', href: 'presupuestos.html', lucide: 'badge-dollar-sign', description: 'Define y compara las metas comerciales de Retail por tienda y período.', roles: ['gerencia', 'auditoria'] },
       { label: 'Análisis e informes', href: 'reportes.html', lucide: 'file-chart-column-increasing', description: 'Informes históricos, comparativos y exportables para análisis detallado.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
     ]},
     { titulo: 'INVENTARIO', icono: '📦', lucide: 'package', description: 'Productos, existencias, traslados y trazabilidad por IMEI.', items: [
@@ -291,6 +290,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'target', description: 'Programa los presupuestos independientes de Retail, B2B y Aliados desde Administración.', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', lucide: 'landmark', description: 'Saldo bancario, solicitudes y pagos a proveedores con autorización de Gerencia y aplicación a facturas antiguas.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', lucide: 'file-pen-line', description: 'Busca documentos y abre las correcciones o anulaciones autorizadas, conservando su trazabilidad.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Ajustes de Gerencia', href: 'ajustes-gerencia.html', lucide: 'scale', description: 'Maite prepara ajustes auditados de caja y cartera; Óscar los autoriza.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
@@ -656,7 +656,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   }
 
   function koraCurrentItem(modules) {
-    const current = paginaActual();
+    const current = paginaActual() === 'aliados-presupuesto.html' ? 'presupuestos.html' : paginaActual();
     const items = modules.flatMap(module => module.items.map(item => ({ ...item, group: module.titulo })));
     return items.find(item => item.href === current + window.location.search + window.location.hash)
       || items.find(item => item.href === current + window.location.hash)

@@ -47,7 +47,6 @@
     ] },
     { title: 'CREDITEK RETAIL', icon: 'store', items: [
       { label: 'Dashboard Retail', href: 'reportes.html#retail', icon: 'chart-no-axes-combined' },
-      { label: 'Presupuestos y metas', href: 'presupuestos.html', icon: 'badge-dollar-sign' },
       { label: 'Ventas', href: 'ventas.html', icon: 'shopping-cart' },
       { label: 'Clientes', href: 'registro-interno.html', icon: 'users' },
       { label: 'Caja', href: 'caja.html', icon: 'wallet-cards' },
@@ -78,7 +77,6 @@
       { label: 'Aliados', href: 'aliados.html', icon: 'handshake' },
       { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
       { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
-      { label: 'Presupuesto', href: 'aliados-presupuesto.html', icon: 'target' },
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
       { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark' },
       { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
@@ -86,6 +84,7 @@
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', icon: 'file-pen-line', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Ajustes de Gerencia', href: 'ajustes-gerencia.html', icon: 'scale', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },

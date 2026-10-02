@@ -202,12 +202,15 @@ test('matriz equivalente de Andrea limita navegación y rutas directas a Mi Tien
   }
 });
 
-test('Presupuestos y metas pertenece al negocio Retail y no al Tablero general', () => {
+test('Presupuestos tiene una sola entrada en Administración para los tres negocios', () => {
   const navigation = access.navigationFor({ rol: 'gerencia', activo: true }, { b2b: true, aliados: true });
   const tablero = Array.from(navigation).find(section => section.title === 'TABLERO');
-  const retail = Array.from(navigation).find(section => section.title === 'CREDITEK RETAIL');
-  assert.ok(Array.from(retail.items, item => item.href).includes('presupuestos.html'));
-  assert.ok(Array.from(retail.items, item => item.label).includes('Presupuestos y metas'));
+  const admin = Array.from(navigation).find(section => section.title === 'ADMINISTRACIÓN');
+  assert.ok(Array.from(admin.items, item => item.href).includes('presupuestos.html'));
+  assert.equal(Array.from(admin.items).find(item => item.href === 'presupuestos.html').label,'Presupuestos');
+  assert.equal(navigation.flatMap(section=>Array.from(section.items)).filter(item=>/presupuesto/.test(item.href)).length,1);
+  for(const section of navigation.filter(section=>section.title.startsWith('CREDITEK')))
+    assert.ok(!Array.from(section.items).some(item=>/presupuesto/.test(item.href)));
   assert.ok(!Array.from(tablero.items, item => item.href).includes('presupuestos.html'));
 });
 

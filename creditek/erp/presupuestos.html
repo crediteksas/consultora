@@ -93,6 +93,9 @@ td.tienda-nombre, th.tienda-nombre { text-align: left; position: sticky; left: 0
 th.tienda-nombre { z-index: 3; background: rgba(11,30,61,0.04); }
 td.total-mes, th.total-mes { position: sticky; right: 0; background: var(--surface); font-weight: 700; z-index: 1; }
 th.total-mes { z-index: 3; background: rgba(11,30,61,0.04); }
+/* Las columnas fijas deben tapar los días que pasan por detrás, también al resaltar la fila. */
+#tablaPresupuesto tbody td:is(.tienda-nombre, .total-mes) { background: var(--surface); }
+#tablaPresupuesto tbody tr:hover td:is(.tienda-nombre, .total-mes) { background: #f6fdfd; }
 td.dia-celda { cursor: pointer; }
 td.dia-celda:hover { background: rgba(0,196,204,0.08); }
 td.finde { background: rgba(11,30,61,0.02); }

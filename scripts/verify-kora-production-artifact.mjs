@@ -7,9 +7,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const EXPECTED_SUPABASE_URL = 'https://jfkmiyvcdfbsbwchyvol.supabase.co';
 
-export async function verifyKoraProductionArtifact({ commit, writeManifest = false } = {}) {
+export async function verifyKoraProductionArtifact({ commit, writeManifest = false, artifactRoot = path.join(root, 'dist/kora') } = {}) {
+  if (!/^[0-9a-f]{40}$/.test(commit || '')) throw new Error('El manifiesto requiere un commit completo');
   const policy = JSON.parse(await readFile(path.join(root, 'config/kora-production-manifest.json'), 'utf8'));
-  const artifactRoot = path.join(root, 'public');
   const app = await readFile(path.join(artifactRoot, 'creditek/erp/app.html'));
   const html = app.toString('utf8');
   const appSha256 = sha256(app);
@@ -51,6 +51,36 @@ export async function verifyKoraProductionArtifact({ commit, writeManifest = fal
     generatedAt: new Date().toISOString(),
   };
   if (writeManifest) await writeFile(path.join(artifactRoot, 'kora-build-manifest.static.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  return manifest;
+}
+
+// La misma comprobación se ejecuta en preview y después de promover la versión.
+export async function verifyPublishedKoraManifest(baseUrl, expected, { fetchImpl = fetch } = {}) {
+  const response = await fetchImpl(new URL('/kora-build-manifest.json', baseUrl), { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Manifiesto publicado no disponible: ${response.status}`);
+  const manifest = await response.json();
+  for (const field of [
+    'product', 'version', 'displayVersion', 'commit', 'worker', 'productionUrl', 'appPath',
+    'appSha256', 'shellAssetVersion', 'shellVersion', 'environment', 'branch', 'buildStatus', 'supabaseProjectRef',
+  ]) {
+    if (!expected[field] || manifest[field] !== expected[field]) {
+      throw new Error(`Manifiesto publicado incompleto o distinto: ${field}`);
+    }
+  }
+  if (!expected.resources?.length || !Array.isArray(manifest.resources)
+    || manifest.resources.length !== expected.resources.length
+    || new Set(manifest.resources.map(resource => resource.path)).size !== expected.resources.length) {
+    throw new Error('El manifiesto publicado no contiene todos los recursos');
+  }
+  for (const resource of expected.resources) {
+    if (!manifest.resources.some(actual => actual.path === resource.path && actual.sha256 === resource.sha256)) {
+      throw new Error(`Recurso publicado distinto en manifiesto: ${resource.path}`);
+    }
+    const asset = await fetchImpl(new URL(resource.path, baseUrl), { cache: 'no-store' });
+    if (!asset.ok || sha256(Buffer.from(await asset.arrayBuffer())) !== resource.sha256) {
+      throw new Error(`SHA publicado distinto: ${resource.path}`);
+    }
+  }
   return manifest;
 }
 

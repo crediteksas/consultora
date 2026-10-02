@@ -79,6 +79,36 @@ test('el pipeline valida repositorio, rama, commit, limpieza, manifiesto, SHA y 
   assert.match(verifier, /sha256/i);
   assert.match(deploy, /attempt <= 6/);
   assert.match(deploy, /attempt \* 2000/);
+  const previewCheck = deploy.indexOf('await verifyPublishedKoraManifest(previewUrl, manifest)');
+  assert.ok(previewCheck > 0 && previewCheck < deploy.indexOf('const promote ='));
+  assert.match(deploy, /await verifyPublishedKoraManifest\(policy\.productionUrl, manifest\)/);
+});
+
+test('un manifiesto incompleto impide validar producción aunque el HTML y el deployment coincidan', async () => {
+  const deploy = await read('scripts/deploy-kora-production.mjs');
+  const start = deploy.indexOf('const validate = async () => {');
+  const end = deploy.indexOf('const remoteSha = await promoteWithRollback', start);
+  let attempts = 0;
+  const expectedError = new Error('Manifiesto publicado incompleto o distinto: commit');
+  const context = {
+    candidate: 'candidate', commit: 'commit', branch: 'main', releaseRecord: null,
+    policy: { productionUrl: 'https://kora.crediteksas.com/creditek/erp/app', releaseKvNamespaceId: 'test' },
+    manifest: { appSha256: 'expected-sha' },
+    capture: () => JSON.stringify([{ id: 'deployment', created_on: '2026-10-02', versions: [{ version_id: 'candidate', percentage: 100 }] }]),
+    writeFile: async () => {}, run: () => {}, hashResponse: async () => 'expected-sha',
+    verifyPublishedKoraManifest: async () => { attempts += 1; throw expectedError; },
+    setTimeout: callback => callback(),
+  };
+  vm.runInNewContext(`${deploy.slice(start, end)};this.runValidation=validate;`, context);
+  const actions = [];
+  await assert.rejects(promoteWithRollback({
+    candidateVersion: 'candidate', previousVersion: 'stable',
+    promote: async version => actions.push(`promote:${version}`),
+    validate: context.runValidation,
+    rollback: async version => actions.push(`rollback:${version}`),
+  }), error => error === expectedError);
+  assert.equal(attempts, 60);
+  assert.deepEqual(actions, ['promote:candidate', 'rollback:stable']);
 });
 
 test('el manifiesto esperado documenta versión, commit, artefacto y Worker', async () => {

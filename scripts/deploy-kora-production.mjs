@@ -3,7 +3,7 @@ import { realpath, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promoteWithRollback } from './kora-production-deploy-lib.mjs';
-import { verifyKoraProductionArtifact } from './verify-kora-production-artifact.mjs';
+import { verifyKoraProductionArtifact, verifyPublishedKoraManifest } from './verify-kora-production-artifact.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const policy = JSON.parse(await readFile(path.join(root, 'config/kora-production-manifest.json'), 'utf8'));
@@ -37,7 +37,8 @@ if (process.env.KORA_DEPLOY_EXECUTOR === 'ci' && process.env.KORA_PRODUCTION_COM
 run('npm', ['run', 'test:local']);
 run('npm', ['run', 'build']);
 const manifest = await verifyKoraProductionArtifact({ commit, writeManifest: true });
-// El manifiesto estático se publica como kora-build-manifest.static.json y el Worker agrega la release activa.
+// El manifiesto se escribe en dist/kora, el mismo artefacto que publica wrangler.kora.jsonc.
+// El Worker expone kora-build-manifest.json y agrega la release activa.
 await verifyKoraProductionArtifact({ commit });
 
 const deployments = JSON.parse(capture('npx', ['wrangler', '-c', 'wrangler.kora.jsonc', 'deployments', 'list', '--json']));
@@ -66,6 +67,7 @@ const hashResponse = async url => {
 const previewUrl = `https://${previewAlias}-creditek-kora.comercial-853.workers.dev/creditek/erp/app`;
 const previewSha = await hashResponse(previewUrl);
 if (previewSha !== manifest.appSha256) throw new Error(`SHA de Worker Version distinto: ${previewSha}`);
+await verifyPublishedKoraManifest(previewUrl, manifest);
 run('npm', ['run', 'test:local'], { env: { BASE_URL: `https://${previewAlias}-creditek-kora.comercial-853.workers.dev` } });
 
 const promote = async version => {
@@ -101,8 +103,7 @@ const validate = async () => {
     try {
       const remoteSha = await hashResponse(`${policy.productionUrl}?deployment=${candidate}&attempt=${attempt}`);
       if (remoteSha !== manifest.appSha256) throw new Error(`SHA productivo distinto: ${remoteSha}`);
-      const runtimeResponse = await fetch(`${new URL(policy.productionUrl).origin}/kora-build-manifest.json`, { cache: 'no-store' });
-      const runtimeManifest = runtimeResponse.ok ? await runtimeResponse.json() : {};
+      const runtimeManifest = await verifyPublishedKoraManifest(policy.productionUrl, manifest);
       if (runtimeManifest.deploymentId !== releaseRecord.deploymentId || runtimeManifest.workerVersion !== candidate || !runtimeManifest.runtimeMatchesRelease) {
         throw new Error('El manifiesto runtime no coincide con el deployment activo');
       }

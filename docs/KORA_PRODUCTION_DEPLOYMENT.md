@@ -43,6 +43,11 @@ expone el Deployment ID y Worker Version activos sin entregar credenciales al
 navegador. El estado **Versión verificada** exige coincidencia de HTML, SHA,
 recursos, Shell y release activa.
 
+El manifiesto completo se genera **después del build en `dist/kora`**, la carpeta
+publicada por `wrangler.kora.jsonc`; no en el `public` intermedio. Antes de promover
+la versión y después del despliegue se comprueban sus campos, el commit y los
+SHA-256 de los recursos. Una ficha local o incompleta no supera esta validación.
+
 ## Preparación para CI
 
 El pipeline acepta `KORA_DEPLOY_EXECUTOR=ci` y, en ese modo, exige que

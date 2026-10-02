@@ -1353,7 +1353,7 @@
     if (!report)
       return notice("No fue posible abrir la orden. Cierra la vista e intenta nuevamente.", true);
     report.document.write(
-      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(printTitle)}</title><style>
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Orden de pago ${esc(reportId)}</title><style>
 @page{size:A4 portrait;margin:10mm}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Montserrat,Arial,sans-serif;color:#0B1E3D;margin:0}

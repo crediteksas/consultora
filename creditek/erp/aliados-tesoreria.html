@@ -333,7 +333,7 @@
             <div>
               <h1>Tesorería</h1>
               <div class="subtitle">
-                Cobros de plataformas, pagos y disponibilidad de Tesorería.
+                Seguimiento de cobros, pagos y disponibilidad de Tesorería.
               </div>
             </div>
             <div class="actions">
@@ -348,7 +348,7 @@
               <button id="showOperational" class="btn secondary active">
                 Pagos por gestionar</button
               ><button id="showCobros" class="btn secondary hidden">
-                Cobros de plataformas</button
+                Seguimiento de plataformas</button
               ><button id="showHistory" class="btn secondary">
                 Consultar historial
               </button>
@@ -356,7 +356,10 @@
               <button id="showStoreMovements" class="btn secondary">Compensaciones y movimientos de tiendas</button>
             </div>
           </section>
-          <section id="cobrosContent" class="hidden" aria-label="Cobros de plataformas"></section>
+          <div id="cobrosPanel" class="hidden">
+            <p class="card">Consulta aquí lo esperado y lo conciliado. Para registrar o confirmar dinero recibido, abre <a href="banco-creditek.html?vista=cobros">Banco Creditek · Cobros de plataformas</a>.</p>
+            <section id="cobrosContent" aria-label="Seguimiento de cobros de plataformas"></section>
+          </div>
           <section id="clientsContent" class="hidden" aria-label="Clientes y cuentas"></section>
           <section id="paymentDataPending" class="hidden" aria-label="Datos pendientes de pagos"></section>
           <div id="outgoingContent">

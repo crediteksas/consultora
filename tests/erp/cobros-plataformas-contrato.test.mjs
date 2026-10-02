@@ -7,6 +7,8 @@ const read = path => readFileSync(new URL(path, root), 'utf8');
 const sql = read('supabase/migrations/20260905044108_cobros_plataformas_independiente.sql');
 const app = read('creditek/erp/aliados-tesoreria-app.js');
 const html = read('creditek/erp/aliados-tesoreria.html');
+const bank = read('creditek/erp/banco-creditek.html');
+const bankApp = read('creditek/erp/banco-creditek.js');
 
 test('Cobros no escribe liquidaciones, pagos, tarifas ni saldos existentes', () => {
   const writes = [...sql.matchAll(/\b(?:insert\s+into|update|delete\s+from)\s+public\.([a-z_]+)/gi)];
@@ -41,12 +43,19 @@ test('aplicar abono bloquea ambos registros, evita cruces y excesos; no borra hi
   assert.match(sql, /pg_advisory_xact_lock/);
 });
 
-test('Tesorería integra cobros y auditoría sin ampliar acceso a salidas', () => {
+test('Banco registra cobros y Tesorería los consulta sin ofrecer doble escritura', () => {
   assert.match(html, /id="showCobros"/);
   assert.match(html, /id="cobrosContent"/);
+  assert.match(html, /id="cobrosPanel"/);
+  assert.match(html, /banco-creditek\.html\?vista=cobros/);
   assert.match(html, /id="outgoingContent"/);
   assert.match(html, /cobros-plataformas\.css/);
   assert(html.indexOf('src="cobros-plataformas.js') < html.indexOf('src="aliados-tesoreria-app.js'));
   assert.match(app, /if \(!canViewOutgoing\(\)\) \{[\s\S]*?await cobros\.mount[\s\S]*?return;/);
+  assert.match(app, /canEdit:false,canVoid:false/);
+  assert.match(bank, /id="cobrosPlataformas"/);
+  assert.match(bank, /cobros-plataformas\.css/);
+  assert(bank.indexOf('src="cobros-plataformas.js') < bank.indexOf('src="banco-creditek.js'));
+  assert.match(bankApp, /canEdit:p\.id===OSCAR,canVoid:p\.id===OSCAR/);
   assert.match(app, /label: "Base calculada de plataformas", value: received, detail: "Referencia operativa; no confirma un ingreso bancario\."/);
 });

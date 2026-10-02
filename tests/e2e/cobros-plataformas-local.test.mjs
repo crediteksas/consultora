@@ -1,4 +1,4 @@
-// Local component QA: real Tesorería HTML, KORA styles and fonts; no user session.
+// Local component QA: real Banco Creditek HTML, KORA styles and fonts; no user session.
 // Run: node --test tests/e2e/cobros-plataformas-local.test.mjs
 // Requires installed Google Chrome and access to KORA's public font/icon assets.
 import test from 'node:test';
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const pagePath = '/creditek/erp/aliados-tesoreria.html';
+const pagePath = '/creditek/erp/banco-creditek.html';
 const scriptPaths = new Set([
   '/design-system/components/kora-product.js',
   '/creditek/erp/cobros-plataformas.js',
@@ -68,12 +68,7 @@ test('cobros se adapta a 390/768/1128/1440 con HTML, CSS y tipografía reales de
     await page.addScriptTag({ url: `${origin}/design-system/components/kora-product.js` });
     await page.addScriptTag({ url: `${origin}/creditek/erp/cobros-plataformas.js` });
     await page.evaluate(async () => {
-      document.querySelector('#pageContent').classList.remove('hidden');
-      document.querySelector('#cobrosContent').classList.remove('hidden');
-      document.querySelector('#showCobros').classList.remove('hidden');
-      document.querySelector('#showCobros').classList.add('active');
-      document.querySelector('#outgoingContent').classList.add('hidden');
-      document.querySelector('#paymentReport').classList.add('hidden');
+      document.querySelector('#app').hidden = false;
       const raw = {
         expected: [
           { id: 'e1', plataforma: 'payjoy', corte: '2026-08-31', fecha_esperada: '2026-09-01', importe: 12500000, concepto: 'Consignación correspondiente al corte del 31 de agosto de 2026', soporte: 'https://example.com/soporte.pdf', estado: 'activo', fuente_tipo: 'neto_confirmado' },
@@ -90,7 +85,7 @@ test('cobros se adapta a 390/768/1128/1440 con HTML, CSS y tipografía reales de
         if (name !== 'cobros_plataformas_resumen') throw new Error(`RPC inesperada en QA visual: ${name}`);
         return { data: raw, error: null };
       } };
-      await window.CreditekCobrosPlataformas.create({ sb, canEdit: true, canVoid: true }).mount(document.querySelector('#cobrosContent'));
+      await window.CreditekCobrosPlataformas.create({ sb, canEdit: true, canVoid: true }).mount(document.querySelector('#cobrosPlataformas'));
       await document.fonts.ready;
     });
     await page.locator('[data-cobros-month]').fill('');

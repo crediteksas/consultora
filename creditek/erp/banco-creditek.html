@@ -3,6 +3,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KORA · Banco Creditek</title>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
+<link rel="stylesheet" href="cobros-plataformas.css?v=1.2.1">
 <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.34"></script>
@@ -18,6 +19,10 @@ h1{font-size:29px;margin:0 0 9px}h2{font-size:20px;margin:0 0 10px}p{line-height
 <p>Cuenta empresarial terminada en 4006. Este libro bancario es distinto de la cuenta corriente de las tiendas y del saldo interno B2B. Maite solicita un monto por proveedor sin escoger factura; Óscar autoriza; el pago solo descuenta Banco y facturas cuando Maite registra el giro real con su comprobante.</p>
 <section class="panel"><h2>Cuenta de origen</h2><div id="cuentaEstado" aria-live="polite">Cargando…</div></section>
 <p class="muted">El saldo de control parte del corte que registre Gerencia y descuenta los giros a proveedores hechos por este módulo. Otros ingresos y salidas bancarias aún deben conciliarse; no se presentan aquí como movimientos verificados.</p>
+<section class="panel" aria-label="Cobros bancarios de plataformas">
+  <p>Registra y concilia aquí únicamente los abonos de plataformas comprobados en el banco. Los importes esperados no son dinero recibido. Este control de cobros aún no actualiza automáticamente el saldo bancario de control mostrado arriba.</p>
+  <div id="cobrosPlataformas" aria-live="polite">Consultando cobros de plataformas…</div>
+</section>
 <section class="panel" id="solicitarPanel" hidden><h2>Solicitar abono a proveedor</h2>
 <p>La aplicación a facturas será automática: de la más antigua a la siguiente. La solicitud no mueve dinero.</p>
 <div class="grid"><label class="field">Proveedor<select id="proveedor"><option value="">Selecciona</option></select></label>
@@ -29,4 +34,4 @@ h1{font-size:29px;margin:0 0 9px}h2{font-size:20px;margin:0 0 10px}p{line-height
 <section class="panel"><h2>Solicitudes pendientes de Gerencia</h2><div id="pendientes" aria-live="polite">Cargando…</div></section>
 <section class="panel"><h2>Autorizados · por girar</h2><p>Autorizado no significa pagado. El giro se registra únicamente después de ejecutarlo en el banco y cargar su soporte.</p><div id="autorizados">Cargando…</div></section>
 <section class="panel"><h2>Pagos realizados y trazabilidad</h2><div id="historial">Cargando…</div></section>
-</div></main></div><script src="banco-creditek.js?v=1.0.0" defer></script></body></html>
+</div></main></div><script src="cobros-plataformas.js?v=1.3.8" defer></script><script src="banco-creditek.js?v=1.0.1" defer></script></body></html>

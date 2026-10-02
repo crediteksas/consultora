@@ -171,7 +171,7 @@
     return `\uFEFF${rows.map(row => row.map(csvCell).join(';')).join('\r\n')}\r\n`;
   }
 
-  function create({ sb, money, canEdit = false, canVoid = false, initialMonth = todayBogota().slice(0, 7) } = {}) {
+  function create({ sb, money, canEdit = false, canVoid = false, readOnlyMessage = 'Consulta de cobros. Tu perfil no permite registrar cambios.', initialMonth = todayBogota().slice(0, 7) } = {}) {
     if (!sb || typeof sb.rpc !== 'function') throw new Error('Se necesita la sesión actual de Tesorería para consultar cobros.');
     const formatMoney = money || (value => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(value));
     const state = { container: null, data: null, platform: '', month: initialMonth, view: null, busy: false, stale: false, notice: '', error: false, generation: 0 };
@@ -246,7 +246,7 @@
     }
 
     function entryForms() {
-      if (!canEdit) return '<p class="cobros-muted">Consulta de cobros. Tu perfil no permite registrar cambios.</p>';
+      if (!canEdit) return `<p class="cobros-muted">${esc(readOnlyMessage)}</p>`;
       return `<div class="cobros-entry-grid">
         <details class="cobros-entry"><summary>Agregar cobro esperado</summary>
           <form data-cobros-form="expected" class="cobros-form">

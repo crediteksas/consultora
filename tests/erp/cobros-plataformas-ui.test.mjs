@@ -22,6 +22,14 @@ const allocation = (id, expected_id, deposit_id, importe, overrides = {}) => ({ 
 const dataset = overrides => ({ expected: [], deposits: [], allocations: [], events: [], candidates: [], ...overrides });
 const clone = value => JSON.parse(JSON.stringify(value));
 
+test('seguimiento de Tesorería no muestra formularios aunque Gerencia pueda editar en Banco', async () => {
+  const host = container();
+  await domain.create({ sb: { rpc: async () => ({ data: dataset({ expected: [expected('e1', 100)] }), error: null }) },
+    canEdit: false, canVoid: false, readOnlyMessage: 'Registra en Banco Creditek.' }).mount(host);
+  assert.match(host.innerHTML, /Registra en Banco Creditek/);
+  assert.doesNotMatch(host.innerHTML, /data-cobros-form=/);
+});
+
 test('abono multicorte se cuenta una sola vez y conserva el saldo sin aplicar', () => {
   const raw = dataset({
     expected: [expected('e1', '100.25', { aplicado: 20 }), expected('e2', '200.75', { fecha_esperada: '2026-09-05' })],

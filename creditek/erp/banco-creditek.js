@@ -152,6 +152,13 @@
     $('concepto').oninput=()=>{requestId=null;validarSolicitud()};
     $('solicitar').onclick=solicitar;
     try{await cargar()}catch(e){$('cuentaEstado').textContent='No fue posible cargar Banco: '+e.message;}
+    try {
+      if (!window.CreditekCobrosPlataformas) throw new Error('No se cargó el módulo de cobros.');
+      const cobros=window.CreditekCobrosPlataformas.create({sb,canEdit:p.id===OSCAR,canVoid:p.id===OSCAR});
+      await cobros.mount($('cobrosPlataformas'));
+      if (new URLSearchParams(location.search).get('vista') === 'cobros')
+        $('cobrosPlataformas').scrollIntoView({block:'start'});
+    } catch(e) {$('cobrosPlataformas').textContent='No fue posible consultar cobros de plataformas: '+e.message;}
   }
   iniciar();
 })();

@@ -565,7 +565,7 @@
       .flatMap(x => (x.new_value?.diferencias_pagos || []).filter(d => d.estado === "pendiente_validacion_soporte"));
     correction.classList.toggle("hidden", !differences.length || ["cobros", "clients"].includes(treasuryView));
     correction.innerHTML = differences.length ? `<h3>Krediya · ajuste numérico aplicado</h3><p>Mayte: validar soportes de ${cop(differences.reduce((n, d) => n + Number(d.diferencia || 0), 0))}. No es un nuevo pago ni dinero recuperado.</p><details><summary>Ver diferencias</summary>${differences.map(d => `<p>${esc(d.nombre)}: registrado ${cop(d.pagado)} · bono correcto ${cop(d.bono_correcto)} · diferencia ${cop(d.diferencia)}</p>`).join("")}</details>` : "";
-    $("#cobrosContent").classList.toggle("hidden",treasuryView!=="cobros");
+    $("#cobrosPanel").classList.toggle("hidden",treasuryView!=="cobros");
     $("#clientsContent").classList.toggle("hidden",treasuryView!=="clients");
     $("#paymentDataPending").classList.toggle("hidden",treasuryView!=="operational" || !$("#paymentDataPending").innerHTML);
     $("#outgoingContent").classList.toggle("hidden",["cobros","clients"].includes(treasuryView));
@@ -1530,7 +1530,8 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
       }
     } catch (error) { financialAccessError=true;console.error('No se pudo comprobar el acceso a gastos de Tesorería',error); }
     if(profile?.activo && ['gerencia','auditoria'].includes(profile.rol)) {
-      cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:profile.rol==='gerencia',canVoid:profile.rol==='gerencia'});
+      cobros=window.CreditekCobrosPlataformas.create({sb,money:cop,canEdit:false,canVoid:false,
+        readOnlyMessage:'Consulta de cobros. Los registros y confirmaciones bancarias se hacen en Banco Creditek.'});
       $("#showCobros").classList.remove("hidden");
     }
     if (!canViewOutgoing() && !cobros && !financialRecorder) {

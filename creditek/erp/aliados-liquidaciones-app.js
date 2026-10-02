@@ -90,7 +90,7 @@
         : row.estado === 'revisada' && profile?.rol === 'gerencia'
           ? `<button class="btn primary" data-addi-action="aprobar" data-addi-venta="${esc(row.venta_id)}">Aprobar</button>`
           : row.estado === 'revisada' ? 'Espera aprobación de Gerencia'
-            : '<a href="aliados-tesoreria.html?vista=cobros">Ver en Tesorería</a>';
+            : '<a href="banco-creditek.html?vista=cobros">Ver en Banco Creditek</a>';
       const stateName = { pendiente_revision:'Pendiente', revisada:'Revisada', aprobada:'Aprobada' }[row.estado] || row.estado;
       const difference = Number(row.diferencia_base || 0);
       const sourceNote = row.base_fuente === 'credito_kora_sin_reporte_addi' ? 'Sin reporte Addi' : row.referencia_addi ? `Ref. ${esc(row.referencia_addi)}` : 'Base informada por Gerencia';

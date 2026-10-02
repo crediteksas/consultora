@@ -33,6 +33,7 @@ const erp = [
   'tests/erp/ventas-guardas-documentos.test.mjs',
   'tests/erp/kora-navigation-access.test.mjs',
   'tests/erp/presupuestos-administracion.test.mjs',
+  'tests/erp/presupuesto-manual-prorrateado.test.mjs',
   'tests/erp/presupuestos-b2b.test.mjs',
   'tests/erp/presupuestos-sin-utilidad.test.mjs',
   'tests/erp/kora-2026-000029-busqueda-producto-factura.test.mjs',

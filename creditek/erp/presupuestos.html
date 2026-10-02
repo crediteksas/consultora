@@ -238,6 +238,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
       <tbody id="tbodyPresupuesto"></tbody>
       <tfoot id="tfootPresupuesto"></tfoot>
     </table>
+    <p id="avisoHistoricoAccesorios" role="status" class="sub"></p>
     <div class="empty-state" id="emptyPresupuesto" style="display:none;">No hay presupuesto generado para este mes todavía.</div>
   </div>
 </template>
@@ -679,6 +680,20 @@ async function cargarPresupuesto() {
   if (error) { document.getElementById('emptyPresupuesto').style.display = 'block'; document.getElementById('emptyPresupuesto').textContent = 'Error: ' + error.message; return; }
   presupuestoCache = (data || []).map(registro => ({ ...registro }));
   renderTabla();
+  const aviso = document.getElementById('avisoHistoricoAccesorios');
+  if (aviso) {
+    aviso.textContent = '';
+    const historico = await sb.from('historico_mensual').select('tienda_codigo,acc_uds,acc_venta').eq('anio', y - 1).eq('mes', m);
+    if (document.getElementById('verMes').value !== mesStr) return;
+    if (historico.error) aviso.textContent = 'No se pudo verificar la cantidad histórica de accesorios.';
+    else {
+      const incompletas = (historico.data || []).filter(h => Number(h.acc_venta) > 0 && !(Number(h.acc_uds) > 0));
+      aviso.textContent = incompletas.map(h => {
+        const nombre = tiendasCache.find(t => t.codigo === h.tienda_codigo)?.nombre || h.tienda_codigo;
+        return `${nombre}: el histórico de ${m}/${y - 1} registra ${fmtCOP(h.acc_venta)} en accesorios, pero no una cantidad válida de unidades. El presupuesto en cero no significa que no vendió; falta verificar las unidades en el archivo original.`;
+      }).join(' ');
+    }
+  }
 }
 
 function diasDelMesSeleccionado() {

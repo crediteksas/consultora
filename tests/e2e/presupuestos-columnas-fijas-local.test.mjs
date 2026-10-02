@@ -19,15 +19,16 @@ test('Presupuestos: Tienda y Total mes permanecen opacos al resaltar y desplazar
     const page=await browser.newPage({viewport:{width,height:850}});
     await page.route('**/*',route=>route.abort());
     await page.setContent(`<html lang="es"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${styles}</style>
-      <body class="kora-product-page"><main style="padding:16px"><div class="tabla-wrap"><table id="tablaPresupuesto">
-      <thead><tr id="theadFila"></tr></thead><tbody id="tbodyPresupuesto"></tbody></table>
+      <body class="kora-product-page"><main style="padding:16px"><section id="totalesMes" class="totales-mes" hidden><h2 id="totalesMesTitulo"></h2><div id="totalesMesValores" class="totales-mes-grid"></div></section><div class="tabla-wrap"><table id="tablaPresupuesto">
+      <thead><tr id="theadFila"></tr></thead><tbody id="tbodyPresupuesto"></tbody><tfoot id="tfootPresupuesto"></tfoot></table>
       <div id="emptyPresupuesto"></div></div></main></body></html>`);
     await page.evaluate(()=>{
       window.tiendasCache=Array.from({length:20},(_,i)=>({codigo:'TEST-'+i,nombre:'Tienda '+(i+1)}));
       window.presupuestoCache=window.tiendasCache.flatMap(t=>Array.from({length:31},(_,i)=>({
-        tienda_codigo:t.codigo,fecha:'2026-10-'+String(i+1).padStart(2,'0'),meta_venta_total:1000000+i, generado_desde:'manual'
+        tienda_codigo:t.codigo,fecha:'2026-10-'+String(i+1).padStart(2,'0'),meta_venta_total:1000000+i,meta_creditos:2,meta_uds_cel:3,meta_uds_acc:4,meta_utilidad:12345, generado_desde:'manual'
       })));
-      window.metricaActual='meta_venta_total';window.diasDelMesSeleccionado=()=>({y:2026,m:10,dias:31});
+      window.presupuestoCache.push({tienda_codigo:'AJENA',fecha:'2026-10-01',meta_venta_total:999999999});
+      window.metricaActual='meta_venta_total';window.propuestaActual=null;window.diasDelMesSeleccionado=()=>({y:2026,m:10,dias:31});
       window.fmtCOP=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
       window.escapeHtml=String;window.ediciones=0;window.abrirModalCelda=()=>{window.ediciones++;};
     });
@@ -35,6 +36,13 @@ test('Presupuestos: Tienda y Total mes permanecen opacos al resaltar y desplazar
     const table=page.locator('#tablaPresupuesto'),row=page.locator('tbody tr').first();
     const original=await table.innerText();
     assert.match(await row.locator('.total-mes').innerText(),/31\.000\.465/);
+    assert.match(await page.locator('[data-total-metrica="meta_venta_total"]').innerText(),/620\.009\.300/);
+    assert.match(await page.locator('#tfootPresupuesto .total-mes').innerText(),/620\.009\.300/);
+    assert.equal(await page.locator('[data-total-metrica="meta_uds_cel"]').innerText(),'1.860');
+    assert.equal(await page.locator('[data-total-metrica="meta_uds_acc"]').innerText(),'2.480');
+    assert.equal(await page.locator('[data-total-metrica="meta_creditos"]').innerText(),'1.240');
+    assert.match(await page.locator('[data-total-metrica="meta_utilidad"]').innerText(),/7\.653\.900/);
+    assert.ok(await page.locator('#totalesMes').isVisible());
     for(const fraction of [0,0.45,1]){
       await page.locator('.tabla-wrap').evaluate((el,f)=>{el.scrollLeft=(el.scrollWidth-el.clientWidth)*f;},fraction);
       await row.locator('.total-mes').hover();
@@ -56,6 +64,16 @@ test('Presupuestos: Tienda y Total mes permanecen opacos al resaltar y desplazar
       await row.locator('.total-mes').hover();
       await page.screenshot({path:'/tmp/kora-presupuesto-columnas-fijas.png'});
     }
+    for(const metrica of ['meta_creditos','meta_uds_cel','meta_uds_acc','meta_utilidad']){
+      await page.evaluate(m=>{window.metricaActual=m;renderTabla();},metrica);
+      assert.equal(await page.locator('#tfootPresupuesto .total-mes').innerText(),await page.locator(`[data-total-metrica="${metrica}"]`).innerText());
+    }
+    await page.evaluate(()=>{window.propuestaActual={};renderTabla();});
+    assert.match(await page.locator('#totalesMesTitulo').innerText(),/Propuesta sin aprobar/);
+    await page.evaluate(()=>{window.presupuestoCache=[];renderTabla();});
+    assert.ok(await page.locator('#totalesMes').isHidden());
+    assert.equal(await page.locator('#tfootPresupuesto').innerText(),'');
+    assert.equal(await page.locator('#tbodyPresupuesto').innerText(),'');
     await page.close();
   }} finally {await browser.close();}
 });

@@ -166,6 +166,18 @@
     return [...mapa.values()].sort((a, b) => b.unidades - a.unidades || a.marca.localeCompare(b.marca, 'es'));
   }
 
+  function resumirUnidades(filas) {
+    const accesorios = new Set(['ACC_CELULAR', 'PARLANTES', 'PROTECTOR', 'VARIEDADES', 'VIDRIOS']);
+    return (filas || []).reduce((total, fila) => {
+      const categoria = normalizarNombre(fila.categoria);
+      if (clasificarCelular(fila)) total.celulares += n(fila.cantidad);
+      else if (accesorios.has(categoria) || (categoria === 'CELULAR' && noCelular.test(normalizarNombre(fila.producto_nombre || fila.referencia_nombre)))) {
+        total.accesorios += n(fila.cantidad);
+      } else total.sinClasificar += n(fila.cantidad);
+      return total;
+    }, { celulares: 0, accesorios: 0, sinClasificar: 0 });
+  }
+
   function serieAcumulada(filas, desde, hasta, granularidad = 'dia') {
     const incluidas = filtrarFilas(filas, { desde, hasta });
     if (!incluidas.length) return [];
@@ -199,6 +211,7 @@
     agruparDimension,
     clasificarCelular,
     resumirCelularesPorMarca,
+    resumirUnidades,
     granularidadAutomatica,
     dias,
     moverDias,

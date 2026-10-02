@@ -168,12 +168,38 @@ test('el informe visual por marca sigue filtros y se incluye en la exportación'
   assert.match(app, /'Celulares por marca'/);
 });
 
+test('unidades B2B suman cantidades por categoría, no filas ni tipo de inventario', () => {
+  const datos = [
+    {categoria:'CELULAR', producto_nombre:'Samsung A17', tipo:'serializado', cantidad:3},
+    {categoria:'CELULAR', producto_nombre:'Honor Smart 400', tipo:'cantidad', cantidad:2},
+    {categoria:'CELULAR', producto_nombre:'PENCIL STYLUS (CC)', cantidad:2},
+    ...['ACC_CELULAR','VIDRIOS','PROTECTOR','PARLANTES','VARIEDADES'].map(categoria => ({categoria,cantidad:10})),
+    {categoria:'ACC_CELULAR', tipo:'serializado', cantidad:'4'},
+    {categoria:'SIN DEFINIR',cantidad:1},
+  ];
+  assert.deepEqual({...domain.resumirUnidades(datos)}, {celulares:5,accesorios:56,sinClasificar:1});
+  assert.equal(domain.resumirCelularesPorMarca(datos).reduce((n,x)=>n+x.unidades,0),5);
+  assert.deepEqual({...domain.resumirUnidades([])}, {celulares:0,accesorios:0,sinClasificar:0});
+});
+
+test('tarjetas y exportación de unidades comparten filtros y no duplican márgenes', () => {
+  const datos = filas.map((f,i)=>({...f,margen_id:String(i),categoria:i===1?'ACC_CELULAR':'CELULAR'}));
+  const filtradas = domain.filtrarFilas([...datos,datos[0]], {desde:'2026-07-01',hasta:'2026-07-31'});
+  assert.deepEqual({...domain.resumirUnidades(filtradas)}, {celulares:2,accesorios:2,sinClasificar:0});
+  const tienda = domain.filtrarFilas(datos, {desde:'2026-07-01',hasta:'2026-07-31',tienda:'T2'});
+  assert.deepEqual({...domain.resumirUnidades(tienda)}, {celulares:0,accesorios:2,sinClasificar:0});
+  assert.match(html,/id="kpi-accesorios"/);assert.match(html,/id="kpi-celulares"/);
+  assert.equal((app.match(/D\.resumirUnidades\(estado\.filtradas\)/g)||[]).length,2);
+  assert.match(app,/\['Unidades de accesorios', unidades\.accesorios\]/);
+  assert.match(app,/U\.rpcRows\(SB, \{ start: consultaDesde \}, consultaHasta\)/);
+});
+
 test('la pantalla existente integra rangos, filtros, comparación y exportación', () => {
   for (const id of ['fecha-desde', 'fecha-hasta', 'comparativo', 'filtro-tienda', 'filtro-referencia', 'btn-exportar']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /xlsx\.full\.min\.js/);
-  assert.match(app, /consultar_utilidad_creditek_rango/);
+  assert.match(app, /U\.rpcRows\(SB, \{ start: consultaDesde \}, consultaHasta\)/);
   assert.match(app, /XLSX\.writeFile/);
   assert.match(app, /'Por tienda'/);
   assert.doesNotMatch(app, /'Por plataforma'|filtro-plataforma|renderTabla\('plataforma'/);

@@ -102,15 +102,11 @@
     const rangoCmp = D.rangoComparacion(document.getElementById('comparativo').value, desde, hasta);
     const consultaDesde = rangoCmp && rangoCmp.desde < desde ? rangoCmp.desde : desde;
     const consultaHasta = rangoCmp && rangoCmp.hasta > hasta ? rangoCmp.hasta : hasta;
-    const [{ data, error }, { data: tiendas, error: tiendasError }, gastosGenerales] = await Promise.all([
-      SB.rpc('consultar_utilidad_creditek_rango', {
-        p_desde: consultaDesde,
-        p_hasta: consultaHasta,
-      }),
+    const [data, { data: tiendas, error: tiendasError }, gastosGenerales] = await Promise.all([
+      U.rpcRows(SB, { start: consultaDesde }, consultaHasta),
       SB.from('origenes').select('codigo, nombre, tipo, activo').order('nombre'),
       U.authorizedExpenses(SB, 'b2b', consultaDesde, consultaHasta),
     ]);
-    if (error) throw error;
     if (tiendasError) throw tiendasError;
     estado.gastosGenerales = gastosGenerales;
     const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
@@ -165,6 +161,11 @@
     document.getElementById('kpi-facturado').textContent = money(actual.facturado);
     document.getElementById('kpi-costo').textContent = money(actual.costo);
     const base = filtros();
+    const unidades = D.resumirUnidades(estado.filtradas);
+    document.getElementById('kpi-accesorios').textContent = intFmt.format(unidades.accesorios);
+    document.getElementById('kpi-celulares').textContent = intFmt.format(unidades.celulares);
+    document.getElementById('unidades-nota').textContent = `Remisiones B2B · ${base.desde} a ${base.hasta}. No son ventas Retail ni inventario disponible.` +
+      (unidades.sinClasificar ? ` Hay ${intFmt.format(unidades.sinClasificar)} unidades sin categoría reconocida, excluidas de estas dos tarjetas.` : '');
     const neto = resultadoNeto(estado.filtradas, base.desde, base.hasta);
     const netoPrevio = rangoCmp ? resultadoNeto(estado.comparacion, rangoCmp.desde, rangoCmp.hasta) : null;
     document.getElementById('kpi-utilidad').textContent = sinDistribucion() ? 'No disponible' : money(neto.neto);
@@ -307,6 +308,7 @@
 
   function hojaResumen(base) {
     const r = D.resumir(estado.filtradas);
+    const unidades = D.resumirUnidades(estado.filtradas);
     const ahora = new Intl.DateTimeFormat('es-CO', { dateStyle:'long', timeStyle:'short', timeZone:'America/Bogota' }).format(new Date());
     const id = `UTIL-${base.desde.replaceAll('-','')}-${base.hasta.replaceAll('-','')}-${String(estado.filtradas.length).padStart(4,'0')}`;
     return [
@@ -318,6 +320,7 @@
       ['Gastos generales autorizados', sinDistribucion() ? 'No distribuidos' : resultadoNeto(estado.filtradas, base.desde, base.hasta).gastos],
       ['Utilidad neta B2B', sinDistribucion() ? 'No disponible por filtro' : resultadoNeto(estado.filtradas, base.desde, base.hasta).neto],
       ['Margen %', r.margen], ['Días', D.dias(base.desde, base.hasta)], ['Tiendas', r.tiendas], ['Unidades', r.unidades],
+      ['Unidades de accesorios', unidades.accesorios], ['Unidades de celulares', unidades.celulares], ['Unidades sin clasificar', unidades.sinClasificar],
       ['Despachos', r.despachos], ['Ticket promedio', r.ticketPromedio],
     ];
   }

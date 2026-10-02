@@ -11,7 +11,7 @@
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="utilidad-creditek-domain.js?v=1.0.3"></script>
+  <script src="utilidad-creditek-domain.js?v=1.0.4"></script>
   <script src="aliados-reversiones-domain.js"></script>
   <script src="tablero-ejecutivos.js"></script>
   <script src="tablero-utilidad.js?v=1.0.4"></script>
@@ -63,6 +63,11 @@
     .kpi-costo { --kpi-color:#df7a22; --kpi-soft:#fff2e6; }
     .kpi-utilidad { --kpi-color:#079f78; --kpi-soft:#e5fbf4; }
     .kpi-margen { --kpi-color:#7459d9; --kpi-soft:#f0edff; }
+    .unidades-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .unidades-grid .kpi-card { min-height:120px; }
+    .unidades-grid .kpi-value { overflow-wrap:anywhere; }
+    #unidades-nota { grid-column:1 / -1; margin:0; color:#69778d; font-size:11px; }
+    @media (max-width:560px) { .unidades-grid { grid-template-columns:1fr; } }
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:18px 20px 12px; }
     .panel-title { margin:0; color:var(--navy); font-size:15px; font-weight:700; }
     .panel-sub { margin:4px 0 0; color:#8290a4; font-size:10px; }
@@ -210,6 +215,12 @@
     <article class="kpi-card kpi-margen"><div class="kpi-head"><span class="kpi-icon">%</span><span class="kpi-name">Margen %</span></div><p id="kpi-margen" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-margen" class="kpi-delta">Sin comparación</p></article>
   </section>
 
+  <section class="unidades-grid" aria-label="Unidades B2B del período seleccionado">
+    <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-name">Unidades de accesorios</span></div><p id="kpi-accesorios" class="kpi-value">—</p><p class="kpi-period">Accesorios, vidrios, protectores, parlantes y variedades</p></article>
+    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-name">Unidades de celulares</span></div><p id="kpi-celulares" class="kpi-value">—</p><p class="kpi-period">Total de celulares despachados</p></article>
+    <p id="unidades-nota" aria-live="polite">Remisiones B2B del período seleccionado; no son ventas Retail ni inventario disponible.</p>
+  </section>
+
   <section class="surface">
     <div class="panel-head">
       <div><h2 id="chart-title" class="panel-title">Utilidad neta B2B acumulada del mes</h2><p id="chart-sub" class="panel-sub"></p></div>
@@ -249,6 +260,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.5"></script>
+<script src="utilidad-creditek-app.js?v=1.0.6"></script>
 </body>
 </html>

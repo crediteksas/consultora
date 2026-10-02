@@ -22,13 +22,24 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
   await page.addInitScript(({realChart})=>{
    const fecha=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const data=[
-    {margen_id:'1',fecha:fecha.slice(0,8)+'01',remision_id:'r1',consecutivo:1,tienda_codigo:'CK-02',referencia:'A1',producto_nombre:'Samsung Galaxy A17 128GB',cantidad:2,facturado:1200000,costo:1000000},
-    {margen_id:'2',fecha,remision_id:'r2',consecutivo:2,tienda_codigo:'CK-06',referencia:'B1',producto_nombre:'Vidrio templado',cantidad:10,facturado:200000,costo:100000},
-    {margen_id:'3',fecha,remision_id:'r3',consecutivo:3,tienda_codigo:'EXT1',referencia:'A1',producto_nombre:'Samsung Galaxy A17 128GB',cantidad:1,facturado:600000,costo:500000},
+    {margen_id:'1',fecha:fecha.slice(0,8)+'01',remision_id:'r1',consecutivo:1,tienda_codigo:'CK-02',referencia:'A1',categoria:'CELULAR',producto_nombre:'Samsung Galaxy A17 128GB',cantidad:2,facturado:1200000,costo:1000000},
+    {margen_id:'2',fecha,remision_id:'r2',consecutivo:2,tienda_codigo:'CK-06',referencia:'B1',categoria:'VIDRIOS',producto_nombre:'Vidrio templado',cantidad:10,facturado:200000,costo:100000},
+    {margen_id:'3',fecha,remision_id:'r3',consecutivo:3,tienda_codigo:'EXT1',referencia:'A1',categoria:'CELULAR',producto_nombre:'Samsung Galaxy A17 128GB',cantidad:1,facturado:600000,costo:500000},
    ];
    const tiendas=[{codigo:'CK-02',nombre:'Móvil Shopping',tipo:'propia',activo:true},{codigo:'CK-06',nombre:'Creditel Chinú',tipo:'propia',activo:true},{codigo:'EXT1',nombre:'Cliente histórico',tipo:'aliado',activo:false}];
    window.__KORA_ENV__={};
-   window.SB={auth:{getSession:async()=>({data:{session:{user:{email:'prueba@example.test'}}}})},rpc:async name=>({data:name==='rol_actual'?'gerencia':data}),from(){return {select(){return this},order:async()=>({data:tiendas})}}};
+   window.rpcPages=[];window.extraRows=[];
+   window.SB={auth:{getSession:async()=>({data:{session:{user:{email:'prueba@example.test'}}}})},rpc(name,params){
+    if(name==='rol_actual')return Promise.resolve({data:'gerencia'});
+    if(name==='es_controlador_financiero')return Promise.resolve({data:true});
+    if(name!=='consultar_utilidad_creditek_rango')throw Error('RPC inesperada: '+name);
+    return {order(){return this;},async range(from,to){
+     window.rpcPages.push([from,to]);
+     return {data:[...data,...window.extraRows].filter(f=>f.fecha>=params.p_desde&&f.fecha<=params.p_hasta).slice(from,to+1)};
+    }};
+   },from(table){return {select(){return this;},eq(){return this;},gte(){return this;},lt(){return this;},
+    order(){return this;},range:async()=>({data:[]}),then(resolve){resolve({data:table==='origenes'?tiendas:[]});}
+   };}};
    if(!realChart)window.Chart=class {constructor(_, config){window.chartConfig=config}destroy(){}};
    window.XLSX={utils:{book_new:()=>[],aoa_to_sheet:x=>x,json_to_sheet:x=>x,book_append_sheet:(book,sheet,name)=>book.push({name,sheet})},writeFile:book=>{window.exportedBook=book}};
   },{realChart:!!realChart});
@@ -38,20 +49,27 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
   assert.match(await page.locator('#tbody-referencia').textContent(),/Samsung Galaxy A17 128GB/);
   assert.doesNotMatch(await page.locator('.summary-grid').textContent(),/CK-02|CK-06|Resumen por plataforma/);
   assert.equal(await page.locator('#kpi-utilidad').textContent(),'$\u00a0400.000');
+  assert.equal(await page.locator('#kpi-accesorios').textContent(),'10');
+  assert.equal(await page.locator('#kpi-celulares').textContent(),'3');
+  assert.equal(await page.locator('#brand-unidades').textContent(),'3');
   const chart = await page.evaluate(()=>{
    const c=window.Chart.getChart?.('chart-utilidad');
    const config=c?.config || window.chartConfig;
    return {type:config.type,count:config.data.datasets.length,last:config.data.datasets[0].data.at(-1),axes:Object.keys(config.options.scales)};
   });
   assert.deepEqual(chart,{type:'line',count:1,last:400000,axes:['x','y']});
-  assert.match(await page.locator('#chart-title').textContent(),/Utilidad B2B acumulada del mes/);
+  assert.match(await page.locator('#chart-title').textContent(),/Utilidad neta B2B acumulada del mes/);
   assert.match(await page.locator('#chart-utilidad').getAttribute('aria-label'),/400\.000/);
   assert.equal(await page.locator('#filtro-tienda option[value="EXT1"]').textContent(),'Cliente histórico');
   await page.locator('#filtro-referencia').selectOption('A1');
-  assert.equal(await page.locator('#kpi-utilidad').textContent(),'$\u00a0300.000');
+  assert.equal(await page.locator('#kpi-utilidad').textContent(),'No disponible');
+  assert.equal(await page.locator('#kpi-accesorios').textContent(),'0');
+  assert.equal(await page.locator('#kpi-celulares').textContent(),'3');
   await page.locator('#btn-exportar').click();
   const book=await page.evaluate(()=>window.exportedBook);
-  assert.deepEqual(book.map(x=>x.name),['Resumen','Detalle','Por tienda','Por referencia']);
+  assert.deepEqual(book.map(x=>x.name),['Resumen','Detalle','Por tienda','Por referencia','Celulares por marca']);
+  assert.equal(book[0].sheet.find(row=>row[0]==='Unidades de celulares')[1],3);
+  assert.equal(book[0].sheet.find(row=>row[0]==='Unidades de accesorios')[1],0);
   assert.equal(book[1].sheet[0].Tienda,'Móvil Shopping');
   assert.equal(book[1].sheet[0].Referencia,'Samsung Galaxy A17 128GB');
   await page.locator('#filtro-referencia').selectOption('');
@@ -72,6 +90,8 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
    }
    await page.locator('.summary-grid').scrollIntoViewIfNeeded();
    await page.screenshot({path:`/tmp/kora-b2b-nombres-${width}.png`});
+   await page.locator('.unidades-grid').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`/tmp/kora-b2b-unidades-${width}.png`});
    const overflow=await page.evaluate(()=>({width:innerWidth,total:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(e=>[e.id,e.className,e.getBoundingClientRect().width])}));
    assert.ok(overflow.total<=width+1,JSON.stringify(overflow));
    const layout=await page.evaluate(()=>{
@@ -90,6 +110,24 @@ test('B2B muestra nombres, mantiene identidad y exporta el mismo período sin fi
   await page.locator('#filtro-referencia').selectOption('A1');
   assert.ok(await page.locator('#chart-empty').isVisible());
   assert.equal(await page.locator('#chart-container').isVisible(),false);
+  assert.equal(await page.locator('#kpi-accesorios').textContent(),'0');
+  assert.equal(await page.locator('#kpi-celulares').textContent(),'0');
+  await page.locator('#filtro-tienda').selectOption('');await page.locator('#filtro-referencia').selectOption('');
+  await page.evaluate(()=>{
+   const fecha=document.querySelector('#fecha-hasta').value;
+   window.extraRows=Array.from({length:1002},(_,i)=>({margen_id:'extra'+i,fecha,remision_id:'rx'+i,
+    tienda_codigo:'CK-06',referencia:'B1',categoria:'VIDRIOS',producto_nombre:'Vidrio templado',cantidad:3,facturado:300,costo:100}));
+   window.rpcPages=[];
+  });
+  await page.locator('#btn-refresh').click();
+  await page.waitForFunction(()=>document.querySelector('#kpi-accesorios').textContent==='3.016');
+  assert.deepEqual(await page.evaluate(()=>window.rpcPages),[[0,499],[500,999],[1000,1499]]);
+  assert.equal(await page.locator('#kpi-celulares').textContent(),'3');
+  await page.locator('#fecha-desde').fill('2001-01-01');await page.locator('#fecha-hasta').fill('2001-01-31');
+  await page.locator('#btn-aplicar').click();
+  await page.waitForFunction(()=>document.querySelector('#kpi-accesorios').textContent==='0');
+  assert.equal(await page.locator('#kpi-celulares').textContent(),'0');
+  assert.match(await page.locator('#unidades-nota').textContent(),/2001-01-01 a 2001-01-31/);
   assert.deepEqual(errors,[]);
  } finally {await browser.close();}
 });

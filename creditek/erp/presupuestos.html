@@ -96,6 +96,13 @@ th.total-mes { z-index: 3; background: rgba(11,30,61,0.04); }
 /* Las columnas fijas deben tapar los días que pasan por detrás, también al resaltar la fila. */
 #tablaPresupuesto tbody td:is(.tienda-nombre, .total-mes) { background: var(--surface); }
 #tablaPresupuesto tbody tr:hover td:is(.tienda-nombre, .total-mes) { background: #f6fdfd; }
+#tablaPresupuesto tfoot td { background: #eaf8f9; font-weight: 700; border-top: 2px solid var(--turquesa); }
+.totales-mes { margin-bottom: 16px; }
+.totales-mes h2 { font-size: 14px; margin-bottom: 10px; }
+.totales-mes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.total-indicador { padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 0; }
+.total-indicador span { display: block; font-size: 12px; color: var(--text2); }
+.total-indicador strong { display: block; margin-top: 6px; font-size: 18px; overflow-wrap: anywhere; }
 td.dia-celda { cursor: pointer; }
 td.dia-celda:hover { background: rgba(0,196,204,0.08); }
 td.finde { background: rgba(11,30,61,0.02); }
@@ -205,10 +212,16 @@ td.manual { color: var(--turquesa); font-weight: 700; }
     <div class="campo"><label>Mes a ver</label><input type="month" id="verMes"></div>
   </div>
 
+  <section id="totalesMes" class="totales-mes" aria-live="polite" hidden>
+    <h2 id="totalesMesTitulo">Presupuesto total del mes · todas las tiendas</h2>
+    <div id="totalesMesValores" class="totales-mes-grid"></div>
+  </section>
+
   <div class="tabla-wrap">
     <table id="tablaPresupuesto">
       <thead><tr id="theadFila"></tr></thead>
       <tbody id="tbodyPresupuesto"></tbody>
+      <tfoot id="tfootPresupuesto"></tfoot>
     </table>
     <div class="empty-state" id="emptyPresupuesto" style="display:none;">No hay presupuesto generado para este mes todavía.</div>
   </div>
@@ -513,12 +526,15 @@ async function importarHistorico(e) {
 // ─── Tabla de presupuesto ────────────────────────────────────────────────
 async function cargarPresupuesto() {
   const mesStr = document.getElementById('verMes').value;
+  presupuestoCache = [];
+  renderTabla();
   if (!mesStr) return;
   const inicio = mesStr + '-01';
   const [y, m] = mesStr.split('-').map(Number);
   const fin = new Date(y, m, 1).toISOString().slice(0, 10);
 
   const { data, error } = await sb.from('presupuestos').select('*').gte('fecha', inicio).lt('fecha', fin);
+  if (document.getElementById('verMes').value !== mesStr) return;
   if (error) { document.getElementById('emptyPresupuesto').style.display = 'block'; document.getElementById('emptyPresupuesto').textContent = 'Error: ' + error.message; return; }
   presupuestoCache = data || [];
   renderTabla();
@@ -536,9 +552,14 @@ function renderTabla() {
   const thead = document.getElementById('theadFila');
   const tbody = document.getElementById('tbodyPresupuesto');
   const empty = document.getElementById('emptyPresupuesto');
+  const footer = document.getElementById('tfootPresupuesto');
+  const resumen = document.getElementById('totalesMes');
+  if (footer) footer.innerHTML = '';
+  if (resumen) resumen.hidden = true;
 
   if (!presupuestoCache.length) {
     thead.innerHTML = ''; tbody.innerHTML = '';
+    empty.textContent = 'No hay presupuesto generado para este mes todavía.';
     empty.style.display = 'block';
     return;
   }
@@ -559,6 +580,15 @@ function renderTabla() {
     porTienda[p.tienda_codigo][p.fecha] = p;
   });
 
+  const indicadores = [
+    ['meta_venta_total', 'Ventas', true], ['meta_creditos', 'Créditos', false],
+    ['meta_uds_cel', 'Celulares (contado)', false], ['meta_uds_acc', 'Accesorios', false],
+    ['meta_utilidad', 'Utilidad neta', true],
+  ];
+  const totales = Object.fromEntries(indicadores.map(([campo]) => [campo, 0]));
+  const totalesDia = Array(dias).fill(0);
+  const formato = (valor, dinero) => dinero ? fmtCOP(valor) : valor.toLocaleString('es-CO');
+
   tbody.innerHTML = tiendasCache.map(t => {
     let fila = `<td class="tienda-nombre">${escapeHtml(t.nombre)}</td>`;
     let total = 0;
@@ -567,6 +597,8 @@ function renderTabla() {
       const reg = (porTienda[t.codigo] || {})[fechaStr];
       const val = reg ? Number(reg[metricaActual] || 0) : 0;
       total += val;
+      totalesDia[d - 1] += val;
+      indicadores.forEach(([campo]) => { totales[campo] += Number(reg?.[campo] || 0); });
       const esFinde = new Date(y, m - 1, d).getDay() === 0;
       const esManual = reg && reg.generado_desde === 'manual';
       const esDinero = metricaActual === 'meta_utilidad' || metricaActual === 'meta_venta_total';
@@ -577,6 +609,21 @@ function renderTabla() {
     fila += `<td class="total-mes">${totalMostrar}</td>`;
     return `<tr>${fila}</tr>`;
   }).join('');
+
+  if (resumen) {
+    const mes = new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    document.getElementById('totalesMesTitulo').textContent = `${propuestaActual ? 'Propuesta sin aprobar' : 'Presupuesto total'} · ${mes} · ${tiendasCache.length} tiendas`;
+    document.getElementById('totalesMesValores').innerHTML = indicadores.map(([campo, etiqueta, dinero]) =>
+      `<div class="total-indicador"><span>${etiqueta}</span><strong data-total-metrica="${campo}">${formato(totales[campo], dinero)}</strong></div>`
+    ).join('');
+    resumen.hidden = false;
+  }
+  if (footer) {
+    const dinero = indicadores.find(([campo]) => campo === metricaActual)?.[2];
+    footer.innerHTML = '<tr><td class="tienda-nombre">Total todas las tiendas</td>' +
+      totalesDia.map(valor => `<td>${formato(valor, dinero)}</td>`).join('') +
+      `<td class="total-mes">${formato(totales[metricaActual], dinero)}</td></tr>`;
+  }
 
   tbody.querySelectorAll('.dia-celda').forEach(td => td.addEventListener('click', () => abrirModalCelda(td)));
 }

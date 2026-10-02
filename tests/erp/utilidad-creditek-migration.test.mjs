@@ -27,7 +27,7 @@ test('consulta la vista mediante RPC central autorizado sin cambiar la fórmula'
   assert.match(rpcSql, /p\.rol in \('gerencia', 'auditoria'\)/);
   assert.match(rpcSql, /where u\.fecha between p_desde and p_hasta/);
   assert.match(rpcSql, /revoke all .* from public, anon/);
-  assert.match(app, /rpc\('consultar_utilidad_creditek_rango'/);
+  assert.match(app, /U\.rpcRows\(SB, \{ start: consultaDesde \}, consultaHasta\)/);
 });
 
 test('evita duplicar plataforma y restringe la vista a roles centrales', () => {

@@ -39,6 +39,12 @@
 .dashboard-document-access:focus-visible { outline: 3px solid var(--ctk-color-secondary-500); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .dashboard-document-access { transition: none; transform: none; } }
 .store-profit-detail { display:block; font-size:11px; font-weight:400; color:var(--ctk-color-neutral-500); white-space:normal; }
+.dashboard-month-close[hidden] { display: none; }
+.dashboard-month-close__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.dashboard-month-close__item { padding: 14px; border: 1px solid var(--ctk-color-neutral-200); border-radius: 12px; }
+.dashboard-month-close__item strong { display: block; margin-bottom: 8px; }
+.dashboard-month-close__item p { margin: 3px 0; font-size: 13px; }
+@media (max-width: 760px) { .dashboard-month-close__grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -231,6 +237,12 @@
     </article>
   </section>
 
+  <section class="dashboard-panel dashboard-month-close" id="cierreUtilidadesSeptiembre" aria-label="Cierre de utilidades de septiembre de 2026" hidden>
+    <div class="dashboard-section-heading"><div><p class="dashboard-section-heading__eyebrow">Cierre de septiembre de 2026</p><h2>Utilidades por negocio</h2></div></div>
+    <p>El resultado neto del mes se conserva. Gerencia informó que ya fue retirado; el disponible por retirar queda en cero. Esta acta no registra pagos ni modifica saldos de caja o banco.</p>
+    <div class="dashboard-month-close__grid" id="cierreUtilidadesSeptiembreDetalle"></div>
+  </section>
+
   <section class="dashboard-panel dashboard-executives" id="ejecutivos">
     <div class="dashboard-section-heading">
       <div>
@@ -346,6 +358,7 @@ function initPagina() {
   KoraAlertasCelulares.mount(document.getElementById('alertasCelulares'), sb, currentPerfil);
   document.getElementById('documentosGestionAcceso').hidden = !window.KoraAccessControl?.canManageDocuments(currentPerfil);
   pintarIconos();
+  cargarCierreSeptiembre();
 
   document.getElementById('fechaHoy').textContent = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   document.getElementById('filtroPeriodo').addEventListener('change', onCambioFiltro);
@@ -703,6 +716,26 @@ function dibujarGraficos(filas, inicioMes, diasDelMes, diasTranscurridos, tienda
 function actualizarUtilidad() {
   const hoy = new Date();
   return cargarSerieUtilidadAcumulada(new Date(hoy.getFullYear(),hoy.getMonth(),1),0,0,document.getElementById('filtroTienda').value);
+}
+async function cargarCierreSeptiembre() {
+  const section = document.getElementById('cierreUtilidadesSeptiembre');
+  const detail = document.getElementById('cierreUtilidadesSeptiembreDetalle');
+  if (!section || !detail) return;
+  const { data, error } = await sb.from('utilidades_cierres_negocio')
+    .select('negocio,utilidad_neta,retiro_declarado,disponible')
+    .eq('periodo', '2026-09-01');
+  if (error || !Array.isArray(data) || data.length !== 3) {
+    if (error) console.error('Cierre de utilidades:', error);
+    return;
+  }
+  const format = value => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:2, maximumFractionDigits:2 }).format(Number(value));
+  const byBusiness = new Map(data.map(row => [row.negocio, row]));
+  if (['retail','b2b','aliados'].some(business => !byBusiness.has(business))) return;
+  detail.innerHTML = [['retail','Retail'],['b2b','B2B'],['aliados','Aliados']].map(([business,label]) => {
+    const row = byBusiness.get(business);
+    return `<div class="dashboard-month-close__item"><strong>${label}</strong><p>Utilidad neta: ${format(row.utilidad_neta)}</p><p>Retiro informado: ${format(row.retiro_declarado)}</p><p><b>Disponible por retirar: ${format(row.disponible)}</b></p></div>`;
+  }).join('');
+  section.hidden = false;
 }
 async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurridos, tiendaFiltro) {
   const request = ++utilidadConsulta;

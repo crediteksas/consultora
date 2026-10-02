@@ -46,7 +46,8 @@
       : `<tr><td colspan="20"><div class="empty">No hay información disponible para los filtros seleccionados.</div></td></tr>`;
   }
   function table(head, body) {
-    return `<div class="table-wrap"><table><thead><tr>${head.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+    const labels = { 'Utilidad disponible':'Resultado calculado', 'Utilidad disponible nueva':'Resultado generado antes del cierre' };
+    return `<div class="table-wrap"><table><thead><tr>${head.map((x) => `<th>${esc(labels[x] || x)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
   }
   function metrics(items) {
     $("#metrics").innerHTML = items
@@ -586,7 +587,7 @@
       };
     });
     const platformSummary = `<section class="card" id="resumen-plataformas"><h2>Resumen por plataforma</h2><p class="muted">Liquidaciones por fecha de venta · incluye tiendas propias y terceros según los filtros. Utilidad registrada en las liquidaciones, antes de gastos operativos del período; no depende de la fecha de pago.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>cop(x.sales),x=>x.complete?cop(x.bonuses):'Pendiente de cálculo',x=>x.complete?cop(x.utility):'Pendiente de cálculo']))}</section>`;
-    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + $("#content").innerHTML;
+    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + '<p class="muted">El resultado por operación no descuenta actas gerenciales de retiro mensual. Consulta el disponible por retirar en Tablero.</p>' + $("#content").innerHTML;
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();

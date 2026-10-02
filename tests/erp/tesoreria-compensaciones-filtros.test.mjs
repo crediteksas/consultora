@@ -178,7 +178,8 @@ async function boot(records = rows, options = {}) {
   const location = { href: '' };
   const context = {
     window: { creditekSidebar: { sb, perfil: { rol: 'gerencia', activo: true } }, CreditekPagosUnificados: require('../../creditek/erp/tesoreria-pagos-unificados.js'), CreditekTesoreriaTercerizacion: domain, CreditekCobrosPlataformas: { create: () => ({}) } },
-    document: { querySelector: node, querySelectorAll: selector => selector === '[data-compensation-select]' ? node('#compensations').children : [], addEventListener: (k, fn) => listeners.set(k, fn) },
+    document: { querySelector: node, querySelectorAll: selector => selector === '[data-compensation-select]' ? node('#compensations').children : [], addEventListener: (k, fn) => listeners.set(k, fn), dispatchEvent: event => listeners.get(event.type)?.(event) },
+    CustomEvent: class { constructor(type) { this.type=type; } },
     location, URLSearchParams, console: { error() {} }, Intl, Date, Set, Map, setTimeout() {},
   };
   vm.runInNewContext(source, context);

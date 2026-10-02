@@ -125,7 +125,7 @@
         for(const [key,value] of Object.entries({beneficiary:person.name,document:person.document,
           bank:person.bank,account_type:person.accountType,account:person.number}))data.set(key,value);
       }
-      let result;if(modalAction==='template')result=await saveTemplate(data);else if(modalAction==='manual')result=await saveManual(data);else if(modalAction==='decision')result=await saveDecision(data);else result=await savePayment(data);if(result.error)throw result.error;closeModal();await load();}
+      let result;if(modalAction==='template')result=await saveTemplate(data);else if(modalAction==='manual')result=await saveManual(data);else if(modalAction==='decision')result=await saveDecision(data);else result=await savePayment(data);if(result.error)throw result.error;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));closeModal();await load();}
     catch(error){$('formError').textContent=errorText(error);$('formError').hidden=false;}
     finally{$('save').disabled=false;}
   }

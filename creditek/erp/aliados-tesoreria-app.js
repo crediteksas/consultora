@@ -352,6 +352,7 @@
     fillCompensationStores();
     render();
     fillSuppliers();
+    document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
   }
   function filtered(items) {
     const platform = $("#platform").value,

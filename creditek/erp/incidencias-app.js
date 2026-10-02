@@ -476,6 +476,7 @@
     const { error } = await state.sb.rpc('kora_confirm_incident_resolved', { p_incident_id: state.selected.id });
     if (error) throw error;
     status('Confirmación registrada.');
+    document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
     await loadIncidents();
   }
   function bind() {

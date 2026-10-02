@@ -10,8 +10,8 @@
 <script src="ventas-domain.js"></script>
 <script src="addi-liquidacion.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
-<script src="kora-access-control.js?v=2.0.33"></script>
-<script src="sidebar.js?v=2.0.33" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.34"></script>
+<script src="sidebar.js?v=2.0.34" data-kora-shell="1.0.0"></script>
 <script src="ventas-utilidad-domain.js"></script>
 <script src="caja-piloto-domain.js"></script>
 <style>
@@ -982,6 +982,7 @@ async function cargarAutorizacionesVentas() {
       sb.from('origenes').select('codigo,nombre'),
     ]);
     if (error || permisoError || recientesError || tiendasError) throw error || permisoError || recientesError || tiendasError;
+    document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
     const solicitudes = [...(pendientes || []), ...(recientes || [])];
     const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
     const fechasPendientes = (pendientes || []).map(r => fechaVentaColombia(r.creado_en)).sort();

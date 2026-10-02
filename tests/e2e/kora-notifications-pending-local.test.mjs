@@ -15,7 +15,8 @@ test('campana conserva trámites al leer avisos y actualiza estados sin mutar do
     });
     await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
     await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'a',activo:true,rol:'gerencia'}}));
-    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='21');
+    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='20');
+    assert.match(await page.locator('[data-kora-notifications-summary]').textContent(),/20 pendientes · 1 avisos sin leer/);
     await page.locator('[data-kora-notifications]').click();
     await page.locator('[data-kora-notifications-read-all]').click();
     assert.equal(await page.locator('[data-kora-notification-count]').textContent(),'20');
@@ -78,5 +79,82 @@ test('ventas en campana: permiso del servidor, error visible y enlace directo si
       assert.equal(await page.evaluate(()=>calls.some(n=>n==='resolver_autorizacion_venta')),false);
       await page.close();
     }
+  }finally{await browser.close();}
+});
+
+test('aprobación, pago y cierre sincronizan dos ventanas; avisos históricos no inflan pendientes',async()=>{
+  const browser=await chromium.launch({channel:'chrome',headless:true});
+  const rows={gastos:Array.from({length:3},()=>({estado:'registrado'})),
+    financial_entries:[{status:'pendiente_aprobacion'},{status:'pendiente_aprobacion'},{status:'aprobado'}],
+    kora_incidents:[{status:'nuevo'},{status:'pendiente_validacion'}]};
+  const writes=[];
+  try{
+    const context=await browser.newContext();
+    await context.route('https://kora.test/**',route=>route.fulfill({contentType:'text/html',body:'<button data-kora-notifications>Campana</button>'}));
+    const pages=[];
+    for(let i=0;i<2;i++){
+      const page=await context.newPage();pages.push(page);
+      await page.exposeFunction('readPendingRows',(table,filters)=>({count:(rows[table]||[]).filter(r=>filters.every(([method,k,v])=>method==='in'?v.includes(r[k]):r[k]===v)).length}));
+      await page.exposeFunction('unexpectedWrite',table=>writes.push(table));
+      await page.goto('https://kora.test/creditek/erp/app.html');
+      await page.evaluate(()=>{
+        window.sb={rpc:async()=>({data:true}),from(table){let count=false;const filters=[];const q={
+          select(_fields,options){count=!!options?.head;return q;},eq(k,v){filters.push(['eq',k,v]);return q;},in(k,v){filters.push(['in',k,v]);return q;},order(){return q;},limit(){return q;},
+          update(){unexpectedWrite(table);return q;},
+          then(ok,bad){return (count?readPendingRows(table,filters):Promise.resolve({data:[{id:'aviso-viejo',type:'incident_assigned',title:'Incidencia ya cerrada',message:'Historial',incident_id:'00000000-0000-0000-0000-000000000001',created_at:'2026-09-21T12:00:00Z',read_at:null}]})).then(ok,bad);}
+        };return q;}};
+      });
+      await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
+      await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'gerente',activo:true,rol:'gerencia'}}));
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='8');
+    }
+    const refresh=async()=>{
+      await pages[0].evaluate(()=>document.dispatchEvent(new CustomEvent('kora-notifications-refresh')));
+    };
+    rows.financial_entries.forEach(r=>r.status='aprobado');await refresh();
+    for(const page of pages){
+      await page.waitForFunction(()=>!document.querySelector('[data-pending="financial-approval"]')&&document.querySelector('[data-pending="financial-payment"]')?.textContent.startsWith('3 ·'));
+      assert.equal(await page.locator('[data-kora-notification-count]').textContent(),'8','aprobar pasa a pago pendiente, no crea ni duplica trámites');
+      assert.match(await page.locator('[data-pending="financial-payment"]').textContent(),/no necesitan otra aprobación/);
+    }
+    rows.financial_entries.forEach(r=>r.status='pagado');await refresh();
+    for(const page of pages)await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='5');
+    rows.gastos.forEach(r=>r.estado='aprobado');await refresh();
+    for(const page of pages)await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='2');
+    rows.kora_incidents.forEach(r=>r.status='corregido');await refresh();
+    for(const page of pages){
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').hidden);
+      assert.match(await page.locator('[data-kora-notifications-summary]').textContent(),/0 pendientes · 1 avisos sin leer/);
+      assert.match(await page.locator('[data-kora-notifications-list]').textContent(),/Historial de avisos/);
+      assert.equal(await page.locator('[data-pending]').count(),0);
+    }
+    assert.deepEqual(writes,[],'sin aprobar, pagar, cerrar ni marcar leído ningún registro');
+  }finally{await browser.close();}
+});
+
+test('no pierde actualizaciones durante una consulta en vuelo y vuelve a consultar al regresar',async()=>{
+  const browser=await chromium.launch({channel:'chrome',headless:true});
+  try{
+    const page=await browser.newPage();
+    await page.setContent('<button data-kora-notifications>Campana</button>');
+    await page.evaluate(()=>{
+      window.expenses=2;window.rounds=0;window.release=null;window.hold=true;
+      window.sb={rpc:async()=>({data:false}),from(table){let count=false;const q={
+        select(_fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},order(){return q;},limit(){return q;},
+        then(ok,bad){const result=count?{count:table==='gastos'?expenses:0}:{data:[]};
+          if(table==='gastos'){rounds++;if(hold){hold=false;return new Promise(resolve=>{release=()=>resolve(result);}).then(ok,bad);}}
+          return Promise.resolve(result).then(ok,bad);
+        }
+      };return q;}};
+    });
+    await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
+    await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'gerente',activo:true,rol:'gerencia'}}));
+    await page.waitForFunction(()=>!!release);
+    await page.evaluate(()=>{expenses=0;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));release();});
+    await page.waitForFunction(()=>rounds>=2&&document.querySelector('[data-kora-notifications-summary]').textContent==='Sin pendientes ni avisos nuevos');
+    await page.evaluate(()=>{expenses=1;window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
+    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='1');
+    await page.evaluate(()=>{expenses=0;window.dispatchEvent(new Event('online'));});
+    await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').hidden);
   }finally{await browser.close();}
 });

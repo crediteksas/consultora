@@ -5,7 +5,7 @@
   function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
-    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Son incidencias generales. Salen de la campana al cerrar la incidencia, no al abrirla.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
+    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central) {
       sources.push(
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
@@ -23,7 +23,7 @@
     }
     if (financialAccess) sources.push(
       {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general',filters:[['eq','status','pendiente_aprobacion']]},
-      {key:'financial-payment',table:'financial_entries',title:'Gastos y retiros aprobados · pago sin registrar',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html',filters:[['eq','status','aprobado']]},
+      {key:'financial-payment',table:'financial_entries',title:'Ya autorizados · falta registrar el pago',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=ordenes',filters:[['eq','status','aprobado']]},
     );
     return sources;
   }
@@ -79,6 +79,8 @@
     let pending = [];
     let incomplete = false;
     let loading = false;
+    let reloadRequested = false;
+    const refreshKey = `kora-notifications-refresh:${profile.id}`;
 
     function setStatus(message, isError = false) {
       const node = panel.querySelector('[data-kora-notifications-status]');
@@ -89,12 +91,13 @@
     function updateCount() {
       const unread = notifications.filter(item => !item.read_at).length;
       const tasks = pending.reduce((sum,item)=>sum+item.count,0);
-      const total = tasks + unread;
-      count.textContent = incomplete ? (total ? `${total}+` : '!') : total > 99 ? '99+' : String(total);
-      count.hidden = total === 0 && !incomplete;
+      // Los avisos históricos no son trámites pendientes ni se suman dos veces.
+      count.textContent = incomplete ? (tasks ? `${tasks}+` : '!') : tasks > 99 ? '99+' : String(tasks);
+      count.hidden = tasks === 0 && !incomplete;
       const summary = `${tasks} pendientes · ${unread} avisos sin leer${incomplete?' · consulta incompleta':''}`;
       trigger.setAttribute('aria-label', `Notificaciones, ${summary}`);
-      panel.querySelector('[data-kora-notifications-summary]').textContent = total || incomplete ? summary : 'Sin pendientes ni avisos nuevos';
+      trigger.title = summary;
+      panel.querySelector('[data-kora-notifications-summary]').textContent = tasks || unread || incomplete ? summary : 'Sin pendientes ni avisos nuevos';
     }
 
     function safePath(item) {
@@ -116,6 +119,7 @@
       if (error) throw error;
       item.read_at = readAt;
       updateCount();
+      refreshAfterChange();
     }
 
     function render() {
@@ -140,7 +144,7 @@
         updateCount();
         return;
       }
-      list.append(element('p','Avisos · leerlos no resuelve trámites.','kora-notifications-empty'));
+      list.append(element('p','Historial de avisos · no se suma al contador de pendientes. Leer un aviso no cambia el estado del trámite.','kora-notifications-empty'));
       notifications.forEach(item => {
         const button = element('button', undefined, 'kora-notification-item ghost');
         button.type = 'button';
@@ -171,7 +175,7 @@
     }
 
     async function load() {
-      if (loading) return;
+      if (loading) { reloadRequested = true; return; }
       loading = true;
       try {
         const results = await Promise.allSettled([sb.from('kora_notifications')
@@ -206,7 +210,15 @@
         setStatus(error.message || 'No fue posible cargar las notificaciones.', true);
       } finally {
         loading = false;
+        // Una aprobación puede terminar mientras el conteo anterior sigue en vuelo.
+        if (reloadRequested) { reloadRequested = false; void load(); }
       }
+    }
+
+    function refreshAfterChange() {
+      // Solo se transmite una invalidación, nunca datos financieros ni personales.
+      try { localStorage.setItem(refreshKey, `${Date.now()}:${Math.random()}`); } catch (_) { /* foco y sondeo siguen disponibles */ }
+      void load();
     }
 
     function close({ restoreFocus = true } = {}) {
@@ -237,6 +249,7 @@
       unread.forEach(item => { item.read_at = readAt; });
       render();
       setStatus('Todas las notificaciones quedaron leídas.');
+      refreshAfterChange();
     });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && !panel.hidden) close();
@@ -246,12 +259,19 @@
         close({ restoreFocus: false });
       }
     });
-    document.addEventListener('kora-notifications-refresh', load);
+    document.addEventListener('kora-notifications-refresh', refreshAfterChange);
+    window.addEventListener('storage', event => { if (event.key === refreshKey) void load(); });
     window.addEventListener('focus', load);
+    window.addEventListener('online', load);
     const refreshVisible=()=>{if(!document.hidden)load();};
     document.addEventListener('visibilitychange',refreshVisible);
-    const timer=window.setInterval(refreshVisible,60000);
-    window.addEventListener('pagehide',()=>window.clearInterval(timer),{once:true});
+    let timer=window.setInterval(refreshVisible,60000);
+    window.addEventListener('pagehide',()=>window.clearInterval(timer));
+    window.addEventListener('pageshow',()=>{
+      window.clearInterval(timer);
+      timer=window.setInterval(refreshVisible,60000);
+      void load();
+    });
     load();
   }
 

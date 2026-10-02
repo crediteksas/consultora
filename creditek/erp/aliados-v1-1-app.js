@@ -353,6 +353,7 @@
       expensePersonPicker=window.KoraFinancialBeneficiary.mount($("#expensePersonPicker"),sb);
     }
     render();
+    if (view === "expenses") document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
   }
 
   // Reporting is independent of payment eligibility. Match only the lender's

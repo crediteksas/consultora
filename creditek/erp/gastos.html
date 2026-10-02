@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
-<script src="kora-access-control.js?v=2.0.33"></script>
-<script src="sidebar.js?v=2.0.33" data-kora-shell="1.0.0"></script>
+<script src="kora-access-control.js?v=2.0.34"></script>
+<script src="sidebar.js?v=2.0.34" data-kora-shell="1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -463,6 +463,7 @@ async function cargarGastos() {
   gastosCache = data || [];
   renderColaAprobacion();
   renderTablaGastos();
+  document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
 }
 
 function renderColaAprobacion() {
@@ -497,6 +498,7 @@ function renderColaAprobacion() {
 async function aprobarGasto(id) {
   const { error } = await sb.from('gastos').update({ estado: 'aprobado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString() }).eq('id', id).eq('estado', 'registrado').select('id').single();
   if (error) { alert('No se pudo aprobar: ' + error.message); return; }
+  document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
   mostrarBanner('✅ Gasto aprobado.');
   cargarGastos();
 }
@@ -525,6 +527,7 @@ async function confirmarRechazo() {
     : await sb.from('gastos').update({ estado: 'rechazado', aprobado_por: currentUser.id, aprobado_at: new Date().toISOString(), nota_rechazo: nota }).eq('id', gastoIdParaRechazar).eq('estado', 'registrado').select('id').single();
   btn.disabled = false;
   if (error) { err.textContent = 'No se pudo rechazar: ' + error.message; err.classList.add('show'); return; }
+  document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
   document.getElementById('modalRechazo').classList.remove('show');
   mostrarBanner(devolverParaCorreccion ? 'Gasto devuelto: la tienda puede corregirlo y reenviarlo.' : 'Gasto rechazado.');
   cargarGastos();
@@ -708,6 +711,7 @@ async function guardarGasto() {
   btn.disabled = false; btn.textContent = 'Guardar';
 
   if (error) { err.textContent = 'No se pudo registrar: ' + error.message; err.classList.add('show'); return; }
+  document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
 
   document.getElementById('modalGasto').classList.remove('show');
   mostrarBanner(gastoEditandoAdministrativo ? 'Gasto editado con motivo e historial; vuelve a aprobación.' : gastoEditando ? 'Gasto corregido y reenviado a aprobación, sin duplicarlo.' : preautorizado ? '✅ Gasto registrado.' : '✅ Gasto registrado — queda en cola de aprobación.');

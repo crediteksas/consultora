@@ -79,3 +79,48 @@ test('campana cuenta todas las ventas pendientes, no aprobadas/rechazadas ni sol
   assert.equal((await pendingCount(sb,spec)).count,2);
   assert.deepEqual(calls,[['estado','pendiente']]);
 });
+
+test('gastos Retail avisa a la campana solo tras recibir estados vigentes',async()=>{
+  const page=readFileSync('creditek/erp/gastos.html','utf8');
+  const loader=page.slice(page.indexOf('async function cargarGastos()'),page.indexOf('function renderColaAprobacion()'));
+  let result={data:[{id:'g1',estado:'aprobado'}]},renders=0;
+  const events=[];
+  const q={select(){return q;},order:async()=>result};
+  const ctx=vm.createContext({sb:{from(table){assert.equal(table,'gastos');return q;}},
+    document:{getElementById(){return {style:{}};},dispatchEvent(e){events.push(e.type);}},
+    CustomEvent:class{constructor(type){this.type=type;}},
+    renderColaAprobacion(){renders++;},renderTablaGastos(){renders++;}
+  });
+  vm.runInContext(`let gastosCache=[];${loader}`,ctx);
+  await ctx.cargarGastos();
+  assert.deepEqual(events,['kora-notifications-refresh']);assert.equal(renders,2);
+  result={error:{message:'Sin conexión'}};await ctx.cargarGastos();
+  assert.equal(events.length,1,'un error no confirma que haya cambiado el estado');
+});
+
+test('finanzas notifica inmediatamente después del guardado, incluso si la recarga falla',async()=>{
+  const app=readFileSync('creditek/erp/finanzas-programadas-app.js','utf8');
+  const submit=app.slice(app.indexOf('async function submit(event)'),app.indexOf('function download()'));
+  const events=[],save={disabled:false},formError={};let failedSave=false;
+  const ctx=vm.createContext({
+    $:id=>id==='save'?save:formError,personPicker:null,modalAction:'decision',
+    FormData:class{},CustomEvent:class{constructor(type){this.type=type;}},
+    document:{dispatchEvent(e){events.push(e.type);}},
+    saveDecision:async()=>failedSave?{error:{message:'No autorizado'}}:{data:true},
+    closeModal(){},load:async()=>{throw new Error('Sin conexión al recargar');},errorText:e=>e.message,
+  });
+  vm.runInContext(submit,ctx);
+  await ctx.submit({preventDefault(){},currentTarget:{}});
+  assert.deepEqual(events,['kora-notifications-refresh']);
+  assert.equal(save.disabled,false);
+  failedSave=true;await ctx.submit({preventDefault(){},currentTarget:{}});
+  assert.equal(events.length,1,'una decisión rechazada por el servidor no dispara éxito');
+});
+
+test('las fuentes de pendientes solicitan refresco después de leer o guardar',()=>{
+  for(const file of ['aliados-tesoreria-app.js','tesoreria-gastos.js','aliados-v1-1-app.js','ventas.html','traslados.html']){
+    assert.match(readFileSync(`creditek/erp/${file}`,'utf8'),/document\.dispatchEvent\(new CustomEvent\('kora-notifications-refresh'\)\)/,file);
+  }
+  const incident=readFileSync('creditek/erp/incidencias-app.js','utf8');
+  assert.match(incident.slice(incident.indexOf('async function confirmFixed()'),incident.indexOf('function bind()')),/kora-notifications-refresh/);
+});

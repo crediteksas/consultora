@@ -32,7 +32,7 @@
     function message(text){host.querySelector('[data-message]').textContent=text;}
     async function load(){const current=++sequence;message('Consultando gastos…');try{
       const all=[];for(let from=0;;from+=500){const result=await sb.from('financial_entries').select('*').order('due_date',{ascending:false}).order('id').range(from,from+499);if(result.error)throw result.error;all.push(...result.data);if(result.data.length<500)break;}
-      if(current!==sequence)return;rows=all;++summarySequence;onSummary(summarize(rows));render();message('');
+      if(current!==sequence)return;rows=all;++summarySequence;onSummary(summarize(rows));render();message('');document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
     }catch(error){if(current===sequence)message('No fue posible consultar los gastos: '+(error.message||'Intenta nuevamente.'));}}
     async function submit(event){event.preventDefault();const form=event.target.closest('[data-decision]');if(!form||busy)return;const row=rows.find(r=>r.id===form.dataset.decision);if(!canDecide(profile,row||{}))return;
       const decision=event.submitter?.value;if(!['aprobado','rechazado'].includes(decision))return;

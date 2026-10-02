@@ -18,5 +18,7 @@ test('la meta se prepara por tienda y solo se guarda después de aprobación', (
   assert.match(html, /rpc\('proponer_presupuesto_manual'/);
   assert.match(html, /rpc\('guardar_presupuesto_manual'/);
   assert.match(html, /propuesta_sin_guardar/);
-  assert.match(html, /Aprobar y guardar/);
+  assert.match(html, /Aprobar indicador actual/);
+  assert.match(html, /value="__todas__">Todas las tiendas activas/);
+  assert.match(html, /id="btnGenerarCartas">Generar presupuestos/);
 });

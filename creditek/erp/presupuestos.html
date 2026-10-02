@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="presupuestos-negocios.css?v=1.0.0">
 <script src="presupuestos-negocios.js?v=1.0.0"></script>
 <script src="presupuestos-b2b.js?v=1.0.0"></script>
+<script src="presupuestos-retail-cartas.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -113,6 +114,14 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 @media (max-width:900px) { .porcentajes-grid { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
 @media (max-width:520px) { .porcentajes-grid { grid-template-columns:1fr; } }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
+.cartas-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:16px; }
+.carta-preview { border:1px solid #dbe7eb; border-radius:14px; padding:18px; background:#f9fdfd; }
+.carta-preview h3 { font:700 15px 'Montserrat',sans-serif; margin-bottom:6px; }
+.carta-preview p { color:var(--text2); font-size:12px; line-height:1.5; margin-bottom:10px; }
+.carta-preview dl { display:grid; grid-template-columns:1fr auto; gap:6px 12px; font-size:12px; margin-bottom:14px; }
+.carta-preview dt { color:var(--text2); }.carta-preview dd { font-weight:700; text-align:right; }
+.carta-preview .btn-secundario { width:100%; }
+#cartasPresupuesto { scroll-margin-top: 90px; }
 
 .modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,30,61,0.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
 .modal-bg.show { display: flex; }
@@ -178,13 +187,14 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 
   <div class="card">
     <h2>Planificar presupuesto por tienda</h2>
-    <div class="sub">Selecciona la tienda y la categoría en las pestañas. KORA conserva el comportamiento diario cuando existe; si el histórico solo trae un total mensual, lo prorratea entre los días. El porcentaje se aplica únicamente como propuesta y nada se guarda hasta que lo apruebes.</div>
+    <div class="sub">Selecciona una tienda o todas las tiendas activas y la categoría en las pestañas. KORA conserva el comportamiento diario cuando existe; si el histórico solo trae un total mensual, lo prorratea entre los días. El porcentaje se aplica únicamente como propuesta y nada se guarda hasta que lo apruebes.</div>
     <div class="form-inline">
-      <div class="campo"><label>Tienda</label><select id="genTienda"><option value="">Selecciona una tienda</option></select></div>
+      <div class="campo"><label>Tienda</label><select id="genTienda"><option value="">Selecciona una tienda</option><option value="__todas__">Todas las tiendas activas</option></select></div>
       <div class="campo"><label>Mes</label><input type="month" id="genMes"></div>
       <button class="btn-primary" id="btnGenerar">Calcular propuesta</button>
       <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar indicador actual</button>
       <button class="btn-primary" id="btnAprobarTodo">Aprobar los 5 indicadores</button>
+      <button class="btn-secundario" id="btnGenerarCartas">Generar presupuestos</button>
       <button class="btn-secundario" id="btnCancelarPropuesta" style="display:none;">Descartar</button>
       <button class="btn-secundario" id="btnImportarHistorico">Importar histórico (CSV)</button>
       <input type="file" id="inputHistorico" accept=".csv,.xlsx,.xls" style="display:none;">
@@ -199,6 +209,13 @@ td.manual { color: var(--turquesa); font-weight: 700; }
     <small id="genPctAyuda">Cada indicador conserva su propio porcentaje. 100% significa duplicar el resultado anterior.</small>
     <div class="modal-err" id="genErr"></div>
   </div>
+
+  <section class="card" id="cartasPresupuesto" hidden aria-live="polite">
+    <h2>Cartas de presupuesto por tienda</h2>
+    <div class="sub">Cada carta usa únicamente metas registradas en KORA; puedes abrirla y guardarla como PDF para enviarla al administrador. No se envía automáticamente.</div>
+    <div id="cartasEstado"></div>
+    <div class="cartas-grid" id="cartasGrid"></div>
+  </section>
 
   <div class="tabs">
     <button id="tabVentas" data-metrica="meta_venta_total">Ventas</button>
@@ -254,6 +271,7 @@ let presupuestoCache = [];
 let metricaActual = 'meta_creditos';
 let celdaEnEdicion = null;
 let propuestaActual = null;
+let cartasActuales = new Map();
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
 
@@ -336,12 +354,21 @@ function initPagina() {
 
   document.getElementById('btnGenerar').addEventListener('click', generarPresupuesto);
   document.getElementById('btnAprobarTodo').addEventListener('click', guardarTodosLosIndicadores);
+  document.getElementById('btnGenerarCartas').addEventListener('click', generarCartasPresupuesto);
   document.querySelectorAll('.pct-metrica').forEach(input => input.addEventListener('input', actualizarAyudaCrecimiento));
   document.getElementById('btnAprobarPropuesta').addEventListener('click', guardarPropuesta);
   document.getElementById('btnCancelarPropuesta').addEventListener('click', descartarPropuesta);
   document.getElementById('btnImportarHistorico').addEventListener('click', () => document.getElementById('inputHistorico').click());
   document.getElementById('inputHistorico').addEventListener('change', importarHistorico);
   document.getElementById('verMes').addEventListener('change', cargarPresupuesto);
+  document.getElementById('genTienda').addEventListener('change', () => {
+    if (propuestaActual) descartarPropuesta();
+    document.getElementById('cartasPresupuesto').hidden = true;
+  });
+  document.getElementById('genMes').addEventListener('change', () => {
+    if (propuestaActual) descartarPropuesta();
+    document.getElementById('cartasPresupuesto').hidden = true;
+  });
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => cambiarTab(b)));
 
   cargarTiendas().then(cargarPresupuesto);
@@ -372,7 +399,7 @@ function porcentajesValidos() {
 async function cargarTiendas() {
   tiendasCache = await CreditekTiendasCanonicas.cargar(sb);
   const selector = document.getElementById('genTienda');
-  if (selector) selector.innerHTML = '<option value="">Selecciona una tienda</option>' + tiendasCache.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
+  if (selector) selector.innerHTML = '<option value="">Selecciona una tienda</option><option value="__todas__">Todas las tiendas activas</option>' + tiendasCache.map(t => `<option value="${escapeHtml(t.codigo)}">${escapeHtml(t.nombre)}</option>`).join('');
 }
 
 function cambiarTab(btn) {
@@ -388,9 +415,12 @@ async function generarPresupuesto() {
   const err = document.getElementById('genErr');
   err.classList.remove('show');
   const mesStr = document.getElementById('genMes').value;
-  const tienda = document.getElementById('genTienda').value;
+  const seleccion = document.getElementById('genTienda').value;
   const pct = leerPorcentaje(metricaActual);
-  if (!tienda || !mesStr) { err.textContent = 'Selecciona una tienda y un mes.'; err.classList.add('show'); return; }
+  let tiendas;
+  try { tiendas = KoraPresupuestosRetailCartas.tiendasElegidas(tiendasCache, seleccion); }
+  catch (ex) { err.textContent = ex.message; err.classList.add('show'); return; }
+  if (!mesStr) { err.textContent = 'Selecciona un mes.'; err.classList.add('show'); return; }
   if (!Number.isFinite(pct) || pct < 0 || pct > 1000) {
     err.textContent = 'El crecimiento debe estar entre 0% y 1000%. Ejemplo: 150% produce una meta equivalente a 2,5 veces la venta anterior.';
     err.classList.add('show');
@@ -398,34 +428,45 @@ async function generarPresupuesto() {
   }
   const btn = document.getElementById('btnGenerar');
   btn.disabled = true; btn.textContent = 'Calculando...';
-  const { data, error } = await sb.rpc('proponer_presupuesto_manual', {
-    p_tienda: tienda, p_mes: mesStr + '-01', p_metrica: metricaActual, p_pct_crecimiento: pct
-  });
-  btn.disabled = false; btn.textContent = 'Calcular propuesta';
-  if (error) { err.textContent = 'No se pudo calcular: ' + error.message; err.classList.add('show'); return; }
-  const filas = data || [];
+  let filas = [];
+  try {
+    const resultados = await Promise.all(tiendas.map(async tienda => {
+      const { data, error } = await sb.rpc('proponer_presupuesto_manual', {
+        p_tienda: tienda.codigo, p_mes: mesStr + '-01', p_metrica: metricaActual, p_pct_crecimiento: pct
+      });
+      if (error) throw new Error(`${tienda.nombre}: ${error.message}`);
+      return (data || []).map(f => ({ ...f, tienda_codigo: tienda.codigo }));
+    }));
+    filas = resultados.flat();
+  } catch (ex) {
+    err.textContent = 'No se pudo calcular la propuesta completa: ' + ex.message;
+    err.classList.add('show');
+    return;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Calcular propuesta';
+  }
   if (filas.some(f => Number(f.meta_propuesta) < 0)) {
     err.textContent = 'KORA detuvo la propuesta porque produjo un valor negativo. No se guardó ningún cambio.';
     err.classList.add('show');
     return;
   }
-  propuestaActual = { tienda, mesStr, pct, metrica: metricaActual, filas };
+  propuestaActual = { tiendas: tiendas.map(t => t.codigo), mesStr, pct, metrica: metricaActual, filas };
   document.getElementById('verMes').value = mesStr;
   await cargarPresupuesto();
   aplicarPropuestaEnVista();
   document.getElementById('btnAprobarPropuesta').style.display = currentPerfil.rol === 'gerencia' ? '' : 'none';
   document.getElementById('btnCancelarPropuesta').style.display = '';
   const fuente = propuestaActual.filas[0]?.fuente || 'sin histórico';
-  const siguiente = currentPerfil.rol === 'gerencia' ? 'Revisa los días y pulsa “Aprobar y guardar”.' : 'Vista previa: la aprobación corresponde a Gerencia.';
-  mostrarBanner(`Propuesta sin guardar: ${fuente}, crecimiento ${pct}%. ${siguiente}`);
+  const siguiente = currentPerfil.rol === 'gerencia' ? 'Revisa los días y pulsa “Aprobar indicador actual”.' : 'Vista previa: la aprobación corresponde a Gerencia.';
+  mostrarBanner(`Propuesta para ${tiendas.length} tienda(s), sin guardar: ${fuente}, crecimiento ${pct}%. ${siguiente}`);
 }
 
 function aplicarPropuestaEnVista() {
   if (!propuestaActual) return;
   propuestaActual.filas.forEach(f => {
-    let reg = presupuestoCache.find(p => p.tienda_codigo === propuestaActual.tienda && p.fecha === f.fecha);
+    let reg = presupuestoCache.find(p => p.tienda_codigo === f.tienda_codigo && p.fecha === f.fecha);
     if (!reg) {
-      reg = { tienda_codigo: propuestaActual.tienda, fecha: f.fecha, meta_creditos: 0, meta_uds_cel: 0, meta_uds_acc: 0, meta_utilidad: 0, meta_venta_total: 0 };
+      reg = { tienda_codigo: f.tienda_codigo, fecha: f.fecha, meta_creditos: 0, meta_uds_cel: 0, meta_uds_acc: 0, meta_utilidad: 0, meta_venta_total: 0 };
       presupuestoCache.push(reg);
     }
     reg[propuestaActual.metrica] = Number(f.meta_propuesta || 0);
@@ -437,47 +478,64 @@ function aplicarPropuestaEnVista() {
 async function guardarTodosLosIndicadores() {
   const err = document.getElementById('genErr');
   err.classList.remove('show');
-  const tienda = document.getElementById('genTienda').value;
+  const seleccion = document.getElementById('genTienda').value;
   const mesStr = document.getElementById('genMes').value;
-  if (!tienda || !mesStr) { err.textContent = 'Selecciona una tienda y un mes.'; err.classList.add('show'); return; }
+  let tiendas;
+  try { tiendas = KoraPresupuestosRetailCartas.tiendasElegidas(tiendasCache, seleccion); }
+  catch (ex) { err.textContent = ex.message; err.classList.add('show'); return; }
+  if (!mesStr) { err.textContent = 'Selecciona un mes.'; err.classList.add('show'); return; }
   if (!porcentajesValidos()) { err.textContent = 'Todos los porcentajes deben estar entre 0% y 1000%.'; err.classList.add('show'); return; }
   if (currentPerfil.rol !== 'gerencia') { err.textContent = 'Solo Gerencia puede aprobar presupuestos.'; err.classList.add('show'); return; }
+  if (tiendas.length > 1 && !confirm(`¿Aprobar los cinco indicadores para ${tiendas.length} tiendas? Cada tienda se guarda por separado.`)) return;
   const btn = document.getElementById('btnAprobarTodo');
   btn.disabled = true; btn.textContent = 'Guardando los 5...';
-  const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
-    p_tienda: tienda, p_mes: mesStr + '-01',
-    p_pct_ventas: leerPorcentaje('meta_venta_total'),
-    p_pct_creditos: leerPorcentaje('meta_creditos'),
-    p_pct_celulares: leerPorcentaje('meta_uds_cel'),
-    p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
-    p_pct_utilidad: leerPorcentaje('meta_utilidad')
-  });
+  const aprobadas = [], fallidas = [];
+  for (const tienda of tiendas) {
+    const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
+      p_tienda: tienda.codigo, p_mes: mesStr + '-01',
+      p_pct_ventas: leerPorcentaje('meta_venta_total'),
+      p_pct_creditos: leerPorcentaje('meta_creditos'),
+      p_pct_celulares: leerPorcentaje('meta_uds_cel'),
+      p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
+      p_pct_utilidad: leerPorcentaje('meta_utilidad')
+    });
+    (error ? fallidas : aprobadas).push(error ? `${tienda.nombre}: ${error.message}` : tienda.nombre);
+  }
   btn.disabled = false; btn.textContent = 'Aprobar los 5 indicadores';
-  if (error) { err.textContent = 'No se pudo aprobar el presupuesto general: ' + error.message; err.classList.add('show'); return; }
   propuestaActual = null;
   document.getElementById('btnAprobarPropuesta').style.display = 'none';
   document.getElementById('btnCancelarPropuesta').style.display = 'none';
   await cargarPresupuesto();
-  mostrarBanner('✅ Los cinco indicadores quedaron aprobados con sus porcentajes independientes.');
+  if (fallidas.length) {
+    err.textContent = `Se aprobaron ${aprobadas.length} tienda(s). No se aprobaron ${fallidas.length}: ${fallidas.join('; ')}. Revisa antes de volver a intentar.`;
+    err.classList.add('show');
+  } else mostrarBanner(`Los cinco indicadores quedaron aprobados para ${aprobadas.length} tienda(s).`);
 }
 
 async function guardarPropuesta() {
   if (!propuestaActual) return;
   const btn = document.getElementById('btnAprobarPropuesta');
   const err = document.getElementById('genErr');
+  const tiendas = propuestaActual.tiendas.map(codigo => tiendasCache.find(t => t.codigo === codigo)).filter(Boolean);
+  if (tiendas.length > 1 && !confirm(`¿Aprobar ${metricaActual} para ${tiendas.length} tiendas? Cada tienda se guarda por separado.`)) return;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  const { error } = await sb.rpc('guardar_presupuesto_manual', {
-    p_tienda: propuestaActual.tienda, p_mes: propuestaActual.mesStr + '-01',
-    p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
-  });
+  const aprobadas = [], fallidas = [];
+  for (const tienda of tiendas) {
+    const { error } = await sb.rpc('guardar_presupuesto_manual', {
+      p_tienda: tienda.codigo, p_mes: propuestaActual.mesStr + '-01',
+      p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
+    });
+    (error ? fallidas : aprobadas).push(error ? `${tienda.nombre}: ${error.message}` : tienda.nombre);
+  }
   btn.disabled = false; btn.textContent = 'Aprobar indicador actual';
-  if (error) { err.textContent = 'No se pudo guardar: ' + error.message; err.classList.add('show'); return; }
-  const tiendaNombre = tiendasCache.find(t => t.codigo === propuestaActual.tienda)?.nombre || propuestaActual.tienda;
   propuestaActual = null;
   document.getElementById('btnAprobarPropuesta').style.display = 'none';
   document.getElementById('btnCancelarPropuesta').style.display = 'none';
   await cargarPresupuesto();
-  mostrarBanner(`✅ Presupuesto aprobado y guardado para ${tiendaNombre}.`);
+  if (fallidas.length) {
+    err.textContent = `Se aprobaron ${aprobadas.length} tienda(s). Fallaron ${fallidas.length}: ${fallidas.join('; ')}. Revisa antes de volver a intentar.`;
+    err.classList.add('show');
+  } else mostrarBanner(`Presupuesto aprobado y guardado para ${aprobadas.join(', ')}.`);
 }
 
 async function descartarPropuesta() {
@@ -487,6 +545,83 @@ async function descartarPropuesta() {
   if (aprobar) aprobar.style.display = 'none';
   if (cancelar) cancelar.style.display = 'none';
   await cargarPresupuesto();
+}
+
+async function generarCartasPresupuesto() {
+  const err = document.getElementById('genErr');
+  const seccion = document.getElementById('cartasPresupuesto');
+  const estado = document.getElementById('cartasEstado');
+  const grid = document.getElementById('cartasGrid');
+  const mes = document.getElementById('genMes').value;
+  let tiendas;
+  err.classList.remove('show');
+  try {
+    tiendas = KoraPresupuestosRetailCartas.tiendasElegidas(tiendasCache, document.getElementById('genTienda').value);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Selecciona un mes válido.');
+  } catch (ex) {
+    err.textContent = ex.message; err.classList.add('show'); return;
+  }
+  const btn = document.getElementById('btnGenerarCartas');
+  btn.disabled = true; btn.textContent = 'Preparando cartas...';
+  try {
+    const [anio, numeroMes] = mes.split('-').map(Number);
+    const fin = new Date(Date.UTC(anio, numeroMes, 1)).toISOString().slice(0, 10);
+    const filas = [];
+    for (let inicio = 0; ; inicio += 1000) {
+      const { data, error } = await sb.from('presupuestos')
+        .select('tienda_codigo,fecha,meta_venta_total,meta_creditos,meta_uds_cel,meta_uds_acc,meta_utilidad')
+        .gte('fecha', mes + '-01').lt('fecha', fin).range(inicio, inicio + 999);
+      if (error) throw error;
+      filas.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    const adminsResult = await sb.from('perfiles').select('nombre,tienda_codigo')
+      .eq('rol', 'admin_tienda').eq('activo', true);
+    if (adminsResult.error) throw new Error('No se pudo consultar el administrador de cada tienda: ' + adminsResult.error.message);
+    const cartas = tiendas.map(t => KoraPresupuestosRetailCartas.resumen(t, mes, filas, adminsResult.data || []));
+    cartasActuales = new Map(cartas.map(c => [c.tienda.codigo, c]));
+    const incompletas = cartas.filter(c => !c.completo);
+    estado.textContent = `${cartas.length - incompletas.length} carta(s) listas para abrir o guardar como PDF.` +
+      (incompletas.length ? ` ${incompletas.length} tienda(s) aún no tienen todos los días del presupuesto registrado.` : '');
+    grid.innerHTML = cartas.map(c => `<article class="carta-preview">
+      <h3>${escapeHtml(c.tienda.nombre)}</h3>
+      <p>Para: ${escapeHtml(c.administradores.join(', ') || 'Administración de la tienda')} · ${escapeHtml(c.mes)}<br>
+      ${c.diasRegistrados} de ${c.diasMes} días registrados en KORA</p>
+      <dl>
+        <dt>Ventas</dt><dd>${fmtCOP(c.totales.meta_venta_total)}</dd>
+        <dt>Créditos</dt><dd>${c.totales.meta_creditos}</dd>
+        <dt>Celulares contado</dt><dd>${c.totales.meta_uds_cel}</dd>
+        <dt>Accesorios</dt><dd>${c.totales.meta_uds_acc}</dd>
+        <dt>Utilidad</dt><dd>${fmtCOP(c.totales.meta_utilidad)}</dd>
+      </dl>
+      ${c.completo
+        ? `<button type="button" class="btn-secundario" data-abrir-carta="${escapeHtml(c.tienda.codigo)}">Abrir carta / guardar PDF</button>`
+        : '<p>Completa o aprueba el presupuesto antes de emitir esta carta.</p>'}
+    </article>`).join('');
+    grid.querySelectorAll('[data-abrir-carta]').forEach(button => button.addEventListener('click', () => {
+      const carta = cartasActuales.get(button.dataset.abrirCarta);
+      if (!carta?.completo) return;
+      const ventana = window.open('about:blank', '_blank');
+      if (!ventana) {
+        err.textContent = 'Permite abrir ventanas para ver la carta y guardarla como PDF.';
+        err.classList.add('show');
+        return;
+      }
+      ventana.opener = null;
+      ventana.document.open();
+      ventana.document.write(KoraPresupuestosRetailCartas.cartaHtml(carta));
+      ventana.document.close();
+      ventana.document.getElementById('imprimirCarta').addEventListener('click', () => ventana.print());
+    }));
+    document.getElementById('bannerOk').classList.remove('show');
+    seccion.hidden = false;
+    seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (ex) {
+    err.textContent = 'No se pudieron generar las cartas: ' + ex.message;
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generar presupuestos';
+  }
 }
 
 // ─── Importar histórico (CSV: tienda_codigo,fecha,creditos,celulares_contado,accesorios,utilidad) ──
@@ -536,7 +671,7 @@ async function cargarPresupuesto() {
   const { data, error } = await sb.from('presupuestos').select('*').gte('fecha', inicio).lt('fecha', fin);
   if (document.getElementById('verMes').value !== mesStr) return;
   if (error) { document.getElementById('emptyPresupuesto').style.display = 'block'; document.getElementById('emptyPresupuesto').textContent = 'Error: ' + error.message; return; }
-  presupuestoCache = data || [];
+  presupuestoCache = (data || []).map(registro => ({ ...registro }));
   renderTabla();
 }
 

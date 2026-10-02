@@ -114,7 +114,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 @media (max-width:900px) { .porcentajes-grid { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
 @media (max-width:520px) { .porcentajes-grid { grid-template-columns:1fr; } }
 .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
-.cartas-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:16px; }
+.cartas-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:24px; margin-top:16px; }
 .carta-preview { border:1px solid #dbe7eb; border-radius:14px; padding:18px; background:#f9fdfd; }
 .carta-preview h3 { font:700 15px 'Montserrat',sans-serif; margin-bottom:6px; }
 .carta-preview p { color:var(--text2); font-size:12px; line-height:1.5; margin-bottom:10px; }
@@ -589,37 +589,34 @@ async function generarCartasPresupuesto() {
     const cartas = tiendas.map(t => KoraPresupuestosRetailCartas.resumen(t, mes, filas, adminsResult.data || []));
     cartasActuales = new Map(cartas.map(c => [c.tienda.codigo, c]));
     const incompletas = cartas.filter(c => !c.completo);
-    estado.textContent = `${cartas.length - incompletas.length} carta(s) listas para abrir o guardar como PDF.` +
+    estado.textContent = `${cartas.length - incompletas.length} carta(s) completas en esta pantalla. Puedes revisar cada una y usar su botón Imprimir / guardar PDF.` +
       (incompletas.length ? ` ${incompletas.length} tienda(s) aún no tienen todos los días del presupuesto registrado.` : '');
-    grid.innerHTML = cartas.map(c => `<article class="carta-preview">
+    grid.innerHTML = cartas.map(c => `<article class="carta-preview" data-carta-tienda="${escapeHtml(c.tienda.codigo)}">
       <h3>${escapeHtml(c.tienda.nombre)}</h3>
-      <p>Para: ${escapeHtml(c.administradores.join(', ') || 'Administración de la tienda')} · ${escapeHtml(c.mes)}<br>
-      ${c.diasRegistrados} de ${c.diasMes} días registrados en KORA</p>
-      <dl>
-        <dt>Ventas</dt><dd>${fmtCOP(c.totales.meta_venta_total)}</dd>
-        <dt>Créditos</dt><dd>${c.totales.meta_creditos}</dd>
-        <dt>Celulares contado</dt><dd>${c.totales.meta_uds_cel}</dd>
-        <dt>Accesorios</dt><dd>${c.totales.meta_uds_acc}</dd>
-      </dl>
-      ${c.completo
-        ? `<button type="button" class="btn-secundario" data-abrir-carta="${escapeHtml(c.tienda.codigo)}">Abrir carta / guardar PDF</button>`
-        : '<p>Completa o aprueba el presupuesto antes de emitir esta carta.</p>'}
+      <p>${c.diasRegistrados} de ${c.diasMes} días registrados en KORA</p>
+      ${c.completo ? '<div data-carta-documento></div>' : '<p>Completa o aprueba el presupuesto antes de emitir esta carta.</p>'}
     </article>`).join('');
-    grid.querySelectorAll('[data-abrir-carta]').forEach(button => button.addEventListener('click', () => {
-      const carta = cartasActuales.get(button.dataset.abrirCarta);
+    grid.querySelectorAll('[data-carta-tienda]').forEach(article => {
+      const carta = cartasActuales.get(article.dataset.cartaTienda);
       if (!carta?.completo) return;
-      const ventana = window.open('about:blank', '_blank');
-      if (!ventana) {
-        err.textContent = 'Permite abrir ventanas para ver la carta y guardarla como PDF.';
-        err.classList.add('show');
-        return;
-      }
-      ventana.opener = null;
-      ventana.document.open();
-      ventana.document.write(KoraPresupuestosRetailCartas.cartaHtml(carta));
-      ventana.document.close();
-      ventana.document.getElementById('imprimirCarta').addEventListener('click', () => ventana.print());
-    }));
+      const frame = document.createElement('iframe');
+      frame.title = `Carta de presupuesto de ${carta.tienda.nombre} · ${carta.mes}`;
+      frame.style.cssText = 'display:block;width:100%;height:1200px;border:0;background:white';
+      frame.addEventListener('load', () => {
+        const doc = frame.contentDocument;
+        const ajustar = () => { frame.style.height = `${doc.body.scrollHeight + 80}px`; };
+        ajustar();
+        frame.contentWindow.addEventListener('resize', ajustar);
+        doc.getElementById('imprimirCarta').addEventListener('click', () => {
+          const anterior = document.title;
+          document.title = doc.title;
+          frame.contentWindow.addEventListener('afterprint', () => { document.title = anterior; }, { once: true });
+          frame.contentWindow.print();
+        });
+      });
+      frame.srcdoc = KoraPresupuestosRetailCartas.cartaHtml(carta);
+      article.querySelector('[data-carta-documento]').appendChild(frame);
+    });
     document.getElementById('bannerOk').classList.remove('show');
     seccion.hidden = false;
     seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });

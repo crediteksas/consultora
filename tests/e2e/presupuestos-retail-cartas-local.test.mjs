@@ -46,7 +46,9 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
         },
         async rpc(name, params) {
           window.calls.push({ name, tienda: params.p_tienda });
-          if (name !== 'proponer_presupuesto_manual') throw Error('Esta prueba no aprueba metas.');
+          if (name === 'guardar_presupuesto_manual_general')
+            return { data: null, error: params.p_tienda === 'CK-02' ? { message: 'Fallo simulado' } : null };
+          if (name !== 'proponer_presupuesto_manual') throw Error('RPC inesperada.');
           return { data: Array.from({ length: 31 }, (_, i) => ({
             fecha: month + '-' + String(i + 1).padStart(2, '0'),
             meta_propuesta: 2, fuente: 'histórico local',
@@ -78,6 +80,10 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     assert.match(await popup.locator('body').innerText(), /Detalle por día/);
     assert.match(await popup.locator('body').innerText(), /Ana Administradora/);
     await popup.close();
+    page.on('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Aprobar los 5 indicadores' }).click();
+    await page.getByText(/Se aprobaron 1 tienda\(s\).*Fallo simulado/).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Aprobar los 5 indicadores' }).isEnabled(), true);
   } finally {
     await browser.close();
   }

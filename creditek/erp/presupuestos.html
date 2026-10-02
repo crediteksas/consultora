@@ -491,15 +491,20 @@ async function guardarTodosLosIndicadores() {
   btn.disabled = true; btn.textContent = 'Guardando los 5...';
   const aprobadas = [], fallidas = [];
   for (const tienda of tiendas) {
-    const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
-      p_tienda: tienda.codigo, p_mes: mesStr + '-01',
-      p_pct_ventas: leerPorcentaje('meta_venta_total'),
-      p_pct_creditos: leerPorcentaje('meta_creditos'),
-      p_pct_celulares: leerPorcentaje('meta_uds_cel'),
-      p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
-      p_pct_utilidad: leerPorcentaje('meta_utilidad')
-    });
-    (error ? fallidas : aprobadas).push(error ? `${tienda.nombre}: ${error.message}` : tienda.nombre);
+    try {
+      const { error } = await sb.rpc('guardar_presupuesto_manual_general', {
+        p_tienda: tienda.codigo, p_mes: mesStr + '-01',
+        p_pct_ventas: leerPorcentaje('meta_venta_total'),
+        p_pct_creditos: leerPorcentaje('meta_creditos'),
+        p_pct_celulares: leerPorcentaje('meta_uds_cel'),
+        p_pct_accesorios: leerPorcentaje('meta_uds_acc'),
+        p_pct_utilidad: leerPorcentaje('meta_utilidad')
+      });
+      if (error) throw error;
+      aprobadas.push(tienda.nombre);
+    } catch (ex) {
+      fallidas.push(`${tienda.nombre}: ${ex.message || 'sin confirmación del guardado'}`);
+    }
   }
   btn.disabled = false; btn.textContent = 'Aprobar los 5 indicadores';
   propuestaActual = null;
@@ -521,11 +526,16 @@ async function guardarPropuesta() {
   btn.disabled = true; btn.textContent = 'Guardando...';
   const aprobadas = [], fallidas = [];
   for (const tienda of tiendas) {
-    const { error } = await sb.rpc('guardar_presupuesto_manual', {
-      p_tienda: tienda.codigo, p_mes: propuestaActual.mesStr + '-01',
-      p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
-    });
-    (error ? fallidas : aprobadas).push(error ? `${tienda.nombre}: ${error.message}` : tienda.nombre);
+    try {
+      const { error } = await sb.rpc('guardar_presupuesto_manual', {
+        p_tienda: tienda.codigo, p_mes: propuestaActual.mesStr + '-01',
+        p_metrica: propuestaActual.metrica, p_pct_crecimiento: propuestaActual.pct
+      });
+      if (error) throw error;
+      aprobadas.push(tienda.nombre);
+    } catch (ex) {
+      fallidas.push(`${tienda.nombre}: ${ex.message || 'sin confirmación del guardado'}`);
+    }
   }
   btn.disabled = false; btn.textContent = 'Aprobar indicador actual';
   propuestaActual = null;

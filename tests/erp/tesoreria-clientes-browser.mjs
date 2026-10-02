@@ -26,7 +26,7 @@ try {
   const clients=origins.map(o=>({id:'client-'+o.codigo,nombre_comercial:o.nombre,revision:0,contacto:'Contacto prueba',payment_beneficiary_id:o.codigo==='aliado-0'?'h1':null}));
   window.creditekSidebar={perfil:{rol:'operaciones',activo:true,es_operador_aliados:true},sb:{
    from(table){let range;return {select(){return this;},order(){return this;},eq(){return this;},gt(){return this;},range(a,b){range=[a,b];return this;},then(ok,bad){const rows=table==='origenes'?origins:table==='liquidation_beneficiaries'?beneficiaries:table==='beneficiary_bank_accounts'?accounts:table==='payment_orders'?payments:table==='aliados_sedes'?sites:table==='aliados'?clients:[];return Promise.resolve({data:range?rows.slice(range[0],range[1]+1):rows,error:null,count:rows.length}).then(ok,bad);}};},
-   async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(!['tesoreria_guardar_cliente_cuenta','tesoreria_guardar_ficha_cliente','tesoreria_vincular_local_cliente','tesoreria_guardar_cuenta_ejecutivo'].includes(name))throw Error('RPC financiera inesperada');if(name==='tesoreria_vincular_local_cliente' && !window.failSave)sites.find(s=>s.origen_codigo===params.p_origen_codigo).aliado_id=params.p_cliente_destino;return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
+   async rpc(name,params){window.calls.push({name,params});if(name==='tiene_capacidad_aliados')return {data:true,error:null};if(!['tesoreria_guardar_cliente_cuenta','tesoreria_guardar_ficha_cliente','tesoreria_vincular_local_cliente','tesoreria_guardar_cuenta_ejecutivo'].includes(name))throw Error('RPC financiera inesperada');if(name==='tesoreria_vincular_local_cliente' && !window.failSave)sites.find(s=>s.origen_codigo===params.p_origen_codigo).aliado_id=params.p_cliente_destino;if(name==='tesoreria_guardar_cliente_cuenta' && !window.failSave){const site=sites.find(s=>s.origen_codigo===params.p_origen_codigo);clients.find(c=>c.id===site.aliado_id).payment_beneficiary_id=beneficiaries.find(b=>b.identificacion===params.p_identificacion)?.id||null;}return {data:{ok:true},error:window.failSave?{message:'Error de prueba: cuenta no guardada'}:null};}
   }};
  });
  await page.goto('https://kora.test/creditek/erp/aliados-tesoreria.html');
@@ -47,6 +47,14 @@ try {
    assert.ok(await page.locator('#clientsContent').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`directory overflow ${width}`);
    await page.screenshot({path:`/private/tmp/tesoreria-clientes-${width}.png`});
  }
+ await page.locator('#clientClose').click();
+ await page.locator('#clientSearch').fill('Comercio 2');
+ await page.locator('[data-edit="aliado-2"]').click();
+ await page.locator('#clientBankTab').click();
+ await page.locator('[name="name"]').fill('Titular nuevo de prueba');
+ await page.locator('[name="identification"]').fill('987654321');
+ await page.locator('[name="bank"]').fill('Banco de prueba');
+ await page.locator('[name="accountNumber"]').fill('001234567890');
  await page.evaluate(()=>{window.failSave=true;});
  await page.locator('[name="verified"]').check();
  await page.locator('#clientSave').click();
@@ -64,13 +72,26 @@ try {
  await page.keyboard.press('Escape');
  assert.equal(await page.locator('#clientDialog').evaluate(e=>e.open),false);
  const calls=await page.evaluate(()=>window.calls);
- assert.ok(calls.every(c=>['tiene_capacidad_aliados','tesoreria_guardar_cliente_cuenta'].includes(c.name)));
+ assert.equal(calls.some(c=>['aliados_registrar_pago','aliados_autorizar_pago'].includes(c.name)),false);
  assert.equal(calls.filter(c=>c.name==='tesoreria_guardar_cliente_cuenta').length,2);
  // Local sin titular: puede elegir titular ya relacionado y unir su ficha a un cliente.
  await page.locator('[data-edit="aliado-1"]').click();await page.locator('#clientBankTab').click();
  await page.locator('#clientHolder').selectOption('h1');
  assert.equal(await page.locator('[name="accountNumber"]').inputValue(),'001234567890');
  assert.equal(await page.locator('[name="name"]').getAttribute('readonly'),'');
+ assert.equal(await page.locator('#clientSave').isVisible(),true);
+ assert.match(await page.locator('#clientSave').textContent(),/Vincular este titular/);
+ await page.locator('[name="verified"]').check();
+ await page.locator('#clientSave').click();
+ await page.waitForFunction(()=>!document.querySelector('#clientDialog').open);
+ const sharedHolderCall=await page.evaluate(()=>window.calls.filter(c=>c.name==='tesoreria_guardar_cliente_cuenta').at(-1));
+ assert.equal(sharedHolderCall.params.p_origen_codigo,'aliado-1');
+ assert.equal(sharedHolderCall.params.p_identificacion,'123456789');
+ assert.equal(sharedHolderCall.params.p_tipo_cuenta,'ahorros');
+ assert.equal(sharedHolderCall.params.p_numero_cuenta,'001234567890');
+ await page.locator('[data-edit="aliado-1"]').click();
+ await page.locator('#clientBankTab').click();
+ assert.match(await page.locator('#clientPrevious').textContent(),/Titular actual/);
  await page.locator('#clientSitesTab').click();
  await page.getByText('Relacionar este local con otro cliente',{exact:true}).click();
  await page.locator('#clientDestination').selectOption('client-aliado-0');

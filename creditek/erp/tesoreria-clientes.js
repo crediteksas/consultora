@@ -78,10 +78,10 @@
     function bankFields(b) {
       const bank = accounts.filter(a=>a.beneficiary_id===b?.id && a.activo)
         .sort((a,c)=>String(c.validada_at||c.created_at).localeCompare(String(a.validada_at||a.created_at)))[0];
-      const f = $('#clientForm').elements;
+      const form = $('#clientForm'), f = form.elements;
       currentBankBeneficiary = b || null;
-      $('#clientForm').dataset.account = bank?.id || '';
-      $('#clientForm').dataset.editing = 'false';
+      form.dataset.account = bank?.id || '';
+      form.dataset.editing = 'false';
       f.name.value = b?.nombre || ''; f.identification.value = b?.identificacion || '';
       f.bank.value = bank?.banco || ''; f.accountType.value = bank?.tipo_cuenta || 'ahorros'; f.accountNumber.value = bank?.numero_cuenta || '';
       f.reason.value = '';
@@ -91,8 +91,9 @@
       $('#clientEditAccount').hidden=!bank || !canEditDestination(profile);
       $('#clientEditAccount').textContent='Editar número destino';
       $('#clientEditReason').hidden=true;
-      $('#clientSave').hidden=!!bank;
-      $('#clientSave').textContent='Guardar cliente y cuenta';
+      const linkingExistingHolder=!!(bank && b && form.dataset.origin && form.dataset.previous!==b.id);
+      $('#clientSave').hidden=!!bank && !linkingExistingHolder;
+      $('#clientSave').textContent=linkingExistingHolder?'Vincular este titular y su cuenta':'Guardar cliente y cuenta';
       const related=rows.filter(r=>r.beneficiary?.id===b?.id && b);
       $('#clientSharedAccount').textContent=related.length ? `Titular relacionado con ${related.length} local(es): ${related.map(r=>r.origin.nombre).join(', ')}. Editar su cuenta cambia la cuenta maestra para futuras liquidaciones de todos ellos; no cambia órdenes anteriores.` : 'Puedes seleccionar un titular existente sin trasladarlo de sus otros locales.';
     }
@@ -201,6 +202,11 @@
       event.preventDefault();
       if (saving) return;
       const form = event.currentTarget, values = Object.fromEntries(new FormData(form));
+      // El tipo de una cuenta existente se muestra bloqueado, por eso FormData lo omite.
+      // Reutilizar exactamente la cuenta validada evita pedirla otra vez o crear otra.
+      if(form.dataset.origin && form.dataset.account && currentBankBeneficiary){
+        values.accountType=form.elements.accountType.value;
+      }
       if(form.dataset.editing==='true'){
         if(!canEditDestination(profile)){ $('#clientEditorError').textContent='Solo Mayte y Oscar pueden editar el número destino.';return; }
         if(!/^[0-9]{5,30}$/.test(String(values.accountNumber || ''))){$('#clientEditorError').textContent='El número de cuenta debe tener entre 5 y 30 dígitos.';return;}

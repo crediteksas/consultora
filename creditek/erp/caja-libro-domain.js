@@ -28,7 +28,7 @@
     for (const v of ventas) {
       if (v.anulada) continue;
       if (v.tipo === 'contado') {
-        agregar('Venta',v.id,v.fecha,v.created_at,'Venta de contado',`Venta #${v.consecutivo}`,v.vendedor,null,v.total,null,'Registrada');
+        agregar('Venta',v.id,v.fecha,v.created_at,'Venta de contado',`Venta #${v.consecutivo}${Number(v.efectivo_devuelto_registrado)>0 ? " · cobro original; devolución registrada por separado" : ""}`,v.vendedor,null,(centavos(v.total)+centavos(v.efectivo_devuelto_registrado ?? 0))/100,null,'Registrada');
       } else if (v.tipo === 'credito') {
         for (const c of (Array.isArray(v.creditos) ? v.creditos : v.creditos ? [v.creditos] : [])) {
           const addi = String(c.financiera || '').toLowerCase() === 'addi';

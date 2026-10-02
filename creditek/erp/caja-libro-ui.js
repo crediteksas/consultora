@@ -26,7 +26,7 @@
     const dias = fechas(desde,hasta,hoy);
     const filtrar = q => q.eq('tienda_codigo',tienda).gte('fecha',desde).lte('fecha',hasta);
     const [ventas,gastos,movimientos] = await Promise.all([
-      todas(() => filtrar(sb.from('ventas').select('id,consecutivo,tienda_codigo,fecha,tipo,total,anulada,vendedor,created_at,creditos(id,financiera,cuota_inicial,medio_pago_complementario)')).eq('anulada',false)),
+      todas(() => filtrar(sb.from('ventas').select('id,consecutivo,tienda_codigo,fecha,tipo,total,efectivo_devuelto_registrado,anulada,vendedor,created_at,creditos(id,financiera,cuota_inicial,medio_pago_complementario)')).eq('anulada',false)),
       todas(() => filtrar(sb.from('gastos').select('id,fecha,monto,estado,descripcion,registrado_por,aprobado_por,created_at,conceptos_gasto(nombre,preautorizado)'))),
       todas(() => filtrar(sb.from('movimientos_caja_tienda').select('id,fecha,tipo,monto,observacion,creado_por,autorizado_por,created_at,soporte_path'))),
     ]);

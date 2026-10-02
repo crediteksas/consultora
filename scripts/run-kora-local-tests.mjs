@@ -25,6 +25,7 @@ const erp = [
   'tests/erp/caja-ciclo-automatico.test.mjs',
   'tests/erp/caja-primera-apertura.test.mjs',
   'tests/erp/caja-libro.test.mjs',
+  'tests/erp/devolucion-parcial-defectuosa.test.mjs',
   'tests/erp/caja-movimientos-acumulados.test.mjs',
   'tests/erp/documentos-gestion.test.mjs',
   'tests/erp/documentos-deeplinks.test.mjs',

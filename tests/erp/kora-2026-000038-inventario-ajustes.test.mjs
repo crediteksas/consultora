@@ -19,7 +19,7 @@ test('la UI conserva ajustes pero retira la carga inicial y refresca ambas fuent
   assert.doesNotMatch(html, /inventario_registrar_ajuste/);
   assert.doesNotMatch(html, /inventario_cargar_inicial/);
   assert.match(html, /refrescar: cargarTodo/);
-  assert.match(html, /Promise\.all\(\[cargarCelulares\(\), cargarAccesorios\(\)\]\)/);
+  assert.match(html, /Promise\.all\(\[cargarCelulares\(\), cargarAccesorios\(\), cargarDefectuosos\(\)\]\)/);
 });
 
 test('los RPC restringen roles, motivo y Bodega Central', () => {

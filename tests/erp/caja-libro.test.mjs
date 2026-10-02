@@ -90,3 +90,8 @@ test('el libro usa nombres y escapa texto; solo se monta para Gerencia o Auditor
   const htmlAdmin=readFile(new URL('creditek/erp/ajustes-gerencia.html',root),'utf8');
   return htmlAdmin.then(s=>assert.match(s,/Consultar libro de caja por tienda/));
 });
+
+test('devolución parcial conserva el cobro original y descuenta una sola vez el ajuste vinculado',()=>{
+  const libro=construir({cuadre:cuadre(0,262000),ventas:[{id:'v',consecutivo:664,fecha,tipo:'contado',total:262000,efectivo_devuelto_registrado:80000}],movimientos:[mov('devolucion','ajuste_auditoria_salida',80000)]});
+  assert.equal(libro.entradas,342000);assert.equal(libro.salidas,80000);assert.equal(libro.saldo,262000);assert.equal(libro.cuadra,true);
+});

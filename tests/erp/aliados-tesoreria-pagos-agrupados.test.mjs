@@ -9,7 +9,20 @@ const sql=fs.readFileSync('supabase/migrations/20260906205155_clientes_unificado
 test('muestra comercio y titular en pagos de aliados',()=>{
   assert.match(app,/paymentBusinessName/);
   assert.match(app,/Titular:/);
-  assert.match(app,/origin_code\s*:\s*b\.origen_codigo/);
+  const start=app.indexOf('  function normalizePayment(p)');
+  const end=app.indexOf('  async function safe(',start);
+  assert.ok(start>=0&&end>start,'Se prueba la normalización real de Tesorería');
+  const normalize=new Function('data',`${app.slice(start,end)};return normalizePayment;`)({beneficiaries:[]});
+  const shared={tipo:'aliado',nombre:'MARIA VASCO',identificacion:'123',origen_codigo:'GANGACELL'};
+  const base={liquidation_beneficiaries:shared};
+  const celu=normalize({...base,origen_operacion:'CELUOFERTA',business_snapshot:{code:'OTRO'}});
+  assert.equal(celu.origin_code,'CELUOFERTA','El comercio de la operación prevalece aunque comparta titular');
+  assert.equal(celu.beneficiary_name,'MARIA VASCO');
+  assert.equal(celu.beneficiary_identification,'123');
+  assert.equal(normalize({...base,business_snapshot:{code:'CELUOFERTA'}}).origin_code,'CELUOFERTA','Se conserva el comercio guardado');
+  assert.equal(normalize(base).origin_code,'GANGACELL','Los pagos antiguos conservan el origen del beneficiario');
+  assert.equal(normalize({}).origin_code,null);
+  assert.equal(normalize({...base,bank_snapshot:{holder:'TITULAR GUARDADO'}}).beneficiary_name,'TITULAR GUARDADO');
 });
 
 test('muestra el ejecutivo real de las operaciones en cada pago de aliados',()=>{

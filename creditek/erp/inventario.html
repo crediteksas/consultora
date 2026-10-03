@@ -440,7 +440,7 @@ let defectuososError = '';
 async function cargarDefectuosos() {
   defectuososCache = []; defectuososError = '';
   const {data,error} = await inventarioDomain.cargarPaginas(() => {
-    let q = sb.from('venta_devoluciones').select('id,referencia,tienda_codigo,producto_id,cantidad,fecha_devolucion,estado_producto,estado').eq('estado','aplicada').order('id');
+    let q = sb.from('venta_devoluciones').select('id,referencia,tienda_codigo,producto_id,cantidad,fecha_devolucion,estado_producto,estado').eq('estado','aplicada').eq('estado_producto','defectuoso_en_tienda').order('id');
     if (!esCentral()) q = q.eq('tienda_codigo',currentPerfil.tienda_codigo);
     return q;
   });
@@ -450,7 +450,7 @@ async function cargarDefectuosos() {
 function renderDefectuosos() {
   const panel = document.getElementById('inventarioDefectuoso');
   const tienda = tiendaActiva();
-  const filas = defectuososCache.filter(d => (!tienda || d.tienda_codigo===tienda) && (esCentral() || d.tienda_codigo===currentPerfil?.tienda_codigo));
+  const filas = defectuososCache.filter(d => d.estado_producto==='defectuoso_en_tienda' && (!tienda || d.tienda_codigo===tienda) && (esCentral() || d.tienda_codigo===currentPerfil?.tienda_codigo));
   panel.hidden = !defectuososError && !filas.length;
   if(defectuososError) { panel.textContent=defectuososError; return; }
   panel.innerHTML = '<h2>Defectuosos en tienda</h2><p>Existencias físicas separadas del inventario disponible para vender.</p><table><thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th>Devolución</th><th>Referencia</th></tr></thead><tbody>' + filas.map(d=>`<tr><td>${escapeHtml(productosCache.find(p=>p.id===d.producto_id)?.nombre || d.producto_id)}</td><td>${escapeHtml(tiendasCache.find(t=>t.codigo===d.tienda_codigo)?.nombre || d.tienda_codigo)}</td><td>${Number(d.cantidad)}</td><td>${escapeHtml(d.fecha_devolucion)}</td><td>${escapeHtml(d.referencia)}</td></tr>`).join('')+'</tbody></table>';

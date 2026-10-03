@@ -291,8 +291,8 @@ const TIPOS_MOVIMIENTO = [
 function tipoInfo(valor) {
   return TIPOS_MOVIMIENTO.find(t => t.valor === valor) || { label: valor, clase: 'neutro' };
 }
-const REF_LABEL = { devolucion_defectuosa: 'Devolución · defectuoso en tienda', venta: 'Venta', remision: 'Remisión', traslado: 'Traslado', ajuste: 'Ajuste', conteo_inventario: 'Conteo autorizado' };
-const REF_HREF = { devolucion_defectuosa: 'inventario.html', venta: 'ventas.html', remision: 'remisiones.html', traslado: 'traslados.html', ajuste: 'ajustes.html', conteo_inventario: 'inventario.html#conteos' };
+const REF_LABEL = { cambio_proveedor_defectuoso: 'Defectuoso entregado al proveedor', cambio_proveedor_reemplazo: 'Reemplazo del proveedor · disponible', devolucion_defectuosa: 'Devolución · defectuoso recibido', venta: 'Venta', remision: 'Remisión', traslado: 'Traslado', ajuste: 'Ajuste', conteo_inventario: 'Conteo autorizado' };
+const REF_HREF = { cambio_proveedor_defectuoso: 'inventario.html', cambio_proveedor_reemplazo: 'inventario.html', devolucion_defectuosa: 'inventario.html', venta: 'ventas.html', remision: 'remisiones.html', traslado: 'traslados.html', ajuste: 'ajustes.html', conteo_inventario: 'inventario.html#conteos' };
 let ultimoInformeKardex = [];
 
 let productosCache = [];

@@ -16,7 +16,7 @@ create table ventas(id uuid primary key,consecutivo bigint,tienda_codigo text,fe
 insert into ventas values('${id(5)}',664,'CK-05',current_date-2,'contado',342000,false,null);
 create table venta_items(id uuid primary key,venta_id uuid,cantidad int,precio_venta numeric,producto_id uuid,unidad_id uuid,costo_congelado numeric);
 insert into venta_items values('${id(6)}','${id(5)}',1,80000,'${id(4)}',null,60000),('${id(7)}','${id(5)}',1,262000,'${id(4)}',null,100000);
-create table stock_cantidad(producto_id uuid,tienda_codigo text,cantidad int);insert into stock_cantidad values('${id(4)}','CK-05',1);
+create table stock_cantidad(producto_id uuid,tienda_codigo text,cantidad int,costo_promedio numeric,precio_tienda numeric,updated_at timestamptz,primary key(producto_id,tienda_codigo));insert into stock_cantidad(producto_id,tienda_codigo,cantidad,costo_promedio,precio_tienda) values('${id(4)}','CK-05',1,60000,60000);
 create table movimientos(id bigserial primary key,tipo text,tienda_codigo text,producto_id uuid,unidad_id uuid,cantidad int,costo numeric,precio numeric,referencia_tipo text,referencia_id text,reverso_de bigint,usuario uuid,nota text);
 create table saldo_ajustes_auditoria(id uuid primary key,referencia text,estado text,tienda_codigo text,caja_base numeric,caja_objetivo numeric,deuda_base numeric,deuda_objetivo numeric,movimiento_caja_id uuid);
 insert into saldo_ajustes_auditoria values('${id(8)}','INC-64','aplicado','CK-05',246629,166629,0,0,'${id(9)}');
@@ -44,6 +44,7 @@ create trigger guard_item before delete on public.venta_items for each row execu
 select set_config('request.jwt.claim.sub','${id(1)}',false);`);
 await db.exec(migration);
 await db.exec(readFileSync('supabase/migrations/20261002165206_devoluciones_indices_y_caja_legacy.sql','utf8'));
+await db.exec(readFileSync('supabase/migrations/20261003201730_devolucion_cambio_inmediato_proveedor.sql','utf8'));
 const apply=()=>db.query("select public.registrar_devolucion_defectuosa('INC-64',$1,$2,current_date-1,'Producto devuelto defectuoso') r",[id(6),id(8)]);
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(2)]);
 await assert.rejects(apply(),/Solo Gerencia/);
@@ -62,6 +63,32 @@ assert.equal((await db.query("select cantidad from venta_devoluciones where esta
 assert.equal((await db.query('select count(*)::int n from movimientos')).rows[0].n,1);
 assert.equal((await db.query('select public.obtener_cuadre_caja(null,null) n')).rows[0].n,'342000.00');
 await assert.rejects(db.query('select public.anular_venta_administrativa($1,$2)',[id(5),'test valid reason']),/devolución parcial/);
+const exchange=()=>db.query("select public.registrar_cambio_proveedor_devolucion($1,current_date-1,'Proveedor reemplazó inmediatamente por la misma referencia') r",[result.id]);
+await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(2)]);
+await assert.rejects(exchange(),/Solo Gerencia/);
+await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(1)]);
+await assert.rejects(db.query("select public.registrar_cambio_proveedor_devolucion($1,current_date-3,'Cambio por proveedor confirmado')",[result.id]),/anterior/);
+await assert.rejects(db.query("select public.registrar_cambio_proveedor_devolucion($1,current_date+1,'Cambio por proveedor confirmado')",[result.id]),/Datos incompletos/);
+// If the inbound ledger entry fails, neither sellable stock nor the outbound movement may remain.
+await db.exec(`create function fail_exchange() returns trigger language plpgsql as $$begin
+ if new.referencia_tipo='cambio_proveedor_reemplazo' then raise exception 'simulated inbound failure'; end if;return new;end$$;
+ create trigger fail_exchange before insert on movimientos for each row execute function fail_exchange();`);
+await assert.rejects(exchange(),/simulated inbound failure/);
+assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,1);
+assert.equal((await db.query('select count(*)::int n from movimientos')).rows[0].n,1);
+assert.equal((await db.query('select estado_producto from venta_devoluciones')).rows[0].estado_producto,'defectuoso_en_tienda');
+await db.exec('drop trigger fail_exchange on movimientos');
+const exchanged=(await exchange()).rows[0].r;
+assert.equal(exchanged.stock_disponible,2);
+assert.equal((await exchange()).rows[0].r.ya_aplicado,true);
+await assert.rejects(db.query("select public.registrar_cambio_proveedor_devolucion($1,current_date-1,'Otro motivo diferente ya registrado')",[result.id]),/otros datos/);
+assert.equal((await db.query('select cantidad from stock_cantidad')).rows[0].cantidad,2);
+assert.equal((await db.query('select count(*)::int n from movimientos')).rows[0].n,3);
+assert.equal((await db.query('select count(*)::int n from movimientos_caja_tienda')).rows[0].n,1);
+assert.equal((await db.query('select count(*)::int n from venta_items')).rows[0].n,1);
+assert.equal((await db.query('select total from ventas')).rows[0].total,'262000');
+assert.equal((await db.query('select public.caja_calcular_interno(null,null) c')).rows[0].c.esperado,166629);
+assert.equal((await db.query('select estado_producto from venta_devoluciones')).rows[0].estado_producto,'reemplazado_por_proveedor');
 await db.exec('grant usage on schema auth to authenticated;grant select on perfiles to authenticated;set role authenticated');
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(2)]);
 assert.equal((await db.query('select id,cantidad from venta_devoluciones')).rows.length,1);
@@ -77,10 +104,13 @@ test('inventario muestra defectuosos separados, filtrados por tienda y con texto
  const fn=html.slice(html.indexOf('function renderDefectuosos()'),html.indexOf('async function cargarTodo()'));
  const panel={hidden:true,innerHTML:'',textContent:''};
  const context=vm.createContext({document:{getElementById:()=>panel},defectuososCache:[
-  {tienda_codigo:'CK-05',producto_id:'k9',cantidad:1,fecha_devolucion:'2026-10-01',referencia:'INC-64'},
-  {tienda_codigo:'CK-06',producto_id:'k9',cantidad:4,referencia:'OTRA-TIENDA'}],defectuososError:'',
+  {tienda_codigo:'CK-05',producto_id:'k9',cantidad:1,fecha_devolucion:'2026-10-01',referencia:'INC-64',estado_producto:'defectuoso_en_tienda'},
+  {tienda_codigo:'CK-06',producto_id:'k9',cantidad:4,referencia:'OTRA-TIENDA',estado_producto:'defectuoso_en_tienda'},
+  {tienda_codigo:'CK-05',producto_id:'k9',cantidad:1,referencia:'YA-REEMPLAZADO',estado_producto:'reemplazado_por_proveedor'}],defectuososError:'',
   tiendaActiva:()=> 'CK-05',esCentral:()=>false,currentPerfil:{tienda_codigo:'CK-05'},productosCache:[{id:'k9',nombre:'K9 <defectuoso>'}],tiendasCache:[{codigo:'CK-05',nombre:'Chinucell'}],escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;')});
  vm.runInContext(fn+';renderDefectuosos();',context);
  assert.equal(panel.hidden,false);assert.match(panel.innerHTML,/INC-64/);assert.match(panel.innerHTML,/K9 &lt;defectuoso&gt;/);assert.doesNotMatch(panel.innerHTML,/OTRA-TIENDA/);
+ assert.doesNotMatch(panel.innerHTML,/YA-REEMPLAZADO/);
+ assert.match(html,/\.eq\('estado_producto','defectuoso_en_tienda'\)/);
  context.defectuososError='Error de carga';vm.runInContext('renderDefectuosos()',context);assert.equal(panel.textContent,'Error de carga');
 });

@@ -121,6 +121,23 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     const entries=unzipSync(fs.readFileSync(await download.path()));
     assert.deepEqual(Object.keys(entries),['PPTO Móvil Shopping Oct 26.pdf','PPTO Celfiao Oct 26.pdf']);
     for(const bytes of Object.values(entries))assert.equal(Buffer.from(bytes).subarray(0,5).toString(),'%PDF-');
+    if(process.env.KORA_PDF_QA_OUTPUT)fs.writeFileSync(process.env.KORA_PDF_QA_OUTPUT,Object.values(entries)[0]);
+    assert.equal(await page.locator('iframe[aria-hidden="true"]').count(),0,'Limpia el render aislado');
+    const renderChecks=await page.evaluate(async()=>{
+      const carta={completo:true,mes:'2026-10',tienda:{nombre:'Tienda de prueba con nombre largo',codigo:'QA'},
+        administradores:['Administradora de prueba'],totales:{meta_venta_total:31120480,meta_creditos:24,meta_uds_cel:63,meta_uds_acc:385}};
+      const logo=new Uint8Array(await (await fetch('/creditek/shared/branding/creditek-logo.png')).arrayBuffer());
+      let sharedCalls=0;
+      const plantilla={cartaHtml(c){sharedCalls++;return KoraPresupuestosRetailCartas.cartaHtml(c);}};
+      const bytes=await KoraCartasDescarga.pdf(carta,logo,window.jspdf.jsPDF,plantilla);
+      let failed=false;
+      try{await KoraCartasDescarga.pdf(carta,new Uint8Array([0]),window.jspdf.jsPDF);}catch{failed=true;}
+      return {sharedCalls,size:bytes.length,failed,frames:document.querySelectorAll('iframe[aria-hidden="true"]').length};
+    });
+    assert.equal(renderChecks.sharedCalls,1,'Usa exactamente la plantilla compartida, incluso sin premios');
+    assert.ok(renderChecks.size>20000,'Incluye la carta renderizada');
+    assert.equal(renderChecks.failed,true,'No entrega una carta con logo inválido');
+    assert.equal(renderChecks.frames,0,'Limpia también cuando falla el logo');
     assert.equal(await page.evaluate(()=>window.calls.length),callsBefore,'Descargar no escribe presupuestos ni premios');
     await page.getByRole('button',{name:'Descargar todas las cartas (ZIP)',exact:true}).waitFor({state:'visible'});
     await page.locator('#cartasPresupuesto').screenshot({ path: '/tmp/kora-presupuesto-cartas.png' });

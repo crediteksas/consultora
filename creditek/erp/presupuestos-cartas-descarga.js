@@ -27,49 +27,48 @@
       return { nombre, carta:c };
     });
   }
-  // PDF vectorial: texto seleccionable, logo original y sin servicios externos.
-  function pdf(c, logo, JsPDF) {
+  // Una sola plantilla: la misma cartaHtml que utiliza la vista previa de KORA.
+  // Se captura a 3x para conservar CSS grid, tipografía, logo y premios sin otro diseño.
+  async function pdf(c, logo, JsPDF, plantilla = globalThis.KoraPresupuestosRetailCartas) {
     archivos([c]);
-    const doc = new JsPDF({unit:'mm',format:'a4',compress:true});
-    const navy = '#112640', teal = '#008A91';
-    const money = v => '$ ' + new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(Number(v)||0);
-    const number = v => new Intl.NumberFormat('es-CO').format(Number(v)||0);
-    const mes = new Intl.DateTimeFormat('es-CO',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(c.mes+'-01T12:00:00Z'));
-    let y=16;
-    function text(s, size=11, color=navy, bold=false, width=178) {
-      doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(color);
-      const lines=doc.splitTextToSize(String(s),width), step=size*0.45;
-      for(const line of lines){ if(y+step>278){doc.addPage();y=20;} doc.text(line,16,y); y+=step; }
+    if (!plantilla?.cartaHtml) throw new Error('No se pudo cargar la plantilla de la carta.');
+    const logoUrl = 'data:image/png;base64,' + btoa(Array.from(logo, b => String.fromCharCode(b)).join(''));
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1200px;border:0;pointer-events:none';
+    const html = plantilla.cartaHtml(c).replace('</head>', '<style>.print-action{display:none!important}</style></head>')
+      .replace('src="/creditek/shared/branding/creditek-logo.png"', 'src="' + logoUrl + '"');
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('La carta tardó demasiado en prepararse. Intenta de nuevo.')), 15000);
+        frame.onload = () => { clearTimeout(timer); resolve(); };
+        frame.srcdoc = html;
+        document.body.appendChild(frame);
+      });
+      const source = frame.contentDocument;
+      await source.fonts.ready;
+      await Promise.all(Array.from(source.images, img => img.decode()));
+      const height = Math.ceil(source.body.getBoundingClientRect().height);
+      if (!height || height > 1600) throw new Error('La carta excede el tamaño seguro de una página. Revisa los nombres y la estrategia.');
+      const xhtml = new XMLSerializer().serializeToString(source.documentElement);
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="794" height="' + height + '"><foreignObject width="100%" height="100%">' + xhtml + '</foreignObject></svg>';
+      const picture = new Image();
+      picture.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      await picture.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 794 * 3; canvas.height = height * 3;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Tu navegador no pudo preparar la carta PDF.');
+      context.scale(3, 3); context.fillStyle = '#fff'; context.fillRect(0, 0, 794, height);
+      context.drawImage(picture, 0, 0);
+      const doc = new JsPDF({unit:'mm',format:'a4',compress:true});
+      const width = Math.min(210, 297 * 794 / height);
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', (210-width)/2, 0, width, height*width/794, undefined, 'FAST');
+      doc.setProperties({title:'PPTO '+c.tienda.nombre+' '+periodo(c.mes),author:'Creditek',subject:'Presupuesto mensual por tienda'});
+      return new Uint8Array(doc.output('arraybuffer'));
+    } finally {
+      frame.remove();
     }
-    doc.setDrawColor(teal);doc.setLineWidth(1.2);doc.line(16,y,194,y);
-    const props=doc.getImageProperties(logo); const h=38*props.height/props.width;
-    doc.addImage(logo,'PNG',16,22,38,h);
-    y=Math.max(39,24+h);text('PRESUPUESTO COMERCIAL · '+mes.toUpperCase(),9,teal,true);y+=6;
-    text(c.tienda.nombre,24,navy,true);text(mes,14,'#617183');y+=5;
-    text('Para',10,'#617183');text(c.administradores?.join(', ') || 'Administración de la tienda',12,navy,true);
-    text('Administración de tienda',10,'#617183');y+=5;
-    text('Compartimos el presupuesto de tu tienda para '+mes+'. Estas son las metas mensuales para orientar la gestión comercial y el seguimiento de resultados.');y+=6;
-    if(y+40>278){doc.addPage();y=20;}
-    doc.setFillColor(navy);doc.roundedRect(16,y,178,29,3,3,'F');
-    doc.setTextColor('#FFFFFF');doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('META DE VENTAS DEL MES',22,y+8);
-    doc.setFontSize(24);doc.text(money(c.totales.meta_venta_total),22,y+21);y+=39;
-    const metricas=[['Créditos','meta_creditos'],['Celulares de contado','meta_uds_cel'],['Accesorios','meta_uds_acc']];
-    metricas.forEach(([label,key],i)=>{
-      const x=16+i*61;doc.setFillColor('#F3F8FA');doc.roundedRect(x,y,56,25,2,2,'F');
-      doc.setTextColor('#617183');doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(label,x+4,y+7);
-      doc.setTextColor(navy);doc.setFontSize(20);doc.setFont('helvetica','bold');doc.text(number(c.totales[key]),x+4,y+18);
-    });y+=35;
-    if(c.premio?.activo){
-      text('PREMIO POR CUMPLIMIENTO',10,teal,true);text(c.premio.estrategia,14,navy,true);y+=3;
-      if(c.premio.premio_tres!=null)text('Si cumples exactamente 3 de las 4 metas: '+money(c.premio.premio_tres),12,navy,true);
-      if(c.premio.premio_cuatro!=null)text('Si cumples las 4 metas: '+money(c.premio.premio_cuatro),12,navy,true);
-      y+=3;text('Las metas son ventas, créditos, celulares de contado y accesorios. Cada meta se cumple al alcanzar el 100% del objetivo mensual. Aplica el premio del nivel alcanzado; los premios no se suman.',9,'#617183');y+=6;
-    }
-    text('Gracias por tu compromiso con la atención a nuestros clientes y el cumplimiento de las metas de la tienda.');y+=6;
-    text('Cordialmente,');text('Gerencia · Creditek',11,navy,true);y+=7;
-    text(c.tienda.nombre+' · '+mes+' · Metas registradas en KORA',8,'#617183');
-    doc.setProperties({title:'PPTO '+c.tienda.nombre+' '+periodo(c.mes),author:'Creditek',subject:'Presupuesto mensual por tienda'});
-    return new Uint8Array(doc.output('arraybuffer'));
   }
   return Object.freeze({periodo,archivos,pdf});
 });

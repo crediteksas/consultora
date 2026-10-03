@@ -16,7 +16,7 @@
 <script src="presupuestos-negocios.js?v=1.0.0"></script>
 <script src="presupuestos-b2b.js?v=1.0.0"></script>
 <script src="presupuestos-retail-cartas.js?v=1.2.0"></script>
-<script src="presupuestos-cartas-descarga.js?v=1.0.0"></script>
+<script src="presupuestos-cartas-descarga.js?v=1.0.1"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -729,7 +729,7 @@ async function descargarTodasCartas() {
     const logo=new Uint8Array(await response.arrayBuffer()), entries=Object.create(null);
     for(let i=0;i<files.length;i++){
       button.textContent=`Preparando carta ${i+1} de ${files.length}...`;
-      entries[files[i].nombre]=KoraCartasDescarga.pdf(files[i].carta,logo,window.jspdf.jsPDF);
+      entries[files[i].nombre]=await KoraCartasDescarga.pdf(files[i].carta,logo,window.jspdf.jsPDF);
       await new Promise(resolve=>setTimeout(resolve,0));
     }
     const zip=window.fflate.zipSync(entries,{level:0});

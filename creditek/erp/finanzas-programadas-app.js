@@ -4,7 +4,7 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const view=D.normalizeView(new URLSearchParams(location.search).get('vista'));
   const scope=D.scopeForView(view);
-  let sb,profile,entries=[],templates=[],stores=[],modalAction=null,retailRequest=null,retailPayload=null,personPicker=null;
+  let sb,profile,entries=[],templates=[],stores=[],modalAction=null,retailRequest=null,retailPayload=null,personPicker=null,quoteRevision=0;
   const retailWithdrawal=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
 
   function waitForShell(){if(window.creditekSidebar?.sb)return Promise.resolve(window.creditekSidebar);return new Promise(resolve=>document.addEventListener('kora-sidebar-ready',()=>resolve(window.creditekSidebar),{once:true}));}
@@ -15,10 +15,13 @@
   function storeName(code){return stores.find(store=>store.codigo===code)?.nombre||code||'—';}
   function empty(text){return `<div class="empty">${esc(text)}</div>`;}
   function field(label,name,type='text',attrs='',value=''){return `<div class="field"><label for="f_${name}">${esc(label)}</label><input id="f_${name}" name="${esc(name)}" class="control" type="${esc(type)}" value="${esc(value)}" ${attrs}></div>`;}
+  function moneyField(label,name,value='',attrs=''){return field(label,name,'text',`data-cop inputmode="decimal" autocomplete="off" placeholder="$ 0" ${attrs}`,D.formatMoneyInput(value));}
+  function bindMoneyInputs(){document.querySelectorAll('#formFields [data-cop]').forEach(input=>{input.addEventListener('input',()=>input.setCustomValidity(''));input.addEventListener('blur',()=>{try{input.value=D.formatMoneyInput(input.value);input.setCustomValidity('');}catch(error){input.setCustomValidity(error.message);}});});}
   function select(label,name,options,value='',attrs=''){return `<div class="field"><label for="f_${name}">${esc(label)}</label><select id="f_${name}" name="${esc(name)}" class="control" ${attrs}>${options.map(([key,text])=>`<option value="${esc(key)}" ${key===value?'selected':''}>${esc(text)}</option>`).join('')}</select></div>`;}
-  function closeModal(){$('modalBg').hidden=true;$('form').reset();modalAction=null;personPicker=null;}
+  function closeModal(){quoteRevision++;$('modalBg').hidden=true;$('form').reset();modalAction=null;personPicker=null;}
   function openModal(kind,record=null){if(kind==='decision'&&!isOscar())return;modalAction=kind;personPicker=null;$('formKind').value=kind;$('recordId').value=record?.id||'';$('formError').hidden=true;
     if(kind==='template')renderTemplateForm(record);else if(kind==='manual')renderManualForm(record);else if(kind==='decision')renderDecisionForm(record);else renderPaymentForm(record);
+    bindMoneyInputs();
     $('modalBg').hidden=false;
   }
   function reuseBeneficiary(record){
@@ -49,7 +52,7 @@
       select('Tipo de cuenta','account_type',[['','Selecciona'],['Ahorros','Ahorros'],['Corriente','Corriente'],['Billetera digital','Billetera digital']],destination.accountType,'required')+
       field('Número de cuenta o celular de billetera','account','text','required inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20"',destination.number)+
       select('Valor','amount_mode',[['fijo','Fijo'],['variable','Variable; se confirma al aprobar']],amountMode,'required')+
-      field('Valor fijo','amount','number','min="1" step="1"',record?.default_amount||'')+field('Día de pago','day1','number','min="1" max="31" required',days[0]||15)+
+      moneyField('Valor fijo','amount',record?.default_amount==null?'':Number(record.default_amount))+field('Día de pago','day1','number','min="1" max="31" required',days[0]||15)+
       field('Segundo día (opcional)','day2','number','min="1" max="31"',days[1]||'')+field('Inicia','start','date','required',record?.start_date||today())+
       field('Termina (opcional)','end','date','',record?.end_date||'')+`<div class="field"><label>Estado</label><label class="check"><input name="active" type="checkbox" ${record?.active===false?'':'checked'}> Configuración activa</label></div><p class="field full">La cuenta se administra en la ficha del beneficiario. La aprobación del movimiento se hace aquí; el pago se registra en Tesorería.</p>`;
     $('f_amount_mode').addEventListener('change',event=>{$('f_amount').disabled=event.target.value==='variable';if(event.target.value==='variable')$('f_amount').value='';});
@@ -68,23 +71,49 @@
       select('Banco o billetera','bank',[['','Selecciona'],['Bancolombia','Bancolombia'],['Nequi','Nequi'],['Daviplata','Daviplata'],['Davivienda','Davivienda'],['Banco de Bogotá','Banco de Bogotá'],['BBVA','BBVA'],['Otro','Otro']])+
       field('Nombre del banco (si elegiste Otro)','other_bank','text','autocomplete="off"')+
       select('Tipo de cuenta','account_type',[['','Selecciona'],['Ahorros','Ahorros'],['Corriente','Corriente'],['Billetera digital','Billetera digital']])+
-      field('Número de cuenta o celular de la billetera','account','text','autocomplete="off" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20"')+field('Valor','amount','number','min="1" step="1" required')+
-      (withdrawal?field('Utilidad desde','period_from','date','required')+field('Utilidad hasta','period_to','date','required'):'')+
-      (withdrawal?`<fieldset id="retailFunding" class="field full"><legend>Dinero que entrega cada tienda Retail</legend><p>Indica un valor solo en las tiendas que pagarán. La suma debe coincidir con el retiro. Oscar aprueba y la tienda envía el soporte en Cartera Retail → Instrucciones.</p>${stores.map(s=>`<label>${esc(s.nombre)}<input class="control" data-retail-store="${esc(s.codigo)}" type="number" min="0" step="0.01" placeholder="0"></label>`).join('')}</fieldset>`:'')+
+      field('Número de cuenta o celular de la billetera','account','text','autocomplete="off" inputmode="numeric" pattern="[0-9]{6,20}" maxlength="20"')+moneyField('Valor','amount','','required')+
+      (withdrawal?'<p id="withdrawalQuote" class="field full" role="status">Calculando utilidad acumulada desde el último cierre…</p>':'')+
+      (withdrawal?`<fieldset id="retailFunding" class="field full"><legend>Dinero que entrega cada tienda Retail</legend><p>Indica un valor solo en las tiendas que pagarán. La suma debe coincidir con el retiro. Oscar aprueba y la tienda envía el soporte en Cartera Retail → Instrucciones.</p>${stores.map(s=>`<label>${esc(s.nombre)}<input class="control" data-cop data-retail-store="${esc(s.codigo)}" type="text" inputmode="decimal" autocomplete="off" placeholder="$ 0"></label>`).join('')}</fieldset>`:'')+
       `<div class="field full"><label for="f_note">Nota</label><textarea id="f_note" name="note" class="control" rows="3"></textarea></div>`;
     const toggleDestination=()=>{const needed=!withdrawal||$('f_business').value!=='retail';
       for(const id of ['f_document','f_bank','f_account_type','f_account'])$(id).required=needed;
       $('f_other_bank').required=needed&&$('f_bank').value==='Otro';
       if(withdrawal)$('retailFunding').hidden=$('f_business').value!=='retail';};
-    $('f_business').addEventListener('change',toggleDestination);
+    $('f_business').addEventListener('change',()=>{toggleDestination();if(withdrawal)refreshWithdrawalQuote();});
+    if(withdrawal)$('f_due').addEventListener('change',refreshWithdrawalQuote);
     $('f_bank').addEventListener('change',toggleDestination);
     toggleDestination();
+    if(withdrawal)refreshWithdrawalQuote();
     if(!withdrawal)reuseBeneficiary();
+  }
+
+  async function withdrawalQuote(business,due){
+    if(due>today())throw new Error('El retiro no puede tomar utilidad de una fecha futura.');
+    const closing=await sb.from('utilidades_cierres_negocio').select('periodo,negocio,disponible').eq('negocio',business).lt('periodo',`${due.slice(0,7)}-01`).order('periodo',{ascending:false}).limit(1);
+    if(closing.error)throw closing.error;
+    const period=D.withdrawalPeriod(closing.data,business,due);
+    const [profitResult,withdrawals]=await Promise.all([
+      window.CreditekTableroUtilidad.load(sb,business,{range:{desde:period.from,hasta:period.to}}),
+      window.CreditekTableroEjecutivos.allRows(sb,'financial_entries','id,entry_type,business_unit,status,amount,due_date','id',q=>q.eq('entry_type','retiro_utilidad').eq('business_unit',business).gte('due_date',period.from).lte('due_date',period.to).in('status',['pendiente_aprobacion','aprobado','pagado'])),
+    ]);
+    if(profitResult.missing)throw new Error('Hay operaciones sin utilidad verificable. Revisa el resultado del negocio antes de preparar otro retiro.');
+    return {...period,...D.withdrawalBalance(profitResult.total,period,withdrawals,business)};
+  }
+  async function refreshWithdrawalQuote(){
+    const revision=++quoteRevision,slot=$('withdrawalQuote');
+    if(!slot)return;
+    slot.textContent='Calculando utilidad acumulada desde el último cierre…';$('save').disabled=true;
+    try{
+      const quote=await withdrawalQuote($('f_business').value,$('f_due').value);
+      if(revision!==quoteRevision)return;
+      slot.textContent=`Cierre hasta ${quote.closed}: saldo anterior ${D.money(quote.carry)}. Utilidad posterior acumulada ${D.money(quote.profit)}; retiros solicitados, autorizados o pagados ${D.money(quote.reserved)}. Disponible contable para solicitar: ${D.money(quote.available)}. No representa saldo bancario.`;
+      $('save').disabled=quote.available<=0;
+    }catch(error){if(revision!==quoteRevision)return;slot.textContent=errorText(error);$('save').disabled=true;}
   }
 
   function renderDecisionForm(record){$('modalTitle').textContent='Autorizar o rechazar pago';$('save').textContent='Confirmar decisión';$('formFields').innerHTML=
     `<input type="hidden" name="id" value="${esc(record.id)}"><p class="field full"><strong>${esc(record.beneficiary)}</strong> · ${esc(record.beneficiary_document||'Sin identificación')}<br>${esc(record.destination_account||'Sin cuenta destino')}<br>${esc(record.concept)}</p>`+select('Decisión','decision',[['aprobado','Autorizar pago'],['rechazado','Rechazar']],'aprobado','required')+
-    field('Valor confirmado','amount','number','min="1" step="1"',record.amount||'')+`<div class="field full"><label for="f_note">Nota</label><textarea id="f_note" name="note" class="control" rows="3"></textarea></div>`;}
+    moneyField('Valor confirmado','amount',record.amount==null?'':Number(record.amount))+`<div class="field full"><label for="f_note">Nota</label><textarea id="f_note" name="note" class="control" rows="3"></textarea></div>`;}
   function renderPaymentForm(record){$('modalTitle').textContent='Registrar pago';$('save').textContent='Subir soporte y registrar pago';$('formFields').innerHTML=`<input type="hidden" name="id" value="${esc(record.id)}"><div class="field full"><label for="f_payment_source">Origen del dinero</label><select id="f_payment_source" name="payment_source" class="control" required><option value="">Selecciona el origen</option><option value="banco">Banco Creditek · Bancolombia •••• 4006</option><option value="otro">Otra fuente (no mueve Banco Creditek)</option></select></div><div class="field full"><label for="f_support">Soporte PDF o imagen (máx. 10 MB)</label><input id="f_support" name="support" class="control" type="file" accept="application/pdf,image/jpeg,image/png" required></div>`;}
 
   function selectedEntries(){return D.filterEntries(entries,{scope,business:$('business')?.value||'',store:$('store')?.value||'',status:$('status').value,query:$('query').value,from:$('from').value,to:$('to').value});}
@@ -104,11 +133,18 @@
     const [entryResult,templateResult,storeResult]=await Promise.all([sb.from('financial_entries').select('*').eq('scope',scope).order('due_date',{ascending:false}),sb.from('financial_recurring_templates').select('*').eq('scope',scope).order('created_at',{ascending:false}),sb.from('origenes').select('codigo,nombre').eq('tipo','propia').eq('activo',true).order('nombre')]);
     const error=entryResult.error||templateResult.error||storeResult.error;if(error){notice(errorText(error),true);return;}entries=entryResult.data||[];templates=templateResult.data||[];stores=storeResult.data||[];entries.forEach(row=>row.store_name=storeName(row.store_code));$('store').innerHTML='<option value="">Todas las tiendas</option>'+stores.map(store=>`<option value="${esc(store.codigo)}">${esc(store.nombre)}</option>`).join('');notice('');render();}
 
-  async function saveTemplate(data){const days=[Number(data.get('day1')),data.get('day2')?Number(data.get('day2')):null].filter(Boolean);let account;try{account=window.KoraPaymentDestination.format(data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank'),data.get('account_type'),data.get('account'));}catch(error){return {error};}return sb.rpc('finanzas_guardar_recurrencia',{p_id:$('recordId').value||null,p_scope:scope,p_business_unit:view==='retail'?'retail':data.get('business'),p_store_code:view==='retail'?data.get('store'):null,p_category:data.get('category'),p_concept:data.get('concept'),p_beneficiary:data.get('beneficiary'),p_beneficiary_document:data.get('document')||null,p_destination_account:account,p_amount_mode:data.get('amount_mode'),p_default_amount:data.get('amount')?Number(data.get('amount')):null,p_payment_days:days,p_start_date:data.get('start'),p_end_date:data.get('end')||null,p_active:data.get('active')==='on'});}
-  async function saveManual(data){let account;try{const bank=data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank');account=data.get('entry_type')==='retiro_utilidad'&&data.get('business')==='retail'?D.destinationAccount(bank,data.get('account_type'),data.get('account')):window.KoraPaymentDestination.format(bank,data.get('account_type'),data.get('account'));}catch(error){return {error};}
+  async function saveTemplate(data){const days=[Number(data.get('day1')),data.get('day2')?Number(data.get('day2')):null].filter(Boolean);let account,amount;try{account=window.KoraPaymentDestination.format(data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank'),data.get('account_type'),data.get('account'));amount=D.parseMoneyInput(data.get('amount'));if(data.get('amount_mode')==='fijo'&&!(amount>0))throw new Error('Ingresa un valor fijo mayor que cero.');}catch(error){return {error};}return sb.rpc('finanzas_guardar_recurrencia',{p_id:$('recordId').value||null,p_scope:scope,p_business_unit:view==='retail'?'retail':data.get('business'),p_store_code:view==='retail'?data.get('store'):null,p_category:data.get('category'),p_concept:data.get('concept'),p_beneficiary:data.get('beneficiary'),p_beneficiary_document:data.get('document')||null,p_destination_account:account,p_amount_mode:data.get('amount_mode'),p_default_amount:data.get('amount_mode')==='fijo'?amount:null,p_payment_days:days,p_start_date:data.get('start'),p_end_date:data.get('end')||null,p_active:data.get('active')==='on'});}
+  async function saveManual(data){let account,quote,requested;try{const bank=data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank');account=data.get('entry_type')==='retiro_utilidad'&&data.get('business')==='retail'?D.destinationAccount(bank,data.get('account_type'),data.get('account')):window.KoraPaymentDestination.format(bank,data.get('account_type'),data.get('account'));
+      requested=D.parseMoneyInput(data.get('amount'));
+      if(!(requested>0))throw new Error('Ingresa un valor mayor que cero.');
+      if(data.get('entry_type')==='retiro_utilidad'){
+        quote=await withdrawalQuote(data.get('business'),data.get('due'));
+        if(Math.round(requested*100)>Math.round(quote.available*100))throw new Error(`El retiro supera la utilidad disponible de ${D.money(quote.available)}. Ya se descuentan las solicitudes y pagos anteriores.`);
+      }
+    }catch(error){return {error};}
     if(data.get('entry_type')==='retiro_utilidad'&&data.get('business')==='retail'){
-      const funding=[...document.querySelectorAll('[data-retail-store]')].filter(el=>Number(el.value)>0).map(el=>({store:el.dataset.retailStore,amount:el.value}));
-      const payload={stores:funding,bank:data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank'),account:data.get('account'),account_type:data.get('account_type'),date:data.get('due'),amount:data.get('amount'),concept:data.get('concept'),beneficiary:data.get('beneficiary'),document:data.get('document'),from:data.get('period_from'),to:data.get('period_to'),note:data.get('note')};
+      let funding;try{funding=[...document.querySelectorAll('[data-retail-store]')].map(el=>({store:el.dataset.retailStore,amount:D.parseMoneyInput(el.value)})).filter(el=>el.amount>0).map(el=>({store:el.store,amount:String(el.amount)}));}catch(error){return {error};}
+      const payload={stores:funding,bank:data.get('bank')==='Otro'?data.get('other_bank'):data.get('bank'),account:data.get('account'),account_type:data.get('account_type'),date:data.get('due'),amount:String(requested),concept:data.get('concept'),beneficiary:data.get('beneficiary'),document:data.get('document'),from:quote.from,to:quote.to,note:data.get('note')};
       if(!funding.length||Math.round(funding.reduce((n,a)=>n+Number(a.amount),0)*100)!==Math.round(Number(payload.amount)*100))return {error:{message:'La suma de tiendas debe coincidir con el retiro.'}};
       if(retailPayload&&retailPayload!==JSON.stringify(payload))return {error:{message:'Ya se intentó enviar este retiro. Conserva los datos y reintenta para confirmar su estado antes de crear otro.'}};
       retailPayload=JSON.stringify(payload);
@@ -116,8 +152,8 @@
       if(result.error&&result.error.code&&result.error.code!=='PGRST000')retailPayload=null;
       return result;
     }
-    return sb.rpc('finanzas_registrar_movimiento',{p_entry_type:data.get('entry_type'),p_business_unit:data.get('business'),p_due_date:data.get('due'),p_category:data.get('entry_type')==='retiro_utilidad'?'retiro':data.get('category'),p_concept:data.get('concept'),p_beneficiary:data.get('beneficiary'),p_beneficiary_document:data.get('document')||null,p_destination_account:account,p_amount:Number(data.get('amount')),p_source_period_from:data.get('period_from')||null,p_source_period_to:data.get('period_to')||null,p_note:data.get('note')||null});}
-  async function saveDecision(data){if(!isOscar())return {error:{message:'Solo Gerencia autoriza pagos.'}};const decision=data.get('decision');const amount=Number(data.get('amount'));if(decision==='aprobado'&&(!Number.isFinite(amount)||amount<=0))return {error:{message:'Confirma un valor mayor que cero.'}};return sb.rpc('finanzas_decidir_movimiento',{p_id:data.get('id'),p_decision:decision,p_amount:decision==='aprobado'?amount:null,p_note:data.get('note')?.trim()||null});}
+    return sb.rpc('finanzas_registrar_movimiento',{p_entry_type:data.get('entry_type'),p_business_unit:data.get('business'),p_due_date:data.get('due'),p_category:data.get('entry_type')==='retiro_utilidad'?'retiro':data.get('category'),p_concept:data.get('concept'),p_beneficiary:data.get('beneficiary'),p_beneficiary_document:data.get('document')||null,p_destination_account:account,p_amount:requested,p_source_period_from:quote?.from||null,p_source_period_to:quote?.to||null,p_note:data.get('note')||null});}
+  async function saveDecision(data){if(!isOscar())return {error:{message:'Solo Gerencia autoriza pagos.'}};const decision=data.get('decision');let amount;try{amount=D.parseMoneyInput(data.get('amount'));}catch(error){return {error};}if(decision==='aprobado'&&!(amount>0))return {error:{message:'Confirma un valor mayor que cero.'}};return sb.rpc('finanzas_decidir_movimiento',{p_id:data.get('id'),p_decision:decision,p_amount:decision==='aprobado'?amount:null,p_note:data.get('note')?.trim()||null});}
   async function savePayment(data){const source=data.get('payment_source');if(!['banco','otro'].includes(source))return {error:{message:'Selecciona el origen del dinero.'}};const file=data.get('support');if(!file||file.size<1)return {error:{message:'Selecciona el soporte.'}};if(file.size>10*1024*1024)return {error:{message:'El soporte supera 10 MB.'}};const ext=(file.name.split('.').pop()||'pdf').toLowerCase();if(!['pdf','jpg','jpeg','png'].includes(ext))return {error:{message:'Usa PDF, JPG o PNG.'}};const path=`finanzas/${crypto.randomUUID()}.${ext}`;const upload=await sb.storage.from('soportes').upload(path,file,{upsert:false,contentType:file.type});if(upload.error)return upload;const result=await sb.rpc('finanzas_registrar_pago_con_origen',{p_id:data.get('id'),p_support_path:path,p_desde_banco_creditek:source==='banco'});if(result.error)await sb.storage.from('soportes').remove([path]);return result;}
   async function submit(event){event.preventDefault();if($('save').disabled)return;$('save').disabled=true;
     try{const data=new FormData(event.currentTarget);

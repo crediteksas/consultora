@@ -20,6 +20,15 @@ test('cuenta destino distingue banco, tipo y número, rechaza correos y datos pa
  assert.throws(()=>D.destinationAccount('','','3001234567'),/Selecciona banco/);
 });
 
+test('los importes de formularios se muestran en pesos y se envían como número sin separadores',()=>{
+  assert.equal(D.formatMoneyInput(2225734).replace(/\s/g,''),'$2.225.734');
+  assert.equal(D.parseMoneyInput('$ 2.225.734'),2225734);
+  assert.equal(D.parseMoneyInput('$ 2.225.734,50'),2225734.5);
+  assert.equal(D.parseMoneyInput(''),null);
+  assert.throws(()=>D.parseMoneyInput('2.22.5734'),/Escribe el valor/);
+  assert.throws(()=>D.parseMoneyInput('-1000'),/Escribe el valor/);
+});
+
 function accessFor(profile){const context={window:{}};vm.runInNewContext(accessSource,context);return context.window.KoraAccessControl;}
 
 test('separa gastos Retail del control general y retiros',()=>{
@@ -36,6 +45,19 @@ test('separa gastos Retail del control general y retiros',()=>{
 test('presenta una o dos fechas y trata 31 como fin de mes',()=>{
   assert.equal(D.recurrenceLabel([15]),'día 15');
   assert.equal(D.recurrenceLabel([31,15]),'día 15 y fin de mes');
+});
+
+test('el retiro toma automáticamente la utilidad posterior al último cierre y reserva retiros previos',()=>{
+  const closures=[{negocio:'aliados',periodo:'2026-10-01',disponible:'999999'},{negocio:'aliados',periodo:'2026-09-01',disponible:'0.00'},{negocio:'aliados',periodo:'2026-08-01',disponible:'100000'}];
+  const period=D.withdrawalPeriod(closures,'aliados','2026-10-03');
+  assert.deepEqual(JSON.parse(JSON.stringify(period)),{from:'2026-10-01',to:'2026-10-03',carry:0,closed:'2026-09-01'});
+  const rows=[
+    {entry_type:'retiro_utilidad',business_unit:'aliados',status:'aprobado',amount:2225734,due_date:'2026-10-03'},
+    {entry_type:'retiro_utilidad',business_unit:'aliados',status:'rechazado',amount:500000,due_date:'2026-10-03'},
+    {entry_type:'gasto',business_unit:'aliados',status:'pagado',amount:100000,due_date:'2026-10-03'},
+  ];
+  assert.deepEqual(JSON.parse(JSON.stringify(D.withdrawalBalance(3000000,period,rows,'aliados'))),{profit:3000000,reserved:2225734,available:774266});
+  assert.throws(()=>D.withdrawalPeriod([], 'aliados','2026-10-03'),/Falta registrar el último cierre/);
 });
 
 test('solo Maite y Oscar ven y abren las dos entradas financieras',()=>{
@@ -60,11 +82,13 @@ test('la migración no toca utilidades, ventas, caja ni liquidaciones existentes
 });
 
 test('la interfaz conserva separación, informe por fechas y soporte de pago',()=>{
-  assert.match(html,/finanzas-programadas-domain\.js\?v=1\.0\.1/);
-  assert.match(html,/finanzas-programadas-app\.js\?v=20261001\.1\.0/);
+  assert.match(html,/finanzas-programadas-domain\.js\?v=1\.0\.3/);
+  assert.match(html,/finanzas-programadas-app\.js\?v=20261003\.1\.1/);
   assert.match(html,/financial-beneficiary-picker\.js/);
   assert.match(app,/Gastos periódicos de Retail/);assert.match(app,/Gastos y retiros/);
   assert.match(html,/id="from"/);assert.match(html,/id="to"/);assert.match(html,/Descargar informe/);
   assert.match(app,/entry_type==='retiro_utilidad'/);assert.match(app,/storage\.from\('soportes'\)\.upload/);
   assert.match(app,/Estos gastos no se mezclan con los gastos diarios de caja ni modifican la utilidad de la tienda/);
+  assert.match(app,/D\.withdrawalPeriod/);
+  assert.doesNotMatch(app,/field\('Utilidad desde'/);
 });

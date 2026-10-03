@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from '@playwright/test';
+import { createRequire } from 'node:module';
+const require=createRequire(import.meta.url);
+const {unzipSync}=require('../../creditek/erp/vendor/fflate-0.8.3.js');
 
 test('Retail: propone para todas y prepara cartas individuales solo de metas guardadas', async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -12,6 +15,8 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     const html = source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
     await page.route('**/*', route => route.request().url().endsWith('creditek-logo.png')
       ? route.fulfill({ contentType: 'image/png', body: fs.readFileSync('creditek/shared/branding/creditek-logo.png') })
+      : route.request().url().includes('/vendor/')
+      ? route.fulfill({contentType:'application/javascript',body:fs.readFileSync('creditek/erp/vendor/'+new URL(route.request().url()).pathname.split('/').pop())})
       : route.request().resourceType() === 'document'
       ? route.fulfill({ contentType: 'text/html', body: html }) : route.abort());
     await page.goto('http://kora-local.test/creditek/erp/presupuestos.html');
@@ -67,6 +72,7 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     await page.addScriptTag({ path: 'creditek/erp/presupuestos-negocios.js' });
     await page.addScriptTag({ path: 'creditek/erp/presupuestos-b2b.js' });
     await page.addScriptTag({ path: 'creditek/erp/presupuestos-retail-cartas.js' });
+    await page.addScriptTag({ path: 'creditek/erp/presupuestos-cartas-descarga.js' });
     await page.addScriptTag({ content: inline });
     await page.getByRole('heading', { name: 'Presupuesto de Retail' }).waitFor();
     await page.locator('#genTienda').selectOption('__todas__');
@@ -106,7 +112,26 @@ test('Retail: propone para todas y prepara cartas individuales solo de metas gua
     assert.equal(await first.locator('body').evaluate(() => !!window.printRequested), false);
     await first.getByRole('button', { name: 'Imprimir / guardar PDF' }).click();
     assert.equal(await first.locator('body').evaluate(() => window.printRequested), true);
+    await page.locator('#genTienda').selectOption('CK-01');
+    const callsBefore=await page.evaluate(()=>window.calls.length);
+    const downloadEvent=page.waitForEvent('download');
+    await page.getByRole('button',{name:'Descargar todas las cartas (ZIP)',exact:true}).click();
+    const download=await downloadEvent;
+    assert.equal(download.suggestedFilename(),'PPTO Tiendas Oct 26.zip');
+    const entries=unzipSync(fs.readFileSync(await download.path()));
+    assert.deepEqual(Object.keys(entries),['PPTO Móvil Shopping Oct 26.pdf','PPTO Celfiao Oct 26.pdf']);
+    for(const bytes of Object.values(entries))assert.equal(Buffer.from(bytes).subarray(0,5).toString(),'%PDF-');
+    assert.equal(await page.evaluate(()=>window.calls.length),callsBefore,'Descargar no escribe presupuestos ni premios');
+    await page.getByRole('button',{name:'Descargar todas las cartas (ZIP)',exact:true}).waitFor({state:'visible'});
     await page.locator('#cartasPresupuesto').screenshot({ path: '/tmp/kora-presupuesto-cartas.png' });
+    await page.locator('#genMes').fill('2026-11');
+    await page.getByRole('button',{name:'Descargar todas las cartas (ZIP)',exact:true}).click();
+    await page.getByText(/No se descargó el ZIP/).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Descargar todas las cartas (ZIP)',exact:true}).isEnabled(),true);
+    await page.locator('#genMes').fill('2026-10');
+    await page.locator('#genTienda').selectOption('__todas__');
+    await page.getByRole('button',{name:'Calcular propuesta',exact:true}).click();
+    await page.getByText(/Propuesta para 2 tienda\(s\), sin guardar/).waitFor();
     page.on('dialog', dialog => dialog.accept());
     await page.getByRole('button', { name: 'Aprobar los 4 indicadores' }).click();
     await page.getByText(/Se aprobaron 1 tienda\(s\).*Fallo simulado/).waitFor();

@@ -16,6 +16,7 @@
 <script src="presupuestos-negocios.js?v=1.0.0"></script>
 <script src="presupuestos-b2b.js?v=1.0.0"></script>
 <script src="presupuestos-retail-cartas.js?v=1.2.0"></script>
+<script src="presupuestos-cartas-descarga.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -199,6 +200,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
       <button class="btn-primary" id="btnAprobarPropuesta" style="display:none;">Aprobar indicador actual</button>
       <button class="btn-primary" id="btnAprobarTodo">Aprobar los 4 indicadores</button>
       <button class="btn-secundario" id="btnGenerarCartas">Generar presupuestos</button>
+      <button class="btn-secundario" id="btnDescargarCartas">Descargar todas las cartas (ZIP)</button>
       <button class="btn-secundario" id="btnCancelarPropuesta" style="display:none;">Descartar</button>
       <button class="btn-secundario" id="btnImportarHistorico">Importar histórico (CSV)</button>
       <input type="file" id="inputHistorico" accept=".csv,.xlsx,.xls" style="display:none;">
@@ -359,6 +361,7 @@ function initPagina() {
   document.getElementById('btnGenerar').addEventListener('click', generarPresupuesto);
   document.getElementById('btnAprobarTodo').addEventListener('click', guardarTodosLosIndicadores);
   document.getElementById('btnGenerarCartas').addEventListener('click', generarCartasPresupuesto);
+  document.getElementById('btnDescargarCartas').addEventListener('click', descargarTodasCartas);
   document.querySelectorAll('.pct-metrica').forEach(input => input.addEventListener('input', actualizarAyudaCrecimiento));
   document.getElementById('btnAprobarPropuesta').addEventListener('click', guardarPropuesta);
   document.getElementById('btnCancelarPropuesta').addEventListener('click', descartarPropuesta);
@@ -560,7 +563,7 @@ async function descartarPropuesta() {
   await cargarPresupuesto();
 }
 
-async function generarCartasPresupuesto() {
+async function generarCartasPresupuesto(opciones = {}) {
   const err = document.getElementById('genErr');
   const seccion = document.getElementById('cartasPresupuesto');
   const estado = document.getElementById('cartasEstado');
@@ -569,12 +572,13 @@ async function generarCartasPresupuesto() {
   let tiendas;
   err.classList.remove('show');
   try {
-    tiendas = KoraPresupuestosRetailCartas.tiendasElegidas(tiendasCache, document.getElementById('genTienda').value);
+    tiendas = KoraPresupuestosRetailCartas.tiendasElegidas(tiendasCache, opciones.todas ? '__todas__' : document.getElementById('genTienda').value);
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Selecciona un mes válido.');
   } catch (ex) {
     err.textContent = ex.message; err.classList.add('show'); return;
   }
   const btn = document.getElementById('btnGenerarCartas');
+  document.getElementById('btnDescargarCartas').disabled = true;
   btn.disabled = true; btn.textContent = 'Preparando cartas...';
   try {
     const [anio, numeroMes] = mes.split('-').map(Number);
@@ -681,12 +685,60 @@ async function generarCartasPresupuesto() {
     document.getElementById('bannerOk').classList.remove('show');
     seccion.hidden = false;
     seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return cartas;
   } catch (ex) {
     err.textContent = 'No se pudieron generar las cartas: ' + ex.message;
     err.classList.add('show');
   } finally {
     btn.disabled = false; btn.textContent = 'Generar presupuestos';
+    if (!descargaCartasEnCurso) document.getElementById('btnDescargarCartas').disabled = false;
   }
+}
+
+let descargaCartasEnCurso = false;
+const libreriasCartas = new Map();
+function cargarLibreriaCartas(src) {
+  if (!libreriasCartas.has(src)) libreriasCartas.set(src, new Promise((resolve,reject) => {
+    const script=document.createElement('script');script.src=src;
+    script.onload=resolve;
+    script.onerror=()=>{ script.remove();libreriasCartas.delete(src);reject(new Error('No se pudo cargar la herramienta PDF/ZIP. Intenta de nuevo.')); };
+    document.head.appendChild(script);
+  }));
+  return libreriasCartas.get(src);
+}
+async function descargarTodasCartas() {
+  if(descargaCartasEnCurso)return;
+  descargaCartasEnCurso=true;
+  const button=document.getElementById('btnDescargarCartas');
+  const controls=['genTienda','genMes','btnGenerarCartas','btnAprobarPropuesta','btnAprobarTodo'].map(id=>document.getElementById(id)).filter(Boolean);
+  const previous=controls.map(el=>el.disabled);
+  controls.forEach(el=>el.disabled=true);button.disabled=true;button.textContent='Preparando todas las cartas...';
+  const estado=document.getElementById('cartasEstado'), err=document.getElementById('genErr');
+  try {
+    // Relee las metas y los premios guardados: nunca aprueba ni escribe presupuestos.
+    const cartas=await generarCartasPresupuesto({todas:true});
+    controls.forEach(el=>el.disabled=true);
+    if(!cartas)return;
+    const files=KoraCartasDescarga.archivos(JSON.parse(JSON.stringify(cartas)));
+    await Promise.all([
+      cargarLibreriaCartas('vendor/jspdf-4.2.1.umd.min.js'),
+      cargarLibreriaCartas('vendor/fflate-0.8.3.js')
+    ]);
+    const response=await fetch('/creditek/shared/branding/creditek-logo.png');
+    if(!response.ok)throw new Error('No se pudo cargar el logo. No se descargaron cartas sin la marca.');
+    const logo=new Uint8Array(await response.arrayBuffer()), entries=Object.create(null);
+    for(let i=0;i<files.length;i++){
+      button.textContent=`Preparando carta ${i+1} de ${files.length}...`;
+      entries[files[i].nombre]=KoraCartasDescarga.pdf(files[i].carta,logo,window.jspdf.jsPDF);
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    const zip=window.fflate.zipSync(entries,{level:0});
+    const url=URL.createObjectURL(new Blob([zip],{type:'application/zip'}));
+    const link=document.createElement('a');link.href=url;link.download='PPTO Tiendas '+KoraCartasDescarga.periodo(cartas[0].mes)+'.zip';
+    document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    estado.textContent=`ZIP preparado con ${files.length} cartas PDF, una por tienda. Revisa Descargas en tu navegador.`;
+  }catch(ex){err.textContent=ex.message || 'No se pudo preparar la descarga.';err.classList.add('show');}
+  finally{controls.forEach((el,i)=>el.disabled=previous[i]);button.disabled=false;button.textContent='Descargar todas las cartas (ZIP)';descargaCartasEnCurso=false;}
 }
 
 // ─── Importar histórico (CSV: tienda_codigo,fecha,creditos,celulares_contado,accesorios,utilidad) ──

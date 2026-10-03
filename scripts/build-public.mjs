@@ -118,6 +118,7 @@ export async function buildPublic(rootDir, outDir) {
   }
 
   await versionHtmlReferences(outDir);
+  await cp(path.join(rootDir, 'creditek/erp/vendor'), path.join(outDir, 'creditek/erp/vendor'), { recursive: true });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

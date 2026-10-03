@@ -46,6 +46,7 @@ export async function buildKora(root, out = path.join(root, 'dist/kora')) {
     }
   }
   for (const relative of KORA_PWA_FILES) await copy(root, resolvedOut, relative);
+  await copy(root, resolvedOut, 'creditek/erp/vendor');
   await copy(root, resolvedOut, 'public/creditek/erp/app.html', 'index.html');
   for (const relative of DESIGN_FILES) await copy(root, resolvedOut, relative);
   await copy(root, resolvedOut, 'creditek/shared/branding/creditek-logo.png');

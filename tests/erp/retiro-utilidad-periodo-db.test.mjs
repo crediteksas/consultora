@@ -25,7 +25,7 @@ test('la base fija el periodo posterior al cierre sin tocar caja ni el cierre',a
     const migration=name=>readFileSync(new URL(`../../supabase/migrations/${name}`,import.meta.url),'utf8');
     await db.exec(migration('20260914200633_obligaciones_recurrentes_y_retiros_por_negocio.sql').replace('create extension if not exists pg_cron;',''));
     await db.exec(migration('20261002213529_cierre_informativo_utilidades_negocio.sql'));
-    await db.exec(migration('20261003202138_retiro_utilidad_periodo_automatico.sql'));
+    await db.exec(migration('20261003204510_retiro_utilidad_periodo_automatico.sql'));
     await db.exec("insert into public.utilidades_cierres_negocio(periodo,negocio,utilidad_neta,retiro_declarado,componentes,declaracion) values ('2026-09-01','aliados',33026532.09,33026532.09,'{}','Cierre de prueba')");
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[maite]);
     await db.exec('set role authenticated');

@@ -9,6 +9,21 @@ const fixedSql=readFileSync(new URL('../../supabase/migrations/20260915163724_in
 const historicoSql=readFileSync(new URL('../../supabase/migrations/20260915195416_inventario_comparativo_historico.sql',import.meta.url),'utf8');
 const delegacionSql=readFileSync(new URL('../../supabase/migrations/20261005144038_retail_inventory_auditor_cut_access.sql',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
+test('valoración previa separa faltantes, sobrantes y efecto neto sin borrar diferencias',()=>{
+ const context=vm.createContext({window:{}});
+ vm.runInContext(readFileSync('creditek/erp/conteos-ui.js','utf8'),context);
+ const resumen=context.window.KoraConteosUI.resumirValores([
+   {cantidad_corte:10,cantidad_fisica:8,diferencia:-2,costo_tienda:1000,valor_ajuste:null},
+   {cantidad_corte:1,cantidad_fisica:4,diferencia:3,costo_tienda:100,valor_ajuste:null},
+ ]);
+ assert.equal(resumen.faltantes,2000);
+ assert.equal(resumen.sobrantes,300);
+ assert.equal(resumen.impactoNeto,-1700);
+ assert.equal(resumen.valorSistema,10100);
+ assert.equal(resumen.valorReportado,8400);
+ assert.equal(resumen.unidadesFaltantes,2);
+ assert.equal(resumen.unidadesSobrantes,3);
+});
 const storeUser='00000000-0000-0000-0000-000000000003',otherUser='00000000-0000-0000-0000-000000000004',otherAdmin='00000000-0000-0000-0000-000000000005';
 let db,n=0;
 before(async()=>{

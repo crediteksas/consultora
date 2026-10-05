@@ -76,6 +76,7 @@ const erp = [
   'tests/erp/liquidaciones-resumen.test.mjs',
   'tests/erp/conteos-inventario.test.mjs',
   'tests/erp/no-conformes-inventario.test.mjs',
+  'tests/erp/cierre-utilidad-cortes.test.mjs',
   'tests/erp/costos-iniciales-tiendas.test.mjs',
   'tests/erp/gastos-tiendas-contexto.test.mjs',
   'tests/erp/finanzas-reportes.test.mjs',

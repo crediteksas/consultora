@@ -302,17 +302,99 @@ function initPagina() {
     initModoBloques(sesionParam);
     return;
   }
+  initCierrePorCorte();
+}
 
-  // Modo 1: cierre normal de periodo (comportamiento existente, sin cambios)
-  if (puedeSeleccionarTienda()) {
-    document.getElementById('filtroTienda').style.display = '';
+// El cierre por fechas permanece solo como histórico en el código: usarlo
+// congelaría todo el día aunque el inventario se hubiera cortado a las 08:54.
+let vistaCorteActual = null;
+function horaCorte(valor) {
+  return valor ? new Date(valor).toLocaleString('es-CO', {
+    timeZone:'America/Bogota',year:'numeric',month:'long',day:'numeric',
+    hour:'2-digit',minute:'2-digit',second:'2-digit'
+  }) : '—';
+}
+async function initCierrePorCorte() {
+  document.getElementById('tituloPagina').textContent = 'Cierre de utilidad por inventario';
+  const cont = document.getElementById('contenidoPeriodo');
+  if (!esCentral()) {
+    cont.innerHTML = '<div class="empty-state">El conteo físico se registra en Inventario. Solo Gestión o Gerencia revisa aquí la utilidad.</div>';
+    return;
   }
-
-  document.getElementById('btnCancelarConteo').addEventListener('click', () => document.getElementById('modalConteo').classList.remove('show'));
-  document.getElementById('btnConfirmarConteo').addEventListener('click', confirmarConteo);
-  document.getElementById('btnCerrarScanner').addEventListener('click', cerrarScanner);
-
-  cargarTiendas();
+  await cargarCortesUtilidad();
+}
+async function cargarCortesUtilidad() {
+  const cont = document.getElementById('contenidoPeriodo');
+  cont.innerHTML = '<div class="empty-state">Consultando cortes de inventario...</div>';
+  const {data,error} = await sb.rpc('cierre_utilidad_retail',{p_accion:'listar'});
+  if (error) {
+    cont.innerHTML = `<div class="empty-state">No se pudieron consultar los cortes: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  const cortes = data?.cortes || [];
+  cont.innerHTML = `<div class="seccion">
+    <h2>Liquidación entre cortes físicos</h2>
+    <div class="sub">La primera liquidación comienza en la fecha registrada de control de inventario; las siguientes comienzan exactamente en el corte ya cerrado. Aprobar el conteo no cierra utilidad ni mueve caja, bancos o inventario.</div>
+    <button class="btn-secundario" id="btnActualizarCortes">Actualizar cortes</button>
+    <button class="btn-secundario" id="btnIrConteos">Ir a Conteos y ajustes</button>
+  </div><div class="seccion"><h2>Cortes de las tiendas</h2>
+    ${cortes.length ? `<ul class="check-lista">${cortes.map(c => `<li class="check-item" style="gap:12px;align-items:center">
+      <span class="nombre" style="flex:1">${escapeHtml(c.tienda_nombre)}<br><small>${escapeHtml(horaCorte(c.corte_at))} · ${escapeHtml(c.cierre_id?'Utilidad cerrada':c.estado)}</small></span>
+      <button class="btn-secundario" data-vista-corte="${escapeHtml(c.id)}">Ver liquidación</button>
+    </li>`).join('')}</ul>` : '<div class="empty-state">No hay cortes físicos registrados todavía.</div>'}
+  </div><div id="detalleCierreCorte"></div>`;
+  document.getElementById('btnActualizarCortes').onclick = cargarCortesUtilidad;
+  document.getElementById('btnIrConteos').onclick = () => { location.href='inventario.html#conteos'; };
+  cont.querySelectorAll('[data-vista-corte]').forEach(b => {
+    b.onclick = () => cargarVistaCorte(b.dataset.vistaCorte);
+  });
+}
+async function cargarVistaCorte(corteId) {
+  const cont = document.getElementById('detalleCierreCorte');
+  cont.innerHTML = '<div class="empty-state">Calculando liquidación...</div>';
+  const {data,error} = await sb.rpc('cierre_utilidad_retail',{p_accion:'vista',p_corte_id:corteId});
+  if (error) {
+    cont.innerHTML = `<div class="empty-state">No se pudo calcular: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  vistaCorteActual = data;
+  const bloqueos = data.bloqueos || [];
+  cont.innerHTML = `<div class="seccion">
+    <h2>${escapeHtml(data.tienda_nombre)} · ${data.cerrado?'Utilidad cerrada':data.listo?'Lista para revisión de Gerencia':'Pendiente'}</h2>
+    <div class="sub">Desde ${escapeHtml(horaCorte(data.inicio_at))} hasta ${escapeHtml(horaCorte(data.fin_at))} (el instante del corte no entra dos veces). ${data.origen_inicio==='carga_inicial'?'Primer inventario: base de la carga inicial.':'Base: inventario anterior cerrado.'}</div>
+    ${bloqueos.length?`<div class="estado-lista">${bloqueos.map(b=>`<div class="estado-linea mal"><span class="icono">✕</span>${escapeHtml(b)}</div>`).join('')}</div>`:''}
+    ${data.corte_estado==='aplicado'||data.corte_estado==='sin_diferencias'?`<div class="resumen-grid">
+      <div class="resumen-card"><div class="label">Ventas · ${Number(data.ventas_count)||0} operaciones</div><div class="valor">${fmtCOP(data.ventas_totales)}</div></div>
+      <div class="resumen-card"><div class="label">Costo real vendido</div><div class="valor">${fmtCOP(data.costo_vendido)}</div></div>
+      <div class="resumen-card"><div class="label">Gastos aprobados de caja</div><div class="valor">${fmtCOP(data.gastos_totales)}</div></div>
+      <div class="resumen-card"><div class="label">Bajas por imperfectos · sin efectivo</div><div class="valor">${fmtCOP(data.gastos_inventario_no_monetarios||0)}</div></div>
+      <div class="resumen-card"><div class="label">Otros faltantes del corte</div><div class="valor">${fmtCOP(Number(data.perdidas_ajustes||0)-Number(data.gastos_inventario_no_monetarios||0))}</div></div>
+      <div class="resumen-card"><div class="label">Sobrantes del corte</div><div class="valor">${fmtCOP(data.ganancias_ajustes)}</div></div>
+      <div class="resumen-card"><div class="label">Ajuste de conciliación financiera</div><div class="valor">${fmtCOP(data.ajuste_conciliacion)}</div></div>
+      <div class="resumen-card destacado"><div class="label">Utilidad neta ${data.cerrado?'confirmada':'propuesta'}</div><div class="valor">${fmtCOP(data.utilidad_neta)}</div></div>
+    </div><p class="sub">Inventario al corte: ${fmtCOP(data.inventario_final)}. Las bajas por imperfectos se restan una sola vez de la utilidad y no mueven caja. ${data.inventario_inicial==null?'No hay corte anterior para valorar inventario inicial.':''}</p>`:'<p>El Excel físico y la aprobación de Mayte u Óscar son necesarios antes de mostrar una utilidad final.</p>'}
+    ${data.listo&&!data.cerrado&&currentPerfil.rol==='gerencia'?'<button class="btn-primary" id="btnCerrarUtilidadCorte">Cerrar utilidad del corte</button>':''}
+  </div>`;
+  const btn = document.getElementById('btnCerrarUtilidadCorte');
+  if (btn) btn.onclick = confirmarCierreCorte;
+}
+async function confirmarCierreCorte() {
+  const v = vistaCorteActual;
+  if (!v?.listo || v.cerrado) return;
+  if (!confirm(`¿Confirmas la utilidad de ${v.tienda_nombre} entre ${horaCorte(v.inicio_at)} y ${horaCorte(v.fin_at)} por ${fmtCOP(v.utilidad_neta)}?\n\nNo se moverá dinero ni inventario. Este cierre quedará auditado.`)) return;
+  const btn = document.getElementById('btnCerrarUtilidadCorte');
+  btn.disabled = true; btn.textContent = 'Confirmando...';
+  const {data,error} = await sb.rpc('cierre_utilidad_retail',{
+    p_accion:'cerrar',p_corte_id:v.corte_id,p_huella:v.huella
+  });
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Cerrar utilidad del corte';
+    alert('No se cerró la utilidad: '+error.message);
+    return;
+  }
+  mostrarBanner(`Utilidad de ${data.tienda_nombre} cerrada: ${fmtCOP(data.utilidad_neta)}. No se movió dinero.`);
+  await cargarCortesUtilidad();
+  await cargarVistaCorte(v.corte_id);
 }
 
 // ─── Modo 2: Conteo por bloques (sesión de auditoría cruzada) ─────────────

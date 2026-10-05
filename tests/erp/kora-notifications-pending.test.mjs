@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
 const source=readFileSync('creditek/erp/kora-notifications.js','utf8');
 const context=vm.createContext({window:{},document:{dispatchEvent(){}},CustomEvent:class{}});
 vm.runInContext(source,context);
@@ -66,6 +67,66 @@ test('ventas excepcionales solo alertan a quien el servidor permite autorizar',(
   }
   for(const rol of ['admin_tienda','asesor'])assert.ok(!pendingSources({id:'a',rol,tienda_codigo:'CK-02'},true,true).some(s=>s.key==='sales-approval'));
   assert.equal(pendingSources({id:'a',rol:'gerencia',activo:false},true,true).length,0);
+});
+
+test('conteos cargados aparecen para Gerencia y Maite, no para tiendas',async()=>{
+  for(const rol of ['gerencia','auditoria']){
+    const spec=pendingSources({id:'a',rol}).find(s=>s.key==='inventory-counts');
+    assert.equal(spec.rpc,'conteos_pendientes_cantidad');
+    assert.equal(spec.path,'/creditek/erp/inventario.html#conteos');
+    assert.match(spec.hint,/antes de autorizar diferencias/);
+    const sb={rpc:async name=>{assert.equal(name,spec.rpc);return {data:2,error:null};}};
+    assert.equal((await pendingCount(sb,spec)).count,2);
+    await assert.rejects(pendingCount({rpc:async()=>({data:null,error:{message:'sin acceso'}})},spec),/pendientes/);
+  }
+  assert.ok(!pendingSources({id:'a',rol:'admin_tienda',tienda_codigo:'CK-01'}).some(s=>s.key==='inventory-counts'));
+  const sql=readFileSync('supabase/migrations/20261005220944_avisar_conteos_inventario_pendientes.sql','utf8');
+  assert.match(sql,/c\.estado = 'pendiente'/);
+  assert.match(sql,/join inventario_control\.responsables/);
+  assert.match(sql,/grant execute on function public\.conteos_pendientes_cantidad\(\) to authenticated/);
+  assert.match(readFileSync('creditek/erp/conteos-ui.js','utf8'),/kora-notifications-refresh/);
+});
+
+test('RPC de la campana cuenta solo conteos pendientes y restringe a responsables activos',async()=>{
+  const db=await PGlite.create();
+  try {
+    await db.exec(`create role anon; create role authenticated;
+      create schema auth; create schema inventario_control;
+      create function auth.uid() returns uuid language sql stable as $$
+        select nullif(current_setting('app.uid', true),'')::uuid
+      $$;
+      create table public.perfiles(id uuid primary key, activo boolean, rol text);
+      create table inventario_control.responsables(perfil_id uuid primary key);
+      create table inventario_control.cortes(id uuid primary key, estado text);
+    `);
+    await db.exec(readFileSync('supabase/migrations/20261005220944_avisar_conteos_inventario_pendientes.sql','utf8'));
+    await db.exec(`insert into public.perfiles values
+      ('00000000-0000-0000-0000-000000000001',true,'gerencia'),
+      ('00000000-0000-0000-0000-000000000002',true,'auditoria'),
+      ('00000000-0000-0000-0000-000000000003',true,'admin_tienda'),
+      ('00000000-0000-0000-0000-000000000004',false,'auditoria');
+      insert into inventario_control.responsables values
+      ('00000000-0000-0000-0000-000000000001'),
+      ('00000000-0000-0000-0000-000000000002'),
+      ('00000000-0000-0000-0000-000000000004');
+      insert into inventario_control.cortes values
+      ('10000000-0000-0000-0000-000000000001','abierto'),
+      ('10000000-0000-0000-0000-000000000002','pendiente'),
+      ('10000000-0000-0000-0000-000000000003','pendiente'),
+      ('10000000-0000-0000-0000-000000000004','aplicado');`);
+    for(const id of ['00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002']){
+      await db.query("select set_config('app.uid',$1,false)",[id]);
+      const result=await db.query('select public.conteos_pendientes_cantidad() as n');
+      assert.equal(Number(result.rows[0].n),2);
+    }
+    for(const id of ['00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000004']){
+      await db.query("select set_config('app.uid',$1,false)",[id]);
+      const result=await db.query('select public.conteos_pendientes_cantidad() as n');
+      assert.equal(Number(result.rows[0].n),0);
+    }
+    await db.query("select set_config('app.uid','',false)");
+    assert.equal(Number((await db.query('select public.conteos_pendientes_cantidad() as n')).rows[0].n),0);
+  } finally { await db.close(); }
 });
 
 test('campana cuenta todas las ventas pendientes, no aprobadas/rechazadas ni solo el mes actual',async()=>{

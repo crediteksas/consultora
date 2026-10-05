@@ -8,6 +8,7 @@
     const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central) {
       sources.push(
+        {key:'inventory-counts',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
         {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
         {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
@@ -29,6 +30,12 @@
   }
 
   async function pendingCount(sb, source) {
+    if (source.rpc) {
+      const result = await sb.rpc(source.rpc);
+      const count = Number(result.data);
+      if (result.error || result.data == null || !Number.isSafeInteger(count) || count < 0) throw new Error('No se pudieron consultar todos los pendientes.');
+      return {...source, count};
+    }
     let query = sb.from(source.table).select('id', {count:'exact', head:true});
     for (const [method, column, value] of source.filters) query = query[method](column, value);
     const result = await query;

@@ -6,6 +6,24 @@
   const estados = { abierto:'Pendiente de conteo', pendiente:'Pendiente de Mayte / Óscar', aplicado:'Ajuste aplicado',sin_diferencias:'Revisado sin diferencias',rechazado:'Cerrado sin aplicar' };
   const fechaCorte = c => c.revision_fuente?.fecha_confirmada || local(c.corte_at);
   const estadoCorte = c => c.revision_fuente?.solo_comparativo && c.estado==='pendiente' ? 'Comparativo histórico · pendiente de revisión' : estados[c.estado];
+  function resumirValores(lineas) {
+    const total={faltantes:0,sobrantes:0,unidadesFaltantes:0,unidadesSobrantes:0,sinCosto:0,valorSistema:0,valorReportado:0};
+    for (const l of lineas) {
+      if (l.cantidad_fisica == null) continue;
+      const delta=Number(l.diferencia||0), costo=Number(l.costo_tienda);
+      if (!Number.isFinite(costo) || costo<=0) {
+        if (delta!==0 || Number(l.cantidad_fisica)>0 || Number(l.cantidad_corte)>0) total.sinCosto++;
+        continue;
+      }
+      total.valorSistema+=Number(l.cantidad_corte||0)*costo;
+      total.valorReportado+=Number(l.cantidad_fisica||0)*costo;
+      const valor=l.valor_ajuste == null ? delta*costo : Number(l.valor_ajuste);
+      if (delta<0) { total.faltantes-=valor; total.unidadesFaltantes-=delta; }
+      if (delta>0) { total.sobrantes+=valor; total.unidadesSobrantes+=delta; }
+    }
+    total.impactoNeto=total.sobrantes-total.faltantes;
+    return total;
+  }
   function init({ sb, XLSX, tiendaActual, refrescar }) {
     let config, detalle, noConformes=[], cortesPendientes=[], busy=false, ready;
     const el = id => document.getElementById(`conteos-${id}`);
@@ -180,6 +198,7 @@
       cortesPendientes=cortes.filter(c=>c.tienda_codigo===el('tienda').value&&c.estado==='pendiente');
       el('nc-corte').innerHTML='<option value="">Antes de iniciar el corte</option>'+cortesPendientes.map(c=>`<option value="${esc(c.id)}">${esc(fechaCorte(c))} · ${esc(estadoCorte(c))}</option>`).join('');
       if(cortesPendientes.length)el('nc-corte').value=cortesPendientes[0].id;
+      cortes.sort((a,b)=>Number(b.estado==='pendiente')-Number(a.estado==='pendiente') || new Date(b.corte_at)-new Date(a.corte_at));
       el('historial').innerHTML=cortes.length?cortes.map(c=>`<div class="hist-item"><span>${esc(c.tienda_nombre)} · ${esc(fechaCorte(c))}<br>${esc(estadoCorte(c))} · ${esc(c.contado_nombre||c.creado_nombre)}</span><button class="btn-export" data-conteo-id="${esc(c.id)}">Ver</button></div>`).join(''):'No hay cortes con estos filtros. Incluye hoy en «Hasta» y deja Responsable vacío si el corte lo creó otra persona.';
       el('historial').querySelectorAll('[data-conteo-id]').forEach(b=>b.onclick=()=>run(async()=>{detalle=await rpc('ver',{id:b.dataset.conteoId});renderDetalle();}));
     }
@@ -188,6 +207,7 @@
       const pendiente=corte.estado==='pendiente', corteFijo=corte.base_conteo==='corte_fijo';
       const historico=!!corte.revision_fuente?.solo_comparativo;
       const diferencias=lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0);
+      const valores=resumirValores(lineas);
       el('detalle').innerHTML=`<h2>${esc(corte.tienda_nombre)} · ${esc(estadoCorte(corte))}</h2>
         <p style="margin:12px 0">Corte: ${esc(fechaCorte(corte))} · ${lineas.length} referencias/equipos identificados.<br>
         ${corte.contado_at?`${corteFijo?'Conteo referido al corte':'Conteo del método anterior'}: ${esc(historico?fechaCorte(corte):local(corte.contado_at))} · Registrado por ${esc(corte.contado_nombre)}${corte.recibido_at?' el '+esc(local(corte.recibido_at)):''} · ${diferencias.length} diferencias.`:'Pendiente de subir cantidades reconstruidas al corte.'}</p>
@@ -199,18 +219,26 @@
           <label><input id="conteos-confirmar-corte" type="checkbox" required> Confirmo que la tienda sumó las salidas y restó las entradas posteriores al corte. El Excel reporta lo que había al corte, no el físico de hoy.</label>
           <button class="btn-export" type="submit">Registrar conteo sin aplicar ajustes</button></form>`:''}
         <p style="margin:12px 0">${historico?'Diferencia = conteo del archivo − base del archivo. Actual es solo consulta, no una nueva base. Las filas por aclarar no están sumadas a las diferencias.':'Diferencia = cantidad reportada al corte − cantidad del sistema al corte. Propuesto hoy = inventario actual + diferencia. No se descuentan ventas otra vez. Si el resultado es negativo o el IMEI ya cambió de situación, debe conciliarse antes de aplicar.'}</p>
+        ${corte.contado_at&&!historico?`<section role="group" aria-label="Valoración de diferencias del conteo" style="padding:14px;margin:12px 0;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc">
+          <h3>Valoración al costo de tienda · ${diferencias.length} diferencia(s)</h3>
+          <p>Sistema al corte: <strong>${money(valores.valorSistema)}</strong> · Reportado al corte: <strong>${money(valores.valorReportado)}</strong></p>
+          <p>Faltantes: ${valores.unidadesFaltantes} unidades · <strong>${money(valores.faltantes)}</strong> &nbsp; Sobrantes: ${valores.unidadesSobrantes} unidades · <strong>${money(valores.sobrantes)}</strong></p>
+          <p>Impacto neto ${pendiente?'provisional':'registrado'} en la utilidad del corte: <strong>${valores.impactoNeto<0?'-':''}${money(Math.abs(valores.impactoNeto))}</strong>. La utilidad total también incluye ventas, costo vendido y gastos; se revisa y cierra aparte en Cierre de período.</p>
+          ${valores.sinCosto?`<p role="alert">${valores.sinCosto} fila(s) sin costo válido; los totales están incompletos y no se debe aprobar todavía.</p>`:''}
+          <p>La aprobación aplica las diferencias a existencias una sola vez y registra quién autorizó. El corte original conserva las diferencias como evidencia; no se borran del historial.</p>
+        </section>`:''}
         <label><input type="checkbox" id="conteos-solo-dif" ${pendiente?'checked':''}> Mostrar solo diferencias</label>
-        <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Sistema al corte</th><th>Reportado al corte</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Observación</th><th>Decisión</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
+        <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Sistema al corte</th><th>Reportado al corte</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Valor diferencia</th><th>Observación</th><th>Decisión</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
         ${config.autoriza&&!historico&&(pendiente||corte.estado==='abierto')?`<form id="conteos-form-decidir" class="inventario-form">
           <label>Motivo de la revisión<textarea id="conteos-motivo" minlength="5" required></textarea></label>
           <label>Soporte o referencia documental<input id="conteos-soporte" placeholder="Número/enlace de acta o evidencia"></label>
           <label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
           ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
-          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Autorizar y aplicar una sola vez</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div></form>`:''}`;
+          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Listo, ajustar inventario</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div></form>`:''}`;
       function pintarLineas() {
         const filas=el('solo-dif').checked?lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0):lineas;
         const anteriores=new Map(Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>[`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`,i.value]));
-        el('lineas').innerHTML=filas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${historico?'Por validar':l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${esc(l.nota)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0?`<select data-decision-codigo="${esc(l.codigo)}" data-decision-imei="${esc(l.imei)}" aria-label="Decisión para ${esc(l.codigo)}"><option value="">Clasificar</option>${l.diferencia<0?'<option value="no_conforme">No conforme · salida</option><option value="faltante">Faltante</option><option value="obsequio">Obsequio</option>':'<option value="sobrante">Sobrante</option>'}<option value="correccion_registro">Corrección de registro</option></select>`:'—'}</td></tr>`).join('')||'<tr><td colspan="9">Sin diferencias registradas.</td></tr>';
+        el('lineas').innerHTML=filas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${historico?'Por validar':l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${l.diferencia==null||!(Number(l.costo_tienda)>0)?'—':esc(money(l.valor_ajuste==null?Number(l.diferencia)*Number(l.costo_tienda):Number(l.valor_ajuste)))}</td><td>${esc(l.nota)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0?`<select data-decision-codigo="${esc(l.codigo)}" data-decision-imei="${esc(l.imei)}" aria-label="Decisión para ${esc(l.codigo)}"><option value="">Clasificar</option>${l.diferencia<0?'<option value="no_conforme">No conforme · salida</option><option value="faltante">Faltante</option><option value="obsequio">Obsequio</option>':'<option value="sobrante">Sobrante</option>'}<option value="correccion_registro">Corrección de registro</option></select>`:'—'}</td></tr>`).join('')||'<tr><td colspan="10">Sin diferencias registradas.</td></tr>';
         el('lineas').querySelectorAll('[data-decision-codigo]').forEach(i=>{i.value=anteriores.get(`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`)||'';});
       }
       pintarLineas();el('solo-dif').onchange=pintarLineas;
@@ -229,6 +257,7 @@
       const contado_at=detalle.corte.corte_at;
       const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');
       detalle=await rpc('subir',{id:parsed.corte,base_conteo:'corte_fijo',contado_at,filas:parsed.filas,archivo:file.name,sha256});
+      document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       renderDetalle();await historial();
     }
     async function decidir(accion) {
@@ -239,9 +268,18 @@
       const decisiones=Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>({codigo:i.dataset.decisionCodigo,imei:i.dataset.decisionImei,clasificacion:i.value}));
       if(accion==='aplicar'&&decisiones.some(d=>!d.clasificacion))throw new Error('Clasifica cada diferencia. Los imperfectos no son faltantes.');
       const noConformes=decisiones.filter(d=>d.clasificacion==='no_conforme');
-      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre}? ${noConformes.length} referencia(s) saldrán como no conformes, con destino pendiente. Las otras diferencias se aplicarán según su clasificación. No se puede deshacer ni descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return;
+      const valorizadas=detalle.lineas.map(l=>{
+        const confirmado=costos.find(c=>c.codigo===l.codigo&&c.imei===l.imei);
+        return confirmado&&confirmado.costo_tienda>0?{...l,costo_tienda:confirmado.costo_tienda}:l;
+      });
+      const valoracion=resumirValores(valorizadas);
+      if(accion==='aplicar'&&valorizadas.some(l=>l.diferencia!==0&&!(Number(l.costo_tienda)>0)))
+        throw new Error('Confirma el costo de todas las diferencias antes de autorizar.');
+      const impacto=valoracion.impactoNeto;
+      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return;
       const datos={id:detalle.corte.id,base_conteo:'corte_fijo',motivo,soporte,clasificacion,costos,decisiones};
       detalle=accion==='aplicar'?await rpcNoConformes('aplicar_conteo',datos):await rpc(accion,datos);
+      document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       renderDetalle();await historial();if(accion==='aplicar')await refrescar();
     }
     async function informe() {
@@ -271,5 +309,5 @@
     ready.catch(e=>{el('mensaje').textContent=e.message;});
     return { async abrir(){el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };
   }
-  global.KoraConteosUI=Object.freeze({init});
+  global.KoraConteosUI=Object.freeze({init,resumirValores});
 })(window);

@@ -351,13 +351,13 @@
     importaciones?.setBatch(selected);
     const frozen = Boolean(selected.frozen_at || selected.approved_at || ['aprobada','programada','pagada','cerrada'].includes(selected.estado));
     const krediya = selected.plataforma === 'krediya';
-    $('calculate').textContent = krediya ? 'Revisar y enviar a aprobación' : ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
+    $('calculate').textContent = ['calculada','revisada'].includes(selected.estado) ? 'Actualizar cálculo del lote' : 'Liquidar lote';
     $('calculate').classList.toggle('hidden', frozen);
-    $('approve').textContent = krediya ? 'Aprobar y pasar a pagos' : 'Aprobar liquidación';
+    $('approve').textContent = 'Aprobar liquidación';
     $('approve').classList.toggle('hidden',frozen);
     $('saveReview').classList.toggle('hidden', frozen || krediya);
     $('validate').classList.add('hidden');
-    $('review').classList.toggle('hidden',krediya || frozen);
+    $('review').classList.toggle('hidden',frozen);
     document.querySelector('[data-tab="differences"]').classList.toggle('hidden',!krediya);
     $('currentState').textContent = UX.traducirEstado(selected.estado);
     $('validate').disabled = !['importada', 'con_novedades'].includes(selected.estado);
@@ -367,7 +367,7 @@
     $('approve').disabled = operator.capacidad !== 'aprobador' || selected.estado !== 'revisada';
     $('reject').disabled = operator.capacidad !== 'aprobador' || !['calculada', 'revisada'].includes(selected.estado);
     $('reject').classList.toggle('hidden', frozen || krediya && $('reject').disabled);
-    if (!frozen && selected.estado === 'calculada' && operator.capacidad === 'aprobador') {
+    if (!frozen && selected.estado === 'calculada') {
       $('workflowError').textContent = 'Pendiente de revisión administrativa: Maite debe marcar la liquidación como revisada antes de que Gerencia pueda aprobarla.';
       $('workflowError').classList.remove('hidden');
     } else if (!frozen && selected.estado === 'revisada' && operator.capacidad === 'aprobador') {
@@ -518,6 +518,7 @@
     if(selected.plataforma!=='krediya')return;
     if(selected.frozen_at){flow.innerHTML='<strong>Liquidación aprobada</strong><p>Continúa con las órdenes en Pagos. El informe queda disponible para Gestión y Gerencia.</p>';return;}
     if(selected.estado==='revisada'){flow.innerHTML='<strong>Lista para aprobación de Gerencia</strong><p>El lote está liquidado y el informe generado. La aprobación es una sola para todo el lote.</p>';return;}
+    if(selected.estado==='calculada'){flow.innerHTML='<strong>Pendiente de revisión administrativa</strong><p>Comprueba el cálculo y pulsa «Marcar como revisada». Después Gerencia podrá aprobar la liquidación, igual que en PayJoy y ALO. Calcular no autoriza pagos.</p>';return;}
     flow.textContent='Comprobando destinatarios del lote…';
     try {
       const [{data:ops,error:oe},{data:beneficiaries,error:be},{data:sites,error:se},{data:clients,error:ce}]=await Promise.all([
@@ -530,7 +531,7 @@
       if(selected?.id!==id)return;
       const missing=Review.missingBeneficiaries(ops||[],beneficiaries||[],sites||[],clients||[]);
       krediyaMissingPayees=missing.length;updateActions();
-      flow.innerHTML=missing.length?`<strong>Falta el titular de pago de ${missing.length} comercios</strong><p>Sus ventas y precios sí están registrados. Vincula quién recibe el pago para generar las órdenes; no debes confirmar PVP ni bonos.</p><details><summary>Ver comercios y completar destinatarios</summary>${missing.map(m=>`<div class="missing-payee"><span>${esc(m.name)} · ${m.count} operaciones</span><button class="btn secondary" data-payee="${esc(m.code)}">Vincular titular</button></div>`).join('')}</details>`:'<strong>Siguiente: liquidar el lote completo</strong><p>El cálculo guarda el informe y envía una sola revisión a aprobación. No ejecuta transferencias. Se validan iniciales, crédito y reglas antes de continuar.</p>';
+      flow.innerHTML=missing.length?`<strong>Falta el titular de pago de ${missing.length} comercios</strong><p>Sus ventas y precios sí están registrados. Vincula quién recibe el pago para generar las órdenes; no debes confirmar PVP ni bonos.</p><details><summary>Ver comercios y completar destinatarios</summary>${missing.map(m=>`<div class="missing-payee"><span>${esc(m.name)} · ${m.count} operaciones</span><button class="btn secondary" data-payee="${esc(m.code)}">Vincular titular</button></div>`).join('')}</details>`:'<strong>Siguiente: liquidar el lote completo</strong><p>El cálculo guarda el informe. Después Maite debe marcar el lote como revisado para que Gerencia pueda aprobarlo. No ejecuta transferencias. Se validan iniciales, crédito y reglas antes de continuar.</p>';
       flow.querySelectorAll('[data-payee]').forEach(button=>button.onclick=()=>{
         location.href='aliados-tesoreria.html?vista=clientes&origen='+encodeURIComponent(button.dataset.payee);
       });
@@ -1031,7 +1032,6 @@
       const {error}=await sb.rpc(krediya?'krediya_calcular_y_enviar_aprobacion':'aliados_calcular_liquidacion',{p_id:batchId});
       if(error)throw error;
       await loadBatches();await openDetail(batchId);
-      if(krediya && selected.estado==='revisada'){await loadTab('payments');$('detail').scrollIntoView({block:'start'});}
     } catch(error) {calculationError=error;}
     finally {updateActions();if(calculationError){$('workflowError').textContent=calculationError.message;$('workflowError').classList.remove('hidden');}}
   };

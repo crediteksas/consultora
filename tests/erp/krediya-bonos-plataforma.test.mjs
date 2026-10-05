@@ -6,6 +6,71 @@ import {unaccent} from '@electric-sql/pglite/contrib/unaccent';
 import vm from 'node:vm';
 import CreditekReversiones from '../../creditek/erp/aliados-reversiones-domain.js';
 const read=p=>readFile(new URL(p,import.meta.url),'utf8');
+test('Krediya exige revisión explícita, conserva importes y reinicia revisión al recalcular',async()=>{
+ const db=await PGlite.create({extensions:{unaccent}});
+ try {
+  await db.exec(`create role anon;create role authenticated;create extension unaccent;
+   create schema auth;create schema kora_private;create schema krediya_private;
+   create function auth.uid() returns uuid language sql as $$select '00000000-0000-4000-8000-000000000001'::uuid$$;
+   create function tiene_capacidad_aliados(text) returns boolean language sql as $$select $1='revisor' or current_setting('test.capacidad',true)='aprobador'$$;`);
+  await db.exec(await read('./fixtures/calculo-antes-tesoreria.sql'));
+  await db.exec(`create table liquidation_approvals(id uuid default gen_random_uuid(),liquidation_id uuid,etapa text,decision text,comentario text,actor_id uuid default auth.uid());
+   alter table liquidation_domain_events add unique(idempotency_key);
+   alter table payment_orders add unique(liquidation_id,beneficiary_id);
+   alter table krediya_diferencias add unique(operation_id);
+   insert into origenes(codigo,nombre,tipo) values('TEST','Tienda de prueba','propia');
+   insert into krediya_price_rules(referencia_clave,precio_venta,pagamos,vigente_desde) values('ref:test',1000000,750000,'2026-08-01');`);
+  const base=await read('../../supabase/migrations/20260907173853_liquidaciones_calculo_antes_de_tesoreria.sql');
+  await db.exec(base.slice(0,base.indexOf('CREATE OR REPLACE FUNCTION kora_private.calcular_liquidacion_sin_datos_pago')));
+  await db.exec(base.slice(base.indexOf('CREATE OR REPLACE FUNCTION kora_private.cambiar_estado_liquidacion')));
+  await db.exec(await read('../../supabase/migrations/20260910215916_liquidaciones_aprobacion_acceso_acotado.sql'));
+  await db.exec(await read('../../supabase/migrations/20260908035826_krediya_bonos_solo_aliados_sin_override.sql'));
+  await db.exec(`create function public.krediya_calcular_y_enviar_aprobacion(p_id uuid) returns public.liquidations language sql security invoker set search_path='' as $$select krediya_private.calcular_y_enviar_aprobacion(p_id)$$;`);
+  const batch=(await db.query("insert into liquidations(plataforma) values('krediya') returning id")).rows[0].id;
+  await db.query(`insert into liquidation_operations(liquidation_id,plataforma,tipo_establecimiento,origen_codigo,operation_at,referencia,monto_credito,monto_base,inicial,reconocida,normalized_data)
+   values($1,'krediya','propia','TEST','2026-08-25T17:00:00Z','test',900000,900000,100000,true,'{}')`,[batch]);
+  const calculate=()=>db.query('select public.krediya_calcular_y_enviar_aprobacion($1)',[batch]);
+  const status=async()=>(await db.query('select estado,reviewed_at,reviewed_by,approved_at,frozen_at from liquidations where id=$1',[batch])).rows[0];
+  const totals=async()=>(await db.query('select total_operaciones,total_pago_aliados,total_pago_tiendas,total_bonos,total_utilidad_creditek,total_pagar from liquidations where id=$1',[batch])).rows[0];
+  const countReviews=async()=>(await db.query("select count(*)::int n from liquidation_approvals where liquidation_id=$1 and etapa='revision'",[batch])).rows[0].n;
+  await calculate();
+  assert.equal((await status()).estado,'revisada'); // reproduce el defecto anterior
+  const moneyBefore=await totals(), reviewsBefore=await countReviews();
+  const migration=await read('../../supabase/migrations/20261005162741_krediya_revision_administrativa_separada.sql');
+  const beforeDDL=await status();
+  await db.exec(migration);
+  assert.deepEqual(await status(),beforeDDL); // DDL no reescribe lotes existentes
+  await calculate();
+  assert.deepEqual(await totals(),moneyBefore);
+  assert.deepEqual(await status(),{estado:'calculada',reviewed_at:null,reviewed_by:null,approved_at:null,frozen_at:null});
+  assert.equal(await countReviews(),reviewsBefore);
+  await db.exec("select set_config('test.capacidad','aprobador',false)");
+  await assert.rejects(db.query("select aliados_cambiar_estado($1,'aprobada',null)",[batch]),/Transición inválida/);
+  await db.exec("select set_config('test.capacidad','revisor',false)");
+  await db.query("select aliados_cambiar_estado($1,'revisada','Revisión explícita de prueba')",[batch]);
+  assert.equal((await status()).estado,'revisada');
+  assert.equal(await countReviews(),reviewsBefore+1);
+  assert.equal((await db.query("select count(*)::int n from audit_log where registro_id=$1 and accion='aliados_liquidacion_revisada'",[batch])).rows[0].n,2);
+  await assert.rejects(db.query("select aliados_cambiar_estado($1,'aprobada',null)",[batch]),/Solo Óscar/);
+  await calculate();
+  assert.equal((await status()).estado,'calculada');
+  assert.equal((await status()).reviewed_at,null);
+  await db.query("select aliados_cambiar_estado($1,'revisada',null)",[batch]);
+  await db.exec("select set_config('test.capacidad','aprobador',false)");
+  await db.query("select aliados_cambiar_estado($1,'aprobada',null)",[batch]);
+  assert.equal((await status()).estado,'aprobada');
+  assert.ok((await status()).frozen_at);
+  assert.deepEqual(await totals(),moneyBefore);
+  await assert.rejects(calculate(),/no editable/);
+  assert.equal((await db.query("select count(*)::int n from payment_orders where estado<>'pendiente' or authorized_at is not null")).rows[0].n,0);
+  for (const plataforma of ['payjoy','alo']) {
+   const id=(await db.query("insert into liquidations(plataforma,estado) values($1,'calculada') returning id",[plataforma])).rows[0].id;
+   await assert.rejects(db.query("select aliados_cambiar_estado($1,'aprobada',null)",[id]),/Transición inválida/);
+   await db.query("select aliados_cambiar_estado($1,'revisada',null)",[id]);
+   await db.query("select aliados_cambiar_estado($1,'aprobada',null)",[id]);
+  }
+ } finally {await db.close();}
+});
 test('reporte filtra la fecha de cada crédito y distingue créditos de bonos sin ocultar el histórico',async()=>{
  const src=await read('../../creditek/erp/aliados-v1-1-app.js');
  const nodes={'#bonusToolbar':{},'#bonusFrom':{value:'2026-08-25'},'#bonusTo':{value:'2026-08-25'},'#bonusPlatform':{value:'krediya'},'#bonusExecutive':{value:''},'#bonusState':{value:''},'#content':{}};

@@ -98,7 +98,7 @@ test('integración versionada elimina prompt de novedad y conserva aprobación e
   const page=fs.readFileSync('creditek/erp/aliados-liquidaciones.html','utf8'),app=fs.readFileSync('creditek/erp/aliados-liquidaciones-app.js','utf8');
   assert.match(page,/krediya-review-ui\.js\?v=1\.0\.0/);assert.match(page,/Gestión y Gerencia/);
   assert.doesNotMatch(app,/prompt\('Describe la novedad/);assert.match(app,/Liquidar lote/);
-  assert.match(app,/Aprobar y pasar a pagos/);assert.match(app,/if \(confirm\(message\)\) stateRpc\('aprobada'\)/);
+  assert.match(app,/Aprobar liquidación/);assert.match(app,/if \(confirm\(message\)\) stateRpc\('aprobada'\)/);
   assert.match(app,/if \(next==='aprobada'\)[\s\S]*setListMode\('pending'\)/);
   assert.match(app,/slice\(page\*8,\(page\+1\)\*8\)/);
 });

@@ -31,5 +31,5 @@ test('solo aliados generan pagos; Retail queda separado para cartera', () => {
 
 test('la interfaz mantiene el módulo existente y solo agrega Krediya como opción', () => {
   assert.match(html, /option value="krediya">Krediya/);
-  assert.match(html, /Motor de liquidaciones PayJoy, ALO Credit y Krediya/);
+  assert.match(html, /Liquidaciones de PayJoy, ALO Credit, Krediya y Addi/);
 });

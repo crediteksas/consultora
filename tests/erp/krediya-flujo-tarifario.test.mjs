@@ -68,13 +68,27 @@ test('abrir un detalle ya no sincroniza ni modifica precios',()=>{
  const open=app.slice(app.indexOf('  async function openDetail('),app.indexOf('  async function loadTab('));
  assert.doesNotMatch(open,/rpc\('aliados_sincronizar_precios_krediya'/);
 });
-test('clic Krediya calcula y muestra las órdenes; no aprueba ni paga automáticamente',async()=>{
+for (const plataforma of ['krediya','payjoy','alo']) test(`clic ${plataforma} solo calcula; la revisión y aprobación son explícitas`,async()=>{
  const nodes=new Map();const calls=[];
  const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:'',scrollIntoView(){}});return nodes.get(id);};
- const context={$ ,selected:{id:'lote',plataforma:'krediya',estado:'revisada'},sb:{rpc:async(...a)=>{calls.push(a);return {error:null};}},loadBatches:async()=>{},openDetail:async()=>{},loadTab:async name=>calls.push(['tab',name]),updateActions:()=>{}};
+ const context={$ ,selected:{id:'lote',plataforma,estado:'calculada'},sb:{rpc:async(...a)=>{calls.push(a);return {error:null};}},loadBatches:async()=>{},openDetail:async()=>{},loadTab:async name=>calls.push(['tab',name]),updateActions:()=>{}};
  vm.runInNewContext(app.slice(app.indexOf("  $('calculate').onclick"),app.indexOf("  $('review').onclick")),context);
  await $('calculate').onclick();
- assert.equal(calls.length,2);assert.equal(calls[0][0],'krediya_calcular_y_enviar_aprobacion');assert.deepEqual(calls[1],['tab','payments']);
+ assert.equal(calls.length,1);assert.equal(calls[0][0],plataforma==='krediya'?'krediya_calcular_y_enviar_aprobacion':'aliados_calcular_liquidacion');
+});
+for (const plataforma of ['krediya','payjoy','alo']) test(`${plataforma}: mismos botones por estado y permisos`,()=>{
+ for (const estado of ['importada','calculada','revisada','aprobada']) for (const capacidad of ['revisor','aprobador']) {
+  const nodes=new Map();
+  const $=id=>{if(!nodes.has(id)){const classes=new Set();nodes.set(id,{classList:{toggle:(c,on)=>on?classes.add(c):classes.delete(c),add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c)}});}return nodes.get(id);};
+  const context={$ ,selected:{id:'lote',plataforma,estado},operator:{capacidad},importaciones:null,document:{querySelector:$},UX:{traducirEstado:x=>x}};
+  vm.runInNewContext(app.slice(app.indexOf('  function updateActions()'),app.indexOf('  function renderMetrics()')),context);
+  context.updateActions();
+  assert.equal($('review').classList.contains('hidden'),estado==='aprobada');
+  assert.equal($('review').disabled,estado!=='calculada');
+  assert.equal($('approve').disabled,capacidad!=='aprobador'||estado!=='revisada');
+  assert.equal($('approve').textContent,'Aprobar liquidación');
+  assert.doesNotMatch($('calculate').textContent,/Revisar|aprobación/);
+ }
 });
 test('un error del cálculo no queda oculto por el texto genérico del estado',async()=>{
  const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{classList:{remove(){}},textContent:''});return nodes.get(id);};
@@ -82,7 +96,7 @@ test('un error del cálculo no queda oculto por el texto genérico del estado',a
  vm.runInNewContext(app.slice(app.indexOf("  $('calculate').onclick"),app.indexOf("  $('review').onclick")),context);
  await $('calculate').onclick();assert.equal($('workflowError').textContent,'Falta PAGAMOS para referencia concreta');
 });
-test('motor SQL respeta Pagamos, resta inicial una vez y aplica provisión tras bonos',()=>{
+test('motor tarifario original respeta Pagamos, inicial y provisión; la revisión se separa en una migración posterior',()=>{
  assert.match(engine,/pactado:=\(c->>'pagamos_guardado'\)::numeric; pago:=round\(pactado-o.inicial,2\)/);
  assert.match(engine,/financiero:=round\(o.monto_credito\*0.004,2\)/);
  assert.match(engine,/bruta:=round\(precio-pactado-bonos-financiero,2\); provision:=round\(bruta\*0.28,2\); neta:=bruta-provision/);

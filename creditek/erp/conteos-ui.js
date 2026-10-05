@@ -14,7 +14,8 @@
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
-        <div class="form-actions"><button id="conteos-crear" class="primary">Crear corte y descargar</button><button id="conteos-ciego" class="secondary">Crear conteo ciego</button></div></div>
+        <div class="form-actions"><button id="conteos-crear" class="primary">Preparar corte y descargar</button><button id="conteos-ciego" class="secondary">Preparar conteo ciego</button></div></div>
+        <p style="margin:8px 0">Si ya existe un corte abierto hoy para esta tienda, se reutiliza. La persona autorizada temporalmente puede cargarlo con su propio usuario; solo Mayte u Óscar aprueban diferencias.</p>
         <p id="conteos-mensaje" role="status" style="margin:12px 0;white-space:pre-wrap"></p>
         <details open><summary>Historial por fecha del corte</summary><div class="inventario-form" style="margin-top:12px">
           <label>Desde<input id="conteos-desde" type="date"></label><label>Hasta<input id="conteos-hasta" type="date"></label>
@@ -82,6 +83,14 @@
     }
     async function crear(ciego) {
       if(!el('tienda').value) throw new Error('Selecciona una tienda; el corte no mezcla tiendas.');
+      const hoy=local(new Date()).slice(0,10);
+      const abiertos=(await rpc('informe',{desde:hoy,hasta:hoy,tienda:el('tienda').value,responsable:''})).cortes
+        .filter(c=>c.estado==='abierto');
+      if(abiertos.length) {
+        detalle=await rpc('ver',{id:abiertos.at(-1).id});
+        renderDetalle();descargar(ciego);await historial();
+        return;
+      }
       detalle=await rpc('crear',{tienda:el('tienda').value});renderDetalle();descargar(ciego);await historial();
     }
     async function obtenerHistorial() {
@@ -95,7 +104,7 @@
     }
     async function historial() {
       const cortes=await obtenerHistorial();
-      el('historial').innerHTML=cortes.length?cortes.map(c=>`<div class="hist-item"><span>${esc(c.tienda_nombre)} · ${esc(fechaCorte(c))}<br>${esc(estadoCorte(c))} · ${esc(c.contado_nombre||c.creado_nombre)}</span><button class="btn-export" data-conteo-id="${esc(c.id)}">Ver</button></div>`).join(''):'Sin cortes en este rango. Los conteos anteriores al nuevo flujo no se inventan ni se importan automáticamente.';
+      el('historial').innerHTML=cortes.length?cortes.map(c=>`<div class="hist-item"><span>${esc(c.tienda_nombre)} · ${esc(fechaCorte(c))}<br>${esc(estadoCorte(c))} · ${esc(c.contado_nombre||c.creado_nombre)}</span><button class="btn-export" data-conteo-id="${esc(c.id)}">Ver</button></div>`).join(''):'No hay cortes con estos filtros. Incluye hoy en «Hasta» y deja Responsable vacío si el corte lo creó otra persona.';
       el('historial').querySelectorAll('[data-conteo-id]').forEach(b=>b.onclick=()=>run(async()=>{detalle=await rpc('ver',{id:b.dataset.conteoId});renderDetalle();}));
     }
     function renderDetalle() {

@@ -7,6 +7,7 @@ import XLSX from 'xlsx';
 const sql=readFileSync(new URL('../../supabase/migrations/20260915162101_inventario_conteos_auditables.sql',import.meta.url),'utf8');
 const fixedSql=readFileSync(new URL('../../supabase/migrations/20260915163724_inventario_conteo_referido_al_corte.sql',import.meta.url),'utf8');
 const historicoSql=readFileSync(new URL('../../supabase/migrations/20260915195416_inventario_comparativo_historico.sql',import.meta.url),'utf8');
+const delegacionSql=readFileSync(new URL('../../supabase/migrations/20261005144038_retail_inventory_auditor_cut_access.sql',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const storeUser='00000000-0000-0000-0000-000000000003',otherUser='00000000-0000-0000-0000-000000000004',otherAdmin='00000000-0000-0000-0000-000000000005';
 let db,n=0;
@@ -24,12 +25,14 @@ before(async()=>{
  create table unidades(id uuid primary key default gen_random_uuid(),producto_id uuid references productos,imei text unique,estado text,tienda_actual text references origenes,precio_tienda numeric check(precio_tienda>0),costo_remision numeric);
  create table movimientos(id bigint generated always as identity primary key,tipo text check(tipo in ('ajuste_entrada','ajuste_salida')),tienda_codigo text,producto_id uuid,unidad_id uuid,cantidad integer,costo numeric,costo_tienda numeric,referencia_tipo text,referencia_id text,usuario uuid,nota text);
  create table ajustes_inventario(id uuid primary key,tienda_codigo text,solicitado_por uuid,estado text,autorizado_por uuid,autorizado_at timestamptz,nota_rechazo text);
+ create table sesiones_conteo_cruzado(id uuid primary key default gen_random_uuid(),tienda_auditada text,admin_autorizado uuid,estado text,vigencia_hasta timestamptz);
  alter table ajustes_inventario enable row level security;
  grant usage on schema public,auth to authenticated;grant select,insert,update,delete on stock_cantidad,unidades to authenticated;
  `);
  await db.exec(sql);
  await db.exec(fixedSql);
  await db.exec(historicoSql);
+ await db.exec(delegacionSql);
 });
 after(async()=>db?.close());
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
@@ -115,6 +118,19 @@ test('todas las tiendas usan las mismas reglas, sin privilegios de aprobación p
  await asUser(maite);await assert.rejects(db.query('update public.stock_cantidad set cantidad=0'),/permission denied/);
  await assert.rejects(db.query('select * from inventario_control.cortes'),/permission denied/);
  await asUser('');await assert.rejects(api('config'),/perfil activo/);
+});
+test('la auditoría cruzada permite cargar solo el corte asignado mientras siga vigente',async()=>{
+ await db.exec('reset role');
+ const session=(await db.query("insert into sesiones_conteo_cruzado(tienda_auditada,admin_autorizado,estado,vigencia_hasta) values('B',$1,'abierta',now()+interval '4 hours') returning id",[storeUser])).rows[0].id;
+ await asUser(otherUser);const corte=await api('crear',{tienda:'B'});
+ await asUser(storeUser);
+ assert.deepEqual((await api('config')).tiendas.map(t=>t.codigo),['A','B']);
+ assert.equal((await api('ver',{id:corte.corte.id})).corte.id,corte.corte.id);
+ assert.equal((await api('subir',{id:corte.corte.id,contado_at:corte.corte.corte_at,archivo:'auditoria.xlsx',sha256:'a'.repeat(64),filas:[]})).corte.contado_por,storeUser);
+ await assert.rejects(api('aplicar',{id:corte.corte.id,motivo:'Sin diferencias',soporte:'Acta física',clasificacion:'correccion_registro'}),/Mayte/);
+ await db.exec('reset role');await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()-interval '1 minute' where id=$1",[session]);
+ await asUser(storeUser);assert.deepEqual((await api('config')).tiendas.map(t=>t.codigo),['A']);
+ await assert.rejects(api('ver',{id:corte.corte.id}),/otra tienda/);
 });
 test('informe pagina estable y fecha final incluye todo el día colombiano',async()=>{
  await asUser(oscar);const result=await api('informe',{desde:'2020-01-01',hasta:'2099-12-31'});assert.ok(result.cortes.length>=10);

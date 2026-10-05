@@ -31,6 +31,7 @@ try {
  });
  await page.locator('#conteos-crear').click();
  await page.waitForFunction(()=>downloads.length===1);
+ assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='crear')),false,'Un corte abierto de hoy se reutiliza sin duplicarlo');
  const out=await page.evaluate(()=>downloads[0]);assert.equal(out.rows.length,2);assert.equal(out.rows[1]['IMEI / serial'],'000000000000001');assert.deepEqual(out.names,['Conteo','Resumen']);
  const id='11111111-1111-4111-8111-111111111111';
  const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Formato','KORA-CONTEO-2'],['ID',id]]),'Resumen');

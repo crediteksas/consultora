@@ -6,17 +6,25 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('inventario-no-conformes','inventario-no-conformes',false,10485760,
  array['image/jpeg','image/png','image/webp'])
 on conflict(id) do nothing;
+create function inventario_control.puede_ver_foto_no_conforme(p_tienda text)
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.perfiles p where p.id=auth.uid() and p.activo
+   and (p.rol in ('gerencia','auditoria') or
+     (p.rol='admin_tienda' and (p.tienda_codigo=p_tienda or exists(
+       select 1 from public.sesiones_conteo_cruzado s where s.admin_autorizado=p.id
+         and s.tienda_auditada=p_tienda and s.estado='abierta'
+         and s.vigencia_hasta>clock_timestamp())))))
+$$;
+revoke all on function inventario_control.puede_ver_foto_no_conforme(text) from public,anon;
+grant execute on function inventario_control.puede_ver_foto_no_conforme(text) to authenticated;
 create policy inventario_nc_foto_insert on storage.objects for insert to authenticated
 with check (bucket_id='inventario-no-conformes'
  and name ~ '^CK-[0-9]+/[0-9a-f-]{36}\.(jpg|jpeg|png|webp)$'
- and exists(select 1 from public.perfiles p where p.id=auth.uid() and p.activo
-   and (p.rol in ('gerencia','auditoria') or
-     (p.rol='admin_tienda' and p.tienda_codigo=(storage.foldername(name))[1]))));
+ and owner_id=auth.uid()::text
+ and inventario_control.puede_ver_foto_no_conforme((storage.foldername(name))[1]));
 create policy inventario_nc_foto_select on storage.objects for select to authenticated
 using (bucket_id='inventario-no-conformes'
- and exists(select 1 from public.perfiles p where p.id=auth.uid() and p.activo
-   and (p.rol in ('gerencia','auditoria') or
-     (p.rol='admin_tienda' and p.tienda_codigo=(storage.foldername(name))[1]))));
+ and inventario_control.puede_ver_foto_no_conforme((storage.foldername(name))[1]));
 
 alter table public.unidades drop constraint unidades_estado_check;
 alter table public.unidades add constraint unidades_estado_check check
@@ -174,13 +182,19 @@ begin
        from inventario_control.no_conformes n
        join public.productos pr on pr.id=n.producto_id
        join public.origenes o on o.codigo=n.tienda_codigo
-       where (central or n.tienda_codigo=p.tienda_codigo)
+       where (central or n.tienda_codigo=p.tienda_codigo or exists(
+         select 1 from public.sesiones_conteo_cruzado s where s.admin_autorizado=p.id
+           and s.tienda_auditada=n.tienda_codigo and s.estado='abierta'
+           and s.vigencia_hasta>clock_timestamp()))
        order by n.creado_at desc limit 100) x));
  end if;
  if p_accion='resumen' then
    if coalesce(p_datos->>'anio','') !~ '^20[0-9]{2}$' then raise exception 'Año inválido'; end if;
    store:=nullif(p_datos->>'tienda','');
-   if not central and store is distinct from p.tienda_codigo then raise exception 'No puedes consultar otra tienda'; end if;
+   if not central and store is distinct from p.tienda_codigo and not exists(
+     select 1 from public.sesiones_conteo_cruzado s where s.admin_autorizado=p.id
+       and s.tienda_auditada=store and s.estado='abierta' and s.vigencia_hasta>clock_timestamp())
+     then raise exception 'No puedes consultar otra tienda'; end if;
    return jsonb_build_object('anio',(p_datos->>'anio')::integer,'filas',(
      select coalesce(jsonb_agg(to_jsonb(x) order by x.tienda_codigo,x.categoria_gasto),'[]'::jsonb)
      from (select n.tienda_codigo,n.categoria_gasto,sum(n.cantidad)::integer unidades,
@@ -190,12 +204,17 @@ begin
        where n.estado='separado_pendiente_destino'
          and extract(year from coalesce(c.corte_at,n.autorizado_at) at time zone 'America/Bogota')=(p_datos->>'anio')::integer
          and (store is null or n.tienda_codigo=store)
-         and (central or n.tienda_codigo=p.tienda_codigo)
+         and (central or n.tienda_codigo=p.tienda_codigo or exists(
+           select 1 from public.sesiones_conteo_cruzado s where s.admin_autorizado=p.id
+             and s.tienda_auditada=n.tienda_codigo and s.estado='abierta'
+             and s.vigencia_hasta>clock_timestamp()))
        group by n.tienda_codigo,n.categoria_gasto) x));
  end if;
  if p_accion='solicitar' then
    store:=nullif(btrim(p_datos->>'tienda'),'');
-   if not central and (p.rol<>'admin_tienda' or store is distinct from p.tienda_codigo) then
+   if not central and (p.rol<>'admin_tienda' or (store is distinct from p.tienda_codigo
+     and not exists(select 1 from public.sesiones_conteo_cruzado s where s.admin_autorizado=p.id
+       and s.tienda_auditada=store and s.estado='abierta' and s.vigencia_hasta>clock_timestamp()))) then
      raise exception 'Solo la tienda o Auditoría pueden registrar sus no conformes'; end if;
    if not exists(select 1 from public.origenes where codigo=store and activo and tipo='propia') then
      raise exception 'Selecciona una tienda activa'; end if;

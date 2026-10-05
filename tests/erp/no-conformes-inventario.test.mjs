@@ -7,6 +7,7 @@ const migration=name=>readFileSync(new URL(`../../supabase/migrations/${name}`,i
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627';
 const maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const tienda='00000000-0000-0000-0000-000000000003';
+const auditora='00000000-0000-0000-0000-000000000004';
 
 test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriores al corte',async()=>{
  const db=await PGlite.create();
@@ -15,10 +16,11 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     create table public.perfiles(id uuid primary key,nombre text,rol text,tienda_codigo text,activo boolean default true);
     insert into perfiles(id,nombre,rol,tienda_codigo) values
-     ('${oscar}','Oscar','gerencia',null),('${maite}','Maite','auditoria',null),('${tienda}','Tienda','admin_tienda','CK-01');
+     ('${oscar}','Oscar','gerencia',null),('${maite}','Maite','auditoria',null),
+     ('${tienda}','Tienda','admin_tienda','CK-01'),('${auditora}','Andrea','admin_tienda','CK-02');
     create function public.tienda_actual() returns text language sql security definer as $$select tienda_codigo from perfiles where id=auth.uid()$$;
     create table public.origenes(codigo text primary key,nombre text,tipo text,activo boolean default true);
-    insert into origenes values('CK-01','Celfiao Tolú','propia',true);
+    insert into origenes values('CK-01','Celfiao Tolú','propia',true),('CK-02','Otra tienda','propia',true);
     create table public.productos(id uuid primary key default gen_random_uuid(),codigo text unique,nombre text,tipo text);
     create table public.stock_cantidad(producto_id uuid references productos,tienda_codigo text references origenes,
       cantidad integer check(cantidad>=0),precio_tienda numeric,costo_promedio numeric,updated_at timestamptz,
@@ -98,5 +100,21 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   assert.equal((await api('listar')).registros.length,2);
   await assert.rejects(api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:null}),/otra tienda/);
   await assert.rejects(db.query('select * from inventario_control.no_conformes'),/permission denied/);
+  await as(auditora);
+  await assert.rejects(api('solicitar',{...req,corte_id:null,cantidad:1}),/Solo la tienda/);
+  await db.exec('reset role');
+  await db.query("insert into sesiones_conteo_cruzado(tienda_auditada,admin_autorizado,estado,vigencia_hasta) values('CK-01',$1,'abierta',now()+interval '1 day')",[auditora]);
+  await as(auditora);
+  const delegatedPath='CK-01/33333333-3333-4333-8333-333333333333.jpg';
+  await db.query("insert into storage.objects(bucket_id,name,owner_id) values('inventario-no-conformes',$1,$2)",[delegatedPath,auditora]);
+  const delegated=await api('solicitar',{...req,corte_id:null,cantidad:1,foto_path:delegatedPath});
+  assert.equal(delegated.stock_modificado,false);
+  assert.equal((await api('listar')).registros.length,3);
+  assert.equal((await api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:'CK-01'})).filas.length,1);
+  await db.exec('reset role');
+  await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()-interval '1 day' where admin_autorizado=$1",[auditora]);
+  await as(auditora);
+  await assert.rejects(api('solicitar',{...req,corte_id:null,cantidad:1,foto_path:delegatedPath}),/Solo la tienda/);
+  await assert.rejects(api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:'CK-01'}),/otra tienda/);
  } finally {await db.close();}
 });

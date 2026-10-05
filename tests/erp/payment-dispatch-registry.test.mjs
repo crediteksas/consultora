@@ -28,7 +28,7 @@ async function fixture(){const db=await PGlite.create();await db.exec(`
  create table liquidations(id uuid primary key default gen_random_uuid(),estado text default 'aprobada',frozen_at timestamptz default now(),approved_at timestamptz default now(),plataforma text default 'payjoy');
  create table payment_orders(id uuid primary key,estado text default 'programado',authorized_by uuid default '${actor}',authorized_at timestamptz default now(),historico_inicial boolean default false,recovery_review_required boolean default false,soporte_path text,fecha_pagada timestamptz,liquidation_id uuid,bank_snapshot jsonb default '{"bank":"Nequi","account_type":"ahorros","account_number":"3001234567","holder":"Persona","holder_identification":"12345678"}',valor numeric,concept text default 'Bono');
  create table payment_destination_corrections(item_id uuid,status text,item_kind text);
- create table audit_log(usuario uuid,accion text,tabla text,registro_id uuid,detalle jsonb);
+ create table audit_log(id bigint generated always as identity,usuario text,accion text,tabla text,registro_id text,detalle jsonb,created_at timestamptz default now());
  grant usage on schema auth,kora_private to authenticated;
  insert into treasury_movements(beneficiary,concept,amount,aliados_gasto_id) values
  ('Lujo red sas','Gasto Aliados — Bono alianza',20000,gen_random_uuid()),('María vasco','Gasto Aliados — Bono estrategia',20000,gen_random_uuid()),('Ingris Tatiana beltran','Gasto Aliados — Saldo pendiente',33200,gen_random_uuid()),('Ingrid Cristina ramos','Gasto Aliados — Bono estrategia',20000,gen_random_uuid());

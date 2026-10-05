@@ -22,7 +22,7 @@ begin
   then raise exception 'La orden objetivo no coincide'; end if;
  perform 1 from public.payment_dispatch_items where dispatch_id=d.id order by position for update;
  select detalle into audit_before from public.audit_log
- where accion='orden_pago_ampliada' and registro_id=d.id and detalle->>'repair_key'=repair_key;
+ where accion='orden_pago_ampliada' and registro_id=d.id::text and detalle->>'repair_key'=repair_key;
  if found then
   select jsonb_agg(to_jsonb(i) order by position) into after_items
    from public.payment_dispatch_items i where dispatch_id=d.id and report_ref=any(original_refs);
@@ -79,7 +79,7 @@ begin
   note='Orden ampliada por autorización de Gerencia: se agregaron 3 proveedores por $10.000.000. Conserva los 5 pagos originales por $2.719.800. Total: 8 pagos por $12.719.800. No vuelve a autorizar ni ejecuta giros; verifica en banco los pagos anteriores antes de montarlos otra vez.'
  where id=d.id;
  insert into public.audit_log(usuario,accion,tabla,registro_id,detalle)
- values(null,'orden_pago_ampliada','payment_dispatches',d.id,jsonb_build_object(
+ values(null,'orden_pago_ampliada','payment_dispatches',d.id::text,jsonb_build_object(
   'repair_key',repair_key,'ejecutado_por','Codex · mantenimiento autorizado por Gerencia en KORA SEP',
   'sin_suplantar_sesion',true,'original_dispatch',old_dispatch,'original_items',original_items,
   'added_items',added,'pagos_antes',5,'pagos_despues',8,'total_antes',2719800,

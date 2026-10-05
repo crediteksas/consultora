@@ -5,7 +5,15 @@
   const approved=row=>row.status==='aprobado'&&!!row.approved_by&&!!row.approved_at&&!row.paid_at&&!row.support_path;
   const storeFunded=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
   function account(value){const parts=String(value||'').split(' · ').map(s=>s.trim());return {bank:parts.length===3?parts[0]:'',account_type:parts.length===3?parts[1]:'',account_number:parts.length===3&&/^\d{6,20}$/.test(parts[2])?parts[2]:''};}
-  function reportRows(payments,entries,movements,ready,issued=new Set()){
+  const supplierApproved=row=>row.estado==='autorizado'&&!!row.autorizado_por&&!!row.autorizado_at&&!row.pagado_at&&!row.pagado_por&&!row.soporte_path;
+  function supplierRows(rows){return rows.filter(supplierApproved).map(row=>({
+    id:row.id,report_ref:`BP-${row.id}`,report_kind:'Abono a proveedor',report_business:'B2B',report_platform:'',
+    report_date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(row.autorizado_at)),
+    beneficiary_name:row.proveedores?.nombre||'',beneficiary_identification:row.proveedores?.nit||'',
+    bank_snapshot:{},destination_instructions:row.concepto||'',valor:row.monto,concept:'Abono a proveedor desde Banco Creditek',
+  }));}
+  function supplierCards(rows,money,issued=new Set()){return supplierRows(rows).map(row=>`<article class="preparation-card"><h3>${esc(row.beneficiary_name)}</h3><p><strong>${esc(money(row.valor))}</strong> · Autorizado · pendiente de giro</p><p style="white-space:pre-wrap">${esc(row.destination_instructions)}</p><p>${issued.has(row.report_ref)?'Ya incluido en una orden. Consulta la misma orden; no vuelvas a girarlo.':'Disponible en Generar orden de pagos.'}</p><a class="btn secondary" href="banco-creditek.html#autorizados">Registrar soporte del giro realizado</a></article>`).join('');}
+  function reportRows(payments,entries,movements,ready,issued=new Set(),supplierPayments=[]){
     const result=payments.filter(p=>p.estado==='programado'&&ready(p).ready).map(p=>({...p,report_ref:`PO-${p.id}`,report_kind:'Liquidación',report_platform:p.platform_snapshot||p.liquidations?.plataforma||''}));
     for(const row of entries.filter(row=>approved(row)&&!storeFunded(row))) result.push({
       id:row.id,report_ref:`FIN-${row.id}`,report_kind:row.category==='nomina'?'Nómina':row.entry_type==='retiro_utilidad'?'Retiro':'Gasto',
@@ -16,6 +24,7 @@
       id:row.id,report_ref:`TM-${row.id}`,report_kind:'Gasto de Tesorería',report_business:business[row.unit]||row.unit,report_date:row.movement_date,report_platform:row.aliados_gastos_operativos?.plataforma||'',
       beneficiary_name:row.beneficiary,beneficiary_identification:row.beneficiary_document,bank_snapshot:account(row.destination_account),valor:row.amount,concept:row.concept,
     });
+    result.push(...supplierRows(supplierPayments));
     const seen=new Set();return result.filter(row=>{if(issued.has(row.report_ref)||seen.has(row.report_ref))return false;seen.add(row.report_ref);return true;});
   }
   function cards(entries,money){return entries.filter(approved).map(row=>`<article class="preparation-card"><h3>${esc(row.concept)}</h3><p>${esc(business[row.business_unit]||row.business_unit)} · ${esc(row.due_date)} · ${esc(row.category==='nomina'?'Nómina':'Gasto / retiro')}</p><p><strong>${esc(row.beneficiary)}</strong> · ${esc(row.beneficiary_document)}</p><p>Cuenta destino: ${esc(row.destination_account||'No informada')}</p><p>Valor: <strong>${esc(money(row.amount))}</strong></p><p class="approval-ok">Autorizado · pendiente de pago y soporte. No requiere otra aprobación.</p><div class="actions">${row.entry_type==='retiro_utilidad'&&row.business_unit==='retail'?'<a class="btn primary" href="cuenta-corriente.html#retail">Validar soportes de tiendas</a>':`<button class="btn primary" data-financial-support="${esc(row.id)}">Adjuntar soporte y registrar pago</button>`}</div></article>`).join('');}
@@ -50,6 +59,6 @@
     }
     return {record};
   }
-  const api={approved,account,reportRows,cards,createRecorder};
+  const api={approved,account,reportRows,cards,createRecorder,supplierApproved,supplierRows,supplierCards};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekPagosUnificados=api;
 })(typeof window==='undefined'?globalThis:window);

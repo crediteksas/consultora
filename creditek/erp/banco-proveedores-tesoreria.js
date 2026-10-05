@@ -36,6 +36,7 @@
     busy=false;
     if(error){alert('No se registró la decisión: '+error.message);return;}
     await load();
+    document.dispatchEvent(new CustomEvent('kora-supplier-payment-changed'));
   }
   function init(){
     if(initialized||!window.creditekSidebar?.sb)return;

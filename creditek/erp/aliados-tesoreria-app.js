@@ -197,13 +197,13 @@
     }
     return data || [];
   }
-  async function loadCompensations(tableName = "retail_b2b_compensations", columns = "*") {
+  async function loadCompensations(tableName = "retail_b2b_compensations", columns = "*", dateColumn = "created_at") {
     const rows = [], ids = new Set();
     let total;
     do {
       const result = await sb.from(tableName)
         .select(columns, { count: "exact" })
-        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .order(dateColumn, { ascending: false }).order("id", { ascending: false })
         .range(rows.length, rows.length + 499);
       if (result.error) throw result.error;
       if (!Array.isArray(result.data) || !Number.isInteger(result.count)
@@ -291,6 +291,7 @@
       addiLiquidations,
       paymentDestinationCorrections,
       dispatches,
+      supplierBankPayments,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -325,6 +326,7 @@
         : Promise.resolve([]),
       loadRecoveryRows('payment_destination_corrections'),
       loadCompensations('payment_dispatches','*,payment_dispatch_items(*)'),
+      financialRecorder ? loadCompensations('banco_creditek_pagos_proveedor','*,proveedores(id,nombre,nit)','solicitado_at') : Promise.resolve([]),
     ]);
     data = {
       balances,
@@ -347,11 +349,14 @@
       addiLiquidations,
       paymentDestinationCorrections,
       dispatches,
+      supplierBankPayments,
     };
     data.payments = payments.map(normalizePayment);
     data.dispatches.forEach(d=>d.payment_dispatch_items.sort((a,b)=>a.position-b.position));
     fillCompensationStores();
     render();
+    $('#supplierBankAuthorized').innerHTML = window.CreditekPagosUnificados.supplierCards(supplierBankPayments,cop,
+      new Set(dispatches.flatMap(d=>d.payment_dispatch_items.map(i=>i.report_ref)))) || '<p>No hay pagos a proveedores autorizados pendientes de giro.</p>';
     fillSuppliers();
     document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
   }
@@ -1153,7 +1158,7 @@
   function dispatchItem(ref){return (data.dispatches||[]).flatMap(d=>d.payment_dispatch_items||[]).find(i=>i.report_ref===ref);}
   function dispatchSupport(item){
     const ref=item.report_ref,id=item.snapshot.id;
-    const row=(ref.startsWith('FIN-')?data.financialEntries:ref.startsWith('TM-')?data.movements:data.payments)?.find(x=>x.id===id);
+    const row=(ref.startsWith('BP-')?data.supplierBankPayments:ref.startsWith('FIN-')?data.financialEntries:ref.startsWith('TM-')?data.movements:data.payments)?.find(x=>x.id===id);
     return row?.support_path||row?.soporte_path;
   }
   function renderDispatchHistory(){
@@ -1172,9 +1177,19 @@
       data.payments || [], data.financialEntries || [], data.movements || [],
       window.CreditekTesoreriaTercerizacion.paymentReadiness,
       new Set((data.dispatches||[]).flatMap(d=>(d.payment_dispatch_items||[]).map(i=>i.report_ref))),
+      data.supplierBankPayments || [],
     );
   }
   function reportMissing(p) {
+    // Supplier requests currently store the authorized destination as free text.
+    // Preserve it verbatim in the manual payment sheet; never infer a bank/holder.
+    if (p.report_ref?.startsWith('BP-')) {
+      const missing=[];
+      if (!p.beneficiary_name?.trim()) missing.push('proveedor');
+      if ((p.destination_instructions||'').trim().length<8) missing.push('instrucciones de giro autorizadas');
+      if (!Number.isFinite(Number(p.valor)) || Number(p.valor)<=0) missing.push('valor positivo');
+      return missing;
+    }
     const missing = missingPaymentData(p);
     if (p.beneficiary_identification && !/^[0-9.-]{5,20}$/.test(String(p.beneficiary_identification).trim())) missing.push('identificación válida');
     if (/^(FIN|TM)-/.test(p.report_ref || '')) {
@@ -1186,7 +1201,7 @@
   function reportSignature(p) {
     return JSON.stringify([p.report_ref,p.valor,p.beneficiary_name,p.beneficiary_identification,
       p.bank_snapshot?.bank,p.bank_snapshot?.account_type,p.bank_snapshot?.account_number,
-      p.concept,p.report_platform,p.report_date,p.report_business]);
+      p.concept,p.report_platform,p.report_date,p.report_business,p.destination_instructions]);
   }
   function pendingDestinationCorrection(p) {
     const kind=p.report_ref?.startsWith('FIN-')?'financial_entry':p.report_ref?.startsWith('TM-')?'treasury_movement':null;
@@ -1217,14 +1232,15 @@
     dialog.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Orden de pagos · seleccionar autorizados</h2><button type="button" class="btn secondary" data-close-selection>Cerrar</button></div>
       <p>La orden se guarda con consecutivo. Sus pagos salen de esta selección y quedan pendientes de soporte; puedes consultar o reimprimir la misma orden sin emitir otra.</p>
       <p>Maite administra la ficha y las cuentas del beneficiario. Gerencia autoriza el pago; crear una cuenta no requiere una aprobación aparte.</p>
-      <div class="actions"><label>Plataforma<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="sin_plataforma">Sin plataforma (nómina y gastos generales)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
+      <p>Proveedores: se conserva la instrucción autorizada completa. Verifica allí banco, cuenta y titular antes de montar el giro; no se infieren datos bancarios del texto.</p>
+      <div class="actions"><label>Plataforma o tipo<select data-report-platform class="control"><option value="">Todas</option><option value="payjoy">PayJoy</option><option value="krediya">Krediya</option><option value="alo">ALO Credit</option><option value="addi">Addi</option><option value="proveedores">Proveedores · Banco Creditek</option><option value="sin_plataforma">Sin plataforma (nómina, gastos y proveedores)</option></select></label><button type="button" class="btn secondary" data-select-visible>Seleccionar visibles completos</button></div>
       <p data-selection-summary></p><p data-selection-error role="alert" style="color:#b42318"></p>
       <div data-selection-rows></div><div class="actions" style="margin-top:16px"><button type="button" class="btn primary" data-generate-selected disabled>Generar orden con seleccionados</button></div>`;
     document.body.appendChild(dialog);
     const chosen=new Set(),requestId=crypto.randomUUID();
     const status=message=>{dialog.querySelector('[data-selection-error]').textContent=message||'';};
     const visible=()=>rows.filter(p=>{const platform=dialog.querySelector('[data-report-platform]').value;return !platform||
-      (platform==='sin_plataforma'?!p.report_platform:p.report_platform===platform);});
+      (platform==='proveedores'?p.report_ref.startsWith('BP-'):platform==='sin_plataforma'?!p.report_platform:p.report_platform===platform);});
     const render=()=>{
       const list=visible();
       dialog.querySelector('[data-selection-rows]').innerHTML=list.length?list.map(p=>{
@@ -1232,7 +1248,7 @@
         const kind=p.report_ref?.startsWith('FIN-')||p.report_ref?.startsWith('TM-');
         const action=pending?`<p>Datos ya preparados por Maite; actualiza la lista. No hay una autorización separada del destino.</p>`:
           missing.length&&kind&&profile?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'?destinationCorrectionForm(p):'';
-        const validation=pending?'<p>Datos preparados · sincronización pendiente.</p>':missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:'<p>Datos completos · listo para incluir.</p>';
+        const validation=pending?'<p>Datos preparados · sincronización pendiente.</p>':missing.length?`<p style="color:#b42318">Falta: ${esc(missing.join(', '))}.</p>`:p.report_ref.startsWith('BP-')?`<p>Instrucción de giro autorizada:</p><p style="white-space:pre-wrap">${esc(p.destination_instructions)}</p>`:'<p>Datos completos · listo para incluir.</p>';
         return `<article style="border:1px solid #dbe3ea;border-radius:10px;padding:12px;margin:8px 0"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-report-ref="${esc(p.report_ref)}" ${chosen.has(p.report_ref)&&eligible?'checked':''} ${eligible?'':'disabled'}><strong>${esc(p.beneficiary_name||p.concept)}</strong> · ${cop(p.valor)} · ${esc(p.report_kind)}${p.report_platform?' · '+esc(platformName(p.report_platform)):''}</label><small>${esc(p.concept||'')}</small>${validation}${action}</article>`;
       }).join(''):'<p>No hay pagos autorizados para esta plataforma.</p>';
       dialog.querySelector('[data-selection-summary]').textContent=`${chosen.size} seleccionado(s) · ${cop(rows.filter(p=>chosen.has(p.report_ref)).reduce((n,p)=>n+Number(p.valor||0),0))}`;
@@ -1380,6 +1396,10 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
 <section class="summary"><span><strong>${rows.length}</strong> pagos autorizados</span><span>${liquidationRefs.length} liquidaciones</span><span>Total <strong class="money">${cop(total)}</strong></span></section>
 <table><colgroup><col style="width:7%"><col style="width:33%"><col style="width:22.5%"><col style="width:23%"><col style="width:14.5%"></colgroup><thead><tr><th>N.º</th><th>Beneficiario</th><th>Cuenta destino</th><th>Concepto y fecha</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows.map((p, i) => {
         const holder = p.bank_snapshot.holder || p.beneficiary_name;
+        const supplier = p.report_ref?.startsWith('BP-');
+        const destination = supplier
+          ? `<strong>Instrucción autorizada</strong><span class="muted" style="white-space:pre-wrap">${esc(p.destination_instructions)}</span>`
+          : `<span class="account">${esc(p.bank_snapshot.account_number)}</span><span class="muted">${esc(p.bank_snapshot.bank)} ${esc(p.bank_snapshot.account_type)}</span>`;
         const business = p.report_business || paymentBusinessName(p);
         const platform = p.liquidation_id ? platformName(p.platform_snapshot) : "";
         const concept = String(p.concept || "");
@@ -1392,7 +1412,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
         const shortBonus = p.liquidation_id && bonus && bonus[2] === String(p.cutoff_snapshot) && samePlatform(bonus[1]);
         const label = shortCredit ? (credit[1] + " crédito" + (Number(credit[1]) === 1 ? "" : "s") + " " + platform) : shortBonus ? "Bonos y comisiones" : concept;
         const separateBusiness = business && business !== "No aplica" && String(business).trim().toLowerCase() !== String(holder || "").trim().toLowerCase();
-        return `<tr><td><span class="payment-number">${i + 1}</span><span class="internal-ref" title="${esc(p.report_ref)}">Ref. ${esc(String(p.report_ref || "").slice(-4).toUpperCase())}</span></td><td>${separateBusiness ? `<strong>${esc(business)}</strong><span class="muted">${esc(holder)}</span>` : `<strong>${esc(holder)}</strong>`}<span class="muted">${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</span></td><td><span class="account">${esc(p.bank_snapshot.account_number)}</span><span class="muted">${esc(p.bank_snapshot.bank)} ${esc(p.bank_snapshot.account_type)}</span></td><td>${esc(label)}<span class="muted">${p.liquidation_id ? `${shortCredit ? "" : esc(platform) + " "}${date(p.cutoff_snapshot)}` : `${esc(p.report_kind)} ${esc(p.report_date)}`}</span></td><td class="money">${cop(p.valor)}</td></tr>`;
+        return `<tr><td><span class="payment-number">${i + 1}</span><span class="internal-ref" title="${esc(p.report_ref)}">Ref. ${esc(String(p.report_ref || "").slice(-4).toUpperCase())}</span></td><td>${separateBusiness ? `<strong>${esc(business)}</strong><span class="muted">${esc(holder)}</span>` : `<strong>${esc(holder)}</strong>`}<span class="muted">${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</span>${supplier?'<span class="muted">Proveedor acreedor · titular del giro en la instrucción autorizada</span>':''}</td><td>${destination}</td><td>${esc(label)}<span class="muted">${p.liquidation_id ? `${shortCredit ? "" : esc(platform) + " "}${date(p.cutoff_snapshot)}` : `${esc(p.report_kind)} ${esc(p.report_date)}`}</span></td><td class="money">${cop(p.valor)}</td></tr>`;
       }).join("")}<tr class="total"><td colspan="4">${dispatch.payment_dispatch_items?.every(i=>i.reported_paid)?'TOTAL GIRADO INFORMADO':'TOTAL DE LA ORDEN'}</td><td class="money">${cop(total)}</td></tr></tbody></table>
 <section class="trace">Orden emitida. Consulta el estado de los soportes en KORA. ${dispatch.original_reference?`Referencia original: ${esc(dispatch.original_reference)}. `:''} La referencia corta es interna, no un comprobante bancario.<details class="no-print"><summary>Trazabilidad KORA · referencias completas</summary>${rows.map((p, i) => `<div>${i + 1}: ${esc(p.report_ref)}${p.liquidation_id ? ` · LQ-${shortId(p.liquidation_id)}` : ""} · ${esc(p.concept)}</div>`).join("")}</details></section>
 <footer class="foot"><span>Creditek S.A.S. · NIT 901.259.859-0 · Valores en COP</span><span>${esc(reportId)}</span></footer>
@@ -1580,6 +1600,10 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
     }
   }
   document.addEventListener("kora-sidebar-ready", init, { once: true });
+  document.addEventListener('kora-supplier-payment-changed',async()=>{
+    if(!sb)return;
+    try{await load();}catch{notice('No fue posible actualizar los pagos autorizados. Pulsa Actualizar.',true);}
+  });
   if (window.creditekSidebar?.sb) init();
   ["platform", "cutoff", "status"].forEach((id) =>
     $(`#${id}`).addEventListener("change", render),

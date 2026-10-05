@@ -63,6 +63,7 @@ const erp = [
   'tests/erp/tablero-ejecutivos.test.mjs',
   'tests/erp/tablero-creditos-etiquetas.test.mjs',
   'tests/erp/tesoreria-pagos-unificados.test.mjs',
+  'tests/erp/payment-dispatch-registry.test.mjs',
   'tests/erp/payment-destination.test.mjs',
   'tests/erp/payment-destination-sql.test.mjs',
   'tests/erp/financial-beneficiary.test.mjs',

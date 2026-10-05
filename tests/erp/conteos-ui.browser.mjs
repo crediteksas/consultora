@@ -22,9 +22,11 @@ try {
    const sb={rpc:async(name,{p_accion:a,p_datos:d})=>{
      calls.push({a,d});
      if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:'Tienda de prueba'}]}};
+     if(a==='listar')return {data:{registros:[]}};
+     if(a==='resumen')return {data:{anio:2026,filas:[]}};
      if(a==='informe')return {data:{cortes:[c]}};
      if(a==='subir'){c.estado='pendiente';c.contado_at=d.contado_at;c.contado_nombre='Operadora';for(const l of lines){const f=d.filas.find(f=>f.codigo===l.codigo);l.cantidad_fisica=f.cantidad;l.esperado_conteo=l.cantidad_corte;l.diferencia=f.cantidad-l.cantidad_corte;}}
-     if(a==='aplicar'){c.estado='aplicado';c.autorizado_nombre='Maite';c.autorizado_at=new Date().toISOString();for(const l of lines)l.posterior=l.actual+l.diferencia;}
+     if(a==='aplicar_conteo'){c.estado='aplicado';c.autorizado_nombre='Maite';c.autorizado_at=new Date().toISOString();for(const l of lines)l.posterior=l.actual+l.diferencia;}
      return {data:structuredClone({corte:c,lineas:lines})};
    }};
    window.ui=KoraConteosUI.init({sb,XLSX,tiendaActual:()=> 'A',refrescar:async()=>{}});await ui.abrir();
@@ -45,12 +47,13 @@ try {
  await page.waitForFunction(()=>calls.some(c=>c.a==='subir'));
  assert.equal(await page.evaluate(()=>calls.find(c=>c.a==='subir').d.base_conteo),'corte_fijo');
  await page.locator('#conteos-motivo').fill('Conteo verificado');await page.locator('#conteos-soporte').fill('Acta 2026-09');await page.locator('#conteos-clasificacion').selectOption('sobrante_por_aclarar');
+ await page.locator('[data-decision-codigo="VID"]').selectOption('sobrante');
  assert.match(await page.locator('#conteos-lineas').innerText(),/482/);
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:'/tmp/kora-conteos-mobile.png'});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  page.on('dialog',d=>d.accept());await page.locator('#conteos-form-decidir button[type=submit]').click();
- await page.waitForFunction(()=>calls.some(c=>c.a==='aplicar'));
+ await page.waitForFunction(()=>calls.some(c=>c.a==='aplicar_conteo'));
  assert.match(await page.locator('#conteos-detalle').innerText(),/Ajuste aplicado/);
  await page.evaluate(async()=>{demoCorte.estado='pendiente';demoCorte.revision_fuente={solo_comparativo:true,fecha_confirmada:'2026-09-06',nota:'Fecha confirmada por Óscar. Fuentes con fecha impresa del día 7.',fuentes:[{nombre:'Archivo.xlsx',sha256:'a'.repeat(64),fecha_impresa:'2026-09-07 09:11:32'}],pendientes:[{nombre:'SIM TIGO PAQUETE',fila:361,base:42,conteo:42,motivo:'Código por aclarar',archivo:'Archivo.xlsx'}]};await ui.abrir();});
  await page.locator('[data-conteo-id]').click();

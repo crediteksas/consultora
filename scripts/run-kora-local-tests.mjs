@@ -75,6 +75,7 @@ const erp = [
   'tests/erp/caja-ajuste-despues-arqueo.test.mjs',
   'tests/erp/liquidaciones-resumen.test.mjs',
   'tests/erp/conteos-inventario.test.mjs',
+  'tests/erp/no-conformes-inventario.test.mjs',
   'tests/erp/costos-iniciales-tiendas.test.mjs',
   'tests/erp/gastos-tiendas-contexto.test.mjs',
   'tests/erp/finanzas-reportes.test.mjs',

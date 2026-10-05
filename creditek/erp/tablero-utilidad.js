@@ -4,7 +4,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(credits){
   'use strict';
   const names={retail:'Retail',b2b:'B2B',aliados:'Aliados'};
-  const descriptions={retail:'Utilidad neta Retail: margen de ventas menos gastos registrados y aprobados de cada tienda y, solo en el consolidado, gastos CENTRAL y generales autorizados. Los retiros de utilidad no son gastos.',b2b:'Utilidad neta B2B: margen de remisiones menos gastos generales autorizados, incluida nómina. Los retiros de utilidad no son gastos.',aliados:'Utilidad neta Aliados: tiendas propias y terceros; margen de liquidaciones menos gastos operativos y generales autorizados, incluida nómina. Los retiros de utilidad no son gastos.'};
+  const descriptions={retail:'Utilidad neta Retail: margen de ventas menos gastos aprobados de cada tienda y bajas de inventario autorizadas sin salida de caja; en el consolidado, también gastos CENTRAL y generales. Los retiros de utilidad no son gastos.',b2b:'Utilidad neta B2B: margen de remisiones menos gastos generales autorizados, incluida nómina. Los retiros de utilidad no son gastos.',aliados:'Utilidad neta Aliados: tiendas propias y terceros; margen de liquidaciones menos gastos operativos y generales autorizados, incluida nómina. Los retiros de utilidad no son gastos.'};
   const day=value=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
   const shiftDay=(value,days)=>{const date=new Date(value+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);};
   const bogotaStart=value=>`${value}T05:00:00.000Z`;
@@ -56,6 +56,11 @@
     for(const sale of sales)if(!seenSales.has(sale.id))itemRows.push({date:sale.fecha,store:sale.tienda_codigo,value:null});
     const from=bogotaStart(start),until=bogotaStart(shiftDay(end,1));
     const expenseRows=await credits.allRows(sb,'gastos','id,fecha,created_at,tienda_codigo,monto','id',q=>{q=q.eq('estado','aprobado').gte('created_at',from).lt('created_at',until);return store?q.eq('tienda_codigo',store):q;});
+    const {data:writeoffs,error:writeoffsError}=await sb.rpc('gastos_inventario_no_monetarios',{
+      p_desde:start,p_hasta:end,p_tienda:store||null
+    });
+    if(writeoffsError)throw writeoffsError;
+    if(!Array.isArray(writeoffs))throw Error('No se pudieron verificar las bajas de inventario Retail');
     const expenses=expenseRows.filter(expense=>expense.tienda_codigo!=='CENTRAL');
     const generalExpenses=store?[]:expenseRows.filter(expense=>expense.tienda_codigo==='CENTRAL').map(expense=>({id:expense.id,date:day(expense.created_at),amount:Number(expense.monto),source:'gastos'}));
     let generalAvailable=true;
@@ -69,9 +74,11 @@
     }
     const rows=itemRows.slice();
     for(const expense of expenses)rows.push({date:day(expense.created_at),store:expense.tienda_codigo,value:-Number(expense.monto)});
+    for(const writeoff of writeoffs)rows.push({date:day(writeoff.fecha),store:writeoff.tienda_codigo,
+      value:-Number(writeoff.valor),source:'baja_inventario',id:writeoff.id});
     for(const expense of generalExpenses)rows.push({date:expense.date,store:'CENTRAL',value:-expense.amount});
     const missing=rows.filter(row=>row.value===null||row.value===undefined||!Number.isFinite(Number(row.value))).length;
-    return {sales,expenses,generalExpenses,generalAvailable,itemRows,rows,missing};
+    return {sales,expenses,writeoffs,generalExpenses,generalAvailable,itemRows,rows,missing};
   }
   async function rpcRows(sb,period,today){
     const rows=[];

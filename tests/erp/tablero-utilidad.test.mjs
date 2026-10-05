@@ -18,12 +18,27 @@ test('escala automática basada solo en utilidad, sin límite de 60M ni presupue
  assert.equal(config.data.datasets[0].tension,0);
 });
 function database(tables){
- const calls=[];return {calls,rpc:async(name)=>{assert.equal(name,'es_controlador_financiero');return {data:true,error:null}},from(table){calls.push(table);let records=tables[table]||[];const q={select(){return q},order(){return q},gte(k,v){records=records.filter(r=>r[k]>=v);return q},lt(k,v){records=records.filter(r=>r[k]<v);return q},lte(k,v){records=records.filter(r=>r[k]<=v);return q},eq(k,v){records=records.filter(r=>r[k]===v);return q},in(k,v){records=records.filter(r=>v.includes(r[k]));return q},range:async(a,b)=>({data:records.slice(a,b+1)})};return q}};
+ const calls=[];return {calls,rpc:async(name,params)=>{
+  if(name==='es_controlador_financiero')return {data:true,error:null};
+  if(name==='gastos_inventario_no_monetarios')return {data:(tables.gastos_inventario_no_monetarios||[])
+   .filter(r=>r.fecha>=params.p_desde&&r.fecha<=params.p_hasta&&(!params.p_tienda||r.tienda_codigo===params.p_tienda)),error:null};
+  throw Error(`RPC inesperada: ${name}`);
+ },from(table){calls.push(table);let records=tables[table]||[];const q={select(){return q},order(){return q},gte(k,v){records=records.filter(r=>r[k]>=v);return q},lt(k,v){records=records.filter(r=>r[k]<v);return q},lte(k,v){records=records.filter(r=>r[k]<=v);return q},eq(k,v){records=records.filter(r=>r[k]===v);return q},in(k,v){records=records.filter(r=>v.includes(r[k]));return q},range:async(a,b)=>({data:records.slice(a,b+1)})};return q}};
 }
 test('Retail muestra margen menos gastos aprobados en el día del cargue; excluye rechazados y otras tiendas',async()=>{
  const sb=database({ventas:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',anulada:false},{id:2,fecha:'2026-09-01',tienda_codigo:'otra',anulada:false},{id:3,fecha:'2026-09-02',tienda_codigo:'t',anulada:true}],venta_items_lectura:[{id:1,venta_id:1,utilidad:100},{id:2,venta_id:2,utilidad:500},{id:3,venta_id:3,utilidad:1000}],gastos:[{id:1,fecha:'2026-08-31',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'t',monto:40,estado:'aprobado'},{id:2,fecha:'2026-09-01',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'t',monto:70,estado:'rechazado'},{id:3,fecha:'2026-09-01',created_at:'2026-09-01T15:00:00Z',tienda_codigo:'otra',monto:30,estado:'aprobado'}],presupuestos:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',meta_utilidad:134500782}]});
  const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,60);assert.equal(result.budget,undefined);assert.equal(sb.calls.includes('presupuestos'),false);assert.equal(sb.calls.includes('liquidation_operations'),false);
  const detail=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16',store:'t'});assert.equal(detail.expenses.length,1);assert.equal(detail.itemRows.length,1);
+});
+test('Retail descuenta una baja autorizada como gasto de inventario sin tratarla como salida de caja',async()=>{
+ const sb=database({ventas:[{id:1,fecha:'2026-09-01',tienda_codigo:'t',anulada:false}],
+  venta_items_lectura:[{id:1,venta_id:1,utilidad:3000}],gastos:[],
+  gastos_inventario_no_monetarios:[{id:'baja-1',fecha:'2026-09-02',tienda_codigo:'t',categoria_gasto:'imperfecto',valor:1500}]});
+ const result=await domain.load(sb,'retail',{now,store:'t'});
+ assert.equal(result.total,1500);
+ const detail=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16',store:'t'});
+ assert.equal(detail.expenses.length,0);assert.equal(detail.writeoffs.length,1);
+ assert.equal(detail.rows.filter(r=>r.source==='baja_inventario').length,1);
 });
 test('Retail pagina todos los artículos, incluso después de mil, y respeta el rango seleccionado',async()=>{
  const items=Array.from({length:1201},(_,i)=>({id:i+1,venta_id:1,utilidad:1}));
@@ -77,7 +92,7 @@ test('Retail descuenta generales solo del consolidado, al cargue o autorización
  assert.equal(sb.calls.filter(table=>table==='financial_entries').length,2);
 });
 test('no publica un consolidado incompleto si RLS oculta gastos generales',async()=>{
- const sb=database({ventas:[],gastos:[]});sb.rpc=async()=>({data:false,error:null});
+ const sb=database({ventas:[],gastos:[]});sb.rpc=async(name)=>name==='gastos_inventario_no_monetarios'?{data:[],error:null}:{data:false,error:null};
  const result=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16'});
  assert.equal(result.generalAvailable,false);
  assert.equal(sb.calls.includes('financial_entries'),false);

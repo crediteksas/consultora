@@ -6,6 +6,19 @@
   const storeFunded=row=>row.entry_type==='retiro_utilidad'&&row.business_unit==='retail';
   function account(value){const parts=String(value||'').split(' · ').map(s=>s.trim());return {bank:parts.length===3?parts[0]:'',account_type:parts.length===3?parts[1]:'',account_number:parts.length===3&&/^\d{6,20}$/.test(parts[2])?parts[2]:''};}
   const supplierApproved=row=>row.estado==='autorizado'&&!!row.autorizado_por&&!!row.autorizado_at&&!row.pagado_at&&!row.pagado_por&&!row.soporte_path;
+  function dispatchAmendment(dispatch){
+    const items=dispatch?.payment_dispatch_items||[];
+    const added=items.filter(i=>i.snapshot?.dispatch_addition?.added_at);
+    return {addedRefs:new Set(added.map(i=>i.report_ref)),addedCount:added.length,
+      originalCount:items.length-added.length,
+      addedTotal:added.reduce((n,i)=>n+Number(i.snapshot.valor||0),0),
+      updatedAt:added.map(i=>i.snapshot.dispatch_addition.added_at).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]||null};
+  }
+  function currentDispatch(dispatches,now=new Date()){
+    const day=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+    const matches=dispatches.filter(d=>!d.legacy&&d.created_at&&day(d.created_at)===day(now));
+    return matches.length===1?matches[0]:null;
+  }
   function supplierRows(rows){return rows.filter(supplierApproved).map(row=>({
     id:row.id,report_ref:`BP-${row.id}`,report_kind:'Abono a proveedor',report_business:'B2B',report_platform:'',
     report_date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(row.autorizado_at)),
@@ -59,6 +72,6 @@
     }
     return {record};
   }
-  const api={approved,account,reportRows,cards,createRecorder,supplierApproved,supplierRows,supplierCards};
+  const api={approved,account,reportRows,cards,createRecorder,supplierApproved,supplierRows,supplierCards,dispatchAmendment,currentDispatch};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekPagosUnificados=api;
 })(typeof window==='undefined'?globalThis:window);

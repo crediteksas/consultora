@@ -7,6 +7,7 @@ import { PGlite } from '@electric-sql/pglite';
 const require = createRequire(import.meta.url);
 const UX = require('../../creditek/erp/aliados-liquidaciones-ux.js');
 const Treasury = require('../../creditek/erp/aliados-tesoreria-domain.js');
+const Unified = require('../../creditek/erp/tesoreria-pagos-unificados.js');
 const migration = 'supabase/migrations/20260902160256_aliados_ordenes_pago_informe.sql';
 const businessMigration = 'supabase/migrations/20260911023737_pagos_negocio_snapshot_informacion_exogena.sql';
 
@@ -61,7 +62,7 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   }));
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
   const cop = value => `$ ${Number(value).toLocaleString('es-CO')}`;
-  const context = {dispatch:{consecutive:7,issued_by_name:'Prueba'},rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
+  const context = {dispatch:{consecutive:7,issued_by_name:'Prueba'},amendment:Unified.dispatchAmendment({}),rows, total: 3000003, reportId: 'OP-20260917-120000', generated: '17 de septiembre de 2026', logo: 'logo.png', profile: {nombre: 'Prueba'}, liquidationRefs: [], esc, cop, paymentBusinessName: () => '', platformName: x => x, date: x => x, shortId: x => String(x).slice(0, 8)};
   const html = new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));
   context.dispatch.payment_dispatch_items=[{reported_paid:true}];
   const paidHtml=new Function(...Object.keys(context), `return ${template};`)(...Object.values(context));

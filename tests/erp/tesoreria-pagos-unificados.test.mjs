@@ -75,7 +75,7 @@ test('orden imprime solo las filas elegidas y conserva referencias y nóminas',(
   const source=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');
   const report=source.slice(source.indexOf('  function renderPaymentReport(rows)'),source.indexOf('  async function changeMovement'));
   let output='';const dom={dataset:{},innerHTML:'',setAttribute(){},style:{},addEventListener(){},showModal(){},querySelector(selector){return selector==='iframe'?{contentWindow:{document:{write(s){output=s;},close(){}}}}:{onclick:null};}};
-  const ctx={document:{getElementById(){return null;},createElement(){return dom;},body:{appendChild(){}}},notice(){},esc:String,cop:String,profile:{nombre:'Oscar'},paymentBusinessName:()=>null,platformName:String,date:String,shortId:String,Intl,Date,URL,location:{href:'https://example.test/creditek/erp/aliados-tesoreria.html'}};
+  const ctx={window:{CreditekPagosUnificados:U},document:{getElementById(){return null;},createElement(){return dom;},body:{appendChild(){}}},notice(){},esc:String,cop:String,profile:{nombre:'Oscar'},paymentBusinessName:()=>null,platformName:String,date:String,shortId:String,Intl,Date,URL,location:{href:'https://example.test/creditek/erp/aliados-tesoreria.html'}};
   vm.runInNewContext(report+';globalThis.renderReport=renderPaymentReport;',ctx);
   ctx.renderReport(U.reportRows([], [expense], [], ready),{consecutive:7,created_at:'2026-09-30T20:00:00Z',issued_by_name:'Oscar'});
   assert.match(output,/OP-000007/);
@@ -86,16 +86,44 @@ test('orden imprime solo las filas elegidas y conserva referencias y nóminas',(
   assert.match(output,/BP-supplier/);assert.match(output,/Instrucción autorizada/);
   assert.ok(output.includes(supplier.concepto));assert.match(output,/4000000/);
   assert.match(output,/titular del giro en la instrucción/);assert.doesNotMatch(output,/undefined/);
+  const oldRow=U.reportRows([], [expense], [], ready)[0],addedRow=U.supplierRows([supplier])[0];
+  addedRow.dispatch_addition={added_at:'2026-10-05T23:00:00Z'};
+  const dispatch={consecutive:6,created_at:'2026-10-05T21:39:23Z',issued_by_name:'Maite',note:'Ampliación autorizada',
+    payment_dispatch_items:[{report_ref:oldRow.report_ref,snapshot:oldRow},{report_ref:addedRow.report_ref,snapshot:addedRow}]};
+  ctx.renderReport([oldRow,addedRow],dispatch);
+  assert.match(output,/OP-000006/);assert.match(output,/MISMA ORDEN ACTUALIZADA/);
+  assert.match(output,/AGREGADO EN ESTA ACTUALIZACIÓN/);assert.match(output,/YA INCLUIDO ANTES · VERIFICAR GIRO/);
+  assert.match(output,/Ampliación autorizada/);assert.match(output,/No es una segunda orden/);
+  assert.match(output,/4750000/);assert.doesNotMatch(output,/OP-000007|OP-000008/);
+});
+
+test('ampliación distingue las filas agregadas sin modificar las originales ni crear otra orden',()=>{
+ const original={report_ref:'PO-before',snapshot:{valor:2719800}},added={report_ref:'BP-after',snapshot:{valor:10000000,dispatch_addition:{added_at:'2026-10-05T23:00:00Z'}}};
+ const d={payment_dispatch_items:[original,added]},before=JSON.stringify(d),a=U.dispatchAmendment(d);
+ assert.equal(a.originalCount,1);assert.equal(a.addedCount,1);assert.equal(a.addedTotal,10000000);
+ assert.deepEqual([...a.addedRefs],['BP-after']);assert.equal(JSON.stringify(d),before);
+ assert.equal(U.dispatchAmendment({payment_dispatch_items:[original]}).addedCount,0);
+ const rows=U.reportRows([{id:'before',estado:'programado',authorized:true,valor:2719800}],[],[],ready,new Set(['PO-before','BP-supplier']),[supplier]);
+ assert.deepEqual(rows,[]);
+});
+test('reabre la única orden de hoy en Colombia sin crear otra ni adivinar entre varias',()=>{
+ const d={id:'today',created_at:'2026-10-05T21:39:00Z'},previous={created_at:'2026-10-04T21:00:00Z'};
+ assert.equal(U.currentDispatch([previous,d],new Date('2026-10-06T02:00:00Z')),d);
+ assert.equal(U.currentDispatch([previous,d],new Date('2026-10-06T05:01:00Z')),null);
+ assert.equal(U.currentDispatch([d,{...d,id:'another'}],new Date('2026-10-05T23:00:00Z')),null);
 });
 test('preparación consulta de nuevo y aborta si está desconectada',async()=>{
   const source=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');
   const body=source.slice(source.indexOf('  async function paymentReport()'),source.indexOf('  function renderPaymentReport(rows)'));
-  let notice='',reads=0,opened=0;const button={disabled:false};
-  const ctx={financialAccessError:false,$:()=>button,load:async()=>{reads++;},authorizedReportRows:()=>U.reportRows([], [expense], [], ready),openPaymentSelection:()=>{opened++;},notice:s=>{notice=s;}};
+  let notice='',reads=0,opened=0,printed=null;const button={disabled:false};
+  const ctx={window:{CreditekPagosUnificados:U},data:{dispatches:[]},renderPaymentReport:(rows,d)=>{printed=d;},financialAccessError:false,$:()=>button,load:async()=>{reads++;},authorizedReportRows:()=>U.reportRows([], [expense], [], ready),openPaymentSelection:()=>{opened++;},notice:s=>{notice=s;}};
   vm.runInNewContext(body+';globalThis.runReport=paymentReport;',ctx);
   await ctx.runReport();assert.equal(reads,1);assert.equal(opened,1);
   ctx.load=async()=>{throw Error('Offline');};await ctx.runReport();assert.equal(opened,1);assert.match(notice,/No se generó un documento parcial/);
   ctx.financialAccessError=true;await ctx.runReport();assert.equal(opened,1);assert.match(notice,/verificar el acceso/);
+  ctx.financialAccessError=false;ctx.load=async()=>{};ctx.authorizedReportRows=()=>[];
+  ctx.data.dispatches=[{consecutive:6,created_at:new Date().toISOString(),payment_dispatch_items:[{snapshot:{valor:12719800}}]}];
+  await ctx.runReport();assert.equal(printed.consecutive,6);assert.equal(opened,1);
 });
 
 test('orden no presenta una identificación temporal de ejecutivo como documento válido',()=>{

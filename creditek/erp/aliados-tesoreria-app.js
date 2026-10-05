@@ -1303,16 +1303,20 @@
     catch { notice('No se pudo consultar la orden completa. No se generó un documento parcial; actualiza Tesorería.',true);return; }
     finally {button.disabled=false;}
     const rows=authorizedReportRows();
-    if (!rows.length)
+    if (!rows.length) {
+      const current=window.CreditekPagosUnificados.currentDispatch(data.dispatches||[]);
+      if(current)return renderPaymentReport(current.payment_dispatch_items.map(i=>i.snapshot),current);
       return notice(
-        "No hay pagos autorizados pendientes de giro para preparar una orden.",
+        "No hay pagos nuevos para emitir. Consulta las órdenes guardadas; no vuelvas a montar pagos ya incluidos.",
         true,
       );
+    }
     openPaymentSelection(rows);
   }
   function renderPaymentReport(rows) {
     const dispatch=arguments[1];
     if(!dispatch?.consecutive)throw Error('La orden debe estar guardada antes de imprimir.');
+    const amendment=window.CreditekPagosUnificados.dispatchAmendment(dispatch);
     const now = new Date(dispatch.original_issued_at||dispatch.created_at),
       total = rows.reduce((n, p) => n + Number(p.valor || 0), 0),
       generated = new Intl.DateTimeFormat("es-CO", {
@@ -1393,10 +1397,12 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
 </style></head><body>
 <header class="head"><div class="brand"><img src="${esc(logo)}" alt="Creditek"><div><div class="eyebrow">Tesorería</div><h1>Orden de pagos ${esc(reportId)}</h1></div></div><div class="meta">${esc(generated)}<br>Responsable: ${esc(dispatch.issued_by_name || "Registro de orden anterior")}</div></header>
 <p class="trace"><strong>${dispatch.payment_dispatch_items?.every(i=>i.reported_paid)?'GIROS YA REALIZADOS · NO VOLVER A PAGAR. Pendiente adjuntar soportes.':'ORDEN EMITIDA Y GUARDADA. Consultar o reimprimir conserva el mismo consecutivo.'}</strong></p>
+${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${esc(new Intl.DateTimeFormat('es-CO',{dateStyle:'short',timeStyle:'short',timeZone:'America/Bogota'}).format(new Date(amendment.updatedAt)))}</strong><br>Se conservan ${amendment.originalCount} pagos anteriores y se agregan ${amendment.addedCount} por ${cop(amendment.addedTotal)}. No es una segunda orden. Antes de montar un giro, verifica si ya fue realizado; no repitas los pagos anteriores.<br>${esc(dispatch.note||'')}</p>`:''}
 <section class="summary"><span><strong>${rows.length}</strong> pagos autorizados</span><span>${liquidationRefs.length} liquidaciones</span><span>Total <strong class="money">${cop(total)}</strong></span></section>
 <table><colgroup><col style="width:7%"><col style="width:33%"><col style="width:22.5%"><col style="width:23%"><col style="width:14.5%"></colgroup><thead><tr><th>N.º</th><th>Beneficiario</th><th>Cuenta destino</th><th>Concepto y fecha</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows.map((p, i) => {
         const holder = p.bank_snapshot.holder || p.beneficiary_name;
         const supplier = p.report_ref?.startsWith('BP-');
+        const inclusion = amendment.addedCount ? `<span class="muted"><strong>${amendment.addedRefs.has(p.report_ref)?'AGREGADO EN ESTA ACTUALIZACIÓN':'YA INCLUIDO ANTES · VERIFICAR GIRO'}</strong></span>` : '';
         const destination = supplier
           ? `<strong>Instrucción autorizada</strong><span class="muted" style="white-space:pre-wrap">${esc(p.destination_instructions)}</span>`
           : `<span class="account">${esc(p.bank_snapshot.account_number)}</span><span class="muted">${esc(p.bank_snapshot.bank)} ${esc(p.bank_snapshot.account_type)}</span>`;
@@ -1412,7 +1418,7 @@ tr{break-inside:avoid}.money{text-align:right;font-size:12px;font-weight:700;whi
         const shortBonus = p.liquidation_id && bonus && bonus[2] === String(p.cutoff_snapshot) && samePlatform(bonus[1]);
         const label = shortCredit ? (credit[1] + " crédito" + (Number(credit[1]) === 1 ? "" : "s") + " " + platform) : shortBonus ? "Bonos y comisiones" : concept;
         const separateBusiness = business && business !== "No aplica" && String(business).trim().toLowerCase() !== String(holder || "").trim().toLowerCase();
-        return `<tr><td><span class="payment-number">${i + 1}</span><span class="internal-ref" title="${esc(p.report_ref)}">Ref. ${esc(String(p.report_ref || "").slice(-4).toUpperCase())}</span></td><td>${separateBusiness ? `<strong>${esc(business)}</strong><span class="muted">${esc(holder)}</span>` : `<strong>${esc(holder)}</strong>`}<span class="muted">${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</span>${supplier?'<span class="muted">Proveedor acreedor · titular del giro en la instrucción autorizada</span>':''}</td><td>${destination}</td><td>${esc(label)}<span class="muted">${p.liquidation_id ? `${shortCredit ? "" : esc(platform) + " "}${date(p.cutoff_snapshot)}` : `${esc(p.report_kind)} ${esc(p.report_date)}`}</span></td><td class="money">${cop(p.valor)}</td></tr>`;
+        return `<tr><td><span class="payment-number">${i + 1}</span><span class="internal-ref" title="${esc(p.report_ref)}">Ref. ${esc(String(p.report_ref || "").slice(-4).toUpperCase())}</span></td><td>${separateBusiness ? `<strong>${esc(business)}</strong><span class="muted">${esc(holder)}</span>` : `<strong>${esc(holder)}</strong>`}<span class="muted">${esc(p.bank_snapshot.holder_identification || p.beneficiary_identification)}</span>${supplier?'<span class="muted">Proveedor acreedor · titular del giro en la instrucción autorizada</span>':''}</td><td>${destination}</td><td>${esc(label)}<span class="muted">${p.liquidation_id ? `${shortCredit ? "" : esc(platform) + " "}${date(p.cutoff_snapshot)}` : `${esc(p.report_kind)} ${esc(p.report_date)}`}</span>${inclusion}</td><td class="money">${cop(p.valor)}</td></tr>`;
       }).join("")}<tr class="total"><td colspan="4">${dispatch.payment_dispatch_items?.every(i=>i.reported_paid)?'TOTAL GIRADO INFORMADO':'TOTAL DE LA ORDEN'}</td><td class="money">${cop(total)}</td></tr></tbody></table>
 <section class="trace">Orden emitida. Consulta el estado de los soportes en KORA. ${dispatch.original_reference?`Referencia original: ${esc(dispatch.original_reference)}. `:''} La referencia corta es interna, no un comprobante bancario.<details class="no-print"><summary>Trazabilidad KORA · referencias completas</summary>${rows.map((p, i) => `<div>${i + 1}: ${esc(p.report_ref)}${p.liquidation_id ? ` · LQ-${shortId(p.liquidation_id)}` : ""} · ${esc(p.concept)}</div>`).join("")}</details></section>
 <footer class="foot"><span>Creditek S.A.S. · NIT 901.259.859-0 · Valores en COP</span><span>${esc(reportId)}</span></footer>

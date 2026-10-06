@@ -36,6 +36,7 @@ try {
        return {data:{cerrado:!!window.demoClosed,cierre_id:'cierre-1',cerrado_at:new Date().toISOString(),huella:'actual',listo:c.estado==='aplicado',inicio_at:'2026-09-01T08:00:00Z',fin_at:c.corte_at,ventas_totales:2000000,costo_vendido:1000000,gastos_totales:200000,perdidas_ajustes:100000,ganancias_ajustes:100000,ajuste_conciliacion:0,utilidad_neta:800000,bloqueos:c.estado==='aplicado'?[]:['Pendiente de aprobación']}};
      }
      if(name==='inventario_ajuste_documento'){
+       if(a==='aplicar'&&window.demoApplyError)return {error:{message:window.demoApplyError}};
        if(a==='aplicar'){c.estado='aplicado';c.autorizado_nombre='Maite';c.autorizado_at=new Date().toISOString();for(const l of lines)l.posterior=l.actual+l.diferencia;}
        return {data:structuredClone({corte:c,lineas:lines,puede_cerrar_utilidad:true,documento:c.estado==='aplicado'?{
          numero:'AJ-A-000001',corte_id:c.id,documento_id:'doc-1',tienda_nombre:c.tienda_nombre,tienda_codigo:'A',corte_at:c.corte_at,
@@ -48,7 +49,7 @@ try {
      if(a==='resumen')return {data:{anio:2026,filas:[]}};
      if(a==='informe')return {data:{cortes:demoCortes.filter(cut=>!d.tienda||cut.tienda_codigo===d.tienda)}};
      if(a==='ver'&&demoDetails[d.id])return {data:structuredClone(demoDetails[d.id])};
-     if(a==='subir'){c.estado='pendiente';c.contado_at=d.contado_at;c.contado_nombre='Operadora';for(const l of lines){const f=d.filas.find(f=>f.codigo===l.codigo);l.cantidad_fisica=f.cantidad;l.esperado_conteo=l.cantidad_corte;l.diferencia=f.cantidad-l.cantidad_corte;}}
+     if(a==='subir'){c.estado='pendiente';c.contado_at=d.contado_at;c.contado_nombre='Operadora';c.archivo_nombre=d.archivo;c.archivo_sha256=d.sha256;for(const l of lines){const f=d.filas.find(f=>f.codigo===l.codigo);l.cantidad_fisica=f.cantidad;l.esperado_conteo=l.cantidad_corte;l.diferencia=f.cantidad-l.cantidad_corte;}}
      if(a==='aplicar_conteo'){c.estado='aplicado';c.autorizado_nombre='Maite';c.autorizado_at=new Date().toISOString();for(const l of lines)l.posterior=l.actual+l.diferencia;}
      return {data:structuredClone({corte:c,lineas:lines})};
    }};
@@ -72,15 +73,60 @@ try {
  assert.equal(await page.locator('#conteos-utilidad-cerrar').isDisabled(),true,'No cierra utilidad antes del ajuste');
  assert.match(await page.locator('#conteos-form-decidir button[type=submit]').innerText(),/Aplicar ajuste de inventario/);
  assert.equal(await page.evaluate(()=>calls.find(c=>c.a==='subir').d.base_conteo),'corte_fijo');
- await page.locator('#conteos-motivo').fill('Conteo verificado');await page.locator('#conteos-soporte').fill('Acta 2026-09');await page.locator('#conteos-clasificacion').selectOption('sobrante_por_aclarar');
+ assert.match(await page.locator('#conteos-archivo-soporte').innerText(),/conteo.xlsx/);
+ assert.match(await page.locator('#conteos-form-decidir').innerText(),/Referencia adicional \(opcional\)/);
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Explica el motivo'));
+ assert.equal(await page.locator('#conteos-decision-mensaje').isVisible(),true,'El motivo vacío ya no bloquea silenciosamente el submit');
+ assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='aplicar')),false);
+ await page.locator('#conteos-motivo').fill('Conteo verificado');
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('clasificación general'));
+ await page.locator('#conteos-clasificacion').selectOption('sobrante_por_aclarar');
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Clasifica cada diferencia'));
+ assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='aplicar')),false);
+ await page.locator('[data-decision-codigo="VID"]').selectOption('sobrante');
+ await page.locator('#conteos-adjuntar-fotos').click();
+ assert.equal(await page.locator('#conteos-fotos-panel').evaluate(e=>e.open),true);
+ assert.equal(await page.locator('#conteos-nc-foto').isVisible(),true,'La opción de adjuntar foto está accesible desde el ajuste');
+ assert.equal(await page.locator('#conteos-nc-corte').inputValue(),id);
+ assert.match(await page.locator('#conteos-nc-soporte').inputValue(),/Archivo de conteo: conteo.xlsx · SHA256: [a-f0-9]{64}/);
+ assert.equal(await page.locator('[data-decision-codigo="VID"]').inputValue(),'sobrante','Abrir fotos no borra clasificaciones');
+ assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='solicitar')),false,'Abrir el adjunto no solicita ni aplica nada');
+ page.on('dialog',d=>d.accept());
+ await page.evaluate(()=>{window.demoApplyError='Falta solicitud con foto para el no conforme VID';});
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Falta solicitud con foto'));
+ assert.equal(await page.locator('#conteos-decision-mensaje').isVisible(),true,'Los errores del servidor se muestran junto al botón');
+ assert.equal(await page.locator('#conteos-motivo').inputValue(),'Conteo verificado');
+ assert.equal(await page.locator('[data-decision-codigo="VID"]').inputValue(),'sobrante');
+ assert.equal(await page.evaluate(()=>demoCorte.estado),'pendiente');
+ await page.evaluate(()=>{window.demoApplyError=null;});
+ // Un nombre sin SHA válido no sustituye un soporte: sigue siendo obligatorio.
+ const attempted=await page.evaluate(()=>calls.filter(c=>c.a==='aplicar').length);
+ await page.evaluate(async()=>{demoCorte.archivo_sha256='incompleto';await ui.abrir();});
+ await page.locator(`[data-conteo-id="${id}"]`).click();
+ await page.waitForFunction(()=>document.getElementById('conteos-form-decidir'));
+ assert.equal(await page.locator('#conteos-archivo-soporte').count(),0);
+ await page.locator('#conteos-motivo').fill('Conteo verificado');
+ await page.locator('#conteos-clasificacion').selectOption('sobrante_por_aclarar');
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Completa la referencia'));
+ assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='aplicar').length),attempted);
+ await page.evaluate(async()=>{demoCorte.archivo_sha256=calls.find(c=>c.a==='subir').d.sha256;await ui.abrir();});
+ await page.locator(`[data-conteo-id="${id}"]`).click();
+ await page.waitForFunction(()=>document.getElementById('conteos-archivo-soporte'));
+ await page.locator('#conteos-motivo').fill('Conteo verificado');
+ await page.locator('#conteos-clasificacion').selectOption('sobrante_por_aclarar');
  await page.locator('[data-decision-codigo="VID"]').selectOption('sobrante');
  assert.match(await page.locator('#conteos-lineas').innerText(),/482/);
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:'/tmp/kora-conteos-mobile.png'});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
- page.on('dialog',d=>d.accept());await page.locator('#conteos-form-decidir button[type=submit]').click();
- await page.waitForFunction(()=>calls.some(c=>c.name==='inventario_ajuste_documento'&&c.a==='aplicar'));
+ await page.locator('#conteos-form-decidir button[type=submit]').click();
  await page.waitForFunction(()=>document.getElementById('conteos-documento-excel'));
+ assert.match(await page.evaluate(()=>calls.filter(c=>c.name==='inventario_ajuste_documento'&&c.a==='aplicar').at(-1).d.soporte),/Archivo de conteo: conteo.xlsx · SHA256: [a-f0-9]{64}/,'El Excel ya cargado es el soporte aun con referencia adicional vacía');
  assert.match(await page.locator('#conteos-detalle').innerText(),/Ajuste aplicado/);
  assert.match(await page.locator('#conteos-cierre').innerText(),/AJ-A-000001/);
  await page.locator('#conteos-utilidad-cerrar').click();
@@ -142,5 +188,5 @@ try {
  await tiendaPage.evaluate(()=>document.getElementById('conteos-ultimos').click());
  await tiendaPage.waitForFunction(()=>document.getElementById('conteos-mensaje').textContent.includes('Solo Gestión o Gerencia'));
  await tiendaPage.close();
- assert.deepEqual(errors,[]);console.log('Navegador: archivo mixto, ceros IMEI, carga, 482, autorización, escritorio y móvil OK.');
+ assert.deepEqual(errors,[]);console.log('Navegador: Excel como soporte, adjuntar fotos, errores visibles, archivo mixto, ceros IMEI, carga, 482, autorización, escritorio y móvil OK.');
 } finally {await browser.close();}

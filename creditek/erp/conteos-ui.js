@@ -6,6 +6,8 @@
   const estados = { abierto:'Pendiente de conteo', pendiente:'Pendiente de Mayte / Óscar', aplicado:'Ajuste aplicado',sin_diferencias:'Revisado sin diferencias',rechazado:'Cerrado sin aplicar' };
   const fechaCorte = c => c.revision_fuente?.fecha_confirmada || local(c.corte_at);
   const estadoCorte = c => c.revision_fuente?.solo_comparativo && c.estado==='pendiente' ? 'Comparativo histórico · pendiente de revisión' : estados[c.estado];
+  const soporteArchivo = c => c.archivo_nombre?.trim() && /^[a-f0-9]{64}$/i.test(c.archivo_sha256||'')
+    ? `Archivo de conteo: ${c.archivo_nombre} · SHA256: ${c.archivo_sha256}` : '';
   function resumirValores(lineas) {
     const total={faltantes:0,sobrantes:0,unidadesFaltantes:0,unidadesSobrantes:0,sinCosto:0,valorSistema:0,valorReportado:0};
     for (const l of lineas) {
@@ -34,8 +36,8 @@
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
         <div class="form-actions"><button id="conteos-crear" class="primary">Preparar corte y descargar</button><button id="conteos-ciego" class="secondary">Preparar conteo ciego</button></div></div>
         <p style="margin:8px 0">Si ya existe un corte abierto hoy para esta tienda, se reutiliza. La persona autorizada temporalmente puede cargarlo con su propio usuario; solo Mayte u Óscar aprueban diferencias.</p>
-        <details><summary>Salida de no conformes antes del corte</summary>
-          <p>La tienda registra los imperfectos con soporte. No cambian existencias hasta que Mayte u Óscar autoricen. Si el corte ya empezó, clasifícalos dentro de ese corte; no registres otra salida.</p>
+        <details id="conteos-fotos-panel"><summary>Adjuntar fotos y registrar productos no conformes</summary>
+          <p>Adjunta aquí la foto de cada referencia imperfecta. Si pertenece a un conteo, selecciona ese corte: la foto queda vinculada al ajuste y no genera una segunda salida. Las existencias solo cambian cuando Mayte u Óscar autoricen.</p>
           <form id="conteos-no-conforme-form" class="inventario-form">
             <label>Corte de inventario<select id="conteos-nc-corte"><option value="">Antes de iniciar el corte</option></select></label>
             <label>Código del producto<input id="conteos-nc-codigo" required></label>
@@ -44,8 +46,9 @@
             <label>Clasificación del gasto<select id="conteos-nc-categoria" required><option value="">Selecciona</option><option value="producto_deteriorado">Producto deteriorado / baja</option><option value="imperfecto">Imperfecto</option><option value="garantia">Garantía</option></select></label>
             <label>Foto del producto<input id="conteos-nc-foto" type="file" accept="image/jpeg,image/png,image/webp" required></label>
             <label>Motivo<input id="conteos-nc-motivo" minlength="5" required></label>
-            <label>Soporte / acta<input id="conteos-nc-soporte" minlength="5" required></label>
+            <label>Referencia del soporte<input id="conteos-nc-soporte" minlength="5" required placeholder="Archivo del conteo o referencia de la foto"></label>
             <button class="secondary" type="submit">Solicitar salida de no conformes</button>
+            <p id="conteos-nc-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p>
           </form><div id="conteos-no-conformes" style="margin:12px 0"></div>
           <div id="conteos-nc-resumen" style="margin:12px 0"></div>
         </details>
@@ -113,13 +116,22 @@
         await rpcNoConformes('rechazar',{id:b.dataset.ncRechazar,motivo});await cargarNoConformes();
       }));
     }
-    async function run(task) {
+    async function run(task, feedbackId) {
       if(busy) return;
+      const feedback=feedbackId&&el(feedbackId);
+      if(feedback){feedback.hidden=false;feedback.textContent='Procesando…';}
       busy=true;el('mensaje').textContent='Procesando…';
       el('modal').setAttribute('aria-busy','true');
       el('modal').querySelectorAll('button,input,select,textarea').forEach(control=>{control.disabled=true;});
-      try { await task(); el('mensaje').textContent='Listo.'; }
-      catch(e) { el('mensaje').textContent=e.message; }
+      try {
+        const result=await task();
+        el('mensaje').textContent=result===false?'Cancelado: no se aplicó ninguna decisión.':'Listo.';
+        if(feedback?.isConnected){feedback.textContent=el('mensaje').textContent;}
+      }
+      catch(e) {
+        el('mensaje').textContent=e.message;
+        if(feedback?.isConnected){feedback.textContent=e.message;feedback.scrollIntoView({block:'nearest'});feedback.focus();}
+      }
       finally { busy=false;el('modal').removeAttribute('aria-busy');el('modal').querySelectorAll('button,input,select,textarea').forEach(control=>{control.disabled=control.dataset.disabled==='true';}); }
     }
     function guardarLibro(libro,nombre) { XLSX.writeFile(libro,nombre); }
@@ -296,6 +308,7 @@
       const { corte,lineas }=detalle;
       const pendiente=corte.estado==='pendiente', corteFijo=corte.base_conteo==='corte_fijo';
       const historico=!!corte.revision_fuente?.solo_comparativo;
+      const archivoSoporte=soporteArchivo(corte);
       const diferencias=lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0);
       const valores=resumirValores(lineas);
       el('detalle').innerHTML=`<h2>${esc(corte.tienda_nombre)} · ${esc(estadoCorte(corte))}</h2>
@@ -319,12 +332,16 @@
         </section>`:''}
         <label><input type="checkbox" id="conteos-solo-dif" ${pendiente?'checked':''}> Mostrar solo diferencias</label>
         <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Sistema al corte</th><th>Reportado al corte</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Valor diferencia</th><th>Observación</th><th>Decisión</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
-        ${config.autoriza&&!historico&&(pendiente||corte.estado==='abierto')?`<form id="conteos-form-decidir" class="inventario-form">
+        ${config.autoriza&&!historico&&(pendiente||corte.estado==='abierto')?`<form id="conteos-form-decidir" class="inventario-form" novalidate>
           <label>Motivo de la revisión<textarea id="conteos-motivo" minlength="5" required></textarea></label>
-          <label>Soporte o referencia documental<input id="conteos-soporte" placeholder="Número/enlace de acta o evidencia"></label>
+          ${archivoSoporte?`<p id="conteos-archivo-soporte" style="overflow-wrap:anywhere"><strong>Soporte del conteo ya registrado:</strong> ${esc(corte.archivo_nombre)}.<br>Este Excel se usará automáticamente como soporte, con su identificador SHA256. No necesitas otra acta ni adjuntarlo de nuevo.</p>`:''}
+          <label>${archivoSoporte?'Referencia adicional (opcional)':'Referencia del soporte (obligatoria si no hay Excel registrado)'}<input id="conteos-soporte" placeholder="${archivoSoporte?'Aclaración o referencia adicional, si existe':'Nombre del archivo o referencia documental'}"></label>
+          <p>Si clasificas productos como «No conforme», sus fotos se adjuntan aparte y se vinculan a este corte.</p>
+          ${pendiente&&corteFijo?'<button type="button" id="conteos-adjuntar-fotos" class="secondary">Adjuntar fotos de no conformes</button>':''}
           <label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
           ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
-          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Aplicar ajuste de inventario</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div></form>`:''}<div id="conteos-cierre"></div>`;
+          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Aplicar ajuste de inventario</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div>
+          <p id="conteos-decision-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p></form>`:''}<div id="conteos-cierre"></div>`;
       function pintarLineas() {
         const filas=el('solo-dif').checked?lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0):lineas;
         const anteriores=new Map(Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>[`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`,i.value]));
@@ -334,8 +351,16 @@
       pintarLineas();el('solo-dif').onchange=pintarLineas;
       el('redescargar').onclick=()=>descargar();
       el('form-subir')?.addEventListener('submit',event=>{event.preventDefault();run(subir);});
-      el('form-decidir')?.addEventListener('submit',event=>{event.preventDefault();run(()=>decidir('aplicar'));});
-      if(el('rechazar')) el('rechazar').onclick=()=>run(()=>decidir('rechazar'));
+      el('form-decidir')?.addEventListener('submit',event=>{event.preventDefault();run(()=>decidir('aplicar'),'decision-mensaje');});
+      if(el('rechazar')) el('rechazar').onclick=()=>run(()=>decidir('rechazar'),'decision-mensaje');
+      if(el('adjuntar-fotos'))el('adjuntar-fotos').onclick=()=>{
+        el('tienda').value=corte.tienda_codigo;
+        if(!Array.from(el('nc-corte').options).some(o=>o.value===corte.id))el('nc-corte').add(new Option(`${corte.tienda_nombre} · ${fechaCorte(corte)}`,corte.id));
+        el('nc-corte').value=corte.id;
+        el('nc-soporte').value=archivoSoporte;
+        el('fotos-panel').open=true;
+        el('no-conforme-form').scrollIntoView({block:'start'});el('nc-codigo').focus();
+      };
       await cargarCierre();
     }
     async function subir() {
@@ -352,9 +377,11 @@
       await renderDetalle();await historial();
     }
     async function decidir(accion) {
-      const motivo=el('motivo').value.trim(),soporte=el('soporte').value.trim(),clasificacion=el('clasificacion').value;
+      const motivo=el('motivo').value.trim(),referencia=el('soporte').value.trim(),clasificacion=el('clasificacion').value;
+      const soporte=[soporteArchivo(detalle.corte),referencia].filter(Boolean).join(' · Referencia adicional: ');
       if(motivo.length<5)throw new Error('Explica el motivo de la revisión.');
-      if(accion==='aplicar'&&(!clasificacion||soporte.length<5))throw new Error('Completa clasificación y soporte antes de aplicar.');
+      if(accion==='aplicar'&&!clasificacion)throw new Error('Selecciona la clasificación general antes de aplicar.');
+      if(accion==='aplicar'&&soporte.length<5)throw new Error('Este corte no tiene un Excel registrado con identificador. Completa la referencia del soporte antes de aplicar.');
       const costos=Array.from(el('lineas').querySelectorAll('[data-costo-codigo]'),i=>({codigo:i.dataset.costoCodigo,imei:i.dataset.costoImei,costo_tienda:Number(i.value)}));
       const decisiones=Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>({codigo:i.dataset.decisionCodigo,imei:i.dataset.decisionImei,clasificacion:i.value}));
       if(accion==='aplicar'&&decisiones.some(d=>!d.clasificacion))throw new Error('Clasifica cada diferencia. Los imperfectos no son faltantes.');
@@ -367,7 +394,7 @@
       if(accion==='aplicar'&&valorizadas.some(l=>l.diferencia!==0&&!(Number(l.costo_tienda)>0)))
         throw new Error('Confirma el costo de todas las diferencias antes de autorizar.');
       const impacto=valoracion.impactoNeto;
-      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return;
+      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return false;
       const datos={id:detalle.corte.id,base_conteo:'corte_fijo',motivo,soporte,clasificacion,costos,decisiones};
       detalle=accion==='aplicar'?await rpcDocumento('aplicar',datos):await rpc(accion,datos);
       document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
@@ -507,7 +534,7 @@
     el('crear').onclick=()=>run(()=>crear(false));el('ciego').onclick=()=>run(()=>crear(true));
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
     el('ultimos').onclick=()=>run(informeUltimos);
-    el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme);};
+    el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme,'nc-mensaje');};
     el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';run(async()=>{await historial();await cargarNoConformes();});};
     ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';});
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.

@@ -101,9 +101,27 @@ test('Tesorería diferencia saldo contable, compensaciones y utilidad real', asy
     'Compensaciones pendientes de aplicar a B2B',
     'Créditos contabilizados en Tercerización',
     'Débitos contabilizados en Tercerización',
-    'Saldo neto de Tercerización disponible',
+    'Saldo neto contable de Tercerización',
   ]) assert.match(app, new RegExp(text));
   assert.doesNotMatch(app, /Saldo contable B2B disponible|Compensaciones aplicadas menos pagos B2B/);
   assert.match(app, /!x\.applied_at && !x\.reversed_at/);
-  assert.match(app, /outsourcingCredits - expenses - out/);
+  assert.match(app, /historicalNet - out/);
+});
+
+test('Tesorería abre actividad, histórico y compensaciones en el mes de Bogotá sin esconder arrastres', async () => {
+  const [html, app] = await Promise.all([
+    readFile('creditek/erp/aliados-tesoreria.html', 'utf8'),
+    readFile('creditek/erp/aliados-tesoreria-app.js', 'utf8'),
+  ]);
+  assert.equal(domain.enMes('2026-10-06', '2026-10'), true);
+  assert.equal(domain.enMes('2026-09-30', '2026-10'), false);
+  assert.equal(domain.enMes('', '2026-10'), false);
+  assert.match(domain.mesBogota(new Date('2026-10-01T02:00:00Z')), /2026-09/);
+  assert.match(html, /id="metricMonth" type="month"/);
+  assert.match(app, /\$\("#metricMonth"\)\.value = todayBogota\.slice\(0, 7\)/);
+  assert.match(app, /\$\("#historyFrom"\)\.value = `\$\{todayBogota\.slice\(0, 7\)\}-01`/);
+  assert.match(app, /\$\("#compensationFrom"\)\.value = `\$\{todayBogota\.slice\(0, 7\)\}-01`/);
+  assert.match(app, /Pendientes al día de hoy · incluye arrastre/);
+  assert.match(app, /Saldo contable actual · todos los meses/);
+  assert.doesNotMatch(app, /Saldo neto de Tercerización disponible/);
 });

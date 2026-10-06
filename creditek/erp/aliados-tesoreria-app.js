@@ -292,6 +292,7 @@
       paymentDestinationCorrections,
       dispatches,
       supplierBankPayments,
+      liquidations,
     ] = await Promise.all([
       safe(sb.from("treasury_unit_balances").select("*"), true),
       safe(sb.from("liquidation_treasury_destinations").select("*")),
@@ -327,6 +328,7 @@
       loadRecoveryRows('payment_destination_corrections'),
       loadCompensations('payment_dispatches','*,payment_dispatch_items(*)'),
       financialRecorder ? loadCompensations('banco_creditek_pagos_proveedor','*,proveedores(id,nombre,nit)','solicitado_at') : Promise.resolve([]),
+      loadCompensations('liquidations', 'id,plataforma,fecha_corte', 'fecha_corte'),
     ]);
     data = {
       balances,
@@ -350,6 +352,7 @@
       paymentDestinationCorrections,
       dispatches,
       supplierBankPayments,
+      liquidations,
     };
     data.payments = payments.map(normalizePayment);
     data.dispatches.forEach(d=>d.payment_dispatch_items.sort((a,b)=>a.position-b.position));
@@ -589,64 +592,96 @@
     if(["cobros","clients"].includes(treasuryView))return;
     renderPaymentHistory();
     renderDispatchHistory();
+    const period = window.CreditekTesoreriaTercerizacion;
+    const selectedMonth = $("#metricMonth").value || period.mesBogota();
+    const selectedPlatform = $("#platform").value;
+    const inMonth = (value) => period.enMes(value, selectedMonth);
+    const liquidationById = new Map((data.liquidations || []).map((x) => [x.id, x]));
+    const compensationById = new Map((data.compensations || []).map((x) => [x.id, x]));
+    const unlinkedDestinations = (data.destinations || []).filter((x) =>
+      !liquidationById.get(x.liquidation_id)?.fecha_corte).length;
+    const destinationRows = (data.destinations || []).filter((x) => {
+      const liquidation = liquidationById.get(x.liquidation_id);
+      return liquidation && inMonth(liquidation.fecha_corte)
+        && (!selectedPlatform || liquidation.plataforma === selectedPlatform);
+    });
+    const addiRows = selectedPlatform && selectedPlatform !== "addi" ? []
+      : (data.addiLiquidations || []).filter((x) => inMonth(x.fecha_venta));
+    const compensationRows = (data.compensations || []).filter((x) =>
+      !x.reversed_at && inMonth(x.cutoff_date)
+      && (!selectedPlatform || x.platform === selectedPlatform));
+    const movementPlatform = (movement) => liquidationById.get(movement.liquidation_id)?.plataforma
+      || compensationById.get(movement.compensation_id)?.platform || null;
+    const monthMovements = (data.movements || []).filter((x) =>
+      x.unit === "tercerizacion" && ["pagado", "conciliado"].includes(x.status)
+      && inMonth(x.movement_date)
+      && (!selectedPlatform || movementPlatform(x) === selectedPlatform));
+    const pendingForPlatform = (x) => !selectedPlatform || x.platform_snapshot === selectedPlatform;
     const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
       ally = data.payments.filter(
         (x) =>
+          pendingForPlatform(x) &&
           !isClosedPayment(x) &&
           x.payment_kind === "aliado" &&
           !["pagado", "conciliado"].includes(x.estado),
       ),
       exec = data.payments.filter(
         (x) =>
+          pendingForPlatform(x) &&
           !isClosedPayment(x) &&
           x.payment_kind === "ejecutivo" &&
           !["pagado", "conciliado"].includes(x.estado),
       );
-    const received = data.destinations.reduce(
+    const received = destinationRows.reduce(
         (n, x) => n + Number(x.received_from_platform || 0),
         0,
-      ) + (data.addiLiquidations || []).reduce(
+      ) + addiRows.reduce(
         (n, x) => n + Number(x.neto_estimado || 0), 0,
       ),
-      comp = data.destinations.reduce(
+      comp = destinationRows.reduce(
         (n, x) => n + Number(x.total_b2b_compensations || 0),
         0,
-      ) + data.compensations.filter(
-        (x) => x.platform === "addi" && !x.reversed_at,
+      ) + compensationRows.filter(
+        (x) => x.platform === "addi",
       ).reduce((n, x) => n + Number(x.compensation_value || 0), 0),
       pendingB2B = data.compensations
-        .filter((x) => !x.applied_at && !x.reversed_at)
+        .filter((x) => !x.applied_at && !x.reversed_at && (!selectedPlatform || x.platform === selectedPlatform))
         .reduce((n, x) => n + Number(x.compensation_value || 0), 0),
-      outsourcingCredits = data.movements
-        .filter((x) => x.unit === "tercerizacion" && x.direction === "credit" && ["pagado", "conciliado"].includes(x.status))
+      outsourcingCredits = monthMovements
+        .filter((x) => x.direction === "credit")
         .reduce((n, x) => n + Number(x.amount), 0),
-      expenses = data.movements
-        .filter(
-          (x) =>
-            x.unit === "tercerizacion" &&
-            x.direction === "debit" &&
-            ["pagado", "conciliado"].includes(x.status),
-        )
+      expenses = monthMovements
+        .filter((x) => x.direction === "debit")
         .reduce((n, x) => n + Number(x.amount), 0);
-    const metrics = [
-      { label: "Base calculada de plataformas", value: received, detail: "Referencia operativa; no confirma un ingreso bancario." },
-      { label: "Pagos pendientes a aliados", value: ally.reduce((n, x) => n + Number(x.valor), 0), detail: "Órdenes aún no cerradas." },
-      { label: "Pagos pendientes a ejecutivos", value: exec.reduce((n, x) => n + Number(x.valor), 0), detail: "Bonificaciones aún no cerradas." },
-      { label: "Compensaciones Retail calculadas para B2B", value: comp, detail: "Incluye valores aplicados y pendientes. No es utilidad B2B.", className: "metric-b2b" },
-      { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
-      { label: "Créditos contabilizados en Tercerización", value: outsourcingCredits, detail: "Suma de movimientos de crédito pagados o conciliados, incluidos los ajustes registrados.", className: "metric-outsourcing" },
-      { label: "Débitos contabilizados en Tercerización", value: expenses, detail: "Incluye pagos a ejecutivos, reversiones y otros débitos pagados o conciliados.", className: "metric-outsourcing" },
-      { label: "Saldo neto de Tercerización disponible", value: Math.max(0, out), detail: "Saldo contable de Tesorería; debe conciliar con créditos menos débitos.", className: "metric-outsourcing" },
-    ];
-    const outsourcingDifference = outsourcingCredits - expenses - out;
-    if (Math.abs(outsourcingDifference) > 0.01) metrics.push({ label: "Diferencia por conciliar · Tercerización", value: outsourcingDifference, detail: "Los movimientos no coinciden con el saldo contable. Revisar antes de usar este saldo.", className: "metric-outsourcing" });
-    if (out < 0) metrics.push({ label: "Faltante operativo por anulaciones", value: -out, detail: "Valor por cubrir antes de nuevas salidas.", className: "metric-outsourcing" });
-    $("#metrics").innerHTML = metrics
-      .map(
-        ({ label, value, detail, className = "" }) =>
-          `<article class="metric ${className}"><small>${esc(label)}</small><strong>${cop(value)}</strong><span class="metric-detail">${esc(detail)}</span></article>`,
-      )
-      .join("");
+    const historicalMovementTotals = (data.movements || []).filter((x) =>
+      x.unit === "tercerizacion" && ["pagado", "conciliado"].includes(x.status));
+    const historicalNet = historicalMovementTotals.reduce((n, x) =>
+      n + (x.direction === "credit" ? Number(x.amount) : -Number(x.amount)), 0);
+    const outsourcingDifference = historicalNet - out;
+    const metricCard = ({ label, value, detail, className = "" }) =>
+      `<article class="metric ${className}"><small>${esc(label)}</small><strong>${cop(value)}</strong><span class="metric-detail">${esc(detail)}</span></article>`;
+    const metricGroup = (heading, detail, cards) =>
+      `<div class="metric-group"><h2>${esc(heading)}</h2><p>${esc(detail)}</p><div class="metrics">${cards.map(metricCard).join("")}</div></div>`;
+    const monthLabel = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric", timeZone: "UTC" })
+      .format(new Date(`${selectedMonth}-01T12:00:00Z`));
+    $("#metrics").innerHTML = (unlinkedDestinations
+      ? `<p role="alert" class="notice error">${unlinkedDestinations} destino(s) sin fecha de corte vinculada. La base calculada del mes puede estar incompleta; revisa los lotes antes de usarla.</p>`
+      : "") + metricGroup(`Actividad de ${monthLabel}`,
+      "Cifras por fecha de corte o movimiento. Son referencias operativas y contables, no ingresos confirmados en Banco Creditek.", [
+        { label: "Base calculada de plataformas", value: received, detail: "Operaciones del mes; no confirma un ingreso bancario." },
+        { label: "Compensaciones Retail calculadas para B2B", value: comp, detail: "Del mes seleccionado. Incluye aplicadas y pendientes; no es utilidad B2B.", className: "metric-b2b" },
+        { label: "Créditos contabilizados en Tercerización", value: outsourcingCredits, detail: "Créditos del mes en el libro contable; no son consignaciones bancarias.", className: "metric-outsourcing" },
+        { label: "Débitos contabilizados en Tercerización", value: expenses, detail: "Débitos del mes en el libro contable.", className: "metric-outsourcing" },
+        { label: "Movimiento neto contable del mes", value: outsourcingCredits - expenses, detail: "Créditos menos débitos del mes; no es efectivo en banco.", className: "metric-outsourcing" },
+      ]) + metricGroup("Pendientes al día de hoy · incluye arrastre", "Obligaciones aún abiertas, incluso de meses anteriores. No se reducen al mes elegido.", [
+        { label: "Pagos pendientes a aliados", value: ally.reduce((n, x) => n + Number(x.valor), 0), detail: "Órdenes aún no cerradas." },
+        { label: "Pagos pendientes a ejecutivos", value: exec.reduce((n, x) => n + Number(x.valor), 0), detail: "Bonificaciones aún no cerradas." },
+        { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
+      ]) + metricGroup("Saldo contable actual · todos los meses", "No se reinicia al cambiar de mes ni equivale al saldo bancario. Consulta Banco Creditek para movimientos de dinero real.", [
+        { label: "Saldo neto contable de Tercerización", value: out, detail: "Saldo acumulado del libro de Tesorería; no es efectivo disponible en banco.", className: "metric-outsourcing" },
+        ...(Math.abs(outsourcingDifference) > 0.01 ? [{ label: "Diferencia por conciliar · Tercerización", value: outsourcingDifference, detail: "El histórico de movimientos no coincide con el saldo contable; revisar antes de usarlo.", className: "metric-outsourcing" }] : []),
+        ...(out < 0 ? [{ label: "Faltante operativo por anulaciones", value: -out, detail: "Valor por cubrir antes de nuevas salidas.", className: "metric-outsourcing" }] : []),
+      ]);
     $("#allyPayments").innerHTML = paymentCards("aliado");
     $("#executivePayments").innerHTML = paymentCards("ejecutivo");
     const expenseSource = data.movements.filter((x) => {
@@ -1611,6 +1646,11 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
     try{await load();}catch{notice('No fue posible actualizar los pagos autorizados. Pulsa Actualizar.',true);}
   });
   if (window.creditekSidebar?.sb) init();
+  const todayBogota = window.CreditekTesoreriaTercerizacion.diaBogota();
+  $("#metricMonth").value = todayBogota.slice(0, 7);
+  $("#historyFrom").value = `${todayBogota.slice(0, 7)}-01`;
+  $("#historyTo").value = todayBogota;
+  $("#metricMonth").addEventListener("change", render);
   ["platform", "cutoff", "status"].forEach((id) =>
     $(`#${id}`).addEventListener("change", render),
   );
@@ -1621,9 +1661,8 @@ ${amendment.addedCount?`<p class="trace"><strong>MISMA ORDEN ACTUALIZADA · ${es
   function clearCompensationFilters() {
     ["compensationStore", "compensationFrom", "compensationTo", "compensationPlatform", "compensationImei", "compensationAmount"].forEach(id => { $(`#${id}`).value = ""; });
   }
-  ["compensationFrom", "compensationTo"].forEach(id => {
-    $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota();
-  });
+  $("#compensationFrom").value = `${todayBogota.slice(0, 7)}-01`;
+  $("#compensationTo").value = todayBogota;
   $("#clearCompensationFilters").onclick = () => { clearCompensationFilters(); render(); };
   $("#todayCompensations").onclick = () => {
     ["compensationFrom", "compensationTo"].forEach(id => { $(`#${id}`).value = window.CreditekTesoreriaTercerizacion.diaBogota(); });

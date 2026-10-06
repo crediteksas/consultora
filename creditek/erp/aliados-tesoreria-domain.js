@@ -72,6 +72,12 @@
     if (!value || !Number.isFinite(d.getTime())) return '';
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
   }
+  function mesBogota(value = new Date()) {
+    return diaBogota(value).slice(0, 7);
+  }
+  function enMes(value, mes) {
+    return /^\d{4}-\d{2}$/.test(mes) && String(value || '').slice(0, 7) === mes;
+  }
   function filtrarMovimientosTiendas(items, { tienda = '', desde = '', hasta = '', plataforma = '', imei = '', valor = '' } = {}) {
     const rangoInvalido = Boolean(desde && hasta && desde > hasta);
     return { rangoInvalido, rows: rangoInvalido ? [] : items.filter(x => {
@@ -160,5 +166,5 @@
     });
     return `\uFEFF${[header.map(csvCell).join(';'),...lines].join('\r\n')}`;
   }
-  return { diaBogota, filtrarMovimientosTiendas, saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  return { diaBogota, mesBogota, enMes, filtrarMovimientosTiendas, saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

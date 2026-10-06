@@ -38,9 +38,12 @@
       }
       .filters {
         display: grid;
-        grid-template-columns: repeat(4, minmax(140px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
         gap: 10px;
       }
+      .filters label {display:grid;gap:6px;min-width:0;color:#475569;font-size:12px;font-weight:700}
+      .filters label input {width:100%;box-sizing:border-box}
+      .filters .filter-explanation {grid-column:1/-1;margin:0;color:#64748b;font-size:12px}
       .compensation-filters {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
@@ -380,6 +383,7 @@
             <div id="historySummary" class="history-summary"></div>
           </section>
           <section id="generalFilters" class="toolbar card filters">
+            <label>Mes de actividad<input id="metricMonth" type="month" aria-label="Mes de actividad de Tesorería" /></label>
             <select id="platform">
               <option value="">Todas las plataformas</option>
               <option value="payjoy">PayJoy</option>
@@ -397,8 +401,9 @@
               <option>pagado</option>
               <option>conciliado</option></select
             ><input id="search" placeholder="Beneficiario, tienda o concepto" />
+            <p class="filter-explanation">Mes y plataforma filtran la actividad. Fecha de corte, estado y búsqueda filtran las órdenes; los pendientes de otros meses permanecen visibles.</p>
           </section>
-          <section id="metrics" class="metrics"></section>
+          <section id="metrics" aria-label="Indicadores de Tesorería"></section>
           <div class="treasury-grid">
             <div id="paymentSections" class="treasury-grid">
             <section id="supplierBankApprovalSection" class="card">
@@ -673,9 +678,13 @@
       .metric .metric-detail {display:block;margin-top:8px;color:#64748b;font-size:11px;line-height:1.4}
       .metric.metric-b2b {border-top:3px solid #2563eb}
       .metric.metric-outsourcing {border-top:3px solid #00aeb5}
+      .metric-group {margin:16px 0 20px}
+      .metric-group h2 {margin:0 0 5px;font-size:17px;color:#0b1e3d}
+      .metric-group p {margin:0 0 12px;color:#64748b;font-size:13px}
+      .metric-group .metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:14px}
       @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
     </style>
-    <script src="aliados-tesoreria-domain.js?v=1.6.0"></script>
+    <script src="aliados-tesoreria-domain.js?v=1.6.1"></script>
     <script src="cobros-plataformas.js?v=1.3.8"></script>
     <script src="aliados-cuentas-domain.js"></script>
     <script src="tesoreria-clientes.js?v=1.2.0"></script>
@@ -695,6 +704,6 @@
     <script src="payment-destination.js?v=1.0.0"></script>
     <script src="tesoreria-pagos-unificados.js?v=20261005.2.0"></script>
     <script src="banco-proveedores-tesoreria.js?v=20261006.1.0"></script>
-    <script src="aliados-tesoreria-app.js?v=20261005.2.0"></script>
+    <script src="aliados-tesoreria-app.js?v=20261006.1.0"></script>
   </body>
 </html>

@@ -292,7 +292,7 @@ test('filtros etiquetados y adaptables usan el diseño KORA y assets versionados
   for (const id of ['compensationStore', 'compensationFrom', 'compensationTo']) assert.match(html, new RegExp(`label for="${id}"`));
   assert.match(html, /repeat\(auto-fit, minmax\(min\(100%, 180px\), 1fr\)\)/);
   assert.match(html, /compensationSummary[^>]+role="status"/);
-  assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.0/);
+  assert.match(html, /aliados-tesoreria-domain.js\?v=1.6.1/);
   assert.match(html, /aliados-tesoreria-app\.js\?v=\d+\.\d+\.\d+/);
 });
 

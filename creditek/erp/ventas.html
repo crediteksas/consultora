@@ -128,8 +128,9 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
 .campo { margin-bottom: 13px; }
 .campo label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
-.campo input, .campo select { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-family: inherit; transition: all .15s ease; }
-.campo input:focus, .campo select:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
+.campo input, .campo select, .campo textarea { width: 100%; border: 1px solid transparent; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-family: inherit; transition: all .15s ease; }
+.campo textarea { min-height: 82px; resize: vertical; }
+.campo input:focus, .campo select:focus, .campo textarea:focus { outline: none; background: white; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
 .campo-inline { display: flex; gap: 8px; }
 .campo-inline input { flex: 1; }
 .campo-inline button { flex-shrink: 0; background: var(--azul); color: white; border: none; border-radius: var(--radius-sm); padding: 0 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -549,6 +550,11 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="paso" id="paso5">
       <div class="resumen-venta" id="resumenFinal"></div>
       <p id="avisoAutorizacionVenta" role="status" hidden>La venta quedará registrada con estos precios. Por el obsequio o el precio inferior al costo, quedará pendiente de contabilizar hasta recibir el visto bueno de Mayte u Óscar.</p>
+      <div class="campo" id="campoMotivoExcepcion" hidden>
+        <label for="motivoVentaExcepcion">¿Por qué se está dando este obsequio o precio especial?</label>
+        <textarea id="motivoVentaExcepcion" maxlength="600" placeholder="Explica el motivo. Si corresponde a otra factura, remisión o venta, indica su número."></textarea>
+        <span>Si hay varios productos a $0 o por debajo del costo, explica el motivo de cada uno. No es obligatorio tener otra factura.</span>
+      </div>
     </div>
 
     <div class="modal-err" id="modalVentaErr"></div>
@@ -1000,23 +1006,16 @@ async function cargarAutorizacionesVentas() {
       const cierre = r.estado === 'pendiente' ? cierrePosterior(r) : null;
       const obsequioSinEfectivo = r.tipo === 'contado' && Number(r.total) === 0 && !r.credito
         && Array.isArray(r.items) && r.items.length > 0 && r.items.every(i => Number(i.precio_venta) === 0);
-      const obsequios = (r.items || []).filter(i => Number(i.precio_venta) === 0);
-      const obsequioIncompleto = obsequios.some(i => {
-        const ob = i.obsequio;
-        return !ob?.destinatario || (ob.relacion === 'sin_venta' ? !ob.motivo : !ob.producto_vendido_id || !ob.descripcion_venta);
-      });
       const bloqueadaPorCierre = cierre && !obsequioSinEfectivo;
       return `<details>
       <summary>${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'Tienda sin nombre registrado')} · ${escapeHtml(r.tienda_codigo)} · Venta #${escapeHtml(r.consecutivo_venta)} · ${r.estado === 'pendiente' ? bloqueadaPorCierre ? 'registrada · arqueo cerrado' : 'registrada · pendiente de contabilizar' : r.estado === 'aprobada' ? 'contabilizada' : 'registrada · contabilización rechazada'} · ${fmtCOP(r.total)}</summary>
       <p>Cargado: ${escapeHtml(new Date(r.creado_en).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} · ${escapeHtml(r.tipo)}</p>
       <ul>${r.detalle.map(i => `<li>${escapeHtml(i.nombre)}${i.imei ? ' · IMEI ' + escapeHtml(i.imei) : ''} × ${escapeHtml(i.cantidad)} — Costo unitario: ${fmtCOP(i.costo_unitario)} · Precio registrado: ${fmtCOP(i.precio_venta)}${i.requiere_autorizacion ? ' · Requiere autorización' : ''}</li>`).join('')}</ul>
-      ${obsequios.map(i => { const ob = i.obsequio; return ob ? `<p><strong>${escapeHtml(r.detalle.find(d => d.producto_id === i.producto_id)?.nombre || 'Obsequio')} para ${escapeHtml(ob.destinatario || '—')}</strong> · ${ob.relacion === 'sin_venta' ? `Sin venta: ${escapeHtml(ob.motivo || '—')}` : `${ob.relacion === 'esta_venta' ? 'Esta venta' : `Venta #${escapeHtml(ob.venta_numero || '—')}`} · ${escapeHtml(ob.descripcion_venta || '—')}${ob.imei ? ` · IMEI ${escapeHtml(ob.imei)}` : ''}`}</p>` : ''; }).join('')}
-      ${obsequioIncompleto ? '<p class="autorizacion-error" role="status">Faltan los datos obligatorios de este obsequio anterior. No se puede aprobar; debe rechazarse y registrarse con destinatario y venta relacionada.</p>' : ''}
-      ${r.nota ? `<p>${escapeHtml(r.nota)}</p>` : ''}
+      ${r.nota ? `<p><strong>Explicación registrada:</strong> ${escapeHtml(r.nota)}</p>` : r.estado === 'pendiente' && (r.detalle || []).some(i => i.requiere_autorizacion) ? '<p>Esta solicitud anterior no trae explicación de la tienda.</p>' : ''}
       ${r.motivo ? `<p>Motivo: ${escapeHtml(r.motivo)}</p>` : ''}
       ${bloqueadaPorCierre ? `<p class="autorizacion-error" role="status">La caja de ${escapeHtml(nombresTiendas.get(r.tienda_codigo) || 'esta tienda')} ya tiene arqueo validado desde ${escapeHtml(cierre.fecha)}. Esta venta no se puede contabilizar retroactivamente sin una corrección auditable; el cierre original no se modifica.</p>` : ''}
       ${cierre && obsequioSinEfectivo ? `<p role="status">Arqueo validado el ${escapeHtml(cierre.fecha)}. Este obsequio de $0 puede recibir el visto bueno de Mayte u Óscar: descuenta inventario, no mueve efectivo ni modifica el cierre.</p>` : ''}
-      ${r.estado === 'pendiente' && puede ? `${bloqueadaPorCierre || obsequioIncompleto ? '' : `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button>`}<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
+      ${r.estado === 'pendiente' && puede ? `${bloqueadaPorCierre ? '' : `<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="true">Dar visto bueno y contabilizar</button>`}<button type="button" data-solicitud="${escapeHtml(r.id)}" data-aprobar="false">Rechazar</button>` : ''}
       <p class="autorizacion-error" role="alert" hidden></p>
     </details>`;
     }).join('');
@@ -1063,6 +1062,7 @@ function abrirWizard() {
   document.getElementById('addiMedio').value = '';
   document.getElementById('addiReferencia').value = '';
   document.getElementById('creditoFinanciera').value = 'payjoy';
+  document.getElementById('motivoVentaExcepcion').value = '';
   actualizarVistaAddi();
   actualizarTotalParcial();
   mostrarPaso(1);
@@ -1084,6 +1084,7 @@ function mostrarPaso(n) {
     renderResumenFinal();
     const pendiente = ventaRequiereAutorizacion();
     document.getElementById('avisoAutorizacionVenta').hidden = !pendiente;
+    document.getElementById('campoMotivoExcepcion').hidden = !pendiente;
     document.getElementById('btnSiguiente').textContent = 'Registrar venta';
   }
 }
@@ -1150,8 +1151,6 @@ function avanzarPaso() {
       // precio_guia propone el precio habitual, pero no bloquea promociones.
       // La venta conserva exactamente el precio real digitado por el vendedor.
     }
-    const errorObsequios = validarObsequiosEnFormulario();
-    if (errorObsequios) { err.textContent = errorObsequios; err.classList.add('show'); return; }
     mostrarPaso(venta.tipo === 'credito' ? 4 : 5);
     return;
   }
@@ -1260,79 +1259,6 @@ function agregarItemCelular() {
   renderItemsVenta();
 }
 
-function esVidrioObsequio(item) {
-  return String(item.categoria || '').toUpperCase() === 'VIDRIOS' || /vidrio/i.test(item.nombreProducto || '');
-}
-
-function opcionesParaObsequio(item, idx) {
-  const fuente = item.obsequio?.relacion === 'venta_anterior'
-    ? (item.ventaRelacionadaItems || [])
-    : venta.items.filter((otro, otroIdx) => otroIdx !== idx && Number(otro.precio_venta) > 0 && otro.producto_id);
-  return fuente.filter(otro => !esVidrioObsequio(item) || (otro.unidad_id && otro.tipoProducto === 'serializado'));
-}
-
-function camposObsequio(item, idx) {
-  if (Number(item.precio_venta) !== 0 || item.precio_venta == null) return '';
-  item.obsequio ||= { destinatario:venta.clienteInfo?.nombre_completo || '' };
-  const ob = item.obsequio || {};
-  const opcionesActuales = venta.items.some((otro, otroIdx) => otroIdx !== idx && Number(otro.precio_venta) > 0 && otro.producto_id && (!esVidrioObsequio(item) || otro.unidad_id));
-  const opciones = opcionesParaObsequio(item,idx);
-  return `<div class="aviso-validacion" style="margin-top:12px;">
-    <strong>Datos obligatorios del obsequio · ${escapeHtml(item.nombreProducto || 'Producto')}</strong>
-    <div class="campo"><label>¿A qué venta corresponde?</label><select class="ob-relacion">
-      <option value="">Selecciona una opción</option>
-      ${opcionesActuales ? `<option value="esta_venta" ${ob.relacion === 'esta_venta' ? 'selected' : ''}>A esta venta</option>` : ''}
-      <option value="venta_anterior" ${ob.relacion === 'venta_anterior' ? 'selected' : ''}>A una venta anterior</option>
-      ${esVidrioObsequio(item) ? '' : `<option value="sin_venta" ${ob.relacion === 'sin_venta' ? 'selected' : ''}>Sin venta · explicar motivo</option>`}
-    </select></div>
-    ${ob.relacion === 'venta_anterior' ? `<div class="campo"><label>Número de la venta anterior de esta tienda</label><div class="campo-inline"><input class="ob-numero" inputmode="numeric" value="${escapeHtml(ob.venta_numero || '')}" placeholder="Venta #"><button type="button" class="ob-buscar">Buscar venta</button></div></div>` : ''}
-    ${ob.relacion === 'esta_venta' || ob.relacion === 'venta_anterior' ? `<div class="campo"><label>${esVidrioObsequio(item) ? 'Celular vendido e IMEI' : 'Qué se vendió'}</label><select class="ob-producto"><option value="">Selecciona el producto vendido</option>${opciones.map(otro => {
-      const valor = `${otro.producto_id}|${otro.unidad_id || ''}`;
-      return `<option value="${escapeHtml(valor)}" ${ob.producto_vendido_id === otro.producto_id && (ob.unidad_vendida_id || '') === (otro.unidad_id || '') ? 'selected' : ''}>${escapeHtml(otro.nombreProducto || 'Producto')}${otro.imei ? ` · IMEI ${escapeHtml(otro.imei)}` : ''}</option>`;
-    }).join('')}</select></div>` : ''}
-    ${ob.relacion === 'venta_anterior' && item.ventaRelacionadaError ? `<p class="autorizacion-error">${escapeHtml(item.ventaRelacionadaError)}</p>` : ''}
-    <div class="campo"><label>Nombre de quien recibe el obsequio</label><input class="ob-destinatario" maxlength="160" value="${escapeHtml(ob.destinatario || venta.clienteInfo?.nombre_completo || '')}" placeholder="Nombre completo"></div>
-    ${ob.relacion === 'sin_venta' ? `<div class="campo"><label>¿Por qué se entrega sin venta?</label><textarea class="ob-motivo" maxlength="500" placeholder="Motivo concreto (mínimo 10 caracteres)">${escapeHtml(ob.motivo || '')}</textarea></div>` : ''}
-  </div>`;
-}
-
-async function buscarVentaParaObsequio(idx) {
-  const item = venta.items[idx];
-  const numero = String(item.obsequio?.venta_numero || '').trim();
-  item.ventaRelacionadaItems = [];
-  item.ventaRelacionadaError = '';
-  if (!/^[0-9]+$/.test(numero)) { item.ventaRelacionadaError = 'Ingresa un número de venta válido.'; renderItemsVenta(); return; }
-  const { data: relacionada, error } = await sb.from('ventas')
-    .select('id,consecutivo,anulada,venta_items:venta_items_lectura(producto_id,unidad_id,precio_venta,productos(nombre,tipo),unidades(imei))')
-    .eq('consecutivo', Number(numero)).eq('tienda_codigo', currentPerfil.tienda_codigo).maybeSingle();
-  if (error || !relacionada || relacionada.anulada) {
-    item.ventaRelacionadaError = 'No se encontró una venta vigente con ese número en esta tienda.';
-    renderItemsVenta(); return;
-  }
-  item.ventaRelacionadaItems = (relacionada.venta_items || []).filter(l => Number(l.precio_venta) > 0).map(l => ({
-    producto_id:l.producto_id,unidad_id:l.unidad_id,precio_venta:l.precio_venta,
-    tipoProducto:l.productos?.tipo,nombreProducto:l.productos?.nombre,imei:l.unidades?.imei,
-  }));
-  if (!item.ventaRelacionadaItems.length) item.ventaRelacionadaError = 'Esa venta no tiene productos vendidos que puedan justificar el obsequio.';
-  renderItemsVenta();
-}
-
-function validarObsequiosEnFormulario() {
-  for (const item of venta.items) {
-    if (Number(item.precio_venta) !== 0 || item.precio_venta == null) continue;
-    const ob = item.obsequio || {};
-    if ((ob.destinatario || '').trim().length < 3) return 'Indica el nombre de quien recibe cada obsequio.';
-    if (ob.relacion === 'sin_venta') {
-      if (esVidrioObsequio(item)) return 'El vidrio de obsequio debe estar asociado a un celular vendido.';
-      if ((ob.motivo || '').trim().length < 10) return 'Explica por qué se entrega el obsequio sin una venta.';
-    } else if (ob.relacion === 'esta_venta' || ob.relacion === 'venta_anterior') {
-      if (ob.relacion === 'venta_anterior' && !/^[0-9]+$/.test(String(ob.venta_numero || ''))) return 'Busca la venta anterior relacionada.';
-      if (!opcionesParaObsequio(item,venta.items.indexOf(item)).some(x => x.producto_id === ob.producto_vendido_id && (x.unidad_id || '') === (ob.unidad_vendida_id || ''))) return 'Selecciona el producto vendido al que corresponde el obsequio.';
-    } else return 'Indica a qué venta corresponde el obsequio o por qué se entrega sin venta.';
-  }
-  return null;
-}
-
 async function agregarItemAccesorio() {
   const cont = document.getElementById('itemsVentaContainer');
   const div = document.createElement('div');
@@ -1374,7 +1300,6 @@ async function agregarItemAccesorio() {
         venta.items.push({
           tipoProducto: 'cantidad', producto_id: prod.id, unidad_id: null,
           cantidad: 1, precio_venta: precioAcc, nombreProducto: prod.nombre,
-          categoria: prod.categoria,
           precio_sugerido: precioAcc || 0,
           costo_unitario: stockTienda?.costo_promedio ?? null,
         });
@@ -1417,34 +1342,7 @@ async function renderItemsVenta() {
         <div class="stock-hint" id="stockHint${idx}">Consultando stock...</div>
       `;
     }
-    div.insertAdjacentHTML('beforeend', camposObsequio(it,idx));
     cont.appendChild(div);
-
-    const relacion = div.querySelector('.ob-relacion');
-    if (relacion) {
-      relacion.addEventListener('change', e => {
-        it.obsequio = { destinatario:it.obsequio?.destinatario || venta.clienteInfo?.nombre_completo || '', relacion:e.target.value };
-        it.ventaRelacionadaItems = [];
-        it.ventaRelacionadaError = '';
-        renderItemsVenta();
-      });
-      div.querySelector('.ob-destinatario').addEventListener('input', e => { it.obsequio.destinatario = e.target.value; });
-      div.querySelector('.ob-numero')?.addEventListener('input', e => {
-        it.obsequio.venta_numero = e.target.value.trim();
-        it.obsequio.producto_vendido_id = null;
-        it.obsequio.unidad_vendida_id = null;
-        it.ventaRelacionadaItems = [];
-      });
-      div.querySelector('.ob-buscar')?.addEventListener('click', () => buscarVentaParaObsequio(idx));
-      div.querySelector('.ob-producto')?.addEventListener('change', e => {
-        const elegido = opcionesParaObsequio(it,idx).find(x => `${x.producto_id}|${x.unidad_id || ''}` === e.target.value);
-        it.obsequio.producto_vendido_id = elegido?.producto_id || null;
-        it.obsequio.unidad_vendida_id = elegido?.unidad_id || null;
-        it.obsequio.descripcion_venta = elegido?.nombreProducto || null;
-        it.obsequio.imei = elegido?.imei || null;
-      });
-      div.querySelector('.ob-motivo')?.addEventListener('input', e => { it.obsequio.motivo = e.target.value; });
-    }
 
     if (it.tipoProducto === 'serializado') {
       const imeiInput = div.querySelector('.imei-input');
@@ -1452,9 +1350,7 @@ async function renderItemsVenta() {
       if (it.unidad_id) {
         div.querySelector('.precio-input').addEventListener('input', (e) => {
           const v = e.target.value === '' ? null : Number(e.target.value);
-          const antes = venta.items[idx].precio_venta;
           venta.items[idx].precio_venta = v;
-          if ((v === 0) !== (antes === 0)) renderItemsVenta();
           e.target.style.borderColor = '';
           e.target.style.background = '';
           e.target.title = '';
@@ -1466,15 +1362,10 @@ async function renderItemsVenta() {
         btnScan.style.display = 'inline-block';
         btnScan.addEventListener('click', () => abrirScanner(idx));
       }
-      if (it.imei && !it.unidad_id) validarImei(idx, it.imei, true);
+      if (it.imei) validarImei(idx, it.imei, true);
     } else {
       div.querySelector('.cantidad-input').addEventListener('input', (e) => { venta.items[idx].cantidad = Number(e.target.value || 1); actualizarTotalParcial(); verificarStockAccesorio(idx); });
-      div.querySelector('.precio-input').addEventListener('input', (e) => {
-        const antes = venta.items[idx].precio_venta;
-        venta.items[idx].precio_venta = e.target.value === '' ? null : Number(e.target.value);
-        if ((antes === 0) !== (venta.items[idx].precio_venta === 0)) renderItemsVenta();
-        else actualizarTotalParcial();
-      });
+      div.querySelector('.precio-input').addEventListener('input', (e) => { venta.items[idx].precio_venta = e.target.value === '' ? null : Number(e.target.value); actualizarTotalParcial(); });
       verificarStockAccesorio(idx);
     }
   }
@@ -1554,7 +1445,7 @@ function renderResumenFinal() {
     ? utilidades.reduce((totalUtilidad, valor) => totalUtilidad + valor, 0)
     : null;
   const lineas = venta.items.map(it => `
-    <div class="linea"><span>${escapeHtml(it.nombreProducto || 'Producto')}${it.cantidad > 1 ? ' ×' + it.cantidad : ''}${Number(it.precio_venta) === 0 ? ` · Obsequio para ${escapeHtml(it.obsequio?.destinatario || '')}${it.obsequio?.relacion === 'sin_venta' ? ` · Motivo: ${escapeHtml(it.obsequio.motivo || '')}` : ` · ${it.obsequio?.relacion === 'esta_venta' ? 'Esta venta' : `Venta #${escapeHtml(it.obsequio?.venta_numero || '')}`} · ${escapeHtml(it.obsequio?.descripcion_venta || '')}${it.obsequio?.imei ? ` · IMEI ${escapeHtml(it.obsequio.imei)}` : ''}`}` : ''}</span><span>${fmtCOP((it.precio_venta || 0) * (it.cantidad || 1))}</span></div>
+    <div class="linea"><span>${escapeHtml(it.nombreProducto || 'Producto')}${it.cantidad > 1 ? ' ×' + it.cantidad : ''}</span><span>${fmtCOP((it.precio_venta || 0) * (it.cantidad || 1))}</span></div>
   `).join('');
   let creditoHtml = '';
   if (venta.tipo === 'credito' && venta.credito) {
@@ -1586,29 +1477,32 @@ async function confirmarVenta() {
   const btn = document.getElementById('btnSiguiente');
   if (btn.disabled) return;
   const pendiente = ventaRequiereAutorizacion();
-  const errorObsequios = validarObsequiosEnFormulario();
-  if (errorObsequios) { const err = document.getElementById('modalVentaErr'); err.textContent = errorObsequios; err.classList.add('show'); return; }
-  if (!confirm('¿Registrar la venta con los precios ingresados?')) return;
   const err = document.getElementById('modalVentaErr');
   err.classList.remove('show');
+  const motivoExcepcion = document.getElementById('motivoVentaExcepcion').value.trim();
+  if (pendiente && !motivoExcepcion) {
+    err.textContent = 'Explica por qué se entrega el obsequio o se vende por debajo del costo. Puedes indicar la factura o venta relacionada si aplica.';
+    err.classList.add('show');
+    document.getElementById('motivoVentaExcepcion').focus();
+    return;
+  }
+  if (!confirm('¿Registrar la venta con los precios ingresados?')) return;
 
   const items = venta.items.map(it => ({
     producto_id: it.producto_id,
     unidad_id: it.unidad_id,
     cantidad: it.cantidad,
     precio_venta: it.precio_venta,
-    ...(Number(it.precio_venta) === 0 ? { obsequio:it.obsequio } : {}),
   }));
 
   const notas = [];
   if (venta.saltoValidacion) notas.push('Cliente vendido sin validación previa (autorizado por el vendedor).');
-  for (const it of venta.items.filter(i => Number(i.precio_venta) === 0)) {
-    const ob = it.obsequio;
-    notas.push(`Obsequio: ${it.nombreProducto}; entregado a: ${ob.destinatario.trim()}; ${ob.relacion === 'sin_venta'
-      ? `sin venta relacionada; motivo: ${ob.motivo.trim()}`
-      : `${ob.relacion === 'esta_venta' ? 'corresponde a esta venta' : `corresponde a venta #${ob.venta_numero}`}; producto vendido: ${ob.descripcion_venta}${ob.imei ? `; IMEI: ${ob.imei}` : ''}`}.`);
+  if (pendiente) {
+    const productosExcepcion = venta.items.filter(it => Number(it.precio_venta) === 0 || Number(it.precio_venta) < Number(it.costo_unitario))
+      .map(it => `${it.nombreProducto || 'Producto'} (${Number(it.precio_venta) === 0 ? 'obsequio' : 'precio inferior al costo'})`).join('; ');
+    notas.push(`Motivo de ${productosExcepcion}: ${motivoExcepcion}`);
   }
-  const nota = notas.join('\n') || null;
+  const nota = notas.join(' ') || null;
 
   // La misma carga se puede reintentar tras un fallo de red sin duplicarla.
   const firma = JSON.stringify([currentPerfil.tienda_codigo, venta.tipo, venta.cliente_id, items, venta.credito, nota]);

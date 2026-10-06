@@ -110,7 +110,12 @@ test('faltantes no dejan negativo y nuevos ingresos posteriores se conservan',as
  const g=await fixture(2);await upload(g,0);await db.exec('reset role');await db.query('update stock_cantidad set cantidad=0 where producto_id=$1',[g.id]);await asUser(maite);await assert.rejects(apply(g),/negativo/);
 });
 test('un segundo corte anterior al ajuste no puede volver a aplicarlo',async()=>{
- const f=await fixture(10);const other=await api('crear',{tienda:f.store});await upload(f,12);await apply(f);
+ const f=await fixture(10);const other=await api('crear',{tienda:f.store});
+ // PGlite puede ejecutar el corte y el ajuste en el mismo milisegundo.
+ // La premisa de esta prueba es un corte estrictamente anterior al ajuste.
+ await db.exec('reset role');
+ other.corte.corte_at=(await db.query("update inventario_control.cortes set corte_at=corte_at-interval '1 second' where id=$1 returning corte_at",[other.corte.id])).rows[0].corte_at;
+ await asUser(maite);await upload(f,12);await apply(f);
  await assert.rejects(api('subir',{id:other.corte.id,contado_at:other.corte.corte_at,archivo:'otro.xlsx',sha256:'b'.repeat(64),filas:[{codigo:f.code,imei:'',cantidad:12}]}),/otro ajuste/);
 });
 test('fechas, celdas vacías, borradas y duplicados rechazan toda la transacción',async()=>{

@@ -16,8 +16,13 @@
     const financial=await credits.allRows(sb,'financial_entries','id,entry_type,scope,business_unit,status,amount,approved_at','id',q=>q.eq('entry_type','gasto').eq('scope','business_general').eq('business_unit',business).gte('approved_at',from).lt('approved_at',until));
     const rows=financial.filter(x=>['aprobado','pagado'].includes(x.status)).map(x=>({date:day(x.approved_at),value:-Number(x.amount),source:'financial_entries',id:x.id}));
     if(business==='aliados'){
-      const operating=await credits.allRows(sb,'aliados_gastos_operativos','id,valor,estado,aprobado_at','id',q=>q.gte('aprobado_at',from).lt('aprobado_at',until));
-      rows.push(...operating.filter(x=>['aprobado','pagado'].includes(x.estado)).map(x=>({date:day(x.aprobado_at),value:-Number(x.valor),source:'aliados_gastos_operativos',id:x.id})));
+      const columns='id,valor,estado,aprobado_at,fecha_causacion_historica';
+      const operating=await credits.allRows(sb,'aliados_gastos_operativos',columns,'id',q=>q.gte('aprobado_at',from).lt('aprobado_at',until));
+      // La regularización de un gasto ya pagado tiene fecha contable propia;
+      // nunca se falsifica aprobado_at ni se descuenta también en ese mes.
+      const historical=await credits.allRows(sb,'aliados_gastos_operativos',columns,'id',q=>q.gte('fecha_causacion_historica',start).lte('fecha_causacion_historica',end));
+      const expenses=new Map([...operating.filter(x=>!x.fecha_causacion_historica),...historical].map(x=>[x.id,x]));
+      rows.push(...[...expenses.values()].filter(x=>['aprobado','pagado'].includes(x.estado)).map(x=>({date:x.fecha_causacion_historica||day(x.aprobado_at),value:-Number(x.valor),source:'aliados_gastos_operativos',id:x.id})));
     }
     if(rows.some(x=>!Number.isFinite(x.value)))throw Error(`Hay gastos ${names[business]} sin importe válido`);
     return rows;

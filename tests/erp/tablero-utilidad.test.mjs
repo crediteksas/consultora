@@ -148,6 +148,23 @@ test('errores de fuente se propagan; no muestran cero ficticio',async()=>{
  await assert.rejects(domain.load({},'invalido',{now}),/Negocio/);
  await assert.rejects(domain.load({rpc(){return {order(){return this},range:async()=>({error:Error('denegado')})}}},'b2b',{now}),/denegado/);
 });
+test('Aliados reconoce cuatro gastos históricos en septiembre, no en la autorización de octubre',async()=>{
+ const historical=[6,13,20,27].map((n,i)=>({id:`hist-${i}`,estado:'aprobado',valor:450000,
+  fecha_causacion_historica:`2026-09-${String(n).padStart(2,'0')}`,aprobado_at:'2026-10-06T22:00:00Z'}));
+ const sb=database({aliados_gastos_operativos:[...historical,
+  // La fecha escrita en un gasto normal no desplaza su autorización real.
+  {id:'normal',fecha:'2026-09-06',estado:'aprobado',valor:120,aprobado_at:'2026-10-06T22:00:00Z'},
+  {id:'pending',estado:'pendiente',valor:800,aprobado_at:'2026-09-01T12:00:00Z'}]});
+ const options={now:new Date('2026-10-06T22:00:00Z'),creditData:{operations:[],reversions:[]}};
+ const september=await domain.load(sb,'aliados',{...options,range:{desde:'2026-09-01',hasta:'2026-09-30'}});
+ assert.equal(september.total,-1800000);
+ assert.deepEqual([5,12,19,26].map(i=>september.values[i]),[-450000,-900000,-1350000,-1800000]);
+ const october=await domain.load(sb,'aliados',options);
+ assert.equal(october.total,-120,'No descuenta otra vez los históricos al autorizar');
+ const full=await domain.authorizedExpenses(sb,'aliados','2026-09-01','2026-10-06');
+ assert.equal(full.length,5,'Cada gasto se descuenta una sola vez');
+ assert.equal(full.reduce((n,x)=>n+x.value,0),-1800120);
+});
 test('UI no mezcla respuestas al cambiar rápido de pestaña y elimina gráfica antigua al fallar',async()=>{
  const html=fs.readFileSync('creditek/erp/tablero.html','utf8');
  const source=html.slice(html.indexOf('async function cargarSerieUtilidadAcumulada('),html.indexOf('// ─── Alertas'));

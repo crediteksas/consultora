@@ -432,7 +432,7 @@
         origen_codigo:x.store_code, valor:x.amount, general:true}));
     const seen = new Set();
     let unallocated = 0;
-    const rows = [...(db.expenses || []).map(x=>({...x,fecha:approvalDay(x.aprobado_at),id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
+    const rows = [...(db.expenses || []).map(x=>({...x,fecha:x.fecha_causacion_historica || approvalDay(x.aprobado_at),id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
       if (x.id && seen.has(x.id)) return false;
       if (x.id) seen.add(x.id);
       const day = date(x.fecha), origin = originFor(x.origen_codigo);
@@ -575,7 +575,9 @@
       ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
     ];
     const formatExact = v => complete ? new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(v) : 'No disponible · revisar datos';
-    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted">Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted">${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}</section>`;
+    const historicalExpenses = expenseSelection.rows.filter(x=>x.fecha_causacion_historica);
+    const historicalExpensesHtml = historicalExpenses.length ? `<h3>Gastos históricos ya pagados</h3><p class="muted">Distribución contable autorizada por Gerencia. No son pagos nuevos ni modifican Banco, caja o cierres anteriores.</p>${table(['Fecha contable','Concepto','Valor','Autorización real'],rows(historicalExpenses,[x=>esc(x.fecha_causacion_historica),x=>esc(x.concepto),x=>cop(x.valor),x=>esc(approvalDay(x.aprobado_at))]))}` : '';
+    const reconciliationHtml = `<section class="card"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior; las regularizaciones históricas ya pagadas usan su fecha contable explícita y conservan la autorización real. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted">Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted">${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted">Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}${historicalExpensesHtml}</section>`;
     const platforms = [...new Set(ops.map(o => o.plataforma))].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
       const components = credits.map(dashboardBreakdown);
@@ -1554,12 +1556,12 @@
         (x) => date(x.fecha),
         (x) => esc(platformName(x.plataforma)),
         (x) => esc(originFor(x.origen_codigo)?.nombre || "General"),
-        (x) => esc(x.concepto),
+        (x) => `${esc(x.concepto)}${x.fecha_causacion_historica ? `<br><small>Regularización histórica · ya pagado · autorización ${esc(approvalDay(x.aprobado_at))}</small>` : ''}`,
         (x) => `${esc(x.beneficiario)}<br><small>${esc(x.cuenta_destino)}</small>`,
         (x) => cop(x.valor),
         (x) => (x.soporte_path ? "Adjunto" : "—"),
         (x) => badge(x.estado),
-        (x) => (x.treasury_movement_id ? badge("pendiente", "Enviado a Tesorería") : "—"),
+        (x) => (x.fecha_causacion_historica ? "Ya pagado · sin nuevo giro" : x.treasury_movement_id ? badge("pendiente", "Enviado a Tesorería") : "—"),
         (x) =>
           x.estado === "pendiente" && profile?.rol === "gerencia"
             ? `<button class="btn primary" data-expense-approve="${x.id}">Aprobar</button> <button class="btn danger" data-expense-reject="${x.id}">Rechazar</button>`

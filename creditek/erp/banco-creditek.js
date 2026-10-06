@@ -16,7 +16,7 @@
   async function obtenerFacturas(){
     const rows=[];
     for(let from=0;;from+=1000){
-      const {data,error}=await sb.from('facturas_proveedor').select('id,proveedor_id,numero,fecha,saldo').range(from,from+999);
+      const {data,error}=await sb.from('facturas_proveedor').select('id,proveedor_id,numero,fecha,saldo').order('id').range(from,from+999);
       if(error)throw error;
       rows.push(...(data||[]));
       if((data||[]).length<1000)return rows;
@@ -36,12 +36,14 @@
   }
   function validarSolicitud(){
     const id=$('proveedor').value,monto=Number($('monto').value),concepto=$('concepto').value.trim();
-    $('deuda').value=id?money(deuda(id)):'';
-    $('solicitar').disabled=busy||!id||!Number.isInteger(monto)||monto<=0||monto>deuda(id)||concepto.length<8;
+    const saldo=id?deuda(id):0;
+    $('deuda').value=id?(saldo<0?money(-saldo)+' a favor de Creditek':money(saldo)):'';
+    $('excedenteAviso').textContent=id&&monto>Math.max(0,saldo)?`El giro supera la deuda neta. El saldo quedaría ${money(saldo-monto)} (${money(monto-saldo)} a favor de Creditek). Requiere autorización de Óscar.`:'';
+    $('solicitar').disabled=busy||!id||!Number.isSafeInteger(monto)||monto<=0||monto>=1e15||concepto.length<8;
   }
   function tarjeta(s,acciones){
     const asignaciones=aplicaciones.filter(a=>a.solicitud_id===s.id).sort((a,b)=>a.orden-b.orden);
-    const detalle=asignaciones.length?`<details><summary>Aplicación automática a ${asignaciones.length} factura(s)</summary><ol>${asignaciones.map(a=>{
+    const detalle=asignaciones.length?`<details><summary>Aplicación a ${asignaciones.length} documento(s), incluidos anticipos si hubo excedente</summary><ol>${asignaciones.map(a=>{
       const f=facturas.find(row=>row.id===a.factura_id);
       return `<li>${esc(f?.numero||a.factura_id)} · ${money(a.monto)}</li>`;
     }).join('')}</ol></details>`:'';
@@ -54,6 +56,8 @@
         ${cuenta?.saldo_actual==null?'<p class="error">Pendiente de sincronizar Banco. La autorización no permite mover saldos todavía.</p>':''}</form>`:'';
     return `<article class="card"><strong>${esc(nombre(s.proveedor_id))}</strong> <span class="tag ${esc(s.estado)}">${esc(s.estado)}</span>
       <p><strong>${money(s.monto)}</strong> · ${esc(s.concepto)}</p>
+      ${s.estado==='pagado'&&Number(s.saldo_favor_generado)>0?`<p class="ok">Excedente registrado a favor de Creditek: ${money(s.saldo_favor_generado)}.</p>`:''}
+      ${s.estado!=='pagado'&&s.monto>Math.max(0,deuda(s.proveedor_id))?`<p>Supera la deuda neta actual; después del giro quedaría ${money(Number(s.monto)-deuda(s.proveedor_id))} a favor de Creditek.</p>`:''}
       <p class="muted">Solicitó Maite · ${esc(fecha(s.solicitado_at))}${s.autorizado_at?' · Decisión '+esc(fecha(s.autorizado_at)):''}${s.pagado_at?' · Giro '+esc(fecha(s.pagado_at)):''}</p>
       ${s.motivo_rechazo?`<p class="error">Rechazo: ${esc(s.motivo_rechazo)}</p>`:''}
       ${s.estado==='pagado'?`<p>Banco ${money(s.saldo_banco_antes)} → ${money(s.saldo_banco_despues)} · Referencia ${esc(s.referencia_bancaria)}</p>`:''}
@@ -84,7 +88,7 @@
     if(busy||perfil.id!==MAITE)return;
     validarSolicitud();if($('solicitar').disabled)return;
     const proveedor=$('proveedor').value,monto=Number($('monto').value),concepto=$('concepto').value.trim();
-    if(!confirm(`¿Solicitar ${money(monto)} para ${nombre(proveedor)}?\n\nNo se escogerá factura ni se descontará dinero hasta el giro comprobado.`))return;
+    if(!confirm(`¿Solicitar ${money(monto)} para ${nombre(proveedor)}?\n${$('excedenteAviso').textContent}\n\nNo se escogerá factura ni se descontará dinero hasta el giro comprobado.`))return;
     busy=true;validarSolicitud();requestId||=crypto.randomUUID();
     const {error}=await sb.rpc('banco_creditek_solicitar_pago_proveedor',{
       p_id:requestId,p_proveedor_id:proveedor,p_monto:monto,p_concepto:concepto,
@@ -97,7 +101,7 @@
   async function decidir(id,aprobar){
     if(busy||perfil.id!==OSCAR)return;
     let motivo=null;
-    if(aprobar){if(!confirm('¿Autorizas este pago al proveedor? Todavía no se descontará Banco ni se abonarán facturas.'))return;}
+    if(aprobar){if(!confirm('¿Autorizas el monto completo de este pago al proveedor, incluido cualquier anticipo o excedente? Todavía no se descontará Banco ni se abonarán facturas. El excedente quedará a favor de Creditek.'))return;}
     else{motivo=prompt('Motivo del rechazo (mínimo 10 caracteres):');if(motivo===null)return;if(motivo.trim().length<10){alert('Escribe al menos 10 caracteres.');return;}}
     busy=true;
     const {error}=await sb.rpc('banco_creditek_decidir_pago_proveedor',{
@@ -129,7 +133,7 @@
     if(!file||!['application/pdf','image/jpeg','image/png'].includes(file.type)||file.size>10*1024*1024){
       alert('Selecciona un PDF, JPG o PNG de máximo 10 MB.');return;
     }
-    if(!confirm(`Confirma que el banco YA giró ${money(s.monto)} a ${nombre(s.proveedor_id)} y que el comprobante corresponde a ese pago. KORA descontará Banco y aplicará el monto a las facturas más antiguas.`))return;
+    if(!confirm(`Confirma que el banco YA giró ${money(s.monto)} a ${nombre(s.proveedor_id)} y que el comprobante corresponde a ese pago. KORA descontará el giro completo de Banco, abonará las facturas más antiguas y conservará cualquier excedente como saldo a favor.`))return;
     busy=true;form.querySelector('button[type=submit]').disabled=true;
     const ext=file.type==='application/pdf'?'pdf':file.type==='image/png'?'png':'jpg';
     const path=`aliados/tesoreria/${crypto.randomUUID()}.${ext}`;

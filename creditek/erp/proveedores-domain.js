@@ -41,9 +41,8 @@
 
   function validarPago({ monto, saldo, fecha }) {
     const montoNumero = numero(monto);
-    const saldoNumero = numero(saldo);
     if (montoNumero <= 0) throw new Error('El pago debe ser mayor que cero');
-    if (montoNumero > saldoNumero) throw new Error('El pago supera el saldo pendiente');
+    if (!Number.isFinite(Number(saldo)) || !Number.isFinite(Number(monto)) || montoNumero >= 1e15) throw new Error('El valor o el saldo no son válidos');
     if (!fecha) throw new Error('La fecha del pago es requerida');
     return { monto: montoNumero, fecha };
   }
@@ -76,12 +75,18 @@
       vencidas: { cantidad: 0, valor: 0 },
       pagadas: { cantidad: 0, valor: 0 },
       sinVencimiento: { cantidad: 0, valor: 0 },
+      aFavor: { cantidad: 0, valor: 0 },
     };
 
     unicas.forEach(factura => {
       const saldo = numero(factura.saldo);
       const total = numero(factura.total);
-      if (saldo <= 0) {
+      if (saldo < 0) {
+        resumen.aFavor.cantidad += 1;
+        resumen.aFavor.valor -= saldo;
+        return;
+      }
+      if (saldo === 0) {
         resumen.pagadas.cantidad += 1;
         resumen.pagadas.valor += total;
         return;
@@ -101,6 +106,10 @@
       }
     });
 
+    // Se netean documentos solo dentro del mismo proveedor, nunca entre proveedores.
+    const saldos = new Map();
+    unicas.forEach(f => saldos.set(f.proveedor_id,(saldos.get(f.proveedor_id)||0)+numero(f.saldo)));
+    resumen.totalPorPagar.valor = [...saldos.values()].reduce((s,saldo)=>s+Math.max(0,saldo),0);
     return resumen;
   }
 

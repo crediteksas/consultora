@@ -10,7 +10,7 @@ const html = await readFile(
 test('proveedores resuelve el conflicto con configuración y shell KORA', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
-  assert.match(html, /<script src="proveedores-domain\.js\?v=1\.1\.0"><\/script>/);
+  assert.match(html, /<script src="proveedores-domain\.js\?v=1\.2\.0"><\/script>/);
   assert.match(html, /<script src="kora-access-control\.js\?v=[\d.]+"><\/script>/);
   assert.match(html, /<script src="sidebar\.js\?v=[\d.]+" data-kora-shell="1\.0\.0"><\/script>/);
   assert.match(html, /id="panel-vencimientos"/);

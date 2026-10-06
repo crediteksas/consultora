@@ -29,7 +29,13 @@ test('datos incompletos o duplicados no se presentan como saldos válidos',()=>{
  const d=datos();d.facturas[0].saldo=null;assert.throws(()=>D.preparar(d,'2026-09-16'),/valor válido/);
  const e=datos();e.facturas.push(e.facturas[0]);assert.throws(()=>D.preparar(e,'2026-09-16'),/repetidos/);
  const f=datos();f.facturas[0].proveedor_id='ajeno';assert.throws(()=>D.preparar(f,'2026-09-16'),/sin proveedor/);
- const g=datos();g.facturas[0].saldo=-1;assert.throws(()=>D.preparar(g,'2026-09-16'),/negativo/);
+});
+test('conserva crédito de proveedor sin ocultarlo ni descontarlo de otro proveedor',()=>{
+ const d=datos();d.facturas[0].saldo=-700;const r=D.preparar(d,'2026-09-16');
+ const p=r.proveedores.find(p=>p.id==='p');
+ assert.equal(p.saldo,-400);assert.equal(p.aFavor,700);
+ assert.equal(r.aFavorProveedores,400);assert.equal(r.porPagar,50);
+ assert.equal(r.proveedores.find(p=>p.id==='q').saldo,50);
 });
 test('carga todas las páginas, y un error en cualquiera de las fuentes bloquea el total',async()=>{
  const d=datos(),calls=[];

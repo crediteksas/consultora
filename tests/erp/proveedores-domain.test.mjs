@@ -29,7 +29,7 @@ test('normaliza factura, líneas y pagos sin alterar sus totales', () => {
   assert.equal(detalle.totalPagado, 100000);
 });
 
-test('valida un pago positivo que no supera el saldo', () => {
+test('valida pagos positivos, incluidos excedentes que quedarán a favor', () => {
   const pago = proveedores.validarPago({
     monto: '25000',
     saldo: 50000,
@@ -37,10 +37,8 @@ test('valida un pago positivo que no supera el saldo', () => {
   });
   assert.equal(pago.monto, 25000);
   assert.equal(pago.fecha, '2026-07-27');
-  assert.throws(
-    () => proveedores.validarPago({ monto: 50001, saldo: 50000, fecha: '2026-07-27' }),
-    /supera el saldo/
-  );
+  assert.equal(proveedores.validarPago({ monto: 50001, saldo: 50000, fecha: '2026-07-27' }).monto,50001);
+  assert.equal(proveedores.validarPago({ monto: 100, saldo: -50, fecha: '2026-07-27' }).monto,100);
   assert.throws(
     () => proveedores.validarPago({ monto: 0, saldo: 50000, fecha: '2026-07-27' }),
     /mayor que cero/
@@ -84,7 +82,17 @@ test('resume la cartera filtrada sin duplicar facturas', () => {
     vencidas: { cantidad: 1, valor: 30000 },
     pagadas: { cantidad: 1, valor: 80000 },
     sinVencimiento: { cantidad: 0, valor: 0 },
+    aFavor: { cantidad: 0, valor: 0 },
   });
+});
+
+test('un saldo a favor se muestra aparte y no se llama factura pagada ni deuda',()=>{
+  const resumen=proveedores.resumirCartera({facturas:[
+    {id:'credito',proveedor_id:'p',total:0,saldo:-300},
+    {id:'deuda',proveedor_id:'p',total:1000,saldo:1000},
+  ],proveedorIds:['p'],hoy:'2026-10-06'});
+  assert.equal(resumen.aFavor.valor,300);assert.equal(resumen.aFavor.cantidad,1);
+  assert.equal(resumen.pagadas.cantidad,0);assert.equal(resumen.totalPorPagar.valor,700);
 });
 
 test('separa facturas pendientes sin vencimiento sin inventar su estado', () => {

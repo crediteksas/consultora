@@ -10,6 +10,7 @@
     modelo=null;
     ['porCobrar','porPagar','diferencia'].forEach(id => $(id).textContent='—');
     $('carteraNota').textContent='Saldo neto de cargos y abonos aplicados.';
+    $('proveedoresNota').textContent='Deuda neta por proveedor; los saldos a favor no se cruzan entre proveedores.';
     $('resumenTiendas').textContent=$('resumenProveedores').textContent=mensaje;
     $('tiendasRows').innerHTML=`<tr><td class="empty" colspan="3">${esc(mensaje)}</td></tr>`;
     $('proveedoresRows').innerHTML=`<tr><td class="empty" colspan="4">${esc(mensaje)}</td></tr>`;
@@ -20,7 +21,7 @@
     $('resumenTiendas').textContent=`${tiendas.length} de ${modelo.cartera.length} tiendas y clientes · Saldo mostrado: ${money(D.sumar(tiendas))}`;
     $('resumenProveedores').textContent=`${proveedores.length} de ${modelo.proveedores.length} proveedores · Saldo mostrado: ${money(D.sumar(proveedores))}`;
     $('tiendasRows').innerHTML=tiendas.map(c=>`<tr><td>${esc(c.nombre)}${!c.activo?'<small>Inactiva · conserva movimientos</small>':''}</td><td data-label="Tipo">${esc(c.canal)}</td><td class="num" data-label="Saldo actual"><span><b>${money(c.saldo)}</b>${c.saldo<0?'<small>A favor del cliente</small>':''}</span></td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin coincidencias.</td></tr>';
-    $('proveedoresRows').innerHTML=proveedores.map(p=>`<tr><td>${esc(p.nombre)}${!p.activo?'<small>Inactivo · conserva saldo</small>':''}</td><td class="num" data-label="Facturas pendientes">${p.facturas}</td><td data-label="Primer vencimiento">${p.facturas?fecha(p.proximo):'—'}</td><td class="num" data-label="Saldo actual"><span><b>${money(p.saldo)}</b>${p.vencido>0?`<small>Vencido: ${money(p.vencido)}</small>`:''}</span></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Sin coincidencias.</td></tr>';
+    $('proveedoresRows').innerHTML=proveedores.map(p=>`<tr><td>${esc(p.nombre)}${!p.activo?'<small>Inactivo · conserva saldo</small>':''}</td><td class="num" data-label="Facturas pendientes">${p.facturas}</td><td data-label="Primer vencimiento">${p.facturas?fecha(p.proximo):'—'}</td><td class="num" data-label="Saldo actual"><span><b>${money(Math.abs(p.saldo))}</b>${p.saldo<0?'<small>A favor de Creditek</small>':p.aFavor>0?`<small>Incluye ${money(p.aFavor)} a favor, aún sin cruzar con documentos</small>`:''}${p.vencido>0?`<small>Documentos vencidos antes de cruzar créditos: ${money(p.vencido)}</small>`:''}</span></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Sin coincidencias.</td></tr>';
   }
   async function cargar() {
     $('actualizar').disabled=true;$('error').hidden=true;
@@ -31,6 +32,7 @@
       for(const id of ['porCobrar','porPagar','diferencia'])$(id).textContent=money(modelo[id]);
       $('diferencia').dataset.negativo=String(modelo.diferencia<0);
       if(modelo.aFavorClientes>0)$('carteraNota').textContent=`Saldo neto; incluye ${money(modelo.aFavorClientes)} a favor de clientes.`;
+      if(modelo.aFavorProveedores>0)$('proveedoresNota').textContent=`Deuda neta por proveedor. Además hay ${money(modelo.aFavorProveedores)} a favor de Creditek, separados de lo que debemos a otros proveedores.`;
       $('actualizado').textContent='Actualizado: '+new Intl.DateTimeFormat('es-CO',{dateStyle:'medium',timeStyle:'short',timeZone:'America/Bogota'}).format(new Date())+' · Hora de Colombia';
       render();
     } catch(error) {

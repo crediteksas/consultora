@@ -7,7 +7,7 @@
   const $=id=>document.getElementById(id);
   const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n));
   const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const labels={caja_retail:'Caja Retail',cartera_retail:'Cartera Retail',cartera_b2b:'Cartera cliente B2B',proveedor:'Deuda con proveedor'};
+  const labels={caja_retail:'Caja Retail',cartera_retail:'Cartera Retail',cartera_b2b:'Cartera cliente B2B',proveedor:'Deuda con proveedor / saldo a favor'};
   let perfil=null,origenes=[],proveedores=[],base=null,requestId=null,busy=false;
   const tiposSolicitud=new Map();
   function nombre(codigo){return origenes.find(o=>o.codigo===codigo)?.nombre||proveedores.find(p=>p.id===codigo)?.nombre||codigo}
@@ -22,17 +22,19 @@
   }
   function preview(){
     const nuevo=$('objetivo').value.trim()===''?null:Number($('objetivo').value);
-    const valido=base&&nuevo!==null&&Number.isInteger(nuevo)&&nuevo>=0&&nuevo!==base.saldo&&$('motivo').value.trim().length>=20;
+    const firmado=base?.tipo==='proveedor';
+    const valido=base&&nuevo!==null&&Number.isSafeInteger(nuevo)&&Math.abs(nuevo)<1e15&&(firmado||nuevo>=0)&&nuevo!==base.saldo&&$('motivo').value.trim().length>=20;
     $('preparar').disabled=busy||!valido;
     $('vistaPrevia').textContent=!base?'Selecciona el tipo y la cuenta para consultar su saldo.':
       nuevo===null?`Saldo actual: ${money(base.saldo)}. Escribe el nuevo saldo.`:
-      Number.isInteger(nuevo)&&nuevo>=0?
-        `${money(base.saldo)} → ${money(nuevo)} · Diferencia ${money(nuevo-base.saldo)}. Maite solo prepara; ningún saldo cambia hasta que Óscar autorice.`:
+      Number.isSafeInteger(nuevo)&&Math.abs(nuevo)<1e15&&(firmado||nuevo>=0)?
+        `${money(base.saldo)} → ${money(nuevo)}${firmado&&nuevo<0?' · A favor de Creditek':''} · Diferencia ${money(nuevo-base.saldo)}. Maite solo prepara; ningún saldo cambia hasta que Óscar autorice.`:
         'El nuevo saldo debe ser un número no negativo de pesos enteros.';
   }
   function cambiarTipo(){
     requestId=null;base=null;$('actual').value='';$('objetivo').value='';
     const tipo=$('tipo').value;
+    if(tipo==='proveedor')$('objetivo').removeAttribute('min');else $('objetivo').min='0';
     $('avisoProveedor').hidden=tipo!=='proveedor';
     const cuentas=tipo==='proveedor'?proveedores.filter(p=>p.activo).map(p=>({codigo:p.id,nombre:p.nombre})):
       origenes.filter(o=>o.activo&&(tipo==='cartera_b2b'?o.tipo==='cliente_b2b':o.tipo==='propia'));
@@ -48,7 +50,7 @@
     if(tipo==='proveedor'){
       try{
         const facturas=await leerTodas(()=>sb.from('facturas_proveedor').select('id,saldo').eq('proveedor_id',codigo).order('id'));
-        if(facturas.some(f=>f.saldo==null||!Number.isFinite(Number(f.saldo))||Number(f.saldo)<0))throw new Error('Hay facturas con saldo inválido');
+        if(facturas.some(f=>f.saldo==null||!Number.isFinite(Number(f.saldo))))throw new Error('Hay facturas con saldo inválido');
         data={saldo:Math.round(facturas.reduce((s,f)=>s+Number(f.saldo),0)*100)/100};
       }catch(e){error=e;}
     }else if(tipo==='caja_retail'){
@@ -62,7 +64,7 @@
     }
     if($('tipo').value!==tipo||$('codigo').value!==codigo)return;
     const saldo=Number(tipo==='caja_retail'?data?.esperado:data?.saldo);
-    if(error||!Number.isFinite(saldo)||(tipo!=='proveedor'&&!Number.isInteger(saldo))||saldo<0){
+    if(error||!Number.isFinite(saldo)||(tipo!=='proveedor'&&(!Number.isInteger(saldo)||saldo<0))){
       $('actual').value='No disponible';$('prepararEstado').textContent='No se pudo verificar el saldo. Actualiza la página antes de solicitar el ajuste.';
       return;
     }
@@ -90,7 +92,7 @@
   function tarjeta(s,permitirDecision){
     const estado=escapeHtml(s.estado),fecha=new Date(s.preparado_at).toLocaleString('es-CO',{timeZone:'America/Bogota'});
     return `<article class="card"><div><strong>${escapeHtml(labels[s.tipo])} · ${escapeHtml(nombre(s.codigo))}</strong> <span class="tag ${estado}">${estado}</span></div>
-      <p>${money(s.saldo_base)} → ${money(s.saldo_objetivo)} · Diferencia ${money(Number(s.saldo_objetivo)-Number(s.saldo_base))}</p>
+      <p>${money(s.saldo_base)} → ${money(s.saldo_objetivo)}${s.tipo==='proveedor'&&s.saldo_objetivo<0?' · A favor de Creditek':''} · Diferencia ${money(Number(s.saldo_objetivo)-Number(s.saldo_base))}</p>
       <p>${escapeHtml(s.motivo)}</p><p class="muted">Preparó Maite · ${escapeHtml(fecha)}${s.decidido_at?' · Decisión '+escapeHtml(new Date(s.decidido_at).toLocaleString('es-CO',{timeZone:'America/Bogota'})):''}</p>
       ${s.tipo==='proveedor'?`<p class="muted">Corrección de deuda; no es pago ni salida de Banco. No vuelve a descontar retenciones.</p><details><summary>Ver documentos del ajuste antes de autorizar</summary>${(s.plan||[]).map(f=>`<p>${escapeHtml(f.numero||'Sin número')} · ${money(f.saldo_anterior)} → ${money(f.saldo_nuevo)} · Ajuste ${money(f.diferencia)}</p>`).join('')}</details>`:''}
       ${s.motivo_rechazo?`<p class="error">Rechazo: ${escapeHtml(s.motivo_rechazo)}</p>`:''}

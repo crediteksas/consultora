@@ -24,14 +24,14 @@ h1{font-size:29px;margin:0 0 9px}h2{font-size:20px;margin:0 0 10px}p{line-height
   <div id="cobrosPlataformas" aria-live="polite">Consultando cobros de plataformas…</div>
 </section>
 <section class="panel" id="solicitarPanel" hidden><h2>Solicitar abono a proveedor</h2>
-<p>La aplicación a facturas será automática: de la más antigua a la siguiente. La solicitud no mueve dinero.</p>
+<p>La aplicación a facturas será automática: de la más antigua a la siguiente. Si sobra dinero o no hay deuda, se conserva como anticipo/saldo a favor de Creditek. La solicitud no mueve dinero.</p>
 <div class="grid"><label class="field">Proveedor<select id="proveedor"><option value="">Selecciona</option></select></label>
-<label class="field">Deuda documentada<input id="deuda" readonly></label>
+<label class="field">Saldo neto del proveedor<input id="deuda" readonly></label>
 <label class="field">Monto a solicitar (COP)<input id="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="Pesos enteros"></label>
 <label class="field wide">Concepto<textarea id="concepto" maxlength="300" placeholder="Motivo del abono"></textarea></label></div>
-<button class="btn primary" id="solicitar" disabled>Enviar a Óscar para autorización</button><p id="solicitarEstado" role="status" aria-live="polite"></p>
+<p id="excedenteAviso" role="status" aria-live="polite"></p><button class="btn primary" id="solicitar" disabled>Enviar a Óscar para autorización</button><p id="solicitarEstado" role="status" aria-live="polite"></p>
 </section>
 <section class="panel"><h2>Solicitudes pendientes de Gerencia</h2><div id="pendientes" aria-live="polite">Cargando…</div></section>
 <section class="panel"><h2>Autorizados · por girar</h2><p>Autorizado no significa pagado. El giro se registra únicamente después de ejecutarlo en el banco y cargar su soporte.</p><div id="autorizados">Cargando…</div></section>
 <section class="panel"><h2>Pagos realizados y trazabilidad</h2><div id="historial">Cargando…</div></section>
-</div></main></div><script src="cobros-plataformas.js?v=1.3.8" defer></script><script src="banco-creditek.js?v=1.0.1" defer></script></body></html>
+</div></main></div><script src="cobros-plataformas.js?v=1.3.8" defer></script><script src="banco-creditek.js?v=1.1.0" defer></script></body></html>

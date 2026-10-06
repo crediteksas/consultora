@@ -31,17 +31,18 @@
     const ids = new Set(proveedores.map(p => p.id));
     facturas.forEach(f => {
       if (!ids.has(f.proveedor_id)) throw new Error('Hay facturas sin proveedor visible. No se puede presentar un total completo.');
-      if (numero(f.saldo) < 0) throw new Error('Hay facturas con saldo negativo que requieren revisión.');
+      numero(f.saldo);
     });
     const deuda = ordenar(proveedores.map(p => {
       const pendientes = facturas.filter(f => f.proveedor_id === p.id && numero(f.saldo) > 0);
-      return {nombre:p.nombre, id:p.id, activo:p.activo, saldo:sumar(pendientes), facturas:pendientes.length,
+      const documentos = facturas.filter(f => f.proveedor_id === p.id);
+      return {nombre:p.nombre, id:p.id, activo:p.activo, saldo:sumar(documentos), aFavor:-sumar(documentos.filter(f=>numero(f.saldo)<0)), facturas:pendientes.length,
         vencido:sumar(pendientes.filter(f => f.fecha_vencimiento && f.fecha_vencimiento < hoy)),
         proximo:pendientes.map(f => f.fecha_vencimiento).filter(Boolean).sort()[0] || null};
     }).filter(p => p.activo || p.saldo !== 0));
-    const porCobrar = sumar(cartera), porPagar = sumar(deuda);
+    const porCobrar = sumar(cartera), porPagar = sumar(deuda.filter(p=>p.saldo>0));
     return {cartera, proveedores:deuda, porCobrar, porPagar, diferencia:porCobrar - porPagar,
-      aFavorClientes:-sumar(cartera.filter(c => c.saldo < 0))};
+      aFavorClientes:-sumar(cartera.filter(c => c.saldo < 0)), aFavorProveedores:-sumar(deuda.filter(p=>p.saldo<0))};
   }
 
   async function cargar(sb, hoy) {

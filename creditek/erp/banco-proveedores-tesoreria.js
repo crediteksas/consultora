@@ -18,6 +18,7 @@
     $('supplierBankApprovals').innerHTML=(rows||[]).map(r=>`<div class="card" style="margin:10px 0;padding:14px">
       <strong>${esc(names.get(r.proveedor_id)||r.proveedor_id)}</strong> · ${cop(r.monto)}
       <p>${esc(r.concepto)}</p>
+      <p>Se autoriza el monto completo. Si supera las facturas pendientes, el excedente quedará a favor de Creditek; no se pierde ni se recorta a cero.</p>
       <small>Solicitado por Maite · ${esc(new Date(r.solicitado_at).toLocaleString('es-CO',{timeZone:'America/Bogota'}))}</small>
       ${profile?.id===OSCAR?`<div class="actions"><button class="btn primary" data-banco-aprobar="${r.id}">Autorizar pago</button>
       <button class="btn secondary" data-banco-rechazar="${r.id}">Rechazar</button></div>`:''}</div>`).join('')||'<p>No hay abonos a proveedores pendientes de autorización.</p>';
@@ -27,7 +28,7 @@
   async function decidir(id,aprobar){
     if(busy||profile?.id!==OSCAR)return;
     let motivo=null;
-    if(aprobar){if(!confirm('¿Autorizar este abono a proveedor? Aún no se descontará Banco ni se aplicarán facturas hasta registrar el giro real con soporte.'))return;}
+    if(aprobar){if(!confirm('¿Autorizar el monto completo de este abono a proveedor, incluido cualquier anticipo o excedente? Aún no se descontará Banco ni se aplicarán facturas hasta registrar el giro real con soporte. El excedente quedará a favor de Creditek.'))return;}
     else{motivo=prompt('Motivo del rechazo (mínimo 10 caracteres):');if(motivo===null)return;if(motivo.trim().length<10){alert('Escribe un motivo de al menos 10 caracteres.');return;}}
     busy=true;
     const {error}=await sb.rpc('banco_creditek_decidir_pago_proveedor',{

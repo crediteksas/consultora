@@ -14,17 +14,18 @@ try {
  await page.addScriptTag({content:readFileSync('creditek/erp/conteos-ui.js','utf8')});
  await page.evaluate(async()=>{
    window.calls=[];window.downloads=[];
-   XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets.Comparativo||book.Sheets['Conteos y ajustes'],{defval:''}),name});
+   XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets.Comparativo||book.Sheets['Conteos y ajustes'],{defval:''}),sheets:Object.fromEntries(book.SheetNames.map(sheet=>[sheet,XLSX.utils.sheet_to_json(book.Sheets[sheet],{defval:''})])),name});
    const c={id:'11111111-1111-4111-8111-111111111111',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:new Date(Date.now()-60000).toISOString(),creado_nombre:'Operadora',estado:'abierto',base_conteo:'corte_fijo'};
-   window.demoCorte=c;
+   window.demoCorte=c;window.demoCortes=[c];window.demoDetails={};
    const lines=[{producto_id:'a',codigo:'VID',nombre:'Vidrio',tipo:'cantidad',imei:'',cantidad_corte:250,costo_tienda:1500,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:233},
     {producto_id:'b',codigo:'CEL',nombre:'Equipo',tipo:'serializado',imei:'000000000000001',cantidad_corte:1,costo_tienda:400000,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:1}];
    const sb={rpc:async(name,{p_accion:a,p_datos:d})=>{
      calls.push({a,d});
-     if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:'Tienda de prueba'}]}};
+     if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:'Tienda de prueba'},{codigo:'B',nombre:'Otra tienda'},{codigo:'C',nombre:'Tienda sin corte'}]}};
      if(a==='listar')return {data:{registros:[]}};
      if(a==='resumen')return {data:{anio:2026,filas:[]}};
-     if(a==='informe')return {data:{cortes:[c]}};
+     if(a==='informe')return {data:{cortes:demoCortes.filter(cut=>!d.tienda||cut.tienda_codigo===d.tienda)}};
+     if(a==='ver'&&demoDetails[d.id])return {data:structuredClone(demoDetails[d.id])};
      if(a==='subir'){c.estado='pendiente';c.contado_at=d.contado_at;c.contado_nombre='Operadora';for(const l of lines){const f=d.filas.find(f=>f.codigo===l.codigo);l.cantidad_fisica=f.cantidad;l.esperado_conteo=l.cantidad_corte;l.diferencia=f.cantidad-l.cantidad_corte;}}
      if(a==='aplicar_conteo'){c.estado='aplicado';c.autorizado_nombre='Maite';c.autorizado_at=new Date().toISOString();for(const l of lines)l.posterior=l.actual+l.diferencia;}
      return {data:structuredClone({corte:c,lineas:lines})};
@@ -66,5 +67,39 @@ try {
  await page.locator('#conteos-informe').click();
  await page.waitForFunction(()=>downloads.at(-1).names.includes('Conteos y ajustes'));
  assert.deepEqual(await page.evaluate(()=>downloads.at(-1).names),['Conteos y ajustes','Por aclarar']);
+ await page.evaluate(()=>{
+   delete demoCorte.revision_fuente;
+   const old={id:'22222222-2222-4222-8222-222222222222',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:'2026-09-01T13:00:00Z',estado:'aplicado',contado_at:'2026-09-01T13:00:00Z'};
+   const other={id:'33333333-3333-4333-8333-333333333333',tienda_codigo:'B',tienda_nombre:'Otra tienda',corte_at:'2026-10-04T13:00:00Z',estado:'pendiente',contado_at:'2026-10-04T13:00:00Z'};
+   demoCortes=[old,demoCorte,other];
+   demoDetails[old.id]={corte:old,lineas:[{codigo:'OLD',nombre:'Producto antiguo',imei:'',cantidad_corte:1,cantidad_fisica:0,diferencia:-1,costo_tienda:10}]};
+   demoDetails[other.id]={corte:other,lineas:[{codigo:'B01',nombre:'Vidrio B',imei:'',cantidad_corte:2,cantidad_fisica:1,diferencia:-1,costo_tienda:100,actual:2}]};
+ });
+ await page.locator('#conteos-desde').fill('2026-12-01');
+ await page.locator('#conteos-hasta').fill('2026-12-31');
+ await page.locator('#conteos-responsable').fill('Otra persona');
+ await page.locator('#conteos-ultimos').click();
+ await page.waitForFunction(()=>downloads.at(-1).name.startsWith('ultimos-cortes-tiendas-'));
+ const latest=await page.evaluate(()=>downloads.at(-1));
+ assert.deepEqual(latest.names,['Resumen tiendas','Diferencias','Detalle inventario']);
+ assert.equal(latest.sheets['Resumen tiendas'].length,3);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A')['ID corte'],id);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B').Estado,'Pendiente de Mayte / Óscar');
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='C').Estado,'Sin corte');
+ assert.equal(latest.sheets['Detalle inventario'].some(r=>r.Código==='OLD'),false);
+ assert.equal(latest.sheets.Diferencias.length,2);
+ const latestQuery=await page.evaluate(()=>calls.filter(c=>c.a==='informe').at(-1).d);
+ assert.equal(latestQuery.desde,'2000-01-01');assert.equal(latestQuery.tienda,'');assert.equal(latestQuery.responsable,'');
+ const tiendaPage=await browser.newPage();
+ await tiendaPage.setContent('<html><body></body></html>');
+ await tiendaPage.addScriptTag({content:readFileSync('creditek/erp/conteos-ui.js','utf8')});
+ await tiendaPage.evaluate(async()=>{
+   const sb={rpc:async(_,{p_accion:a})=>({data:a==='config'?{autoriza:false,central:false,tiendas:[{codigo:'A',nombre:'Tienda de prueba'}]}:a==='informe'?{cortes:[]}:a==='listar'?{registros:[]}:{filas:[]}})};
+   await KoraConteosUI.init({sb,XLSX:{},tiendaActual:()=> 'A',refrescar:async()=>{}}).abrir();
+ });
+ assert.equal(await tiendaPage.locator('#conteos-ultimos').isVisible(),false);
+ await tiendaPage.evaluate(()=>document.getElementById('conteos-ultimos').click());
+ await tiendaPage.waitForFunction(()=>document.getElementById('conteos-mensaje').textContent.includes('Solo Gestión o Gerencia'));
+ await tiendaPage.close();
  assert.deepEqual(errors,[]);console.log('Navegador: archivo mixto, ceros IMEI, carga, 482, autorización, escritorio y móvil OK.');
 } finally {await browser.close();}

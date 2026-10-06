@@ -53,7 +53,7 @@
         <details open><summary>Historial por fecha del corte</summary><div class="inventario-form" style="margin-top:12px">
           <label>Desde<input id="conteos-desde" type="date"></label><label>Hasta<input id="conteos-hasta" type="date"></label>
           <label>Responsable (creó, contó o autorizó)<input id="conteos-responsable" placeholder="Nombre"></label>
-          <div class="form-actions"><button id="conteos-buscar" class="secondary">Consultar</button><button id="conteos-informe" class="secondary">Descargar informe completo</button></div>
+          <div class="form-actions"><button id="conteos-buscar" class="secondary">Consultar</button><button id="conteos-informe" class="secondary">Descargar informe completo</button><button id="conteos-ultimos" class="secondary" style="display:none">Descargar último corte de todas las tiendas</button></div>
         </div><div id="conteos-historial" style="margin:14px 0"></div></details>
         <section id="conteos-detalle" style="margin-top:20px"></section>
       </div></div>`);
@@ -184,8 +184,8 @@
         motivo:el('nc-motivo').value.trim(),soporte:el('nc-soporte').value.trim()});
       el('no-conforme-form').reset();await cargarNoConformes();
     }
-    async function obtenerHistorial() {
-      const datos={desde:el('desde').value,hasta:el('hasta').value,tienda:el('tienda').value,responsable:el('responsable').value.trim()};
+    async function obtenerHistorial(filtros) {
+      const datos={...(filtros||{desde:el('desde').value,hasta:el('hasta').value,tienda:el('tienda').value,responsable:el('responsable').value.trim()})};
       const all=[];let page;
       do {
         page=(await rpc('informe',datos)).cortes;all.push(...page);
@@ -299,12 +299,70 @@
       if(!rows.length)throw new Error('No hay cortes para este rango.');
       const libro=XLSX.utils.book_new();hoja(libro,rows,'Conteos y ajustes');if(pendientes.length)hoja(libro,pendientes,'Por aclarar');guardarLibro(libro,`informe-inventarios-${el('desde').value}-${el('hasta').value}.xlsx`);
     }
+    async function informeUltimos() {
+      if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el último corte de todas las tiendas.');
+      // El informe general no depende de los filtros visibles ni de su rango de fechas.
+      const hoy=local(new Date()).slice(0,10);
+      const cortes=await obtenerHistorial({desde:'2000-01-01',hasta:hoy,tienda:'',responsable:''});
+      const ultimos=new Map();
+      for(const c of cortes) {
+        if(!config.tiendas.some(t=>t.codigo===c.tienda_codigo))continue;
+        const anterior=ultimos.get(c.tienda_codigo);
+        if(!anterior || new Date(c.corte_at)>new Date(anterior.corte_at) ||
+          (c.corte_at===anterior.corte_at&&c.id>anterior.id))ultimos.set(c.tienda_codigo,c);
+      }
+      const resumen=[],detalleFilas=[],diferencias=[],pendientes=[];
+      for(const tienda of config.tiendas) {
+        const c=ultimos.get(tienda.codigo);
+        if(!c) {
+          resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:'Sin corte'});
+          continue;
+        }
+        const data=await rpc('ver',{id:c.id});
+        const lineas=data.lineas||[],contado=!!c.contado_at,valores=resumirValores(lineas);
+        const diferenciasCorte=lineas.filter(l=>l.diferencia!=null&&Number(l.diferencia)!==0);
+        const valorCompleto=contado&&valores.sinCosto===0;
+        resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:estadoCorte(c),
+          'Fecha del corte':fechaCorte(c),'Fecha de carga':c.recibido_at?local(c.recibido_at):'',
+          'Referencias/IMEI':lineas.length,'Referencias con diferencia':contado?diferenciasCorte.length:'',
+          'Unidades faltantes':contado?valores.unidadesFaltantes:'','Valor faltantes':valorCompleto?valores.faltantes:'',
+          'Unidades sobrantes':contado?valores.unidadesSobrantes:'','Valor sobrantes':valorCompleto?valores.sobrantes:'',
+          'Impacto neto al costo':valorCompleto?valores.impactoNeto:'',
+          'Inventario sistema al corte':valorCompleto?valores.valorSistema:'',
+          'Inventario reportado al corte':valorCompleto?valores.valorReportado:'',
+          'Referencias sin costo':contado?valores.sinCosto:'',
+          'Creó':c.creado_nombre||'','Contó':c.contado_nombre||'','Autorizó':c.autorizado_nombre||'',
+          'Fecha de autorización':c.autorizado_at?local(c.autorizado_at):'',
+          'Clasificación general':c.clasificacion||'',Motivo:c.motivo||'',Soporte:c.soporte||'',
+          Archivo:c.archivo_nombre||'','ID corte':c.id});
+        pendientes.push(...pendientesFuente(c));
+        for(const l of lineas) {
+          const fila={Tienda:tienda.nombre,'Código tienda':tienda.codigo,'Fecha del corte':fechaCorte(c),
+            Estado:estadoCorte(c),Referencia:l.nombre,Código:l.codigo,IMEI:l.imei||'',
+            'Sistema al corte':l.cantidad_corte,'Reportado al corte':l.cantidad_fisica??'',
+            Diferencia:l.diferencia??'','Actual al consultar':l.actual??'',
+            'Posterior al ajuste':l.posterior??'','Costo tienda':l.costo_tienda??'',
+            'Valor diferencia':l.diferencia==null||!(Number(l.costo_tienda)>0)?'':
+              l.valor_ajuste??Number(l.diferencia)*Number(l.costo_tienda),
+            Observación:l.nota||'','ID corte':c.id};
+          detalleFilas.push(fila);
+          if(l.diferencia!=null&&Number(l.diferencia)!==0)diferencias.push(fila);
+        }
+      }
+      const libro=XLSX.utils.book_new();
+      hoja(libro,resumen,'Resumen tiendas');
+      if(diferencias.length)hoja(libro,diferencias,'Diferencias');
+      if(detalleFilas.length)hoja(libro,detalleFilas,'Detalle inventario');
+      if(pendientes.length)hoja(libro,pendientes,'Por aclarar');
+      guardarLibro(libro,`ultimos-cortes-tiendas-${hoy}.xlsx`);
+    }
     el('cerrar').onclick=()=>{if(!busy)el('modal').classList.remove('show');};
     el('crear').onclick=()=>run(()=>crear(false));el('ciego').onclick=()=>run(()=>crear(true));
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
+    el('ultimos').onclick=()=>run(informeUltimos);
     el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme);};
     el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';run(async()=>{await historial();await cargarNoConformes();});};
-    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');});
+    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';});
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.
     ready.catch(e=>{el('mensaje').textContent=e.message;});
     return { async abrir(){el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };

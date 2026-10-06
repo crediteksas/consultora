@@ -57,5 +57,7 @@ test('Banco registra cobros y Tesorería los consulta sin ofrecer doble escritur
   assert.match(bank, /cobros-plataformas\.css/);
   assert(bank.indexOf('src="cobros-plataformas.js') < bank.indexOf('src="banco-creditek.js'));
   assert.match(bankApp, /canEdit:p\.id===OSCAR,canVoid:p\.id===OSCAR/);
-  assert.match(app, /label: "Base calculada de plataformas", value: received, detail: "Referencia operativa; no confirma un ingreso bancario\."/);
+  assert.match(app, /label: "Base calculada de plataformas", value: received, detail: "Operaciones del mes; no confirma un ingreso bancario\."/);
+  assert.match(app, /Son referencias operativas y contables, no ingresos confirmados en Banco Creditek\./);
+  assert.match(app, /Saldo acumulado del libro de Tesorería; no es efectivo disponible en banco\./);
 });

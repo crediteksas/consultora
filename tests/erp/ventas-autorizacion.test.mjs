@@ -8,6 +8,7 @@ const registroSql = await readFile(new URL('../../supabase/migrations/2026092812
 const fechaSql = await readFile(new URL('../../supabase/migrations/20261001030322_ventas_fecha_bogota_autorizacion.sql', import.meta.url),'utf8');
 const ceroTrasArqueoSql = await readFile(new URL('../../supabase/migrations/20261001042000_venta_cero_autorizada_tras_arqueo.sql', import.meta.url),'utf8');
 const ceroDecimalSql = await readFile(new URL('../../supabase/migrations/20261001044500_venta_cero_arqueo_total_decimal.sql', import.meta.url),'utf8');
+const trazabilidadSql = await readFile(new URL('../../supabase/migrations/20261006214720_validar_trazabilidad_obsequios.sql', import.meta.url),'utf8');
 const original = await readFile(new URL('./fixtures/registrar-venta-auditada-20260910.sql',import.meta.url),'utf8');
 const html = await readFile(new URL('../../creditek/erp/ventas.html',import.meta.url),'utf8');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627', mayte='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
@@ -108,6 +109,51 @@ test('obsequio cargado, autorizado por Mayte, conserva vendedor y no duplica inv
   const audit=(await db.query('select * from ventas_autorizaciones')).rows[0];assert.equal(audit.resuelto_por,mayte);assert.ok(audit.resuelto_en);
  }finally{await db.close();}
 });
+test('obsequios nuevos exigen destinatario y venta verificable; un vidrio no puede quedar solo',async()=>{
+ const db=await setup();try{
+  await db.exec("alter table productos add column categoria text; update productos set categoria='VIDRIOS' where id='"+product+"'");
+  await db.exec(trazabilidadSql);
+  await assert.rejects(register(db),/nombre de la persona/);
+  const base={destinatario:'Cliente de prueba',relacion:'sin_venta',motivo:'Cortesía comercial sin venta'};
+  await assert.rejects(register(db,0,request,[{...items(0)[0],obsequio:base}]),/vidrio.*celular/);
+  const celular={producto_id:phone,unidad_id:unit,cantidad:1,precio_venta:530000};
+  const vinculo={destinatario:'Cliente de prueba',relacion:'esta_venta',producto_vendido_id:phone,unidad_vendida_id:unit,descripcion_venta:'Celular',imei:'123456789012345'};
+  await assert.rejects(register(db,0,request,[{...items(0)[0],obsequio:{...vinculo,unidad_vendida_id:null}},celular]),/celular vendido|producto vendido/);
+  const registrado=await register(db,0,request,[celular,{...items(0)[0],obsequio:vinculo}]);
+  assert.equal(registrado.estado,'pendiente');
+  const audit=(await db.query('select items from ventas_autorizaciones where id=$1',[request])).rows[0];
+  assert.equal(audit.items[1].obsequio.destinatario,'Cliente de prueba');
+  await login(db,mayte);
+  assert.equal((await resolve(db)).estado,'aprobada');
+ }finally{await db.close();}
+});
+test('vidrio asociado a venta anterior conserva número, equipo y destinatario verificables',async()=>{
+ const db=await setup();try{
+  await db.exec("alter table productos add column categoria text; update productos set categoria='VIDRIOS' where id='"+product+"'");
+  await db.exec(trazabilidadSql);
+  const anterior=await register(db,530000,request,[{producto_id:phone,unidad_id:unit,cantidad:1,precio_venta:530000}]);
+  assert.equal(anterior.estado,'registrada');
+  const regaloId='40000000-0000-4000-8000-000000000002';
+  const ob={destinatario:'Comprador de prueba',relacion:'venta_anterior',venta_numero:String(anterior.consecutivo),producto_vendido_id:phone,unidad_vendida_id:unit,descripcion_venta:'Celular',imei:'123456789012345'};
+  await assert.rejects(register(db,0,regaloId,[{...items(0)[0],obsequio:{...ob,descripcion_venta:'Otro equipo'}}]),/descripción.*no coincide/);
+  const regalo=await register(db,0,regaloId,[{...items(0)[0],obsequio:ob}]);
+  assert.equal(regalo.estado,'pendiente');
+  const guardado=(await db.query('select items from ventas_autorizaciones where id=$1',[regaloId])).rows[0].items[0].obsequio;
+  assert.equal(guardado.venta_numero,String(anterior.consecutivo));
+  assert.equal(guardado.destinatario,'Comprador de prueba');
+ }finally{await db.close();}
+});
+test('la regla nueva impide aprobar obsequios antiguos sin datos, pero deja rechazarlos',async()=>{
+ const db=await setup();try{
+  await register(db);
+  await db.exec("alter table productos add column categoria text; update productos set categoria='VIDRIOS' where id='"+product+"'");
+  await db.exec(trazabilidadSql);
+  await login(db,mayte);
+  await assert.rejects(resolve(db),/nombre de la persona/);
+  assert.equal((await db.query('select estado from ventas_autorizaciones where id=$1',[request])).rows[0].estado,'pendiente');
+  assert.equal((await resolve(db,false)).estado,'rechazada');
+ }finally{await db.close();}
+});
 test('la autorización contabiliza con la fecha de registro en Colombia, aunque se apruebe después',async()=>{
  const db=await setup();try{
   await register(db);
@@ -200,15 +246,35 @@ test('ni RPC antiguo, ni otra tienda, ni acceso directo permiten omitir autoriza
   assert.equal((await db.query("select has_table_privilege('authenticated','ventas_autorizaciones','INSERT') ok")).rows[0].ok,false);
  }finally{await db.close();}
 });
-test('paso productos acepta $0 y no confunde campo vacío con obsequio',()=>{
+test('paso productos exige trazabilidad para $0 y no confunde campo vacío con obsequio',()=>{
  const f=html.slice(html.indexOf('function avanzarPaso()'),html.indexOf('\nfunction retrocederPaso('));
- for(const [price,advance] of [[0,true],[1000,true],[-1,false],[null,false],['',false],[NaN,false]]){
+ for(const [price,advance] of [[0,false],[1000,true],[-1,false],[null,false],['',false],[NaN,false]]){
   const err={classList:{remove(){},add(){}},textContent:''};let step=null;
-  const c=vm.createContext({document:{getElementById(){return err;}},pasoActual:3,venta:{tipo:'contado',items:[{tipoProducto:'cantidad',precio_venta:price,costo_unitario:1500}]},mostrarPaso(n){step=n;}});
+  const c=vm.createContext({document:{getElementById(){return err;}},pasoActual:3,venta:{tipo:'contado',items:[{tipoProducto:'cantidad',precio_venta:price,costo_unitario:1500}]},validarObsequiosEnFormulario(){return price===0?'Indica destinatario y venta':null;},mostrarPaso(n){step=n;}});
   vm.runInContext(f,c);c.avanzarPaso();assert.equal(step===5,advance);
  }
+ assert.match(html,/Nombre de quien recibe el obsequio/);
+ assert.match(html,/Número de la venta anterior de esta tienda/);
+ assert.match(html,/obsequio:it\.obsequio/);
  assert.match(html,/precio_venta \?\? ''/);assert.match(html,/precio_venta == null/);
  assert.match(html,/data.estado === 'pendiente'/);assert.match(html,/p_solicitud_id: venta.solicitudId/);
+});
+test('el formulario exige destinatario y celular al regalar un vidrio',()=>{
+ const helpers=html.slice(html.indexOf('function esVidrioObsequio('),html.indexOf('\nasync function agregarItemAccesorio('));
+ const celular={tipoProducto:'serializado',producto_id:phone,unidad_id:unit,precio_venta:530000,nombreProducto:'Celular',imei:'123456789012345'};
+ const vidrio={tipoProducto:'cantidad',producto_id:product,precio_venta:0,nombreProducto:'Vidrio blindado',categoria:'VIDRIOS',obsequio:{relacion:'esta_venta',destinatario:'Cliente de prueba',producto_vendido_id:phone,unidad_vendida_id:unit,descripcion_venta:'Celular',imei:'123456789012345'}};
+ const c=vm.createContext({venta:{items:[celular,vidrio]},escapeHtml:x=>String(x)});
+ vm.runInContext(helpers,c);
+ assert.equal(c.validarObsequiosEnFormulario(),null);
+ vidrio.obsequio.destinatario='';
+ assert.match(c.validarObsequiosEnFormulario(),/nombre/);
+ vidrio.obsequio.destinatario='Cliente de prueba';
+ vidrio.obsequio.relacion='sin_venta';
+ vidrio.obsequio.motivo='Cortesía comercial';
+ assert.match(c.validarObsequiosEnFormulario(),/celular vendido/);
+ vidrio.obsequio.relacion='esta_venta';
+ c.venta.items=[vidrio];
+ assert.match(c.validarObsequiosEnFormulario(),/Selecciona el producto vendido/);
 });
 
 test('RLS muestra solo solicitudes de la tienda y ninguna a un perfil desactivado',async()=>{

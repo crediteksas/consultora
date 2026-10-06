@@ -24,7 +24,7 @@
     const tamano = 500;
     for (let desde = 0; ; desde += tamano) {
       const { data, error } = await sb.from('stock_cantidad_lectura')
-        .select('producto_id,cantidad,precio_tienda,productos!inner(id,codigo,nombre,tipo,activo,precio_guia)')
+        .select('producto_id,cantidad,precio_tienda,productos!inner(id,codigo,nombre,categoria,tipo,activo,precio_guia)')
         .eq('tienda_codigo', tienda).eq('productos.activo', true)
         .eq('productos.tipo', 'cantidad').gt('cantidad', 0)
         .order('producto_id').range(desde, desde + tamano - 1);

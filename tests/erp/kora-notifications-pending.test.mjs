@@ -7,6 +7,17 @@ const source=readFileSync('creditek/erp/kora-notifications.js','utf8');
 const context=vm.createContext({window:{},document:{dispatchEvent(){}},CustomEvent:class{}});
 vm.runInContext(source,context);
 const {pendingSources,pendingCount}=context.window.KoraNotifications;
+test('fotos pendientes son tareas no bloqueantes para la tienda, Mayte y Gerencia',async()=>{
+  for(const rol of ['admin_tienda','gerencia','auditoria']){
+    const spec=pendingSources({id:'a',rol,tienda_codigo:'CK-01'}).find(s=>s.key==='inventory-photo-tasks');
+    assert.equal(spec.rpc,'inventario_fotos_pendientes_cantidad');
+    assert.match(spec.hint,/no bloquean la operación ni el cierre/);
+    assert.equal(spec.path,'/creditek/erp/inventario.html#conteos');
+    assert.equal((await pendingCount({rpc:async()=>({data:3})},spec)).count,3);
+    assert.equal((await pendingCount({rpc:async()=>({data:0})},spec)).count,0);
+  }
+  assert.ok(!pendingSources({id:'a',rol:'asesor'}).some(s=>s.key==='inventory-photo-tasks'));
+});
 test('resueltas no cuentan como pendientes para gerencia, Maythe ni tiendas; reabiertas sí',async()=>{
   for(const rol of ['gerencia','auditoria','admin_tienda']){
     const spec=pendingSources({id:'a',rol,tienda_codigo:'CK-02'})[0];

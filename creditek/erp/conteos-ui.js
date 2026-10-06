@@ -27,15 +27,28 @@
     return total;
   }
   function init({ sb, XLSX, tiendaActual, refrescar }) {
-    let config, detalle, documento, utilidad, puedeCerrar=false, noConformes=[], cortesPendientes=[], busy=false, ready;
+    let config, detalle, documento, utilidad, puedeCerrar=false, noConformes=[], tareasFotos=[], cortesPendientes=[], busy=false, ready;
     const el = id => document.getElementById(`conteos-${id}`);
     document.body.insertAdjacentHTML('beforeend', `<div id="conteos-modal" class="modal-bg" style="z-index:10000" role="dialog" aria-modal="true" aria-label="Conteos y ajustes de inventario">
+      <style>#conteos-evidencia-form[hidden]{display:none}</style>
       <div class="modal-box" style="max-width:1250px;width:100%">
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
         <div class="form-actions"><button id="conteos-crear" class="primary">Preparar corte y descargar</button><button id="conteos-ciego" class="secondary">Preparar conteo ciego</button></div></div>
         <p style="margin:8px 0">Si ya existe un corte abierto hoy para esta tienda, se reutiliza. La persona autorizada temporalmente puede cargarlo con su propio usuario; solo Mayte u Óscar aprueban diferencias.</p>
+        <section id="conteos-tareas-fotos" aria-label="Tareas de fotos pendientes" hidden>
+          <h3>Fotos pendientes · tarea de la administradora de cada tienda</h3>
+          <p>El ajuste ya está aplicado. Estas fotos pendientes no bloquean la operación ni el cierre de utilidad. Adjuntarlas no vuelve a descontar inventario ni gastos.</p>
+          <div id="conteos-tareas-lista"></div>
+          <form id="conteos-evidencia-form" class="inventario-form" hidden>
+            <input id="conteos-evidencia-id" type="hidden">
+            <p id="conteos-evidencia-referencia"></p>
+            <label>Foto pendiente del producto<input id="conteos-evidencia-foto" type="file" accept="image/jpeg,image/png,image/webp" required></label>
+            <button type="submit" class="secondary">Adjuntar foto y completar tarea</button>
+            <p id="conteos-evidencia-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p>
+          </form>
+        </section>
         <details id="conteos-fotos-panel"><summary>Adjuntar fotos y registrar productos no conformes</summary>
           <p>Adjunta aquí la foto de cada referencia imperfecta. Si pertenece a un conteo, selecciona ese corte: la foto queda vinculada al ajuste y no genera una segunda salida. Las existencias solo cambian cuando Mayte u Óscar autoricen.</p>
           <form id="conteos-no-conforme-form" class="inventario-form">
@@ -82,8 +95,21 @@
     }
     async function cargarNoConformes() {
       noConformes=(await rpcNoConformes('listar')).registros||[];
+      tareasFotos=(await rpcNoConformes('tareas_fotos')).tareas||[];
       const tienda=el('tienda').value;
       const items=noConformes.filter(n=>n.tienda_codigo===tienda);
+      const tareas=tareasFotos.filter(n=>!tienda||n.tienda_codigo===tienda);
+      el('tareas-fotos').hidden=tareas.length===0;
+      el('tareas-lista').innerHTML=tareas.map(n=>`<div class="hist-item"><span>${esc(n.tienda_nombre)} · ${esc(n.producto_nombre)} · ${esc(n.codigo)} ${esc(n.imei)} · ${esc(n.cantidad)} unidad(es)<br>
+        Ajuste ${esc(n.documento_numero||'aplicado')} · Responsable: administradora de la tienda · Foto pendiente</span>
+        <button type="button" data-nc-completar="${esc(n.id)}">Adjuntar foto pendiente</button></div>`).join('');
+      el('tareas-lista').querySelectorAll('[data-nc-completar]').forEach(b=>b.onclick=()=>{
+        const tarea=tareasFotos.find(n=>n.id===b.dataset.ncCompletar);
+        el('evidencia-form').reset();el('evidencia-id').value=tarea.id;
+        el('evidencia-referencia').textContent=`${tarea.tienda_nombre} · ${tarea.codigo} ${tarea.imei} · ${tarea.cantidad} unidad(es) · ${tarea.documento_numero||'Ajuste aplicado'}`;
+        el('evidencia-mensaje').hidden=true;el('evidencia-form').hidden=false;
+        el('evidencia-form').scrollIntoView({block:'nearest'});
+      });
       const year=local(new Date()).slice(0,4);
       const yearly=await rpcNoConformes('resumen',{anio:year,tienda:tienda||null});
       const totals=yearly.filas||[];
@@ -93,7 +119,7 @@
         <span>${esc(n.producto_nombre)} · ${esc(n.codigo)} ${esc(n.imei)} · ${esc(n.cantidad)} unidad(es)<br>
         ${esc(n.estado==='solicitado'?(n.corte_id?'Pendiente: Mayte u Óscar autorizan al aplicar el corte':'Pendiente de Mayte / Óscar'):n.estado==='separado_pendiente_destino'?'Fuera del inventario vendible · destino pendiente':'Rechazado')}
         · ${esc(n.categoria_gasto)} · ${esc(n.motivo)} · ${esc(n.soporte)} · ${esc(n.costo_tienda==null?'Sin baja aprobada':money(n.cantidad*n.costo_tienda))}</span>
-        <span><button type="button" data-nc-foto="${esc(n.id)}">Ver foto</button>
+        <span>${n.foto_path?`<button type="button" data-nc-foto="${esc(n.id)}">Ver foto</button>`:'<strong>Foto pendiente · tarea de la tienda</strong>'}
         ${config.autoriza&&n.estado==='solicitado'&&!n.corte_id?`<button type="button" data-nc-aprobar="${esc(n.id)}">Autorizar salida</button>`:''}
         ${config.autoriza&&n.estado==='solicitado'?`<button type="button" data-nc-rechazar="${esc(n.id)}">Rechazar</button>`:''}</span></div>`).join(''):'No hay salidas de no conformes registradas para esta tienda.';
       el('no-conformes').querySelectorAll('[data-nc-foto]').forEach(b=>b.onclick=()=>{
@@ -269,16 +295,28 @@
       }
       detalle=await rpc('crear',{tienda:el('tienda').value});await renderDetalle();descargar(ciego);await historial();
     }
-    async function solicitarNoConforme() {
-      const tienda=el('tienda').value;
-      if(!tienda)throw new Error('Selecciona la tienda antes de solicitar la salida.');
-      const foto=el('nc-foto').files[0];
+    async function guardarFoto(tienda,foto) {
       if(!foto||!['image/jpeg','image/png','image/webp'].includes(foto.type)||foto.size>10*1024*1024)
         throw new Error('Adjunta una foto JPG, PNG o WebP de máximo 10 MB.');
       const extension={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[foto.type];
       const foto_path=`${tienda}/${crypto.randomUUID()}.${extension}`;
       const {error}=await sb.storage.from('inventario-no-conformes').upload(foto_path,foto,{contentType:foto.type,upsert:false});
       if(error)throw new Error(`No se guardó la foto: ${error.message}`);
+      return foto_path;
+    }
+    async function completarEvidencia() {
+      const tarea=tareasFotos.find(n=>n.id===el('evidencia-id').value);
+      if(!tarea)throw new Error('Selecciona una tarea de foto pendiente.');
+      const foto_path=await guardarFoto(tarea.tienda_codigo,el('evidencia-foto').files[0]);
+      await rpcNoConformes('completar_foto',{id:tarea.id,foto_path});
+      el('evidencia-form').reset();el('evidencia-form').hidden=true;
+      document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
+      await cargarNoConformes();
+    }
+    async function solicitarNoConforme() {
+      const tienda=el('tienda').value;
+      if(!tienda)throw new Error('Selecciona la tienda antes de solicitar la salida.');
+      const foto_path=await guardarFoto(tienda,el('nc-foto').files[0]);
       await rpcNoConformes('solicitar',{tienda,corte_id:el('nc-corte').value||null,foto_path,
         categoria_gasto:el('nc-categoria').value,codigo:el('nc-codigo').value.trim(),
         imei:el('nc-imei').value.trim(),cantidad:Number(el('nc-cantidad').value),
@@ -336,7 +374,7 @@
           <label>Motivo de la revisión<textarea id="conteos-motivo" minlength="5" required></textarea></label>
           ${archivoSoporte?`<p id="conteos-archivo-soporte" style="overflow-wrap:anywhere"><strong>Soporte del conteo ya registrado:</strong> ${esc(corte.archivo_nombre)}.<br>Este Excel se usará automáticamente como soporte, con su identificador SHA256. No necesitas otra acta ni adjuntarlo de nuevo.</p>`:''}
           <label>${archivoSoporte?'Referencia adicional (opcional)':'Referencia del soporte (obligatoria si no hay Excel registrado)'}<input id="conteos-soporte" placeholder="${archivoSoporte?'Aclaración o referencia adicional, si existe':'Nombre del archivo o referencia documental'}"></label>
-          <p>Si clasificas productos como «No conforme», sus fotos se adjuntan aparte y se vinculan a este corte.</p>
+          <p>Las fotos de productos «No conforme» pueden adjuntarse después: no bloquean este ajuste ni el cierre de utilidad. Cada foto faltante quedará como tarea de la administradora de la tienda, visible en Inventario y en la campana.</p>
           ${pendiente&&corteFijo?'<button type="button" id="conteos-adjuntar-fotos" class="secondary">Adjuntar fotos de no conformes</button>':''}
           <label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
           ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
@@ -394,7 +432,7 @@
       if(accion==='aplicar'&&valorizadas.some(l=>l.diferencia!==0&&!(Number(l.costo_tienda)>0)))
         throw new Error('Confirma el costo de todas las diferencias antes de autorizar.');
       const impacto=valoracion.impactoNeto;
-      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return false;
+      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. Las fotos faltantes quedan como tarea de la administradora y no bloquean el ajuste ni el cierre. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return false;
       const datos={id:detalle.corte.id,base_conteo:'corte_fijo',motivo,soporte,clasificacion,costos,decisiones};
       detalle=accion==='aplicar'?await rpcDocumento('aplicar',datos):await rpc(accion,datos);
       document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
@@ -535,7 +573,8 @@
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
     el('ultimos').onclick=()=>run(informeUltimos);
     el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme,'nc-mensaje');};
-    el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';run(async()=>{await historial();await cargarNoConformes();});};
+    el('evidencia-form').onsubmit=event=>{event.preventDefault();run(completarEvidencia,'evidencia-mensaje');};
+    el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';el('evidencia-form').reset();el('evidencia-form').hidden=true;run(async()=>{await historial();await cargarNoConformes();});};
     ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';});
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.
     ready.catch(e=>{el('mensaje').textContent=e.message;});

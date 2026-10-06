@@ -13,7 +13,7 @@ try {
  await page.addScriptTag({content:readFileSync('creditek/erp/conteos-domain.js','utf8')});
  await page.addScriptTag({content:readFileSync('creditek/erp/conteos-ui.js','utf8')});
  await page.evaluate(async()=>{
-   window.calls=[];window.downloads=[];
+   window.calls=[];window.downloads=[];window.demoTasks=[];
    XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets.Comparativo||book.Sheets['Conteos y ajustes'],{defval:''}),sheets:Object.fromEntries(book.SheetNames.map(sheet=>[sheet,XLSX.utils.sheet_to_json(book.Sheets[sheet],{defval:''})])),name});
    const c={id:'11111111-1111-4111-8111-111111111111',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:new Date(Date.now()-60000).toISOString(),creado_nombre:'Operadora',estado:'abierto',base_conteo:'corte_fijo'};
    window.demoCorte=c;window.demoCortes=[c];window.demoDetails={};
@@ -29,7 +29,7 @@ try {
      if(name!=='cuenta_corriente')throw new Error('Tabla no prevista: '+name);
      const query={store:null,before:null,select(){return this;},eq(_field,value){this.store=value;return this;},lt(_field,value){this.before=value;return this;},order(){return this;},async range(start,end){return {data:demoCuenta.filter(row=>row.tienda_codigo===this.store&&row.created_at<this.before).slice(start,end+1),error:null};}};
      return query;
-   },rpc:async(name,{p_accion:a,p_datos:d,p_corte_id:corteId})=>{
+   },storage:{from:()=>({upload:async(path)=>{calls.push({a:'subir_foto',path});return {error:null};}})},rpc:async(name,{p_accion:a,p_datos:d,p_corte_id:corteId})=>{
      calls.push({a,d,name});
      if(name==='cierre_utilidad_retail'){
        if(a==='cerrar')window.demoClosed=true;
@@ -46,6 +46,8 @@ try {
      }
      if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:'Tienda de prueba'},{codigo:'B',nombre:'Otra tienda'},{codigo:'C',nombre:'Tienda sin corte'}]}};
      if(a==='listar')return {data:{registros:[]}};
+     if(a==='tareas_fotos')return {data:{tareas:structuredClone(demoTasks)}};
+     if(a==='completar_foto'){window.demoTasks=demoTasks.filter(t=>t.id!==d.id);return {data:{evidencia_completa:true,stock_modificado:false}};}
      if(a==='resumen')return {data:{anio:2026,filas:[]}};
      if(a==='informe')return {data:{cortes:demoCortes.filter(cut=>!d.tienda||cut.tienda_codigo===d.tienda)}};
      if(a==='ver'&&demoDetails[d.id])return {data:structuredClone(demoDetails[d.id])};
@@ -66,7 +68,10 @@ try {
  assert.equal(await page.locator('#conteos-fecha-modo').count(),0);
  await page.locator('#conteos-confirmar-corte').check();
  // setContent has an opaque origin; install the digest only for this isolated harness.
- await page.evaluate(()=>{if(!crypto.subtle)Object.defineProperty(crypto,'subtle',{value:{digest:async()=>new Uint8Array(32).buffer}});});
+ await page.evaluate(()=>{
+   if(!crypto.subtle)Object.defineProperty(crypto,'subtle',{value:{digest:async()=>new Uint8Array(32).buffer}});
+   if(!crypto.randomUUID)Object.defineProperty(crypto,'randomUUID',{value:()=> '11111111-1111-4111-8111-111111111111'});
+ });
  await page.locator('#conteos-form-subir button').click();
  await page.waitForFunction(()=>calls.some(c=>c.a==='subir'));
  await page.waitForFunction(()=>document.getElementById('conteos-utilidad-cerrar'));
@@ -95,9 +100,10 @@ try {
  assert.equal(await page.locator('[data-decision-codigo="VID"]').inputValue(),'sobrante','Abrir fotos no borra clasificaciones');
  assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='solicitar')),false,'Abrir el adjunto no solicita ni aplica nada');
  page.on('dialog',d=>d.accept());
- await page.evaluate(()=>{window.demoApplyError='Falta solicitud con foto para el no conforme VID';});
+ assert.match(await page.locator('#conteos-form-decidir').innerText(),/no bloquean este ajuste ni el cierre/);
+ await page.evaluate(()=>{window.demoApplyError='Falta costo de tienda verificable';});
  await page.locator('#conteos-form-decidir button[type=submit]').click();
- await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Falta solicitud con foto'));
+ await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Falta costo'));
  assert.equal(await page.locator('#conteos-decision-mensaje').isVisible(),true,'Los errores del servidor se muestran junto al botón');
  assert.equal(await page.locator('#conteos-motivo').inputValue(),'Conteo verificado');
  assert.equal(await page.locator('[data-decision-codigo="VID"]').inputValue(),'sobrante');
@@ -136,6 +142,20 @@ try {
  await page.waitForFunction(()=>downloads.at(-1).name==='AJ-A-000001.xlsx');
  assert.deepEqual(await page.evaluate(()=>downloads.at(-1).names),['Documento','Movimientos','Utilidad neta']);
  assert.equal(await page.evaluate(()=>downloads.at(-1).sheets.Movimientos[0]['Después del ajuste']),482);
+ // Completar una tarea después de cerrar no vuelve a solicitar/aplicar nada.
+ const appliesBeforePhoto=await page.evaluate(()=>calls.filter(c=>c.a==='aplicar').length);
+ await page.evaluate(async()=>{demoTasks=[{id:'foto-pendiente-1',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',codigo:'VID',producto_nombre:'Vidrio',imei:'',cantidad:2,documento_numero:'AJ-A-000001'}];await ui.abrir();});
+ assert.equal(await page.locator('#conteos-tareas-fotos').isVisible(),true);
+ assert.match(await page.locator('#conteos-tareas-fotos').innerText(),/no bloquean la operación ni el cierre/);
+ await page.locator('[data-nc-completar]').click();
+ await page.locator('#conteos-evidencia-foto').setInputFiles({name:'vidrio.png',mimeType:'image/png',buffer:Buffer.from('foto de prueba aislada')});
+ await page.locator('#conteos-evidencia-form button[type=submit]').click();
+ await page.waitForFunction(()=>document.getElementById('conteos-tareas-fotos').hidden);
+ assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='completar_foto').length),1);
+ assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='aplicar').length),appliesBeforePhoto);
+ assert.equal(await page.evaluate(()=>calls.some(c=>c.a==='solicitar')),false);
+ assert.equal(await page.evaluate(()=>demoCorte.estado),'aplicado');
+ assert.equal(await page.evaluate(()=>demoClosed),true);
  await page.evaluate(async()=>{demoCorte.estado='pendiente';demoCorte.revision_fuente={solo_comparativo:true,fecha_confirmada:'2026-09-06',nota:'Fecha confirmada por Óscar. Fuentes con fecha impresa del día 7.',fuentes:[{nombre:'Archivo.xlsx',sha256:'a'.repeat(64),fecha_impresa:'2026-09-07 09:11:32'}],pendientes:[{nombre:'SIM TIGO PAQUETE',fila:361,base:42,conteo:42,motivo:'Código por aclarar',archivo:'Archivo.xlsx'}]};await ui.abrir();});
  await page.locator('[data-conteo-id]').click();
  await page.waitForFunction(()=>document.getElementById('conteos-detalle').textContent.includes('Comparativo histórico'));

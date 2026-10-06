@@ -6,6 +6,9 @@
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
     const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
+    if (central || (profile.rol === 'admin_tienda' && profile.tienda_codigo)) sources.push(
+      {key:'inventory-photo-tasks',rpc:'inventario_fotos_pendientes_cantidad',title:'Fotos de inventario pendientes · tarea de la tienda',hint:'El ajuste está aplicado. Adjunta las fotos pendientes en Inventario; no bloquean la operación ni el cierre de utilidad y no descuentan otra vez.',path:'/creditek/erp/inventario.html#conteos'},
+    );
     if (central) {
       sources.push(
         {key:'inventory-counts',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},

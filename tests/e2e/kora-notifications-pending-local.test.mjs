@@ -11,7 +11,7 @@ test('campana conserva trámites al leer avisos y actualiza estados sin mutar do
     await page.evaluate(()=>{
       window.counts={kora_incidents:2,traslados:6,gastos:4,aliados_gastos_operativos:1,financial_entries:2,ventas_autorizaciones:3};
       window.writes=[];window.fail=false;
-      window.sb={rpc:async()=>({data:true}),from(table){let count=false,update=false;const q={select(fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},is(){return q;},order(){return q;},limit(){return q;},update(){window.writes.push(table);update=true;return q;},then(ok,bad){return Promise.resolve(update?{error:null}:count?{count:window.fail&&table==='traslados'?null:window.counts[table],error:window.fail&&table==='traslados'?{message:'Network error'}:null}:{data:[{id:'n1',type:'incident_resolved',title:'Incidencia corregida',message:'Prueba',incident_id:'00000000-0000-0000-0000-000000000001',read_at:null,created_at:'2026-09-21T12:00:00Z'}],error:null}).then(ok,bad);}};return q;}};
+      window.sb={rpc:async name=>({data:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false,update=false;const q={select(fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},is(){return q;},order(){return q;},limit(){return q;},update(){window.writes.push(table);update=true;return q;},then(ok,bad){return Promise.resolve(update?{error:null}:count?{count:window.fail&&table==='traslados'?null:window.counts[table],error:window.fail&&table==='traslados'?{message:'Network error'}:null}:{data:[{id:'n1',type:'incident_resolved',title:'Incidencia corregida',message:'Prueba',incident_id:'00000000-0000-0000-0000-000000000001',read_at:null,created_at:'2026-09-21T12:00:00Z'}],error:null}).then(ok,bad);}};return q;}};
     });
     await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
     await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'a',activo:true,rol:'gerencia'}}));
@@ -53,6 +53,7 @@ test('ventas en campana: permiso del servidor, error visible y enlace directo si
           calls.push(name);
           if(name==='puede_autorizar_venta_excepcional')return failPermission?{error:{message:'Error de permiso'}}:{data:allowed};
           if(name==='es_controlador_financiero')return {data:false};
+          if(['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name))return {data:0};
           throw new Error('RPC de escritura no permitido');
         },from(table){calls.push(table);let count=false;const q={
           select(_fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},order(){return q;},limit(){return q;},
@@ -98,7 +99,7 @@ test('aprobación, pago y cierre sincronizan dos ventanas; avisos históricos no
       await page.exposeFunction('unexpectedWrite',table=>writes.push(table));
       await page.goto('https://kora.test/creditek/erp/app.html');
       await page.evaluate(()=>{
-        window.sb={rpc:async()=>({data:true}),from(table){let count=false;const filters=[];const q={
+        window.sb={rpc:async name=>({data:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false;const filters=[];const q={
           select(_fields,options){count=!!options?.head;return q;},eq(k,v){filters.push(['eq',k,v]);return q;},in(k,v){filters.push(['in',k,v]);return q;},order(){return q;},limit(){return q;},
           update(){unexpectedWrite(table);return q;},
           then(ok,bad){return (count?readPendingRows(table,filters):Promise.resolve({data:[{id:'aviso-viejo',type:'incident_assigned',title:'Incidencia ya cerrada',message:'Historial',incident_id:'00000000-0000-0000-0000-000000000001',created_at:'2026-09-21T12:00:00Z',read_at:null}]})).then(ok,bad);}

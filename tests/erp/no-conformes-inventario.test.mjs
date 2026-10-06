@@ -9,7 +9,7 @@ const maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const tienda='00000000-0000-0000-0000-000000000003';
 const auditora='00000000-0000-0000-0000-000000000004';
 
-test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriores al corte',async()=>{
+for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bloqueante':'previa'}, aprobación separada, gasto sin caja y ventas posteriores al corte`,async()=>{
  const db=await PGlite.create();
  try{
   await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;
@@ -62,7 +62,8 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
     '20261005144038_retail_inventory_auditor_cut_access.sql',
     '20261005225513_salida_no_conformes_corte.sql',
     '20261005161602_retail_cierre_utilidad_por_corte.sql',
-    '20261006152825_inventario_documento_ajuste_por_tienda.sql'])await db.exec(migration(name));
+    '20261006152825_inventario_documento_ajuste_por_tienda.sql',
+    '20261006165240_inventario_fotos_tarea_no_bloqueante.sql'])await db.exec(migration(name));
   const as=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
   const api=async(a,d={})=>(await db.query('select public.inventario_no_conformes($1,$2::jsonb) r',[a,JSON.stringify(d)])).rows[0].r;
   const count=async(a,d={})=>(await db.query('select public.inventario_conteos($1,$2::jsonb) r',[a,JSON.stringify({base_conteo:'corte_fijo',...d})])).rows[0].r;
@@ -81,10 +82,12 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   const req={tienda:'CK-01',corte_id:cut.corte.id,codigo:'VID',imei:'',cantidad:2,
     categoria_gasto:'imperfecto',foto_path:path,motivo:'Vidrio roto',soporte:'Acta y fotografía'};
   await assert.rejects(api('solicitar',req),/foto/);
-  await db.exec('reset role');await db.query("insert into storage.objects(bucket_id,name,owner_id) values('inventario-no-conformes',$1,$2)",[path,tienda]);
-  await as(tienda);const request=await api('solicitar',req);
-  assert.equal(request.stock_modificado,false);
-  await assert.rejects(api('autorizar',{id:request.id}),/Solo Mayte/);
+  if(!diferirFoto){
+    await db.exec('reset role');await db.query("insert into storage.objects(bucket_id,name,owner_id) values('inventario-no-conformes',$1,$2)",[path,tienda]);
+    await as(tienda);const request=await api('solicitar',req);
+    assert.equal(request.stock_modificado,false);
+    await assert.rejects(api('autorizar',{id:request.id}),/Solo Mayte/);
+  }
   await as(maite);
   const approval={id:cut.corte.id,base_conteo:'corte_fijo',motivo:'Imperfecto verificado',
     soporte:'Acta y fotografía',clasificacion:'no_conforme',decisiones:[{codigo:'VID',imei:'',clasificacion:'no_conforme'}]};
@@ -97,6 +100,14 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   assert.equal(result.puede_cerrar_utilidad,false);
   assert.equal((await doc('aplicar',approval)).documento.documento_id,result.documento.documento_id);
   assert.equal((await doc('ver',{id:cut.corte.id})).corte.estado,'aplicado');
+  const tareas=await api('tareas_fotos');
+  assert.equal(tareas.tareas.length,diferirFoto?1:0);
+  assert.equal(Number((await db.query('select public.inventario_fotos_pendientes_cantidad() n')).rows[0].n),diferirFoto?1:0);
+  if(diferirFoto){
+    assert.equal(tareas.tareas[0].cantidad,2);
+    assert.equal(tareas.tareas[0].documento_numero,'AJ-CK-01-000001');
+    assert.equal(tareas.tareas[0].tienda_codigo,'CK-01');
+  }
   const preview=(await db.query("select public.cierre_utilidad_retail('vista',$1,null) r",[cut.corte.id])).rows[0].r;
   assert.equal(Number(preview.utilidad_neta),-3000);
   await assert.rejects(db.query("select public.cierre_utilidad_retail('cerrar',$1,$2)",[cut.corte.id,preview.huella]),/Solo Gerencia/);
@@ -104,10 +115,40 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   const closed=(await db.query("select public.cierre_utilidad_retail('cerrar',$1,$2) r",[cut.corte.id,preview.huella])).rows[0].r;
   assert.equal(closed.cerrado,true);
   assert.equal((await db.query("select public.cierre_utilidad_retail('cerrar',$1,$2) r",[cut.corte.id,preview.huella])).rows[0].r.cierre_id,closed.cierre_id);
+  // Cerrar utilidad también funciona con la tarea abierta. La foto posterior no
+  // cambia el documento inmutable, las existencias, el gasto ni el cierre.
+  if(diferirFoto){
+    const tarea=tareas.tareas[0];
+    await as(auditora);
+    assert.equal((await api('tareas_fotos')).tareas.length,0);
+    assert.equal(Number((await db.query('select public.inventario_fotos_pendientes_cantidad() n')).rows[0].n),0);
+    await assert.rejects(api('completar_foto',{id:tarea.id,foto_path:path}),/otra tienda/);
+    await as(tienda);
+    assert.equal((await api('tareas_fotos')).tareas.length,1);
+    await assert.rejects(api('completar_foto',{id:tarea.id,foto_path:path}),/foto propia/);
+    await db.exec('reset role');
+    await db.query("insert into storage.objects(bucket_id,name,owner_id) values('inventario-no-conformes',$1,$2)",[path,maite]);
+    await as(tienda);
+    await assert.rejects(api('completar_foto',{id:tarea.id,foto_path:path}),/foto propia/);
+    await db.exec('reset role');await db.query('update storage.objects set owner_id=$1 where name=$2',[tienda,path]);
+    await as(tienda);
+    const completed=await api('completar_foto',{id:tarea.id,foto_path:path});
+    assert.equal(completed.stock_modificado,false);assert.equal(completed.evidencia_completa,true);
+    assert.equal((await api('completar_foto',{id:tarea.id,foto_path:path})).stock_modificado,false);
+    assert.equal((await api('tareas_fotos')).tareas.length,0);
+    assert.equal(Number((await db.query('select public.inventario_fotos_pendientes_cantidad() n')).rows[0].n),0);
+    await as(oscar);
+    assert.deepEqual((await doc('ver',{id:cut.corte.id})).documento,result.documento);
+    assert.equal((await db.query("select public.cierre_utilidad_retail('vista',$1,null) r",[cut.corte.id])).rows[0].r.cierre_id,closed.cierre_id);
+    await db.exec('reset role');
+    const attached=(await db.query('select foto_por,foto_at from inventario_control.no_conformes where id=$1',[tarea.id])).rows[0];
+    assert.equal(attached.foto_por,tienda);assert.ok(attached.foto_at);
+    await as(oscar);
+  }
   await assert.rejects(api('aplicar_conteo',approval),/pendiente/);
   const expenses=(await db.query("select * from public.gastos_inventario_no_monetarios(current_date-1,current_date+1,'CK-01')")).rows;
   assert.equal(expenses.length,1);assert.equal(Number(expenses[0].valor),3000);
-  assert.equal(expenses[0].categoria_gasto,'imperfecto');
+  assert.equal(expenses[0].categoria_gasto,diferirFoto?'producto_deteriorado':'imperfecto');
   await db.exec('reset role');
   assert.equal((await db.query("select cantidad from stock_cantidad where producto_id=$1",[product])).rows[0].cantidad,7);
   assert.equal((await db.query("select count(*)::int n from movimientos where referencia_tipo='salida_no_conforme'")).rows[0].n,1);
@@ -124,7 +165,7 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   await assert.rejects(api('autorizar',{id:outside.id}),/ya decidida/);
   assert.equal((await db.query("select cantidad from stock_cantidad where producto_id=$1",[product])).rows[0].cantidad,6);
   const annual=await api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:'CK-01'});
-  assert.equal(Number(annual.filas[0].gasto_no_monetario),4500);
+  assert.equal(annual.filas.reduce((total,r)=>total+Number(r.gasto_no_monetario),0),4500);
   await as(tienda);
   assert.equal((await api('listar')).registros.length,2);
   await assert.rejects(api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:null}),/otra tienda/);
@@ -139,7 +180,7 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   const delegated=await api('solicitar',{...req,corte_id:null,cantidad:1,foto_path:delegatedPath});
   assert.equal(delegated.stock_modificado,false);
   assert.equal((await api('listar')).registros.length,3);
-  assert.equal((await api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:'CK-01'})).filas.length,1);
+  assert.equal((await api('resumen',{anio:new Date().getUTCFullYear().toString(),tienda:'CK-01'})).filas.length,diferirFoto?2:1);
   await db.exec('reset role');
   await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()-interval '1 day' where admin_autorizado=$1",[auditora]);
   await as(auditora);
@@ -162,13 +203,23 @@ test('foto obligatoria, aprobación separada, gasto sin caja y ventas posteriore
   await db.exec(`create function public.omitir_movimiento_prueba() returns trigger language plpgsql as $$begin return null; end$$;
     create trigger omitir_movimiento_prueba before insert on public.movimientos for each row execute function public.omitir_movimiento_prueba();`);
   await as(oscar);
-  await assert.rejects(doc('aplicar',{...payload,id:third.corte.id}),/Falta vincular/);
+  const thirdPayload={...payload,id:third.corte.id,...(diferirFoto?{clasificacion:'no_conforme',decisiones:[{codigo:'VID',imei:'',clasificacion:'no_conforme'}]}:{})};
+  await assert.rejects(doc('aplicar',thirdPayload),/Falta vincular/);
   assert.equal((await count('ver',{id:third.corte.id})).corte.estado,'pendiente');
   assert.equal((await count('ver',{id:third.corte.id})).lineas[0].actual,4);
   await db.exec('reset role');await db.exec('drop trigger omitir_movimiento_prueba on public.movimientos');
+  assert.equal((await db.query('select count(*)::int n from inventario_control.no_conformes where corte_id=$1',[third.corte.id])).rows[0].n,0,'Un fallo revierte también la tarea de foto');
   assert.equal((await db.query("select ultimo::int n from inventario_control.ajuste_consecutivos where tienda_codigo='CK-02'")).rows[0].n,1);
   await as(oscar);
-  assert.equal((await doc('aplicar',{...payload,id:third.corte.id})).documento.numero,'AJ-CK-02-000002');
+  assert.equal((await doc('aplicar',thirdPayload)).documento.numero,'AJ-CK-02-000002');
+  if(diferirFoto){
+    assert.equal((await api('tareas_fotos')).tareas.length,1);
+    await db.exec('reset role');await db.query('update perfiles set activo=false where id=$1',[auditora]);
+    await as(auditora);
+    await assert.rejects(api('tareas_fotos'),/perfil activo/);
+    assert.equal(Number((await db.query('select public.inventario_fotos_pendientes_cantidad() n')).rows[0].n),0);
+    await as(oscar);
+  }
   const fourth=await count('crear',{tienda:'CK-02'});
   await count('subir',{id:fourth.corte.id,contado_at:fourth.corte.corte_at,archivo:'conteo.xlsx',sha256:'d'.repeat(64),filas:[{codigo:'VID',imei:'',cantidad:3}]});
   const clean=await doc('aplicar',{...payload,id:fourth.corte.id,clasificacion:'correccion_registro',decisiones:[]});

@@ -27,10 +27,11 @@
     return total;
   }
   function init({ sb, XLSX, tiendaActual, refrescar }) {
-    let config, detalle, documento, utilidad, puedeCerrar=false, noConformes=[], tareasFotos=[], cortesPendientes=[], busy=false, ready;
+    let config, detalle, documento, utilidad, puedeCerrar=false, noConformes=[], tareasFotos=[], cortesPendientes=[], busy=false, editando=false, ready;
+    let revisionClave='', decisionesConteo=new Map(), costosConteo=new Map();
     const el = id => document.getElementById(`conteos-${id}`);
     document.body.insertAdjacentHTML('beforeend', `<div id="conteos-modal" class="modal-bg" style="z-index:10000" role="dialog" aria-modal="true" aria-label="Conteos y ajustes de inventario">
-      <style>#conteos-evidencia-form[hidden]{display:none}</style>
+      <style>#conteos-evidencia-form[hidden],#conteos-edicion[hidden],#conteos-form-decidir[hidden]{display:none}</style>
       <div class="modal-box" style="max-width:1250px;width:100%">
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
@@ -91,6 +92,12 @@
       const {data,error}=await sb.rpc('inventario_ajuste_documento',{p_accion:accion,p_datos:datos});
       if(error)throw new Error(error.message);
       if(!data)throw new Error('No se confirmó el documento de ajuste.');
+      return data;
+    }
+    async function rpcCorrecciones(accion,datos) {
+      const {data,error}=await sb.rpc('inventario_conteo_correcciones',{p_accion:accion,p_datos:datos});
+      if(error)throw new Error(error.message);
+      if(!data)throw new Error('No se confirmó la corrección del conteo.');
       return data;
     }
     async function cargarNoConformes() {
@@ -203,6 +210,7 @@
       if(utilidad)hoja(libro,resultadoFilas(utilidad).map(([Concepto,Valor])=>({Concepto,Valor,
         Estado:utilidad.cerrado?'Cerrada':'Provisional, no cerrada',Inicio:local(utilidad.inicio_at),
         Fin:local(utilidad.fin_at),'ID cierre':utilidad.cierre_id||'',Bloqueos:(utilidad.bloqueos||[]).join(' ')})),'Utilidad neta');
+      if(d.correcciones?.length)hoja(libro,filasCorrecciones(d.correcciones),'Correcciones');
       guardarLibro(libro,`${d.numero}.xlsx`);
     }
     function imprimirDocumento() {
@@ -283,6 +291,53 @@
       hoja(libro,(c.revision_fuente.fuentes||[]).map(f=>({Archivo:f.nombre,SHA256:f.sha256,'Fecha impresa':f.fecha_impresa,'Fecha confirmada por Óscar':fechaCorte(c),Alcance:'Solo comparación. No se aplicaron ajustes.'})),'Fuentes');
       guardarLibro(libro,`comparativo-${c.tienda_nombre}-${fechaCorte(c)}.xlsx`);
     }
+    function filasCorrecciones(correcciones) {
+      return correcciones.flatMap(h=>(h.cambios||[]).map(l=>({Versión:h.version,Fecha:local(h.creado_at),
+        Responsable:h.creado_nombre,Motivo:h.motivo,Código:l.codigo,Referencia:l.nombre,IMEI:l.imei,
+        'Sistema al corte':l.cantidad_corte,'Cantidad anterior':l.cantidad_anterior,'Cantidad nueva':l.cantidad_nueva,
+        'Diferencia anterior':l.diferencia_anterior,'Diferencia nueva':l.diferencia_nueva,
+        'Observación anterior':l.nota_anterior,'Observación nueva':l.nota_nueva,
+        'Archivo original':h.archivo_nombre,'SHA256 original':h.archivo_sha256})));
+    }
+    async function descargarDiferencias() {
+      if(editando)throw new Error('Guarda o cancela la edición antes de descargar el informe.');
+      detalle=await rpcCorrecciones('ver',{id:detalle.corte.id});
+      await renderDetalle();
+      await cargarNoConformes();
+      const {corte:c,lineas,correcciones=[]}=detalle,libro=XLSX.utils.book_new(),t=resumirValores(lineas);
+      const diferencias=lineas.filter(l=>l.diferencia!=null&&l.diferencia!==0);
+      hoja(libro,[{Marca:'Creditek · KORA',Informe:'Diferencias de inventario para reconteo y validación',
+        Tienda:c.tienda_nombre,'Código tienda':c.tienda_codigo,'ID corte':c.id,Corte:fechaCorte(c),
+        Estado:estadoCorte(c),'Versión del conteo':c.conteo_version||0,'Fecha del informe':local(new Date()),
+        'Registró el conteo':c.contado_nombre,'Archivo original':c.archivo_nombre,SHA256:c.archivo_sha256,
+        Referencias:diferencias.length,'Sistema al corte':t.valorSistema,'Reportado al corte':t.valorReportado,
+        'Unidades faltantes':t.unidadesFaltantes,'Valor faltantes':t.faltantes,
+        'Unidades sobrantes':t.unidadesSobrantes,'Valor sobrantes':t.sobrantes,'Impacto neto al costo':t.impactoNeto,
+        'Filas sin costo válido':t.sinCosto,'Documento de ajuste':documento?.numero||'Pendiente, no aplicado',
+        Instrucciones:'Reconstruye la cantidad al corte: físico + salidas posteriores − entradas posteriores. Completa reconteo, observación y quién validó. Este informe no aplica ajustes ni se carga automáticamente.'}],'Resumen');
+      hoja(libro,diferencias.length?diferencias.map(l=>({Código:l.codigo,Referencia:l.nombre,IMEI:l.imei,
+        'Sistema al corte':l.cantidad_corte,'Reportado al corte':l.cantidad_fisica,Diferencia:l.diferencia,
+        Actual:l.actual,'Propuesto hoy / aplicado':l.posterior??l.actual+l.diferencia,'Costo tienda':l.costo_tienda,
+        'Valor diferencia':Number(l.costo_tienda)>0?(l.valor_ajuste??l.diferencia*l.costo_tienda):'',Observación:l.nota||'',
+        'Clasificación de baja / diferencia':documento?.lineas.find(d=>d.codigo===l.codigo&&d.imei===l.imei)?.clasificacion||'Pendiente de revisión',
+        'Reconteo reportado al corte':'','Observación del reconteo':'','Validado por':'','Fecha de validación':''})):
+        [{Observación:'Sin diferencias registradas en esta versión del conteo.'}],'Diferencias');
+      const bajas=noConformes.filter(n=>n.corte_id===c.id);
+      const salidas=diferencias.filter(l=>l.diferencia<0);
+      if(salidas.length)hoja(libro,salidas.map(l=>{
+        const n=bajas.find(n=>n.codigo===l.codigo&&n.imei===l.imei&&n.estado!=='rechazado');
+        const d=documento?.lineas.find(d=>d.codigo===l.codigo&&d.imei===l.imei);
+        return {Código:l.codigo,Referencia:l.nombre,IMEI:l.imei,Cantidad:-l.diferencia,
+          Clasificación:n?.categoria_gasto||d?.clasificacion||'Pendiente de revisión',Estado:n?.estado||estadoCorte(c),
+          Motivo:n?.motivo||c.motivo||l.nota||'',Soporte:n?.soporte||c.soporte||c.archivo_nombre||'',
+          'Foto pendiente':n?!n.foto_path:'No aplica / por clasificar','Costo tienda':l.costo_tienda,
+          'Valor baja al costo':Number(l.costo_tienda)>0?-l.diferencia*l.costo_tienda:'',
+          'ID solicitud':n?.id||'','Documento de ajuste':documento?.numero||'No aplicado',
+          Autorizó:c.autorizado_nombre||'','Fecha de autorización':c.autorizado_at?local(c.autorizado_at):''};
+      }),'Control de bajas');
+      if(correcciones.length)hoja(libro,filasCorrecciones(correcciones),'Correcciones');
+      guardarLibro(libro,`diferencias-${c.tienda_nombre}-${c.id.slice(0,8)}-v${c.conteo_version||0}.xlsx`);
+    }
     async function crear(ciego) {
       if(!el('tienda').value) throw new Error('Selecciona una tienda; el corte no mezcla tiendas.');
       const hoy=local(new Date()).slice(0,10);
@@ -342,8 +397,17 @@
       el('historial').querySelectorAll('[data-conteo-id]').forEach(b=>b.onclick=()=>run(async()=>{detalle=await rpc('ver',{id:b.dataset.conteoId});await renderDetalle();}));
     }
     async function renderDetalle() {
+      capturarRevision();
+      editando=false;
+      el('modal').querySelectorAll('[data-edicion-disabled="true"]').forEach(control=>{
+        control.disabled=false;control.dataset.disabled='false';delete control.dataset.edicionDisabled;
+      });
       documento=null;utilidad=null;puedeCerrar=false;
+      if(detalle.corte.contado_at&&!detalle.corte.revision_fuente?.solo_comparativo)
+        detalle=await rpcCorrecciones('ver',{id:detalle.corte.id});
       const { corte,lineas }=detalle;
+      const clave=`${corte.id}:${corte.conteo_version||0}:${corte.estado}`;
+      if(clave!==revisionClave){decisionesConteo.clear();costosConteo.clear();revisionClave=clave;}
       const pendiente=corte.estado==='pendiente', corteFijo=corte.base_conteo==='corte_fijo';
       const historico=!!corte.revision_fuente?.solo_comparativo;
       const archivoSoporte=soporteArchivo(corte);
@@ -355,6 +419,9 @@
         ${historico?`<div style="margin:12px 0;padding:12px;border:1px solid #b7791f"><strong>Solo comparativo: no modifica inventario.</strong><p>${esc(corte.revision_fuente.nota)}</p><h3>Filas por aclarar</h3>${(corte.revision_fuente.pendientes||[]).map(p=>`<p>${esc(p.nombre)} · ${esc(p.codigo||'Sin código')} · fila ${esc(p.fila)} · base escrita: ${esc(p.base)} · conteo: ${esc(p.conteo)}.<br>${esc(p.motivo)}</p>`).join('')}</div>`:''}
         ${corte.autorizado_at?`<p>Revisión: ${esc(corte.autorizado_nombre)} · ${esc(local(corte.autorizado_at))}<br>Motivo: ${esc(corte.motivo)}<br>Soporte: ${esc(corte.soporte||'—')}</p>`:''}
         <button id="conteos-redescargar" class="btn-export">${historico?'Descargar comparativo':'Descargar este corte'}</button>
+        ${corte.contado_at&&!historico?`<button id="conteos-diferencias-excel" type="button" class="btn-export">Descargar informe de diferencias</button>
+          ${config.autoriza&&pendiente&&corteFijo?'<button id="conteos-editar" type="button" class="btn-export">Editar conteo</button>':''}
+          <p>Versión del conteo: ${Number(corte.conteo_version||0)}. Las correcciones conservan el archivo original y no modifican existencias hasta aplicar el ajuste.</p>`:''}
         ${corte.estado==='abierto'?`<form id="conteos-form-subir" class="inventario-form" style="margin:16px 0">
           <label>Archivo único contado<input id="conteos-archivo" type="file" accept=".xlsx" required></label>
           <label><input id="conteos-confirmar-corte" type="checkbox" required> Confirmo que la tienda sumó las salidas y restó las entradas posteriores al corte. El Excel reporta lo que había al corte, no el físico de hoy.</label>
@@ -369,6 +436,13 @@
           <p>La aprobación aplica las diferencias a existencias una sola vez y registra quién autorizó. El corte original conserva las diferencias como evidencia; no se borran del historial.</p>
         </section>`:''}
         <label><input type="checkbox" id="conteos-solo-dif" ${pendiente?'checked':''}> Mostrar solo diferencias</label>
+        <div class="inventario-form" style="margin:8px 0"><label>Buscar referencia / IMEI<input id="conteos-buscar-linea" type="search" placeholder="Código, nombre o IMEI"></label></div>
+        <form id="conteos-edicion" class="inventario-form" hidden novalidate>
+          <p>Edita «Reportado al corte», no el inventario actual. Puedes sumar, restar o escribir la cantidad. Los totales y la utilidad provisional se recalculan al guardar.</p>
+          <label>Motivo de la corrección<textarea id="conteos-edicion-motivo" minlength="5" required></textarea></label>
+          <div class="form-actions"><button type="submit" class="primary">Guardar correcciones del conteo</button><button id="conteos-edicion-cancelar" type="button" class="secondary">Cancelar edición</button></div>
+          <p id="conteos-edicion-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p>
+        </form>
         <div class="tabla-wrap" style="overflow:auto;max-height:450px;margin:12px 0"><table><thead><tr><th>Referencia / IMEI</th><th>Sistema al corte</th><th>Reportado al corte</th><th>Diferencia</th><th>Actual</th><th>Propuesto hoy / aplicado</th><th>Costo tienda</th><th>Valor diferencia</th><th>Observación</th><th>Decisión</th></tr></thead><tbody id="conteos-lineas"></tbody></table></div>
         ${config.autoriza&&!historico&&(pendiente||corte.estado==='abierto')?`<form id="conteos-form-decidir" class="inventario-form" novalidate>
           <label>Motivo de la revisión<textarea id="conteos-motivo" minlength="5" required></textarea></label>
@@ -379,14 +453,78 @@
           <label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
           ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
           <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Aplicar ajuste de inventario</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div>
-          <p id="conteos-decision-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p></form>`:''}<div id="conteos-cierre"></div>`;
+          <p id="conteos-decision-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p></form>`:''}
+        ${(detalle.correcciones||[]).length?`<details><summary>Historial de correcciones · ${detalle.correcciones.length}</summary>
+          ${detalle.correcciones.map(h=>`<p>Versión ${Number(h.version)} · ${esc(h.creado_nombre)} · ${esc(local(h.creado_at))}<br>${esc(h.motivo)}</p>
+            ${(h.cambios||[]).map(l=>`<p>${esc(l.codigo)} ${esc(l.imei)} · ${esc(l.cantidad_anterior)} → ${esc(l.cantidad_nueva)} · ${esc(l.nota_nueva)}</p>`).join('')}`).join('')}</details>`:''}
+        <div id="conteos-cierre"></div>`;
+      const borrador=new Map();
       function pintarLineas() {
-        const filas=el('solo-dif').checked?lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0):lineas;
-        const anteriores=new Map(Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>[`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`,i.value]));
-        el('lineas').innerHTML=filas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${historico?'Por validar':l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${l.diferencia==null||!(Number(l.costo_tienda)>0)?'—':esc(money(l.valor_ajuste==null?Number(l.diferencia)*Number(l.costo_tienda):Number(l.valor_ajuste)))}</td><td>${esc(l.nota)}</td><td>${config.autoriza&&!historico&&pendiente&&l.diferencia!==0?`<select data-decision-codigo="${esc(l.codigo)}" data-decision-imei="${esc(l.imei)}" aria-label="Decisión para ${esc(l.codigo)}"><option value="">Clasificar</option>${l.diferencia<0?'<option value="no_conforme">No conforme · salida</option><option value="faltante">Faltante</option><option value="obsequio">Obsequio</option>':'<option value="sobrante">Sobrante</option>'}<option value="correccion_registro">Corrección de registro</option></select>`:'—'}</td></tr>`).join('')||'<tr><td colspan="10">Sin diferencias registradas.</td></tr>';
-        el('lineas').querySelectorAll('[data-decision-codigo]').forEach(i=>{i.value=anteriores.get(`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`)||'';});
+        const busqueda=el('buscar-linea').value.trim().toLocaleLowerCase('es');
+        const filas=(el('solo-dif').checked?lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0):lineas)
+          .filter(l=>!busqueda||`${l.codigo} ${l.nombre} ${l.imei}`.toLocaleLowerCase('es').includes(busqueda));
+        capturarRevision();
+        el('lineas').innerHTML=filas.map(l=>{
+          const index=lineas.indexOf(l),b=borrador.get(index);
+          return `<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${l.cantidad_corte}</td><td>${editando?`<div style="display:flex;gap:4px;align-items:center"><button type="button" data-sumar="${index}" data-delta="-1" aria-label="Restar una unidad a ${esc(l.codigo)}">−</button><input type="number" min="0" ${l.tipo==='serializado'?'max="1"':''} step="1" inputmode="numeric" data-cantidad="${index}" value="${esc(b?.cantidad??l.cantidad_fisica)}" style="width:90px" aria-label="Reportado al corte de ${esc(l.codigo)}"><button type="button" data-sumar="${index}" data-delta="1" aria-label="Sumar una unidad a ${esc(l.codigo)}">+</button></div>`:l.cantidad_fisica??'—'}</td><td>${l.diferencia??'—'}</td><td>${l.actual}</td><td>${historico?'Por validar':l.posterior??(l.diferencia===null?'—':l.actual+l.diferencia)}</td><td>${!editando&&config.autoriza&&!historico&&pendiente&&l.diferencia!==0&&!(Number(l.costo_tienda)>0)?`<input type="number" min="0.01" step="0.01" style="width:130px" data-costo-codigo="${esc(l.codigo)}" data-costo-imei="${esc(l.imei)}" aria-label="Costo de tienda para ${esc(l.codigo)}">`:esc(money(l.costo_tienda))}</td><td>${l.diferencia==null||!(Number(l.costo_tienda)>0)?'—':esc(money(l.valor_ajuste==null?Number(l.diferencia)*Number(l.costo_tienda):Number(l.valor_ajuste)))}</td><td>${editando?`<input data-nota="${index}" value="${esc(b?.nota??l.nota)}" maxlength="2000" aria-label="Observación para ${esc(l.codigo)}">`:esc(l.nota)}</td><td>${!editando&&config.autoriza&&!historico&&pendiente&&l.diferencia!==0?`<select data-decision-codigo="${esc(l.codigo)}" data-decision-imei="${esc(l.imei)}" aria-label="Decisión para ${esc(l.codigo)}"><option value="">Clasificar</option>${l.diferencia<0?'<option value="no_conforme">No conforme · salida</option><option value="faltante">Faltante</option><option value="obsequio">Obsequio</option>':'<option value="sobrante">Sobrante</option>'}<option value="correccion_registro">Corrección de registro</option></select>`:'—'}</td></tr>`;
+        }).join('')||'<tr><td colspan="10">Sin referencias con estos filtros.</td></tr>';
+        el('lineas').querySelectorAll('[data-decision-codigo]').forEach(i=>{i.value=decisionesConteo.get(`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`)?.clasificacion||'';});
+        el('lineas').querySelectorAll('[data-costo-codigo]').forEach(i=>{i.value=costosConteo.get(`${i.dataset.costoCodigo}\u0000${i.dataset.costoImei}`)?.valor||'';});
+        const guardarBorrador=index=>{
+          const l=lineas[index],b=borrador.get(index)||{cantidad:String(l.cantidad_fisica),nota:l.nota||''};
+          borrador.set(index,b);return b;
+        };
+        const pintarPropuesta=(index,input)=>{
+          const b=borrador.get(index),l=lineas[index],cells=input.closest('tr').cells;
+          try {
+            if(b.cantidad==='')throw new Error('Vacío');
+            const nueva=global.KoraConteos.corregirLinea(l,Number(b.cantidad),b.nota);
+            cells[3].textContent=nueva.diferencia;cells[5].textContent=l.actual+nueva.diferencia;
+            cells[7].textContent=Number(l.costo_tienda)>0?money(nueva.diferencia*l.costo_tienda):'Por confirmar';
+          } catch {for(const i of [3,5,7])cells[i].textContent='Por validar';}
+        };
+        el('lineas').querySelectorAll('[data-cantidad]').forEach(i=>{
+          i.oninput=()=>{const index=Number(i.dataset.cantidad);guardarBorrador(index).cantidad=i.value;pintarPropuesta(index,i);};
+          if(borrador.has(Number(i.dataset.cantidad)))pintarPropuesta(Number(i.dataset.cantidad),i);
+        });
+        el('lineas').querySelectorAll('[data-nota]').forEach(i=>i.oninput=()=>{guardarBorrador(Number(i.dataset.nota)).nota=i.value;});
+        el('lineas').querySelectorAll('[data-sumar]').forEach(b=>b.onclick=()=>{
+          const index=Number(b.dataset.sumar),draft=guardarBorrador(index),input=el('lineas').querySelector(`[data-cantidad="${index}"]`);
+          if(draft.cantidad==='')return;
+          const cantidad=Number(draft.cantidad)+Number(b.dataset.delta);
+          if(!Number.isSafeInteger(cantidad)||cantidad<0||cantidad>2147483647||(lineas[index].tipo==='serializado'&&cantidad>1))return;
+          draft.cantidad=String(cantidad);input.value=draft.cantidad;
+          pintarPropuesta(index,input);
+        });
       }
       pintarLineas();el('solo-dif').onchange=pintarLineas;
+      el('buscar-linea').oninput=pintarLineas;
+      function modoEdicion(valor) {
+        editando=valor;el('edicion').hidden=!valor;
+        if(el('form-decidir'))el('form-decidir').hidden=valor;
+        for(const id of ['editar','diferencias-excel'])if(el(id)){el(id).disabled=valor;el(id).dataset.disabled=String(valor);}
+        for(const control of [el('tienda'),el('crear'),el('ciego'),el('buscar'),el('informe'),el('ultimos'),...el('historial').querySelectorAll('button')]){
+          control.disabled=valor;control.dataset.disabled=String(valor);control.dataset.edicionDisabled=String(valor);
+        }
+        el('solo-dif').checked=false;pintarLineas();
+      }
+      if(el('editar'))el('editar').onclick=()=>{modoEdicion(true);el('edicion-motivo').focus();};
+      el('edicion-cancelar').onclick=()=>{borrador.clear();el('edicion').reset();modoEdicion(false);};
+      el('edicion').onsubmit=event=>{event.preventDefault();run(async()=>{
+        const motivo=el('edicion-motivo').value.trim();if(motivo.length<5)throw new Error('Explica el motivo de la corrección (mínimo 5 caracteres).');
+        const filas=[];
+        for(const [index,b] of borrador){
+          if(b.cantidad==='')throw new Error(`Escribe la cantidad de ${lineas[index].codigo}; vacío no equivale a cero.`);
+          const nueva=global.KoraConteos.corregirLinea(lineas[index],Number(b.cantidad),b.nota.trim());
+          if(nueva.cantidad_fisica!==lineas[index].cantidad_fisica||nueva.nota!==(lineas[index].nota||''))
+            filas.push({codigo:nueva.codigo,imei:nueva.imei,cantidad:nueva.cantidad_fisica,nota:nueva.nota});
+        }
+        if(!filas.length)throw new Error('No hay cambios para guardar.');
+        detalle=await rpcCorrecciones('guardar',{id:corte.id,conteo_version:corte.conteo_version||0,motivo,filas});
+        document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
+        await renderDetalle();await historial();
+      },'edicion-mensaje');};
+      if(el('diferencias-excel'))el('diferencias-excel').onclick=()=>run(descargarDiferencias);
       el('redescargar').onclick=()=>descargar();
       el('form-subir')?.addEventListener('submit',event=>{event.preventDefault();run(subir);});
       el('form-decidir')?.addEventListener('submit',event=>{event.preventDefault();run(()=>decidir('aplicar'),'decision-mensaje');});
@@ -415,13 +553,16 @@
       await renderDetalle();await historial();
     }
     async function decidir(accion) {
+      if(editando)throw new Error('Guarda o cancela las correcciones antes de aplicar el ajuste.');
       const motivo=el('motivo').value.trim(),referencia=el('soporte').value.trim(),clasificacion=el('clasificacion').value;
       const soporte=[soporteArchivo(detalle.corte),referencia].filter(Boolean).join(' · Referencia adicional: ');
       if(motivo.length<5)throw new Error('Explica el motivo de la revisión.');
       if(accion==='aplicar'&&!clasificacion)throw new Error('Selecciona la clasificación general antes de aplicar.');
       if(accion==='aplicar'&&soporte.length<5)throw new Error('Este corte no tiene un Excel registrado con identificador. Completa la referencia del soporte antes de aplicar.');
-      const costos=Array.from(el('lineas').querySelectorAll('[data-costo-codigo]'),i=>({codigo:i.dataset.costoCodigo,imei:i.dataset.costoImei,costo_tienda:Number(i.value)}));
-      const decisiones=Array.from(el('lineas').querySelectorAll('[data-decision-codigo]'),i=>({codigo:i.dataset.decisionCodigo,imei:i.dataset.decisionImei,clasificacion:i.value}));
+      capturarRevision();
+      const costos=Array.from(costosConteo.values(),c=>({codigo:c.codigo,imei:c.imei,costo_tienda:Number(c.valor)}));
+      const decisiones=detalle.lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0).map(l=>({codigo:l.codigo,imei:l.imei,
+        clasificacion:decisionesConteo.get(`${l.codigo}\u0000${l.imei}`)?.clasificacion||''}));
       if(accion==='aplicar'&&decisiones.some(d=>!d.clasificacion))throw new Error('Clasifica cada diferencia. Los imperfectos no son faltantes.');
       const noConformes=decisiones.filter(d=>d.clasificacion==='no_conforme');
       const valorizadas=detalle.lineas.map(l=>{
@@ -433,10 +574,16 @@
         throw new Error('Confirma el costo de todas las diferencias antes de autorizar.');
       const impacto=valoracion.impactoNeto;
       if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. Las fotos faltantes quedan como tarea de la administradora y no bloquean el ajuste ni el cierre. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return false;
-      const datos={id:detalle.corte.id,base_conteo:'corte_fijo',motivo,soporte,clasificacion,costos,decisiones};
+      const datos={id:detalle.corte.id,base_conteo:'corte_fijo',conteo_version:detalle.corte.conteo_version||0,motivo,soporte,clasificacion,costos,decisiones};
       detalle=accion==='aplicar'?await rpcDocumento('aplicar',datos):await rpc(accion,datos);
       document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       await renderDetalle();await historial();if(accion==='aplicar'){await cargarNoConformes();await refrescar();}
+    }
+    function capturarRevision() {
+      el('lineas')?.querySelectorAll('[data-decision-codigo]').forEach(i=>decisionesConteo.set(`${i.dataset.decisionCodigo}\u0000${i.dataset.decisionImei}`,
+        {codigo:i.dataset.decisionCodigo,imei:i.dataset.decisionImei,clasificacion:i.value}));
+      el('lineas')?.querySelectorAll('[data-costo-codigo]').forEach(i=>costosConteo.set(`${i.dataset.costoCodigo}\u0000${i.dataset.costoImei}`,
+        {codigo:i.dataset.costoCodigo,imei:i.dataset.costoImei,valor:i.value}));
     }
     async function informe() {
       const cortes=await obtenerHistorial(), rows=[], pendientes=[];
@@ -568,7 +715,7 @@
       if(pendientes.length)hoja(libro,pendientes,'Por aclarar');
       guardarLibro(libro,`ultimos-cortes-tiendas-${hoy}.xlsx`);
     }
-    el('cerrar').onclick=()=>{if(!busy)el('modal').classList.remove('show');};
+    el('cerrar').onclick=()=>{if(!busy&&(!editando||global.confirm('Hay una edición sin guardar. ¿Cerrar y descartarla?'))){editando=false;el('modal').classList.remove('show');}};
     el('crear').onclick=()=>run(()=>crear(false));el('ciego').onclick=()=>run(()=>crear(true));
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
     el('ultimos').onclick=()=>run(informeUltimos);

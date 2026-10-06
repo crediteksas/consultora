@@ -48,6 +48,10 @@ before(async()=>{
  await db.exec(fixedSql);
  await db.exec(historicoSql);
  await db.exec(delegacionSql);
+ await db.exec(`create table inventario_control.no_conformes(corte_id uuid,producto_id uuid,imei text,cantidad integer,estado text);
+   create table inventario_control.ajuste_documentos(corte_id uuid,detalle jsonb);
+   create function inventario_control.documento_inmutable() returns trigger language plpgsql set search_path='' as $$begin raise exception 'Documento inmutable'; end$$;`);
+ await db.exec(readFileSync('supabase/migrations/20261006211640_inventario_editar_conteo_informe_diferencias.sql','utf8'));
 });
 after(async()=>db?.close());
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
@@ -62,6 +66,72 @@ async function fixture(qty=250,serialized=false){
 }
 function upload(f,qty,time=f.result.corte.corte_at){return api('subir',{id:f.result.corte.id,contado_at:time,archivo:'conteo.xlsx',sha256:'a'.repeat(64),filas:[{codigo:f.code,imei:f.result.lineas[0].imei,cantidad:qty}]});}
 function apply(f,extra={}){return api('aplicar',{id:f.result.corte.id,motivo:'Revisión física',soporte:'Acta de prueba',clasificacion:'sobrante_por_aclarar',...extra});}
+async function correction(f,filas,extra={}){return (await db.query('select public.inventario_conteo_correcciones($1,$2::jsonb) r',
+ ['guardar',JSON.stringify({id:f.result.corte.id,conteo_version:0,motivo:'Reconteo validado',filas,...extra})])).rows[0].r;}
+test('editar cantidad y nota preserva original, recalcula diferencia, audita y no mueve stock',async()=>{
+ const f=await fixture(10);await upload(f,7);
+ const r=await correction(f,[{codigo:f.code,imei:'',cantidad:9,nota:'Se encontraron dos unidades'}]);
+ assert.equal(r.stock_modificado,false);assert.equal(r.corte.conteo_version,1);assert.equal(r.corte.estado,'pendiente');
+ assert.equal(r.lineas[0].actual,10);assert.equal(r.lineas[0].diferencia,-1);assert.equal(r.lineas[0].cantidad_corte,10);
+ assert.equal(r.corte.archivo_sha256,'a'.repeat(64));assert.equal(r.correcciones[0].creado_por,maite);
+ assert.equal(r.correcciones[0].cambios[0].cantidad_anterior,7);assert.equal(r.correcciones[0].cambios[0].cantidad_nueva,9);
+ await assert.rejects(apply(f),/conteo cambió/);await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}]),/conteo cambió/);
+ assert.equal((await apply(f,{conteo_version:1})).lineas[0].posterior,9);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}],{conteo_version:1}),/antes de aplicar/);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from movimientos where referencia_id=$1',[f.result.corte.id])).rows[0].n,1);
+ await assert.rejects(db.query('update inventario_control.conteo_correcciones set motivo=motivo'),/inmutable/);
+});
+test('edición inválida y lote parcialmente válido revierten todos los cambios',async()=>{
+ const f=await fixture(10);await upload(f,7);
+ for(const cantidad of ['',null,-1,2.5,2147483648])await assert.rejects(correction(f,[{codigo:f.code,cantidad}]),/Cantidad inválida/);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8},{codigo:'OTRO',cantidad:3}]),/ajeno/);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8},{codigo:f.code,cantidad:9}]),/duplicado/);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}],{motivo:'No'}),/motivo/);
+ const v=await api('ver',{id:f.result.corte.id});assert.equal(v.corte.conteo_version,0);assert.equal(v.lineas[0].cantidad_fisica,7);
+ const g=await fixture(1,true);await upload(g,0);await assert.rejects(correction(g,[{codigo:g.code,imei:g.result.lineas[0].imei,cantidad:2}]),/0 o 1/);
+});
+test('sin cambios no crea versiones, permite sumar y restar y exige revisión de bajas vinculadas',async()=>{
+ const f=await fixture(10);await upload(f,7);
+ assert.equal((await correction(f,[{codigo:f.code,cantidad:7}])).correcciones.length,0);
+ const r=await correction(f,[{codigo:f.code,cantidad:12}]);assert.equal(r.lineas[0].diferencia,2);
+ const r2=await correction(f,[{codigo:f.code,cantidad:9}],{conteo_version:1});assert.equal(r2.lineas[0].diferencia,-1);assert.equal(r2.corte.conteo_version,2);
+ await db.exec('reset role');await db.query("insert into inventario_control.no_conformes values($1,$2,'',1,'solicitado')",[f.result.corte.id,f.id]);await asUser(maite);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}],{conteo_version:2}),/baja vinculada/);
+ assert.equal((await correction(f,[{codigo:f.code,cantidad:9,nota:'Baja verificada'}],{conteo_version:2})).corte.conteo_version,3);
+});
+test('solo responsables editan; lectura por tienda, anónimo y perfil inactivo bloqueados',async()=>{
+ const f=await fixture(5);await upload(f,4);
+ await asUser(otherAdmin);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/Mayte/);
+ await asUser(otherUser);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/otra tienda/);
+ await asUser('');await assert.rejects(correction(f,[]),/perfil activo/);
+ await db.exec('reset role');
+ assert.equal((await db.query("select has_function_privilege('anon','public.inventario_conteo_correcciones(text,jsonb)','execute') ok")).rows[0].ok,false);
+ assert.equal((await db.query("select prosecdef from pg_proc where proname='inventario_conteo_correcciones'")).rows[0].prosecdef,false);
+});
+test('las correcciones respetan comparativos históricos, permisos activos y acceso al historial',async()=>{
+ const f=await fixture(5);await upload(f,4);
+ await db.exec('reset role');
+ await db.query("update inventario_control.cortes set revision_fuente='{\"solo_comparativo\":true}' where id=$1",[f.result.corte.id]);
+ await asUser(maite);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/antes de aplicar/);
+ await db.exec('reset role');await db.query('update inventario_control.cortes set revision_fuente=null where id=$1',[f.result.corte.id]);
+ const usuario=(await db.query("insert into perfiles values(gen_random_uuid(),'Administradora','admin_tienda',$1,true) returning id",[f.store])).rows[0].id;
+ await asUser(usuario);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/Mayte/);
+ await asUser(oscar);await correction(f,[{codigo:f.code,cantidad:5}]);
+ await asUser(usuario);
+ const visto=(await db.query("select public.inventario_conteo_correcciones('ver',$1::jsonb) r",[JSON.stringify({id:f.result.corte.id})])).rows[0].r;
+ assert.equal(visto.correcciones[0].creado_por,oscar);assert.equal(visto.corte.conteo_version,1);
+ await db.exec('reset role');await db.query('update perfiles set activo=false where id=$1',[usuario]);await asUser(usuario);
+ await assert.rejects(correction(f,[],{conteo_version:1}),/perfil activo/);
+});
+test('dominio de edición valida enteros, ceros e IMEI y nunca recalcula la base del corte',()=>{
+ const context=vm.createContext({window:{}});vm.runInContext(readFileSync('creditek/erp/conteos-domain.js','utf8'),context);
+ const editar=context.window.KoraConteos.corregirLinea;
+ const base={tipo:'cantidad',cantidad_corte:10,cantidad_fisica:7,diferencia:-3,actual:9};
+ assert.equal(editar(base,0).diferencia,-10);assert.equal(editar(base,12).diferencia,2);assert.equal(editar(base,12).cantidad_corte,10);
+ assert.equal(base.cantidad_fisica,7);assert.equal(editar({...base,tipo:'serializado'},1).cantidad_fisica,1);
+ for(const n of [-1,0.1,NaN,Infinity,2147483648])assert.throws(()=>editar(base,n),/entero/);
+ assert.throws(()=>editar({...base,tipo:'serializado'},2),/0 o 1/);
+});
 test('comparativo histórico puede consultarse pero no aplicar ni omitir la revisión en el mismo UPDATE',async()=>{
  const f=await fixture(100);await upload(f,102);
  await db.exec('reset role');await db.query("update inventario_control.cortes set revision_fuente=$2 where id=$1",[f.result.corte.id,{solo_comparativo:true,fecha_confirmada:'2026-09-06',pendientes:[{nombre:'Sin identificar'}]}]);

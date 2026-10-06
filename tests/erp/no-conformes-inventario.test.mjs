@@ -63,7 +63,8 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
     '20261005225513_salida_no_conformes_corte.sql',
     '20261005161602_retail_cierre_utilidad_por_corte.sql',
     '20261006152825_inventario_documento_ajuste_por_tienda.sql',
-    '20261006165240_inventario_fotos_tarea_no_bloqueante.sql'])await db.exec(migration(name));
+    '20261006165240_inventario_fotos_tarea_no_bloqueante.sql',
+    '20261006211640_inventario_editar_conteo_informe_diferencias.sql'])await db.exec(migration(name));
   const as=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
   const api=async(a,d={})=>(await db.query('select public.inventario_no_conformes($1,$2::jsonb) r',[a,JSON.stringify(d)])).rows[0].r;
   const count=async(a,d={})=>(await db.query('select public.inventario_conteos($1,$2::jsonb) r',[a,JSON.stringify({base_conteo:'corte_fijo',...d})])).rows[0].r;
@@ -74,7 +75,13 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
   await as(tienda);
   const cut=await count('crear',{tienda:'CK-01'});
   await count('subir',{id:cut.corte.id,contado_at:cut.corte.corte_at,archivo:'acta.xlsx',sha256:'a'.repeat(64),
-    filas:[{codigo:'VID',imei:'',cantidad:8}]});
+    filas:[{codigo:'VID',imei:'',cantidad:7}]});
+  await as(maite);
+  const correction=(await db.query("select public.inventario_conteo_correcciones('guardar',$1::jsonb) r",[JSON.stringify({
+    id:cut.corte.id,conteo_version:0,motivo:'Reconteo encontró un vidrio',filas:[{codigo:'VID',imei:'',cantidad:8}]
+  })])).rows[0].r;
+  assert.equal(correction.stock_modificado,false);assert.equal(correction.corte.conteo_version,1);
+  assert.equal(correction.lineas[0].actual,10);assert.equal(correction.lineas[0].diferencia,-2);
   await db.exec('reset role');
   await db.query("update stock_cantidad set cantidad=9 where producto_id=$1",[product]);
   await as(tienda);
@@ -89,9 +96,12 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
     await assert.rejects(api('autorizar',{id:request.id}),/Solo Mayte/);
   }
   await as(maite);
-  const approval={id:cut.corte.id,base_conteo:'corte_fijo',motivo:'Imperfecto verificado',
+  const approval={id:cut.corte.id,base_conteo:'corte_fijo',conteo_version:1,motivo:'Imperfecto verificado',
     soporte:'Acta y fotografía',clasificacion:'no_conforme',decisiones:[{codigo:'VID',imei:'',clasificacion:'no_conforme'}]};
+  await assert.rejects(doc('aplicar',{...approval,conteo_version:0}),/conteo cambió/);
   const result=await doc('aplicar',approval);
+  assert.equal(result.documento.conteo_version,1);
+  assert.equal(result.documento.correcciones[0].cambios[0].cantidad_anterior,7);
   assert.equal(result.lineas[0].posterior,7);
   assert.equal(result.documento.numero,'AJ-CK-01-000001');
   assert.equal(result.documento.totales.impacto_neto,-3000);
@@ -193,7 +203,7 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
   await as(oscar);
   const second=await count('crear',{tienda:'CK-02'});
   await count('subir',{id:second.corte.id,contado_at:second.corte.corte_at,archivo:'conteo.xlsx',sha256:'b'.repeat(64),filas:[{codigo:'VID',imei:'',cantidad:4}]});
-  const payload={...approval,id:second.corte.id,clasificacion:'faltante',decisiones:[{codigo:'VID',imei:'',clasificacion:'faltante'}]};
+  const payload={...approval,id:second.corte.id,conteo_version:0,clasificacion:'faltante',decisiones:[{codigo:'VID',imei:'',clasificacion:'faltante'}]};
   await assert.rejects(doc('aplicar',{...payload,decisiones:[]}),/Faltan decisiones/);
   assert.equal((await doc('aplicar',payload)).documento.numero,'AJ-CK-02-000001');
   const third=await count('crear',{tienda:'CK-02'});

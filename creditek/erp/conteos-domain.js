@@ -30,5 +30,12 @@
     });
     return { corte, filas };
   }
-  global.KoraConteos = Object.freeze({ conciliar, leerLibro });
+  function corregirLinea(linea, cantidad, nota=linea.nota||'') {
+    if (!Number.isSafeInteger(cantidad) || cantidad<0 || cantidad>2147483647)
+      throw new Error('La cantidad debe ser un entero no negativo.');
+    if (linea.tipo==='serializado' && cantidad>1) throw new Error('Cada IMEI solo admite cantidad 0 o 1.');
+    return {...linea,cantidad_fisica:cantidad,diferencia:cantidad-linea.cantidad_corte,nota,
+      posterior:null,valor_ajuste:null};
+  }
+  global.KoraConteos = Object.freeze({ conciliar, leerLibro, corregirLinea });
 })(typeof window === 'undefined' ? globalThis : window);

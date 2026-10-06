@@ -311,18 +311,69 @@
         if(!anterior || new Date(c.corte_at)>new Date(anterior.corte_at) ||
           (c.corte_at===anterior.corte_at&&c.id>anterior.id))ultimos.set(c.tienda_codigo,c);
       }
-      const resumen=[],detalleFilas=[],diferencias=[],pendientes=[];
+      const resumen=[],resultadoCortes=[],control=[],detalleFilas=[],diferencias=[],pendientes=[];
+      async function saldoB2BAlCorte(tiendaCodigo,corteAt) {
+        let saldo=0,desde=0,filas;
+        do {
+          const {data,error}=await sb.from('cuenta_corriente')
+            .select('id,tipo,monto,created_at').eq('tienda_codigo',tiendaCodigo)
+            .lt('created_at',corteAt).order('id').range(desde,desde+999);
+          if(error)throw new Error(`No se pudo calcular la deuda B2B al corte de ${tiendaCodigo}: ${error.message}`);
+          filas=data||[];
+          for(const movimiento of filas) {
+            const monto=Number(movimiento.monto);
+            if(!['cargo','abono'].includes(movimiento.tipo)||!Number.isFinite(monto)||monto<0)
+              throw new Error(`La cuenta corriente de ${tiendaCodigo} tiene un movimiento inválido (${movimiento.id}).`);
+            saldo+=(movimiento.tipo==='cargo'?monto:-monto);
+          }
+          desde+=filas.length;
+        } while(filas.length===1000);
+        return saldo;
+      }
       for(const tienda of config.tiendas) {
         const c=ultimos.get(tienda.codigo);
         if(!c) {
-          resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:'Sin corte'});
+          resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,'Estado del corte':'Sin corte'});
           continue;
         }
         const data=await rpc('ver',{id:c.id});
         const lineas=data.lineas||[],contado=!!c.contado_at,valores=resumirValores(lineas);
         const diferenciasCorte=lineas.filter(l=>l.diferencia!=null&&Number(l.diferencia)!==0);
         const valorCompleto=contado&&valores.sinCosto===0;
-        resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:estadoCorte(c),
+        const pasivoSaldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at);
+        const {data:liquidacion,error:liquidacionError}=await sb.rpc('cierre_utilidad_retail',{p_accion:'vista',p_corte_id:c.id});
+        const camposResultado=['ventas_totales','costo_vendido','gastos_totales','perdidas_ajustes',
+          'ganancias_ajustes','ajuste_conciliacion','utilidad_neta'];
+        const cifrasCompletas=liquidacion&&camposResultado.every(campo=>
+          liquidacion[campo]!=null&&Number.isFinite(Number(liquidacion[campo])));
+        const utilidadDisponible=!liquidacionError&&liquidacion&&(liquidacion.cerrado||liquidacion.listo)&&
+          ['aplicado','sin_diferencias'].includes(c.estado)&&valorCompleto&&cifrasCompletas;
+        const utilidad=utilidadDisponible?Number(liquidacion.utilidad_neta):null;
+        const resultado=utilidad===null?'':utilidad<0?'Pérdida':utilidad>0?'Utilidad':'Equilibrio';
+        const estadoLiquidacion=liquidacionError||!liquidacion?`No disponible: ${liquidacionError?.message||'sin respuesta del cálculo'}`:
+          !contado?'Falta subir el conteo':!valorCompleto?'Faltan costos de inventario':
+          !cifrasCompletas?'Faltan datos del resultado económico':
+          liquidacion.cerrado?'Cerrada':liquidacion.listo?'Calculada, pendiente de cierre':
+          `Pendiente: ${(liquidacion.bloqueos||[]).join(' ')}`;
+        const estadoCorto=utilidadDisponible?(liquidacion.cerrado?'Confirmada':'Calculada, pendiente de cierre'):
+          liquidacionError||!liquidacion?'No disponible':'Pendiente de validación';
+        resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,'Fecha del corte':fechaCorte(c),
+          'Estado del corte':estadoCorte(c),'Inventario físico al costo':valorCompleto?valores.valorReportado:'',
+          'Deuda con B2B al corte':Math.max(pasivoSaldo,0),'Saldo a favor en B2B al corte':Math.max(-pasivoSaldo,0),
+          'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
+          Resultado:resultado,'Estado de utilidad':estadoCorto});
+        resultadoCortes.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,
+          'Inicio del tramo':liquidacion?.inicio_at?local(liquidacion.inicio_at):'',
+          'Fin del tramo':fechaCorte(c),
+          'Ventas del tramo':utilidadDisponible?Number(liquidacion.ventas_totales):'',
+          'Costo vendido':utilidadDisponible?Number(liquidacion.costo_vendido):'',
+          'Gastos aprobados':utilidadDisponible?Number(liquidacion.gastos_totales):'',
+          'Pérdidas de inventario':utilidadDisponible?Number(liquidacion.perdidas_ajustes):'',
+          'Sobrantes de inventario':utilidadDisponible?Number(liquidacion.ganancias_ajustes):'',
+          'Ajuste financiero':utilidadDisponible?Number(liquidacion.ajuste_conciliacion):'',
+          'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
+          Resultado:resultado,'Estado de utilidad':estadoLiquidacion,'ID corte':c.id});
+        control.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:estadoCorte(c),
           'Fecha del corte':fechaCorte(c),'Fecha de carga':c.recibido_at?local(c.recibido_at):'',
           'Referencias/IMEI':lineas.length,'Referencias con diferencia':contado?diferenciasCorte.length:'',
           'Unidades faltantes':contado?valores.unidadesFaltantes:'','Valor faltantes':valorCompleto?valores.faltantes:'',
@@ -351,6 +402,8 @@
       }
       const libro=XLSX.utils.book_new();
       hoja(libro,resumen,'Resumen tiendas');
+      if(resultadoCortes.length)hoja(libro,resultadoCortes,'Resultado del corte');
+      if(control.length)hoja(libro,control,'Control de cortes');
       if(diferencias.length)hoja(libro,diferencias,'Diferencias');
       if(detalleFilas.length)hoja(libro,detalleFilas,'Detalle inventario');
       if(pendientes.length)hoja(libro,pendientes,'Por aclarar');

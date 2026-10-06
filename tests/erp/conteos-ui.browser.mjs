@@ -17,10 +17,21 @@ try {
    XLSX.writeFile=(book,name)=>downloads.push({names:book.SheetNames,rows:XLSX.utils.sheet_to_json(book.Sheets.Conteo||book.Sheets.Comparativo||book.Sheets['Conteos y ajustes'],{defval:''}),sheets:Object.fromEntries(book.SheetNames.map(sheet=>[sheet,XLSX.utils.sheet_to_json(book.Sheets[sheet],{defval:''})])),name});
    const c={id:'11111111-1111-4111-8111-111111111111',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:new Date(Date.now()-60000).toISOString(),creado_nombre:'Operadora',estado:'abierto',base_conteo:'corte_fijo'};
    window.demoCorte=c;window.demoCortes=[c];window.demoDetails={};
+   window.demoCuenta=[
+    {id:'1',tienda_codigo:'A',tipo:'cargo',monto:1000000,created_at:'2026-09-01T10:00:00Z'},
+    {id:'2',tienda_codigo:'A',tipo:'abono',monto:100000,created_at:'2026-09-02T10:00:00Z'},
+    {id:'3',tienda_codigo:'B',tipo:'cargo',monto:500000,created_at:'2026-10-01T10:00:00Z'},
+    {id:'4',tienda_codigo:'A',tipo:'cargo',monto:200000,created_at:'2026-12-01T10:00:00Z'},
+   ];
    const lines=[{producto_id:'a',codigo:'VID',nombre:'Vidrio',tipo:'cantidad',imei:'',cantidad_corte:250,costo_tienda:1500,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:233},
     {producto_id:'b',codigo:'CEL',nombre:'Equipo',tipo:'serializado',imei:'000000000000001',cantidad_corte:1,costo_tienda:400000,cantidad_fisica:null,esperado_conteo:null,diferencia:null,actual:1}];
-   const sb={rpc:async(name,{p_accion:a,p_datos:d})=>{
+   const sb={from:name=>{
+     if(name!=='cuenta_corriente')throw new Error('Tabla no prevista: '+name);
+     const query={store:null,before:null,select(){return this;},eq(_field,value){this.store=value;return this;},lt(_field,value){this.before=value;return this;},order(){return this;},async range(start,end){return {data:demoCuenta.filter(row=>row.tienda_codigo===this.store&&row.created_at<this.before).slice(start,end+1),error:null};}};
+     return query;
+   },rpc:async(name,{p_accion:a,p_datos:d,p_corte_id:corteId})=>{
      calls.push({a,d});
+     if(name==='cierre_utilidad_retail')return {data:{cerrado:false,listo:corteId===c.id,inicio_at:'2026-09-01T08:00:00Z',ventas_totales:2000000,costo_vendido:1000000,gastos_totales:200000,perdidas_ajustes:100000,ganancias_ajustes:100000,ajuste_conciliacion:0,utilidad_neta:800000,bloqueos:corteId===c.id?[]:['Pendiente de aprobación']}};
      if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:'Tienda de prueba'},{codigo:'B',nombre:'Otra tienda'},{codigo:'C',nombre:'Tienda sin corte'}]}};
      if(a==='listar')return {data:{registros:[]}};
      if(a==='resumen')return {data:{anio:2026,filas:[]}};
@@ -69,6 +80,7 @@ try {
  assert.deepEqual(await page.evaluate(()=>downloads.at(-1).names),['Conteos y ajustes','Por aclarar']);
  await page.evaluate(()=>{
    delete demoCorte.revision_fuente;
+   demoCorte.estado='aplicado';
    const old={id:'22222222-2222-4222-8222-222222222222',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',corte_at:'2026-09-01T13:00:00Z',estado:'aplicado',contado_at:'2026-09-01T13:00:00Z'};
    const other={id:'33333333-3333-4333-8333-333333333333',tienda_codigo:'B',tienda_nombre:'Otra tienda',corte_at:'2026-10-04T13:00:00Z',estado:'pendiente',contado_at:'2026-10-04T13:00:00Z'};
    demoCortes=[old,demoCorte,other];
@@ -81,11 +93,16 @@ try {
  await page.locator('#conteos-ultimos').click();
  await page.waitForFunction(()=>downloads.at(-1).name.startsWith('ultimos-cortes-tiendas-'));
  const latest=await page.evaluate(()=>downloads.at(-1));
- assert.deepEqual(latest.names,['Resumen tiendas','Diferencias','Detalle inventario']);
+ assert.deepEqual(latest.names,['Resumen tiendas','Resultado del corte','Control de cortes','Diferencias','Detalle inventario']);
  assert.equal(latest.sheets['Resumen tiendas'].length,3);
- assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A')['ID corte'],id);
- assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B').Estado,'Pendiente de Mayte / Óscar');
- assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='C').Estado,'Sin corte');
+ assert.equal(latest.sheets['Control de cortes'].find(r=>r['Código tienda']==='A')['ID corte'],id);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A')['Deuda con B2B al corte'],900000);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A')['Utilidad o pérdida del corte'],800000);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A').Resultado,'Utilidad');
+ assert.equal(latest.sheets['Resultado del corte'].find(r=>r['Código tienda']==='A')['Costo vendido'],1000000);
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B')['Estado del corte'],'Pendiente de Mayte / Óscar');
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B')['Utilidad o pérdida del corte'],'');
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='C')['Estado del corte'],'Sin corte');
  assert.equal(latest.sheets['Detalle inventario'].some(r=>r.Código==='OLD'),false);
  assert.equal(latest.sheets.Diferencias.length,2);
  const latestQuery=await page.evaluate(()=>calls.filter(c=>c.a==='informe').at(-1).d);

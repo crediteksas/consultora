@@ -360,6 +360,7 @@
         resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,'Fecha del corte':fechaCorte(c),
           'Estado del corte':estadoCorte(c),'Inventario físico al costo':valorCompleto?valores.valorReportado:'',
           'Deuda con B2B al corte':Math.max(pasivoSaldo,0),'Saldo a favor en B2B al corte':Math.max(-pasivoSaldo,0),
+          'Ajuste físico neto al costo':valorCompleto?valores.impactoNeto:'',
           'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
           Resultado:resultado,'Estado de utilidad':estadoCorto});
         resultadoCortes.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,

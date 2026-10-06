@@ -101,6 +101,7 @@ try {
  assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='A').Resultado,'Utilidad');
  assert.equal(latest.sheets['Resultado del corte'].find(r=>r['Código tienda']==='A')['Costo vendido'],1000000);
  assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B')['Estado del corte'],'Pendiente de Mayte / Óscar');
+ assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B')['Ajuste físico neto al costo'],-100);
  assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='B')['Utilidad o pérdida del corte'],'');
  assert.equal(latest.sheets['Resumen tiendas'].find(r=>r['Código tienda']==='C')['Estado del corte'],'Sin corte');
  assert.equal(latest.sheets['Detalle inventario'].some(r=>r.Código==='OLD'),false);

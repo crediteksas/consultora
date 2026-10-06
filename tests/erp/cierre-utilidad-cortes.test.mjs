@@ -31,7 +31,7 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
       create table public.origenes(codigo text primary key,nombre text,tipo text,activo boolean,inventario_control_desde timestamptz,inventario_control_activo boolean);
       insert into public.origenes values('CK-01','Celfiao Tolú','propia',true,'2026-09-04 05:00+00',true);
       create table inventario_control.cortes(id uuid primary key,tienda_codigo text,tienda_nombre text,corte_at timestamptz,estado text,autorizado_at timestamptz,base_conteo text,revision_fuente jsonb);
-      create table inventario_control.lineas(corte_id uuid,cantidad_fisica integer,costo_tienda numeric,valor_ajuste numeric);
+      create table inventario_control.lineas(corte_id uuid,cantidad_fisica integer,costo_tienda numeric,valor_ajuste numeric,diferencia integer);
       create table public.ventas(id uuid primary key,tienda_codigo text,created_at timestamptz,fecha date,total numeric,anulada boolean);
       create table public.venta_items(venta_id uuid,costo_tienda_congelado numeric,cantidad integer);
       create table public.gastos(tienda_codigo text,fecha date,created_at timestamptz,monto numeric,estado text);
@@ -45,7 +45,7 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
       insert into inventario_control.cortes values
         ('${corte1}','CK-01','Celfiao Tolú','2026-10-05 13:54:37+00','pendiente',null,'corte_fijo',null),
         ('${corte2}','CK-01','Celfiao Tolú','2026-10-06 13:54:37+00','aplicado','2026-10-06 14:00+00','corte_fijo',null);
-      insert into inventario_control.lineas values('${corte1}',9,50,-50),('${corte1}',1,10,10),('${corte2}',7,50,0);
+      insert into inventario_control.lineas values('${corte1}',9,50,null,-1),('${corte1}',1,10,null,1),('${corte2}',7,50,0,0);
       insert into public.ventas values
         ('00000000-0000-0000-0000-000000000201','CK-01','2026-10-05 13:53+00','2026-10-05',1000,false),
         ('00000000-0000-0000-0000-000000000202','CK-01','2026-10-05 13:55+00','2026-10-05',2000,false);
@@ -79,6 +79,9 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
     let preview = await call('vista', corte1);
     assert.equal(preview.listo, false);
     assert.match(preview.bloqueos.join(' '), /aprueben el conteo/);
+    assert.equal(Number(preview.perdidas_ajustes),65,'Faltante provisional y baja previa, sin descontar dos veces');
+    assert.equal(Number(preview.ganancias_ajustes),10);
+    assert.equal(Number(preview.utilidad_neta),245,'La utilidad provisional incorpora las diferencias aún sin aplicar');
     await assert.rejects(call('cerrar', corte1, preview.huella), /Solo Gerencia/);
 
     await db.exec('reset role');

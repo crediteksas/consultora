@@ -354,7 +354,7 @@ grant execute on function public.inventario_no_conformes(text,jsonb) to authenti
 
 -- This is an inventory expense, not a cash-register expense. Its movement ID
 -- is unique, so reporting cannot charge the same write-off twice.
-create function public.gastos_inventario_no_monetarios(p_desde date,p_hasta date,p_tienda text default null)
+create function inventario_control.gastos_no_monetarios(p_desde date,p_hasta date,p_tienda text default null)
 returns table(id uuid,fecha date,tienda_codigo text,categoria_gasto text,
   producto_id uuid,cantidad integer,valor numeric,movimiento_id bigint)
 language plpgsql security definer set search_path='' as $$
@@ -378,6 +378,14 @@ begin
    and (p.rol in ('gerencia','auditoria') or n.tienda_codigo=p.tienda_codigo)
  order by coalesce(c.corte_at,n.autorizado_at),n.id;
 end $$;
+revoke all on function inventario_control.gastos_no_monetarios(date,date,text) from public,anon;
+grant execute on function inventario_control.gastos_no_monetarios(date,date,text) to authenticated;
+create function public.gastos_inventario_no_monetarios(p_desde date,p_hasta date,p_tienda text default null)
+returns table(id uuid,fecha date,tienda_codigo text,categoria_gasto text,
+  producto_id uuid,cantidad integer,valor numeric,movimiento_id bigint)
+language sql security invoker set search_path='' as $$
+  select * from inventario_control.gastos_no_monetarios(p_desde,p_hasta,p_tienda);
+$$;
 revoke all on function public.gastos_inventario_no_monetarios(date,date,text) from public,anon;
 grant execute on function public.gastos_inventario_no_monetarios(date,date,text) to authenticated;
 notify pgrst,'reload schema';

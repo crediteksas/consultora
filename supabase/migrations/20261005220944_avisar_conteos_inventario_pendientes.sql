@@ -1,6 +1,6 @@
 -- Campana de Gerencia y Auditoría: cuenta solo cortes ya cargados y aún
 -- pendientes de una decisión. La consulta no aplica ajustes ni revela filas.
-create or replace function public.conteos_pendientes_cantidad()
+create or replace function inventario_control.conteos_pendientes_cantidad()
 returns bigint
 language plpgsql
 stable
@@ -27,5 +27,12 @@ begin
 end;
 $function$;
 
-revoke all on function public.conteos_pendientes_cantidad() from public, anon, authenticated;
+revoke all on function inventario_control.conteos_pendientes_cantidad() from public, anon;
+grant usage on schema inventario_control to authenticated;
+grant execute on function inventario_control.conteos_pendientes_cantidad() to authenticated;
+create or replace function public.conteos_pendientes_cantidad()
+returns bigint language sql stable security invoker set search_path='' as $$
+  select inventario_control.conteos_pendientes_cantidad();
+$$;
+revoke all on function public.conteos_pendientes_cantidad() from public, anon;
 grant execute on function public.conteos_pendientes_cantidad() to authenticated;

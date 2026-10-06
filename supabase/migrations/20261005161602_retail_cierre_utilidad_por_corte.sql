@@ -181,8 +181,10 @@ begin
     v_bloqueos:=array_append(v_bloqueos,'Hay gastos pendientes de decidir en este tramo.');
   end if;
 
-  select coalesce(sum(-(l.valor_ajuste)),0) into v_perdidas
-    from inventario_control.lineas l where l.corte_id=p_corte_id and l.valor_ajuste<0;
+  -- Antes de aplicar, valor_ajuste aún es NULL: mostrar el resultado provisional
+  -- con el delta al costo congelado, sin modificar existencias ni asientos.
+  select coalesce(sum(-coalesce(l.valor_ajuste,l.diferencia*l.costo_tienda)),0) into v_perdidas
+    from inventario_control.lineas l where l.corte_id=p_corte_id and l.diferencia<0;
   -- Las bajas previas al corte son gasto de inventario sin salida de efectivo.
   -- Las vinculadas a este corte ya están en valor_ajuste: identificarlas para
   -- el desglose, pero nunca restarlas una segunda vez.
@@ -197,8 +199,8 @@ begin
       where n.corte_id=p_corte_id and n.estado='separado_pendiente_destino';
     v_perdidas:=v_perdidas+v_no_conformes_antes;
   end if;
-  select coalesce(sum(l.valor_ajuste),0) into v_ganancias
-    from inventario_control.lineas l where l.corte_id=p_corte_id and l.valor_ajuste>0;
+  select coalesce(sum(coalesce(l.valor_ajuste,l.diferencia*l.costo_tienda)),0) into v_ganancias
+    from inventario_control.lineas l where l.corte_id=p_corte_id and l.diferencia>0;
   select coalesce(sum(c.valor_real_financiera-c.valor_esperado_financiera),0)
     into v_conciliacion from public.creditos c join public.ventas v on v.id=c.venta_id
     where v.tienda_codigo=v_corte.tienda_codigo and not coalesce(v.anulada,false)
@@ -206,9 +208,10 @@ begin
       and c.conciliado_at>=v_inicio and c.conciliado_at<v_fin;
   select coalesce(sum(l.cantidad_fisica*l.costo_tienda),0) into v_inv_final
     from inventario_control.lineas l where l.corte_id=p_corte_id;
-  if v_corte.estado in ('aplicado','sin_diferencias') and exists(
+  if exists(
     select 1 from inventario_control.lineas l where l.corte_id=p_corte_id
-      and l.cantidad_fisica>0 and (l.costo_tienda is null or l.costo_tienda<=0)
+      and (l.cantidad_fisica>0 or coalesce(l.diferencia,0)<>0)
+      and (l.costo_tienda is null or l.costo_tienda<=0)
   ) then v_bloqueos:=array_append(v_bloqueos,'El corte tiene existencias sin costo de tienda válido.'); end if;
   v_inv_inicial:=v_anterior.inventario_final;
   v_resultado:=jsonb_build_object(
@@ -249,10 +252,11 @@ begin
     'cerrado_por',v_perfil.id);
 end;
 $fn$;
-revoke all on function inventario_control.cierre_utilidad_api(text,uuid,text) from public,anon,authenticated;
+revoke all on function inventario_control.cierre_utilidad_api(text,uuid,text) from public,anon;
+grant execute on function inventario_control.cierre_utilidad_api(text,uuid,text) to authenticated;
 
 create function public.cierre_utilidad_retail(p_accion text,p_corte_id uuid default null,p_huella text default null)
-returns jsonb language sql security definer set search_path='' as $fn$
+returns jsonb language sql security invoker set search_path='' as $fn$
   select inventario_control.cierre_utilidad_api(p_accion,p_corte_id,p_huella);
 $fn$;
 revoke all on function public.cierre_utilidad_retail(text,uuid,text) from public,anon;

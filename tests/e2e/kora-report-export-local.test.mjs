@@ -21,7 +21,7 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     await page.addInitScript(()=>{
       const operations=Array.from({length:82},(_,i)=>({id:`test-${i}`,external_id:`TEST-${i}`,plataforma:'krediya',operation_at:'2026-09-15T17:00:00Z',tipo_establecimiento:'aliado',establishment_name:'Establecimiento de prueba',monto_base:53734962/82,bonos_aplicados:4100000/82,utilidad_creditek:9450360.09/82,policy_snapshot:{krediya_v2:{gasto_financiero:214939.85/82,provision:3675140.06/82}}}));
       const expenses=[6,13,20,27].map(day=>({id:`g-${day}`,fecha_causacion_historica:`2026-09-${String(day).padStart(2,'0')}`,aprobado_at:'2026-10-06T22:20:00Z',estado:'pagado',plataforma:'krediya',concepto:'Viáticos y eventos',valor:450000}));
-      expenses.push({id:'general',aprobado_at:'2026-09-30T17:00:00Z',estado:'aprobado',general:true,concepto:'Gasto general de prueba',valor:100000});
+      expenses.push({id:'general',aprobado_at:'2026-09-30T17:00:00Z',estado:'aprobado',general:true,concepto:'Gasto general de prueba',valor:2800000});
       const data={liquidation_operations:operations,aliados_gastos_operativos:expenses,origenes:[{codigo:'CK-09',nombre:'Kredisinu'}]};
       window.creditekSidebar={perfil:{rol:'gerencia',activo:true,nombre:'Óscar'},sb:{from(table){const query=new Proxy({}, {get(_,key){if(key==='then')return ok=>Promise.resolve({data:data[table]||[]}).then(ok);return ()=>query;}});return query;},async rpc(name,params){window.lastReportAudit={name,params};return {data:name==='es_controlador_financiero'?true:name==='addi_liquidaciones_listar'?[]:null};}}};
     });
@@ -30,6 +30,10 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     await page.locator('#dashboardFrom').fill('2026-09-01');
     await page.locator('#dashboardTo').fill('2026-09-30');
     await page.locator('#dashboardPlatform').selectOption('krediya');
+    assert.equal(await page.getByText('Utilidad de liquidaciones: antes de gastos operativos del período.',{exact:false}).isVisible(),true);
+    const internalExpenseNote=page.locator('p[data-kora-report-note]').filter({hasText:'de gastos generales de Aliados no se distribuyen'});
+    assert.equal(await internalExpenseNote.isVisible(),true);
+    assert.match(await internalExpenseNote.textContent(),/2\.800\.000/);
     await page.evaluate(()=>{
       document.body.insertAdjacentHTML('afterbegin','<select id="koraStoreSelector"><option value="CK-09" selected>Kredisinu</option></select><div class="kora-topbar__actions"></div>');
     });
@@ -45,7 +49,8 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     assert.deepEqual(reports.summary.metrics,reports.detailed.metrics);
     assert.equal(reports.summary.metrics.find(([label])=>label==='Gastos aplicados a esta vista')[1],'$ 1.800.000');
     assert.equal(reports.summary.metrics.find(([label])=>label==='Créditos del periodo')[1],'82');
-    assert.match(reports.summary.notes.join(' '),/gastos generales/);
+    const internalNotes=/Utilidad de liquidaciones: antes de gastos operativos|de gastos generales de Aliados no se distribuyen|Consulta «Propios y aliados»/;
+    for(const report of [reports.summary,reports.detailed])assert.doesNotMatch(JSON.stringify(report),internalNotes);
     assert.ok(reports.detailed.tables.some(table=>table.heading==='Gastos históricos ya pagados'&&table.rows.length===4));
     assert.ok(reports.detailed.tables.some(table=>table.heading==='Operaciones del periodo'));
     assert.ok(!reports.detailed.tables.some(table=>/Histórico inicial/.test(table.heading)),'no exportar el detalle cerrado');
@@ -54,6 +59,7 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     const [completePopup]=await Promise.all([page.waitForEvent('popup'),page.getByRole('button',{name:'Generar PDF',exact:true}).click()]);
     await completePopup.getByRole('heading',{name:'Operaciones del periodo'}).waitFor();
     assert.match(await completePopup.locator('body').textContent(),/Viáticos y eventos/);
+    assert.doesNotMatch(await completePopup.locator('body').textContent(),internalNotes);
     assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_filtros['Formato del informe']),'Detallado · datos y movimientos');
     await completePopup.close();
     await page.getByRole('button',{name:'Generar informe',exact:true}).click();
@@ -63,6 +69,7 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     await popup.waitForFunction(()=>{const img=document.querySelector('.brand img');return img?.complete&&img.naturalWidth>0;},null,{timeout:10000}).catch(async error=>{throw new Error(`${error.message} · ${JSON.stringify(await popup.locator('.brand img').evaluate(img=>({src:img.src,complete:img.complete,width:img.naturalWidth,base:document.baseURI})))}`)});
     assert.doesNotMatch(await popup.locator('body').textContent(),/Kredisinu|Operaciones del periodo|Viáticos y eventos/);
     assert.match(await popup.locator('body').textContent(),/7\.650\.360/);
+    assert.doesNotMatch(await popup.locator('body').textContent(),internalNotes);
     assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_filtros['Formato del informe']),'Resumido · solo totales');
     assert.equal(await popup.evaluate(()=>window.opener),null);
     if(process.env.KORA_REPORT_QA_DIR){
@@ -77,20 +84,26 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     await popup.close();
     if(process.env.KORA_REPORT_EXCELJS_PATH){
       await page.addScriptTag({path:process.env.KORA_REPORT_EXCELJS_PATH});
-      await page.evaluate(()=>{window.KoraReportData={prepareExcel(){throw new Error('El resumido no debe cargar operaciones individuales.');}};});
-      await page.getByRole('button',{name:'Generar informe',exact:true}).click();
-      const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Descargar Excel',exact:true}).click()]);
-      const stream=await download.createReadStream(),chunks=[];
-      for await(const chunk of stream)chunks.push(chunk);
-      const workbook=XLSX.read(Buffer.concat(chunks),{type:'buffer',cellFormula:true});
-      assert.equal(workbook.SheetNames.length,3);
-      assert.doesNotMatch(workbook.SheetNames.join(' '),/Operaciones|históricos/);
-      const reconciliationSheet=workbook.Sheets[workbook.SheetNames.find(name=>name.includes('Cómo se obtiene'))];
-      const rows=XLSX.utils.sheet_to_json(reconciliationSheet,{header:1});
-      assert.equal(rows.find(row=>row[0]==='Utilidad antes de gastos generales')[1],7650360.09);
-      assert.equal(rows.find(row=>row[0]==='Menos: gastos operativos aprobados')[1],-1800000);
-      assert.doesNotMatch(JSON.stringify(reconciliationSheet),/SUBTOTAL\(109/,'no sumar bruta, descuentos y neta nuevamente');
-      assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_formato),'xlsx');
+      for(const mode of ['summary','detailed']){
+        await page.evaluate(mode=>{window.KoraReportData=mode==='summary'?{prepareExcel(){throw new Error('El resumido no debe cargar operaciones individuales.');}}:undefined;},mode);
+        await page.getByRole('button',{name:'Generar informe',exact:true}).click();
+        await page.getByRole('checkbox',{name:'Resumido',exact:true}).setChecked(mode==='summary');
+        const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Descargar Excel',exact:true}).click()]);
+        const stream=await download.createReadStream(),chunks=[];
+        for await(const chunk of stream)chunks.push(chunk);
+        const workbook=XLSX.read(Buffer.concat(chunks),{type:'buffer',cellFormula:true});
+        assert.doesNotMatch(JSON.stringify(workbook),internalNotes,`${mode}: no compartir notas internas en Excel`);
+        if(mode==='summary'){
+          assert.equal(workbook.SheetNames.length,3);
+          assert.doesNotMatch(workbook.SheetNames.join(' '),/Operaciones|históricos/);
+        }else assert.ok(workbook.SheetNames.some(name=>name.includes('Operaciones')));
+        const reconciliationSheet=workbook.Sheets[workbook.SheetNames.find(name=>name.includes('Cómo se obtiene'))];
+        const rows=XLSX.utils.sheet_to_json(reconciliationSheet,{header:1});
+        assert.equal(rows.find(row=>row[0]==='Utilidad antes de gastos generales')[1],7650360.09);
+        assert.equal(rows.find(row=>row[0]==='Menos: gastos operativos aprobados')[1],-1800000);
+        assert.doesNotMatch(JSON.stringify(reconciliationSheet),/SUBTOTAL\(109/,'no sumar bruta, descuentos y neta nuevamente');
+        assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_formato),'xlsx');
+      }
     }
     const owned=await page.evaluate(()=>window.KoraReportExport.reportScope({rol:'admin_tienda',tienda_codigo:'CK-09'}));
     assert.equal(owned.code,'CK-09');assert.equal(owned.restricted,true);
@@ -114,6 +127,7 @@ test('la misma casilla funciona en informes Retail y B2B; completo por defecto y
       await context.route('https://kora.test/**',request=>request.fulfill({contentType:'text/html',body:`<!doctype html><div class="kora-topbar__actions"></div><main><h1>${title}</h1>${kpis}<section><h2>Movimientos del periodo</h2><table><thead><tr><th>Referencia</th><th>Unidades</th><th>Valor</th></tr></thead><tbody><tr><td>Referencia individual A</td><td>2</td><td>$ 80.000</td></tr><tr><td>Referencia individual B</td><td>1</td><td>$ 40.000</td></tr></tbody><tfoot><tr><th>TOTAL</th><td>3</td><td>$ 120.000</td></tr></tfoot></table></section></main>`}));
       await page.goto(`https://kora.test/creditek/erp/${route}`);
       await page.evaluate(()=>document.querySelectorAll('.valor,.kpi-value').forEach(card=>card.textContent='$ 120.000'));
+      await page.evaluate(()=>document.querySelector('main').insertAdjacentHTML('beforeend','<p data-kora-report-note data-kora-no-export>Aclaración interna no compartible.</p><p data-kora-report-note>Desglose parcial: hay créditos sin cálculo completo.</p>'));
       await page.addScriptTag({path:resolve('creditek/erp/kora-report-export.js')});
       const reports=await page.evaluate(()=>{
         const profile={rol:'gerencia',nombre:'Óscar'};
@@ -130,6 +144,10 @@ test('la misma casilla funciona en informes Retail y B2B; completo por defecto y
       assert.match(JSON.stringify(reports.detailed.tables),/Referencia individual A/);
       assert.doesNotMatch(JSON.stringify(reports.summary.tables),/Referencia individual/);
       assert.deepEqual(reports.summary.tables[0].rows,[['TOTAL','3','$ 120.000']]);
+      for(const report of [reports.detailed,reports.summary]){
+        assert.deepEqual(report.notes,['Desglose parcial: hay créditos sin cálculo completo.']);
+      }
+      assert.equal(await page.getByText('Aclaración interna no compartible.',{exact:true}).isVisible(),true);
       await context.close();
     }
   }finally{await browser.close();}

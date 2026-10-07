@@ -85,17 +85,29 @@ test('resumido usa únicamente agregados o totales explícitos y no suma saldos/
 });
 
 test('PDF vertical conserva cuentas completas, notas y encabezados y apila detalles anchos',()=>{
-  const report={title:'Informe <prueba>',id:'KORA-REP-TEST',mode:'detailed',generated:'6/10/2026',user:'Óscar',role:'gerencia',route:'/creditek/erp/b2b-dashboard',filters:[['Periodo','Septiembre']],metrics:[['Total','$ 53.734.962']],notes:['Utilidad parcial: falta repartir gastos generales.'],tables:[{heading:'Pagos',headers:['Titular','Banco','Cuenta','Valor','Estado','Referencia'],rows:[['Mayte','Bancolombia','004490094309','$ 450.000','Aprobado','Venta <uno>']]}]};
+  const report={title:'Informe <prueba>',id:'KORA-REP-TEST',mode:'detailed',generated:'6/10/2026',user:'Óscar',role:'gerencia',route:'/creditek/erp/b2b-dashboard',filters:[['Periodo','Septiembre']],metrics:[['Total','$ 53.734.962']],notes:['Desglose parcial: hay créditos sin cálculo completo.'],tables:[{heading:'Pagos',headers:['Titular','Banco','Cuenta','Valor','Estado','Referencia'],rows:[['Mayte','Bancolombia','004490094309','$ 450.000','Aprobado','Venta <uno>']]}]};
   const html=pdfDocument(report);
   assert.match(html,/@page\{size:A4 portrait/);
   assert.doesNotMatch(html,/landscape/);
   assert.match(html,/class="record"/);
   assert.match(html,/<dt>Cuenta<\/dt><dd>004490094309<\/dd>/);
-  assert.match(html,/falta repartir gastos generales/);
+  assert.match(html,/hay créditos sin cálculo completo/);
   assert.match(html,/Informe &lt;prueba&gt;/);
   assert.match(html,/Venta &lt;uno&gt;/);
   assert.match(html,/Creditek S\.A\.S\./);
   assert.match(html,/>KORA<\/span>/);
+});
+
+test('las dos aclaraciones internas de Aliados permanecen en KORA pero no se exportan',async()=>{
+  const app=await read('creditek/erp/aliados-v1-1-app.js');
+  const notes=app.match(/<p\b[^>]*data-kora-report-note[^>]*>[\s\S]*?<\/p>/g)||[];
+  for(const text of ['Utilidad de liquidaciones: antes de gastos operativos','de gastos generales de Aliados no se distribuyen']){
+    const note=notes.find(html=>html.includes(text));
+    assert.ok(note,`mantener la aclaración en el software: ${text}`);
+    assert.match(note,/data-kora-no-export/);
+  }
+  assert.doesNotMatch(notes.find(html=>html.includes('Desglose parcial:')),/data-kora-no-export/,'conservar las advertencias de datos incompletos');
+  assert.match(source,/\[data-kora-no-export\]/);
 });
 
 test('Excel resumido no reintroduce detalle por hooks ni suma conciliaciones nuevamente',()=>{

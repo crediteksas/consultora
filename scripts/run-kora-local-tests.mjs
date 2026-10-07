@@ -20,6 +20,7 @@ const erp = [
   'tests/erp/kora-report-export.test.mjs',
   'tests/erp/traslados-existencias.test.mjs',
   'tests/erp/kora-notifications-pending.test.mjs',
+  'tests/erp/kora-incident-notifications-close.test.mjs',
   'tests/erp/liquidaciones-import-validation.test.mjs',
   'tests/erp/alertas-celulares.test.mjs',
   'tests/erp/caja-ciclo-automatico.test.mjs',

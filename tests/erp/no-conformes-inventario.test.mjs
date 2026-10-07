@@ -64,7 +64,9 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
     '20261005161602_retail_cierre_utilidad_por_corte.sql',
     '20261006152825_inventario_documento_ajuste_por_tienda.sql',
     '20261006165240_inventario_fotos_tarea_no_bloqueante.sql',
-    '20261006211640_inventario_editar_conteo_informe_diferencias.sql'])await db.exec(migration(name));
+    '20261006211640_inventario_editar_conteo_informe_diferencias.sql',
+    '20261007191921_permitir_corregir_conteos_sin_ajustar_existencias.sql',
+    '20261007193623_inventario_unico_en_proceso_y_cierre_sin_diferencias.sql'])await db.exec(migration(name));
   const as=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
   const api=async(a,d={})=>(await db.query('select public.inventario_no_conformes($1,$2::jsonb) r',[a,JSON.stringify(d)])).rows[0].r;
   const count=async(a,d={})=>(await db.query('select public.inventario_conteos($1,$2::jsonb) r',[a,JSON.stringify({base_conteo:'corte_fijo',...d})])).rows[0].r;
@@ -74,14 +76,20 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
   await db.query("insert into stock_cantidad values($1,'CK-01',10,1500,1000,now())",[product]);
   await as(tienda);
   const cut=await count('crear',{tienda:'CK-01'});
+  await assert.rejects(count('crear',{tienda:'CK-01'}),/inventario en proceso/);
+  await assert.rejects(doc('cerrar',{id:cut.corte.id}),/Solo Mayte/);
+  await as(maite);await assert.rejects(doc('cerrar',{id:cut.corte.id}),/Primero registra/);
+  await as(tienda);
   await count('subir',{id:cut.corte.id,contado_at:cut.corte.corte_at,archivo:'acta.xlsx',sha256:'a'.repeat(64),
     filas:[{codigo:'VID',imei:'',cantidad:7}]});
-  await as(maite);
+  await as(tienda);
   const correction=(await db.query("select public.inventario_conteo_correcciones('guardar',$1::jsonb) r",[JSON.stringify({
     id:cut.corte.id,conteo_version:0,motivo:'Reconteo encontró un vidrio',filas:[{codigo:'VID',imei:'',cantidad:8}]
   })])).rows[0].r;
   assert.equal(correction.stock_modificado,false);assert.equal(correction.corte.conteo_version,1);
+  assert.equal(correction.puede_editar,true);assert.equal(correction.correcciones[0].creado_por,tienda);
   assert.equal(correction.lineas[0].actual,10);assert.equal(correction.lineas[0].diferencia,-2);
+  await assert.rejects(doc('aplicar',{id:cut.corte.id,conteo_version:1,motivo:'No autoriza ajustes'}),/Mayte/);
   await db.exec('reset role');
   await db.query("update stock_cantidad set cantidad=9 where producto_id=$1",[product]);
   await as(tienda);
@@ -99,6 +107,8 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
   const approval={id:cut.corte.id,base_conteo:'corte_fijo',conteo_version:1,motivo:'Imperfecto verificado',
     soporte:'Acta y fotografía',clasificacion:'no_conforme',decisiones:[{codigo:'VID',imei:'',clasificacion:'no_conforme'}]};
   await assert.rejects(doc('aplicar',{...approval,conteo_version:0}),/conteo cambió/);
+  await assert.rejects(doc('cerrar',approval),/tiene diferencias/);
+  await assert.rejects(count('crear',{tienda:'CK-01'}),/inventario en proceso/);
   const result=await doc('aplicar',approval);
   assert.equal(result.documento.conteo_version,1);
   assert.equal(result.documento.correcciones[0].cambios[0].cantidad_anterior,7);
@@ -232,10 +242,40 @@ for(const diferirFoto of [false,true])test(`foto ${diferirFoto?'como tarea no bl
   }
   const fourth=await count('crear',{tienda:'CK-02'});
   await count('subir',{id:fourth.corte.id,contado_at:fourth.corte.corte_at,archivo:'conteo.xlsx',sha256:'d'.repeat(64),filas:[{codigo:'VID',imei:'',cantidad:3}]});
-  const clean=await doc('aplicar',{...payload,id:fourth.corte.id,clasificacion:'correccion_registro',decisiones:[]});
-  assert.equal(clean.documento.numero,'AJ-CK-02-000003');
+  await as(auditora);
+  if(diferirFoto){await db.exec('reset role');await db.query('update perfiles set activo=true where id=$1',[auditora]);await as(auditora);}
+  await assert.rejects(doc('cerrar',{...payload,id:fourth.corte.id}),/Solo Mayte/);
+  await as(oscar);
+  // Una edición posterior a la consulta también invalida el cierre sin diferencias.
+  await db.query("select public.inventario_conteo_correcciones('guardar',$1::jsonb)",[JSON.stringify({id:fourth.corte.id,conteo_version:0,motivo:'Observación de revisión',filas:[{codigo:'VID',imei:'',cantidad:3,nota:'Contado y validado'}]})]);
+  const closePayload={...payload,id:fourth.corte.id,decisiones:[]};
+  await assert.rejects(doc('cerrar',closePayload),/conteo cambió/);
+  const clean=await doc('cerrar',{...closePayload,conteo_version:1});
+  assert.equal(clean.corte.estado,'sin_diferencias');
+  assert.equal(clean.documento.numero,'CI-CK-02-000003');
   assert.equal(clean.documento.lineas.length,0);
   assert.equal(clean.documento.totales.impacto_neto,0);
+  assert.equal((await doc('cerrar',{...closePayload,conteo_version:1})).documento.documento_id,clean.documento.documento_id);
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from movimientos where referencia_id=$1',[fourth.corte.id])).rows[0].n,0);
+  assert.equal((await db.query("select cantidad from stock_cantidad where tienda_codigo='CK-02' and producto_id=$1",[product])).rows[0].cantidad,3);
+  assert.equal((await db.query('select count(*)::int n from inventario_control.cierres_utilidad where corte_id=$1',[fourth.corte.id])).rows[0].n,0,'Cerrar inventario no cierra automáticamente la utilidad');
+  await as(oscar);assert.equal((await count('en_proceso',{tienda:'CK-02'})).cortes.length,0);
+  const fifth=await count('crear',{tienda:'CK-02'});assert.notEqual(fifth.corte.id,fourth.corte.id);
+  // Neto cero no significa sin diferencias: una falta y un sobrante requieren
+  // ajuste y quedan documentados individualmente, no se compensan para cerrar.
+  await db.exec('reset role');await db.query("insert into productos(codigo,nombre,tipo) values('SOB','Sobrante','cantidad')");
+  await as(oscar);
+  await count('subir',{id:fifth.corte.id,contado_at:fifth.corte.corte_at,archivo:'conteo.xlsx',sha256:'e'.repeat(64),
+    filas:[{codigo:'VID',imei:'',cantidad:2},{codigo:'SOB',imei:'',cantidad:1}]});
+  const balanced={...payload,id:fifth.corte.id,clasificacion:'mixto',
+    costos:[{codigo:'SOB',imei:'',costo_tienda:1500}],
+    decisiones:[{codigo:'VID',imei:'',clasificacion:'faltante'},{codigo:'SOB',imei:'',clasificacion:'sobrante'}]};
+  await assert.rejects(doc('cerrar',balanced),/tiene diferencias/);
+  const adjusted=await doc('aplicar',balanced);
+  assert.equal(adjusted.corte.estado,'aplicado');assert.equal(adjusted.documento.numero,'AJ-CK-02-000004');
+  assert.equal(adjusted.documento.totales.impacto_neto,0);assert.equal(adjusted.documento.lineas.length,2);
+  assert.equal((await count('en_proceso',{tienda:'CK-02'})).cortes.length,0);
   await as(tienda);
   assert.equal((await doc('ver',{id:cut.corte.id})).documento.numero,'AJ-CK-01-000001');
   await assert.rejects(doc('aplicar',approval),/Solo Mayte/);

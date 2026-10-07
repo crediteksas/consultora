@@ -50,18 +50,23 @@ before(async()=>{
  await db.exec(delegacionSql);
  await db.exec(`create table inventario_control.no_conformes(corte_id uuid,producto_id uuid,imei text,cantidad integer,estado text);
    create table inventario_control.ajuste_documentos(corte_id uuid,detalle jsonb);
-   create function inventario_control.documento_inmutable() returns trigger language plpgsql set search_path='' as $$begin raise exception 'Documento inmutable'; end$$;`);
+   create function inventario_control.documento_inmutable() returns trigger language plpgsql set search_path='' as $$begin raise exception 'Documento inmutable'; end$$;
+   create function inventario_control.documentar_ajuste() returns trigger language plpgsql set search_path='' as $$
+     declare numero text; seq bigint:=1; begin
+     numero:='AJ-'||new.tienda_codigo||'-'||lpad(seq::text,6,'0'); return new; end$$;`);
  await db.exec(readFileSync('supabase/migrations/20261006211640_inventario_editar_conteo_informe_diferencias.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261007191921_permitir_corregir_conteos_sin_ajustar_existencias.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261007193623_inventario_unico_en_proceso_y_cierre_sin_diferencias.sql','utf8'));
 });
 after(async()=>db?.close());
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
 async function api(action,data={}){return (await db.query('select public.inventario_conteos($1,$2::jsonb) r',[action,JSON.stringify({base_conteo:'corte_fijo',...data})])).rows[0].r;}
-async function fixture(qty=250,serialized=false){
+async function fixture(qty=250,serialized=false,cost=1500){
  await db.exec('reset role');const code=`REF${++n}`,store=`T${n}`;
  await db.query("insert into origenes values($1,$1,'propia',true)",[store]);
  const id=(await db.query('insert into productos(codigo,nombre,tipo) values($1,$1,$2) returning id',[code,serialized?'serializado':'cantidad'])).rows[0].id;
  if(serialized)await db.query("insert into unidades(producto_id,imei,estado,tienda_actual,precio_tienda,costo_remision) values($1,$2,'disponible',$3,1500,900)",[id,`99999900000${n}`,store]);
- else await db.query('insert into stock_cantidad values($1,$2,$3,1500,900,now())',[id,store,qty]);
+ else await db.query('insert into stock_cantidad values($1,$2,$3,$4,900,now())',[id,store,qty,cost]);
  await asUser(maite);const result=await api('crear',{tienda:store});return {id,code,store,result};
 }
 function upload(f,qty,time=f.result.corte.corte_at){return api('subir',{id:f.result.corte.id,contado_at:time,archivo:'conteo.xlsx',sha256:'a'.repeat(64),filas:[{codigo:f.code,imei:f.result.lineas[0].imei,cantidad:qty}]});}
@@ -99,9 +104,11 @@ test('sin cambios no crea versiones, permite sumar y restar y exige revisión de
  await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}],{conteo_version:2}),/baja vinculada/);
  assert.equal((await correction(f,[{codigo:f.code,cantidad:9,nota:'Baja verificada'}],{conteo_version:2})).corte.conteo_version,3);
 });
-test('solo responsables editan; lectura por tienda, anónimo y perfil inactivo bloqueados',async()=>{
+test('auditores no responsables y otras tiendas no editan; anónimo sin acceso',async()=>{
  const f=await fixture(5);await upload(f,4);
- await asUser(otherAdmin);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/Mayte/);
+ await asUser(otherAdmin);
+ assert.equal((await db.query("select public.inventario_conteo_correcciones('ver',$1::jsonb) r",[JSON.stringify({id:f.result.corte.id})])).rows[0].r.puede_editar,false);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/permiso para corregir/);
  await asUser(otherUser);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/otra tienda/);
  await asUser('');await assert.rejects(correction(f,[]),/perfil activo/);
  await db.exec('reset role');
@@ -115,13 +122,59 @@ test('las correcciones respetan comparativos históricos, permisos activos y acc
  await asUser(maite);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/antes de aplicar/);
  await db.exec('reset role');await db.query('update inventario_control.cortes set revision_fuente=null where id=$1',[f.result.corte.id]);
  const usuario=(await db.query("insert into perfiles values(gen_random_uuid(),'Administradora','admin_tienda',$1,true) returning id",[f.store])).rows[0].id;
- await asUser(usuario);await assert.rejects(correction(f,[{codigo:f.code,cantidad:5}]),/Mayte/);
- await asUser(oscar);await correction(f,[{codigo:f.code,cantidad:5}]);
+ await asUser(usuario);const corregido=await correction(f,[{codigo:f.code,cantidad:5}]);
+ assert.equal(corregido.puede_editar,true);assert.equal(corregido.stock_modificado,false);
+ await asUser(oscar);await correction(f,[{codigo:f.code,cantidad:4}],{conteo_version:1});
  await asUser(usuario);
  const visto=(await db.query("select public.inventario_conteo_correcciones('ver',$1::jsonb) r",[JSON.stringify({id:f.result.corte.id})])).rows[0].r;
- assert.equal(visto.correcciones[0].creado_por,oscar);assert.equal(visto.corte.conteo_version,1);
+ assert.equal(visto.correcciones[0].creado_por,usuario);assert.equal(visto.correcciones[1].creado_por,oscar);assert.equal(visto.corte.conteo_version,2);
  await db.exec('reset role');await db.query('update perfiles set activo=false where id=$1',[usuario]);await asUser(usuario);
- await assert.rejects(correction(f,[],{conteo_version:1}),/perfil activo/);
+ await assert.rejects(correction(f,[],{conteo_version:2}),/perfil activo/);
+});
+test('administradora corrige su conteo sin modificar existencias ni obtener permiso de ajuste',async()=>{
+ const f=await fixture(10);await upload(f,7);
+ await db.exec('reset role');
+ const usuario=(await db.query("insert into perfiles values(gen_random_uuid(),'Administradora propia','admin_tienda',$1,true) returning id",[f.store])).rows[0].id;
+ await asUser(usuario);
+ const r=await correction(f,[{codigo:f.code,imei:'',cantidad:9,nota:'Dos unidades encontradas'}],
+   {autoriza:true,estado:'aplicado',cantidad_corte:0,costos:[{codigo:f.code,costo_tienda:1}]});
+ assert.equal(r.puede_editar,true);assert.equal(r.stock_modificado,false);assert.equal(r.corte.estado,'pendiente');
+ assert.equal(r.lineas[0].cantidad_corte,10);assert.equal(r.lineas[0].cantidad_fisica,9);assert.equal(r.lineas[0].diferencia,-1);
+ assert.equal(Number(r.lineas[0].costo_tienda),1500);assert.equal(r.lineas[0].actual,10);
+ assert.equal(r.correcciones[0].creado_por,usuario);assert.equal(r.corte.archivo_sha256,'a'.repeat(64));
+ assert.equal((await api('config')).autoriza,false);
+ await assert.rejects(apply(f,{conteo_version:1}),/Mayte/);
+ await assert.rejects(api('rechazar',{id:f.result.corte.id,motivo:'Intento de cierre'}),/Mayte/);
+ await assert.rejects(db.query('update stock_cantidad set cantidad=0 where producto_id=$1',[f.id]),/permission denied/);
+ await assert.rejects(db.query('update inventario_control.lineas set cantidad_fisica=0 where corte_id=$1',[f.result.corte.id]),/permission denied/);
+ await db.exec('reset role');
+ assert.equal((await db.query('select count(*)::int n from movimientos where referencia_id=$1',[f.result.corte.id])).rows[0].n,0);
+ await asUser(maite);const aplicado=await apply(f,{conteo_version:1});assert.equal(aplicado.lineas[0].posterior,9);
+ await asUser(usuario);
+ assert.equal((await db.query("select public.inventario_conteo_correcciones('ver',$1::jsonb) r",[JSON.stringify({id:f.result.corte.id})])).rows[0].r.puede_editar,false);
+ await assert.rejects(correction(f,[{codigo:f.code,cantidad:8}],{conteo_version:1}),/antes de aplicar/);
+});
+test('corregir auditoría cruzada exige permiso vigente y nunca concede aplicar ajustes',async()=>{
+ const f=await fixture(10);await upload(f,7);await db.exec('reset role');
+ const session=(await db.query("insert into sesiones_conteo_cruzado(tienda_auditada,admin_autorizado,estado,vigencia_hasta) values($1,$2,'abierta',now()+interval '1 hour') returning id",[f.store,storeUser])).rows[0].id;
+ await asUser(storeUser);const r=await correction(f,[{codigo:f.code,cantidad:8}]);
+ assert.equal(r.puede_editar,true);assert.equal(r.lineas[0].actual,10);assert.equal(r.correcciones[0].creado_por,storeUser);
+ await assert.rejects(apply(f,{conteo_version:1}),/Mayte/);
+ await db.exec('reset role');await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()-interval '1 minute' where id=$1",[session]);
+ await asUser(storeUser);await assert.rejects(correction(f,[{codigo:f.code,cantidad:9}],{conteo_version:1}),/otra tienda/);
+ await db.exec('reset role');await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()+interval '1 hour',estado='cerrada' where id=$1",[session]);
+ await asUser(storeUser);await assert.rejects(correction(f,[{codigo:f.code,cantidad:9}],{conteo_version:1}),/otra tienda/);
+ await asUser(maite);assert.equal((await api('ver',{id:f.result.corte.id})).lineas[0].cantidad_fisica,8);
+});
+test('vendedor y perfil sin rol no corrigen aunque puedan consultar su tienda',async()=>{
+ const f=await fixture(10);await upload(f,7);await db.exec('reset role');
+ for(const rol of ['vendedor',null]){
+  const id=(await db.query("insert into perfiles values(gen_random_uuid(),'No administradora',$1,$2,true) returning id",[rol,f.store])).rows[0].id;
+  await asUser(id);
+  assert.equal((await db.query("select public.inventario_conteo_correcciones('ver',$1::jsonb) r",[JSON.stringify({id:f.result.corte.id})])).rows[0].r.puede_editar,false);
+  await assert.rejects(correction(f,[{codigo:f.code,cantidad:9}]),/permiso para corregir/);
+  await db.exec('reset role');
+ }
 });
 test('dominio de edición valida enteros, ceros e IMEI y nunca recalcula la base del corte',()=>{
  const context=vm.createContext({window:{}});vm.runInContext(readFileSync('creditek/erp/conteos-domain.js','utf8'),context);
@@ -180,11 +233,17 @@ test('faltantes no dejan negativo y nuevos ingresos posteriores se conservan',as
  const g=await fixture(2);await upload(g,0);await db.exec('reset role');await db.query('update stock_cantidad set cantidad=0 where producto_id=$1',[g.id]);await asUser(maite);await assert.rejects(apply(g),/negativo/);
 });
 test('un segundo corte anterior al ajuste no puede volver a aplicarlo',async()=>{
- const f=await fixture(10);const other=await api('crear',{tienda:f.store});
- // PGlite puede ejecutar el corte y el ajuste en el mismo milisegundo.
- // La premisa de esta prueba es un corte estrictamente anterior al ajuste.
+ const f=await fixture(10);
+ // Simula un duplicado heredado, anterior al nuevo bloqueo. La migración no
+ // anula cortes existentes ni permite aplicar el mismo ajuste dos veces.
  await db.exec('reset role');
- other.corte.corte_at=(await db.query("update inventario_control.cortes set corte_at=corte_at-interval '1 second' where id=$1 returning corte_at",[other.corte.id])).rows[0].corte_at;
+ const id=(await db.query(`insert into inventario_control.cortes(tienda_codigo,tienda_nombre,corte_at,creado_por,creado_nombre)
+   select tienda_codigo,tienda_nombre,corte_at-interval '1 second',creado_por,creado_nombre from inventario_control.cortes where id=$1 returning id`,[f.result.corte.id])).rows[0].id;
+ await db.query(`insert into inventario_control.lineas(corte_id,producto_id,imei,codigo,nombre,tipo,cantidad_corte,costo_tienda)
+   select $1,producto_id,imei,codigo,nombre,tipo,cantidad_corte,costo_tienda from inventario_control.lineas where corte_id=$2`,[id,f.result.corte.id]);
+ await asUser(maite);const other=await api('ver',{id});
+ assert.equal((await api('en_proceso',{tienda:f.store})).cortes.length,2);
+ await assert.rejects(api('crear',{tienda:f.store}),/inventario en proceso/);
  await asUser(maite);await upload(f,12);await apply(f);
  await assert.rejects(api('subir',{id:other.corte.id,contado_at:other.corte.corte_at,archivo:'otro.xlsx',sha256:'b'.repeat(64),filas:[{codigo:f.code,imei:'',cantidad:12}]}),/otro ajuste/);
 });
@@ -205,6 +264,7 @@ test('todas las tiendas usan las mismas reglas, sin privilegios de aprobación p
  const own=await api('crear',{tienda:'A'});await assert.rejects(api('rechazar',{id:own.corte.id,motivo:'No aplica'}),/Mayte/);
  await asUser(otherUser);await assert.rejects(api('ver',{id:own.corte.id}),/otra tienda/);
  await asUser(otherAdmin);assert.equal((await api('config')).autoriza,false);await assert.rejects(api('rechazar',{id:own.corte.id,motivo:'No aplica'}),/Mayte/);
+ await asUser(maite);await api('rechazar',{id:own.corte.id,motivo:'Prueba de acceso terminada'});
  await asUser(maite);await assert.rejects(db.query('update public.stock_cantidad set cantidad=0'),/permission denied/);
  await assert.rejects(db.query('select * from inventario_control.cortes'),/permission denied/);
  await asUser('');await assert.rejects(api('config'),/perfil activo/);
@@ -243,10 +303,49 @@ test('un perfil sin rol no obtiene autorización por valores nulos',async()=>{
  const own=await api('crear',{tienda:'A'});await assert.rejects(api('rechazar',{id:own.corte.id,motivo:'No autorizado'}),/Mayte/);
 });
 test('un costo ausente confirmado queda también en la existencia, sin modificar costo proveedor',async()=>{
- const f=await fixture(5);await db.exec('reset role');await db.query('update stock_cantidad set precio_tienda=null where producto_id=$1',[f.id]);await asUser(maite);
- f.result=await api('crear',{tienda:f.store});await upload(f,6);
+ const f=await fixture(5,false,null);await upload(f,6);
  await apply(f,{costos:[{codigo:f.code,imei:'',costo_tienda:1800}]});await db.exec('reset role');
  const s=(await db.query('select * from stock_cantidad where producto_id=$1',[f.id])).rows[0];assert.equal(Number(s.precio_tienda),1800);assert.equal(Number(s.costo_promedio),900);
+});
+test('un solo inventario operativo por tienda, incluso abierto de otro día o ya contado',async()=>{
+ const f=await fixture(10);
+ await assert.rejects(api('crear',{tienda:f.store}),/inventario en proceso/);
+ await db.exec('reset role');
+ f.result.corte.corte_at=(await db.query("update inventario_control.cortes set corte_at=corte_at-interval '2 days' where id=$1 returning corte_at",[f.result.corte.id])).rows[0].corte_at;
+ await asUser(maite);
+ const previous=await api('en_proceso',{tienda:f.store});
+ assert.equal(previous.cortes.length,1);assert.equal(previous.cortes[0].id,f.result.corte.id);
+ await assert.rejects(api('crear',{tienda:f.store}),/inventario en proceso/);
+ await upload(f,10);await assert.rejects(api('crear',{tienda:f.store}),/inventario en proceso/);
+ // Otro negocio/tienda no comparte el bloqueo ni su inventario.
+ const g=await fixture(5);assert.notEqual(g.result.corte.id,f.result.corte.id);
+ await apply(f);assert.equal((await api('en_proceso',{tienda:f.store})).cortes.length,0);
+ const next=await api('crear',{tienda:f.store});assert.notEqual(next.corte.id,f.result.corte.id);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from inventario_control.cortes where tienda_codigo=$1',[f.store])).rows[0].n,2);
+});
+test('solicitudes simultáneas no crean dos cortes y la API conserva el bloqueo transaccional',async()=>{
+ const f=await fixture(1);await upload(f,1);await apply(f);
+ const outcomes=await Promise.allSettled([api('crear',{tienda:f.store}),api('crear',{tienda:f.store})]);
+ assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);
+ assert.match(outcomes.find(r=>r.status==='rejected').reason.message,/inventario en proceso/);
+ await db.exec('reset role');
+ const definition=(await db.query("select pg_get_functiondef('inventario_control.api(text,jsonb)'::regprocedure) d")).rows[0].d;
+ assert.ok(definition.indexOf('pg_advisory_xact_lock')<definition.indexOf("raise exception 'Ya hay un inventario en proceso"));
+ assert.ok(definition.indexOf("raise exception 'Ya hay un inventario en proceso")<definition.indexOf('insert into inventario_control.cortes'));
+});
+test('los comparativos históricos no bloquean el ciclo operativo y la consulta respeta tienda y delegación',async()=>{
+ const f=await fixture(2);
+ await db.exec('reset role');await db.query('update inventario_control.cortes set revision_fuente=$2::jsonb where id=$1',[f.result.corte.id,JSON.stringify({solo_comparativo:true})]);
+ await asUser(maite);assert.equal((await api('en_proceso',{tienda:f.store})).cortes.length,0);
+ const next=await api('crear',{tienda:f.store});assert.notEqual(next.corte.id,f.result.corte.id);
+ await asUser(storeUser);await assert.rejects(api('en_proceso',{tienda:f.store}),/otra tienda/);
+ await db.exec('reset role');
+ const session=(await db.query("insert into sesiones_conteo_cruzado(tienda_auditada,admin_autorizado,estado,vigencia_hasta) values($1,$2,'abierta',now()+interval '1 hour') returning id",[f.store,storeUser])).rows[0].id;
+ await asUser(storeUser);assert.equal((await api('en_proceso',{tienda:f.store})).cortes[0].id,next.corte.id);
+ await assert.rejects(api('crear',{tienda:f.store}),/inventario en proceso/);
+ await db.exec('reset role');await db.query("update sesiones_conteo_cruzado set vigencia_hasta=now()-interval '1 second' where id=$1",[session]);
+ await asUser(storeUser);await assert.rejects(api('en_proceso',{tienda:f.store}),/otra tienda/);
+ await asUser('');await assert.rejects(api('en_proceso',{tienda:f.store}),/perfil activo/);
 });
 test('diez tiendas: conteos aislados, revisión de Mayte y mismo saldo final',async()=>{
  for(let i=0;i<10;i++){

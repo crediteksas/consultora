@@ -3,7 +3,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const local = value => new Intl.DateTimeFormat('sv-SE', { timeZone:'America/Bogota', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit' }).format(new Date(value));
   const money = n => n == null ? 'Por confirmar' : new Intl.NumberFormat('es-CO',{ style:'currency',currency:'COP',maximumFractionDigits:0 }).format(n);
-  const estados = { abierto:'Pendiente de conteo', pendiente:'Pendiente de Mayte / Óscar', aplicado:'Ajuste aplicado',sin_diferencias:'Revisado sin diferencias',rechazado:'Cerrado sin aplicar' };
+  const estados = { abierto:'Pendiente de conteo', pendiente:'Pendiente de Mayte / Óscar', aplicado:'Inventario cerrado · ajuste aplicado',sin_diferencias:'Inventario cerrado sin diferencias',rechazado:'Corte descartado sin aplicar' };
   const fechaCorte = c => c.revision_fuente?.fecha_confirmada || local(c.corte_at);
   const estadoCorte = c => c.revision_fuente?.solo_comparativo && c.estado==='pendiente' ? 'Comparativo histórico · pendiente de revisión' : estados[c.estado];
   const soporteArchivo = c => c.archivo_nombre?.trim() && /^[a-f0-9]{64}$/i.test(c.archivo_sha256||'')
@@ -37,7 +37,7 @@
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
         <div class="form-actions"><button id="conteos-crear" class="primary">Preparar corte y descargar</button><button id="conteos-ciego" class="secondary">Preparar conteo ciego</button></div></div>
-        <p style="margin:8px 0">Si ya existe un corte abierto hoy para esta tienda, se reutiliza. La persona autorizada temporalmente puede cargarlo con su propio usuario; solo Mayte u Óscar aprueban diferencias.</p>
+        <p style="margin:8px 0">Cada tienda puede tener un solo inventario en proceso, aunque sea de otro día. Primero carga el conteo: sin diferencias se cierra el inventario; con diferencias se aplica el ajuste y se cierra. Solo Mayte u Óscar autorizan el ajuste o cierre. Las tiendas pueden cargar y corregir sus conteos sin cambiar existencias.</p>
         <section id="conteos-tareas-fotos" aria-label="Tareas de fotos pendientes" hidden>
           <h3>Fotos pendientes · tarea de la administradora de cada tienda</h3>
           <p>El ajuste ya está aplicado. Estas fotos pendientes no bloquean la operación ni el cierre de utilidad. Adjuntarlas no vuelve a descontar inventario ni gastos.</p>
@@ -158,7 +158,7 @@
       el('modal').querySelectorAll('button,input,select,textarea').forEach(control=>{control.disabled=true;});
       try {
         const result=await task();
-        el('mensaje').textContent=result===false?'Cancelado: no se aplicó ninguna decisión.':'Listo.';
+        el('mensaje').textContent=result===false?'Cancelado: no se aplicó ninguna decisión.':typeof result==='string'?result:'Listo.';
         if(feedback?.isConnected){feedback.textContent=el('mensaje').textContent;}
       }
       catch(e) {
@@ -180,9 +180,10 @@
       ['Sobrantes de inventario',u.ganancias_ajustes],['Ajustes financieros',u.ajuste_conciliacion],
       ['Utilidad neta del corte',u.utilidad_neta]
     ];
+    const nombreDocumento=()=>documento?.estado==='sin_diferencias'?'Documento de cierre sin diferencias':'Documento de ajuste';
     function documentoHTML() {
       const d=documento,t=d.totales;
-      return `<h2>Documento de ajuste ${esc(d.numero)}</h2><p>${esc(d.tienda_nombre)} · ${esc(d.tienda_codigo)}<br>
+      return `<h2>${nombreDocumento()} ${esc(d.numero)}</h2><p>${esc(d.tienda_nombre)} · ${esc(d.tienda_codigo)}<br>
         Corte: ${esc(local(d.corte_at))}<br>Aplicado por ${esc(d.autorizado_nombre)} · ${esc(local(d.autorizado_at))}<br>
         Motivo: ${esc(d.motivo)}<br>Soporte: ${esc(d.soporte)}</p>
         <p>${esc(t.referencias)} referencias · Faltantes: ${esc(t.unidades_faltantes)} unidades (${esc(money(t.faltantes))}) · Sobrantes: ${esc(t.unidades_sobrantes)} unidades (${esc(money(t.sobrantes))})<br>
@@ -194,9 +195,9 @@
           <p>${utilidad.cerrado?`Cierre ${esc(utilidad.cierre_id)} · ${esc(local(utilidad.cerrado_at))}`:esc((utilidad.bloqueos||[]).join(' '))}</p>`:''}`;
     }
     function descargarDocumento() {
-      if(!documento)throw new Error('Este corte no tiene documento de ajuste registrado.');
+      if(!documento)throw new Error('Este corte no tiene documento de ajuste o cierre registrado.');
       const d=documento,t=d.totales,libro=XLSX.utils.book_new();
-      hoja(libro,[{Documento:d.numero,Tienda:d.tienda_nombre,'Código tienda':d.tienda_codigo,
+      hoja(libro,[{Documento:d.numero,Tipo:nombreDocumento(),Tienda:d.tienda_nombre,'Código tienda':d.tienda_codigo,
         Corte:local(d.corte_at),Autorizó:d.autorizado_nombre,'Fecha autorización':local(d.autorizado_at),
         Motivo:d.motivo,Soporte:d.soporte,'Referencias ajustadas':t.referencias,
         'Unidades faltantes':t.unidades_faltantes,'Unidades sobrantes':t.unidades_sobrantes,
@@ -214,7 +215,7 @@
       guardarLibro(libro,`${d.numero}.xlsx`);
     }
     function imprimirDocumento() {
-      const frame=document.createElement('iframe');frame.style.display='none';frame.title='Documento de ajuste';
+      const frame=document.createElement('iframe');frame.style.display='none';frame.title=nombreDocumento();
       frame.onload=()=>{frame.contentWindow.focus();frame.contentWindow.print();};
       frame.srcdoc=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(documento.numero)}</title><style>body{font:12px Arial;color:#10213e}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px;text-align:left}tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}</style></head><body>${documentoHTML()}</body></html>`;
       document.body.appendChild(frame);
@@ -232,9 +233,9 @@
         if(!u)throw new Error('No se obtuvo el cálculo de utilidad.');
         utilidad=u;
         el('cierre').innerHTML=`<section aria-label="Cierre de inventario y utilidad" style="padding:14px;border:1px solid #cbd5e1;border-radius:12px;margin:16px 0">
-          ${documento?`<details><summary>Documento de ajuste ${esc(documento.numero)} · ${esc(documento.totales.referencias)} referencias</summary>${documentoHTML()}</details>
-            <div class="form-actions" style="margin:12px 0"><button id="conteos-documento-excel" type="button" class="secondary">Descargar documento de ajuste</button><button id="conteos-documento-imprimir" type="button" class="secondary">Imprimir / PDF</button></div>`:
-            `<p>${corte.estado==='pendiente'?'Al aplicar el ajuste se generará aquí el documento numerado de esta tienda.':'Este corte se aplicó antes de los documentos numerados; no se vuelve a ajustar.'}</p>`}
+          ${documento?`<details><summary>${nombreDocumento()} ${esc(documento.numero)} · ${esc(documento.totales.referencias)} referencias</summary>${documentoHTML()}</details>
+            <div class="form-actions" style="margin:12px 0"><button id="conteos-documento-excel" type="button" class="secondary">Descargar documento de ${documento.estado==='sin_diferencias'?'cierre':'ajuste'}</button><button id="conteos-documento-imprimir" type="button" class="secondary">Imprimir / PDF</button></div>`:
+            `<p>${corte.estado==='pendiente'?'Al cerrar el inventario, con o sin ajuste, se generará aquí el documento numerado de esta tienda.':'Este corte se aplicó antes de los documentos numerados; no se vuelve a ajustar.'}</p>`}
           <h3>Utilidad neta del corte · ${u.cerrado?'Cerrada':corte.estado==='pendiente'?'Provisional':'Pendiente de cierre'}</h3>
           <p>${esc(local(u.inicio_at))} a ${esc(local(u.fin_at))} · ${esc(u.ventas_count??'—')} ventas</p>
           <dl>${resultadoFilas(u).map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:16px;padding:6px 0"><dt>${esc(k)}</dt><dd style="margin:0;white-space:nowrap">${esc(money(v))}</dd></div>`).join('')}</dl>
@@ -253,7 +254,7 @@
           await cargarCierre();document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
         });
       } catch(e) {
-        el('cierre').innerHTML=`${documento?`<details><summary>Documento de ajuste ${esc(documento.numero)}</summary>${documentoHTML()}</details><button id="conteos-documento-excel" class="secondary">Descargar documento de ajuste</button><button id="conteos-documento-imprimir" class="secondary">Imprimir / PDF</button>`:''}<p role="alert">No se pudo consultar el cierre: ${esc(e.message)}. Consultar no aplica nuevos ajustes.</p><button id="conteos-cierre-reintentar" class="secondary">Actualizar utilidad y documento</button>`;
+        el('cierre').innerHTML=`${documento?`<details><summary>${nombreDocumento()} ${esc(documento.numero)}</summary>${documentoHTML()}</details><button id="conteos-documento-excel" class="secondary">Descargar documento de ${documento.estado==='sin_diferencias'?'cierre':'ajuste'}</button><button id="conteos-documento-imprimir" class="secondary">Imprimir / PDF</button>`:''}<p role="alert">No se pudo consultar el cierre: ${esc(e.message)}. Consultar no aplica nuevos ajustes.</p><button id="conteos-cierre-reintentar" class="secondary">Actualizar utilidad y documento</button>`;
         if(documento){el('documento-excel').onclick=()=>run(async()=>descargarDocumento());el('documento-imprimir').onclick=imprimirDocumento;}
         el('cierre-reintentar').onclick=()=>run(cargarCierre);
       }
@@ -340,13 +341,13 @@
     }
     async function crear(ciego) {
       if(!el('tienda').value) throw new Error('Selecciona una tienda; el corte no mezcla tiendas.');
-      const hoy=local(new Date()).slice(0,10);
-      const abiertos=(await rpc('informe',{desde:hoy,hasta:hoy,tienda:el('tienda').value,responsable:''})).cortes
-        .filter(c=>c.estado==='abierto');
-      if(abiertos.length) {
-        detalle=await rpc('ver',{id:abiertos.at(-1).id});
-        await renderDetalle();descargar(ciego);await historial();
-        return;
+      const activos=(await rpc('en_proceso',{tienda:el('tienda').value})).cortes;
+      if(activos.length) {
+        detalle=await rpc('ver',{id:activos[0].id});
+        await renderDetalle();await historial();
+        el('detalle').scrollIntoView({block:'start'});
+        if(detalle.corte.estado==='abierto')descargar(ciego);
+        return `${activos.length>1?'Hay '+activos.length+' inventarios anteriores en proceso. ':''}Se abrió el inventario pendiente del ${fechaCorte(detalle.corte)}. No se creó otro corte ni se anuló ninguno. ${detalle.corte.estado==='abierto'?'Completa y carga su conteo.':'Revisa el conteo cargado antes de autorizar su ajuste o cierre.'}`;
       }
       detalle=await rpc('crear',{tienda:el('tienda').value});await renderDetalle();descargar(ciego);await historial();
     }
@@ -420,7 +421,7 @@
         ${corte.autorizado_at?`<p>Revisión: ${esc(corte.autorizado_nombre)} · ${esc(local(corte.autorizado_at))}<br>Motivo: ${esc(corte.motivo)}<br>Soporte: ${esc(corte.soporte||'—')}</p>`:''}
         <button id="conteos-redescargar" class="btn-export">${historico?'Descargar comparativo':'Descargar este corte'}</button>
         ${corte.contado_at&&!historico?`<button id="conteos-diferencias-excel" type="button" class="btn-export">Descargar informe de diferencias</button>
-          ${config.autoriza&&pendiente&&corteFijo?'<button id="conteos-editar" type="button" class="btn-export">Editar conteo</button>':''}
+          ${detalle.puede_editar===true&&pendiente&&corteFijo?'<button id="conteos-editar" type="button" class="btn-export">Editar conteo</button>':''}
           <p>Versión del conteo: ${Number(corte.conteo_version||0)}. Las correcciones conservan el archivo original y no modifican existencias hasta aplicar el ajuste.</p>`:''}
         ${corte.estado==='abierto'?`<form id="conteos-form-subir" class="inventario-form" style="margin:16px 0">
           <label>Archivo único contado<input id="conteos-archivo" type="file" accept=".xlsx" required></label>
@@ -438,7 +439,7 @@
         <label><input type="checkbox" id="conteos-solo-dif" ${pendiente?'checked':''}> Mostrar solo diferencias</label>
         <div class="inventario-form" style="margin:8px 0"><label>Buscar referencia / IMEI<input id="conteos-buscar-linea" type="search" placeholder="Código, nombre o IMEI"></label></div>
         <form id="conteos-edicion" class="inventario-form" hidden novalidate>
-          <p>Edita «Reportado al corte», no el inventario actual. Puedes sumar, restar o escribir la cantidad. Los totales y la utilidad provisional se recalculan al guardar.</p>
+          <p>Edita «Reportado al corte», no el inventario actual. Puedes sumar, restar o escribir la cantidad. Guardar conserva el historial y recalcula las diferencias, pero no cambia existencias ni saldos. Solo Mayte u Óscar pueden aplicar el ajuste.</p>
           <label>Motivo de la corrección<textarea id="conteos-edicion-motivo" minlength="5" required></textarea></label>
           <div class="form-actions"><button type="submit" class="primary">Guardar correcciones del conteo</button><button id="conteos-edicion-cancelar" type="button" class="secondary">Cancelar edición</button></div>
           <p id="conteos-edicion-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p>
@@ -450,9 +451,9 @@
           <label>${archivoSoporte?'Referencia adicional (opcional)':'Referencia del soporte (obligatoria si no hay Excel registrado)'}<input id="conteos-soporte" placeholder="${archivoSoporte?'Aclaración o referencia adicional, si existe':'Nombre del archivo o referencia documental'}"></label>
           <p>Las fotos de productos «No conforme» pueden adjuntarse después: no bloquean este ajuste ni el cierre de utilidad. Cada foto faltante quedará como tarea de la administradora de la tienda, visible en Inventario y en la campana.</p>
           ${pendiente&&corteFijo?'<button type="button" id="conteos-adjuntar-fotos" class="secondary">Adjuntar fotos de no conformes</button>':''}
-          <label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>
+          ${pendiente&&corteFijo&&!diferencias.length?'<input id="conteos-clasificacion" type="hidden" value="correccion_registro"><p>El conteo no tiene diferencias. Cerrar inventario registra la revisión y su documento, sin ajustar existencias.</p>':'<label>Clasificación general<select id="conteos-clasificacion"><option value="">Selecciona</option><option value="correccion_registro">Corrección de registro / sin diferencias</option><option value="faltante">Faltante identificado</option><option value="no_conforme">No conformes</option><option value="sobrante_por_aclarar">Sobrante por aclarar</option><option value="mixto">Diferencias mixtas</option></select></label>'}
           ${pendiente&&!corteFijo?'<p>Este conteo usa el método anterior. Ciérralo sin aplicar y registra un nuevo conteo referido al corte.</p>':''}<p>Un sobrante no genera utilidad B2B ni una ganancia ocasional automática. Este registro valora el ajuste de inventario; no crea pagos ni cartera.</p>
-          <div class="form-actions">${pendiente&&corteFijo?'<button type="submit" class="primary">Aplicar ajuste de inventario</button>':''}<button type="button" id="conteos-rechazar" class="secondary">Cerrar sin aplicar</button></div>
+          <div class="form-actions">${pendiente&&corteFijo?`<button type="submit" class="primary">${diferencias.length?'Aplicar ajuste y cerrar inventario':'Cerrar inventario sin diferencias'}</button>`:''}<button type="button" id="conteos-rechazar" class="secondary">Descartar corte sin aplicar</button></div>
           <p id="conteos-decision-mensaje" role="alert" tabindex="-1" style="white-space:pre-wrap" hidden></p></form>`:''}
         ${(detalle.correcciones||[]).length?`<details><summary>Historial de correcciones · ${detalle.correcciones.length}</summary>
           ${detalle.correcciones.map(h=>`<p>Versión ${Number(h.version)} · ${esc(h.creado_nombre)} · ${esc(local(h.creado_at))}<br>${esc(h.motivo)}</p>
@@ -527,7 +528,7 @@
       if(el('diferencias-excel'))el('diferencias-excel').onclick=()=>run(descargarDiferencias);
       el('redescargar').onclick=()=>descargar();
       el('form-subir')?.addEventListener('submit',event=>{event.preventDefault();run(subir);});
-      el('form-decidir')?.addEventListener('submit',event=>{event.preventDefault();run(()=>decidir('aplicar'),'decision-mensaje');});
+      el('form-decidir')?.addEventListener('submit',event=>{event.preventDefault();run(()=>decidir(diferencias.length?'aplicar':'cerrar'),'decision-mensaje');});
       if(el('rechazar')) el('rechazar').onclick=()=>run(()=>decidir('rechazar'),'decision-mensaje');
       if(el('adjuntar-fotos'))el('adjuntar-fotos').onclick=()=>{
         el('tienda').value=corte.tienda_codigo;
@@ -558,7 +559,7 @@
       const soporte=[soporteArchivo(detalle.corte),referencia].filter(Boolean).join(' · Referencia adicional: ');
       if(motivo.length<5)throw new Error('Explica el motivo de la revisión.');
       if(accion==='aplicar'&&!clasificacion)throw new Error('Selecciona la clasificación general antes de aplicar.');
-      if(accion==='aplicar'&&soporte.length<5)throw new Error('Este corte no tiene un Excel registrado con identificador. Completa la referencia del soporte antes de aplicar.');
+      if(accion!=='rechazar'&&soporte.length<5)throw new Error('Este corte no tiene un Excel registrado con identificador. Completa la referencia del soporte antes de aplicar o cerrar.');
       capturarRevision();
       const costos=Array.from(costosConteo.values(),c=>({codigo:c.codigo,imei:c.imei,costo_tienda:Number(c.valor)}));
       const decisiones=detalle.lineas.filter(l=>l.diferencia!==null&&l.diferencia!==0).map(l=>({codigo:l.codigo,imei:l.imei,
@@ -573,9 +574,9 @@
       if(accion==='aplicar'&&valorizadas.some(l=>l.diferencia!==0&&!(Number(l.costo_tienda)>0)))
         throw new Error('Confirma el costo de todas las diferencias antes de autorizar.');
       const impacto=valoracion.impactoNeto;
-      if(!global.confirm(accion==='aplicar'?`¿Autorizar el conteo de ${detalle.corte.tienda_nombre} y aplicar sus diferencias al inventario actual? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. Las fotos faltantes quedan como tarea de la administradora y no bloquean el ajuste ni el cierre. No se puede descontar dos veces.`:'¿Cerrar este corte sin modificar existencias?'))return false;
+      if(!global.confirm(accion==='aplicar'?`¿Aplicar las diferencias y cerrar el inventario de ${detalle.corte.tienda_nombre}? Impacto neto estimado al costo: ${impacto<0?'-':''}${money(Math.abs(impacto))}. ${noConformes.length} referencia(s) no conforme(s) quedarán fuera del inventario vendible, con gasto de tienda no monetario y destino pendiente. Las fotos faltantes quedan como tarea de la administradora y no bloquean el ajuste ni el cierre. No se puede descontar dos veces.`:accion==='cerrar'?`¿Cerrar el inventario de ${detalle.corte.tienda_nombre} sin diferencias? Se guardará el documento de cierre, sin ajustar existencias.`:'¿Descartar este corte sin modificar existencias?'))return false;
       const datos={id:detalle.corte.id,base_conteo:'corte_fijo',conteo_version:detalle.corte.conteo_version||0,motivo,soporte,clasificacion,costos,decisiones};
-      detalle=accion==='aplicar'?await rpcDocumento('aplicar',datos):await rpc(accion,datos);
+      detalle=accion==='rechazar'?await rpc(accion,datos):await rpcDocumento(accion,datos);
       document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
       await renderDetalle();await historial();if(accion==='aplicar'){await cargarNoConformes();await refrescar();}
     }

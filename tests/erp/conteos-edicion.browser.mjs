@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const browser=await chromium.launch({headless:true,channel:'chrome'});
 try {
+ for(const autoriza of [true,false]) {
  for(const width of [1280,390]) {
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -11,8 +12,9 @@ try {
   await page.setContent(`<html><head><style>${style}</style></head><body></body></html>`);
   for(const path of ['node_modules/xlsx/dist/xlsx.full.min.js','creditek/erp/conteos-domain.js','creditek/erp/conteos-ui.js'])
    await page.addScriptTag({content:readFileSync(path,'utf8')});
-  await page.evaluate(async()=>{
+  await page.evaluate(async(autoriza)=>{
    window.calls=[];window.downloads=[];window.auditHistory=[];window.bajas=[];window.demoFailure=null;
+   window.canEdit=true;window.extraOpen=[];
    window.cut={id:'11111111-1111-4111-8111-111111111111',tienda_codigo:'A',tienda_nombre:'Tienda de prueba',
     corte_at:'2026-10-06T14:00:00Z',contado_at:'2026-10-06T14:00:00Z',recibido_at:'2026-10-06T15:00:00Z',
     contado_nombre:'Administradora',estado:'pendiente',base_conteo:'corte_fijo',conteo_version:0,
@@ -27,8 +29,9 @@ try {
     sheets:Object.fromEntries(book.SheetNames.map(s=>[s,XLSX.utils.sheet_to_json(book.Sheets[s],{defval:''})]))});
    const sb={rpc:async(name,{p_accion:a,p_datos:d})=>{
     calls.push({name,a,d});
-    if(a==='config')return {data:{autoriza:true,central:true,tiendas:[{codigo:'A',nombre:cut.tienda_nombre}]}};
+    if(a==='config')return {data:{autoriza,central:autoriza,tiendas:[{codigo:'A',nombre:cut.tienda_nombre}]}};
     if(a==='informe')return {data:{cortes:[structuredClone(cut)]}};
+    if(a==='en_proceso')return {data:{cortes:structuredClone([cut,...extraOpen].filter(c=>['abierto','pendiente'].includes(c.estado)))}};
     if(a==='listar')return {data:{registros:structuredClone(bajas)}};
     if(a==='tareas_fotos')return {data:{tareas:[]}};
     if(a==='resumen')return {data:{filas:[]}};
@@ -45,24 +48,36 @@ try {
        l.cantidad_fisica=f.cantidad;l.diferencia=f.cantidad-l.cantidad_corte;l.nota=f.nota;
       }
       cut.conteo_version++;
-      auditHistory.push({version:cut.conteo_version,creado_at:'2026-10-06T16:00:00Z',creado_nombre:'Mayte',
+      auditHistory.push({version:cut.conteo_version,creado_at:'2026-10-06T16:00:00Z',creado_nombre:autoriza?'Mayte':'Administradora',
        motivo:d.motivo,cambios:changes,archivo_nombre:cut.archivo_nombre,archivo_sha256:cut.archivo_sha256});
      }
-     return {data:structuredClone({corte:cut,lineas:lines,correcciones:auditHistory,stock_modificado:false})};
+     return {data:structuredClone({corte:cut,lineas:lines,correcciones:auditHistory,stock_modificado:false,
+      puede_editar:canEdit&&cut.estado==='pendiente'})};
     }
     if(name==='cierre_utilidad_retail')return {data:{listo:false,cerrado:false,inicio_at:cut.corte_at,fin_at:cut.corte_at,
      ventas_totales:0,costo_vendido:0,gastos_totales:0,perdidas_ajustes:2000,ganancias_ajustes:300,
      ajuste_conciliacion:0,utilidad_neta:-1700,bloqueos:['Pendiente de ajuste']}};
-    if(name==='inventario_ajuste_documento')return a==='aplicar'?{error:{message:'Prueba aislada: no aplicar existencias'}}:
+    if(name==='inventario_ajuste_documento')return ['aplicar','cerrar'].includes(a)?{error:{message:'Prueba aislada: no aplicar existencias'}}:
      {data:{documento:null,puede_cerrar_utilidad:true}};
     return {data:structuredClone({corte:cut,lineas:lines})};
    }};
    window.ui=KoraConteosUI.init({sb,XLSX,tiendaActual:()=> 'A',refrescar:async()=>{throw new Error('La edición no refresca existencias');}});
    await ui.abrir();
-  });
+  },autoriza);
   await page.locator('[data-conteo-id]').click();
   await page.waitForFunction(()=>document.getElementById('conteos-editar'));
   assert.equal(await page.locator('#conteos-lineas tr').count(),2);
+  if(autoriza)assert.equal(await page.locator('#conteos-form-decidir button[type=submit]').innerText(),'Aplicar ajuste y cerrar inventario');
+  // Reanuda el pendiente antiguo, no inicia otro ni descarga una plantilla
+  // vacía cuando ya se cargó el conteo. Un duplicado heredado se conserva.
+  await page.evaluate(()=>extraOpen=[{...cut,id:'22222222-2222-4222-8222-222222222222',corte_at:'2026-10-07T16:38:00Z',estado:'abierto',contado_at:null}]);
+  await page.locator('#conteos-crear').click();
+  await page.waitForFunction(()=>document.getElementById('conteos-mensaje').textContent.includes('Hay 2 inventarios'));
+  assert.equal(await page.evaluate(()=>downloads.length),0);
+  assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='crear'||c.a==='rechazar').length),0);
+  assert.equal(await page.evaluate(()=>extraOpen[0].estado),'abierto');
+  assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='en_proceso').at(-1).d.tienda),'A');
+  await page.evaluate(()=>extraOpen=[]);
   await page.locator('#conteos-diferencias-excel').click();
   await page.waitForFunction(()=>downloads.length===1);
   const initial=await page.evaluate(()=>downloads.at(-1));
@@ -73,7 +88,7 @@ try {
   assert.equal(initial.sheets['Control de bajas'][0].Cantidad,2,'También controla faltantes sin solicitud de no conforme');
   await page.locator('#conteos-editar').click();
   assert.equal(await page.locator('#conteos-lineas tr').count(),4,'Incluye referencias sin diferencias para corregirlas');
-  assert.equal(await page.locator('#conteos-form-decidir').isVisible(),false);
+  assert.equal(await page.locator('#conteos-form-decidir:visible').count(),0);
   assert.equal(await page.locator('#conteos-diferencias-excel').isDisabled(),true);
   await page.locator('[data-sumar="0"][data-delta="1"]').click();
   assert.equal(await page.locator('[data-cantidad="0"]').inputValue(),'99');
@@ -102,7 +117,7 @@ try {
   assert.equal(await page.evaluate(()=>lines[0].actual),97);
   assert.equal(await page.locator('#conteos-edicion').isVisible(),false);
   assert.equal(await page.locator('#conteos-tienda').isDisabled(),false);
-  assert.equal(await page.locator('#conteos-form-decidir').isVisible(),true);
+  assert.equal(await page.locator('#conteos-form-decidir:visible').count(),autoriza?1:0);
   assert.equal(await page.evaluate(()=>calls.some(c=>['aplicar','cerrar','aplicar_conteo','solicitar'].includes(c.a))),false);
   await page.evaluate(()=>window.bajas=[{id:'baja-1',corte_id:cut.id,tienda_codigo:'A',codigo:'VID',
    producto_nombre:'Vidrio',imei:'',cantidad:1,categoria_gasto:'imperfecto',estado:'solicitado',
@@ -124,7 +139,8 @@ try {
   await page.locator('[data-cantidad="0"]').fill('100');
   await page.locator('#conteos-edicion-cancelar').click();
   assert.equal(await page.evaluate(()=>cut.conteo_version),1);
-  assert.equal(await page.locator('#conteos-form-decidir').isVisible(),true);
+  assert.equal(await page.locator('#conteos-form-decidir:visible').count(),autoriza?1:0);
+  if(autoriza) {
   await page.locator('[data-decision-codigo="VID"]').selectOption('no_conforme');
   await page.locator('#conteos-buscar-linea').fill('SOB');
   await page.locator('[data-decision-codigo="SOB"]').selectOption('sobrante');
@@ -143,14 +159,55 @@ try {
   assert.deepEqual(revision.d.decisiones.map(d=>d.clasificacion),['no_conforme','sobrante'],'La revisión incluye también las referencias ocultas por la búsqueda');
   assert.equal(revision.d.conteo_version,1);
   assert.equal(await page.evaluate(()=>lines[0].actual),97,'La prueba no aplica stock');
-  await page.screenshot({path:`/tmp/kora-conteos-edicion-${width}.png`});
+  } else {
+   assert.equal(await page.locator('[data-decision-codigo]').count(),0);
+   assert.equal(await page.locator('#conteos-rechazar').count(),0);
+   assert.equal(await page.evaluate(()=>calls.some(c=>['aplicar','cerrar','aplicar_conteo','solicitar'].includes(c.a))),false);
+   await page.evaluate(()=>window.canEdit=false);
+   await page.locator('[data-conteo-id]').click();
+   await page.waitForFunction(()=>!document.getElementById('conteos-editar'));
+   assert.equal(await page.locator('#conteos-form-decidir').count(),0);
+  }
+  await page.screenshot({path:`/tmp/kora-conteos-edicion-${autoriza?'responsable':'administradora'}-${width}.png`});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.evaluate(()=>cut.estado='aplicado');
   await page.locator('[data-conteo-id]').click();
   await page.waitForFunction(()=>!document.getElementById('conteos-editar'));
   assert.equal(await page.locator('#conteos-diferencias-excel').count(),1);
+  // Sin diferencias ofrece cierre, no ajuste; las administradoras tampoco
+  // obtienen el permiso de cierre al corregir cantidades hasta diferencia cero.
+  await page.evaluate(()=>{
+   cut.estado='pendiente';canEdit=true;bajas=[];
+   for(const l of lines){l.cantidad_fisica=l.cantidad_corte;l.diferencia=0;}
+  });
+  await page.locator('[data-conteo-id]').click();
+  await page.waitForFunction(()=>document.getElementById('conteos-editar'));
+  if(autoriza){
+   assert.equal(await page.locator('#conteos-form-decidir button[type=submit]').innerText(),'Cerrar inventario sin diferencias');
+   assert.equal(await page.locator('#conteos-clasificacion').inputValue(),'correccion_registro');
+   await page.locator('#conteos-motivo').fill('Conteo revisado sin diferencias');
+   page.once('dialog',dialog=>dialog.dismiss());
+   await page.locator('#conteos-form-decidir button[type=submit]').click();
+   await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Cancelado'));
+   assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='cerrar').length),0);
+   page.once('dialog',dialog=>dialog.accept());
+   await page.locator('#conteos-form-decidir button[type=submit]').click();
+   await page.waitForFunction(()=>document.getElementById('conteos-decision-mensaje').textContent.includes('Prueba aislada'));
+   const close=await page.evaluate(()=>calls.find(c=>c.name==='inventario_ajuste_documento'&&c.a==='cerrar'));
+   assert.equal(close.d.conteo_version,1);assert.deepEqual(close.d.decisiones,[]);
+   assert.match(close.d.soporte,/SHA256/);
+  }else assert.equal(await page.locator('#conteos-form-decidir').count(),0);
+  // Un corte aún sin archivo también se reutiliza aunque sea de otro día.
+  const downloadsBefore=await page.evaluate(()=>downloads.length);
+  await page.evaluate(()=>{cut.estado='abierto';cut.contado_at=null;});
+  await page.locator('#conteos-crear').click();
+  await page.waitForFunction(()=>document.getElementById('conteos-mensaje').textContent.includes('Completa y carga'));
+  assert.equal(await page.evaluate(()=>downloads.length),downloadsBefore+1);
+  assert.equal(await page.evaluate(()=>calls.filter(c=>c.a==='crear').length),0);
+  assert.equal(await page.locator('#conteos-form-subir').count(),1);
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('Edición y diferencias: escritorio/móvil, sumas, filtros, cancelación, errores, historial, Excel y control de bajas OK.');
+ }
+ console.log('Edición y diferencias: responsables/administradoras, escritorio/móvil, sumas, filtros, cancelación, errores, historial, Excel y control de bajas OK. Administradoras sin ajuste ni cierre.');
 } finally {await browser.close();}

@@ -8,6 +8,7 @@ const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const U=createRequire(import.meta.url)('../../creditek/erp/tesoreria-pagos-unificados.js');
 const migration=read('supabase/migrations/20260923215357_retiros_retail_desde_cajas.sql');
 const creditekMigration=read('supabase/migrations/20260924232333_abono_tienda_creditek.sql');
+const cancellationMigration=read('supabase/migrations/20261007211412_anular_retiros_retail_sin_pago.sql');
 const oscar='6de0ad26-64af-4966-8cd9-d468880af627',maite='d1782db6-bacc-4caf-af6f-ce1b8d1c0391',storeA='00000000-0000-4000-8000-000000000001',storeB='00000000-0000-4000-8000-000000000002';
 let db,date;
 const sql=async(s,p=[])=>db.query(s,p);
@@ -15,6 +16,7 @@ async function user(id){await db.exec('reset role');await sql("select set_config
 const data=()=>({stores:[{store:'A',amount:'60'},{store:'B',amount:'40'}],amount:'100',bank:'Banco de prueba',account_type:'Ahorros',account:'1234567890',date,from:date,to:date,beneficiary:'Socio de prueba',document:'TEST-001',concept:'Retiro de prueba',note:'Solo local'});
 const create=async(d=data(),key=randomUUID())=>(await sql('select * from public.finanzas_preparar_retiro_retail($1,$2)',[d,key])).rows[0];
 const approve=async(id,amount=null)=>sql("select public.finanzas_decidir_movimiento($1,'aprobado',$2)",[id,amount]);
+const cancel=async(id,key=randomUUID(),reason='Retiro creado por error')=>(await sql('select public.finanzas_anular_retiro_retail($1,$2,$3) x',[id,reason,key])).rows[0].x;
 async function instructions(id){return (await sql('select * from public.listar_instrucciones_consignacion() x')).rows.map(r=>r.x).filter(x=>x.financial_entry_id===id);}
 async function support(i,who,amount=i.valor_esperado,exists=true,paymentDate=date){
   const key=randomUUID(),path=`${i.tienda_codigo}/consignaciones/${i.id}/${key}.jpg`;
@@ -69,10 +71,13 @@ before(async()=>{
      add column fuente_fondos text,add column observacion text,add column idempotency_key uuid,
      add column instruccion_id uuid,add column movimiento_caja_id uuid;`);
  await db.exec(creditekMigration);
+ // El schema de producción admite "anulada"; el DDL legado del fixture no.
+ await db.exec("alter table instrucciones_consignacion drop constraint instrucciones_consignacion_estado_check;alter table instrucciones_consignacion add constraint instrucciones_consignacion_estado_check check(estado in ('pendiente','en_validacion','validado','rechazado','anulada'))");
+ await db.exec(cancellationMigration);
  date=(await sql("select to_char(now() at time zone 'America/Bogota','YYYY-MM-DD') d")).rows[0].d;
 });
 beforeEach(async()=>{
- await db.exec('reset role;truncate financial_entries,instrucciones_consignacion,comprobantes_consignacion,movimientos_caja_tienda,cuenta_corriente,audit_log,storage.objects,caja_arqueo_intentos,caja_cortes,caja_diaria,creditos,venta_items,ventas,gastos cascade');
+ await db.exec('reset role;truncate financial_entries,instrucciones_consignacion,comprobantes_consignacion,movimientos_caja_tienda,abonos,cuenta_corriente,audit_log,storage.objects,caja_arqueo_intentos,caja_cortes,caja_diaria,creditos,venta_items,ventas,gastos cascade');
  await sql('update caja_ciclo_config set fecha_inicio=$1',[date]);
  await user(oscar);await db.exec('reset role');await sql("insert into ventas(tienda_codigo,fecha,tipo,total) values('A',$1,'contado',1000),('B',$1,'contado',1000)",[date]);
  await user(maite);
@@ -237,4 +242,82 @@ test('Tesorería excluye retiros Retail del giro central y rechaza subir otro so
  assert.deepEqual(U.reportRows([],[retail,other],[],()=>({ready:true})).map(r=>r.id),['b2b']);
  let writes=0;const sb={from:()=>({select:()=>({eq:()=>({single:async()=>({data:retail})})})}),rpc:()=>{writes++;},storage:{from:()=>{writes++;}}};
  await assert.rejects(U.createRecorder(sb).record('retail',{}),/desde las tiendas/);assert.equal(writes,0);
+});
+test('anular cancela todas las instrucciones, conserva autorización y no mueve dinero',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);
+ const before=(await sql('select * from financial_entries where id=$1',[e.id])).rows[0];
+ const ins=await instructions(e.id);const result=await cancel(e.id);
+ assert.equal(result.status,'anulado');assert.equal(result.instrucciones_anuladas,2);
+ const after=(await sql('select * from financial_entries where id=$1',[e.id])).rows[0];
+ for(const key of Object.keys(before).filter(k=>!['status','note','updated_at'].includes(k)))assert.deepEqual(after[key],before[key],key);
+ assert.equal(U.cards([after],String),'');
+ await db.exec('reset role');
+ const cancelled=(await sql('select to_jsonb(i) x from instrucciones_consignacion i where financial_entry_id=$1',[e.id])).rows.map(r=>r.x);
+ assert.ok(cancelled.every(i=>i.estado==='anulada'&&i.decidida_por===oscar&&i.movimiento_retiro_id===null));
+ for(const i of ins){const a=cancelled.find(x=>x.id===i.id);assert.equal(Number(a.valor_esperado),i.valor_esperado);for(const k of ['financial_entry_id','numero_cuenta','beneficiario_socio','fecha','tienda_codigo'])assert.deepEqual(a[k],i[k],k);}
+ assert.equal(new Set(cancelled.map(i=>i.decision_idempotency_key)).size,2);
+ const event=(await sql("select detalle from audit_log where accion='finanzas_retiro_retail_anulado'")).rows[0].detalle;
+ assert.equal(event.antes.status,'aprobado');assert.equal(event.instrucciones_antes.length,2);
+ assert.equal(event.movio_banco,false);assert.equal(event.movio_caja,false);
+ assert.deepEqual(await counts(),{cash:0,abonos:0,b2b:0});
+ assert.equal((await sql("select calcular_efectivo_esperado_tienda('A',$1) b",[date])).rows[0].b.esperado,1000);
+});
+test('anulación idempotente: no duplica auditoría ni acepta la misma clave con otros datos',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);const key=randomUUID();
+ await cancel(e.id,key);assert.equal((await cancel(e.id,key)).reutilizado,true);
+ await assert.rejects(cancel(e.id,key,'Otro motivo de anulación'),/otros datos/);
+ await assert.rejects(cancel(randomUUID(),key),/otros datos/);
+ await assert.rejects(cancel(e.id),/Solo se anulan/);
+ await db.exec('reset role');assert.equal((await sql("select count(*)::int n from audit_log where accion='finanzas_retiro_retail_anulado'")).rows[0].n,1);
+});
+test('solo Gerencia activa: Maite, tienda y anónimo no pueden anular',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);
+ for(const who of [maite,storeA,'']){await user(who);await assert.rejects(cancel(e.id),/Solo Oscar/);}
+ await db.exec('reset role');await sql('update perfiles set activo=false where id=$1',[oscar]);
+ try{await user(oscar);await assert.rejects(cancel(e.id),/Solo Oscar/);}
+ finally{await db.exec('reset role');await sql('update perfiles set activo=true where id=$1',[oscar]);}
+ assert.equal((await sql('select status from financial_entries where id=$1',[e.id])).rows[0].status,'aprobado');
+ assert.equal((await sql("select has_function_privilege('anon','public.finanzas_anular_retiro_retail(uuid,text,uuid)','execute') x")).rows[0].x,false);
+ assert.equal((await sql("select has_function_privilege('anon','kora_private.finanzas_anular_retiro_retail(uuid,text,uuid)','execute') x")).rows[0].x,false);
+ assert.equal((await sql("select prosecdef from pg_proc where oid='public.finanzas_anular_retiro_retail(uuid,text,uuid)'::regprocedure")).rows[0].prosecdef,false);
+});
+test('no anula retiros pendientes, otros negocios ni solicitudes sin motivo o clave',async()=>{
+ const pending=await create();await user(oscar);await assert.rejects(cancel(pending.id),/Solo se anulan/);
+ await approve(pending.id);await assert.rejects(cancel(pending.id,null),/idempotencia/);
+ await assert.rejects(cancel(pending.id,randomUUID(),'no'),/motivo/);
+ await user(maite);
+ const other=(await sql("select * from finanzas_registrar_movimiento('retiro_utilidad','b2b',$1,'retiro','Retiro de prueba','Socio de prueba',null,null,100,$1,$1,null)",[date])).rows[0];
+ await user(oscar);await approve(other.id);await assert.rejects(cancel(other.id),/Solo se anulan/);
+});
+test('un soporte enviado o rechazado bloquea la anulación sin cancelar otras instrucciones',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);const a=(await instructions(e.id)).find(i=>i.tienda_codigo==='A');
+ await support(a,storeA);await user(oscar);await assert.rejects(cancel(e.id),/íntegramente pendientes/);
+ await user(maite);await validate(a.id,randomUUID(),'rechazado');
+ await user(oscar);await assert.rejects(cancel(e.id),/íntegramente pendientes/);
+ await db.exec('reset role');
+ assert.equal((await sql("select count(*)::int n from instrucciones_consignacion where estado='anulada'")).rows[0].n,0);
+ assert.deepEqual(await counts(),{cash:0,abonos:0,b2b:0});
+});
+test('un comprobante existente bloquea incluso si una instrucción conserva estado pendiente',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);const a=(await instructions(e.id)).find(i=>i.tienda_codigo==='A');
+ await support(a,storeA);await db.exec('reset role');await sql("update instrucciones_consignacion set estado='pendiente' where id=$1",[a.id]);
+ await user(oscar);await assert.rejects(cancel(e.id),/tiene comprobantes/);
+ await db.exec('reset role');assert.equal((await sql("select count(*)::int n from instrucciones_consignacion where estado='anulada'")).rows[0].n,0);
+});
+test('un pago parcial o completo impide anular y conserva todas las salidas ya registradas',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);const ins=await instructions(e.id),a=ins.find(i=>i.tienda_codigo==='A'),b=ins.find(i=>i.tienda_codigo==='B');
+ await support(a,storeA);await user(maite);await validate(a.id);
+ await user(oscar);await assert.rejects(cancel(e.id),/íntegramente pendientes/);
+ assert.equal((await sql('select status from financial_entries where id=$1',[e.id])).rows[0].status,'aprobado');
+ await support(b,storeB);await user(maite);await validate(b.id);
+ await user(oscar);await assert.rejects(cancel(e.id),/Solo se anulan/);
+ assert.equal((await sql('select status from financial_entries where id=$1',[e.id])).rows[0].status,'pagado');
+ assert.deepEqual(await counts(),{cash:2,abonos:0,b2b:0});
+});
+test('guard impide cambiar solo el documento; tras anular no permite enviar ni validar soportes',async()=>{
+ const e=await create();await user(oscar);await approve(e.id);const a=(await instructions(e.id)).find(i=>i.tienda_codigo==='A');
+ await db.exec('reset role');await assert.rejects(sql("update financial_entries set status='anulado' where id=$1",[e.id]),/junto con todas sus instrucciones/);
+ await user(oscar);await cancel(e.id);await assert.rejects(support(a,storeA),/no admite un nuevo comprobante/i);
+ await user(maite);await assert.rejects(validate(a.id),/pendiente de validación/);
+ assert.deepEqual(await counts(),{cash:0,abonos:0,b2b:0});
 });

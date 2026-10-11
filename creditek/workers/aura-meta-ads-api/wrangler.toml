@@ -1,5 +1,5 @@
 name = "aura-meta-ads-api"
-main = "index.js"
+main = "organic-entry.mjs"
 compatibility_date = "2026-08-02"
 
 [vars]
@@ -9,6 +9,17 @@ META_GRAPH_VERSION = "v25.0"
 META_PAGE_ID = "1191052130747281"
 RATE_LIMIT_PER_MINUTE = "30"
 SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co"
+# Release gate: enable only after review and verified organic permissions.
+ORGANIC_AUTOMATION_ENABLED = "false"
+ORGANIC_PUBLIC_BASE = "https://aura-meta-ads-api.comercial-853.workers.dev"
+
+[[r2_buckets]]
+binding = "ORGANIC_MEDIA"
+bucket_name = "aura-organic-media"
+
+[[durable_objects.bindings]]
+name = "ORGANIC_CALENDARS"
+class_name = "OrganicCalendar"
 
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"
@@ -25,6 +36,10 @@ new_sqlite_classes = ["RateLimiter"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["PublicationCoordinator"]
+
+[[migrations]]
+tag = "v3-organic-calendar"
+new_sqlite_classes = ["OrganicCalendar"]
 
 # Secrets requeridos en producción (solo nombres; nunca valores):
 #   META_ACCESS_TOKEN

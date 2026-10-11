@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contenido orgánico · AURA</title><link rel="stylesheet" href="aura-organic-studio.css"></head>
+<body><main>
+  <header><a href="index.html">← AURA</a><p class="eyebrow">CREDITEK · CONTENIDO ORGÁNICO</p><h1>Crear. Aprobar. Publicar. Aprender.</h1><p>Facebook e Instagram, sin pauta. Tú apruebas el calendario; AURA ejecuta únicamente esa versión.</p></header>
+  <p id="notice" role="status" aria-live="polite">Comprobando sesión…</p>
+  <section id="login" hidden><h2>Acceso AURA</h2><p>Usa tu cuenta de Gerencia; las credenciales de Meta permanecen en el servidor.</p><form id="login-form"><label>Correo<input id="email" type="email" autocomplete="username" required></label><label>Contraseña<input id="password" type="password" autocomplete="current-password" required></label><button>Entrar</button></form></section>
+  <div id="app" hidden>
+    <section><div class="row"><h2>Conexión y controles</h2><button id="refresh">Actualizar</button></div><p id="connection">Pendiente de comprobar</p><p>Un cambio de texto, imagen, fecha o red invalida la aprobación. Una publicación ya iniciada no se modifica desde este calendario. Puedes pausar lo pendiente.</p></section>
+    <section><h2>1 · Preparar el calendario</h2><form id="brief-form">
+      <label>Nombre<input id="title" maxlength="100" value="Creditek · Tecnología para tu día" required></label>
+      <label>Brief verificado<textarea id="brief" rows="3" maxlength="4000" placeholder="Temas, productos y datos confirmados. No incluyas información de clientes." required></textarea></label>
+      <div class="row"><label>Primer día (Colombia)<input id="start" type="date" required></label><label>Piezas<input id="count" type="number" min="1" max="7" value="3" required></label><label>Hora (Colombia)<input id="hour" type="time" value="18:00" required></label></div>
+      <p>Hasta 7 borradores por generación y 31 por calendario. La generación usa la API existente y tiene costo. Cada imagen se genera solo al pulsar su botón; no hay regeneraciones automáticas.</p>
+      <button id="generate">Crear borradores con IA</button> <button type="button" id="manual">Crear pieza manual</button>
+    </form></section>
+    <section><div class="row"><h2>2 · Revisar y aprobar</h2><button id="new-calendar">Nuevo calendario</button></div><p>Esta entrega publica imágenes de feed. No produce videos ni convierte una portada en un reel. Revisa cada texto, imagen, fecha y destino antes de aprobar.</p><div id="pieces"></div><div class="actions"><button id="save" disabled>Guardar borrador</button><button id="approve" disabled>Aprobar calendario y automatizar</button><button id="edit" disabled>Editar: pausar calendario primero</button></div><p id="approval-state"></p></section>
+    <section><h2>3 · Calendarios y publicaciones</h2><div id="calendars"></div></section>
+    <section><h2>4 · Medición y siguiente calendario</h2><p>Alcance, likes, comentarios, compartidos y guardados cuando Meta los entregue. «No disponible» no significa cero. Medición automática a las 24 h, 72 h y 7 días.</p><div id="learning"></div><p>No sumamos alcance de Instagram y Facebook como personas únicas. La atribución de leads todavía no está conectada. Las recomendaciones no modifican piezas aprobadas.</p></section>
+  </div>
+</main><script type="module" src="aura-organic-studio.mjs"></script></body></html>

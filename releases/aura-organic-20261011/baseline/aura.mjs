@@ -1,0 +1,2561 @@
+// outputs/registration-rollout-20260913/baseline/creditek-aura/agente3-meta-ads.html
+var agente3_meta_ads_default = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente 3 \xB7 Meta Ads \u2014 AURA</title>
+<script type="module">
+import { auraSessionToken } from './agente3-aura-session.mjs';
+window.auraSessionToken = auraSessionToken;
+// Exponer tambi\xE9n como funci\xF3n directa por si el m\xF3dulo tarda
+window.__metaToken = function() {
+  const STORAGE_KEY = 'aura_supabase_session_v1';
+  try {
+    const ls = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (ls?.access_token) return ls.access_token;
+    const ss = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+    if (ss?.access_token) return ss.access_token;
+  } catch(e) {}
+  return '';
+};
+// Fallback por si window.auraSessionToken no carga
+if (!window.auraSessionToken) {
+  window.auraSessionToken = window.__metaToken;
+}
+<\/script>
+<script>
+try {
+  ['ck_api_key', 'ck_claude_key', 'ck_meta_token', 'ck_meta_account'].forEach(key => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+} catch(e) {}
+<\/script>
+<style>
+:root {
+  --navy:    #0B1E3D;
+  --turq:    #00C4CC;
+  --turq2:   #00A8AF;
+  --white:   #FFFFFF;
+  --bg:      #F0F4F8;
+  --card:    #FFFFFF;
+  --border:  #E2E8F0;
+  --text1:   #0B1E3D;
+  --text2:   #4A5568;
+  --text3:   #94A3B8;
+  --green:   #10B981;
+  --red:     #EF4444;
+  --yellow:  #F59E0B;
+  --font:    'DM Sans', system-ui, sans-serif;
+  --radius:  12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text1);min-height:100vh}
+
+/* Header */
+.header{background:var(--navy);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo-mark{width:32px;height:32px;background:var(--turq);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--navy);flex-shrink:0}
+.header-title{color:var(--white);font-size:15px;font-weight:600}
+.header-sub{color:rgba(255,255,255,.5);font-size:12px}
+.header-right{display:flex;align-items:center;gap:12px}
+.config-btn{background:rgba(0,196,204,.15);border:1px solid rgba(0,196,204,.3);color:var(--turq);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.config-btn:hover{background:rgba(0,196,204,.25)}
+.refresh-btn{background:var(--turq);border:none;color:var(--navy);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:6px}
+.refresh-btn:hover{background:var(--turq2)}
+.refresh-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Layout */
+.main{max-width:1200px;margin:0 auto;padding:24px 16px}
+
+/* Period selector */
+.period-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.period-label{font-size:13px;color:var(--text2)}
+.period-tabs{display:flex;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.period-tab{padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;font-family:var(--font);color:var(--text2)}
+.period-tab.active{background:var(--navy);color:var(--white)}
+.last-update{font-size:11px;color:var(--text3)}
+.scope-label{font-size:12px;font-weight:600;color:var(--text2);background:var(--card2,rgba(0,0,0,.04));display:inline-block;padding:4px 10px;border-radius:6px;margin-bottom:10px}
+/* FIX v28, 13-jul-2026: selector de campa\xF1a individual \u2014 mismo look que el
+   scope-label que reemplaza, pero interactivo. */
+.scope-selector{font-size:12px;font-weight:600;color:var(--text2);background:var(--card2,rgba(0,0,0,.04));display:inline-block;padding:6px 10px;border-radius:6px;margin-bottom:10px;border:1px solid var(--border);font-family:var(--font);cursor:pointer;max-width:100%}
+
+/* AI Analysis banner */
+.ai-banner{background:linear-gradient(135deg,var(--navy) 0%,#1a3a6e 100%);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:none}
+.ai-banner.visible{display:block}
+.ai-banner-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ai-badge{background:var(--turq);color:var(--navy);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px}
+.ai-banner-title{color:var(--white);font-size:14px;font-weight:600}
+.ai-content{color:rgba(255,255,255,.85);font-size:13px;line-height:1.7}
+.ai-alerts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ai-alert{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500}
+.ai-alert.warn{background:rgba(245,158,11,.2);color:#FCD34D;border:1px solid rgba(245,158,11,.3)}
+.ai-alert.good{background:rgba(16,185,129,.2);color:#6EE7B7;border:1px solid rgba(16,185,129,.3)}
+.ai-alert.bad{background:rgba(239,68,68,.2);color:#FCA5A5;border:1px solid rgba(239,68,68,.3)}
+
+/* KPI Grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden}
+.kpi-rank{position:absolute;top:10px;right:12px;font-size:10px;font-weight:700;color:var(--text3)}
+.kpi-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.kpi-value{font-size:26px;font-weight:700;color:var(--text1);line-height:1;margin-bottom:6px}
+.kpi-value.turq{color:var(--turq2)}
+.kpi-delta{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500}
+.kpi-delta.up{color:var(--green)}
+.kpi-delta.down{color:var(--red)}
+.kpi-delta.neutral{color:var(--text3)}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-alert{position:absolute;bottom:0;left:0;right:0;height:3px}
+.kpi-alert.red{background:var(--red)}
+.kpi-alert.green{background:var(--green)}
+.kpi-alert.yellow{background:var(--yellow)}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:768px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-badge{background:var(--bg);color:var(--text2);font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.chart-area{height:180px;position:relative}
+canvas{width:100%!important}
+
+/* Campaigns table */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.table-title{font-size:13px;font-weight:600}
+.table-wrapper{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text1)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F8FAFC}
+.camp-name{font-weight:500;max-width:280px;white-space:normal;word-break:break-word;line-height:1.3}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.status-badge.active{background:rgba(16,185,129,.1);color:var(--green)}
+.status-badge.paused{background:rgba(148,163,184,.1);color:var(--text3)}
+.ab-col{flex:1;background:var(--bg);border-radius:8px;padding:12px 14px}
+.ab-var{font-size:12px;font-weight:700;color:var(--text1);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.ab-metric{font-size:12px;color:var(--text2);margin-bottom:3px}
+.perf-bar{height:4px;background:var(--border);border-radius:2px;width:80px;display:inline-block;vertical-align:middle}
+.perf-fill{height:100%;border-radius:2px;background:var(--turq)}
+.action-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)}
+.action-btn:hover{border-color:var(--turq);color:var(--turq)}
+
+/* Trend row */
+.trend-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:768px){.trend-row{grid-template-columns:repeat(2,1fr)}}
+.trend-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.trend-week{font-size:10px;font-weight:600;color:var(--text3);margin-bottom:4px}
+.trend-spend{font-size:18px;font-weight:700;color:var(--text1)}
+.trend-results{font-size:11px;color:var(--text2);margin-top:2px}
+.trend-bar-wrap{margin-top:8px;height:4px;background:var(--border);border-radius:2px}
+.trend-bar-fill{height:100%;border-radius:2px;background:var(--turq)}
+
+/* Modal config */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:16px;padding:28px;width:90%;max-width:480px}
+.modal-title{font-size:16px;font-weight:700;color:var(--text1);margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.field input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);color:var(--text1);outline:none}
+.field input:focus{border-color:var(--turq)}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.btn-primary{flex:1;background:var(--navy);color:var(--white);border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-secondary{background:none;border:1.5px solid var(--border);color:var(--text2);padding:11px 16px;border-radius:8px;font-size:14px;cursor:pointer;font-family:var(--font)}
+
+/* Wizard de campa\xF1as */
+.modal-wizard{max-width:560px;max-height:85vh;overflow-y:auto}
+.wiz-stepper{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+.wiz-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);font-weight:600;white-space:nowrap}
+.wiz-dot.active{color:var(--turq)}
+.wiz-dot.done{color:var(--green)}
+.wiz-circle{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.wiz-dot.active .wiz-circle{background:var(--turq);border-color:var(--turq);color:#fff}
+.wiz-dot.done .wiz-circle{background:var(--green);border-color:var(--green);color:#fff}
+.wiz-line{flex:1;height:1px;background:var(--border)}
+.wiz-step{display:none}
+.wiz-step.active{display:block}
+.zone-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.zone-card{border:1.5px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-size:12px;font-weight:600;color:var(--text2);transition:.15s}
+.zone-card.sel{border-color:var(--turq);background:rgba(0,196,204,.1);color:var(--turq)}
+.zone-card .sub{font-size:10px;color:var(--text3);font-weight:400;margin-top:2px}
+.zone-card.sel .sub{color:var(--turq)}
+.dur-group{display:flex;gap:8px;flex-wrap:wrap}
+.dur-btn{border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;background:none;font-family:var(--font)}
+.dur-btn.sel{border-color:var(--turq);background:rgba(0,196,204,.1);color:var(--turq)}
+.wiz-nav{display:flex;justify-content:space-between;margin-top:18px}
+.upload-zone{border:1.5px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;font-size:13px;color:var(--text2)}
+.upload-zone img{max-width:100%;max-height:160px;border-radius:8px}
+.wiz-review-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.wiz-review-row .lbl{color:var(--text2)}
+.wiz-review-row .val{font-weight:600;text-align:right}
+.wiz-progress{font-size:12px;color:var(--text2);text-align:center;padding:8px;background:var(--bg);border-radius:8px;margin-top:10px;display:none}
+
+/* Empty / Loading states */
+.empty-state{text-align:center;padding:48px 24px;color:var(--text3)}
+.empty-state .icon{font-size:40px;margin-bottom:12px}
+.empty-state h3{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.empty-state p{font-size:13px;line-height:1.5}
+.loading-pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.skeleton{background:var(--border);border-radius:4px;display:inline-block}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--white);padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;z-index:300;pointer-events:none}
+#toast.show{opacity:1}
+
+/* Budget bar */
+.budget-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.budget-title{font-size:13px;font-weight:600}
+.budget-pct{font-size:20px;font-weight:700;color:var(--turq2)}
+.budget-bar-wrap{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.budget-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--turq),var(--turq2));transition:width .5s}
+.budget-bar-fill.warn{background:linear-gradient(90deg,var(--yellow),#D97706)}
+.budget-bar-fill.over{background:linear-gradient(90deg,var(--red),#DC2626)}
+.budget-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text2)}
+/* FIX v29, 13-jul-2026: Secci\xF3n A \u2014 "Tu estado actual". Reutiliza el look de
+   .budget-section para la tarjeta de la semana (misma barra), y una tarjeta
+   m\xE1s simple para el mes (sin barra \u2014 no existe un "presupuesto mensual"
+   configurado, solo se muestra el gasto real acumulado). */
+.estado-real-header{font-size:13px;font-weight:700;color:var(--text1,#0B1E3D);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.estado-real-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:8px}
+@media (max-width:700px){.estado-real-grid{grid-template-columns:1fr}}
+.estado-mes-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;justify-content:center}
+.estado-mes-label{font-size:13px;font-weight:600;margin-bottom:8px}
+.estado-mes-valor{font-size:26px;font-weight:700;color:var(--turq2)}
+.estado-mes-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.section-divider{font-size:13px;font-weight:700;color:var(--text2);margin:24px 0 14px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px}
+/* FIX v26, 13-jul-2026 \u2014 Fase 3, Mejora 6: banner de alertas activas en el
+   tablero (sobregasto >20%, frecuencia >2.5). Oscar confirm\xF3: solo banner en
+   el tablero, sin WhatsApp ni correo \u2014 por eso no hay l\xF3gica de cron/dedup
+   aqu\xED, se recalcula cada vez que se cargan los datos (idempotente). */
+.alert-banner{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:var(--radius);font-size:13px;border:1px solid transparent}
+.alert-item .alert-icon{font-size:16px;line-height:1.3}
+.alert-item b{font-weight:700}
+.alert-item.sev-red{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red)}
+.alert-item.sev-yellow{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--yellow)}
+
+/* AGENTE 3 9.5 \u2014 capa visual aislada, 22-ago-2026 */
+.header{background:rgba(11,30,61,.95);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);height:64px;border-bottom:1px solid rgba(255,255,255,.06)}
+.header-title{font-weight:700;letter-spacing:-.01em}
+.config-btn{background:rgba(0,196,204,.1);border:1.5px solid rgba(0,196,204,.25);padding:8px 16px;border-radius:10px;min-height:40px;transition:all .2s ease}
+.config-btn:hover{background:rgba(0,196,204,.2);border-color:#00C4CC}
+.refresh-btn{background:linear-gradient(135deg,#00C4CC,#00B0B8);color:#fff;padding:8px 18px;border-radius:10px;min-height:40px;box-shadow:0 2px 8px rgba(0,196,204,.25);transition:all .2s ease}
+.refresh-btn:hover:not(:disabled){background:linear-gradient(135deg,#00B0B8,#009EA5);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,196,204,.35)}
+.refresh-btn:active:not(:disabled),.config-btn:active{transform:scale(.98);transition-duration:80ms}
+.kpi-card{border:1px solid rgba(11,30,61,.06);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(11,30,61,.04);transition:all .3s cubic-bezier(.25,.46,.45,.94)}
+.kpi-card::before{content:'';position:absolute;top:0;left:20px;right:20px;height:3px;background:linear-gradient(90deg,#00C4CC,#00D4DC);border-radius:0 0 3px 3px}
+.kpi-card:hover{box-shadow:0 8px 24px rgba(11,30,61,.1);transform:translateY(-2px);border-color:rgba(0,196,204,.15)}
+.kpi-value{font-size:28px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.kpi-label{font-size:10px;letter-spacing:.08em}.kpi-rank{background:rgba(11,30,61,.04);padding:2px 8px;border-radius:10px}
+.period-tabs{background:rgba(11,30,61,.04);border:0;border-radius:12px;padding:3px;gap:2px;overflow:visible}.period-tab{padding:8px 16px;font-size:13px;border-radius:10px;min-height:36px;transition:all .2s cubic-bezier(.25,.46,.45,.94)}.period-tab.active{box-shadow:0 2px 8px rgba(11,30,61,.2)}.period-tab:hover:not(.active){background:rgba(11,30,61,.06);color:#0B1E3D}.period-tab:active{transform:scale(.97);transition-duration:80ms}
+.modal-overlay{background:rgba(11,30,61,.5);backdrop-filter:blur(6px)}.modal{border-radius:20px;padding:32px;box-shadow:0 24px 48px rgba(11,30,61,.2);animation:modalEnter .3s cubic-bezier(.16,1,.3,1) forwards}.modal-title{font-size:18px;letter-spacing:-.01em}.modal-sub{margin-bottom:24px}.field input{min-height:44px;border-color:rgba(11,30,61,.1);border-radius:12px;padding:12px 16px;font-size:14px;transition:all .2s ease}.field input:focus{border-color:#00C4CC;box-shadow:0 0 0 3px rgba(0,196,204,.1)}.btn-primary{background:linear-gradient(135deg,#00C4CC,#00B0B8);border-radius:12px;min-height:48px;box-shadow:0 2px 8px rgba(0,196,204,.25);transition:all .2s ease}.btn-secondary{border-radius:12px;min-height:48px;color:#0B1E3D;font-weight:600;transition:all .2s ease}
+@keyframes modalEnter{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-wizard{max-width:580px;border-radius:20px}.wiz-circle{width:24px;height:24px;border:2px solid rgba(11,30,61,.15);font-weight:700;transition:all .3s ease}.wiz-dot.active .wiz-circle{box-shadow:0 2px 8px rgba(0,196,204,.3)}.wiz-step.active{animation:wizStepEnter .3s cubic-bezier(.16,1,.3,1) forwards}@keyframes wizStepEnter{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}.zone-card{border-color:rgba(11,30,61,.1);border-radius:12px;padding:14px 12px;min-height:60px;box-shadow:0 1px 2px rgba(11,30,61,.03);transition:all .2s ease}.zone-card.sel{background:rgba(0,196,204,.06);box-shadow:0 2px 8px rgba(0,196,204,.12)}.dur-btn{border-color:rgba(11,30,61,.1);border-radius:10px;padding:10px 18px;min-height:44px;transition:all .2s ease}.dur-btn.sel{background:rgba(0,196,204,.06)}
+.table-card,.budget-section,.chart-card{border:1px solid rgba(11,30,61,.06);border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(11,30,61,.04)}.chart-card{transition:box-shadow .3s ease}.chart-card:hover{box-shadow:0 4px 16px rgba(11,30,61,.08)}th{background:#0B1E3D;color:#fff;padding:12px 14px;font-size:10px;font-weight:700;letter-spacing:.08em;border-bottom:0}th:first-child{border-radius:10px 0 0 0}th:last-child{border-radius:0 10px 0 0}td{padding:14px;font-size:13px;border-bottom:1px solid rgba(11,30,61,.04)}tr:hover td{background:rgba(0,196,204,.02)}
+.budget-bar-wrap{height:10px;background:rgba(11,30,61,.06);border-radius:5px}.budget-bar-fill{border-radius:5px;background:linear-gradient(90deg,#00C4CC,#00D4DC);transition:width .6s cubic-bezier(.25,.46,.45,.94)}.chart-title{font-size:14px;font-weight:700;letter-spacing:-.01em}.chart-badge{background:rgba(11,30,61,.04);font-weight:700;padding:3px 10px}
+#toast{padding:12px 24px;border-radius:12px;font-weight:600;box-shadow:0 8px 24px rgba(11,30,61,.3)}.ai-banner{background:linear-gradient(135deg,#0B1E3D,#132B4A);border-radius:16px;padding:24px;border:1px solid rgba(0,196,204,.1)}.ai-badge{background:linear-gradient(135deg,#00C4CC,#00D4DC);font-weight:800;padding:4px 10px}.ai-alert{padding:8px 14px;border-radius:10px;font-weight:600}
+.action-cell{white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap;min-width:220px}.action-btn{width:36px;height:36px;border:1.5px solid rgba(11,30,61,.08);border-radius:10px;background:#fff;color:#64748B;font-size:14px;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:all .15s ease}.action-btn:hover{border-color:#00C4CC;color:#00C4CC;background:rgba(0,196,204,.04)}.action-btn:active{transform:scale(.93);transition-duration:80ms}.inline-panel{background:rgba(0,196,204,.03)}.inline-panel-grid{display:grid;grid-template-columns:1fr 1fr auto auto;gap:12px;align-items:end}.inline-field label{font-size:11px;font-weight:600;color:#64748B;display:block;margin-bottom:4px}.inline-field input{min-height:44px;border-radius:12px;border:1.5px solid rgba(11,30,61,.1);padding:0 14px;width:100%;font-size:14px}.inline-btn{min-height:44px;border-radius:12px;border:1.5px solid rgba(11,30,61,.1);padding:0 16px;background:#fff;color:#64748B;font-weight:600;cursor:pointer}.inline-btn.primary{background:#00C4CC;color:#fff;border-color:#00C4CC}.history-list{max-height:420px;overflow:auto}.history-row{padding:10px 0;border-bottom:1px solid rgba(11,30,61,.04);font-size:13px}.history-time{color:#94A3B8;margin-left:8px}.history-detail{color:#64748B;font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+body::-webkit-scrollbar{width:6px}body::-webkit-scrollbar-track{background:transparent}body::-webkit-scrollbar-thumb{background:rgba(11,30,61,.12);border-radius:3px}.main>*{animation:sectionFadeIn .4s cubic-bezier(.16,1,.3,1) backwards}.main>*:nth-child(1){animation-delay:.05s}.main>*:nth-child(2){animation-delay:.1s}.main>*:nth-child(3){animation-delay:.15s}.main>*:nth-child(4){animation-delay:.2s}.main>*:nth-child(5){animation-delay:.25s}@keyframes sectionFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){.header{height:auto;min-height:64px;padding:10px 16px;gap:10px}.header-right{gap:6px;flex-wrap:wrap;justify-content:flex-end}.config-btn,.refresh-btn{min-height:44px;padding:8px 12px}.inline-panel-grid{grid-template-columns:1fr}.action-cell{min-width:180px}.table-card,.budget-section,.chart-card{padding:16px}}
+@media(prefers-reduced-motion:reduce){.main>*,.modal,.wiz-step.active{animation:none!important}.kpi-card,.refresh-btn{transform:none!important}}
+@media(prefers-reduced-transparency:reduce){.header{background:#0B1E3D;backdrop-filter:none}.modal-overlay{backdrop-filter:none}}
+.campaign-identity { display:flex; align-items:center; gap:10px; min-width:210px; }
+.campaign-identity > span:last-child { min-width:0; overflow-wrap:anywhere; }
+.campaign-thumb-slot { width:64px; min-width:64px; min-height:64px; font-size:10px; color:var(--text3); white-space:normal; }
+.campaign-thumb-button { position:relative; padding:0; width:64px; height:64px; border:1px solid #dce4ed; border-radius:8px; background:#f5f8fa; cursor:pointer; overflow:hidden; }
+.campaign-thumb-button img { width:100%; height:100%; object-fit:contain; }
+.campaign-thumb-button span { position:absolute; bottom:0; right:0; background:#0B1E3D; color:white; padding:2px 4px; font-size:10px; }
+.campaign-preview-dialog { width:min(90vw,640px); max-height:85vh; overflow:auto; border:0; border-radius:16px; padding:24px; color:#0B1E3D; }
+.campaign-preview-dialog::backdrop { background:#0B1E3D99; }
+.campaign-preview-dialog button { padding:12px 18px; float:right; cursor:pointer; }
+.campaign-preview-dialog figure { margin:16px 0; }
+.campaign-preview-dialog img { display:block; max-width:100%; max-height:55vh; margin:auto; object-fit:contain; }
+.campaign-preview-dialog figcaption { margin-top:8px; overflow-wrap:anywhere; }
+</style>
+<script src="/creditek/agentes/campaign-thumbnails.js" defer><\/script>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer><\/script>
+<link rel="stylesheet" href="/creditek/agentes/aura-premium.css">
+<link rel="stylesheet" href="/creditek/agentes/aura-responsive.css">
+</head>
+<body data-aura-page="meta">
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div data-kora-brand data-variant="compact-inverse"></div>
+    <div>
+      <div class="header-sub">Meta Ads Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="refresh-btn" onclick="abrirWizard()" style="background:var(--turq)">+ Crear campa\xF1a</button>
+    <button class="config-btn" onclick="verHistorial()">\u{1F4DC} Historial</button>
+    <button class="refresh-btn" id="refresh-btn" onclick="cargarDatos()">
+      <span id="refresh-icon">\u21BB</span> Actualizar
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- FIX v29, 13-jul-2026: Secci\xF3n A \u2014 "Tu estado actual". Datos reales de
+       calendario (semana lunes-hoy, mes 1\xB0-hoy), v\xEDa consulta separada a Meta
+       con rango de fechas fijo \u2014 NO cambia con los botones 7/14/30 d\xEDas de
+       abajo (Secci\xF3n B). Corrige la causa ra\xEDz reportada por Oscar: antes el
+       n\xFAmero de "esta semana" era el gasto del rango visible prorrateado
+       matem\xE1ticamente a una equivalencia semanal
+       (spendWeekly = currentDays===7 ? spend : spend*(7/currentDays)), por
+       eso cambiaba sin que la semana real hubiera cambiado. Colocada arriba
+       del selector de rango para que la separaci\xF3n sea visualmente obvia \u2014
+       asunci\xF3n de dise\xF1o m\xEDa, ajustable si Oscar prefiere otro orden. -->
+  <div class="estado-real-header">\u{1F3E0} Tu estado actual \u2014 no cambia con el rango de abajo</div>
+  <div class="estado-real-grid" id="estado-real-grid">
+    <div class="budget-section" id="estado-semana-section" style="margin-bottom:0">
+      <div class="budget-header">
+        <div class="budget-title" id="estado-semana-title">\u{1F4B0} Gasto real de esta semana (lun\u2014hoy)</div>
+        <div class="budget-pct" id="estado-semana-pct">\u2014</div>
+      </div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar-fill" id="estado-semana-bar" style="width:0%"></div>
+      </div>
+      <div class="budget-meta">
+        <span id="estado-semana-spent">Gastado: \u2014</span>
+        <span id="estado-semana-remain"></span>
+      </div>
+    </div>
+    <div class="estado-mes-card" id="estado-mes-section">
+      <div class="estado-mes-label">\u{1F4C5} Gasto real de este mes (1\xB0 \u2014 hoy)</div>
+      <div class="estado-mes-valor" id="estado-mes-valor">\u2014</div>
+      <div class="estado-mes-sub" id="estado-mes-sub"></div>
+    </div>
+  </div>
+
+  <div class="section-divider">\u{1F4C8} An\xE1lisis de rendimiento \u2014 seg\xFAn el rango seleccionado abajo, no afecta gasto/presupuesto</div>
+
+  <!-- Period bar -->
+  <div class="period-bar">
+    <span class="period-label" id="period-label">Selecciona un per\xEDodo</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="period-tabs">
+        <button class="period-tab active" onclick="setPeriod(7,this)">7 d\xEDas</button>
+        <button class="period-tab" onclick="setPeriod(14,this)">14 d\xEDas</button>
+        <button class="period-tab" onclick="setPeriod(30,this)">30 d\xEDas</button>
+      </div>
+      <span class="last-update" id="last-update">Sin datos</span>
+    </div>
+  </div>
+
+  <!-- FIX v23, 13-jul-2026 \u2014 Hallazgo 3: el presupuesto, el an\xE1lisis de IA y
+       las tarjetas de indicadores de abajo son el TOTAL combinado de todas
+       las campa\xF1as activas, no de una sola \u2014 antes no quedaba dicho en
+       ning\xFAn lado.
+       FIX v28, 13-jul-2026: convertido de etiqueta fija a selector \u2014 permite
+       ver el combinado o una campa\xF1a individual. Ver poblarSelector()/renderVista(). -->
+  <select class="scope-selector" id="scope-selector" style="display:none" onchange="renderVista()"></select>
+
+  <!-- FIX v26, 13-jul-2026 \u2014 Fase 3, Mejora 6: banner de alertas activas
+       (sobregasto semanal >20%, frecuencia de campa\xF1a >2.5). Se llena en
+       renderAlertas(), llamado desde renderDatos(). -->
+  <div class="alert-banner" id="alert-banner" style="display:none"></div>
+
+  <!-- Budget bar -->
+  <div class="budget-section" id="budget-section" style="display:none">
+    <div class="budget-header">
+      <div class="budget-title" id="budget-title">\u{1F4B0} Presupuesto semanal \u2014 $50 USD</div>
+      <div class="budget-pct" id="budget-pct">0%</div>
+    </div>
+    <div class="budget-bar-wrap">
+      <div class="budget-bar-fill" id="budget-bar" style="width:0%"></div>
+    </div>
+    <div class="budget-meta">
+      <span id="budget-spent">Gastado: $0</span>
+      <span id="budget-remain">Restante: $50.00</span>
+    </div>
+  </div>
+
+  <!-- AI Analysis -->
+  <div class="ai-banner" id="ai-banner">
+    <div class="ai-banner-header">
+      <span class="ai-badge">IA \xB7 Claude</span>
+      <span class="ai-banner-title">An\xE1lisis inteligente de rendimiento</span>
+    </div>
+    <div class="ai-content" id="ai-content">Analizando datos...</div>
+    <div class="ai-alerts" id="ai-alerts"></div>
+  </div>
+
+  <!-- KPI Grid -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card" title="Cu\xE1nto pagas en promedio por cada resultado (mensaje o lead). M\xE1s bajo es mejor \u2014 te dice qu\xE9 tan barato te est\xE1 costando cada cliente potencial.">
+      <div class="kpi-rank">#1</div>
+      <div class="kpi-label">Costo por resultado</div>
+      <div class="kpi-value" id="kpi-cpr">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-cpr">Sin datos</div>
+      <div class="kpi-sub">CPR \u2014 lead / mensaje</div>
+    </div>
+    <div class="kpi-card" title="Cu\xE1ntas veces se supone que recuperas lo que inviertes, seg\xFAn una proyecci\xF3n estimada. No confirma una venta real \u2014 \xFAsalo solo como referencia, no como dato exacto.">
+      <div class="kpi-rank">\u26A0</div>
+      <div class="kpi-label">ROAS estimado</div>
+      <div class="kpi-value turq" id="kpi-roas">\u2014</div>
+      <!-- FIX v23, 13-jul-2026 \u2014 Hallazgo 4: "Sin datos" contradec\xEDa al
+           n\xFAmero mostrado arriba (ej. "158.6x") \u2014 s\xED hay dato, es una
+           proyecci\xF3n estimada (roas = resultados * $50.000 COP / gasto),
+           no la ausencia de datos. setKPI() nunca actualiza este texto
+           porque no hay un ROAS del per\xEDodo anterior con qu\xE9 compararlo
+           (se llama con prev=null, curr=null a prop\xF3sito) \u2014 "Sin
+           comparaci\xF3n" es la misma palabra que ya usa el resto del
+           tablero (setKPI) para ese caso exacto, sin inventar texto nuevo. -->
+      <div class="kpi-delta neutral" id="delta-roas">Sin comparaci\xF3n</div>
+      <div class="kpi-sub">Proyecci\xF3n \u2014 no confirma venta real</div>
+    </div>
+    <div class="kpi-card" title="Porcentaje de personas que vieron el anuncio y le dieron clic. M\xE1s alto significa que el anuncio genera m\xE1s inter\xE9s real.">
+      <div class="kpi-rank">#3</div>
+      <div class="kpi-label">CTR</div>
+      <div class="kpi-value" id="kpi-ctr">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-ctr">Sin datos</div>
+      <div class="kpi-sub">Tasa de clics</div>
+    </div>
+    <div class="kpi-card" title="Cu\xE1ntas personas distintas vieron tu anuncio, sin contar repeticiones. Si una persona lo vio 3 veces, aqu\xED cuenta solo como 1.">
+      <div class="kpi-rank">#4</div>
+      <div class="kpi-label">Alcance</div>
+      <div class="kpi-value" id="kpi-reach">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-reach">Sin datos</div>
+      <div class="kpi-sub">Personas \xFAnicas</div>
+    </div>
+    <div class="kpi-card" title="Cu\xE1ntas veces en promedio cada persona vio el anuncio. Si sube mucho (arriba de 3.5), la gente empieza a cansarse de verlo \u2014 se le llama fatiga publicitaria.">
+      <div class="kpi-rank">#5</div>
+      <div class="kpi-label">Frecuencia</div>
+      <div class="kpi-value" id="kpi-freq">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-freq">Sin datos</div>
+      <div class="kpi-sub" id="freq-alert">Alerta en 3.5</div>
+      <div class="kpi-alert" id="freq-bar"></div>
+    </div>
+    <div class="kpi-card" title="Cu\xE1nto dinero real se ha gastado en este per\xEDodo, ya convertido de pesos colombianos a d\xF3lares.">
+      <div class="kpi-rank">#6</div>
+      <div class="kpi-label">Gasto total</div>
+      <div class="kpi-value" id="kpi-spend">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-spend">Sin datos</div>
+      <div class="kpi-sub">USD (convertido de COP)</div>
+    </div>
+    <div class="kpi-card" title="Cu\xE1ntas veces se mostr\xF3 el anuncio en total, contando repeticiones. A diferencia del Alcance, si una persona lo vio 3 veces, aqu\xED cuenta 3 veces.">
+      <div class="kpi-rank">#7</div>
+      <div class="kpi-label">Impresiones</div>
+      <div class="kpi-value" id="kpi-impr">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-impr">Sin datos</div>
+      <div class="kpi-sub">Total de veces visto</div>
+    </div>
+    <div class="kpi-card" title="Costo Por Mil impresiones \u2014 cu\xE1nto pagas cada vez que tu anuncio se muestra 1.000 veces, sin importar si le dan clic o no.">
+      <div class="kpi-rank">#8</div>
+      <div class="kpi-label">CPM</div>
+      <div class="kpi-value" id="kpi-cpm">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-cpm">Sin datos</div>
+      <div class="kpi-sub">Costo por mil impresiones</div>
+    </div>
+    <div class="kpi-card" title="Acciones reales que cuentan como resultado (mensajes iniciados, clics al link), no cualquier interacci\xF3n como un 'me gusta' o un comentario.">
+      <div class="kpi-rank">#9</div>
+      <div class="kpi-label">Conversiones</div>
+      <div class="kpi-value" id="kpi-conv">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-conv">Sin datos</div>
+      <div class="kpi-sub">Acciones completadas</div>
+    </div>
+    <div class="kpi-card" title="Costo Por Clic \u2014 cu\xE1nto pagas en promedio cada vez que alguien le da clic a tu anuncio.">
+      <div class="kpi-rank">#10</div>
+      <div class="kpi-label">CPC</div>
+      <div class="kpi-value" id="kpi-cpc">\u2014</div>
+      <div class="kpi-delta neutral" id="delta-cpc">Sin datos</div>
+      <div class="kpi-sub">Costo por clic</div>
+    </div>
+  </div>
+
+  <!-- FIX v25, 13-jul-2026 \u2014 Fase 2, Mejora 3: se reemplazan los 4 recuadros
+       sueltos por una gr\xE1fica de l\xEDnea real (gasto + CTR en el tiempo),
+       ampliada a 8 semanas (ver cargarDatos()) para que la l\xEDnea tenga
+       suficientes puntos como para ser \xFAtil \u2014 con solo 4 no aportaba mucho
+       m\xE1s que los recuadros que reemplaza. -->
+  <div class="trend-section" id="trend-section" style="display:none">
+    <div class="section-title" style="font-size:13px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span id="trend-title">\u{1F4C8} Tendencia \u2014 \xFAltimas 8 semanas</span>
+      <!-- FIX v29, 13-jul-2026: "Total ejecutado por mes" \u2014 vista mensual
+           alternable en la misma gr\xE1fica, sin volver a pedir datos a Meta
+           (ya se cargan ambas series en cargarDatos()). -->
+      <div class="period-tabs" style="transform:scale(.85);transform-origin:right center">
+        <button class="period-tab active" id="trend-tab-semana" onclick="setTrendModo('semana')">Semanal</button>
+        <button class="period-tab" id="trend-tab-mes" onclick="setTrendModo('mes')">Mensual</button>
+      </div>
+    </div>
+    <div style="position:relative;height:220px">
+      <canvas id="trend-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Campaigns table -->
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">\u{1F4CA} Campa\xF1as \u2014 Ranking por rendimiento</div>
+    </div>
+    <div id="campaigns-wrap">
+      <div class="empty-state">
+        <div class="icon">\u{1F4E1}</div>
+        <h3>Sin datos a\xFAn</h3>
+        <p>Haz clic en Actualizar para consultar tus campa\xF1as de forma segura.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- A/B comparison panel -->
+  <div class="table-card" id="ab-panel" style="display:none;margin-top:16px">
+    <div class="table-header">
+      <div class="table-title">\u{1F9EA} Comparaci\xF3n de variantes A/B</div>
+    </div>
+    <div id="ab-wrap"></div>
+  </div>
+
+  <!-- FIX v29, 13-jul-2026: Costo final por campa\xF1a (hist\xF3rico completo) \u2014
+       bajo demanda, NO se carga autom\xE1ticamente (consulta m\xE1s pesada que el
+       resto: trae TODAS las campa\xF1as de la cuenta, activas o no, con su
+       gasto de los \xFAltimos 12 meses \u2014 no solo las del rango 7/14/30 d\xEDas). -->
+  <div class="table-card" style="margin-top:16px">
+    <div class="table-header">
+      <div class="table-title">\u{1F5C2}\uFE0F Costo final por campa\xF1a \u2014 hist\xF3rico completo (incluye pausadas/terminadas)</div>
+      <button class="btn-secondary" id="btn-costo-historico" onclick="cargarCostoHistorico()" style="font-size:12px;padding:8px 14px">Ver costo hist\xF3rico completo</button>
+    </div>
+    <div id="costo-historico-wrap" style="display:none"></div>
+  </div>
+
+</div>
+
+<!-- Wizard crear campa\xF1a -->
+<div class="modal-overlay" id="modal-wizard">
+  <div class="modal modal-wizard">
+    <div class="modal-title">\u{1F680} Crear campa\xF1a</div>
+    <div class="modal-sub">Se publica autom\xE1ticamente en Facebook e Instagram</div>
+
+    <div class="wiz-stepper">
+      <div class="wiz-dot active" data-wiz-step="1"><span class="wiz-circle">1</span>Zona</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-dot" data-wiz-step="2"><span class="wiz-circle">2</span>Presupuesto</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-dot" data-wiz-step="3"><span class="wiz-circle">3</span>Creative</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-dot" data-wiz-step="4"><span class="wiz-circle">4</span>Revisar</div>
+    </div>
+
+    <!-- Paso 1: Zona -->
+    <div class="wiz-step active" id="wiz-step-1">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Elige una o varias zonas</div>
+      <div class="zone-grid" id="wiz-zone-grid"></div>
+
+      <!-- FEATURE Agente3 Aliados 23-jul-2026 \xB7 bot\xF3n + panel de multi-check -->
+      <div id="wiz-aliados-wrap" style="position:relative;text-align:center;margin-bottom:10px">
+        <button class="btn-secondary" id="wiz-aliados-btn"
+          style="font-size:12px;padding:7px 14px;border-style:dashed;border-color:#00C4CC;color:#00C4CC"
+          onclick="wizToggleAliados()">\u{1F91D} Aliados \u25BE</button>
+        <div id="wiz-aliados-panel"
+          style="display:none;position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 6px);z-index:10;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 25px -5px rgba(0,0,0,.15);padding:10px;min-width:260px;max-height:340px;overflow-y:auto;text-align:left">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">\u{1F91D} Ciudades de aliados</div>
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;font-weight:600;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="wiz-aliados-todas" onchange="wizToggleAllAliados()"> Seleccionar todas
+          </label>
+          <div id="wiz-aliados-list"></div>
+          <div id="wiz-aliados-status" style="font-size:11px;color:var(--text3);padding:6px 4px 2px"></div>
+        </div>
+      </div>
+
+      <div id="wiz-search-toggle" style="text-align:center;margin-bottom:10px">
+        <button class="btn-secondary" style="font-size:12px;padding:7px 14px" onclick="wizToggleSearch()">+ Buscar otra ciudad o municipio</button>
+      </div>
+      <div id="wiz-search-panel" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input type="text" id="wiz-search-input" placeholder="Ej: Sincelejo, Magangu\xE9, Monter\xEDa..." style="flex:1;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none">
+          <button class="btn-primary" style="flex:none;padding:9px 16px" onclick="wizSearchCity()">Buscar</button>
+        </div>
+        <div id="wiz-search-results"></div>
+      </div>
+
+      <div class="wiz-nav">
+        <span></span>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" onclick="wizGoStep(2)">Siguiente \u2192</button>
+      </div>
+    </div>
+
+    <!-- Paso 2: Presupuesto -->
+    <div class="wiz-step" id="wiz-step-2">
+      <div class="field">
+        <label>Presupuesto semanal</label>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:20px;font-weight:700" id="wiz-budget-out">$160.000 COP</span>
+          <span style="font-size:12px;color:var(--text3)" id="wiz-budget-cop">\u2248 $22.857 COP/d\xEDa</span>
+        </div>
+        <!-- FIX v33, 21-jul-2026 \u2014 slider redenominado directo a pesos (antes
+             15-200 "USD" \xD7 COP_TO_USD). Rango equivalente con la tasa actual
+             (~3200): min ~48.000\u219250.000, max ~640.000\u2192650.000, default
+             50\xD73200=160.000. -->
+        <input type="range" id="wiz-budget-slider" min="50000" max="650000" step="10000" value="160000" style="width:100%">
+      </div>
+      <div class="field">
+        <label>Duraci\xF3n</label>
+        <div class="dur-group" id="wiz-dur-group"></div>
+      </div>
+      <div class="field">
+        <label>Objetivo</label>
+        <select id="wiz-objective">
+          <option value="seguidores">Seguidores (interacci\xF3n con perfil) \u2713 probado</option>
+          <option value="mensajes">Mensajes WhatsApp (con Sof\xEDa)</option>
+          <option value="trafico" disabled>Tr\xE1fico al portal \u2014 pr\xF3ximamente</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Audiencia estimada</label>
+        <div id="wiz-audience-estimate" style="font-size:13px;color:var(--text2)">Calculando...</div>
+        <div style="width:100%;height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden">
+          <div id="wiz-audience-bar" style="width:0%;height:100%;background:var(--turq);transition:width .4s"></div>
+        </div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn-secondary" onclick="wizGoStep(1)">\u2190 Atr\xE1s</button>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" onclick="wizGoStep(3)">Siguiente \u2192</button>
+      </div>
+    </div>
+
+    <!-- Paso 3: Creative -->
+    <div class="wiz-step" id="wiz-step-3">
+      <div class="field">
+        <label>Imagen del anuncio <span id="wiz-img-a-label" style="display:none">(Variante A)</span></label>
+        <div class="upload-zone" id="wiz-upload-zone" onclick="document.getElementById('wiz-file-input').click()">
+          <div id="wiz-upload-placeholder">\u{1F4F7} Clic para subir una imagen</div>
+          <img id="wiz-img-preview" style="display:none">
+        </div>
+        <input type="file" id="wiz-file-input" accept="image/*" style="display:none">
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="wiz-ab-toggle" style="width:auto" onchange="wizToggleAB()">
+          \u{1F9EA} Probar 2 variantes (A/B testing) \u2014 mismo copy, imagen distinta
+        </label>
+      </div>
+      <div class="field" id="wiz-field-imgb" style="display:none">
+        <label>Imagen del anuncio (Variante B)</label>
+        <div class="upload-zone" id="wiz-upload-zone-b" onclick="document.getElementById('wiz-file-input-b').click()">
+          <div id="wiz-upload-placeholder-b">\u{1F4F7} Clic para subir una imagen</div>
+          <img id="wiz-img-preview-b" style="display:none">
+        </div>
+        <input type="file" id="wiz-file-input-b" accept="image/*" style="display:none">
+      </div>
+      <div class="field">
+        <label>Titular del anuncio (headline \u2014 texto en negrita que ve el cliente)</label>
+        <input type="text" id="wiz-headline" maxlength="40" placeholder="Financia tu celular hoy" style="width:100%;font-size:13px;font-family:var(--font);padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">M\xE1x. 40 caracteres recomendados \u2014 Meta lo trunca en la mayor\xEDa de formatos</div>
+      </div>
+      <div class="field">
+        <label>Texto del anuncio</label>
+        <textarea id="wiz-ad-text" rows="4" style="width:100%;font-size:13px;font-family:var(--font);padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none;resize:vertical" placeholder="\u{1F4F1} \xA1Estrena celular hoy mismo! Financiaci\xF3n f\xE1cil y r\xE1pida en Creditek..."></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Sin hashtags \u2014 no aplican en anuncios pagados</div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn-secondary" onclick="wizGoStep(2)">\u2190 Atr\xE1s</button>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" onclick="wizGoStep(4)">Siguiente \u2192</button>
+      </div>
+    </div>
+
+    <!-- Paso 4: Revisar -->
+    <div class="wiz-step" id="wiz-step-4">
+      <div class="field">
+        <label>Nombre de la campa\xF1a (puedes editarlo)</label>
+        <input type="text" id="wiz-campaign-name" style="width:100%;font-size:13px;font-family:var(--font);padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none">
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+        <div class="wiz-review-row"><span class="lbl">\u{1F4CD} Zona</span><span class="val" id="wiz-rev-zone">\u2014</span></div>
+        <div class="wiz-review-row"><span class="lbl">\u{1F4B0} Presupuesto</span><span class="val" id="wiz-rev-budget">\u2014</span></div>
+        <div class="wiz-review-row"><span class="lbl">\u{1F4C5} Duraci\xF3n</span><span class="val" id="wiz-rev-duration">\u2014</span></div>
+        <div class="wiz-review-row"><span class="lbl">\u{1F3AF} Objetivo</span><span class="val" id="wiz-rev-objective">\u2014</span></div>
+        <div class="wiz-review-row" style="border-bottom:none"><span class="lbl">\u{1F4F2} Placements</span><span class="val" style="color:var(--turq)">Facebook + Instagram</span></div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="wiz-activar-ya" checked style="width:auto">
+          Confirmo que revis\xE9 imagen, texto, presupuesto y ciudades antes de publicar
+        </label>
+      </div>
+      <div class="wiz-progress" id="wiz-progress">Publicando...</div>
+      <div class="wiz-nav">
+        <button class="btn-secondary" onclick="wizGoStep(3)">\u2190 Atr\xE1s</button>
+        <button class="btn-primary" style="flex:none;padding:10px 20px" id="wiz-publish-btn" onclick="publicarCampanaSegura()">\u{1F680} Publicar en Meta</button>
+      </div>
+    </div>
+
+    <div class="wiz-nav" style="margin-top:6px">
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="cerrarWizard()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-overlay" id="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-title">
+  <div class="modal">
+    <div class="modal-title" id="history-title">\u{1F4DC} Historial de cambios</div>
+    <div class="modal-sub">\xDAltimas acciones realizadas desde este navegador.</div>
+    <div class="history-list" id="history-list"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" onclick="cerrarHistorial()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIX v25, 13-jul-2026 \u2014 Fase 2, Mejora 3: mismo Chart.js (misma versi\xF3n)
+     ya usado en creditek-agente-respuestas.html, v\xEDa CDN. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\/script>
+<script>
+// \u2500\u2500 Estado \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+let currentDays = 7;
+// FIX v24, 13-jul-2026 \u2014 Fase 1, Mejora 2: rango legible del per\xEDodo de
+// comparaci\xF3n ("vs anterior"), calculado en cargarDatos() junto con las
+// fechas reales que ya se usan para pedir el per\xEDodo anterior a Meta.
+let prevRangeLabel = '';
+
+// FIX v24, 13-jul-2026 \u2014 Fase 1: compartido por Mejora 1 (nombre corto de
+// campa\xF1a) y Mejora 2 (fechas del per\xEDodo de comparaci\xF3n).
+const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function formatFechaCorta(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return \`\${d} \${MESES_CORTOS[m-1]}\`;
+}
+
+// FIX v24, 13-jul-2026 \u2014 Fase 1, Mejora 1: patr\xF3n real confirmado en Meta
+// Ads Manager: "Creditek - [ciudades separadas con +] - [d/m/yyyy hh:mm] -
+// [mensaje opcional]". Se muestra fecha corta + el segmento distintivo final
+// (si existe); el nombre completo original sigue disponible en el atributo
+// title (tooltip), que ya exist\xEDa en la celda de la tabla.
+function acortarNombreCampa\xF1a(nombre) {
+  return String(nombre || "\u2014");
+}
+
+// \u2500\u2500 Wizard de campa\xF1as \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const WIZ_PAGE_ID = '1191052130747281';
+const WIZ_IG_USER_ID = '17841476738628018';
+const WIZ_ZONES = {
+  tolu:     { name: 'Tol\xFA',            key: '480653', region: 'Sucre',    region_id: '740' },
+  corozal:  { name: 'Corozal',         key: '461261', region: 'Sucre',    region_id: '740' },
+  chinu:    { name: 'Chin\xFA',           key: '460682', region: 'Cordoba',  region_id: '726' },
+  ciedeoro: { name: 'Ci\xE9naga de Oro',  key: '460853', region: 'Cordoba',  region_id: '726' },
+  covenas:  { name: 'Cove\xF1as',         key: '461708', region: 'Sucre',    region_id: '740' }
+};
+
+let wizSelectedZones = new Set();
+let wizCustomZones = {};
+let wizDuration = 7;
+let wizImageBase64 = null;
+let wizImageBaseB = null; // A/B testing \u2014 imagen de la Variante B
+let wizImageMime = 'image/png';
+let wizImageMimeB = 'image/png';
+let wizABTest = false;    // A/B testing \u2014 activado/desactivado
+let securePublisherCities = [];
+
+function normalizeCityName(value) {
+  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();
+}
+function secureCityName(city) { return city?.name || city?.city_name || city?.nombre || ''; }
+function secureCityId(city) { return city?.id || city?.city_id || city?.slug || ''; }
+
+async function abrirWizard() {
+  try {
+    showToast('Validando conexi\xF3n segura con Meta\u2026');
+    const options = await metaWorkerRequest('/v1/publisher/options');
+    securePublisherCities = Array.isArray(options.cities) ? options.cities : [];
+    Object.values(WIZ_ZONES).forEach(zone => {
+      const match = securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name));
+      zone.secureId = secureCityId(match) ? String(secureCityId(match)) : '';
+    });
+    renderWizZones();
+    renderWizDuration();
+    wizGoStep(1);
+    document.getElementById('modal-wizard').classList.add('open');
+    showToast('\u2713 Conexi\xF3n segura lista', '#10B981');
+  } catch (error) {
+    showToast(\`No se pudo abrir el publicador seguro: \${error.message}\`, '#EF4444');
+  }
+}
+
+function cerrarWizard() {
+  document.getElementById('modal-wizard').classList.remove('open');
+}
+
+function wizAllZones() {
+  return { ...WIZ_ZONES, ...wizCustomZones };
+}
+
+function renderWizZones() {
+  const grid = document.getElementById('wiz-zone-grid');
+  grid.innerHTML = '';
+  Object.entries(wizAllZones()).forEach(([id, z]) => {
+    const card = document.createElement('div');
+    card.className = 'zone-card' + (wizSelectedZones.has(id) ? ' sel' : '');
+    card.innerHTML = \`\${z.name}<div class="sub">\${z.sub || z.region}</div>\`;
+    card.onclick = () => {
+      if (wizSelectedZones.has(id)) wizSelectedZones.delete(id); else wizSelectedZones.add(id);
+      renderWizZones();
+    };
+    grid.appendChild(card);
+  });
+}
+
+function wizToggleSearch() {
+  const panel = document.getElementById('wiz-search-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') document.getElementById('wiz-search-input').focus();
+}
+
+// Fix v6 \u2014 ciudades grandes vecinas, sin aliado hoy, que se excluyen siempre.
+// Actualizar esta lista el d\xEDa que se consiga un aliado en alguna de ellas.
+const EXCLUDED_CITY_NAMES = ['Sincelejo', 'Monter\xEDa'];
+
+
+async function wizSearchCity() {
+  const q = document.getElementById('wiz-search-input').value.trim();
+  const resultsDiv = document.getElementById('wiz-search-results');
+  if (!q) return;
+  resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Buscando...</div>';
+  try {
+    const cities = securePublisherCities.filter(city => normalizeCityName(secureCityName(city)).includes(normalizeCityName(q)));
+    if (cities.length === 0) { resultsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Sin resultados</div>'; return; }
+    resultsDiv.innerHTML = '';
+    cities.slice(0, 8).forEach(c => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between';
+      item.onmouseenter = () => item.style.background = 'rgba(0,196,204,.1)';
+      item.onmouseleave = () => item.style.background = 'transparent';
+      item.innerHTML = \`<span>\${c.name}</span><span style="color:var(--text3);font-size:11px">\${c.region || ''}</span>\`;
+      item.onclick = () => {
+        const id = 'custom_' + c.key;
+        wizCustomZones[id] = { name: c.name, key: c.key, region: c.region, region_id: String(c.region_id), sub: 'Personalizada' };
+        wizSelectedZones.add(id);
+        renderWizZones();
+        document.getElementById('wiz-search-input').value = '';
+        resultsDiv.innerHTML = '';
+        showToast('\u2713 ' + c.name + ' agregada', '#10B981');
+      };
+      resultsDiv.appendChild(item);
+    });
+  } catch (err) {
+    resultsDiv.innerHTML = \`<div style="font-size:12px;color:#EF4444;padding:6px 0">Error de b\xFAsqueda: \${err.message}</div>\`;
+  }
+}
+
+// ============================================================================
+// FEATURE Aliados \xB7 bot\xF3n "\u{1F91D} Aliados" con multi-check
+// Doc: FEATURE_Agente3_Aliados_23jul2026.md
+// Los keys de Meta se resuelven v\xEDa la API de Meta Search (mismo endpoint que
+// wizSearchCity) la primera vez que se abre el panel \u2014 no se hardcodean para
+// no dejar valores m\xE1gicos que puedan quedar desactualizados.
+// ============================================================================
+const CIUDADES_ALIADOS = [
+  'Apartad\xF3', 'Barranquilla', 'Canalete', 'Chigorod\xF3',
+  'El Carmen de Bol\xEDvar', 'Guamal', 'Los C\xF3rdobas', 'Malambo',
+  'Necocl\xED', 'San Pedro', 'Soledad', 'Suan'
+];
+let wizAliadoResueltos = {}; // { nombre \u2192 {key, region, region_id} }  cache post-fetch
+let wizAliadosCargando = false;
+
+function wizToggleAliados() {
+  const panel = document.getElementById('wiz-aliados-panel');
+  const abierto = panel.style.display === 'block';
+  panel.style.display = abierto ? 'none' : 'block';
+  if (!abierto && Object.keys(wizAliadoResueltos).length === 0) {
+    wizCargarAliados();
+  }
+}
+
+async function wizCargarAliados() {
+  if (wizAliadosCargando) return;
+  wizAliadosCargando = true;
+  const status = document.getElementById('wiz-aliados-status');
+  const lista = document.getElementById('wiz-aliados-list');
+  status.textContent = 'Validando ciudades autorizadas\u2026';
+  lista.innerHTML = '';
+  CIUDADES_ALIADOS.forEach(nombre => {
+    const match = securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(nombre));
+    if (!match) return;
+    const secureId = String(secureCityId(match));
+    wizAliadoResueltos[nombre] = {
+      key: secureId,
+      secureId,
+      region: match.region || match.region_name || '',
+      region_id: String(match.region_id || '')
+    };
+  });
+
+  const resueltas = Object.keys(wizAliadoResueltos).length;
+  status.textContent = resueltas === CIUDADES_ALIADOS.length
+    ? ''
+    : \`\u26A0 \${CIUDADES_ALIADOS.length - resueltas} ciudad(es) sin resolver \u2014 revisa el token/permisos.\`;
+  wizAliadosCargando = false;
+  wizRenderAliadosLista();
+}
+
+function wizRenderAliadosLista() {
+  const lista = document.getElementById('wiz-aliados-list');
+  lista.innerHTML = CIUDADES_ALIADOS.map(nombre => {
+    const resuelto = wizAliadoResueltos[nombre];
+    const id = resuelto ? 'aliado_' + resuelto.key : '';
+    const checked = resuelto && wizSelectedZones.has(id);
+    const disabled = resuelto ? '' : 'disabled title="No se pudo resolver en Meta"';
+    return \`<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:13px;cursor:\${resuelto ? 'pointer' : 'not-allowed'};color:\${resuelto ? 'inherit' : 'var(--text3)'}">
+      <input type="checkbox" data-aliado-nombre="\${nombre.replace(/"/g, '&quot;')}" \${checked ? 'checked' : ''} \${disabled} onchange="wizToggleAliado('\${nombre.replace(/'/g, "\\\\'")}', this.checked)"> \${nombre}
+    </label>\`;
+  }).join('');
+  wizSincronizarTodas();
+}
+
+function wizToggleAliado(nombre, marcar) {
+  const resuelto = wizAliadoResueltos[nombre];
+  if (!resuelto) return;
+  const id = 'aliado_' + resuelto.key;
+  if (marcar) {
+    wizCustomZones[id] = { name: nombre, key: resuelto.key, secureId: resuelto.secureId, region: resuelto.region, region_id: resuelto.region_id, sub: '\u{1F91D} Aliado' };
+    wizSelectedZones.add(id);
+  } else {
+    delete wizCustomZones[id];
+    wizSelectedZones.delete(id);
+  }
+  renderWizZones();
+  wizSincronizarTodas();
+  wizActualizarLabelAliados();
+}
+
+function wizToggleAllAliados() {
+  const chkTodas = document.getElementById('wiz-aliados-todas');
+  const nombresResueltos = CIUDADES_ALIADOS.filter(n => wizAliadoResueltos[n]);
+  if (chkTodas.checked) {
+    nombresResueltos.forEach(n => {
+      const r = wizAliadoResueltos[n];
+      const id = 'aliado_' + r.key;
+      wizCustomZones[id] = { name: n, key: r.key, secureId: r.secureId, region: r.region, region_id: r.region_id, sub: '\u{1F91D} Aliado' };
+      wizSelectedZones.add(id);
+    });
+  } else {
+    nombresResueltos.forEach(n => {
+      const id = 'aliado_' + wizAliadoResueltos[n].key;
+      delete wizCustomZones[id];
+      wizSelectedZones.delete(id);
+    });
+  }
+  renderWizZones();
+  wizRenderAliadosLista();
+  wizActualizarLabelAliados();
+}
+
+function wizSincronizarTodas() {
+  // "Seleccionar todas" refleja si TODAS las ciudades resueltas est\xE1n marcadas.
+  const chkTodas = document.getElementById('wiz-aliados-todas');
+  if (!chkTodas) return;
+  const resueltas = CIUDADES_ALIADOS.filter(n => wizAliadoResueltos[n]);
+  if (resueltas.length === 0) { chkTodas.checked = false; return; }
+  chkTodas.checked = resueltas.every(n => wizSelectedZones.has('aliado_' + wizAliadoResueltos[n].key));
+}
+
+function wizActualizarLabelAliados() {
+  const btn = document.getElementById('wiz-aliados-btn');
+  if (!btn) return;
+  const n = [...wizSelectedZones].filter(id => id.startsWith('aliado_')).length;
+  btn.textContent = n === 0 ? '\u{1F91D} Aliados \u25BE' : \`\u{1F91D} Aliados (\${n}) \u25BE\`;
+  btn.style.background = n > 0 ? '#00C4CC' : '';
+  btn.style.color = n > 0 ? 'white' : '#00C4CC';
+}
+
+// Cerrar el panel al clickar fuera
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('wiz-aliados-wrap');
+  const panel = document.getElementById('wiz-aliados-panel');
+  if (!wrap || !panel) return;
+  if (panel.style.display === 'block' && !wrap.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+function wizToggleAB() {
+  wizABTest = document.getElementById('wiz-ab-toggle').checked;
+  document.getElementById('wiz-field-imgb').style.display = wizABTest ? 'block' : 'none';
+  document.getElementById('wiz-img-a-label').style.display = wizABTest ? 'inline' : 'none';
+  if (!wizABTest) {
+    wizImageBaseB = null;
+    document.getElementById('wiz-img-preview-b').style.display = 'none';
+    document.getElementById('wiz-upload-placeholder-b').style.display = 'block';
+  }
+}
+
+function renderWizDuration() {
+  const group = document.getElementById('wiz-dur-group');
+  group.innerHTML = '';
+  [3, 7, 14, 30].forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'dur-btn' + (d === wizDuration ? ' sel' : '');
+    btn.textContent = d + ' d\xEDas';
+    btn.onclick = () => { wizDuration = d; renderWizDuration(); };
+    group.appendChild(btn);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const slider = document.getElementById('wiz-budget-slider');
+  if (slider) {
+    slider.addEventListener('input', e => {
+      const v = parseInt(e.target.value);
+      // FIX v33 \u2014 slider ya est\xE1 en COP, se muestra directo (sin multiplicar)
+      document.getElementById('wiz-budget-out').textContent = fmtCOP(v);
+      document.getElementById('wiz-budget-cop').textContent = '\u2248 ' + fmtCOP(Math.round(v / 7)) + '/d\xEDa';
+    });
+  }
+  const fileInput = document.getElementById('wiz-file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      wizImageMime = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        wizImageBase64 = ev.target.result.split(',')[1];
+        document.getElementById('wiz-img-preview').src = ev.target.result;
+        document.getElementById('wiz-img-preview').style.display = 'block';
+        document.getElementById('wiz-upload-placeholder').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  const fileInputB = document.getElementById('wiz-file-input-b');
+  if (fileInputB) {
+    fileInputB.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      wizImageMimeB = ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/png';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        wizImageBaseB = ev.target.result.split(',')[1];
+        document.getElementById('wiz-img-preview-b').src = ev.target.result;
+        document.getElementById('wiz-img-preview-b').style.display = 'block';
+        document.getElementById('wiz-upload-placeholder-b').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+});
+
+function clasificarAudiencia(upper) {
+  if (upper < 50000) return 'Acotada';
+  if (upper < 200000) return 'Moderada';
+  return 'Amplia';
+}
+
+async function actualizarAudienciaEstimada() {
+  const el = document.getElementById('wiz-audience-estimate');
+  const bar = document.getElementById('wiz-audience-bar');
+  if (!el) return;
+  el.textContent = 'Calculando...';
+  if (bar) bar.style.width = '0%';
+
+  if (wizSelectedZones.size === 0) { el.textContent = 'Elige al menos una zona'; return; }
+  el.textContent = 'La segmentaci\xF3n se validar\xE1 de forma segura al publicar';
+  if (bar) bar.style.width = '100%';
+}
+
+function wizGoStep(n) {
+  if (n === 2 && wizSelectedZones.size === 0) { showToast('Elige al menos una zona', '#EF4444'); return; }
+  if (n === 4) {
+    if (!wizImageBase64) { showToast('Sube una imagen', '#EF4444'); return; }
+    if (wizABTest && !wizImageBaseB) { showToast('Sube la imagen de la Variante B', '#EF4444'); return; }
+    if (!document.getElementById('wiz-headline').value.trim()) { showToast('Escribe el titular del anuncio', '#EF4444'); return; }
+    if (!document.getElementById('wiz-ad-text').value.trim()) { showToast('Escribe el texto del anuncio', '#EF4444'); return; }
+  }
+  [1, 2, 3, 4].forEach(i => {
+    document.getElementById('wiz-step-' + i).classList.toggle('active', i === n);
+    const dot = document.querySelector(\`[data-wiz-step="\${i}"]\`);
+    dot.classList.toggle('active', i === n);
+    dot.classList.toggle('done', i < n);
+  });
+  if (n === 2) {
+    actualizarAudienciaEstimada();
+  }
+  if (n === 4) {
+    const zoneNames = [...wizSelectedZones].map(id => wizAllZones()[id].name).join(', ');
+    const budgetVal = document.getElementById('wiz-budget-slider').value;
+    document.getElementById('wiz-rev-zone').textContent = zoneNames;
+    document.getElementById('wiz-rev-budget').textContent = fmtCOP(budgetVal) + '/semana';
+    document.getElementById('wiz-rev-duration').textContent = wizDuration + ' d\xEDas';
+    document.getElementById('wiz-rev-objective').textContent = document.getElementById('wiz-objective').selectedOptions[0].textContent.replace(' \u2713 probado', '');
+
+    const adText4 = document.getElementById('wiz-ad-text').value.trim();
+    const horaActual4 = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit', hour12:false});
+    const copySnippet4 = adText4 ? adText4.split(' ').slice(0,4).join(' ') : 'sin-copy';
+    const nombreAuto = \`Creditek - \${[...wizSelectedZones].map(id => wizAllZones()[id].name).join('+')} - \${new Date().toLocaleDateString('es-CO')} \${horaActual4} - \${copySnippet4}\`;
+    const campoNombre = document.getElementById('wiz-campaign-name');
+    if (!campoNombre.dataset.editado) { campoNombre.value = nombreAuto; }
+    campoNombre.oninput = function() { campoNombre.dataset.editado = '1'; };
+  }
+}
+
+
+function localIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return \`\${year}-\${month}-\${day}\`;
+}
+
+async function publicarCampanaSegura() {
+  const progress = document.getElementById('wiz-progress');
+  const btn = document.getElementById('wiz-publish-btn');
+  progress.style.display = 'block';
+  progress.style.color = '';
+  btn.disabled = true;
+  try {
+    if (!document.getElementById('wiz-activar-ya').checked) throw new Error('Confirma la revisi\xF3n final antes de publicar');
+    const zones = [...wizSelectedZones].map(id => wizAllZones()[id]).filter(Boolean);
+    const cityIds = zones.map(zone => zone.secureId || secureCityId(securePublisherCities.find(city => normalizeCityName(secureCityName(city)) === normalizeCityName(zone.name)))).filter(Boolean).map(String);
+    if (!cityIds.length || cityIds.length !== zones.length) throw new Error('Una ciudad seleccionada no est\xE1 habilitada en el cat\xE1logo seguro');
+    if (!wizImageBase64) throw new Error('Sube la imagen del anuncio');
+    if (wizABTest && !wizImageBaseB) throw new Error('Sube la imagen de la variante B');
+
+    const weeklyBudget = Number(document.getElementById('wiz-budget-slider').value);
+    const dailyBudget = Math.round(weeklyBudget / 7);
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + wizDuration);
+    const objectiveChoice = document.getElementById('wiz-objective').value;
+    const headline = document.getElementById('wiz-headline').value.trim();
+    const copy = document.getElementById('wiz-ad-text').value.trim();
+    const campaignName = document.getElementById('wiz-campaign-name').value.trim();
+    const cta = objectiveChoice === 'mensajes' ? 'SEND_MESSAGE' : 'LEARN_MORE';
+    const objective = objectiveChoice === 'mensajes' ? 'OUTCOME_ENGAGEMENT' : 'OUTCOME_TRAFFIC';
+    const baseCreative = {
+      piece_id: 'manual', copy, headline, cta, image_url: '',
+      image_data: { mime_type: wizImageMime, bytes_base64: wizImageBase64 }
+    };
+    const payload = {
+      ...baseCreative,
+      campaign_name: campaignName,
+      cities: cityIds,
+      platforms: ['facebook', 'instagram'],
+      objective,
+      budget_type: 'daily',
+      budget_cop: dailyBudget,
+      start_date: localIsoDate(start),
+      end_date: localIsoDate(end),
+      final_confirmation: true,
+      ...(wizABTest ? { variants: [baseCreative, {
+        piece_id: 'manual', copy, headline, cta, image_url: '',
+        image_data: { mime_type: wizImageMimeB, bytes_base64: wizImageBaseB }
+      }] } : {})
+    };
+
+    progress.textContent = 'Publicando mediante conexi\xF3n segura\u2026';
+    const idempotencyKey = \`aura_\${Date.now()}_\${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}\`;
+    const result = await metaWorkerRequest('/v1/publisher/publish', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(payload)
+    });
+    if (!result.ok) throw new Error(result.error || 'Meta no confirm\xF3 la publicaci\xF3n');
+    progress.textContent = '\u2713 Campa\xF1a enviada a revisi\xF3n de Meta';
+    progress.style.color = '#10B981';
+    showToast('\u2713 Campa\xF1a publicada mediante el Worker seguro', '#10B981');
+    setTimeout(() => {
+      cerrarWizard();
+      wizSelectedZones = new Set();
+      wizCustomZones = {};
+      wizImageBase64 = null;
+      wizImageBaseB = null;
+      wizABTest = false;
+      progress.style.display = 'none';
+      cargarDatos();
+    }, 1800);
+  } catch (error) {
+    progress.textContent = \`\u2717 \${error.message}\`;
+    progress.style.color = '#EF4444';
+    showToast(error.message, '#EF4444');
+  } finally {
+    btn.disabled = false;
+  }
+}
+let lastData = null;
+// FIX v29, 13-jul-2026: estado real de calendario (Secci\xF3n A) \u2014 independiente
+// de lastData/currentDays. null hasta que cargarEstadoActual() resuelva.
+let estadoReal = { semanaSpendCOP: null, mesSpendCOP: null };
+
+// M\xE9tricas agregadas del bot protegidas por la misma sesi\xF3n AURA owner que
+// ya usa el Worker de Meta Ads. Nunca se publica un secreto administrativo.
+const WORKER_API = 'https://creditek-bot.comercial-853.workers.dev';
+const META_ADS_WORKER_API = 'https://aura-meta-ads-api.comercial-853.workers.dev';
+const META_AD_ACCOUNT_ID = '27446180201684830';
+const DEFAULT_WEEKLY_BUDGET_COP = 160000;
+
+// \u2500\u2500 Config \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// FIX v32/v33, 21-jul-2026: dashboard 100% en COP (account_currency=COP
+// confirmado). COP_TO_USD ya no tiene NING\xDAN uso activo en el c\xF3digo \u2014 ni en
+// KPIs/tablas/tendencia/IA (v32), ni en el presupuesto semanal, el wizard de
+// campa\xF1a nueva, ni el daily_budget real enviado a Meta al publicar (v33,
+// ver ck_weekly_budget m\xE1s abajo, ahora tambi\xE9n en COP). Se deja la
+// variable y el input oculto del modal (ver arriba) sin borrar por si se
+// necesita a futuro, pero no la lee ni la usa ning\xFAn c\xE1lculo del tablero.
+let COP_TO_USD = parseFloat(localStorage.getItem('ck_cop_usd')) || 3350;
+
+// FIX v34, 21-jul-2026 \u2014 migraci\xF3n de valor legado en USD. ck_weekly_budget
+// se guardaba en d\xF3lares hasta v32 (rango t\xEDpico 15-200). El c\xF3digo nuevo
+// (v33, 100% COP) ya no lo multiplica por ninguna tasa \u2014 un valor viejo tipo
+// "30" o "50" se toma literal como si ya fueran pesos, produciendo
+// sobregastos absurdos (caso real de Oscar: presupuesto "$30", gasto real
+// $54.647 \u2192 182.057%). ck_weekly_budget se lee en 4 lugares del archivo
+// (abrirConfig, renderEstadoActual, refrescarAlertas, analizarConIA) \u2014 no en
+// uno solo \u2014 as\xED que la migraci\xF3n vive en un \xFAnico helper compartido y los
+// 4 sitios lo usan, en vez de duplicar la l\xF3gica o depender de cu\xE1l corre
+// primero al cargar la p\xE1gina.
+function getWeeklyBudgetCOP() {
+  return DEFAULT_WEEKLY_BUDGET_COP;
+}
+
+// Fix v1 \u2014 solo contar acciones que representan intenci\xF3n real (lead/conversaci\xF3n/clic),
+// no cualquier interacci\xF3n (reacci\xF3n, guardado, engagement de p\xE1gina, etc.)
+const RESULT_ACTION_TYPES = [
+  'onsite_conversion.messaging_conversation_started_7d',
+  'onsite_conversion.messaging_first_reply',
+  'link_click',
+  'landing_page_view'
+];
+function contarResultadosReales(actions) {
+  return (actions || [])
+    .filter(a => RESULT_ACTION_TYPES.includes(a.action_type))
+    .reduce((s, a) => s + parseInt(a.value || 0), 0);
+}
+
+
+// \u2500\u2500 Period \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function setPeriod(days, btn) {
+  currentDays = days;
+  document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  cargarDatos();
+}
+
+// \u2500\u2500 Fechas \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function getFechas(days) {
+  const end   = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - days);
+  return {
+    since: start.toISOString().split('T')[0],
+    until: end.toISOString().split('T')[0],
+  };
+}
+
+// FIX v29, 13-jul-2026: Secci\xF3n A \u2014 "Tu estado actual". Fechas de calendario
+// real, NO relativas a currentDays: lunes de esta semana \u2192 hoy, y d\xEDa 1 de
+// este mes \u2192 hoy. Esto es justo lo que el Hallazgo del documento ped\xEDa
+// separar del selector 7/14/30 (ese rango prorrateaba el gasto para
+// "equivaler" a una semana, lo cual no es lo mismo que el gasto real de la
+// semana en curso).
+function getFechaLunesEstaSemana() {
+  const hoy = new Date();
+  const diaSemana = hoy.getDay(); // 0 = domingo
+  const offsetLunes = diaSemana === 0 ? 6 : diaSemana - 1;
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - offsetLunes);
+  return lunes;
+}
+function getFechaPrimerDiaMes() {
+  const hoy = new Date();
+  return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+}
+function fmtFecha(d) { return d.toISOString().split('T')[0]; }
+
+// \u2500\u2500 Secci\xF3n A: estado real de calendario (semana + mes) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+function renderEstadoActual() {
+  if (estadoReal.semanaSpendCOP === null) return;
+  // FIX v33, 21-jul-2026 \u2014 ck_weekly_budget ya est\xE1 en COP (antes "USD"),
+  // spendSemana/spendMes ya ven\xEDan en COP de Meta \u2014 se comparan directo,
+  // sin pasar por COP_TO_USD en ning\xFAn lado de esta funci\xF3n.
+  const weeklyBudget  = getWeeklyBudgetCOP();
+  const spendSemana   = estadoReal.semanaSpendCOP;
+  const spendMes      = estadoReal.mesSpendCOP;
+
+  // Misma l\xF3gica de v23 (sin capear el sobregasto real), solo que ahora
+  // alimentada con el gasto real de la semana en curso, no con el rango
+  // prorrateado.
+  const pctReal = (spendSemana / weeklyBudget) * 100;
+  const pctBar  = Math.min(pctReal, 100);
+  document.getElementById('estado-semana-pct').textContent = pctReal.toFixed(0) + '%';
+  const bar = document.getElementById('estado-semana-bar');
+  bar.style.width = pctBar + '%';
+  bar.className = 'budget-bar-fill' + (pctReal >= 100 ? ' over' : pctReal >= 80 ? ' warn' : '');
+  document.getElementById('estado-semana-spent').textContent  = 'Gastado: ' + fmtCOP(spendSemana);
+  document.getElementById('estado-semana-remain').textContent = pctReal > 100
+    ? 'Sobregasto: ' + fmtCOP(spendSemana - weeklyBudget)
+    : 'Restante: ' + fmtCOP(weeklyBudget - spendSemana);
+  document.getElementById('estado-semana-title').textContent = \`\u{1F4B0} Gasto real de esta semana (lun\u2014hoy) \u2014 presupuesto \${fmtCOP(weeklyBudget)}\`;
+
+  document.getElementById('estado-mes-valor').textContent = fmtCOP(spendMes);
+  document.getElementById('estado-mes-sub').textContent = 'Desde el 1\xB0 del mes hasta hoy';
+
+  // La alerta de sobregasto (v26) ahora se alimenta de este dato real, no
+  // del gasto prorrateado de la Secci\xF3n B \u2014 ver refrescarAlertas().
+  refrescarAlertas();
+}
+
+// FIX v29, 13-jul-2026: \xFAnica fuente de la alerta de sobregasto (siempre el
+// dato real de la semana, Secci\xF3n A) combinada con la alerta de frecuencia
+// (que s\xED depende de qu\xE9 est\xE9 seleccionado en la Secci\xF3n B \u2014 combinada o una
+// campa\xF1a). Se llama desde renderEstadoActual() (cuando cambia el gasto
+// real) y desde renderVista() (cuando cambia la selecci\xF3n de campa\xF1a).
+function refrescarAlertas(camps) {
+  // FIX v33 \u2014 weeklyBudget y semanaSpendCOP ya est\xE1n en la misma unidad (COP)
+  const weeklyBudget = getWeeklyBudgetCOP();
+  const pctReal      = estadoReal.semanaSpendCOP !== null ? (estadoReal.semanaSpendCOP / weeklyBudget) * 100 : null;
+  const spendSemana  = estadoReal.semanaSpendCOP !== null ? estadoReal.semanaSpendCOP : 0;
+  renderAlertas(pctReal, weeklyBudget, spendSemana, camps || lastData?.camps || []);
+}
+
+// \u2500\u2500 Cargar datos Meta API \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function workerMetricToLegacy(metric = {}) {
+  const results = Number(metric.conversions || metric.conversations || metric.leads || 0);
+  return {
+    spend: Number(metric.spend || 0),
+    impressions: Number(metric.impressions || 0),
+    clicks: Number(metric.clicks || 0),
+    reach: Number(metric.reach || 0),
+    frequency: Number(metric.frequency || 0),
+    ctr: Number(metric.ctr || 0),
+    cpc: Number(metric.cpc || 0),
+    cpm: Number(metric.cpm || 0),
+    actions: results ? [{ action_type: 'lead', value: String(results) }] : []
+  };
+}
+
+async function cargarDatosDesdeWorker(btn, icon) {
+  try {
+    const sessionToken = await window.auraSessionToken?.();
+    if (!sessionToken) throw new Error('Autenticaci\xF3n AURA requerida');
+    const response = await fetch(\`\${META_ADS_WORKER_API}/v1/dashboard?period=\${currentDays}\`, {
+      headers: { Authorization: \`Bearer \${sessionToken}\` }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok !== true) throw new Error(payload.error || \`Worker Meta Ads (\${response.status})\`);
+
+    const main = workerMetricToLegacy(payload.metrics);
+    const camps = (payload.campaigns || []).map(campaign => ({
+      campaign_id: campaign.id,
+      campaign_name: campaign.name,
+      effective_status: campaign.status,
+      ...workerMetricToLegacy(campaign.metrics)
+    }));
+    const dailyTrend = (payload.trends || []).slice(-8).map((item, index, rows) => ({
+      week: rows.length - index - 1,
+      data: workerMetricToLegacy(item)
+    }));
+
+    estadoReal.semanaSpendCOP = Number(payload.metrics?.spend_weekly || 0);
+    estadoReal.mesSpendCOP = Number(payload.metrics?.spend_monthly || 0);
+    renderEstadoActual();
+    const range = payload.range || {};
+    document.getElementById('period-label').textContent =
+      \`\${range.since || '\u2014'} \u2192 \${range.until || '\u2014'} (\xFAltimos \${currentDays} d\xEDas)\`;
+    lastData = {
+      main,
+      prev: null,
+      camps,
+      trend: dailyTrend,
+      trendMensual: [],
+      ads: [],
+      ventasPorCampa\xF1a: {},
+      pctSinAtribucion: null
+    };
+    renderDatos(lastData);
+    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO');
+  } catch (error) {
+    showToast('Error: ' + error.message, '#EF4444');
+    console.error('[META-ADS-WORKER]', error);
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+async function cargarDatos() {
+  const token   = localStorage.getItem('ck_meta_token');
+  const account = META_AD_ACCOUNT_ID;
+
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 1s linear infinite';
+  icon.style.display = 'inline-block';
+
+  return cargarDatosDesdeWorker(btn, icon);
+
+}
+function computeKPIs(obj) {
+  obj = obj || {};
+  // FIX v32 \u2014 spendCOP ya es el valor real en pesos (account_currency=COP,
+  // confirmado). Antes se divid\xEDa por COP_TO_USD como si spend viniera en
+  // USD, mientras cpm/cpc se dejaban tal cual \u2014 esa mezcla era el bug.
+  const spendCOP = parseFloat(obj.spend || 0);
+  const impr     = parseInt(obj.impressions || 0);
+  const clicks   = parseInt(obj.clicks || 0);
+  const reach    = parseInt(obj.reach || 0);
+  const freq     = parseFloat(obj.frequency || 0);
+  const cpm      = parseFloat(obj.cpm || 0);
+  const cpc      = parseFloat(obj.cpc || 0);
+  const ctr      = parseFloat(obj.ctr || 0);
+  const results  = contarResultadosReales(obj.actions || []);
+  const cpr      = results > 0 ? spendCOP / results : 0;
+  const roas     = spendCOP > 0 ? (results * 50000 / spendCOP) : 0;
+  return { spendCOP, impr, clicks, reach, freq, cpm, cpc, ctr, results, cpr, roas };
+}
+
+// FIX v28, 13-jul-2026: construye las opciones del selector de campa\xF1a
+// (combinada + cada campa\xF1a individual, con el nombre corto de v24).
+// Conserva la selecci\xF3n previa si esa campa\xF1a sigue activa; si no, vuelve a
+// "combinada" \u2014 para no dejar el selector apuntando a una campa\xF1a que ya no existe.
+function poblarSelector(camps) {
+  const sel = document.getElementById('scope-selector');
+  const valorPrevio = sel.value || '__all__';
+  const opciones = [\`<option value="__all__">\u{1F4CA} Todas las campa\xF1as combinadas (\${camps?.length || 0})</option>\`]
+    .concat((camps || []).map(c => \`<option value="\${escapeHtml(c.campaign_id)}">\${escapeHtml(acortarNombreCampa\xF1a(c.campaign_name))}</option>\`));
+  sel.innerHTML = opciones.join('');
+  const sigueExistiendo = valorPrevio === '__all__' || (camps || []).some(c => c.campaign_id === valorPrevio);
+  sel.value = sigueExistiendo ? valorPrevio : '__all__';
+  sel.style.display = 'inline-block';
+}
+
+function renderDatos(d) {
+  poblarSelector(d.camps);
+
+  // Campa\xF1as (tabla de ranking), A/B testing y tendencia: siempre muestran
+  // el detalle completo de todas las campa\xF1as \u2014 el selector solo afecta las
+  // 10 tarjetas de arriba, el an\xE1lisis de IA y la barra de presupuesto (v28).
+  renderCampa\xF1as(d.camps, d.ventasPorCampa\xF1a || {}, d.pctSinAtribucion);
+  renderVariantes(d.ads);
+  renderTendencia(d.trend, d.trendMensual);
+
+  renderVista();
+}
+
+// FIX v28, 13-jul-2026: renderiza las 10 tarjetas de KPI, la barra de
+// presupuesto, el banner de alertas y dispara el an\xE1lisis de IA \u2014 seg\xFAn lo
+// que est\xE9 elegido en el selector (combinado o una campa\xF1a individual). Se
+// llama desde renderDatos() (carga inicial) y desde el onchange del selector
+// (sin volver a pedir datos a Meta \u2014 reutiliza lastData).
+function renderVista() {
+  const d = lastData;
+  if (!d) return;
+  const sel = document.getElementById('scope-selector');
+  const valor = sel.value || '__all__';
+  const modoIndividual = valor !== '__all__';
+  const camp = modoIndividual ? (d.camps || []).find(c => c.campaign_id === valor) : null;
+
+  // Si la campa\xF1a seleccionada ya no est\xE1 en los datos m\xE1s recientes (ej. se
+  // paus\xF3/borr\xF3 entre recargas), volvemos a la vista combinada en vez de
+  // mostrar n\xFAmeros vac\xEDos o romper.
+  if (modoIndividual && !camp) {
+    sel.value = '__all__';
+    return renderVista();
+  }
+
+  const k = computeKPIs(modoIndividual ? camp : d.main);
+
+  if (modoIndividual) {
+    // FIX v28: sin per\xEDodo de comparaci\xF3n por campa\xF1a individual \u2014 no se
+    // pidi\xF3 (ni se pide aqu\xED) una llamada extra a Meta por campa\xF1a para el
+    // per\xEDodo anterior, as\xED que se muestra "Sin comparaci\xF3n" reutilizando
+    // la misma l\xF3gica que ya tiene setKPI() para prev===0.
+    setKPI('kpi-roas',  k.roas > 0 ? k.roas.toFixed(1)+'x' : 'N/A', 0, 1, 'Proyecci\xF3n \u2014 no confirma venta real');
+    setKPI('kpi-cpr',   k.cpr > 0 ? fmtCOP(k.cpr) : 'N/A', 0, 1, 'Por lead/mensaje');
+    setKPI('kpi-ctr',   k.ctr.toFixed(2)+'%', 0, 1, 'Solo esta campa\xF1a');
+    setKPI('kpi-reach', fmtNum(k.reach), 0, 1, 'Solo esta campa\xF1a');
+    setKPI('kpi-freq',  k.freq.toFixed(2), 0, 1, k.freq >= 3.5 ? '\u26A0 Saturaci\xF3n' : 'Saludable');
+    setKPI('kpi-spend', fmtCOP(k.spendCOP), 0, 1, 'COP del periodo');
+    setKPI('kpi-impr',  fmtNum(k.impr), 0, 1, 'Solo esta campa\xF1a');
+    setKPI('kpi-cpm',   fmtCOP(k.cpm), 0, 1, 'Por mil impresiones');
+    setKPI('kpi-conv',  fmtNum(k.results), 0, 1, 'Acciones totales');
+    setKPI('kpi-cpc',   fmtCOP(k.cpc), 0, 1, 'Por clic');
+  } else {
+    const pk = computeKPIs(d.prev);
+    setKPI('kpi-roas',  k.roas > 0 ? k.roas.toFixed(1)+'x' : 'N/A', null, null, 'Proyecci\xF3n \u2014 no confirma venta real');
+    setKPI('kpi-cpr',   k.cpr > 0 ? fmtCOP(k.cpr) : 'N/A', pk.cpr, k.cpr, 'Por lead/mensaje');
+    // FIX v31, 13-jul-2026: estas 3 tarjetas pasaban 'vs per\xEDodo anterior'
+    // como texto fijo (5\xB0 par\xE1metro \u2192 .kpi-sub), que setKPI() escribe SIEMPRE
+    // \u2014 sin importar si la comparaci\xF3n es real o no. Eso duplicaba la fecha
+    // exacta que el propio setKPI() ya arma din\xE1micamente en la l\xEDnea de
+    // arriba (.kpi-delta, con el sufijo real desde v24: "vs. 29 jun - 6
+    // jul"), quedando las 2 l\xEDneas juntas ("vs. 29 jun - 6 jul" + "vs per\xEDodo
+    // anterior"). Las otras 7 tarjetas nunca usaron esa frase en su 5\xB0
+    // par\xE1metro \u2014 aqu\xED se reemplaza por el mismo tipo de descripci\xF3n corta
+    // del dato que ya tienen las dem\xE1s (y que coincide con el texto est\xE1tico
+    // original del HTML antes de que setKPI() lo sobreescribiera).
+    setKPI('kpi-ctr',   k.ctr.toFixed(2)+'%', pk.ctr, k.ctr, 'Tasa de clics');
+    setKPI('kpi-reach', fmtNum(k.reach), pk.reach, k.reach, 'Personas \xFAnicas');
+    setKPI('kpi-freq',  k.freq.toFixed(2), pk.freq, k.freq, k.freq >= 3.5 ? '\u26A0 Saturaci\xF3n' : 'Saludable');
+    setKPI('kpi-spend', fmtCOP(k.spendCOP), pk.spendCOP, k.spendCOP, 'COP del periodo');
+    setKPI('kpi-impr',  fmtNum(k.impr), pk.impr, k.impr, 'Total de veces visto');
+    setKPI('kpi-cpm',   fmtCOP(k.cpm), pk.cpm, k.cpm, 'Por mil impresiones');
+    setKPI('kpi-conv',  fmtNum(k.results), pk.results, k.results, 'Acciones totales');
+    setKPI('kpi-cpc',   fmtCOP(k.cpc), pk.cpc, k.cpc, 'Por clic');
+  }
+
+  // Alerta frecuencia (barra bajo la tarjeta de Frecuencia)
+  const freqBar = document.getElementById('freq-bar');
+  if (k.freq >= 4) { freqBar.className = 'kpi-alert red'; }
+  else if (k.freq >= 3) { freqBar.className = 'kpi-alert yellow'; }
+  else { freqBar.className = 'kpi-alert green'; }
+
+  // Gasto de campa\xF1a \u2014 FIX v28/v29: en modo individual se muestra el gasto
+  // real de ESA campa\xF1a en el rango seleccionado (7/14/30 d\xEDas), sin
+  // comparar contra presupuesto (el presupuesto es de cuenta total, no por
+  // campa\xF1a). En modo combinado, esta tarjeta ya NO se muestra aqu\xED \u2014 el
+  // control de gasto/presupuesto de cuenta ahora vive fijo en la Secci\xF3n A
+  // de arriba ("Tu estado actual"), que usa datos reales de calendario en
+  // vez del gasto del rango prorrateado (causa ra\xEDz de la confusi\xF3n que
+  // report\xF3 Oscar: "esta semana" cambiaba solo por tocar 7/14/30 d\xEDas).
+  if (modoIndividual) {
+    document.getElementById('budget-title').textContent = \`\u{1F4B0} Gasto de esta campa\xF1a en este rango (\${currentDays} d\xEDas) \u2014 \${fmtCOP(k.spendCOP)}\`;
+    document.getElementById('budget-pct').textContent = '';
+    const bar = document.getElementById('budget-bar');
+    bar.style.width = '100%';
+    bar.className = 'budget-bar-fill';
+    document.getElementById('budget-spent').textContent = \`Gastado: \${fmtCOP(k.spendCOP)}\`;
+    document.getElementById('budget-remain').textContent = '';
+    document.getElementById('budget-section').style.display = 'block';
+  } else {
+    document.getElementById('budget-section').style.display = 'none';
+  }
+
+  // FIX v29: la alerta de sobregasto ya no se calcula aqu\xED (depend\xEDa del
+  // gasto prorrateado, el mismo dato que causaba la confusi\xF3n) \u2014 ahora se
+  // alimenta del gasto real de la semana (Secci\xF3n A, cargarEstadoActual()).
+  // La alerta de frecuencia sigue viniendo de aqu\xED (combinada o de la
+  // campa\xF1a seleccionada), porque eso s\xED depende del rango/selector de la
+  // Secci\xF3n B.
+  refrescarAlertas(modoIndividual ? [camp] : d.camps);
+
+  // An\xE1lisis de IA \u2014 combinado o enfocado en la campa\xF1a seleccionada.
+  analizarConIA(d, modoIndividual ? camp : null);
+}
+
+// FIX v26, 13-jul-2026 \u2014 Fase 3, Mejora 6: banner de alertas en el tablero.
+// Umbrales confirmados por Oscar: sobregasto semanal >20% (pctReal>120) y
+// frecuencia de campa\xF1a >2.5 \u2014 sin WhatsApp ni correo, solo banner visual.
+function renderAlertas(pctReal, weeklyBudget, spendWeekly, camps) {
+  const banner = document.getElementById('alert-banner');
+  const alertas = [];
+
+  if (pctReal > 120) {
+    const exceso = pctReal - 100;
+    alertas.push({
+      sev: 'red',
+      icon: '\u{1F6A8}',
+      html: \`<b>Sobregasto de \${exceso.toFixed(0)}%</b> esta semana \u2014 llevas gastado \${fmtCOP(spendWeekly)} de un presupuesto de \${fmtCOP(weeklyBudget)}.\`
+    });
+  }
+
+  (camps || []).forEach(c => {
+    const freq = parseFloat(c.frequency || 0);
+    if (freq > 2.5) {
+      alertas.push({
+        sev: freq >= 4 ? 'red' : 'yellow',
+        icon: '\u26A0\uFE0F',
+        html: \`<b>Fatiga de anuncio</b> \u2014 "\${escapeHtml(acortarNombreCampa\xF1a(c.campaign_name))}" tiene frecuencia \${freq.toFixed(2)} (misma audiencia viendo el anuncio muchas veces). Considera refrescar el creativo o pausarla.\`
+      });
+    }
+  });
+
+  if (alertas.length === 0) { banner.style.display = 'none'; banner.innerHTML = ''; return; }
+
+  banner.innerHTML = alertas.map(a =>
+    \`<div class="alert-item sev-\${a.sev}"><span class="alert-icon">\${a.icon}</span><span>\${a.html}</span></div>\`
+  ).join('');
+  banner.style.display = 'flex';
+}
+
+function setKPI(id, val, prev, curr, sub) {
+  document.getElementById(id).textContent = val;
+  if (sub) {
+    const subEl = document.getElementById(id).nextElementSibling?.nextElementSibling;
+    if (subEl?.classList.contains('kpi-sub')) subEl.textContent = sub;
+  }
+  if (prev !== null && curr !== null) {
+    const deltaId = 'delta-' + id.replace('kpi-','');
+    const el = document.getElementById(deltaId);
+    if (!el) return;
+    if (prev === 0) { el.textContent = 'Sin comparaci\xF3n'; el.className = 'kpi-delta neutral'; return; }
+    const pct = ((curr - prev) / prev) * 100;
+    const isPositive = id === 'kpi-cpr' || id === 'kpi-cpc' || id === 'kpi-cpm' ? pct < 0 : pct > 0;
+    // FIX v24, 13-jul-2026 \u2014 Fase 1, Mejora 2: antes dec\xEDa "vs anterior" sin
+    // especificar el per\xEDodo \u2014 ahora usa las fechas reales del rango de
+    // comparaci\xF3n (calculadas din\xE1micamente seg\xFAn 7/14/30 d\xEDas en cargarDatos()).
+    const sufijoPeriodo = prevRangeLabel ? ('vs. ' + prevRangeLabel) : 'vs anterior';
+    el.textContent = (pct > 0 ? '\u25B2 +' : '\u25BC ') + Math.abs(pct).toFixed(1) + '% ' + sufijoPeriodo;
+    el.className = 'kpi-delta ' + (isPositive ? 'up' : pct === 0 ? 'neutral' : 'down');
+  }
+}
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1)+'M';
+  if (n >= 1000) return (n/1000).toFixed(1)+'K';
+  return n.toString();
+}
+
+// FIX v32, 21-jul-2026 \u2014 dashboard 100% en COP. account_currency de la cuenta
+// confirmado como COP (act_27446180201684830); spend/cpm/cpc ya vienen en
+// pesos desde Meta, no hay que convertir nada. Formato colombiano est\xE1ndar,
+// sin decimales (igual convenci\xF3n que fmtCOP() en el resto del ERP Creditek).
+function fmtCOP(n) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+}
+
+function renderStatusBadge(status) {
+  const map = {
+    ACTIVE:          { label: 'Activa',      cls: 'active' },
+    PAUSED:          { label: 'Pausada',     cls: 'paused' },
+    CAMPAIGN_PAUSED: { label: 'Pausada',     cls: 'paused' },
+    ADSET_PAUSED:    { label: 'Pausada',     cls: 'paused' },
+    PENDING_REVIEW:  { label: 'En revisi\xF3n', cls: 'paused' },
+    DISAPPROVED:     { label: 'Rechazada',   cls: 'paused' }
+  };
+  const s = map[status] || { label: status || 'Desconocido', cls: 'paused' };
+  return \`<span class="status-badge \${s.cls}">\u25CF \${s.label}</span>\`;
+}
+
+// FIX v29, 13-jul-2026: "Costo final por campa\xF1a" \u2014 hist\xF3rico completo, bajo
+// demanda (no se carga sola con el resto del tablero, es una consulta m\xE1s
+// pesada). Trae TODAS las campa\xF1as de la cuenta v\xEDa /campaigns (activas,
+// pausadas o ya terminadas \u2014 ese endpoint no est\xE1 limitado por rango de
+// fechas, a diferencia de /insights), y cruza con su gasto de los \xFAltimos 12
+// meses (no "desde el inicio de la cuenta" \u2014 ser\xEDa una consulta mucho m\xE1s
+// lenta/costosa; 12 meses es el rango largo fijo que el documento permit\xEDa
+// como alternativa razonable).
+function estadoHistoricoLabel(c) {
+  const activos = ['ACTIVE'];
+  const pausados = ['PAUSED', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED', 'PENDING_REVIEW'];
+  if (activos.includes(c.effective_status)) return { label: 'Activa', cls: 'active' };
+  if (pausados.includes(c.effective_status)) return { label: 'Pausada', cls: 'paused' };
+  // Si Meta ya no la reporta como activa/pausada (ARCHIVED, DELETED, etc.) o
+  // tiene fecha de fin ya pasada, se muestra como Terminada.
+  if (c.stop_time && new Date(c.stop_time) < new Date()) return { label: 'Terminada', cls: 'paused' };
+  return { label: c.effective_status || 'Desconocido', cls: 'paused' };
+}
+
+async function cargarCostoHistorico() {
+  const btn = document.getElementById('btn-costo-historico');
+  const wrap = document.getElementById('costo-historico-wrap');
+  btn.disabled = true;
+  btn.textContent = 'Cargando...';
+
+  try {
+    const data = await metaWorkerRequest('/v1/dashboard?period=90');
+    const filas = (data.campaigns || []).map(c => ({
+      id: c.id,
+      nombre: c.name,
+      estado: estadoHistoricoLabel({ ...c, effective_status: c.status }),
+      spendCOP: Number(c.metrics?.spend || 0),
+      inicio: c.start_time ? c.start_time.split('T')[0] : null,
+      fin: c.stop_time ? c.stop_time.split('T')[0] : null,
+    })).sort((a, b) => b.spendCOP - a.spendCOP);
+
+    if (filas.length === 0) {
+      wrap.innerHTML = '<div class="empty-state"><div class="icon">\u{1F4ED}</div><h3>Sin campa\xF1as</h3><p>No se encontraron campa\xF1as en esta cuenta.</p></div>';
+    } else {
+      wrap.innerHTML = \`<div class="table-wrapper"><table>
+        <thead><tr>
+          <th>#</th><th>Campa\xF1a</th><th>Estado</th><th>Gasto (\xFAltimos 90 d\xEDas)</th><th>Inicio</th><th>Fin</th>
+        </tr></thead>
+        <tbody>
+        \${filas.map((f, i) => \`<tr>
+          <td style="font-weight:700;color:var(--text3)">\${i+1}</td>
+          <td class="camp-name"><div class="campaign-identity"><span class="campaign-thumb-slot" data-campaign-thumbnail="\${escapeHtml(f.id)}">Cargando miniatura\u2026</span><span title="\${escapeHtml(f.nombre)}">\${escapeHtml(acortarNombreCampa\xF1a(f.nombre))}</span></div></td>
+          <td><span class="status-badge \${f.estado.cls}">\u25CF \${f.estado.label}</span></td>
+          <td style="font-weight:600">\${fmtCOP(f.spendCOP)}</td>
+          <td>\${f.inicio || '\u2014'}</td>
+          <td>\${f.fin || (f.estado.label === 'Activa' ? 'En curso' : '\u2014')}</td>
+        </tr>\`).join('')}
+        </tbody></table></div>
+        <p style="font-size:11px;color:var(--text3);margin-top:8px">\u2139\uFE0F Gasto de los \xFAltimos 90 d\xEDas consultado mediante la conexi\xF3n segura. Incluye campa\xF1as pausadas o terminadas, no solo las activas.</p>\`;
+    }
+    wrap.style.display = 'block';
+    window.loadCampaignThumbnails?.();
+  } catch (e) {
+    showToast('Error al cargar costo hist\xF3rico: ' + e.message, '#EF4444');
+    console.error('[COSTO-HISTORICO]', e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Ver costo hist\xF3rico completo';
+}
+
+// FIX v26, 13-jul-2026 \u2014 Fase 3, Mejora 5: par\xE1metros nuevos ventasPorCampa\xF1a
+// (mapa campaign_id \u2192 ventas cerradas confirmadas) y pctSinAtribucion (% de
+// clientes sin anuncio_id, para no ocultar la limitaci\xF3n real del dato).
+function renderCampa\xF1as(camps, ventasPorCampa\xF1a, pctSinAtribucion) {
+  ventasPorCampa\xF1a = ventasPorCampa\xF1a || {};
+  const wrap = document.getElementById('campaigns-wrap');
+  if (!camps || camps.length === 0) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">\u{1F4ED}</div><h3>Sin campa\xF1as activas</h3><p>No se encontraron campa\xF1as en el per\xEDodo seleccionado.</p></div>';
+    return;
+  }
+
+  // Ordenar por gasto descendente
+  const sorted = [...camps].sort((a, b) => parseFloat(b.spend||0) - parseFloat(a.spend||0));
+  const maxSpend = parseFloat(sorted[0]?.spend || 1); // FIX v32 \u2014 ya no se divide, spend viene directo en COP (account_currency=COP)
+
+  const notaAtribucion = pctSinAtribucion !== null
+    ? \`<p style="font-size:11px;color:var(--text3);margin-top:6px">\u2139\uFE0F \${pctSinAtribucion}% de los clientes no tienen anuncio de origen identificado (ej. llegaron por canal org\xE1nico) \u2014 el costo real por venta no los incluye.</p>\`
+    : '';
+
+  wrap.innerHTML = \`<div class="table-wrapper"><table>
+    <thead><tr>
+      <th>#</th><th>Campa\xF1a</th><th>Estado</th>
+      <th>Gasto</th><th>Alcance</th><th>CTR</th>
+      <th>CPC</th><th>Resultados</th>
+      <th title="Ventas confirmadas por el asesor (bot\xF3n 'Cerr\xE9 la venta') atribuidas a esta campa\xF1a">Costo real/venta</th>
+      <th>Rendimiento</th><th>Acciones</th>
+    </tr></thead>
+    <tbody>
+    \${sorted.map((c, i) => {
+      const spend   = parseFloat(c.spend || 0); // FIX v32 \u2014 ya en COP, sin dividir
+      const ctr     = parseFloat(c.ctr || 0);
+      const cpc     = parseFloat(c.cpc || 0);
+      const reach   = parseInt(c.reach || 0);
+      const actions = contarResultadosReales(c.actions);
+      const perfPct = Math.round((spend / maxSpend) * 100);
+      // FIX v26, 13-jul-2026 \u2014 Fase 3, Mejora 5: si no hay ventas cerradas
+      // CONFIRMADAS a\xFAn para esta campa\xF1a, se dice expl\xEDcitamente en vez de
+      // mostrar "$0.00" o "$Infinity" (mismo tipo de contradicci\xF3n que el
+      // Hallazgo 4 de v23 con el ROAS).
+      const ventas = ventasPorCampa\xF1a[c.campaign_id] || 0;
+      const costoVenta = ventas > 0
+        ? \`\${fmtCOP(spend / ventas)} <span style="font-size:10px;color:var(--text3)">(\${ventas} venta\${ventas===1?'':'s'})</span>\`
+        : \`<span style="color:var(--text3);font-size:11px">Sin ventas confirmadas</span>\`;
+      const campaignId = String(c.campaign_id || '');
+      const status = String(c.effective_status || '');
+      const nextStatus = status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+      const toggleIcon = status === 'ACTIVE' ? '\u23F8' : '\u25B6';
+      const endDate = String(c.stop_time || '').slice(0, 10);
+      const dailyBudget = Number(c.daily_budget || 0);
+      const safeName = escapeHtml(String(c.campaign_name || ''));
+      const actionButtons = \`<td class="action-cell">
+        <button class="action-btn" onclick="toggleCampaign('\${escapeJs(campaignId)}','\${nextStatus}')" title="\${nextStatus === 'PAUSED' ? 'Pausar' : 'Reactivar'} campa\xF1a" aria-label="\${nextStatus === 'PAUSED' ? 'Pausar' : 'Reactivar'} campa\xF1a">\${toggleIcon}</button>
+        <button class="action-btn" onclick="editCampaign('\${escapeJs(campaignId)}',\${dailyBudget},'\${escapeJs(endDate)}')" title="Editar presupuesto y fecha" aria-label="Editar presupuesto y fecha">\u270F\uFE0F</button>
+        <button class="action-btn" onclick="editTargeting('\${escapeJs(campaignId)}')" title="Editar ciudades" aria-label="Editar ciudades">\u{1F4CD}</button>
+        <button class="action-btn" onclick="duplicarCampaign('\${escapeJs(campaignId)}','\${escapeJs(String(c.campaign_name || ''))}')" title="Duplicar campa\xF1a" aria-label="Duplicar campa\xF1a">\u{1F4CB}</button>
+        \${status === 'ACTIVE' && spend === 0 ? \`<button class="action-btn" onclick="diagnosticarEntrega('\${escapeJs(campaignId)}')" title="Diagnosticar entrega" aria-label="Diagnosticar entrega">\u{1F50D}</button>\` : ''}
+      </td>\`;
+      return \`<tr data-campaign="\${escapeHtml(campaignId)}">
+        <td style="font-weight:700;color:var(--text3)">\${i+1}</td>
+        <td class="camp-name"><div class="campaign-identity"><span class="campaign-thumb-slot" data-campaign-thumbnail="\${escapeHtml(campaignId)}">Cargando miniatura\u2026</span><span title="\${safeName}">\${escapeHtml(acortarNombreCampa\xF1a(c.campaign_name))}</span></div></td>
+        <td>\${renderStatusBadge(c.effective_status)}</td>
+        <td style="font-weight:600">\${fmtCOP(spend)}</td>
+        <td>\${fmtNum(reach)}</td>
+        <td>\${ctr.toFixed(2)}%</td>
+        <td>\${fmtCOP(cpc)}</td>
+        <td style="font-weight:600;color:var(--turq2)">\${fmtNum(actions)}</td>
+        <td>\${costoVenta}</td>
+        <td><div class="perf-bar"><div class="perf-fill" style="width:\${perfPct}%"></div></div></td>\${actionButtons}
+      </tr>\`;
+    }).join('')}
+    </tbody></table></div>\${notaAtribucion}\`;
+  window.loadCampaignThumbnails?.();
+}
+
+function renderVariantes(ads) {
+  const panel = document.getElementById('ab-panel');
+  const wrap = document.getElementById('ab-wrap');
+  if (!ads || ads.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Agrupar por nombre base de campa\xF1a (sin el sufijo de variante)
+  const grupos = {};
+  ads.forEach(a => {
+    const base = a.ad_name.replace(/ - Variante [AB]$/, '');
+    const variante = a.ad_name.includes('Variante A') ? 'A' : 'B';
+    if (!grupos[base]) grupos[base] = {};
+    grupos[base][variante] = a;
+  });
+
+  wrap.innerHTML = Object.entries(grupos).map(([base, g]) => {
+    const columnas = ['A', 'B'].map(v => {
+      const a = g[v];
+      if (!a) return \`<div class="ab-col"><div class="ab-var">Variante \${v}</div><div style="color:var(--text3);font-size:12px">Sin datos a\xFAn</div></div>\`;
+      const spend   = parseFloat(a.spend || 0); // FIX v32 \u2014 ya en COP, sin dividir
+      const ctr     = parseFloat(a.ctr || 0);
+      const cpc     = parseFloat(a.cpc || 0);
+      const results = contarResultadosReales(a.actions);
+      const cpr     = results > 0 ? fmtCOP(spend / results) : 'N/A';
+      const activo  = a.effective_status === 'ACTIVE';
+      return \`<div class="ab-col">
+        <div class="ab-var">Variante \${v} \${activo ? '<span class="status-badge active">\u25CF Activa</span>' : '<span class="status-badge paused">\u25CF Pausada</span>'}</div>
+        <div class="ab-metric">Gasto: <b>\${fmtCOP(spend)}</b></div>
+        <div class="ab-metric">CTR: <b>\${ctr.toFixed(2)}%</b></div>
+        <div class="ab-metric">CPC: <b>\${fmtCOP(cpc)}</b></div>
+        <div class="ab-metric">Resultados: <b>\${results}</b></div>
+        <div class="ab-metric">CPR: <b>\${cpr}</b></div>
+        \${activo ? \`<button class="btn-secondary" style="margin-top:8px;font-size:11px;padding:6px 10px" onclick="pausarAd('\${a.ad_id}', this)">\u23F8 Pausar esta variante</button>\` : ''}
+      </div>\`;
+    }).join('');
+    return \`<div style="border-bottom:1px solid var(--border);padding:14px 0">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">\${base}</div>
+      <div style="display:flex;gap:16px">\${columnas}</div>
+    </div>\`;
+  }).join('');
+}
+
+async function pausarAd(adId, btnEl) {
+  const token = localStorage.getItem('ck_meta_token');
+  btnEl.disabled = true;
+  btnEl.textContent = 'Pausando...';
+  try {
+    const res = await fetch(\`https://graph.facebook.com/v25.0/\${adId}\`, {
+      method: 'POST',
+      body: new URLSearchParams({ access_token: token, status: 'PAUSED' })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    showToast('\u2713 Variante pausada', '#10B981');
+    cargarDatos();
+  } catch (err) {
+    showToast('Error al pausar: ' + err.message, '#EF4444');
+    btnEl.disabled = false;
+    btnEl.textContent = '\u23F8 Pausar esta variante';
+  }
+}
+
+// FIX v25, 13-jul-2026 \u2014 Fase 2, Mejora 3: reemplaza los 4 recuadros sueltos
+// por una gr\xE1fica de l\xEDnea real (Chart.js) con gasto y CTR en el tiempo,
+// sobre 8 semanas en vez de 4 (ver cargarDatos()).
+let trendChartInstance = null;
+let trendSemanalData = null;
+let trendMensualData = null;
+let trendModo = 'semana'; // FIX v29 \u2014 'semana' (v25, sin cambios) o 'mes' (nuevo, hist\xF3rico 6 meses)
+
+// FIX v29, 13-jul-2026: renderTendencia ahora recibe las 2 series (ya
+// cargadas de una sola vez en cargarDatos(), sin llamadas extra a Meta al
+// alternar) y solo dibuja la que est\xE9 activa seg\xFAn trendModo.
+function renderTendencia(trendSemanal, trendMensual) {
+  trendSemanalData = trendSemanal;
+  trendMensualData = trendMensual;
+  dibujarTendencia();
+}
+
+function setTrendModo(modo) {
+  trendModo = modo;
+  document.getElementById('trend-tab-semana').classList.toggle('active', modo === 'semana');
+  document.getElementById('trend-tab-mes').classList.toggle('active', modo === 'mes');
+  dibujarTendencia();
+}
+
+function dibujarTendencia() {
+  const trend = trendModo === 'mes' ? trendMensualData : trendSemanalData;
+  const section = document.getElementById('trend-section');
+  if (!trend || trend.every(t => !t.data)) return;
+  const labels = trendModo === 'mes'
+    ? trend.map(t => t.mesLabel)
+    : trend.map(t => t.week === 0 ? 'Esta semana' : \`Hace \${t.week} sem\`);
+  const spendSerie = trend.map(t => parseFloat(t.data?.spend || 0)); // FIX v32 \u2014 ya en COP, sin dividir
+  const ctrSerie   = trend.map(t => parseFloat(t.data?.ctr || 0));
+  document.getElementById('trend-title').textContent = trendModo === 'mes' ? '\u{1F4C8} Tendencia \u2014 \xFAltimos 6 meses' : '\u{1F4C8} Tendencia \u2014 \xFAltimas 8 semanas';
+
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  if (trendChartInstance) trendChartInstance.destroy(); // evita acumular instancias al actualizar
+
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Gasto (COP)',
+          data: spendSerie,
+          borderColor: '#00C4CC',
+          backgroundColor: 'rgba(0,196,204,.1)',
+          yAxisID: 'y',
+          tension: .3,
+          fill: true,
+        },
+        {
+          label: 'CTR (%)',
+          data: ctrSerie,
+          borderColor: '#F59E0B',
+          backgroundColor: 'rgba(245,158,11,.1)',
+          yAxisID: 'y1',
+          tension: .3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y:  { type: 'linear', position: 'left',  title: { display: true, text: 'Gasto (COP)' } },
+        y1: { type: 'linear', position: 'right', title: { display: true, text: 'CTR (%)' }, grid: { drawOnChartArea: false } },
+      },
+    },
+  });
+  section.style.display = 'block';
+}
+
+// \u2500\u2500 An\xE1lisis IA con Claude \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// FIX v28, 13-jul-2026: nuevo par\xE1metro opcional campa\xF1aIndividual \u2014 cuando
+// viene con datos (una fila de data.camps), el an\xE1lisis se enfoca solo en
+// esa campa\xF1a, con un prompt distinto que NO compara contra el presupuesto
+// total ni sugiere mover plata hacia otra campa\xF1a (no aplica en esta vista).
+// FIX v30, 13-jul-2026 \u2014 Hallazgo 2: en vez de depender de un patr\xF3n de texto
+// fr\xE1gil para separar el an\xE1lisis narrativo del JSON de alertas (el de v23
+// dejaba de funcionar en cuanto Claude variaba el formato exacto de su
+// respuesta), se le pide a Claude un separador literal e inequ\xEDvoco que no
+// aparecer\xEDa en un texto narrativo normal en espa\xF1ol. Se corta ah\xED en vez de
+// intentar adivinar el patr\xF3n \u2014 m\xE1s robusto ante variaciones entre llamadas.
+const SEPARADOR_TOKEN = '===ALERTS_JSON===';
+const SEPARADOR_INSTRUCCION = \`Cuando termines el an\xE1lisis narrativo, escribe en una l\xEDnea aparte, exactamente y sin nada m\xE1s en esa l\xEDnea, este separador: \${SEPARADOR_TOKEN}
+Inmediatamente despu\xE9s, en la siguiente l\xEDnea, escribe SOLO el JSON de exactamente 3 alertas, sin bloques de c\xF3digo markdown ni texto adicional, en este formato exacto:
+{"alerts": [{"type": "warn|good|bad", "text": "mensaje corto"}]}
+No repitas el separador ni el JSON en ning\xFAn otro lugar de la respuesta.\`;
+
+async function analizarConIA(data, campa\xF1aIndividual) {
+  if (!campa\xF1aIndividual && !data.main) return;
+
+  const weeklyBudget = getWeeklyBudgetCOP(); // FIX v33/v34 \u2014 ya en COP, con migraci\xF3n de valor legado
+  let prompt;
+
+  if (campa\xF1aIndividual) {
+    const k = computeKPIs(campa\xF1aIndividual);
+    const nombreCorto = acortarNombreCampa\xF1a(campa\xF1aIndividual.campaign_name);
+    prompt = \`Eres un experto en performance marketing digital para negocios de retail en Colombia. Analiza el rendimiento de ESTA campa\xF1a espec\xEDfica de Meta Ads de Creditek (empresa de venta de celulares y tecnolog\xEDa a cr\xE9dito en el Caribe colombiano) y da un an\xE1lisis ejecutivo en espa\xF1ol.
+
+CAMPA\xD1A: \${nombreCorto}
+DATOS DEL PER\xCDODO (\${currentDays} d\xEDas):
+- Gasto: \${fmtCOP(k.spendCOP)}
+- CTR: \${k.ctr.toFixed(2)}%
+- Frecuencia: \${k.freq.toFixed(2)}
+- CPM: \${fmtCOP(k.cpm)}
+- Resultados: \${k.results}
+- Costo por resultado: \${k.cpr > 0 ? fmtCOP(k.cpr) : 'N/A'}
+
+DA UN AN\xC1LISIS BREVE (3-4 oraciones) sobre ESTA campa\xF1a \xFAnicamente, que incluya:
+1. Evaluaci\xF3n del rendimiento de esta campa\xF1a espec\xEDfica
+2. El problema m\xE1s urgente de esta campa\xF1a, si lo hay
+3. Una recomendaci\xF3n concreta sobre esta misma campa\xF1a (ej. pausarla, escalar su gasto, refrescar el creativo por fatiga de frecuencia). NO sugieras mover presupuesto hacia otra campa\xF1a ni la compares contra el presupuesto semanal total \u2014 esta vista es de una sola campa\xF1a, esa comparaci\xF3n no aplica aqu\xED.
+
+\${SEPARADOR_INSTRUCCION}\`;
+  } else {
+    const m = data.main;
+    const spendCOP = parseFloat(m.spend || 0); // FIX v32 \u2014 ya en COP (account_currency=COP), sin conversi\xF3n
+    const ctr     = parseFloat(m.ctr || 0);
+    const freq    = parseFloat(m.frequency || 0);
+    const cpm     = parseFloat(m.cpm || 0);
+    const results = contarResultadosReales(m.actions);
+    const cpr     = results > 0 ? fmtCOP(spendCOP / results) : 'N/A';
+
+    // FIX v25, 13-jul-2026 \u2014 Fase 2, Mejora 7: antes Claude solo recib\xEDa el
+    // agregado total (nunca el detalle por campa\xF1a), as\xED que su "recomendaci\xF3n"
+    // era gen\xE9rica ("hay margen para escalar") sin poder decir CU\xC1L campa\xF1a.
+    // Se arma aqu\xED el mismo detalle por campa\xF1a que ya se muestra en la tabla
+    // de ranking (top 8 por gasto, para no inflar el prompt si hay muchas),
+    // usando el mismo nombre corto de la Mejora 1 para que sea legible.
+    const campsOrdenadas = [...(data.camps || [])].sort((a, b) => parseFloat(b.spend||0) - parseFloat(a.spend||0)).slice(0, 8);
+    const campsResumen = campsOrdenadas.map(c => {
+      const cSpend   = parseFloat(c.spend || 0); // FIX v32 \u2014 ya en COP, sin dividir
+      const cCtr     = parseFloat(c.ctr || 0);
+      const cResults = contarResultadosReales(c.actions);
+      const cCpr     = cResults > 0 ? fmtCOP(cSpend / cResults) : 'N/A';
+      return \`- \${acortarNombreCampa\xF1a(c.campaign_name)}: gasto \${fmtCOP(cSpend)}, CTR \${cCtr.toFixed(2)}%, resultados \${cResults}, costo/resultado \${cCpr}\`;
+    }).join('\\n') || 'Sin datos de campa\xF1as individuales.';
+
+    // FIX v30, 13-jul-2026 \u2014 Hallazgo 1 (cr\xEDtico): antes esta l\xEDnea comparaba
+    // el gasto del RANGO SELECCIONADO (7/14/30 d\xEDas, variable de la Secci\xF3n
+    // B) contra el presupuesto SEMANAL \u2014 una comparaci\xF3n sin sentido (ej. 30
+    // d\xEDas de gasto vs. presupuesto de 1 semana) que hac\xEDa que la IA
+    // reportara "sobregasto del 115%" mientras la Secci\xF3n A, en la misma
+    // pantalla, mostraba correctamente 27% sin sobregasto. Ahora se le pasa
+    // el gasto REAL de la semana en curso (mismo dato de estadoReal que
+    // alimenta la Secci\xF3n A, calculado en v29/cargarEstadoActual()), y AL
+    // MISMO TIEMPO el gasto del per\xEDodo seleccionado, cada uno etiquetado
+    // por separado para que Claude no los mezcle.
+    // FIX v33 \u2014 gastoSemanaReal y weeklyBudget ya est\xE1n en la misma unidad (COP), sin conversi\xF3n
+    const gastoSemanaReal = estadoReal.semanaSpendCOP !== null ? estadoReal.semanaSpendCOP : null;
+    const lineaGastoSemana = gastoSemanaReal !== null
+      ? \`- Gasto REAL de esta semana (lunes a hoy, dato fijo de la Secci\xF3n "Tu estado actual"): \${fmtCOP(gastoSemanaReal)} de \${fmtCOP(weeklyBudget)} presupuestados. Este es el \xFAnico n\xFAmero que debes usar si vas a hablar de sobregasto o cumplimiento del presupuesto semanal.\`
+      : \`- Presupuesto semanal configurado: \${fmtCOP(weeklyBudget)} (el gasto real de la semana en curso no carg\xF3 a\xFAn \u2014 no asumas ni inventes ese n\xFAmero).\`;
+
+    prompt = \`Eres un experto en performance marketing digital para negocios de retail en Colombia. Analiza estos datos de Meta Ads de Creditek (empresa de venta de celulares y tecnolog\xEDa a cr\xE9dito en el Caribe colombiano) y da un an\xE1lisis ejecutivo en espa\xF1ol.
+
+\${lineaGastoSemana}
+- Gasto TOTAL en el per\xEDodo analizado abajo (\${currentDays} d\xEDas, rango seleccionado en el tablero \u2014 esto es DISTINTO al gasto semanal de arriba, no lo compares contra el presupuesto semanal): \${fmtCOP(spendCOP)}
+- CTR: \${ctr.toFixed(2)}%
+- Frecuencia: \${freq.toFixed(2)}
+- CPM: \${fmtCOP(cpm)}
+- Resultados totales: \${results}
+- Costo por resultado: \${cpr}
+
+Campa\xF1as activas: \${data.camps?.length || 0}
+
+CAMPA\xD1AS INDIVIDUALES (ordenadas por gasto, hasta 8):
+\${campsResumen}
+
+DA UN AN\xC1LISIS BREVE (4-5 oraciones) que incluya:
+1. Evaluaci\xF3n general del rendimiento
+2. El problema m\xE1s urgente a resolver
+3. La oportunidad m\xE1s clara a aprovechar
+4. Una RECOMENDACI\xD3N CONCRETA Y ACCIONABLE de reasignaci\xF3n de presupuesto entre campa\xF1as espec\xEDficas de la lista de arriba (ej. "Mueve $15 de [campa\xF1a de menor rendimiento] hacia [campa\xF1a con mejor CTR/costo por resultado]"), citando nombres reales \u2014 no una sugerencia gen\xE9rica. Si no hay suficientes campa\xF1as o datos para recomendar esto con confianza, dilo expl\xEDcitamente en vez de inventar una recomendaci\xF3n.
+
+IMPORTANTE: si mencionas sobregasto o cumplimiento de presupuesto semanal, usa EXCLUSIVAMENTE el "Gasto REAL de esta semana" de arriba \u2014 nunca el gasto total del per\xEDodo de \${currentDays} d\xEDas para esa comparaci\xF3n espec\xEDfica, son 2 datos distintos y mezclarlos da un resultado incorrecto.
+
+\${SEPARADOR_INSTRUCCION}\`;
+  }
+
+  try {
+    const res = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + (auraSessionToken() || ''),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const d = await res.json();
+    const text = d.content?.[0]?.text || '';
+
+    // FIX v30, 13-jul-2026 \u2014 Hallazgo 2: mecanismo PRINCIPAL de separaci\xF3n es
+    // el token literal pedido en el prompt (SEPARADOR_TOKEN) \u2014 no un patr\xF3n de
+    // texto adivinado. El v23 (Hallazgo 5) buscaba patrones espec\xEDficos
+    // (\`\`\`json\`\`\`, "---") que dejaban de funcionar en cuanto Claude variaba
+    // el formato exacto de su respuesta entre llamadas (evidencia real:
+    // "...con json {"alerts": [..." cortado a mitad de oraci\xF3n).
+    const partes = text.split(SEPARADOR_TOKEN);
+    let analisis = (partes[0] || text).trim();
+    const textoJson = partes.length > 1 ? partes[1] : text;
+
+    // Respaldo: si por alguna raz\xF3n Claude no respet\xF3 el separador exacto
+    // (variaci\xF3n entre llamadas), se aplica tambi\xE9n la limpieza de v23 sobre
+    // lo que vaya a mostrarse, para no dejar residuo visible en pantalla.
+    analisis = analisis
+      .replace(/\\{[\\s\\S]*"alerts"[\\s\\S]*\\}/, '')
+      .replace(/\`\`\`json[\\s\\S]*?\`\`\`/gi, '')
+      .replace(/\`\`\`/g, '')
+      .replace(/^-{3,}\\s*$/gm, '')
+      // FIX v30 \u2014 evidencia real de Oscar: "...con json {"alerts":..." \u2014 al
+      // quitar el objeto {...} de arriba quedaba la palabra suelta "json" al
+      // final (no ven\xEDa en un bloque \`\`\`json\`\`\` sino como texto plano).
+      .replace(/\\bjson\\s*$/i, '')
+      .trim();
+
+    document.getElementById('ai-content').textContent = analisis;
+
+    const jsonMatch = textoJson.match(/\\{[\\s\\S]*"alerts"[\\s\\S]*\\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const alertsHtml = parsed.alerts.map(a =>
+          \`<span class="ai-alert \${a.type}">\${a.text}</span>\`
+        ).join('');
+        document.getElementById('ai-alerts').innerHTML = alertsHtml;
+      } catch(e) {}
+    }
+
+    document.getElementById('ai-banner').classList.add('visible');
+  } catch(e) {
+    console.error('Error IA:', e);
+  }
+}
+
+// \u2500\u2500 Gesti\xF3n operativa de campa\xF1as v\xEDa Worker \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Estas acciones son una capa nueva y aislada: no alteran la carga, el wizard,
+// las gr\xE1ficas ni el an\xE1lisis existentes. El token de Meta nunca llega aqu\xED.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
+
+function escapeJs(value) {
+  return String(value ?? '')
+    .replace(/\\\\/g, '\\\\\\\\')
+    .replace(/'/g, "\\\\'")
+    .replace(/"/g, '\\\\x22')
+    .replace(/[\\r\\n\\u2028\\u2029]/g, ' ')
+    .replace(/<\\//g, '<\\\\/');
+}
+
+async function metaWorkerRequest(path, options = {}) {
+  const fn = window.auraSessionToken || window.__metaToken;
+  if (!fn) throw new Error('Autenticaci\xF3n AURA requerida');
+  const token = await fn();
+  if (!token) throw new Error('Autenticaci\xF3n AURA requerida');
+  const response = await fetch(\`https://aura-meta-ads-api.comercial-853.workers.dev\${path}\`, {
+    ...options,
+    headers: {
+      'Authorization': \`Bearer \${token}\`,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    }
+  });
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : {};
+  if (!response.ok) {
+    if (response.status === 404) throw new Error('Esta funci\xF3n a\xFAn no est\xE1 disponible en el Worker');
+    const stageLabels = {
+      META_IMAGE_UPLOAD_FAILED: 'Meta rechaz\xF3 la imagen',
+      META_CAMPAIGN_CREATE_FAILED: 'Meta rechaz\xF3 la configuraci\xF3n de campa\xF1a',
+      META_ADSET_CREATE_FAILED: 'Meta rechaz\xF3 el objetivo, presupuesto o segmentaci\xF3n',
+      META_CREATIVE_CREATE_FAILED: 'Meta rechaz\xF3 el texto, imagen o destino de WhatsApp',
+      META_AD_CREATE_FAILED: 'Meta no pudo crear el anuncio',
+      META_CITY_RESOLUTION_FAILED: 'No se pudo validar la ciudad seleccionada'
+    };
+    const stage = stageLabels[data.reason] || data.reason || '';
+    const metaMessage = String(data.meta?.error_user_msg || data.meta?.message || '').replace(/^"|"$/g, '');
+    const detail = [stage, metaMessage].filter(Boolean).join(': ');
+    throw new Error(detail || data.error || data.message || \`El Worker respondi\xF3 HTTP \${response.status}\`);
+  }
+  return data;
+}
+
+function campaignRow(campaignId) {
+  return document.querySelector(\`tr[data-campaign="\${CSS.escape(String(campaignId))}"]\`);
+}
+
+function closeCampaignPanels(campaignId, exceptId = '') {
+  ['edit-', 'target-', 'diag-'].forEach(prefix => {
+    const panel = document.getElementById(prefix + campaignId);
+    if (panel && panel.id !== exceptId) panel.remove();
+  });
+}
+
+async function toggleCampaign(campaignId, newStatus) {
+  const label = newStatus === 'PAUSED' ? 'PAUSAR' : 'REACTIVAR';
+  if (!confirm(\`\xBFSeguro que quieres \${label} esta campa\xF1a?\`)) return;
+  try {
+    showToast(newStatus === 'PAUSED' ? 'Pausando campa\xF1a\u2026' : 'Reactivando campa\xF1a\u2026');
+    const data = await metaWorkerRequest('/campaign/status', {
+      method: 'POST', body: JSON.stringify({ campaignId, status: newStatus })
+    });
+    if (data.success === false || data.ok === false) throw new Error(data.error || 'No se pudo actualizar la campa\xF1a');
+    logAction('toggle_status', { campaignId, newStatus });
+    showToast(newStatus === 'PAUSED' ? '\u2705 Campa\xF1a pausada' : '\u2705 Campa\xF1a reactivada');
+    cargarDatos();
+  } catch (error) { showToast(\`\u274C \${error.message}\`, '#EF4444'); }
+}
+
+function editCampaign(campaignId, currentBudget, currentEnd) {
+  const id = \`edit-\${campaignId}\`;
+  const existing = document.getElementById(id);
+  if (existing) { existing.remove(); return; }
+  closeCampaignPanels(campaignId, id);
+  const row = campaignRow(campaignId);
+  if (!row) return;
+  row.insertAdjacentHTML('afterend', \`<tr id="\${escapeHtml(id)}"><td colspan="11" class="inline-panel"><div class="inline-panel-grid">
+    <div class="inline-field"><label for="edit-budget-\${escapeHtml(campaignId)}">Presupuesto diario (COP)</label><input type="number" min="1" id="edit-budget-\${escapeHtml(campaignId)}" value="\${Number(currentBudget) || ''}"></div>
+    <div class="inline-field"><label for="edit-end-\${escapeHtml(campaignId)}">Fecha fin</label><input type="date" id="edit-end-\${escapeHtml(campaignId)}" value="\${escapeHtml(currentEnd || '')}"></div>
+    <button class="inline-btn primary" onclick="saveEdit('\${escapeJs(campaignId)}')">Guardar cambios</button>
+    <button class="inline-btn" onclick="document.getElementById('\${escapeJs(id)}').remove()">Cancelar</button>
+  </div></td></tr>\`);
+}
+
+async function saveEdit(campaignId) {
+  const budget = document.getElementById(\`edit-budget-\${campaignId}\`)?.value;
+  const endDate = document.getElementById(\`edit-end-\${campaignId}\`)?.value;
+  if (!budget || Number(budget) <= 0) { showToast('Ingresa un presupuesto v\xE1lido', '#EF4444'); return; }
+  if (!confirm(\`Confirma:\\n\u2022 Presupuesto diario: $\${Number(budget).toLocaleString('es-CO')} COP\\n\u2022 Fecha fin: \${endDate || 'sin cambio'}\`)) return;
+  try {
+    showToast('Guardando cambios\u2026');
+    const data = await metaWorkerRequest('/campaign/edit', {
+      method: 'POST', body: JSON.stringify({ campaignId, dailyBudget: Number(budget), endTime: endDate || undefined })
+    });
+    if (data.success === false || data.ok === false) throw new Error(data.error || 'No se guardaron los cambios');
+    logAction('edit_campaign', { campaignId, budget: Number(budget), endDate });
+    document.getElementById(\`edit-\${campaignId}\`)?.remove();
+    showToast('\u2705 Cambios guardados');
+    cargarDatos();
+  } catch (error) { showToast(\`\u274C \${error.message}\`, '#EF4444'); }
+}
+
+async function editTargeting(campaignId) {
+  const id = \`target-\${campaignId}\`;
+  const existing = document.getElementById(id);
+  if (existing) { existing.remove(); return; }
+  closeCampaignPanels(campaignId, id);
+  const row = campaignRow(campaignId);
+  if (!row) return;
+  showToast('Consultando ciudades\u2026');
+  let cities = [];
+  try {
+    const STORAGE_KEY = 'aura_supabase_session_v1';
+    const raw = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+    const session = raw ? JSON.parse(raw) : null;
+    const token = session?.access_token || '';
+    console.log('[TARGETING] token length:', token?.length);
+    if (!token) throw new Error('Autenticaci\xF3n AURA requerida');
+    const resp = await fetch(\`https://aura-meta-ads-api.comercial-853.workers.dev/campaign/targeting?id=\${encodeURIComponent(campaignId)}\`, {
+      headers: { 'Authorization': \`Bearer \${token}\` }
+    });
+    console.log('[TARGETING] response status:', resp?.status);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || \`El Worker respondi\xF3 HTTP \${resp.status}\`);
+    cities = Array.isArray(data.cities) ? data.cities.map(city => typeof city === 'string' ? city : city.name).filter(Boolean) : [];
+  } catch (error) {
+    showToast(\`\u26A0\uFE0F \${error.message}\`, '#F59E0B');
+  }
+  const placeholder = cities.length ? 'Tol\xFA, Corozal, Chin\xFA' : 'No se pudieron cargar las ciudades actuales';
+  row.insertAdjacentHTML('afterend', \`<tr id="\${escapeHtml(id)}"><td colspan="11" class="inline-panel"><div class="inline-panel-grid">
+    <div class="inline-field" style="grid-column:span 2"><label for="target-cities-\${escapeHtml(campaignId)}">Ciudades (separadas por coma)</label><input type="text" id="target-cities-\${escapeHtml(campaignId)}" value="\${escapeHtml(cities.join(', '))}" placeholder="\${escapeHtml(placeholder)}"></div>
+    <button class="inline-btn primary" onclick="saveTargeting('\${escapeJs(campaignId)}')">Guardar ciudades</button>
+    <button class="inline-btn" onclick="document.getElementById('\${escapeJs(id)}').remove()">Cancelar</button>
+  </div></td></tr>\`);
+}
+
+async function saveTargeting(campaignId) {
+  const cities = (document.getElementById(\`target-cities-\${campaignId}\`)?.value || '').split(',').map(value => value.trim()).filter(Boolean);
+  if (!cities.length) { showToast('Agrega al menos una ciudad', '#EF4444'); return; }
+  if (!confirm(\`\xBFGuardar este targeting?\\n\u2022 Ciudades: \${cities.join(', ')}\`)) return;
+  try {
+    showToast('Guardando ciudades\u2026');
+    const data = await metaWorkerRequest('/campaign/targeting', {
+      method: 'POST', body: JSON.stringify({ campaignId, cities })
+    });
+    if (data.success === false || data.ok === false) throw new Error(data.error || 'No se guard\xF3 el targeting');
+    logAction('edit_targeting', { campaignId, cities });
+    document.getElementById(\`target-\${campaignId}\`)?.remove();
+    showToast('\u2705 Ciudades actualizadas');
+    cargarDatos();
+  } catch (error) { showToast(\`\u274C \${error.message}\`, '#EF4444'); }
+}
+
+async function diagnosticarEntrega(campaignId) {
+  const id = \`diag-\${campaignId}\`;
+  const existing = document.getElementById(id);
+  if (existing) { existing.remove(); return; }
+  closeCampaignPanels(campaignId, id);
+  const row = campaignRow(campaignId);
+  if (!row) return;
+  try {
+    showToast('Diagnosticando entrega\u2026');
+    const data = await metaWorkerRequest(\`/campaign/diagnose?id=\${encodeURIComponent(campaignId)}\`);
+    row.insertAdjacentHTML('afterend', \`<tr id="\${escapeHtml(id)}"><td colspan="11" class="inline-panel"><strong>\u{1F50D} Diagn\xF3stico de entrega</strong><p style="font-size:13px;color:#4A5568;line-height:1.6;margin-top:8px">\${escapeHtml(data.diagnosis || 'Meta no devolvi\xF3 un diagn\xF3stico para esta campa\xF1a.')}</p><button class="inline-btn" style="margin-top:12px" onclick="document.getElementById('\${escapeJs(id)}').remove()">Cerrar</button></td></tr>\`);
+  } catch (error) { showToast(\`\u274C \${error.message}\`, '#EF4444'); }
+}
+
+async function duplicarCampaign(campaignId, campaignName) {
+  const targetCity = prompt(\`Duplicar \u201C\${campaignName}\u201D a otra ciudad.\\nEscribe el nombre de la ciudad:\`)?.trim();
+  if (!targetCity) return;
+  if (!confirm(\`\xBFDuplicar \u201C\${campaignName}\u201D a \${targetCity}? La copia debe quedar sujeta a revisi\xF3n.\`)) return;
+  try {
+    showToast('Duplicando campa\xF1a\u2026');
+    const data = await metaWorkerRequest('/campaign/duplicate', {
+      method: 'POST', body: JSON.stringify({ campaignId, targetCity })
+    });
+    if (data.success === false || data.ok === false) throw new Error(data.error || 'No se duplic\xF3 la campa\xF1a');
+    logAction('duplicate', { campaignId, targetCity });
+    showToast('\u2705 Campa\xF1a duplicada');
+    cargarDatos();
+  } catch (error) { showToast(\`\u274C \${error.message}\`, '#EF4444'); }
+}
+
+function logAction(type, details) {
+  try {
+    const log = JSON.parse(localStorage.getItem('meta_ads_log') || '[]');
+    log.push({ timestamp: new Date().toISOString(), type, details, user: 'Oscar' });
+    if (log.length > 100) log.splice(0, log.length - 100);
+    localStorage.setItem('meta_ads_log', JSON.stringify(log));
+  } catch (error) { console.warn('No se pudo guardar la bit\xE1cora local', error); }
+}
+
+function verHistorial() {
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem('meta_ads_log') || '[]').reverse(); } catch (error) {}
+  const labels = { toggle_status: '\u23F8 Pausar/Reactivar', edit_campaign: '\u270F\uFE0F Editar campa\xF1a', edit_targeting: '\u{1F4CD} Editar ciudades', duplicate: '\u{1F4CB} Duplicar', create: '\u{1F680} Crear' };
+  document.getElementById('history-list').innerHTML = log.length ? log.slice(0, 20).map(entry => \`<div class="history-row"><strong>\${escapeHtml(labels[entry.type] || entry.type)}</strong><span class="history-time">\${escapeHtml(new Date(entry.timestamp).toLocaleString('es-CO'))}</span><div class="history-detail">\${escapeHtml(JSON.stringify(entry.details))}</div></div>\`).join('') : '<div class="empty-state"><div class="icon">\u{1F4ED}</div><h3>Sin acciones registradas</h3><p>Los cambios realizados desde este navegador aparecer\xE1n aqu\xED.</p></div>';
+  document.getElementById('history-modal').classList.add('open');
+}
+
+function cerrarHistorial() { document.getElementById('history-modal').classList.remove('open'); }
+
+// \u2500\u2500 Toast \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function showToast(msg, color = '#0B1E3D') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// \u2500\u2500 Init \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+window.addEventListener('load', () => {
+  cargarDatos();
+});
+
+// CSS spin animation
+const style = document.createElement('style');
+style.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+document.head.appendChild(style);
+<\/script>
+</body>
+</html>
+`;
+
+// outputs/registration-rollout-20260913/baseline/creditek-aura/campaign-thumbnails.js
+var campaign_thumbnails_default = "(() => {\n  const previews = new Map();\n  const pending = new Set();\n  let working = false;\n  const safeImage = value => typeof value === 'string' && /^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value) && value.length < 90000;\n  function openPreview(data) {\n    const dialog = document.createElement('dialog');\n    dialog.className = 'campaign-preview-dialog';\n    const close = document.createElement('button');\n    close.textContent = 'Cerrar'; close.autofocus = true;\n    close.onclick = () => dialog.close();\n    const title = document.createElement('h2'); title.textContent = 'Piezas de la campa\xF1a';\n    dialog.append(close, title);\n    const note = document.createElement('p');\n    note.textContent = data.stale ? '\xDAltima copia guardada; no se pudo confirmar la pieza actual.' : 'Miniaturas de referencia. No modifican la publicaci\xF3n original.';\n    if (data.partial) note.textContent += ' Vista limitada a los primeros 5 anuncios.';\n    dialog.append(note);\n    for (const item of data.items.filter(item => safeImage(item.image))) {\n      const figure = document.createElement('figure');\n      const img = document.createElement('img'); img.src = item.image; img.alt = item.name || 'Pieza del anuncio';\n      const caption = document.createElement('figcaption'); caption.textContent = item.name || 'Anuncio ' + item.adId;\n      figure.append(img, caption); dialog.append(figure);\n    }\n    dialog.addEventListener('close', () => dialog.remove(), { once: true });\n    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });\n    document.body.append(dialog); dialog.showModal();\n  }\n  function paint(id, data) {\n    document.querySelectorAll('[data-campaign-thumbnail]').forEach(slot => {\n      if (slot.dataset.campaignThumbnail !== id) return;\n      slot.replaceChildren();\n      const items = (data.items || []).filter(item => safeImage(item.image));\n      if (!items.length) { slot.textContent = data.stale ? 'Miniatura no disponible' : 'Sin miniatura'; return; }\n      const button = document.createElement('button'); button.type = 'button'; button.className = 'campaign-thumb-button';\n      button.setAttribute('aria-label', 'Ver piezas de esta campa\xF1a');\n      const img = document.createElement('img'); img.src = items[0].image; img.alt = items[0].name || 'Miniatura del anuncio'; img.loading = 'lazy';\n      img.onerror = () => { button.replaceChildren(document.createTextNode('Sin miniatura')); };\n      button.append(img);\n      if (items.length > 1 || data.stale) {\n        const label = document.createElement('span'); label.textContent = data.stale ? 'Guardada' : '+' + (items.length - 1); button.append(label);\n      }\n      button.onclick = () => openPreview({ ...data, items }); slot.append(button);\n    });\n  }\n  window.loadCampaignThumbnails = async function () {\n    document.querySelectorAll('[data-campaign-thumbnail]').forEach(slot => {\n      const id = slot.dataset.campaignThumbnail;\n      if (!/^\\d{1,30}$/.test(id)) return;\n      if (previews.has(id)) paint(id, previews.get(id)); else pending.add(id);\n    });\n    if (working) return;\n    working = true;\n    try {\n      while (pending.size) {\n        const ids = [...pending].slice(0, 10); ids.forEach(id => pending.delete(id));\n        try {\n          const result = await metaWorkerRequest('/v1/campaign/thumbnails?ids=' + ids.join(','));\n          for (const id of ids) {\n            const data = result.campaigns?.find(row => row.campaignId === id) || { items: [], stale: true };\n            previews.set(id, data); paint(id, data);\n          }\n        } catch { ids.forEach(id => paint(id, { items: [], stale: true })); }\n      }\n    } finally { working = false; }\n  };\n  document.addEventListener('DOMContentLoaded', window.loadCampaignThumbnails);\n})();\n\n";
+
+// outputs/registration-rollout-20260913/baseline/creditek-aura/aura-assets-worker.js
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var AURA_SUPABASE_URL = "https://ditiwpndvmyuqcagupea.supabase.co";
+var AURA_SUPABASE_ANON_KEY = "sb_publishable_oVNantrnKzXdtXu5B7YQIg_9fxHp7aW";
+var DEFAULT_CLIENTES_WORKER_URL = "https://creditek-clientes.comercial-853.workers.dev";
+function reply(body, status = 200) {
+  return Response.json(body, { status, headers: { "cache-control": "no-store" } });
+}
+__name(reply, "reply");
+function normalizeAccess(value) {
+  return Array.isArray(value) ? value[0] || {} : value && typeof value === "object" ? value : {};
+}
+__name(normalizeAccess, "normalizeAccess");
+async function supabase(path, token, init = {}, fetcher = fetch) {
+  return fetcher(`${AURA_SUPABASE_URL}${path}`, {
+    ...init,
+    headers: {
+      apikey: AURA_SUPABASE_ANON_KEY,
+      authorization: `Bearer ${token}`,
+      ...init.body ? { "content-type": "application/json" } : {},
+      ...init.headers || {}
+    }
+  });
+}
+__name(supabase, "supabase");
+async function authenticateAuraRegistrationLinks(request, fetcher = fetch) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const token = authorization.slice(7).trim();
+  if (!token) return null;
+  let userResponse;
+  let accessResponse;
+  try {
+    [userResponse, accessResponse] = await Promise.all([
+      supabase("/auth/v1/user", token, {}, fetcher),
+      supabase("/rest/v1/rpc/aura_my_access", token, { method: "POST", body: "{}" }, fetcher)
+    ]);
+  } catch {
+    return null;
+  }
+  if (!userResponse.ok || !accessResponse.ok) return null;
+  const user = await userResponse.json().catch(() => ({}));
+  const access = normalizeAccess(await accessResponse.json().catch(() => ({})));
+  if (!user.id || !user.email || access.user_id !== user.id || access.email?.toLowerCase() !== user.email.toLowerCase() || access.active === false) return null;
+  if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return null;
+  const allowed = Array.isArray(access.apps) && access.apps.some(
+    (grant) => grant?.role_id === "aura.owner" || grant?.app_id === "registro_links" && Array.isArray(grant?.permissions) && grant.permissions.includes("registro_links.manage")
+  );
+  return allowed ? { user, access } : null;
+}
+__name(authenticateAuraRegistrationLinks, "authenticateAuraRegistrationLinks");
+var authenticateAuraOwner = authenticateAuraRegistrationLinks;
+function upstreamPath(pathname) {
+  if (pathname === "/api/aura/enlaces/origenes") return "/api/admin/origenes-enlaces";
+  if (pathname === "/api/aura/enlaces") return "/api/admin/enlaces";
+  const revoke = pathname.match(/^\/api\/aura\/enlaces\/([0-9a-f-]+)\/revocar$/i);
+  return revoke ? `/api/admin/enlaces/${revoke[1]}/revocar` : "";
+}
+__name(upstreamPath, "upstreamPath");
+async function handleAuraEnlacesProxy(request, env, fetcher = fetch) {
+  if (!await authenticateAuraRegistrationLinks(request, fetcher)) {
+    return reply({ ok: false, error: "No autorizado" }, 403);
+  }
+  if (!env.ADMIN_ENLACES_TOKEN) return reply({ ok: false, error: "Servicio no configurado" }, 503);
+  const path = upstreamPath(new URL(request.url).pathname);
+  if (!path) return reply({ ok: false, error: "Ruta no encontrada" }, 404);
+  const allowedMethod = path === "/api/admin/origenes-enlaces" && request.method === "GET" || path !== "/api/admin/origenes-enlaces" && request.method === "POST";
+  if (!allowedMethod) return reply({ ok: false, error: "M\xE9todo no permitido" }, 405);
+  let body;
+  if (request.method === "POST") {
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (declaredLength > 4096) return reply({ ok: false, error: "Solicitud demasiado grande" }, 413);
+    body = await request.text();
+    if (body.length > 4096) return reply({ ok: false, error: "Solicitud demasiado grande" }, 413);
+  }
+  const upstream = `${String(env.CLIENTES_WORKER_URL || DEFAULT_CLIENTES_WORKER_URL).replace(/\/$/, "")}${path}`;
+  try {
+    const response = await fetcher(upstream, {
+      method: request.method,
+      headers: {
+        authorization: `Bearer ${env.ADMIN_ENLACES_TOKEN}`,
+        accept: "application/json",
+        ...request.method === "POST" ? { "content-type": "application/json" } : {}
+      },
+      ...request.method === "POST" ? { body: body || "{}" } : {}
+    });
+    const headers = new Headers(response.headers);
+    headers.set("cache-control", "no-store");
+    headers.delete("set-cookie");
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  } catch {
+    return reply({ ok: false, error: "Servicio de enlaces no disponible" }, 503);
+  }
+}
+__name(handleAuraEnlacesProxy, "handleAuraEnlacesProxy");
+var DEFAULT_SOFIA_WORKER_URL = "https://creditek-bot.comercial-853.workers.dev";
+var MAX_BODY_BYTES = 16384;
+var ROUTES = /* @__PURE__ */ new Map([
+  ["/api/sofia/tiendas", { method: "GET", upstream: "/api/tiendas" }],
+  ["/api/sofia/stats", { method: "GET", upstream: "/api/stats" }],
+  ["/api/sofia/ventas-por-anuncio", { method: "GET", upstream: "/api/ventas-por-anuncio" }],
+  ["/api/sofia/enviar-mensaje", { method: "POST", upstream: "/api/enviar-mensaje" }],
+  ["/api/sofia/seguimiento-asesor", { method: "POST", upstream: "/api/seguimiento-asesor" }],
+  ["/api/sofia/reintentar-handoff", { method: "POST", upstream: "/api/reintentar-handoff" }]
+]);
+function reply2(body, status = 200) {
+  return Response.json(body, { status, headers: { "cache-control": "no-store" } });
+}
+__name(reply2, "reply");
+async function handleAuraSofiaProxy(request, env, fetcher = fetch) {
+  if (!await authenticateAuraOwner(request, fetcher)) {
+    return reply2({ ok: false, error: "No autorizado" }, 403);
+  }
+  const route = ROUTES.get(new URL(request.url).pathname);
+  if (!route) return reply2({ ok: false, error: "Ruta no encontrada" }, 404);
+  if (request.method !== route.method) return reply2({ ok: false, error: "M\xE9todo no permitido" }, 405);
+  let body;
+  if (request.method === "POST") {
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (declaredLength > MAX_BODY_BYTES) return reply2({ ok: false, error: "Solicitud demasiado grande" }, 413);
+    body = await request.text();
+    if (body.length > MAX_BODY_BYTES) return reply2({ ok: false, error: "Solicitud demasiado grande" }, 413);
+  }
+  const base = String(env.SOFIA_WORKER_URL || DEFAULT_SOFIA_WORKER_URL).replace(/\/$/, "");
+  const authorization = request.headers.get("authorization") || "";
+  const upstreamAuth = env.WORKER_SHARED_SECRET ? { "x-worker-secret": env.WORKER_SHARED_SECRET } : { authorization };
+  try {
+    const upstream = await fetcher(`${base}${route.upstream}`, {
+      method: route.method,
+      headers: {
+        accept: "application/json",
+        ...upstreamAuth,
+        ...body !== void 0 ? { "content-type": "application/json" } : {}
+      },
+      ...body !== void 0 ? { body } : {}
+    });
+    if (!upstream.ok) {
+      const status = upstream.status === 401 || upstream.status === 403 ? 502 : upstream.status;
+      return reply2({ ok: false, error: "Servicio temporalmente no disponible" }, status);
+    }
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "cache-control": "no-store",
+        "content-type": upstream.headers.get("content-type") || "application/json; charset=utf-8"
+      }
+    });
+  } catch {
+    return reply2({ ok: false, error: "Servicio temporalmente no disponible" }, 503);
+  }
+}
+__name(handleAuraSofiaProxy, "handleAuraSofiaProxy");
+var aura_assets_worker_default = {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (["GET", "HEAD"].includes(request.method)) {
+      const html = /^\/creditek\/agentes\/agente3-meta-ads(?:\.html|\/)?$/.test(url.pathname);
+      const script = url.pathname === "/creditek/agentes/campaign-thumbnails.js";
+      if (html || script) return new Response(request.method === "HEAD" ? null : html ? agente3_meta_ads_default : campaign_thumbnails_default, { headers: { "content-type": html ? "text/html; charset=utf-8" : "application/javascript; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-aura-campaign-identification": "20260910" } });
+    }
+    if (url.pathname === "/") {
+      return Response.redirect(new URL("/creditek/agentes/", url), 302);
+    }
+    if (url.pathname.startsWith("/api/aura/enlaces")) {
+      return handleAuraEnlacesProxy(request, env);
+    }
+    if (url.pathname.startsWith("/api/sofia/")) {
+      return handleAuraSofiaProxy(request, env);
+    }
+    return env.ASSETS.fetch(request);
+  }
+};
+
+// outputs/registration-rollout-20260913/gateway.mjs
+var UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+var REVOKE = new RegExp(`^/api/aura/enlaces/(${UUID})/revocar$`, "i");
+var failure = (error, status) => Response.json({ ok: false, error }, { status, headers: { "cache-control": "no-store" } });
+function routeFor(request) {
+  const url = new URL(request.url);
+  if (url.search) return null;
+  if (url.pathname === "/api/aura/enlaces/origenes") return { method: "GET", path: "/api/admin/origenes-enlaces" };
+  if (url.pathname === "/api/aura/enlaces") return { method: "POST", path: "/api/admin/enlaces" };
+  const match = url.pathname.match(REVOKE);
+  return match ? { method: "POST", path: `/api/admin/enlaces/${match[1]}/revocar` } : null;
+}
+async function boundedBody(request) {
+  const length = Number(request.headers.get("content-length"));
+  if (length > 4096) throw new Error("body_too_large");
+  if (!request.body) return "{}";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 4096) {
+        await reader.cancel();
+        throw new Error("body_too_large");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+function privateResponse(response) {
+  return new Response(response.body, { status: response.status, headers: {
+    "content-type": response.headers.get("content-type") || "application/json",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "x-creditek-registration-gateway": "20260913-v1"
+  } });
+}
+async function forward(request, env) {
+  const route = routeFor(request);
+  if (!route) return failure("Ruta no encontrada", 404);
+  if (request.method !== route.method) return failure("M\xE9todo no permitido", 405);
+  if (!env.REGISTRATION_SERVICE) return failure("Servicio de registro no configurado", 503);
+  try {
+    const forwarded = new Request(`https://registration.internal${new URL(request.url).pathname}`, {
+      method: request.method,
+      headers: { authorization: request.headers.get("authorization") || "", "content-type": "application/json" },
+      ...request.method === "POST" ? { body: await boundedBody(request) } : {}
+    });
+    return privateResponse(await env.REGISTRATION_SERVICE.fetch(forwarded));
+  } catch (error) {
+    return failure(error.message === "body_too_large" ? "Solicitud demasiado grande" : "Servicio de enlaces no disponible", error.message === "body_too_large" ? 413 : 503);
+  }
+}
+
+// outputs/registration-rollout-20260913/aura-entry.mjs
+var aura_entry_default = {
+  fetch(request, env, ctx) {
+    if (new URL(request.url).pathname.startsWith("/api/aura/enlaces")) return forward(request, env);
+    return aura_assets_worker_default.fetch(request, env, ctx);
+  }
+};
+export {
+  aura_entry_default as default
+};
+

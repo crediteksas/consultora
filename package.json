@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test:organic": "node --test --test-timeout=60000 tests/agentes/aura-organic-*.test.mjs tests/e2e/aura-organic-studio.test.mjs",
+    "build:aura:organic": "node scripts/build-aura.mjs && node scripts/verify-aura-artifact.mjs && node scripts/build-aura-organic-overlay.mjs",
     "build": "npm run build:environment",
     "build:public": "node scripts/build-public.mjs && node scripts/verify-public-artifact.mjs",
     "build:kora": "node scripts/build-kora.mjs",
@@ -38,6 +40,8 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "^1.55.0",
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261006.1-alpha",
     "wrangler": "4.114.0"
   }
 }

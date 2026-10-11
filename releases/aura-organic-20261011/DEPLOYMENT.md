@@ -4,7 +4,7 @@ Oscar autorizó subir el cambio a GitHub y desplegar AURA manteniendo la publica
 
 Claude aprobó el código de d10e877 para la siguiente etapa. Las 20 pruebas y build/verify de AURA se repitieron con éxito. La pausa antes de editar es una restricción de interfaz; el servidor invalida la aprobación al guardar y bloquea cambios una vez iniciado un envío.
 
-## Preflight
+## Preflight histórico (resuelto; ver actualización al final)
 
 **BLOQUEADO: Cloudflare devolvió 10042 (R2 no habilitado), incluso después de la primera confirmación del usuario. No desplegar ninguna de las dos partes hasta verificar la activación y crear el bucket.** No hay despliegue parcial autorizado por este procedimiento.
 
@@ -33,3 +33,16 @@ El manifest generado sigue intencionalmente en `deployable: false`: faltan R2 y 
 ## Revisión adicional completada
 
 Claude aprobó wrangler.overlay.jsonc, DEPLOYMENT.md y PREFLIGHT.json como configuración correcta después de contrastar la evidencia de producción. Se verificaron programáticamente los tres hashes AURA: 64 caracteres cada uno y coincidencia exacta con los archivos descargados. Dictamen explícito: aprobación de configuración únicamente; el despliegue permanece bloqueado por R2 10042. Pruebas repetidas: 20/20, build/verify y ambos dry-runs correctos.
+
+## Actualización: R2 activado y despliegue inicial verificado
+
+Después del «listo» de Oscar, R2 dejó de responder 10042. Se creó el bucket Standard `aura-organic-media`. Con autorización previa, se desplegaron:
+
+- API: `b2dd4650-f952-4909-a17a-2451b4b8a013`.
+- AURA inicial: `fa7de201-535f-4853-b0c0-0b5dc9d223fe`.
+
+Se compararon los módulos descargados con los bundles locales: coincidencia SHA-256 exacta. Se conservaron los secretos, servicios y namespaces existentes. `ORGANIC_AUTOMATION_ENABLED=false` se comprobó en la configuración remota. Health responde 200; connection y calendars sin sesión responden 401 LOGIN_REQUIRED. El estudio abre con su pantalla de acceso y sin errores JavaScript. No se generaron imágenes pagadas ni se publicaron piezas.
+
+La navegación original era asset-first y no mostraba el enlace agregado por el Worker. El ajuste puntual usa worker-first solamente para tres rutas existentes de inicio/calendario y lee su HTML desde ASSETS, preservando el contenido real activo. Nuevas pruebas verifican preservación exacta del HTML, métodos, rutas ajenas y política de headers. Total: 22/22 pruebas, build/verify y dry-run correctos. Su revisión y despliegue final se registrarán por separado.
+
+Pendiente externo: iniciar sesión de Gerencia en el estudio para comprobar permisos orgánicos de Meta; aprobar contenido real antes de habilitar y verificar la primera publicación. El manifest `deployable:false` es un registro conservador del gate inicial, no evidencia de una publicación habilitada.

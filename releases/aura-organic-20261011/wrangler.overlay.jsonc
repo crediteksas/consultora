@@ -18,6 +18,18 @@
   ],
   "unsafe": {
     "bindings": [{ "name": "ASSETS", "type": "assets" }],
-    "metadata": { "keep_assets": true }
+    "metadata": {
+      "keep_assets": true,
+      "assets": {
+        "config": {
+          "run_worker_first": [
+            "/creditek/agentes/",
+            "/creditek/agentes/index.html",
+            "/creditek/agentes/creditek-agente-calendario.html"
+          ],
+          "_headers": "/creditek/agentes/*\n  Cache-Control: no-cache, max-age=0, must-revalidate\n"
+        }
+      }
+    }
   }
 }

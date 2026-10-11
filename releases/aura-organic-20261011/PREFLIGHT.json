@@ -1,0 +1,35 @@
+{
+  "checked_on": "2026-10-11",
+  "source": "Authenticated read-only Cloudflare API: workers/services/{worker}/environments/production/content, workers/scripts/{worker}/settings, subdomain and deployments",
+  "account_id": "853eee9e3d80f805fee58f4f99507e8a",
+  "aura": {
+    "name": "creditek-aura",
+    "active_version": "55919bbd-b5ba-4aef-a10b-51a5ce8bfeeb",
+    "compatibility_date": "2026-07-23",
+    "compatibility_flags": [],
+    "workers_dev": true,
+    "preview_urls": true,
+    "bindings": [
+      { "name": "ASSETS", "type": "assets" },
+      { "name": "REGISTRATION_SERVICE", "type": "service", "service": "creditek-clientes", "environment": "production", "entrypoint": "AuraRegistrationGateway" },
+      { "name": "WORKER_SHARED_SECRET", "type": "secret_text" }
+    ],
+    "sha256": {
+      "aura.mjs": "1e0fed7ed12b05b4a4f9727adac44e994aa2bb5bbe4b9c27826c88944b60ce5f",
+      "tools-entry.mjs": "d3d4717a94e8db68f8b96b3cdcb365d0b0a5fc7a0be10089404117b84550d01e",
+      "tools-index.html": "719b98617ae8e8466cfb7829008ed8c7fbaeb12cabad061f605e0e925b8255e0"
+    }
+  },
+  "meta": {
+    "name": "aura-meta-ads-api",
+    "active_version": "526c453d-fc37-4dd6-8cec-fc8375ffcf29",
+    "sha256": "2df367dab1a48d6b3dc06bd02d6de31d71148f5b85d7e356f7b042e4a1eee3fb",
+    "existing_namespaces": {
+      "PUBLISH_COORDINATOR": "2c725d75f91d473392c6a5bd0bb8374a",
+      "RATE_LIMITER": "4cd7e3a749a947ca9a7710a0c56eee9c"
+    }
+  },
+  "r2": { "bucket": "aura-organic-media", "status": "account_not_enabled", "cloudflare_error": 10042 },
+  "deployed": false,
+  "meta_organic_permissions_verified": false
+}

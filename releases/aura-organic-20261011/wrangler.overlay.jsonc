@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "creditek-aura",
+  "main": "../../dist/aura-organic-overlay/worker.mjs",
+  "compatibility_date": "2026-07-23",
+  "compatibility_flags": [],
+  "workers_dev": true,
+  "preview_urls": true,
+  "keep_vars": true,
+  "logpush": false,
+  "services": [
+    {
+      "binding": "REGISTRATION_SERVICE",
+      "service": "creditek-clientes",
+      "environment": "production",
+      "entrypoint": "AuraRegistrationGateway"
+    }
+  ],
+  "unsafe": {
+    "bindings": [{ "name": "ASSETS", "type": "assets" }],
+    "metadata": { "keep_assets": true }
+  }
+}

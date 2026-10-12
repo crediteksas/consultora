@@ -17,3 +17,16 @@ La corrección conserva una copia exacta de los dos módulos del shell activo y 
 No dar el congelamiento de la ventana de Oscar por reproducido: requiere confirmar allí tras recargar la aplicación instalada. No se activan publicaciones automáticas ni se consulta soporte.
 
 Referencia oficial del proxy ya existente: https://developers.cloudflare.com/workers/configuration/routing/routes/#background
+
+## Resultado confirmado · 11 octubre 19:41 Colombia
+
+- Revisión Claude: APROBADO. Implementación y baseline preservado en commit `3126233`, subido antes de desplegar.
+- Versión anterior para rollback: `c81ad04a-cf76-43ec-bf50-8ca26f8105e8`.
+- Versión activa al 100%: `68763df5-f3d8-4b4b-817a-6b8aed9a5877`; deployment `31762533-18df-4249-8354-8b2a32051b2f`.
+- Bundle remoto y local SHA-256: `070d9bf58420993cef68679e9c73566331aee886d99cc0f0e5acc31e31b6cdb7`.
+- Primera lectura inmediatamente después del deploy aún sirvió la versión anterior; una segunda comprobación tras propagación pasó sin realizar otro despliegue.
+- Ambos GET públicos del panel (incluido `?source=pwa`) devuelven HTTP 200, menú/tarjeta nuevos y `x-aura-organic-app-release:20261011-shell`. Quitando únicamente las dos inserciones, HTML idéntico al anterior por SHA-256.
+- Las tres rutas y bindings vacíos conservados. No hubo sincronización de rutas ni modificación de assets.
+- Prueba con HTML publicado, sesión/backend simulados: clic en tarjeta, abrir visor interno, actualizar, borrador en memoria, escribir, bajar 1933 px, subir a 0, Volver: correcto. Indicadores y telemetría deliberadamente bloqueados en la prueba. No publicaciones ni guardados reales.
+- Se comparan por SHA-256 seis archivos públicos antes/después: estudio HTML/JS/CSS, auth, pantalla Sofía y auto-navigation, sin cambios.
+- El problema de acceso interno está corregido. Aún falta confirmación de Oscar tras recargar la ventana instalada para cerrar su reporte de congelamiento; no afirmar que se reprodujo. No se necesita enviar el caso preparado para explicar la ausencia del menú.

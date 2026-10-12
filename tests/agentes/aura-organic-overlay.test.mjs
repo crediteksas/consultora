@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions, Response } from 'miniflare';
 
 const paths = ['/creditek/agentes/', '/creditek/agentes/index.html', '/creditek/agentes/creditek-agente-calendario.html'];
-const html = '<!doctype html><html><body><main>LIVE ASSET, NOT OLD WORKER HOME</main></body></html>';
+const html = '<!doctype html><html><body><main>LIVE ASSET, NOT OLD WORKER HOME<a class="nav-item" data-aura-owner-only hidden href="/creditek/agentes/nova-supervision.html">NOVA</a><a data-nova-dashboard-card>NOVA CARD</a></main></body></html>';
 test('organic navigation preserves actual asset HTML and delegates all unrelated requests', async t => {
   const compiled = await build({ stdin: { contents: `import { organicOverlay } from './src/aura-organic-overlay.mjs'; export default organicOverlay({ fetch() { return new Response('LEGACY'); } }, {});`, resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm' });
   const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: compiled.outputFiles[0].text, compatibilityDate: '2026-07-23', serviceBindings: { ASSETS: async request => new Response(request.method === 'HEAD' ? null : html, { headers: { 'content-type': 'text/html', etag: 'old-validator', 'last-modified': 'Wed, 01 Jan 2025 00:00:00 GMT' } }) } }));
@@ -15,7 +15,14 @@ test('organic navigation preserves actual asset HTML and delegates all unrelated
     const text = await response.text();
     assert.equal(response.status, 200);
     assert.match(text, /Contenido orgánico/);
-    assert.equal(text.replace(/<nav aria-label="Publicación orgánica"[^]*?<\/nav>/, ''), html);
+    assert.equal(text.replace(/<nav aria-label="Publicación orgánica"[^]*?<\/nav>/, '').replace(/<a[^>]+data-organic-app-(?:nav|card)[^]*?<\/a>/g, ''), html);
+    if (!path.endsWith('calendario.html')) {
+      assert.match(text, /data-organic-app-nav data-aura-owner-only hidden/);
+      assert.match(text, /data-organic-app-card data-aura-owner-only hidden/);
+      assert.match(text, /openModuleFromCard/);
+      assert.doesNotMatch(text, /target="_blank"/);
+      assert.doesNotMatch(text, /<body><nav/);
+    }
     assert.equal(response.headers.get('etag'), null);
     assert.equal(response.headers.get('last-modified'), null);
     assert.equal(response.headers.get('cache-control'), 'no-store');

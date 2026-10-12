@@ -1,11 +1,12 @@
 // Read-only application-shell check. Session and backend are simulated locally.
 import { chromium } from '@playwright/test';
-import { build } from 'esbuild';
-import { Miniflare, convertV4MiniflareOptions, Response } from 'miniflare';
+import { readFile } from 'node:fs/promises';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+const useLive = process.argv.includes('--live');
 const liveHome = await (await fetch('https://aura.crediteksas.com/creditek/agentes/?source=pwa')).text();
-const compiled = await build({ stdin: { contents: `import { organicOverlay } from './src/aura-organic-overlay.mjs'; export default organicOverlay({fetch(){return new Response('UNEXPECTED')}}, {});`, resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm' });
-const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: compiled.outputFiles[0].text, compatibilityDate: '2026-07-23', serviceBindings: { ASSETS: async () => new Response(liveHome, { headers: { 'content-type': 'text/html' } }) } }));
-const patchedHome = await (await mf.dispatchFetch('https://aura.test/creditek/agentes/?source=pwa')).text();
+const mf = useLive ? null : new Miniflare(convertV4MiniflareOptions({ modules: true, script: await readFile('dist/aura-organic-shell/worker.mjs', 'utf8'), compatibilityDate: '2026-07-23' }));
+const patchedHome = useLive ? liveHome : await (await mf.dispatchFetch('https://aura.crediteksas.com/creditek/agentes/?source=pwa')).text();
+if (!patchedHome.includes('data-organic-app-card')) throw Error('App navigation is not present');
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1150, height: 840 } });
@@ -48,6 +49,6 @@ try {
   await page.waitForTimeout(300);
   const up = await child.evaluate(() => scrollY);
   await page.getByRole('button', { name: 'Volver', exact: true }).click();
-  console.log(JSON.stringify({ test: 'Published AURA shell with local reviewed navigation patch; backend locally mocked', iframeBounds: bounds, scrollDown: down, scrollUp: up, returnedToPanel: await page.locator('#main-content').isVisible(), errors }));
+  console.log(JSON.stringify({ test: useLive ? 'Live published AURA app shell; session/backend locally mocked' : 'Actual route Worker bundle; session/backend locally mocked', iframeBounds: bounds, scrollDown: down, scrollUp: up, returnedToPanel: await page.locator('#main-content').isVisible(), errors }));
   if (down <= 0 || up !== 0 || !await page.locator('#main-content').isVisible()) throw Error('Embedded navigation/scroll failed');
-} finally { await browser.close(); await mf.dispose(); }
+} finally { await browser.close(); if (mf) await mf.dispose(); }

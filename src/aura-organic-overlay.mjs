@@ -14,6 +14,14 @@ export function organicOverlay(legacy, assets) {
         ? await env.ASSETS.fetch(request)
         : await legacy.fetch(request, env, ctx);
       if (!entry || request.method !== 'GET' || !response.ok || !response.headers.get('content-type')?.includes('text/html')) return response;
+      return addOrganicEntryNavigation(response, path);
+    },
+  };
+}
+
+// Shared by the static origin overlay and the route Worker that actually serves
+// the installed app. Does not fetch, authenticate, or change existing scripts.
+export function addOrganicEntryNavigation(response, path) {
       const headers = new Headers(response.headers);
       for (const name of ['etag', 'content-length', 'last-modified']) headers.delete(name);
       headers.set('cache-control', 'no-store');
@@ -33,6 +41,4 @@ export function organicOverlay(legacy, assets) {
         } });
       }
       return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers }));
-    },
-  };
 }

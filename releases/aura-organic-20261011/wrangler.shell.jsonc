@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "creditek-aura-shell",
+  "main": "../../dist/aura-organic-shell/worker.mjs",
+  "compatibility_date": "2026-07-23",
+  "compatibility_flags": [],
+  "keep_vars": true,
+  "logpush": false
+}

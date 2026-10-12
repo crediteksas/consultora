@@ -4078,6 +4078,7 @@ const COMMERCIAL_DESIGN_CONTRACT = `COMMERCIAL DESIGN CONTRACT — MANDATORY:
 - Render only the exact approved Spanish copy. Never invent urgency badges such as SOLO HOY, prices, discounts, dates or claims.
 - Reserve natural negative space for the official Creditek logo. Never write, imitate, reconstruct or crop the brand name; the exact official check-symbol plus wordmark is composited after generation.
 - The finished concept must look ready for a professional Meta Ads campaign and remain legible at phone-feed size.`;
+const CARIBBEAN_WARDROBE_CONTRACT = "CARIBBEAN EVERYDAY WARDROBE — APPLIES WHEN PEOPLE ARE REQUESTED:\n- Express the Colombian Caribbean setting through hot-weather everyday clothing, warm natural light and the local commercial environment, never through a presumed regional face, ethnicity or skin tone.\n- Default to breathable cotton or linen, fresh short-sleeved or sleeveless blouses/shirts, lightweight trousers or skirts, sandals or light everyday sneakers. Adults may dress fashionably without cold-weather styling.\n- Unless the operator explicitly requests otherwise, avoid boots, coats, scarves, heavy jackets, thick layers and winter fashion. Do not substitute carnival costumes, beachwear or tourist props.\n- Preserve the operator's requested number of people, adult ages, roles, actions and specific appearance or clothing instructions. Do not add a salesperson or replace two requested friends with a different cast. These are contextual defaults, not a new scene or extra people.";
 const RECRAFT_ART_DIRECTION = `DESIGNER A — RECRAFT: create one full-bleed editorial retail photograph with natural Caribbean light and a single believable customer-adviser interaction as the focal point. The store environment remains visible across the entire canvas. Place the approved headline, supporting copy and compact CTA directly over calm areas of the photograph with strong contrast and mobile readability. Use no solid header, footer, card, beige or white panel, detached banner, empty block or framed template. The CTA may occupy at most 35% of the canvas width. Do not generate any trademark, company name, check symbol or wordmark; one verified brand asset is added after generation.`;
 const GPT_ART_DIRECTION = `DESIGNER B — GPT IMAGE: create an independent premium retail concept with sophisticated typography, dynamic composition, restrained modern color blocking and a conversion-focused human story. Build a visual triangle connecting the main customer interaction, headline and CTA. Keep the CTA clearly readable on a phone and approximately 20–25% more prominent than ordinary body copy, without becoming a banner. Place supporting copy on a calm high-contrast area or a subtle dark translucent scrim. Reduce background crowd density when needed so one believable customer-adviser interaction leads the scene. Reserve at least 6% safe margin around the natural logo zone. Avoid decorative bands that cut through the photograph. It must remain visibly different from Designer A.`;
 const COSTENO_VISUAL_CONTRACT = `SELECTED STYLE — ALEGRE COSTEÑO, MANDATORY:
@@ -4164,6 +4165,7 @@ Do not add SOLO HOY, urgency badges, prices, discounts, dates, slogans, store si
 
 function buildAdCreativeQualityPrompt(prompt = '') {
   return [
+    CARIBBEAN_WARDROBE_CONTRACT,
     AD_CREATIVE_QUALITY_CONTRACT,
     buildRetailStoreSceneContract(prompt),
     buildProductProminenceContract(),
@@ -4177,6 +4179,7 @@ function buildRecraftProviderPrompt(prompt = '') {
     .filter(line => !/(logo|wordmark|brand identity|branding lock|official asset|creditek)/i.test(line))
     .join('\n');
   const priorityPrefix = [
+    CARIBBEAN_WARDROBE_CONTRACT,
     RECRAFT_ART_DIRECTION,
     buildSelectedVisualStyleContract(),
     buildRetailStoreSceneContract(prompt),

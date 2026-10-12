@@ -1,3 +1,4 @@
+import { patchPublisherResponse } from './aura-caribbean-direction.mjs';
 import { addOrganicEntryNavigation } from './aura-organic-overlay.mjs';
 
 // Wrap the exact active route Worker. Do not change its proxy behaviour, route
@@ -7,6 +8,7 @@ export function organicAppShell(previous) {
     async fetch(request, env, ctx) {
       const response = await previous.fetch(request, env, ctx);
       const path = new URL(request.url).pathname;
+      if(request.method==='GET' && ['/creditek/agentes/creditek-agente-redes','/creditek/agentes/creditek-agente-redes.html'].includes(path) && response.status===200 && response.headers.get('content-type')?.includes('text/html'))return patchPublisherResponse(response);
       if (request.method !== 'GET' || !['/creditek/agentes/', '/creditek/agentes/index.html'].includes(path)
           || response.status !== 200 || !response.headers.get('content-type')?.includes('text/html')) return response;
       const result = addOrganicEntryNavigation(response, path);

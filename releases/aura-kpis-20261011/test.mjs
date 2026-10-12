@@ -1,0 +1,14 @@
+import{readFile}from'node:fs/promises';import vm from'node:vm';import assert from'node:assert/strict';import{webcrypto}from'node:crypto';
+const source=await readFile(new URL('./candidate.js',import.meta.url),'utf8');let calls=0;
+const sandbox={Response,Request,URL,TextEncoder,Uint8Array,crypto:webcrypto,AbortSignal,console,fetch:async()=>{calls++;return new Response('[]',{headers:{'Content-Range':'0-0/7'}})}};
+const helpers=await readFile(new URL('./restored-kpis.js',import.meta.url),'utf8');const token=source.slice(source.indexOf('async function tokenValido('),source.indexOf('async function adminAuthorized('));
+vm.createContext(sandbox);vm.runInContext('const __name=f=>f;const SUPABASE_URL6="https://jfkmiyvcdfbsbwchyvol.supabase.co";const sbHeaders=()=>({});\n'+token+'\n'+helpers,sandbox);
+const run=async(url,auth)=>sandbox.handleInscritos(new Request(url,{headers:auth?{authorization:'Bearer '+auth}:{}}),{CLIENTES_AGREGADOS_TOKEN:'test'});
+const url='https://example.com/internal/kpis/inscritos?inicio=2026-10-01T05:00:00Z&fin=2026-10-12T05:00:00Z';
+assert.equal((await run(url)).status,401);assert.equal(calls,0);assert.equal((await run(url,'wrong')).status,401);assert.equal(calls,0);
+assert.equal((await run('https://example.com/internal/kpis/inscritos?inicio=bad&fin=bad','test')).status,400);assert.equal(calls,0);
+let r=await run(url,'test');assert.equal(r.status,200);assert.deepEqual(await r.json(),{hoy:7,mes:7,timezone:'America/Bogota'});assert.equal(r.headers.get('cache-control'),'no-store');
+sandbox.fetch=async()=>new Response('[]',{headers:{'Content-Range':'0-0/'}});assert.equal((await run(url,'test')).status,503);
+sandbox.fetch=async()=>new Response('error',{status:401});assert.equal((await run(url,'test')).status,503);
+const baseline=await readFile(new URL('./baseline.js',import.meta.url),'utf8');const insertion='\n    if(new URL(request.url).pathname === "/internal/kpis/inscritos"){\n      if(request.method!=="GET")return kpiJson({error:"method_not_allowed"},405);\n      return handleInscritos(request,env2);\n    }';assert.equal(source.replace(helpers+'\n','').replace(insertion,''),baseline);
+console.log('PASS: missing/wrong auth, invalid range, valid counts, no-store, invalid totals, upstream errors; original code byte-preserved.');

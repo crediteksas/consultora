@@ -26,6 +26,8 @@ El resumen presenta Desde, Hasta, ventas, costo vendido, gastos, faltantes y baj
 
 El mes identifica los inventarios, no cambia sus intervalos económicos: cada período comienza exactamente en el corte físico aprobado anterior de la misma tienda y termina antes del corte actual (`inicio <= movimiento < fin`). El primer período comienza en la fecha de inicio comprobada de la tienda. Un corte anulado o histórico nunca inicia un período. No es necesario guardar por separado el resultado del corte anterior para establecer el siguiente intervalo. Los snapshots de utilidad ya confirmados siguen siendo inmutables. Consultar o descargar no crea un cierre financiero, no aplica inventario y no mueve caja, Banco ni cartera.
 
+Excel y PDF, resumidos y completos, incluyen **Deuda B2B al corte** y **A favor B2B al corte** por tienda y con totales separados. El único proveedor de las tiendas es Creditek B2B. El saldo usa su cuenta corriente: cargos menos abonos anteriores a la hora exacta de cada corte (`created_at < corte_at`), con todas las páginas de movimientos. No es el saldo de hoy ni un gasto del período: no se descuenta de la utilidad. Un fallo de consulta deja el saldo y su total sin valor, identificados como incompletos; nunca se sustituye por cero. Un saldo negativo se muestra a favor, sin compensarlo con la deuda de otras tiendas.
+
 ## Ejemplo y fórmula
 
 Regla aclarada y autorizada por Óscar el 15 de septiembre, aplicada mediante la migración `20260915163724`: el dato entregado por la tienda siempre está referido al corte. Se verificó la configuración activa para las diez tiendas; no había conteos ni movimientos de ajuste del método anterior al cambiar la regla.

@@ -24,7 +24,13 @@ test('informe mensual: controles alineados, PDF/Excel corporativos y mismos tota
       const tiendas=Array.from({length:9},(_,i)=>({codigo:`CK-${i+1}`,nombre:`Tienda prueba ${i+1}`}));
       const cortes=tiendas.map(t=>({id:`corte-${t.codigo}`,tienda_codigo:t.codigo,tienda_nombre:t.nombre,estado:'aplicado',base_conteo:'corte_fijo',corte_at:'2026-10-07T15:00:00Z',contado_at:'2026-10-07T15:00:00Z',autorizado_at:'2026-10-08T15:00:00Z'}));
       window.testCalls=[];
-      const sb={rpc:async(name,args)=>{
+      const sb={from:table=>{
+        if(table!=='cuenta_corriente')throw new Error('Consulta no prevista');
+        const query={select(){return query;},eq(_key,value){query.store=value;return query;},lt(_key,value){query.cut=value;return query;},order(){return query;},async range(from,to){
+          if(query.cut!=='2026-10-07T15:00:00Z')throw new Error('Fecha de cartera distinta del corte');
+          const data=[{id:1,tipo:'cargo',monto:query.store==='CK-1'?0:500.25},{id:2,tipo:'abono',monto:query.store==='CK-1'?25.50:0}];return {data:data.slice(from,to+1)};
+        }};return query;
+      },rpc:async(name,args)=>{
         testCalls.push({name,...args});
         if(name==='kora_registrar_exportacion'){window.reportAudit=args;return {};}
         if(name==='cierre_utilidad_retail')return {data:{corte_id:args.p_corte_id,inicio_at:'2026-09-04T05:00:00Z',ventas_totales:1000.25,costo_vendido:600,gastos_totales:100,perdidas_ajustes:20,ganancias_ajustes:10,ajuste_conciliacion:5,utilidad_neta:295.25,cerrado:true,listo:true}};
@@ -55,6 +61,8 @@ test('informe mensual: controles alineados, PDF/Excel corporativos y mismos tota
     assert.doesNotMatch(text,/Equipo de prueba|Resultado no disponible/);
     assert.equal(await popup.locator('section').first().locator('tbody tr').count(),9);
     assert.equal(await popup.locator('section').first().locator('tfoot tr').count(),1);
+    const debtPdf=popup.locator('section').filter({has:popup.getByRole('heading',{name:'Saldo con Creditek B2B al corte'})});
+    assert.equal(await debtPdf.locator('tbody tr').count(),9);assert.match(await debtPdf.textContent(),/4\.002,00/);assert.match(await debtPdf.textContent(),/25,50/);
     assert.equal(await popup.locator('tfoot').first().evaluate(node=>getComputedStyle(node).display),'table-row-group','El total se imprime solo al final de la tabla, no se repite en cada página');
     assert.equal(await page.evaluate(()=>reportAudit.p_formato),'pdf');
     assert.equal(await page.evaluate(()=>reportAudit.p_registros),18);
@@ -73,6 +81,8 @@ test('informe mensual: controles alineados, PDF/Excel corporativos y mismos tota
       const sheet=book.Sheets[book.SheetNames.find(name=>name.includes('Resumen tiendas'))];
       const rows=XLSX.utils.sheet_to_json(sheet,{range:7,defval:''});
       assert.equal(rows.length,10);assert.equal(rows.at(-1).Ventas,9002.25);assert.equal(rows.at(-1)['Utilidad neta'],2657.25);
+      assert.equal(rows.at(-1)['Deuda B2B al corte'],4002);assert.equal(rows.at(-1)['A favor B2B al corte'],25.5);
+      assert.equal(rows[0]['Deuda B2B al corte'],0);assert.equal(rows[0]['A favor B2B al corte'],25.5);assert.equal(sheet.L9.t,'n');
       assert.equal(rows.at(-1).Desde,'');assert.equal(rows.at(-1).Hasta,'');
       assert.equal(sheet.B9.t,'n');assert.equal(sheet.B9.z,'dd/mm/yyyy hh:mm');assert.equal(sheet.D9.t,'n');
       assert.equal(sheet.B9.v,Date.parse('2026-09-04T00:00:00Z')/86400000+25569);

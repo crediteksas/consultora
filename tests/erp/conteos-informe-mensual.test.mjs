@@ -14,11 +14,12 @@ const local=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Bogota',ye
 const tiendas=Array.from({length:9},(_,i)=>({codigo:`CK-0${i+1}`,nombre:`Tienda ${i+1}`}));
 const cut=(store,extra={})=>({id:`corte-${store}`,tienda_codigo:store,estado:'aplicado',base_conteo:'corte_fijo',
   corte_at:'2026-10-07T15:00:00Z',contado_at:'2026-10-07T15:00:00Z',autorizado_at:'2026-10-10T15:00:00Z',...extra});
-function harness({central=true,mes='2026-10',resumido=true,cortes=tiendas.map(t=>cut(t.codigo)),resultados={}}={}) {
+function harness({central=true,mes='2026-10',resumido=true,cortes=tiendas.map(t=>cut(t.codigo)),resultados={},saldos={}}={}) {
   const calls=[],exports=[],elements={'mes':{value:mes},'mes-resumido':{checked:resumido}};
   const context=vm.createContext({config:{central,tiendas},local,seleccionarCortesCerrados,agregarTotalTiendas,resumirValores,
     money:value=>value==null?'Por confirmar':`$ ${value}`,perfil:{nombre:'Responsable de prueba',rol:'gerencia'},
     global:{KoraReportExport:{exportData:async(data,options)=>{exports.push({data,options});return 'KORA-REP-TEST';}}},
+    saldoB2BAlCorte:async(tienda,corteAt)=>{calls.push({action:'saldo_b2b',tienda,corteAt});const value=saldos[tienda]??500;if(value instanceof Error)throw value;return value;},
     el:id=>elements[id],obtenerHistorial:async filters=>{calls.push({action:'historial',filters});return cortes;},
     rpc:async(action,data)=>{calls.push({action,...data});return {lineas:[{nombre:'Producto',codigo:'REF',cantidad_corte:11,cantidad_fisica:10,diferencia:-1,costo_tienda:100}]};},
     sb:{rpc:async(name,args)=>{calls.push({name,...args});const codigo=cortes.find(c=>c.id===args.p_corte_id).tienda_codigo;
@@ -26,11 +27,11 @@ function harness({central=true,mes='2026-10',resumido=true,cortes=tiendas.map(t=
         ventas_totales:1000,costo_vendido:600,gastos_totales:100,perdidas_ajustes:20,ganancias_ajustes:10,ajuste_conciliacion:5,utilidad_neta:295,cerrado:true,listo:true}};}},
   });
   const run=vm.runInContext(`${source.slice(start,end)}\ninformeMensual;`,context);
-  return {run,calls,exports};
+  return {run,calls,exports,context};
 }
 
 test('el botón mensual está en la misma pestaña, tiene mes seleccionable y no se ofrece a la tienda',()=>{
-  assert.match(readFileSync(new URL('../../creditek/erp/inventario.html',import.meta.url),'utf8'),/conteos-ui\.js\?v=1\.2\.4/);
+  assert.match(readFileSync(new URL('../../creditek/erp/inventario.html',import.meta.url),'utf8'),/conteos-ui\.js\?v=1\.2\.5/);
   assert.match(source,/id="conteos-mensual-panel"[^>]*hidden/);
   assert.match(source,/id="conteos-mes" type="month"/);
   assert.match(source,/id="conteos-informe-mes"[^>]*>Descargar informe del mes/);
@@ -56,6 +57,8 @@ test('resumido contiene nueve tiendas, ventas, gastos, utilidad e inventario con
   assert.equal(rows.length,10);assert.equal(rows[0].Ventas,1000);assert.equal(rows[0].Gastos,100);assert.equal(rows[0]['Utilidad neta'],295);
   assert.equal(rows[0]['Inventario al corte'],1000);assert.equal(rows.at(-1).Tienda,'TOTAL GENERAL');
   assert.equal(rows.at(-1).Ventas,9000);assert.equal(rows.at(-1)['Utilidad neta'],2655);assert.equal(rows.at(-1)['Inventario al corte'],9000);
+  assert.equal(rows[0]['Deuda B2B al corte'],500);assert.equal(rows.at(-1)['Deuda B2B al corte'],4500);assert.equal(rows.at(-1)['A favor B2B al corte'],0);
+  assert.equal(h.calls.filter(c=>c.action==='saldo_b2b').length,9);assert.ok(h.calls.filter(c=>c.action==='saldo_b2b').every(c=>c.corteAt==='2026-10-07T15:00:00Z'));
   assert.equal(rows[0].Desde.toISOString(),'2026-09-04T00:00:00.000Z');
   assert.equal(data.tables[0].columnTypes[1],'datetime');assert.equal(data.tables[0].columnTypes[3],'currency');
   assert.equal(rowsOf(data,'Períodos y cortes')[0]['ID corte'],'corte-CK-01');
@@ -89,8 +92,52 @@ test('PDF y Excel reciben las mismas cifras y totales; PDF resumido conserva las
   const excel=harness(),pdf=harness();await excel.run();await pdf.run('pdf',{document:{}});
   assert.equal(pdf.exports[0].options.format,'pdf');
   assert.equal(JSON.stringify(pdf.exports[0].data),JSON.stringify(excel.exports[0].data));
-  assert.equal(pdf.exports[0].data.pdfTables.length,4);
+  assert.equal(pdf.exports[0].data.pdfTables.length,5);
   for(const table of pdf.exports[0].data.pdfTables)assert.equal(table.rows.length,9);
+});
+test('deudas y saldos a favor se totalizan separados y no se restan de la utilidad',async()=>{
+  const h=harness({saldos:{'CK-01':-25.50,'CK-02':0}});await h.run();const rows=rowsOf(h.exports[0].data,'Resumen tiendas');
+  assert.equal(rows[0]['Deuda B2B al corte'],0);assert.equal(rows[0]['A favor B2B al corte'],25.5);
+  assert.equal(rows.at(-1)['Deuda B2B al corte'],3500);assert.equal(rows.at(-1)['A favor B2B al corte'],25.5);
+  assert.equal(rows.at(-1)['Utilidad neta'],2655);
+});
+test('fallo de saldo no inventa cero ni un total completo, y conserva las otras cifras',async()=>{
+  const h=harness({saldos:{'CK-01':new Error('Sin conexión de cartera')}});const message=await h.run();
+  const rows=rowsOf(h.exports[0].data,'Resumen tiendas');
+  assert.equal(rows[0]['Deuda B2B al corte'],'');assert.equal(rows[0]['A favor B2B al corte'],'');
+  assert.equal(rows.at(-1)['Deuda B2B al corte'],'');assert.equal(rows.at(-1).Tienda,'TOTAL INCOMPLETO');
+  assert.equal(rows[0]['Utilidad neta'],295);assert.match(message,/Sin conexión de cartera/);
+  assert.equal(rows[0].Estado,'Confirmada');assert.equal(rows[0]['Estado saldo B2B'],'No disponible');
+  assert.doesNotMatch(JSON.stringify(h.exports[0].data),/Sin conexión de cartera/);
+});
+test('últimos cortes también aísla el fallo de saldo de una tienda sin perder el resto del informe',async()=>{
+  const h=harness({saldos:{'CK-01':new Error('Saldo de prueba no disponible')}}),sheets={};
+  Object.assign(h.context,{XLSX:{utils:{book_new:()=>({})}},hoja:(_book,rows,name)=>{sheets[name]=rows;},guardarLibro:()=>{},
+    fechaCorte:c=>c.corte_at,estadoCorte:c=>c.estado,pendientesFuente:()=>[]});
+  const a=source.indexOf('    async function informeUltimos()'),b=source.indexOf('    async function informeMensual(',a);
+  await vm.runInContext(source.slice(a,b)+'\ninformeUltimos;',h.context)();
+  assert.equal(sheets['Resumen tiendas'].length,9);
+  assert.equal(sheets['Resumen tiendas'][0]['Deuda con B2B al corte'],'');
+  assert.equal(sheets['Resumen tiendas'][0]['Estado saldo B2B'],'No disponible');
+  assert.equal(sheets['Resumen tiendas'][0]['Utilidad o pérdida del corte'],295);
+  assert.equal(sheets['Resumen tiendas'][1]['Deuda con B2B al corte'],500);
+  assert.match(sheets['Por aclarar'][0].Motivo,/Saldo de prueba no disponible/);
+});
+test('saldo B2B usa tienda y hora exactas, pagina más de mil movimientos y valida importes',async()=>{
+  const a=source.indexOf('    async function saldoB2BAlCorte('),b=source.indexOf('    async function informeUltimos()',a);
+  const calls=[],cutAt='2026-10-07T15:00:00Z';
+  const movements=[...Array.from({length:1001},(_,i)=>({id:i,tipo:'cargo',monto:1,tienda:'A',created_at:'2026-10-07T14:59:59Z'})),
+    {id:1002,tipo:'abono',monto:5.25,tienda:'A',created_at:'2026-10-07T14:59:59Z'},
+    {id:1003,tipo:'cargo',monto:9999,tienda:'A',created_at:cutAt},
+    {id:1004,tipo:'cargo',monto:9999,tienda:'A',created_at:'2026-10-07T15:00:01Z'},
+    {id:1005,tipo:'cargo',monto:9999,tienda:'B',created_at:'2026-10-06T00:00:00Z'}];
+  const sb={from:table=>{assert.equal(table,'cuenta_corriente');const q={select(){return q;},eq(key,value){assert.equal(key,'tienda_codigo');q.tienda=value;return q;},lt(key,value){assert.equal(key,'created_at');q.cut=value;return q;},order(key){assert.equal(key,'id');return q;},async range(from,to){calls.push([from,to,q.tienda,q.cut]);return {data:movements.filter(m=>m.tienda===q.tienda&&m.created_at<q.cut).slice(from,to+1)};}};return q;}};
+  const read=vm.runInNewContext(source.slice(a,b)+'\nsaldoB2BAlCorte;',{sb});
+  assert.equal(await read('A',cutAt),995.75);assert.equal(calls.length,2);assert.deepEqual(calls[1],[1000,1999,'A',cutAt]);
+  assert.equal(await read('C',cutAt),0);
+  for(const monto of [null,'',-1,'incorrecto']){
+    movements[0].monto=monto;await assert.rejects(read('A',cutAt),/movimiento inválido/);
+  }
 });
 test('permisos, mes inválido y utilidad incoherente impiden emitir un informe incorrecto',async()=>{
   for(const options of [{central:false},{mes:'2026-13'},{mes:''}]) {

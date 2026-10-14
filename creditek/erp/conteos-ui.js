@@ -95,7 +95,7 @@
         <p id="conteos-mensaje" role="status" style="margin:12px 0;white-space:pre-wrap"></p>
         <section id="conteos-mensual-panel" aria-label="Informe mensual de inventarios" hidden>
           <h3>Informe de inventarios del mes · todas las tiendas</h3>
-          <p>Último inventario cerrado de cada tienda en el mes seleccionado. Ventas, costos, gastos y utilidad corresponden al período entre inventarios, con sus fechas desde y hasta. Descargar no aplica ajustes ni confirma resultados.</p>
+          <p>Último inventario cerrado de cada tienda en el mes seleccionado. Ventas, costos, gastos y utilidad corresponden al período entre inventarios, con sus fechas desde y hasta. La deuda y los saldos a favor con Creditek B2B se muestran al corte, separados de la utilidad. Descargar no aplica ajustes ni confirma resultados.</p>
           <div class="inventario-form conteos-reporte-controles"><label>Mes de inventarios<input id="conteos-mes" type="month"></label>
             <label class="conteos-resumido"><input id="conteos-mes-resumido" type="checkbox" checked aria-describedby="conteos-mes-ayuda"><span>Resumido: cifras por tienda y total general</span></label>
             <div class="conteos-descarga">
@@ -646,6 +646,25 @@
       if(!rows.length)throw new Error('No hay cortes para este rango.');
       const libro=XLSX.utils.book_new();hoja(libro,rows,'Conteos y ajustes');if(pendientes.length)hoja(libro,pendientes,'Por aclarar');guardarLibro(libro,`informe-inventarios-${el('desde').value}-${el('hasta').value}.xlsx`);
     }
+    async function saldoB2BAlCorte(tiendaCodigo,corteAt) {
+        let saldo=0,desde=0,filas;
+        do {
+          const {data,error}=await sb.from('cuenta_corriente')
+            .select('id,tipo,monto,created_at').eq('tienda_codigo',tiendaCodigo)
+            .lt('created_at',corteAt).order('id').range(desde,desde+999);
+          if(error)throw new Error(`No se pudo calcular la deuda B2B al corte de ${tiendaCodigo}: ${error.message}`);
+          if(!Array.isArray(data))throw new Error(`No se recibió la cuenta corriente de ${tiendaCodigo}.`);
+          filas=data;
+          for(const movimiento of filas) {
+            const monto=Number(movimiento.monto);
+            if(!['cargo','abono'].includes(movimiento.tipo)||movimiento.monto==null||movimiento.monto===''||!Number.isFinite(monto)||monto<0)
+              throw new Error(`La cuenta corriente de ${tiendaCodigo} tiene un movimiento inválido (${movimiento.id}).`);
+            saldo+=(movimiento.tipo==='cargo'?monto:-monto);
+          }
+          desde+=filas.length;
+        } while(filas.length===1000);
+        return Math.round(saldo*100)/100;
+    }
     async function informeUltimos() {
       if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el último corte de todas las tiendas.');
       // El informe general no depende de los filtros visibles ni de su rango de fechas.
@@ -659,24 +678,6 @@
           (c.corte_at===anterior.corte_at&&c.id>anterior.id))ultimos.set(c.tienda_codigo,c);
       }
       const resumen=[],resultadoCortes=[],control=[],detalleFilas=[],diferencias=[],pendientes=[];
-      async function saldoB2BAlCorte(tiendaCodigo,corteAt) {
-        let saldo=0,desde=0,filas;
-        do {
-          const {data,error}=await sb.from('cuenta_corriente')
-            .select('id,tipo,monto,created_at').eq('tienda_codigo',tiendaCodigo)
-            .lt('created_at',corteAt).order('id').range(desde,desde+999);
-          if(error)throw new Error(`No se pudo calcular la deuda B2B al corte de ${tiendaCodigo}: ${error.message}`);
-          filas=data||[];
-          for(const movimiento of filas) {
-            const monto=Number(movimiento.monto);
-            if(!['cargo','abono'].includes(movimiento.tipo)||!Number.isFinite(monto)||monto<0)
-              throw new Error(`La cuenta corriente de ${tiendaCodigo} tiene un movimiento inválido (${movimiento.id}).`);
-            saldo+=(movimiento.tipo==='cargo'?monto:-monto);
-          }
-          desde+=filas.length;
-        } while(filas.length===1000);
-        return saldo;
-      }
       for(const tienda of config.tiendas) {
         const c=ultimos.get(tienda.codigo);
         if(!c) {
@@ -687,7 +688,9 @@
         const lineas=data.lineas||[],contado=!!c.contado_at,valores=resumirValores(lineas);
         const diferenciasCorte=lineas.filter(l=>l.diferencia!=null&&Number(l.diferencia)!==0);
         const valorCompleto=contado&&valores.sinCosto===0;
-        const pasivoSaldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at);
+        let pasivoSaldo=null;
+        try { pasivoSaldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at); }
+        catch(errorSaldo) { pendientes.push({Tienda:tienda.nombre,'ID corte':c.id,Motivo:errorSaldo.message}); }
         const {data:liquidacion,error:liquidacionError}=await sb.rpc('cierre_utilidad_retail',{p_accion:'vista',p_corte_id:c.id});
         const camposResultado=['ventas_totales','costo_vendido','gastos_totales','perdidas_ajustes',
           'ganancias_ajustes','ajuste_conciliacion','utilidad_neta'];
@@ -708,7 +711,8 @@
           liquidacionError||!liquidacion?'No disponible':'Pendiente de validación';
         resumen.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,'Fecha del corte':fechaCorte(c),
           'Estado del corte':estadoCorte(c),'Inventario físico al costo':valorCompleto?valores.valorReportado:'',
-          'Deuda con B2B al corte':Math.max(pasivoSaldo,0),'Saldo a favor en B2B al corte':Math.max(-pasivoSaldo,0),
+          'Deuda con B2B al corte':pasivoSaldo===null?'':Math.max(pasivoSaldo,0),'Saldo a favor en B2B al corte':pasivoSaldo===null?'':Math.max(-pasivoSaldo,0),
+          'Estado saldo B2B':pasivoSaldo===null?'No disponible':'Calculado al corte',
           'Ajuste físico neto al costo':valorCompleto?valores.impactoNeto:'',
           'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
           Resultado:resultado,'Estado de utilidad':estadoCorto,'Observaciones de utilidad':estadoLiquidacion});
@@ -768,13 +772,13 @@
       const hasta=`${mes}-${new Date(Date.UTC(anio,numeroMes,0)).getUTCDate()}`;
       const cortes=await obtenerHistorial({desde:`${mes}-01`,hasta,tienda:'',responsable:''});
       const ultimos=seleccionarCortesCerrados(cortes,mes),filas=[],detalleFilas=[],fuentes=[],avisos=[];
-      const campos=['Ventas','Costo vendido','Gastos','Faltantes y bajas','Sobrantes','Ajustes financieros','Utilidad neta','Inventario al corte'];
+      const campos=['Ventas','Costo vendido','Gastos','Faltantes y bajas','Sobrantes','Ajustes financieros','Utilidad neta','Inventario al corte','Deuda B2B al corte','A favor B2B al corte'];
       // Fecha de pared de Colombia: Excel conserva fecha y hora, sin convertirlas al huso del equipo.
       const fechaExcel=valor=>new Date(`${local(valor).replace(' ','T')}Z`);
       const resumido=el('mes-resumido').checked;
       for(const tienda of config.tiendas) {
         const c=ultimos.get(tienda.codigo);
-        const fila={Tienda:tienda.nombre,Desde:'',Hasta:'',...Object.fromEntries(campos.map(k=>[k,''])),Estado:'Sin inventario cerrado en el mes'};
+        const fila={Tienda:tienda.nombre,Desde:'',Hasta:'',...Object.fromEntries(campos.map(k=>[k,''])),Estado:'Sin inventario cerrado en el mes','Estado saldo B2B':'Sin inventario cerrado en el mes'};
         if(!c){filas.push(fila);avisos.push(`${tienda.nombre}: falta un inventario cerrado en ${mes}.`);continue;}
         fila.Hasta=fechaExcel(c.corte_at);
         const data=await rpc('ver',{id:c.id}),lineas=data.lineas||[],valores=resumirValores(lineas);
@@ -794,6 +798,15 @@
           fila.Estado='Resultado no disponible';
           avisos.push(`${tienda.nombre}: ${error?.message||'faltan cifras o costos verificables.'}`);
         }
+        try {
+          const saldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at);
+          fila['Deuda B2B al corte']=Math.max(saldo,0);
+          fila['A favor B2B al corte']=Math.max(-saldo,0);
+          fila['Estado saldo B2B']='Calculado al corte';
+        } catch(errorSaldo) {
+          fila['Estado saldo B2B']='No disponible';
+          avisos.push(`${tienda.nombre}: ${errorSaldo.message}`);
+        }
         filas.push(fila);
         fuentes.push({Tienda:tienda.nombre,Desde:fila.Desde,Hasta:fila.Hasta,'ID corte':c.id});
         if(!resumido)for(const l of lineas)detalleFilas.push({Tienda:tienda.nombre,Corte:fechaExcel(c.corte_at),
@@ -810,7 +823,8 @@
       const tables=[tabla('Resumen tiendas',resumen,Object.keys(resumen[0]))];
       const pdfTables=[tabla('Ventas, gastos y utilidad',resumen,['Tienda','Ventas','Gastos','Utilidad neta']),
         tabla('Inventario y diferencias',resumen,['Tienda','Inventario al corte','Faltantes y bajas','Sobrantes']),
-        tabla('Costos y resultado',resumen,['Tienda','Costo vendido','Ajustes financieros','Estado'])];
+        tabla('Costos y resultado',resumen,['Tienda','Costo vendido','Ajustes financieros','Estado']),
+        tabla('Saldo con Creditek B2B al corte',resumen,['Tienda','Deuda B2B al corte','A favor B2B al corte','Estado saldo B2B'])];
       if(detalleFilas.length){
         const detalleReporte=agregarTotalTiendas(detalleFilas,['Valor inventario','Valor diferencia']);
         const monedaInforme=valor=>valor===''||valor==null?'Por confirmar':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(valor);

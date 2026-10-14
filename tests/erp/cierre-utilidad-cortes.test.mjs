@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 
 const migration = readFileSync(new URL('../../supabase/migrations/20261005161602_retail_cierre_utilidad_por_corte.sql', import.meta.url), 'utf8');
+const tramosMigration = readFileSync(new URL('../../supabase/migrations/20261014210110_utilidad_retail_tramos_por_cortes_fisicos.sql', import.meta.url), 'utf8');
 const oscar = '6de0ad26-64af-4966-8cd9-d468880af627';
 const maite = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const tienda = '00000000-0000-0000-0000-000000000003';
@@ -59,6 +60,7 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
       grant usage on schema public,inventario_control to authenticated;
     `);
     await db.exec(migration);
+    await db.exec(tramosMigration);
     await db.exec(`create table inventario_control.no_conformes(
       tienda_codigo text,corte_id uuid,estado text,cantidad integer,costo_tienda numeric,autorizado_at timestamptz);
       insert into inventario_control.no_conformes values
@@ -99,6 +101,21 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
     assert.equal(Number(preview.gastos_inventario_no_monetarios), 40);
     assert.equal(Number(preview.ganancias_ajustes), 10);
     assert.equal(Number(preview.utilidad_neta), 245);
+    const nextWithoutFinancialSnapshot=await call('vista',corte2);
+    assert.equal(nextWithoutFinancialSnapshot.inicio_at,preview.fin_at,'El siguiente inventario parte del físico aprobado, aunque no se haya guardado su utilidad');
+    assert.equal(nextWithoutFinancialSnapshot.corte_inicio_id,corte1);
+    assert.equal(Number(nextWithoutFinancialSnapshot.inventario_inicial),460);
+    assert.equal(Number(nextWithoutFinancialSnapshot.ventas_totales),2000);
+    await db.exec('reset role');
+    assert.equal((await db.query('select count(*)::int n from inventario_control.cierres_utilidad')).rows[0].n,0,'Consultar no guarda cierres automáticamente');
+    await db.query('update inventario_control.lineas set costo_tienda=null where corte_id=$1 and cantidad_fisica=9',[corte1]);
+    await as(oscar);
+    const previousWithoutCosts=await call('vista',corte2);
+    assert.equal(previousWithoutCosts.inventario_inicial,null,'Un inventario previo sin costos no se presenta como cero ni como suma parcial');
+    assert.equal(previousWithoutCosts.utilidad_neta,nextWithoutFinancialSnapshot.utilidad_neta,'El inventario inicial informativo no altera la utilidad del tramo');
+    await db.exec('reset role');
+    await db.query('update inventario_control.lineas set costo_tienda=50 where corte_id=$1 and cantidad_fisica=9',[corte1]);
+    await as(oscar);
     await assert.rejects(call('cerrar', corte1, 'vieja'), /cambió desde la vista previa/);
     const closed = await call('cerrar', corte1, preview.huella);
     assert.equal(closed.cerrado, true);
@@ -115,6 +132,33 @@ test('cierre por corte separa la venta de las 08:53 de la de las 08:55 y exige a
     await assert.rejects(db.query("select public.cerrar_periodo('CK-01','2026-09-04','2026-10-05')"), /corte físico aprobado/);
     await db.exec('reset role');
     assert.equal((await db.query('select count(*)::int n from inventario_control.cierres_utilidad')).rows[0].n, 1);
+    const originalSnapshot=(await db.query('select to_jsonb(cu) d from inventario_control.cierres_utilidad cu where corte_id=$1',[corte1])).rows[0].d;
+    const corte3='00000000-0000-0000-0000-000000000103';
+    await db.exec(`insert into inventario_control.cortes values
+      ('${corte3}','CK-01','Celfiao Tolú','2026-10-07 13:54:37+00','aplicado','2026-10-07 14:00+00','corte_fijo',null),
+      ('00000000-0000-0000-0000-000000000104','CK-01','Celfiao Tolú','2026-10-07 12:00+00','rechazado',null,'corte_fijo',null),
+      ('00000000-0000-0000-0000-000000000105','CK-01','Celfiao Tolú','2026-10-07 13:00+00','pendiente',null,'corte_fijo','{"solo_comparativo":true}');
+      insert into inventario_control.lineas values('${corte3}',6,50,0,0);
+      insert into public.ventas values('00000000-0000-0000-0000-000000000203','CK-01','2026-10-05 13:54:37+00','2026-10-05',100,false);
+      insert into public.venta_items values('00000000-0000-0000-0000-000000000203',60,1);
+      insert into public.gastos values('CK-01','2026-10-05','2026-10-05 13:54:37+00',50,'aprobado');`);
+    await as(oscar);
+    const third=await call('vista',corte3);
+    assert.equal(third.inicio_at,next.fin_at,'No incorpora otra vez el tramo del segundo inventario, aunque su utilidad no esté confirmada');
+    assert.equal(third.corte_inicio_id,corte2);
+    assert.equal(Number(third.inventario_inicial),350);
+    assert.equal(third.listo,true,'Anulados y comparativos históricos no cambian los límites');
+    await call('cerrar',corte3,third.huella);
+    const olderPreview=await call('vista',corte2);
+    assert.equal(olderPreview.inicio_at,next.inicio_at,'Un cierre posterior no desplaza el período de un inventario anterior');
+    assert.equal(olderPreview.fin_at,next.fin_at);
+    assert.equal(Number(olderPreview.ventas_totales),2100,'Una venta exactamente en el corte pertenece al tramo siguiente');
+    assert.equal(Number(olderPreview.gastos_totales),125,'Un gasto exactamente en el corte también pertenece al siguiente tramo');
+    assert.equal(Number(third.ventas_totales),0,'El tercer tramo no vuelve a sumar ventas del segundo');
+    await db.exec('reset role');
+    assert.deepEqual((await db.query('select to_jsonb(cu) d from inventario_control.cierres_utilidad cu where corte_id=$1',[corte1])).rows[0].d,originalSnapshot,'Los resultados confirmados permanecen intactos');
+    await as(oscar);
+    assert.equal((await call('vista',corte1)).cierre_id,closed.cierre_id);
   } finally {
     await db.close();
   }

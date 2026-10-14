@@ -8,6 +8,32 @@
   const estadoCorte = c => c.revision_fuente?.solo_comparativo && c.estado==='pendiente' ? 'Comparativo histórico · pendiente de revisión' : estados[c.estado];
   const soporteArchivo = c => c.archivo_nombre?.trim() && /^[a-f0-9]{64}$/i.test(c.archivo_sha256||'')
     ? `Archivo de conteo: ${c.archivo_nombre} · SHA256: ${c.archivo_sha256}` : '';
+  function seleccionarCortesCerrados(cortes, mes) {
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes||''))throw new Error('Selecciona el mes de inventarios.');
+    const ultimos=new Map();
+    for(const c of cortes) {
+      if(!['aplicado','sin_diferencias'].includes(c.estado)||!c.contado_at||!c.autorizado_at||
+        c.base_conteo!=='corte_fijo'||c.revision_fuente?.solo_comparativo)continue;
+      if(local(c.corte_at).slice(0,7)!==mes)continue;
+      const anterior=ultimos.get(c.tienda_codigo);
+      if(!anterior||new Date(c.corte_at)>new Date(anterior.corte_at)||
+        (c.corte_at===anterior.corte_at&&c.id>anterior.id))ultimos.set(c.tienda_codigo,c);
+    }
+    return ultimos;
+  }
+  function agregarTotalTiendas(filas,campos) {
+    const total={Tienda:'TOTAL GENERAL'};
+    let incompleto=false;
+    for(const campo of campos) {
+      const completo=filas.length>0&&filas.every(f=>typeof f[campo]==='number'&&Number.isFinite(f[campo]));
+      total[campo]=completo?Math.round(filas.reduce((s,f)=>s+f[campo],0)*100)/100:'';
+      if(!completo)incompleto=true;
+    }
+    const provisional=filas.some(f=>f.Estado&&f.Estado!=='Confirmada');
+    total.Tienda=incompleto?'TOTAL INCOMPLETO':provisional?'TOTAL PROVISIONAL':'TOTAL GENERAL';
+    if(filas.some(f=>Object.hasOwn(f,'Estado')))total.Estado=incompleto?'Falta información':provisional?'Calculado, no confirmado':'Confirmada';
+    return [...filas,total];
+  }
   function resumirValores(lineas) {
     const total={faltantes:0,sobrantes:0,unidadesFaltantes:0,unidadesSobrantes:0,sinCosto:0,valorSistema:0,valorReportado:0};
     for (const l of lineas) {
@@ -67,6 +93,14 @@
           <div id="conteos-nc-resumen" style="margin:12px 0"></div>
         </details>
         <p id="conteos-mensaje" role="status" style="margin:12px 0;white-space:pre-wrap"></p>
+        <section id="conteos-mensual-panel" aria-label="Informe mensual de inventarios" hidden>
+          <h3>Informe de inventarios del mes · todas las tiendas</h3>
+          <p>Último inventario cerrado de cada tienda en el mes seleccionado. Ventas, costos, gastos y utilidad corresponden al período entre inventarios, con sus fechas desde y hasta. Descargar no aplica ajustes ni confirma resultados.</p>
+          <div class="inventario-form"><label>Mes de inventarios<input id="conteos-mes" type="month"></label>
+            <label><input id="conteos-mes-resumido" type="checkbox" checked> Resumido: cifras por tienda y total general</label>
+            <button id="conteos-informe-mes" type="button" class="secondary">Descargar informe de inventarios del mes</button>
+          </div>
+        </section>
         <details open><summary>Historial por fecha del corte</summary><div class="inventario-form" style="margin-top:12px">
           <label>Desde<input id="conteos-desde" type="date"></label><label>Hasta<input id="conteos-hasta" type="date"></label>
           <label>Responsable (creó, contó o autorizó)<input id="conteos-responsable" placeholder="Nombre"></label>
@@ -76,6 +110,7 @@
       </div></div>`);
     el('desde').value=`${local(new Date()).slice(0,4)}-01-01`;
     el('hasta').value=local(new Date()).slice(0,10);
+    el('mes').value=local(new Date()).slice(0,7);
     async function rpc(accion,datos={}) {
       const { data,error }=await sb.rpc('inventario_conteos',{ p_accion:accion,p_datos:datos });
       if(error) throw new Error(error.message);
@@ -716,17 +751,82 @@
       if(pendientes.length)hoja(libro,pendientes,'Por aclarar');
       guardarLibro(libro,`ultimos-cortes-tiendas-${hoy}.xlsx`);
     }
+    async function informeMensual() {
+      if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el informe mensual de todas las tiendas.');
+      const mes=el('mes').value;
+      seleccionarCortesCerrados([],mes);
+      if(!config.tiendas.length)throw new Error('No hay tiendas activas disponibles para el informe.');
+      const [anio,numeroMes]=mes.split('-').map(Number);
+      const hasta=`${mes}-${new Date(Date.UTC(anio,numeroMes,0)).getUTCDate()}`;
+      const cortes=await obtenerHistorial({desde:`${mes}-01`,hasta,tienda:'',responsable:''});
+      const ultimos=seleccionarCortesCerrados(cortes,mes),filas=[],detalleFilas=[],avisos=[];
+      const campos=['Ventas','Costo vendido','Gastos','Faltantes y bajas','Sobrantes','Ajustes financieros','Utilidad neta','Inventario al corte'];
+      const fechaExcel=valor=>Date.parse(`${local(valor).replace(' ','T')}Z`)/86400000+25569;
+      const resumido=el('mes-resumido').checked;
+      for(const tienda of config.tiendas) {
+        const c=ultimos.get(tienda.codigo);
+        const fila={Tienda:tienda.nombre,Desde:'',Hasta:'',...Object.fromEntries(campos.map(k=>[k,''])),Estado:'Sin inventario cerrado en el mes'};
+        if(!c){filas.push(fila);avisos.push(`${tienda.nombre}: falta un inventario cerrado en ${mes}.`);continue;}
+        fila.Hasta=fechaExcel(c.corte_at);
+        const data=await rpc('ver',{id:c.id}),lineas=data.lineas||[],valores=resumirValores(lineas);
+        if(valores.sinCosto===0)fila['Inventario al corte']=valores.valorReportado;
+        const {data:u,error}=await sb.rpc('cierre_utilidad_retail',{p_accion:'vista',p_corte_id:c.id});
+        const claves=['ventas_totales','costo_vendido','gastos_totales','perdidas_ajustes','ganancias_ajustes','ajuste_conciliacion','utilidad_neta'];
+        const completo=!error&&u&&valores.sinCosto===0&&claves.every(k=>u[k]!=null&&u[k]!==''&&Number.isFinite(Number(u[k])));
+        if(u?.corte_id&&u.corte_id!==c.id)throw new Error(`El resultado económico no corresponde al inventario de ${tienda.nombre}.`);
+        if(u?.inicio_at)fila.Desde=fechaExcel(u.inicio_at);
+        if(completo) {
+          for(let i=0;i<claves.length;i++)fila[campos[i]]=Number(u[claves[i]]);
+          const neta=fila.Ventas-fila['Costo vendido']-fila.Gastos-fila['Faltantes y bajas']+fila.Sobrantes+fila['Ajustes financieros'];
+          if(Math.abs(neta-fila['Utilidad neta'])>0.01)throw new Error(`La utilidad de ${tienda.nombre} no cuadra con ventas, costos, gastos y ajustes.`);
+          fila.Estado=u.cerrado?'Confirmada':u.listo?'Calculada':'Por validar';
+          if(!u.cerrado&&!u.listo)avisos.push(`${tienda.nombre}: ${(u.bloqueos||[]).join(' ')||'resultado pendiente de validar.'}`);
+        } else {
+          fila.Estado='Resultado no disponible';
+          avisos.push(`${tienda.nombre}: ${error?.message||'faltan cifras o costos verificables.'}`);
+        }
+        filas.push(fila);
+        if(!resumido)for(const l of lineas)detalleFilas.push({Tienda:tienda.nombre,Corte:fechaExcel(c.corte_at),
+          Referencia:l.nombre,Código:l.codigo,IMEI:l.imei||'','Sistema al corte':l.cantidad_corte,
+          'Conteo al corte':l.cantidad_fisica??'',Diferencia:l.diferencia??'','Costo tienda':l.costo_tienda??'',
+          'Valor inventario':l.cantidad_fisica!=null&&Number(l.costo_tienda)>0?Number(l.cantidad_fisica)*Number(l.costo_tienda):'',
+          'Valor diferencia':l.diferencia!=null&&Number(l.costo_tienda)>0?Number(l.valor_ajuste??l.diferencia*l.costo_tienda):''});
+      }
+      const libro=XLSX.utils.book_new();
+      libro.Props={Title:`Creditek · KORA · Inventarios ${mes}`,Subject:'Resultado entre cortes físicos de inventario',Author:'Creditek'};
+      const resumen=agregarTotalTiendas(filas,campos);
+      hoja(libro,resumen,'Resumen tiendas');
+      const sheet=libro.Sheets['Resumen tiendas'],encabezados=Object.keys(resumen[0]);
+      sheet['!cols']=encabezados.map(k=>({wch:k==='Tienda'?24:k==='Estado'?34:22}));
+      for(let f=0;f<resumen.length;f++)for(let col=0;col<encabezados.length;col++) {
+        const cell=sheet[XLSX.utils.encode_cell({r:f+1,c:col})],k=encabezados[col];
+        if(cell?.t==='n')cell.z=['Desde','Hasta'].includes(k)?'dd/mm/yyyy hh:mm':'"$" #,##0.00;[Red]-"$" #,##0.00';
+      }
+      sheet['!autofilter']={ref:XLSX.utils.encode_range({r:0,c:0},{r:filas.length,c:encabezados.length-1})};
+      if(detalleFilas.length) {
+        const detalle=agregarTotalTiendas(detalleFilas,['Valor inventario','Valor diferencia']);
+        hoja(libro,detalle,'Detalle inventario');
+        const ds=libro.Sheets['Detalle inventario'],headers=Object.keys(detalleFilas[0]);
+        for(let f=0;f<detalle.length;f++)for(let col=0;col<headers.length;col++) {
+          const cell=ds[XLSX.utils.encode_cell({r:f+1,c:col})],k=headers[col];
+          if(cell?.t==='n')cell.z=k==='Corte'?'dd/mm/yyyy hh:mm':/Costo|Valor/.test(k)?'"$" #,##0.00;[Red]-"$" #,##0.00':'#,##0';
+        }
+      }
+      guardarLibro(libro,`inventarios-${mes}-${resumido?'resumido':'completo'}.xlsx`);
+      return avisos.length?`Informe descargado con resultados por validar. ${avisos.join(' ')}`:'Informe descargado: cifras por tienda y total general. El período de cada tienda figura en Desde y Hasta.';
+    }
     el('cerrar').onclick=()=>{if(!busy&&(!editando||global.confirm('Hay una edición sin guardar. ¿Cerrar y descartarla?'))){editando=false;el('modal').classList.remove('show');}};
     el('crear').onclick=()=>run(()=>crear(false));el('ciego').onclick=()=>run(()=>crear(true));
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
     el('ultimos').onclick=()=>run(informeUltimos);
+    el('informe-mes').onclick=()=>run(informeMensual);
     el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme,'nc-mensaje');};
     el('evidencia-form').onsubmit=event=>{event.preventDefault();run(completarEvidencia,'evidencia-mensaje');};
     el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';el('evidencia-form').reset();el('evidencia-form').hidden=true;run(async()=>{await historial();await cargarNoConformes();});};
-    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';});
+    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';el('mensual-panel').hidden=!config.central;});
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.
     ready.catch(e=>{el('mensaje').textContent=e.message;});
     return { async abrir(){el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };
   }
-  global.KoraConteosUI=Object.freeze({init,resumirValores});
+  global.KoraConteosUI=Object.freeze({init,resumirValores,seleccionarCortesCerrados,agregarTotalTiendas});
 })(window);

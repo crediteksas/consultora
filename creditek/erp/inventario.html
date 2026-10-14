@@ -14,7 +14,7 @@
 <script src="sidebar.js?v=2.0.34" data-kora-shell="1.0.0"></script>
 <script src="inventario-export.js"></script>
 <script src="conteos-domain.js?v=1.2.0"></script>
-<script src="conteos-ui.js?v=1.2.3"></script>
+<script src="conteos-ui.js?v=1.2.4"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -146,6 +146,22 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
 .inventario-form .form-actions button { flex: 1; border: 0; border-radius: 999px; padding: 11px; font-weight: 700; cursor: pointer; }
 .inventario-form .form-actions .primary { background: var(--turquesa); color: white; }
 .inventario-form .form-actions .secondary { background: var(--bg); color: var(--text2); }
+#conteos-modal .conteos-reporte-controles { grid-template-columns:minmax(180px,240px) minmax(240px,1fr); align-items:end; margin-top:12px; }
+#conteos-modal label.conteos-resumido { display:flex; align-items:center; gap:9px; min-height:42px; cursor:pointer; color:var(--azul); }
+#conteos-modal .conteos-resumido input { width:18px; min-width:18px; height:18px; margin:0; padding:0; accent-color:#008A96; }
+#conteos-modal .conteos-descarga { position:relative; grid-column:1/-1; justify-self:start; }
+#conteos-modal #conteos-informe-mes { background:#0B1E3D; color:#fff; border:1px solid #0B1E3D; border-radius:10px; padding:12px 18px; min-height:44px; font-weight:700; cursor:pointer; box-shadow:0 3px 9px #0B1E3D20; }
+#conteos-modal #conteos-informe-mes:hover { background:#153559; }
+#conteos-modal .conteos-formatos { position:absolute; left:0; top:calc(100% + 6px); z-index:2; width:260px; max-width:75vw; background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px; box-shadow:0 10px 28px #0B1E3D30; }
+#conteos-modal .conteos-formatos[hidden] { display:none; }
+#conteos-modal .conteos-formatos strong { display:block; font-size:12px; padding:6px 8px; }
+#conteos-modal .conteos-formatos button { display:block; width:100%; background:#F3FAFB; color:#0B1E3D; text-align:left; padding:12px; border:1px solid #DCE5EB; border-radius:8px; margin-top:6px; font-weight:700; cursor:pointer; }
+#conteos-modal .conteos-formatos button:hover { background:#EAFBFC; border-color:#008A96; }
+#conteos-modal .conteos-ayuda { font-size:12px; color:var(--text2); margin:9px 0 18px; }
+#conteos-modal .conteos-rango-fechas { display:grid; grid-template-columns:repeat(2,minmax(0,280px)); gap:12px; }
+#conteos-modal .conteos-reporte-controles input,#conteos-modal .conteos-rango-fechas input { min-width:0; }
+#conteos-modal button:focus-visible,#conteos-modal input:focus-visible { outline:3px solid #008A96; outline-offset:3px; }
+@media(max-width:600px){#conteos-modal .conteos-reporte-controles,#conteos-modal .conteos-rango-fechas { grid-template-columns:minmax(0,1fr); } #conteos-modal .conteos-descarga { width:100%; } #conteos-modal #conteos-informe-mes { width:100%; } }
 .btn-costo { border:1px solid rgba(11,30,61,.12); background:#fff; color:var(--azul); border-radius:10px; min-height:38px; padding:0 12px; font:700 12px 'DM Sans',sans-serif; cursor:pointer; }
 .btn-costo:hover { border-color:var(--turquesa); color:#04777c; }
 .cost-note { background:#eefbfc; border-left:3px solid var(--turquesa); border-radius:8px; color:#475569; font-size:12px; line-height:1.5; padding:10px 12px; }
@@ -362,7 +378,7 @@ function initPagina() {
   document.getElementById('thAccionCostoCel').style.display = puedeEditarCostos() ? '' : 'none';
   document.getElementById('thAccionCostoAcc').style.display = puedeEditarCostos() ? '' : 'none';
   actualizarEtiquetasCosto();
-  controlConteos = KoraConteosUI.init({ sb, XLSX, tiendaActual: tiendaActiva, refrescar: cargarTodo });
+  controlConteos = KoraConteosUI.init({ sb, XLSX, tiendaActual: tiendaActiva, refrescar: cargarTodo, perfil:currentPerfil });
   document.getElementById('btnControlConteos').addEventListener('click', () => controlConteos.abrir());
   if (location.hash === '#conteos') controlConteos.abrir();
 

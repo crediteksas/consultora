@@ -127,7 +127,7 @@
   }
   async function audit(sb, report, format) {
     if (!sb?.rpc) return;
-    const records=report.tables.reduce((n,t)=>n+t.rows.length,0);
+    const records=report.recordCount??report.tables.reduce((n,t)=>n+t.rows.length,0);
     const { error } = await sb.rpc('kora_registrar_exportacion', { p_reporte_id:report.id, p_formato:format, p_ruta:report.route, p_titulo:report.title, p_filtros:Object.fromEntries(report.filters), p_registros:records });
     if (error) console.warn('[KORA Reportes] No se registró la exportación', error.message);
   }
@@ -237,12 +237,78 @@ body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-hei
 .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.metrics>div{border:1px solid #D9E3EA;border-top:3px solid #00C4CC;border-radius:7px;padding:7px;break-inside:avoid}.metrics small{display:block;color:#64748B}.metrics strong{display:block;font-size:19px;overflow-wrap:anywhere;margin-top:2px}
 section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px}thead{display:table-header-group}tfoot{background:#EAFBFC;font-weight:bold}th{background:#0B1E3D;color:#fff;text-align:left;padding:7px}td{padding:6px;border-bottom:1px solid #DCE5EB;vertical-align:top;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#F5FAFC}tr{break-inside:avoid}
 .record{border:1px solid #D9E3EA;border-top:2px solid #00C4CC;border-radius:7px;padding:10px;margin:9px 0;break-inside:avoid}.record.splittable{break-inside:auto}.record dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.record dl>div{break-inside:avoid}.record dt{font-size:9px;color:#64748B}.record dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+${report.scoped?'tfoot{display:table-row-group}':''}
 .notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media screen{body{max-width:186mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}
 </style></head><body><header class="head"><div class="brand"><img src="${esc(logoUrl)}" alt="Creditek"><span>KORA</span></div><h1>${esc(report.title)}</h1><div class="meta"><b>${esc(report.id)}</b> · ${report.mode==='summary'?'Resumido · solo totales':'Detallado · datos y movimientos'}<br>Generado: ${esc(report.generated)} · Responsable: ${esc(report.user)}${report.role?` · ${esc(report.role)}`:''}<br>Origen: ${esc(report.route)}</div></header><div class="filters">${filterText}</div>${metricText?`<div class="metrics">${metricText}</div>`:''}${report.tables.map(pdfTable).join('')}${report.notes?.length?`<aside class="notes">${report.notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:''}<footer class="closing"><p><b>Trazabilidad KORA</b> · ${esc(report.id)}. Información visible con los filtros y permisos al generar el informe; no acredita un pago ni un saldo bancario.</p><p><b>Creditek S.A.S. · NIT 901.259.859-0</b> · Valores en COP cuando aplique.</p></footer><div class="tools"><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`;
   }
   async function exportPdf(report,sb,popup){
     if(!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');
     popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument(report,logo));popup.document.close();await audit(sb,report,'pdf');
+  }
+  // Informes de ventanas: datos explícitos, sin capturar la pantalla que queda detrás.
+  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',datetime:'dd/mm/yyyy hh:mm',text:'@'};
+  function dataDisplay(value,type){
+    if(value==null||value==='')return '—';
+    if(type==='datetime')return new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'}).format(value);
+    if(type==='currency')return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+    if(type==='number')return new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(value);
+    return String(value);
+  }
+  async function exportDataExcel(report,sb){
+    const ExcelJS=await loadScript('koraExcelJs',EXCELJS,'ExcelJS');
+    // La marca es parte del contrato: no entregar silenciosamente un archivo sin logo.
+    const logo=await logoBase64(),book=new ExcelJS.Workbook();
+    book.creator='KORA · Creditek S.A.S.';book.created=new Date();book.subject=`${report.title} · ${report.id}`;
+    const imageId=book.addImage({base64:logo,extension:'png'});
+    const brand=(sheet,lastColumn)=>{
+      sheet.properties.defaultRowHeight=24;
+      sheet.mergeCells(1,1,3,lastColumn);
+      sheet.addImage(imageId,{tl:{col:.12,row:.15},ext:{width:170,height:50}});
+      sheet.getRow(1).height=22;sheet.getRow(2).height=22;sheet.getRow(3).height=18;
+      sheet.mergeCells(4,1,4,lastColumn);sheet.getCell(4,1).value=`KORA · ${report.title}`;
+      sheet.getCell(4,1).font={name:'Arial',bold:true,size:18,color:{argb:COLORS.navy}};sheet.getRow(4).height=30;
+      sheet.mergeCells(5,1,5,lastColumn);sheet.getCell(5,1).value=`${report.id} · ${report.generated}`;
+      sheet.getCell(5,1).font={name:'Arial',size:10,color:{argb:COLORS.gray}};
+      sheet.headerFooter.oddFooter=`KORA · Creditek S.A.S. · ${report.id} · Página &P de &N`;
+      sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:8'};
+    };
+    const styleHeader=row=>{row.height=36;row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};cell.font={name:'Arial',bold:true,color:{argb:COLORS.white}};cell.alignment={vertical:'middle',wrapText:true};});};
+    const cover=book.addWorksheet('Informe',{views:[{showGridLines:false}]});cover.columns=[{width:30},{width:45},{width:24},{width:24}];brand(cover,4);
+    const info=[['Responsable',`${report.user}${report.role?` · ${report.role}`:''}`],['Alcance',report.scope.label],['Origen',report.route],...report.filters];
+    info.forEach(([label,value],index)=>{const row=8+index;cover.getCell(row,1).value=label;cover.getCell(row,1).font={bold:true,color:{argb:COLORS.navy}};cover.mergeCells(row,2,row,4);cover.getCell(row,2).value=value;cover.getCell(row,2).alignment={wrapText:true,vertical:'middle'};cover.getRow(row).height=32;});
+    const lastInfo=8+info.length;cover.mergeCells(lastInfo+1,1,lastInfo+1,4);cover.getCell(lastInfo+1,1).value='Creditek S.A.S. · NIT 901.259.859-0 · Valores en COP';
+    report.tables.forEach((table,index)=>{
+      const sheet=book.addWorksheet(`${String(index+1).padStart(2,'0')} ${table.heading}`.slice(0,31),{views:[{state:'frozen',ySplit:8,xSplit:1,showGridLines:false}]});
+      brand(sheet,Math.max(2,table.headers.length));sheet.mergeCells(7,1,7,Math.max(2,table.headers.length));sheet.getCell(7,1).value=table.heading;sheet.getCell(7,1).font={bold:true,size:13,color:{argb:COLORS.navy}};
+      sheet.getRow(8).values=table.headers;styleHeader(sheet.getRow(8));
+      const records=[...table.rows,...(table.totalRows||[])];
+      records.forEach((values,position)=>{
+        const row=sheet.getRow(position+9);row.values=values.map(value=>value===''||value==null?null:value);row.height=32;
+        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1);cell.numFmt=cell.value==null?'General':dataFormats[table.columnTypes?.[column]]||'@';cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number'].includes(table.columnTypes?.[column])?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
+      });
+      table.headers.forEach((header,column)=>{sheet.getColumn(column+1).width=table.columnTypes?.[column]==='datetime'?24:/ID corte/.test(header)?40:column===0?26:/Estado/.test(header)?32:22;});
+      sheet.autoFilter={from:{row:8,column:1},to:{row:Math.max(8,table.rows.length+8),column:table.headers.length}};
+    });
+    const buffer=await book.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    const link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    await audit(sb,report,'xlsx');
+  }
+  async function exportData(data,{format='xlsx',sb,profile,popup=null}={}){
+    if(!['xlsx','pdf'].includes(format))throw new Error('Selecciona Excel o PDF.');
+    if(format==='pdf'&&!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');
+    if(!profile?.nombre&&!profile?.email)throw new Error('No se pudo verificar el responsable del informe. Actualiza la sesión.');
+    if(!data.tables?.some(table=>table.rows?.length))throw new Error('No hay datos para generar el informe.');
+    const report={...data,scoped:true,id:reportId(),generated:nowBogota(),user:profile.nombre||profile.email,role:profile.rol||'',
+      recordCount:data.tables.reduce((count,table)=>count+table.rows.length,0),
+      route:location.pathname+'#conteos',filters:[...data.filters,['Formato del informe',data.mode==='summary'?'Resumido':'Completo']],metrics:[],notes:data.notes||[]};
+    if(format==='xlsx')await exportDataExcel(report,sb);
+    else {
+      const tables=(data.pdfTables||data.tables).map(table=>({...table,
+        rows:table.rows.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col]))),
+        totalRows:table.totalRows?.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col])))}));
+      await exportPdf({...report,tables},sb,popup);
+    }
+    return report.id;
   }
   function toast(message,error=false){let node=document.getElementById('koraReportToast');if(!node){node=document.createElement('div');node.id='koraReportToast';node.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647;max-width:360px;padding:12px 16px;border-radius:10px;color:#fff;font:600 13px Montserrat,Arial,sans-serif;box-shadow:0 8px 24px rgba(11,30,61,.25)';document.body.appendChild(node)}node.textContent=message;node.style.background=error?'#B42318':'#0B1E3D';node.hidden=false;setTimeout(()=>node.hidden=true,4500)}
   function mount({profile,sb}={}){
@@ -271,6 +337,6 @@ section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px}t
     document.addEventListener('click',event=>{if(!wrap.contains(event.target))menu.hidden=true});
     window.lucide?.createIcons();
   }
-  window.KoraReportExport={mount,snapshot,typedCell,excelColumn,reportScope,summaryTables,pdfDocument};
+  window.KoraReportExport={mount,snapshot,typedCell,excelColumn,reportScope,summaryTables,pdfDocument,exportData};
   document.dispatchEvent(new CustomEvent('kora-report-export-ready'));
 })();

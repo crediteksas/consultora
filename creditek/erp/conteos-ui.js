@@ -52,7 +52,7 @@
     total.impactoNeto=total.sobrantes-total.faltantes;
     return total;
   }
-  function init({ sb, XLSX, tiendaActual, refrescar }) {
+  function init({ sb, XLSX, tiendaActual, refrescar, perfil }) {
     let config, detalle, documento, utilidad, puedeCerrar=false, noConformes=[], tareasFotos=[], cortesPendientes=[], busy=false, editando=false, ready;
     let revisionClave='', decisionesConteo=new Map(), costosConteo=new Map();
     const el = id => document.getElementById(`conteos-${id}`);
@@ -96,13 +96,21 @@
         <section id="conteos-mensual-panel" aria-label="Informe mensual de inventarios" hidden>
           <h3>Informe de inventarios del mes · todas las tiendas</h3>
           <p>Último inventario cerrado de cada tienda en el mes seleccionado. Ventas, costos, gastos y utilidad corresponden al período entre inventarios, con sus fechas desde y hasta. Descargar no aplica ajustes ni confirma resultados.</p>
-          <div class="inventario-form"><label>Mes de inventarios<input id="conteos-mes" type="month"></label>
-            <label><input id="conteos-mes-resumido" type="checkbox" checked> Resumido: cifras por tienda y total general</label>
-            <button id="conteos-informe-mes" type="button" class="secondary">Descargar informe de inventarios del mes</button>
+          <div class="inventario-form conteos-reporte-controles"><label>Mes de inventarios<input id="conteos-mes" type="month"></label>
+            <label class="conteos-resumido"><input id="conteos-mes-resumido" type="checkbox" checked aria-describedby="conteos-mes-ayuda"><span>Resumido: cifras por tienda y total general</span></label>
+            <div class="conteos-descarga">
+              <button id="conteos-informe-mes" type="button" class="btn-export" aria-expanded="false" aria-controls="conteos-formatos">Descargar informe del mes ▾</button>
+              <div id="conteos-formatos" class="conteos-formatos" hidden>
+                <strong>Elige el formato</strong>
+                <button id="conteos-mes-excel" type="button">Descargar Excel</button>
+                <button id="conteos-mes-pdf" type="button">Generar PDF</button>
+              </div>
+            </div>
           </div>
+          <p id="conteos-mes-ayuda" class="conteos-ayuda">Sin marcar: incluye también el detalle del inventario. Ambos formatos incluyen logo y trazabilidad.</p>
         </section>
         <details open><summary>Historial por fecha del corte</summary><div class="inventario-form" style="margin-top:12px">
-          <label>Desde<input id="conteos-desde" type="date"></label><label>Hasta<input id="conteos-hasta" type="date"></label>
+          <div class="conteos-rango-fechas"><label>Desde<input id="conteos-desde" type="date"></label><label>Hasta<input id="conteos-hasta" type="date"></label></div>
           <label>Responsable (creó, contó o autorizó)<input id="conteos-responsable" placeholder="Nombre"></label>
           <div class="form-actions"><button id="conteos-buscar" class="secondary">Consultar</button><button id="conteos-informe" class="secondary">Descargar informe completo</button><button id="conteos-ultimos" class="secondary" style="display:none">Descargar último corte de todas las tiendas</button></div>
         </div><div id="conteos-historial" style="margin:14px 0"></div></details>
@@ -751,7 +759,7 @@
       if(pendientes.length)hoja(libro,pendientes,'Por aclarar');
       guardarLibro(libro,`ultimos-cortes-tiendas-${hoy}.xlsx`);
     }
-    async function informeMensual() {
+    async function informeMensual(formato='xlsx',popup=null) {
       if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el informe mensual de todas las tiendas.');
       const mes=el('mes').value;
       seleccionarCortesCerrados([],mes);
@@ -759,9 +767,10 @@
       const [anio,numeroMes]=mes.split('-').map(Number);
       const hasta=`${mes}-${new Date(Date.UTC(anio,numeroMes,0)).getUTCDate()}`;
       const cortes=await obtenerHistorial({desde:`${mes}-01`,hasta,tienda:'',responsable:''});
-      const ultimos=seleccionarCortesCerrados(cortes,mes),filas=[],detalleFilas=[],avisos=[];
+      const ultimos=seleccionarCortesCerrados(cortes,mes),filas=[],detalleFilas=[],fuentes=[],avisos=[];
       const campos=['Ventas','Costo vendido','Gastos','Faltantes y bajas','Sobrantes','Ajustes financieros','Utilidad neta','Inventario al corte'];
-      const fechaExcel=valor=>Date.parse(`${local(valor).replace(' ','T')}Z`)/86400000+25569;
+      // Fecha de pared de Colombia: Excel conserva fecha y hora, sin convertirlas al huso del equipo.
+      const fechaExcel=valor=>new Date(`${local(valor).replace(' ','T')}Z`);
       const resumido=el('mes-resumido').checked;
       for(const tienda of config.tiendas) {
         const c=ultimos.get(tienda.codigo);
@@ -786,40 +795,59 @@
           avisos.push(`${tienda.nombre}: ${error?.message||'faltan cifras o costos verificables.'}`);
         }
         filas.push(fila);
+        fuentes.push({Tienda:tienda.nombre,Desde:fila.Desde,Hasta:fila.Hasta,'ID corte':c.id});
         if(!resumido)for(const l of lineas)detalleFilas.push({Tienda:tienda.nombre,Corte:fechaExcel(c.corte_at),
           Referencia:l.nombre,Código:l.codigo,IMEI:l.imei||'','Sistema al corte':l.cantidad_corte,
           'Conteo al corte':l.cantidad_fisica??'',Diferencia:l.diferencia??'','Costo tienda':l.costo_tienda??'',
           'Valor inventario':l.cantidad_fisica!=null&&Number(l.costo_tienda)>0?Number(l.cantidad_fisica)*Number(l.costo_tienda):'',
           'Valor diferencia':l.diferencia!=null&&Number(l.costo_tienda)>0?Number(l.valor_ajuste??l.diferencia*l.costo_tienda):''});
       }
-      const libro=XLSX.utils.book_new();
-      libro.Props={Title:`Creditek · KORA · Inventarios ${mes}`,Subject:'Resultado entre cortes físicos de inventario',Author:'Creditek'};
       const resumen=agregarTotalTiendas(filas,campos);
-      hoja(libro,resumen,'Resumen tiendas');
-      const sheet=libro.Sheets['Resumen tiendas'],encabezados=Object.keys(resumen[0]);
-      sheet['!cols']=encabezados.map(k=>({wch:k==='Tienda'?24:k==='Estado'?34:22}));
-      for(let f=0;f<resumen.length;f++)for(let col=0;col<encabezados.length;col++) {
-        const cell=sheet[XLSX.utils.encode_cell({r:f+1,c:col})],k=encabezados[col];
-        if(cell?.t==='n')cell.z=['Desde','Hasta'].includes(k)?'dd/mm/yyyy hh:mm':'"$" #,##0.00;[Red]-"$" #,##0.00';
+      const tabla=(heading,rows,headers,total=true)=>({heading,headers,
+        rows:(total?rows.slice(0,-1):rows).map(f=>headers.map(k=>f[k]??'')),
+        totalRows:total?[headers.map(k=>rows.at(-1)[k]??'')]:[],
+        columnTypes:headers.map(k=>['Desde','Hasta','Corte'].includes(k)?'datetime':campos.includes(k)||/Costo tienda|Valor inventario|Valor diferencia/.test(k)?'currency':/Sistema al corte|Conteo al corte|Diferencia/.test(k)?'number':'text')});
+      const tables=[tabla('Resumen tiendas',resumen,Object.keys(resumen[0]))];
+      const pdfTables=[tabla('Ventas, gastos y utilidad',resumen,['Tienda','Ventas','Gastos','Utilidad neta']),
+        tabla('Inventario y diferencias',resumen,['Tienda','Inventario al corte','Faltantes y bajas','Sobrantes']),
+        tabla('Costos y resultado',resumen,['Tienda','Costo vendido','Ajustes financieros','Estado'])];
+      if(detalleFilas.length){
+        const detalleReporte=agregarTotalTiendas(detalleFilas,['Valor inventario','Valor diferencia']);
+        const monedaInforme=valor=>valor===''||valor==null?'Por confirmar':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(valor);
+        tables.push(tabla('Detalle inventario',detalleReporte,Object.keys(detalleFilas[0])));
+        // Cinco columnas legibles en PDF vertical, conservando todos los campos del Excel.
+        pdfTables.push({heading:'Detalle inventario',headers:['Tienda y corte','Referencia e identificación','Cantidades','Costo e inventario','Valor diferencia'],
+          rows:detalleFilas.map(f=>[`${f.Tienda} · ${f.Corte.toISOString().slice(0,16).replace('T',' ')}`,
+            `${f.Referencia} · Código: ${f.Código}${f.IMEI?` · IMEI: ${f.IMEI}`:''}`,
+            `Sistema: ${f['Sistema al corte']} · Conteo: ${f['Conteo al corte']} · Diferencia: ${f.Diferencia}`,
+            `Costo: ${monedaInforme(f['Costo tienda'])} · Inventario: ${monedaInforme(f['Valor inventario'])}`,f['Valor diferencia']]),
+          totalRows:[[detalleReporte.at(-1).Tienda,'','',monedaInforme(detalleReporte.at(-1)['Valor inventario']),detalleReporte.at(-1)['Valor diferencia']]],
+          columnTypes:['text','text','text','text','currency']});
       }
-      sheet['!autofilter']={ref:XLSX.utils.encode_range({r:0,c:0},{r:filas.length,c:encabezados.length-1})};
-      if(detalleFilas.length) {
-        const detalle=agregarTotalTiendas(detalleFilas,['Valor inventario','Valor diferencia']);
-        hoja(libro,detalle,'Detalle inventario');
-        const ds=libro.Sheets['Detalle inventario'],headers=Object.keys(detalleFilas[0]);
-        for(let f=0;f<detalle.length;f++)for(let col=0;col<headers.length;col++) {
-          const cell=ds[XLSX.utils.encode_cell({r:f+1,c:col})],k=headers[col];
-          if(cell?.t==='n')cell.z=k==='Corte'?'dd/mm/yyyy hh:mm':/Costo|Valor/.test(k)?'"$" #,##0.00;[Red]-"$" #,##0.00':'#,##0';
-        }
-      }
-      guardarLibro(libro,`inventarios-${mes}-${resumido?'resumido':'completo'}.xlsx`);
-      return avisos.length?`Informe descargado con resultados por validar. ${avisos.join(' ')}`:'Informe descargado: cifras por tienda y total general. El período de cada tienda figura en Desde y Hasta.';
+      const trazabilidad=tabla('Períodos y cortes',fuentes,['Tienda','Desde','Hasta','ID corte'],false);
+      tables.push(trazabilidad);pdfTables.push(trazabilidad);
+      if(!global.KoraReportExport?.exportData)throw new Error('El generador de informes aún no está listo. Actualiza KORA y vuelve a intentarlo.');
+      const id=await global.KoraReportExport.exportData({title:`Inventarios ${mes}`,mode:resumido?'summary':'detailed',
+        scope:{label:'Todas las tiendas Retail',code:''},filters:[['Mes de inventarios',mes],['Cortes incluidos','Último inventario cerrado de cada tienda']],
+        tables,pdfTables,notes:[]},{format:formato,popup,sb,profile:perfil||global.creditekSidebar?.perfil});
+      return `${formato==='pdf'?'PDF generado. Usa «Imprimir / Guardar PDF» en la ventana del informe.':'Excel descargado.'} Código: ${id}. ${avisos.length?`Resultados por validar. ${avisos.join(' ')}`:'Cifras por tienda y total general; períodos indicados en Desde y Hasta.'}`;
     }
     el('cerrar').onclick=()=>{if(!busy&&(!editando||global.confirm('Hay una edición sin guardar. ¿Cerrar y descartarla?'))){editando=false;el('modal').classList.remove('show');}};
     el('crear').onclick=()=>run(()=>crear(false));el('ciego').onclick=()=>run(()=>crear(true));
     el('buscar').onclick=()=>run(historial);el('informe').onclick=()=>run(informe);
     el('ultimos').onclick=()=>run(informeUltimos);
-    el('informe-mes').onclick=()=>run(informeMensual);
+    const cerrarFormatos=()=>{el('formatos').hidden=true;el('informe-mes').setAttribute('aria-expanded','false');};
+    el('informe-mes').onclick=()=>{el('formatos').hidden=!el('formatos').hidden;el('informe-mes').setAttribute('aria-expanded',String(!el('formatos').hidden));};
+    document.addEventListener('click',event=>{if(!event.target.closest?.('.conteos-descarga'))cerrarFormatos();});
+    el('modal').addEventListener('keydown',event=>{if(event.key==='Escape'&&!el('formatos').hidden){cerrarFormatos();el('informe-mes').focus();event.stopPropagation();}});
+    for(const [id,formato] of [['mes-excel','xlsx'],['mes-pdf','pdf']])el(id).onclick=()=>{
+      if(busy)return;
+      cerrarFormatos();
+      // Abrir antes del primer await: conserva el gesto de usuario y evita el bloqueo de ventanas.
+      const popup=formato==='pdf'?global.open('','_blank'):null;
+      if(popup)popup.opener=null;
+      return run(async()=>{try{if(formato==='pdf'&&!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');return await informeMensual(formato,popup);}catch(error){popup?.close();throw error;}});
+    };
     el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme,'nc-mensaje');};
     el('evidencia-form').onsubmit=event=>{event.preventDefault();run(completarEvidencia,'evidencia-mensaje');};
     el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';el('evidencia-form').reset();el('evidencia-form').hidden=true;run(async()=>{await historial();await cargarNoConformes();});};

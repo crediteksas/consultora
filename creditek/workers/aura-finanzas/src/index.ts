@@ -1,6 +1,15 @@
 type Destinatario = { telefono: string; nombre: string };
 type Sesion = "apertura" | "cierre";
-type DispatchBody = { fecha: string; sesion: Sesion; resumen: string; informe: string };
+type Decision = {
+  account: "OSCAR" | "JA";
+  symbol: string;
+  action: "keep" | "watch" | "add" | "reduce" | "exit";
+  thesis: string;
+  risk?: string;
+  invalidation: string;
+  range?: string;
+};
+type DispatchBody = { fecha: string; sesion: Sesion; resumen: string; informe: string; decisiones: Decision[] };
 type AuraUser = { email?: string; app_metadata?: { aura_access?: boolean } };
 
 function respuesta(data: unknown, status = 200): Response {
@@ -80,11 +89,34 @@ function validarBody(value: unknown): DispatchBody {
   const sesion = Reflect.get(value, "sesion");
   const resumen = Reflect.get(value, "resumen");
   const informe = Reflect.get(value, "informe");
+  const decisionesRaw = Reflect.get(value, "decisiones");
   if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("Fecha inválida");
   if (sesion !== "apertura" && sesion !== "cierre") throw new Error("Sesión inválida");
   if (typeof resumen !== "string" || resumen.length < 20 || resumen.length > 900) throw new Error("Resumen inválido");
   if (typeof informe !== "string" || informe.length < 100 || informe.length > 50_000) throw new Error("Informe inválido");
-  return { fecha, sesion, resumen, informe };
+  if (decisionesRaw !== undefined && !Array.isArray(decisionesRaw)) throw new Error("Decisiones inválidas");
+  const decisionesLista = Array.isArray(decisionesRaw) ? decisionesRaw : [];
+  if (decisionesLista.length > 5) throw new Error("Máximo cinco decisiones");
+  const acciones = new Set(["keep", "watch", "add", "reduce", "exit"]);
+  const decisiones = decisionesLista.map((item): Decision => {
+    if (!item || typeof item !== "object") throw new Error("Decisión inválida");
+    const account = Reflect.get(item, "account");
+    const symbol = Reflect.get(item, "symbol");
+    const action = Reflect.get(item, "action");
+    const thesis = Reflect.get(item, "thesis");
+    const risk = Reflect.get(item, "risk");
+    const invalidation = Reflect.get(item, "invalidation");
+    const range = Reflect.get(item, "range");
+    if (account !== "OSCAR" && account !== "JA") throw new Error("Cuenta de decisión inválida");
+    if (typeof symbol !== "string" || !symbol.trim() || symbol.length > 20) throw new Error("Símbolo inválido");
+    if (typeof action !== "string" || !acciones.has(action)) throw new Error("Acción inválida");
+    if (typeof thesis !== "string" || thesis.length < 10 || thesis.length > 500) throw new Error("Tesis inválida");
+    if (typeof invalidation !== "string" || invalidation.length < 5 || invalidation.length > 400) throw new Error("Invalidación inválida");
+    if (risk !== undefined && (typeof risk !== "string" || risk.length > 400)) throw new Error("Riesgo inválido");
+    if (range !== undefined && (typeof range !== "string" || range.length > 120)) throw new Error("Rango inválido");
+    return { account, symbol: symbol.trim().toUpperCase(), action: action as Decision["action"], thesis, risk, invalidation, range };
+  });
+  return { fecha, sesion, resumen, informe, decisiones };
 }
 
 function escapeHtml(value: string): string {

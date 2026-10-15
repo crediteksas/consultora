@@ -8,6 +8,7 @@
 
 import { resolveRegistrationContext } from './registro-context';
 import { paginarReporte, type PaginaReporte } from './reportes-formato';
+import { ejecutarReporteDeuda } from './reporte-deuda';
 import { provisionAlly, type AllyProvisionEnv } from './aliado-provision';
 import {
   isSecureOtpSendRequest,
@@ -204,6 +205,10 @@ export default {
   // FEATURE 22-jul-2026 · Reportes diarios por WhatsApp.
   // Ver bloque grande al final del archivo para toda la lógica.
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(ejecutarReporteDeuda({
+      url: SUPABASE_URL, headers: sbHeaders(env), destinatarios: DESTINATARIOS_REPORTES,
+      enviar: (telefono, pagina) => enviarWhatsAppPlantillaReporte(telefono, pagina.plantilla, '', env, pagina.parametros),
+    }).catch(e => { console.error('[REPORTE-DEUDA] Falló el envío; revisar reportes_deuda_enviados:', e); }));
     ctx.waitUntil(ejecutarReportesDiarios(env).catch((e) => {
       console.error('[REPORTES-DIARIOS] excepción no atrapada:', e);
     }));

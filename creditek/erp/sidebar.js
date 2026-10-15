@@ -1347,7 +1347,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
           script.onload = resolve; script.onerror = () => reject(new Error('No se pudo cargar la confirmación diaria de deuda'));
           document.head.appendChild(script);
         }));
-        await withBootTimeout(window.KoraConfirmacionDeuda.mount({sb: pageClient, profile: perfil}));
+        await withBootTimeout(window.KoraConfirmacionDeuda.mount({sb, profile: perfil}));
       }
 
 

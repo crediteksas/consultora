@@ -162,7 +162,7 @@ function createHarness({
     },
     document,
     window: {
-      KoraConfirmacionDeuda: { mount: async () => { events.push('debt:checked'); } },
+      KoraConfirmacionDeuda: { mount: async ({sb}) => { await sb.auth.getSession(); events.push('debt:checked'); } },
       __KORA_ENV__: {
         KORA_ERP_SUPABASE_URL: 'https://erp.test.invalid',
         KORA_ERP_SUPABASE_ANON_KEY: 'public-test-key',
@@ -170,7 +170,7 @@ function createHarness({
       supabase: {
         createClient: () => {
           clientCreations += 1;
-          return client;
+          return { ...client, auth: { ...client.auth } };
         },
       },
     },
@@ -374,4 +374,14 @@ test('un destino que no se muestra termina en un error accesible', async () => {
   assert.equal(harness.rootClasses.contains('creditek-shell-error'), true);
   assert.equal(errorEl.id, 'creditekShellBootError');
   assert.match(errorEl.innerHTML, /Recargar/);
+});
+
+
+test('la confirmación diaria consulta con sesión nativa antes de liberar el cliente de página', async () => {
+  const harness = createHarness({ session: { user: { id: 'user-test' } }, appReady: true });
+  const pending = harness.createPageClient().auth.getSession();
+  await harness.listeners.DOMContentLoaded();
+  assert.ok(harness.events.includes('debt:checked'));
+  assert.ok(harness.events.indexOf('debt:checked') < harness.events.indexOf('remove:creditek-shell-pending'));
+  assert.equal((await pending).data.session.user.id, 'user-test');
 });

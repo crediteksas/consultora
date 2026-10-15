@@ -130,7 +130,7 @@ test('migración de utilidad: respalda borradores, preserva costos/publicados y 
   await assert.rejects(()=>q('select * from kora_private.b2b_margen_20260918_respaldo'),/permission denied/);
   const publish=rows=>q('select publicar_lista_b2b($1,$2,$3,$4::jsonb) r',['actual','b'.repeat(64),'proveedores',JSON.stringify(rows)]);
   await assert.rejects(()=>publish([line(35000)]),/margen especial/);
-  await assert.rejects(()=>publish([line(35000,20000,D.marginPolicy)]),/margen especial/);
+  await assert.rejects(()=>publish([line(35000,20000,'Política retail: costo menor de $150.000 + 12%; desde $150.000 + $20.000')]),/margen especial/);
   assert.ok((await publish([line(35000,4200)]))[0].r.id);
   await q('select guardar_regla_catalogo_b2b($1,$2,$3,$4,$5)',[uid(20),'ACC1',uid(11),4200,D.marginPolicy]);
  }finally{await db.close();}

@@ -16,14 +16,14 @@ test('Duplicados requieren revisión, búsqueda encuentra nombre canónico y có
  assert.equal(UI.selectRows(rows,'all','azul').length,1);assert.equal(UI.selectRows(rows,'all','X-3',[{id:'p3',codigo:'X-3',nombre:'Nombre canónico'}]).length,1);assert.equal(UI.PAGE_SIZE,20);
 });
 
-function harness(saved){
+function harness(saved,products=Array.from({length:40},(_,i)=>({id:`p${i+1}`,codigo:`P${i+1}`,nombre:`Equipo ${i+1}`}))){
  const elements=new Map(),sequence=[],writes=[],reads=[],buttons=[];let confirmations=0,allowDiscard=true,savedCallbacks=0;
  function element(key){if(elements.has(key))return elements.get(key);const el={value:'',checked:false,disabled:false,hidden:false,open:false,textContent:'',innerHTML:'',dataset:{},attrs:new Map(),classList:{add(){},remove(){}},setAttribute(k,v){this.attrs.set(k,v);},removeAttribute(k){this.attrs.delete(k);},hasAttribute(k){return this.attrs.has(k);},addEventListener(){},querySelector(k){return element(key+' '+k);},scrollIntoView(){sequence.push('scroll');},focus(){assert.equal(this.disabled,false,'Focus happens after controls are enabled');sequence.push('focus');}};elements.set(key,el);return el;}
  for(const mode of ['pending','all','ready','excluded','headers']){const b=element('button-'+mode);b.dataset.mode=mode;buttons.push(b);}
  const container={innerHTML:'',setAttribute(){},removeAttribute(){},querySelector:element,querySelectorAll(selector){if(selector==='[data-mode]')return buttons;if(selector==='[data-mode],[data-search],[data-history],[data-update],[data-export]')return [...buttons,...['search','history','update','export'].map(x=>element(`[data-${x}]`))];if(selector==='[data-rows] input,[data-confirm]')return [element('[data-confirm]')];return [];},dispatchEvent(e){sequence.push(e.type);}};
  const sb={from(table){reads.push(table);return {select(){return this;},eq(){return this;},order(){return this;},single:async()=>({data:saved,error:null}),range:async()=>({data:[],error:null})};},async rpc(name,args){writes.push({name,args});return {data:'new-draft',error:null};}};
  const oldConfirm=globalThis.confirm,oldEvent=globalThis.CustomEvent;globalThis.confirm=()=>{confirmations++;return allowDiscard;};globalThis.CustomEvent=class{constructor(type,options){this.type=type;this.detail=options.detail;}};
- UI.mount({container,sb,products:Array.from({length:40},(_,i)=>({id:`p${i+1}`,codigo:`P${i+1}`,nombre:`Equipo ${i+1}`})),providers:[{id:'s',nombre:'Proveedor'}],onSaved:()=>savedCallbacks++});
+ UI.mount({container,sb,products,providers:[{id:'s',nombre:'Proveedor'}],onSaved:()=>savedCallbacks++});
  return {container,el:element,sequence,writes,reads,buttons,setDiscard:value=>allowDiscard=value,get confirmations(){return confirmations;},get savedCallbacks(){return savedCallbacks;},cleanup(){globalThis.confirm=oldConfirm;globalThis.CustomEvent=oldEvent;}};
 }
 test('Abrir borrador es solo lectura, muestra 20 filas plegadas y devuelve Promise antes de navegar',async()=>{
@@ -64,7 +64,7 @@ test('Títulos largos separan metadatos sin modificar la referencia guardada ni 
   assert.match(html,/<strong>REDMI Watch 6 Active Matte Silver<\/strong>/);assert.match(html,/class="wa-row-description">Número de parte/);
   assert.match(html,/<span>Costo<\/span><strong>/);assert.match(html,/<span>Retail<\/span><strong>/);
   assert.equal(JSON.stringify(saved),before);assert.equal(h.writes.length,0);
-  h.el('[data-update]').onclick();await h.el('[data-save]').onclick();assert.deepEqual(h.writes[0].args.p_filas,saved.filas);
+  h.el('[data-update]').onclick();await h.el('[data-save]').onclick();assert.deepEqual(h.writes[0].args.p_filas,saved.filas.map(r=>({...r,categoria:''})));
  }finally{h.cleanup();}
 });
 test('Motivos completos están disponibles y el texto del proveedor se escapa al presentar',async()=>{
@@ -78,4 +78,18 @@ test('Resumen usa dos bandas y adapta precios al ancho disponible del editor',()
  assert.match(css,/\.wa-row-summary\{[^}]*display:grid/);assert.match(css,/\.wa-row-title\{[^}]*grid-column:1\/-1/);
  assert.match(css,/@container\(max-width:640px\)/);assert.match(css,/\.wa-row-prices\{[^}]*grid-row:3/);
  assert.match(css,/label>input:not\(\[type=checkbox\]\)[^{]*\{[^}]*margin-top:8px/);
+});
+test('Recalcular estándar es explícito, no publica y no permite cambiar una versión publicada',async()=>{
+ const source={id:'d',proveedor_id:'s',texto_original:'original',filas:[row(1,{costo:900000,precio_tienda:920000})],lista_id:null};
+ const products=[{id:'p1',codigo:'P1',nombre:'Equipo 1',categoria:'CELULAR'}];
+ const h=harness(source,products);try{
+  await h.container.openDraft('d','all');assert.equal(h.writes.length,0);assert.match(h.el('[data-rows]').innerHTML,/920\.000/);
+  h.el('[data-reprice]').onclick();assert.equal(h.writes.length,0);assert.equal(h.container.hasUnsavedChanges(),true);assert.match(h.el('[data-rows]').innerHTML,/930\.000/);
+  await h.el('[data-save]').onclick();assert.equal(h.writes.length,1);assert.equal(h.writes[0].name,'guardar_borrador_catalogo_b2b');assert.equal(h.writes[0].args.p_filas[0].precio_tienda,930000);
+  assert.equal(source.filas[0].precio_tienda,920000);
+ }finally{h.cleanup();}
+ const published=harness({...source,lista_id:'live'},products);try{
+  await published.container.openDraft('d','all');assert.equal(published.el('[data-reprice]').disabled,true);
+  published.el('[data-reprice]').onclick();assert.equal(published.container.hasUnsavedChanges(),false);assert.equal(published.writes.length,0);
+ }finally{published.cleanup();}
 });

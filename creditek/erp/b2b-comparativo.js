@@ -39,7 +39,7 @@
     else if(!(cost>0)||!(price>0))reason='Falta costo o precio retail válido';
     else if(duplicates.get(row.producto_id)>1)reason='Referencia repetida en esta lista: revisar antes de comparar';
     else if(row.priceWarning&&!row.priceConfirmed)reason='Precio pendiente de confirmar';
-    else if(Math.round((price-cost)*100)!==D.defaultMargin(cost)*100&&D.isDefaultReason(row.motivo))reason='Margen especial pendiente de justificar';
+    else if(Math.round((price-cost)*100)!==D.defaultMargin(cost,product.categoria)*100&&D.isDefaultReason(row.motivo))reason='Margen especial pendiente de justificar';
     if(reason)unresolved.push({provider:provider.nombre,reference:row.reference||row.original||product?.nombre||'Sin referencia',cost,price,reason,line:row.row,date:draft.creado_at});
     else draftOffers.push({...row,costo:cost,precio_tienda:price,sourceDate:draft.creado_at,draftId:draft.id});
    }

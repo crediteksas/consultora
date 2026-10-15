@@ -11,6 +11,7 @@
     );
     if (central) {
       sources.push(
+        {key:'store-debt-differences',table:'confirmaciones_deuda_tienda',title:'Diferencias de deuda de tiendas por revisar',hint:'La tienda ya puede continuar. Revisar no modifica su deuda.',path:'/creditek/erp/confirmaciones-deuda.html',filters:[['neq','diferencia',0],['is','revisado_at',null]]},
         {key:'inventory-counts',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
         {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},

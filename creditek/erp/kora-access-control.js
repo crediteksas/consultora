@@ -25,7 +25,7 @@
   ]);
   const CREDIT_PORTFOLIO_ROUTES = new Set(['creditos-cartera.html']);
   const CORPORATE_ROUTES = new Set([
-    'tablero.html', 'presupuestos.html', 'ventas.html', 'registro-interno.html',
+    'confirmaciones-deuda.html', 'tablero.html', 'presupuestos.html', 'ventas.html', 'registro-interno.html',
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
@@ -84,6 +84,7 @@
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', icon: 'clipboard-check', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', icon: 'file-pen-line', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },

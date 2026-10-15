@@ -71,6 +71,7 @@ function createHarness({
     head: {
       appendChild(node) {
         styles.push(node);
+        if (node.src?.includes("confirmacion-deuda.js")) queueMicrotask(() => node.onload());
       },
     },
     body,
@@ -81,6 +82,7 @@ function createHarness({
       events.push(`dispatch:${event.type}`);
     },
     createElement(tag) {
+      if (tag === 'script') return {};
       if (tag === 'style') return { id: '', textContent: '' };
       if (tag === 'div') {
         const button = { addEventListener() {} };
@@ -160,6 +162,7 @@ function createHarness({
     },
     document,
     window: {
+      KoraConfirmacionDeuda: { mount: async () => { events.push('debt:checked'); } },
       __KORA_ENV__: {
         KORA_ERP_SUPABASE_URL: 'https://erp.test.invalid',
         KORA_ERP_SUPABASE_ANON_KEY: 'public-test-key',

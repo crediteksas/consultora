@@ -290,6 +290,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', lucide: 'clipboard-check', description: 'Revisa las confirmaciones diarias y diferencias de deuda de las tiendas con Creditek.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'target', description: 'Programa los presupuestos independientes de Retail, B2B y Aliados desde Administración.', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', lucide: 'landmark', description: 'Saldo bancario, solicitudes y pagos a proveedores con autorización de Gerencia y aplicación a facturas antiguas.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', lucide: 'file-pen-line', description: 'Busca documentos y abre las correcciones o anulaciones autorizadas, conservando su trazabilidad.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
@@ -621,7 +622,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraNotifications')) {
       const notifications = document.createElement('script');
       notifications.id = 'koraNotifications';
-      notifications.src = '/creditek/erp/kora-notifications.js?v=1.2.7';
+      notifications.src = '/creditek/erp/kora-notifications.js?v=1.2.8';
       document.head.appendChild(notifications);
     }
     if (!document.getElementById('koraReportExport')) {
@@ -1339,6 +1340,16 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
         wireInteractions(pageClient);
       }
       completeBootStage('mount');
+      if (perfil.rol === 'admin_tienda') {
+        await withBootTimeout(new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/creditek/erp/confirmacion-deuda.js?v=1';
+          script.onload = resolve; script.onerror = () => reject(new Error('No se pudo cargar la confirmación diaria de deuda'));
+          document.head.appendChild(script);
+        }));
+        await withBootTimeout(window.KoraConfirmacionDeuda.mount({sb: pageClient, profile: perfil}));
+      }
+
 
       // Expuesto por si alguna pantalla quiere leer la preferencia de tienda del sidebar.
       window.creditekSidebar = { perfil, tiendas: tiendas || [], sb: pageClient, authorization };

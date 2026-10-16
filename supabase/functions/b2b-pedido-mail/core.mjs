@@ -1,3 +1,4 @@
+import {buildClosureWorkbook} from './workbook.mjs';
 export const RECIPIENTS=['gestion@crediteksas.com','comercial@crediteksas.com'];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(n);
@@ -38,7 +39,21 @@ export function summarizeReferences(items){
  }
  return [...refs.values()].sort((a,b)=>String(a.referencia).localeCompare(String(b.referencia),'es')).map(({costs,...r})=>({...r,costos:[...costs].map(([costo,cantidad])=>({costo,cantidad}))}));
 }
-export function buildRaw(r){const body=base64(renderReport(r)).match(/.{1,76}/g).join('\r\n');return base64(['From: KORA <comercial@crediteksas.com>','To: '+RECIPIENTS.join(', '),'Subject: =?UTF-8?B?'+base64('KORA · '+r.numero+' · '+r.tienda)+'?=','Message-ID: <b2b-pedido-'+r.id+'@crediteksas.com>','MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',body].join('\r\n')).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+export function buildRaw(r){
+ if(!/^[a-zA-Z0-9_-]{1,128}$/.test(r.id||''))throw Error('Identificador de correo inválido');
+ const attachment=r.tipo==='cierre'?buildClosureWorkbook(r):null;
+ const body=base64(renderReport(r)).match(/.{1,76}/g).join('\r\n');
+ const headers=['From: KORA <comercial@crediteksas.com>','To: '+RECIPIENTS.join(', '),'Subject: =?UTF-8?B?'+base64('KORA · '+r.numero+' · '+r.tienda)+'?=','Message-ID: <b2b-pedido-'+r.id+(r.tipo==='cierre'?'-xlsx-v1':'')+'@crediteksas.com>','MIME-Version: 1.0'];
+ let mime;
+ if(r.tipo==='cierre'){
+  const boundary='kora-b2b-'+r.id+'-xlsx-v1';
+  let binary='';for(const b of attachment.bytes)binary+=String.fromCharCode(b);
+  const content=btoa(binary).match(/.{1,76}/g).join('\r\n');
+  mime=[...headers,'Content-Type: multipart/mixed; boundary="'+boundary+'"','','--'+boundary,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',body,'--'+boundary,'Content-Type: '+attachment.mimeType+'; name="'+attachment.filename+'"','Content-Disposition: attachment; filename="'+attachment.filename+'"','Content-Transfer-Encoding: base64','',content,'--'+boundary+'--',''].join('\r\n');
+ }else mime=[...headers,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',body].join('\r\n');
+ if(mime.length>20*1024*1024)throw Error('El adjunto supera el tamaño permitido');
+ return base64(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
 export async function deliver(report,env,request=fetch){
  if(report.tipo!=='cierre')return {outcome:'failed'};
  if(!report.id||!report.tienda||!Array.isArray(report.items)||!report.items.length||report.items.some(i=>!Number.isFinite(Number(i.precio))||!Number.isFinite(Number(i.costo))||!(i.cantidad>0)))return {outcome:'failed'};

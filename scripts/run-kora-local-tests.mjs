@@ -53,6 +53,7 @@ const erp = [
   'tests/erp/b2b-workspace.test.mjs',
   'tests/erp/b2b-whatsapp-ui-review.test.mjs',
   'tests/erp/b2b-cierres.test.mjs',
+  'tests/erp/b2b-cierre-excel-correo.test.mjs',
   'tests/erp/pedidos-abastecimiento-b2b.test.mjs',
   'tests/erp/proveedores-domain.test.mjs',
   'tests/erp/proveedores-saldos-a-favor.test.mjs',

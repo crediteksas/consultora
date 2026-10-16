@@ -49,7 +49,14 @@ test('Cierre: copia inmutable, corte exacto, idempotencia, doble cierre, RLS y c
  assert.equal((await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,uid(999)]))[0].r,null);
  const claimed=(await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,job.token]))[0].r;assert.equal(claimed.tipo,'cierre');assert.equal(claimed.items.length,1);assert.equal(claimed.items[0].costo,400000);
  assert.equal((await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,job.token]))[0].r,null);
- await query("select kora_finish_b2b_cierre_mail($1,$2,'ambiguous',null)",[closed.id,job.token]);
+ await query("select kora_finish_b2b_cierre_mail($1,$2,'retry',null)",[closed.id,job.token]);
+ assert.equal((await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,job.token]))[0].r,null);
+ await db.exec('reset role');
+ await query('update kora_private.b2b_cierre_mail_jobs set due_at=now() where cierre_id=$1',[closed.id]);
+ const [retryJob]=await query('select * from kora_private.b2b_cierre_mail_jobs where cierre_id=$1',[closed.id]);
+ await db.exec('set role service_role');
+ assert.equal((await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,retryJob.token]))[0].r.tipo,'cierre');
+ await query("select kora_finish_b2b_cierre_mail($1,$2,'ambiguous',null)",[closed.id,retryJob.token]);
  assert.equal((await query('select correo_estado from b2b_cierres'))[0].correo_estado,'incierto');
  assert.equal((await query('select kora_claim_b2b_cierre_mail($1,$2) r',[closed.id,job.token]))[0].r,null);
  await db.exec('reset role');await query('update b2b_ofertas set costo=999 where producto_id=$1',[uid(10)]);
@@ -69,7 +76,7 @@ test('Consolidado conserva nombres, ciudad, proveedor, totales y costo faltante'
  assert.equal(C.brand('Redmi 17 4/128'),'XIAOMI');assert.equal(C.brand('Moto G06'),'MOTOROLA');assert.equal(C.brand('Cable sin marca'),'OTRAS');
 });
 test('Correo consolidado agrupa proveedor y ciudad; no confunde cierre con entrega',async()=>{
- const r={tipo:'cierre',id:'test',numero:'CIE-000001',tienda:'Consolidado',fecha:'2026-09-18T15:00:00Z',items:[{pedido_id:'a',numero:'PED-000001',tienda:'Chinucell',ciudad:'Chinú',referencia:'<b>Equipo</b>',cantidad:2,costo:400000,precio:420000,proveedor:'MPS'}]};
+ const r={tipo:'cierre',id:'test',numero:'CIE-000001',tienda:'Consolidado',fecha:'2026-09-18T15:00:00Z',items:[{item_id:'synthetic-item',pedido_id:'a',numero:'PED-000001',tienda:'Chinucell',ciudad:'Chinú',referencia:'<b>Equipo</b>',cantidad:2,costo:400000,precio:420000,proveedor:'MPS'}]};
  const html=renderReport(r);assert.match(html,/Cierre de período/);assert.match(html,/MPS/);assert.match(html,/Chinú/);assert.match(html,/800.000/);assert.match(html,/no confirma recepción/);assert.doesNotMatch(html,/<b>Equipo/);assert.match(html,/&lt;b&gt;Equipo/);
  assert.deepEqual(RECIPIENTS,['gestion@crediteksas.com','comercial@crediteksas.com']);
  let calls=0;const result=await deliver(r,{},async()=>++calls===1?new Response(JSON.stringify({access_token:'test'})):new Response(JSON.stringify({id:'mockMessage'})));assert.equal(result.outcome,'sent');assert.equal(calls,2);

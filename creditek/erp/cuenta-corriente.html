@@ -260,7 +260,20 @@ body.modal-open { overflow: hidden; }
       </table>
       <div class="empty-state" id="emptyInstrucciones" style="display:none;">No hay instrucciones.</div>
     </div>
+    <p><button type="button" class="btn-secondary" id="btnInformeAjustes" style="display:none;">Consultar informe de ajustes aplicados</button></p>
   </div>
+  </div>
+</div>
+
+<!-- Informe consultable: fuera del flujo operativo diario. -->
+<div class="modal-bg" id="modalInformeAjustes">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="informeAjustesTitulo">
+    <h2 id="informeAjustesTitulo">Informe de ajustes aplicados</h2>
+    <p>Historial de autorizaciones. Los valores corresponden al ajuste registrado, no al saldo actual.</p>
+    <div class="campo"><label for="buscarAjustes">Buscar por tienda, referencia o motivo</label><input type="search" id="buscarAjustes" autocomplete="off"></div>
+    <p id="estadoInformeAjustes" role="status"></p>
+    <div id="contenidoInformeAjustes"></div>
+    <div class="modal-actions"><button type="button" class="btn-secondary" id="btnCerrarInformeAjustes">Cerrar informe</button></div>
   </div>
 </div>
 
@@ -507,6 +520,9 @@ async function comprimirImagen(file, maxSide = 1600, quality = 0.7) {
 
 // ─── Página: Cuenta corriente ───────────────────────────────────────────
 function initPagina() {
+  document.getElementById('btnInformeAjustes').addEventListener('click', abrirInformeAjustes);
+  document.getElementById('btnCerrarInformeAjustes').addEventListener('click', () => cerrarModal('modalInformeAjustes'));
+  document.getElementById('buscarAjustes').addEventListener('input', pintarInformeAjustes);
   document.getElementById('btnSaldoInicial').addEventListener('click', abrirSaldoInicial);
   document.getElementById('btnCancelarSaldoInicial').addEventListener('click', () => cerrarModal('modalSaldoInicial'));
   document.getElementById('saldoInicialSoporte').addEventListener('change', onSoporteSaldoInicial);
@@ -558,7 +574,8 @@ function cerrarModalAbono() {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  if (document.getElementById('modalSaldoInicial').classList.contains('show')) cerrarModal('modalSaldoInicial');
+  if (document.getElementById('modalInformeAjustes').classList.contains('show')) cerrarModal('modalInformeAjustes');
+  else if (document.getElementById('modalSaldoInicial').classList.contains('show')) cerrarModal('modalSaldoInicial');
   else if (document.getElementById('modalAbono').classList.contains('show')) cerrarModalAbono();
   else if (document.getElementById('modalInstruccion').classList.contains('show')) cerrarModal('modalInstruccion');
   else if (document.getElementById('modalComprobante').classList.contains('show')) cerrarModal('modalComprobante');
@@ -590,7 +607,10 @@ async function cargarTodo() {
     }
   }
   await cargarMovimientosCC();
-  if (puedeAutorizarAjusteSaldos()) await cargarAjustesAuditados();
+  if (puedeAutorizarAjusteSaldos()) {
+    document.getElementById('btnInformeAjustes').style.display = 'inline-block';
+    await cargarAjustesAuditados();
+  }
   await cargarInstrucciones();
   const tiendaSolicitada = new URLSearchParams(location.search).get('tienda');
   if (tiendaSolicitada) {
@@ -599,13 +619,58 @@ async function cargarTodo() {
   }
 }
 
+let ajustesAplicadosInforme = [];
+let informeAjustesCargado = false;
+let informeAjustesCargando = false;
+function pintarInformeAjustes() {
+  if (!informeAjustesCargado) return;
+  const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const busqueda = normalizar(document.getElementById('buscarAjustes').value.trim());
+  const filas = ajustesAplicadosInforme.filter(p => normalizar([nombreTienda(p.tienda_codigo), p.tienda_codigo, p.referencia, p.motivo].join(' ')).includes(busqueda));
+  document.getElementById('estadoInformeAjustes').textContent = `${filas.length} de ${ajustesAplicadosInforme.length} ajustes aplicados`;
+  document.getElementById('contenidoInformeAjustes').innerHTML = filas.length ? filas.map(p => `
+    <article class="cuadrito-vacio" style="margin:12px 0;">
+      <h3>${escapeHtml(nombreTienda(p.tienda_codigo))} · ${escapeHtml(p.referencia)}</h3>
+      <p>Caja antes: ${fmtCOP(p.caja_base)} → Caja ajustada: <strong>${fmtCOP(p.caja_objetivo)}</strong><br>
+      Deuda antes: ${fmtCOP(p.deuda_base)} → Deuda ajustada: <strong>${fmtCOP(p.deuda_objetivo)}</strong></p>
+      <p>${escapeHtml(p.motivo)}</p>
+      <p>Autorizado: ${p.autorizado_at ? escapeHtml(new Date(p.autorizado_at).toLocaleString('es-CO', { timeZone:'America/Bogota' })) : 'Fecha no disponible'}</p>
+    </article>`).join('') : '<p>No hay ajustes aplicados que coincidan con la búsqueda.</p>';
+}
+async function abrirInformeAjustes() {
+  if (!puedeAutorizarAjusteSaldos() || informeAjustesCargando) return;
+  abrirModal('modalInformeAjustes');
+  informeAjustesCargando = true;
+  informeAjustesCargado = false;
+  document.getElementById('estadoInformeAjustes').textContent = 'Cargando historial…';
+  document.getElementById('contenidoInformeAjustes').textContent = '';
+  try {
+    const registros = [];
+    for (let desde = 0; ; desde += 500) {
+      const { data, error } = await sb.from('saldo_ajustes_auditoria')
+        .select('id,referencia,tienda_codigo,caja_base,deuda_base,caja_objetivo,deuda_objetivo,motivo,autorizado_at')
+        .eq('estado', 'aplicado').order('autorizado_at', { ascending: false }).order('id')
+        .range(desde, desde + 499);
+      if (error) throw error;
+      registros.push(...(data || []));
+      if (!data || data.length < 500) break;
+    }
+    ajustesAplicadosInforme = registros;
+    informeAjustesCargado = true;
+    pintarInformeAjustes();
+  } catch {
+    document.getElementById('estadoInformeAjustes').textContent = 'No se pudo cargar el informe. Cierra y vuelve a abrir para reintentar.';
+  } finally { informeAjustesCargando = false; }
+}
+
 async function cargarAjustesAuditados() {
   const panel = document.getElementById('ajustesSaldosAuditados');
   panel.style.display = 'block';
   panel.textContent = 'Cargando ajustes auditados…';
   const { data: propuestas, error } = await sb.from('saldo_ajustes_auditoria')
     .select('id,referencia,tienda_codigo,fecha_corte,caja_base,deuda_base,caja_objetivo,deuda_objetivo,motivo,estado,autorizado_at')
-    .order('created_at', { ascending: false }).limit(10);
+    .eq('estado', 'pendiente')
+    .order('created_at', { ascending: false });
   if (error) { panel.textContent = 'No se pudo consultar el ajuste. Actualiza la pantalla antes de autorizar.'; return; }
   if (!propuestas?.length) { panel.style.display = 'none'; return; }
   const saldos = calcularResumenPorTienda();
@@ -621,7 +686,7 @@ async function cargarAjustesAuditados() {
       && actualDeuda === Number(propuesta.deuda_base);
     return { propuesta, actualCaja, actualDeuda, vigente, cajaError };
   }));
-  panel.innerHTML = '<h2 style="font-size:18px;margin:0 0 6px;">Ajustes de saldos auditados · autorización de Gerencia</h2>'
+  panel.innerHTML = '<h2 style="font-size:18px;margin:0 0 6px;">Ajustes pendientes de autorización</h2>'
     + '<p style="margin:0 0 12px;">Este ajuste no es venta, ingreso, abono bancario ni consignación. Conserva los cierres originales y deja tu autorización en el historial.</p>'
     + filas.map(({ propuesta:p, actualCaja, actualDeuda, vigente, cajaError }) => `
       <article style="border:1px solid #dbe3ee;border-radius:10px;padding:14px;margin:10px 0;background:white;">

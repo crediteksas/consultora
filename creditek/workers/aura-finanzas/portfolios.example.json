@@ -1,0 +1,25 @@
+{
+  "asOf": "2026-01-01T16:35:00-05:00",
+  "currency": "USD",
+  "interpretation": "Ejemplo sin datos reales. Los valores productivos viven exclusivamente en KV privado.",
+  "portfolios": {
+    "OSCAR": {
+      "accountBadge": "OP",
+      "balance": 0,
+      "cash": 0,
+      "dayChange": 0,
+      "dayChangePct": 0,
+      "mandate": "Definir mandato sin incluir saldos personales en Git.",
+      "positions": []
+    },
+    "JA": {
+      "accountBadge": "JA",
+      "balance": 0,
+      "cash": 0,
+      "dayChange": 0,
+      "dayChangePct": 0,
+      "mandate": "Definir mandato sin incluir saldos personales en Git.",
+      "positions": []
+    }
+  }
+}

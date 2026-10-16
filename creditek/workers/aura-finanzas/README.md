@@ -1,6 +1,6 @@
-# AURA Finanzas
+# AURA Inversiones
 
-Worker independiente para entregar por WhatsApp los informes de inversión de las carteras **JA** y **Óscar**. No comparte lógica, cron, destinatarios ni secretos con NOVA/KORA.
+Worker independiente para guardar y entregar informes ejecutivos de inversión de las carteras **JA** y **Óscar**. El módulo visible se llama **Inversiones**; no comparte lógica, cron, destinatarios ni secretos con NOVA/KORA.
 
 ## Flujo
 
@@ -15,6 +15,6 @@ Worker independiente para entregar por WhatsApp los informes de inversión de la
 - Confirmar que la plantilla activa `sofia_informe_financiero` (`es_CO`) continúa disponible en la WABA de AURA. Usa `{{1}}` para el nombre y `{{2}}` para resumen y enlace.
 - Configurar secretos `WHATSAPP_TOKEN`, `PHONE_NUMBER_ID` y `DISPATCH_TOKEN`.
 - Conectar la automatización con `POST /dispatch`.
-- Mantener `portfolios.json` actualizado después de cada operación.
+- Mantener los datos reales únicamente en KV `REPORT_STATE`; `portfolios.example.json` es una plantilla sin saldos ni posiciones personales.
 
 No desplegar mientras el número nuevo continúe en estado pendiente en Meta.

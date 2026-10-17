@@ -3756,16 +3756,11 @@ Los titulares, texto secundario y CTA deben respetar primero la instrucci\xF3n a
 \${modo === 'promo' ? '- Personas interesadas en la ocasi\xF3n, el regalo, el beneficio y el producto. No introducir condiciones de cr\xE9dito no solicitadas.' : ''}
 \${modo === 'tienda' ? '- Personas que quieren conocer la tienda y la experiencia de compra, sin financiaci\xF3n inventada.' : ''}
 \${modo === 'servicio' ? '- Personas que necesitan el servicio descrito y una acci\xF3n concreta para recibir orientaci\xF3n.' : ''}\` :
-\`PERFIL DEL CLIENTE REAL (habla DIRECTAMENTE a esta persona):
-- Hombre o mujer, 25-45 a\xF1os, ingreso familiar $1.2M\u2013$2.5M/mes
-- Usa Nequi o Daviplata, no tiene cuenta bancaria formal
-- No tiene historial crediticio o lo tiene manchado
-- Su \xFAltimo celular lo compr\xF3 hace 2-3 a\xF1os \u2014 ya est\xE1 da\xF1ado, lento o roto
-- Aspira a darle tecnolog\xEDa a su familia, que sus hijos tengan lo que necesitan
-- Ha ido a otras tiendas y lo han tratado mal porque "no tiene cupo"
-- Le da verg\xFCenza preguntar si le aprueban
-- Cuando le dicen que s\xED, siente alivio y orgullo
-El copy debe hacerlo sentir que Creditek es diferente: aqu\xED s\xED lo atienden bien, aqu\xED puede solicitarlo sin miedo, aqu\xED nadie lo juzga.\`}
+\`AUDIENCIA Y OFERTA:
+- Personas de la zona interesadas en elegir o renovar su equipo y conocer opciones de pago.
+- No presupongas ingresos, deudas, historial crediticio, verg\xFCenza ni experiencias negativas.
+- Creditek vende equipos; las plataformas aliadas financian y deciden la aprobaci\xF3n.
+- Usa \xFAnicamente los productos, beneficios y condiciones aportados en este encargo. Invita a consultar disponibilidad y opciones por WhatsApp, sin prometer aprobaci\xF3n.\`}
 
 \${culturaCtx ? \`CONTEXTO DE CIUDAD \u2014 \${ciudadDisplay}:\\n\${culturaCtx}\\n\${!esCiudad && getTiendaInfo(ciudad)?.nombre ? \`Tienda: \${getTiendaInfo(ciudad).nombre}. Puedes mencionar este nombre cuando aporte autenticidad local (ej: "Vis\xEDtanos en \${getTiendaInfo(ciudad).nombre}").\` : \`CTA de ciudad: usa "Vis\xEDtanos en \${ciudadDisplay}" sin nombrar tienda espec\xEDfica.\`}\\n\\n\` : ''}\${(()=>{
   const btns = [...document.querySelectorAll('.estilo-btn.active')];
@@ -3841,16 +3836,13 @@ Genera el copy para CADA plataforma solicitada. Respeta los l\xEDmites de caract
 
 Despu\xE9s a\xF1ade:
 [TITULARES]
-3 titulares de ALTO IMPACTO para imagen publicitaria. TRANSFORMA el mensaje \u2014 NO lo copies.
-Extrae la emoci\xF3n o beneficio central y expr\xE9salo de forma nueva e inesperada.
-- M\xE1ximo 6 palabras cada uno. Sin emojis. Sin "Creditek".
-- Nivel: Nike, Coca-Cola, Claro Colombia
-- PROHIBIDO: copiar palabras del mensaje, frases gen\xE9ricas
-- Uno emocional, uno directo con giro creativo, uno con sabor coste\xF1o
-Formato exacto:
-1. {titular}
-2. {titular}
-3. {titular}
+6 alternativas de titular para la MISMA campa\xF1a, de 3 a 8 palabras. Sin emojis ni nombre de marca.
+- Prioriza producto, beneficio verificable y claridad. Puedes conservar las palabras del mensaje si son precisas: no las reemplaces por met\xE1foras vagas.
+- Respeta el estilo elegido en las seis propuestas. Humor solo si se pidi\xF3; calidez coste\xF1a sin jerga forzada; formal preciso; minimalista breve; personalizado seg\xFAn encargo.
+- Var\xEDa el enfoque entre elecci\xF3n, uso cotidiano, renovaci\xF3n, ocasi\xF3n, acci\xF3n y pago a cuotas cuando corresponda; omite enfoques no respaldados por el encargo.
+- No inventes precios, descuentos, disponibilidad, urgencia, requisitos ni aprobaci\xF3n. Evita clich\xE9s y seis variantes de la misma frase.
+- Cada titular debe entenderse solo. Revisa fidelidad, claridad, ortograf\xEDa y diversidad antes de entregar.
+Formato exacto: seis l\xEDneas numeradas de 1. a 6.
 
 Formato EXACTO de la respuesta completa:
 \${platforms.map(p => \`[PLATAFORMA: \${PLATFORMS_META[p].label}]\\n{copy}\`).join('\\n\\n')}
@@ -3861,7 +3853,10 @@ Formato EXACTO de la respuesta completa:
 [TITULARES]
 1. ...
 2. ...
-3. ...\`;
+3. ...
+4. ...
+5. ...
+6. ...\`;
 
   try {
     const response = await fetch('https://creditek-gemini-proxy.comercial-853.workers.dev/anthropic/messages', {
@@ -3967,7 +3962,7 @@ function renderPiezas(text, platforms, tipo, ciudad, inclHashtags, inclBrief) {
   const tm = text.match(/\\[TITULARES\\]([\\s\\S]*?)$/i);
   if (tm) {
     const titLines = tm[1].trim().split('\\n').filter(l => l.trim());
-    const titulares = titLines.map(l => limpiarMarkdownTitular(l.replace(/^\\d+\\.\\s*/, ''))).filter(Boolean).slice(0, 6);
+    const titulares = [...new Set(titLines.map(l => l.trim()).filter(l => /^\\d+\\.\\s/.test(l)).map(l => limpiarMarkdownTitular(l.replace(/^\\d+\\.\\s*/, ''))).filter(t => t && t.split(/\\s+/).length <= 8))].slice(0, 6);
     rememberRecentHeadlines(titulares);
     renderTitulares(titulares);
   }
@@ -5722,9 +5717,10 @@ function buildAdCreativeQualityPrompt(prompt = '') {
 }
 
 function buildRecraftProviderPrompt(prompt = '') {
-  const sourceWithoutBrandInstructions = String(prompt);
+  // Preserve the scene without sending the brand name to the image model.
+  const sourceWithoutBrandInstructions = String(prompt).replace(/\\bcreditek\\b/gi, 'la tienda');
   const priorityPrefix = [
-    'BRAND: do not render the Creditek logo or wordmark; the exact official asset is applied afterwards. Preserve the operator scene and chosen style.',
+    'BRAND: do not render any logo or wordmark; the exact official asset is applied afterwards. Preserve the operator scene and chosen style.',
     CARIBBEAN_WARDROBE_CONTRACT,
     RECRAFT_ART_DIRECTION,
     buildSelectedVisualStyleContract(),
@@ -5737,7 +5733,7 @@ function buildRecraftProviderPrompt(prompt = '') {
   const available = Math.max(0, maxLength - priorityPrefix.length - separator.length);
   if (sourceWithoutBrandInstructions.length > available) throw new Error('El encargo visual es demasiado largo para Recraft. Ac\xF3rtalo o usa GPT; no se recortar\xE1 tu instrucci\xF3n.');
   const sourceBrief = sourceWithoutBrandInstructions;
-  return \`\${priorityPrefix}\${separator}\${sourceBrief}\`;
+  return \`\${priorityPrefix}\${separator}\${sourceBrief}\`.replace(/\\bcreditek\\b/gi, 'la tienda');
 }
 const GPT_TEXT_LAYOUT_CONTRACT = 'TEXT LAYOUT CONTRACT: analyze the rendered photograph before composing. Detect faces/rostros, people/personas, hands/manos, product/producto, gaze direction/direcci\xF3n de mirada, clean zones, contrast/contraste and negative space/espacio negativo. Headline, secondary copy, CTA and logo are independent elements that may occupy different zones. Do not place secondary directly below headline by default. Do not place CTA directly below secondary by default. Never use a single vertical text column unless the image analysis genuinely requires it. Keep safe margins, legibility and a clear hierarchy without covering faces, hands or product.';
 const GPT_LAYOUT_GUARD = 'ART DIRECTION: treat the headline as the highest visual hierarchy. Give secondary copy its own quieter area and give the CTA its own breathing room and visual zone. Keep the official logo in a separate visible brand zone. Use the full canvas and choose the arrangement from the scene and negative space; do not use fixed coordinates or a repeated template. Never stack headline, secondary copy and CTA tightly in one area, leave large empty areas without intention, repeat blue blocks, or place every generation identically. Preserve legibility, balance, air and a professional advertising finish.';

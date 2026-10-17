@@ -1,0 +1,32 @@
+.kora-date-field { display: grid; gap: 6px; min-width: 0; flex: 1; }
+.kora-date-label { color: #64748b; font: 600 12px/1.4 'DM Sans', sans-serif; }
+.kora-date-control { position: relative; min-width: 0; }
+.kora-date-control input.kora-date-input { width: 100%; min-width: 0; padding-right: 48px; font-variant-numeric: tabular-nums; }
+.kora-date-control input[hidden] { display: none !important; }
+.kora-date-control .kora-date-open { appearance: none; position: absolute; top: 1px; right: 1px; bottom: 1px; width: 42px; min-height: 0; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: #0b1e3d; cursor: pointer; padding: 8px; }
+.kora-date-open svg { width: 20px; height: 20px; }
+.kora-date-control .kora-date-open:hover { background: #eafbfc; }
+.kora-date-control .kora-date-open:disabled { cursor: default; opacity: .5; }
+.kora-date-input:focus-visible, .kora-date-open:focus-visible, .kora-date-dialog button:focus-visible { outline: 2px solid #008e99; outline-offset: 2px; }
+.kora-date-error { color: #b42318; font: 12px/1.4 'DM Sans', sans-serif; }
+.kora-date-error:empty { display: none; }
+dialog.kora-date-dialog { width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; margin: auto; padding: 20px; border: 1px solid #dce4ed; border-radius: 16px; background: #fff; color: #0b1e3d; box-shadow: 0 16px 48px #0b1e3d30; font: 14px/1.4 'DM Sans', sans-serif; }
+.kora-date-dialog::backdrop { background: #0b1e3d55; }
+.kora-date-dialog h2 { margin: 0 0 16px; font: 700 16px/1.4 'DM Sans', sans-serif; }
+.kora-calendar-nav { display: grid; grid-template-columns: 30px 30px minmax(0,1fr) 30px 30px; align-items: center; gap: 3px; margin-bottom: 12px; }
+.kora-date-dialog h3 { margin: 0; text-align: center; font: 700 14px/1.4 'DM Sans', sans-serif; }
+.kora-date-dialog button { appearance: none; border: 1px solid transparent; border-radius: 8px; background: #fff; color: #0b1e3d; cursor: pointer; font: inherit; padding: 4px; }
+.kora-calendar-nav button { font-size: 22px; min-height: 32px; }
+.kora-date-dialog button:hover:not(:disabled) { background: #eafbfc; border-color: #00c4cc; }
+.kora-date-dialog table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 2px; margin: 0; }
+body dialog.kora-date-dialog table thead th { padding: 4px 0; position: static; color: #64748b; background: #fff; font: 600 12px/1.4 'DM Sans', sans-serif; text-align: center; }
+body dialog.kora-date-dialog table tbody td { padding: 0; border: 0; text-align: center; background: #fff; }
+.kora-date-dialog td button { width: 100%; min-height: 34px; font-variant-numeric: tabular-nums; }
+.kora-date-dialog td[aria-selected="true"] button { color: #fff; background: #0b1e3d; }
+.kora-date-dialog td button[aria-current="date"] { border-color: #008e99; }
+.kora-date-dialog button:disabled { opacity: .35; cursor: default; }
+.kora-calendar-help { margin: 12px 0; color: #64748b; font-size: 11px; }
+.kora-calendar-actions { display: flex; justify-content: space-between; gap: 6px; padding-top: 12px; border-top: 1px solid #dce4ed; }
+.kora-calendar-actions button { min-height: 36px; padding: 6px 10px; border-color: #dce4ed; font-size: 12px; }
+@media (max-width: 360px) { dialog.kora-date-dialog { padding: 14px; } .kora-calendar-actions button { padding-inline: 6px; } }
+@media print { .kora-date-open, .kora-date-dialog { display: none !important; } }

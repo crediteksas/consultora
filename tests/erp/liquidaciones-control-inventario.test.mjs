@@ -12,7 +12,7 @@ test('el control de IMEI se activa explícitamente por tienda y fecha', () => {
   assert.match(sql, /op\.operation_at >= o\.inventario_control_desde/);
 });
 
-test('ver una unidad no activa el control: la carga debe cerrarse explícitamente', () => {
+test('el control explícito no se reactiva desde la carga inicial retirada', async () => {
   assert.match(sql, /create or replace function public\.inventario_finalizar_carga_inicial\(p_tienda_codigo text\)/);
   assert.doesNotMatch(sql, /after insert on public\.movimientos/);
   assert.match(sql, /v_perfil\.rol not in \('gerencia','auditoria'\)/);
@@ -20,9 +20,10 @@ test('ver una unidad no activa el control: la carga debe cerrarse explícitament
   assert.match(sql, /set inventario_control_activo = true/);
   assert.match(sql, /'inventario_carga_inicial_finalizada'/);
   assert.match(sql, /revoke all on function public\.inventario_finalizar_carga_inicial\(text\) from public,anon/);
-  assert.match(html, /id="btnFinalizarCargaInicial"/);
-  assert.match(html, /inventario_finalizar_carga_inicial/);
-  assert.match(html, /¿Confirmas que el inventario inicial está completo\?/);
+  const retiro = await readFile('supabase/migrations/20260912144724_retirar_carga_inicial_tiendas.sql','utf8');
+  assert.match(retiro, /revoke execute on function public\.inventario_finalizar_carga_inicial\(text\)/);
+  assert.doesNotMatch(html, /id="btnFinalizarCargaInicial"|inventario_finalizar_carga_inicial/);
+  assert.match(html, /conteos-ui\.js/);
 });
 
 test('las tiendas sin carga inicial conservan la novedad sin bloquear la liquidación', () => {

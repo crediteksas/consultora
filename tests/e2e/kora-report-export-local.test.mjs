@@ -27,8 +27,9 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     });
     await page.goto('https://kora.test/creditek/erp/aliados-dashboard.html');
     await page.getByRole('heading',{name:'Cómo se obtiene la utilidad'}).waitFor();
-    await page.locator('#dashboardFrom').fill('2026-09-01');
-    await page.locator('#dashboardTo').fill('2026-09-30');
+    await page.locator('#dashboardFrom-display').fill('01/09/2026');
+    await page.locator('#dashboardTo-display').fill('30/09/2026');
+    await page.locator('#dashboardTo-display').press('Enter');
     await page.locator('#dashboardPlatform').selectOption('krediya');
     assert.equal(await page.getByText('Utilidad de liquidaciones: antes de gastos operativos del período.',{exact:false}).isVisible(),true);
     const internalExpenseNote=page.locator('p[data-kora-report-note]').filter({hasText:'de gastos generales de Aliados no se distribuyen'});
@@ -45,14 +46,21 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     });
     assert.doesNotMatch(JSON.stringify(reports),/Kredisinu|CK-09/);
     assert.equal(reports.summary.scope.restricted,false);
-    assert.deepEqual(reports.summary.tables.map(table=>table.heading),['Resumen por plataforma','Cómo se obtiene la utilidad']);
+    assert.deepEqual(reports.summary.tables.map(table=>table.heading),['Resumen por plataforma','Cómo se obtiene la utilidad','Totales · Gastos históricos ya pagados','Totales · Operaciones del periodo']);
+    assert.doesNotMatch(JSON.stringify(reports.summary.tables),/Establecimiento de prueba|Viáticos y eventos/);
     assert.deepEqual(reports.summary.metrics,reports.detailed.metrics);
+    for(const report of [reports.summary,reports.detailed]){
+      assert.deepEqual(report.filters.filter(([label])=>/^Periodo (desde|hasta)$/.test(label)),[['Periodo desde','01/09/2026'],['Periodo hasta','30/09/2026']]);
+    }
     assert.equal(reports.summary.metrics.find(([label])=>label==='Gastos aplicados a esta vista')[1],'$ 1.800.000');
     assert.equal(reports.summary.metrics.find(([label])=>label==='Créditos del periodo')[1],'82');
     const internalNotes=/Utilidad de liquidaciones: antes de gastos operativos|de gastos generales de Aliados no se distribuyen|Consulta «Propios y aliados»/;
     for(const report of [reports.summary,reports.detailed])assert.doesNotMatch(JSON.stringify(report),internalNotes);
     assert.ok(reports.detailed.tables.some(table=>table.heading==='Gastos históricos ya pagados'&&table.rows.length===4));
     assert.ok(reports.detailed.tables.some(table=>table.heading==='Operaciones del periodo'));
+    const operationsTotal=reports.detailed.tables.find(table=>table.heading==='Operaciones del periodo').totalRows[0];
+    assert.equal(operationsTotal[8],'$ 9.450.360,09');
+    assert.equal(operationsTotal[7],'$ 3.675.140,06');
     assert.ok(!reports.detailed.tables.some(table=>/Histórico inicial/.test(table.heading)),'no exportar el detalle cerrado');
     assert.equal(await page.locator('[data-kora-report-summary]').isChecked(),false);
     await page.getByRole('button',{name:'Generar informe',exact:true}).click();
@@ -67,7 +75,8 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     const [popup]=await Promise.all([page.waitForEvent('popup'),page.getByRole('button',{name:'Generar PDF',exact:true}).click()]);
     await popup.getByRole('heading',{name:'Resumen por plataforma'}).waitFor();
     await popup.waitForFunction(()=>{const img=document.querySelector('.brand img');return img?.complete&&img.naturalWidth>0;},null,{timeout:10000}).catch(async error=>{throw new Error(`${error.message} · ${JSON.stringify(await popup.locator('.brand img').evaluate(img=>({src:img.src,complete:img.complete,width:img.naturalWidth,base:document.baseURI})))}`)});
-    assert.doesNotMatch(await popup.locator('body').textContent(),/Kredisinu|Operaciones del periodo|Viáticos y eventos/);
+    assert.doesNotMatch(await popup.locator('body').textContent(),/Kredisinu|Establecimiento de prueba|Viáticos y eventos/);
+    assert.equal(await popup.locator('tbody tr').filter({hasText:'Establecimiento de prueba'}).count(),0);
     assert.match(await popup.locator('body').textContent(),/7\.650\.360/);
     assert.doesNotMatch(await popup.locator('body').textContent(),internalNotes);
     assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_filtros['Formato del informe']),'Resumido · solo totales');
@@ -85,7 +94,7 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     if(process.env.KORA_REPORT_EXCELJS_PATH){
       await page.addScriptTag({path:process.env.KORA_REPORT_EXCELJS_PATH});
       for(const mode of ['summary','detailed']){
-        await page.evaluate(mode=>{window.KoraReportData=mode==='summary'?{prepareExcel(){throw new Error('El resumido no debe cargar operaciones individuales.');}}:undefined;},mode);
+        await page.evaluate(()=>{window.KoraReportData=undefined;});
         await page.getByRole('button',{name:'Generar informe',exact:true}).click();
         await page.getByRole('checkbox',{name:'Resumido',exact:true}).setChecked(mode==='summary');
         const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Descargar Excel',exact:true}).click()]);
@@ -94,8 +103,8 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
         const workbook=XLSX.read(Buffer.concat(chunks),{type:'buffer',cellFormula:true});
         assert.doesNotMatch(JSON.stringify(workbook),internalNotes,`${mode}: no compartir notas internas en Excel`);
         if(mode==='summary'){
-          assert.equal(workbook.SheetNames.length,3);
-          assert.doesNotMatch(workbook.SheetNames.join(' '),/Operaciones|históricos/);
+          assert.equal(workbook.SheetNames.length,5);
+          assert.doesNotMatch(JSON.stringify(workbook),/Establecimiento de prueba|Viáticos y eventos/);
         }else assert.ok(workbook.SheetNames.some(name=>name.includes('Operaciones')));
         const reconciliationSheet=workbook.Sheets[workbook.SheetNames.find(name=>name.includes('Cómo se obtiene'))];
         const rows=XLSX.utils.sheet_to_json(reconciliationSheet,{header:1});

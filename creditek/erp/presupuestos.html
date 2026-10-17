@@ -820,6 +820,12 @@ function renderTabla() {
   const empty = document.getElementById('emptyPresupuesto');
   const footer = document.getElementById('tfootPresupuesto');
   const resumen = document.getElementById('totalesMes');
+  const reportTable=document.getElementById('tablaPresupuesto');
+  reportTable.dataset.koraReportSource='presupuestos';
+  reportTable.koraReportData=()=>{
+    if(!presupuestoCache.length)throw new Error('Consulta un presupuesto antes de descargar el informe.');
+    return {filters:[['Negocio','Retail'],['Mes del presupuesto',document.getElementById('verMes').value],['Indicador',document.querySelector('.tabs button.activo')?.textContent.trim()||metricaActual],['Estado',propuestaActual?'Propuesta sin aprobar':'Presupuesto consultado']]};
+  };
   if (footer) footer.innerHTML = '';
   if (resumen) resumen.hidden = true;
 
@@ -839,6 +845,7 @@ function renderTabla() {
   }
   headHtml += '<th class="total-mes">Total mes</th>';
   thead.innerHTML = headHtml;
+  reportTable.dataset.koraReportSummaryColumns=`0,${dias+1}`;
 
   const porTienda = {};
   presupuestoCache.forEach(p => {
@@ -853,6 +860,7 @@ function renderTabla() {
   const totales = Object.fromEntries(indicadores.map(([campo]) => [campo, 0]));
   const totalesDia = Array(dias).fill(0);
   const formato = (valor, dinero) => dinero ? fmtCOP(valor) : valor.toLocaleString('es-CO');
+  const formatoReporte = (valor, dinero) => new Intl.NumberFormat('es-CO',dinero?{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}:{}).format(valor);
 
   tbody.innerHTML = tiendasCache.map(t => {
     let fila = `<td class="tienda-nombre">${escapeHtml(t.nombre)}</td>`;
@@ -868,10 +876,10 @@ function renderTabla() {
       const esManual = reg && reg.generado_desde === 'manual';
       const esDinero = metricaActual === 'meta_venta_total';
       const mostrar = esDinero ? fmtCOP(val).replace('$', '').replace(/\s/g, '') : val;
-      fila += `<td class="dia-celda ${esFinde ? 'finde' : ''} ${esManual ? 'manual' : ''}" data-tienda="${t.codigo}" data-fecha="${fechaStr}" data-nombre="${escapeHtml(t.nombre)}" title="${esManual ? 'Editado manualmente' : 'Generado automáticamente'}">${mostrar}</td>`;
+      fila += `<td class="dia-celda ${esFinde ? 'finde' : ''} ${esManual ? 'manual' : ''}" data-kora-report-value="${escapeHtml(formatoReporte(val,esDinero))}" data-tienda="${t.codigo}" data-fecha="${fechaStr}" data-nombre="${escapeHtml(t.nombre)}" title="${esManual ? 'Editado manualmente' : 'Generado automáticamente'}">${mostrar}</td>`;
     }
     const totalMostrar = metricaActual === 'meta_venta_total' ? fmtCOP(total) : total;
-    fila += `<td class="total-mes">${totalMostrar}</td>`;
+    fila += `<td class="total-mes" data-kora-report-value="${escapeHtml(formatoReporte(total,metricaActual === 'meta_venta_total'))}">${totalMostrar}</td>`;
     return `<tr>${fila}</tr>`;
   }).join('');
 
@@ -879,15 +887,15 @@ function renderTabla() {
     const mes = new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
     document.getElementById('totalesMesTitulo').textContent = `${propuestaActual ? 'Propuesta sin aprobar' : 'Presupuesto total'} · ${mes} · ${tiendasCache.length} tiendas`;
     document.getElementById('totalesMesValores').innerHTML = indicadores.map(([campo, etiqueta, dinero]) =>
-      `<div class="total-indicador"><span>${etiqueta}</span><strong data-total-metrica="${campo}">${formato(totales[campo], dinero)}</strong></div>`
+      `<div class="total-indicador"><span>${etiqueta}</span><strong data-kora-report-value="${escapeHtml(formatoReporte(totales[campo],dinero))}" data-total-metrica="${campo}">${formato(totales[campo], dinero)}</strong></div>`
     ).join('');
     resumen.hidden = false;
   }
   if (footer) {
     const dinero = indicadores.find(([campo]) => campo === metricaActual)?.[2];
     footer.innerHTML = '<tr><td class="tienda-nombre">Total todas las tiendas</td>' +
-      totalesDia.map(valor => `<td>${formato(valor, dinero)}</td>`).join('') +
-      `<td class="total-mes">${formato(totales[metricaActual], dinero)}</td></tr>`;
+      totalesDia.map(valor => `<td data-kora-report-value="${escapeHtml(formatoReporte(valor,dinero))}">${formato(valor, dinero)}</td>`).join('') +
+      `<td class="total-mes" data-kora-report-value="${escapeHtml(formatoReporte(totales[metricaActual],dinero))}">${formato(totales[metricaActual], dinero)}</td></tr>`;
   }
 
   tbody.querySelectorAll('.dia-celda').forEach(td => td.addEventListener('click', () => abrirModalCelda(td)));

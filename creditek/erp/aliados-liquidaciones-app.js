@@ -640,7 +640,7 @@
     const stores=[...new Map(rows.map(r=>[r.origen_codigo,r.establishment_name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'es'));
     $('operationControls').classList.remove('hidden');$('operationPaging').classList.remove('hidden');
     function render() {
-    const filtered=Review.filterOperations(rows,{search,store}).filter(r=>!focusOperationId||r.id===focusOperationId).filter(r=>{const c=contextById.get(r.id)||{};return !priceFilter||(priceFilter==='missing'?(c.pvp_guardado==null||c.pagamos_guardado==null):c.diferencia_pvp!=null&&Number(c.diferencia_pvp)!==0);}),pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
+    const filtered=Review.filterOperations(rows,{search,store}).filter(r=>!focusOperationId||r.id===focusOperationId).filter(r=>{const c=contextById.get(r.id)||{};return !priceFilter||(priceFilter==='missing'?(c.pvp_guardado==null||c.pagamos_guardado==null):c.diferencia_pvp!=null&&Number.isFinite(Number(c.diferencia_pvp))&&Number(c.diferencia_pvp)!==0);}),pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
     $('operationControls').innerHTML=`<label>Buscar referencia, cliente o IMEI<input class="control" id="operationSearch" value="${esc(search)}"></label><label>Tienda<select class="control" id="operationStore"><option value="">Todas las tiendas del lote</option>${stores.map(([code,name])=>`<option value="${esc(code)}" ${store===code?'selected':''}>${esc(name)}</option>`).join('')}</select></label><span>${filtered.length} de ${rows.length} operaciones${focusOperationId?' · Operación vinculada a la consulta':''}</span>${focusOperationId?'<button class="btn secondary" id="allOperations">Ver todo el lote</button>':''}`;
     $('operationControls').innerHTML+=`<label>Precios<select class="control" id="operationPriceFilter"><option value="">Todos</option><option value="missing">Falta PVP o PAGAMOS</option><option value="difference">Diferencia con PVP KORA</option></select></label>`;
     $('operationPriceFilter').value=priceFilter;$('operationPriceFilter').onchange=e=>{priceFilter=e.target.value;page=0;render();};
@@ -662,7 +662,8 @@
       const openIssues = incidents.filter((i) => i.operation_id === row.id);
       const priceIssue = openIssues.some((i) => ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo));
       const delta = c.diferencia_pvp;
-      const differenceTone = row.reconocida && pvp != null && c.pvp_guardado != null && delta != null && Number.isFinite(Number(delta)) && Number(delta) !== 0 ? (Number(delta) < 0 ? 'lower' : 'higher') : '';
+      const hasPriceDifference = delta != null && Number.isFinite(Number(delta)) && Number(delta) !== 0;
+      const differenceTone = row.reconocida && pvp != null && c.pvp_guardado != null && hasPriceDifference ? (Number(delta) < 0 ? 'lower' : 'higher') : '';
       const differenceNotice = differenceTone ? `<div class="pvp-difference-notice"><strong>Revisar diferencia PVP: ${esc(money(delta))}</strong><span>PVP de Krediya ${differenceTone === 'lower' ? 'menor' : 'mayor'} que PVP KORA. Seguimiento, no bloquea. Se respeta PAGAMOS.</span></div>` : '';
       const missingData = row.reconocida && (pendingExecutive || c.pvp_guardado == null || paid == null || pvp == null || (!calculated && automatic?.disponible === false));
       const blockingIssue = row.reconocida && openIssues.find((issue) => issue.bloquea_aprobacion === true && !['krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(issue.tipo));
@@ -670,7 +671,7 @@
       const note = !row.reconocida ? 'Excluida del cálculo. Consulta su novedad.'
         : paid == null || c.pvp_guardado == null ? 'Falta completar PVP o PAGAMOS de esta referencia.'
         : pvp == null ? 'Falta PVP recibido de Krediya para calcular.'
-        : delta != null && Number(delta) !== 0 ? `Diferencia PVP: ${money(delta)} · Seguimiento, no bloquea. Se respeta PAGAMOS.`
+        : hasPriceDifference ? `Diferencia PVP: ${money(delta)} · Seguimiento, no bloquea. Se respeta PAGAMOS.`
         : automatic?.disponible ? 'Utilidad automática. Se respeta PAGAMOS, incluso si hay pérdida.' : calculated ? 'Valores calculados de esta operación.' : automatic?.motivo || 'No se pudo obtener el desglose automático.';
       const priceAction = !selected.frozen_at && row.reconocida
         ? `<button class="btn secondary" data-open-tariff="${row.id}">${c.pvp_guardado==null||c.pagamos_guardado==null?'Crear datos · PVP y PAGAMOS':'Editar PVP y PAGAMOS'}</button>`

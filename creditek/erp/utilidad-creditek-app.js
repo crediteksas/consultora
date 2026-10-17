@@ -349,6 +349,13 @@
       Marca: marca.marca, Unidades: marca.unidades, Facturado: marca.facturado,
       'Costo real': marca.costo, 'Margen de remisión': marca.margen, 'Margen %': marca.margenPorcentaje,
     }))), 'Celulares por marca');
+    // Cada hoja tiene su cierre. Margen ponderado por facturado, no promedio de tasas.
+    for(const name of ['Detalle','Por tienda','Por referencia','Celulares por marca']){
+      const sheet=libro.Sheets[name],filas=XLSX.utils.sheet_to_json(sheet),sum=key=>filas.reduce((n,f)=>n+Math.round(Number(f[key]||0)*100),0)/100;
+      const facturado=sum('Facturado'),costo=sum('Costo real');
+      const totals=Object.fromEntries(Object.keys(filas[0]||{}).map(key=>[key,'']));
+      if(filas.length){totals[Object.keys(totals)[0]]='TOTAL';totals.Facturado=facturado;totals['Costo real']=costo;totals[name==='Por tienda'||name==='Por referencia'?'Margen de remisiones':'Margen de remisión']=facturado-costo;totals['Margen %']=facturado?(facturado-costo)/facturado:'No aplica';if(name==='Detalle')totals.Cantidad=sum('Cantidad');if(name==='Celulares por marca')totals.Unidades=sum('Unidades');XLSX.utils.sheet_add_json(sheet,[totals],{skipHeader:true,origin:-1});}
+    }
     XLSX.writeFile(libro, `utilidad-creditek_${base.desde}_${base.hasta}.xlsx`);
   }
 

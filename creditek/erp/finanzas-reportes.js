@@ -14,14 +14,18 @@
       })];
   }
   function workbook(rows, domain, XLSX) {
-    const sheet = XLSX.utils.aoa_to_sheet(table(rows, domain));
+    const data=table(rows,domain),total=rows.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)/100;
+    const footer=Array(16).fill('');footer[0]='TOTAL MOVIMIENTOS MOSTRADOS';footer[12]=total;
+    const sheet = XLSX.utils.aoa_to_sheet([...data,footer]);
     sheet['!cols'] = [12,12,24,20,16,32,28,20,22,18,24,46,18,20,28,40].map(wch => ({wch}));
-    sheet['!autofilter'] = {ref: sheet['!ref']};
-    for (let r=1;r<=rows.length;r++) {
+    sheet['!autofilter'] = {ref: `A1:P${rows.length+1}`};
+    for (let r=1;r<=rows.length+1;r++) {
       for (const c of [7,10,15]) { const cell=sheet[XLSX.utils.encode_cell({r,c})]; if(cell) {cell.t='s';cell.z='@';delete cell.f;} }
       const amount=sheet[XLSX.utils.encode_cell({r,c:12})]; if(amount) amount.z='"$"#,##0.00';
     }
-    const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Movimientos');return book;
+    const summary=[['KORA · Creditek S.A.S.'],['Gastos y retiros · movimientos consultados'],['Registros',rows.length],['Total movimientos mostrados (COP)',total],[],['Estado','Registros','Importe COP']];
+    for(const status of [...new Set(rows.map(row=>row.status))]){const selected=rows.filter(row=>row.status===status);summary.push([domain.STATUS_LABELS[status]||status,selected.length,selected.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)/100]);}
+    const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(summary),'Resumen');XLSX.utils.book_append_sheet(book,sheet,'Movimientos');return book;
   }
   function approvedRows(rows) {
     // Store-funded Retail withdrawals have their own instructions, not a second central giro.
@@ -40,11 +44,11 @@
     root.document.getElementById('financialPaymentReport')?.remove();
     if(!root.document.getElementById('financialPaymentReportStyle')) {
       const style=root.document.createElement('style');style.id='financialPaymentReportStyle';
-      style.textContent='#financialPaymentReport{width:95vw;max-width:1200px;max-height:90vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;color:#0b1e3d;font:14px Arial;background:white}#financialPaymentReport::backdrop{background:#0006}#financialPaymentReport table{width:100%;border-collapse:collapse}#financialPaymentReport td,#financialPaymentReport th{padding:10px;border:1px solid #cbd5e1;text-align:left;overflow-wrap:anywhere}#financialPaymentReport small{font-size:9px}#financialPaymentReport .report-tools{display:flex;gap:12px;margin-bottom:18px}@media print{body>*:not(#financialPaymentReport){display:none!important}#financialPaymentReport{display:block!important;position:static;width:100%;max-width:none;max-height:none;overflow:visible;border:0;padding:0;font-size:10px}#financialPaymentReport .report-tools{display:none}#financialPaymentReport tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}}';
+      style.textContent='#financialPaymentReport{width:95vw;max-width:900px;max-height:90vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;color:#0b1e3d;font:14px Arial;background:white}#financialPaymentReport::backdrop{background:#0006}#financialPaymentReport table{width:100%;border-collapse:collapse;table-layout:fixed}#financialPaymentReport td,#financialPaymentReport th{padding:6px;border:1px solid #cbd5e1;text-align:left;overflow-wrap:anywhere}#financialPaymentReport small{font-size:9px}#financialPaymentReport .report-tools{display:flex;gap:12px;margin-bottom:18px}@media print{body>*:not(#financialPaymentReport){display:none!important}#financialPaymentReport{display:block!important;position:static;width:100%;max-width:none;max-height:none;overflow:visible;border:0;padding:0;font-size:10px}#financialPaymentReport .report-tools{display:none}#financialPaymentReport tr{break-inside:avoid}@page{size:A4 portrait;margin:12mm}}';
       root.document.head.appendChild(style);
     }
     const dialog=root.document.createElement('dialog');dialog.id='financialPaymentReport';dialog.setAttribute('aria-label','Orden de pagos autorizados');
-    dialog.innerHTML=`<div class="report-tools"><button type="button" class="btn primary" data-print>Imprimir / Guardar PDF</button><button type="button" class="btn" data-close>Cerrar</button></div><img src="/creditek/shared/branding/creditek-logo.png" alt="Creditek" width="150">${body}`;
+    dialog.innerHTML=`<div class="report-tools"><button type="button" class="btn primary" data-print>Imprimir / Guardar PDF</button><button type="button" class="btn" data-close>Cerrar</button></div><header><img src="/creditek/shared/branding/creditek-logo.png" alt="Creditek" width="150"><strong style="float:right;color:#008a96">KORA</strong></header>${body}`;
     root.document.body.appendChild(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());dialog.querySelector('[data-print]').onclick=()=>root.print();dialog.showModal();
   }
   root.KoraFinancialReports=Object.freeze({destination,table,workbook,approvedRows,reportBody,showOrder});

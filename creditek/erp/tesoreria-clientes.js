@@ -43,6 +43,7 @@
       }
     }
     async function refresh() {
+      loaded=false;
       const result = await Promise.all([
         all('origenes','codigo,nombre,tipo,ciudad,activo','codigo'),
         all('liquidation_beneficiaries','id,tipo,nombre,identificacion,origen_codigo,activo','id'),
@@ -61,6 +62,14 @@
     }
     function renderList() {
       const filtered = filterRows(rows,query,status);
+      $('#clientList').dataset.koraReportSource='clientes';
+      $('#clientList').koraReportData=()=>{
+        if(!loaded)throw new Error('Actualiza el directorio antes de exportar; la consulta no ha terminado.');
+        const allFiltered=filterRows(rows,query,status);
+        return {filters:[['Búsqueda de clientes',query||'Todos'],['Estado de los datos',labels[status]||'Todos'],['Cobertura del directorio','Todos los comercios de la consulta, sin limitar a la página visible']],
+          metrics:[['Comercios consultados',String(allFiltered.length)],['Cuentas verificadas',String(allFiltered.filter(r=>r.status==='completo').length)],['Datos pendientes de completar',String(allFiltered.filter(r=>r.status!=='completo').length)]],
+          tables:[{heading:'Directorio y cuentas',kind:'detail',headers:['Comercio','Ciudad','Titular del pago','Identificación','Cuenta bancaria','Estado de los datos'],rows:allFiltered.map(r=>[r.origin.nombre,r.origin.ciudad||'Sin ciudad registrada',r.beneficiary?.nombre||'Por relacionar',r.beneficiary?.identificacion||'Sin identificación',masked(r.account),labels[r.status]])}]};
+      };
       page = Math.min(page, Math.max(0, Math.ceil(filtered.length/10)-1));
       const visible = filtered.slice(page*10,page*10+10);
       $('#clientCount').textContent = `${filtered.length} comercios · ${rows.filter(r=>r.status !== 'completo').length} con datos por completar en el directorio`;

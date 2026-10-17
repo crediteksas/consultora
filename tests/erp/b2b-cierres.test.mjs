@@ -72,7 +72,7 @@ test('Consolidado conserva nombres, ciudad, proveedor, totales y costo faltante'
  assert.deepEqual(C.totals(items),{pedidos:2,unidades:4,costo:1500000,retail:1580000});assert.equal(C.groups(items,'ciudad').length,1);assert.equal(C.groups(items,'proveedor').length,2);
  assert.equal(C.totals([{...items[0],costo:null}]).costo,null);assert.match(C.grouped(items,'tienda'),/Chinucell/);assert.equal(C.exportRows(items).length,4);
  const report=C.providerReportTables(items),mps=report.find(table=>table.heading==='Proveedor MPS'),distribution=report.find(table=>table.heading==='Distribución interna');assert.equal(mps.rows.length,1);assert.deepEqual(mps.rows[0].slice(0,3),['Chinú','Equipo X',3]);assert.equal(mps.rows[0][4],1200000);assert.equal(distribution.rows.length,3);assert.ok(distribution.rows.some(row=>row[2]==='Creditel Chinú'));
- assert.equal(C.providerExportRows(items).length,3);assert.equal(C.summarizeReferences([{...items[0],costo:null}])[0].total,null);
+ const csv=C.providerExportRows(items);assert.equal(csv.length,6);assert.deepEqual(csv.at(-1),['TOTAL GENERAL','','',4,'',1500000]);assert.equal(csv.find(row=>row[0]==='TOTAL MPS')[5],1200000);assert.equal(C.summarizeReferences([{...items[0],costo:null}])[0].total,null);
  assert.equal(C.brand('Redmi 17 4/128'),'XIAOMI');assert.equal(C.brand('Moto G06'),'MOTOROLA');assert.equal(C.brand('Cable sin marca'),'OTRAS');
 });
 test('Correo consolidado agrupa proveedor y ciudad; no confunde cierre con entrega',async()=>{

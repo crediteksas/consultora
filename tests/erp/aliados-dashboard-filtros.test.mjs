@@ -10,15 +10,17 @@ test('el dashboard permite filtrar tiendas propias y aliados con catálogos real
   for (const id of ['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity','dashboardClear']) assert.match(html,new RegExp(`id="${id}"`));
   assert.match(html,/Propios y aliados/);
   assert.match(app,/function populateDashboardFilters\(\)/);
-  assert.match(app,/addEventListener\('change',renderDashboard\)/);
-  assert.match(app,/sb\.from\('origenes'\)/);
+  assert.match(app,/addEventListener\(["']change["'],\s*renderDashboard\)/);
+  assert.match(app,/allRows\(["']origenes["'],\s*["']codigo,nombre,tipo,ciudad,activo,ejecutivo_id["'],\s*["']codigo["']\)/);
 });
 
 test('usa las columnas productivas y muestra datos cargados de ambos modelos', async () => {
   const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
   assert.match(app,/o\.tipo_establecimiento/);
   assert.match(app,/o\.pago_neto_beneficiario/);
-  assert.match(app,/businessType\(o\)==='propia'/);
-  assert.match(app,/businessType\(o\)==='aliado'/);
-  assert.match(app,/Operación nueva: \$\{ops\.length\} de \$\{db\.operations\.length\}/);
+  assert.match(app,/businessType\(o\)\s*===\s*["']propia["']/);
+  assert.match(app,/businessType\(o\)\s*===\s*["']aliado["']/);
+  assert.match(app,/créditos por fecha de venta/);
+  assert.match(app,/anulaciones por fecha de ajuste/);
+  assert.match(app,/dashboardOperations\(\)\.filter/);
 });

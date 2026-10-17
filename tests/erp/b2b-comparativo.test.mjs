@@ -21,7 +21,9 @@ test('Excel de listas guardadas cruza referencias en filas y solo proveedores co
  assert.deepEqual(matrix.headers,['Referencia','Código','Costo · Proveedor A','Costo · Proveedor B','Menor costo','Proveedor menor costo','Precio retail vigente','Ahorro vs retail','Estado']);
  assert.equal(matrix.rows.length,1);assert.equal(matrix.rows[0][0],'Equipo 4/128');assert.equal(matrix.rows[0][2],400000);assert.equal(matrix.rows[0][3],420000);
  assert.ok(!matrix.headers.some(header=>header.includes('Sin lista')));assert.equal(matrix.rows[0][4],400000);assert.equal(matrix.rows[0][5],'Proveedor A');
- assert.equal(matrix.rows[0][7],20000);assert.deepEqual(matrix.sumColumns,[2,3,4,6,7]);
+ assert.equal(matrix.rows[0][7],20000);assert.deepEqual(matrix.sumColumns,[]);
+ assert.match(matrix.totalRows[0][0],/Total referencias comparadas: 1/);
+ assert.match(C.csv(report),/TOTAL REFERENCIAS PUBLICADAS/);assert.match(C.csv(report),/TOTAL FUENTES/);
 });
 test('El Excel comparativo siempre declara alcance global y elimina la tienda heredada',()=>{
  const base={title:'Pedidos',scope:{label:'Sonivox',code:'CK-07'},filters:[['Alcance del informe','Sonivox · CK-07'],['Tienda','Sonivox'],['Estado','Activas']]};

@@ -9,6 +9,15 @@
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'});
   let perfil=null,cuenta=null,proveedores=[],facturas=[],solicitudes=[],aplicaciones=[],busy=false,requestId=null;
+  let reporteListo=false;
+  function reportData(){
+    if(!reporteListo)throw new Error('Actualiza Banco antes de exportar; la consulta no ha terminado.');
+    const exact=n=>n==null?'Sin saldo registrado':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n));
+    const estados=['pendiente','autorizado','pagado','rechazado'];
+    return {filters:[['Cuenta','Banco Creditek · •••• 4006'],['Corte del saldo',cuenta?.fecha_corte||'Sin apertura registrada'],['Cobertura de pagos','Hasta 200 solicitudes más recientes; los importes son de esta consulta']],
+      metrics:[['Saldo de control de Banco',exact(cuenta?.saldo_actual)],...estados.map(estado=>['Importe '+estado+' · solicitudes consultadas',exact(solicitudes.filter(s=>s.estado===estado).reduce((n,s)=>n+Number(s.monto),0))])],
+      tables:estados.map(estado=>({heading:'Pagos a proveedores · '+estado,kind:'detail',headers:['Fecha solicitud','Proveedor','Concepto','Estado','Valor COP','Fecha giro','Referencia bancaria'],rows:solicitudes.filter(s=>s.estado===estado).map(s=>[fecha(s.solicitado_at),nombre(s.proveedor_id),s.concepto,s.estado,exact(s.monto),s.pagado_at?fecha(s.pagado_at):'—',s.referencia_bancaria||'—']),sumColumns:[4],currencyColumns:[4]}))};
+  }
   function nombre(id){return proveedores.find(p=>p.id===id)?.nombre||id}
   function deuda(id){return facturas.filter(f=>f.proveedor_id===id).reduce((sum,f)=>sum+Number(f.saldo||0),0)}
   function fecha(value){return value?new Date(value).toLocaleString('es-CO',{timeZone:'America/Bogota'}):'—'}
@@ -72,6 +81,9 @@
     document.querySelectorAll('.pagoForm').forEach(f=>f.onsubmit=registrarGiro);
   }
   async function cargar(){
+    reporteListo=false;
+    $('cuentaEstado').dataset.koraReportSource='banco';
+    $('cuentaEstado').koraReportData=reportData;
     const [c,p,s,a]=await Promise.all([
       sb.from('banco_creditek_cuentas').select('*').eq('numero_cuenta','87600004006').maybeSingle(),
       sb.from('proveedores').select('id,nombre').eq('activo',true).order('nombre'),
@@ -82,7 +94,7 @@
     cuenta=c.data;proveedores=p.data||[];solicitudes=s.data||[];aplicaciones=a.data||[];
     facturas=await obtenerFacturas();
     $('proveedor').innerHTML='<option value="">Selecciona</option>'+proveedores.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
-    renderCuenta();renderSolicitudes();validarSolicitud();
+    renderCuenta();renderSolicitudes();validarSolicitud();reporteListo=true;
   }
   async function solicitar(){
     if(busy||perfil.id!==MAITE)return;

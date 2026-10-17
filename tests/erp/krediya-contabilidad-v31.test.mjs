@@ -22,5 +22,5 @@ test('la fórmula contable evita descontar dos veces el gasto operativo', async 
   assert.match(sql, /gasto_operativo_referencia_historico=20000/);
   assert.match(sql, /utilidad_final=\(utilidad_archivo-valor_financiado\*0\.004\)\*0\.72/);
   assert.match(app, /incluida en esa provisión, sin duplicar el descuento/);
-  assert.match(app, /Resultado histórico final/);
+  assert.match(app, /"Resultado final", "Resultado cerrado", "Disponible"/);
 });

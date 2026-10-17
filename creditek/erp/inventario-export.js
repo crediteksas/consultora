@@ -73,8 +73,9 @@
   }
 
   function numero(valor) {
+    if(valor===null||valor===undefined||valor==='')return null;
     const convertido = Number(valor);
-    return Number.isFinite(convertido) ? convertido : 0;
+    return Number.isFinite(convertido) ? convertido : null;
   }
 
   function filasCelulares(unidades, esCentral) {
@@ -90,8 +91,8 @@
         Referencia: textoSeguro(unidad.productos?.nombre),
         Cantidad: 1,
         IMEI: textoSeguro(unidad.imei),
-        [etiquetaUnitario]: valorUnitario,
-        [etiquetaTotal]: valorUnitario,
+        [etiquetaUnitario]: valorUnitario ?? 'Sin costo registrado',
+        [etiquetaTotal]: valorUnitario ?? 'Sin costo registrado',
       };
     });
   }
@@ -108,9 +109,9 @@
         'Código producto': textoSeguro(registro.productos?.codigo),
         Categoría: textoSeguro(registro.productos?.categoria || 'Accesorios'),
         'Referencia o producto': textoSeguro(registro.productos?.nombre),
-        Cantidad: cantidad,
-        [etiquetaUnitario]: valorUnitario,
-        [etiquetaTotal]: cantidad * valorUnitario,
+        Cantidad: cantidad ?? 'Sin cantidad registrada',
+        [etiquetaUnitario]: valorUnitario ?? 'Sin costo registrado',
+        [etiquetaTotal]: cantidad===null||valorUnitario===null?'Sin valoración completa':cantidad * valorUnitario,
       };
     });
   }
@@ -122,8 +123,14 @@
     const filas = tipo === 'celulares'
       ? filasCelulares(registros, esCentral)
       : filasAccesorios(registros, esCentral);
-    const hoja = XLSX.utils.json_to_sheet(filas);
-    hoja['!autofilter'] = { ref: hoja['!ref'] || 'A1:F1' };
+    const valorKey=esCentral?'Valor total al costo interno':'Valor total al costo';
+    const faltantes=filas.filter(fila=>typeof fila[valorKey]!=='number').length;
+    const cantidad=filas.reduce((total,fila)=>total+(typeof fila.Cantidad==='number'?fila.Cantidad:0),0);
+    const subtotal=filas.reduce((total,fila)=>total+(typeof fila[valorKey]==='number'?Math.round(fila[valorKey]*100):0),0)/100;
+    const total=Object.fromEntries(Object.keys(filas[0]||{Tienda:'',Cantidad:0,[valorKey]:0}).map(key=>[key,'']));
+    total.Tienda=faltantes?'SUBTOTAL CON COSTO REGISTRADO':'TOTAL INVENTARIO';total.Cantidad=cantidad;total[valorKey]=subtotal;
+    const hoja = XLSX.utils.json_to_sheet([...filas,total]);
+    hoja['!autofilter'] = { ref: filas.length?`${tipo==='celulares'?'A1:I':'A1:H'}${filas.length+1}`:'A1:A1' };
     hoja['!cols'] = tipo === 'celulares'
       ? [
         { wch: 26 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 32 },
@@ -134,7 +141,7 @@
         { wch: 32 }, { wch: 12 }, { wch: 22 }, { wch: 18 },
       ];
     const columnasMoneda = tipo === 'celulares' ? ['H', 'I'] : ['G', 'H'];
-    for (let fila = 2; fila <= filas.length + 1; fila += 1) {
+    for (let fila = 2; fila <= filas.length + 2; fila += 1) {
       for (const columna of columnasMoneda) {
         const celda = hoja[`${columna}${fila}`];
         if (celda) celda.z = '$#,##0.00';
@@ -142,10 +149,14 @@
     }
 
     const resumen = XLSX.utils.aoa_to_sheet([
-      ['Inventario KORA'],
+      ['Inventario KORA · Creditek S.A.S.'],
       ['Fecha y hora de corte', corte],
       ['Tipo', tipo === 'celulares' ? 'Celulares' : 'Accesorios'],
       ['Registros', filas.length],
+      ['Unidades con cantidad registrada',cantidad],
+      [faltantes?'Subtotal valorado (COP)':'Valor total inventario (COP)',subtotal],
+      ['Referencias / equipos sin valoración completa',faltantes],
+      ['Estado de valoración',faltantes?'Incompleta: faltan costos o cantidades; no son cero':'Completa'],
     ]);
     resumen['!cols'] = [{ wch: 24 }, { wch: 24 }];
 

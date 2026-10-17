@@ -9,14 +9,14 @@ const [html, domain] = await Promise.all([
 
 test('la lista hace visibles venta, línea e identificadores sin alterar la operación', () => {
   assert.match(html, /<th>Venta #<\/th><th>Línea<\/th>/);
-  assert.match(html, /venta_items\(id, cantidad, precio_venta/);
+  assert.match(html, /venta_items:venta_items_lectura\(id, cantidad, precio_venta/);
   assert.match(html, /data-line-id=/);
   assert.match(html, /v\.consecutivo/);
   assert.match(domain, /id: item\.id \|\| null/);
 });
 
 test('el detalle cruza la venta con los movimientos reales de inventario', () => {
-  assert.match(html, /from\('movimientos'\)/);
+  assert.match(html, /from\('movimientos_lectura'\)/);
   assert.match(html, /eq\('referencia_tipo', 'venta'\)/);
   assert.match(html, /eq\('referencia_id', ventaId\)/);
   assert.match(html, /Trazabilidad KORA/);

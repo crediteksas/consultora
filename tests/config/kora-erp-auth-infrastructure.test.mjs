@@ -51,7 +51,17 @@ test('el pipeline genera, construye y valida el entorno antes de subir preview',
   assert.match(pkg.scripts['build:environment'], /config:generate[\s\S]*npm run build:public[\s\S]*config:verify-artifact/);
   assert.equal(pkg.scripts.build, 'npm run build:environment');
   assert.match(pkg.scripts['preview:upload'], /^npm run build:environment && wrangler versions upload$/);
-  assert.match(pkg.scripts.deploy, /^npm run build:environment && wrangler deploy$/);
+  assert.equal(pkg.scripts.deploy, 'node scripts/deny-direct-kora-deploy.mjs');
+  assert.equal(pkg.scripts['deploy:kora:production'], 'node scripts/deploy-kora-production.mjs');
+  const guard = await readFile(path.join(root, 'scripts/deny-direct-kora-deploy.mjs'), 'utf8');
+  const pipeline = await readFile(path.join(root, 'scripts/deploy-kora-production.mjs'), 'utf8');
+  assert.match(guard, /process\.exit\(1\)/);
+  assert.match(pipeline, /El worktree debe estar limpio/);
+  assert.match(pipeline, /KORA_PRODUCTION_COMMIT no es explícito/);
+  assert.match(pipeline, /run\('npm', \['run', 'build'\]\)/);
+  assert.match(pipeline, /verifyKoraProductionArtifact\(\{ commit \}\)/);
+  assert.match(pipeline, /wrangler\.kora\.jsonc/);
+  assert.match(pipeline, /promoteWithRollback/);
 });
 
 test('los health checks usan endpoints operativos y nunca el esquema OpenAPI raíz', async () => {

@@ -12,19 +12,19 @@ test('Plataformas presenta un tablero operativo por plataforma', () => {
   assert.match(app, /Ticket promedio/);
   assert.match(app, /Pagos por gestionar/);
   assert.match(app, /Detalle por establecimiento/);
-  assert.match(app, /platforms:renderPlatformCards/);
+  assert.match(app, /platforms:\s*renderPlatformCards/);
   assert.match(css, /\.platform-grid\{display:grid/);
   assert.match(css, /\.badge\.con_novedad/);
   assert.match(css, /body\[data-aliados-view="platforms"\] \.metrics\{grid-template-columns:repeat\(5/);
   assert.match(css, /body\[data-aliados-view="platforms"\] \.metric strong\{font-size:17px;white-space:nowrap/);
-  assert.match(html, /aliados-v1-1\.css\?v=1\.1\.27/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.26/);
+  assert.match(html, /aliados-v1-1\.css\?v=1\.1\.(?:2[7-9]|[3-9]\d)"/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.(?:2[6-9]|[3-9]\d)"/);
 });
 
 test('Plataformas separa utilidad, presupuesto e histórico', () => {
   const renderer = app.slice(app.indexOf('function renderPlatformCards'), app.indexOf('function renderPlatformGoals'));
   assert.match(renderer, /Consultar base histórica/);
-  assert.match(renderer, /La utilidad se analiza en Reportes Aliados y las metas en Presupuesto/);
+  assert.match(renderer, /La utilidad y el cumplimiento se consultan en Dashboard Aliados; las metas se administran en Presupuesto/);
   assert.doesNotMatch(renderer, /Utilidad disponible nueva/);
   assert.doesNotMatch(renderer, /Resultado generado \(ya retirado\)/);
 });

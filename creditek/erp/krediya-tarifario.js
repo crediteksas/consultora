@@ -22,8 +22,24 @@
       ...rows.map(r=>[r.codigo || '',r.referencia,numeric(r.precio_venta),numeric(r.pagamos),r.vigente_desde,r.vigente_hasta || ''])];
   }
   function diferenciasRows(rows) {
-    return [['Referencia','Comercio','IMEI','Fecha venta','PVP configurado','PVP Krediya','Diferencia PVP','PAGAMOS pactado','Inicial','Giro al aliado','Bonos','Utilidad neta','Impacto neto','Responsables','Estado','Última gestión','Soporte','Gasto financiero','Provisión'],
+    const matrix=[['Referencia','Comercio','IMEI','Fecha venta','PVP configurado','PVP Krediya','Diferencia PVP','PAGAMOS pactado','Inicial','Giro al aliado','Bonos','Utilidad neta','Impacto neto','Responsables','Estado','Última gestión','Soporte','Gasto financiero','Provisión'],
       ...rows.map(r=>{const c=r.contexto||{},g=last(r);return [c.referencia,c.tienda,c.imei,c.fecha,numeric(c.pvp_guardado),numeric(c.pvp_liquidado),numeric(c.impacto_bruto),numeric(c.pagamos),numeric(c.inicial),giro(c),c.bono_ejecutivo_pendiente?'Parcial: falta ejecutivo':numeric(c.bonos),c.bono_ejecutivo_pendiente?null:numeric(c.utilidad_neta),numeric(c.impacto_neto),'Gestión y Gerencia',r.preliminar?'Preliminar · sin liquidar':r.estado,g?.comentario||'',g?.soporte||'',numeric(c.gasto_financiero),c.bono_ejecutivo_pendiente?null:numeric(c.provision)];})];
+    // Una fila representa un crédito, no una tarifa. No mezclar simulaciones
+    // preliminares con registros no preliminares, ni totalizar precios unitarios.
+    for(const preliminary of [false,true]){
+      const group=rows.flatMap((row,index)=>Boolean(row.preliminar)===preliminary?[matrix[index+1]]:[]);
+      if(!group.length)continue;
+      const total=matrix[0].map(()=> '');
+      total[0]=`SUBTOTAL ${preliminary?'PRELIMINAR':'NO PRELIMINAR'} · ${group.length} registros`;
+      total[14]='No acredita pago ni ingreso bancario';
+      for(const column of [6,7,8,9,10,11,12,17,18]){
+        const values=group.map(row=>numeric(row[column])),missing=values.filter(v=>v===null).length;
+        const known=values.reduce((sum,value)=>sum+(value===null?0:Math.round(value*100)),0)/100;
+        total[column]=missing?`Pendiente: ${missing} sin dato · subtotal conocido COP ${known.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}`:known;
+      }
+      matrix.push(total);
+    }
+    return matrix;
   }
   function last(row) {return [...(row.krediya_diferencias_gestiones||[])].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];}
   function pvpSummary(contexts) {
@@ -46,15 +62,18 @@
     const s=pvpSummary(contexts);
     return `<section aria-label="Resumen PVP"><h3>Favor revisar estos PVP</h3><p>${s.operations} créditos · ${s.affected} con diferencias${s.missing?` · ${s.missing} sin datos para comparar`:''}.</p><p>PAGAMOS se respeta. Este informe no detiene la liquidación ni autoriza pagos.</p><div style="overflow-x:auto"><table><thead><tr><th>Equipo</th><th>Créditos</th><th>PVP KORA</th><th>PVP archivo</th><th>Diferencia por crédito</th><th>Diferencia total</th></tr></thead><tbody>${s.groups.map(g=>`<tr><td>${esc(g.reference)}</td><td>${g.count}</td><td>${amount(g.saved)}</td><td>${amount(g.received)}</td><td>${amount(g.delta)}</td><td>${amount(g.total)}</td></tr>`).join('')}</tbody></table></div><p>${s.affected?`Diferencia acumulada: ${amount(s.total)}.`:'No se encontraron diferencias entre los PVP comparables.'} Diferencia = PVP del archivo − PVP KORA vigente en la fecha de venta. No es una pérdida bancaria ni una modificación de PAGAMOS.</p>${s.missing?`<details><summary>Ver ${s.missing} créditos sin comparación completa</summary>${contexts.filter(c=>numeric(c.pvp_guardado)==null||numeric(c.pvp_recibido)==null).map(c=>`<p>${esc(c.referencia||c.modelo)} · Crédito ${esc(c.credito||c.operation_id)} · ${esc(c.tienda)} · PVP KORA: ${numeric(c.pvp_guardado)==null?'No disponible':amount(c.pvp_guardado)} · PVP archivo: ${numeric(c.pvp_recibido)==null?'No disponible':amount(c.pvp_recibido)}</p>`).join('')}</details>`:''}</section>`;
   }
-  function download(rows,name,sheetName) {
+  function download(rows,name,sheetName,context=[]) {
     const book=root.XLSX.utils.book_new(),sheet=root.XLSX.utils.aoa_to_sheet(rows);
     sheet['!cols']=rows[0].map((h,i)=>({wch:i===1?36:Math.min(26,Math.max(18,h.length+2))}));
-    sheet['!autofilter']={ref:root.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}})};
+    const firstSubtotal=rows.findIndex(row=>String(row[0]).startsWith('SUBTOTAL '));
+    sheet['!autofilter']={ref:root.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:firstSubtotal<0?rows.length-1:firstSubtotal-1,c:rows[0].length-1}})};
     // Text stays text; no user-supplied Excel formulas are created.
     for(let r=1;r<rows.length;r++) for(let c=0;c<rows[0].length;c++) {
       const cell=sheet[root.XLSX.utils.encode_cell({r,c})]; if(cell?.t==='n') cell.z='"$"#,##0.00';
     }
-    root.XLSX.utils.book_append_sheet(book,sheet,sheetName);root.XLSX.writeFile(book,name);
+    root.XLSX.utils.book_append_sheet(book,sheet,sheetName);
+    if(context.length){const metadata=root.XLSX.utils.aoa_to_sheet([['Parámetro','Valor'],...context]);metadata['!cols']=[{wch:32},{wch:80}];root.XLSX.utils.book_append_sheet(book,metadata,'Contexto');}
+    root.XLSX.writeFile(book,name);
   }
   function create({sb,money}) {
     let modal;
@@ -171,7 +190,7 @@
       container.querySelector('[data-search]').oninput=e=>{search=e.target.value;page=0;render();const input=container.querySelector('[data-search]');input.focus();input.setSelectionRange(search.length,search.length);};
       if(container.querySelector('[data-all]'))container.querySelector('[data-all]').onclick=()=>{focusOperationId=null;page=0;render();};
       for(const [key,delta] of [['prev',-1],['next',1]])container.querySelector(`[data-${key}]`).onclick=()=>{page+=delta;render();container.scrollIntoView({block:'start'});};
-      container.querySelector('[data-export]').onclick=()=>{try{download(diferenciasRows(rows),`${preliminary?'Preliminar-':''}Diferencias-Krediya-${batch.fecha_corte}.xlsx`,'Gestión y Gerencia');}catch{container.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
+      container.querySelector('[data-export]').onclick=()=>{try{download(diferenciasRows(filtered),`${preliminary?'Preliminar-':''}Diferencias-Krediya-${batch.fecha_corte}.xlsx`,'Gestión y Gerencia',[['Corte del lote',batch.fecha_corte],['Lote',batch.id],['Búsqueda aplicada',search||'Todas'],['Operación seleccionada',focusOperationId||'Todas'],['Cobertura','Todas las páginas de los resultados filtrados'],['Registros exportados',filtered.length],['Fase',preliminary?'Preliminar · sin liquidar':'No preliminar'],['Advertencia','Importes registrados de la consulta. No acredita pago ni ingreso bancario.']]);}catch{container.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
       container.querySelectorAll('[data-followup]').forEach(f=>{
         f.elements.estado.onchange=()=>{f.elements.soporte.required=f.elements.estado.value==='resuelta';};
         f.onsubmit=async e=>{e.preventDefault();const button=f.querySelector('[type=submit]');button.disabled=true;

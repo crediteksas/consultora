@@ -88,7 +88,7 @@ test('el build invalida la caché del shell y la marca corregidos', async () => 
     read('scripts/build-public.mjs'),
   ]);
 
-  assert.match(source, /kora-shell\.css\?v=2\.0\.4/);
-  assert.match(build, /KORA_SHELL_ASSET_VERSION = '2\.0\.15'/);
+  assert.match(source, /kora-shell\.css\?v=2\.0\.6/);
+  assert.match(build, /KORA_SHELL_ASSET_VERSION = '2\.0\.34'/);
   assert.match(build, /KORA_PRODUCT_ASSET_VERSION = '2\.0\.4'/);
 });

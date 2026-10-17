@@ -4,6 +4,38 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import CreditekReversiones from '../../creditek/erp/aliados-reversiones-domain.js';
 const app=fs.readFileSync('creditek/erp/aliados-v1-1-app.js','utf8');
+const datePickerContext={window:{},document:{readyState:'loading',addEventListener(){}}};
+vm.runInNewContext(fs.readFileSync('creditek/erp/kora-date-picker.js','utf8'),datePickerContext);
+const datePicker=datePickerContext.window.KoraDatePicker;
+
+test('selector KORA: dd/mm/aaaa y valor ISO conservan exactamente el mismo día',()=>{
+ for(const [visible,stored] of [['07/10/2026','2026-10-07'],['29/02/2024','2024-02-29'],['31/12/2026','2026-12-31']]){
+  assert.equal(datePicker.parseDate(visible),stored);
+  assert.equal(datePicker.parseDate(stored),stored);
+  assert.equal(datePicker.formatDate(stored),visible);
+ }
+ assert.equal(datePicker.parseDate(''),'');
+ for(const value of ['29/02/2026','31/09/2026','01/13/2026','00/10/2026','2026-02-30','07/10/26','<script>'])assert.equal(datePicker.parseDate(value),null);
+});
+test('selector KORA: navegar por mes y año conserva límites y febrero bisiesto',()=>{
+ assert.equal(datePicker.moveMonth('2026-01-31',1),'2026-02-28');
+ assert.equal(datePicker.moveMonth('2024-02-29',12),'2025-02-28');
+ assert.equal(datePicker.moveMonth('2026-12-31',1),'2027-01-31');
+ assert.equal(datePicker.moveMonth('2026-03-31',-1),'2026-02-28');
+});
+test('selector KORA: Hoy sigue Bogotá incluso cuando UTC ya cambió de fecha',()=>{
+ assert.equal(datePicker.today(new Date('2026-10-07T01:30:00Z')),'2026-10-06');
+ assert.equal(datePicker.today(new Date('2026-10-07T06:00:00Z')),'2026-10-07');
+});
+test('selector uniforme limitado al Dashboard mantiene originales ISO y sincroniza filtros',()=>{
+ const html=fs.readFileSync('creditek/erp/aliados-dashboard.html','utf8');
+ assert.equal((html.match(/data-kora-date-picker/g)||[]).length,2);
+ assert.match(html,/kora-date-picker\.js\?v=1\.0\.0/);
+ assert.match(html,/kora-date-picker\.css\?v=1\.0\.0/);
+ assert.match(app,/globalThis\.KoraDatePicker\?\.sync\(\)/);
+ assert.match(html,/id="dashboardFrom"[^>]*type="date"/);
+ assert.match(html,/id="dashboardTo"[^>]*type="date"/);
+});
 const source=app.slice(app.indexOf('  function dashboardOperations()'),app.indexOf('  function populateDashboardFilters()'));
 function fixture(){
  const nodes={}; for(const id of ['dashboardFrom','dashboardTo','dashboardBusiness','dashboardPlatform','dashboardExecutive','dashboardEstablishment','dashboardCity','dashboardFilterSummary','content'])nodes['#'+id]={value:''};
@@ -106,14 +138,14 @@ test('resumen por plataforma vive en Aliados y suma bonos y utilidad guardados p
   {id:'old',external_id:'old',plataforma:'payjoy',operation_at:'2026-08-31',fecha_pagada:'2026-09-10',monto_base:9000,bonos_aplicados:90,utilidad_creditek:999},
  ];
  const before=JSON.stringify(db);ctx.renderDashboard();
- const summary=nodes['#content'].innerHTML.split('id="resumen-plataformas"')[1].split('</section>')[0];
+ const summary=nodes['#content'].innerHTML.split('id="resumen-plataformas"')[1].split('</section>')[0].replace(/<[^>]*>/g,'');
  assert.match(summary,/Resumen por plataforma/);
  assert.match(summary,/payjoy\|2\|3000\|50\|333/);
  assert.match(summary,/alo\|1\|4000\|40\|444/);
  assert.doesNotMatch(summary,/999|9000/);
  assert.equal(JSON.stringify(db),before);
  nodes['#dashboardBusiness'].value='propia';ctx.renderDashboard();
- assert.match(nodes['#content'].innerHTML,/payjoy\|1\|2000\|30\|222/);
+ assert.match(nodes['#content'].innerHTML.replace(/<[^>]*>/g,''),/payjoy\|1\|2000\|30\|222/);
  assert.doesNotMatch(nodes['#content'].innerHTML,/alo\|1\|4000/);
 });
 
@@ -125,5 +157,5 @@ test('Addi aprobado entra una sola vez al resultado Aliados sin inventar una ope
  ctx.renderDashboard();
  assert.equal(ctx.cards.find(x=>x[0]==='Créditos del periodo')[1],1);
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'114312');
- assert.match(nodes['#content'].innerHTML,/addi\|1\|550000\|0\|114312/);
+ assert.match(nodes['#content'].innerHTML.replace(/<[^>]*>/g,''),/addi\|1\|550000\|0\|114312/);
 });

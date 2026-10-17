@@ -761,6 +761,12 @@ function renderTablaVentas() {
   document.getElementById('resumenTotal').textContent = fmtCOP(total);
   document.getElementById('resumenContado').textContent = fmtCOP(activas.filter(v => v.tipo === 'contado').reduce((s,v) => s + Number(v.total || 0), 0));
   document.getElementById('resumenCredito').textContent = fmtCOP(activas.filter(v => v.tipo === 'credito').reduce((s,v) => s + Number(v.total || 0), 0));
+  const exact=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+  for(const [id,valor] of [['resumenTotal',total],['resumenContado',activas.filter(v=>v.tipo==='contado').reduce((s,v)=>s+Number(v.total||0),0)],['resumenCredito',activas.filter(v=>v.tipo==='credito').reduce((s,v)=>s+Number(v.total||0),0)]])document.getElementById(id).dataset.koraReportValue=exact(valor);
+  const tabla=document.getElementById('tbodyVentas').closest('table');
+  let footer=tabla.querySelector('tfoot');if(!footer){footer=document.createElement('tfoot');tabla.appendChild(footer);}
+  footer.innerHTML='<tr><td colspan="8">Total ventas contabilizadas (excluye anuladas y sin contabilizar)</td><td data-kora-report-value="'+exact(total)+'">'+fmtCOP(total)+'</td><td></td></tr>';
+  tabla.dataset.koraReportTotals='explicit';
 
   const tbody = document.getElementById('tbodyVentas');
   const empty = document.getElementById('emptyState');
@@ -792,7 +798,7 @@ function renderTablaVentas() {
         <td data-label="Referencia">${escapeHtml(it?.productos?.nombre || '—')}${Number(it?.cantidad || 0) > 1 ? ` ×${Number(it.cantidad)}` : ''}</td>
         <td data-label="IMEI">${escapeHtml(it?.unidades?.imei || '—')}</td>
         <td data-label="Plataforma">${plataforma}</td>
-        <td data-label="Valor">${fmtCOP(valorLinea)}</td>
+        <td data-label="Valor" data-kora-report-value="${exact(valorLinea)}">${fmtCOP(valorLinea)}</td>
         <td data-label="Vendedor">${escapeHtml(v.vendedor_perfil?.nombre || '—')}</td>
       </tr>
       `;

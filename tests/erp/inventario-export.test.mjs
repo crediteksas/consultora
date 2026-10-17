@@ -156,11 +156,25 @@ test('genera un libro con filtros, anchos y formato monetario sin mutar datos', 
   assert.deepEqual(stock, original);
   assert.deepEqual(
     JSON.parse(JSON.stringify(hoja['!autofilter'])),
-    { ref: hoja['!ref'] }
+    { ref: 'A1:H2' }
   );
   assert.ok(hoja['!cols'].every(columna => columna.wch >= 10));
   assert.equal(hoja.G2.t, 'n');
   assert.equal(hoja.G2.z, '$#,##0.00');
+  assert.equal(hoja.H3.v,56088);
+  assert.equal(hoja.F3.v,8);
+});
+
+test('inventario no convierte un costo ausente en cero ni oculta valoración parcial',()=>{
+  const rows=[{cantidad:2,precio_tienda:10},{cantidad:3,precio_tienda:null},{cantidad:1,precio_tienda:0}];
+  const data=exportador.filasAccesorios(rows,false);
+  assert.equal(data[1]['Costo unitario'],'Sin costo registrado');
+  assert.equal(data[1]['Valor total al costo'],'Sin valoración completa');
+  assert.equal(data[2]['Valor total al costo'],0);
+  const book=exportador.crearLibroInventario({XLSX,tipo:'accesorios',registros:rows,esCentral:false,corte:'2026-10-08'});
+  const summary=XLSX.utils.sheet_to_json(book.Sheets.Resumen,{header:1});
+  assert.equal(summary.find(row=>row[0]==='Subtotal valorado (COP)')[1],20);
+  assert.equal(summary.find(row=>row[0]==='Referencias / equipos sin valoración completa')[1],1);
 });
 
 test('CSV de conteo incluye nombre, código de tienda y código de producto', () => {

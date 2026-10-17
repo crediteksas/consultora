@@ -11,7 +11,7 @@ test('resumen de saldos: totales, búsquedas, errores, permisos y responsive',as
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());if(u.hostname!=='kora.test')return route.abort();
-   if(/sidebar\.js|kora-environment|kora-product\.js/.test(u.pathname))return route.fulfill({contentType:'text/javascript',body:''});
+   if(/sidebar\.js|supabase-js|kora-environment|kora-product\.js/.test(u.pathname))return route.fulfill({contentType:'text/javascript',body:''});
    const f=resolve(process.cwd(),'.'+u.pathname);if(!f.startsWith(process.cwd()+'/'))return route.abort();
    try{await route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[extname(f)]||'application/octet-stream',body:await readFile(f)});}catch{await route.fulfill({status:404,body:''});}
   });

@@ -20,7 +20,7 @@ test('dashboard y reporte muestran puente de utilidad y todas las financieras si
  });
  await page.goto('https://kora.test/creditek/erp/aliados-dashboard.html');
  await page.getByRole('heading',{name:'Cómo se obtiene la utilidad'}).waitFor();
- await page.locator('#dashboardFrom').fill('2026-08-01');await page.locator('#dashboardTo').fill('2026-08-31');await page.locator('#dashboardTo').dispatchEvent('change');
+ await page.locator('#dashboardFrom-display').fill('01/08/2026');await page.locator('#dashboardTo-display').fill('31/08/2026');await page.locator('#dashboardTo-display').dispatchEvent('change');
  await page.locator('#dashboardPlatform').selectOption('krediya');
  assert.match(await page.locator('#content').textContent(),/4\.448\.310,00/);
  assert.match(await page.locator('#content').textContent(),/2\.369\.089,49/);
@@ -32,7 +32,7 @@ test('dashboard y reporte muestran puente de utilidad y todas las financieras si
  const dashboardMetrics=await page.locator('#metrics').textContent();
  await page.goto('https://kora.test/creditek/erp/aliados-reportes.html');
  await page.getByRole('heading',{name:'Cómo se obtiene la utilidad'}).waitFor();
- await page.locator('#dashboardFrom').fill('2026-08-01');await page.locator('#dashboardTo').fill('2026-08-31');await page.locator('#dashboardTo').dispatchEvent('change');
+ await page.locator('#dashboardFrom-display').fill('01/08/2026');await page.locator('#dashboardTo-display').fill('31/08/2026');await page.locator('#dashboardTo-display').dispatchEvent('change');
  assert.equal(await page.locator('#metrics').textContent(),dashboardMetrics);
  await page.locator('#dashboardPlatform').selectOption('payjoy');
  assert.match(await page.locator('#content').textContent(),/1 créditos/);

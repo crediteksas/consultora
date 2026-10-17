@@ -25,12 +25,17 @@ test('rechaza campos incompletos antes de llamar a la base de datos', () => {
   assert.equal(result.errors.length, 6);
 });
 
-test('la interfaz permite escoger un tercero nuevo y asociarlo a un aliado', async () => {
-  const [html, app] = await Promise.all([read('creditek/erp/aliados-liquidaciones.html'), read('creditek/erp/aliados-liquidaciones-app.js')]);
-  for (const id of ['bankBeneficiaryMode', 'bankAllyOrigin', 'bankHolderName', 'bankHolderIdentification']) assert.match(html, new RegExp(`id="${id}"`));
-  assert.match(app, /\.eq\('tipo', 'aliado'\)/);
-  assert.match(app, /aliados_crear_tercero_con_cuenta/);
-  assert.match(app, /aliados_completar_pagos_beneficiario/);
+test('el tercero y su cuenta se completan en la ficha única sin alterar pagos autorizados', async () => {
+  const [app, directory] = await Promise.all([read('creditek/erp/aliados-liquidaciones-app.js'), read('creditek/erp/tesoreria-clientes.js')]);
+  assert.match(app, /addBankAccount'\)\.onclick = \(\) => \{ location\.href='aliados-tesoreria\.html\?vista=clientes'/);
+  assert.match(directory, /id="clientHolder"/);
+  for (const field of ['name','identification','bank','accountType','accountNumber']) assert.match(directory,new RegExp(`name="${field}"`));
+  assert.match(directory, /Registrar otro titular/);
+  assert.match(directory, /tesoreria_guardar_cliente_cuenta/);
+  assert.match(directory, /p_origen_codigo:/);
+  assert.match(directory, /p_previous_beneficiary_id:form\.dataset\.previous \|\| null/);
+  assert.match(directory, /Las órdenes autorizadas|las órdenes autorizadas/);
+  assert.doesNotMatch(app, /aliados_completar_pagos_beneficiario/);
 });
 
 test('el RPC es atómico, auditado y no queda expuesto a anónimos', async () => {

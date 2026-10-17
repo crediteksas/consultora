@@ -21,10 +21,10 @@ test('cartera completa: período, detalle, errores, exportación y diseño sin s
   await page.addInitScript(()=>{
    window.__KORA_ENV__={};window.calls=[];
    const data={
-    origenes:[{codigo:'T',nombre:'Móvil Shopping',tipo:'propia',activo:true},{codigo:'Z',nombre:'Tienda sin movimientos',tipo:'propia',activo:true},{codigo:'C',nombre:'Luis',tipo:'cliente_b2b',activo:true}],
-    v_cartera_clientes_b2b:[{cuenta_id:'c1',cliente_codigo:'C',cliente:'Luis'}],
+    origenes:[{codigo:'T',nombre:'Móvil Shopping',tipo:'propia',activo:true},{codigo:'Z',nombre:'Tienda sin movimientos',tipo:'propia',activo:true},{codigo:'C',nombre:'Luis',tipo:'cliente_b2b',activo:true},{codigo:'F',nombre:'Cliente con anticipo',tipo:'cliente_b2b',activo:true}],
+    v_cartera_clientes_b2b:[{cuenta_id:'c1',cliente_codigo:'C',cliente:'Luis'},{cuenta_id:'c2',cliente_codigo:'F',cliente:'Cliente con anticipo'}],
     cuenta_corriente:[{id:1,tienda_codigo:'T',tipo:'cargo',monto:1000000,created_at:'2026-08-31T12:00:00Z',concepto:'Saldo previo'},{id:2,tienda_codigo:'T',tipo:'cargo',monto:300000,created_at:'2026-09-01T12:00:00Z',concepto:'Remisión'},{id:3,tienda_codigo:'T',tipo:'abono',monto:200000,created_at:'2026-09-16T12:00:00Z',concepto:'Compensación aplicada'},{id:4,tienda_codigo:'T',tipo:'cargo',monto:900000,created_at:'2026-09-17T12:00:00Z',concepto:'Fuera de período'}],
-    movimientos_cartera:[{id:'a',cuenta_id:'c1',tienda_codigo:'C',efecto:'debito',monto:500000,fecha_efectiva:'2026-09-02',concepto:'Remisión cliente'}],
+    movimientos_cartera:[{id:'a',cuenta_id:'c1',tienda_codigo:'C',efecto:'debito',monto:500000,fecha_efectiva:'2026-09-02',concepto:'Remisión cliente'},{id:'favor',cuenta_id:'c2',tienda_codigo:'F',efecto:'credito',monto:100000.25,fecha_efectiva:'2026-08-31',concepto:'Anticipo'}],
     saldos_iniciales_cartera:[{id:'s1',tienda_codigo:'T',fecha_corte:'2026-09-03'}],
     proveedores:[{id:'p1',nombre:'Proveedor de prueba'}],
    };
@@ -34,15 +34,27 @@ test('cartera completa: período, detalle, errores, exportación y diseño sin s
   await page.goto('https://kora.test/creditek/erp/cartera-b2b.html');
   try { await page.locator('#rows').getByText('Móvil Shopping').waitFor({timeout:8000}); }
   catch (error) { throw new Error(`La cartera no cargó: ${await page.locator('#loadError').textContent()} · ${errors.join(' · ')}`, {cause:error}); }
-  assert.equal(await page.locator('#rows tr').count(),3);
-  assert.match(await page.locator('#kInicial').textContent(),/1\.000\.000/);
+  assert.equal(await page.locator('#rows tr').count(),4);
+  assert.match(await page.locator('#kInicial').textContent(),/900\.000/);
   assert.match(await page.locator('#kCargos').textContent(),/800\.000/);
   assert.match(await page.locator('#kAbonos').textContent(),/200\.000/);
-  assert.match(await page.locator('#kSaldo').textContent(),/1\.600\.000/);
-  assert.equal(await page.locator('#fCliente option').count(),1);
+  assert.match(await page.locator('#kSaldo').textContent(),/1\.500\.000/);
+  assert.equal(await page.locator('#fCliente option').count(),2);
+  await page.addScriptTag({url:'https://kora.test/creditek/erp/kora-report-export.js'});
+  const full=await page.evaluate(()=>window.KoraReportExport.snapshot({rol:'gerencia'}));
+  const totals=full.tables.find(table=>table.sourceId==='rows').totalRows;
+  assert.ok(totals.some(row=>row[5]==='$ 1.600.000,00'));assert.ok(totals.some(row=>row[5]==='$ 100.000,25'));
+  assert.ok(!totals.some(row=>row[5]==='$ 1.499.999,75'),'no compensa saldos a favor de otro cliente');
+  const allDownload=page.waitForEvent('download');await page.locator('#csv').click();
+  const allFile=await allDownload,allCsv=await readFile(await allFile.path(),'utf8');
+  assert.match(allCsv,/TOTAL SALDO AL CIERRE · POR COBRAR \(SIN COMPENSAR CLIENTES\).*1600000/);
+  assert.match(allCsv,/TOTAL SALDO AL CIERRE · A FAVOR DEL CLIENTE \(SIN COMPENSAR CLIENTES\).*100000\.25/);
   await page.locator('#nuevo').click();
   assert.equal(await page.locator('#fDestinoWrap').isVisible(),true);
+  assert.match(await page.locator('#fDestino option:checked').textContent(),/A Banco Creditek · reduce cartera y aumenta Banco/);
+  assert.match(await page.locator('#fDestinoNota').textContent(),/reduce la deuda del cliente y aumenta Banco Creditek/);
   await page.locator('#fDestino').selectOption('proveedor');
+  assert.match(await page.locator('#fDestinoNota').textContent(),/No aumenta ni disminuye Banco Creditek/);
   assert.equal(await page.locator('#fProveedorWrap').isVisible(),true);
   assert.equal(await page.locator('#fProveedor option').count(),2);
   await page.locator('#fEfecto').selectOption('debito');
@@ -70,12 +82,15 @@ test('cartera completa: período, detalle, errores, exportación y diseño sin s
   assert.match(content,/2026-09-03/);assert.match(content,/"Saldo inicial","Carga inicial"/);
   await page.locator('#desde').fill('2026-09-20');await page.locator('#desde').dispatchEvent('change');
   assert.equal(await page.locator('#csv').isDisabled(),true);
+  assert.match(await page.evaluate(()=>{try{window.KoraReportExport.snapshot({rol:'gerencia'});return 'permitido';}catch(error){return error.message;}}),/período válido/);
+  assert.equal(await page.locator('#kSaldo').getAttribute('data-kora-report-value'),null);
   await page.locator('#desde').fill('2026-09-01');await page.locator('#desde').dispatchEvent('change');
   await page.evaluate(()=>window.failTable='saldos_iniciales_cartera');await page.locator('#actualizar').click();
   await page.locator('#loadError').getByText(/No fue posible cargar/).waitFor();
   assert.equal(await page.locator('#rows tr').count(),0);
   assert.equal(await page.locator('#kSaldo').textContent(),'—');
   assert.equal(await page.locator('#csv').isDisabled(),true);
+  assert.match(await page.evaluate(()=>{try{window.KoraReportExport.snapshot({rol:'gerencia'});return 'permitido';}catch(error){return error.message;}}),/Actualiza la cartera/);
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });

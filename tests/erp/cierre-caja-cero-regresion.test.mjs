@@ -90,7 +90,31 @@ test('el cierre servidor reutiliza el cálculo, bloquea y es idempotente', async
 test('la interfaz abandona el RPC legado y conserva la llave al reintentar', async () => {
   const html = await readFile(path.join(root, 'creditek/erp/caja.html'), 'utf8');
 
-  assert.match(html, /sb\.rpc\('cerrar_caja_piloto'/);
+  assert.match(html, /const rpc = cicloNuevo \? 'validar_arqueo_caja' : 'cerrar_caja_piloto'/);
+  assert.match(html, /sb\.rpc\(rpc, payload\)/);
   assert.match(html, /dataset\.idempotencyKey/);
   assert.doesNotMatch(html, /sb\.rpc\('cerrar_caja',/);
+});
+
+test('cierre y arqueo eligen su RPC, conservan la llave tras error y no autorizan automáticamente',async()=>{
+  const html=await readFile(path.join(root,'creditek/erp/caja.html'),'utf8');
+  const from=html.indexOf('async function cerrarCajaAccion('),to=html.indexOf('function compartirCuadritoWA(',from);
+  assert.ok(from>=0&&to>from);
+  for(const [fecha,rpc] of [['2026-09-01','cerrar_caja_piloto'],['2026-10-09','validar_arqueo_caja']]){
+    const nodes={efectivoContado:{value:'100'},notaDiferencia:{value:''},cierreErr:{classList:{add(){},remove(){}}},btnCerrarCaja:{dataset:{},textContent:'Cerrar'}};
+    const calls=[],banners=[];let fail=true;
+    const context={document:{getElementById:id=>nodes[id]},crypto:{randomUUID:()=> 'test-key'},confirm:()=>true,
+      cajaPiloto:{validarCierre:({efectivoContado,efectivoEsperado})=>({ok:efectivoContado===efectivoEsperado,mensaje:'Diferencia real'})},
+      sb:{rpc:async(name,payload)=>{calls.push({name,payload});return fail?{error:{message:'Error simulado'}}:{data:{ok:true,diferencia:0}};}},
+      mostrarBanner:message=>banners.push(message),fmtCOP:String,cargarCuadrito(){}};
+    vm.runInNewContext(html.slice(from,to),context);
+    await context.cerrarCajaAccion('TEST',fecha,100,'2026-10-01');
+    assert.equal(nodes.btnCerrarCaja.dataset.idempotencyKey,'test-key');assert.equal(nodes.btnCerrarCaja.disabled,false);assert.equal(banners.length,0);
+    fail=false;await context.cerrarCajaAccion('TEST',fecha,100,'2026-10-01');
+    assert.ok(calls.every(c=>c.name===rpc&&c.payload.p_idempotency_key==='test-key'));
+    assert.equal(calls[0].payload.p_autorizar,rpc==='validar_arqueo_caja'?false:undefined);
+    assert.equal(nodes.btnCerrarCaja.dataset.idempotencyKey,undefined);assert.equal(banners.length,1);
+    const count=calls.length;nodes.efectivoContado.value='99';await context.cerrarCajaAccion('TEST',fecha,100,'2026-10-01');
+    assert.equal(calls.length,count);assert.equal(nodes.cierreErr.textContent,'Diferencia real');
+  }
 });

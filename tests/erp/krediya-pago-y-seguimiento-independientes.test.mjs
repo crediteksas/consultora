@@ -14,11 +14,12 @@ test('diferencias Krediya y anotaciones administrativas no bloquean PAGAMOS', ()
 });
 
 test('Gerencia aprueba el lote una vez y el seguimiento queda consolidado por siete días', () => {
-  assert.match(app, /Preparar pago del lote/);
-  assert.match(app, /No debes aprobarlas una por una y no cambian el valor PAGAMOS/);
+  assert.match(app, /Liquidación aprobada\.[^\n]*Gestionar en Tesorería/);
+  assert.match(app, /No requieren aprobación individual ni cambian PAGAMOS/);
   assert.doesNotMatch(app, /Dar instrucción a Maythe/);
-  assert.match(report, /Informe consolidado único de diferencias/);
-  assert.match(report, /Este informe se genera una sola vez por lote/);
-  assert.match(report, /Ver detalle de \$\{rows\.length\} diferencias/);
+  assert.match(report, /Informe consolidado del lote/);
+  assert.match(report, /Al liquidar se guardan el informe definitivo, los bonos y la utilidad/);
+  assert.match(report, /Las correcciones se gestionan durante los 7 días siguientes/);
+  assert.match(report, /\$\{rows\.length\} diferencias de PVP/);
   assert.match(migration, /vence_el[\s\S]*\+ 7/);
 });

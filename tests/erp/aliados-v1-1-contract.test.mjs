@@ -66,12 +66,12 @@ test('rollback protege históricos y no elimina entidades compartidas', async ()
 test('las vistas reutilizan datos reales y nunca convierten ausencia de calidad en cero', async () => {
   const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
   for (const table of ['aliados', 'aliados_sedes', 'aliados_plataformas', 'liquidations', 'liquidation_operations', 'liquidation_bonuses']) {
-    assert.match(app, new RegExp(`from\\('${table}'\\)`));
+    assert.match(app, new RegExp(`allRows\\(["']${table}["'],\\s*["']\\*["']\\)`));
   }
   assert.match(app, /Sin política configurada/);
   assert.match(app, /Sin información de calidad/);
   assert.doesNotMatch(app, /calidad[^\n]{0,30}:\s*0/i);
-  assert.match(app, /Intl\.NumberFormat\('es-CO'/);
+  assert.match(app, /Intl\.NumberFormat\(["']es-CO["']/);
 });
 
 test('el artefacto productivo incluye la hoja visual compartida de Aliados', async () => {

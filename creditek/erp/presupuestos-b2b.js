@@ -38,6 +38,12 @@
       </fieldset></form>${editable?'':'<p class="sub">Solo Gerencia puede guardar las metas. Auditoría puede consultarlas.</p>'}</div>`;
     const $=id=>container.querySelector(`#${id}`);
     let actual=null,disponible=false,busy=false,dirty=false,secuencia=0,mesConsultado='';
+    container.dataset.koraReportSource='presupuesto-b2b';
+    container.koraReportData=()=>{
+      if(!disponible||busy)throw Error('Espera a que termine la consulta del presupuesto B2B.');
+      if(!actual)throw Error('No hay presupuesto B2B guardado para este mes.');
+      return {filters:[['Negocio','B2B'],['Mes del presupuesto',mesConsultado],['Versión','Presupuesto guardado · revisión '+actual.revision]],tables:[{heading:'Presupuesto mensual B2B',kind:'summary',headers:['Indicador','Meta mensual'],rows:[['Ventas COP',new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(actual.meta_ventas)],['Unidades',actual.meta_unidades===null?'Sin programar':String(actual.meta_unidades)]]}]};
+    };
     const estado=(mensaje,error=false)=>{$('b2bEstado').textContent=mensaje;$('b2bEstado').className=error?'error':'';};
     function controles() {
       $('b2bCampos').disabled=!editable||!disponible||busy;

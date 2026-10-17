@@ -10,7 +10,7 @@ const html = await readFile(
 test('reportes conserva las tres comparaciones 2025 junto al caché KORA', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
 
-  assert.match(html, /<script src="reportes-query-cache\.js"><\/script>/);
+  assert.match(html, /<script src="reportes-query-cache\.js\?v=1\.\d+\.\d+"><\/script>/);
   assert.match(html, /function crearCacheRefresco\(/);
   assert.match(html, /function exigirRespuestas\(\.\.\.respuestas\)/);
   assert.match(html, /const cache = crearCacheRefresco\(\)/);

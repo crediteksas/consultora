@@ -20,7 +20,7 @@ test('ventas carga conjuntamente los tres motores activos', () => {
 test('listado consulta todos los campos aprobados de main y KORA', () => {
   assert.match(
     html,
-    /\.select\('\*, clientes\(nombre_completo,cedula\), origen:tienda_codigo\(nombre\), vendedor_perfil:vendedor\(nombre\), creditos\(financiera\), venta_items\(id, cantidad, precio_venta, unidades\(imei\), productos\(nombre\)\)'\)/,
+    /\.select\('\*, clientes\(nombre_completo,cedula\), origen:tienda_codigo\(nombre\), vendedor_perfil:vendedor\(nombre\), creditos\(financiera\), venta_items:venta_items_lectura\(id, cantidad, precio_venta, unidades\(imei\), productos\(nombre\)\)'\)/,
   );
 });
 

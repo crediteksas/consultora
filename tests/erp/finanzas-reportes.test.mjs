@@ -24,6 +24,13 @@ test('exportación conserva texto y no crea fórmulas con contenido del usuario'
   const sheet=R.workbook([{...row,concept:'=HYPERLINK("https://example.com")'}],D,XLSX).Sheets.Movimientos;
   assert.equal(sheet.F2.t,'s');assert.equal(sheet.F2.f,undefined);
 });
+test('Excel de gastos cierra importes y separa estados sin registrar pagos',()=>{
+  const book=R.workbook([row,{...row,id:'pagado',status:'pagado',amount:100.25}],D,XLSX);
+  assert.equal(book.Sheets.Movimientos.M4.v,800100.25);
+  const summary=XLSX.utils.sheet_to_json(book.Sheets.Resumen,{header:1});
+  assert.equal(summary.find(row=>row[0]==='Total movimientos mostrados (COP)')[1],800100.25);
+  assert.ok(summary.some(row=>row[0]===D.STATUS_LABELS.pagado&&row[2]===100.25));
+});
 test('orden incluye exclusivamente aprobados, no pagados ni pendientes',()=>{
   const rows=[row,{...row,id:'paid',status:'pagado'},{...row,id:'pending',status:'pendiente_aprobacion'}];
   assert.equal(R.approvedRows(rows).length,1);assert.match(R.reportBody(rows,D),/001234567890/);assert.doesNotMatch(R.reportBody(rows,D),/>paid</);

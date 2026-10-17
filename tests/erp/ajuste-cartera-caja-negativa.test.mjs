@@ -8,6 +8,7 @@ const migrations = await Promise.all([
   '20260924180119_ajustes_gerencia_autoservicio.sql',
   '20260924190232_ajustes_gerencia_revision_doble.sql',
   '20260926203211_cartera_ajuste_preserva_caja_negativa.sql',
+  '20261017142811_ajustes_gerencia_centavos.sql',
 ].map(name => readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8')));
 const oscar = '6de0ad26-64af-4966-8cd9-d468880af627';
 const maite = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
@@ -48,7 +49,7 @@ test('cartera con caja negativa: reproduce el bloqueo y corrige sin mover caja n
       insert into public.origenes values('CK-06','propia',true);
       insert into public.perfiles values('${oscar}',true,'gerencia'),('${maite}',true,'auditoria');
       insert into public.cuenta_corriente(tienda_codigo,tipo,concepto,monto)
-        values('CK-06','cargo','Base de prueba aislada',25431488);
+        values('CK-06','cargo','Base de prueba aislada',25431488.20);
       create table public.ajustes_auditoria_cartera_b2b(id uuid primary key,cliente_codigo text,
         motivo text,saldo_base numeric,saldo_objetivo numeric,nombre_auditado text,referencia text,fecha_corte date);
       create table public.cuentas_cartera(id uuid,tipo_cuenta text,tienda_codigo text,activo boolean);
@@ -57,23 +58,26 @@ test('cartera con caja negativa: reproduce el bloqueo y corrige sin mover caja n
         returns jsonb language sql as $$select '{}'::jsonb$$;
     `);
     for (const sql of migrations.slice(0, 3)) await db.exec(sql);
+    await db.exec(migrations[4]);
     await db.exec(`set request.jwt.claim.sub='${maite}'`);
-    const args = [request,'cartera_retail','CK-06',25431488,21356300,'ajuste real de la deuda'];
+    await assert.rejects(db.query('select public.preparar_ajuste_gerencia($1,$2,$3,$4,$5,$6)',[request,'cartera_retail','CK-06',25431488.20,21356300.201,'Prueba aislada de precisión monetaria']),/decimales/);
+    const args = [request,'cartera_retail','CK-06',25431488.20,21356300.20,'ajuste real de la deuda'];
     await db.query('select public.preparar_ajuste_gerencia($1,$2,$3,$4,$5,$6)', args);
     await assert.rejects(db.query('select public.decidir_ajuste_gerencia($1,true,null)', [request]), /Solo Oscar/);
     await db.exec(`set request.jwt.claim.sub='${oscar}'`);
     await assert.rejects(db.query('select public.decidir_ajuste_gerencia($1,true,null)', [request]), /saldo_ajustes_auditoria_caja_objetivo_check/);
-    assert.equal(await balance(), 25431488);
+    assert.equal(await balance(), 25431488.20);
     assert.equal(await cash(), -2017400);
     assert.equal(await scalar('select count(*) n from public.saldo_ajustes_auditoria'), 0);
 
     await db.exec(migrations[3]);
+    await db.exec(migrations[4]);
     // DDL fixes the rule, never applies the pending financial proposal itself.
     assert.equal((await db.query('select estado from public.ajustes_gerencia_solicitudes where id=$1',[request])).rows[0].estado,'pendiente');
-    assert.equal(await balance(),25431488);
+    assert.equal(await balance(),25431488.20);
     const result = (await db.query('select public.decidir_ajuste_gerencia($1,true,null) r',[request])).rows[0].r;
     assert.equal(result.estado,'aplicado');
-    assert.equal(await balance(),21356300);
+    assert.equal(await balance(),21356300.20);
     assert.equal(await cash(),-2017400);
     assert.equal(await scalar('select count(*) n from public.movimientos_caja_tienda'),0);
     const snapshot = (await db.query('select * from public.saldo_ajustes_auditoria where id=$1',[request])).rows[0];
@@ -91,19 +95,19 @@ test('cartera con caja negativa: reproduce el bloqueo y corrige sin mover caja n
 
     // Negative targets remain forbidden, both through the RPC and directly.
     await assert.rejects(db.query('select public.ajuste_gerencia_retail(gen_random_uuid(),$1,$2,$3,$4,$5,$6)',
-      ['CK-06',-2017400,21356300,-1,null,'Intento de nuevo saldo negativo de caja']), /no pueden ser negativos/);
+      ['CK-06',-2017400,21356300.20,-1,null,'Intento de nuevo saldo negativo de caja']), /no pueden ser negativos/);
     await assert.rejects(db.query(`insert into public.saldo_ajustes_auditoria(referencia,tienda_codigo,fecha_corte,
       caja_base,deuda_base,caja_objetivo,deuda_objetivo,motivo) values('NEG-TEST','CK-06',current_date,
-      -2017400,21356300,-1,21000000,'Intento de nuevo saldo negativo de caja')`), /caja_objetivo_check/);
+      -2017400,21356300.20,-1,21000000,'Intento de nuevo saldo negativo de caja')`), /caja_objetivo_check/);
     await assert.rejects(db.query(`insert into public.saldo_ajustes_auditoria(referencia,tienda_codigo,fecha_corte,
       caja_base,deuda_base,caja_objetivo,deuda_objetivo,motivo) values('NOOP-TEST','CK-06',current_date,
-      -2017400,21356300,-2017400,21356300,'Propuesta sin cambio de ningun saldo')`), /caja_objetivo_check/);
+      -2017400,21356300.20,-2017400,21356300.20,'Propuesta sin cambio de ningun saldo')`), /caja_objetivo_check/);
 
     // Stale debt must still block authorization and preserve the pending case.
     const stale='ef50ea35-cf30-4671-9c3a-e546a8bfa101';
     await db.exec(`set request.jwt.claim.sub='${maite}'`);
     await db.query('select public.preparar_ajuste_gerencia($1,$2,$3,$4,$5,$6)',
-      [stale,'cartera_retail','CK-06',21356300,21000000,'Segunda propuesta de cartera para probar saldo']);
+      [stale,'cartera_retail','CK-06',21356300.20,21000000,'Segunda propuesta de cartera para probar saldo']);
     await db.exec("insert into public.cuenta_corriente(tienda_codigo,tipo,monto,referencia_tipo) values('CK-06','cargo',1000,'remision')");
     await db.exec(`set request.jwt.claim.sub='${oscar}'`);
     await assert.rejects(db.query('select public.decidir_ajuste_gerencia($1,true,null)',[stale]),/saldo cambió/);

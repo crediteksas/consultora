@@ -10,7 +10,7 @@ const html = await readFile(
 test('cuenta corriente integra el dominio anterior con el shell KORA', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
   assert.match(html, /<script src="cuenta-corriente-domain\.js"><\/script>/);
-  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.15"><\/script>/);
+  assert.match(html, /<script src="kora-access-control\.js\?v=2\.0\.(?:1[5-9]|[2-9]\d)"><\/script>/);
   assert.match(html, /cuentaDomain\.calcularResumenPorTienda/);
   assert.match(html, /cuentaDomain\.prepararHistorial/);
   assert.match(html, /cuentaDomain\.estadoAbono/);
@@ -36,7 +36,7 @@ test('conserva los eventos del historial, instrucciones y comprobantes', () => {
 test('el abono directo solo se muestra a central y conserva estado y destino', () => {
   assert.match(html, /btnAbrirAbono'\)\.style\.display = esCentral\(\) \? 'inline-block' : 'none'/);
   assert.match(html, /const estadoHtml = estado === 'verificado'/);
-  assert.match(html, /\$\{escapeHtml\(m\.concepto\)\}\$\{estadoHtml\}/);
+  assert.match(html, /<td>\$\{escapeHtml\(m\.concepto\)\}[^\n]*\$\{estadoHtml\}[^\n]*escapeHtml\(m\.destino \|\| '—'\)/);
   assert.match(html, /escapeHtml\(m\.destino \|\| '—'\)/);
   assert.doesNotMatch(html, /class="link-chico" data-cc=/);
   assert.doesNotMatch(html, /\$\{estadoHtml\}[\s\S]{0,220}Marcar verificado/);

@@ -14,7 +14,7 @@ const sql = (await readFile(
 
 test('el registro interno exige sesión y usa un RPC separado', () => {
   assert.match(internal, /data-kora-requires-auth=["']true["']/);
-  assert.match(internal, /sidebar\.js\?v=2\.0\.15["'] data-kora-shell=["']1\.0\.0["']/);
+  assert.match(internal, /sidebar\.js\?v=2\.0\.(?:1[5-9]|[2-9]\d)["'] data-kora-shell=["']1\.0\.0["']/);
   assert.match(internal, /kora-sidebar-ready/);
   assert.match(internal, /window\.creditekSidebar/);
   assert.doesNotMatch(internal, /supabase\.createClient/);

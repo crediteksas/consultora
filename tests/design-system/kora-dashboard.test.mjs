@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import vm from 'node:vm';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const read = relative => readFile(path.join(root, relative), 'utf8');
@@ -40,17 +41,37 @@ test('el Dashboard KORA conserva su contrato funcional y usa una capa visual pro
 
   [
     "addEventListener('change', onCambioFiltro)",
-    "addEventListener('change', cargarKPIs)",
+    "addEventListener('change', actualizarPeriodo)",
     'cargarKPIs(); cargarTiendas_Tabla();',
     "sb.from('ventas')",
-    "sb.from('venta_items')",
-    "sb.from('presupuestos')",
+    "allRows(sb,'presupuestos'",
     "sb.from('caja_diaria')",
     "sb.from('solicitudes')",
-    "sb.from('stock_cantidad')",
+    "sb.from('stock_cantidad_lectura')",
     "sb.from('creditos')",
     "sb.from('abonos')",
   ].forEach(contract => assert.ok(source.includes(contract), contract));
+  const utility = await read('creditek/erp/tablero-utilidad.js');
+  assert.match(utility, /allRows\(sb,'venta_items_lectura'/);
+  assert.match(source, /CreditekTableroUtilidad\.retailData/);
+});
+
+test('cada cambio de fechas o tienda refresca indicadores, detalle y utilidad', async () => {
+  const source = await read('creditek/erp/tablero.html');
+  for (const id of ['rangoDesde', 'rangoHasta', 'filtroTienda']) {
+    assert.ok(source.includes(`getElementById('${id}').addEventListener('change', actualizarPeriodo)`));
+  }
+  const refresh = source.match(/function actualizarPeriodo\(\) \{[^}]*\}/)?.[0];
+  assert.ok(refresh);
+  const calls = [];
+  const context = {
+    cargarKPIs: () => calls.push('indicadores'),
+    cargarTiendas_Tabla: () => calls.push('tiendas'),
+    actualizarUtilidad: () => calls.push('utilidad'),
+  };
+  vm.runInNewContext(refresh, context);
+  context.actualizarPeriodo();
+  assert.deepEqual(calls, ['indicadores', 'tiendas', 'utilidad']);
 });
 
 test('la presentación del Dashboard depende de tokens y no introduce estilos inline', async () => {
@@ -64,6 +85,10 @@ test('la presentación del Dashboard depende de tokens y no introduce estilos in
   assert.doesNotMatch(css, /\brgba?\(/gi);
   assert.match(css, /@import url\("\.\.\/styles\/index\.css"\)/);
   assert.match(css, /var\(--ctk-/);
+  for (const className of ['dashboard-document-access', 'store-profit-detail', 'dashboard-month-close__grid']) {
+    assert.ok(css.includes(`.${className}`), className);
+  }
+  assert.match(css, /\.dashboard-document-access:hover[^}]*var\(--ctk-shadow-2\)/);
 });
 
 test('el Dashboard tiene jerarquía SaaS, iconografía Lucide y responsive propio', async () => {

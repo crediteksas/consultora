@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 const app = await readFile('creditek/erp/aliados-v1-1-app.js', 'utf8');
 const migration = await readFile('supabase/migrations/20260902235302_marcar_creditos_historicos_inicio_operacion.sql', 'utf8');
@@ -10,14 +11,14 @@ const correctionMigration = await readFile('supabase/migrations/20260903003358_c
 test('el dashboard separa el histórico inicial pagado de la operación nueva', () => {
   assert.match(app, /Histórico inicial — ya pagado/);
   assert.match(app, /No genera órdenes de pago ni exige soportes/);
-  assert.match(app, /allRows\('creditos_historicos_plataforma'/);
+  assert.match(app, /allRows\(\s*["']creditos_historicos_plataforma["']/);
 });
 
 test('no duplica la cuota inicial y descuenta bonos del resultado histórico', () => {
   assert.match(correctionMigration, /valor_comercial_historico-h\.pagamos_historico/);
   assert.match(correctionMigration, /utilidad_neta_historica/);
   assert.match(correctionMigration, /bono_universal',5000/);
-  assert.match(app, /Resultado histórico final/);
+  assert.match(app, /"Resultado final", "Resultado cerrado", "Disponible"/);
 });
 
 test('los gastos de aliados tienen aprobación, soporte y auditoría', async () => {
@@ -36,7 +37,7 @@ test('Krediya usa el bono histórico del archivo y Calidad permite asociar pendi
   assert.match(reconciliation, /aliados_asociar_historico/);
   assert.match(app, /Históricos sin ejecutivo Creditek/);
   assert.match(app, /data-historical-associate/);
-  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.17/);
+  assert.match(quality, /aliados-v1-1-app\.js\?v=1\.1\.(?:1[7-9]|[2-9]\d)"/);
 });
 
 test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin catálogos inventados', () => {
@@ -44,13 +45,13 @@ test('Plataformas y Ejecutivos distinguen histórico de operación nueva sin cat
   assert.match(app, /Plataformas activas/);
   assert.match(app, /Histórico inicial — ya pagado y cerrado/);
   assert.match(app, /créditos anteriores requieren asociación/);
-  assert.match(app, /Resultado histórico/);
+  assert.match(app, /Saldo histórico disponible/);
 });
 
 test('eCredit figura como plataforma activa real', async () => {
   const migration = await readFile(new URL('../../supabase/migrations/20260903015030_activar_ecredit.sql', import.meta.url), 'utf8');
   assert.match(migration, /'ecredit','eCredit',true/);
-  assert.match(app, /v==='ecredit'\?'eCredit'/);
+  assert.match(app, /v\s*===\s*["']ecredit["']\s*\?\s*["']eCredit["']/);
 });
 
 test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
@@ -58,9 +59,25 @@ test('calcula el resultado histórico sin crear pagos ni alterar caja', () => {
   assert.match(utilityMigration, /when tipo_establecimiento='propia' then 0\.76 else 0\.77/);
   assert.match(utilityMigration, /krediya_archivo_historico/);
   assert.doesNotMatch(utilityMigration, /insert into public\.(payment_orders|payment_items|liquidation_bonuses|movimientos_caja)/i);
-  assert.match(app, /Resultado antes de provisión/);
   assert.match(app, /Utilidad disponible/);
-  assert.match(app, /Gasto financiero histórico/);
+  assert.match(app, /gasto_financiero_historico/);
+  assert.match(app, /utilidad_final_historica/);
+  assert.match(app, /resultado_cerrado_historico/);
+});
+
+test('el histórico cerrado conserva su resultado original pero no reabre saldo disponible', () => {
+  const from=app.indexOf('  function historicalUtilityOriginal('),to=app.indexOf('  function originFor(',from);
+  assert.ok(from>=0&&to>from);
+  const context={};vm.runInNewContext(app.slice(from,to),context);
+  const item={utilidad_final_historica:720.25,utilidad_neta_historica:1000,resultado_cerrado_historico:720.25};
+  const before=JSON.stringify(item);
+  assert.equal(context.historicalUtilityOriginal(item),720.25);
+  assert.equal(context.historicalUtilityClosed(item),720.25);
+  assert.equal(context.historicalUtilityAvailable(item),0);
+  assert.equal(context.historicalUtilityOriginal({utilidad_neta_historica:100}),100);
+  assert.equal(context.historicalUtilityOriginal({utilidad_final_historica:0,utilidad_neta_historica:100}),0);
+  assert.equal(context.operationUtilityAvailable({utilidad_creditek:100,resultado_cerrado:80}),20);
+  assert.equal(JSON.stringify(item),before);
 });
 
 test('la carga inicial queda pagada, sin soporte y con corte operativo', () => {

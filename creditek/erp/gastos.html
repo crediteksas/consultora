@@ -557,7 +557,7 @@ function renderTablaGastos() {
       <td>${formatearFechaGasto(g.fecha)}</td>
       <td>${escapeHtml(g.origenes?.nombre || g.tienda_codigo)}</td>
       <td>${escapeHtml(g.conceptos_gasto?.nombre || '—')}</td>
-      <td>${fmtCOP(g.monto)}</td>
+      <td data-kora-report-value="${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(g.monto))}">${fmtCOP(g.monto)}</td>
       <td>${escapeHtml(g.descripcion || '—')}${g.estado === 'rechazado' && g.nota_rechazo ? `<br><span style="color:var(--rojo);font-size:11.5px;">Motivo: ${escapeHtml(g.nota_rechazo)}</span>` : ''}</td>
       <td><span class="badge ${g.estado}">${g.correccion_pendiente ? 'Devuelto para corrección' : g.estado}</span>
         ${g.correccion_pendiente && puedeRegistrarGasto() ? `<button type="button" data-corregir="${g.id}">Corregir y reenviar</button>` : ''}

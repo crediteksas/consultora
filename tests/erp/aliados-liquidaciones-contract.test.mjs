@@ -137,9 +137,9 @@ test('interfaz usa el shell actual y no genera Excel', () => {
 test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () => {
   assert.match(html,/data-tab="allies"[^>]*>Por aliado</);
   assert.match(html,/data-tab="executives"[^>]*>Por ejecutivo</);
-  assert.match(app,/D\.agruparPorAliado/);
-  assert.match(app,/D\.agruparPorEjecutivo/);
-  for (const label of ['Aliado','Sede','Plataforma','Monto liquidado','Pago al aliado','Estado del pago','Ejecutivo','Aliados incluidos','Total a recibir']) {
+  assert.match(app,/kind === 'allies' \? 'establishment_name' : 'ejecutivo_id'/);
+  assert.match(app,/sb\.from\('ejecutivos'\)\.select\('id,nombre'\)/);
+  for (const label of ['Crédito financiado','Iniciales','Operaciones','Aliados incluidos','Ver pagos','Ver bonos y pagos']) {
     assert.match(app,new RegExp(label));
   }
 });
@@ -147,12 +147,13 @@ test('interfaz incluye vistas operativas agrupadas por aliado y ejecutivo', () =
 test('interfaz administrativa separa modelos y oculta datos técnicos por defecto', () => {
   assert.match(html,/aliados-liquidaciones-ux\.js/);
   for (const label of ['Todas','Operaciones Retail','Operaciones Aliados','Estado actual','Guardar revisión','Aprobar liquidación','Rechazar y devolver a revisión']) assert.match(html,new RegExp(label));
-  for (const label of ['Beneficiario','Fecha programada','Fecha de pago','Cuenta bancaria','Realizada por','Descripción','Resultado','Ver detalle técnico']) assert.match(app,new RegExp(label));
+  for (const label of ['liquidation_beneficiaries','Fecha programada','Fecha de pago','Cuenta destino','Realizada por','Descripción','Resultado','Ver detalle técnico']) assert.match(app,new RegExp(label));
   assert.match(app,/UX\.formatoCOP/);
   assert.match(app,/UX\.fechaCorta/);
   assert.match(app,/aliados_guardar_pagamos/);
   assert.doesNotMatch(app,/head=\['Pago','Valor'/);
-  assert.doesNotMatch(`${html}\n${app}`,/Tiendas propias|Tienda propia|Terceros|Operaciones Creditek/i);
+  assert.doesNotMatch(`${html}\n${app}`,/Terceros|Operaciones Creditek/i);
+  assert.match(app,/tipo_establecimiento === 'propia'/);
 });
 
 test('Liquidaciones reutiliza la sesión, shell y configuración general de KORA', () => {

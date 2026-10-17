@@ -294,6 +294,16 @@ function tipoInfo(valor) {
 const REF_LABEL = { cambio_proveedor_defectuoso: 'Defectuoso entregado al proveedor', cambio_proveedor_reemplazo: 'Reemplazo del proveedor · disponible', devolucion_defectuosa: 'Devolución · defectuoso recibido', salida_no_conforme: 'Salida de no conformes · destino pendiente', venta: 'Venta', remision: 'Remisión', traslado: 'Traslado', ajuste: 'Ajuste', conteo_inventario: 'Conteo autorizado' };
 const REF_HREF = { cambio_proveedor_defectuoso: 'inventario.html', cambio_proveedor_reemplazo: 'inventario.html', devolucion_defectuosa: 'inventario.html', salida_no_conforme: 'inventario.html#conteos', venta: 'ventas.html', remision: 'remisiones.html', traslado: 'traslados.html', ajuste: 'ajustes.html', conteo_inventario: 'inventario.html#conteos' };
 let ultimoInformeKardex = [];
+let contextoInformeKardex = null;
+
+function filasInformeKardex(movimientos, contexto) {
+  const filas=[['Fecha Colombia','Tienda','Producto','Código','IMEI','Movimiento','Cantidad','Costo autorizado','Referencia','ID referencia','Nota'],
+    ...movimientos.map(m=>[new Date(m.created_at).toLocaleString('es-CO',{timeZone:'America/Bogota'}),nombreTienda(m.tienda_codigo),m.productos?.nombre,m.productos?.codigo,m.unidades?.imei,tipoInfo(m.tipo).label,m.cantidad,m.costo,m.referencia_tipo,m.referencia_id,m.nota])];
+  const sum=movimientos.reduce((n,m)=>n+Number(m.cantidad),0),missing=movimientos.some(m=>m.cantidad==null||m.cantidad===''||!Number.isFinite(Number(m.cantidad)));
+  filas.push(['TOTAL CANTIDADES REGISTRADAS','','','','','',missing?'Pendiente: cantidades sin dato':sum,'','','','No equivale a inventario disponible. No se suman costos unitarios.']);
+  filas.push(['REGISTROS',movimientos.length],['CORTE CONSULTADO',contexto.corte],['PERÍODO COLOMBIA',contexto.desde||'Sin inicio',contexto.hasta||'Sin fin'],['FILTROS APLICADOS','Tienda',contexto.tienda||'Todas las autorizadas','Tipo',contexto.tipo||'Todos','Producto ID',contexto.producto||'Todos','IMEI',contexto.imei||'Todos']);
+  return filas;
+}
 
 let productosCache = [];
 let tiendasCache = [];
@@ -311,9 +321,9 @@ function initPagina() {
 
   document.getElementById('btnBuscar').addEventListener('click', buscarMovimientos);
   document.getElementById('btnExportarKardex').addEventListener('click', () => {
+    if(!contextoInformeKardex||!ultimoInformeKardex.length)return;
     const cell = v => { const t = String(v ?? ''); return '"'+(/^[=+@\-]/.test(t)?"'":'')+t.replace(/"/g,'""')+'"'; };
-    const filas = [['Fecha Colombia','Tienda','Producto','Código','IMEI','Movimiento','Cantidad','Costo autorizado','Referencia','ID referencia','Nota'],
-      ...ultimoInformeKardex.map(m=>[new Date(m.created_at).toLocaleString('es-CO',{timeZone:'America/Bogota'}),nombreTienda(m.tienda_codigo),m.productos?.nombre,m.productos?.codigo,m.unidades?.imei,tipoInfo(m.tipo).label,m.cantidad,m.costo,m.referencia_tipo,m.referencia_id,m.nota])];
+    const filas = filasInformeKardex(ultimoInformeKardex,contextoInformeKardex);
     const url=URL.createObjectURL(new Blob(['\uFEFF'+filas.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a');a.href=url;a.download='informe-kardex.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
@@ -388,12 +398,14 @@ function limpiarFiltros() {
 
 async function buscarMovimientos() {
   ultimoInformeKardex=[];
+  contextoInformeKardex=null;
   document.getElementById('btnExportarKardex').disabled=true;
   const tbody = document.getElementById('tbodyKardex');
   const info = document.getElementById('infoResultados');
   tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Buscando...</div></td></tr>';
 
   const imei = document.getElementById('filtroImei').value.trim();
+  const filtrosConsulta={imei,tienda:document.getElementById('filtroTienda').value,tipo:document.getElementById('filtroTipo').value,producto:productoSeleccionadoId,desde:document.getElementById('filtroDesde').value,hasta:document.getElementById('filtroHasta').value};
   let unidadId = null;
   if (imei) {
     const { data: unidad } = await sb.from('unidades_lectura').select('id').eq('imei', imei).maybeSingle();
@@ -413,17 +425,17 @@ async function buscarMovimientos() {
     .lte('created_at', instanteConsulta)
     .limit(500);
 
-  const tienda = document.getElementById('filtroTienda').value;
+  const tienda = filtrosConsulta.tienda;
   if (tienda) q = q.eq('tienda_codigo', tienda);
 
-  const tipo = document.getElementById('filtroTipo').value;
+  const tipo = filtrosConsulta.tipo;
   if (tipo) q = q.eq('tipo', tipo);
 
-  if (productoSeleccionadoId) q = q.eq('producto_id', productoSeleccionadoId);
+  if (filtrosConsulta.producto) q = q.eq('producto_id', filtrosConsulta.producto);
   if (unidadId) q = q.eq('unidad_id', unidadId);
 
-  const desde = document.getElementById('filtroDesde').value;
-  const hasta = document.getElementById('filtroHasta').value;
+  const desde = filtrosConsulta.desde;
+  const hasta = filtrosConsulta.hasta;
   if (desde) q = q.gte('created_at', `${desde}T00:00:00-05:00`);
   if (hasta) q = q.lt('created_at', new Date(new Date(`${hasta}T00:00:00-05:00`).getTime()+86400000).toISOString());
   return q;
@@ -448,6 +460,7 @@ async function buscarMovimientos() {
 
   const movimientos = (data || []).sort((a,b) => new Date(b.created_at)-new Date(a.created_at) || Number(b.id)-Number(a.id));
   ultimoInformeKardex=movimientos;
+  contextoInformeKardex={...filtrosConsulta,corte:instanteConsulta};
   document.getElementById('btnExportarKardex').disabled=!movimientos.length;
 
   // Contexto de dirección para traslados (una sola consulta batch, no N+1).

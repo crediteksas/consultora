@@ -5,7 +5,8 @@
   const env=window.__KORA_ENV__;
   const sb=supabase.createClient(env.KORA_ERP_SUPABASE_URL,env.KORA_ERP_SUPABASE_ANON_KEY);
   const $=id=>document.getElementById(id);
-  const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n));
+  const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(n));
+  const pesosValidos=n=>Number.isFinite(n)&&Math.abs(n)<1e12&&Math.abs(n*100-Math.round(n*100))<0.01;
   const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const labels={caja_retail:'Caja Retail',cartera_retail:'Cartera Retail',cartera_b2b:'Cartera cliente B2B',proveedor:'Deuda con proveedor / saldo a favor'};
   let perfil=null,origenes=[],proveedores=[],base=null,requestId=null,busy=false;
@@ -23,13 +24,13 @@
   function preview(){
     const nuevo=$('objetivo').value.trim()===''?null:Number($('objetivo').value);
     const firmado=base?.tipo==='proveedor';
-    const valido=base&&nuevo!==null&&Number.isSafeInteger(nuevo)&&Math.abs(nuevo)<1e15&&(firmado||nuevo>=0)&&nuevo!==base.saldo&&$('motivo').value.trim().length>=20;
+    const valido=base&&nuevo!==null&&pesosValidos(nuevo)&&(firmado||nuevo>=0)&&nuevo!==base.saldo&&$('motivo').value.trim().length>=20;
     $('preparar').disabled=busy||!valido;
     $('vistaPrevia').textContent=!base?'Selecciona el tipo y la cuenta para consultar su saldo.':
       nuevo===null?`Saldo actual: ${money(base.saldo)}. Escribe el nuevo saldo.`:
-      Number.isSafeInteger(nuevo)&&Math.abs(nuevo)<1e15&&(firmado||nuevo>=0)?
+      pesosValidos(nuevo)&&(firmado||nuevo>=0)?
         `${money(base.saldo)} → ${money(nuevo)}${firmado&&nuevo<0?' · A favor de Creditek':''} · Diferencia ${money(nuevo-base.saldo)}. Maite solo prepara; ningún saldo cambia hasta que Óscar autorice.`:
-        'El nuevo saldo debe ser un número no negativo de pesos enteros.';
+        'Escribe un saldo válido en pesos con máximo dos decimales.';
   }
   function cambiarTipo(){
     requestId=null;base=null;$('actual').value='';$('objetivo').value='';
@@ -64,7 +65,7 @@
     }
     if($('tipo').value!==tipo||$('codigo').value!==codigo)return;
     const saldo=Number(tipo==='caja_retail'?data?.esperado:data?.saldo);
-    if(error||!Number.isFinite(saldo)||(tipo!=='proveedor'&&(!Number.isInteger(saldo)||saldo<0))){
+    if(error||!pesosValidos(saldo)||(tipo!=='proveedor'&&saldo<0)){
       $('actual').value='No disponible';$('prepararEstado').textContent='No se pudo verificar el saldo. Actualiza la página antes de solicitar el ajuste.';
       return;
     }

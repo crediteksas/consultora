@@ -62,7 +62,7 @@
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
-        <div class="form-actions"><button id="conteos-crear" class="primary">Preparar corte y descargar</button><button id="conteos-ciego" class="secondary">Preparar conteo ciego</button></div></div>
+        <div class="form-actions"><button id="conteos-crear" class="primary">Inicializar inventario y descargar</button><button id="conteos-ciego" class="secondary">Inicializar inventario con conteo ciego</button></div></div>
         <p style="margin:8px 0">Cada tienda puede tener un solo inventario en proceso, aunque sea de otro día. Primero carga el conteo: sin diferencias se cierra el inventario; con diferencias se aplica el ajuste y se cierra. Solo Mayte u Óscar autorizan el ajuste o cierre. Las tiendas pueden cargar y corregir sus conteos sin cambiar existencias.</p>
         <section id="conteos-tareas-fotos" aria-label="Tareas de fotos pendientes" hidden>
           <h3>Fotos pendientes · tarea de la administradora de cada tienda</h3>
@@ -232,7 +232,7 @@
         <p>${esc(t.referencias)} referencias · Faltantes: ${esc(t.unidades_faltantes)} unidades (${esc(money(t.faltantes))}) · Sobrantes: ${esc(t.unidades_sobrantes)} unidades (${esc(money(t.sobrantes))})<br>
         Impacto neto del ajuste: <strong>${esc(money(t.impacto_neto))}</strong>. No mueve caja, banco ni cartera.</p>
         <div style="overflow:auto"><table><thead><tr><th>Referencia / IMEI</th><th>Diferencia</th><th>Antes</th><th>Después</th><th>Costo tienda</th><th>Valor ajuste</th><th>Clasificación / movimiento</th></tr></thead><tbody>
-        ${d.lineas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${Number(l.diferencia)>0?'+':''}${esc(l.diferencia)}</td><td>${esc(l.anterior)}</td><td>${esc(l.posterior)}</td><td>${esc(money(l.costo_tienda))}</td><td>${esc(money(l.valor_ajuste))}</td><td>${esc(l.clasificacion)}<br>${esc((l.movimientos||[]).join(', '))}</td></tr>`).join('')||'<tr><td colspan="7">Corte revisado sin diferencias; no creó movimientos.</td></tr>'}</tbody></table></div>
+        ${d.lineas.map(l=>`<tr><td>${esc(l.nombre)}<br>${esc(l.codigo)} ${esc(l.imei)}</td><td>${Number(l.diferencia)>0?'+':''}${esc(l.diferencia)}</td><td>${esc(l.anterior)}</td><td>${esc(l.posterior)}</td><td>${esc(money(l.costo_tienda))}</td><td>${esc(money(l.valor_ajuste))}</td><td>${esc(l.clasificacion)}<br>${esc((l.movimientos||[]).join(', '))}</td></tr>`).join('')||'<tr><td colspan="7">Corte revisado sin diferencias; no creó movimientos.</td></tr>'}</tbody><tfoot><tr><td colspan="5">Impacto neto del ajuste</td><td>${esc(money(t.impacto_neto))}</td><td>${esc(t.referencias)} referencias</td></tr></tfoot></table></div>
         ${utilidad?`<h3>Resultado económico · ${utilidad.cerrado?'Cerrado':'Provisional, no cerrado'}</h3><p>${esc(local(utilidad.inicio_at))} a ${esc(local(utilidad.fin_at))}</p>
           ${resultadoFilas(utilidad).map(([k,v])=>`<p>${esc(k)}: ${esc(money(v))}</p>`).join('')}
           <p>${utilidad.cerrado?`Cierre ${esc(utilidad.cierre_id)} · ${esc(local(utilidad.cerrado_at))}`:esc((utilidad.bloqueos||[]).join(' '))}</p>`:''}`;
@@ -251,6 +251,7 @@
         'Antes del ajuste':l.anterior,'Después del ajuste':l.posterior,'Costo tienda':l.costo_tienda,
         'Valor ajuste':l.valor_ajuste,Clasificación:l.clasificacion,Observación:l.nota,
         Movimientos:(l.movimientos||[]).join(', ')})):[{Observación:'Sin diferencias, no creó movimientos.'}],'Movimientos');
+      if(d.lineas.length){const summary=Object.fromEntries(Object.keys(XLSX.utils.sheet_to_json(libro.Sheets.Movimientos)[0]).map(key=>[key,'']));summary.Código='TOTAL AJUSTE';summary.Diferencia=Number(t.unidades_sobrantes)-Number(t.unidades_faltantes);summary['Valor ajuste']=t.impacto_neto;XLSX.utils.sheet_add_json(libro.Sheets.Movimientos,[summary],{skipHeader:true,origin:-1});}
       if(utilidad)hoja(libro,resultadoFilas(utilidad).map(([Concepto,Valor])=>({Concepto,Valor,
         Estado:utilidad.cerrado?'Cerrada':'Provisional, no cerrada',Inicio:local(utilidad.inicio_at),
         Fin:local(utilidad.fin_at),'ID cierre':utilidad.cierre_id||'',Bloqueos:(utilidad.bloqueos||[]).join(' ')})),'Utilidad neta');
@@ -260,7 +261,7 @@
     function imprimirDocumento() {
       const frame=document.createElement('iframe');frame.style.display='none';frame.title=nombreDocumento();
       frame.onload=()=>{frame.contentWindow.focus();frame.contentWindow.print();};
-      frame.srcdoc=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(documento.numero)}</title><style>body{font:12px Arial;color:#10213e}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px;text-align:left}tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}</style></head><body>${documentoHTML()}</body></html>`;
+      frame.srcdoc=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(documento.numero)}</title><style>body{font:10px Arial;color:#10213e}header{border-bottom:3px solid #00c4cc;padding-bottom:8px;display:flex;justify-content:space-between;align-items:center}header strong{color:#008a96;font-size:18px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #ddd;padding:5px;text-align:left;overflow-wrap:anywhere}thead{display:table-header-group}tfoot{background:#eafbfc;font-weight:bold}tr{break-inside:avoid}@page{size:A4 portrait;margin:12mm}</style></head><body><header><img src="${new URL('/creditek/shared/branding/creditek-logo.png',location.origin).href}" width="150" alt="Creditek"><strong>KORA</strong></header>${documentoHTML()}<footer>Creditek S.A.S. · KORA · ${esc(documento.numero)}</footer></body></html>`;
       document.body.appendChild(frame);
       frame.contentWindow.addEventListener('afterprint',()=>frame.remove(),{once:true});
     }
@@ -392,6 +393,8 @@
         if(detalle.corte.estado==='abierto')descargar(ciego);
         return `${activos.length>1?'Hay '+activos.length+' inventarios anteriores en proceso. ':''}Se abrió el inventario pendiente del ${fechaCorte(detalle.corte)}. No se creó otro corte ni se anuló ninguno. ${detalle.corte.estado==='abierto'?'Completa y carga su conteo.':'Revisa el conteo cargado antes de autorizar su ajuste o cierre.'}`;
       }
+      const tienda=config.tiendas.find(t=>t.codigo===el('tienda').value);
+      if(!global.confirm(`¿Usted quiere inicializar inventario?\n\nTienda: ${tienda?.nombre||el('tienda').value}.\nSe creará un nuevo corte con las existencias de este momento. Después deberá cargar el conteo y autorizar el ajuste o cierre antes de iniciar otro inventario.\nEsta acción no modifica existencias ni saldos.\n\nAceptar: inicializar inventario. Cancelar: no crear ningún corte.`))return false;
       detalle=await rpc('crear',{tienda:el('tienda').value});await renderDetalle();descargar(ciego);await historial();
     }
     async function guardarFoto(tienda,foto) {

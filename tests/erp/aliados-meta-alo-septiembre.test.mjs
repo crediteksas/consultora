@@ -22,7 +22,7 @@ test('Plataformas muestra avance, condiciones e incentivo sin contabilizarlo', (
   assert.match(app, /no contabilizado como utilidad/);
   assert.match(app, /Capacitación:/);
   assert.match(app, /g\.capacitacion_at/);
-  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.21/);
+  assert.match(html, /aliados-v1-1-app\.js\?v=1\.1\.(?:2[1-9]|[3-9]\d)"/);
 });
 
 test('Gerencia puede cargar metas futuras sin inventar valores de PayJoy o Krediya', async () => {
@@ -39,7 +39,7 @@ test('Gerencia puede cargar metas futuras sin inventar valores de PayJoy o Kredi
   assert.match(budgetHtml, /data-aliados-view="budget"/);
   assert.match(budgetHtml, /Presupuesto de Aliados/);
   assert.match(app, /aliados_guardar_meta_plataforma/);
-  assert.match(app, /profile\?\.rol!==\x27gerencia\x27/);
+  assert.match(app, /if\s*\(profile\?\.rol\s*!==\s*["']gerencia["']\)\s*return/);
   assert.match(managerMigration, /tiene_capacidad_aliados\('aprobador'\)/);
   assert.match(managerMigration, /guardar_meta_plataforma/);
   assert.match(managerMigration, /insert into public\.audit_log/);

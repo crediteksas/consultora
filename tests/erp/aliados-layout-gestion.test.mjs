@@ -10,15 +10,18 @@ const alliesApp = await readFile(new URL('../../creditek/erp/aliados-v1-1-app.js
 test('detalle de operaciones cabe en el ancho disponible sin perder datos esenciales', () => {
   assert.match(liquidationsHtml, /\.operations-table\{overflow-x:hidden}/);
   assert.match(liquidationsHtml, /\.operations-table table\{table-layout:fixed}/);
-  assert.match(liquidationsApp, /Cliente \/ IMEI/);
-  assert.match(liquidationsApp, /KORA:/);
+  assert.match(liquidationsApp, /Comprador del celular:/);
+  assert.match(liquidationsApp, /Cédula del comprador:/);
+  assert.match(liquidationsApp, /class="operation-imei">IMEI:/);
+  assert.match(liquidationsApp, /Inicial registrada en KORA/);
   assert.doesNotMatch(liquidationsApp, /const headers = \['Tipo de operación'.*'Novedades'\]/);
 });
 
 test('novedades se gestionan desde la fila y llevan al incidente correspondiente', () => {
   assert.match(liquidationsApp, /data-manage-issue/);
   assert.match(liquidationsApp, /loadTab\('incidents', button\.dataset\.manageIssue\)/);
-  assert.match(liquidationsApp, /focused-incident/);
+  assert.match(liquidationsApp, /focusOperationId \? source\.filter\(\(item\) => item\.operation_id === focusOperationId\)/);
+  assert.match(liquidationsApp, /id="allIssues">Ver todo el lote/);
 });
 
 test('tabla de aliados usa todo el ancho y ofrece gestión directa', () => {

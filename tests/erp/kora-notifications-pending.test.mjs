@@ -116,7 +116,7 @@ test('conteos cargados aparecen para Gerencia y Maite, no para tiendas',async()=
   assert.match(readFileSync('creditek/erp/conteos-ui.js','utf8'),/kora-notifications-refresh/);
 });
 
-test('RPC de la campana cuenta solo conteos pendientes y restringe a responsables activos',async()=>{
+test('RPC de la campana excluye comparativos históricos, conserva pendientes operativos y permisos',async()=>{
   const db=await PGlite.create();
   try {
     await db.exec(`create role anon; create role authenticated;
@@ -126,35 +126,61 @@ test('RPC de la campana cuenta solo conteos pendientes y restringe a responsable
       $$;
       create table public.perfiles(id uuid primary key, activo boolean, rol text);
       create table inventario_control.responsables(perfil_id uuid primary key);
-      create table inventario_control.cortes(id uuid primary key, estado text);
+      create table inventario_control.cortes(id uuid primary key, estado text, revision_fuente jsonb);
     `);
     await db.exec(readFileSync('supabase/migrations/20261005220944_avisar_conteos_inventario_pendientes.sql','utf8'));
+    const properties=()=>db.query(`select proowner,proacl::text,proconfig,prosecdef,provolatile from pg_proc
+      where oid='inventario_control.conteos_pendientes_cantidad()'::regprocedure`);
+    const beforeProperties=(await properties()).rows;
+    const migration=readFileSync('supabase/migrations/20261019183725_excluir_comparativos_historicos_del_aviso_inventario.sql','utf8');
+    await db.exec(migration);
+    await db.exec(migration); // Reaplicar no cambia permisos ni registros.
+    assert.deepEqual((await properties()).rows,beforeProperties);
+    assert.equal((await db.query(`select has_function_privilege('anon','public.conteos_pendientes_cantidad()','execute') as allowed`)).rows[0].allowed,false);
     await db.exec(`insert into public.perfiles values
       ('00000000-0000-0000-0000-000000000001',true,'gerencia'),
       ('00000000-0000-0000-0000-000000000002',true,'auditoria'),
       ('00000000-0000-0000-0000-000000000003',true,'admin_tienda'),
-      ('00000000-0000-0000-0000-000000000004',false,'auditoria');
+      ('00000000-0000-0000-0000-000000000004',false,'auditoria'),
+      ('00000000-0000-0000-0000-000000000005',true,'gerencia');
       insert into inventario_control.responsables values
       ('00000000-0000-0000-0000-000000000001'),
       ('00000000-0000-0000-0000-000000000002'),
       ('00000000-0000-0000-0000-000000000004');
       insert into inventario_control.cortes values
-      ('10000000-0000-0000-0000-000000000001','abierto'),
-      ('10000000-0000-0000-0000-000000000002','pendiente'),
-      ('10000000-0000-0000-0000-000000000003','pendiente'),
-      ('10000000-0000-0000-0000-000000000004','aplicado');`);
+      ('10000000-0000-0000-0000-000000000001','abierto',null),
+      ('10000000-0000-0000-0000-000000000002','pendiente',null),
+      ('10000000-0000-0000-0000-000000000003','pendiente',null),
+      ('10000000-0000-0000-0000-000000000004','aplicado',null),
+      ('10000000-0000-0000-0000-000000000005','pendiente','{"solo_comparativo":true}'),
+      ('10000000-0000-0000-0000-000000000006','pendiente','{"solo_comparativo":"true"}'),
+      ('10000000-0000-0000-0000-000000000007','pendiente','{"solo_comparativo":false}'),
+      ('10000000-0000-0000-0000-000000000008','pendiente','{}'),
+      ('10000000-0000-0000-0000-000000000009','pendiente','{"solo_comparativo":null}'),
+      ('10000000-0000-0000-0000-000000000010','rechazado',null),
+      ('10000000-0000-0000-0000-000000000011','sin_diferencias',null),
+      ('10000000-0000-0000-0000-000000000012','pendiente','{"solo_comparativo":"false"}');`);
+    const snapshot=()=>db.query('select * from inventario_control.cortes order by id');
+    const beforeRows=(await snapshot()).rows;
     for(const id of ['00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002']){
       await db.query("select set_config('app.uid',$1,false)",[id]);
       const result=await db.query('select public.conteos_pendientes_cantidad() as n');
-      assert.equal(Number(result.rows[0].n),2);
+      assert.equal(Number(result.rows[0].n),6);
     }
-    for(const id of ['00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000004']){
+    for(const id of ['00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000005']){
       await db.query("select set_config('app.uid',$1,false)",[id]);
       const result=await db.query('select public.conteos_pendientes_cantidad() as n');
       assert.equal(Number(result.rows[0].n),0);
     }
     await db.query("select set_config('app.uid','',false)");
     assert.equal(Number((await db.query('select public.conteos_pendientes_cantidad() as n')).rows[0].n),0);
+    assert.deepEqual((await snapshot()).rows,beforeRows,'Consultar no cambia ni descarta los cortes');
+    // Escenario del aviso fantasma: quedan únicamente histórico, apertura y cierres.
+    await db.exec(`delete from inventario_control.cortes where estado='pendiente'
+      and not coalesce((revision_fuente->>'solo_comparativo')::boolean,false)`);
+    await db.query("select set_config('app.uid','00000000-0000-0000-0000-000000000001',false)");
+    assert.equal(Number((await db.query('select public.conteos_pendientes_cantidad() as n')).rows[0].n),0);
+    assert.equal((await db.query("select count(*)::int as n from inventario_control.cortes where estado='pendiente'")).rows[0].n,2,'Los comparativos siguen en el historial');
   } finally { await db.close(); }
 });
 

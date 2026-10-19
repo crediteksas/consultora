@@ -1,9 +1,10 @@
 import { paginarReporte, type PaginaReporte } from './reportes-formato';
+import { prepararReporteDeudaCompacto } from './reporte-deuda-compacto';
 
 type Confirmacion = { saldo_sistema: number; saldo_declarado: number; diferencia: number; confirmado_at: string; revisado_at: string | null };
 type Fila = { usuario_id: string; administrador: string; tienda_codigo: string | null; tienda: string; confirmacion: Confirmacion | null };
 export type CorteDeuda = { fecha: string; corte: string; diarias: Fila[] };
-type Entrega = { destinatario: string; pagina: number; estado: 'sending' | 'sent'; meta_message_id?: string };
+type Entrega = { destinatario: string; pagina: number; estado: 'sending' | 'sent'; meta_message_id?: string; plantilla?: string };
 type Reserva = { fecha: string; token: string; contenido: CorteDeuda; resultados: Entrega[] };
 type Dependencias = {
  url: string; headers: HeadersInit;
@@ -50,13 +51,16 @@ export async function ejecutarReporteDeuda(d: Dependencias, ahora = new Date()):
  };
  let envioEnCurso = false;
  try {
-  const paginas = paginarReporte(formatearConfirmacionesDeuda(reserva.contenido));
+  // Un envío antiguo ya empezado termina con su formato original, sin mezclar páginas.
+  const paginas = resultados.some(e => !e.plantilla)
+   ? paginarReporte(formatearConfirmacionesDeuda(reserva.contenido))
+   : [prepararReporteDeudaCompacto(reserva.contenido)];
   for (const dest of d.destinatarios) {
    for (const [indice, pagina] of paginas.entries()) {
     const anterior = resultados.find(e => e.destinatario === dest.id && e.pagina === indice);
     if (anterior?.estado === 'sent') continue;
     if (anterior) { envioEnCurso = true; throw new Error('deuda_entrega_incierta_requiere_revision'); }
-    const entrega: Entrega = { destinatario: dest.id, pagina: indice, estado: 'sending' };
+    const entrega: Entrega = { destinatario: dest.id, pagina: indice, estado: 'sending', plantilla: pagina.plantilla };
     resultados.push(entrega);
     await guardar({ resultados });
     envioEnCurso = true;

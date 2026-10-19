@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="producto-foto.js"></script>
+<script src="producto-foto.js?v=1.1.0"></script>
 <script src="recepcion-origen.js?v=1"></script>
 <script src="bodega-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
@@ -880,7 +880,7 @@ async function abrirModalRecepcion(rem) {
       : `<div class="foto-recepcion">
           <label>Agrega la foto de este producto *</label>
           <input type="file" class="foto-recepcion-input" data-item="${idx}" accept="image/jpeg,image/png,image/webp" capture="environment">
-          <small class="foto-recepcion-ayuda" data-item="${idx}">JPG, PNG o WEBP. Máximo 5 MB.</small>
+          <small class="foto-recepcion-ayuda" data-item="${idx}">JPG, PNG o WEBP. Máximo 2 MB. Si pesa más, baja la resolución o comprímela.</small>
         </div>`;
     if (prod.tipo === 'serializado') {
       const imeis = Array.from({ length: it.cantidad }).map((_, i) => `
@@ -953,6 +953,7 @@ async function registrarFotosFaltantesRecepcion() {
         it.productos.foto_url = actual.foto_url;
         continue;
       }
+      throw new Error(`No se pudo subir la foto de "${it.productos.nombre}": ${productoFoto.mensajeErrorSubida(subida.error)}`);
     }
     const { data: publica } = sb.storage.from('productos-fotos').getPublicUrl(path);
     const { data, error } = await sb.rpc('registrar_foto_producto_recepcion', {

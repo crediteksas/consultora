@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="producto-foto.js"></script>
+<script src="producto-foto.js?v=1.1.0"></script>
 <script src="inventario-domain.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.35"></script>
@@ -222,7 +222,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <div class="campo">
       <label id="fotoProductoNombre">Producto</label>
       <input type="file" id="fotoProductoArchivo" accept="image/jpeg,image/png,image/webp">
-      <small>JPG, PNG o WEBP. Máximo 5 MB.</small>
+      <small>JPG, PNG o WEBP. Máximo 2 MB. Si pesa más, baja la resolución o comprímela.</small>
     </div>
     <div class="foto-modal-preview" id="fotoProductoPreview"></div>
     <div class="modal-err" id="fotoProductoErr"></div>
@@ -390,7 +390,7 @@ async function subirFotoProducto(productoId, archivo) {
     .from('productos-fotos')
     .upload(nombreArchivo, archivo, { cacheControl: '31536000', upsert: true });
 
-  if (error) throw error;
+  if (error) throw new Error(productoFoto.mensajeErrorSubida(error));
 
   const { data: { publicUrl } } = sb.storage.from('productos-fotos').getPublicUrl(nombreArchivo);
   return publicUrl;

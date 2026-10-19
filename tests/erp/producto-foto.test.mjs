@@ -34,7 +34,16 @@ test('consulta de tienda omite margen y precio guía', () => {
 test('valida tipo y tamaño de imagen', () => {
   assert.equal(fotos.validarArchivo({ type: 'image/jpeg', size: 1024 }), '');
   assert.match(fotos.validarArchivo({ type: 'application/pdf', size: 1024 }), /JPG, PNG o WEBP/);
-  assert.match(fotos.validarArchivo({ type: 'image/png', size: 6 * 1024 * 1024 }), /5 MB/);
+  assert.equal(fotos.validarArchivo({ type: 'image/png', size: 2 * 1024 * 1024 }), '');
+  assert.match(fotos.validarArchivo({ type: 'image/png', size: 2 * 1024 * 1024 + 1 }), /2 MB.*Baja la resolución o comprímela/);
+});
+
+test('traduce el rechazo por tamaño de Storage sin ocultar otros errores', () => {
+  for (const error of [{statusCode: '413'}, {status: 413}, {code: 'EntityTooLarge'},
+    {message: 'The object exceeded the maximum allowed size'}, {error: 'PayloadTooLarge'}]) {
+    assert.match(fotos.mensajeErrorSubida(error), /2 MB.*Baja la resolución o comprímela/);
+  }
+  assert.equal(fotos.mensajeErrorSubida({message:'Sin conexión'}), 'Sin conexión');
 });
 
 test('genera una ruta segura y estable', () => {

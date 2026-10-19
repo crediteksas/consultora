@@ -12,7 +12,7 @@ test('catálogo conserva el shell KORA y los flujos de foto de tienda y central'
   assert.match(html, /window\.__KORA_ENV__/);
   assert.match(html, /kora-access-control\.js/);
 
-  assert.match(html, /<script src="producto-foto\.js"><\/script>/);
+  assert.match(html, /<script src="producto-foto\.js\?v=1\.1\.0"><\/script>/);
   assert.match(html, /window\.CreditekProductoFoto/);
   assert.match(html, /id="modalFotoProducto"/);
   assert.match(html, /function abrirModalFoto\(/);

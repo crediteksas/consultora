@@ -2,7 +2,8 @@
   'use strict';
 
   const TIPOS_PERMITIDOS = new Set(['image/jpeg', 'image/png', 'image/webp']);
-  const MAX_BYTES = 5 * 1024 * 1024;
+  const MAX_BYTES = 2 * 1024 * 1024;
+  const FOTO_GRANDE = 'La foto supera los 2 MB. Baja la resolución o comprímela y vuelve a adjuntarla.';
 
   function permisosCatalogo(rol) {
     const puedeEditarProducto = rol === 'gerencia' || rol === 'auditoria';
@@ -21,8 +22,16 @@
     if (!archivo) return 'Selecciona una foto.';
     if (!TIPOS_PERMITIDOS.has(archivo.type)) return 'La foto debe ser JPG, PNG o WEBP.';
     if (!Number.isFinite(Number(archivo.size)) || Number(archivo.size) <= 0) return 'La foto está vacía.';
-    if (Number(archivo.size) > MAX_BYTES) return 'La foto no puede pesar más de 5 MB.';
+    if (Number(archivo.size) > MAX_BYTES) return FOTO_GRANDE;
     return '';
+  }
+
+  function mensajeErrorSubida(error) {
+    const mensaje = String(error?.message || '');
+    if (Number(error?.statusCode ?? error?.status) === 413
+      || ['EntityTooLarge', 'PayloadTooLarge'].includes(error?.code || error?.error)
+      || /exceeded.*(?:maximum allowed size|max.*size)|payload too large/i.test(mensaje)) return FOTO_GRANDE;
+    return mensaje || 'No se pudo subir la foto. Vuelve a intentarlo.';
   }
 
   function limpiarCodigo(codigo) {
@@ -64,7 +73,7 @@
       contentType: archivo.type,
       upsert: false,
     });
-    if (errorSubida) throw errorSubida;
+    if (errorSubida) throw new Error(mensajeErrorSubida(errorSubida));
 
     const { data: urlData } = bucket.getPublicUrl(ruta);
     const fotoUrl = urlData?.publicUrl;
@@ -87,6 +96,7 @@
     permisosCatalogo,
     columnasProductos,
     validarArchivo,
+    mensajeErrorSubida,
     crearRutaFoto,
     buscarProductoPorCodigo,
     subirFotoSegura,

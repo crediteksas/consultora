@@ -9,13 +9,13 @@ const html = await readFile(
 
 test('remisiones conserva shell KORA y presentación detallada de fotos', () => {
   assert.doesNotMatch(html, /^(?:<<<<<<<|=======|>>>>>>>)/m);
-  assert.match(html, /<script src="producto-foto\.js"><\/script>/);
+  assert.match(html, /<script src="producto-foto\.js\?v=1\.1\.0"><\/script>/);
   assert.match(html, /<script src="\/config\/kora-environment\.generated\.js"><\/script>/);
   assert.match(html, /kora-access-control\.js/);
   assert.match(html, /class="foto-recepcion"/);
   assert.match(html, /class="foto-recepcion-ayuda"/);
   assert.match(html, /capture="environment"/);
-  assert.match(html, /JPG, PNG o WEBP\. Máximo 5 MB\./);
+  assert.match(html, /JPG, PNG o WEBP\. Máximo 2 MB\./);
 });
 
 test('recepción usa foto canónica y la RPC específica antes de confirmar', () => {

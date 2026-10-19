@@ -3,6 +3,22 @@
  const env=window.__KORA_ENV__,sb=supabase.createClient(env.KORA_ERP_SUPABASE_URL,env.KORA_ERP_SUPABASE_ANON_KEY);
  const $=id=>document.getElementById(id),money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(Number(n));
  const e=(tag,text)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;return node;};
+ function sumarSaldos(diarias){
+  const decimal=new Intl.NumberFormat('en-US',{useGrouping:false,minimumFractionDigits:2,maximumFractionDigits:2});
+  const total={sistema:0,declarado:0,confirmadas:0};
+  for(const row of diarias){
+   const c=row.confirmacion;if(!c)continue;
+   for(const [key,value] of [['sistema',c.saldo_sistema],['declarado',c.saldo_declarado]]){
+    if(!['number','string'].includes(typeof value)||String(value).trim()===''||!Number.isFinite(Number(value)))throw new Error('No se pueden totalizar saldos incompletos.');
+    // Sumar los centavos visibles evita errores de coma flotante y conserva el signo.
+    const cents=Number(decimal.format(Number(value)).replace('.',''));
+    if(!Number.isSafeInteger(cents)||!Number.isSafeInteger(total[key]+cents))throw new Error('Los saldos exceden el rango de cálculo seguro.');
+    total[key]+=cents;
+   }
+   total.confirmadas++;
+  }
+  return {...total,sistema:total.sistema/100,declarado:total.declarado/100};
+ }
  const {data:{session}}=await sb.auth.getSession();if(!session)return;$('app').classList.add('show');
  $('fecha').value=new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'});
  let loading=false,reloadRequested=false,scrollRequested=true;
@@ -13,7 +29,7 @@
  }
  async function load(){
   if(loading){reloadRequested=true;return;}
-  loading=true;$('actualizar').disabled=true;$('estado').textContent='Consultando…';
+  loading=true;$('actualizar').disabled=true;$('estado').textContent='Consultando…';$('totales').hidden=true;
   const requestedDate=$('fecha').value;
   try{
    if(!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate))throw new Error('Selecciona un día válido.');
@@ -25,8 +41,9 @@
    if(requestedDate!==$('fecha').value||reloadRequested)return;
    if(error)throw error;
    if(!Array.isArray(data?.diarias)||!Array.isArray(data?.diferencias))throw new Error('Respuesta de confirmaciones incompleta.');
+   const totals=sumarSaldos(data.diarias);
    $('filas').replaceChildren();$('diferencias').replaceChildren();
-   const confirmed=data.diarias.filter(row=>row.confirmacion).length;
+   const confirmed=totals.confirmadas;
    $('resumenDiarias').textContent=confirmed+' de '+data.diarias.length+' confirmaciones recibidas · '+(data.diarias.length-confirmed)+' sin confirmar en el día seleccionado.';
    const stores=new Set(data.diferencias.map(c=>c.tienda));
    $('resumenDiferencias').textContent=data.diferencias.length+' reportes por revisar · '+stores.size+' tiendas · incluye días anteriores, sin depender del día seleccionado.';
@@ -37,6 +54,11 @@
     for(const value of [row.tienda+' · '+row.administrador,status,c?money(c.saldo_sistema):'—',c?money(c.saldo_declarado):'—',c?new Date(c.confirmado_at).toLocaleTimeString('es-CO',{timeZone:'America/Bogota'}):'—'])tr.append(e('td',value));
     $('filas').append(tr);
    }
+   $('totalEtiqueta').textContent=confirmed<data.diarias.length?'TOTAL PARCIAL':'TOTAL';
+   $('totalSistema').textContent=confirmed||!data.diarias.length?money(totals.sistema):'—';
+   $('totalDeclarado').textContent=confirmed||!data.diarias.length?money(totals.declarado):'—';
+   $('totalAlcance').textContent=confirmed+' de '+data.diarias.length+' confirmadas';
+   $('totales').hidden=false;
    for(const c of data.diferencias){
     const card=e('form');card.className='diferencia';
     card.append(e('h3',c.tienda+' · '+c.administrador),e('small','Reporte del '+c.fecha+' · pendiente de revisión'),e('p','KORA: '+money(c.saldo_sistema)+' · Declarado: '+money(c.saldo_declarado)+' · Diferencia: '+money(c.diferencia)),e('p',c.observacion));
@@ -60,6 +82,7 @@
   }catch(err){
    if(requestedDate!==$('fecha').value)return;
    $('filas').replaceChildren();$('diferencias').replaceChildren();
+   $('totales').hidden=true;
    $('resumenDiarias').textContent='Confirmaciones sin verificar.';$('resumenDiferencias').textContent='Diferencias sin verificar; no significa que sean cero.';
    $('estado').textContent='No se pudo consultar: '+err.message;
   }finally{

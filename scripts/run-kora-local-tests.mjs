@@ -16,6 +16,7 @@ const responsive = [
 // se incluye puntualmente el test de regresión de cada fix ya validado.
 const erp = [
   'tests/erp/confirmacion-deuda-diaria.test.mjs',
+  'tests/erp/confirmaciones-deuda-totales.test.mjs',
   'tests/erp/ventas-autorizacion.test.mjs',
   'tests/erp/liquidaciones-excel.test.mjs',
   'tests/erp/kora-report-export.test.mjs',

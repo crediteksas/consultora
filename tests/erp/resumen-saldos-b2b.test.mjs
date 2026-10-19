@@ -62,5 +62,7 @@ test('consulta sin escrituras, sin precios internos ni claves privilegiadas',asy
  assert.doesNotMatch(source+app,/\.(insert|update|delete|upsert|rpc)\(|service_role|costo_unitario/);
  assert.match(app,/perfil\?\.activo/);
  const html=await readFile('creditek/erp/resumen-saldos-b2b.html','utf8');
- assert.match(html,/no representa el capital de trabajo completo/);assert.match(html,/No es utilidad ni efectivo disponible/);
+ assert.match(html,/<h2 class="kpi-label">Capital de trabajo B2B<\/h2><strong id="diferencia">/);
+ assert.match(html,/Cartera menos deuda con proveedores/);assert.match(html,/No es utilidad ni efectivo disponible/);
+ assert.match(html,/no incluye inventario, caja ni bancos/);assert.match(html,/Los inventarios de las tiendas se consultan por separado/);
 });

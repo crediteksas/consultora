@@ -41,7 +41,7 @@ test('informes de saldos B2B: resumen, detalle y totales exactos sin cruzar cré
   await page.evaluate(()=>window.KoraReportExport.mount({profile:{rol:'gerencia',nombre:'Óscar'},sb:window.reportSb}));
   const snapshot=mode=>page.evaluate(mode=>window.KoraReportExport.snapshot({rol:'gerencia',nombre:'Óscar'},{mode}),mode);
   const summary=await snapshot('summary'),detailed=await snapshot('detailed');
-  assert.deepEqual(summary.metrics,[['Saldo neto de tiendas y clientes','$ 1.200.000,60'],['Por pagar a proveedores','$ 700.000,25'],['Cartera menos proveedores','$ 500.000,35']]);
+  assert.deepEqual(summary.metrics,[['Saldo neto de tiendas y clientes','$ 1.200.000,60'],['Por pagar a proveedores','$ 700.000,25'],['Capital de trabajo B2B','$ 500.000,35']]);
   assert.deepEqual(summary.metrics,detailed.metrics);
   assert.equal(summary.tables.length,2);assert.equal(detailed.tables.length,2);
   assert.doesNotMatch(JSON.stringify(summary.tables),/Móvil Shopping|Cliente externo|Proveedor prueba|Proveedor con crédito/);
@@ -67,6 +67,7 @@ test('informes de saldos B2B: resumen, detalle y totales exactos sin cruzar cré
    await popup.getByRole('heading',{name:'Resumen de saldos B2B',exact:true}).waitFor();
    const text=await popup.locator('body').textContent();
    assert.match(text,/Total por pagar mostrado/);assert.match(text,/700\.000,25/);assert.match(text,/200\.000,50/);assert.match(text,/1\.200\.000,60/);
+   assert.match(text,/Capital de trabajo B2B/);
    if(mode==='summary')assert.doesNotMatch(text,/Proveedor prueba|Móvil Shopping/);
    else {assert.match(text,/Proveedor prueba/);assert.match(text,/Móvil Shopping/);assert.match(text,/Documentos vencidos antes de cruzar créditos/);assert.equal(await popup.locator('tfoot').count(),2);}
    assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_formato),'pdf');

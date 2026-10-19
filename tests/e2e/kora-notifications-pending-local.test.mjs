@@ -11,7 +11,7 @@ test('campana conserva trámites al leer avisos y actualiza estados sin mutar do
     await page.evaluate(()=>{
       window.counts={kora_incidents:2,traslados:6,gastos:4,aliados_gastos_operativos:1,financial_entries:2,ventas_autorizaciones:3};
       window.writes=[];window.fail=false;
-      window.sb={rpc:async name=>({data:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false,update=false;const q={select(fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},is(){return q;},order(){return q;},limit(){return q;},update(){window.writes.push(table);update=true;return q;},then(ok,bad){return Promise.resolve(update?{error:null}:count?{count:window.fail&&table==='traslados'?null:window.counts[table],error:window.fail&&table==='traslados'?{message:'Network error'}:null}:{data:[{id:'n1',type:'incident_resolved',title:'Incidencia corregida',message:'Prueba',incident_id:'00000000-0000-0000-0000-000000000001',read_at:null,created_at:'2026-09-21T12:00:00Z'}],error:null}).then(ok,bad);}};return q;}};
+      window.sb={rpc:async name=>({data:name==='listar_confirmaciones_deuda'?{diarias:[],diferencias:[]}:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false,update=false;const q={select(fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},is(){return q;},order(){return q;},limit(){return q;},update(){window.writes.push(table);update=true;return q;},then(ok,bad){return Promise.resolve(update?{error:null}:count?{count:window.fail&&table==='traslados'?null:window.counts[table],error:window.fail&&table==='traslados'?{message:'Network error'}:null}:{data:[{id:'n1',type:'incident_resolved',title:'Incidencia corregida',message:'Prueba',incident_id:'00000000-0000-0000-0000-000000000001',read_at:null,created_at:'2026-09-21T12:00:00Z'}],error:null}).then(ok,bad);}};return q;}};
     });
     await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
     await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'a',activo:true,rol:'gerencia'}}));
@@ -53,6 +53,7 @@ test('ventas en campana: permiso del servidor, error visible y enlace directo si
           calls.push(name);
           if(name==='puede_autorizar_venta_excepcional')return failPermission?{error:{message:'Error de permiso'}}:{data:allowed};
           if(name==='es_controlador_financiero')return {data:false};
+          if(name==='listar_confirmaciones_deuda')return {data:{diarias:[],diferencias:[]}};
           if(['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name))return {data:0};
           throw new Error('RPC de escritura no permitido');
         },from(table){calls.push(table);let count=false;const q={
@@ -73,8 +74,10 @@ test('ventas en campana: permiso del servidor, error visible y enlace directo si
       const sale=page.locator('[data-pending="sales-approval"]');
       assert.match(await sale.textContent(),/1 · Ventas bajo costo u obsequios por autorizar/);
       await page.evaluate(()=>{failCount=true;document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));});
-      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='1+');
-      assert.equal(await sale.count(),1,'un error no borra la alerta anterior');
+      await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='!');
+      assert.equal(await sale.count(),1,'un error conserva la categoría sin fingir un conteo vigente');
+      assert.match(await sale.textContent(),/Por comprobar/);
+      assert.match(await sale.textContent(),/Último conteo: 1/);
       await sale.click();
       await page.waitForURL('https://kora.test/creditek/erp/ventas.html#tituloAutorizaciones');
       assert.equal(await page.evaluate(()=>calls.some(n=>n==='resolver_autorizacion_venta')),false);
@@ -99,7 +102,7 @@ test('aprobación, pago y cierre sincronizan dos ventanas; avisos históricos no
       await page.exposeFunction('unexpectedWrite',table=>writes.push(table));
       await page.goto('https://kora.test/creditek/erp/app.html');
       await page.evaluate(()=>{
-        window.sb={rpc:async name=>({data:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false;const filters=[];const q={
+        window.sb={rpc:async name=>({data:name==='listar_confirmaciones_deuda'?{diarias:[],diferencias:[]}:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:true}),from(table){let count=false;const filters=[];const q={
           select(_fields,options){count=!!options?.head;return q;},eq(k,v){filters.push(['eq',k,v]);return q;},in(k,v){filters.push(['in',k,v]);return q;},order(){return q;},limit(){return q;},
           update(){unexpectedWrite(table);return q;},
           then(ok,bad){return (count?readPendingRows(table,filters):Promise.resolve({data:[{id:'aviso-viejo',type:'incident_assigned',title:'Incidencia ya cerrada',message:'Historial',incident_id:'00000000-0000-0000-0000-000000000001',created_at:'2026-09-21T12:00:00Z',read_at:null}]})).then(ok,bad);}
@@ -140,7 +143,7 @@ test('no pierde actualizaciones durante una consulta en vuelo y vuelve a consult
     await page.setContent('<button data-kora-notifications>Campana</button>');
     await page.evaluate(()=>{
       window.expenses=2;window.rounds=0;window.release=null;window.hold=true;
-      window.sb={rpc:async()=>({data:false}),from(table){let count=false;const q={
+      window.sb={rpc:async name=>({data:name==='listar_confirmaciones_deuda'?{diarias:[],diferencias:[]}:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:false}),from(table){let count=false;const q={
         select(_fields,options){count=!!options?.head;return q;},eq(){return q;},in(){return q;},order(){return q;},limit(){return q;},
         then(ok,bad){const result=count?{count:table==='gastos'?expenses:0}:{data:[]};
           if(table==='gastos'){rounds++;if(hold){hold=false;return new Promise(resolve=>{release=()=>resolve(result);}).then(ok,bad);}}
@@ -158,4 +161,29 @@ test('no pierde actualizaciones durante una consulta en vuelo y vuelve a consult
     await page.evaluate(()=>{expenses=0;window.dispatchEvent(new Event('online'));});
     await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').hidden);
   }finally{await browser.close();}
+});
+
+test('consulta de campana colgada muestra total no verificado y Actualizar recupera un cero real',async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});
+ try{
+  const page=await browser.newPage();await page.clock.install();
+  await page.setContent('<button data-kora-notifications>Campana</button>');
+  await page.evaluate(()=>{
+   window.expenses=1;window.hang=false;window.waiting=false;
+   window.sb={rpc:async name=>({data:name==='listar_confirmaciones_deuda'?{diarias:[],diferencias:[]}:['conteos_pendientes_cantidad','inventario_fotos_pendientes_cantidad'].includes(name)?0:false}),from(table){let head=false;const q={select(_fields,options){head=!!options?.head;return q;},eq(){return q;},in(){return q;},order(){return q;},limit(){return q;},then(ok,bad){if(head&&table==='gastos'&&hang){waiting=true;return new Promise(()=>{});}return Promise.resolve(head?{count:table==='gastos'?expenses:0}:{data:[]}).then(ok,bad);}};return q;}};
+  });
+  await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
+  await page.evaluate(()=>KoraNotifications.mount({sb,profile:{id:'ficticio',rol:'gerencia',activo:true}}));
+  await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='1');
+  await page.locator('[data-kora-notifications]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-kora-notifications-refresh]').disabled);
+  await page.evaluate(()=>{hang=true;});await page.locator('[data-kora-notifications-refresh]').click();
+  await page.waitForFunction(()=>waiting);await page.clock.fastForward(16000);
+  await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').textContent==='!');
+  assert.match(await page.locator('[data-pending="store-expenses"]').textContent(),/Por comprobar/);
+  assert.match(await page.locator('[data-kora-notifications-updated]').textContent(),/Última verificación completa/);
+  await page.evaluate(()=>{hang=false;expenses=0;});await page.locator('[data-kora-notifications-refresh]').click();
+  await page.waitForFunction(()=>document.querySelector('[data-kora-notification-count]').hidden);
+  assert.equal(await page.locator('[data-pending]').count(),0);
+ }finally{await browser.close();}
 });

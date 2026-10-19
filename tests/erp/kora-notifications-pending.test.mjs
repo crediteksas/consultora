@@ -6,7 +6,25 @@ import {PGlite} from '@electric-sql/pglite';
 const source=readFileSync('creditek/erp/kora-notifications.js','utf8');
 const context=vm.createContext({window:{},document:{dispatchEvent(){}},CustomEvent:class{}});
 vm.runInContext(source,context);
-const {pendingSources,pendingCount}=context.window.KoraNotifications;
+const {pendingSources,pendingCount,colombiaToday}=context.window.KoraNotifications;
+test('confirmaciones de hoy y reportes históricos son controles separados desde la misma consulta',async()=>{
+  const sources=pendingSources({id:'a',rol:'gerencia'}),daily=sources.find(s=>s.key==='store-debt-confirmations'),differences=sources.find(s=>s.key==='store-debt-differences');
+  assert.equal(daily.rpc,'listar_confirmaciones_deuda');assert.match(daily.path,/#confirmacionesDelDia$/);assert.match(differences.path,/#diferenciasPendientes$/);
+  assert.match(differences.hint,/una tienda puede tener varios reportes/);
+  let calls=0;const payload={diarias:[{confirmacion:null},{confirmacion:null},{confirmacion:{diferencia:0}}],diferencias:Array.from({length:4},()=>({tienda:'Tienda A'}))};
+  const sb={rpc:async(name,args)=>{calls++;assert.equal(name,'listar_confirmaciones_deuda');assert.match(args.p_fecha,/^\d{4}-\d{2}-\d{2}$/);return {data:payload};}},cache=new Map();
+  const result=await Promise.all([pendingCount(sb,daily,cache),pendingCount(sb,differences,cache)]);
+  assert.deepEqual(result.map(r=>r.count),[2,4]);assert.equal(calls,1);
+  for(const data of [null,false,{diarias:[]},{diarias:[{}],diferencias:[]},{diarias:[{confirmacion:false}],diferencias:[]},{diarias:[],diferencias:null}]){
+    await assert.rejects(Promise.all([pendingCount({rpc:async()=>({data})},daily),pendingCount({rpc:async()=>({data})},differences)]),/pendientes/);
+  }
+  assert.equal(colombiaToday(new Date('2026-10-19T04:59:59Z')),'2026-10-18');assert.equal(colombiaToday(new Date('2026-10-19T05:00:00Z')),'2026-10-19');
+});
+test('rechaza conteos negativos, booleanos, vacíos o fuera de rango en lugar de inventar cero',async()=>{
+  const spec=pendingSources({id:'a',rol:'gerencia'}).find(s=>s.key==='inventory-counts');
+  for(const data of [false,true,'',null,-1,1.2,Infinity,Number.MAX_SAFE_INTEGER+1])await assert.rejects(pendingCount({rpc:async()=>({data})},spec),/pendientes/);
+  for(const count of [-1,1.2,Number.MAX_SAFE_INTEGER+1])await assert.rejects(pendingCount({from(){const q={select(){return q;},in(){return q;},then(fn){return Promise.resolve({count}).then(fn);}};return q;}},pendingSources({id:'a'})[0]),/pendientes/);
+});
 test('fotos pendientes son tareas no bloqueantes para la tienda, Mayte y Gerencia',async()=>{
   for(const rol of ['admin_tienda','gerencia','auditoria']){
     const spec=pendingSources({id:'a',rol,tienda_codigo:'CK-01'}).find(s=>s.key==='inventory-photo-tasks');

@@ -167,12 +167,12 @@ test('el shell monta campana, contador y panel de notificaciones', async () => {
     read('design-system/components/kora-incident-center.css'),
   ]);
   assert.match(sidebar, /KoraNotifications\?\.mount/);
-  assert.match(sidebar, /kora-incident-center\.css\?v=1\.1\.2/);
+  assert.match(sidebar, /kora-incident-center\.css\?v=1\.1\.(?:[3-9]|[1-9]\d+)(?:['"`])/);
   assert.match(sidebar, /kora-notifications\.js\?v=1\.2\.(?:[6-9]|[1-9]\d+)(?:['"`])/);
   assert.doesNotMatch(sidebar, /data-kora-notifications[^>]*disabled/);
   assert.match(notifications, /kora_notifications/);
   assert.match(notifications, /data-kora-notification-count/);
-  assert.match(notifications, /Marcar todas como leídas/);
+  assert.match(notifications, /Marcar avisos como leídos/);
   assert.match(notifications, /read_at/);
   assert.match(notifications, /incidencias\.html\?id=/);
   assert.match(sidebar, /KoraNotifications\?\.mount/);

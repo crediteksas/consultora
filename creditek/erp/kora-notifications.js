@@ -2,6 +2,7 @@
   'use strict';
 
   // Consultas de solo lectura: RLS sigue siendo la autoridad sobre lo visible.
+  const colombiaToday = (now = new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
@@ -11,7 +12,8 @@
     );
     if (central) {
       sources.push(
-        {key:'store-debt-differences',table:'confirmaciones_deuda_tienda',title:'Diferencias de deuda de tiendas por revisar',hint:'La tienda ya puede continuar. Revisar no modifica su deuda.',path:'/creditek/erp/confirmaciones-deuda.html',filters:[['neq','diferencia',0],['is','revisado_at',null]]},
+        {key:'store-debt-confirmations',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diarias',title:'Tiendas sin confirmar el saldo de hoy',hint:'Cuenta administradoras activas que aún no confirmaron hoy. No significa que tengan una diferencia de saldo.',path:'/creditek/erp/confirmaciones-deuda.html#confirmacionesDelDia'},
+        {key:'store-debt-differences',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diferencias',title:'Reportes de diferencias de deuda por revisar',hint:'Incluye días anteriores: una tienda puede tener varios reportes. No son las tiendas sin confirmar hoy. Revisar no modifica su deuda.',path:'/creditek/erp/confirmaciones-deuda.html#diferenciasPendientes'},
         {key:'inventory-counts',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
         {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
         {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
@@ -33,23 +35,31 @@
     return sources;
   }
 
-  async function pendingCount(sb, source) {
+  async function pendingCount(sb, source, requests = new Map()) {
     if (source.rpc) {
-      const result = await sb.rpc(source.rpc);
+      const key=JSON.stringify([source.rpc,source.args||{}]);
+      if(!requests.has(key))requests.set(key,Promise.resolve().then(()=>source.args?sb.rpc(source.rpc,source.args):sb.rpc(source.rpc)));
+      const result = await requests.get(key);
+      if(source.resultKey){
+        const rows=result.data?.[source.resultKey];
+        if(result.error||!Array.isArray(rows)||rows.some(row=>!row||typeof row!=='object'||(source.resultKey==='diarias'&&(!Object.hasOwn(row,'confirmacion')||(row.confirmacion!==null&&typeof row.confirmacion!=='object')))))throw new Error('No se pudieron consultar todos los pendientes.');
+        return {...source,count:source.resultKey==='diarias'?rows.filter(row=>row.confirmacion===null).length:rows.length};
+      }
       const count = Number(result.data);
-      if (result.error || result.data == null || !Number.isSafeInteger(count) || count < 0) throw new Error('No se pudieron consultar todos los pendientes.');
+      if (result.error || !['number','string'].includes(typeof result.data) || String(result.data).trim()==='' || !Number.isSafeInteger(count) || count < 0) throw new Error('No se pudieron consultar todos los pendientes.');
       return {...source, count};
     }
     let query = sb.from(source.table).select('id', {count:'exact', head:true});
     for (const [method, column, value] of source.filters) query = query[method](column, value);
     const result = await query;
-    if (result.error || !Number.isInteger(result.count)) throw new Error('No se pudieron consultar todos los pendientes.');
+    if (result.error || !Number.isSafeInteger(result.count) || result.count < 0) throw new Error('No se pudieron consultar todos los pendientes.');
     return {...source, count:result.count};
   }
 
   const formatDate = value => new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: 'America/Bogota',
   }).format(new Date(value));
 
   function element(tag, text, className) {
@@ -61,7 +71,7 @@
 
   function mount({ sb, profile }) {
     const trigger = document.querySelector('[data-kora-notifications]');
-    if (!sb || !profile?.id || !trigger || trigger.dataset.koraNotificationsReady === 'true') return;
+    if (!sb || !profile?.id || profile.activo===false || !trigger || trigger.dataset.koraNotificationsReady === 'true') return;
     trigger.dataset.koraNotificationsReady = 'true';
     trigger.disabled = false;
     trigger.setAttribute('aria-label', 'Notificaciones');
@@ -80,8 +90,9 @@
     panel.setAttribute('aria-label', 'Notificaciones');
     panel.innerHTML = `<header class="kora-notifications-panel__header">
       <div><strong>Notificaciones</strong><span data-kora-notifications-summary></span></div>
-      <button type="button" class="ghost" data-kora-notifications-read-all>Marcar todas como leídas</button>
+      <div class="kora-notifications-panel__actions"><button type="button" class="ghost" data-kora-notifications-refresh>Actualizar</button><button type="button" class="ghost" data-kora-notifications-read-all>Marcar avisos como leídos</button></div>
     </header>
+    <p class="kora-notifications-updated" data-kora-notifications-updated>Consultando pendientes…</p>
     <div class="kora-notifications-list" data-kora-notifications-list></div>
     <p class="kora-notifications-status" role="status" data-kora-notifications-status></p>`;
     document.body.append(panel);
@@ -91,6 +102,7 @@
     let incomplete = false;
     let loading = false;
     let reloadRequested = false;
+    let lastVerified = null;
     const refreshKey = `kora-notifications-refresh:${profile.id}`;
 
     function setStatus(message, isError = false) {
@@ -101,11 +113,11 @@
 
     function updateCount() {
       const unread = notifications.filter(item => !item.read_at).length;
-      const tasks = pending.reduce((sum,item)=>sum+item.count,0);
+      const tasks = pending.filter(item=>!item.stale).reduce((sum,item)=>sum+item.count,0);
       // Los avisos históricos no son trámites pendientes ni se suman dos veces.
-      count.textContent = incomplete ? (tasks ? `${tasks}+` : '!') : tasks > 99 ? '99+' : String(tasks);
+      count.textContent = incomplete ? '!' : tasks > 99 ? '99+' : String(tasks);
       count.hidden = tasks === 0 && !incomplete;
-      const summary = `${tasks} pendientes · ${unread} avisos sin leer${incomplete?' · consulta incompleta':''}`;
+      const summary = `${tasks} pendientes${incomplete?' comprobados · consulta incompleta':''} · ${unread} avisos sin leer`;
       trigger.setAttribute('aria-label', `Notificaciones, ${summary}`);
       trigger.title = summary;
       panel.querySelector('[data-kora-notifications-summary]').textContent = tasks || unread || incomplete ? summary : 'Sin pendientes ni avisos nuevos';
@@ -136,14 +148,16 @@
     function render() {
       const list = panel.querySelector('[data-kora-notifications-list]');
       list.replaceChildren();
-      if (pending.some(item=>item.count>0)) {
+      if (pending.some(item=>item.stale||item.count>0)) {
         list.append(element('p','Pendientes por gestionar · se retiran al resolver el trámite, no al leerlos.','kora-notifications-empty'));
-        pending.filter(item=>item.count>0).forEach(item=>{
+        pending.filter(item=>item.stale||item.count>0).forEach(item=>{
           const button=element('button',undefined,'kora-notification-item ghost');
           button.type='button';
           button.dataset.pending=item.key;
           button.dataset.unread='true';
-          button.append(element('strong',`${item.count} · ${item.title}`));
+          button.dataset.stale=String(Boolean(item.stale));
+          button.append(element('strong',`${item.stale?'Por comprobar':item.count} · ${item.title}`));
+          if(item.stale)button.append(element('span',Number.isSafeInteger(item.count)?`Último conteo: ${item.count}. No está actualizado; pulsa Actualizar.`:'No se pudo comprobar esta categoría; pulsa Actualizar.','kora-notification-item__detail'));
           if (item.hint) button.append(element('span',item.hint,'kora-notification-item__detail'));
           button.append(element('span','Abrir pendientes','kora-notification-item__link'));
           button.addEventListener('click',()=>location.assign(item.path));
@@ -151,7 +165,7 @@
         });
       }
       if (!notifications.length) {
-        if (!pending.some(item=>item.count>0)) list.append(element('p', incomplete?'No se pudo comprobar si estás al día.':'No tienes notificaciones ni trámites pendientes.', 'kora-notifications-empty'));
+        if (!pending.some(item=>item.stale||item.count>0)) list.append(element('p', incomplete?'No se pudo comprobar si estás al día.':'No tienes notificaciones ni trámites pendientes.', 'kora-notifications-empty'));
         updateCount();
         return;
       }
@@ -188,6 +202,12 @@
     async function load() {
       if (loading) { reloadRequested = true; return; }
       loading = true;
+      panel.setAttribute('aria-busy','true');
+      panel.querySelector('[data-kora-notifications-refresh]').disabled=true;
+      const bounded=request=>new Promise((resolve,reject)=>{
+        const timer=global.setTimeout(()=>reject(new Error('La consulta tardó demasiado.')),15000);
+        Promise.resolve(request).then(resolve,reject).finally(()=>global.clearTimeout(timer));
+      });
       try {
         const results = await Promise.allSettled([sb.from('kora_notifications')
           .select('id,type,title,message,incident_id,read_at,created_at,metadata')
@@ -195,32 +215,39 @@
           .limit(50),
           ['gerencia','auditoria'].includes(profile.rol)?sb.rpc('es_controlador_financiero'):Promise.resolve({data:false}),
           ['gerencia','auditoria'].includes(profile.rol)&&profile.activo!==false?sb.rpc('puede_autorizar_venta_excepcional'):Promise.resolve({data:false}),
-        ]);
+        ].map(bounded));
         incomplete = false;
         const notices=results[0];
         if(notices.status==='rejected'||notices.value.error||!Array.isArray(notices.value.data)) incomplete=true;
         else notifications=notices.value.data;
         const access=results[1];
         const financialAccess=access.status==='fulfilled'&&!access.value.error&&access.value.data===true;
-        if(access.status==='rejected'||access.value.error) incomplete=true;
+        if(access.status==='rejected'||access.value.error||typeof access.value.data!=='boolean') incomplete=true;
         const salesAccess=results[2];
         const salesApprovalAccess=salesAccess.status==='fulfilled'&&!salesAccess.value.error&&salesAccess.value.data===true;
-        if(salesAccess.status==='rejected'||salesAccess.value.error) incomplete=true;
+        if(salesAccess.status==='rejected'||salesAccess.value.error||typeof salesAccess.value.data!=='boolean') incomplete=true;
         const sources=pendingSources(profile,financialAccess,salesApprovalAccess);
-        const counts=await Promise.allSettled(sources.map(source=>pendingCount(sb,source)));
+        const requests=new Map();
+        const counts=await Promise.allSettled(sources.map(source=>bounded(pendingCount(sb,source,requests))));
         pending=counts.map((result,i)=>{
           if(result.status==='fulfilled')return result.value;
           incomplete=true;
-          return pending.find(item=>item.key===sources[i].key)||{...sources[i],count:0};
+          return {...(pending.find(item=>item.key===sources[i].key)||sources[i]),stale:true};
         });
+        if(!incomplete)lastVerified=new Date();
+        panel.querySelector('[data-kora-notifications-updated]').textContent=lastVerified?`${incomplete?'Última verificación completa':'Actualizado'}: ${formatDate(lastVerified)} · Colombia`:'Pendientes sin verificar';
         render();
-        setStatus(incomplete?'No se pudieron actualizar todos los pendientes. Vuelve a abrir la campana para reintentar.':'',incomplete);
+        setStatus(incomplete?'No se pudieron actualizar todos los pendientes. El signo ! indica que el total no está verificado. Pulsa Actualizar para reintentar.':'',incomplete);
       } catch (error) {
         incomplete=true;
-        updateCount();
+        pending=pending.map(item=>({...item,stale:true}));
+        panel.querySelector('[data-kora-notifications-updated]').textContent=lastVerified?`Última verificación completa: ${formatDate(lastVerified)} · Colombia`:'Pendientes sin verificar';
+        render();
         setStatus(error.message || 'No fue posible cargar las notificaciones.', true);
       } finally {
         loading = false;
+        panel.setAttribute('aria-busy','false');
+        panel.querySelector('[data-kora-notifications-refresh]').disabled=false;
         // Una aprobación puede terminar mientras el conteo anterior sigue en vuelo.
         if (reloadRequested) { reloadRequested = false; void load(); }
       }
@@ -246,6 +273,7 @@
     }
 
     trigger.addEventListener('click', () => panel.hidden ? open() : close());
+    panel.querySelector('[data-kora-notifications-refresh]').addEventListener('click',load);
     panel.querySelector('[data-kora-notifications-read-all]').addEventListener('click', async () => {
       const unread = notifications.filter(item => !item.read_at);
       if (!unread.length) return;
@@ -259,7 +287,7 @@
       }
       unread.forEach(item => { item.read_at = readAt; });
       render();
-      setStatus('Todas las notificaciones quedaron leídas.');
+      setStatus('Avisos marcados como leídos. Los trámites pendientes se retiran al resolverlos.');
       refreshAfterChange();
     });
     document.addEventListener('keydown', event => {
@@ -286,6 +314,6 @@
     load();
   }
 
-  global.KoraNotifications = Object.freeze({ mount, pendingSources, pendingCount });
+  global.KoraNotifications = Object.freeze({ mount, pendingSources, pendingCount, colombiaToday });
   document.dispatchEvent(new CustomEvent('kora-notifications-ready'));
 })(window);

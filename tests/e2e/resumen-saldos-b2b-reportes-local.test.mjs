@@ -36,6 +36,9 @@ test('informes de saldos B2B: resumen, detalle y totales exactos sin cruzar cré
   });
   await page.goto('https://kora.test/creditek/erp/resumen-saldos-b2b.html');
   await page.locator('#tiendasRows').getByText('Móvil Shopping').waitFor();
+  const providerText=await page.locator('#proveedoresRows tr').filter({hasText:'Proveedor prueba'}).textContent();
+  assert.match(providerText,/Saldo a favor considerado en el saldo neto/);assert.match(providerText,/Facturas vencidas/);
+  assert.doesNotMatch(providerText,/sin cruzar|antes de cruzar/);
   await page.evaluate(()=>document.body.insertAdjacentHTML('afterbegin','<div class="kora-topbar__actions"></div>'));
   await page.addScriptTag({url:'https://kora.test/creditek/erp/kora-report-export.js'});
   await page.evaluate(()=>window.KoraReportExport.mount({profile:{rol:'gerencia',nombre:'Óscar'},sb:window.reportSb}));
@@ -69,7 +72,7 @@ test('informes de saldos B2B: resumen, detalle y totales exactos sin cruzar cré
    assert.match(text,/Total por pagar mostrado/);assert.match(text,/700\.000,25/);assert.match(text,/200\.000,50/);assert.match(text,/1\.200\.000,60/);
    assert.match(text,/Capital de trabajo B2B/);
    if(mode==='summary')assert.doesNotMatch(text,/Proveedor prueba|Móvil Shopping/);
-   else {assert.match(text,/Proveedor prueba/);assert.match(text,/Móvil Shopping/);assert.match(text,/Documentos vencidos antes de cruzar créditos/);assert.equal(await popup.locator('tfoot').count(),2);}
+   else {assert.match(text,/Proveedor prueba/);assert.match(text,/Móvil Shopping/);assert.match(text,/Facturas vencidas/);assert.match(text,/Saldo a favor considerado en el saldo neto/);assert.doesNotMatch(text,/antes de cruzar créditos|aún sin cruzar con documentos/);assert.equal(await popup.locator('tfoot').count(),2);}
    assert.equal(await page.evaluate(()=>window.lastReportAudit.params.p_formato),'pdf');
    if(process.env.KORA_REPORT_SCREENSHOT_DIR)await popup.screenshot({path:`${process.env.KORA_REPORT_SCREENSHOT_DIR}/b2b-${mode}.png`,fullPage:true});
    await popup.close();

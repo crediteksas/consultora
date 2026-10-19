@@ -65,4 +65,30 @@ test('consulta sin escrituras, sin precios internos ni claves privilegiadas',asy
  assert.match(html,/<h2 class="kpi-label">Capital de trabajo B2B<\/h2><strong id="diferencia">/);
  assert.match(html,/Cartera menos deuda con proveedores/);assert.match(html,/No es utilidad ni efectivo disponible/);
  assert.match(html,/no incluye inventario, caja ni bancos/);assert.match(html,/Los inventarios de las tiendas se consultan por separado/);
+ assert.match(html,/resumen-saldos-b2b-app\.js\?v=1\.1\.2/);
+});
+
+async function renderProveedor(datosPrueba){
+ const app=await readFile('creditek/erp/resumen-saldos-b2b-app.js','utf8');
+ const start=app.indexOf('  function render() {'),end=app.indexOf('  async function cargar() {',start);
+ assert.ok(start>=0&&end>start);
+ const modelo=D.preparar(datosPrueba,'2026-09-16'),before=JSON.stringify(modelo),controls={};
+ const render=vm.runInNewContext(app.slice(start,end)+'\nrender',{
+  D,modelo,$:id=>controls[id]??=( {value:'',innerHTML:'',textContent:''} ),
+  money:String,reportMoney:String,esc:value=>String(value??''),fecha:value=>value,
+ });
+ render();assert.equal(JSON.stringify(modelo),before,'El texto no modifica el modelo de saldos');
+ return controls.proveedoresRows.innerHTML.split('</tr>').find(row=>row.includes('<td>Proveedor A'));
+}
+test('proveedor sin saldo a favor muestra facturas vencidas sin inventar créditos pendientes',async()=>{
+ const html=await renderProveedor(datos());
+ assert.match(html,/Facturas vencidas: 700/);assert.match(html,/<b>1000<\/b>/);
+ assert.doesNotMatch(html,/cruzar|créditos|Saldo a favor considerado/);
+});
+test('saldo a favor se describe como incluido en el neto, sin volverlo a descontar',async()=>{
+ const d=datos();d.facturas.push({id:'anticipo-ficticio',proveedor_id:'p',saldo:-100,fecha_vencimiento:null});
+ const html=await renderProveedor(d);
+ assert.match(html,/Saldo a favor considerado en el saldo neto: 100/);
+ assert.match(html,/<b>900<\/b>/);assert.match(html,/Facturas vencidas: 700/);
+ assert.doesNotMatch(html,/sin cruzar|antes de cruzar/);
 });

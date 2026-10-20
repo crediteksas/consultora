@@ -139,7 +139,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
     <div id="contenidoAuditoria" style="display:none;">
       <div class="seccion">
         <h2>Abrir sesión de conteo cruzado</h2>
-        <div class="sub">El admin autorizado cuenta a ciegas el inventario de la tienda seleccionada — bloques generados automáticamente por categoría.</div>
+        <div class="sub" id="permisoApertura">Solo Mayte u Óscar autorizan la apertura. El administrador asignado cuenta a ciegas; cargar el conteo no ajusta existencias.</div>
 
         <div class="form-grid">
           <div class="campo">
@@ -160,7 +160,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
           </div>
         </div>
 
-        <button class="btn-primary" id="btnAbrirSesion">Abrir sesión</button>
+        <button class="btn-primary" id="btnAbrirSesion" disabled aria-describedby="permisoApertura">Abrir sesión</button>
         <div class="form-err" id="formErr"></div>
 
         <div class="link-box" id="linkBox" style="display:none;">
@@ -172,8 +172,8 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
       </div>
 
       <div class="seccion">
-        <h2>Sesiones activas</h2>
-        <div class="sub">Sesiones abiertas o vencidas recientemente.</div>
+        <h2>Sesiones de conteo · activas e historial</h2>
+        <div class="sub">Últimas 30 sesiones. Las expiradas y cerradas son historial, no inventarios activos.</div>
         <div id="listaSesiones"></div>
       </div>
     </div>
@@ -249,6 +249,7 @@ document.getElementById('btnCerrarBanner').addEventListener('click', () => docum
 // ─── Página: Auditoría cruzada (solo gerencia/auditoria) ──────────────────
 let tiendasCache = [];
 let adminsCache = [];
+let autorizaApertura = false;
 
 function initPagina() {
   if (!esCentral()) {
@@ -259,8 +260,15 @@ function initPagina() {
   document.getElementById('btnAbrirSesion').addEventListener('click', abrirSesion);
   document.getElementById('btnCopiarLink').addEventListener('click', copiarLink);
 
-  cargarSelectores();
-  cargarSesiones();
+  sb.rpc('inventario_conteos',{p_accion:'config',p_datos:{}}).then(({data,error})=>{
+    autorizaApertura=!error&&data?.autoriza===true;
+    document.getElementById('btnAbrirSesion').disabled=!autorizaApertura;
+    if(error)document.getElementById('permisoApertura').textContent='No se pudo verificar el permiso de apertura. Recarga para reintentar.';
+  });
+
+  cargarSelectores().then(cargarSesiones).catch(error => {
+    document.getElementById('listaSesiones').textContent='No fue posible cargar las sesiones: '+error.message;
+  });
 }
 
 async function cargarSelectores() {
@@ -281,15 +289,16 @@ async function cargarSelectores() {
 }
 
 function nombreTienda(codigo) {
-  return tiendasCache.find(t => t.codigo === codigo)?.nombre || codigo || '—';
+  return tiendasCache.find(t => t.codigo === codigo)?.nombre || (codigo ? `Tienda ${codigo}` : 'Tienda no disponible');
 }
 function nombreAdmin(id) {
-  return adminsCache.find(a => a.id === id)?.nombre || id;
+  return adminsCache.find(a => a.id === id)?.nombre || 'Administrador histórico no disponible';
 }
 
 async function abrirSesion() {
   const err = document.getElementById('formErr');
   err.classList.remove('show');
+  if(!autorizaApertura){err.textContent='Solicita a Mayte u Óscar la apertura del inventario.';err.classList.add('show');return;}
   document.getElementById('linkBox').style.display = 'none';
 
   const tienda = document.getElementById('selTiendaAuditar').value;
@@ -354,6 +363,16 @@ async function cargarSesiones() {
 
   if (!data || !data.length) { cont.innerHTML = '<div class="empty-state">No hay sesiones registradas todavía.</div>'; return; }
 
+  const ids=[...new Set(data.map(s=>s.admin_autorizado).filter(id=>id&&!adminsCache.some(a=>a.id===id)))];
+  const codigos=[...new Set(data.map(s=>s.tienda_auditada).filter(c=>c&&!tiendasCache.some(t=>t.codigo===c)))];
+  const [historicos,tiendasHistoricas]=await Promise.all([
+    ids.length?sb.from('perfiles').select('id,nombre').in('id',ids):{data:[]},
+    codigos.length?sb.from('origenes').select('codigo,nombre').in('codigo',codigos):{data:[]},
+  ]);
+  // Solo completa nombres de historial; no añade usuarios inactivos a los selectores.
+  adminsCache.push(...(historicos.data||[]));
+  tiendasCache.push(...(tiendasHistoricas.data||[]));
+
   cont.innerHTML = `
     <table class="tabla-sesiones">
       <thead>
@@ -361,16 +380,16 @@ async function cargarSesiones() {
       </thead>
       <tbody>
         ${data.map(s => {
-          const vencida = s.estado === 'abierta' && new Date(s.vigencia_hasta) < new Date();
+          const vencida = s.estado === 'abierta' && (!s.vigencia_hasta || new Date(s.vigencia_hasta) <= new Date());
           const estadoMostrado = vencida ? 'expirada' : s.estado;
-          const vigenciaTxt = new Date(s.vigencia_hasta).toLocaleString('es-CO', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+          const vigenciaTxt = s.vigencia_hasta ? new Date(s.vigencia_hasta).toLocaleString('es-CO', { timeZone:'America/Bogota', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : 'Sin vigencia';
           return `
             <tr>
               <td>${escapeHtml(nombreTienda(s.tienda_auditada))}</td>
               <td>${escapeHtml(nombreAdmin(s.admin_autorizado))}</td>
               <td><span class="badge-estado ${estadoMostrado}">${estadoMostrado}</span></td>
               <td>${vigenciaTxt}</td>
-              <td>${s.estado === 'abierta' ? `<button class="btn-peligro" data-cerrar="${s.id}">Cerrar sesión</button>` : '—'}</td>
+              <td>${s.estado === 'abierta' && !vencida ? `<button class="btn-peligro" data-cerrar="${s.id}">Cerrar sesión</button>` : '—'}</td>
             </tr>
           `;
         }).join('')}

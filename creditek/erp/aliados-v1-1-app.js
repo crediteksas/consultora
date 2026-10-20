@@ -23,7 +23,8 @@
     new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: "COP",
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(Number(v) || 0);
   const date = (v) => (v ? String(v).slice(0, 10) : "—");
   const approvalDay = (value) => value ? new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value)) : '';
@@ -1532,7 +1533,7 @@
           .map((x) => option(x.codigo, x.nombre))
           .join("");
     if ($("#expenseDate"))
-      $("#expenseDate").value = new Date().toISOString().slice(0, 10);
+      $("#expenseDate").value = approvalDay(new Date());
   }
   function renderExpenses() {
     const approved = db.expenses.filter((x) => x.estado === "aprobado"),

@@ -88,7 +88,7 @@ test('recupera las 2388 líneas sin truncar ni repetir filtros entre páginas', 
   assert.deepEqual(ranges,[[0,499],[500,999],[1000,1499],[1500,1999],[2000,2499]]);
   const html=await readFile(path.join(root,'creditek/erp/reportes.html'),'utf8');
   const query=html.slice(html.indexOf('function crearCacheRefresco()'),html.indexOf('async function verificarAuth()'));
-  assert.equal((query.match(/queryCache\.todas/g)||[]).length,6);
+  assert.equal((query.match(/queryCache\.todas/g)||[]).length,7);
   assert.match(query,/order\('tienda_codigo'\)\.order\('producto_id'\)/);
   assert.match(query,/query\.eq\(col, filtro\[0\]\)/);
   assert.match(query,/query\.in\(col, filtro\)/);

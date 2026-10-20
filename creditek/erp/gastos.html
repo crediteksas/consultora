@@ -484,8 +484,8 @@ function renderColaAprobacion() {
       ${g.descripcion ? `<div class="desc">${escapeHtml(g.descripcion)}</div>` : ''}
       <div class="acciones">
         <button class="btn-aprobar" data-id="${g.id}">Aprobar</button>
-        <button class="btn-rechazar" data-id="${g.id}">Rechazar</button>
-        <button class="btn-devolver" data-id="${g.id}">Devolver para corrección</button>
+        <button class="btn-rechazar danger" data-id="${g.id}">Rechazar</button>
+        <button class="btn-devolver secondary" data-id="${g.id}">Devolver para corrección</button>
       </div>
     </div>
   `).join('');

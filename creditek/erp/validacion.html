@@ -262,7 +262,8 @@ async function cargarSolicitudes() {
   if (estado !== 'todos') query = query.eq('estado_validacion', estado);
   if (origen) query = query.eq('origen_codigo', origen);
   if (fecha) {
-    query = query.gte('created_at', `${fecha}T00:00:00`).lt('created_at', `${fecha}T23:59:59`);
+    const siguiente = new Date(Date.parse(`${fecha}T12:00:00Z`) + 86400000).toISOString().slice(0, 10);
+    query = query.gte('created_at', `${fecha}T00:00:00-05:00`).lt('created_at', `${siguiente}T00:00:00-05:00`);
   }
 
   const { data, error } = await query;

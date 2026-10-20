@@ -61,11 +61,16 @@
     for(const sale of sales)if(!seenSales.has(sale.id))itemRows.push({date:sale.fecha,store:sale.tienda_codigo,value:null});
     const from=bogotaStart(start),until=bogotaStart(shiftDay(end,1));
     const expenseRows=await credits.allRows(sb,'gastos','id,fecha,created_at,tienda_codigo,monto','id',q=>{q=q.eq('estado','aprobado').gte('created_at',from).lt('created_at',until);return store?q.eq('tienda_codigo',store):q;});
-    const {data:writeoffs,error:writeoffsError}=await sb.rpc('gastos_inventario_no_monetarios',{
-      p_desde:start,p_hasta:end,p_tienda:store||null
-    });
-    if(writeoffsError)throw writeoffsError;
-    if(!Array.isArray(writeoffs))throw Error('No se pudieron verificar las bajas de inventario Retail');
+    const writeoffs=[];
+    for(let offset=0;;offset+=500){
+      const {data,error}=await sb.rpc('gastos_inventario_no_monetarios',{
+        p_desde:start,p_hasta:end,p_tienda:store||null
+      }).order('id').range(offset,offset+499);
+      if(error)throw error;
+      if(!Array.isArray(data))throw Error('No se pudieron verificar las bajas de inventario Retail');
+      writeoffs.push(...data);
+      if(data.length<500)break;
+    }
     const expenses=expenseRows.filter(expense=>expense.tienda_codigo!=='CENTRAL');
     const generalExpenses=store?[]:expenseRows.filter(expense=>expense.tienda_codigo==='CENTRAL').map(expense=>({id:expense.id,date:day(expense.created_at),amount:Number(expense.monto),source:'gastos'}));
     let generalAvailable=true;

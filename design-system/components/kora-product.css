@@ -470,6 +470,9 @@ html.creditek-shell-authenticated .kora-product-page > header:not(.kora-topbar) 
 
 .kora-product-page :where(.badge, .tag, .chip, .estado, .status) {
   align-items: center;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   background: var(--ctk-color-neutral-100);
   border-radius: var(--ctk-radius-full);
   color: var(--ctk-color-text-secondary);

@@ -373,7 +373,10 @@ const SB = (function () {
 // ============================================================
 // HELPERS
 // ============================================================
-const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+function fechaHoyColombia(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+}
 function money(n) { return fmtMoney.format(Number(n || 0)); }
 function esc(s) {
   if (s == null) return '';
@@ -480,7 +483,7 @@ async function cargarCatalogos() {
     `<option value="${esc(c.codigo)}">${esc(c.nombre)}</option>`
   ).join('');
 
-  document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fecha-factura').value = fechaHoyColombia();
 }
 
 // ============================================================
@@ -950,7 +953,7 @@ async function guardarCompra() {
 function limpiarFormulario() {
   document.getElementById('sel-proveedor').value = '';
   document.getElementById('num-factura').value = '';
-  document.getElementById('fecha-factura').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fecha-factura').value = fechaHoyColombia();
   document.getElementById('fecha-vencimiento').value = '';
   document.getElementById('tipo-compra').value = 'credito';
   document.getElementById('fuente-fondos').value = '';

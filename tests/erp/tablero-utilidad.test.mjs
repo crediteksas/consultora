@@ -18,10 +18,12 @@ test('escala automática basada solo en utilidad, sin límite de 60M ni presupue
  assert.equal(config.data.datasets[0].tension,0);
 });
 function database(tables){
- const calls=[];return {calls,rpc:async(name,params)=>{
+ const calls=[];return {calls,rpc:(name,params)=>{
   if(name==='es_controlador_financiero')return {data:true,error:null};
-  if(name==='gastos_inventario_no_monetarios')return {data:(tables.gastos_inventario_no_monetarios||[])
-   .filter(r=>r.fecha>=params.p_desde&&r.fecha<=params.p_hasta&&(!params.p_tienda||r.tienda_codigo===params.p_tienda)),error:null};
+  if(name==='gastos_inventario_no_monetarios'){
+   let records=(tables.gastos_inventario_no_monetarios||[]).filter(r=>r.fecha>=params.p_desde&&r.fecha<=params.p_hasta&&(!params.p_tienda||r.tienda_codigo===params.p_tienda));
+   const q={order(){records.sort((a,b)=>String(a.id).localeCompare(String(b.id)));return q;},range:async(a,b)=>({data:records.slice(a,b+1),error:null})};return q;
+  }
   throw Error(`RPC inesperada: ${name}`);
  },from(table){calls.push(table);let records=tables[table]||[];const q={select(){return q},order(){return q},gte(k,v){records=records.filter(r=>r[k]>=v);return q},lt(k,v){records=records.filter(r=>r[k]<v);return q},lte(k,v){records=records.filter(r=>r[k]<=v);return q},eq(k,v){records=records.filter(r=>r[k]===v);return q},in(k,v){records=records.filter(r=>v.includes(r[k]));return q},range:async(a,b)=>({data:records.slice(a,b+1)})};return q}};
 }
@@ -60,6 +62,18 @@ test('Retail consulta artículos en lotes de hasta 200 ventas para no exceder la
  assert.equal(result.itemRows.length,201);
  assert.deepEqual(sizes,[200,1]);
 });
+
+test('bajas Retail también pagina después de mil y falla sin entregar un resultado parcial',async()=>{
+ const bajas=Array.from({length:1268},(_,i)=>({id:String(i).padStart(5,'0'),fecha:'2026-09-10',tienda_codigo:'t',valor:1}));
+ const sb=database({gastos_inventario_no_monetarios:bajas});
+ const result=await domain.load(sb,'retail',{now,store:'t'});assert.equal(result.total,-1268);
+ const rpc=sb.rpc;sb.rpc=(name,params)=>{
+  const q=rpc(name,params);if(name==='gastos_inventario_no_monetarios'){
+   const range=q.range;q.range=(from,to)=>from>0?Promise.resolve({error:Error('página de bajas denegada')}):range(from,to);
+  }return q;
+ };
+ await assert.rejects(domain.load(sb,'retail',{now,store:'t'}),/página de bajas denegada/);
+});
 test('Retail descuenta generales solo del consolidado, al cargue o autorización y nunca al pagar otra vez',async()=>{
  const sb=database({
   ventas:[{id:1,fecha:'2026-09-10',tienda_codigo:'t',anulada:false}],
@@ -92,7 +106,7 @@ test('Retail descuenta generales solo del consolidado, al cargue o autorización
  assert.equal(sb.calls.filter(table=>table==='financial_entries').length,2);
 });
 test('no publica un consolidado incompleto si RLS oculta gastos generales',async()=>{
- const sb=database({ventas:[],gastos:[]});sb.rpc=async(name)=>name==='gastos_inventario_no_monetarios'?{data:[],error:null}:{data:false,error:null};
+ const sb=database({ventas:[],gastos:[]}),rpc=sb.rpc;sb.rpc=(name,params)=>name==='gastos_inventario_no_monetarios'?rpc(name,params):{data:false,error:null};
  const result=await domain.retailData(sb,{start:'2026-09-01',end:'2026-09-16'});
  assert.equal(result.generalAvailable,false);
  assert.equal(sb.calls.includes('financial_entries'),false);

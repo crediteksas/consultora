@@ -57,13 +57,13 @@
     let revisionClave='', decisionesConteo=new Map(), costosConteo=new Map();
     const el = id => document.getElementById(`conteos-${id}`);
     document.body.insertAdjacentHTML('beforeend', `<div id="conteos-modal" class="modal-bg" style="z-index:10000" role="dialog" aria-modal="true" aria-label="Conteos y ajustes de inventario">
-      <style>#conteos-evidencia-form[hidden],#conteos-edicion[hidden],#conteos-form-decidir[hidden]{display:none}</style>
+      <style>#conteos-evidencia-form[hidden],#conteos-edicion[hidden],#conteos-form-decidir[hidden],#conteos-crear[hidden],#conteos-ciego[hidden]{display:none!important}</style>
       <div class="modal-box" style="max-width:1250px;width:100%">
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
         <div class="inventario-form"><label>Tienda<select id="conteos-tienda"></select></label>
         <div class="form-actions"><button id="conteos-crear" class="primary">Inicializar inventario y descargar</button><button id="conteos-ciego" class="secondary">Inicializar inventario con conteo ciego</button></div></div>
-        <p style="margin:8px 0">Cada tienda puede tener un solo inventario en proceso, aunque sea de otro día. Primero carga el conteo: sin diferencias se cierra el inventario; con diferencias se aplica el ajuste y se cierra. Solo Mayte u Óscar autorizan el ajuste o cierre. Las tiendas pueden cargar y corregir sus conteos sin cambiar existencias.</p>
+        <p id="conteos-permiso-apertura" style="margin:8px 0">Solo Mayte u Óscar pueden inicializar inventarios. Cada tienda puede tener un solo inventario en proceso, aunque sea de otro día. Las tiendas pueden cargar y corregir el conteo sin cambiar existencias; Mayte u Óscar autorizan su ajuste o cierre.</p>
         <section id="conteos-tareas-fotos" aria-label="Tareas de fotos pendientes" hidden>
           <h3>Fotos pendientes · tarea de la administradora de cada tienda</h3>
           <p>El ajuste ya está aplicado. Estas fotos pendientes no bloquean la operación ni el cierre de utilidad. Adjuntarlas no vuelve a descontar inventario ni gastos.</p>
@@ -393,6 +393,7 @@
         if(detalle.corte.estado==='abierto')descargar(ciego);
         return `${activos.length>1?'Hay '+activos.length+' inventarios anteriores en proceso. ':''}Se abrió el inventario pendiente del ${fechaCorte(detalle.corte)}. No se creó otro corte ni se anuló ninguno. ${detalle.corte.estado==='abierto'?'Completa y carga su conteo.':'Revisa el conteo cargado antes de autorizar su ajuste o cierre.'}`;
       }
+      if(!config.autoriza)throw new Error('Solo Mayte u Óscar pueden inicializar inventarios. Solicita la apertura del corte; podrás cargar y editar su conteo.');
       const tienda=config.tiendas.find(t=>t.codigo===el('tienda').value);
       if(!global.confirm(`¿Usted quiere inicializar inventario?\n\nTienda: ${tienda?.nombre||el('tienda').value}.\nSe creará un nuevo corte con las existencias de este momento. Después deberá cargar el conteo y autorizar el ajuste o cierre antes de iniciar otro inventario.\nEsta acción no modifica existencias ni saldos.\n\nAceptar: inicializar inventario. Cancelar: no crear ningún corte.`))return false;
       detalle=await rpc('crear',{tienda:el('tienda').value});await renderDetalle();descargar(ciego);await historial();
@@ -868,7 +869,9 @@
     el('no-conforme-form').onsubmit=event=>{event.preventDefault();run(solicitarNoConforme,'nc-mensaje');};
     el('evidencia-form').onsubmit=event=>{event.preventDefault();run(completarEvidencia,'evidencia-mensaje');};
     el('tienda').onchange=()=>{detalle=null;el('detalle').innerHTML='';el('evidencia-form').reset();el('evidencia-form').hidden=true;run(async()=>{await historial();await cargarNoConformes();});};
-    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';el('mensual-panel').hidden=!config.central;});
+    ready=rpc('config').then(data=>{config=data;el('tienda').innerHTML=(config.central?'<option value="">Todas las tiendas (solo informe)</option>':'')+config.tiendas.map(t=>`<option value="${esc(t.codigo)}">${esc(t.nombre)}</option>`).join('');el('ultimos').style.display=config.central?'':'none';el('mensual-panel').hidden=!config.central;
+      for(const id of ['crear','ciego']){el(id).hidden=!config.autoriza;el(id).setAttribute('aria-describedby','conteos-permiso-apertura');}
+    });
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.
     ready.catch(e=>{el('mensaje').textContent=e.message;});
     return { async abrir(){el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };

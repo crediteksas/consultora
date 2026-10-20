@@ -36,6 +36,10 @@ test('el verificador genera la ficha en el artefacto que Wrangler publica, no en
   const out = await mkdtemp(path.join(tmpdir(), 'creditek-kora-manifest-build-'));
   t.after(() => rm(out, { recursive: true, force: true }));
   await buildKora(root, out);
+  // Esta prueba no depende de credenciales ni del entorno local de desarrollo.
+  // El contrato de producción se verifica sobre una configuración ficticia.
+  await writeFile(path.join(out, 'config/kora-environment.generated.js'),
+    'const config = {"KORA_ENV": "production", "KORA_VERSION": "3.3.2", "url": "https://jfkmiyvcdfbsbwchyvol.supabase.co"};');
   const expected = await verifyKoraProductionArtifact({ commit, artifactRoot: out, writeManifest: true });
   const written = JSON.parse(await readFile(path.join(out, 'kora-build-manifest.static.json')));
   assert.deepEqual(written, expected);

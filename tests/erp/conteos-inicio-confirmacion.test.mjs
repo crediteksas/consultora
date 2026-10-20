@@ -8,10 +8,10 @@ const start=source.indexOf('    async function crear(ciego) {');
 const end=source.indexOf('    async function guardarFoto(',start);
 assert.ok(start>=0&&end>start,'La prueba debe ejecutar la función real de inicio');
 
-function harness({accept=true,active=[],store='CK-02'}={}) {
+function harness({accept=true,active=[],store='CK-02',autoriza=true}={}) {
   const calls=[],prompts=[],downloads=[];
   const context=vm.createContext({
-    config:{tiendas:[{codigo:'CK-02',nombre:'Móvil Shopping'}]},detalle:null,
+    config:{autoriza,tiendas:[{codigo:'CK-02',nombre:'Móvil Shopping'}]},detalle:null,
     el:id=>id==='tienda'?{value:store}:{scrollIntoView:()=>calls.push('scroll')},
     global:{confirm:message=>{prompts.push(message);return accept;}},
     rpc:async(action,data)=>{
@@ -61,6 +61,17 @@ test('sin tienda seleccionada no hay confirmación ni llamadas al servidor',asyn
   await assert.rejects(h.crear(false),/Selecciona una tienda/);
   assert.deepEqual(h.calls,[]);
   assert.deepEqual(h.prompts,[]);
+});
+
+test('la tienda no puede inicializar, pero puede retomar el corte abierto autorizado',async()=>{
+  const h=harness({autoriza:false});
+  await assert.rejects(h.crear(false),/Solo Mayte u Óscar/);
+  assert.deepEqual(h.calls,['en_proceso']);
+  assert.equal(h.prompts.length,0);
+  const existing=harness({autoriza:false,active:[{id:'existente'}]});
+  await existing.crear(false);
+  assert.equal(existing.calls.includes('crear'),false);
+  assert.equal(existing.context.detalle.corte.id,'existente');
 });
 
 test('ambos botones identifican que inicializan inventario',()=>{

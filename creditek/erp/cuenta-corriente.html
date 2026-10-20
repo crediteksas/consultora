@@ -236,6 +236,7 @@ body.modal-open { overflow: hidden; }
       <table>
         <thead><tr><th>Tienda</th><th>Saldo actual</th><th>Último cargo</th><th>Último abono</th></tr></thead>
         <tbody id="tbodyTiendas"></tbody>
+        <tfoot id="tfootTiendas" data-kora-report-totals="explicit"></tfoot>
       </table>
       <div class="empty-state" id="emptyState" style="display:none;">Cargando...</div>
     </div>
@@ -484,7 +485,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -763,6 +764,8 @@ function renderTablaTiendas() {
   const codigosTienda = esCentral() ? tiendasCache.map(t => t.codigo) : Object.keys(resumen);
 
   const tbody = document.getElementById('tbodyTiendas');
+  const pie = document.getElementById('tfootTiendas');
+  pie.innerHTML = '';
   const empty = document.getElementById('emptyState');
   if (!codigosTienda.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay datos de cuenta corriente todavía.'; return; }
   empty.style.display = 'none';
@@ -778,6 +781,9 @@ function renderTablaTiendas() {
       </tr>
     `;
   }).join('');
+  const total = codigosTienda.reduce((s,codigo)=>s+Number(resumen[codigo]?.saldo||0),0);
+  pie.innerHTML = `<tr><th scope="row">TOTAL NETO</th><td data-kora-report-value="${fmtCOP(total)}"><strong>${fmtCOP(total)}</strong></td><td>—</td><td>—</td></tr>`;
+  tbody.closest('table').dataset.koraReportTotals = 'explicit';
 
   tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirDetalleTienda(tr.dataset.tienda, nombreTienda(tr.dataset.tienda))));
 }

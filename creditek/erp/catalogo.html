@@ -149,7 +149,28 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
       </select>
     </div>
 
-    <div class="tabla-wrap">
+    <div id="catalogoReporte" data-kora-report-source="catalogo"></div>
+    <div id="catalogo-paginacion" class="filters" aria-label="Páginas del catálogo" hidden>
+      <button type="button" id="catalogo-anterior" class="btn-cancelar">Anterior</button>
+      <span id="catalogo-pagina" role="status" aria-live="polite"></span>
+      <button type="button" id="catalogo-siguiente" class="btn-primary">Siguiente</button>
+    </div>
+    <style>
+      #catalogo-paginacion[hidden]{display:none!important}
+      #catalogo-paginacion{align-items:center;justify-content:space-between;gap:12px}
+      #catalogo-paginacion button{width:auto}
+      @media(max-width:650px){
+        #catalogo-paginacion{display:grid;grid-template-columns:1fr 1fr}
+        #catalogo-pagina{grid-column:1/-1;grid-row:1;font-size:12px}
+        .tabla-wrap table{min-width:0}
+        .tabla-wrap thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+        #tbodyProductos,#tbodyProductos tr{display:block;width:100%}
+        #tbodyProductos tr{padding:12px 16px;border-bottom:1px solid var(--border)}
+        #tbodyProductos td{display:grid;grid-template-columns:85px minmax(0,1fr);gap:10px;padding:5px 0;border:0;white-space:normal}
+        #tbodyProductos td:before{content:attr(data-label);font-size:11px;color:var(--text2);font-weight:600}
+      }
+    </style>
+    <div class="tabla-wrap" data-kora-no-export>
       <table>
         <thead>
           <!-- FIX 23-jul-2026 · "Margen" solo para gerencia/auditoria (clase solo-central).
@@ -245,6 +266,8 @@ const inventarioDomain = window.CreditekInventarioDomain;
 let currentUser = null;
 let currentPerfil = null;
 let productosCache = [];
+let paginaCatalogo = 0, catalogoCargado = false;
+const filasCatalogo = 100;
 let categoriasCache = []; // SPEC v2 — 7 categorías fijas con margen default
 
 function esCentral() { return !!currentPerfil && (currentPerfil.rol === 'gerencia' || currentPerfil.rol === 'auditoria'); }
@@ -309,7 +332,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -337,6 +360,9 @@ function initPagina() {
   document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
   document.getElementById('filtroCategoria').addEventListener('change', renderTabla);
   document.getElementById('filtroTipo').addEventListener('change', renderTabla);
+  document.getElementById('catalogo-anterior').onclick=()=>{paginaCatalogo--;renderTabla(false);};
+  document.getElementById('catalogo-siguiente').onclick=()=>{paginaCatalogo++;renderTabla(false);};
+  document.getElementById('catalogoReporte').koraReportData=reporteCatalogo;
 
   document.getElementById('btnNuevoProducto').addEventListener('click', () => abrirModalProducto(null));
   document.getElementById('btnCancelarModal').addEventListener('click', cerrarModalProducto);
@@ -398,6 +424,8 @@ async function subirFotoProducto(productoId, archivo) {
 
 async function cargarProductos() {
   productosCache = [];
+  catalogoCargado = false;
+  document.getElementById('catalogo-paginacion').hidden=true;
   document.getElementById('tbodyProductos').innerHTML = '';
   document.getElementById('emptyState').style.display = 'block';
   document.getElementById('emptyState').textContent = 'Cargando productos...';
@@ -419,21 +447,43 @@ async function cargarProductos() {
   }
   productosCache = inventarioDomain.ordenarPorNombre(central ? data : inventarioDomain.acotarTienda(data,'tienda_codigo',tienda));
   productosCache.forEach(p => { p._precio_mostrar = central ? null : p.costo_min; });
+  catalogoCargado = true;
 
   renderTabla();
 }
 
-function renderTabla() {
+function filtrarCatalogo() {
   const q = inventarioDomain.textoBusqueda(document.getElementById('filtroBusqueda').value);
   const cat = document.getElementById('filtroCategoria').value;
   const tipo = document.getElementById('filtroTipo').value;
 
-  let filtrados = productosCache.filter(p => {
+  return productosCache.filter(p => {
     if (cat && p.categoria !== cat) return false;
     if (tipo && p.tipo !== tipo) return false;
     if (q && !inventarioDomain.textoBusqueda(`${p.nombre || ''} ${p.codigo || ''}`).includes(q)) return false;
     return true;
   });
+}
+
+function reporteCatalogo() {
+  if(!catalogoCargado)throw new Error('Espera a que termine la carga del catálogo antes de exportar.');
+  const central=esCentral(), productos=filtrarCatalogo();
+  return {tables:[{sourceId:'tbodyProductos',heading:'Catálogo completo según filtros',kind:'detail',
+    headers:['Código','Nombre','Categoría','Tipo',central?'Margen':'Mi costo'],
+    rows:productos.map(p=>[p.codigo,p.nombre,nombreCategoria(p.categoria),p.tipo,central?fmtMargen(p.margen_tipo,p.margen_valor):p._precio_mostrar==null?'Pendiente':fmtCOP(p._precio_mostrar)+(p.costo_max!=null&&Number(p.costo_max)!==Number(p._precio_mostrar)?' – '+fmtCOP(p.costo_max):'')]),
+    totalRows:[[`Total referencias: ${productos.length}`,'','','','']],explicitTotals:true,
+    policyNote:'Catálogo de referencias: precios unitarios y márgenes no se suman; no es una valoración de existencias.'}]};
+}
+
+function renderTabla(resetPage = true) {
+  const filtrados = filtrarCatalogo();
+  if(resetPage!==false)paginaCatalogo=0;
+  paginaCatalogo=Math.max(0,Math.min(paginaCatalogo,Math.ceil(filtrados.length/filasCatalogo)-1));
+  const inicio=paginaCatalogo*filasCatalogo, visibles=filtrados.slice(inicio,inicio+filasCatalogo);
+  document.getElementById('catalogo-paginacion').hidden=!filtrados.length;
+  document.getElementById('catalogo-pagina').textContent=`${filtrados.length?inicio+1:0}–${Math.min(inicio+filasCatalogo,filtrados.length)} de ${filtrados.length} referencias · el informe incluye todos los resultados filtrados`;
+  document.getElementById('catalogo-anterior').disabled=paginaCatalogo===0;
+  document.getElementById('catalogo-siguiente').disabled=inicio+filasCatalogo>=filtrados.length;
 
   const tbody = document.getElementById('tbodyProductos');
   const empty = document.getElementById('emptyState');
@@ -444,19 +494,19 @@ function renderTabla() {
     return;
   }
   empty.style.display = 'none';
-  tbody.innerHTML = filtrados.map(p => `
+  tbody.innerHTML = visibles.map(p => `
     <tr>
-      <td class="foto-cell">${p.foto_url ? `<img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nombre)}">` : `<span class="sin-foto">📷</span>`}</td>
-      <td>${escapeHtml(p.codigo)}</td>
-      <td>${escapeHtml(p.nombre)}</td>
-      <td><span class="tag">${escapeHtml(nombreCategoria(p.categoria))}</span></td>
-      <td><span class="tag ${p.tipo === 'cantidad' ? 'cantidad' : ''}">${p.tipo}</span></td>
-      ${esCentral() ? `<td>${fmtMargen(p.margen_tipo, p.margen_valor)}</td>` : ''}
-      ${esCentral() ? '' : `<td>${p._precio_mostrar == null ? 'Pendiente' : fmtCOP(p._precio_mostrar)}${p.costo_max != null && Number(p.costo_max) !== Number(p._precio_mostrar) ? ' – ' + fmtCOP(p.costo_max) : ''}</td>`}
+      <td class="foto-cell" data-label="Foto">${p.foto_url ? `<img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nombre)}" loading="lazy" decoding="async">` : `<span class="sin-foto">📷</span>`}</td>
+      <td data-label="Código">${escapeHtml(p.codigo)}</td>
+      <td data-label="Nombre">${escapeHtml(p.nombre)}</td>
+      <td data-label="Categoría"><span class="tag">${escapeHtml(nombreCategoria(p.categoria))}</span></td>
+      <td data-label="Tipo"><span class="tag ${p.tipo === 'cantidad' ? 'cantidad' : ''}">${p.tipo}</span></td>
+      ${esCentral() ? `<td data-label="Margen">${fmtMargen(p.margen_tipo, p.margen_valor)}</td>` : ''}
+      ${esCentral() ? '' : `<td data-label="Mi costo">${p._precio_mostrar == null ? 'Pendiente' : fmtCOP(p._precio_mostrar)}${p.costo_max != null && Number(p.costo_max) !== Number(p._precio_mostrar) ? ' – ' + fmtCOP(p.costo_max) : ''}</td>`}
       ${productoFoto.permisosCatalogo(currentPerfil.rol).puedeEditarProducto
-        ? `<td><button class="link-edit" data-id="${p.id}">Editar</button></td>`
+        ? `<td data-label="Acciones"><button class="link-edit" data-id="${p.id}">Editar</button></td>`
         : productoFoto.permisosCatalogo(currentPerfil.rol).puedeGestionarFoto
-          ? `<td><button class="link-edit btn-foto" data-id="${p.id}">${p.foto_url ? 'Cambiar foto' : 'Agregar foto'}</button></td>`
+          ? `<td data-label="Acciones"><button class="link-edit btn-foto" data-id="${p.id}">${p.foto_url ? 'Cambiar foto' : 'Agregar foto'}</button></td>`
           : ''}
     </tr>
   `).join('');

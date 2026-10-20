@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {buildPublic} from '../../scripts/build-public.mjs';
+test('el artefacto renueva versiones de los módulos corregidos sin cambiar rutas del shell',async t=>{
+  const out=await mkdtemp(path.join(tmpdir(),'creditek-audit-assets-'));
+  t.after(()=>rm(out,{recursive:true,force:true}));
+  await buildPublic(path.resolve(import.meta.dirname,'../..'),out);
+  const html=await readFile(path.join(out,'creditek/erp/inventario.html'),'utf8');
+  assert.match(html,/conteos-ui\.js\?v=1\.2\.6/);
+  const reportes=await readFile(path.join(out,'creditek/erp/reportes.html'),'utf8');
+  assert.match(reportes,/tablero-utilidad\.js\?v=1\.0\.5/);
+  const incidentes=await readFile(path.join(out,'creditek/erp/incidencias.html'),'utf8');
+  assert.match(incidentes,/kora-incident-management\.js\?v=1\.2\.5/);
+  assert.match(incidentes,/incidencias-app\.js\?v=1\.3\.5/);
+  assert.match(incidentes,/kora-product\.css\?v=2\.0\.5/);
+  const aliados=await readFile(path.join(out,'creditek/erp/aliados-gastos.html'),'utf8');
+  assert.match(aliados,/aliados-v1-1-app\.js\?v=1\.1\.40/);
+});

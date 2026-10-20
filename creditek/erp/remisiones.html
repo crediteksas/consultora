@@ -68,6 +68,8 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .btn-rojo-out { background: white; color: var(--rojo); border: 1px solid rgba(220,38,38,0.3); border-radius: 999px; padding: 8px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 
 .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.filters > label { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; }
+.filters > label[hidden] { display:none!important; }
 .filters select, .filters input { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); padding: 9px 13px; font-size: 13px; font-family: inherit; color: var(--azul); }
 .filters select:focus, .filters input:focus { outline: none; border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.12); }
 
@@ -197,16 +199,16 @@ body.modal-open { overflow:hidden; }
     </div>
 
     <div class="filters">
-      <select id="filtroTienda" style="display:none;"><option value="">Todas las tiendas</option></select>
-      <select id="filtroEstado">
+      <label id="labelFiltroTienda" hidden>Tienda destino<select id="filtroTienda" aria-label="Tienda destino" style="display:none;"><option value="">Todas las tiendas</option></select></label>
+      <label>Estado de la remisión<select id="filtroEstado" aria-label="Estado de la remisión">
         <option value="">Todos los estados</option>
         <option value="borrador">Borrador</option>
         <option value="despachada">Despachada</option>
         <option value="recibida">Recibida</option>
         <option value="cartera_b2b">Cargada a cartera B2B</option>
         <option value="anulada">Anulada</option>
-      </select>
-      <input type="date" id="filtroFecha">
+      </select></label>
+      <label>Fecha de la remisión<input type="date" id="filtroFecha" aria-label="Fecha de la remisión"></label>
     </div>
 
     <div class="tabla-wrap">
@@ -402,6 +404,7 @@ function initPagina() {
   if (esCentral()) {
     document.getElementById('btnNuevaRemision').style.display = 'inline-block';
     document.getElementById('filtroTienda').style.display = '';
+    document.getElementById('labelFiltroTienda').hidden = false;
   }
   document.getElementById('filtroTienda').addEventListener('change', cargarRemisiones);
   document.getElementById('filtroEstado').addEventListener('change', cargarRemisiones);

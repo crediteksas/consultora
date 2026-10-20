@@ -683,6 +683,7 @@
         <select id="filtroCiudad" class="city-select" aria-label="Filtrar por ciudad"><option value="">Todas las ciudades</option></select>
       </label>
       <span id="rango-visible" class="text-xs text-gray-500 ml-auto"></span>
+      <span id="estado-reportes" role="status" aria-live="polite">Consulta pendiente.</span>
     </div>
   </section>
 
@@ -899,7 +900,7 @@
         </div>
         <span class="text-xs text-gray-400">▾</span>
       </summary>
-      <div class="p-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="p-4 border-t border-gray-100 grid grid-cols-1 gap-4">
         <div class="chart-wrapper"><canvas id="chart-categorias"></canvas></div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -1054,13 +1055,26 @@ let tiendasFiltro = [];        // vacío = "todas"; con códigos = filtro IN(...
 let rangoPersonalizado = null; // {desde,hasta} cuando el usuario elige rango libre
 let tiendasCache = [];
 let charts = {}; // guardar referencias para destruir/recrear
+let reportesListos = false, refrescoEnCurso = false, refrescoPendiente = false;
+window.KoraReportData = {prepareExcel(report){
+  if(!reportesListos)throw new Error('La consulta de reportes está incompleta o actualizándose. Espera o pulsa Actualizar antes de descargar.');
+  return report;
+}};
 
 // ============================================================================
 // HELPERS
 // ============================================================================
-const fmtCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const fmtCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat('es-CO');
 function money(n) { return n == null ? '—' : fmtCOP.format(Number(n)); }
+function costoConocido(n) { return n !== null && n !== undefined && n !== '' && Number.isFinite(Number(n)) && Number(n) >= 0; }
+function totalesReporte(id, filas) {
+  const tabla = document.getElementById(id).closest('table');
+  let pie = tabla.querySelector('tfoot');
+  if (!pie) { pie = document.createElement('tfoot'); tabla.appendChild(pie); }
+  pie.innerHTML = filas.map(celdas => '<tr>'+celdas.map((valor,i)=>`<${i?'td':'th'} class="px-3 py-2 ${i?'text-right':'text-left'} font-semibold">${esc(valor)}</${i?'td':'th'}>`).join('')+'</tr>').join('');
+  tabla.dataset.koraReportTotals = 'explicit';
+}
 function num(n) { return n == null ? '—' : fmtInt.format(Number(n)); }
 function pct(n, base) { if (!base) return '—'; return (100 * Number(n) / Number(base)).toFixed(1) + '%'; }
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1242,6 +1256,7 @@ function crearCacheRefresco() {
     gastos: () => queryCache.todas(() => filtrar(
       sb.from('gastos').select('tienda_codigo, monto, created_at').gte('created_at', `${desde}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${hasta}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`).eq('estado', 'aprobado').order('id'),
     )),
+    bajas: () => queryCache.todas(() => sb.rpc('gastos_inventario_no_monetarios', {p_desde:desde,p_hasta:hasta,p_tienda:filtro.length===1?filtro[0]:null}).order('id')),
     creditos: () => queryCache.todas(() => filtrar(
       sb.from('creditos').select('financiera, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id'),
       'ventas.tienda_codigo',
@@ -1301,16 +1316,18 @@ async function verificarAuth() {
 // ============================================================================
 async function cargarKPIs(cache) {
   const { desde, hasta } = getPeriodo();
-  const [vRes, ccRes, [unRes, stRes], gRes, crRes, ref2025] = await Promise.all([
+  const [vRes, ccRes, [unRes, stRes], gRes, crRes, ref2025, bRes] = await Promise.all([
     cache.obtener('ventas'),
     cache.obtener('cartera'),
     cache.obtener('inventario'),
     cache.obtener('gastos'),
     cache.obtener('creditos'),
     referenciaKPIs2025(desde, hasta),
+    cache.obtener('bajas'),
   ]);
-  const error = vRes.error || ccRes.error || unRes.error || stRes.error || gRes.error || crRes.error;
+  const error = vRes.error || ccRes.error || unRes.error || stRes.error || gRes.error || crRes.error || bRes.error;
   if (error) throw new Error(error.message);
+  if (!Array.isArray(bRes.data)) throw new Error('No se pudieron verificar las bajas de inventario');
 
   const ventas = vRes.data || [];
   const totalV = ventas.reduce((s, v) => s + Number(v.total || 0), 0);
@@ -1318,21 +1335,27 @@ async function cargarKPIs(cache) {
   let celulares = 0;
   let accesorios = 0;
   let costo = 0;
-  ventas.forEach(venta => (venta.venta_items || []).forEach(item => {
+  let sinCosto = 0;
+  ventas.forEach(venta => {
+    if (!Array.isArray(venta.venta_items) || !venta.venta_items.length) sinCosto++;
+    (venta.venta_items || []).forEach(item => {
     const cantidad = Number(item.cantidad || 0);
-    costo += cantidad * Number(item.costo_congelado || 0);
+    if (costoConocido(item.costo_congelado)) costo += cantidad * Number(item.costo_congelado);
+    else sinCosto++;
     if (item.productos?.tipo === 'serializado') celulares += cantidad;
     else accesorios += cantidad;
-  }));
+    });
+  });
   const unidades = celulares + accesorios;
   const unidadesPorFactura = ventas.length ? unidades / ventas.length : 0;
-  const margen = totalV - costo;
+  const margen = sinCosto ? null : totalV - costo;
   const gastosTiendas = (gRes.data || []).reduce((s, g) => s + Number(g.monto || 0), 0);
   const generales = esCentral() && !tiendasFiltro.length
     ? (await window.CreditekTableroUtilidad.authorizedExpenses(sb, 'retail', desde, hasta)).reduce((s, g) => s - g.value, 0)
     : 0;
-  const gastos = gastosTiendas + generales;
-  const utilidad = margen - gastos;
+  const bajas = bRes.data.filter(b=>tiendaVisible(b.tienda_codigo)).reduce((s,b)=>s+Number(b.valor),0);
+  const gastos = gastosTiendas + generales + bajas;
+  const utilidad = sinCosto ? null : margen - gastos;
   const gastosVenta = totalV ? (gastos / totalV) * 100 : 0;
   const plataformas = (crRes.data || []).reduce((acc, credito) => {
     const nombre = credito.financiera || 'Sin plataforma';
@@ -1349,12 +1372,12 @@ async function cargarKPIs(cache) {
   document.getElementById('kpi-ticket-sub').textContent = '';
   document.getElementById('kpi-celulares').textContent = num(celulares);
   document.getElementById('kpi-accesorios').textContent = num(accesorios);
-  document.getElementById('kpi-margen').textContent = money(margen);
-  document.getElementById('kpi-margen-sub').textContent = `${pct(margen, totalV)} sobre ventas`;
-  document.getElementById('kpi-utilidad').textContent = money(utilidad);
-  document.getElementById('kpi-utilidad-sub').textContent = tiendasFiltro.length
-    ? `${money(gastosTiendas)} en gastos de tiendas; generales sin distribuir`
-    : `${money(gastosTiendas)} tiendas + ${money(generales)} generales autorizados`;
+  document.getElementById('kpi-margen').textContent = sinCosto ? 'Por confirmar' : money(margen);
+  document.getElementById('kpi-margen-sub').textContent = sinCosto ? `${sinCosto} artículo(s) sin costo` : `${pct(margen, totalV)} sobre ventas`;
+  document.getElementById('kpi-utilidad').textContent = sinCosto ? 'Por confirmar' : money(utilidad);
+  document.getElementById('kpi-utilidad-sub').textContent = sinCosto ? 'Falta verificar costos antes de calcular la utilidad' : tiendasFiltro.length
+    ? `${money(gastosTiendas)} gastos + ${money(bajas)} bajas; generales sin distribuir`
+    : `${money(gastosTiendas)} tiendas + ${money(bajas)} bajas + ${money(generales)} generales autorizados`;
   document.getElementById('kpi-gastos-venta').textContent = `${gastosVenta.toFixed(1)}%`;
   document.getElementById('kpi-gastos-sub').textContent = `${money(gastos)} / ${money(totalV)}`;
   document.getElementById('kpi-creditos').textContent = num(crRes.data?.length || 0);
@@ -1390,7 +1413,7 @@ async function cargarKPIs(cache) {
     ['Utilidad neta', utilidad, ref2025.utilidad, money],
   ];
   document.getElementById('tbody-comparativo-kpis').innerHTML = comparables.map(([nombre, actual, anterior, formato]) => {
-    const variacion = anterior ? ((actual - anterior) / anterior) * 100 : null;
+    const variacion = anterior && actual !== null ? ((actual - anterior) / anterior) * 100 : null;
     return `<tr><td class="px-3 py-2 font-medium">${nombre}</td><td class="px-3 py-2 text-right font-mono">${formato(actual)}</td><td class="px-3 py-2 text-right font-mono text-gray-600">${anterior ? formato(anterior) : 'Sin base'}</td><td class="px-3 py-2 text-right ${variacion == null ? 'text-gray-400' : variacion >= 0 ? 'text-emerald-700' : 'text-red-700'}">${variacion == null ? '—' : `${variacion >= 0 ? '↑' : '↓'} ${Math.abs(variacion).toFixed(1)}%`}</td></tr>`;
   }).join('');
 
@@ -1629,7 +1652,7 @@ async function cargarPresupuesto() {
 // ============================================================================
 // 2.2 RENTABILIDAD POR TIENDA
 // ============================================================================
-async function cargarRentabilidadTienda() {
+async function cargarRentabilidadTienda(cache) {
   if (!esCentral()) return;
   const { desde, hasta } = getPeriodo();
   const [vRes, viRes, gRes] = await Promise.all([
@@ -1638,33 +1661,53 @@ async function cargarRentabilidadTienda() {
     queryCache.todas(() => sb.from('gastos').select('id, tienda_codigo, monto').gte('created_at', `${desde}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${hasta}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`).eq('estado', 'aprobado').order('id')),
   ]);
   exigirRespuestas(vRes, viRes, gRes);
+  const bRes = await cache.obtener('bajas');
+  exigirRespuestas(bRes);
+  if (!Array.isArray(bRes.data)) throw new Error('No se pudieron verificar las bajas de inventario');
   const porTienda = {};
   (vRes.data || []).forEach(v => {
     if (!tiendaVisible(v.tienda_codigo)) return;
-    if (!porTienda[v.tienda_codigo]) porTienda[v.tienda_codigo] = { nombre: v.origen?.nombre || v.tienda_codigo, ingresos: 0, costo: 0, gastos: 0 };
+    if (!porTienda[v.tienda_codigo]) porTienda[v.tienda_codigo] = { nombre: v.origen?.nombre || v.tienda_codigo, ingresos: 0, costo: 0, gastos: 0, sinCosto: 0 };
     porTienda[v.tienda_codigo].ingresos += Number(v.total || 0);
   });
   (viRes.data || []).forEach(vi => {
     const tc = vi.ventas?.tienda_codigo;
     if (!porTienda[tc]) return;
-    porTienda[tc].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado || 0);
+    if (costoConocido(vi.costo_congelado)) porTienda[tc].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado);
+    else porTienda[tc].sinCosto++;
+  });
+  const ventasConItems = new Set((viRes.data || []).map(vi => vi.venta_id));
+  (vRes.data || []).forEach(v => {
+    if (porTienda[v.tienda_codigo] && !ventasConItems.has(v.id)) porTienda[v.tienda_codigo].sinCosto++;
   });
   (gRes.data || []).forEach(g => {
     if (g.tienda_codigo === 'CENTRAL' || !tiendaVisible(g.tienda_codigo)) return;
-    if (!porTienda[g.tienda_codigo]) porTienda[g.tienda_codigo] = { nombre: tiendasCache.find(t => t.codigo === g.tienda_codigo)?.nombre || g.tienda_codigo, ingresos: 0, costo: 0, gastos: 0 };
+    if (!porTienda[g.tienda_codigo]) porTienda[g.tienda_codigo] = { nombre: tiendasCache.find(t => t.codigo === g.tienda_codigo)?.nombre || g.tienda_codigo, ingresos: 0, costo: 0, gastos: 0, sinCosto: 0 };
     porTienda[g.tienda_codigo].gastos += Number(g.monto || 0);
   });
+  bRes.data.forEach(b=>{
+    if (!tiendaVisible(b.tienda_codigo)) return;
+    const t=porTienda[b.tienda_codigo] ||= {nombre:tiendasCache.find(t=>t.codigo===b.tienda_codigo)?.nombre||b.tienda_codigo,ingresos:0,costo:0,gastos:0,sinCosto:0};
+    t.gastos += Number(b.valor);
+  });
 
-  const filas = Object.values(porTienda).map(t => ({ ...t, margen: t.ingresos - t.costo, utilidad: t.ingresos - t.costo - t.gastos })).sort((a, b) => b.utilidad - a.utilidad);
+  const filas = Object.values(porTienda).map(t => ({ ...t, margen: t.sinCosto ? null : t.ingresos - t.costo, utilidad: t.sinCosto ? null : t.ingresos - t.costo - t.gastos })).sort((a, b) => b.utilidad - a.utilidad);
   document.getElementById('tbody-rent-tienda').innerHTML = filas.length ? filas.map(t => `<tr>
     <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
     <td class="px-3 py-2 text-right font-mono">${money(t.ingresos)}</td>
-    <td class="px-3 py-2 text-right font-mono text-orange-700">${money(t.costo)}</td>
-    <td class="px-3 py-2 text-right font-mono">${money(t.margen)}</td>
+    <td class="px-3 py-2 text-right font-mono text-orange-700">${t.sinCosto?'Por confirmar':money(t.costo)}</td>
+    <td class="px-3 py-2 text-right font-mono">${t.sinCosto?'Por confirmar':money(t.margen)}</td>
     <td class="px-3 py-2 text-right font-mono text-red-700">${money(t.gastos)}</td>
-    <td class="px-3 py-2 text-right font-mono font-semibold ${t.utilidad >= 0 ? 'text-emerald-700' : 'text-red-700'}">${money(t.utilidad)}</td>
-    <td class="px-3 py-2 text-right">${pct(t.utilidad, t.ingresos)}</td>
+    <td class="px-3 py-2 text-right font-mono font-semibold ${t.utilidad >= 0 ? 'text-emerald-700' : 'text-red-700'}">${t.sinCosto?'Por confirmar':money(t.utilidad)}</td>
+    <td class="px-3 py-2 text-right">${t.sinCosto?'—':pct(t.utilidad, t.ingresos)}</td>
   </tr>`).join('') : '<tr><td colspan="7" class="text-center py-6 text-gray-400">Sin datos en el período.</td></tr>';
+  const total = filas.reduce((s,t)=>({ingresos:s.ingresos+t.ingresos,costo:s.costo+t.costo,gastos:s.gastos+t.gastos,sinCosto:s.sinCosto+t.sinCosto}),{ingresos:0,costo:0,gastos:0,sinCosto:0});
+  const generales = !tiendasFiltro.length ? (await window.CreditekTableroUtilidad.authorizedExpenses(sb,'retail',desde,hasta)).reduce((s,g)=>s-g.value,0)+(gRes.data||[]).filter(g=>g.tienda_codigo==='CENTRAL').reduce((s,g)=>s+Number(g.monto),0) : 0;
+  const pendientes=total.sinCosto>0, neta=total.ingresos-total.costo-total.gastos-generales;
+  totalesReporte('tbody-rent-tienda',[
+    ['Gastos generales no distribuidos','—','—','—',money(generales),'—','—'],
+    ['TOTAL RETAIL',money(total.ingresos),pendientes?'Por confirmar':money(total.costo),pendientes?'Por confirmar':money(total.ingresos-total.costo),money(total.gastos+generales),pendientes?'Por confirmar':money(neta),pendientes?'—':pct(neta,total.ingresos)],
+  ]);
 }
 
 // ============================================================================
@@ -1673,34 +1716,37 @@ async function cargarRentabilidadTienda() {
 async function cargarRentabilidadCategoria() {
   if (!esCentral()) return;
   const { desde, hasta } = getPeriodo();
-  const { data, error } = await sb.from('venta_items_lectura')
-    .select('cantidad, precio_venta, costo_congelado, productos(categoria, categorias_producto:categoria(nombre)), ventas!inner(tienda_codigo, fecha, anulada)')
-    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
-  if (error) { document.getElementById('tbody-rent-categoria').innerHTML = `<tr><td colspan="6" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+  const { data, error } = await queryCache.todas(() => aplicarFiltroTienda(sb.from('venta_items_lectura')
+    .select('id, cantidad, precio_venta, costo_congelado, productos(categoria, categorias_producto:categoria(nombre)), ventas!inner(tienda_codigo, fecha, anulada)')
+    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id'), 'ventas.tienda_codigo'));
+  if (error) throw new Error(error.message);
 
   const porCat = {};
   (data || []).forEach(vi => {
     if (!tiendaVisible(vi.ventas?.tienda_codigo)) return;
     const catCod = vi.productos?.categoria || 'SIN_CAT';
     const catNombre = vi.productos?.categorias_producto?.nombre || catCod;
-    if (!porCat[catCod]) porCat[catCod] = { nombre: catNombre, uds: 0, ingresos: 0, costo: 0 };
+    if (!porCat[catCod]) porCat[catCod] = { nombre: catNombre, uds: 0, ingresos: 0, costo: 0, sinCosto: 0 };
     porCat[catCod].uds += Number(vi.cantidad || 0);
     porCat[catCod].ingresos += Number(vi.cantidad || 0) * Number(vi.precio_venta || 0);
-    porCat[catCod].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado || 0);
+    if (costoConocido(vi.costo_congelado)) porCat[catCod].costo += Number(vi.cantidad || 0) * Number(vi.costo_congelado);
+    else porCat[catCod].sinCosto++;
   });
 
-  const filas = Object.values(porCat).map(c => ({ ...c, margen: c.ingresos - c.costo })).sort((a, b) => b.margen - a.margen);
+  const filas = Object.values(porCat).map(c => ({ ...c, margen: c.sinCosto ? null : c.ingresos - c.costo })).sort((a, b) => b.margen - a.margen);
   document.getElementById('tbody-rent-categoria').innerHTML = filas.length ? filas.map(c => `<tr>
     <td class="px-3 py-2 font-medium">${esc(c.nombre)}</td>
     <td class="px-3 py-2 text-right">${num(c.uds)}</td>
     <td class="px-3 py-2 text-right font-mono">${money(c.ingresos)}</td>
-    <td class="px-3 py-2 text-right font-mono text-orange-700">${money(c.costo)}</td>
-    <td class="px-3 py-2 text-right font-mono font-semibold text-emerald-700">${money(c.margen)}</td>
-    <td class="px-3 py-2 text-right">${pct(c.margen, c.ingresos)}</td>
+    <td class="px-3 py-2 text-right font-mono text-orange-700">${c.sinCosto?'Por confirmar':money(c.costo)}</td>
+    <td class="px-3 py-2 text-right font-mono font-semibold text-emerald-700">${c.sinCosto?'Por confirmar':money(c.margen)}</td>
+    <td class="px-3 py-2 text-right">${c.sinCosto?'—':pct(c.margen, c.ingresos)}</td>
   </tr>`).join('') : '<tr><td colspan="6" class="text-center py-6 text-gray-400">Sin ventas en el período.</td></tr>';
+  const total=filas.reduce((s,c)=>({uds:s.uds+c.uds,ingresos:s.ingresos+c.ingresos,costo:s.costo+c.costo,sinCosto:s.sinCosto+c.sinCosto}),{uds:0,ingresos:0,costo:0,sinCosto:0});
+  totalesReporte('tbody-rent-categoria', [['TOTAL',num(total.uds),money(total.ingresos),total.sinCosto?'Por confirmar':money(total.costo),total.sinCosto?'Por confirmar':money(total.ingresos-total.costo),total.sinCosto?'—':pct(total.ingresos-total.costo,total.ingresos)]]);
 
   if (charts.categorias) charts.categorias.destroy();
-  if (filas.length > 0) {
+  if (filas.length > 0 && !total.sinCosto) {
     charts.categorias = new Chart(document.getElementById('chart-categorias'), {
       type: 'doughnut',
       data: { labels: filas.map(f => f.nombre), datasets: [{ data: filas.map(f => f.margen), backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#84cc16'] }] },
@@ -1717,14 +1763,15 @@ async function cargarCrecimiento() {
   const iso = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
   // 2026 desde tablas operativas — todo el año
   const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
-  let q = sb.from('ventas').select('total, fecha, tienda_codigo').gte('fecha', iso(inicioAnio)).neq('anulada', true);
-  q = aplicarFiltroTienda(q);
   // Meses anteriores desde la fuente mensual canónica. El mes operativo
   // siempre prevalece para no sumar dos veces ventas ya migradas.
-  let qHist = sb.from('historico_mensual').select('anio, mes, venta_total, venta_total_dia, tienda_codigo').in('anio', [2025, 2026]);
-  qHist = aplicarFiltroTienda(qHist);
-
-  const [ventasRes, histRes] = await Promise.all([q, qHist]);
+  const [ventasRes, histRes] = await Promise.all([
+    queryCache.todas(() => aplicarFiltroTienda(sb.from('ventas').select('id, total, fecha, tienda_codigo')
+      .gte('fecha', iso(inicioAnio)).neq('anulada', true).order('id'))),
+    queryCache.todas(() => aplicarFiltroTienda(sb.from('historico_mensual')
+      .select('anio, mes, venta_total, venta_total_dia, tienda_codigo').in('anio', [2025, 2026])
+      .order('anio').order('mes').order('tienda_codigo'))),
+  ]);
   exigirRespuestas(ventasRes, histRes);
   if (ventasRes.error) { document.getElementById('tbody-crecimiento').innerHTML = `<tr><td colspan="3" class="text-red-600 py-4 text-center">${esc(ventasRes.error.message)}</td></tr>`; return; }
 
@@ -1805,9 +1852,9 @@ async function cargarCrecimiento() {
 // ============================================================================
 async function cargarTopProductos() {
   const { desde, hasta } = getPeriodo();
-  const viRes = await sb.from('venta_items_lectura')
-    .select('cantidad, precio_venta, producto_id, productos(nombre), ventas!inner(tienda_codigo, fecha, anulada)')
-    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true);
+  const viRes = await queryCache.todas(() => aplicarFiltroTienda(sb.from('venta_items_lectura')
+    .select('id, cantidad, precio_venta, producto_id, productos(nombre), ventas!inner(tienda_codigo, fecha, anulada)')
+    .gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id'), 'ventas.tienda_codigo'));
   exigirRespuestas(viRes);
   const vi = viRes.data;
   const porProd = {};
@@ -1829,9 +1876,9 @@ async function cargarTopProductos() {
   // Simplificación: buscar unidades disponibles cuya created_at es mayor a 30 días.
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   const iso = d => d.toISOString().slice(0, 10);
-  let qUn = sb.from('unidades_lectura').select('producto_id, created_at, productos(nombre)').eq('estado', 'disponible').lte('created_at', iso(hace30));
-  qUn = aplicarFiltroTienda(qUn, 'tienda_actual');
-  const unidadesRes = await qUn;
+  const unidadesRes = await queryCache.todas(() => aplicarFiltroTienda(sb.from('unidades_lectura')
+    .select('id, producto_id, created_at, productos(nombre)').eq('estado', 'disponible')
+    .lte('created_at', iso(hace30)).order('id'), 'tienda_actual'));
   exigirRespuestas(unidadesRes);
   const uns = unidadesRes.data;
   const slowMap = {};
@@ -1880,24 +1927,36 @@ async function cargarProveedores() {
 // ORCHESTRACIÓN
 // ============================================================================
 async function refrescarTodo() {
+  reportesListos=false;
+  if(refrescoEnCurso){refrescoPendiente=true;return;}
+  refrescoEnCurso=true;
   KoraAlertasCelulares.mount(document.getElementById('alertasCelulares'), sb, currentPerfil);
   document.getElementById('rango-visible').textContent = labelPeriodo();
+  document.getElementById('estado-reportes').textContent='Actualizando cifras. La descarga estará disponible cuando termine la consulta completa.';
   const cache = crearCacheRefresco();
   try {
-    await Promise.all([
+    const resultados=await Promise.allSettled([
       cargarKPIs(cache),
       cargarVentas(cache),
       cargarCartera(cache),
       cargarInventario(cache),
       cargarPresupuesto(),
-      cargarRentabilidadTienda(),
+      cargarRentabilidadTienda(cache),
       cargarRentabilidadCategoria(),
       cargarCrecimiento(),
       cargarTopProductos(),
       cargarProveedores(),
     ]);
+    const fallido=resultados.find(r=>r.status==='rejected');
+    if(fallido)throw fallido.reason;
+    reportesListos=!refrescoPendiente;
+    document.getElementById('estado-reportes').textContent=reportesListos?'Consulta completa. Informes disponibles.':'Hay nuevos filtros pendientes de consultar.';
   } catch (error) {
+    document.getElementById('estado-reportes').textContent='Consulta incompleta. No uses las cifras visibles como cierre; pulsa Actualizar para reintentar. Descarga bloqueada.';
     toast(`No fue posible actualizar todos los reportes: ${error.message}`, 'error');
+  } finally {
+    refrescoEnCurso=false;
+    if(refrescoPendiente){refrescoPendiente=false;await refrescarTodo();}
   }
 }
 

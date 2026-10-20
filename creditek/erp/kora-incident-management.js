@@ -5,8 +5,8 @@
   const STATUS_LABELS = Object.freeze({
     nuevo: 'Nueva',
     en_revision: 'En revisión',
-    confirmado: 'En atención',
-    en_desarrollo: 'En atención',
+    confirmado: 'Confirmada',
+    en_desarrollo: 'En desarrollo',
     corregido: 'Resuelta',
     pendiente_validacion: 'Pendiente de validación',
     cerrado: 'Cerrada',

@@ -297,7 +297,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
 function fmtCorto(n) {
   n = Number(n || 0);
   if (Math.abs(n) >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
@@ -309,8 +309,7 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 function hoyISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 }
 function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 function tokenColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -377,26 +376,34 @@ function nombreTienda(codigo) { return tiendasCache.find(t => t.codigo === codig
 
 function rangoSeleccionado() {
   const periodo = document.getElementById('filtroPeriodo').value;
-  const hoy = new Date();
+  const hoy = new Date(hoyISO() + 'T12:00:00Z');
   if (periodo === 'hoy') { const s = hoyISO(); return { desde: s, hasta: s }; }
   if (periodo === 'semana') {
-    const diaSemana = hoy.getDay() === 0 ? 7 : hoy.getDay(); // lunes=1..domingo=7
-    const inicio = new Date(hoy); inicio.setDate(hoy.getDate() - (diaSemana - 1));
-    return { desde: fechaISO(inicio), hasta: hoyISO() };
+    const diaSemana = hoy.getUTCDay() === 0 ? 7 : hoy.getUTCDay();
+    const inicio = new Date(hoy); inicio.setUTCDate(hoy.getUTCDate() - (diaSemana - 1));
+    return { desde: inicio.toISOString().slice(0,10), hasta: hoyISO() };
   }
   if (periodo === 'mes') {
-    const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    return { desde: fechaISO(inicio), hasta: hoyISO() };
+    return { desde: hoyISO().slice(0,7)+'-01', hasta: hoyISO() };
   }
   const desde = document.getElementById('rangoDesde').value || hoyISO();
   const hasta = document.getElementById('rangoHasta').value || hoyISO();
   return { desde, hasta };
 }
 
-// Punto de comparación: mismo rango, desplazado 7 días atrás (mismo día de la semana)
-function rangoComparacion(rango) {
-  const desplazar = (s) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() - 7); return fechaISO(d); };
-  return { desde: desplazar(rango.desde), hasta: desplazar(rango.hasta) };
+// La referencia se muestra siempre con sus fechas exactas.
+function rangoComparacion(rango, periodo = document.getElementById('filtroPeriodo').value) {
+  const shift = (s, days) => new Date(Date.parse(s+'T12:00:00Z')+days*86400000).toISOString().slice(0,10);
+  if(periodo==='mes') {
+    const end=new Date(rango.hasta+'T12:00:00Z');
+    const first=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()-1,1,12));
+    const last=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth(),0,12));
+    first.setUTCDate(Math.min(end.getUTCDate(),last.getUTCDate()));
+    return {desde:first.toISOString().slice(0,7)+'-01',hasta:first.toISOString().slice(0,10)};
+  }
+  if(periodo==='semana')return {desde:shift(rango.desde,-7),hasta:shift(rango.hasta,-7)};
+  const days=Math.round((Date.parse(rango.hasta+'T12:00:00Z')-Date.parse(rango.desde+'T12:00:00Z'))/86400000)+1;
+  return {desde:shift(rango.desde,-days),hasta:shift(rango.desde,-1)};
 }
 
 let creditosLiquidacionesPromise;
@@ -425,12 +432,12 @@ async function sumVentasCreditosUtilidad(desde, hasta, tienda) {
   return { ventas: totalVentas, creditos: totalCreditos, utilidad: totalUtilidad, missing:retail.missing };
 }
 
-function pintarVariacion(elId, actual, anterior) {
+function pintarVariacion(elId, actual, anterior, referencia) {
   const el = document.getElementById(elId);
   if (!anterior) { el.textContent = actual ? 'nuevo' : '—'; el.className = 'kpi-var flat'; return; }
   const pct = ((actual - anterior) / anterior) * 100;
   const flecha = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
-  el.textContent = `${flecha} ${Math.abs(pct).toFixed(0)}% vs. misma semana pasada`;
+  el.textContent = `${flecha} ${Math.abs(pct).toFixed(0)}% vs. ${referencia.desde} a ${referencia.hasta}`;
   el.className = 'kpi-var ' + (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat');
 }
 
@@ -455,11 +462,11 @@ async function cargarKPIs() {
   if(request!==kpiConsulta)return;
 
   document.getElementById('kpiVentas').textContent = fmtCOP(actual.ventas);
-  pintarVariacion('kpiVentasVar', actual.ventas, anterior.ventas);
+  pintarVariacion('kpiVentasVar', actual.ventas, anterior.ventas, comp);
   document.getElementById('kpiCreditos').textContent = actual.creditos === null ? 'No disponible' : `${actual.creditos} uds`;
-  if (actual.creditos !== null && anterior.creditos !== null) pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos);
+  if (actual.creditos !== null && anterior.creditos !== null) pintarVariacion('kpiCreditosVar', actual.creditos, anterior.creditos, comp);
   else document.getElementById('kpiCreditosVar').textContent = 'No se pudo consultar Liquidaciones.';
-  document.getElementById('kpiUtilidad').textContent = actual.utilidad===null?'No disponible':fmtCOP(actual.utilidad)+(actual.missing?' · parcial':'');
+  document.getElementById('kpiUtilidad').textContent = actual.utilidad===null?'No disponible':actual.missing?'Por confirmar':fmtCOP(actual.utilidad);
   const profitContext = document.getElementById('kpiUtilidadVar');
   profitContext.textContent = actual.utilidad===null?'No se pueden consultar los gastos generales Retail con este usuario':actual.missing ? `${actual.missing} artículo(s) sin margen calculado` : tienda?'Margen − gastos cargados de esta tienda · período seleccionado':'Margen − gastos cargados en tiendas − generales autorizados · período seleccionado';
   profitContext.className = 'kpi-var flat';
@@ -474,13 +481,13 @@ async function cargarTiendas_Tabla() {
   const request=++tablaConsulta;
   const tiendaFiltro = document.getElementById('filtroTienda').value;
   const rango = rangoSeleccionado();
-  const hoy = new Date();
-  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
-  const inicioMesStr = fechaISO(inicioMes);
-  const finMesStr = fechaISO(finMes);
-  const diasTranscurridos = hoy.getDate();
-  const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const hoy = new Date(hoyISO()+'T12:00:00Z');
+  const inicioMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1, 12));
+  const finMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + 1, 1, 12));
+  const inicioMesStr = inicioMes.toISOString().slice(0,10);
+  const finMesStr = finMes.toISOString().slice(0,10);
+  const diasTranscurridos = hoy.getUTCDate();
+  const diasDelMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + 1, 0)).getUTCDate();
 
   const tiendas = tiendaFiltro ? tiendasCache.filter(t => t.codigo === tiendaFiltro) : tiendasCache;
 
@@ -524,12 +531,13 @@ async function cargarTiendas_Tabla() {
     return;
   }
 
-  const margenPorTienda=new Map(),gastoPorTienda=new Map(),faltantesPorTienda=new Map();
+  const margenPorTienda=new Map(),gastoPorTienda=new Map(),bajaPorTienda=new Map(),faltantesPorTienda=new Map();
   periodoRetail.itemRows.forEach(row=>{
     if(row.value===null||row.value===undefined||!Number.isFinite(Number(row.value))) faltantesPorTienda.set(row.store,(faltantesPorTienda.get(row.store)||0)+1);
     else margenPorTienda.set(row.store,(margenPorTienda.get(row.store)||0)+Number(row.value));
   });
   periodoRetail.expenses.forEach(g=>gastoPorTienda.set(g.tienda_codigo,(gastoPorTienda.get(g.tienda_codigo)||0)+Number(g.monto)));
+  periodoRetail.writeoffs.forEach(b=>bajaPorTienda.set(b.tienda_codigo,(bajaPorTienda.get(b.tienda_codigo)||0)+Number(b.valor)));
 
   const filas = tiendas.map(t => {
     const ventasTienda = (ventasMes || []).filter(v => v.tienda_codigo === t.codigo);
@@ -537,7 +545,8 @@ async function cargarTiendas_Tabla() {
     const contadoMes = periodoRetail.sales.filter(v => v.tienda_codigo === t.codigo && v.tipo === 'contado').reduce((s, v) => s + Number(v.total || 0), 0);
     const margenMes = margenPorTienda.get(t.codigo)||0;
     const gastosMes = gastoPorTienda.get(t.codigo)||0;
-    const utilidadMes = margenMes-gastosMes;
+    const bajasMes = bajaPorTienda.get(t.codigo)||0;
+    const utilidadMes = margenMes-gastosMes-bajasMes;
     const utilidadFaltante = faltantesPorTienda.get(t.codigo)||0;
     const metaMes = (presupuestoMes || []).filter(p => p.tienda_codigo === t.codigo).reduce((s, p) => s + Number(p.meta_creditos || 0), 0);
     const pct = metaMes > 0 ? (creditosMes / metaMes) * 100 : null;
@@ -556,7 +565,7 @@ async function cargarTiendas_Tabla() {
     let semaforo = 'neutral';
     if (pctRunRate !== null) semaforo = pctRunRate >= 90 ? 'success' : pctRunRate >= 70 ? 'warning' : 'danger';
 
-    return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, margenMes, gastosMes, utilidadMes, utilidadFaltante, cajaOk, semaforo, pctRunRate };
+    return { tienda: t, creditosMes, metaMes, pct, runRate, contadoMes, margenMes, gastosMes, bajasMes, utilidadMes, utilidadFaltante, cajaOk, semaforo, pctRunRate };
   });
 
   renderTablaTiendas(filas,{generalExpenses:periodoRetail.generalExpenses||[],generalAvailable:periodoRetail.generalAvailable!==false,includeGeneral:!tiendaFiltro});
@@ -596,7 +605,7 @@ function renderTablaTiendas(filas,{generalExpenses=[],generalAvailable=true,incl
         </div>
       </td>
       <td class="num">${fmtCorto(f.contadoMes)}</td>
-      <td class="num">${fmtCOP(f.utilidadMes)}${f.utilidadFaltante?' *':''}<span class="store-profit-detail">Margen ${fmtCorto(f.margenMes)} − gastos ${fmtCorto(f.gastosMes)}${f.utilidadFaltante?` · ${f.utilidadFaltante} sin costo`:''}</span></td>
+      <td class="num">${f.utilidadFaltante?'Por confirmar':fmtCOP(f.utilidadMes)}<span class="store-profit-detail">Margen ${fmtCorto(f.margenMes)} − gastos ${fmtCorto(f.gastosMes)} − bajas ${fmtCorto(f.bajasMes||0)}${f.utilidadFaltante?` · ${f.utilidadFaltante} sin costo`:''}</span></td>
       <td class="centro">
         <span class="status-indicator status-indicator--${f.cajaOk ? 'success' : 'warning'}">
           <i data-lucide="${f.cajaOk ? 'circle-check' : 'triangle-alert'}"></i>
@@ -613,13 +622,14 @@ function renderTablaTiendas(filas,{generalExpenses=[],generalAvailable=true,incl
   const totalUtilidad = generalAvailable ? filas.reduce((s, f) => s + f.utilidadMes, 0)-totalGeneral : null;
   const totalMargen = filas.reduce((s, f) => s + f.margenMes, 0);
   const totalGastos = filas.reduce((s, f) => s + f.gastosMes, 0);
+  const totalBajas = filas.reduce((s, f) => s + (f.bajasMes||0), 0);
   const totalFaltantes = filas.reduce((s, f) => s + f.utilidadFaltante, 0);
   const totalPct = totalMeta > 0 ? Math.round((totalCreditos / totalMeta) * 100) : 0;
   document.getElementById('tfootTotal').innerHTML = `
     <tr class="fila-total">
       <td>TOTAL</td><td class="centro store-goal"><strong>${totalCreditos}</strong><span>/ ${totalMeta || '—'}</span></td>
       <td class="store-progress"><strong>${totalMeta > 0 ? totalPct + '%' : '—'}</strong></td>
-      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${totalUtilidad===null?'No disponible':fmtCOP(totalUtilidad)}${totalFaltantes?' *':''}<span class="store-profit-detail">${totalUtilidad===null?'Los gastos generales Retail no son visibles con este usuario':`Margen ${fmtCOP(totalMargen)} − gastos de tiendas ${fmtCOP(totalGastos)}${includeGeneral?` − generales ${fmtCOP(totalGeneral)}`:''}`}${totalFaltantes?` · ${totalFaltantes} sin costo`:''}</span></td><td class="centro">—</td>
+      <td class="num">${fmtCorto(totalContado)}</td><td class="num">${totalUtilidad===null?'No disponible':totalFaltantes?'Por confirmar':fmtCOP(totalUtilidad)}<span class="store-profit-detail">${totalUtilidad===null?'Los gastos generales Retail no son visibles con este usuario':`Margen ${fmtCOP(totalMargen)} − gastos de tiendas ${fmtCOP(totalGastos)} − bajas ${fmtCOP(totalBajas)}${includeGeneral?` − generales ${fmtCOP(totalGeneral)}`:''}`}${totalFaltantes?` · ${totalFaltantes} sin costo`:''}</span></td><td class="centro">—</td>
     </tr>
   `;
   pintarIconos();
@@ -746,7 +756,7 @@ async function cargarSerieUtilidadAcumulada(inicioMes, diasDelMes, diasTranscurr
 // ─── Alertas ───────────────────────────────────────────────────────────
 async function calcularAlertas(filas, ventasMes, hoy) {
   const alertas = [];
-  const ayerStr = fechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1));
+  const ayerStr = new Date(Date.parse(hoyISO()+'T12:00:00Z')-86400000).toISOString().slice(0,10);
 
   // Cajas de ayer sin cerrar (solo tiendas con actividad ayer)
   const { data: ventasAyer } = await sb.from('ventas').select('tienda_codigo').eq('fecha', ayerStr).eq('anulada', false);

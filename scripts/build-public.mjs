@@ -32,7 +32,14 @@ const KORA_PWA_FILES = [
 ];
 const KORA_SHELL_ASSET_VERSION = '2.0.35';
 const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.35';
-const KORA_PRODUCT_ASSET_VERSION = '2.0.4';
+const KORA_PRODUCT_ASSET_VERSION = '2.0.5';
+const KORA_AUDIT_ASSET_VERSIONS = Object.freeze({
+  'conteos-ui.js': '1.2.6',
+  'tablero-utilidad.js': '1.0.5',
+  'incidencias-app.js': '1.3.5',
+  'kora-incident-management.js': '1.2.5',
+  'aliados-v1-1-app.js': '1.1.40',
+});
 
 async function copyFileFromRoot(rootDir, outDir, relative) {
   const source = path.join(rootDir, relative);
@@ -44,7 +51,7 @@ async function copyFileFromRoot(rootDir, outDir, relative) {
 async function versionKoraAssetReferences(outDir, relative) {
   const file = path.join(outDir, relative);
   const html = await readFile(file, 'utf8');
-  const versioned = html
+  let versioned = html
     .replace(
       /src="((?:\.\.\/erp\/)?sidebar\.js)(?:\?[^"]*)?"/g,
       `src="$1?v=${KORA_SHELL_ASSET_VERSION}"`,
@@ -56,7 +63,15 @@ async function versionKoraAssetReferences(outDir, relative) {
     .replace(
       /src="(\/design-system\/components\/kora-product\.js)(?:\?[^"]*)?"/g,
       `src="$1?v=${KORA_PRODUCT_ASSET_VERSION}"`,
+    )
+    .replace(
+      /href="(\/design-system\/components\/kora-product\.css)(?:\?[^"]*)?"/g,
+      `href="$1?v=${KORA_PRODUCT_ASSET_VERSION}"`,
     );
+  for (const [asset, version] of Object.entries(KORA_AUDIT_ASSET_VERSIONS)) {
+    const escaped = asset.replaceAll('.', '\\.');
+    versioned = versioned.replace(new RegExp(`src="(${escaped})(?:\\?[^"\\s]*)?"`, 'g'), `src="$1?v=${version}"`);
+  }
   if (versioned !== html) await writeFile(file, versioned);
 }
 

@@ -48,8 +48,8 @@ test('KPI pagina ventas y artículos sin truncar la utilidad del mes',async()=>{
  const sales=Array.from({length:1100},(_,i)=>({id:`v${String(i).padStart(4,'0')}`,total:100}));
  const items=sales.map((sale,i)=>({id:`i${String(i).padStart(4,'0')}`,venta_id:sale.id,utilidad:25}));
  const calls=[];
- ctx.sb.rpc=async(name)=>{
-  if(name==='gastos_inventario_no_monetarios')return {data:[],error:null};
+ ctx.sb.rpc=(name)=>{
+  if(name==='gastos_inventario_no_monetarios')return {order(){return this},range:async()=>({data:[],error:null})};
   assert.equal(name,'es_controlador_financiero');return {data:true,error:null};
  };
  ctx.sb.from=table=>{

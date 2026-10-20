@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="ventas-domain.js"></script>
+<script src="reportes-query-cache.js?v=1.0.1"></script>
 <script src="addi-liquidacion.js"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="kora-access-control.js?v=2.0.35"></script>
@@ -584,6 +585,7 @@ const ventasPagos = window.CreditekCajaPiloto;
 let currentUser = null;
 let currentPerfil = null;
 let ventasCache = [];
+let ventasConsulta = 0;
 let tiendasCache = [];
 let detalleVentaActiva = null;
 let detalleCreditoActivo = null;
@@ -636,7 +638,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -725,31 +727,47 @@ async function abrirDocumentoSolicitado() {
 }
 
 async function cargarVentas() {
+  const request = ++ventasConsulta;
   const empty = document.getElementById('emptyState');
   empty.style.display = 'block';
   empty.textContent = 'Cargando ventas...';
+  ventasCache = [];
+  document.getElementById('tbodyVentas').innerHTML = '';
+  for (const id of ['resumenCantidad','resumenTotal','resumenContado','resumenCredito']) {
+    const node = document.getElementById(id);
+    node.textContent = '—';
+    delete node.dataset.koraReportValue;
+  }
+  document.getElementById('tbodyVentas').closest?.('table')?.querySelector('tfoot')?.remove();
 
   const desde = document.getElementById('filtroDesde').value;
   const hasta = document.getElementById('filtroHasta').value;
   const tienda = document.getElementById('filtroTienda').value;
 
-  let q = sb.from('ventas')
+  const query = () => {
+    let q = sb.from('ventas')
     .select('*, clientes(nombre_completo,cedula), origen:tienda_codigo(nombre), vendedor_perfil:vendedor(nombre), creditos(financiera), venta_items:venta_items_lectura(id, cantidad, precio_venta, unidades(imei), productos(nombre))')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }).order('id', { ascending: false });
   if (desde) q = q.gte('fecha', desde);
   if (hasta) q = q.lte('fecha', hasta);
   if (tienda) q = q.eq('tienda_codigo', tienda);
-
-  const [{ data, error }, registros] = await Promise.all([
-    q,
+    return q;
+  };
+  try {
+    const [{ data, error }, registros] = await Promise.all([
+    window.CreditekReportesQueryCache.todas(query),
     sb.rpc('listar_ventas_registradas_sin_contabilizar', { p_desde: desde || null, p_hasta: hasta || null, p_tienda: tienda || null }),
   ]);
-  if (error || registros.error) { empty.textContent = 'Error cargando ventas: ' + (error || registros.error).message; return; }
+  if (request !== ventasConsulta) return;
+  if (error || registros.error) throw (error || registros.error);
   const contabilizadas = data || [];
   const ids = new Set(contabilizadas.map(v => v.id));
   ventasCache = [...contabilizadas, ...(registros.data || []).filter(v => !ids.has(v.id))]
     .sort((a,b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   renderTablaVentas();
+  } catch (error) {
+    if (request === ventasConsulta) empty.textContent = 'Error cargando ventas: ' + error.message;
+  }
 }
 
 function renderTablaVentas() {

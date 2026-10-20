@@ -128,9 +128,9 @@
       codeButton.type = 'button';
       codeButton.addEventListener('click', () => openDetail(item, codeButton));
       const cells = state.mode === 'admin'
-        ? [codeButton, formatDate(item.created_at), item.title, item.store_name_snapshot || '—', item.module, label(item.priority), label(item.status), item.user_name_snapshot, assigneeName(item.assigned_to), item.kora_version, age(item.created_at)]
+        ? [codeButton, label(item.status), label(item.priority), item.title, item.store_name_snapshot || '—', formatDate(item.created_at), item.module, item.user_name_snapshot, assigneeName(item.assigned_to), item.kora_version, age(item.created_at)]
         : [codeButton, formatDate(item.created_at), item.title, item.module, label(item.priority), label(item.status), formatDate(item.updated_at)];
-      const statusIndex = state.mode === 'admin' ? 6 : 5;
+      const statusIndex = state.mode === 'admin' ? 1 : 5;
       cells.forEach((value, index) => {
         const cell = el('td');
         if (value instanceof Node) {

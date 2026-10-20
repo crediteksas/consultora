@@ -47,7 +47,7 @@
     tbody tr:hover { background-color: #f9fafb; cursor: pointer; }
     tbody tr.expandida { background-color: #fff7ed; }
     .card-verde { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #10b981; }
-    .card-rojo  { background: #FFF5F5; border: 1px solid #FCA5A5; box-shadow: 0 4px 14px rgba(220,38,38,.08); }
+    .card-pendiente { background: #FFFBEB; border: 1px solid #FCD34D; }
     .card-azul  { background: #FFFFFF; border-color: rgba(11,30,61,.12); box-shadow: 0 4px 16px rgba(11,30,61,.06); }
     .despacho-precio-input { flex: 1 0 8rem; min-width: 8rem; width: 8rem; }
     .pulse-red { animation: pulseRed 2s infinite; }
@@ -249,7 +249,7 @@
     </div>
 
     <div class="border-2 border-gray-200 rounded-lg p-5 card-azul">
-      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Productos descuadrados</div>
+      <div class="text-xs uppercase tracking-wider text-gray-600 mb-1">Referencias pendientes de despacho</div>
       <div class="flex items-baseline gap-2">
         <span id="kpi-descuadrados" class="text-4xl font-bold text-gray-800">0</span>
         <span class="text-sm text-gray-500">de <span id="kpi-total-productos">0</span> monitoreados</span>
@@ -352,9 +352,9 @@
     <input id="filtro-texto" type="text" placeholder="Buscar por producto o categoría..."
            class="flex-1 min-w-[240px] border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
     <select id="filtro-descuadre" class="border border-gray-300 rounded px-3 py-2 text-sm">
-      <option value="descuadrados" selected>Solo descuadrados</option>
+      <option value="descuadrados" selected>Solo pendientes de despacho</option>
       <option value="todos">Todos</option>
-      <option value="cuadrados">Solo cuadrados (stock 0)</option>
+      <option value="cuadrados">Sin pendientes (stock 0)</option>
     </select>
     <select id="filtro-tipo" class="border border-gray-300 rounded px-3 py-2 text-sm">
       <option value="todos">Todos los tipos</option>
@@ -605,12 +605,12 @@ function actualizarKPIs() {
   if (descuadrados.length === 0) {
     card.className = 'border-2 rounded-lg p-5 card-verde';
     icono.textContent = '✅';
-    titulo.textContent = 'Cuadrada';
+    titulo.textContent = 'Sin pendientes de despacho';
     detalle.textContent = 'Todo lo comprado ha sido despachado. Stock CENTRAL = 0 en todos los productos.';
   } else {
-    card.className = 'border-2 rounded-lg p-5 card-rojo pulse-red';
-    icono.textContent = '⚠️';
-    titulo.textContent = descuadrados.length + ' descuadrados';
+    card.className = 'border-2 rounded-lg p-5 card-pendiente';
+    icono.textContent = '📦';
+    titulo.textContent = descuadrados.length + ' referencias por despachar';
     const worst = descuadrados[0];
     detalle.innerHTML = 'Producto con más stock: <b>' + esc(worst.nombre) + '</b> · ' + worst.stock_actual_central + ' unidades.';
   }
@@ -646,7 +646,7 @@ function render() {
   const tbody = document.getElementById('tbody-alerta');
   if (filtrados.length === 0) {
     const msg = descuadre === 'descuadrados' && alertaData.length > 0
-      ? '🎉 No hay descuadres. La bodega está cuadrada.'
+      ? 'No hay unidades pendientes de despacho con estos filtros.'
       : 'Sin resultados';
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">' + msg + '</td></tr>';
     return;
@@ -654,12 +654,12 @@ function render() {
 
   tbody.innerHTML = filtrados.map(a => {
     const semaforo = a.descuadrado
-      ? '<span class="inline-flex items-center gap-1 text-red-700 font-semibold"><span class="w-2 h-2 bg-red-500 rounded-full"></span>Descuadrado</span>'
+      ? '<span class="inline-flex items-center gap-1 text-amber-700 font-semibold"><span class="w-2 h-2 bg-amber-500 rounded-full"></span>Pendiente de despacho</span>'
       : '<span class="inline-flex items-center gap-1 text-green-700"><span class="w-2 h-2 bg-green-500 rounded-full"></span>OK</span>';
     const badgeTipo = a.tipo === 'serializado'
       ? '<span class="px-2 py-0.5 rounded text-xs badge-serial">serializado</span>'
       : '<span class="px-2 py-0.5 rounded text-xs badge-cantidad">cantidad</span>';
-    const stockClass = a.descuadrado ? 'text-red-700 font-bold' : 'text-gray-400';
+    const stockClass = a.descuadrado ? 'text-amber-700 font-bold' : 'text-gray-400';
     return `
       <tr data-producto="${esc(a.producto_id)}" data-nombre="${esc(a.nombre)}" data-tipo="${esc(a.tipo)}">
         <td class="px-4 py-3 text-gray-400">›</td>

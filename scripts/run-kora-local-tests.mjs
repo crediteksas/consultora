@@ -8,6 +8,7 @@ const responsive = [
   'tests/design-system/kora-responsive-foundation.test.mjs',
   'tests/design-system/kora-visual-contract.test.mjs',
   'tests/erp/compra-proveedor-ux.test.mjs',
+  'tests/erp/compra-costos-gestion.test.mjs',
 ];
 // AURA (tests/agentes/*) tiene su propio ciclo de vida, separado de KORA
 // (confirmado por tests/security/separated-artifacts.test.mjs). No debe

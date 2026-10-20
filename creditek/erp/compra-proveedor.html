@@ -556,6 +556,15 @@ function actualizarTotal() {
     const elR = document.getElementById('sub-remi-' + i.tempId);
     if (elC) elC.textContent = money(subCosto);
     if (elR) elR.textContent = money(subRemi);
+    const ref = document.getElementById('referencia-costo-' + i.tempId);
+    if (ref) ref.textContent = i.referenciaCostosTexto || (i.producto_id ? 'Consultando última compra…' : '');
+    const utilidad = document.getElementById('utilidad-linea-' + i.tempId);
+    if (utilidad) {
+      const completos = i.producto_id && i.costo_unitario != null && i.precio_remision != null && Number(i.precio_remision)>0 && q>0;
+      const unitario = Number(i.precio_remision)-Number(i.costo_unitario);
+      utilidad.textContent = completos ? 'Utilidad prevista: '+money(unitario)+' / unidad · '+money(subRemi-subCosto)+' en esta línea'+(unitario<0?' · Atención: remisión por debajo del costo':'') : 'Ingresa costo y precio de remisión para ver la utilidad.';
+      utilidad.style.color = completos && unitario<0 ? '#b42318' : '';
+    }
   });
   document.getElementById('total-factura').textContent = money(totalCosto);
   document.getElementById('total-remision').textContent = money(totalRemision);
@@ -587,7 +596,7 @@ function renderItems() {
       const subRemi = (i.cantidad || 0) * (i.precio_remision || 0);
       return `
         <tr>
-          <td class="px-3 py-2">${productoBtn}</td>
+          <td class="px-3 py-2">${productoBtn}<p class="text-xs text-gray-500" id="referencia-costo-${i.tempId}"></p><p class="text-xs" id="utilidad-linea-${i.tempId}" aria-live="polite"></p></td>
           <td class="px-3 py-2">
             <input type="number" min="1" step="1" data-item="${i.tempId}" data-campo="cantidad"
                    value="${i.cantidad ?? ''}"
@@ -703,6 +712,8 @@ function seleccionarProducto(prodId, precioSugerido = null) {
   it.producto_id = p.id;
   it.producto_nombre = p.nombre;
   it.producto_tipo = p.tipo;
+  it.referenciaCostosTexto = 'Consultando última compra…';
+  consultarReferenciaCostos(it, p.id);
   // SPEC v2 · pre-llenar margen desde la ficha del producto (que a su vez viene de la categoría).
   it.margen_tipo = p.margen_tipo || 'porcentaje';
   it.margen_valor = p.margen_valor != null ? p.margen_valor : 0;
@@ -715,6 +726,25 @@ function seleccionarProducto(prodId, precioSugerido = null) {
   }
   cerrarBuscador();
   renderItems();
+}
+
+async function consultarReferenciaCostos(it, productoId) {
+  if (!['gerencia','auditoria'].includes(rolActual)) return;
+  const solicitud = {};
+  it.consultaCostos = solicitud;
+  try {
+    const {data, error} = await SB.rpc('compra_referencia_costos_gestion', {p_producto_id:productoId});
+    if (it.consultaCostos !== solicitud || it.producto_id !== productoId) return;
+    if (error) throw error;
+    const importe = n => n == null || !Number.isFinite(Number(n)) ? 'Sin dato' : money(n);
+    it.referenciaCostosTexto = data
+      ? 'Última compra · '+(data.fecha || '')+' · Factura '+(data.factura || 'sin número')+': costo '+importe(data.costo)+' / unidad · Remisión registrada '+importe(data.precio_remision)+'. Referencia; no modifica los valores ingresados.'
+      : 'Sin compra anterior registrada para esta referencia.';
+  } catch (error) {
+    if (it.consultaCostos !== solicitud || it.producto_id !== productoId) return;
+    it.referenciaCostosTexto = 'No se pudo consultar el costo anterior. Vuelve a seleccionar la referencia para reintentar.';
+  }
+  actualizarTotal();
 }
 
 function abrirCrearReferencia() {

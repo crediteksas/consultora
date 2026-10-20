@@ -418,7 +418,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <section class="autorizaciones-ventas" aria-labelledby="tituloAutorizaciones">
       <div class="tabla-section-head"><h2 id="tituloAutorizaciones">Autorizaciones de ventas</h2><button type="button" id="btnActualizarAutorizaciones">Actualizar</button></div>
-      <p>Ventas ya registradas que requieren el visto bueno de Mayte u Óscar para contabilizarse por su costo.</p>
+      <p>Solo ventas pendientes del visto bueno de Mayte u Óscar. Las contabilizadas se consultan en el detalle y el informe de ventas.</p>
       <div id="autorizacionesVentasEstado" role="status"></div>
       <div id="autorizacionesVentasLista"></div>
     </section>
@@ -987,15 +987,14 @@ async function cargarAutorizacionesVentas() {
   const estado = document.getElementById('autorizacionesVentasEstado');
   estado.textContent = 'Cargando autorizaciones…';
   try {
-    const [{ data: pendientes, error }, { data: puede, error: permisoError }, { data: recientes, error: recientesError }, { data: tiendas, error: tiendasError }] = await Promise.all([
+    const [{ data: pendientes, error }, { data: puede, error: permisoError }, { data: tiendas, error: tiendasError }] = await Promise.all([
       sb.from('ventas_autorizaciones').select('*').eq('estado','pendiente').order('creado_en', { ascending: false }),
       sb.rpc('puede_autorizar_venta_excepcional'),
-      sb.from('ventas_autorizaciones').select('*').in('estado',['aprobada','rechazada']).order('resuelto_en', { ascending: false }).limit(20),
       sb.from('origenes').select('codigo,nombre'),
     ]);
-    if (error || permisoError || recientesError || tiendasError) throw error || permisoError || recientesError || tiendasError;
+    if (error || permisoError || tiendasError) throw error || permisoError || tiendasError;
     document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
-    const solicitudes = [...(pendientes || []), ...(recientes || [])];
+    const solicitudes = (pendientes || []).filter(r => r.estado === 'pendiente');
     const nombresTiendas = new Map((tiendas || []).map(t => [t.codigo, t.nombre]));
     const fechasPendientes = (pendientes || []).map(r => fechaVentaColombia(r.creado_en)).sort();
     let cierresValidados = [];
@@ -1007,7 +1006,7 @@ async function cargarAutorizacionesVentas() {
       cierresValidados = cierres || [];
     }
     const cierrePosterior = r => cierresValidados.find(c => c.tienda_codigo === r.tienda_codigo && c.fecha >= fechaVentaColombia(r.creado_en));
-    estado.textContent = `${(pendientes || []).length} ventas registradas pendientes de contabilizar`;
+    estado.textContent = solicitudes.length ? `${solicitudes.length} ventas registradas pendientes de contabilizar` : 'No hay ventas pendientes de autorización.';
     lista.innerHTML = solicitudes.map(r => {
       const cierre = r.estado === 'pendiente' ? cierrePosterior(r) : null;
       const obsequioSinEfectivo = r.tipo === 'contado' && Number(r.total) === 0 && !r.credito

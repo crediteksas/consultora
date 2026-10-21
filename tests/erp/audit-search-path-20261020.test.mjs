@@ -13,7 +13,7 @@ test('búsqueda de las cinco funciones queda fija y no acepta una tabla temporal
       create function public.normalizar_categoria(txt text) returns text language sql immutable as $$select lower(trim(txt))$$;
       create function public.registrar_compra_proveedor(uuid,text,date,jsonb,text,text) returns text language sql security definer as $$select nombre from productos limit 1$$;
       create function public.trg_normalizar_categoria_producto() returns trigger language plpgsql as $$begin new.nombre:=normalizar_categoria(new.nombre);return new;end$$;`);
-    const sql=fs.readFileSync('supabase/migrations/20261020231231_kora_auditoria_busqueda_funciones.sql','utf8');
+    const sql=fs.readFileSync('supabase/migrations/20261021012310_kora_auditoria_busqueda_funciones.sql','utf8');
     await db.exec(sql);await db.exec(sql);
     const paths=(await db.query("select proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'")).rows;
     assert.equal(paths.length,5);for(const row of paths)assert.deepEqual(row.proconfig,['search_path=public, pg_temp']);

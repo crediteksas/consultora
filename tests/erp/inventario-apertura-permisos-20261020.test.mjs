@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
-const sql=fs.readFileSync('supabase/migrations/20261020225143_kora_auditoria_control_apertura_y_permisos.sql','utf8');
+const sql=fs.readFileSync('supabase/migrations/20261021012248_kora_auditoria_control_apertura_y_permisos.sql','utf8');
 const user=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 
 test('migración aislada: apertura restringida y conteo ciego con perfil activo/asignación',async()=>{

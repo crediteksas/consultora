@@ -1,21 +1,21 @@
 # KORA · Estado de correcciones de auditoría
 
-Fecha: 20 de octubre de 2026. Estado: preparado y probado localmente; no publicado.
+Fecha: 20 de octubre de 2026, Colombia. Estado: migraciones autorizadas aplicadas; publicación de la interfaz en preparación.
 
 ## Resultado
 
 Se implementaron correcciones de lógica, permisos, totales, fechas, presentación y carga del catálogo en la rama aislada `codex/kora-audit-20261020`, basada en `02e186a8d97f936c2f36b195fe006eb30ab7c533`.
 
-No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni otros registros reales. No se aplicaron migraciones remotas, no se realizó push y no hubo despliegue. El checkout de producción permanece limpio en el mismo commit.
+No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni otros registros operativos reales. Con autorización expresa se aplicaron únicamente las dos migraciones de funciones y permisos. No se realizó push ni despliegue de la interfaz al momento de este registro. El checkout autorizado integró la rama por avance rápido, sin sobrescribir cambios.
 
 ## Seguimiento de los hallazgos
 
 | ID | Corrección o decisión | Estado |
 |---|---|---|
 | L01 | Lecturas paginadas y orden estable para Ventas, categorías, crecimiento y productos. Las bajas de inventario también se paginan en Reportes y Tablero. Un fallo de página no entrega un total parcial. | Implementado; pruebas ficticias de más de 1.000 filas. |
-| L02 | Solo los responsables autorizados pueden iniciar un inventario normal o ciego. Las tiendas conservan carga/corrección de conteos sin ajustar existencias. Se puede retomar un corte existente. | Frontend y migración local preparados; no activos aún en producción. |
+| L02 | Solo los responsables autorizados pueden iniciar un inventario normal o ciego. Las tiendas conservan carga/corrección de conteos sin ajustar existencias. Se puede retomar un corte existente. | Control del servidor aplicado y comprobado por metadatos; interfaz pendiente de publicación. |
 | L03 | Las bajas no monetarias se descuentan de la utilidad individual y consolidada. Los gastos generales quedan separados de la utilidad individual. | Implementado y probado localmente. |
-| L04 | Conteo ciego exige perfil activo, rol permitido, asignación cuando corresponde, sesión vigente y máximo de dos intentos. Bloqueo transaccional para intentos; no se modifica Kardex. | Migración local probada en PostgreSQL embebido con usuarios ficticios. |
+| L04 | Conteo ciego exige perfil activo, rol permitido, asignación cuando corresponde, sesión vigente y máximo de dos intentos. Bloqueo transaccional para intentos; no se modifica Kardex. | Aplicado tras pruebas en PostgreSQL embebido con usuarios ficticios; permisos y guardas verificados en metadatos productivos sin registrar conteos. |
 | L05 | Fecha comercial de Colombia en compras y gastos Aliados; filtro diario de Validación con inicio incluido y siguiente medianoche excluida. Tablero ancla sus rangos a Colombia. | Implementado; pruebas de cambio de año y límite diario. |
 | L06 | Comparación del mes contra el mes anterior; semana contra los mismos días anteriores; rango libre contra período anterior contiguo. Se muestran las fechas de referencia. | Implementado; incluye febrero bisiesto. |
 | L07 | Costos ausentes o ventas sin artículos no se convierten en costo cero. Utilidad/costo pendientes se identifican como «Por confirmar». Cero explícito sigue siendo válido. | Implementado y probado localmente. |
@@ -30,7 +30,7 @@ No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni
 | V09 | Retirada la restricción de ampliación del formulario público. | Implementado; no se registró ningún usuario. |
 | V10 | Importes monetarios conservan hasta dos decimales en las vistas corregidas y sus totales/exportaciones. | Implementado en los módulos afectados; no recalcula saldos. |
 | R01 | Catálogo presenta 100 referencias por página e imágenes diferidas. El informe mantiene todas las referencias filtradas, no solo la página visible. | Implementado; prueba de 3.084 referencias. |
-| S01 | Cinco funciones con ruta de búsqueda mutable reciben una ruta explícita con `pg_temp` al final. | Migración local preparada y probada; no aplicada. |
+| S01 | Cinco funciones con ruta de búsqueda mutable reciben una ruta explícita con `pg_temp` al final. | Migración aplicada; los cinco avisos desaparecieron del asesor de seguridad. |
 
 ## Validación y revisión
 
@@ -43,7 +43,7 @@ No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni
 
 ## Lo que no queda cerrado con este trabajo local
 
-1. Aplicar las dos migraciones y publicar requiere autorización expresa, revisión del estado vigente y verificación posterior. El inicio restringido de inventarios aún no está activo en producción.
+1. Las dos migraciones ya se aplicaron con autorización; falta publicar y verificar la interfaz. El control de apertura del servidor ya está activo.
 2. La rama aislada ya integró `origin/main` (`4547604b`) sin conflictos mediante `72b026e3b0930d136ade83aa6028a5bd4563b0e3`. Los seis archivos entrantes son exclusivamente de AURA; los archivos KORA revisados por Claude no cambiaron. Falta promover esta integración al checkout autorizado antes de publicar; no se ha realizado push.
 3. La protección de contraseñas filtradas es configuración real de Auth: permanece sin cambiar. Requiere revisar compatibilidad y autorizar el cambio de configuración.
 4. El índice duplicado de caja se dejó intacto. No se elimina por un aviso automático sin revisar dependencias y beneficio medido.
@@ -61,3 +61,9 @@ El usuario autorizó publicar únicamente KORA y aplicar las dos migraciones rev
 - Comprobación adicional de dos archivos de pruebas de AURA: dos pruebas aprobadas y cinco fallidas. Las cinco pertenecen a `aura-shell.test.mjs`, incorporado desde el remoto, y esperan un acceso y unos iconos incompatibles con los archivos actuales de AURA. Esos archivos de aplicación no fueron cambiados por esta auditoría ni por el merge. Se documenta para el ciclo independiente de AURA; no se cambia su autenticación ni se certifica o despliega ese producto.
 - Ambos artefactos independientes se construyeron y pasaron sus verificadores. Esto prueba aislamiento de archivos, no funcionamiento completo de AURA.
 - El índice duplicado de caja ocupa 32 kB, tiene uso registrado y no respalda una restricción. Se conserva: no hay justificación para mezclar su eliminación con esta publicación de permisos y reportes.
+
+## Migraciones aplicadas
+
+Supabase asignó las versiones `20261021012248` (control de apertura y permisos) y `20261021012310` (rutas de búsqueda). Los archivos locales se renombraron a esas versiones sin cambiar su SQL, y las dos pruebas ficticias apuntan a los nombres efectivos. Ambas pruebas volvieron a aprobar. La revisión adicional de Claude cubre únicamente esos cambios de rutas.
+
+Las funciones de apertura, API de inventario y registro de bloques no son ejecutables por `anon`. Las guardas esperadas y las cinco rutas explícitas se comprobaron mediante consultas de metadatos. No se invocaron operaciones de inventario reales para probarlas. Los avisos restantes de Auth, extensión y revisión de políticas/funciones no se presentan como corregidos por este parche.

@@ -44,7 +44,7 @@ No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni
 ## Lo que no queda cerrado con este trabajo local
 
 1. Aplicar las dos migraciones y publicar requiere autorización expresa, revisión del estado vigente y verificación posterior. El inicio restringido de inventarios aún no está activo en producción.
-2. El Git principal está 20 commits por delante y 3 por detrás del remoto observado. No se hizo merge, rebase, reset ni push; hay que decidir la integración antes de publicar.
+2. La rama aislada ya integró `origin/main` (`4547604b`) sin conflictos mediante `72b026e3b0930d136ade83aa6028a5bd4563b0e3`. Los seis archivos entrantes son exclusivamente de AURA; los archivos KORA revisados por Claude no cambiaron. Falta promover esta integración al checkout autorizado antes de publicar; no se ha realizado push.
 3. La protección de contraseñas filtradas es configuración real de Auth: permanece sin cambiar. Requiere revisar compatibilidad y autorizar el cambio de configuración.
 4. El índice duplicado de caja se dejó intacto. No se elimina por un aviso automático sin revisar dependencias y beneficio medido.
 5. Las observaciones operativas de la auditoría original siguen separadas: no se anularon cortes, gastos ni ajustes reales para ocultar avisos.
@@ -52,4 +52,12 @@ No se modificaron saldos, deudas, clientes, existencias, conteos, incidencias ni
 
 ## Paso seguro de publicación
 
-Reconciliar la rama con el Git vigente sin perder trabajo; repetir pruebas y revisión si cambia el código; obtener autorización; comprobar definiciones de funciones y estado real; aplicar primero los controles de servidor; construir con configuración productiva válida; publicar únicamente KORA; verificar versión, permisos de apertura, consultas completas, totales, formatos y descarga. No probar aplicando ajustes ni pagos reales.
+El usuario autorizó publicar únicamente KORA y aplicar las dos migraciones revisadas. Se repetirá el preflight del checkout autorizado, se aplicarán primero los controles de servidor, se construirá con configuración productiva válida y se verificará la versión publicada. No probar aplicando ajustes ni pagos reales. Esta autorización no incluye desplegar AURA, cambiar Auth ni eliminar índices.
+
+## Integración y comprobaciones adicionales
+
+- Después del merge: nuevamente 1.240 pruebas locales aprobadas, cero fallos; compilaciones de KORA y verificación de aislamiento aprobadas con configuración ficticia.
+- Ocho definiciones de funciones contrastadas con Supabase en solo lectura: sin cambios respecto de las revisadas. Los cinco avisos de ruta de búsqueda siguen presentes hasta aplicar la migración.
+- Comprobación adicional de dos archivos de pruebas de AURA: dos pruebas aprobadas y cinco fallidas. Las cinco pertenecen a `aura-shell.test.mjs`, incorporado desde el remoto, y esperan un acceso y unos iconos incompatibles con los archivos actuales de AURA. Esos archivos de aplicación no fueron cambiados por esta auditoría ni por el merge. Se documenta para el ciclo independiente de AURA; no se cambia su autenticación ni se certifica o despliega ese producto.
+- Ambos artefactos independientes se construyeron y pasaron sus verificadores. Esto prueba aislamiento de archivos, no funcionamiento completo de AURA.
+- El índice duplicado de caja ocupa 32 kB, tiene uso registrado y no respalda una restricción. Se conserva: no hay justificación para mezclar su eliminación con esta publicación de permisos y reportes.

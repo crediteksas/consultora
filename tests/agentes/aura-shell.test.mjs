@@ -68,5 +68,6 @@ test('cada agente principal tiene un icono semántico diferente', async () => {
     'message-circle',
     'chart-no-axes-combined',
     'calendar-days',
+    'chart-candlestick',
   ]);
 });

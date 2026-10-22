@@ -44,7 +44,7 @@ test('footer de cartera B2B sigue el filtro, conserva centavos y desaparece con 
   Object.defineProperty(rows,'rows',{get:()=>vm.runInContext('resumen',ctx).map(()=>({cells:Array.from({length:6},()=>({dataset:{}}))}))});
   document.createElement=()=>({innerHTML:''});
   const plain=()=>({value:'',textContent:'',dataset:{},style:{}});
-  ctx=vm.createContext({window:{},document,rows,clientes:accounts,movimientos:movements,cargado:true,desde:{value:'2026-10-01'},hasta:{value:'2026-10-20'},cliente:{value:''},buscar:{value:''},resumen:[],kInicial:plain(),kCargos:plain(),kAbonos:plain(),kAjustes:plain(),kSaldo:plain(),loadError:plain(),csv:plain(),pdf:plain(),periodo:plain(),empty:plain(),esc:String,origenInicial:()=>'',filtrados:()=>[]});
+  ctx=vm.createContext({window:{},document,rows,detalle:{classList:{remove(){}}},clientes:accounts,movimientos:movements,cargado:true,desde:{value:'2026-10-01'},hasta:{value:'2026-10-20'},cliente:{value:''},buscar:{value:''},resumen:[],kInicial:plain(),kCargos:plain(),kAbonos:plain(),kAjustes:plain(),kSaldo:plain(),loadError:plain(),csv:plain(),pdf:plain(),periodo:plain(),empty:plain(),esc:String,origenInicial:()=>'',filtrados:()=>[]});
   vm.runInContext(read('cuenta-corriente-domain.js'),ctx);vm.runInContext(read('cartera-b2b-domain.js'),ctx);
   ctx.D=ctx.window.CreditekCarteraB2BDomain;
   vm.runInContext(read('cartera-b2b.html').match(/const money=n=>[^;]+;/)[0],ctx);

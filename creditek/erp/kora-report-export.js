@@ -447,10 +447,11 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
     popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument(report,logo));popup.document.close();await audit(sb,report,'pdf');
   }
   // Informes de ventanas: datos explícitos, sin capturar la pantalla que queda detrás.
-  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',datetime:'dd/mm/yyyy hh:mm',text:'@'};
+  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
   function dataDisplay(value,type){
     if(value==null||value==='')return '—';
     if(type==='datetime')return new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'}).format(value);
+    if(type==='date')return value instanceof Date?new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short'}).format(value):String(value);
     if(type==='currency')return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
     if(type==='number')return new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(value);
     return String(value);
@@ -501,7 +502,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
     if(!data.tables?.some(table=>table.rows?.length))throw new Error('No hay datos para generar el informe.');
     const report={...data,scoped:true,id:reportId(),generated:nowBogota(),user:profile.nombre||profile.email,role:profile.rol||'',
       recordCount:data.tables.reduce((count,table)=>count+table.rows.length,0),
-      route:location.pathname+'#conteos',filters:[...data.filters,['Formato del informe',data.mode==='summary'?'Resumido':'Completo']],metrics:[],notes:data.notes||[]};
+      route:data.route||location.pathname+'#conteos',filters:[...data.filters,['Formato del informe',data.mode==='summary'?'Resumido':'Completo']],metrics:[],notes:data.notes||[]};
     if(format==='xlsx')await exportDataExcel(report,sb);
     else {
       const tables=(data.pdfTables||data.tables).map(table=>({...table,

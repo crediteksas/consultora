@@ -145,8 +145,10 @@ test('la pantalla ofrece mes vigente, detalle, trazabilidad y exportación', () 
   assert.match(page, /Fecha efectiva/);
   assert.match(page, /Responsable/);
   assert.match(page, /esc\(m\.id\)/);
-  assert.match(page, />Excel</);
-  assert.match(page, />PDF</);
+  assert.match(page, />Descargar Excel</);
+  assert.match(page, />Generar PDF</);
+  assert.match(page, /dExcel.onclick=.*descargarCartera\('xlsx',true\)/);
+  assert.match(page, /id="dResumido"/);
 });
 
 test('la navegación B2B enlaza el libro correcto', () => {

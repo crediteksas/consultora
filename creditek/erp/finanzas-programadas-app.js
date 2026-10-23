@@ -64,7 +64,8 @@
 
   function renderManualForm(record){const withdrawal=record?.entry_type==='retiro_utilidad';retailRequest=crypto.randomUUID();retailPayload=null;$('modalTitle').textContent=withdrawal?'Nuevo retiro de utilidad':'Nuevo gasto general';$('save').textContent='Enviar a aprobación';
     $('formFields').innerHTML=`<input type="hidden" name="entry_type" value="${withdrawal?'retiro_utilidad':'gasto'}">`+
-      select('Negocio','business',[['retail','Retail'],['b2b','B2B'],['aliados','Aliados']],'retail','required')+field('Fecha','due','date','required',today())+
+      select('Negocio','business',withdrawal?[['b2b','B2B'],['aliados','Aliados']]:[['retail','Retail'],['b2b','B2B'],['aliados','Aliados']],withdrawal?'b2b':'retail','required')+field('Fecha','due','date','required',today())+
+      (withdrawal?'<p class="field full">Para Retail utiliza <a href="#socios-inventario">Liquidación de socios por inventario</a>, donde se conserva el resultado por tienda y se decide el reparto.</p>':'')+
       (withdrawal?'':select('Categoría','category',[['nomina','Nómina'],['arriendo','Arriendo'],['contador','Contador'],['servicio','Servicio'],['otro','Otro']],'otro','required'))+
       field('Concepto','concept','text','required minlength="3"',withdrawal?'Retiro de utilidad':'')+field('Socio / beneficiario','beneficiary','text','required minlength="3"','')+
       field('CC / NIT','document')+
@@ -173,5 +174,6 @@
   ['query','business','store','status','from','to'].forEach(id=>$(id)?.addEventListener(id==='query'?'input':'change',render));
   $('newRecurring').addEventListener('click',()=>openModal('template'));$('newExpense').addEventListener('click',()=>openModal('manual',{entry_type:'gasto'}));$('newWithdrawal').addEventListener('click',()=>openModal('manual',{entry_type:'retiro_utilidad'}));$('exportCsv').addEventListener('click',download);$('cancel').addEventListener('click',closeModal);$('form').addEventListener('submit',submit);
   $('exportPaymentOrder').addEventListener('click',paymentOrder);
+  document.addEventListener('socios-inventario-registrado',()=>load());
   configurePage();waitForShell().then(context=>{sb=context.sb;profile=context.perfil;$('app').hidden=false;load();});
 })();

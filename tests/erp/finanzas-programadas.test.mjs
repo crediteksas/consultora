@@ -83,7 +83,9 @@ test('la migración no toca utilidades, ventas, caja ni liquidaciones existentes
 
 test('la interfaz conserva separación, informe por fechas y soporte de pago',()=>{
   assert.match(html,/finanzas-programadas-domain\.js\?v=1\.0\.3/);
-  assert.match(html,/finanzas-programadas-app\.js\?v=20261003\.1\.1/);
+  assert.match(html,/finanzas-programadas-app\.js\?v=20261022\.72/);
+  assert.match(html,/socios-inventario\.js\?v=1\.0\.0/);
+  assert.match(html,/Liquidar socios Retail/);
   assert.match(html,/financial-beneficiary-picker\.js/);
   assert.match(app,/Gastos periódicos de Retail/);assert.match(app,/Gastos y retiros/);
   assert.match(html,/id="from"/);assert.match(html,/id="to"/);assert.match(html,/Descargar informe/);

@@ -17,23 +17,40 @@ test('el tablero muestra separado el resultado de septiembre y el disponible en 
   const source = html.slice(html.indexOf('async function cargarCierreSeptiembre()'), html.indexOf('async function cargarSerieUtilidadAcumulada('));
   const section = { hidden:true };
   const detail = { innerHTML:'' };
-  const nodes = { cierreUtilidadesSeptiembre:section, cierreUtilidadesSeptiembreDetalle:detail };
+  const filter = { value:'mes' };
+  const from = { value:'' };
+  const to = { value:'' };
+  const store = { value:'' };
+  const nodes = { cierreUtilidadesSeptiembre:section, cierreUtilidadesSeptiembreDetalle:detail,
+    filtroPeriodo:filter, rangoDesde:from, rangoHasta:to, filtroTienda:store };
   const data = [
     {negocio:'retail',utilidad_neta:7806649.56,retiro_declarado:7806649.56,disponible:0},
     {negocio:'b2b',utilidad_neta:8026178,retiro_declarado:8026178,disponible:0},
     {negocio:'aliados',utilidad_neta:33026532.09,retiro_declarado:33026532.09,disponible:0},
   ];
+  let queries = 0;
   const context = {
     document:{getElementById:id=>nodes[id]},
-    sb:{from:table=>{assert.equal(table,'utilidades_cierres_negocio');return {select:()=>({eq:async()=>({data,error:null})})};}},
+    sb:{from:table=>{assert.equal(table,'utilidades_cierres_negocio');queries++;return {select:()=>({eq:async()=>({data,error:null})})};}},
     Intl,Number,Map,Array,console,
   };
   vm.runInNewContext(`${source}; globalThis.loadClose = cargarCierreSeptiembre;`, context);
   await context.loadClose();
+  assert.equal(section.hidden,true);
+  assert.equal(queries,0);
+  filter.value='rango';
+  from.value='2026-09-01';
+  to.value='2026-09-30';
+  await context.loadClose();
   assert.equal(section.hidden,false);
+  assert.equal(queries,1);
   assert.match(detail.innerHTML,/Retail/);
   assert.match(detail.innerHTML,/B2B/);
   assert.match(detail.innerHTML,/Aliados/);
   assert.equal((detail.innerHTML.match(/Disponible por retirar:/g)||[]).length,3);
   assert.match(detail.innerHTML,/Retiro informado/);
+  store.value='CK-01';
+  await context.loadClose();
+  assert.equal(section.hidden,true);
+  assert.equal(queries,1);
 });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KORA · Dashboard ejecutivo</title>
-<link rel="stylesheet" href="/design-system/components/kora-dashboard.css?v=1.0.1">
+<link rel="stylesheet" href="/design-system/components/kora-dashboard.css?v=1.0.2">
 <script src="/creditek/erp/supabase-js-2.110.8.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -362,9 +362,10 @@ function onCambioFiltro() {
   document.getElementById('campoRangoDesde').style.display = periodo === 'rango' ? 'block' : 'none';
   document.getElementById('campoRangoHasta').style.display = periodo === 'rango' ? 'block' : 'none';
   if (periodo !== 'rango') actualizarPeriodo();
+  else cargarCierreSeptiembre();
 }
 
-function actualizarPeriodo() { cargarKPIs(); cargarTiendas_Tabla(); actualizarUtilidad(); }
+function actualizarPeriodo() { cargarKPIs(); cargarTiendas_Tabla(); actualizarUtilidad(); cargarCierreSeptiembre(); }
 
 async function cargarTiendasSelect() {
   tiendasCache = await CreditekTiendasCanonicas.cargar(sb);
@@ -704,9 +705,16 @@ async function cargarCierreSeptiembre() {
   const section = document.getElementById('cierreUtilidadesSeptiembre');
   const detail = document.getElementById('cierreUtilidadesSeptiembreDetalle');
   if (!section || !detail) return;
+  section.hidden = true;
+  const esCierreSeleccionado = () => document.getElementById('filtroPeriodo').value === 'rango'
+    && document.getElementById('rangoDesde').value === '2026-09-01'
+    && document.getElementById('rangoHasta').value === '2026-09-30'
+    && !document.getElementById('filtroTienda').value;
+  if (!esCierreSeleccionado()) return;
   const { data, error } = await sb.from('utilidades_cierres_negocio')
     .select('negocio,utilidad_neta,retiro_declarado,disponible')
     .eq('periodo', '2026-09-01');
+  if (!esCierreSeleccionado()) return;
   if (error || !Array.isArray(data) || data.length !== 3) {
     if (error) console.error('Cierre de utilidades:', error);
     return;

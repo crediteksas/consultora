@@ -19,6 +19,7 @@
 .dashboard-document-access:focus-visible { outline: 3px solid var(--ctk-color-secondary-500); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .dashboard-document-access { transition: none; transform: none; } }
 .store-profit-detail { display:block; font-size:11px; font-weight:400; color:var(--ctk-color-neutral-500); white-space:normal; }
+.dashboard-month-close { padding: var(--dashboard-panel-padding); margin-bottom: var(--ctk-space-3); }
 .dashboard-month-close[hidden] { display: none; }
 .dashboard-month-close__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .dashboard-month-close__item { padding: 14px; border: 1px solid var(--ctk-color-neutral-200); border-radius: 12px; }

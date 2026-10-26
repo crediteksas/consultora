@@ -1,0 +1,52 @@
+[
+  {
+    "schema": "inventario_control",
+    "name": "socios_grupos_tienda",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultados",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_operaciones",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_destinos",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_api",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_finanzas_guardar",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_inmutable",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultado",
+    "identity": "p_corte uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "socios_inventario",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  }
+]

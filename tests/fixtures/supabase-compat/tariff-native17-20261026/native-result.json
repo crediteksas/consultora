@@ -1,0 +1,184 @@
+{
+  "complete": true,
+  "checks": [
+    {
+      "name": "upgrade: native authorizer exact source hash",
+      "passed": true
+    },
+    {
+      "name": "upgrade: repeated migration exact catalog idempotency",
+      "passed": true
+    },
+    {
+      "name": "upgrade: existing ACL/protection/code all unchanged",
+      "passed": true
+    },
+    {
+      "name": "upgrade: designated active reviewer reads one fictitious rule",
+      "passed": true
+    },
+    {
+      "name": "upgrade: unassigned management reads no rule",
+      "passed": true
+    },
+    {
+      "name": "upgrade: forged client metadata cannot gain reviewer capability",
+      "passed": true
+    },
+    {
+      "name": "upgrade: existing anonymous grant still protected by native RLS",
+      "passed": true
+    },
+    {
+      "name": "upgrade: reviewer direct insert denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: reviewer direct update denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: reviewer direct delete denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: inactive reviewer sees no rule",
+      "passed": true
+    },
+    {
+      "name": "upgrade: missing RLS blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "upgrade: missing helper EXECUTE blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "upgrade: missing schema USAGE blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "upgrade: exact reversal action",
+      "passed": true
+    },
+    {
+      "name": "upgrade: reversal refuses unrelated committed drift",
+      "passed": true
+    },
+    {
+      "name": "upgrade: refused reversal leaves reviewer grant intact",
+      "passed": true
+    },
+    {
+      "name": "upgrade: post-commit reversal restores complete effective catalog",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no-op reversal preserves prior reviewer access",
+      "passed": true
+    },
+    {
+      "name": "rebuild: native authorizer exact source hash",
+      "passed": true
+    },
+    {
+      "name": "rebuild: RLS alone cannot read target",
+      "passed": true
+    },
+    {
+      "name": "rebuild: repeated migration exact catalog idempotency",
+      "passed": true
+    },
+    {
+      "name": "rebuild: target API grants contain only authenticated SELECT",
+      "passed": true
+    },
+    {
+      "name": "rebuild: designated active reviewer reads one fictitious rule",
+      "passed": true
+    },
+    {
+      "name": "rebuild: unassigned management reads no rule",
+      "passed": true
+    },
+    {
+      "name": "rebuild: forged client metadata cannot gain reviewer capability",
+      "passed": true
+    },
+    {
+      "name": "rebuild: anonymous table read denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reviewer direct insert denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reviewer direct update denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reviewer direct delete denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: inactive reviewer sees no rule",
+      "passed": true
+    },
+    {
+      "name": "rebuild: missing RLS blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "rebuild: missing helper EXECUTE blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "rebuild: missing schema USAGE blocks atomically",
+      "passed": true
+    },
+    {
+      "name": "rebuild: exact reversal action",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reversal refuses unrelated committed drift",
+      "passed": true
+    },
+    {
+      "name": "rebuild: refused reversal leaves reviewer grant intact",
+      "passed": true
+    },
+    {
+      "name": "rebuild: post-commit reversal restores complete effective catalog",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reversed SELECT denied again",
+      "passed": true
+    }
+  ],
+  "scope": "native target-only tariff upgrade/rebuild and exact single-GRANT post-commit reversal; other objects retain legacy ACL mirror",
+  "minimum_global_rebuild_certified": false,
+  "production_operations": 0,
+  "external_sends": 0,
+  "production_ready": false,
+  "migration_sha256": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66",
+  "catalog_evidence": {
+    "upgrade": {
+      "before_sha256": "4be23ea9bf91a67b828ecc6f6cc6f32e31cd4584500dfd7448279143ed6b46ec",
+      "after_sha256": "4be23ea9bf91a67b828ecc6f6cc6f32e31cd4584500dfd7448279143ed6b46ec",
+      "restored_sha256": "4be23ea9bf91a67b828ecc6f6cc6f32e31cd4584500dfd7448279143ed6b46ec"
+    },
+    "rebuild": {
+      "before_sha256": "bd364f4be92048837b76a4ec33e0eb4783c751837bbd78a465c8a5589d86e22c",
+      "after_sha256": "a3473c6fd04c564df8e0a68840124e8bfa954fa9af495d3d07220da1e1e84898",
+      "restored_sha256": "bd364f4be92048837b76a4ec33e0eb4783c751837bbd78a465c8a5589d86e22c"
+    }
+  },
+  "harness_source_sha256": {
+    "build-tariff-models.py": "bd86d63aa3646917d78fd9a7069b2d9b1f52c6eb7b22ab0ecbe578db09e0346f",
+    "native-tariff-contract.py": "ba44a570234d6ba8c14631ae9c46390494a6f01e2a85909bb9fcdc97f23aac7f",
+    "generate-tariff-reversal.mjs": "54b6dc4c64fff9ea2c82b605957a950e7cacd86d46433e90e50ddba2f26b3a42"
+  }
+}

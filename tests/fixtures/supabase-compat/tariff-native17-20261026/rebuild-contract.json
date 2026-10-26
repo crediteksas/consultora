@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "krediya_price_rules",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_clave",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "precio_venta",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "pagamos",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "vigente_desde",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "vigente_hasta",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "creado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "actualizado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 2,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Only authenticated SELECT on tariff; native active operator authorization restricts rows; direct writes/anon remain denied",
+      "isolation_test": "tests/security/supabase-compatibility-catalog.test.mjs"
+    }
+  ]
+}

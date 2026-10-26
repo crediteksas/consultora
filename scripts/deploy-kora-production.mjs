@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { realpath, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifySupabasePermissionRelease } from './supabase-compat/release-gate.mjs';
 import { promoteWithRollback } from './kora-production-deploy-lib.mjs';
 import { verifyKoraProductionArtifact, verifyPublishedKoraManifest } from './verify-kora-production-artifact.mjs';
 
@@ -34,6 +35,8 @@ if (process.env.KORA_DEPLOY_EXECUTOR === 'ci' && process.env.KORA_PRODUCTION_COM
   throw new Error('CI debe declarar KORA_PRODUCTION_COMMIT igual al commit comprobado');
 }
 
+// Permission evidence must pass before tests, build, upload or promotion.
+await verifySupabasePermissionRelease({ root });
 run('npm', ['run', 'test:local']);
 run('npm', ['run', 'build']);
 const manifest = await verifyKoraProductionArtifact({ commit, writeManifest: true });

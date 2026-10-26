@@ -1,0 +1,198 @@
+{
+  "complete": true,
+  "checks": [
+    {
+      "name": "upgrade: source-identical native Auth helpers",
+      "passed": true
+    },
+    {
+      "name": "upgrade: fictional store daily confirmation uses native allowed route",
+      "passed": true
+    },
+    {
+      "name": "upgrade: original nine-store guard fails atomically on eight fictitious stores",
+      "passed": true
+    },
+    {
+      "name": "upgrade: nine fictitious stores configured by unchanged source",
+      "passed": true
+    },
+    {
+      "name": "upgrade: native designated controller reads empty module",
+      "passed": true
+    },
+    {
+      "name": "upgrade: other management denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: store user denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: forged metadata cannot gain controller capability",
+      "passed": true
+    },
+    {
+      "name": "upgrade: inactive designated controller denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: anonymous wrapper execution denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: browser direct private socios_grupos_tienda read denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: browser direct private socios_resultados read denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: browser direct private socios_operaciones read denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: browser direct private socios_destinos read denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: native source tables stay private with RLS and no API table grants",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no fictional or real financial operation in financial_entries",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no fictional or real financial operation in movimientos_caja_tienda",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no fictional or real financial operation in pagos_proveedor",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no fictional or real financial operation in cuenta_corriente",
+      "passed": true
+    },
+    {
+      "name": "upgrade: no fictional or real financial operation in movimientos",
+      "passed": true
+    },
+    {
+      "name": "upgrade: isolated source-creation reversal restores effective complete catalog",
+      "passed": true
+    },
+    {
+      "name": "rebuild: source-identical native Auth helpers",
+      "passed": true
+    },
+    {
+      "name": "rebuild: fictional store daily confirmation uses native allowed route",
+      "passed": true
+    },
+    {
+      "name": "rebuild: original nine-store guard fails atomically on eight fictitious stores",
+      "passed": true
+    },
+    {
+      "name": "rebuild: nine fictitious stores configured by unchanged source",
+      "passed": true
+    },
+    {
+      "name": "rebuild: native designated controller reads empty module",
+      "passed": true
+    },
+    {
+      "name": "rebuild: other management denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: store user denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: forged metadata cannot gain controller capability",
+      "passed": true
+    },
+    {
+      "name": "rebuild: inactive designated controller denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: anonymous wrapper execution denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: browser direct private socios_grupos_tienda read denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: browser direct private socios_resultados read denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: browser direct private socios_operaciones read denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: browser direct private socios_destinos read denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: native source tables stay private with RLS and no API table grants",
+      "passed": true
+    },
+    {
+      "name": "rebuild: no fictional or real financial operation in financial_entries",
+      "passed": true
+    },
+    {
+      "name": "rebuild: no fictional or real financial operation in movimientos_caja_tienda",
+      "passed": true
+    },
+    {
+      "name": "rebuild: no fictional or real financial operation in pagos_proveedor",
+      "passed": true
+    },
+    {
+      "name": "rebuild: no fictional or real financial operation in cuenta_corriente",
+      "passed": true
+    },
+    {
+      "name": "rebuild: no fictional or real financial operation in movimientos",
+      "passed": true
+    },
+    {
+      "name": "rebuild: isolated source-creation reversal restores effective complete catalog",
+      "passed": true
+    }
+  ],
+  "catalog_evidence": {
+    "upgrade": {
+      "before_sha256": "386eec1b587efe3c0108f89c604cd3970a07ca97ac266577cfe457efdb8cb8f9",
+      "after_sha256": "4be23ea9bf91a67b828ecc6f6cc6f32e31cd4584500dfd7448279143ed6b46ec",
+      "restored_sha256": "386eec1b587efe3c0108f89c604cd3970a07ca97ac266577cfe457efdb8cb8f9"
+    },
+    "rebuild": {
+      "before_sha256": "929d3d18d7efb857a48ac7e5681f26ac7bfcad4d3a0b4c60f1aa4ae9b9d5ae04",
+      "after_sha256": "a3473c6fd04c564df8e0a68840124e8bfa954fa9af495d3d07220da1e1e84898",
+      "restored_sha256": "929d3d18d7efb857a48ac7e5681f26ac7bfcad4d3a0b4c60f1aa4ae9b9d5ae04"
+    }
+  },
+  "migration_sha256": {
+    "socios": "99304db38948cc4991ae58b8c46a1c4897759a84f5ce6a60cb6c98fde27fa305",
+    "tariff": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66"
+  },
+  "scope": "isolated source batch update/rebuild only; Socios already applied in production and must not be replayed there; other objects use finite legacy ACL mirror",
+  "production_operations": 0,
+  "external_sends": 0,
+  "production_ready": false,
+  "harness_source_sha256": {
+    "/private/tmp/supabase-compat-20261026-active/socios-batch/native-source-batch.py": "8ad2cf1fe18a075a560a848e63f1085c2dfcdeae775d5a48f64ce4719ab026a9",
+    "/private/tmp/supabase-compat-20261026-active/build-active-models.py": "e8e145428501759d2c74311a8ed25e0b6b86a58e2995d3d5146d955f0b45cc2e"
+  },
+  "catalog_query_sha256": "5e988706c93d8cad7504f2cd5962551fe2348a055a64902998755094344cfbf4"
+}

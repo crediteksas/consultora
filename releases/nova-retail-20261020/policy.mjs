@@ -43,7 +43,7 @@ export function referenceProgress(reference, now=Date.now()) {
   if(reference?.contactDeclined===true||reference?.refusedToAnswer===true)
     return {state:'replace',reason:reference.contactDeclined?'contact_declined':'refused_to_answer',mayContactAgain:false};
   if(reference?.knowsCustomer===false||reference?.contradictory===true)
-    return {state:'review',reason:reference.knowsCustomer===false?'does_not_know_customer':'contradictory_information',mayContactAgain:false};
+    return {state:'review',reason:reference.knowsCustomer===false?'does_not_know_customer':reference.contactMismatch&&!reference.responded?'contact_mismatch':'contradictory_information',mayContactAgain:false};
   if(reference?.responded===true)
     return reference.knowsCustomer===true&&reference.relationshipConfirmed===true&&reference.contactConfirmed===true?{state:'approved'}:{state:'review',reason:reference.contactConfirmed!==true?'contact_unconfirmed':reference.relationshipConfirmed!==true?'relationship_unconfirmed':'incomplete_response'};
   const delivered=timestamp(reference?.deliveredAt);

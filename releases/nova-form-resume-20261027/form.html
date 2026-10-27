@@ -293,6 +293,7 @@ function invalidateQuality(event){
  else for(const t of Object.keys(qualityIds)){delete qualityStates[t];document.getElementById(qualityIds[t]+'Quality').textContent='';}
 }
 function lockPhotoSteps(){
+ if(typeof retryPhotoReview!=='undefined')retryPhotoReview.disabled=qualityBusy||!!documentosSession;
  let previousAccepted=true;
  for(const [type,id]of Object.entries(qualityIds)){
   const enabled=previousAccepted&&!qualityBusy&&!documentosSession;
@@ -323,7 +324,11 @@ async function preparedQualityPhotos(){
 }
 async function reviewCapturedPhoto(){
  if(documentosSession)return;
- if(!registroSession||!document.getElementById('autPhotoQuality').checked||document.getElementById('nombreCompleto').value.trim().length<3){for(const id of Object.values(qualityIds))if(document.getElementById(id).files.length)document.getElementById(id+'Quality').textContent='Verifica tu celular, escribe tu nombre y autoriza la revisión de fotos para continuar.';return;}
+ const missing=[];
+ if(!registroSession)missing.push('verificar tu celular con el código recibido');
+ if(document.getElementById('nombreCompleto').value.trim().length<3)missing.push('completar tu nombre');
+ if(!document.getElementById('autPhotoQuality').checked)missing.push('autorizar la revisión de fotos');
+ if(missing.length){for(const id of Object.values(qualityIds))if(document.getElementById(id).files.length)document.getElementById(id+'Quality').textContent='Tu foto seleccionada se conserva. Falta '+missing.join(' y ')+'. Después pulsa «Revisar foto y continuar» sin volver a adjuntarla.';return;}
  qualityBusy=true;lockPhotoSteps();evaluarSubmit();const generation=qualityGeneration;
  try{
   const prepared=await preparedQualityPhotos();if(!Object.keys(prepared).length)return;
@@ -333,7 +338,15 @@ async function reviewCapturedPhoto(){
  }catch{mostrarErrorRegistro('No se pudo completar la revisión. Conservamos tus datos y fotos. Intenta nuevamente.');}
  finally{qualityBusy=false;lockPhotoSteps();evaluarSubmit();}
 }
-for(const id of [...Object.values(qualityIds),'nombreCompleto','cedula','celular','autPhotoQuality'])document.getElementById(id).addEventListener('change',event=>{invalidateQuality(event);if(Object.values(qualityIds).includes(id)||id==='autPhotoQuality')photoReviewQueue=photoReviewQueue.then(reviewCapturedPhoto);});
+for(const id of [...Object.values(qualityIds),'nombreCompleto','cedula','celular','autPhotoQuality'])document.getElementById(id).addEventListener('change',event=>{invalidateQuality(event);if(Object.values(qualityIds).includes(id)||id==='autPhotoQuality'||id==='nombreCompleto')queuePhotoReview();});
+function queuePhotoReview(){
+ photoReviewQueue=photoReviewQueue.catch(()=>{}).then(reviewCapturedPhoto);
+ return photoReviewQueue;
+}
+const retryPhotoReview=document.createElement('button');
+retryPhotoReview.type='button';retryPhotoReview.className='btn-secondary';retryPhotoReview.style.padding='12px 16px';retryPhotoReview.textContent='Revisar foto y continuar';
+retryPhotoReview.addEventListener('click',()=>{if(!qualityBusy&&!documentosSession)queuePhotoReview();});
+document.getElementById('fotoFrenteQuality').after(retryPhotoReview);
 document.getElementById('nombreCompleto').addEventListener('input',invalidateQuality);
 document.getElementById('autPhotoQuality').addEventListener('change',evaluarSubmit);
 async function preparePhotoQuality(){

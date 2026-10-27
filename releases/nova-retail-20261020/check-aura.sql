@@ -1,0 +1,22 @@
+begin;
+do $$ declare original public.nova_credit_applications; receipt public.nova_registration_receipts; app uuid:=gen_random_uuid();src uuid:=gen_random_uuid();r1 uuid:=gen_random_uuid();r2 uuid:=gen_random_uuid();r3 uuid:=gen_random_uuid();attempt uuid;v uuid;
+begin
+ select a.* into strict original from public.nova_credit_applications a join public.nova_registration_receipts r on r.application_id=a.id where a.store_code ~ '^CK-0[1-9]$' limit 1;
+ select * into strict receipt from public.nova_registration_receipts where application_id=original.id;
+ insert into public.nova_credit_applications select (jsonb_populate_record(null::public.nova_credit_applications,to_jsonb(original)||jsonb_build_object('id',app,'public_reference','NOVA-'||upper(substr(replace(app::text,'-',''),1,12)),'document_hash',repeat('a',64),'phone_hash',repeat('b',64),'created_at',now(),'updated_at',now()))).*;
+ insert into public.nova_registration_receipts select (jsonb_populate_record(null::public.nova_registration_receipts,to_jsonb(receipt)||jsonb_build_object('application_id',app,'source_application_id',src,'source_client_id',gen_random_uuid(),'source_link_id',gen_random_uuid(),'source_otp_id',gen_random_uuid(),'payload_hash',repeat('a',64),'received_at',now()))).*;
+ insert into public.nova_reference_verifications(id,application_id,reference_type,contact_hash,consent_status,verification_status,attempts) values(r1,app,'family',repeat('c',64),'pending','pending',0),(r2,app,'personal',repeat('d',64),'granted','confirmed',0);
+ begin perform public.nova_retail_replace_reference(src,r1,r3,repeat('e',64),repeat('f',64));raise exception 'EARLY_REPLACEMENT_ALLOWED';exception when others then if sqlerrm<>'WAIT_FOR_REFERENCE' then raise;end if;end;
+ attempt:=public.nova_retail_reference_reserve(r1,src,repeat('c',64));if attempt is null then raise exception 'RESERVE_FAILED';end if;
+ perform public.nova_retail_reference_finish(r1,attempt,'accepted','wamid.synthetic-no-message',null);
+ update public.nova_retail_reference_dispatch set created_at=now()-interval '12 minutes' where reference_id=r1;
+ perform public.nova_retail_reference_status('wamid.synthetic-no-message',repeat('c',64),'delivered',now()-interval '11 minutes',null);
+ v:=public.nova_retail_replace_reference(src,r1,r3,repeat('e',64),repeat('f',64));if v<>r3 then raise exception 'REPLACEMENT_FAILED';end if;
+ if (select count(*) from public.nova_reference_verifications where application_id=app and superseded_at is null)<>2 then raise exception 'ACTIVE_REFERENCE_COUNT';end if;
+ if not exists(select 1 from public.nova_reference_verifications where id=r2 and verification_status='confirmed' and superseded_at is null) then raise exception 'APPROVED_REFERENCE_LOST';end if;
+ if public.nova_reference_context(r1,repeat('c',64)) is not null then raise exception 'OLD_LINK_STILL_ACTIVE';end if;
+ if public.nova_reference_context(r3,repeat('e',64)) is null then raise exception 'NEW_LINK_INVALID';end if;
+ if has_table_privilege('anon','public.nova_retail_reference_dispatch','SELECT') then raise exception 'PUBLIC_DISPATCH_ACCESS';end if;
+end $$;
+rollback;
+select 'PASS: delivery clock, no early replacement, new reference, original preserved, answered reference retained, private permissions; fixtures rolled back' as result;

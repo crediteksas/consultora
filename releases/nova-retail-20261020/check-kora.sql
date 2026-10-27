@@ -1,0 +1,22 @@
+begin;
+do $$ declare s public.kora_nova_sources;r jsonb; reviewer uuid; owner_actor uuid; summary jsonb; expected boolean:=false;
+begin
+ select * into strict s from public.kora_nova_sources where revoked_at is null and registration->>'p_origen_codigo' ~ '^CK-0[1-9]$' order by submitted_at desc limit 1;
+ select actor_id into strict reviewer from public.nova_retail_reviewers where can_review;
+ select actor_id into strict owner_actor from public.nova_retail_reviewers where not can_review;
+ summary:='{"name":"Synthetic test only","photos":[{"type":"frente","status":"manual_pending","hash":"test"},{"type":"reverso","status":"auto_approved","hash":"test"},{"type":"selfie","status":"auto_approved","hash":"test"}],"references":[{"status":"approved","responded":true},{"status":"approved","responded":true}]}';
+ r:=public.nova_retail_save(s.solicitud_id,repeat('1',64),'{"state":"review","canProcess":false,"requiresAndrea":true,"reasons":["photo_manual_review"]}',summary);
+ begin perform public.nova_retail_review(s.solicitud_id,(r->>'revision')::int,reviewer,'approve','');raise exception 'EMPTY_NOTE_ALLOWED';exception when others then if sqlerrm<>'NOTE_REQUIRED' then raise;end if;end;
+ begin perform public.nova_retail_review(s.solicitud_id,(r->>'revision')::int,owner_actor,'approve','test reason');raise exception 'WRONG_REVIEWER_ALLOWED';exception when others then if sqlerrm<>'NOT_REVIEWER' then raise;end if;end;
+ r:=public.nova_retail_review(s.solicitud_id,(r->>'revision')::int,reviewer,'approve','Synthetic test only; will roll back');
+ if r->>'state'<>'authorized' then raise exception 'MANUAL_APPROVAL_FAILED';end if;
+ r:=public.nova_retail_save(s.solicitud_id,repeat('2',64),'{"state":"review","canProcess":false,"requiresAndrea":true,"reasons":["incomplete_payment_history"]}',jsonb_set(summary,'{references,0,responded}','false'));
+ begin perform public.nova_retail_review(s.solicitud_id,(r->>'revision')::int,reviewer,'approve','test reason');raise exception 'MISSING_REFERENCE_ALLOWED';exception when others then if sqlerrm<>'CORRECTIONS_OR_REFERENCES_PENDING' then raise;end if;end;
+ r:=public.nova_retail_save(s.solicitud_id,repeat('3',64),'{"state":"rejected","canProcess":false,"requiresAndrea":false,"reasons":["zero_payments"],"overrideAllowed":false}',summary);
+ begin perform public.nova_retail_review(s.solicitud_id,(r->>'revision')::int,reviewer,'approve','test reason');raise exception 'ZERO_PAYMENT_OVERRIDE_ALLOWED';exception when others then if sqlerrm<>'REVIEW_NOT_ALLOWED' then raise;end if;end;
+ r:=public.nova_retail_save(s.solicitud_id,repeat('4',64),'{"state":"authorized","canProcess":true,"reasons":[]}',summary);
+ if r->>'state'<>'rejected' then raise exception 'REJECTION_COOLDOWN_BYPASSED';end if;
+ if has_table_privilege('anon','public.nova_retail_cases','SELECT') or has_function_privilege('anon','public.nova_retail_review(uuid,integer,uuid,text,text)','EXECUTE') then raise exception 'PUBLIC_ACCESS';end if;
+end $$;
+rollback;
+select 'PASS: review reason, reviewer role, two references, zero-payment lock, cooldown, private permissions; test data rolled back' as result;

@@ -1,15 +1,16 @@
 {
   "schema_version": 1,
   "project": "kora",
-  "scope": "exact source batch from unchanged40d baseline; pre-existing Socios is NOT a production replay request",
+  "scope": "actual three SQL source delta from unchanged40d baseline; original Socios and tariff are NOT production replay requests",
   "migration_sha256": {
     "supabase/migrations/20261023032131_socios_inventario_retiros_aportes.sql": "99304db38948cc4991ae58b8c46a1c4897759a84f5ce6a60cb6c98fde27fa305",
-    "supabase/migrations/20261021161019_kora_compat_select_krediya_price_rules.sql": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66"
+    "supabase/migrations/20261021161019_kora_compat_select_krediya_price_rules.sql": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66",
+    "supabase/migrations/20261027192103_socios_revision_retiros_por_corte.sql": "dc7f6abe159eeda38216216e262c4457700cc3be5a31922fcbd7ec3f04da04e9"
   },
   "isolation_tests": [
     {
-      "path": "tests/security/supabase-compatibility-socios.test.mjs",
-      "sha256": "0b4f372e837e99661072690cfdc5f833808b33b14772247c6bda29fd1028178b"
+      "path": "tests/security/supabase-compatibility-socios-revision.test.mjs",
+      "sha256": "c2c4c7dd1d7047247c0661483ba56aba7d640a4179cd96526c5036475ccf2aba"
     },
     {
       "path": "tests/security/supabase-compatibility-catalog.test.mjs",
@@ -20,45 +21,45 @@
       "sha256": "ef9c2a4bbc6213c9aabab2e1d004c70fcc083d57f5d037ca11e0634af294a6fe"
     }
   ],
-  "test_runner_sha256": "ed839cc98c6bb4d323e0b9b142beecd75047e83ac6620bbf89075f2fca576d5b",
+  "test_runner_sha256": "40a7b12b1f0db5795ac2b344247f2a51ac236d47bd72609fad3a4e331423bc32",
   "upgrade": {
     "before": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/upgrade-before.json",
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-before.json",
       "sha256": "e3b9e301ea02ca554fede752ac22ce7dbd1b7dcc05fb5762191aebd1ac0898a0"
     },
     "after": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/upgrade-after.json",
-      "sha256": "d83b5bbd08231968f47df55bee78693e1d2b7c4a2ac0cc422f53f657e6a27762"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-after.json",
+      "sha256": "be4c04faad479f05865e5d1fe73aee4ccef01ccf54f1488c1ab00dc32e02a8ff"
     },
     "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/upgrade-contract.json",
-      "sha256": "d28e82385eb64ff561969d0f4b7ed238d6b35d83f0f711a747d473373150bfb7"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-contract.json",
+      "sha256": "eca68c36e3a1b9290b8924027f92779d2aaad840972478e87b6fc450200e6759"
     },
     "created": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/upgrade-created.json",
-      "sha256": "5628e8bd763538546ee861e393f5a9690684cdc663e20434f2a94da266da74dc"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-created.json",
+      "sha256": "1552413b89a3c8081f4e0eafc1c9793c9f0e5c59cb522e6ace0eaebe0012f9fc"
     }
   },
   "rebuild": {
     "before": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/rebuild-before.json",
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-before.json",
       "sha256": "3692bad0c3a395226a147ce4248a947a93fce1c6e34e6735b5652d08f37bca2c"
     },
     "after": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/rebuild-after.json",
-      "sha256": "b06f64f881030e3adc2c8c54c823a362874ab336ffef46cd3f4675fffdcfac26"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-after.json",
+      "sha256": "2ce69d32a02db237e20e42b2e25c0a87331d7c974e371f817202e0c2bbb83e1a"
     },
     "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/rebuild-contract.json",
-      "sha256": "e864ea40a8da313ca319dba51a6f38175657923e66cc83640a5d23de8a0e8a5c"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-contract.json",
+      "sha256": "5c7075859399716f77512518796c0db961f029382ee484d6f00be831f375cdeb"
     },
     "created": {
-      "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/rebuild-created.json",
-      "sha256": "5628e8bd763538546ee861e393f5a9690684cdc663e20434f2a94da266da74dc"
+      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-created.json",
+      "sha256": "1552413b89a3c8081f4e0eafc1c9793c9f0e5c59cb522e6ace0eaebe0012f9fc"
     }
   },
   "native_result": {
-    "path": "tests/fixtures/supabase-compat/kora-source-batch-native17/native-result.json",
-    "sha256": "e8f39aff9981a2c4cdb5be4482d5408a060a867321718cb041b64068d1264fd3"
+    "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/native-result.json",
+    "sha256": "8be32e32fda6c265ad677ad9a448e43a6a3fc59c9bc1a5ca40f97e21ebdb3e35"
   }
 }

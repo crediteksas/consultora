@@ -4,12 +4,14 @@
  const D=window.KoraFinancialDomain,esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>v==null||!Number.isFinite(Number(v))?'No disponible':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(Number(v));
  const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'}),$=id=>root.querySelector('#'+id);
- let sb,cuts=[],invoices=[],operations=[],busy=false,loaded=false,request=crypto.randomUUID(),prepared=null;
+ let sb,cuts=[],invoices=[],operations=[],busy=false,loaded=false,request=crypto.randomUUID(),prepared=null,reviewPending=null;
+ const day=v=>!v?'Sin fecha':/^\d{4}-\d{2}-\d{2}$/.test(v)?v.split('-').reverse().join('/'):new Date(v).toLocaleDateString('es-CO',{timeZone:'America/Bogota'});
+ const positive=()=>cuts.filter(c=>c.utilidad_neta!=null&&Number(c.utilidad_neta)>0);
  const files=new WeakMap();
  root.hidden=false;
  root.innerHTML=`<div class="section-head"><div><h2>Liquidación de socios por inventario</h2><p>Registra solo dinero ya entregado o pagado, con soporte. Mayte decide los retiros parciales y los aportes; KORA no realiza transferencias.</p></div></div>
  <div class="socios-body"><div class="socios-toolbar"><label>Mes del inventario<input id="siMes" class="control" type="month" value="${today().slice(0,7)}"></label><button id="siActualizar" class="btn" type="button">Consultar inventarios</button></div>
- <p id="siEstado" role="status" aria-live="polite"></p><div id="siResultados" class="table-wrap"></div>
+ <p id="siEstado" role="status" aria-live="polite"></p><p>El inventario cerrado puede dejar utilidad pendiente de retirar o pérdida pendiente de cubrir. Cada movimiento se aplica solo a su inventario.</p><div id="siPendientes"></div><div id="siResultados" class="table-wrap"></div><div id="siRevisiones"></div>
  <form id="siForm"><h3>Registrar retiro y reparto realizado</h3><div class="form-grid"><div class="field"><label for="siFuente">Inventario de la tienda que entrega el dinero</label><select id="siFuente" class="control" required disabled><option value="">Consulta el mes primero</option></select></div><div class="field"><label for="siFecha">Fecha real de entrega / pago</label><input id="siFecha" type="date" class="control" required value="${today()}" max="${today()}"></div></div>
  <p id="siEfectos">Selecciona la tienda positiva. Su deuda con B2B no disminuye por este retiro.</p>
  <div id="siDestinos"></div><div class="actions"><button id="siAgregar" type="button" class="btn">Agregar destino al reparto</button></div>
@@ -22,18 +24,19 @@
  function preview(){
   try{const total=amounts().reduce((n,x)=>n+Math.round((x.amount||0)*100),0)/100,source=cuts.find(x=>x.corte_id===$('siFuente').value);
    $('siTotal').textContent='TOTAL A RETIRAR DE CAJA: '+money(total);
-   $('siEfectos').textContent=source?`${source.tienda_nombre}: disponible del corte ${money(source.disponible)}. Sale ${money(total)} de su caja; su deuda con B2B no cambia. Los aportes reducen únicamente la deuda de la tienda negativa y la del proveedor indicado.`:'Selecciona la tienda positiva. Su deuda con B2B no disminuye por este retiro.';
-   $('siGuardar').disabled=busy||!loaded||!source?.listo||total<=0||total>Number(source.disponible);
+   $('siFuente').disabled=busy||!loaded||!positive().length||Boolean(prepared)||Boolean(reviewPending);
+   $('siEfectos').textContent=source?(source.listo?`${source.tienda_nombre} · inventario del ${day(source.fin_at)}: utilidad pendiente de retiro ${money(source.disponible)}. Sale ${money(total)} de su caja; su deuda con B2B no cambia. Los aportes reducen únicamente la deuda de la tienda negativa y la del proveedor indicado.`:`${source.tienda_nombre} · inventario cerrado del ${day(source.fin_at)}. Resultado positivo ${money(source.utilidad_neta)}, todavía no habilitado para retirar. ${(source.bloqueos||[]).join(' ')} Revisa el pendiente indicado en la tabla; no debes repetir el ajuste físico.`):positive().length?'Selecciona una tienda positiva para ver su disponible o la revisión que falta. Su deuda con B2B no disminuye por el retiro.':'No hay inventarios con utilidad positiva en el mes consultado.';
+   $('siGuardar').disabled=busy||!loaded||Boolean(reviewPending)||!source?.listo||total<=0||total>Number(source.disponible);
   }catch(error){$('siTotal').textContent=error.message;$('siGuardar').disabled=true;}
  }
- function lock(value){root.querySelectorAll('#siForm input,#siForm select,#siForm textarea,#siAgregar,[data-si-quitar]').forEach(e=>e.disabled=value||!loaded);$('siGuardar').disabled=busy||!loaded;$('siMes').disabled=busy||Boolean(prepared);$('siActualizar').disabled=busy;}
+ function lock(value){root.querySelectorAll('#siForm input,#siForm select,#siForm textarea,#siAgregar,[data-si-quitar]').forEach(e=>e.disabled=value||!loaded);$('siGuardar').disabled=busy||!loaded||Boolean(reviewPending);$('siMes').disabled=busy||Boolean(prepared)||Boolean(reviewPending);$('siActualizar').disabled=busy||Boolean(reviewPending);}
  function addDestination(){
   if(root.querySelectorAll('[data-si-destino]').length>=20)return;
   const row=document.createElement('fieldset');row.dataset.siDestino='';row.className='socios-destino';
   row.innerHTML=`<legend>Destino del dinero</legend><div class="form-grid"><div class="field"><label>Destino<select name="tipo" class="control"><option value="socio">Entrega al socio</option><option value="aporte">Aporte de socios a tienda con pérdida · pago directo a proveedor</option></select></label></div><div class="field"><label>Valor en pesos<input name="monto" class="control" inputmode="decimal" placeholder="$ 0" required></label></div><div data-si-detalle class="field full"></div><div class="field full"><label>Soporte de este destino · imagen máx. 2 MB o PDF máx. 10 MB<input name="soporte" type="file" class="control" accept="application/pdf,image/jpeg,image/png" required></label></div></div><button type="button" class="btn" data-si-quitar>Quitar destino</button>`;
   const detail=row.querySelector('[data-si-detalle]');
   const update=()=>{if(row.querySelector('[name=tipo]').value==='socio')detail.innerHTML='<label>Socio que recibió el dinero<input name="beneficiario" class="control" minlength="3" required></label>';
-   else detail.innerHTML=`<label>Inventario de la tienda que recibe el aporte<select name="corte" class="control" required><option value="">Selecciona una pérdida pendiente</option>${cuts.filter(x=>x.listo&&Number(x.perdida_pendiente)>0).map(x=>`<option value="${esc(x.corte_id)}">${esc(x.tienda_nombre)} · pérdida pendiente ${esc(money(x.perdida_pendiente))}</option>`).join('')}</select></label><label>Factura del proveedor que recibió el pago<select name="factura" class="control" required><option value="">Selecciona el proveedor y la factura</option>${invoices.map(x=>`<option value="${esc(x.id)}">${esc(x.proveedor)} · ${esc(x.numero)} · saldo ${esc(money(x.saldo))}</option>`).join('')}</select></label><small>El aporte no entra a la caja de la tienda negativa ni a Banco Creditek. El soporte debe corresponder a este proveedor.</small>`;
+   else detail.innerHTML=`<label>Inventario de la tienda que recibe el aporte<select name="corte" class="control" required><option value="">Selecciona una pérdida pendiente</option>${cuts.filter(x=>x.listo&&Number(x.perdida_pendiente)>0).map(x=>`<option value="${esc(x.corte_id)}">${esc(x.tienda_nombre)} · inventario del ${esc(day(x.fin_at))} · pérdida pendiente ${esc(money(x.perdida_pendiente))}</option>`).join('')}</select></label><label>Factura del proveedor que recibió el pago<select name="factura" class="control" required><option value="">Selecciona el proveedor y la factura</option>${invoices.map(x=>`<option value="${esc(x.id)}">${esc(x.proveedor)} · ${esc(x.numero)} · saldo ${esc(money(x.saldo))}</option>`).join('')}</select></label><small>El aporte no entra a la caja de la tienda negativa ni a Banco Creditek. El soporte debe corresponder a este proveedor.</small>`;
    preview();};
   row.querySelector('[name=tipo]').onchange=update;row.querySelector('[data-si-quitar]').onclick=()=>{row.remove();preview();};
   row.querySelector('[name=monto]').addEventListener('input',preview);row.querySelector('[name=monto]').addEventListener('blur',event=>{try{event.target.value=D.formatMoneyInput(event.target.value);}catch{};preview();});
@@ -42,22 +45,69 @@
  function results(){
   const columns=[['utilidad_neta','Resultado del inventario'],['retiros_anteriores','Retiros anteriores'],['retirado','Retirado en este flujo'],['disponible','Disponible positivo'],['perdida_cubierta','Pérdida cubierta'],['perdida_pendiente','Pérdida pendiente']];
   const valid=cuts.filter(c=>c.listo),sum=key=>valid.some(c=>c[key]==null||!Number.isFinite(Number(c[key])))?'Incompleto':money(valid.reduce((n,c)=>n+Math.round(Number(c[key])*100),0)/100);
-  $('siResultados').innerHTML=cuts.length?`<table class="table socios-table"><thead><tr><th>Tienda y período</th>${columns.map(x=>`<th>${x[1]}</th>`).join('')}<th>Estado</th></tr></thead><tbody>${cuts.map(c=>`<tr><td><strong>${esc(c.tienda_nombre)}</strong><small>${esc((c.inicio_at||'').slice(0,10))} a ${esc((c.fin_at||'').slice(0,10))}</small></td>${columns.map(([key])=>`<td>${!c.listo&&key==='disponible'?'No habilitado':esc(money(c[key]))}</td>`).join('')}<td>${c.listo?'Validado para liquidar':'Por validar'}${c.listo?'':`<small>${esc((c.bloqueos||[]).join(' '))}</small>`}</td></tr>`).join('')}</tbody><tfoot><tr><th>TOTAL VALIDADO</th>${columns.map(([key])=>`<td>${valid.length?sum(key):'No disponible'}</td>`).join('')}<td>Excluye los resultados por validar; no habilita retiros sobre ellos</td></tr></tfoot></table>`:'<p>No hay inventarios físicos cerrados y autorizados en el mes seleccionado.</p>';
-  $('siFuente').innerHTML='<option value="">Selecciona la tienda positiva</option>'+cuts.filter(c=>c.listo&&Number(c.disponible)>0).map(c=>`<option value="${esc(c.corte_id)}">${esc(c.tienda_nombre)} · ${esc(money(c.disponible))} disponible</option>`).join('');
+  // Keep the action visible on phones without scrolling a wide money table.
+  const pending=cuts.filter(c=>(c.bloqueos||[]).some(x=>x.includes('retiros anteriores')));
+  $('siPendientes').innerHTML=pending.length?`<div class="socios-review"><h3>Retiros anteriores por identificar</h3><p>El inventario físico está cerrado. Comprueba a qué inventario corresponde cada retiro registrado.</p>${pending.map(c=>`<button type="button" class="btn" data-si-revisar="${esc(c.corte_id)}">Revisar retiro anterior · ${esc(c.tienda_nombre)} · ${esc(day(c.fin_at))}</button>`).join('')}</div>`:'';
+  const state=c=>!c.listo?'Resultado por revisar':Number(c.utilidad_neta)>0?(Number(c.disponible)>0?'Utilidad pendiente de retiro':'Utilidad ya retirada'):Number(c.utilidad_neta)<0?(Number(c.perdida_pendiente)>0?'Pérdida pendiente de cubrir':'Pérdida cubierta'):'Sin utilidad ni pérdida pendiente';
+  $('siResultados').innerHTML=cuts.length?`<table class="table socios-table"><thead><tr><th>Tienda y período</th>${columns.map(x=>`<th>${x[1]}</th>`).join('')}<th>Estado del dinero</th></tr></thead><tbody>${cuts.map(c=>`<tr><td><strong>${esc(c.tienda_nombre)}</strong><small>${esc(day(c.inicio_at))} a ${esc(day(c.fin_at))} · inventario cerrado</small></td>${columns.map(([key])=>`<td>${!c.listo&&key==='disponible'?'No habilitado':esc(money(c[key]))}</td>`).join('')}<td>${state(c)}${c.listo?'':`<small>${esc((c.bloqueos||[]).join(' '))}</small>`}${(c.avisos||[]).map(x=>`<small>${esc(x)}</small>`).join('')}</td></tr>`).join('')}</tbody><tfoot><tr><th>TOTAL VALIDADO</th>${columns.map(([key])=>`<td>${valid.length?sum(key):'No disponible'}</td>`).join('')}<td>Excluye los resultados por revisar; no habilita retiros sobre ellos</td></tr></tfoot></table>`:'<p>No hay inventarios físicos cerrados y autorizados en el mes seleccionado.</p>';
+  const options=list=>list.map(c=>`<option value="${esc(c.corte_id)}">${esc(c.tienda_nombre)} · ${esc(day(c.fin_at))} · ${esc(c.listo?money(c.disponible)+' pendiente de retiro':money(c.utilidad_neta)+' positivo · por revisar')}</option>`).join('');
+  const ready=positive().filter(c=>c.listo),blocked=positive().filter(c=>!c.listo);
+  $('siFuente').innerHTML=`<option value="">${positive().length?'Selecciona la tienda positiva':'No hay inventarios con utilidad positiva'}</option>${ready.length?`<optgroup label="Resultados validados">${options(ready)}</optgroup>`:''}${blocked.length?`<optgroup label="Selecciona para revisar el bloqueo">${options(blocked)}</optgroup>`:''}`;
   $('siHistorial').innerHTML=operations.length?operations.map(o=>`<details class="socios-history"><summary>${esc(o.fecha)} · ${esc(o.tienda)} · retiro ${esc(money(o.monto))}</summary><p>${esc(o.motivo)}</p><p class="socios-trace">Operación ${esc(o.id)} · corte ${esc(o.corte_id)}</p><ul>${o.destinos.map(x=>`<li>${esc(x.tipo==='socio'?'Entrega al socio: '+x.beneficiario:'Aporte de socios para cubrir pérdida: '+x.tienda_destino+' · '+x.proveedor+' · factura '+x.factura)} · ${esc(money(x.monto))} <button type="button" class="btn" data-si-soporte="${esc(x.soporte_path)}">Ver soporte</button></li>`).join('')}</ul><p><strong>TOTAL RETIRADO: ${esc(money(o.monto))}</strong></p></details>`).join(''):'<p>No hay liquidaciones registradas para estos inventarios.</p>';
  }
  async function all(table,columns){const rows=[];for(let offset=0;;offset+=500){const r=await sb.from(table).select(columns).order('id').range(offset,offset+499);if(r.error)throw r.error;if(!Array.isArray(r.data))throw Error('Respuesta incompleta al consultar '+table);rows.push(...r.data);if(r.data.length<500)return rows;}}
  async function load(){
-  if(busy)return;busy=true;loaded=false;lock(true);status('Consultando resultados y movimientos registrados…');
+  if(busy||reviewPending)return;const selected=$('siFuente').value;busy=true;loaded=false;lock(true);status('Consultando resultados y movimientos registrados…');
   try{const [r,providers,bills]=await Promise.all([sb.rpc('socios_inventario',{p_accion:'consultar',p_datos:{mes:$('siMes').value}}),all('proveedores','id,nombre,activo'),all('facturas_proveedor','id,proveedor_id,numero,saldo')]);
    if(r.error)throw r.error;if(!Array.isArray(r.data?.cortes)||!Array.isArray(r.data?.operaciones))throw Error('La consulta de inventarios está incompleta.');
    cuts=r.data.cortes;operations=r.data.operaciones;invoices=bills.filter(x=>providers.some(p=>p.id===x.proveedor_id&&p.activo)).map(x=>({...x,proveedor:providers.find(p=>p.id===x.proveedor_id).nombre}));
    loaded=true;results();
    if(prepared&&operations.some(o=>o.id===request)){prepared=null;request=crypto.randomUUID();$('siForm').reset();status('El movimiento ya estaba registrado. Se recuperó su confirmación sin duplicarlo.');}
-   else{if(prepared)$('siFuente').value=prepared.corte_id;status(prepared?'Hay un envío pendiente de confirmar. Reintenta la misma solicitud; no la crees otra vez.':`${cuts.length} inventarios consultados. Solo los resultados validados tienen disponible para operar.`);}
+   else{if(prepared)$('siFuente').value=prepared.corte_id;else if(cuts.some(c=>c.corte_id===selected))$('siFuente').value=selected;
+    const ready=positive().filter(c=>c.listo&&Number(c.disponible)>0).length,blocked=positive().filter(c=>!c.listo).length;
+    status(prepared?'Hay un envío pendiente de confirmar. Reintenta la misma solicitud; no la crees otra vez.':`${cuts.length} inventarios cerrados consultados. ${ready} con utilidad habilitada para retirar; ${blocked} resultados positivos por revisar.${!ready&&blocked?' Selecciona uno para ver el bloqueo; la revisión de retiros anteriores está en la tabla.':''}`);}
    if(!prepared){$('siDestinos').replaceChildren();addDestination();}
-  }catch(error){cuts=[];operations=[];status('No se pudo verificar la liquidación. '+error.message,true);$('siResultados').textContent='Consulta incompleta: no equivale a cero.';$('siHistorial').textContent='No se pudo comprobar el historial; vuelve a consultar.';$('siFuente').replaceChildren();}
-  finally{busy=false;lock(Boolean(prepared));if(prepared)$('siGuardar').disabled=!loaded;else preview();}
+  }catch(error){cuts=[];operations=[];status('No se pudo verificar la liquidación. '+error.message,true);$('siPendientes').replaceChildren();$('siResultados').textContent='Consulta incompleta: no equivale a cero.';$('siHistorial').textContent='No se pudo comprobar el historial; vuelve a consultar.';$('siFuente').replaceChildren();}
+  finally{busy=false;lock(Boolean(prepared)||Boolean(reviewPending));if(prepared)$('siGuardar').disabled=!loaded;else preview();}
+ }
+ async function review(cut){
+  if(busy||prepared||reviewPending)return;
+  busy=true;lock(true);status('Consultando los retiros que necesitan identificar su inventario…');
+  try{
+   const r=await sb.rpc('socios_inventario',{p_accion:'revisar_retiros',p_datos:{corte_id:cut}});
+   if(r.error)throw r.error;if(!r.data?.inventario||!Array.isArray(r.data.retiros))throw Error('No se pudo comprobar la revisión.');
+   const info=r.data.inventario;
+   $('siRevisiones').innerHTML=`<section class="socios-review"><h3>Revisar retiros anteriores · ${esc(info.tienda)}</h3><p>Inventario cerrado: ${esc(day(info.inicio_at))} a ${esc(day(info.fin_at))}. Aquí identificas a qué período corresponde dinero ya registrado. No se vuelve a ajustar inventario ni se registra otro pago.</p>${r.data.retiros.length?'':'<p>No hay retiros anteriores por clasificar para este inventario.</p>'}${r.data.retiros.map(x=>`<form class="socios-review-item" data-si-revision="${esc(x.retiro_id)}"><p><strong>Retiro ya registrado: ${esc(money(x.monto))}</strong><br>Período registrado: ${esc(day(x.periodo_desde))} a ${esc(day(x.periodo_hasta))} · ${esc(x.estado)}</p>${!x.fuente_valida?'<p class="error">El retiro no tiene una distribución única y comprobable para esta tienda. Requiere corregir esa distribución mediante el procedimiento autorizado.</p>':!x.requiere_revision?`<p><strong>Revisión registrada:</strong> ${x.decision==='anterior'?'Corresponde a un inventario anterior; no se descuenta de este corte.':'Se descuenta de este inventario.'}</p><p>${esc(x.motivo)}</p>`:`<label>¿A qué inventario corresponde este retiro?<select name="decision" class="control" required><option value="">Selecciona solo lo que hayas comprobado</option><option value="anterior">Inventario anterior · no descontar de este corte</option><option value="este_corte">Este inventario · descontar del pendiente de retiro</option></select></label><label>Explicación de lo comprobado<textarea name="motivo" class="control" minlength="12" maxlength="2000" rows="2" required></textarea></label><label class="socios-check"><input name="confirmado" type="checkbox" required><span>Comprobé el período del retiro y a qué inventario corresponde.</span></label><button type="submit" class="btn primary">Confirmar clasificación del retiro</button>`}</form>`).join('')}</section>`;
+   for(const form of $('siRevisiones').querySelectorAll('form')){
+    const item=r.data.retiros.find(x=>x.retiro_id===form.dataset.siRevision);
+    form.addEventListener('submit',event=>{event.preventDefault();confirmReview(form,cut,item);});
+   }
+   $('siRevisiones').scrollIntoView({block:'start',behavior:'smooth'});status('Revisa los retiros anteriores en esta misma pantalla. Confirma únicamente el período comprobado.');
+  }catch(error){status('No se pudo consultar la revisión. '+error.message,true);}
+  finally{busy=false;lock(false);preview();}
+ }
+ async function confirmReview(form,cut,item){
+  if(busy||prepared||!item?.fuente_valida||!item.requiere_revision)return;
+  if(reviewPending&&(reviewPending.datos.corte_id!==cut||reviewPending.datos.retiro_id!==item.retiro_id)){status('Primero termina o reintenta la revisión cuya confirmación está pendiente.',true);return;}
+  if(!reviewPending){
+   if(!form.reportValidity())return;
+   const decision=form.querySelector('[name=decision]').value,motivo=form.querySelector('[name=motivo]').value.trim();
+   if(!confirm(`¿Confirmas que este retiro de ${money(item.monto)} ${decision==='anterior'?'corresponde a un inventario anterior y no se descuenta del actual':'se descuenta de este inventario'}? Se conservará la decisión y su explicación. No se mueve dinero ni se registra un pago nuevo.`))return;
+   reviewPending={request:crypto.randomUUID(),datos:{corte_id:cut,retiro_id:item.retiro_id,huella_fuente:item.huella_fuente,decision,motivo,confirmado:true}};
+  }
+  busy=true;lock(true);form.querySelectorAll('input,select,textarea,button').forEach(e=>e.disabled=true);status('Guardando la revisión del período, sin mover dinero…');
+  try{
+   const r=await sb.rpc('socios_inventario',{p_accion:'conciliar_retiro',p_datos:reviewPending.datos,p_request_id:reviewPending.request});
+   if(r.error){if(r.error.code&&/^(P0001|22|23)/.test(r.error.code))reviewPending=null;throw r.error;}
+   if(r.data?.ok!==true)throw Error('No se recibió confirmación. Reintenta esta misma revisión.');
+   reviewPending=null;$('siRevisiones').replaceChildren();busy=false;await load();await review(cut);
+   status('Revisión guardada con responsable y fecha. No movió efectivo ni alteró existencias; consulta el pendiente de retiro actualizado.');
+  }catch(error){status((reviewPending?'Confirmación de revisión pendiente; reintenta la misma solicitud. ':'No se guardó la revisión. ')+error.message,true);}
+  finally{
+   busy=false;lock(Boolean(reviewPending));preview();
+   form.querySelectorAll('input,select,textarea').forEach(e=>e.disabled=Boolean(reviewPending));
+   const button=form.querySelector('button[type=submit]');if(button){button.disabled=false;button.textContent=reviewPending?'Reintentar la misma revisión':'Confirmar clasificación del retiro';}
+  }
  }
  async function support(file){
   if(!file||!file.size)throw Error('Adjunta el soporte de cada destino.');
@@ -75,7 +125,7 @@
   saved.ready=true;return saved.path;
  }
  async function submit(event){
-  event.preventDefault();if(busy||!loaded)return;
+  event.preventDefault();if(busy||!loaded||reviewPending)return;
   busy=true;lock(true);$('siGuardar').disabled=true;let sent=false;
   try{
    if(!prepared){const source=cuts.find(c=>c.corte_id===$('siFuente').value);if(!source?.listo)throw Error('Selecciona un resultado positivo validado.');
@@ -100,7 +150,7 @@
   finally{busy=false;lock(Boolean(prepared));if(prepared){$('siGuardar').textContent='Reintentar la misma solicitud';$('siGuardar').disabled=!loaded;}else{$('siGuardar').textContent='Registrar movimiento realizado';preview();}}
  }
  $('siForm').addEventListener('submit',submit);$('siFuente').addEventListener('change',preview);$('siAgregar').onclick=addDestination;$('siActualizar').onclick=load;
- $('siMes').onchange=()=>{loaded=false;cuts=[];operations=[];$('siFuente').replaceChildren();$('siResultados').textContent='Pulsa Consultar inventarios para cargar el nuevo mes.';$('siHistorial').textContent='Consulta el mes seleccionado para ver su historial.';lock(true);$('siMes').disabled=false;$('siActualizar').disabled=false;$('siGuardar').disabled=true;};
- root.addEventListener('click',async event=>{const button=event.target.closest('[data-si-soporte]');if(!button)return;const popup=window.open('about:blank','_blank');if(!popup){status('Permite ventanas emergentes para abrir el soporte.',true);return;}popup.opener=null;try{const r=await sb.storage.from('soportes').createSignedUrl(button.dataset.siSoporte,60);if(r.error||!r.data?.signedUrl)throw r.error||Error('No se pudo abrir el soporte');popup.location.href=r.data.signedUrl;}catch(error){popup.close();status(error.message,true);}});
+ $('siMes').onchange=()=>{loaded=false;cuts=[];operations=[];$('siFuente').replaceChildren();$('siRevisiones').replaceChildren();$('siPendientes').replaceChildren();$('siResultados').textContent='Pulsa Consultar inventarios para cargar el nuevo mes.';$('siHistorial').textContent='Consulta el mes seleccionado para ver su historial.';lock(true);$('siMes').disabled=false;$('siActualizar').disabled=false;$('siGuardar').disabled=true;};
+ root.addEventListener('click',async event=>{const revision=event.target.closest('[data-si-revisar]');if(revision){await review(revision.dataset.siRevisar);return;}const button=event.target.closest('[data-si-soporte]');if(!button)return;const popup=window.open('about:blank','_blank');if(!popup){status('Permite ventanas emergentes para abrir el soporte.',true);return;}popup.opener=null;try{const r=await sb.storage.from('soportes').createSignedUrl(button.dataset.siSoporte,60);if(r.error||!r.data?.signedUrl)throw r.error||Error('No se pudo abrir el soporte');popup.location.href=r.data.signedUrl;}catch(error){popup.close();status(error.message,true);}});
  const start=context=>{sb=context.sb;load();};if(window.creditekSidebar?.sb)start(window.creditekSidebar);else document.addEventListener('kora-sidebar-ready',()=>start(window.creditekSidebar),{once:true});
 })();

@@ -5,7 +5,7 @@ import{sociosPermissionObjects,sociosCreatedInventory,expectedSociosTriggers,sta
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const files={socios:'supabase/migrations/20261023032131_socios_inventario_retiros_aportes.sql',tariff:'supabase/migrations/20261021161019_kora_compat_select_krediya_price_rules.sql'};
 const tests=['tests/security/supabase-compatibility-socios.test.mjs','tests/security/supabase-compatibility-catalog.test.mjs','tests/security/supabase-compatibility-rollback.test.mjs'];
-function tariffObject(snapshot,scenario){
+export function tariffObject(snapshot,scenario){
  const r=snapshot.relations.filter(x=>x.schema==='public'&&x.name==='krediya_price_rules');if(r.length!==1)throw Error('Single tariff object required');const t=r[0];
  if(t.owner!=='postgres'||t.kind!=='r'||!t.rls||t.force_rls!==false||t.policy_count!==2||t.columns.length!==13||t.columns.some(c=>c.acl!==null))throw Error('Tariff protection/columns differ');
  const md5=createHash('md5').update("tiene_capacidad_aliados('revisor'::text)").digest('hex');

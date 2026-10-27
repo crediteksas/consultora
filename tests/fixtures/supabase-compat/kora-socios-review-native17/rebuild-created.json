@@ -1,0 +1,75 @@
+[
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiros_revisiones",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_grupos_tienda",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultados",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_operaciones",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_destinos",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "cierre_utilidad_api",
+    "identity": "p_accion text, p_corte_id uuid, p_huella text",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiro_fuente",
+    "identity": "p_retiro financial_entries, p_tienda text",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_revision_api",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_api",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_finanzas_guardar",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_inmutable",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultado",
+    "identity": "p_corte uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "socios_inventario",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  }
+]

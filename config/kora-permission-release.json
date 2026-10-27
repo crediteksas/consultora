@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "project": "kora",
-  "scope": "actual three SQL source delta from unchanged40d baseline; original Socios and tariff are NOT production replay requests",
+  "scope": "four source deltas, native PG17 isolated; only pagos_realizados migration pending production",
   "migration_sha256": {
     "supabase/migrations/20261023032131_socios_inventario_retiros_aportes.sql": "99304db38948cc4991ae58b8c46a1c4897759a84f5ce6a60cb6c98fde27fa305",
     "supabase/migrations/20261021161019_kora_compat_select_krediya_price_rules.sql": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66",
-    "supabase/migrations/20261027192103_socios_revision_retiros_por_corte.sql": "dc7f6abe159eeda38216216e262c4457700cc3be5a31922fcbd7ec3f04da04e9"
+    "supabase/migrations/20261027192103_socios_revision_retiros_por_corte.sql": "dc7f6abe159eeda38216216e262c4457700cc3be5a31922fcbd7ec3f04da04e9",
+    "supabase/migrations/20261027203123_pagos_realizados_fecha_conciliacion.sql": "1fae91d0003e252251c1a6381e1901095e68d0de9826d164bae77c894fb8c330"
   },
   "isolation_tests": [
     {
@@ -19,47 +20,51 @@
     {
       "path": "tests/security/supabase-compatibility-rollback.test.mjs",
       "sha256": "ef9c2a4bbc6213c9aabab2e1d004c70fcc083d57f5d037ca11e0634af294a6fe"
+    },
+    {
+      "path": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
+      "sha256": "f933aa9f6d578bb8a156be39170de2fd4832930f46003cfa7c174f14c5efdee3"
     }
   ],
   "test_runner_sha256": "40a7b12b1f0db5795ac2b344247f2a51ac236d47bd72609fad3a4e331423bc32",
   "upgrade": {
     "before": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-before.json",
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-before.json",
       "sha256": "e3b9e301ea02ca554fede752ac22ce7dbd1b7dcc05fb5762191aebd1ac0898a0"
     },
     "after": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-after.json",
-      "sha256": "be4c04faad479f05865e5d1fe73aee4ccef01ccf54f1488c1ab00dc32e02a8ff"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-after.json",
+      "sha256": "10a80d2effacaf51753cdfbd4f1c2aa82b022a430d1a6347b557b777f815dba1"
     },
     "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-contract.json",
-      "sha256": "eca68c36e3a1b9290b8924027f92779d2aaad840972478e87b6fc450200e6759"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-contract.json",
+      "sha256": "77d0ce1ce8399e9281a327f97898f148d2a75751c74977a4bd8397a00d22a5f4"
     },
     "created": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/upgrade-created.json",
-      "sha256": "1552413b89a3c8081f4e0eafc1c9793c9f0e5c59cb522e6ace0eaebe0012f9fc"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-created.json",
+      "sha256": "7687b9c40b369bcb06fea52bbb09880dc6abd700743bba913c5f93587eba6fba"
     }
   },
   "rebuild": {
     "before": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-before.json",
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-before.json",
       "sha256": "3692bad0c3a395226a147ce4248a947a93fce1c6e34e6735b5652d08f37bca2c"
     },
     "after": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-after.json",
-      "sha256": "2ce69d32a02db237e20e42b2e25c0a87331d7c974e371f817202e0c2bbb83e1a"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-after.json",
+      "sha256": "121c5f4f900be4a12cf880861197860bb88b4bf1c3ad1053dddde50ee0f09a46"
     },
     "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-contract.json",
-      "sha256": "5c7075859399716f77512518796c0db961f029382ee484d6f00be831f375cdeb"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-contract.json",
+      "sha256": "bba447db0d5142b274a35308ea7572e041a5799d00ec585c7130c75ddb6cc9db"
     },
     "created": {
-      "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/rebuild-created.json",
-      "sha256": "1552413b89a3c8081f4e0eafc1c9793c9f0e5c59cb522e6ace0eaebe0012f9fc"
+      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-created.json",
+      "sha256": "7687b9c40b369bcb06fea52bbb09880dc6abd700743bba913c5f93587eba6fba"
     }
   },
   "native_result": {
-    "path": "tests/fixtures/supabase-compat/kora-socios-review-native17/native-result.json",
-    "sha256": "8be32e32fda6c265ad677ad9a448e43a6a3fc59c9bc1a5ca40f97e21ebdb3e35"
+    "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/native-result.json",
+    "sha256": "a51ea15d18e3dde79749047eef36a7a1d153cadbf753827d14fc0496f70e5856"
   }
 }

@@ -44,12 +44,14 @@
   function createRecorder(sb){
     const busy=new Set(),attempts=new Map();
     const read=async id=>{const r=await sb.from('financial_entries').select('*').eq('id',id).single();if(r.error)throw r.error;return r.data;};
-    async function record(id,file,fromBank){
+    async function record(id,file,fromBank,paymentDate){
       if(busy.has(id))throw new Error('El soporte ya se está procesando.');
       busy.add(id);
       try{
         const row=await read(id),previous=attempts.get(id);
         if(storeFunded(row))throw new Error('Este retiro se paga desde las tiendas. Valida sus instrucciones; no registres otro giro central.');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate||'')||Number.isNaN(Date.parse(paymentDate+'T12:00:00Z'))||new Date(paymentDate+'T12:00:00Z').toISOString().slice(0,10)!==paymentDate||paymentDate>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()))throw new Error('Indica la fecha real del giro, sin fechas futuras.');
+        if(previous&&previous.paymentDate!==paymentDate)throw new Error('Conserva la fecha del intento; actualiza antes de cambiarla.');
         if(typeof fromBank!=='boolean')throw new Error('Indica si el pago salió de Banco Creditek.');
         if(previous&&previous.fromBank!==fromBank)throw new Error('Conserva el origen de fondos en este intento; actualiza antes de cambiarlo.');
         if(row.status==='pagado'&&previous&&row.support_path===previous.path&&row.pagado_desde_banco_creditek===fromBank)return row;
@@ -58,15 +60,15 @@
         if(!file||!mime[file.type]||!file.size||file.size>10*1024*1024)throw new Error('Selecciona un PDF, JPG o PNG de hasta 10 MB.');
         // Keep an uncertain attempt's support. Never delete evidence after a lost RPC response.
         let path=previous?.path;
-        if(!path){path=`finanzas/${root.crypto.randomUUID()}.${mime[file.type]}`;const upload=await sb.storage.from('soportes').upload(path,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;attempts.set(id,{path,fromBank});}
-        const result=await sb.rpc('finanzas_registrar_pago_con_origen',{p_id:id,p_support_path:path,p_desde_banco_creditek:fromBank});
+        if(!path){path=`finanzas/${root.crypto.randomUUID()}.${mime[file.type]}`;const upload=await sb.storage.from('soportes').upload(path,file,{contentType:file.type,upsert:false});if(upload.error)throw upload.error;attempts.set(id,{path,fromBank,paymentDate});}
+        const result=await sb.rpc('finanzas_registrar_pago_real',{p_id:id,p_support_path:path,p_desde_banco_creditek:fromBank,p_fecha_pago:paymentDate});
         if(!result.error&&result.data?.status==='pagado'&&result.data?.support_path===path&&result.data?.pagado_desde_banco_creditek===fromBank)return result.data;
         const confirmed=await read(id);
         if(confirmed.status==='pagado'&&confirmed.support_path===path&&confirmed.pagado_desde_banco_creditek===fromBank)return confirmed;
         throw result.error||new Error('No se confirmó el pago. Conservamos el soporte; actualiza antes de reintentar.');
       }catch(error){
         // A network exception may happen after the server committed the payment.
-        if(attempts.has(id)){try{const confirmed=await read(id),attempt=attempts.get(id);if(confirmed.status==='pagado'&&confirmed.support_path===attempt.path&&confirmed.pagado_desde_banco_creditek===attempt.fromBank)return confirmed;}catch{}}
+        if(attempts.has(id)&&attempts.get(id).paymentDate===paymentDate&&attempts.get(id).fromBank===fromBank){try{const confirmed=await read(id),attempt=attempts.get(id);if(confirmed.status==='pagado'&&confirmed.support_path===attempt.path&&confirmed.pagado_desde_banco_creditek===attempt.fromBank)return confirmed;}catch{}}
         throw error;
       }finally{busy.delete(id);}
     }

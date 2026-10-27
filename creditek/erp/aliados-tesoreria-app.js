@@ -1029,6 +1029,8 @@
     pendingPaymentIds = [];
     $("#paymentSupportForm").reset();
     $("#financialPaymentSourceRow").classList.add("hidden");
+    $("#financialPaymentDateRow").classList.add("hidden");
+    $("#financialPaymentDate").required=false;
     $("#paymentSupportSelected").classList.add("hidden");
     $("#paymentSupportError").classList.add("hidden");
     hidePaymentModal($("#paymentSupportModal"));
@@ -1056,6 +1058,9 @@
     closePaymentSupport();
     pendingFinancialId=id;
     $("#financialPaymentSourceRow").classList.remove("hidden");
+    $("#financialPaymentDateRow").classList.remove("hidden");
+    $("#financialPaymentDate").required=true;
+    $("#financialPaymentDate").max=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bogota",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
     $("#paymentSupportSummary").textContent=`${row.beneficiary} · ${row.concept} · ${cop(row.amount)}. Adjunta el comprobante del giro realizado.`;
     showPaymentModal($("#paymentSupportModal"));
     $("#paymentSupportFile").focus();
@@ -1069,8 +1074,8 @@
       if(!source){errorBox.textContent='Selecciona si el giro salió de Banco Creditek o de otra fuente.';errorBox.classList.remove('hidden');return;}
       button.disabled=true;button.textContent='Subiendo soporte…';errorBox.classList.add('hidden');
       try{
-        await financialRecorder.record(id,$("#paymentSupportFile").files[0],source==='banco');
-        closePaymentSupport();notice('Pago registrado con evidencia. Se conserva la autorización original.');
+        const registered=await financialRecorder.record(id,$("#paymentSupportFile").files[0],source==='banco',$("#financialPaymentDate").value);
+        closePaymentSupport();notice(registered.aviso_banco||(registered.conciliacion_pendiente?'Pago y soporte registrados. Banco Creditek tiene una diferencia pendiente de conciliación; no repitas el pago.':'Pago registrado con evidencia y fecha real. Se conserva la autorización original.'));
         await load().catch(()=>notice('Pago confirmado. Actualiza Tesorería para consultar el estado.',true));
       }catch(error){errorBox.textContent=error.message||'No se confirmó el registro. Actualiza antes de reintentar.';errorBox.classList.remove('hidden');}
       finally{button.disabled=false;button.textContent='Subir soporte y registrar pago';}

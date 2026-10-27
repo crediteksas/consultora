@@ -1,0 +1,99 @@
+[
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiros_revisiones",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_grupos_tienda",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultados",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_operaciones",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_destinos",
+    "kind": "table"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "cierre_utilidad_api",
+    "identity": "p_accion text, p_corte_id uuid, p_huella text",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiro_fuente",
+    "identity": "p_retiro financial_entries, p_tienda text",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_revision_api",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_api",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_finanzas_guardar",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_inmutable",
+    "identity": "",
+    "kind": "function"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultado",
+    "identity": "p_corte uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "socios_inventario",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "kora_private",
+    "name": "banco_creditek_asentar",
+    "identity": "p_tipo text, p_monto numeric, p_fuente_tabla text, p_fuente_id uuid, p_ocurrido_at timestamp with time zone, p_referencia text, p_soporte text, p_usuario uuid",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago_real",
+    "identity": "p_id uuid, p_support_path text, p_desde_banco_creditek boolean, p_fecha_pago date",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago_con_origen",
+    "identity": "p_id uuid, p_support_path text, p_desde_banco_creditek boolean",
+    "kind": "function"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago",
+    "identity": "p_id uuid, p_support_path text",
+    "kind": "function"
+  }
+]

@@ -34,8 +34,10 @@
   function renderCuenta(){
     if(!cuenta){$('cuentaEstado').textContent='No se encontró la cuenta Creditek; no se puede solicitar ni registrar pagos.';return;}
     const sincronizada=cuenta.saldo_actual!==null;
+    const diferencia=sincronizada&&Number(cuenta.saldo_actual)<0;
     $('cuentaEstado').innerHTML=`<p><strong>Creditek S.A.S. · •••• 4006</strong><br>${cuenta.banco?esc(cuenta.banco)+' · '+esc(cuenta.tipo_cuenta):'Banco y tipo de cuenta pendientes de confirmar'}</p>
-      <p class="${sincronizada?'ok':'error'}">${sincronizada?'Saldo de control: '+money(cuenta.saldo_actual)+' · corte '+esc(cuenta.fecha_corte):'Saldo bancario todavía no sincronizado. Ningún giro a proveedores puede registrarse.'}</p>
+      <p class="${sincronizada&&!diferencia?'ok':'error'}">${sincronizada?'Saldo de control: '+money(cuenta.saldo_actual)+' · corte '+esc(cuenta.fecha_corte):'Saldo bancario todavía no sincronizado. Ningún giro a proveedores puede registrarse.'}</p>
+      ${diferencia?`<p class="error" role="status"><strong>Pendiente de conciliación: ${money(-Number(cuenta.saldo_actual))}.</strong> Los pagos realizados y sus soportes están registrados. Este saldo de control negativo no es el saldo disponible confirmado por el banco. Revisa ingresos y movimientos faltantes; no repitas los pagos.</p>`:''}
       ${!sincronizada&&perfil.id===OSCAR?`<form id="sincronizarForm"><p>Óscar registra una sola apertura con el saldo real y su fecha de corte. Esta acción no crea pagos ni aplica facturas.</p>
         <div class="grid"><label class="field">Saldo real (COP)<input name="saldo" type="number" min="0" step="1" required></label>
         <label class="field">Fecha de corte<input name="fecha" type="date" max="${today()}" required></label>

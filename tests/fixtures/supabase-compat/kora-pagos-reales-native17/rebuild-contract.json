@@ -1,0 +1,756 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "banco_creditek_asentar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_tipo text, p_monto numeric, p_fuente_tabla text, p_fuente_id uuid, p_ocurrido_at timestamp with time zone, p_referencia text, p_soporte text, p_usuario uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "8f3771a2dd622877377f23ec468e46e5",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
+      "justification": "Existing private bank writer; explicit receipt permits negative derived book balance without changing opening money"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "finanzas_registrar_pago_real",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_id uuid, p_support_path text, p_desde_banco_creditek boolean, p_fecha_pago date",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "75aef26f05a40f3a99986eddb04128ca",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
+      "justification": "Named controller only; existing receipt, approved row, real date and idempotence validated server-side"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "finanzas_registrar_pago_con_origen",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "p_id uuid, p_support_path text, p_desde_banco_creditek boolean",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "e4eba8dba5f85b52250f79382b766a4f",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
+      "justification": "Named controller only; existing receipt, approved row, real date and idempotence validated server-side"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "finanzas_registrar_pago",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "p_id uuid, p_support_path text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "493634513083f056b64f8746ac5f2ad8",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
+      "justification": "Named controller only; existing receipt, approved row, real date and idempotence validated server-side"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "krediya_price_rules",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_clave",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "precio_venta",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "pagamos",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "vigente_desde",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "vigente_hasta",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "creado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "actualizado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 2,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Authenticated SELECT only; no direct write grant; native reviewer RLS unchanged",
+      "isolation_test": "tests/security/supabase-compatibility-catalog.test.mjs"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "socios_retiros_revisiones",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "inventario_control",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "corte_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "retiro_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "huella_fuente",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "decision",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "solicitud",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "validado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "validado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Private RLS storage; unchanged controller RPC owns writes; direct browser/backend table access deliberately absent",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "socios_grupos_tienda",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "inventario_control",
+      "columns": [
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "grupo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "configurado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Private RLS storage; unchanged controller RPC owns writes; direct browser/backend table access deliberately absent",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "socios_resultados",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "inventario_control",
+      "columns": [
+        {
+          "acl": null,
+          "name": "corte_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "grupo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "detalle",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "utilidad",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fijado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fijado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Private RLS storage; unchanged controller RPC owns writes; direct browser/backend table access deliberately absent",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "socios_operaciones",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "inventario_control",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "corte_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "solicitud",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "financial_entry_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "movimiento_caja_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Private RLS storage; unchanged controller RPC owns writes; direct browser/backend table access deliberately absent",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "socios_destinos",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "inventario_control",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operacion_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "orden",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "beneficiario",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "soporte_path",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "corte_destino_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "pago_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cuenta_corriente_id",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "justification": "Private RLS storage; unchanged controller RPC owns writes; direct browser/backend table access deliberately absent",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cierre_utilidad_api",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "privilege": "EXECUTE",
+          "grantable": false
+        }
+      ],
+      "schema": "inventario_control",
+      "identity": "p_accion text, p_corte_id uuid, p_huella text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "d656424eddf406e1b8f46946d5131ac2",
+      "security_definer": true,
+      "kind": "function",
+      "justification": "Finite EXECUTE only; existing native active named-controller guard remains unchanged",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "socios_retiro_fuente",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "inventario_control",
+      "identity": "p_retiro financial_entries, p_tienda text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "cdd2ba89e5db6e4f829916b9ffafeda1",
+      "security_definer": false,
+      "kind": "function",
+      "justification": "Owner-only internal function; no API execution grant required",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "socios_revision_api",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "privilege": "EXECUTE",
+          "grantable": false
+        }
+      ],
+      "schema": "inventario_control",
+      "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "a5654cdcecef8d643344d4cb1fc715c8",
+      "security_definer": true,
+      "kind": "function",
+      "justification": "Finite EXECUTE only; existing native active named-controller guard remains unchanged",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "socios_api",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "privilege": "EXECUTE",
+          "grantable": false
+        }
+      ],
+      "schema": "inventario_control",
+      "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "d1630bc74d0b9f7d04c0110aceee9d94",
+      "security_definer": true,
+      "kind": "function",
+      "justification": "Finite EXECUTE only; existing native active named-controller guard remains unchanged",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "socios_finanzas_guardar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "inventario_control",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "0cfb67a8227caef113ee62f3ab862392",
+      "security_definer": true,
+      "kind": "function",
+      "justification": "Owner-only internal function; no API execution grant required",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "socios_inmutable",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "inventario_control",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "85d902e9c29d269755beae98a0cc6287",
+      "security_definer": false,
+      "kind": "function",
+      "justification": "Owner-only internal function; no API execution grant required",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "socios_resultado",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "inventario_control",
+      "identity": "p_corte uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "7a5694b6b1f3167bb3c4185e03b54c48",
+      "security_definer": false,
+      "kind": "function",
+      "justification": "Owner-only internal function; no API execution grant required",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "name": "socios_inventario",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "privilege": "EXECUTE",
+          "grantable": false
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "privilege": "EXECUTE",
+          "grantable": false
+        }
+      ],
+      "schema": "public",
+      "identity": "p_accion text, p_datos jsonb, p_request_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "d2c59377593c0e6d9114c2876995068a",
+      "security_definer": false,
+      "kind": "function",
+      "justification": "Finite EXECUTE only; existing native active named-controller guard remains unchanged",
+      "isolation_test": "tests/security/supabase-compatibility-socios-revision.test.mjs"
+    }
+  ],
+  "allow_catalog_changes": {
+    "triggers": "[{\"definition_md5\":\"c8acaf8fe1220a63b0beb831cfd90d4a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"documento_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"ajuste_documento_inmutable\",\"schema\":\"inventario_control\",\"table\":\"ajuste_documentos\"},{\"definition_md5\":\"fe8066d820f1e60694f47bec811baa3e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"documentar_version_conteo\",\"function_schema\":\"inventario_control\",\"name\":\"ajuste_documento_version_conteo\",\"schema\":\"inventario_control\",\"table\":\"ajuste_documentos\"},{\"definition_md5\":\"e406a947d6fc003ba5cb968309e908ff\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"documento_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"cierre_utilidad_inmutable\",\"schema\":\"inventario_control\",\"table\":\"cierres_utilidad\"},{\"definition_md5\":\"90e3b927872e7db8d29f428c3072df68\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"documento_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"conteo_correccion_inmutable\",\"schema\":\"inventario_control\",\"table\":\"conteo_correcciones\"},{\"definition_md5\":\"ed4923486bc13c3e3ec8ba0abe9a1c01\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"documentar_ajuste\",\"function_schema\":\"inventario_control\",\"name\":\"documento_ajuste\",\"schema\":\"inventario_control\",\"table\":\"cortes\"},{\"definition_md5\":\"f29f75bb600a25662a6c5df8c9226e6c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_decisiones\",\"function_schema\":\"inventario_control\",\"name\":\"exigir_decisiones_antes_de_aplicar\",\"schema\":\"inventario_control\",\"table\":\"cortes\"},{\"definition_md5\":\"36b029a6db2523d54b60c3d19b00e928\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_comparativo\",\"function_schema\":\"inventario_control\",\"name\":\"proteger_comparativo\",\"schema\":\"inventario_control\",\"table\":\"cortes\"},{\"definition_md5\":\"037b55b858d29de373184fe0261150d2\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"socios_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"socios_destinos_inmutable\",\"schema\":\"inventario_control\",\"table\":\"socios_destinos\"},{\"definition_md5\":\"b8aabed08f01e11fdf2870fb4a2d9b9b\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"socios_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"socios_operaciones_inmutable\",\"schema\":\"inventario_control\",\"table\":\"socios_operaciones\"},{\"definition_md5\":\"a92a6bfe8abaf2b834f29ad02216421d\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"socios_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"socios_resultados_inmutable\",\"schema\":\"inventario_control\",\"table\":\"socios_resultados\"},{\"definition_md5\":\"a4491bbb4758b0ded2793dfc3486c8bb\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"socios_inmutable\",\"function_schema\":\"inventario_control\",\"name\":\"socios_retiros_revisiones_inmutable\",\"schema\":\"inventario_control\",\"table\":\"socios_retiros_revisiones\"},{\"definition_md5\":\"5cb5dc8aaa343f879ec6bd2ce08e660c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"banco_creditek_abono_b2b_trigger\",\"function_schema\":\"kora_private\",\"name\":\"banco_creditek_abono_b2b_real\",\"schema\":\"public\",\"table\":\"abonos_clientes_b2b_destino\"},{\"definition_md5\":\"6f757d8d280c6a31ec3ccabf827b8ef8\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"addi_pago_autorizado_inmutable\",\"function_schema\":\"cobros_private\",\"name\":\"addi_pago_autorizado_inmutable_guard\",\"schema\":\"public\",\"table\":\"addi_liquidaciones\"},{\"definition_md5\":\"a784399f9efa87c1753e0e970b0f29d2\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_si_periodo_cerrado\",\"function_schema\":\"public\",\"name\":\"trg_bloqueo_periodo_ajustes\",\"schema\":\"public\",\"table\":\"ajustes_inventario\"},{\"definition_md5\":\"4268b0e7b8701381139654d6b63cffe9\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_auditar_meta_plataforma\",\"function_schema\":\"public\",\"name\":\"aliados_metas_plataforma_auditoria\",\"schema\":\"public\",\"table\":\"aliados_metas_plataforma\"},{\"definition_md5\":\"f8a164978799524b3a607be4fda74af2\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"validar_referencias_catalogo_b2b\",\"function_schema\":\"public\",\"name\":\"validar_referencias_catalogo_b2b\",\"schema\":\"public\",\"table\":\"b2b_referencias_catalogo\"},{\"definition_md5\":\"110548ca00551d215bcecc0546fbde88\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_reemplazo_cuenta_destino\",\"function_schema\":\"public\",\"name\":\"proteger_reemplazo_cuenta_destino\",\"schema\":\"public\",\"table\":\"beneficiary_bank_accounts\"},{\"definition_md5\":\"bb9faee7a25f2df48b00fe373b247770\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"retiro_retail_proteger_cierre\",\"function_schema\":\"kora_private\",\"name\":\"retiro_retail_cierre\",\"schema\":\"public\",\"table\":\"caja_cortes\"},{\"definition_md5\":\"aafd3a57e5fcb5e305a857f21ac9bc23\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_proteger_cierre_verificado\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_cierre\",\"schema\":\"public\",\"table\":\"caja_diaria\"},{\"definition_md5\":\"08c99cdf20180a9a1b52b4a588f58323\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_cierre_con_gastos_pendientes\",\"function_schema\":\"public\",\"name\":\"caja_diaria_bloquear_gastos_pendientes\",\"schema\":\"public\",\"table\":\"caja_diaria\"},{\"definition_md5\":\"a2c817b9772823ca3ed5a1474ab0b5f5\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"creditos_cartera_vincular_cliente\",\"function_schema\":\"kora_private\",\"name\":\"clientes_link_credit_portfolio\",\"schema\":\"public\",\"table\":\"clientes\"},{\"definition_md5\":\"7ecc3226efe3ad28bba8f8678966968f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"addi_proteger_aplicacion\",\"function_schema\":\"cobros_private\",\"name\":\"addi_proteger_aplicacion_bancaria\",\"schema\":\"public\",\"table\":\"cobros_allocations\"},{\"definition_md5\":\"ec2531c654fcbafa085b6b5870f81989\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"banco_creditek_cobro_trigger\",\"function_schema\":\"kora_private\",\"name\":\"banco_creditek_cobro_real\",\"schema\":\"public\",\"table\":\"cobros_deposits\"},{\"definition_md5\":\"79c222c6aac8cc7cc61dea56d3b27d27\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_costo_promedio_tienda_historial\",\"function_schema\":\"public\",\"name\":\"costo_promedio_tienda_historial_inmutable\",\"schema\":\"public\",\"table\":\"costo_promedio_tienda_historial\"},{\"definition_md5\":\"2b521f6cc7ca9e1aa47ca67ba9ca6303\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_creditos\",\"schema\":\"public\",\"table\":\"creditos\"},{\"definition_md5\":\"baeae6453690bb833cd57e78a6285967\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"sincronizar_venta_addi\",\"function_schema\":\"cobros_private\",\"name\":\"cobros_venta_addi\",\"schema\":\"public\",\"table\":\"creditos\"},{\"definition_md5\":\"e2911b835fd8f04f7e244a5352eb4e8f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_ajuste_saldos_auditoria\",\"function_schema\":\"public\",\"name\":\"proteger_ajuste_cartera\",\"schema\":\"public\",\"table\":\"cuenta_corriente\"},{\"definition_md5\":\"8acdc88e58fcaac953c27082e8dd7cc7\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_libro_cartera_retail\",\"function_schema\":\"public\",\"name\":\"trg_proteger_libro_cartera_retail\",\"schema\":\"public\",\"table\":\"cuenta_corriente\"},{\"definition_md5\":\"3daf7703d84fdb57967e53b019886586\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"banco_creditek_finanzas_trigger\",\"function_schema\":\"kora_private\",\"name\":\"banco_creditek_gasto_finanzas_real\",\"schema\":\"public\",\"table\":\"financial_entries\"},{\"definition_md5\":\"98b7405be5b4cdeee7463aa2f07e3a49\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"payment_destination_guard_paid\",\"function_schema\":\"public\",\"name\":\"financial_entry_destination_before_paid\",\"schema\":\"public\",\"table\":\"financial_entries\"},{\"definition_md5\":\"b327dc6aaf774906ff742a7d07ba671d\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"financial_entry_reuse_identity\",\"function_schema\":\"kora_private\",\"name\":\"financial_entry_reuse_identity\",\"schema\":\"public\",\"table\":\"financial_entries\"},{\"definition_md5\":\"4f4a0dfdcf62221f02ad40eb383b4737\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"retiro_retail_guardar_estado\",\"function_schema\":\"kora_private\",\"name\":\"retiro_retail_estado\",\"schema\":\"public\",\"table\":\"financial_entries\"},{\"definition_md5\":\"fcb77e075f3e0a4e4f4e87952da7a2e2\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"socios_finanzas_guardar\",\"function_schema\":\"inventario_control\",\"name\":\"socios_inventario_finanzas_guard\",\"schema\":\"public\",\"table\":\"financial_entries\"},{\"definition_md5\":\"73a94edfc91f91d7c07832dbafcae388\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"financial_template_clear_changed_person\",\"function_schema\":\"kora_private\",\"name\":\"financial_template_person_snapshot\",\"schema\":\"public\",\"table\":\"financial_recurring_templates\"},{\"definition_md5\":\"b45454b6fcd3b756e2f6a3d5547b5088\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_gastos\",\"schema\":\"public\",\"table\":\"gastos\"},{\"definition_md5\":\"1b96af4482ee44a3498b2f2b7f952f9e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"auditar\",\"function_schema\":\"gastos_correccion_private\",\"name\":\"gastos_historial_update\",\"schema\":\"public\",\"table\":\"gastos\"},{\"definition_md5\":\"5bf14e2eede42e5ddd77c68e33760e16\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"validar_gasto_efectivo_caja\",\"function_schema\":\"public\",\"name\":\"gastos_limite_efectivo_caja\",\"schema\":\"public\",\"table\":\"gastos\"},{\"definition_md5\":\"03f7d9d6ceed3143b86f1c81963a07c1\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_si_periodo_cerrado\",\"function_schema\":\"public\",\"name\":\"trg_bloqueo_periodo_gastos\",\"schema\":\"public\",\"table\":\"gastos\"},{\"definition_md5\":\"1190645dc1183b28d6bd8540703d9a98\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_snapshot_instruccion_consignacion\",\"function_schema\":\"public\",\"name\":\"instrucciones_consignacion_snapshot_inmutable\",\"schema\":\"public\",\"table\":\"instrucciones_consignacion\"},{\"definition_md5\":\"4c523862097c4c2bbdefbf05a67e475f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"registrar_recaudo_creditek\",\"function_schema\":\"kora_private\",\"name\":\"registrar_recaudo_creditek\",\"schema\":\"public\",\"table\":\"instrucciones_consignacion\"},{\"definition_md5\":\"bfcfff93d6946aa98dd201b49d87fe62\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"kora_incident_comment_notification\",\"function_schema\":\"public\",\"name\":\"kora_incident_comments_notify\",\"schema\":\"public\",\"table\":\"kora_incident_comments\"},{\"definition_md5\":\"6d9c8d12151c34f3d6092aa016c8b578\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"read_terminal_incident_notices\",\"function_schema\":\"kora_private\",\"name\":\"kora_incident_notices_terminal_read\",\"schema\":\"public\",\"table\":\"kora_incidents\"},{\"definition_md5\":\"1fc31a0000531e498d2bd6e23a5f43ba\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"kora_incident_audit_changes\",\"function_schema\":\"public\",\"name\":\"kora_incidents_audit_changes\",\"schema\":\"public\",\"table\":\"kora_incidents\"},{\"definition_md5\":\"c82724828a6853d6c43b4b3b5a807dc1\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"read_new_terminal_incident_notice\",\"function_schema\":\"kora_private\",\"name\":\"kora_new_incident_notice_terminal_read\",\"schema\":\"public\",\"table\":\"kora_notifications\"},{\"definition_md5\":\"854deb71d7ff745188c66675d3619a30\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"kora_nova_preserve_evidence\",\"function_schema\":\"public\",\"name\":\"preserve_outbox\",\"schema\":\"public\",\"table\":\"kora_nova_outbox\"},{\"definition_md5\":\"d44c6bbefcff9e31d69f3b89061ca3d8\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"kora_nova_preserve_evidence\",\"function_schema\":\"public\",\"name\":\"preserve_source\",\"schema\":\"public\",\"table\":\"kora_nova_sources\"},{\"definition_md5\":\"ae797eb178e7ff50c9249953bf87568f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_preparar_gestion\",\"function_schema\":\"public\",\"name\":\"krediya_gestion_preparar\",\"schema\":\"public\",\"table\":\"krediya_gestiones\"},{\"definition_md5\":\"cdf0d5e35bce9fc27186409c070499eb\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_impedir_reescritura_gestion\",\"function_schema\":\"public\",\"name\":\"krediya_gestiones_inmutables\",\"schema\":\"public\",\"table\":\"krediya_gestiones\"},{\"definition_md5\":\"cbaa32104555d6712f7eeeabc50d60e3\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"enqueue_krediya_mail\",\"function_schema\":\"kora_private\",\"name\":\"enqueue_krediya_mail\",\"schema\":\"public\",\"table\":\"krediya_import_reports\"},{\"definition_md5\":\"c6d12ea3755d632d432cddf283572f2c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_preparar_instruccion\",\"function_schema\":\"public\",\"name\":\"krediya_instruccion_preparar\",\"schema\":\"public\",\"table\":\"krediya_instrucciones\"},{\"definition_md5\":\"b46b7e82dcfbb5c82665082f62ade1ba\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_impedir_reescritura_gestion\",\"function_schema\":\"public\",\"name\":\"krediya_instrucciones_inmutables\",\"schema\":\"public\",\"table\":\"krediya_instrucciones\"},{\"definition_md5\":\"4f942a088acc929e5ee204ac55bee099\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"no_devengar_operacion_revertida\",\"function_schema\":\"kora_private\",\"name\":\"no_bono_operacion_revertida\",\"schema\":\"public\",\"table\":\"liquidation_bonuses\"},{\"definition_md5\":\"2b8dcd7618899b32b1348318e620ab53\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"capture_krediya_import_report\",\"function_schema\":\"kora_private\",\"name\":\"capture_krediya_import_report\",\"schema\":\"public\",\"table\":\"liquidation_domain_events\"},{\"definition_md5\":\"f8cac4549207f94deeb5ecf19ee53fb8\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_comercio_vinculado\",\"function_schema\":\"kora_private\",\"name\":\"exigir_comercio_vinculado\",\"schema\":\"public\",\"table\":\"liquidation_incidents\"},{\"definition_md5\":\"4a76034de03c6dbf76dd4cd5aa61af4a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_incidente_estado\",\"function_schema\":\"kora_private\",\"name\":\"krediya_incidente_estado\",\"schema\":\"public\",\"table\":\"liquidation_incidents\"},{\"definition_md5\":\"3272d0c546ab9527f137c84dd5c7f8a5\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_pvp_followup_only\",\"function_schema\":\"kora_private\",\"name\":\"krediya_pvp_followup_only\",\"schema\":\"public\",\"table\":\"liquidation_incidents\"},{\"definition_md5\":\"8232056283eaee995b7d051c97085426\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_control_elegibilidad\",\"function_schema\":\"kora_private\",\"name\":\"krediya_control_elegibilidad\",\"schema\":\"public\",\"table\":\"liquidation_operations\"},{\"definition_md5\":\"40effe7e1d1de6be24a10f1c2bae7347\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"krediya_registrar_seguimiento\",\"function_schema\":\"kora_private\",\"name\":\"krediya_registrar_seguimiento\",\"schema\":\"public\",\"table\":\"liquidation_operations\"},{\"definition_md5\":\"d9534b49df0c8d4eed324326ba69feb0\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_impedir_cambio_operacion_aprobada\",\"function_schema\":\"public\",\"name\":\"liquidation_operation_immutable_after_approval\",\"schema\":\"public\",\"table\":\"liquidation_operations\"},{\"definition_md5\":\"f75f5c7e56e6274d7e10bbea142de278\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"reconocer_krediya_al_vincular_comercio\",\"function_schema\":\"kora_private\",\"name\":\"reconocer_krediya_al_vincular_comercio\",\"schema\":\"public\",\"table\":\"liquidation_operations\"},{\"definition_md5\":\"04ba3b30b011d4804f39d51829d497a3\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"operacion_revertida_no_reactivar\",\"function_schema\":\"kora_private\",\"name\":\"zz_operacion_revertida_no_reactivar\",\"schema\":\"public\",\"table\":\"liquidation_operations\"},{\"definition_md5\":\"86c20d59618a2b55e8a21080bcba2c11\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"tesoreria_after_liquidation_approval\",\"function_schema\":\"public\",\"name\":\"liquidation_generate_treasury_destinations\",\"schema\":\"public\",\"table\":\"liquidations\"},{\"definition_md5\":\"4f9aa1cd2966e82502bd4887bf8fd967\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_impedir_cambio_aprobado\",\"function_schema\":\"public\",\"name\":\"liquidation_immutable_after_approval\",\"schema\":\"public\",\"table\":\"liquidations\"},{\"definition_md5\":\"b29f3fbdd0f78e9b426c1a9e6eb6f1d7\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"tesoreria_eliminar_pagos_retail_nuevos\",\"function_schema\":\"public\",\"name\":\"liquidation_remove_future_retail_payments\",\"schema\":\"public\",\"table\":\"liquidations\"},{\"definition_md5\":\"20d5e0e3d7cedcce6f198c831be34fc9\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_bonos_pendientes\",\"function_schema\":\"kora_private\",\"name\":\"proteger_bonos_pendientes\",\"schema\":\"public\",\"table\":\"liquidations\"},{\"definition_md5\":\"782d02c675c8cc1cc566f1b07cfea4aa\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"congelar_costo_movimiento_tienda\",\"function_schema\":\"kora_private\",\"name\":\"congelar_costo_movimiento_tienda\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"50093042b6b9d05dca5448a452df0039\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"registrar_lote_cantidad_desde_movimiento\",\"function_schema\":\"public\",\"name\":\"movimientos_crear_lote_cantidad\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"ef126815f9232e5ec15fa73e25756e83\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_mutacion_movimientos\",\"function_schema\":\"public\",\"name\":\"trg_movimientos_inmutable\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"bf18edef7176127a1e172edc80449049\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"costo_movimiento\",\"function_schema\":\"inventario_control\",\"name\":\"zz_conteo_costo_movimiento\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"f6ae3da941a87762b763b3a52895af56\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"costo_inicial_movimiento\",\"function_schema\":\"kora_private\",\"name\":\"zz_costo_inicial_movimiento\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"8322e110e1b7462857d76e40d1978ce6\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_movimientos\",\"schema\":\"public\",\"table\":\"movimientos_caja_tienda\"},{\"definition_md5\":\"4bc6bccfbc5ba978b3590110ea5ee1c3\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"impedir_edicion_movimiento_caja_tienda\",\"function_schema\":\"public\",\"name\":\"movimientos_caja_tienda_inmutables\",\"schema\":\"public\",\"table\":\"movimientos_caja_tienda\"},{\"definition_md5\":\"b83bf2f20a19fd2e1dfa35e89ed9391f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_ajuste_saldos_auditoria\",\"function_schema\":\"public\",\"name\":\"proteger_ajuste_caja\",\"schema\":\"public\",\"table\":\"movimientos_caja_tienda\"},{\"definition_md5\":\"a607466e6b4c1c5d906a358c0d0878e5\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"impedir_mutacion_movimiento_cartera\",\"function_schema\":\"public\",\"name\":\"movimientos_cartera_inmutable\",\"schema\":\"public\",\"table\":\"movimientos_cartera\"},{\"definition_md5\":\"7e8cc8c6bc6a3a4651a4d164e5d937ac\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"validar_cuenta_movimiento_cartera\",\"function_schema\":\"public\",\"name\":\"movimientos_cartera_validar_cuenta\",\"schema\":\"public\",\"table\":\"movimientos_cartera\"},{\"definition_md5\":\"423bcb8469875aedbc01ce727dee8fb8\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_ajuste_auditoria_cartera_b2b\",\"function_schema\":\"public\",\"name\":\"proteger_movimiento_auditoria_b2b\",\"schema\":\"public\",\"table\":\"movimientos_cartera\"},{\"definition_md5\":\"b3793f40e8ce530cce928bd8bcd347bc\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"enrutar_movimiento_cartera_retail\",\"function_schema\":\"public\",\"name\":\"trg_enrutar_movimiento_cartera_retail\",\"schema\":\"public\",\"table\":\"movimientos_cartera\"},{\"definition_md5\":\"b40ec538207eb998dcb594acf971ebb6\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"nova_retail_photo_audit\",\"function_schema\":\"public\",\"name\":\"record_retail_photo_review\",\"schema\":\"public\",\"table\":\"nova_retail_photo_reviews\"},{\"definition_md5\":\"270d091b44a405560d6530f9d3ca6253\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"nova_retail_reference_audit\",\"function_schema\":\"public\",\"name\":\"nova_retail_reference_audit\",\"schema\":\"public\",\"table\":\"nova_retail_reference_replacements\"},{\"definition_md5\":\"e3bcb32ce748a27fc8829296beb238df\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"vincular_ficha_nuevo_comercio\",\"function_schema\":\"public\",\"name\":\"vincular_ficha_nuevo_comercio\",\"schema\":\"public\",\"table\":\"origenes\"},{\"definition_md5\":\"5e2bd9aa2c2f1adbd11da646979fbf9f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_otp_registro_seguro\",\"function_schema\":\"public\",\"name\":\"otp_codigos_proteger_registro_seguro\",\"schema\":\"public\",\"table\":\"otp_codigos\"},{\"definition_md5\":\"bea2fe2964f1d0e694d0ab476ef72d09\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"no_devengar_operacion_revertida\",\"function_schema\":\"kora_private\",\"name\":\"no_pago_operacion_revertida\",\"schema\":\"public\",\"table\":\"payment_items\"},{\"definition_md5\":\"f7ba4357dc485a769b26121edea3769e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_refrescar_items_orden_pago\",\"function_schema\":\"public\",\"name\":\"payment_items_refresh_treasury_order\",\"schema\":\"public\",\"table\":\"payment_items\"},{\"definition_md5\":\"ef23087a51c06a6a1c3f315b942eb996\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_corregir_nombre_plataforma_orden\",\"function_schema\":\"public\",\"name\":\"zzz_payment_items_platform_name\",\"schema\":\"public\",\"table\":\"payment_items\"},{\"definition_md5\":\"b54866ffef240ea3e9ec9a6472bb1e2e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"banco_creditek_pago_trigger\",\"function_schema\":\"kora_private\",\"name\":\"banco_creditek_pago_real\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"50b340d40d37978667fa1cf686470f94\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_autorizacion_individual_pago\",\"function_schema\":\"kora_private\",\"name\":\"exigir_autorizacion_individual_pago\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"1d9ef6400491df75a9377ad35b273592\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_bono_preparado_para_pago\",\"function_schema\":\"kora_private\",\"name\":\"exigir_bono_preparado_para_pago\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"fa399d13ebe09e0c913c81d8fa121422\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_soporte_real_pago\",\"function_schema\":\"kora_private\",\"name\":\"exigir_soporte_real_pago\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"c76d1e68cf5b1950187bec789246851d\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"pago_exigir_recuperacion\",\"function_schema\":\"kora_private\",\"name\":\"pago_exigir_recuperacion\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"e57bd8a88d0c552f199366ad72693a2e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"clasificar_pago_historico_por_corte\",\"function_schema\":\"public\",\"name\":\"payment_order_classify_historical_cutoff\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"8441d26761a526d98d279e6e8acf4d74\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_exigir_liquidacion_aprobada_para_pago\",\"function_schema\":\"public\",\"name\":\"payment_order_requires_approved_liquidation\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"ba739a3bea3100fddf6d032990abdd81\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"payment_orders_capture_business_snapshot\",\"function_schema\":\"public\",\"name\":\"payment_orders_capture_business_snapshot\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"69667ecee53e8d188d25542fcb1e5e2a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"creditos_cartera_crear_al_pagar\",\"function_schema\":\"kora_private\",\"name\":\"payment_orders_create_credit_portfolio\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"b9324d715a484d362c155160c26302e9\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aliados_preparar_orden_pago\",\"function_schema\":\"public\",\"name\":\"payment_orders_prepare_treasury\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"9218953b51d22f657ad039aca565634f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"creditos_cartera_validar_pago_nova\",\"function_schema\":\"kora_private\",\"name\":\"payment_orders_require_nova_when_enabled\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"cb8b56a1ee3090c571434cacc1f0be1e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_pago_con_cruce\",\"function_schema\":\"kora_private\",\"name\":\"proteger_pago_con_cruce\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"1a90fecdce58943cd88f0ce47ca3ac76\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_segmento_pago\",\"function_schema\":\"kora_private\",\"name\":\"proteger_segmento_pago\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"f4d3d30aec30e16f1b347e3292efae9a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"exigir_cuenta_al_pagar\",\"function_schema\":\"krediya_private\",\"name\":\"zz_krediya_cuenta_al_pagar\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"ae86a4370a933a2e41fbe63e86b2a56a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_destino_pago\",\"function_schema\":\"public\",\"name\":\"zzzz_proteger_destino_pago\",\"schema\":\"public\",\"table\":\"payment_orders\"},{\"definition_md5\":\"d1c52d890d7482d83dc21bedc1ec7ba6\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_meta_utilidad_presupuesto\",\"function_schema\":\"public\",\"name\":\"bloquear_meta_utilidad_presupuesto\",\"schema\":\"public\",\"table\":\"presupuestos\"},{\"definition_md5\":\"f59132493d31f568f09026601fbd8c1d\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"impedir_edicion_producto_foto_historial\",\"function_schema\":\"public\",\"name\":\"producto_foto_historial_inmutable\",\"schema\":\"public\",\"table\":\"producto_foto_historial\"},{\"definition_md5\":\"ecc2ffc1ff9ed57465dbe70bdbfc35b0\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"auditar_foto_producto\",\"function_schema\":\"public\",\"name\":\"productos_auditar_foto\",\"schema\":\"public\",\"table\":\"productos\"},{\"definition_md5\":\"de17700ed0c73a8e8b96c31843979def\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_linea\",\"function_schema\":\"remisiones_edicion_private\",\"name\":\"proteger_remision_item\",\"schema\":\"public\",\"table\":\"remision_items\"},{\"definition_md5\":\"80a16c1f45caccc659745737b27222f6\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_linea\",\"function_schema\":\"remisiones_edicion_private\",\"name\":\"proteger_remision_margen\",\"schema\":\"public\",\"table\":\"remision_margenes\"},{\"definition_md5\":\"23410d6849fba6801fe07e36732a9e9f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_cabecera\",\"function_schema\":\"remisiones_edicion_private\",\"name\":\"proteger_remision_cabecera\",\"schema\":\"public\",\"table\":\"remisiones\"},{\"definition_md5\":\"e7d5d1c1e15c152f52a24709c2c54dc4\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"addi_compensacion_exige_autorizacion\",\"function_schema\":\"cobros_private\",\"name\":\"addi_compensacion_autorizacion_guard\",\"schema\":\"public\",\"table\":\"retail_b2b_compensations\"},{\"definition_md5\":\"2be9aaec3ef83282d1ae9d1c371ca9d1\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"liquidaciones_bloquear_politica_solapada\",\"function_schema\":\"public\",\"name\":\"settlement_policy_no_overlap\",\"schema\":\"public\",\"table\":\"settlement_policy_versions\"},{\"definition_md5\":\"840f096e95eef43affaa72e928f0fdcf\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"normalizar_financiera_solicitud\",\"function_schema\":\"public\",\"name\":\"trg_normalizar_financiera_solicitud\",\"schema\":\"public\",\"table\":\"solicitudes\"},{\"definition_md5\":\"193eec0144a99c6b4bf7af604c235ee3\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"capturar\",\"function_schema\":\"inventario_control\",\"name\":\"conteos_stock\",\"schema\":\"public\",\"table\":\"stock_cantidad\"},{\"definition_md5\":\"64fcd22551ceae91c7178263a5c40dbd\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"ponderar_costo_entrada_accesorio\",\"function_schema\":\"public\",\"name\":\"stock_cantidad_ponderar_entrada_accesorio\",\"schema\":\"public\",\"table\":\"stock_cantidad\"},{\"definition_md5\":\"4684eecc9f4df6aac9167042116bbc16\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"banco_creditek_gasto_tesoreria_trigger\",\"function_schema\":\"kora_private\",\"name\":\"banco_creditek_gasto_tesoreria_real\",\"schema\":\"public\",\"table\":\"treasury_movements\"},{\"definition_md5\":\"a3abec4b7a834ac9dc4571a8d562342c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"payment_destination_guard_paid\",\"function_schema\":\"public\",\"name\":\"treasury_expense_destination_before_paid\",\"schema\":\"public\",\"table\":\"treasury_movements\"},{\"definition_md5\":\"86239c81e23009ae9a6c2d64bc868dc8\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"capturar\",\"function_schema\":\"inventario_control\",\"name\":\"conteos_unidades\",\"schema\":\"public\",\"table\":\"unidades\"},{\"definition_md5\":\"d16bf52a4155fe849b20bd7cca71f395\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_items\",\"schema\":\"public\",\"table\":\"venta_items\"},{\"definition_md5\":\"3631daa082be11faeaae7934c133f150\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_registro_venta_confirmada\",\"function_schema\":\"public\",\"name\":\"venta_items_confirmados_inmutables\",\"schema\":\"public\",\"table\":\"venta_items\"},{\"definition_md5\":\"6a853da092612d947c67cf69f0514fc4\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"congelar_costo_tienda_venta\",\"function_schema\":\"public\",\"name\":\"venta_items_congelar_costo_tienda\",\"schema\":\"public\",\"table\":\"venta_items\"},{\"definition_md5\":\"b55156ab1825a77ea319d098609624ec\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"aplicar_utilidad_tienda_costo_remision\",\"function_schema\":\"public\",\"name\":\"zz_venta_items_utilidad_tienda\",\"schema\":\"public\",\"table\":\"venta_items\"},{\"definition_md5\":\"bf0cb07852b1303787a47fa24aeb29d3\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"fecha_venta_registrada\",\"function_schema\":\"kora_private\",\"name\":\"a_fecha_venta_registrada\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"7da30454155e1584a522bebfe2412749\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_ventas\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"44fda2528ebec4b2025df8da67fd80f1\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"anular_venta_addi\",\"function_schema\":\"cobros_private\",\"name\":\"cobros_anular_venta_addi\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"3336fe904b082af00fbff2ab9b8eae0c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_efectivo_devuelto\",\"function_schema\":\"kora_private\",\"name\":\"proteger_efectivo_devuelto\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"fade296e50360834f868ef5682821474\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"bloquear_si_periodo_cerrado\",\"function_schema\":\"public\",\"name\":\"trg_bloqueo_periodo_ventas\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"1a5c59e4aab44797a354bac26d1407fb\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_registro_venta_confirmada\",\"function_schema\":\"public\",\"name\":\"ventas_confirmadas_inmutables\",\"schema\":\"public\",\"table\":\"ventas\"}]"
+  }
+}

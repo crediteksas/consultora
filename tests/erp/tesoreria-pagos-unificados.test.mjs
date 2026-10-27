@@ -48,28 +48,28 @@ test('cola de Mayte muestra soporte sin segunda aprobación y escapa los datos',
 });
 function fixture(){
   let row={...expense},rpcCount=0,uploads=0;const paths=[];
-  const sb={from(table){assert.equal(table,'financial_entries');const q={select(){return q;},eq(k,id){assert.equal(id,'expense');return q;},async single(){return {data:{...row}};}};return q;},storage:{from(bucket){assert.equal(bucket,'soportes');return {async upload(path,f,options){uploads++;paths.push(path);assert.equal(options.upsert,false);return {};},remove(){throw Error('No se borra evidencia');}};}},async rpc(name,args){rpcCount++;assert.equal(name,'finanzas_registrar_pago_con_origen');assert.equal(args.p_id,expense.id);row={...row,status:'pagado',paid_at:'now',support_path:args.p_support_path,pagado_desde_banco_creditek:args.p_desde_banco_creditek};return {data:{...row}};}};
+  const sb={from(table){assert.equal(table,'financial_entries');const q={select(){return q;},eq(k,id){assert.equal(id,'expense');return q;},async single(){return {data:{...row}};}};return q;},storage:{from(bucket){assert.equal(bucket,'soportes');return {async upload(path,f,options){uploads++;paths.push(path);assert.equal(options.upsert,false);return {};},remove(){throw Error('No se borra evidencia');}};}},async rpc(name,args){rpcCount++;assert.equal(name,'finanzas_registrar_pago_real');assert.equal(args.p_id,expense.id);row={...row,status:'pagado',paid_at:'now',support_path:args.p_support_path,pagado_desde_banco_creditek:args.p_desde_banco_creditek};return {data:{...row}};}};
   return {sb,get row(){return row;},set row(v){row=v;},get rpcCount(){return rpcCount;},get uploads(){return uploads;},paths};
 }
 test('soporte usa el ID existente, conserva autorización y un segundo intento no registra otro pago',async()=>{
-  const f=fixture(),r=U.createRecorder(f.sb);const paid=await r.record('expense',file,true);
+  const f=fixture(),r=U.createRecorder(f.sb);const paid=await r.record('expense',file,true,'2026-10-21');
   assert.equal(paid.approved_by,'oscar');assert.equal(paid.status,'pagado');assert.match(paid.support_path,/^finanzas\/[a-f0-9-]+\.pdf$/);
-  await r.record('expense',file,true);assert.equal(f.rpcCount,1);assert.equal(f.uploads,1);
+  await r.record('expense',file,true,'2026-10-21');assert.equal(f.rpcCount,1);assert.equal(f.uploads,1);
 });
 test('no sube evidencia de gasto pagado o sin aprobar; rechaza archivo inválido',async()=>{
-  for(const patch of [{status:'pagado'},{status:'pendiente_aprobacion'},{approved_by:null}]){const f=fixture();f.row={...f.row,...patch};await assert.rejects(U.createRecorder(f.sb).record('expense',file,true),/pagado|aprobado/);assert.equal(f.uploads,0);}
-  for(const bad of [null,{...file,size:0},{...file,size:11*1024*1024},{...file,type:'text/html'}]){const f=fixture();await assert.rejects(U.createRecorder(f.sb).record('expense',bad,true),/PDF/);assert.equal(f.rpcCount,0);}
+  for(const patch of [{status:'pagado'},{status:'pendiente_aprobacion'},{approved_by:null}]){const f=fixture();f.row={...f.row,...patch};await assert.rejects(U.createRecorder(f.sb).record('expense',file,true,'2026-10-21'),/pagado|aprobado/);assert.equal(f.uploads,0);}
+  for(const bad of [null,{...file,size:0},{...file,size:11*1024*1024},{...file,type:'text/html'}]){const f=fixture();await assert.rejects(U.createRecorder(f.sb).record('expense',bad,true,'2026-10-21'),/PDF/);assert.equal(f.rpcCount,0);}
 });
 test('respuesta de red perdida confirma el pago antes de reintentar y conserva evidencia',async()=>{
   const f=fixture(),rpc=f.sb.rpc;f.sb.rpc=async(...args)=>{await rpc(...args);throw Error('Network');};
-  const recorder=U.createRecorder(f.sb);assert.equal((await recorder.record('expense',file,true)).status,'pagado');assert.equal(f.rpcCount,1);
+  const recorder=U.createRecorder(f.sb);assert.equal((await recorder.record('expense',file,true,'2026-10-21')).status,'pagado');assert.equal(f.rpcCount,1);
 });
 test('error antes del registro permite reintentar con el mismo soporte, sin doble clic',async()=>{
   const f=fixture(),original=f.sb.rpc;let release;
-  f.sb.rpc=()=>new Promise(resolve=>{release=resolve;});const recorder=U.createRecorder(f.sb),first=recorder.record('expense',file,true);
-  while(!release)await new Promise(resolve=>setImmediate(resolve));await assert.rejects(recorder.record('expense',file,true),/procesando/);
+  f.sb.rpc=()=>new Promise(resolve=>{release=resolve;});const recorder=U.createRecorder(f.sb),first=recorder.record('expense',file,true,'2026-10-21');
+  while(!release)await new Promise(resolve=>setImmediate(resolve));await assert.rejects(recorder.record('expense',file,true,'2026-10-21'),/procesando/);
   release({error:{message:'Sin conexión'}});await assert.rejects(first);
-  f.sb.rpc=original;await recorder.record('expense',file,true);assert.equal(f.uploads,1);assert.equal(f.rpcCount,1);
+  f.sb.rpc=original;await recorder.record('expense',file,true,'2026-10-21');assert.equal(f.uploads,1);assert.equal(f.rpcCount,1);
 });
 test('orden imprime solo las filas elegidas y conserva referencias y nóminas',()=>{
   const source=readFileSync('creditek/erp/aliados-tesoreria-app.js','utf8');
@@ -155,3 +155,6 @@ test('pagos de una orden emitida no vuelven a ofrecerse, pero conservan el botó
  const rows=U.reportRows([], [expense], [], ready,new Set(['FIN-expense']));assert.deepEqual(rows,[]);
  assert.match(U.cards([expense],String),/data-financial-support="expense"/);
 });
+
+test('fecha real obligatoria antes de subir el soporte; no acepta fechas imposibles o futuras',async()=>{for(const day of [undefined,'','2026-02-30','2999-01-01']){const f=fixture();await assert.rejects(U.createRecorder(f.sb).record('expense',file,true,day),/fecha real/);assert.equal(f.uploads,0);}});
+test('envía fecha real al servidor y conserva el aviso de conciliación',async()=>{const f=fixture(),original=f.sb.rpc;f.sb.rpc=async(name,args)=>{assert.equal(args.p_fecha_pago,'2026-10-21');const result=await original(name,args);result.data.conciliacion_pendiente=true;return result;};const result=await U.createRecorder(f.sb).record('expense',file,true,'2026-10-21');assert.equal(result.conciliacion_pendiente,true);});

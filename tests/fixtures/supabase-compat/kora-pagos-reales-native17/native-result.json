@@ -1,0 +1,459 @@
+{
+  "run_id": "e32af67810c04f5fa221faac77c79e05",
+  "complete": true,
+  "started_at": "2026-10-27T21:08:45.496304+00:00",
+  "checks": [
+    {
+      "name": "upgrade: isolated PG17.6 no network, ports or mounts",
+      "passed": true
+    },
+    {
+      "name": "upgrade: complete source catalog parity with39 declared substitutions",
+      "passed": true
+    },
+    {
+      "name": "upgrade: exact roles memberships schemas",
+      "passed": true
+    },
+    {
+      "name": "upgrade: postgres owner is not superuser",
+      "passed": true
+    },
+    {
+      "name": "upgrade: source-identical Auth helpers",
+      "passed": true
+    },
+    {
+      "name": "upgrade: all application tables empty initially",
+      "passed": true
+    },
+    {
+      "name": "upgrade: native fictional store daily confirmation route",
+      "passed": true
+    },
+    {
+      "name": "upgrade: source creates9 same-partner groups",
+      "passed": true
+    },
+    {
+      "name": "upgrade: valid named controller reads module",
+      "passed": true
+    },
+    {
+      "name": "upgrade: other manager cannot review",
+      "passed": true
+    },
+    {
+      "name": "upgrade: other store cannot review",
+      "passed": true
+    },
+    {
+      "name": "upgrade: forged metadata cannot gain controller",
+      "passed": true
+    },
+    {
+      "name": "upgrade: inactive controller denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: anonymous wrapper denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: private table socios_grupos_tienda denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: private table socios_resultados denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: private table socios_operaciones denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: private table socios_destinos denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: private table socios_retiros_revisiones denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: pure source helper owner-only",
+      "passed": true
+    },
+    {
+      "name": "upgrade: exact full catalog postcommit reversal before first use",
+      "passed": true
+    },
+    {
+      "name": "upgrade: identical committed reapplication",
+      "passed": true
+    },
+    {
+      "name": "upgrade: same-store cuts remain separate pending balances",
+      "passed": true
+    },
+    {
+      "name": "upgrade: existing paid legacy retirement blocks without guessing",
+      "passed": true
+    },
+    {
+      "name": "upgrade: readonly lookup exposes exact200 row and no decision",
+      "passed": true
+    },
+    {
+      "name": "upgrade: stale source fingerprint rejected",
+      "passed": true
+    },
+    {
+      "name": "upgrade: explicit confirmation required",
+      "passed": true
+    },
+    {
+      "name": "upgrade: successful idempotent review",
+      "passed": true
+    },
+    {
+      "name": "upgrade: requestID cannot carry different decision",
+      "passed": true
+    },
+    {
+      "name": "upgrade: natural row cannot be contradicted",
+      "passed": true
+    },
+    {
+      "name": "upgrade: cannot deduct same retirement from two inventories",
+      "passed": true
+    },
+    {
+      "name": "upgrade: reviewed current subtracts once; prior classification does not carry forward",
+      "passed": true
+    },
+    {
+      "name": "upgrade: negative result remains independent pending funding",
+      "passed": true
+    },
+    {
+      "name": "upgrade: review is immutable even to table owner",
+      "passed": true
+    },
+    {
+      "name": "upgrade: review preserves exact legacy financial row",
+      "passed": true
+    },
+    {
+      "name": "upgrade: review creates no money cash inventory or supplier records",
+      "passed": true
+    },
+    {
+      "name": "upgrade: safe rollback refuses to erase accepted reviews",
+      "passed": true
+    },
+    {
+      "name": "upgrade: refused rollback preserves final catalog and two reviews",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments store cannot register",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments other manager denied",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments anon cannot execute",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments future date rejected",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments missing receipt rejected",
+      "passed": true
+    },
+    {
+      "name": "upgrade: legacy origin RPC retired",
+      "passed": true
+    },
+    {
+      "name": "upgrade: legacy direct RPC retired",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payment saved despite book deficit",
+      "passed": true
+    },
+    {
+      "name": "upgrade: real date preserved",
+      "passed": true
+    },
+    {
+      "name": "upgrade: duplicate same receipt idempotent",
+      "passed": true
+    },
+    {
+      "name": "upgrade: payments replay with different date rejected",
+      "passed": true
+    },
+    {
+      "name": "upgrade: replay leaves exact bank balance",
+      "passed": true
+    },
+    {
+      "name": "upgrade: before opening requires reconciliation",
+      "passed": true
+    },
+    {
+      "name": "upgrade: before opening does not debit twice",
+      "passed": true
+    },
+    {
+      "name": "rebuild: isolated PG17.6 no network, ports or mounts",
+      "passed": true
+    },
+    {
+      "name": "rebuild: complete source catalog parity with39 declared substitutions",
+      "passed": true
+    },
+    {
+      "name": "rebuild: exact roles memberships schemas",
+      "passed": true
+    },
+    {
+      "name": "rebuild: postgres owner is not superuser",
+      "passed": true
+    },
+    {
+      "name": "rebuild: source-identical Auth helpers",
+      "passed": true
+    },
+    {
+      "name": "rebuild: all application tables empty initially",
+      "passed": true
+    },
+    {
+      "name": "rebuild: native fictional store daily confirmation route",
+      "passed": true
+    },
+    {
+      "name": "rebuild: source creates9 same-partner groups",
+      "passed": true
+    },
+    {
+      "name": "rebuild: valid named controller reads module",
+      "passed": true
+    },
+    {
+      "name": "rebuild: other manager cannot review",
+      "passed": true
+    },
+    {
+      "name": "rebuild: other store cannot review",
+      "passed": true
+    },
+    {
+      "name": "rebuild: forged metadata cannot gain controller",
+      "passed": true
+    },
+    {
+      "name": "rebuild: inactive controller denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: anonymous wrapper denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: private table socios_grupos_tienda denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: private table socios_resultados denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: private table socios_operaciones denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: private table socios_destinos denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: private table socios_retiros_revisiones denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: pure source helper owner-only",
+      "passed": true
+    },
+    {
+      "name": "rebuild: exact full catalog postcommit reversal before first use",
+      "passed": true
+    },
+    {
+      "name": "rebuild: identical committed reapplication",
+      "passed": true
+    },
+    {
+      "name": "rebuild: same-store cuts remain separate pending balances",
+      "passed": true
+    },
+    {
+      "name": "rebuild: existing paid legacy retirement blocks without guessing",
+      "passed": true
+    },
+    {
+      "name": "rebuild: readonly lookup exposes exact200 row and no decision",
+      "passed": true
+    },
+    {
+      "name": "rebuild: stale source fingerprint rejected",
+      "passed": true
+    },
+    {
+      "name": "rebuild: explicit confirmation required",
+      "passed": true
+    },
+    {
+      "name": "rebuild: successful idempotent review",
+      "passed": true
+    },
+    {
+      "name": "rebuild: requestID cannot carry different decision",
+      "passed": true
+    },
+    {
+      "name": "rebuild: natural row cannot be contradicted",
+      "passed": true
+    },
+    {
+      "name": "rebuild: cannot deduct same retirement from two inventories",
+      "passed": true
+    },
+    {
+      "name": "rebuild: reviewed current subtracts once; prior classification does not carry forward",
+      "passed": true
+    },
+    {
+      "name": "rebuild: negative result remains independent pending funding",
+      "passed": true
+    },
+    {
+      "name": "rebuild: review is immutable even to table owner",
+      "passed": true
+    },
+    {
+      "name": "rebuild: review preserves exact legacy financial row",
+      "passed": true
+    },
+    {
+      "name": "rebuild: review creates no money cash inventory or supplier records",
+      "passed": true
+    },
+    {
+      "name": "rebuild: safe rollback refuses to erase accepted reviews",
+      "passed": true
+    },
+    {
+      "name": "rebuild: refused rollback preserves final catalog and two reviews",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments store cannot register",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments other manager denied",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments anon cannot execute",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments future date rejected",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments missing receipt rejected",
+      "passed": true
+    },
+    {
+      "name": "rebuild: legacy origin RPC retired",
+      "passed": true
+    },
+    {
+      "name": "rebuild: legacy direct RPC retired",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payment saved despite book deficit",
+      "passed": true
+    },
+    {
+      "name": "rebuild: real date preserved",
+      "passed": true
+    },
+    {
+      "name": "rebuild: duplicate same receipt idempotent",
+      "passed": true
+    },
+    {
+      "name": "rebuild: payments replay with different date rejected",
+      "passed": true
+    },
+    {
+      "name": "rebuild: replay leaves exact bank balance",
+      "passed": true
+    },
+    {
+      "name": "rebuild: before opening requires reconciliation",
+      "passed": true
+    },
+    {
+      "name": "rebuild: before opening does not debit twice",
+      "passed": true
+    }
+  ],
+  "catalog_evidence": {
+    "upgrade": {
+      "before_sha256": "e3b9e301ea02ca554fede752ac22ce7dbd1b7dcc05fb5762191aebd1ac0898a0",
+      "after_sha256": "10a80d2effacaf51753cdfbd4f1c2aa82b022a430d1a6347b557b777f815dba1",
+      "restored_sha256": "e3b9e301ea02ca554fede752ac22ce7dbd1b7dcc05fb5762191aebd1ac0898a0"
+    },
+    "rebuild": {
+      "before_sha256": "3692bad0c3a395226a147ce4248a947a93fce1c6e34e6735b5652d08f37bca2c",
+      "after_sha256": "121c5f4f900be4a12cf880861197860bb88b4bf1c3ad1053dddde50ee0f09a46",
+      "restored_sha256": "3692bad0c3a395226a147ce4248a947a93fce1c6e34e6735b5652d08f37bca2c"
+    }
+  },
+  "production_operations": 0,
+  "external_sends": 0,
+  "production_ready": false,
+  "scope": "Actual three SQL source delta: full current empty schema with finite ACL mirror, isolated update/reconstruction/reversal; not global minimum permissions certification",
+  "migration_sha256": {
+    "socios": "99304db38948cc4991ae58b8c46a1c4897759a84f5ce6a60cb6c98fde27fa305",
+    "tariff": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66",
+    "review": "dc7f6abe159eeda38216216e262c4457700cc3be5a31922fcbd7ec3f04da04e9",
+    "payments": "1fae91d0003e252251c1a6381e1901095e68d0de9826d164bae77c894fb8c330"
+  },
+  "rollback_sha256": "f393f0dd708a4a983c0eced1916e06bee81a7054763fb268ba47d291cadfe620",
+  "harness_source_sha256": {
+    "/private/tmp/kora-pay-native/native-review.py": "a02ed340b2155447637b19e240b151d7dad388733ff17b5c7caf9501958ba886"
+  },
+  "ground_truth_sha256": {
+    "model-private/schema-upgrade.sql": "ca4c3598f1240e6776a1ec6510aaa3dc108a5207602a2b2c47aee67aeed5a728",
+    "model-private/acl-upgrade.sql": "d3eca7956188a8773d4fb6021d59825fd5ed7ed013873c72d2d7fec02c7b5563",
+    "kora-snapshot.json": "45a6af6b1f1ee9623ff5b3c8e5bc195dd2ec963ef826597d394e1b798bfef5a4",
+    "kora-core.json": "ea695cb5e5c91d0578b72e0f2292acad4311a8a76f6bcca2e24ae0a203a4fad7",
+    "model-private/anonymization-pins.json": "ec3d8ab15cf3a058c03505986796fa1b06384d98535f6fb003cd8357eddd42d2",
+    "vendor-defaults-local.sql": "b266a127f50a8497a55e2fd29d4367793b06a929f2521b45f5be9606192d5a50"
+  },
+  "catalog_query_sha256": "5e988706c93d8cad7504f2cd5962551fe2348a055a64902998755094344cfbf4",
+  "ended_at": "2026-10-27T21:09:13.713146+00:00"
+}

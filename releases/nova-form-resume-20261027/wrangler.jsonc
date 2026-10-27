@@ -1,0 +1,61 @@
+{
+  "name": "creditek-clientes",
+  "main": "index.mjs",
+  "compatibility_date": "2026-01-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "keep_vars": true,
+  "vars": {
+    "ALLOWED_ORIGIN": "https://registro.crediteksas.com",
+    "ALLOW_LEGACY_REGISTRATION_LINKS": "true",
+    "ENVIRONMENT": "production",
+    "REPORTES_FORMATO_ORDENADO": "true",
+    "KORA_NOVA_CONSENT_TEXT_VERSION": "nova-pilot-20260915-v1",
+    "KORA_NOVA_POLICY_HASH": "e482ba5840a84938043c159e6787f07fb8748bf2e784b4e56946991d5de4af11",
+    "KORA_NOVA_POLICY_VERSION": "2.0",
+    "NOVA_PLATFORM_RENEWAL_ENABLED": "true",
+    "NOVA_REGISTRATION_ACCEPT_FROM": "2026-09-16T04:08:21.773Z",
+    "NOVA_REGISTRATION_CAPTURE_ENABLED": "true",
+    "NOVA_REGISTRATION_DELIVERY_ENABLED": "true",
+    "NOVA_REGISTRATION_PILOT_ORIGINS": "CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,CK-07,CK-08,CK-09",
+    "NOVA_REGISTRATION_RECOVERY_ENABLED": "true",
+    "NOVA_RETAIL_ENABLED": "true"
+  },
+  "services": [
+    {
+      "binding": "LEGACY_REGISTRATION_SITE",
+      "service": "creditek-registro",
+      "environment": "production"
+    },
+    {
+      "binding": "NOVA_REGISTRATION",
+      "service": "creditek-nova",
+      "environment": "production"
+    }
+  ],
+  "ai": {
+    "binding": "NOVA_DOCUMENT_AI"
+  },
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "NOVA_QUALITY_LIMIT",
+        "namespace_id": "2026100101",
+        "simple": {
+          "limit": 12,
+          "period": 60
+        },
+        "type": "ratelimit"
+      }
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "*/5 0 * * *",
+      "*/5 16-23 * * *",
+      "*/5 * * * *"
+    ]
+  },
+  "no_bundle": true
+}

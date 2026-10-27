@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="referrer" content="no-referrer">
+<base href="https://registro.crediteksas.com/creditek/erp/">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KORA · Registro — Creditek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --azul: #0B1E3D;
+  --turquesa: #00C4CC;
+  --bg: #F8FAFC;
+  --border: #E2E8F0;
+  --text2: #4B5563;
+  --verde: #16A34A;
+  --rojo: #DC2626;
+  --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--azul);
+  line-height: 1.5;
+  padding-bottom: 40px;
+}
+.wrap { max-width: 480px; margin: 0 auto; padding: 0 18px; }
+header { padding: 24px 0 16px; text-align: center; }
+.logo-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 20px; color: var(--azul); letter-spacing: 0.02em; }
+.logo-title span { color: var(--turquesa); }
+.tienda-tag {
+  margin-top: 10px; display: inline-block; background: #E8F4F8; color: var(--azul);
+  font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(11,30,61,0.08);
+}
+.tienda-tag b { color: var(--turquesa); }
+form { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; margin-top: 12px; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.field label .req { color: var(--rojo); }
+.field label .opt { color: #94A3B8; font-weight: 400; }
+input[type=text], input[type=tel], input[type=email], select {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 13px 14px; font-size: 16px; font-family: 'DM Sans', sans-serif; color: var(--azul);
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none; appearance: none;
+  background: white;
+}
+select { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234B5563'><path d='M7 10l5 5 5-5z'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; background-size: 18px; }
+input:focus, select:focus { border-color: var(--turquesa); box-shadow: 0 0 0 3px rgba(0,196,204,0.15); }
+.help { font-size: 11.5px; color: #94A3B8; margin-top: 5px; }
+.ref-block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: #FBFDFE; }
+.ref-block .ref-title { font-size: 12px; font-weight: 700; color: var(--turquesa); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+.otp-row { display: flex; gap: 8px; }
+.otp-row input { flex: 1; }
+.btn-secondary {
+  white-space: nowrap; background: var(--azul); color: white; border: none; border-radius: 10px;
+  padding: 0 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif;
+}
+.btn-secondary:disabled { background: #CBD5E1; cursor: not-allowed; }
+.otp-status { font-size: 12.5px; margin-top: 8px; font-weight: 600; display: none; }
+.otp-status.ok { display: block; color: var(--verde); }
+.otp-status.pending { display: block; color: var(--text2); font-weight: 500; }
+.otp-status.err { display: block; color: var(--rojo); }
+.code-row { display: none; margin-top: 10px; gap: 8px; }
+.code-row.show { display: flex; }
+.file-input-wrap { position: relative; }
+.file-input-wrap input[type=file] {
+  width: 100%; border: 1.5px dashed var(--border); border-radius: 10px; padding: 12px 14px;
+  font-size: 13px; color: var(--text2); background: #FBFDFE;
+}
+.checkbox-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.checkbox-row input[type=checkbox] { width: 19px; height: 19px; margin-top: 1px; flex-shrink: 0; accent-color: var(--turquesa); }
+.checkbox-row label { font-size: 12.5px; color: var(--text2); line-height: 1.5; font-weight: 400; }
+.checkbox-row a { color: var(--turquesa); font-weight: 600; }
+.btn-submit {
+  width: 100%; background: var(--turquesa); color: white; border: none; border-radius: 12px;
+  padding: 15px; font-size: 15.5px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  margin-top: 6px;
+}
+.btn-submit:disabled { background: #CBD5E1; cursor: not-allowed; }
+.msg-box { border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-top: 12px; display: none; }
+.msg-box.show { display: block; }
+.msg-box.err { background: #FEF2F2; color: var(--rojo); border: 1px solid #FECACA; }
+.msg-box.ok { background: #F0FDF4; color: var(--verde); border: 1px solid #BBF7D0; }
+.success-screen { display: none; text-align: center; padding: 50px 20px; }
+.success-screen.show { display: block; }
+.success-screen .check { font-size: 52px; margin-bottom: 14px; }
+.success-screen h2 { font-family: 'Montserrat', sans-serif; font-size: 20px; margin-bottom: 8px; }
+.success-screen p { font-size: 14px; color: var(--text2); }
+.blocked-screen {
+  display: none; background: white; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 44px 24px; margin-top: 12px; text-align: center;
+}
+.blocked-screen.show { display: block; }
+.blocked-screen .lock { font-size: 42px; margin-bottom: 12px; }
+.blocked-screen h2 { font-family: 'Montserrat', sans-serif; font-size: 19px; margin-bottom: 8px; }
+.blocked-screen p { color: var(--text2); font-size: 13.5px; }
+.locked-context {
+  border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  background: #F1F5F9; font-size: 14px; font-weight: 600;
+}
+#turnstileContainer { min-height: 66px; margin-top: 12px; }
+.form-hidden { display: none; }
+</style>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/design-system/components/kora-product.js" defer></script>
+<style>.consent-details{margin:0 0 20px 30px;font-size:14px;line-height:1.6;color:#475569}.consent-details summary{cursor:pointer;color:#007d87;font-weight:600}.consent-details div{margin-top:10px}.consent-details a{color:#007d87}</style></head>
+<body>
+<div class="wrap">
+  <header>
+    <div data-kora-brand data-variant="public"></div>
+    <div id="tiendaTag" class="tienda-tag" style="display:none;"></div>
+  </header>
+
+  <div class="blocked-screen" id="linkBlockedScreen" role="alert">
+    <div class="lock">🔒</div>
+    <h2>No se puede abrir este registro</h2>
+    <p id="linkBlockedMessage">Enlace de registro inválido o vencido.</p>
+  </div>
+
+  <form id="formRegistro" class="form-hidden">
+    <div class="field">
+      <label>Tienda o aliado</label>
+      <div class="locked-context" id="origenBloqueado">Validando enlace...</div>
+    </div>
+
+    <div class="field">
+      <label>Vendedor que registra <span class="req">*</span></label>
+      <select id="captadorSelect" disabled>
+        <option value="">Cargando...</option>
+      </select>
+      <div class="help" id="captadorHelp">Solo aparecen vendedores activos de esta tienda.</div>
+    </div>
+
+    <div class="field">
+      <label>Cédula <span class="req">*</span></label>
+      <input type="text" id="cedula" inputmode="numeric" maxlength="12" placeholder="Número de cédula" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Nombre completo <span class="req">*</span></label>
+      <input type="text" id="nombreCompleto" placeholder="Nombre y apellidos" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Celular <span class="req">*</span></label>
+      <div class="otp-row">
+        <input type="tel" id="celular" inputmode="numeric" maxlength="10" placeholder="3XXXXXXXXX" autocomplete="off">
+        <button type="button" class="btn-secondary" id="btnEnviarOtp" disabled>Enviar código</button>
+      </div>
+      <div class="otp-status" id="otpStatus"></div>
+      <div class="code-row" id="codeRow">
+        <input type="text" id="codigoOtp" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos">
+        <button type="button" class="btn-secondary" id="btnVerificarOtp">Verificar</button>
+      </div>
+      <div id="turnstileContainer"></div>
+    </div>
+
+    <div class="field">
+      <label>Correo <span class="opt">(opcional, si tiene)</span></label>
+      <input type="email" id="email" placeholder="correo@ejemplo.com" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Ciudad <span class="req">*</span></label>
+      <input type="text" id="ciudad" placeholder="Ciudad donde vive" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Dirección <span class="req">*</span></label>
+      <input type="text" id="direccion" placeholder="Dirección donde vive" autocomplete="street-address">
+    </div>
+
+    <div class="field">
+      <label>¿Qué producto le interesa? <span class="req">*</span></label>
+      <input type="text" id="productoInteres" placeholder="Ej: iPhone 13, moto, licuadora..." autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Financiera <span class="opt">(opcional, si ya sabe)</span></label>
+      <select id="financiera">
+        <option value="">No sabe / no aplica</option>
+        <option value="payjoy">PayJoy</option>
+        <option value="krediya">Krediya</option>
+        <option value="alocredit">Alo Credit</option>
+        <option value="addi">Addi</option>
+      </select>
+    </div>
+
+    <div class="ref-block">
+      <div class="ref-title">Referencia personal (obligatoria)</div>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="text" id="ref1Nombre" placeholder="Nombre completo">
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="tel" id="ref1Telefono" inputmode="numeric" maxlength="10" placeholder="Teléfono">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <input type="text" id="ref1Parentesco" placeholder="Parentesco (ej: amiga, compañero de trabajo)">
+      </div>
+    </div>
+
+    <div class="ref-block">
+      <div class="ref-title">Referencia familiar (obligatoria)</div>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="text" id="ref2Nombre" placeholder="Nombre completo">
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="tel" id="ref2Telefono" inputmode="numeric" maxlength="10" placeholder="Teléfono">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <input type="text" id="ref2Parentesco" placeholder="Parentesco (ej: hermano, mamá)">
+      </div>
+    </div>
+
+    <div class="checkbox-row"><input type="checkbox" id="autReferencias" aria-describedby="autReferenciasDetails"><label for="autReferencias">Declaro que puedo aportar estas dos referencias para mi solicitud. <span class="req">*</span></label></div><details class="consent-details" id="autReferenciasDetails"><summary>Información sobre las referencias</summary><div>Declaro que puedo aportar los datos de estas dos referencias para esta solicitud. Esto no significa que ellas hayan autorizado a Creditek a contactarlas: su autorización y verificación quedan pendientes. *</div></details>
+
+    <div class="field">
+      <label>Cédula — frente <span class="req">*</span></label>
+      <div class="file-input-wrap">
+        <div class="nova-photo-actions"><input type="file" id="fotoFrente" accept="image/*" aria-label="Seleccionar archivo: Cédula — frente"><button type="button" class="nova-camera-button" data-photo="fotoFrente" data-facing="environment" aria-label="Tomar foto: Cédula — frente">Tomar foto</button></div><p class="nova-camera-status" id="fotoFrenteCameraStatus" role="status"></p><p id="fotoFrenteQuality" role="status" aria-live="polite" style="font-size:14px;color:#0b5264"></p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cédula — reverso <span class="req">*</span></label>
+      <div class="file-input-wrap">
+        <div class="nova-photo-actions"><input type="file" id="fotoReverso" accept="image/*" aria-label="Seleccionar archivo: Cédula — reverso"><button type="button" class="nova-camera-button" data-photo="fotoReverso" data-facing="environment" aria-label="Tomar foto: Cédula — reverso">Tomar foto</button></div><p class="nova-camera-status" id="fotoReversoCameraStatus" role="status"></p><p id="fotoReversoQuality" role="status" aria-live="polite" style="font-size:14px;color:#0b5264"></p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Selfie sosteniendo la cédula <span class="req">*</span></label>
+      <div class="file-input-wrap">
+        <div class="nova-photo-actions"><input type="file" id="fotoSelfie" accept="image/*" aria-label="Seleccionar archivo: Selfie sosteniendo la cédula"><button type="button" class="nova-camera-button" data-photo="fotoSelfie" data-facing="user" aria-label="Tomar foto: Selfie sosteniendo la cédula">Tomar foto</button></div><p class="nova-camera-status" id="fotoSelfieCameraStatus" role="status"></p><p id="fotoSelfieQuality" role="status" aria-live="polite" style="font-size:14px;color:#0b5264"></p>
+      </div>
+      <div class="help">Que se vea tu cara y la cédula en la misma foto.</div>
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="autDatos" aria-describedby="autDatosDetails">
+      <label for="autDatos">Autorizo el uso de mis datos, documento y fotos para atender esta solicitud. <span class="req">*</span></label>
+    </div>
+
+<details class="consent-details" id="autDatosDetails"><summary>Ver autorización completa y política de datos</summary><div>Autorizo a Creditek SAS a registrar y revisar mis datos, documento y fotografías para atender esta solicitud y hacer seguimiento mediante NOVA. No autoriza promociones ni reemplaza las autorizaciones propias de las plataformas. Las fotos se revisan como documentos; este piloto no realiza reconocimiento facial ni aprueba créditos. <a href="https://registro.crediteksas.com/creditek/legal/" target="_blank" rel="noopener noreferrer">Política de datos · versión 2.0</a>. <span class="req">*</span></div></details>
+    <div class="checkbox-row"><input type="checkbox" id="canalWhatsapp"><label for="canalWhatsapp">Autorizo WhatsApp para seguimiento de esta solicitud (opcional, sin promociones).</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="autPlataformas" aria-describedby="autPlataformasDetails"><label for="autPlataformas">Autorizo consultar mis obligaciones y pagos en PayJoy, Krediya y Alo Credit durante 24 horas. (Opcional.)</label></div>
+    <details class="consent-details" id="autPlataformasDetails"><summary>Ver alcance de las consultas</summary><div>Autorizo a Creditek SAS a consultar, para esta solicitud, información de mis obligaciones y pagos en PayJoy, Krediya y Alo Credit, usando mi documento o celular verificado. No autoriza pagos, nuevos créditos ni promociones. La autorización de este piloto vence en 24 horas; puedo solicitar su revocación a Creditek. (Opcional.)</div></details>
+    <p class="help">Sin tu autorización no consultaremos las plataformas. Esto no aprueba un crédito.</p>
+
+
+    <div class="msg-box" id="msgBox"></div>
+
+    <div class="checkbox-row"><input type="checkbox" id="autPhotoQuality"><label for="autPhotoQuality">Autorizo la revisión automática de estas fotos mediante Cloudflare para comprobar calidad, legibilidad y coincidencia del nombre y la cédula. No verifica autenticidad ni compara rostros. Con esta autorización y después de verificar mi celular, las fotos seleccionadas se enviarán automáticamente para su revisión al capturarlas o adjuntarlas. *</label></div>
+    <button type="submit" class="btn-submit" id="btnSubmit" disabled>Enviar registro</button>
+  </form>
+
+  <div class="success-screen" id="successScreen">
+    <div class="check">✅</div>
+    <h2>Solicitud guardada</h2>
+    <p id="novaReceipt" role="status" aria-live="polite">Estamos confirmando las fotografías. No envíes otra solicitud.</p>
+    <p>Esto no es una aprobación de crédito. Si hay información pendiente, te lo indicaremos aquí.</p>
+    <button type="button" id="refreshReceipt" class="btn-submit" style="display:none">Consultar recepción de NOVA</button>
+    <div id="fotoWarning" style="display:none; margin-top:16px;">
+      <p id="fotoWarningText" style="color:var(--rojo); font-size:13px; margin-bottom:10px;">El registro ya quedó guardado, pero una o más fotos no se subieron. Intenta de nuevo sin salir de esta pantalla.</p>
+      <button type="button" class="btn-submit" id="btnReintentarFotos" style="width:auto; padding:10px 20px;">Reintentar subir fotos</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Config ─────────────────────────────────────────────────────────────
+// Asume mismo subdominio de Cloudflare que creditek-bot (comercial-853),
+// porque el Worker "creditek-clientes" aún no existe / no está desplegado.
+// CONFIRMAR esta URL con Oscar apenas haga el primer `wrangler deploy`.
+const API = 'https://creditek-clientes.comercial-853.workers.dev';
+const NOVA_POLICY = {"policy_version":"2.0","text_version":"nova-pilot-20260915-v1","policy_hash":"e482ba5840a84938043c159e6787f07fb8748bf2e784b4e56946991d5de4af11","url":"https://registro.crediteksas.com/creditek/legal/","text":"Autorizo a Creditek SAS a registrar y revisar mis datos, documento y fotografías para atender esta solicitud y hacer seguimiento mediante NOVA. No autoriza promociones ni reemplaza las autorizaciones propias de las plataformas. Las fotos se revisan como documentos; este piloto no realiza reconocimiento facial ni aprueba créditos.","references":"Declaro que puedo aportar los datos de estas dos referencias para esta solicitud. Esto no significa que ellas hayan autorizado a Creditek a contactarlas: su autorización y verificación quedan pendientes."};
+const AUT_VERSION = NOVA_POLICY.policy_version;
+let novaConfig = null;
+const uploadedTypes = new Set();
+let submittedPayload = null;
+let photoQualityReceipt=null,qualityPhotos=null,qualityBusy=false,qualityExpiresAt=0,recoveryMode=false;
+const qualityIds={frente:'fotoFrente',reverso:'fotoReverso',selfie:'fotoSelfie'};
+document.getElementById('fotoFrente').closest('.field').before(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
+const qualityStates={},qualityBlobCache=new WeakMap();let qualityGeneration=0,photoReviewQueue=Promise.resolve();
+function invalidateQuality(event){
+ if(documentosSession)return;photoQualityReceipt=null;qualityPhotos=null;qualityExpiresAt=0;qualityGeneration++;
+ const changed=event?.target?.id,type=Object.keys(qualityIds).find(t=>qualityIds[t]===changed);
+ if(type){delete qualityStates[type];document.getElementById(changed+'Quality').textContent='Foto pendiente de revisión.';}
+ else for(const t of Object.keys(qualityIds)){delete qualityStates[t];document.getElementById(qualityIds[t]+'Quality').textContent='';}
+}
+function lockPhotoSteps(){
+ let previousAccepted=true;
+ for(const [type,id]of Object.entries(qualityIds)){
+  const enabled=previousAccepted&&!qualityBusy&&!documentosSession;
+  document.getElementById(id).disabled=!enabled;
+  document.querySelectorAll('[data-photo="'+id+'"]').forEach(b=>b.disabled=!enabled);
+  previousAccepted=previousAccepted&&['auto_approved','manual_pending'].includes(qualityStates[type]?.status);
+ }
+}
+function renderQuality(result){
+ for(const [type,id]of Object.entries(qualityIds)){
+  const s=result.photoStates?.[type];if(!s)continue;qualityStates[type]=s;
+  const label=document.getElementById(id+'Quality');
+  if(s.status==='auto_approved')label.textContent='Foto revisada. Se conserva para continuar.';
+  else if(s.status==='manual_pending')label.textContent='Pendiente de Andrea. Puedes terminar el registro; no se podrá tramitar hasta su aprobación.';
+  else if(result.errors?.[type])label.textContent=result.errors[type].join(' ')+' Intentos restantes: '+s.remaining+'.';
+ }
+}
+async function preparedQualityPhotos(){
+ const prepared={};
+ for(const [type,id]of Object.entries(qualityIds)){
+  if(recoveryMode&&uploadedTypes.has(type))continue;
+  const file=document.getElementById(id).files[0];if(!file)continue;
+  let encoded=qualityBlobCache.get(file);
+  if(!encoded){const blob=await comprimirImagen(file);if(!blob||blob.size>1000000)throw Error('image_invalid');encoded=await blobABase64(blob);qualityBlobCache.set(file,encoded);}
+  prepared[type]=encoded;
+ }
+ return prepared;
+}
+async function reviewCapturedPhoto(){
+ if(documentosSession)return;
+ if(!registroSession||!document.getElementById('autPhotoQuality').checked||document.getElementById('nombreCompleto').value.trim().length<3){for(const id of Object.values(qualityIds))if(document.getElementById(id).files.length)document.getElementById(id+'Quality').textContent='Verifica tu celular, escribe tu nombre y autoriza la revisión de fotos para continuar.';return;}
+ qualityBusy=true;lockPhotoSteps();evaluarSubmit();const generation=qualityGeneration;
+ try{
+  const prepared=await preparedQualityPhotos();if(!Object.keys(prepared).length)return;
+  const r=await fetch(API+'/api/registro/nova-calidad-fotos',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken,name:document.getElementById('nombreCompleto').value.trim(),consent:true,consent_version:'nova-photo-quality-v3',photos:prepared,partial:true})});
+  const d=await r.json();if(generation!==qualityGeneration)return;renderQuality(d);
+  if(!r.ok&&!d.errors)mostrarErrorRegistro(d.error||'No pudimos guardar la revisión. Tus fotos se conservan; vuelve a intentarlo.');
+ }catch{mostrarErrorRegistro('No se pudo completar la revisión. Conservamos tus datos y fotos. Intenta nuevamente.');}
+ finally{qualityBusy=false;lockPhotoSteps();evaluarSubmit();}
+}
+for(const id of [...Object.values(qualityIds),'nombreCompleto','cedula','celular','autPhotoQuality'])document.getElementById(id).addEventListener('change',event=>{invalidateQuality(event);if(Object.values(qualityIds).includes(id)||id==='autPhotoQuality')photoReviewQueue=photoReviewQueue.then(reviewCapturedPhoto);});
+document.getElementById('nombreCompleto').addEventListener('input',invalidateQuality);
+document.getElementById('autPhotoQuality').addEventListener('change',evaluarSubmit);
+async function preparePhotoQuality(){
+ if(documentosSession&&qualityPhotos&&!recoveryMode)return true;
+ if(!document.getElementById('autPhotoQuality').checked){mostrarErrorRegistro('Acepta la revisión de fotos para continuar.');return false;}
+ if(photoQualityReceipt&&qualityPhotos&&qualityExpiresAt>Date.now()+10000)return true;
+ const prepared=await preparedQualityPhotos();if((!recoveryMode&&Object.keys(prepared).length!==3)||(recoveryMode&&['frente','reverso','selfie'].some(t=>!uploadedTypes.has(t)&&!prepared[t]))){mostrarErrorRegistro('Completa las tres fotos.');return false;}
+ const response=await fetch(API+'/api/registro/nova-calidad-fotos',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken,name:document.getElementById('nombreCompleto').value.trim(),consent:true,consent_version:'nova-photo-quality-v3',photos:prepared,...recoveryMode?{partial:true,request_receipt:true}:{}})});
+ const result=await response.json();renderQuality(result);
+ if(!response.ok||result.ok!==true){mostrarErrorRegistro(result.error||'Corrige únicamente las fotos señaladas para continuar.');return false;}
+ if(typeof result.receipt!=='string'||!Number.isFinite(result.expiresAt)||result.expiresAt<=Date.now()+10000)throw Error('Invalid quality receipt');
+ if(recoveryMode){if(typeof result.documentos_session!=='string')throw Error('missing_resume_session');documentosSession=result.documentos_session;}
+ photoQualityReceipt=result.receipt;qualityPhotos=prepared;qualityExpiresAt=result.expiresAt;return true;
+}
+
+const enlaceToken = new URLSearchParams(location.search).get('t');
+
+let contextoValido = false;
+let otpVerificado = false;
+let celularVerificado = null;
+let cedulaVerificada = null;
+let ultimoEnvioOtp = 0;
+let turnstileToken = null;
+let turnstileWidgetId = null;
+let registroSession = null;
+let documentosSession = null;
+let registroEnCurso = false;
+let subidaFotosEnCurso = false;
+
+const form = document.getElementById('formRegistro');
+const captadorSelect = document.getElementById('captadorSelect');
+const tiendaTag = document.getElementById('tiendaTag');
+const btnSubmit = document.getElementById('btnSubmit');
+const msgBox = document.getElementById('msgBox');
+
+function mostrarBloqueoEnlace(
+  mensaje = 'Enlace de registro inválido o vencido.',
+) {
+  contextoValido = false;
+  form.classList.add('form-hidden');
+  document.getElementById('linkBlockedMessage').textContent = mensaje;
+  document.getElementById('linkBlockedScreen').classList.add('show');
+}
+
+function agregarOpcionCaptador(id, nombre) {
+  const option = document.createElement('option');
+  option.value = id;
+  option.textContent = nombre;
+  captadorSelect.appendChild(option);
+}
+
+function renderCaptadores(contexto) {
+  const captadores = Array.isArray(contexto.captadores)
+    ? contexto.captadores
+    : [];
+  captadorSelect.replaceChildren();
+  const help = document.getElementById('captadorHelp');
+
+  if (captadores.length === 0) {
+    agregarOpcionCaptador('', 'No hay vendedores activos');
+    captadorSelect.disabled = true;
+    help.textContent =
+      'No hay vendedores activos para esta tienda. Comunícate con el administrador.';
+    help.style.color = 'var(--rojo)';
+    contextoValido = false;
+    return;
+  }
+
+  if (contexto.tipo === 'personal') {
+    agregarOpcionCaptador(captadores[0].id, captadores[0].nombre);
+    captadorSelect.disabled = true;
+    help.textContent = 'Este enlace está asignado a este vendedor.';
+  } else {
+    agregarOpcionCaptador('', 'Selecciona el vendedor');
+    captadores.forEach((captador) => {
+      agregarOpcionCaptador(captador.id, captador.nombre);
+    });
+    captadorSelect.disabled = false;
+    help.textContent = 'Solo aparecen vendedores activos de esta tienda.';
+  }
+  contextoValido = true;
+}
+
+function cargarTurnstileApi() {
+  if (window.turnstile) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src =
+      'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+function reiniciarTurnstile() {
+  turnstileToken = null;
+  if (
+    turnstileWidgetId !== null &&
+    window.turnstile &&
+    typeof turnstile.reset === 'function'
+  ) {
+    turnstile.reset(turnstileWidgetId);
+  }
+  evaluarEnvioOtp();
+}
+
+async function initTurnstile() {
+  const configResponse = await fetch(`${API}/api/registro/config`);
+  if (!configResponse.ok) throw new Error('config_no_disponible');
+  const config = await configResponse.json();
+  novaConfig = config.nova_registration;
+  if (!novaConfig?.enabled || novaConfig.policy_hash !== NOVA_POLICY.policy_hash || novaConfig.text_version !== NOVA_POLICY.text_version) throw Error('pilot_not_ready');
+  const turnstileSiteKey = config.turnstile_site_key;
+  if (typeof turnstileSiteKey !== 'string' || !turnstileSiteKey) {
+    throw new Error('config_invalida');
+  }
+  await cargarTurnstileApi();
+  turnstileWidgetId = turnstile.render('#turnstileContainer', {
+    sitekey: turnstileSiteKey,
+    action: 'registro-cliente',
+    callback: (token) => {
+      turnstileToken = token;
+      evaluarEnvioOtp();
+    },
+    'expired-callback': reiniciarTurnstile,
+    'error-callback': () => {
+      turnstileToken = null;
+      mostrarErrorOtp(
+        'No se pudo completar la verificación de seguridad. Intenta de nuevo.',
+      );
+      evaluarEnvioOtp();
+    },
+  });
+}
+
+async function initRegistroSeguro() {
+  if (!enlaceToken) {
+    mostrarBloqueoEnlace();
+    return;
+  }
+
+  try {
+    const contextResponse = await fetch(
+      `${API}/api/registro/contexto?t=${encodeURIComponent(enlaceToken)}`,
+    );
+    if (!contextResponse.ok) {
+      mostrarBloqueoEnlace();
+      return;
+    }
+    const data = await contextResponse.json();
+    const contexto = data.contexto;
+    if (
+      !contexto ||
+      !contexto.origen ||
+      typeof contexto.origen.nombre !== 'string' || !/^CK-0[1-9]$/.test(contexto.origen.codigo)
+    ) {
+      mostrarBloqueoEnlace();
+      return;
+    }
+
+    tiendaTag.textContent = `Registrando para: ${contexto.origen.nombre}`;
+    tiendaTag.style.display = 'inline-block';
+    document.getElementById('origenBloqueado').textContent =
+      contexto.origen.nombre;
+    renderCaptadores(contexto);
+    form.classList.remove('form-hidden');
+    document.getElementById('linkBlockedScreen').classList.remove('show');
+
+    try {
+      await initTurnstile();
+    } catch {
+      contextoValido = false;
+      mostrarErrorOtp(
+        'La verificación de seguridad no está disponible. Intenta recargar la página.',
+      );
+    }
+    evaluarSubmit();
+    evaluarEnvioOtp();
+  } catch {
+    mostrarBloqueoEnlace(
+      'No pudimos validar este enlace. Revisa tu conexión e intenta de nuevo.',
+    );
+  }
+}
+
+// ─── Validaciones ───────────────────────────────────────────────────────
+function celularValido(v) { return /^3\d{9}$/.test(v); }
+function cedulaValida(v) { return /^\d{6,12}$/.test(v); }
+function obtenerReferencias() {
+  return [1, 2].map((numero) => ({
+    type: numero === 1 ? 'personal' : 'family',
+    contact_authorized: document.getElementById('autReferencias').checked,
+    nombre: document.getElementById(`ref${numero}Nombre`).value.trim(),
+    telefono: document.getElementById(`ref${numero}Telefono`).value,
+    parentesco:
+      document.getElementById(`ref${numero}Parentesco`).value.trim() || null,
+  })).filter((referencia) =>
+    referencia.nombre || referencia.telefono || referencia.parentesco
+  );
+}
+function referenciasValidas() {
+  const refs = obtenerReferencias();
+  return refs.length === 2 && document.getElementById('autReferencias').checked && refs[0].telefono !== refs[1].telefono && refs.every(r => r.telefono !== document.getElementById('celular').value) && refs.every((referencia) =>
+    referencia.nombre.length >= 2 && celularValido(referencia.telefono)
+  );
+}
+
+const celularInput = document.getElementById('celular');
+const btnEnviarOtp = document.getElementById('btnEnviarOtp');
+const otpStatus = document.getElementById('otpStatus');
+const codeRow = document.getElementById('codeRow');
+const btnVerificarOtp = document.getElementById('btnVerificarOtp');
+const codigoOtpInput = document.getElementById('codigoOtp');
+
+function mostrarErrorOtp(mensaje) {
+  otpStatus.className = 'otp-status err';
+  otpStatus.textContent = mensaje;
+}
+
+function invalidarSesionOtp() {
+  otpVerificado = false;
+  celularVerificado = null;
+  cedulaVerificada = null;
+  registroSession = null;
+  otpStatus.className = 'otp-status';
+  codeRow.classList.remove('show');
+}
+
+function evaluarEnvioOtp() {
+  btnEnviarOtp.disabled =
+    !contextoValido ||
+    !celularValido(celularInput.value) ||
+    !cedulaValida(document.getElementById('cedula').value) ||
+    !turnstileToken;
+}
+
+celularInput.addEventListener('input', () => {
+  celularInput.value = celularInput.value.replace(/\D/g, '').slice(0, 10);
+  if (otpVerificado && celularInput.value !== celularVerificado) {
+    invalidarSesionOtp();
+  }
+  evaluarEnvioOtp();
+  evaluarSubmit();
+});
+
+document.getElementById('cedula').addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
+  if (otpVerificado && e.target.value !== cedulaVerificada) {
+    invalidarSesionOtp();
+  }
+  evaluarEnvioOtp();
+  evaluarSubmit();
+});
+['ref1Telefono','ref2Telefono'].forEach(id => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+  });
+});
+
+btnEnviarOtp.addEventListener('click', async () => {
+  const celular = celularInput.value;
+  const cedula = document.getElementById('cedula').value;
+  if (
+    !contextoValido ||
+    !celularValido(celular) ||
+    !cedulaValida(cedula) ||
+    !turnstileToken
+  ) return;
+  const ahora = Date.now();
+  if (ahora - ultimoEnvioOtp < 15000) return;
+  ultimoEnvioOtp = ahora;
+  btnEnviarOtp.disabled = true;
+  otpStatus.className = 'otp-status pending';
+  otpStatus.textContent = 'Enviando código...';
+  try {
+    const res = await fetch(`${API}/api/otp/enviar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enlace_token: enlaceToken,
+        cedula: cedula,
+        celular: celular,
+        turnstile_token: turnstileToken
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok === true) {
+      otpStatus.className = 'otp-status pending';
+      otpStatus.textContent = 'Código enviado por WhatsApp. Puede tardar unos segundos.';
+      codeRow.classList.add('show');
+    } else if (res.status === 404) {
+      mostrarBloqueoEnlace();
+    } else if (res.status === 429) {
+      mostrarErrorOtp(
+        'Alcanzaste el límite de códigos. Espera antes de intentarlo de nuevo.',
+      );
+    } else {
+      mostrarErrorOtp(
+        'No se pudo enviar el código. Completa nuevamente la verificación de seguridad.',
+      );
+    }
+  } catch {
+    mostrarErrorOtp(
+      'Error de conexión. Revisa tu internet e intenta de nuevo.',
+    );
+  } finally {
+    reiniciarTurnstile();
+  }
+});
+
+codigoOtpInput.addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+});
+
+btnVerificarOtp.addEventListener('click', async () => {
+  const celular = celularInput.value;
+  const codigo = codigoOtpInput.value;
+  if (codigo.length !== 6) return;
+  btnVerificarOtp.disabled = true;
+  try {
+    const res = await fetch(`${API}/api/otp/verificar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enlace_token: enlaceToken,
+        cedula: document.getElementById('cedula').value,
+        celular: celular,
+        codigo
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (
+      res.ok &&
+      data.ok === true &&
+      typeof data.registro_session === 'string'
+    ) {
+      registroSession = data.registro_session;
+      otpVerificado = true;
+      photoReviewQueue=photoReviewQueue.then(reviewCapturedPhoto);
+      celularVerificado = celular;
+      cedulaVerificada = document.getElementById('cedula').value;
+      otpStatus.className = 'otp-status ok';
+      otpStatus.textContent = '✓ Celular verificado';
+      codeRow.classList.remove('show');
+      const existingResponse=await fetch(API+'/api/registro/nova-retomar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken}),signal:AbortSignal.timeout(15000)});
+      const existing=await existingResponse.json();
+      if(!existingResponse.ok)throw Error('resume_unavailable');
+      if(existing.found&&existing.incomplete){
+       recoveryMode=true;registroSession=existing.quality_session;document.getElementById('nombreCompleto').value=existing.name;form.classList.add('form-hidden');
+       const panel=document.createElement('section');panel.className='wrap';const title=document.createElement('h2');title.textContent='Retomar fotos pendientes';panel.append(title);
+       const info=document.createElement('p');info.textContent='Conservamos tus datos y las fotos guardadas. Adjunta únicamente las pendientes.';panel.append(info);
+       panel.append(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
+       for(const [type,id]of Object.entries(qualityIds)){
+        if(existing.savedTypes.includes(type)){uploadedTypes.add(type);qualityStates[type]={status:'auto_approved'};}
+        else {delete qualityStates[type];panel.append(document.getElementById(id).closest('.field'));}
+       }
+       const save=document.createElement('button');save.type='button';save.textContent='Guardar fotos pendientes';save.onclick=async()=>{
+        if(qualityBusy||subidaFotosEnCurso)return;save.disabled=true;
+        try{if(!await preparePhotoQuality())return;panel.hidden=true;document.getElementById('successScreen').classList.add('show');await manejarFotosPostRegistro();}catch{info.textContent='No se completó la revisión. Tus datos se conservan; vuelve a intentarlo.';}finally{save.disabled=false;}
+       };panel.append(save);form.after(panel);lockPhotoSteps();return;
+      }
+      if(existing.found&&existing.documentos_session){documentosSession=existing.documentos_session;for(const t of ['frente','reverso','selfie'])uploadedTypes.add(t);form.classList.add('form-hidden');document.getElementById('successScreen').classList.add('show');await consultarRecepcion();}
+    } else if (res.status === 404) {
+      mostrarBloqueoEnlace();
+    } else if (res.status === 429) {
+      mostrarErrorOtp(
+        'Se agotaron los intentos de este código. Solicita uno nuevo.',
+      );
+    } else {
+      mostrarErrorOtp('Código incorrecto, vencido o ya utilizado.');
+    }
+  } catch {
+    mostrarErrorOtp('Error de conexión al verificar. Intenta de nuevo.');
+  } finally {
+    btnVerificarOtp.disabled = false;
+    evaluarSubmit();
+  }
+});
+
+// ─── Habilitar botón final ──────────────────────────────────────────────
+function evaluarSubmit() {
+  const ok =
+    contextoValido &&
+    !!captadorSelect.value &&
+    cedulaValida(document.getElementById('cedula').value) &&
+    document.getElementById('nombreCompleto').value.trim().length > 2 &&
+    celularValido(celularInput.value) &&
+    otpVerificado &&
+    registroSession !== null &&
+    celularInput.value === celularVerificado &&
+    document.getElementById('cedula').value === cedulaVerificada &&
+    document.getElementById('ciudad').value.trim().length > 1 &&
+    document.getElementById('direccion').value.trim().length > 2 &&
+    document.getElementById('productoInteres').value.trim().length > 1 &&
+    referenciasValidas() &&
+    document.getElementById('autDatos').checked &&
+    document.getElementById('fotoFrente').files.length > 0 &&
+    document.getElementById('fotoReverso').files.length > 0 &&
+    document.getElementById('fotoSelfie').files.length > 0 &&
+    document.getElementById('autPhotoQuality').checked && !qualityBusy && !registroEnCurso;
+  btnSubmit.disabled = !ok || registroEnCurso;
+}
+form.addEventListener('input', () => {
+  evaluarSubmit();
+  evaluarEnvioOtp();
+});
+form.addEventListener('change', () => {
+  evaluarSubmit();
+  evaluarEnvioOtp();
+});
+
+// ─── Compresión + subida de las 3 fotos (después de un registro exitoso) ─
+// Las fotos de celular pesan 3-8 MB; se comprimen a JPEG ~0.7 de calidad con
+// lado máximo 1600px antes de subir, para que no mueran en conexiones lentas
+// de tienda (AJUSTES_Registro_v2, Cambio 3).
+async function comprimirImagen(file, maxSide = 1600, quality = 0.7) {
+  let width, height, drawSource;
+  try {
+    const bitmap = await createImageBitmap(file);
+    width = bitmap.width; height = bitmap.height; drawSource = bitmap;
+  } catch (e) {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = URL.createObjectURL(file);
+    });
+    width = img.naturalWidth; height = img.naturalHeight; drawSource = img;
+  }
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const w = Math.round(width * scale);
+  const h = Math.round(height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(drawSource, 0, 0, w, h);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+}
+
+function blobABase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function mostrarErrorDocumento(
+  mensaje = 'Una o más fotos no se pudieron subir.',
+) {
+  document.getElementById('fotoWarningText').textContent = mensaje;
+  document.getElementById('fotoWarning').style.display = 'block';
+}
+
+async function subirFoto(file, tipo) {
+  try {
+    if (!documentosSession) return false;
+    if (uploadedTypes.has(tipo)) return true;
+    const base64 = qualityPhotos?.[tipo];
+    if (!base64) return false;
+    const res = await fetch(`${API}/api/documentos`, {
+      signal:AbortSignal.timeout(45000),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documentos_session: documentosSession,
+        tipo,
+        mime: 'image/jpeg',
+        foto_base64: base64
+      }),
+    });
+    if (res.ok) uploadedTypes.add(tipo);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function subirTresFotos() {
+  if (subidaFotosEnCurso) return false;
+  subidaFotosEnCurso = true;
+  const frente = document.getElementById('fotoFrente').files[0];
+  const reverso = document.getElementById('fotoReverso').files[0];
+  const selfie = document.getElementById('fotoSelfie').files[0];
+  try {
+    const resultados = await Promise.all([
+      subirFoto(frente, 'frente'),
+      subirFoto(reverso, 'reverso'),
+      subirFoto(selfie, 'selfie'),
+    ]);
+    return resultados.every(Boolean);
+  } finally {
+    subidaFotosEnCurso = false;
+  }
+}
+
+async function manejarFotosPostRegistro() {
+  const ok = await subirTresFotos();
+  if (ok) {
+    document.getElementById('fotoWarning').style.display = 'none';
+    await consultarRecepcion();
+  } else {
+    mostrarErrorDocumento(
+      'Tu registro está guardado. Faltan por confirmar: '+['frente','reverso','selfie'].filter(t=>!uploadedTypes.has(t)).map(t=>({frente:'frente de la cédula',reverso:'reverso de la cédula',selfie:'selfie'})[t]).join(', ')+'. Pulsa Reintentar subir fotos; solo se reintentarán las pendientes.',
+    );
+  }
+}
+
+document.getElementById('btnReintentarFotos').addEventListener('click', async (e) => {
+  const btn = e.target;
+  if (subidaFotosEnCurso) return;
+  btn.disabled = true;
+  btn.textContent = 'Subiendo...';
+  const ok = await subirTresFotos();
+  btn.disabled = false;
+  btn.textContent = 'Reintentar subir fotos';
+  if (ok) {
+    document.getElementById('fotoWarning').style.display = 'none';
+    await consultarRecepcion();
+  } else {
+    mostrarErrorDocumento(
+      'Las fotos siguen pendientes. Revisa tu conexión antes de reintentar.',
+    );
+  }
+});
+
+// ─── Submit ───────────────────────────────────────────────────────────
+function mostrarErrorRegistro(
+  mensaje = 'No se pudo completar el registro. Revisa los datos e intenta de nuevo.',
+) {
+  msgBox.className = 'msg-box err show';
+  msgBox.textContent = mensaje;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (btnSubmit.disabled || registroEnCurso || qualityBusy) return;
+  qualityBusy=true;btnSubmit.disabled=true;btnSubmit.textContent='Revisando fotos…';
+  const controls=[...form.querySelectorAll('input,select,button')],previous=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);
+  let ready=false;
+  try{ready=await preparePhotoQuality();}catch{mostrarErrorRegistro('No se pudo completar la revisión. Tus datos se conservan aquí; intenta nuevamente.');}
+  finally{controls.forEach((c,i)=>c.disabled=previous[i]);qualityBusy=false;lockPhotoSteps();btnSubmit.textContent='Enviar registro';evaluarSubmit();}
+  if(!ready)return;
+  registroEnCurso = true;
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = 'Enviando...';
+  msgBox.className = 'msg-box';
+
+  const payload = submittedPayload || {
+    enlace_token: enlaceToken,
+    captador_id: captadorSelect.value,
+    registro_session: registroSession,
+    photo_quality_receipt: photoQualityReceipt,
+    nombre_completo: document.getElementById('nombreCompleto').value.trim(),
+    email: document.getElementById('email').value.trim() || null,
+    ciudad: document.getElementById('ciudad').value.trim(),
+    direccion: document.getElementById('direccion').value.trim(),
+    producto_interes: document.getElementById('productoInteres').value.trim(),
+    financiera: ({payjoy:'PAYJOY',alocredit:'ALO',addi:'ADDI',krediya:'KREDIYA'})[document.getElementById('financiera').value] || null,
+    ...(document.getElementById('autPlataformas').checked ? {nova_platform_consent:{granted:true,text_version:'nova-platform-query-v1'}} : {}),
+    nova_consent: {granted:true,policy_version:AUT_VERSION,text_version:NOVA_POLICY.text_version,policy_hash:NOVA_POLICY.policy_hash,channels:document.getElementById('canalWhatsapp').checked?['whatsapp']:[]},
+    referencias: obtenerReferencias(),
+    autorizacion_datos: document.getElementById('autDatos').checked,
+    autorizacion_comercial: false,
+    autorizacion_version: AUT_VERSION
+  };
+
+  payload.photo_quality_receipt=photoQualityReceipt;
+  submittedPayload = payload;
+  try {
+    const res = await fetch(`${API}/api/registro`, {
+      signal:AbortSignal.timeout(45000),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (
+      res.ok &&
+      data.ok === true &&
+      typeof data.documentos_session === 'string'
+    ) {
+      documentosSession = data.documentos_session;
+      form.classList.add('form-hidden');
+      document.getElementById('successScreen').classList.add('show');
+      await manejarFotosPostRegistro();
+    } else if (res.status === 400) {
+      mostrarErrorRegistro(
+        'No se confirmó el registro. Revisa los datos; no solicites otro código mientras verificamos esta solicitud.',
+      );
+    } else if (res.status === 422) {
+      photoQualityReceipt=null;qualityPhotos=null;submittedPayload=null;mostrarErrorRegistro('La revisión de fotos venció o cambió. Pulsa Enviar registro para revisarlas nuevamente.');
+    } else if (res.status === 409) {
+      mostrarErrorRegistro('Esta solicitud ya existe con otros datos. No la vuelvas a crear: solicita revisión.');
+    } else {
+      mostrarErrorRegistro('No se confirmó el envío. Reintenta sin cambiar los datos ni pedir otro código.');
+    }
+  } catch {
+    mostrarErrorRegistro('No se pudo confirmar el envío. Tus datos y fotos siguen aquí. Reintenta sin cambiar los datos ni solicitar otro código; no crees una solicitud nueva.');
+  } finally {
+    if (!documentosSession) {
+      registroEnCurso = false;
+      btnSubmit.textContent = 'Enviar registro';
+      evaluarSubmit();
+    }
+  }
+});
+
+async function consultarRecepcion() {
+  const label = document.getElementById('novaReceipt');
+  const button = document.getElementById('refreshReceipt');
+  button.style.display='block'; button.disabled=true;
+  try {
+    const r = await fetch(API+'/api/registro/nova-estado',{signal:AbortSignal.timeout(15000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documentos_session:documentosSession})});
+    const data = await r.json();
+    if (!r.ok || data.ok!==true) throw Error('unavailable');
+    const messages={received_by_nova:'NOVA recibió tu solicitud completa. Está pendiente de revisión; no es una aprobación de crédito.',pending_sync:'Documentos confirmados. La entrega a NOVA está en trámite; consulta de nuevo en unos minutos. No envíes otra solicitud.',pending_documents:'Tu solicitud está guardada, pero faltan fotografías por confirmar. Reintenta solo las fotos pendientes.',review_required:'Tu solicitud necesita revisión del equipo. No crees otra solicitud.',legacy_authorization_required:'Tu registro y fotografías están guardados con el formulario anterior. Falta completar la autorización específica para NOVA; solicita ayuda a tu asesor. No vuelvas a registrar al cliente.'};
+    label.textContent=messages[data.nova_status]||'La solicitud está guardada; aún no podemos confirmar su recepción en NOVA.';
+    if(data.nova_status==='received_by_nova')await cargarInvitaciones();
+  } catch {label.textContent='No pudimos confirmar la recepción. Tu solicitud no debe enviarse otra vez; consulta nuevamente en unos minutos.';}
+  finally {button.disabled=false;}
+}
+
+async function cargarInvitaciones(){
+ let box=document.getElementById('referenceInvitations');if(!box){box=document.createElement('section');box.id='referenceInvitations';box.style.cssText='margin-top:24px;text-align:left;padding:18px;background:#effafa;border-radius:12px';document.getElementById('novaReceipt').after(box);}
+ if(novaConfig?.retail_enabled){box.textContent='NOVA enviará una invitación por WhatsApp a cada referencia para que confirme sus datos. Si alguna no responde, la tienda podrá reemplazar únicamente esa referencia. No repitas el registro.';return;}
+ box.textContent='Preparando los enlaces para tus referencias…';
+ try{const r=await fetch(API+'/api/registro/nova-invitaciones',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({documentos_session:documentosSession}),signal:AbortSignal.timeout(25000)}),d=await r.json();if(!r.ok||d.ok!==true)throw Error();
+ if(d.status!=='available'){box.textContent='Las invitaciones aún no están disponibles. Si autorizaste el seguimiento por WhatsApp, vuelve a consultar en unos minutos. No repitas el registro.';return;}
+ box.replaceChildren();const h=document.createElement('h3');h.textContent='Comparte las invitaciones';box.append(h);const p=document.createElement('p');p.textContent='Comparte cada enlace únicamente con la referencia indicada. Debe abrirlo desde el WhatsApp que registraste y enviar el mensaje para iniciar con NOVA. Participar es voluntario. Los enlaces vencen en 24 horas.';box.append(p);
+ for(const i of d.invitations){const row=document.createElement('p'),label=i.type==='family'?'Referencia familiar':'Referencia personal';if(i.status!=='ready'){row.textContent=label+': '+(i.status==='already_started'?'La conversación ya se inició.':'Pendiente.');box.append(row);continue;}
+ const u=new URL(i.url);if(u.origin!=='https://wa.me'||u.pathname!=='/573011105337'||!/^REFERENCIA [A-Za-z0-9_.-]+$/.test(u.searchParams.get('text')||''))throw Error();
+ const a=document.createElement('a');a.textContent='Compartir con '+label.toLowerCase();a.href='https://wa.me/?text='+encodeURIComponent('Hola, te registré como mi '+label.toLowerCase()+' en Creditek. Si deseas participar, abre este enlace desde tu WhatsApp y envía el mensaje a NOVA: '+i.url);a.target='_blank';a.rel='noopener noreferrer';a.style.cssText='display:block;padding:12px;color:#007d87;font-weight:700';row.append(a);
+ const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar enlace';copy.onclick=async()=>{try{await navigator.clipboard.writeText(i.url);copy.textContent='Enlace copiado';}catch{copy.textContent='Usa el botón Compartir';}};row.append(copy);box.append(row);}
+ }catch{box.textContent='No pudimos preparar las invitaciones. Pulsa Consultar recepción para reintentar; no necesitas registrar tus datos otra vez.';}
+}
+
+document.getElementById('refreshReceipt').addEventListener('click',consultarRecepcion);
+let registrationEdited=false;form.addEventListener('input',()=>registrationEdited=true);form.addEventListener('change',()=>registrationEdited=true);
+window.addEventListener('beforeunload',e=>{if((registrationEdited&&!documentosSession)||(documentosSession&&uploadedTypes.size<3)){e.preventDefault();e.returnValue='';}});
+captadorSelect.addEventListener('change', evaluarSubmit);
+lockPhotoSteps();
+initRegistroSeguro();
+</script>
+<style>
+.nova-photo-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.nova-photo-actions input[type=file]{flex:1 1 220px;min-width:0;max-width:100%}.nova-camera-button{background:#0b5264;color:white;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font:inherit;font-weight:600;flex-shrink:0}.nova-camera-button:focus-visible{outline:3px solid #14b8a6;outline-offset:3px}.nova-camera-button:disabled{opacity:.5;cursor:wait}.nova-camera-status{font-size:14px;margin:8px 0 0;color:#475569}.nova-camera-status:empty{display:none}#novaCameraDialog{box-sizing:border-box;width:min(94vw,600px);max-height:92vh;overflow:auto;border:0;border-radius:18px;padding:22px;color:#0b1e3d}#novaCameraDialog::backdrop{background:#001a2bcc}#novaCameraVideo{display:block;width:100%;max-height:58vh;background:#0b1e3d;border-radius:10px;object-fit:contain}.nova-camera-toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}#novaCameraCancel{background:#e2e8f0;color:#0b1e3d}
+</style>
+<dialog id="novaCameraDialog" aria-labelledby="novaCameraTitle"><h2 id="novaCameraTitle">Tomar foto</h2><video id="novaCameraVideo" autoplay playsinline muted></video><p id="novaCameraMessage" role="status">Abriendo cámara…</p><div class="nova-camera-toolbar"><button type="button" class="nova-camera-button" id="novaCameraCapture" disabled>Capturar foto</button><button type="button" class="nova-camera-button" id="novaCameraCancel">Cancelar</button></div></dialog>
+<script>
+(()=>{
+ const dialog=document.getElementById('novaCameraDialog'),video=document.getElementById('novaCameraVideo'),capture=document.getElementById('novaCameraCapture'),message=document.getElementById('novaCameraMessage');
+ let stream=null,target=null,generation=0;
+ function stop(){generation++;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;capture.disabled=true;target=null;}
+ function close(){stop();if(dialog.open)dialog.close();}
+ dialog.addEventListener('close',stop);dialog.addEventListener('cancel',()=>stop());window.addEventListener('pagehide',close);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream)close();});
+ document.getElementById('novaCameraCancel').addEventListener('click',close);
+ document.querySelectorAll('[data-photo]').forEach(button=>button.addEventListener('click',async()=>{
+  const status=document.getElementById(button.dataset.photo+'CameraStatus');status.textContent='';
+  if(!navigator.mediaDevices?.getUserMedia){status.textContent='La cámara no está disponible en este navegador. Puedes usar Seleccionar archivo.';return;}
+  close();target=document.getElementById(button.dataset.photo);const current=++generation;
+  document.getElementById('novaCameraTitle').textContent=button.getAttribute('aria-label');message.textContent='Permite el acceso a la cámara para tomar la foto.';dialog.showModal();
+  try{
+   const opened=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:button.dataset.facing},width:{ideal:1600},height:{ideal:1200}}});
+   if(current!==generation||!dialog.open){opened.getTracks().forEach(t=>t.stop());return;}
+   stream=opened;video.srcObject=opened;await video.play();if(current!==generation)return;
+   capture.disabled=false;message.textContent='Encuadra la imagen y pulsa Capturar foto. Revisaremos su legibilidad al capturarla.';
+  }catch(e){if(current!==generation)return;close();status.textContent=e.name==='NotAllowedError'?'No se permitió usar la cámara. Puedes habilitarla en el navegador o seleccionar un archivo.':'No se pudo abrir la cámara. Comprueba que esté conectada y libre, o selecciona un archivo.';}
+ }));
+ capture.addEventListener('click',async()=>{
+  if(!target||!stream||!video.videoWidth||!video.videoHeight)return;
+  const selected=target,current=generation;capture.disabled=true;
+  try{
+   const canvas=document.createElement('canvas'),scale=Math.min(1,1600/Math.max(video.videoWidth,video.videoHeight));canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.9));if(current!==generation)return;if(!blob)throw Error('capture_failed');
+   const transfer=new DataTransfer();transfer.items.add(new File([blob],selected.id+'-camara.jpg',{type:'image/jpeg'}));selected.files=transfer.files;
+   selected.dispatchEvent(new Event('input',{bubbles:true}));selected.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById(selected.id+'CameraStatus').textContent='Foto capturada. Puedes reemplazarla antes de enviar el registro.';close();
+  }catch{if(current===generation){message.textContent='No se pudo guardar la foto. Intenta de nuevo o selecciona un archivo.';capture.disabled=false;}}
+ });
+ document.querySelectorAll('.nova-photo-actions input').forEach(input=>input.addEventListener('change',()=>{document.getElementById(input.id+'CameraStatus').textContent='';}));
+})();
+</script>
+</body>
+</html>

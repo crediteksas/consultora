@@ -4,6 +4,14 @@ const KORA='https://jfkmiyvcdfbsbwchyvol.supabase.co',AURA='https://ditiwpndvmyu
 const PUBLIC_KEY='sb_publishable_8iTCxvU5uzbSZ-OQmdI1GQ_6ulKKZyr';
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=['frente','reverso','selfie'];
+export function summarizeReference(r,at=Date.now()){
+ const progress=referenceProgress(r,at);
+ return {id:r.id,type:r.type,status:progress.state,reason:progress.reason||null,name:r.name,reportedRelationship:r.reportedRelationship,knowsCustomer:r.knowsCustomer??null,contactConfirmed:r.contactConfirmed,responded:r.responded,deliveredAt:r.deliveredAt,deliveryStatus:r.deliveryStatus||null};
+}
+export function withReferenceDiagnostics(row,references,at=Date.now()){
+ const diagnostics=new Map(references.map(r=>[r.id,summarizeReference(r,at)]));
+ return {...row,summary:{...row.summary,references:(row.summary?.references||[]).map(r=>{const d=diagnostics.get(r.id);return d?{...r,reason:d.reason,deliveryStatus:d.deliveryStatus}:r;})}};
+}
 const ALLOWED_ORIGINS=new Set(['https://aura.crediteksas.com','https://registro.crediteksas.com','https://creditek-nova.comercial-853.workers.dev']);
 export async function sha(value){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(b=>b.toString(16).padStart(2,'0')).join('');}
 export function createRetailRuntime({fetcher=fetch,now=Date.now,makeInvitation}={}){
@@ -79,7 +87,7 @@ export function createRetailRuntime({fetcher=fetch,now=Date.now,makeInvitation}=
   for(const r of refs){
    const expected=s.effectiveReferences?.find(x=>x.type===r.reference_type),dialog=dialogs.find(d=>d.reference_id===r.id),a=dialog?.state?.answers,delivery=deliveries.find(d=>d.reference_id===r.id);
    const matches=expected&&await sha(env.NOVA_PII_HASH_PEPPER+':'+expected.telefono)===r.contact_hash;
-   referenceEvidence.push({id:r.id,type:r.reference_type,phone:expected?.telefono||'',name:expected?.nombre||'',reportedRelationship:a?.relationship||null,responded:dialog?.status==='completed',knowsCustomer:a?.knows,relationshipConfirmed:matches&&((r.reference_type==='family'&&a?.relationship==='family')||(r.reference_type==='personal'&&a?.relationship&&a.relationship!=='family')),contactConfirmed:a?.contact_confirmed===true,contradictory:!matches||dialog?.outcome==='does_not_know'||(a?.knows===true&&((r.reference_type==='family')!==(a.relationship==='family'))),contactDeclined:dialog?.status==='declined'||declined.some(d=>d.contact_hash===r.contact_hash),deliveryFailed:delivery?.state==='failed'&&delivery?.attempts>=5,refusedToAnswer:dialog?.outcome==='refused',deliveredAt:delivery?.delivered_at||null,dialogUpdatedAt:dialog?.updated_at||null});
+   referenceEvidence.push({id:r.id,type:r.reference_type,phone:expected?.telefono||'',name:expected?.nombre||'',reportedRelationship:a?.relationship||null,responded:dialog?.status==='completed',knowsCustomer:a?.knows,relationshipConfirmed:matches&&((r.reference_type==='family'&&a?.relationship==='family')||(r.reference_type==='personal'&&a?.relationship&&a.relationship!=='family')),contactConfirmed:a?.contact_confirmed===true,contradictory:!matches||dialog?.outcome==='does_not_know'||(a?.knows===true&&((r.reference_type==='family')!==(a.relationship==='family'))),contactDeclined:dialog?.status==='declined'||declined.some(d=>d.contact_hash===r.contact_hash),deliveryFailed:delivery?.state==='failed'&&delivery?.attempts>=5,refusedToAnswer:dialog?.outcome==='refused',deliveredAt:delivery?.delivered_at||null,deliveryStatus:delivery?.state||null,dialogUpdatedAt:dialog?.updated_at||null});
   }
   const existing=caseRows[0];
   const observations=jobs.map(j=>{
@@ -99,7 +107,7 @@ export function createRetailRuntime({fetcher=fetch,now=Date.now,makeInvitation}=
   const fingerprint=await sha(JSON.stringify({source:s.input_hash,revoked:s.revoked_at,photoHashes:quality?.hashes,photoResults:quality?.results,documents:documents.map(d=>({type:d.tipo,hash:d.sha256})).sort((a,b)=>a.type.localeCompare(b.type)),summary,decision,queryRequestedAt:existing?.query_requested_at||null,renewedAt:existing?.renewed_at||null,policy:POLICY_VERSION}));
   return {decision,summary,fingerprint,documents,referenceEvidence,jobs};
  }
- async function reconcileOne(env,id){const s=await source(env,id),e=await evidence(env,s);const row=await rpc(env,'nova_retail_save',{p_source:id,p_fingerprint:e.fingerprint,p_decision:e.decision,p_summary:e.summary});await db(env,'kora','nova_retail_cases?source_id=eq.'+id,{method:'PATCH',prefer:'return=minimal',body:{last_checked_at:new Date(now()).toISOString()}});return row;}
+ async function reconcileOne(env,id){const s=await source(env,id),e=await evidence(env,s);const row=await rpc(env,'nova_retail_save',{p_source:id,p_fingerprint:e.fingerprint,p_decision:e.decision,p_summary:e.summary});await db(env,'kora','nova_retail_cases?source_id=eq.'+id,{method:'PATCH',prefer:'return=minimal',body:{last_checked_at:new Date(now()).toISOString()}});return withReferenceDiagnostics(row,e.referenceEvidence,now());}
  async function reconcile(env){
   if(env.NOVA_RETAIL_ENABLED!=='true')return {disabled:true};
   const candidates=await rpc(env,'nova_retail_candidates',{});const sources=candidates.map(id=>({solicitud_id:id}));

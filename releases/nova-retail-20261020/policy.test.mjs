@@ -35,7 +35,7 @@ test('reference timer starts at delivery, exact timeout, refusal and contradicti
  assert.equal(referenceProgress({sentAt:now-REFERENCE_WAIT_MS*2},now).state,'awaiting_delivery');
  assert.equal(referenceProgress({deliveredAt:now-REFERENCE_WAIT_MS+1},now).state,'waiting');
  assert.equal(referenceProgress({deliveredAt:now-REFERENCE_WAIT_MS},now).state,'replace');
- assert.deepEqual(referenceProgress({contactDeclined:true},now),{state:'replace',mayContactAgain:false});
+ assert.deepEqual(referenceProgress({contactDeclined:true},now),{state:'replace',reason:'contact_declined',mayContactAgain:false});
  assert.equal(referenceProgress({knowsCustomer:false},now).state,'review');
 });
 test('photo and reference observations block automatic processing',()=>{

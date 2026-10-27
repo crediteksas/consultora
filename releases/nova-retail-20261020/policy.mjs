@@ -41,14 +41,14 @@ export function evaluatePlatforms(observations, now=Date.now()) {
 export function referenceProgress(reference, now=Date.now()) {
   if(reference?.deliveryFailed===true)return {state:'replace',reason:'delivery_failed'};
   if(reference?.contactDeclined===true||reference?.refusedToAnswer===true)
-    return {state:'replace',mayContactAgain:false};
+    return {state:'replace',reason:reference.contactDeclined?'contact_declined':'refused_to_answer',mayContactAgain:false};
   if(reference?.knowsCustomer===false||reference?.contradictory===true)
-    return {state:'review',mayContactAgain:false};
+    return {state:'review',reason:reference.knowsCustomer===false?'does_not_know_customer':'contradictory_information',mayContactAgain:false};
   if(reference?.responded===true)
-    return {state:reference.knowsCustomer===true&&reference.relationshipConfirmed===true&&reference.contactConfirmed===true?'approved':'review'};
+    return reference.knowsCustomer===true&&reference.relationshipConfirmed===true&&reference.contactConfirmed===true?{state:'approved'}:{state:'review',reason:reference.contactConfirmed!==true?'contact_unconfirmed':reference.relationshipConfirmed!==true?'relationship_unconfirmed':'incomplete_response'};
   const delivered=timestamp(reference?.deliveredAt);
-  if(!Number.isFinite(delivered)||delivered>now)return {state:'awaiting_delivery'};
-  return now-delivered>=REFERENCE_WAIT_MS?{state:'replace'}:{state:'waiting',remainingMs:REFERENCE_WAIT_MS-(now-delivered)};
+  if(!Number.isFinite(delivered)||delivered>now)return {state:'awaiting_delivery',reason:'awaiting_delivery'};
+  return now-delivered>=REFERENCE_WAIT_MS?{state:'replace',reason:'response_timeout'}:{state:'waiting',reason:'awaiting_response',remainingMs:REFERENCE_WAIT_MS-(now-delivered)};
 }
 
 export function evaluateApplication(evidence, now=Date.now()) {

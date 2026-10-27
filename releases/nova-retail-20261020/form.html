@@ -285,7 +285,7 @@ let submittedPayload = null;
 let photoQualityReceipt=null,qualityPhotos=null,qualityBusy=false,qualityExpiresAt=0,recoveryMode=false;
 const qualityIds={frente:'fotoFrente',reverso:'fotoReverso',selfie:'fotoSelfie'};
 document.getElementById('fotoFrente').closest('.field').before(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
-const qualityStates={},qualityBlobCache=new WeakMap();let qualityGeneration=0,photoReviewQueue=Promise.resolve();
+const qualityStates={},qualityBlobCache=new WeakMap();let qualityGeneration=0,photoReviewQueue=Promise.resolve(),reviewPending=false,retryPhotoReview=null;
 function invalidateQuality(event){
  if(documentosSession)return;photoQualityReceipt=null;qualityPhotos=null;qualityExpiresAt=0;qualityGeneration++;
  const changed=event?.target?.id,type=Object.keys(qualityIds).find(t=>qualityIds[t]===changed);
@@ -293,7 +293,7 @@ function invalidateQuality(event){
  else for(const t of Object.keys(qualityIds)){delete qualityStates[t];document.getElementById(qualityIds[t]+'Quality').textContent='';}
 }
 function lockPhotoSteps(){
- if(typeof retryPhotoReview!=='undefined')retryPhotoReview.disabled=qualityBusy||!!documentosSession;
+ if(retryPhotoReview)retryPhotoReview.disabled=qualityBusy||!!documentosSession;
  let previousAccepted=true;
  for(const [type,id]of Object.entries(qualityIds)){
   const enabled=previousAccepted&&!qualityBusy&&!documentosSession;
@@ -324,11 +324,13 @@ async function preparedQualityPhotos(){
 }
 async function reviewCapturedPhoto(){
  if(documentosSession)return;
+ const selected=Object.entries(qualityIds).filter(([,id])=>document.getElementById(id).files.length);
+ if(!selected.length||selected.every(([type])=>['auto_approved','manual_pending'].includes(qualityStates[type]?.status)))return;
  const missing=[];
  if(!registroSession)missing.push('verificar tu celular con el código recibido');
  if(document.getElementById('nombreCompleto').value.trim().length<3)missing.push('completar tu nombre');
  if(!document.getElementById('autPhotoQuality').checked)missing.push('autorizar la revisión de fotos');
- if(missing.length){for(const id of Object.values(qualityIds))if(document.getElementById(id).files.length)document.getElementById(id+'Quality').textContent='Tu foto seleccionada se conserva. Falta '+missing.join(' y ')+'. Después pulsa «Revisar foto y continuar» sin volver a adjuntarla.';return;}
+ if(missing.length){for(const id of Object.values(qualityIds))if(document.getElementById(id).files.length)document.getElementById(id+'Quality').textContent='Tu foto seleccionada se conserva. Falta '+missing.join(' y ')+'. Después pulsa «'+(recoveryMode?'Guardar fotos pendientes':'Revisar foto y continuar (debajo de la foto del frente)')+'» sin volver a adjuntarla.';return;}
  qualityBusy=true;lockPhotoSteps();evaluarSubmit();const generation=qualityGeneration;
  try{
   const prepared=await preparedQualityPhotos();if(!Object.keys(prepared).length)return;
@@ -340,10 +342,12 @@ async function reviewCapturedPhoto(){
 }
 for(const id of [...Object.values(qualityIds),'nombreCompleto','cedula','celular','autPhotoQuality'])document.getElementById(id).addEventListener('change',event=>{invalidateQuality(event);if(Object.values(qualityIds).includes(id)||id==='autPhotoQuality'||id==='nombreCompleto')queuePhotoReview();});
 function queuePhotoReview(){
- photoReviewQueue=photoReviewQueue.catch(()=>{}).then(reviewCapturedPhoto);
+ if(reviewPending)return photoReviewQueue;
+ reviewPending=true;
+ photoReviewQueue=photoReviewQueue.catch(()=>{}).then(()=>{reviewPending=false;return reviewCapturedPhoto();});
  return photoReviewQueue;
 }
-const retryPhotoReview=document.createElement('button');
+retryPhotoReview=document.createElement('button');
 retryPhotoReview.type='button';retryPhotoReview.className='btn-secondary';retryPhotoReview.style.padding='12px 16px';retryPhotoReview.textContent='Revisar foto y continuar';
 retryPhotoReview.addEventListener('click',()=>{if(!qualityBusy&&!documentosSession)queuePhotoReview();});
 document.getElementById('fotoFrenteQuality').after(retryPhotoReview);
@@ -688,7 +692,7 @@ btnVerificarOtp.addEventListener('click', async () => {
     ) {
       registroSession = data.registro_session;
       otpVerificado = true;
-      photoReviewQueue=photoReviewQueue.then(reviewCapturedPhoto);
+      queuePhotoReview();
       celularVerificado = celular;
       cedulaVerificada = document.getElementById('cedula').value;
       otpStatus.className = 'otp-status ok';

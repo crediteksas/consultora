@@ -4,9 +4,9 @@
   const canRemove = batch => !!batch && pending.includes(batch.estado) && !batch.frozen_at && !batch.approved_at && !batch.approved_by;
   function create({sb, dialog, esc, platformName, onRemoved}) {
     const button=document.createElement('button');
-    button.type='button';button.id='removeImport';button.className='btn secondary hidden';
-    button.textContent='Eliminar importación';
-    (document.getElementById('batchSecondaryActions') || document.getElementById('approve').parentElement).append(button);
+    button.type='button';button.id='removeImport';button.className='btn danger hidden';
+    button.textContent='Eliminar archivo cargado';
+    document.getElementById('approve').parentElement.append(button);
     let selected;
     button.onclick=async()=>{
       if(!canRemove(selected))return;

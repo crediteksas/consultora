@@ -26,6 +26,7 @@ for(const engine of (process.env.KORA_TEST_CHROME_ONLY?['chromium']:['chromium',
         from(table){let single=false;const query={select(){return query;},eq(){return query;},order(){return query;},range(){return query;},maybeSingle(){single=true;return query;},then(ok,bad){const rows=table==='origenes'?[{codigo:'A',nombre:'Local'}]:table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?(window.testRemoved?[]:[fixture()]):[];return Promise.resolve(table==='origenes'&&window.testOriginsError?{data:null,error:{message:'Consulta de comercios fallida'}}:{data:single?(rows[0]||null):rows,error:null}).then(ok,bad);}};return query;},
         async rpc(name,params){window.testCalls.push({name,params});
           if(name==='tiene_capacidad_aliados')return {data:true};
+          if(name==='addi_liquidaciones_listar')return {data:[],error:null};
           if(name!=='aliados_eliminar_importacion')throw Error('Mutación no esperada: '+name);
           if(window.testFailure)return {error:{message:'No se puede eliminar: existen órdenes autorizadas'}};
           window.testRemoved=true;return {data:{retirada:true}};
@@ -39,7 +40,11 @@ for(const engine of (process.env.KORA_TEST_CHROME_ONLY?['chromium']:['chromium',
     await page.evaluate(()=>document.getElementById('app').classList.remove('hidden'));
     await page.locator('#showPending').click();
     await page.locator('[data-open="lote-alo"]').click();
-    await page.getByText('Otras acciones',{exact:true}).click();
+    // Mayte debe encontrar la acción sin desplegar «Otras acciones».
+    assert.equal(await page.locator('#batchSecondaryActions').evaluate(e=>e.closest('details').open),false);
+    assert.equal(await page.getByRole('button',{name:'Eliminar archivo cargado',exact:true}).isVisible(),true);
+    assert.equal(await page.locator('#removeImport').evaluate(e=>e.closest('details')),null);
+    await page.screenshot({path:`/private/tmp/liquidaciones-boton-visible-${engine}.png`});
     await page.locator('#removeImport').click();
     await page.getByRole('button',{name:'Eliminar este lote',exact:true}).waitFor();
     assert.match(await page.locator('dialog').textContent(),/ALO CREDIT - ARCHIVO ERRONEO/);

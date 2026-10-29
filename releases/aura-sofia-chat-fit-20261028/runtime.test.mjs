@@ -1,0 +1,16 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {readFile,writeFile,mkdtemp,cp} from 'node:fs/promises';
+import {Miniflare,createFetchMock} from '../../node_modules/miniflare/dist/src/index.js';
+import {visibilityEntry} from '../aura-shell-visibility-20261028/build.mjs';
+import {chatFitEntry} from './build.mjs';
+const dir=await mkdtemp('/private/tmp/aura-chat-fit-test-');
+await cp(new URL('../../backups/aura-shell-visibility-20261028/',import.meta.url),dir,{recursive:true});
+await writeFile(dir+'/visibility-ui.mjs',await visibilityEntry());await writeFile(dir+'/chat-fit.mjs',await chatFitEntry());
+const original='<!doctype html><html><head></head><body data-aura-page="sofia"><div class="topbar-left"><h1>Sofia · CRM WhatsApp</h1></div><script>const operational=true;</script></body></html>';
+const mock=createFetchMock();mock.disableNetConnect();
+for(const path of ['/creditek/agentes/creditek-agente-respuestas?embedded=1','/creditek/agentes/creditek-agente-respuestas.html'])mock.get('https://aura.crediteksas.com').intercept({path}).reply(200,original,{headers:{'content-type':'text/html'}}).persist();
+mock.get('https://aura.crediteksas.com').intercept({path:'/creditek/agentes/aura-auth.js'}).reply(200,'auth preserved').persist();
+const mf=new Miniflare({modules:true,modulesRoot:dir,scriptPath:dir+'/chat-fit.mjs',modulesRules:[{type:'ESModule',include:['**/*.mjs','**/*.js']},{type:'Text',include:['**/*.txt']}],compatibilityDate:'2026-07-23',fetchMock:mock});test.after(()=>mf.dispose());
+test('both Sofia routes retain operational script and existing layout and add only a style',async()=>{for(const path of ['/creditek/agentes/creditek-agente-respuestas?embedded=1','/creditek/agentes/creditek-agente-respuestas.html']){const r=await mf.dispatchFetch('https://aura.crediteksas.com'+path);const html=await r.text();assert.equal(r.headers.get('x-sofia-chat-fit'),'20261028-1');assert.equal(r.headers.get('x-sofia-visual-release'),'20261028-1');assert.ok(html.includes('<script>const operational=true;</script>'));assert.ok(html.includes('sofia-layout-20261028'));assert.ok(html.includes('id="sofia-chat-fit-20261028"'));}});
+test('shell loading, full brand and dictation disabled remain unchanged',async()=>{const r=await mf.dispatchFetch('https://aura.crediteksas.com/creditek/agentes/');assert.equal(r.headers.get('x-aura-shell-visibility'),'20261028-1');assert.ok((await r.text()).includes('Abriendo ${title}…'));const dict=await mf.dispatchFetch('https://aura.crediteksas.com/creditek/agentes/aura-dictation.mjs');assert.equal(dict.headers.get('x-aura-dictation'),'disabled');});
+test('authentication route remains byte preserved and POST is not transformed',async()=>{const r=await mf.dispatchFetch('https://aura.crediteksas.com/creditek/agentes/aura-auth.js');assert.equal(await r.text(),'auth preserved');const p=await mf.dispatchFetch('https://aura.crediteksas.com/creditek/agentes/',{method:'POST'});assert.equal(p.headers.get('x-sofia-chat-fit'),null);assert.equal(p.status,405);});

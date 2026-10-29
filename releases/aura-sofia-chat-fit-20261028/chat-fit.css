@@ -1,0 +1,26 @@
+/* Fit the conversation to its actual flex space, including embedded AURA. */
+body[data-aura-page="sofia"] .main { flex:1 1 0; min-height:0; }
+body[data-aura-page="sofia"] .center-panel { min-height:0; overflow:hidden; }
+body[data-aura-page="sofia"] #chat-area {
+  display:flex; flex-direction:column; flex:1 1 0;
+  min-width:0; min-height:0; overflow:hidden;
+}
+body[data-aura-page="sofia"] #chat-msgs-inner {
+  flex:1 1 0; min-height:0; max-height:none !important;
+  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+}
+body[data-aura-page="sofia"] .msg { flex-shrink:0; overflow-wrap:anywhere; }
+body[data-aura-page="sofia"] .chat-header,
+body[data-aura-page="sofia"] .attention-box,
+body[data-aura-page="sofia"] .chat-reply,
+body[data-aura-page="sofia"] .chat-reply-disabled { flex-shrink:0; }
+body[data-aura-page="sofia"] .conv-scroll { min-height:0; overscroll-behavior:contain; }
+body[data-aura-page="sofia"] .reply-input { min-width:0; }
+body[data-aura-page="sofia"] .chat-header { flex-wrap:wrap; gap:8px; }
+@media (max-width:47.999rem) {
+  body[data-aura-page="sofia"] .chat-header { padding:8px 12px; }
+  body[data-aura-page="sofia"] .attention-box { margin:8px 12px 0; padding:6px 8px; }
+  body[data-aura-page="sofia"] #chat-msgs-inner { padding:10px 12px; }
+  body[data-aura-page="sofia"] .chat-reply,
+  body[data-aura-page="sofia"] .chat-reply-disabled { padding:8px 12px; }
+}

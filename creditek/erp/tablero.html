@@ -70,15 +70,6 @@
     </div>
   </header>
 
-  <a id="documentosGestionAcceso" class="dashboard-document-access" href="documentos-gestion.html" hidden>
-    <i data-lucide="file-pen-line" aria-hidden="true"></i>
-    <div class="dashboard-document-access__copy">
-      <h2>Editar o anular documentos</h2>
-      <p>Busca el documento y revisa las acciones disponibles, con motivo e historial de cambios.</p>
-    </div>
-    <span class="dashboard-document-access__action">Abrir <i data-lucide="arrow-right" aria-hidden="true"></i></span>
-  </a>
-
   <section class="dashboard-filterbar" aria-label="Filtros del tablero">
     <div class="dashboard-filterbar__title">
       <i data-lucide="sliders-horizontal"></i>
@@ -328,7 +319,6 @@ function initPagina() {
   cont.innerHTML = '';
   cont.appendChild(document.getElementById('tplTablero').content.cloneNode(true));
   KoraAlertasCelulares.mount(document.getElementById('alertasCelulares'), sb, currentPerfil);
-  document.getElementById('documentosGestionAcceso').hidden = !window.KoraAccessControl?.canManageDocuments(currentPerfil);
   pintarIconos();
   cargarCierreSeptiembre();
 

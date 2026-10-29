@@ -30,5 +30,14 @@
     "aura": 9,
     "sofia": 191
   },
-  "authenticatedVisualCheck": "pending_login_after_reload"
+  "authenticatedVisualCheck": "passed_live_authenticated",
+  "authenticatedVisualAt": "2026-10-29T01:23:03.271947+00:00",
+  "authenticatedVisualDetails": {
+    "headerAndFiltersReadable": true,
+    "searchWorks": true,
+    "dictationAbsentOnSearchAndReplyFocus": true,
+    "onlyOscarTestConversationOpened": true,
+    "messagesSent": 0,
+    "screenshot": "/tmp/sofia-ui-revision-20261028.jpg"
+  }
 }

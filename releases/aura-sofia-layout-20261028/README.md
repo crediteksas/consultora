@@ -10,7 +10,7 @@ El Worker de archivos quedó con la fuente original `81dddfb9d550de148cffecd83d4
 
 Verificaciones finales: 9 pruebas relacionadas (shell real, reescritura HTML y dictado), integridad de los módulos y scripts operativos, páginas ajenas sin cambios, API sin sesión sigue en 403, Sofía y NOVA sin modificaciones por este despliegue. Las respuestas cortas de Sofía se publicaron por separado, con 191 pruebas aprobadas. Sin mensajes a clientes ni pruebas pagadas.
 
-La recarga completa de AURA mostró la pantalla de inicio de sesión. Se solicitó al usuario entrar para finalizar la inspección visual autenticada; no se presenta esa comprobación como terminada. La publicación HTTP sí muestra los marcadores de estilo y dictado desactivado.
+Revisión visual autenticada terminada el 28/10/2026 a las 8:21 p. m. Colombia, después de que Oscar inició sesión. Se comprobó la URL original dentro de AURA: encabezado e indicadores sin solapes, filtros legibles, búsqueda funcional y ausencia del dictado tanto al enfocar la búsqueda como el campo de respuesta. Solo se abrió la conversación de prueba de Oscar; no se escribió ni envió ningún mensaje. Captura privada: `/tmp/sofia-ui-revision-20261028.jpg`. La demostración grabada para Meta sigue pendiente.
 
 Fuente de la publicación final: `shell.mjs`, `shell.test.mjs` y `release-shell.mjs`. Evidencia: `shell-verification.json`. Respaldos privados en `backups/aura-sofia-layout-20261028/shell/`. Los scripts previos de esta carpeta documentan intentos y pruebas históricas; no son el procedimiento de publicación final.
 

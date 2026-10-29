@@ -1,5 +1,19 @@
 # Corrección visual acotada de Sofía — 28 octubre de 2026
 
+## Publicado y verificado — 28/10/2026, 7:03 p. m. Colombia
+
+La URL real de AURA se sirve mediante dos capas: `creditek-aura` conserva sus assets y `creditek-aura-shell` atiende las rutas de la interfaz. Las rutas de la zona confirmaron que los ajustes debían aplicarse al segundo. No se cambió ninguna ruta, permiso ni archivo estático.
+
+La versión final del shell es `b8d08dc5-d051-4dee-a09b-69de009fece9` al 100%. Su nuevo módulo `sofia-ui.mjs` (SHA-256 `b3328fc1e61cfd2e573c89b39e5c7da3c88466a30ce716dd5d85ea4d06c980b1`) envuelve los tres módulos anteriores sin cambiar un byte de ellos. Corrige el HTML en su URL original y desactiva el módulo de dictado que cargan el padre y los iframes.
+
+El Worker de archivos quedó con la fuente original `81dddfb9d550de148cffecd83d4524c12b3b32ff219c7b521525cdb8969a3b72`, versión `02910609-a8c1-45a2-bf7c-9b6ac164cec4`. Su bundle, configuración y conexiones se conservaron. Los parches intermedios de ese Worker se retiraron; no se utiliza la ruta alternativa exploratoria.
+
+Verificaciones finales: 9 pruebas relacionadas (shell real, reescritura HTML y dictado), integridad de los módulos y scripts operativos, páginas ajenas sin cambios, API sin sesión sigue en 403, Sofía y NOVA sin modificaciones por este despliegue. Las respuestas cortas de Sofía se publicaron por separado, con 191 pruebas aprobadas. Sin mensajes a clientes ni pruebas pagadas.
+
+La recarga completa de AURA mostró la pantalla de inicio de sesión. Se solicitó al usuario entrar para finalizar la inspección visual autenticada; no se presenta esa comprobación como terminada. La publicación HTTP sí muestra los marcadores de estilo y dictado desactivado.
+
+Fuente de la publicación final: `shell.mjs`, `shell.test.mjs` y `release-shell.mjs`. Evidencia: `shell-verification.json`. Respaldos privados en `backups/aura-sofia-layout-20261028/shell/`. Los scripts previos de esta carpeta documentan intentos y pruebas históricas; no son el procedimiento de publicación final.
+
 El encabezado conservaba 56px de altura, mientras la capa común aumentaba botones y campos a 44px y el responsive movía los indicadores a otra fila. Esto provocaba el título comprimido y solapes. El filtro de canal también compartía una columna insuficiente.
 
 La corrección agrega una capa CSS exclusiva de `body[data-aura-page="sofia"]`: título/acciones en una fila, seis indicadores en otra y filtros largos a ancho completo. En celular se distribuyen los indicadores en dos filas. El título identifica el espacio como «Sofía · Conversaciones» sin afirmar que los canales están habilitados para atención general.

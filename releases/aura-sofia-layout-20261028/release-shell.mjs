@@ -11,7 +11,7 @@ async function request(path,method,body){const r=await fetch(root+path,{method,h
 async function page(path){const r=await fetch('https://aura.crediteksas.com'+path,{signal:AbortSignal.timeout(20000)});return {status:r.status,headers:Object.fromEntries(r.headers),text:await r.text()};}
 const source=await modules();assertShellModules(source);const settingsPath='/workers/services/creditek-aura-shell/environments/production/settings';
 const [settings,bot,nova,aura]=await Promise.all([cf.get(settingsPath),cf.source('creditek-bot'),cf.source('creditek-nova'),cf.source('creditek-aura')]);
-ensure(hash(aura)==='070ef402bccfa2619bf560a33162a300989c54af783405d3aa24ee694bc1bb88','AURA changed concurrently');
+ensure(hash(aura)==='81dddfb9d550de148cffecd83d4524c12b3b32ff219c7b521525cdb8969a3b72','AURA changed concurrently');
 const paths=['/creditek/agentes/','/creditek/agentes/index.html','/creditek/agentes/aura-auth.js','/creditek/agentes/aura-responsive.css','/creditek/agentes/creditek-agente-redes.html','/api/sofia/tiendas'];
 const before=await Promise.all(paths.map(page)),originalSofia=await page('/creditek/agentes/creditek-agente-respuestas?embedded=1'),main=await shellEntry(),dir=await mkdtemp('/private/tmp/aura-shell-release-');
 await writeFile(dir+'/main.mjs',main,{mode:0o600});await writeFile(dir+'/backup.json',JSON.stringify({settings,modules:Object.fromEntries([...source].map(([k,v])=>[k,hash(v)])),botHash:hash(bot),novaHash:hash(nova),auraHash:hash(aura)},null,2),{mode:0o600});
@@ -26,10 +26,8 @@ ensure(visual.status===200&&visual.headers['x-sofia-visual-release']==='20261028
 const scripts=t=>[...t.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map(m=>m[0]);ensure(isDeepStrictEqual(scripts(originalSofia.text),scripts(visual.text)),'Sofia operational scripts changed');
 const unchanged=await Promise.all(paths.map(page));for(let i=0;i<paths.length;i++)ensure(before[i].status===unchanged[i].status&&before[i].text===unchanged[i].text,'Unrelated public response changed: '+paths[i]);
 ensure(hash(await cf.source('creditek-bot'))===hash(bot)&&hash(await cf.source('creditek-nova'))===hash(nova),'Bot or NOVA changed');
-// Remove intermediate asset-Worker wrappers by restoring its exact original version.
-ensure(hash(await cf.source('creditek-aura'))===hash(aura),'AURA changed before restoration');
-await request('/workers/scripts/creditek-aura/deployments','POST',{strategy:'percentage',versions:[{version_id:'e7891427-89c9-4140-b8f4-9d77bde3f373',percentage:100}],annotations:{'workers/message':'Restore original asset Worker; Sofia UI lives in the actual shell service'}});
-ensure(hash(await cf.source('creditek-aura'))==='81dddfb9d550de148cffecd83d4524c12b3b32ff219c7b521525cdb8969a3b72','Asset Worker restoration mismatch');
+// The asset Worker and bundle are outside this shell-only publication.
+ensure(hash(await cf.source('creditek-aura'))===hash(aura),'Asset Worker changed');
 const finalSofia=await page('/creditek/agentes/creditek-agente-respuestas?embedded=1'),finalDict=await page('/creditek/agentes/aura-dictation.mjs?v=20261028');ensure(finalSofia.headers['x-sofia-visual-release']==='20261028-1'&&finalDict.headers['x-aura-dictation']==='disabled','Final live UI unavailable');
 const dep=await cf.get('/workers/scripts/creditek-aura-shell/deployments'),version=dep.deployments?.[0]?.versions;ensure(version?.length===1&&version[0].percentage===100,'Unexpected shell deployment');
 const evidence={ok:true,at:new Date().toISOString(),worker:'creditek-aura-shell',version:version[0],entryHash:hash(main),originalModulesPreserved:Object.keys(SHELL_MODULES),originalAssetWorkerRestored:true,originalAssetBundlePreserved:true,settingsPreserved:true,sofiaScriptsPreserved:true,dictationDisabled:true,layoutApplied:true,unchangedResponses:paths,botPreserved:true,novaPreserved:true,noCustomerMessages:true,noPaidTests:true};await writeFile(dir+'/verification.json',JSON.stringify(evidence,null,2),{mode:0o600});await writeFile(new URL('./shell-verification.json',import.meta.url),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify({phase:'verified',dir,...evidence}));

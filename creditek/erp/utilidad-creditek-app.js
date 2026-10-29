@@ -255,7 +255,7 @@
     const boton = document.querySelector(`[data-ver-todas="${prefijo}"]`);
     boton.textContent = expandidas ? 'Ver top 5' : 'Ver todas';
     boton.classList.toggle('invisible', filas.length <= 5);
-    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td>${escapeHtml(f.nombre)}</td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Margen de remisiones" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
+    document.getElementById(`tbody-${prefijo}`).innerHTML = visibles.length ? visibles.map(f => `<tr><td><button type="button" class="kora-drilldown-link" data-b2b-dimension="${prefijo}" data-b2b-key="${escapeHtml(f.clave)}">${escapeHtml(f.nombre)}</button></td><td data-label="Facturado" class="text-right font-mono">${money(f.facturado)}</td><td data-label="Costo real" class="text-right font-mono">${money(f.costo)}</td><td data-label="Margen de remisiones" class="text-right font-mono">${money(f.utilidad)}</td><td data-label="Margen %" class="text-right">${porcentaje(f.margen)}</td><td data-label="Participación" class="text-right">${porcentaje(f.participacion)}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Sin datos</td></tr>';
   }
 
   function renderMarcasCelulares() {
@@ -359,7 +359,18 @@
     XLSX.writeFile(libro, `utilidad-creditek_${base.desde}_${base.hasta}.xlsx`);
   }
 
+  function explorarB2B(kind, dimension, key) {
+    const X=window.KoraSalesExplorer,base=filtros(),profit=kind==='profit';
+    if(profit && sinDistribucion()){toast('Consulta todas las tiendas y referencias para explorar la utilidad neta, sin repartir gastos generales.',true);return;}
+    const frozen=estado.filtradas.filter(r=>!dimension || ((dimension==='tienda'?r.tienda_codigo:r.referencia)||'Sin asignar')===key).map(r=>({...r}));
+    X.open({title:profit?'Resultado B2B':'Despachos B2B',from:base.desde,to:base.hasta,valueLabel:profit?'Resultado registrado':'Facturado',note:'Mismos filtros del tablero B2B. El detalle por tienda muestra margen de remisiones; los gastos generales solo se descuentan en el consolidado.',load:async()=>{
+      const rows=X.fromB2B(frozen,profit);
+      if(profit && !base.tienda && !base.referencia)rows.push(...X.ledgerRows(estado.gastosGenerales.filter(e=>e.date>=base.desde&&e.date<=base.hasta),'Gasto general B2B'));
+      return rows;
+    }});
+  }
   function enlazar() {
+    document.addEventListener('click',event=>{const button=event.target.closest('[data-b2b-explore],[data-b2b-dimension]');if(button)explorarB2B(button.dataset.b2bExplore || 'sales',button.dataset.b2bDimension,button.dataset.b2bKey);});
     document.getElementById('btn-filtros-avanzados').addEventListener('click', () => {
       const panel = document.getElementById('panel-filtros-avanzados');
       const boton = document.getElementById('btn-filtros-avanzados');

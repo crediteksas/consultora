@@ -53,8 +53,8 @@
   function metrics(items) {
     $("#metrics").innerHTML = items
       .map(
-        ([label, value]) =>
-          `<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`,
+        ([label, value, component]) =>
+          `<div class="metric"${component ? ` data-explore-component="${esc(component)}"` : ""}><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`,
       )
       .join("");
   }
@@ -492,14 +492,14 @@
     const finalUtility = component('net') - expenseTotal;
     const closedUtility = sum(ops, 'resultado_cerrado');
     metrics([
-      ["Créditos del periodo", CreditekReversiones.creditCount(ops)],
-      ["Utilidad bruta del negocio", amount(component('gross'))],
-      ["Ventas del periodo", cop(sum(ops, "monto_base"))],
-      ["Bonificaciones del periodo", amount(component('bonus'))],
-      ["Gastos financieros del periodo", amount(component('financial'))],
-      ["Gastos aplicados a esta vista", cop(expenseTotal)],
-      ["Provisión calculada del periodo", amount(component('provision'))],
-      [expenseSelection.unallocated || expenseSelection.restricted ? "Utilidad antes de gastos generales" : "Utilidad final del periodo", amount(finalUtility)],
+      ["Créditos del periodo", CreditekReversiones.creditCount(ops), "credits"],
+      ["Utilidad bruta del negocio", amount(component('gross')), "gross"],
+      ["Ventas del periodo", cop(sum(ops, "monto_base")), "sales"],
+      ["Bonificaciones del periodo", amount(component('bonus')), "bonus"],
+      ["Gastos financieros del periodo", amount(component('financial')), "financial"],
+      ["Gastos aplicados a esta vista", cop(expenseTotal), "expenses"],
+      ["Provisión calculada del periodo", amount(component('provision')), "provision"],
+      [expenseSelection.unallocated || expenseSelection.restricted ? "Utilidad antes de gastos generales" : "Utilidad final del periodo", amount(finalUtility), "net"],
     ]);
     const grouped = [
       ...ops
@@ -593,6 +593,20 @@
     });
     const platformSummary = `<section class="card" id="resumen-plataformas" data-kora-report-kind="summary"><h2>Resumen por plataforma</h2><p class="muted" data-kora-report-note data-kora-no-export>Utilidad de liquidaciones: antes de gastos operativos del período. El desglose muestra los gastos descontados; no equivale al saldo bancario.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>reportCop(x.sales),x=>x.complete?reportCop(x.bonuses):'Pendiente de cálculo',x=>x.complete?reportCop(x.utility):'Pendiente de cálculo']))}</section>`;
     $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + '<p class="muted">El resultado por operación no descuenta actas gerenciales de retiro mensual. Consulta el disponible por retirar en Tablero.</p>' + $("#content").innerHTML;
+    if(globalThis.KoraSalesExplorer){
+      const names=new Map(db.origins.map(o=>[o.codigo,o.nombre]));
+      Array.from($("#metrics").children).forEach(metric=>{
+        const strong=metric.querySelector('strong'),label=metric.querySelector('small')?.textContent || "Indicador",component=metric.dataset.exploreComponent;
+        if(!strong || !component)return;
+        const button=document.createElement('button');button.type='button';button.className='kora-summary-open';button.setAttribute('aria-label','Explorar '+label);strong.replaceWith(button);button.append(strong);button.insertAdjacentHTML('beforeend','<span class="kora-drilldown-hint">Ver detalle →</span>');
+        button.onclick=()=>globalThis.KoraSalesExplorer.open({title:label,from:from||OPERATION_CUTOFF,to:to||bogotaDateParts().today,valueLabel:component==='credits'||component==='sales'?'Valor financiado':label,note:'Mismos filtros del resumen. Los gastos generales no se asignan arbitrariamente a una tienda o plataforma.',load:async()=>{
+          const X=globalThis.KoraSalesExplorer,rows=component==='expenses'?[]:X.fromOperations(ops,names,!['credits','sales'].includes(component),value=>operationSaleDay({operation_at:value}));
+          if(!['credits','sales','expenses'].includes(component))rows.forEach((row,i)=>{const part=dashboardBreakdown(ops[i]);row.amount=part.complete?X.cents(part[component]):null;});
+          if(component==='expenses' || component==='net')rows.push(...X.ledgerRows(expenseSelection.rows.map(e=>({id:e.id,date:e.fecha,store:e.origen_codigo,value:(component==='expenses'?1:-1)*Number(e.valor)})),component==='expenses'?'Gasto aplicado':'Gasto autorizado',names));
+          return rows;
+        }});
+      });
+    }
   }
   function populateDashboardFilters() {
     setCurrentMonthDashboardRange();
@@ -777,6 +791,17 @@
       `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Todos los indicadores y filas de esta tabla corresponden exclusivamente a ventas del periodo seleccionado.</p></div>${table(["Ejecutivo Creditek", "Política de bono vigente", `Operaciones ${from}–${to}`, `Ventas ${from}–${to}`, `Bonos ${from}–${to}`], rows(list, [(x) => esc(x.e.nombre), (x) => esc(schemeName(x.e.esquema_comision?.tipo)), (x) => x.ops.length, (x) => cop(sum(x.ops, "monto_base")), (x) => cop(x.bonusNew)]))}${pendingAction}`;
   }
 
+  function openExecutiveSales(key) {
+    const from=$("#executiveFrom").value,to=$("#executiveTo").value;
+    const active=new Set(db.executives.filter(e=>e.activo).map(e=>e.id));
+    const executive=db.executives.find(e=>e.id===key && e.activo);
+    if(!executive && !['__retail__','__unassigned__'].includes(key))return;
+    const ops=db.operations.filter(o=>operationIsCurrent(o)&&operationSaleDay(o)>=from&&operationSaleDay(o)<=to).filter(o=>executive?o.ejecutivo_id===key:key==='__retail__'?o.tipo_establecimiento==='propia'&&!active.has(o.ejecutivo_id):o.tipo_establecimiento!=='propia'&&!active.has(o.ejecutivo_id));
+    const names=new Map(db.origins.map(o=>[o.codigo,o.nombre]));
+    const title=executive?.nombre || (key==='__retail__'?'Tiendas propias · Retail':'Sin ejecutivo asignado');
+    window.KoraSalesExplorer.open({title:'Ventas de '+title,from,to,note:'Mismas operaciones y fechas de la tarjeta seleccionada. Las referencias no registradas aparecen como «Referencia no informada».',load:async()=>window.KoraSalesExplorer.fromOperations(ops,names,false,value=>operationSaleDay({operation_at:value}))});
+  }
+
   function renderExecutiveCards() {
     let toolbar = $("#executiveToolbar");
     if (!toolbar) {
@@ -871,7 +896,7 @@
                 )
                 .join("")
             : '<div class="empty compact">Sin ventas en este periodo</div>';
-        return `<article class="card executive-card"><div class="head"><div><h2>${esc(item.e.nombre)}</h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length === 1 ? "" : "s"}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops, "monto_base"))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div></article>`;
+        return `<article class="card executive-card"><div class="head"><div><h2><button type="button" class="kora-drilldown-link" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">${esc(item.e.nombre)}</button></h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length === 1 ? "" : "s"}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops, "monto_base"))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div><button type="button" class="btn primary" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">Ver ventas y referencias →</button></article>`;
       })
       .join("");
     const pendingAction = pending
@@ -1737,6 +1762,7 @@
       $("#content").innerHTML = '<section class="card" role="alert"><h2>Informe no disponible</h2><p>No se pudieron cargar todos los datos. No se muestran totales parciales ni ceros como resultado. Recarga para volver a intentar.</p></section>';
     }
   }
+  document.addEventListener('click', event => { const button=event.target.closest('[data-executive-sales]');if(button)openExecutiveSales(button.dataset.executiveSales); });
   document.addEventListener("kora-sidebar-ready", init, { once: true });
   if (window.creditekSidebar?.sb) init();
   $("#q")?.addEventListener("input", () => view === "allies" && renderAllies());

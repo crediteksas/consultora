@@ -121,7 +121,7 @@
       grupo.participacion = total ? grupo.facturado / total : null;
       grupo.unidades += n(fila.cantidad);
     });
-    return [...mapa.values()].sort((a, b) => b.facturado - a.facturado);
+    return [...mapa.entries()].map(([clave,grupo])=>({...grupo,clave})).sort((a, b) => b.facturado - a.facturado);
   }
 
   const marcasCelular = [

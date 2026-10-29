@@ -63,5 +63,5 @@
     ]);
     return summarize({executives,origins,...data,bonuses,beneficiaries},period);
   }
-  return {load, summarize, month, allRows, credits, loadCreditData};
+  return {day, load, summarize, month, allRows, credits, loadCreditData};
 });

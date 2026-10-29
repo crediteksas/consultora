@@ -13,12 +13,13 @@
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.0.3">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
-<script src="tablero-ejecutivos.js?v=1.1.0"></script>
+<script src="tablero-ejecutivos.js?v=1.1.1"></script>
 <script src="tablero-utilidad.js?v=1.0.4"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
 <script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
 <script src="/design-system/components/kora-product.js" defer></script>
+<link rel="stylesheet" href="kora-sales-explorer.css?v=1.0.0"><script src="kora-sales-explorer.js?v=1.0.0"></script>
 </head>
 <body data-kora-dashboard="1.0.0">
 
@@ -98,7 +99,7 @@
         <span class="dashboard-metric__icon"><i data-lucide="badge-dollar-sign"></i></span>
         <span class="kpi-label">Ventas totales</span>
       </div>
-      <div class="kpi-valor kpi-valor--moneda" id="kpiVentas">—</div>
+      <button type="button" class="kora-summary-open" data-summary-explore="sales" aria-label="Explorar ventas"><span class="kpi-valor kpi-valor--moneda" id="kpiVentas">—</span><span class="kora-drilldown-hint">Ver detalle →</span></button>
       <div class="kpi-var" id="kpiVentasVar"></div>
     </article>
     <article class="dashboard-metric">
@@ -106,7 +107,7 @@
         <span class="dashboard-metric__icon"><i data-lucide="credit-card"></i></span>
         <span class="kpi-label">Créditos en liquidaciones</span>
       </div>
-      <div class="kpi-valor" id="kpiCreditos">—</div>
+      <button type="button" class="kora-summary-open" data-summary-explore="credits" aria-label="Explorar créditos"><span class="kpi-valor" id="kpiCreditos">—</span><span class="kora-drilldown-hint">Ver detalle →</span></button>
       <div class="kpi-var" id="kpiCreditosVar"></div>
     </article>
     <article class="dashboard-metric">
@@ -114,7 +115,7 @@
         <span class="dashboard-metric__icon"><i data-lucide="chart-no-axes-combined"></i></span>
         <span class="kpi-label">Utilidad neta Retail</span>
       </div>
-      <div class="kpi-valor kpi-valor--moneda" id="kpiUtilidad">—</div>
+      <button type="button" class="kora-summary-open" data-summary-explore="profit" aria-label="Explorar resultado Retail"><span class="kpi-valor kpi-valor--moneda" id="kpiUtilidad">—</span><span class="kora-drilldown-hint">Ver detalle →</span></button>
       <div class="kpi-var" id="kpiUtilidadVar"></div>
       <span class="kpi-var flat">Cada tienda: margen − gastos propios. Consolidado: también descuenta gastos generales.</span>
     </article>
@@ -123,7 +124,7 @@
         <span class="dashboard-metric__icon"><i data-lucide="user-round-check"></i></span>
         <span class="kpi-label">Clientes pendientes</span>
       </div>
-      <div class="kpi-valor" id="kpiPendientes">—</div>
+      <button type="button" class="kora-summary-open" data-summary-explore="pending" aria-label="Explorar clientes pendientes"><span class="kpi-valor" id="kpiPendientes">—</span><span class="kora-drilldown-hint">Ver detalle →</span></button>
       <div class="kpi-var flat">Pendientes de validación</div>
     </article>
   </section>
@@ -194,7 +195,7 @@
         <button type="button" role="tab" id="utilidadTab-aliados" data-utilidad-negocio="aliados" aria-selected="false" aria-controls="utilidadPanel" tabindex="-1">Aliados</button>
       </div>
       <div id="utilidadPanel" role="tabpanel" aria-labelledby="utilidadTab-retail">
-        <p class="dashboard-profit-total" id="utilidadTotal" aria-live="polite">Consultando…</p>
+        <button type="button" class="dashboard-profit-total kora-drilldown-link" id="utilidadTotal" data-summary-explore="business-profit" aria-label="Explorar resultado del negocio seleccionado">Consultando…</button><span class="kora-drilldown-hint">Explorar este negocio →</span>
         <p class="dashboard-profit-context" id="utilidadContexto"></p>
         <div class="grafico-box"><canvas id="chartUtilidad" role="img"></canvas></div>
       </div>
@@ -309,6 +310,7 @@ function pintarIconos() { window.lucide?.createIcons(); }
 function initPagina() {
   const sincronizarEncabezado = () => window.KoraNavigation?.setContext('Resumen ejecutivo', ['KORA', 'Tablero']);
   sincronizarEncabezado();
+  document.addEventListener('click', explorarDesdeResumen);
   document.addEventListener('kora-sidebar-ready', sincronizarEncabezado, { once: true });
   if (!esCentral()) {
     document.getElementById('pageContenido').innerHTML = '';
@@ -580,8 +582,8 @@ function renderTablaTiendas(filas,{generalExpenses=[],generalAvailable=true,incl
 
   tbody.innerHTML = filas.map(f => `
     <tr>
-      <td class="store-name">${escapeHtml(f.tienda.nombre)}</td>
-      <td class="centro store-goal"><strong>${f.creditosMes}</strong><span>/ ${f.metaMes || '—'}</span></td>
+      <td class="store-name"><button type="button" class="kora-drilldown-link" data-summary-store="${escapeHtml(f.tienda.codigo)}">${escapeHtml(f.tienda.nombre)}</button></td>
+      <td class="centro store-goal"><button type="button" class="kora-drilldown-link" data-summary-credits-store="${escapeHtml(f.tienda.codigo)}" aria-label="Ver créditos de ${escapeHtml(f.tienda.nombre)}">${f.creditosMes}</button><span>/ ${f.metaMes || '—'}</span></td>
       <td class="store-progress">
         <div class="store-progress__main">
           <span class="barra-pct"><span style="width:${Math.min(f.pct || 0, 100)}%; background:${colorBarra(f.pct)};"></span></span>
@@ -595,8 +597,8 @@ function renderTablaTiendas(filas,{generalExpenses=[],generalAvailable=true,incl
           </span>
         </div>
       </td>
-      <td class="num">${fmtCorto(f.contadoMes)}</td>
-      <td class="num">${f.utilidadFaltante?'Por confirmar':fmtCOP(f.utilidadMes)}<span class="store-profit-detail">Margen ${fmtCorto(f.margenMes)} − gastos ${fmtCorto(f.gastosMes)} − bajas ${fmtCorto(f.bajasMes||0)}${f.utilidadFaltante?` · ${f.utilidadFaltante} sin costo`:''}</span></td>
+      <td class="num"><button type="button" class="kora-drilldown-link" data-summary-cash-store="${escapeHtml(f.tienda.codigo)}">${fmtCorto(f.contadoMes)}</button></td>
+      <td class="num"><button type="button" class="kora-drilldown-link" data-summary-profit-store="${escapeHtml(f.tienda.codigo)}">${f.utilidadFaltante?'Por confirmar':fmtCOP(f.utilidadMes)}</button><span class="store-profit-detail">Margen ${fmtCorto(f.margenMes)} − gastos ${fmtCorto(f.gastosMes)} − bajas ${fmtCorto(f.bajasMes||0)}${f.utilidadFaltante?` · ${f.utilidadFaltante} sin costo`:''}</span></td>
       <td class="centro">
         <span class="status-indicator status-indicator--${f.cajaOk ? 'success' : 'warning'}">
           <i data-lucide="${f.cajaOk ? 'circle-check' : 'triangle-alert'}"></i>
@@ -817,6 +819,56 @@ function renderAlertas(alertas) {
   pintarIconos();
 }
 
+async function abrirExploracionResumen(kind, store, executive, label) {
+  if (!esCentral()) return;
+  const X=window.KoraSalesExplorer;
+  const selected=rangoSeleccionado();
+  let from=selected.desde,to=selected.hasta;
+  const names=new Map(tiendasCache.map(t=>[t.codigo,t.nombre]));
+  const profit=kind==='profit' || kind==='business-profit';
+  const business=kind==='business-profit'?utilidadNegocio:kind==='b2b'?'b2b':'retail';
+  if(kind==='business-profit' && to>hoyISO())to=hoyISO();
+  const snapshotStore=kind==='business-profit'&&business==='aliados'?'':store ?? document.getElementById('filtroTienda').value;
+  if(kind==='executive' || kind==='store-credits'){
+    const period=CreditekTableroEjecutivos.month(new Date());from=period.start;to=new Date(Date.parse(period.end+'T12:00:00Z')-86400000).toISOString().slice(0,10);
+  }
+  if(kind==='pending'){location.href='validacion.html';return;}
+  let title=kind==='executive'?'Ventas de '+label:kind==='credits'||kind==='store-credits'?'Créditos de liquidaciones':profit?'Resultado neto · '+({retail:'Retail',b2b:'B2B',aliados:'Aliados'}[business]):'Ventas Retail';
+  if(snapshotStore && kind!=='executive')title+=' · '+(names.get(snapshotStore)||snapshotStore);
+  const scope={from,to,store:snapshotStore,profit,type:kind==='cash'?'contado':''};
+  X.open({...scope,title,valueLabel:profit?'Resultado registrado':'Valor vendido',note:profit?'Desglose de márgenes y gastos registrados. Los gastos generales se conservan por separado; no se reparten entre tiendas.':'El período y el ámbito corresponden al resumen de origen. Los documentos se abren aparte para conservar esta consulta.',load:async()=>{
+    if(kind==='credits' || kind==='store-credits' || kind==='executive' || business==='aliados'){
+      const data=await obtenerCreditosLiquidaciones(),until=new Date(Date.parse(to+'T12:00:00Z')+86400000).toISOString().slice(0,10),period={start:from,end:until};
+      let ops=kind==='executive'?CreditekTableroEjecutivos.credits(data,period).filter(o=>o.tipo_establecimiento==='aliado'&&o.ejecutivo_id===executive):business==='aliados'?CreditekTableroEjecutivos.credits(data,period):creditosTiendas(data,period,snapshotStore?tiendasCache.filter(t=>t.codigo===snapshotStore):tiendasCache);
+      const enriched=await X.enrichOperations(sb,ops),rows=X.fromOperations(enriched,names,profit,CreditekTableroEjecutivos.day);
+      if(profit){
+        const addi=await X.allRows(sb,'addi_liquidaciones','id,venta_id,tienda_codigo,fecha_venta,utilidad_creditek,estado',q=>q.eq('estado','aprobada').gte('fecha_venta',from).lte('fecha_venta',to));
+        rows.push(...addi.map(a=>({id:'addi:'+a.id,date:a.fecha_venta,storeKey:a.tienda_codigo,store:names.get(a.tienda_codigo)||a.tienda_codigo,reference:'Crédito Addi · referencia en la venta',quantity:1,amount:X.cents(a.utilidad_creditek),documentKey:'addi:'+a.id,document:'Crédito Addi',href:X.documentLink('retail',a.venta_id),linkLabel:'Abrir venta',platform:'Addi'})));
+        const expenses=await CreditekTableroUtilidad.authorizedExpenses(sb,'aliados',from,to);rows.push(...X.ledgerRows(expenses,'Gasto Aliados autorizado',names));
+      }
+      return rows;
+    }
+    if(business==='b2b'){
+      const raw=await CreditekTableroUtilidad.rpcRows(sb,{start:from},to);
+      const allNames=await CreditekTableroEjecutivos.allRows(sb,'origenes','codigo,nombre','codigo');const byCode=new Map(allNames.map(t=>[t.codigo,t.nombre]));
+      const rows=X.fromB2B(raw.map(r=>({...r,tienda_nombre:byCode.get(r.tienda_codigo)})),profit);
+      if(profit){if(snapshotStore)throw Error('La utilidad neta B2B se consulta consolidada, sin repartir gastos generales.');const expenses=await CreditekTableroUtilidad.authorizedExpenses(sb,'b2b',from,to);rows.push(...X.ledgerRows(expenses,'Gasto general B2B',byCode));}
+      return rows;
+    }
+    return X.retailRows(sb,scope,names,profit?()=>CreditekTableroUtilidad.retailData(sb,{start:from,end:to,store:snapshotStore}):null);
+  }});
+}
+
+function explorarDesdeResumen(event) {
+  const button=event.target.closest('[data-summary-explore],[data-summary-store],[data-summary-executive],[data-summary-credits-store],[data-summary-cash-store],[data-summary-profit-store]');
+  if(!button)return;
+  if(button.dataset.summaryExecutive)return abrirExploracionResumen('executive',null,button.dataset.summaryExecutive,button.dataset.summaryExecutiveName);
+  if(button.dataset.summaryCashStore)return abrirExploracionResumen('cash',button.dataset.summaryCashStore);
+  if(button.dataset.summaryProfitStore)return abrirExploracionResumen('profit',button.dataset.summaryProfitStore);
+  if(button.dataset.summaryCreditsStore)return abrirExploracionResumen('store-credits',button.dataset.summaryCreditsStore);
+  return abrirExploracionResumen(button.dataset.summaryExplore || 'sales',button.dataset.summaryStore);
+}
+
 // ─── Ejecutivos ────────────────────────────────────────────────────────
 async function cargarEjecutivos() {
   const tbody = document.getElementById('tbodyEjecutivos');
@@ -827,7 +879,7 @@ async function cargarEjecutivos() {
     empty.style.display = list.length ? 'none' : 'block';
     empty.textContent = 'No hay ejecutivos activos registrados.';
     tbody.innerHTML = list.sort((a,b) => a.name.localeCompare(b.name, 'es')).map(e =>
-      `<tr><td>${escapeHtml(e.name)}</td><td class="centro">${e.activeAllies}</td><td class="centro">${e.platforms.payjoy}</td><td class="centro">${e.platforms.alo}</td><td class="centro">${e.platforms.krediya}</td><td class="centro">${e.credits}</td><td class="num">${fmtCOP(e.commission)}</td></tr>`
+      `<tr><td><button type="button" class="kora-drilldown-link" data-summary-executive="${escapeHtml(e.id)}" data-summary-executive-name="${escapeHtml(e.name)}">${escapeHtml(e.name)}</button></td><td class="centro">${e.activeAllies}</td><td class="centro">${e.platforms.payjoy}</td><td class="centro">${e.platforms.alo}</td><td class="centro">${e.platforms.krediya}</td><td class="centro">${e.credits}</td><td class="num">${fmtCOP(e.commission)}</td></tr>`
     ).join('');
     note.textContent = 'Fuente: Liquidaciones, por fecha de venta. Comisión registrada; no indica pagos realizados.' + (unassigned ? ` ${unassigned} crédito(s) de aliados sin ejecutivo activo asignado.` : '');
   } catch (error) {

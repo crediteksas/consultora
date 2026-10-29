@@ -80,6 +80,7 @@ const erp = [
   'tests/erp/tablero-utilidad.test.mjs',
   'tests/erp/tablero-creditos-liquidaciones.test.mjs',
   'tests/erp/tablero-ejecutivos.test.mjs',
+  'tests/erp/kora-summary-explorer.test.mjs',
   'tests/erp/tablero-creditos-etiquetas.test.mjs',
   'tests/erp/tesoreria-pagos-unificados.test.mjs',
   'tests/erp/payment-dispatch-registry.test.mjs',

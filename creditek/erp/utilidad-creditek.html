@@ -11,7 +11,7 @@
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="utilidad-creditek-domain.js?v=1.0.4"></script>
+  <script src="utilidad-creditek-domain.js?v=1.0.5"></script>
   <script src="aliados-reversiones-domain.js"></script>
   <script src="tablero-ejecutivos.js"></script>
   <script src="tablero-utilidad.js?v=1.0.4"></script>
@@ -174,6 +174,7 @@
   </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
+<link rel="stylesheet" href="kora-sales-explorer.css?v=1.0.0"><script src="kora-sales-explorer.js?v=1.0.0"></script>
 </head>
 <body>
 <div data-kora-shell-root>
@@ -210,8 +211,8 @@
 
   <section class="kpi-grid">
     <article class="kpi-card kpi-costo"><div class="kpi-head"><span class="kpi-icon">⌁</span><span class="kpi-name">Costo real / compras</span></div><p id="kpi-costo" class="kpi-value">—</p><p class="kpi-period">Costo de mercancía despachada</p><p id="delta-costo" class="kpi-delta">Sin comparación</p></article>
-    <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><p id="kpi-facturado" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>
-    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad neta B2B</span></div><p id="kpi-utilidad" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="kpi-utilidad-detalle" class="kpi-period">Margen menos gastos autorizados</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-facturado"><div class="kpi-head"><span class="kpi-icon">$</span><span class="kpi-name">Facturado</span></div><button type="button" id="kpi-facturado" class="kpi-value kora-drilldown-link" data-b2b-explore="sales" aria-label="Explorar facturado">—</button><span class="kora-drilldown-hint">Ver detalle →</span><p class="kpi-period">Período seleccionado</p><p id="delta-facturado" class="kpi-delta">Sin comparación</p></article>
+    <article class="kpi-card kpi-utilidad"><div class="kpi-head"><span class="kpi-icon">↗</span><span class="kpi-name">Utilidad neta B2B</span></div><button type="button" id="kpi-utilidad" class="kpi-value kora-drilldown-link" data-b2b-explore="profit" aria-label="Explorar utilidad">—</button><span class="kora-drilldown-hint">Ver detalle →</span><p class="kpi-period">Período seleccionado</p><p id="kpi-utilidad-detalle" class="kpi-period">Margen menos gastos autorizados</p><p id="delta-utilidad" class="kpi-delta">Sin comparación</p></article>
     <article class="kpi-card kpi-margen"><div class="kpi-head"><span class="kpi-icon">%</span><span class="kpi-name">Margen %</span></div><p id="kpi-margen" class="kpi-value">—</p><p class="kpi-period">Período seleccionado</p><p id="delta-margen" class="kpi-delta">Sin comparación</p></article>
   </section>
 
@@ -260,6 +261,6 @@
   </section>
 </main>
 </div>
-<script src="utilidad-creditek-app.js?v=1.0.6"></script>
+<script src="utilidad-creditek-app.js?v=1.0.7"></script>
 </body>
 </html>

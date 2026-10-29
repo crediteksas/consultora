@@ -16,3 +16,25 @@
 .kora-summary-open{display:block;width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;text-align:left;cursor:pointer}.kora-summary-open:focus-visible{outline:3px solid var(--ctk-color-secondary-500);outline-offset:3px}[data-summary-explore]{cursor:pointer}
 
 .kora-summary-open>.kpi-valor{display:block}.executive-card h2>.kora-drilldown-link{font-size:inherit;font-weight:inherit}.executive-card>[data-executive-sales]{margin-top:16px}
+
+/* Dashboard detail controls keep the figures readable instead of inheriting primary-button fills. */
+body[data-kora-dashboard] button.kora-summary-open:not(.secondary):not(.ghost):not(.danger),
+body[data-kora-dashboard] button.kora-drilldown-link:not(.secondary):not(.ghost):not(.danger) {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+  font: inherit;
+}
+body[data-kora-dashboard] button.kora-summary-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+body[data-kora-dashboard] button.kora-drilldown-link {
+  display: inline-block;
+  min-height: 36px;
+  text-align: inherit;
+}

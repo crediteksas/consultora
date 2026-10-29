@@ -1,0 +1,2 @@
+# Preserve official npm byte hashes for third-party code; own source keeps normal checks.
+creditek/convenios/video-codec/vendor/** whitespace=-blank-at-eol

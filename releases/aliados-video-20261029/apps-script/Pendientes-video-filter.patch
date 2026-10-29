@@ -1,0 +1,11 @@
+--- Pendientes.gs.known
++++ Pendientes.gs.video
+@@ -8,7 +8,7 @@
+  vitrinas:{label:'Foto de vitrinas',accept:'image/*',base:'foto_vitrinas_corregida'},
+  selfie:{retired:true,label:'Selfie del representante legal en la tienda',accept:'image/*',base:'selfie_representante_legal'},
+  servicio:{label:'Servicio público con dirección',accept:'.pdf,image/*',base:'servicio_publico'},
+- video:{label:'Video exterior e interior (MP4)',accept:'video/mp4,.mp4',base:'video_360'},
++ video:{label:'Video exterior e interior (MP4)',accept:'video/*,.mp4,.mov,.m4v,.webm,.mkv,.3gp,.3g2,.avi,.mpeg,.mpg,.mts,.m2ts',base:'video_360'},
+  cedula:{label:'Cédula del representante completa',accept:'.pdf,image/*',base:'cedula_representante'},
+  vendedor:{label:'Documento del vendedor',accept:'.pdf,image/*',base:'documento_vendedor_corregido'},
+  alo_firma:{label:'Formato Aló firmado con auditoría',accept:'.pdf',base:'alo_formato_firmado'},

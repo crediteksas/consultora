@@ -1,0 +1,98 @@
+[
+  {
+    "source": "sample.avi",
+    "sourceBytes": 20892,
+    "outputBytes": 18615,
+    "inputDuration": 1.125,
+    "output": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 64,
+          "height": 48
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio"
+        }
+      ],
+      "format": {
+        "duration": "1.125000"
+      }
+    }
+  },
+  {
+    "source": "sample.webm",
+    "sourceBytes": 12064,
+    "outputBytes": 19456,
+    "inputDuration": 1.008,
+    "output": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 64,
+          "height": 48
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio"
+        }
+      ],
+      "format": {
+        "duration": "1.008000"
+      }
+    }
+  },
+  {
+    "source": "sample.mov",
+    "sourceBytes": 10271,
+    "outputBytes": 14313,
+    "inputDuration": 1,
+    "output": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 64,
+          "height": 48
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio"
+        }
+      ],
+      "format": {
+        "duration": "1.024000"
+      }
+    }
+  },
+  {
+    "source": "sample.mkv",
+    "sourceBytes": 9483,
+    "outputBytes": 15734,
+    "inputDuration": 1.064,
+    "output": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 64,
+          "height": 48
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio"
+        }
+      ],
+      "format": {
+        "duration": "1.125000"
+      }
+    }
+  }
+]

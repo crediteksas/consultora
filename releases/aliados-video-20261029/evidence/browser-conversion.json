@@ -1,0 +1,13 @@
+{
+  "scope": "Actual Chrome local MOV conversion; no customer video included",
+  "bytes": 6982067,
+  "type": "video/mp4",
+  "mp4Valid": true,
+  "converted": true,
+  "engine": "ffmpeg",
+  "storeName": "TIENDA DE PRUEBA",
+  "notes": "Conservar este dato durante la conversión.",
+  "duration": 26.378333,
+  "width": 1024,
+  "height": 576
+}

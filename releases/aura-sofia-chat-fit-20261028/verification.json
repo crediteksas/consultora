@@ -32,6 +32,29 @@
     "/api/sofia/tiendas"
   ],
   "operationalHtmlAndScriptsPreserved": true,
-  "liveVisual": "pending_reload",
-  "noTestMessages": true
+  "liveVisual": "passed_authenticated",
+  "noTestMessages": true,
+  "liveChecks": {
+    "bodyHeight": 901,
+    "chatBottom": 901,
+    "replyBottom": 901,
+    "historyClientHeight": 532,
+    "historyScrollHeight": 2161,
+    "stylePresent": true,
+    "replyVisible": true,
+    "sizesTested": [
+      [
+        1200,
+        997
+      ],
+      [
+        1058,
+        800
+      ],
+      [
+        390,
+        844
+      ]
+    ]
+  }
 }

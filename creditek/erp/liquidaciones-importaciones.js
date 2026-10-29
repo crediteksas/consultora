@@ -18,8 +18,9 @@
         if(!modal.isConnected)return;
         if(!canRemove(batch))throw new Error('El lote ya no está disponible para eliminar. Actualiza la lista; puede haber sido aprobado.');
         const content=document.createElement('div');
+        const file=batch.liquidation_imported_files;
         content.innerHTML=`<p><strong>${esc(platformName(batch.plataforma))}</strong> · Corte ${esc(batch.fecha_corte || 'sin informar')}</p>
-          <ul>${(batch.liquidation_imported_files||[]).map(f=>`<li style="overflow-wrap:anywhere">${esc(f.original_name)}</li>`).join('') || '<li>Nombre de archivo no disponible</li>'}</ul>
+          <ul><li style="overflow-wrap:anywhere">${file?.original_name ? esc(file.original_name) : 'Nombre de archivo no disponible'}</li></ul>
           <p>Se retirará todo este lote y sus cálculos provisionales. El original y un respaldo quedan en auditoría. Podrás cargar el archivo corregido.</p>
           <p>No se eliminan lotes aprobados, pagos autorizados ni movimientos financieros.</p>
           <form><label>Motivo<textarea class="control" name="reason" required minlength="5" maxlength="1000" placeholder="Ejemplo: el archivo de ALO Credit contiene valores incorrectos."></textarea></label>

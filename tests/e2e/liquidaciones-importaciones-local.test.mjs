@@ -20,7 +20,7 @@ for(const engine of (process.env.KORA_TEST_CHROME_ONLY?['chromium']:['chromium',
     });
     await page.addInitScript(()=>{
       window.testCalls=[];window.testFailure=false;window.testApprove=false;window.testRemoved=false;
-      const fixture=()=>({id:'lote-alo',plataforma:'alo',estado:window.testApprove?'aprobada':'con_novedades',fecha_corte:'2026-09-06',imported_at:'2026-09-07T15:00:00Z',liquidation_operations:[],liquidation_imported_files:[{original_name:'ALO CREDIT - ARCHIVO ERRONEO DE PRUEBA.xlsx'}]});
+      const fixture=()=>({id:'lote-alo',plataforma:'alo',estado:window.testApprove?'aprobada':'con_novedades',fecha_corte:'2026-09-06',imported_at:'2026-09-07T15:00:00Z',liquidation_operations:[],liquidation_imported_files:{original_name:'ALO CREDIT - ARCHIVO ERRONEO DE PRUEBA.xlsx'}});
       window.creditekSidebar={perfil:{rol:'auditoria'},sb:{
         auth:{getSession:async()=>({data:{session:{user:{id:'gestion'},expires_at:window.testExpired?1:9999999999}}}),getUser:async()=>({data:{user:{id:'gestion'}}})},
         from(table){let single=false;const query={select(){return query;},eq(){return query;},order(){return query;},range(){return query;},maybeSingle(){single=true;return query;},then(ok,bad){const rows=table==='origenes'?[{codigo:'A',nombre:'Local'}]:table==='aliados_operadores'?[{capacidad:'revisor'}]:table==='liquidations'?(window.testRemoved?[]:[fixture()]):[];return Promise.resolve(table==='origenes'&&window.testOriginsError?{data:null,error:{message:'Consulta de comercios fallida'}}:{data:single?(rows[0]||null):rows,error:null}).then(ok,bad);}};return query;},

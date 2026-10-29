@@ -26,7 +26,7 @@
       "sha256": "f933aa9f6d578bb8a156be39170de2fd4832930f46003cfa7c174f14c5efdee3"
     }
   ],
-  "test_runner_sha256": "40a7b12b1f0db5795ac2b344247f2a51ac236d47bd72609fad3a4e331423bc32",
+  "test_runner_sha256": "76e1ec4775e2cecc26da74e922f8aebcdf37af464785f141f3f90753317684fc",
   "upgrade": {
     "before": {
       "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-before.json",

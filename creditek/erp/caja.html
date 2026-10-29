@@ -275,7 +275,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: Number.isInteger(Number(n)) ? 0 : 2, maximumFractionDigits: 2 }).format(n || 0); }
 function fmtUtilidad(n) { return n === null ? 'Pendiente de cálculo' : fmtCOP(n); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';

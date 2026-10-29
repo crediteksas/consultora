@@ -41,6 +41,20 @@ test('rechaza una diferencia y muestra la causa', async () => {
   assert.match(resultado.mensaje, /diferencia/i);
 });
 
+test('muestra los centavos del saldo y de una diferencia que impide cerrar', async () => {
+  const html = await readFile(path.join(root, 'creditek/erp/caja.html'), 'utf8');
+  const from = html.indexOf('function fmtCOP(n)');
+  const to = html.indexOf('function fmtUtilidad(n)', from);
+  assert.ok(from >= 0 && to > from);
+  const context = { Intl, Number };
+  vm.runInNewContext(html.slice(from, to), context);
+  assert.match(context.fmtCOP(208399.77), /208\.399,77/);
+  assert.match(context.fmtCOP(208400 - 208399.77), /0,23/);
+  assert.match(context.fmtCOP(0), /(?:^|\D)0(?:\D|$)/);
+  assert.match(html, /prev\.textContent = `Diferencia: \$\{fmtCOP\(dif\)\}`/);
+  assert.match(html, /Efectivo esperado<\/span><span class="der">\$\{fmtCOP\(c\.esperado\)\}/);
+});
+
 test('permite cerrar el caso reportado con efectivo exacto de 1.658.000', async () => {
   const context = { window: {} };
   vm.runInNewContext(await readFile(domainPath, 'utf8'), context);

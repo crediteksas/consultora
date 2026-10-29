@@ -1,0 +1,5 @@
+  // Validate final video before claims, folders, mail or any registration side effect.
+  if(data.documentos && data.documentos.video360){
+    try{auraArchivo_(data.documentos.video360,'video');}
+    catch(videoError){return respuestaSolicitud_({ok:false,error:videoError.message||'El video debe estar preparado como MP4 antes de enviar.'});}
+  }

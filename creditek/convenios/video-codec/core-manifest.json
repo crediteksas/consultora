@@ -1,0 +1,35 @@
+{
+  "package": "@ffmpeg/core",
+  "version": "0.12.10",
+  "license": "GPL-2.0-or-later",
+  "repository": {
+    "url": "git+https://github.com/ffmpegwasm/ffmpeg.wasm.git",
+    "type": "git"
+  },
+  "dist": {
+    "shasum": "3177e88852bfbfaad5d258e9e0ac1fd9dffd3223",
+    "tarball": "https://registry.npmjs.org/@ffmpeg/core/-/core-0.12.10.tgz",
+    "fileCount": 5,
+    "integrity": "sha512-dzNplnn2Nxle2c2i2rrDhqcB19q9cglCkWnoMTDN9Q9l3PvdjZWd1HfSPjCNWc/p8Q3CT+Es9fWOR0UhAeYQZA==",
+    "signatures": [
+      {
+        "sig": "MEUCIFLbKVn2w6yLJUGz/hDct+/gKYR1k6vafNg6wF14M9/2AiEAk82sQXJ7LnxSBSg7ZlusDfhNh2zDTzx1Qz9BKKekv9o=",
+        "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+      }
+    ],
+    "unpackedSize": 64689644
+  },
+  "files": [
+    {
+      "path": "core/esm/ffmpeg-core.js",
+      "bytes": 111804,
+      "sha256": "67a48f11645f85439f3fde4f2119042c16b374b910206b7a7a24f342e28dcae3"
+    },
+    {
+      "path": "core/esm/ffmpeg-core.wasm",
+      "bytes": 32232419,
+      "sha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7"
+    }
+  ],
+  "npmIntegrityVerified": true
+}

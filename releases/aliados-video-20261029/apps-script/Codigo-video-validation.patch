@@ -1,0 +1,14 @@
+--- Código.gs.v33
++++ Código.gs.video
+@@ -46,6 +46,11 @@
+   if (String(data.action || '').indexOf('pending_') === 0) return auraPendientesApi_(data);
+   if(!data.radicado || !data.cedula || !data.nombreComercial){
+     return respuestaSolicitud_({ok:false,error:'Faltan datos de la solicitud'});
++  }
++  // Validate final video before claims, folders, mail or any registration side effect.
++  if(data.documentos && data.documentos.video360){
++    try{auraArchivo_(data.documentos.video360,'video');}
++    catch(videoError){return respuestaSolicitud_({ok:false,error:videoError.message||'El video debe estar preparado como MP4 antes de enviar.'});}
+   }
+   var fingerprintData=Object.assign({},data);
+   delete fingerprintData.radicado;

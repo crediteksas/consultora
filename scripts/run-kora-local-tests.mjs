@@ -196,6 +196,7 @@ const erp = [
   'tests/erp/sonivox-clasificacion-retail.test.mjs',
   'tests/erp/aliados-prefijo-a-alexander.test.mjs',
   'tests/erp/aliados-ejecutivos-periodo.test.mjs',
+  'tests/erp/aliados-ejecutivos-rentabilidad.test.mjs',
   'tests/erp/aliados-plataformas-periodo.test.mjs',
   'tests/erp/aliados-bonificaciones-periodo.test.mjs',
   'tests/erp/aliados-reportes-mes-vigente.test.mjs',

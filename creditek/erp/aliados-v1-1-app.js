@@ -197,6 +197,7 @@
   }
   function bogotaDay(v) {
     if (!v) return "—";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Bogota",
       year: "numeric",
@@ -264,20 +265,20 @@
     }
     return data || [];
   }
-  async function allRows(table, columns, orderKey = 'id') {
+  async function allRows(table, columns, orderKey = 'id', filter = q=>q) {
     const result = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb
-        .from(table)
-        .select(columns)
+      const { data, error } = await filter(sb.from(table).select(columns))
         .order(orderKey)
         .range(from, from + 999);
       if (error) throw error; // Never present an incomplete page of credits as the complete month.
-      result.push(...(data || []));
-      if (!data || data.length < 1000) return result;
+      if (!Array.isArray(data)) throw Error("La consulta no devolvió una lista verificable.");
+      result.push(...data);
+      if (data.length < 1000) return result;
     }
   }
   async function load() {
+    const financialPermission=['dashboard','executives'].includes(view)?sb.rpc('es_controlador_financiero').then(({data,error})=>{if(error)throw error;return data===true;}):Promise.resolve(false);
     const [
       allies,
       sites,
@@ -320,9 +321,9 @@
         "id,plataforma,codigo_credito,fecha_credito,monto_credito,establecimiento,vendedor,tipo_establecimiento,ejecutivo_historico_id,valor_comercial_historico,pagamos_historico,pago_neto_historico,bonos_historicos,utilidad_antes_bonos_historica,utilidad_neta_historica,gasto_financiero_historico,gasto_operativo_referencia_historico,provision_historica,utilidad_final_historica,resultado_cerrado_historico,cierre_utilidad_at,cierre_utilidad_motivo,calculo_historico_estado,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion",
       ),
       allRows("aliados_gastos_operativos", "*"),
-      view === "dashboard" ? allRows("financial_entries", "id,entry_type,business_unit,store_code,scope,approved_at,amount,status") : [],
-      view === "dashboard" ? sb.rpc('es_controlador_financiero').then(({data,error}) => { if(error) throw error; return data === true; }) : false,
-      view === "dashboard" ? sb.rpc('addi_liquidaciones_listar').then(({data,error}) => { if(error) throw error; if(!Array.isArray(data)) throw Error('Respuesta incompleta de Addi'); return data; }) : [],
+      financialPermission.then(allowed=>allowed?allRows('financial_entries','id,entry_type,business_unit,store_code,scope,approved_at,amount,status,category,concept,beneficiary_document,due_date,paid_at','id',q=>q.eq('business_unit','aliados').eq('entry_type','gasto').eq('scope','business_general')):[]),
+      financialPermission,
+      ["dashboard","executives"].includes(view) ? sb.rpc('addi_liquidaciones_listar').then(({data,error}) => { if(error) throw error; if(!Array.isArray(data)) throw Error('Respuesta incompleta de Addi'); return data; }) : [],
       allRows("aliados_metas_plataforma", "*"),
       allRows("aliados_reversiones", "*"),
     ]);
@@ -430,7 +431,8 @@
       .map(x => ({id:`financial:${x.id}`, estado:x.status,
         // El gasto afecta la utilidad cuando Gerencia lo autoriza, no al pagarlo.
         fecha:approvalDay(x.approved_at),
-        origen_codigo:x.store_code, valor:x.amount, general:true}));
+        origen_codigo:x.store_code, valor:x.amount, general:true, category:x.category, concepto:x.concept,
+        beneficiario_documento:x.beneficiary_document, dueDay:x.due_date, paidDay:approvalDay(x.paid_at)}));
     const seen = new Set();
     let unallocated = 0;
     const rows = [...(db.expenses || []).map(x=>({...x,fecha:x.fecha_causacion_historica || approvalDay(x.aprobado_at),id:x.id ? `legacy:${x.id}` : null})), ...financial].filter(x => {
@@ -802,6 +804,29 @@
     window.KoraSalesExplorer.open({title:'Ventas de '+title,from,to,note:'Mismas operaciones y fechas de la tarjeta seleccionada. Las referencias no registradas aparecen como «Referencia no informada».',load:async()=>window.KoraSalesExplorer.fromOperations(ops,names,false,value=>operationSaleDay({operation_at:value}))});
   }
 
+  let executiveProfitModel=null,executiveProfitFilter='',executiveProfitMode='summary';
+  function renderExecutiveProfit() {
+    const P=window.KoraExecutiveProfit;if(!P)return;
+    let section=$('#executiveProfit');if(!section){section=document.createElement('section');section.id='executiveProfit';section.className='card executive-profit';$('#content').prepend(section);}
+    const from=$('#executiveFrom').value,to=$('#executiveTo').value;
+    if(db.financialExpensesReadable!==true){executiveProfitModel=null;section.innerHTML='<h2>Rentabilidad por ejecutivo</h2><p role="alert">Necesitas permiso financiero para consultar nómina y gastos. Las ventas siguen disponibles; no se interpreta la falta de acceso como un costo de cero.</p>';return;}
+    try{
+      const ops=dashboardOperations().map(o=>({...o,day:operationSaleDay(o),reference:window.KoraSalesExplorer.reference(o),store:operationName(o)}));
+      const costs=dashboardExpenses({from,to,business:'',platform:'',executive:'',establishment:'',city:'',paymentState:''});
+      const model=P.build({executives:db.executives,beneficiaries:db.beneficiaries,operations:ops,expenses:costs.rows,from,to,financialReadable:true});executiveProfitModel=model;
+      if(executiveProfitFilter&&!model.rows.some(g=>g.id===executiveProfitFilter))executiveProfitFilter='';
+      const report=P.report(model,{executive:executiveProfitFilter,mode:executiveProfitMode}),summary=report.tables[0];
+      const format=(value,type)=>value==null?'No disponible':type==='currency'?cop(value):String(value);
+      section.innerHTML=`<div class="head"><div><h2>Rentabilidad por ejecutivo</h2><p class="muted">${esc(from)} a ${esc(to)} · resultado de operaciones menos nómina y gastos identificados.</p></div></div><div class="toolbar executive-profit-tools"><label>Ejecutivo<select id="profitExecutive" class="control"><option value="">Todos · incluye gastos sin asignar</option>${model.rows.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></label><label>Formato del informe<select id="profitMode" class="control"><option value="summary">Resumido</option><option value="detailed">Detallado</option></select></label><button type="button" class="btn primary" data-profit-export="xlsx">Descargar Excel</button><button type="button" class="btn secondary" data-profit-export="pdf">Generar PDF</button></div><p class="muted" data-kora-report-note>El margen ya descuenta los bonos de cada operación. Aquí se restan una sola vez las quincenas y otros gastos aprobados del ejecutivo. La fecha del costo es la autorización; la fecha bancaria se muestra aparte.</p><div data-kora-report-kind="summary">${table(summary.headers,rows([...summary.rows,...summary.totalRows],summary.headers.map((_,col)=>row=>esc(format(row[col],summary.columnTypes[col])))))}</div><p class="muted" data-kora-report-note>Los gastos sin identificación única quedan en «Sin ejecutivo» y no se reparten. El resultado individual no incluye esos gastos generales ni costos sin registrar.</p><div class="executive-profit-costs"><h3>Quincenas y otros gastos incluidos</h3>${table(['Ejecutivo','Fecha del costo','Concepto','Costo aprobado','Estado','Fecha de pago'],rows(model.details.filter(r=>r.kind!=='operation'&&(!executiveProfitFilter||r.executiveId===executiveProfitFilter)),[r=>esc(r.executive),r=>esc(r.day),r=>esc(r.concept),r=>r.amount==null?'No disponible':cop(-P.pesos(r.amount)),r=>esc(r.status),r=>esc(r.paidDay||'Pendiente')]))}</div>`;
+      $('#profitExecutive').value=executiveProfitFilter;$('#profitMode').value=executiveProfitMode;
+      $('#profitExecutive').onchange=event=>{executiveProfitFilter=event.target.value;renderExecutiveProfit();};$('#profitMode').onchange=event=>{executiveProfitMode=event.target.value;};
+      section.querySelectorAll('[data-profit-export]').forEach(button=>button.onclick=async()=>{
+        const popup=button.dataset.profitExport==='pdf'?window.open('','_blank'):null;if(popup)popup.opener=null;
+        button.disabled=true;try{if(!window.KoraReportExport)throw Error('Espera a que cargue el generador de informes y vuelve a intentar.');const data=P.report(executiveProfitModel,{executive:executiveProfitFilter,mode:executiveProfitMode});await window.KoraReportExport.exportData(data,{format:button.dataset.profitExport,profile,sb,popup});notice('Informe de rentabilidad generado.');}catch(error){popup?.close();notice(error.message||'No se pudo generar el informe.',true);}finally{button.disabled=false;}
+      });
+    }catch(error){executiveProfitModel=null;section.innerHTML='<h2>Rentabilidad por ejecutivo</h2><p role="alert">No se pudo verificar toda la rentabilidad. Revisa las fechas y actualiza; no se muestra un resultado parcial.</p>';}
+  }
+
   function renderExecutiveCards() {
     let toolbar = $("#executiveToolbar");
     if (!toolbar) {
@@ -896,7 +921,7 @@
                 )
                 .join("")
             : '<div class="empty compact">Sin ventas en este periodo</div>';
-        return `<article class="card executive-card"><div class="head"><div><h2><button type="button" class="kora-drilldown-link" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">${esc(item.e.nombre)}</button></h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length === 1 ? "" : "s"}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops, "monto_base"))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div><button type="button" class="btn primary" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">Ver ventas y referencias →</button></article>`;
+        return `<article class="card executive-card"><div class="head"><div><h2><button type="button" class="kora-drilldown-link" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">${esc(item.e.nombre)}</button></h2><p class="muted">${esc(schemeName(item.e.esquema_comision?.tipo))}</p></div><span class="executive-total">${item.ops.length} crédito${item.ops.length === 1 ? "" : "s"}</span></div><div class="executive-summary"><div><small>Valor vendido</small><strong>${cop(sum(item.ops, "monto_base"))}</strong></div><div><small>Bonos del periodo</small><strong>${cop(item.bonusNew)}</strong></div></div><h3>Ventas por plataforma</h3><div class="executive-platforms">${platforms}</div><button type="button" class="btn primary" data-executive-sales="${esc(item.e.id || (item.e.nombre === 'Tiendas propias · Retail' ? '__retail__' : '__unassigned__'))}">Ver ventas y referencias →</button>${item.e.id?`<button type="button" class="btn secondary" data-executive-profit="${esc(item.e.id)}">Ver rentabilidad y quincenas →</button>`:""}</article>`;
       })
       .join("");
     const pendingAction = pending
@@ -904,6 +929,7 @@
       : "";
     $("#content").innerHTML =
       `<div class="card"><p class="muted"><b>Periodo de ventas visible:</b> ${esc(from)} a ${esc(to)}. Cada tarjeta muestra exclusivamente las ventas asignadas al ejecutivo y su distribución por plataforma.</p></div><section class="executive-grid">${cards}</section>${pendingAction}`;
+    renderExecutiveProfit();
   }
   function renderPlatforms() {
     let toolbar = $("#platformToolbar");
@@ -1763,6 +1789,7 @@
     }
   }
   document.addEventListener('click', event => { const button=event.target.closest('[data-executive-sales]');if(button)openExecutiveSales(button.dataset.executiveSales); });
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-executive-profit]');if(button){executiveProfitFilter=button.dataset.executiveProfit;renderExecutiveProfit();$('#executiveProfit')?.scrollIntoView({block:'start',behavior:'smooth'});}});
   document.addEventListener("kora-sidebar-ready", init, { once: true });
   if (window.creditekSidebar?.sb) init();
   $("#q")?.addEventListener("input", () => view === "allies" && renderAllies());

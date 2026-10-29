@@ -24,7 +24,7 @@ WITH inserted AS (
  INSERT INTO public.creditos_historicos_plataforma(plataforma,codigo_credito,fecha_credito,cliente_documento,cliente_nombre,establecimiento,vendedor,imei,referencia,monto_credito,cuota_inicial,archivo_origen,correo_origen_at,historico_inicial,pagado_antes_inicio,requiere_soporte,fecha_inicio_operacion,pago_neto_historico,calculo_historico_estado,datos_origen)
  SELECT plataforma,codigo_credito,fecha_credito,cliente_documento,cliente_nombre,establecimiento,vendedor,imei,referencia,monto_credito,cuota_inicial,archivo_origen,correo_origen_at,true,true,false,'2026-09-01',pago_neto_historico,
  'reconstruido_correo_pendiente_conciliacion',jsonb_build_object('reconstrucciones_correo_2026',jsonb_build_array(datos_origen->'reconstruccion_correo_2026'),'pago_declarado_por_gerencia',true,'conciliado_bancariamente',false,'fecha_real_pago',null)
- FROM hist_payload ON CONFLICT(plataforma,codigo_credito) DO NOTHING RETURNING plataforma,codigo_credito)
+ FROM hist_payload p WHERE NOT EXISTS(SELECT 1 FROM public.creditos_historicos_plataforma h WHERE h.plataforma=p.plataforma AND h.codigo_credito=p.codigo_credito) ON CONFLICT(plataforma,codigo_credito) DO NOTHING RETURNING plataforma,codigo_credito)
  INSERT INTO hist_write_audit SELECT 'insert',plataforma,codigo_credito FROM inserted;
 WITH updated AS (
  UPDATE public.creditos_historicos_plataforma h SET datos_origen=h.datos_origen || jsonb_build_object('reconstrucciones_correo_2026',coalesce(h.datos_origen->'reconstrucciones_correo_2026','[]'::jsonb)||jsonb_build_array(p.datos_origen->'reconstruccion_correo_2026'))

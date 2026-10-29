@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "at": "2026-10-29T02:10:32.150Z",
+  "version": {
+    "version_id": "4f786bbf-3790-4353-9a30-0cb81edc56f7",
+    "percentage": 100
+  },
+  "candidateSha256": "6b8a1dcd6dd0f6c071ea4c346d85d6877d145b210a25dce911a5ffd0f5789490",
+  "originalModulesPreserved": [
+    "entry.js",
+    "sofia-ui.mjs",
+    "visibility-ui.mjs",
+    "./07f587f94f163f8da5d7b52258e477f142f99052-navigation.css.txt",
+    "./4faa85bcc6ea69ce8fa4a5e6861e171e48dccd3f-navigation.js.txt"
+  ],
+  "settingsPreserved": true,
+  "unrelatedWorkersPreserved": [
+    "creditek-aura",
+    "creditek-bot",
+    "creditek-nova"
+  ],
+  "otherRoutesPreserved": [
+    "/creditek/agentes/",
+    "/creditek/agentes/index.html",
+    "/creditek/agentes/aura-auto-navigation.js",
+    "/creditek/agentes/aura-auto-navigation.css",
+    "/creditek/agentes/aura-auth.js",
+    "/creditek/agentes/aura-responsive.css",
+    "/design-system/components/kora-product.css",
+    "/creditek/shared/branding/creditek-logo.png",
+    "/creditek/agentes/aura-dictation.mjs?v=20261028",
+    "/api/sofia/tiendas"
+  ],
+  "operationalHtmlAndScriptsPreserved": true,
+  "liveVisual": "pending_reload",
+  "noTestMessages": true
+}

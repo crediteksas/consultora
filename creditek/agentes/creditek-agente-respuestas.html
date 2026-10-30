@@ -317,7 +317,7 @@ async function loadTiendas(){
     [...ciudades].sort().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
   }catch(e){allTiendas=[];showSofiaServiceUnavailable();console.error(e)}
 }
-async function loadAll(){hideSofiaServiceUnavailable();await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()]);recomputeInterventions();applyFilters()}
+async function loadAll(){hideSofiaServiceUnavailable();await loadTiendas();await Promise.all([loadStats(),loadConvs(),loadClients()]);recomputeInterventions();applyFilters();refreshOpenChat()}
 
 async function loadStats(){
   try{
@@ -554,6 +554,33 @@ function renderConvList(entries){
   }).join('');
 }
 
+const renderedChatMessages=new WeakMap();
+function escapeChatText(value){
+  return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function chatMessagesHtml(messages){
+  return [...(messages||[])].reverse().map(m=>{
+    const t=new Date(m.timestamp).toLocaleString('es-CO',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'});
+    const isIn=m.direccion==='entrada';
+    const intentTag=m.intent?'<div class="msg-intent">'+escapeChatText(m.intent)+'</div>':'';
+    return '<div class="msg '+(isIn?'msg-in':'msg-out')+'"><div>'+escapeChatText(m.contenido||'')+'</div><div class="msg-meta">'+(isIn?'Cliente':'Sofia')+' · '+t+'</div>'+intentTag+'</div>';
+  }).join('');
+}
+function rememberChatMessages(container,html){
+  if(container)renderedChatMessages.set(container,html);
+}
+function refreshOpenChat(){
+  const container=document.getElementById('chat-msgs-inner');
+  if(!currentTel||!container||!Array.isArray(grouped[currentTel]))return;
+  const html=chatMessagesHtml(grouped[currentTel]);
+  if(renderedChatMessages.get(container)===html)return;
+  const oldTop=container.scrollTop;
+  const followLatest=container.scrollHeight-container.clientHeight-oldTop<=80;
+  container.innerHTML=html;
+  rememberChatMessages(container,html);
+  container.scrollTop=followLatest?container.scrollHeight:oldTop;
+}
+
 function openChat(tel){
   currentTel=tel;
   const msgs=grouped[tel]||[];
@@ -566,12 +593,7 @@ function openChat(tel){
     badges+='<span class="optin-pill '+(cl.optin_operativo?'optin-si':'optin-no')+'"><i class="ti ti-bell" style="font-size:12px" aria-hidden="true"></i> Op.</span>';
     badges+='<span class="optin-pill '+(cl.optin_comercial?'optin-si':'optin-no')+'"><i class="ti ti-megaphone" style="font-size:12px" aria-hidden="true"></i> Com.</span>';
   }
-  const msgsHtml=[...msgs].reverse().map(m=>{
-    const t=new Date(m.timestamp).toLocaleString('es-CO',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'});
-    const isIn=m.direccion==='entrada';
-    const intentTag=m.intent?'<div class="msg-intent">'+m.intent+'</div>':'';
-    return '<div class="msg '+(isIn?'msg-in':'msg-out')+'"><div>'+(m.contenido||'')+'</div><div class="msg-meta">'+(isIn?'Cliente':'Sofia')+' · '+t+'</div>'+intentTag+'</div>'
-  }).join('');
+  const msgsHtml=chatMessagesHtml(msgs);
   // SPEC v5-CRM, 13-jul-2026 — Pieza 1: la ventana de 24h de WhatsApp se
   // calcula sobre el ULTIMO MENSAJE DEL CLIENTE (direccion:'entrada'), no
   // sobre el ultimo mensaje en general (que podria ser de Sofia o de Oscar).
@@ -583,6 +605,7 @@ function openChat(tel){
   const attentionReasons=interventionMap[tel]||[];
   const attentionHtml=attentionReasons.length?'<div class="attention-box"><strong><i class="ti ti-alert-triangle" aria-hidden="true"></i> Necesita intervención</strong>'+attentionReasons.join(' · ')+'</div>':'';
   area.innerHTML='<div class="chat-header"><div class="chat-header-left"><h3>'+(cl?.nombre||tel)+'</h3><p>'+tel+' · '+(cl?.segmento||'sin clasificar')+'</p></div><div class="chat-badges">'+badges+'</div></div>'+attentionHtml+'<div class="chat-msgs" id="chat-msgs-inner" style="max-height:calc(100vh - 190px)">'+msgsHtml+'</div>'+replyHtml;
+  rememberChatMessages(document.getElementById('chat-msgs-inner'),msgsHtml);
   setTimeout(()=>{const cm=document.getElementById('chat-msgs-inner');if(cm)cm.scrollTop=cm.scrollHeight;},50);
   rp.className='right-panel';
   const ci=Math.abs(hashCode(tel))%colors.length;

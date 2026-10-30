@@ -1,0 +1,71 @@
+// Default is read-only. --apply publishes only this active chat refresh correction.
+import {readFile,writeFile,mkdtemp} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {liveChatEntry} from './build.mjs';
+import {patchLiveChat} from './policy.mjs';
+import {qualityCloudflare,qualityMetadata,qualitySettingsEqual} from '/Users/oscarm/Creditek/creditek-bot-real/recovery/sofia-learning-20261028/release.mjs';
+const hash=x=>createHash('sha256').update(x).digest('hex');
+const ensure=(ok,message)=>{if(!ok)throw Error(message);};
+const args=process.argv.slice(2);ensure(args.length===0||(args.length===1&&args[0]==='--apply'),'Unknown argument');
+const expected={
+ 'intervention-ui.mjs':'11b4f0d96514dcd475fcff230a4a426de7a31d541dfd539db272c69a7ac04923',
+ './4faa85bcc6ea69ce8fa4a5e6861e171e48dccd3f-navigation.js.txt':'1df482d91cecba9362396f466f987cbb40a13273ab5eab00014071ba42e34113',
+ 'chat-fit.mjs':'6b8a1dcd6dd0f6c071ea4c346d85d6877d145b210a25dce911a5ffd0f5789490',
+ 'entry.js':'1d861112a997fa6dd1a92d063fdf58acad671909a983706cba3f870d9a7aa991',
+ 'quality-ui.mjs':'a5b6ce79fd893e6d84773f1728ed9c7fde088064e22bd2c664daefccf067f864',
+ 'sofia-ui.mjs':'b3328fc1e61cfd2e573c89b39e5c7da3c88466a30ce716dd5d85ea4d06c980b1',
+ 'visibility-ui.mjs':'49a396408a81736a4553f6c2cc45c37f9a793e66668ff2abd240dcc725a47f81',
+ './07f587f94f163f8da5d7b52258e477f142f99052-navigation.css.txt':'593c26323272a618f0ddc9cb143136d41a8b1d250206afa8ece7ecaa8c28842d'
+};
+const cf=await qualityCloudflare();
+const config=await readFile('/Users/oscarm/.wrangler/config/default.toml','utf8');
+const token=config.match(/^oauth_token\s*=\s*"([^"]+)"/m)?.[1];ensure(token,'Existing session unavailable');
+const root='https://api.cloudflare.com/client/v4/accounts/853eee9e3d80f805fee58f4f99507e8a';
+const headers={Authorization:'Bearer '+token};
+async function modules(){
+ const r=await fetch(root+'/workers/services/creditek-aura-shell/environments/production/content',{headers,signal:AbortSignal.timeout(20000)});
+ ensure(r.ok,'Cannot inspect shell source: '+r.status);const data=await r.formData(),result=new Map();
+ for(const [name,body]of data)result.set(name,typeof body==='string'?body:await body.text());return result;
+}
+function predecessor(m){ensure(m.size===8,'Shell changed concurrently');for(const [name,digest]of Object.entries(expected))ensure(hash(m.get(name)||'')===digest,'Changed module: '+name);}
+async function page(path){const r=await fetch('https://aura.crediteksas.com'+path,{signal:AbortSignal.timeout(20000)});const body=await r.text();return {status:r.status,headers:Object.fromEntries(r.headers),body,sha256:hash(body)};}
+const initial=await modules();predecessor(initial);
+const settingsPath='/workers/services/creditek-aura-shell/environments/production/settings';
+const settings=await cf.get(settingsPath);
+const workerNames=['creditek-aura','creditek-bot','creditek-nova'];
+const workerHashes=Object.fromEntries(await Promise.all(workerNames.map(async name=>[name,hash(await cf.source(name))])));
+const otherPaths=['/creditek/agentes/','/creditek/agentes/index.html','/creditek/agentes/aura-auto-navigation.js','/creditek/agentes/aura-auto-navigation.css','/creditek/agentes/aura-auth.js','/creditek/agentes/aura-responsive.css','/design-system/components/kora-product.css','/creditek/shared/branding/creditek-logo.png','/creditek/agentes/aura-dictation.mjs?v=20261028','/api/sofia/tiendas','/creditek/agentes/sofia-calidad','/creditek/agentes/sofia-calidad/api/status'];
+const targets=['/creditek/agentes/creditek-agente-respuestas?embedded=1','/creditek/agentes/creditek-agente-respuestas.html'];
+const [before,originals]=await Promise.all([Promise.all(otherPaths.map(page)),Promise.all(targets.map(page))]);
+ensure(originals.every(x=>x.status===200&&patchLiveChat(x.body)!==null),'Current Sofia chat differs');
+const candidate=await liveChatEntry();const dir=await mkdtemp('/private/tmp/aura-live-chat-release-');
+for(const [name,body]of initial)await writeFile(dir+'/'+name.replace(/^\.\//,''),body,{mode:0o600});
+await writeFile(dir+'/live-chat-ui.mjs',candidate,{mode:0o600});
+await writeFile(dir+'/backup.json',JSON.stringify({settings,modules:expected,workerHashes},null,2),{mode:0o600});
+console.log(JSON.stringify({phase:'validated',apply:args.length===1,dir,candidateSha256:hash(candidate)}));
+if(!args.length)process.exit(0);
+predecessor(await modules());qualitySettingsEqual(settings,await cf.get(settingsPath));
+for(let i=0;i<originals.length;i++)ensure((await page(targets[i])).sha256===originals[i].sha256,'Sofia HTML changed concurrently');
+const metadata=qualityMetadata(settings);metadata.main_module='live-chat-ui.mjs';
+metadata.annotations={'workers/message':'Refresh the active Sofia conversation after existing polling; preserve reply drafts, details and reading position'};
+const form=new FormData();form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+for(const [name,body]of initial)form.set(name,new Blob([body],{type:/\.(mjs|js)$/.test(name)?'application/javascript+module':'text/plain'}),name);
+form.set('live-chat-ui.mjs',new Blob([candidate],{type:'application/javascript+module'}),'live-chat-ui.mjs');
+const r=await fetch(root+'/workers/scripts/creditek-aura-shell',{method:'PUT',headers,body:form,signal:AbortSignal.timeout(60000)});
+const data=await r.json();ensure(r.ok&&data.success,'Upload uncertain or rejected; inspect before retry: '+JSON.stringify(data.errors||r.status));
+const final=await modules();ensure(final.size===9&&final.get('live-chat-ui.mjs')===candidate,'New module mismatch');
+for(const [name,body]of initial)ensure(final.get(name)===body,'Previous module changed: '+name);
+qualitySettingsEqual(settings,await cf.get(settingsPath));
+for(let i=0;i<targets.length;i++){
+ const target=await page(targets[i]);ensure(target.status===200&&target.headers['x-sofia-live-chat']==='20261030-1','Live chat update not served');
+ ensure(target.body===patchLiveChat(originals[i].body),'HTML changed beyond the active chat update');
+ for(const h of ['x-sofia-visual-release','x-sofia-chat-fit','x-sofia-quality-aura','x-sofia-intervention-rule'])ensure(target.headers[h]===originals[i].headers[h],'Existing UI release lost: '+h);
+}
+const after=await Promise.all(otherPaths.map(page));
+for(let i=0;i<before.length;i++)ensure(before[i].status===after[i].status&&before[i].sha256===after[i].sha256,'Unrelated route changed: '+otherPaths[i]);
+for(const name of workerNames)ensure(hash(await cf.source(name))===workerHashes[name],'Unrelated Worker changed: '+name);
+const deployments=await cf.get('/workers/scripts/creditek-aura-shell/deployments');
+const version=deployments.deployments[0].versions;ensure(version.length===1&&version[0].percentage===100,'Unexpected deployment allocation');
+const result={ok:true,at:new Date().toISOString(),version:version[0],candidateSha256:hash(candidate),originalModulesPreserved:Object.keys(expected),settingsPreserved:true,unrelatedWorkersPreserved:workerNames,otherRoutesPreserved:otherPaths,chatHistoryUntouched:true,otherInterventionRulesPreserved:true,noMessagesSent:true,liveVisual:'pending_reload'};
+await writeFile(new URL('./verification.json',import.meta.url),JSON.stringify(result,null,2)+'\n');
+await writeFile(dir+'/verification.json',JSON.stringify(result,null,2),{mode:0o600});console.log(JSON.stringify(result));

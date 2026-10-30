@@ -14,8 +14,9 @@ export async function verifiedCodecAsset(asset,{fetcher=fetch,cryptoApi=crypto,o
  const controller=new AbortController(),cancel=()=>controller.abort();let timedOut=false;
  signal?.addEventListener('abort',cancel,{once:true});const timer=setTimeout(()=>{timedOut=true;controller.abort();},fetchTimeoutMs);
  try{
-  const response=await fetcher(url.href,{method:'GET',credentials:'omit',redirect:'error',cache:'force-cache',signal:controller.signal});
-  if(!response.ok||!response.body?.getReader)throw Error('No se pudo cargar el conversor. El video original se conserva.');
+  const response=await fetcher(url.href,{method:'GET',credentials:'same-origin',redirect:'error',cache:'force-cache',signal:controller.signal});
+  if(!response.ok){const status=Number.isInteger(response.status)&&response.status>=100&&response.status<=599?String(response.status):'desconocido';throw Error('No se pudo cargar el conversor (HTTP '+status+'). El video original se conserva.');}
+  if(!response.body?.getReader)throw Error('No se pudo leer la descarga del conversor. El video original se conserva.');
   const reader=response.body.getReader(),chunks=[];let length=0;
   try{while(true){aborted(signal);const chunk=await reader.read();if(chunk.done)break;length+=chunk.value.length;if(length>asset.bytes)throw Error('El conversor no coincide con la versión verificada.');chunks.push(chunk.value);}}
   finally{await reader.cancel().catch(()=>{});reader.releaseLock();}

@@ -290,6 +290,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Información exógena', href: 'exogena.html', lucide: 'file-spreadsheet', description: 'Descarga el auxiliar anual de pagos por tercero y sus pendientes de revisión.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', lucide: 'clipboard-check', description: 'Revisa las confirmaciones diarias y diferencias de deuda de las tiendas con Creditek.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'target', description: 'Programa los presupuestos independientes de Retail, B2B y Aliados desde Administración.', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', lucide: 'landmark', description: 'Saldo bancario, solicitudes y pagos a proveedores con autorización de Gerencia y aplicación a facturas antiguas.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },

@@ -11,7 +11,7 @@
     'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
     '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
   ]);
-  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html']);
+  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html', 'exogena.html']);
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
@@ -84,6 +84,7 @@
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Información exógena', href: 'exogena.html', icon: 'file-spreadsheet', users: [...FINANCIAL_CONTROLLERS] },
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', icon: 'clipboard-check', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },

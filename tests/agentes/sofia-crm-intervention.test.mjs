@@ -79,3 +79,35 @@ test('pone en intervención handoffs vencidos y contactos fallidos', () => {
   assert.ok(interventionReasons([], { estado_funnel: 'transferido_asesor', fecha_transferido_asesor: oldTransfer }).includes('Tienda no confirmó contacto dentro del SLA'));
   assert.ok(interventionReasons([], { estado_funnel: 'transferido_asesor', confirmacion_asesor: 'no_contactado' }).includes('Tienda no pudo contactar al cliente'));
 });
+
+
+test('no confunde dos remisiones informativas iguales con preguntas repetidas', () => {
+  const { interventionReasons } = loadPolicy();
+  const content = 'Para continuar con Samsung, escribe a tu asesora. Allí te confirman disponibilidad y opciones a cuotas.';
+  assert.deepEqual(interventionReasons([
+    message({ minutesAgo: 20, direction: 'salida', content }),
+    message({ minutesAgo: 14, direction: 'salida', content }),
+  ], { estado_funnel: 'transferido_asesor', confirmacion_asesor: 'contactado' }), []);
+});
+
+test('detecta preguntas repetidas sin signos y conserva clientes sin respuesta', () => {
+  const { interventionReasons } = loadPolicy();
+  const repeated = interventionReasons([
+    message({ minutesAgo: 10, direction: 'salida', content: 'Me confirmas tu ciudad' }),
+    message({ minutesAgo: 5, direction: 'salida', content: 'Me confirmas tu ciudad' }),
+    message({ minutesAgo: 1, direction: 'entrada', content: 'Corozal' }),
+  ], { estado_funnel: 'contactado' });
+  assert.ok(repeated.includes('Sofía repitió una pregunta'));
+  assert.ok(repeated.includes('Cliente sin respuesta'));
+});
+
+test('respuestas repetidas no borran el aviso de contacto fallido de la tienda', () => {
+  const { interventionReasons } = loadPolicy();
+  const content = 'Puedes continuar con tu asesora.';
+  const reasons = interventionReasons([
+    message({ minutesAgo: 10, direction: 'salida', content }),
+    message({ minutesAgo: 5, direction: 'salida', content }),
+  ], { estado_funnel: 'transferido_asesor', confirmacion_asesor: 'no_contactado' });
+  assert.ok(!reasons.includes('Sofía repitió una pregunta'));
+  assert.ok(reasons.includes('Tienda no pudo contactar al cliente'));
+});

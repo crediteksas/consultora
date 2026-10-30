@@ -2,121 +2,121 @@ TAP version 13
 # Subtest: SQL guard preserves original service-only ACL, invoker rights and reservation function/budgets
 ok 1 - SQL guard preserves original service-only ACL, invoker rights and reservation function/budgets
   ---
-  duration_ms: 785.698667
+  duration_ms: 737.782542
   type: 'test'
   ...
 # Subtest: accepted first HTTP200 lost to browser: second fresh CAPTCHA yields202 accepted without another reserve or Meta send; composed form keeps photos
 ok 2 - accepted first HTTP200 lost to browser: second fresh CAPTCHA yields202 accepted without another reserve or Meta send; composed form keeps photos
   ---
-  duration_ms: 512.633667
+  duration_ms: 506.017
   type: 'test'
   ...
 # Subtest: concurrent same-context callers: both read no OTP, SQL reserves only one; loser rereads same active challenge
 ok 3 - concurrent same-context callers: both read no OTP, SQL reserves only one; loser rereads same active challenge
   ---
-  duration_ms: 472.719583
+  duration_ms: 460.160291
   type: 'test'
   ...
 # Subtest: other document/link with same phone gets409 without disclosing OTP id, document, phone, link or accepted state
 ok 4 - other document/link with same phone gets409 without disclosing OTP id, document, phone, link or accepted state
   ---
-  duration_ms: 477.965333
+  duration_ms: 440.140959
   type: 'test'
   ...
 # Subtest: uncertain transport stays blocked until original TTL without another send
 ok 5 - uncertain transport stays blocked until original TTL without another send
   ---
-  duration_ms: 446.5145
+  duration_ms: 457.712292
   type: 'test'
   ...
 # Subtest: failed transport stays blocked until original TTL without another send
 ok 6 - failed transport stays blocked until original TTL without another send
   ---
-  duration_ms: 449.932167
+  duration_ms: 451.985125
   type: 'test'
   ...
 # Subtest: expired challenge permits a new explicit request while original quotas still apply
 ok 7 - expired challenge permits a new explicit request while original quotas still apply
   ---
-  duration_ms: 443.124375
+  duration_ms: 446.519583
   type: 'test'
   ...
 # Subtest: verified challenge permits a new explicit request while original quotas still apply
 ok 8 - verified challenge permits a new explicit request while original quotas still apply
   ---
-  duration_ms: 463.790833
+  duration_ms: 431.576958
   type: 'test'
   ...
 # Subtest: consumed challenge permits a new explicit request while original quotas still apply
 ok 9 - consumed challenge permits a new explicit request while original quotas still apply
   ---
-  duration_ms: 458.208167
+  duration_ms: 444.762625
   type: 'test'
   ...
 # Subtest: active challenge lookup is after CAPTCHA and context; reused single-use CAPTCHA does not read DB or send again
 ok 10 - active challenge lookup is after CAPTCHA and context; reused single-use CAPTCHA does not read DB or send again
   ---
-  duration_ms: 432.651959
+  duration_ms: 438.207167
   type: 'test'
   ...
 # Subtest: DB active lookup network failure fails closed before reservation/send
 ok 11 - DB active lookup network failure fails closed before reservation/send
   ---
-  duration_ms: 474.286834
+  duration_ms: 436.831875
   type: 'test'
   ...
 # Subtest: DB active lookup non-success fails closed before reservation/send
 ok 12 - DB active lookup non-success fails closed before reservation/send
   ---
-  duration_ms: 445.303875
+  duration_ms: 434.098875
   type: 'test'
   ...
 # Subtest: DB active lookup oversized metadata fails closed before reservation/send
 ok 13 - DB active lookup oversized metadata fails closed before reservation/send
   ---
-  duration_ms: 427.54175
+  duration_ms: 431.35725
   type: 'test'
   ...
 # Subtest: DB active lookup malformed JSON fails closed before reservation/send
 ok 14 - DB active lookup malformed JSON fails closed before reservation/send
   ---
-  duration_ms: 426.552
+  duration_ms: 429.335042
   type: 'test'
   ...
 # Subtest: DB active lookup inconsistent accepted and failed stamps fails closed before reservation/send
 ok 15 - DB active lookup inconsistent accepted and failed stamps fails closed before reservation/send
   ---
-  duration_ms: 432.768958
+  duration_ms: 433.497958
   type: 'test'
   ...
 # Subtest: reservation uncertainty before commit sends zero; committed attempt remains recoverable
 ok 16 - reservation uncertainty before commit sends zero; committed attempt remains recoverable
   ---
-  duration_ms: 419.997416
+  duration_ms: 425.963
   type: 'test'
   ...
 # Subtest: reservation uncertainty after commit sends zero; committed attempt remains recoverable
 ok 17 - reservation uncertainty after commit sends zero; committed attempt remains recoverable
   ---
-  duration_ms: 434.819583
+  duration_ms: 423.02625
   type: 'test'
   ...
 # Subtest: lost accepted PATCH acknowledgement returns503, retry discovers accepted state with no second Meta request
 ok 18 - lost accepted PATCH acknowledgement returns503, retry discovers accepted state with no second Meta request
   ---
-  duration_ms: 434.471125
+  duration_ms: 440.729292
   type: 'test'
   ...
 # Subtest: same phone remains protected across WhatsApp and SMS dispatch rows; SMS is never invoked by these tests
 ok 19 - same phone remains protected across WhatsApp and SMS dispatch rows; SMS is never invoked by these tests
   ---
-  duration_ms: 432.786167
+  duration_ms: 423.209208
   type: 'test'
   ...
 # Subtest: original 3-per-phone and60-per-link budgets remain enforced with no extra send
 ok 20 - original 3-per-phone and60-per-link budgets remain enforced with no extra send
   ---
-  duration_ms: 443.627125
+  duration_ms: 423.677
   type: 'test'
   ...
 1..20
@@ -127,4 +127,4 @@ ok 20 - original 3-per-phone and60-per-link budgets remain enforced with no extr
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 9413.983791
+# duration_ms 9219.288375

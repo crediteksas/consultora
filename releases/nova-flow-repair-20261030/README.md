@@ -44,3 +44,7 @@ Los demás comandos y límites están en `clientes/OTP-TESTS.md`, `referencias/R
 5. No enviar mensajes de prueba ni reconsultar clientes como parte de verificar el despliegue. Una prueba humana/provider requiere consentimiento vigente y su flujo autorizado. Mantener separados aceptado, entregado, leído, respondido y decisión.
 
 La reversión preferida restaura los dos Workers anteriores manteniendo las protecciones SQL compatibles. Si se necesita revertir SQL, primero retirar dependencias del Worker y validar datos actuales: nunca estrechar el constraint de referencias mientras haya filas `uncertain`, borrar evidencia, reiniciar consentimientos o liberar desafíos activos para poder revertir. `sql/kora-consent-repair-rollback.sql` conserva historial y restaura definiciones; no se ejecuta automáticamente ni como parte de esta reparación.
+
+## Estado publicado
+
+Publicado con autorización expresa de Óscar para NOVA y CLIENTES. `production-receipt.json` acredita módulos vivos, versiones, bindings, rutas, tareas y pruebas HTTP; `manifest.json` describe el artefacto de construcción. Las migraciones se renombraron al historial real mediante `preflight/applied-migration-aliases.json`, conservando exactamente el SQL aprobado. SMS continúa apagado y los bloqueos externos indicados siguen abiertos.

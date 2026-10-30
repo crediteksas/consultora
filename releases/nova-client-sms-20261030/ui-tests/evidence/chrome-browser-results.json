@@ -1,0 +1,547 @@
+{
+  "reports": [
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Estamos confirmando el envío por WhatsApp. Pulsa «Consultar envío»; no pidas otro código ni cambies de canal.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": true,
+      "step": "whatsapp-uncertain",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": true,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Código solicitado por WhatsApp. Aún no confirmamos su entrega. Ingresa el código si lo recibes.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": false,
+      "step": "whatsapp-accepted-via-status",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": true,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "El envío falló, pero debemos esperar a que venza el intento anterior. Usa «Consultar envío» antes de pedir otro código.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": true,
+      "step": "sms-failed-still-blocked",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Se confirmó que no hay un código activo de este intento. Puedes solicitar otro; tus datos y fotos se conservan.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        }
+      ],
+      "smsDisabled": false,
+      "statusVisible": false,
+      "step": "sms-terminal-confirmed",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": false
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Estamos confirmando el envío por SMS. Pulsa «Consultar envío»; no pidas otro código ni cambies de canal.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": true,
+      "step": "sms-uncertain",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": true,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Código solicitado por SMS. Aún no confirmamos su entrega. Ingresa el código si lo recibes.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": false,
+      "step": "sms-accepted-via-same-uuid",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": true,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Este código ya se verificó en otra pestaña. Continúa en el formulario original para terminar. Tus datos y fotos siguen aquí; no solicites otro código.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "6c0b7d75-1d0e-4b9a-a029-eb1f9c77b39c"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "6c0b7d75-1d0e-4b9a-a029-eb1f9c77b39c"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": false,
+      "step": "verified-in-another-tab-terminal-409",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": true
+    },
+    {
+      "actualNetworkApiRequests": 0,
+      "allPreserved": true,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+      "codeVisible": false,
+      "currentName": "PRUEBA LOCAL NOMBRE CONSERVADO",
+      "fieldsPreserved": true,
+      "fileBytes": 68,
+      "fileName": "nova-local-front.png",
+      "otpText": "Este código ya se verificó en otra pestaña. Continúa en el formulario original para terminar. Tus datos y fotos siguen aquí; no solicites otro código.",
+      "sameFileInputNode": true,
+      "sameFileObject": true,
+      "simulatedRequests": [
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/contexto",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "GET",
+          "path": "/api/registro/config",
+          "request_id": null
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/opciones",
+          "request_id": null
+        },
+        {
+          "channel": "whatsapp",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "67b45c7c-7f11-44d7-bdb5-dda694139d4b"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "f121c78d-66f3-4cff-9217-7b5e3badb623"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "431c0985-7850-4649-8610-46cdab3c1f85"
+        },
+        {
+          "channel": "sms",
+          "method": "POST",
+          "path": "/api/otp/enviar",
+          "request_id": "6c0b7d75-1d0e-4b9a-a029-eb1f9c77b39c"
+        },
+        {
+          "channel": null,
+          "method": "POST",
+          "path": "/api/otp/estado",
+          "request_id": "6c0b7d75-1d0e-4b9a-a029-eb1f9c77b39c"
+        }
+      ],
+      "smsDisabled": true,
+      "statusVisible": false,
+      "step": "verified-remains-terminal-after-ttl",
+      "unexpectedOrBlockedRequests": [],
+      "verifyEnabled": false,
+      "whatsappDisabled": true
+    }
+  ],
+  "source": "local form candidate, only in-memory mocks"
+}

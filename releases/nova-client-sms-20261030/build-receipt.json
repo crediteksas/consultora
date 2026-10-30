@@ -1,0 +1,48 @@
+{
+  "baselineSHA256": "744e1ee8db4cafde7a5774cc01799e00263b9af669f3af20a2fa615ff0e3ae18",
+  "formSHA256": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+  "candidateSHA256": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
+  "candidateBytes": 542107,
+  "anchors": [
+    {
+      "name": "new-routes",
+      "beforeSHA256": "f479cc402dcc3558964ee7f217228aafacf5de454cb74cb6a6b0fb205a634204",
+      "afterSHA256": "e4e10f2e6f43814a7a55fb377a88ce857b01c3070f9ccd59e0c9009679323288"
+    },
+    {
+      "name": "outer-router",
+      "beforeSHA256": "22348b415700493acd3b331c1aef96093d7e6087b0140aa2abfa8421fbe686c8",
+      "afterSHA256": "dfe09bf85fbdcdd502c03b590600c7571ca42b92800617d58b67766e601e8584"
+    },
+    {
+      "name": "secure-send-gate",
+      "beforeSHA256": "32172466ea916408b4b2fd2a6ac1b095ff84b9a5edcad41b9b3a7bcd327aeee8",
+      "afterSHA256": "282ce99c2cf627c9429dbcac4269c7a62709e794a1f0a8af2e6a570a97cc3a57"
+    },
+    {
+      "name": "legacy-old-copy-verify",
+      "beforeSHA256": "489dc5f5106d26bd89cbb19199d28ce9cab2f612aeea338f1c7c07a889de1315",
+      "afterSHA256": "c21cc0ddeac82ccdb89bf88af0262dccb4e64a85af6bdcdc3d5c33d9e7f5430f"
+    },
+    {
+      "name": "legacy-old-copy-register",
+      "beforeSHA256": "fba29512d24b3efc5b70f169b6ddf01737332d473c8b7de7da5dfb308fe6665c",
+      "afterSHA256": "c4f5f7be153e45adc0269e7f56be03d0603f8eda18bf2ad7420119b17fc89b10"
+    },
+    {
+      "name": "legacy-active-verify",
+      "beforeSHA256": "b260d8f6310767d831aa6c3e48a032777630cee83c286a048eb509ff1f44a6e6",
+      "afterSHA256": "e429a1d6325bae6e6614d97cb6106a7a85a9accde9709fc3801c53163e42fef3"
+    },
+    {
+      "name": "legacy-active-register",
+      "beforeSHA256": "f990df7d17f5ca86841f8bd4857553e209fca6a673585e69db58228f439e93e8",
+      "afterSHA256": "a2df150fa1c8a285a4134ed49c2a822767f8ffbc53b5f0da4e6b987ca1244780"
+    },
+    {
+      "name": "embedded-form",
+      "beforeSHA256": "5e19ff4609aa01cb9c2c58524836dc6303690837a2d16247b75efa1f7098be11",
+      "afterSHA256": "cb7b76ff9e752b09117b12a83396bac276b1568bbadd04606a59218a998f9676"
+    }
+  ]
+}

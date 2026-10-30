@@ -1,0 +1,41 @@
+{
+  "timestampUTC": "2026-10-30T17:41:24.242Z",
+  "engine": "PostgreSQL 17.11 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "sqlSha256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd",
+  "sqlUnchanged": true,
+  "tests": 5,
+  "pass": 5,
+  "connections": "Two simultaneous native PostgreSQL sessions for each contention case",
+  "results": [
+    {
+      "name": "same request in two sessions grants only one send",
+      "passed": true,
+      "waitedMs": 609
+    },
+    {
+      "name": "legacy WA caller waiting behind SMS is blocked by additive trigger",
+      "passed": true,
+      "waitedMs": 612
+    },
+    {
+      "name": "legacy boolean FAILED committed first still blocks waiting SMS wrapper",
+      "passed": true,
+      "waitedMs": 643
+    },
+    {
+      "name": "global budget serializes different phones and different links",
+      "passed": true,
+      "waitedMs": 629
+    },
+    {
+      "name": "cost anomaly finish is visible before a competing new SMS reservation",
+      "passed": true,
+      "waitedMs": 619
+    }
+  ],
+  "productionDDL": false,
+  "providerCalls": false,
+  "passed": true,
+  "harnessDirectory": "sql-tests",
+  "migrationPath": "../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql"
+}

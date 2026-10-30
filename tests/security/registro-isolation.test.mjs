@@ -43,7 +43,8 @@ test('el formulario publicado conserva acceso público y captura completa', asyn
 
 test('rechaza rutas de AURA, KORA y portal aunque Static Assets tenga fallback', async () => {
   let assetCalls = 0;
-  const env = { ASSETS: { fetch: async () => { assetCalls += 1; return new Response('asset'); } } };
+  const fixtureHtml = await readFile(path.join(root, 'creditek/convenios/index.html'), 'utf8');
+  const env = { ASSETS: { fetch: async () => { assetCalls += 1; return new Response(fixtureHtml, {headers: {'content-type': 'text/html; charset=utf-8'}}); } } };
   for (const pathname of ['/creditek/agentes/', '/creditek/erp/app', '/creditek/portal/']) {
     const response = await registroWorker.fetch(new Request(`https://registro.crediteksas.com${pathname}`), env);
     assert.equal(response.status, 404, pathname);

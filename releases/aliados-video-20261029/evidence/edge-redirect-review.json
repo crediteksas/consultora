@@ -1,0 +1,17 @@
+{
+  "verdict": "APPROVED. Cambio mínimo y correcto: `redirect:'error'` no está soportado por Workers y lanza TypeError; `redirect:'manual'` es el valor válido según la API documentada. La lógica mantiene el comportamiento deseado (solo pasa el body en status 200; cualquier otro status, incluidos 3xx, cancela el body y responde 502 sin seguir `Location`), por lo que no se abre una redirección abierta. Se añade cancelación segura del body con try/catch. El test nuevo cubre exactamente el caso de regresión: fetch simulado del edge rechaza `redirect:'error'`, devuelve 301, y verifica cancelación, status 502 y ausencia de header `location`. Cambios reflejados consistentemente en el builder de release. Delta acotada, sin tocar proveedor/pins/permisos.",
+  "scope": "Worker CDN fetch redirect compatibility only",
+  "reviewExecutedTests": false,
+  "rootVerifiedTests": {
+    "passed": 58,
+    "failed": 0
+  },
+  "rootCause": {
+    "path": "/creditek/convenios/video-codec/core-0.12.10/ffmpeg-core.wasm",
+    "outcome": "exception",
+    "exceptionName": "TypeError",
+    "message": "Invalid redirect value; Cloudflare Workers supports follow/manual only, not error.",
+    "confirmedFromSanitizedTail": true,
+    "clientCookieHypothesisWasNotRootCause": true
+  }
+}

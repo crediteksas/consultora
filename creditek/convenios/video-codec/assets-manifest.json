@@ -1,0 +1,51 @@
+{
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/index.js": {
+    "body": "[embedded 58 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/classes.js": {
+    "body": "[embedded 9747 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/const.js": {
+    "body": "[embedded 1016 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/errors.js": {
+    "body": "[embedded 332 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/types.js": {
+    "body": "[embedded 295 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/utils.js": {
+    "body": "[embedded 138 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/ffmpeg-0.12.15/worker.js": {
+    "body": "[embedded 5085 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/core-0.12.10/ffmpeg-core.js": {
+    "body": "[embedded 111804 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/core-0.12.10/ffmpeg-core.wasm": {
+    "upstream": "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm",
+    "mime": "application/wasm",
+    "bytes": 32232419
+  },
+  "/creditek/convenios/video-codec/video-ffmpeg.mjs": {
+    "body": "[embedded 9499 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/video-ffmpeg-20261029.2.mjs": {
+    "body": "[embedded 9499 chars]",
+    "mime": "text/javascript; charset=utf-8"
+  },
+  "/creditek/convenios/video-codec/THIRD-PARTY-NOTICES.txt": {
+    "body": "[embedded 546 chars]",
+    "mime": "text/plain; charset=utf-8"
+  }
+}

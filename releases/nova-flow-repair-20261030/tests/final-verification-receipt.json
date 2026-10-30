@@ -1,0 +1,101 @@
+{
+  "checkedAtUTC": "2026-10-30T21:33:55.621Z",
+  "status": "PASS",
+  "results": [
+    {
+      "name": "package",
+      "expected": 15,
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "ui",
+      "expected": 33,
+      "tests": 33,
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "otp",
+      "expected": 20,
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "references",
+      "expected": 22,
+      "tests": 22,
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "platforms",
+      "expected": 18,
+      "tests": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "sql",
+      "expected": 10,
+      "tests": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    }
+  ],
+  "totalLocalTests": 118,
+  "artifacts": {
+    "clientes/index.mjs": {
+      "bytes": 559870,
+      "sha256": "6a5d0d76296d91c44f22398823c54749b4a2ae30ec5923c27e47da254eac0c7d"
+    },
+    "clientes/form.html": {
+      "bytes": 85833,
+      "sha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07"
+    },
+    "nova/index.mjs": {
+      "bytes": 3095959,
+      "sha256": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355"
+    }
+  },
+  "migrations": [
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql",
+      "sha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336"
+    },
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql",
+      "sha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1"
+    },
+    {
+      "project": "ditiwpndvmyuqcagupea",
+      "file": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql",
+      "sha256": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207"
+    }
+  ],
+  "previousVerifiedSeparateExecutions": {
+    "chrome": 4,
+    "nativePostgresRaces": 7,
+    "nativePostgresFunctionalSql": 10
+  },
+  "productionWrites": 0,
+  "realMessages": 0,
+  "realCreditQueries": 0,
+  "smsEnabled": false
+}

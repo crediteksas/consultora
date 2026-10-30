@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: Andrea path: a registered active reviewer receives backend global+canReview
+ok 1 - Andrea path: a registered active reviewer receives backend global+canReview
+  ---
+  duration_ms: 10.6185
+  type: 'test'
+  ...
+# Subtest: Store account cannot open a case from another store
+ok 2 - Store account cannot open a case from another store
+  ---
+  duration_ms: 1.481791
+  type: 'test'
+  ...
+# Subtest: Retail details mark current master revocation without deleting historical summary
+ok 3 - Retail details mark current master revocation without deleting historical summary
+  ---
+  duration_ms: 2.045584
+  type: 'test'
+  ...
+# Subtest: Control: an explicit source revocation is recognized
+ok 4 - Control: an explicit source revocation is recognized
+  ---
+  duration_ms: 0.807958
+  type: 'test'
+  ...
+# Subtest: Evidence repairs the same interrupted batch with current consent and no provider call
+ok 5 - Evidence repairs the same interrupted batch with current consent and no provider call
+  ---
+  duration_ms: 5.752042
+  type: 'test'
+  ...
+# Subtest: Provider outages do not count as successful platform checks
+ok 6 - Provider outages do not count as successful platform checks
+  ---
+  duration_ms: 0.100792
+  type: 'test'
+  ...
+# Subtest: New actions including photos are blocked after master revocation
+ok 7 - New actions including photos are blocked after master revocation
+  ---
+  duration_ms: 1.310125
+  type: 'test'
+  ...
+# Subtest: Interrupted batch is not restored if platform consent expired
+ok 8 - Interrupted batch is not restored if platform consent expired
+  ---
+  duration_ms: 0.358417
+  type: 'test'
+  ...
+# Subtest: Interrupted batch is not restored after master revocation
+ok 9 - Interrupted batch is not restored after master revocation
+  ---
+  duration_ms: 0.267292
+  type: 'test'
+  ...
+# Subtest: Transforms fail on replay and add only one backend RPC to CLIENTES
+ok 10 - Transforms fail on replay and add only one backend RPC to CLIENTES
+  ---
+  duration_ms: 4.671625
+  type: 'test'
+  ...
+# Subtest: Repair ignores terminal jobs and batches that no longer match
+ok 11 - Repair ignores terminal jobs and batches that no longer match
+  ---
+  duration_ms: 0.679792
+  type: 'test'
+  ...
+# Subtest: Repair cannot replace the stored authorization with a different consent
+ok 12 - Repair cannot replace the stored authorization with a different consent
+  ---
+  duration_ms: 0.301542
+  type: 'test'
+  ...
+# Subtest: Repair rejects conflicting saved locators before any patch
+ok 13 - Repair rejects conflicting saved locators before any patch
+  ---
+  duration_ms: 0.147667
+  type: 'test'
+  ...
+# Subtest: Unknown master-consent state fails closed without serving photos
+ok 14 - Unknown master-consent state fails closed without serving photos
+  ---
+  duration_ms: 0.268792
+  type: 'test'
+  ...
+# Subtest: Revoked source does not dispatch a new reference invitation
+ok 15 - Revoked source does not dispatch a new reference invitation
+  ---
+  duration_ms: 0.245958
+  type: 'test'
+  ...
+# Subtest: Revoked source closes a claimed notice without dispatch
+ok 16 - Revoked source closes a claimed notice without dispatch
+  ---
+  duration_ms: 0.228875
+  type: 'test'
+  ...
+# Subtest: Active consent preserves the exact prior fingerprint and historical approval identity
+ok 17 - Active consent preserves the exact prior fingerprint and historical approval identity
+  ---
+  duration_ms: 0.85725
+  type: 'test'
+  ...
+# Subtest: Revocation changes the fingerprint; legitimate restoration differs from the revoked state
+ok 18 - Revocation changes the fingerprint; legitimate restoration differs from the revoked state
+  ---
+  duration_ms: 0.543333
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 93.989583

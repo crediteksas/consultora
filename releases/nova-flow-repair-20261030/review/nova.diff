@@ -1,0 +1,170 @@
+diff --git a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/baseline/nova/index.mjs b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/deploy/nova/index.mjs
+index 5e4de47..705c784 100644
+--- a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/baseline/nova/index.mjs
++++ b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/deploy/nova/index.mjs
+@@ -18328,7 +18328,8 @@ async function processReferenceMessage(message, env, { rpc = executionRpc22(env)
+   });
+   if (reserved.duplicate) return { handled: true, duplicate: true };
+   if (!reserved.ok) return reserved.retryable ? { ok: false, retryable: true } : { handled: true, stopped: true };
+-  let accepted = false;
++  // null means transport uncertain, never a confirmed rejection.
++  let accepted = null;
+   let questionStage = needsOtp ? null : turn.state.stage;
+   if (needsOtp) {
+     const result2 = await runReferenceOtp2(
+@@ -18338,8 +18339,8 @@ async function processReferenceMessage(message, env, { rpc = executionRpc22(env)
+       { rpc, verifySource, fetcher, now, firstConsent: prior?.state?.consent !== true }
+     );
+     if (!result2.reply) {
+-      await rpc("nova_reference_send_ack", { p_reference_id: referenceId, p_attempt_id: reserved.attempt_id, p_accepted: result2.accepted === true });
+-      return { handled: true, accepted: result2.accepted === true, delivered: false };
++      await rpc("nova_reference_send_ack", { p_reference_id: referenceId, p_attempt_id: reserved.attempt_id, p_accepted: result2.accepted === true ? true : null });
++      return { handled: true, accepted: result2.accepted === true, delivery_uncertain: result2.accepted !== true, delivered: false };
+     }
+     turn.reply = result2.reply;
+     questionStage = result2.questionStage || null;
+@@ -18353,11 +18354,12 @@ async function processReferenceMessage(message, env, { rpc = executionRpc22(env)
+       signal: AbortSignal.timeout(8e3)
+     });
+     const data = await boundedJson22(r, 8192);
+-    accepted = r.ok && typeof data?.messages?.[0]?.id === "string";
++    if (r.ok && /^[-A-Za-z0-9._=:/+]{1,200}$/.test(data?.messages?.[0]?.id || "")) accepted = true;
++    else if (r.status >= 400 && r.status < 500 && Number.isInteger(data?.error?.code) && !data?.messages?.length) accepted = false;
+   } catch {
+   }
+   await rpc("nova_reference_send_ack", { p_reference_id: referenceId, p_attempt_id: reserved.attempt_id, p_accepted: accepted });
+-  return { handled: true, accepted, delivered: false };
++  return { handled: true, accepted: accepted === true, delivery_uncertain: accepted === null, delivered: false };
+ }
+ __name(processReferenceMessage, "processReferenceMessage");
+ async function withReferenceWebhook(request, env, handlePilot, { process: process2 = processReferenceMessage } = {}) {
+@@ -77549,6 +77551,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+       try {
+         const d = await bounded2(r, 8192);
+         e.code = d.code || d.error_code || null;
++        if (d.message === "CONSENT_REVOKED") e.message = "CONSENT_REVOKED";
+       } catch {
+       }
+       throw e;
+@@ -77604,7 +77607,9 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+     const rows = await db(env, "kora", "kora_nova_sources?solicitud_id=eq." + id + "&select=*&limit=1");
+     if (rows.length !== 1 || !RETAIL_STORES.includes(rows[0].registration?.p_origen_codigo)) throw Error("NOT_FOUND");
+     const effective = await rpc(env, "kora_nova_effective_references", { p_source: id });
+-    return { ...rows[0], effectiveReferences: effective };
++    const generalConsentActive = await rpc(env, "nova_retail_consent_current", { p_source: id });
++    if (typeof generalConsentActive !== "boolean") throw Error("CONSENT_STATE_UNAVAILABLE");
++    return { ...rows[0], effectiveReferences: effective, generalConsentActive };
+   }
+   __name(source, "source");
+   async function evidence(env, s) {
+@@ -77616,13 +77621,22 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+       db(env, "kora", "nova_retail_cases?source_id=eq." + id + "&select=*")
+     ]);
+     const app = receipts[0]?.application_id, reg = s.registration;
+-    if (app && caseRows[0]?.query_request_id) await db(env, "aura", "rpc/nova_retail_requery", { method: "POST", body: { p_source: id, p_request: caseRows[0].query_request_id } });
++    if (app && s.generalConsentActive === true && caseRows[0]?.query_request_id) await db(env, "aura", "rpc/nova_retail_requery", { method: "POST", body: { p_source: id, p_request: caseRows[0].query_request_id } });
+     const [jobs, refs, dialogs, deliveries] = app ? await Promise.all([
+       db(env, "aura", "nova_platform_jobs?application_id=eq." + app + "&select=id,platform,status,observation,reason_code,checked_at,updated_at,consent,inputs,retail_batch_id"),
+       db(env, "aura", "nova_reference_verifications?superseded_at=is.null&application_id=eq." + app + "&select=id,reference_type,contact_hash,consent_status,verification_status"),
+       db(env, "aura", "nova_reference_dialogues?application_id=eq." + app + "&select=reference_id,state,status,outcome,updated_at"),
+       db(env, "aura", "nova_retail_reference_dispatch?source_id=eq." + id + "&select=reference_id,state,attempts,delivered_at,updated_at")
+     ]) : [[], [], [], []];
++    const recoveryBatch = caseRows[0]?.query_request_id;
++    if (s.generalConsentActive === true && recoveryBatch && jobs.some((j) => j.retail_batch_id === recoveryBatch && j.status === "queued" && ["ALO", "PAYJOY"].includes(j.platform) && !j.inputs)) {
++      try {
++        const context = await prepareRetailRequery(id, env);
++        await restoreRetailRequery(context, recoveryBatch, env, db);
++      } catch (error) {
++        if (!["PLATFORM_CONSENT_REQUIRED", "SOURCE_AUTHORIZATION_NOT_CURRENT"].includes(error.message)) throw error;
++      }
++    }
+     jobs.sort((a, b) => a.platform.localeCompare(b.platform));
+     refs.sort((a, b) => a.reference_type.localeCompare(b.reference_type) || a.id.localeCompare(b.id));
+     const declined = refs.length ? await db(env, "aura", "nova_reference_dialogues?status=eq.declined&contact_hash=in.(" + refs.map((r) => r.contact_hash).join(",") + ")&select=contact_hash") : [];
+@@ -77647,11 +77661,11 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+     const queryAttempted = Number.isFinite(queryAt) && jobs.filter((j) => j.retail_batch_id === existing.query_request_id && (!["queued", "running"].includes(j.status) || now() - Date.parse(j.updated_at) >= 12e4)).length >= 2;
+     const input = { storeCode: reg.p_origen_codigo, customerPhone: reg.p_celular, photos, references: referenceEvidence, platforms: observations, deliveryRequested: forDelivery, queriesMadeForDelivery: !forDelivery || queryAttempted };
+     let decision = evaluateApplication(input, now());
+-    if (s.revoked_at) decision = { ...decision, state: "review", canProcess: false, requiresAndrea: true, reasons: ["consent_revoked"] };
++    if (s.revoked_at || s.generalConsentActive !== true) decision = { ...decision, state: "review", canProcess: false, requiresAndrea: true, reasons: ["consent_revoked"] };
+     const querying = jobs.some((j) => ["queued", "running"].includes(j.status) && now() - Date.parse(j.updated_at) < 12e4 && (j.platform !== "KREDIYA" || env.NOVA_KREDIYA_EXECUTOR_ENABLED === "true")) || Boolean(existing?.query_request_id && !jobs.some((j) => j.retail_batch_id === existing.query_request_id));
+     if (querying && decision.state === "review" && decision.reasons.every((x) => ["fewer_than_two_platforms", "incomplete_obligations", "incomplete_payment_history"].includes(x))) decision = { ...decision, state: "waiting", canProcess: false, requiresAndrea: false, reasons: ["platform_queries_in_progress"] };
+     const summary = { name: reg.p_nombre_completo, storeCode: reg.p_origen_codigo, photos: TYPES.map((t) => ({ type: t, ...photos[t] })), references: referenceEvidence.map((r) => ({ id: r.id, type: r.type, status: referenceProgress2(r, now()).state, name: r.name, reportedRelationship: r.reportedRelationship, knowsCustomer: r.knowsCustomer ?? null, contactConfirmed: r.contactConfirmed, responded: r.responded, deliveredAt: r.deliveredAt })), platforms: jobs.map((j) => ({ platform: j.platform, status: j.status, checkedAt: j.checked_at, fresh: Number.isFinite(Date.parse(j.checked_at)) && now() - Date.parse(j.checked_at) < 864e5, reason: j.reason_code, observation: j.observation })), deliveryRequested: forDelivery, queriesMadeForDelivery: queryAttempted };
+-    const fingerprint = await sha(JSON.stringify({ source: s.input_hash, revoked: s.revoked_at, photoHashes: quality?.hashes, photoResults: quality?.results, documents: documents.map((d) => ({ type: d.tipo, hash: d.sha256 })).sort((a, b) => a.type.localeCompare(b.type)), summary, decision, queryRequestedAt: existing?.query_requested_at || null, renewedAt: existing?.renewed_at || null, policy: POLICY_VERSION }));
++    const fingerprint = await sha(JSON.stringify({ source: s.input_hash, revoked: s.revoked_at, ...(s.generalConsentActive === true ? {} : { generalConsentActive: false }), photoHashes: quality?.hashes, photoResults: quality?.results, documents: documents.map((d) => ({ type: d.tipo, hash: d.sha256 })).sort((a, b) => a.type.localeCompare(b.type)), summary, decision, queryRequestedAt: existing?.query_requested_at || null, renewedAt: existing?.renewed_at || null, policy: POLICY_VERSION }));
+     return { decision, summary, fingerprint, documents, referenceEvidence, jobs };
+   }
+   __name(evidence, "evidence");
+@@ -77684,7 +77698,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+     const ids = sourceId ? [sourceId] : await rpc(env, "nova_retail_candidates", {});
+     for (const id of ids.slice(0, 30)) try {
+       const s = await source(env, id);
+-      if (s.revoked_at || s.consent?.granted !== true) continue;
++      if (s.revoked_at || s.generalConsentActive !== true || s.consent?.granted !== true) continue;
+       const cases = await db(env, "kora", "nova_retail_cases?source_id=eq." + id + "&select=state,delivered_at&limit=1");
+       if (cases[0]?.state === "rejected" || cases[0]?.delivered_at) continue;
+       const receipts = await db(env, "aura", "nova_registration_receipts?source_application_id=eq." + id + "&select=application_id,payload_hash&limit=1");
+@@ -77697,7 +77711,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+         if (!ctx || ctx.dialogue || ctx.source_application_id !== id) continue;
+         const preparedSource = await source(env, id);
+         const preparedReference = preparedSource.effectiveReferences?.find((r) => r.type === ref.reference_type);
+-        if (preparedSource.revoked_at || preparedSource.consent?.granted !== true || preparedReference?.contact_authorized !== true || preparedReference.telefono !== expected.telefono) continue;
++        if (preparedSource.revoked_at || preparedSource.generalConsentActive !== true || preparedSource.consent?.granted !== true || preparedReference?.contact_authorized !== true || preparedReference.telefono !== expected.telefono) continue;
+         const invitationTemplate = await buildReferenceInvitationTemplate({ health: invitationHealth, name: preparedSource.registration.p_nombre_completo, context: ctx, secret: env.NOVA_PII_HASH_PEPPER, now: now(), makeInvitation });
+         const attempt = await db(env, "aura", "rpc/nova_retail_reference_reserve", { method: "POST", body: { p_reference: ref.id, p_source: id, p_contact_hash: ref.contact_hash } });
+         if (!UUID6.test(attempt)) continue;
+@@ -77705,7 +77719,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+         try {
+           const current = await source(env, id);
+           const currentReference = current.effectiveReferences?.find((r2) => r2.type === ref.reference_type);
+-          if (current.revoked_at || current.consent?.granted !== true || currentReference?.contact_authorized !== true || currentReference.telefono !== expected.telefono || current.registration.p_nombre_completo !== preparedSource.registration.p_nombre_completo) throw Error("CONSENT_CHANGED");
++          if (current.revoked_at || current.generalConsentActive !== true || current.consent?.granted !== true || currentReference?.contact_authorized !== true || currentReference.telefono !== expected.telefono || current.registration.p_nombre_completo !== preparedSource.registration.p_nombre_completo) throw Error("CONSENT_CHANGED");
+           state = "uncertain";
+           const r = await fetcher("https://graph.facebook.com/v26.0/" + env.NOVA_PHONE_NUMBER_ID + "/messages", { method: "POST", redirect: "manual", headers: { authorization: "Bearer " + env.NOVA_META_ACCESS_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ messaging_product: "whatsapp", to: "57" + expected.telefono, type: "template", template: invitationTemplate }), signal: AbortSignal.timeout(1e4) });
+           const d = await bounded2(r, 8192);
+@@ -77739,6 +77753,10 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+         recipient = contact[0]?.recipient;
+       }
+       const finish = /* @__PURE__ */ __name((state, id = null, error = null) => rpc(env, "nova_retail_notification_finish", { p_id: n.id, p_attempt: n.attempt_id, p_state: state, p_recipient: recipient || null, p_message: id, p_error: error }), "finish");
++      if (await rpc(env, "nova_retail_consent_current", { p_source: n.source_id }) !== true) {
++        await finish("failed", null, "CONSENT_REVOKED");
++        continue;
++      }
+       if (!/^573\d{9}$/.test(recipient || "")) {
+         await finish("queued", null, "CONTACT_REQUIRED");
+         continue;
+@@ -77785,7 +77803,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+   __name(statuses, "statuses");
+   async function completeReplacement(env, r) {
+     const s = await source(env, r.source_id);
+-    if (s.revoked_at || s.consent?.granted !== true) throw Error("CONSENT_CHANGED");
++    if (s.revoked_at || s.generalConsentActive !== true || s.consent?.granted !== true) throw Error("CONSENT_CHANGED");
+     const cases = await db(env, "kora", "nova_retail_cases?source_id=eq." + r.source_id + "&select=state,delivered_at&limit=1");
+     if (cases.length !== 1 || cases[0].state === "rejected" || cases[0].delivered_at) throw Error("REFERENCE_NOT_REPLACEABLE");
+     const receipts = await db(env, "aura", "nova_registration_receipts?source_application_id=eq." + r.source_id + "&select=application_id&limit=1");
+@@ -77864,6 +77882,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+       const rows = await db(env, "kora", "nova_retail_cases?source_id=eq." + b.id + "&select=*&limit=1");
+       const c = rows[0];
+       assertScope(actor, c);
++      if (["review", "requery", "deliver", "replaceReference", "document"].includes(b.action) && await rpc(env, "nova_retail_consent_current", { p_source: b.id }) !== true) throw Error("CONSENT_REVOKED");
+       if (b.action === "detail") {
+         const fresh2 = await reconcileOne(env, b.id);
+         if (actor.global) {
+@@ -77925,7 +77944,7 @@ function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation }
+       }
+       return reply({ error: "UNKNOWN_ACTION" }, 400);
+     } catch (e) {
+-      if (["PLATFORM_CONSENT_REQUIRED", "SOURCE_AUTHORIZATION_NOT_CURRENT", "QUERY_IN_PROGRESS", "QUERY_INPUT_CONFLICT"].includes(e.message)) return reply({ error: e.message }, 409);
++      if (["CONSENT_REVOKED", "PLATFORM_CONSENT_REQUIRED", "SOURCE_AUTHORIZATION_NOT_CURRENT", "QUERY_IN_PROGRESS", "QUERY_INPUT_CONFLICT"].includes(e.message)) return reply({ error: e.message }, 409);
+       const denied2 = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"].includes(e.message);
+       return reply({ error: denied2 ? e.message : "ACTION_UNAVAILABLE" }, e.message === "UNAUTHENTICATED" ? 401 : denied2 ? 403 : 409);
+     }
+@@ -77964,7 +77983,7 @@ function referenceObservation(r,references=[]){
+  return text;
+ }
+ async function authToken(){return aura?await aura.token():token;}
+-async function api(payload,image=false){const r=await fetch(API,{method:'POST',headers:{authorization:'Bearer '+await authToken(),'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(30000)});if(!r.ok){if(r.status===401)throw Error('Tu sesi\xF3n venci\xF3. Vuelve a ingresar.');if(r.status===403)throw Error('Tu usuario no tiene acceso a esta solicitud.');if(r.status===409){const e=await r.json().catch(()=>({}));const messages={PLATFORM_CONSENT_REQUIRED:'La autorizaci\xF3n de consulta del cliente venci\xF3 o falta. Debe renovarla el cliente; conservamos sus fotos y referencias.',SOURCE_AUTHORIZATION_NOT_CURRENT:'No se pudo verificar la autorizaci\xF3n de origen. Requiere revisi\xF3n t\xE9cnica; no vuelvas a registrar al cliente.',QUERY_IN_PROGRESS:'Ya hay una consulta en curso. Espera su resultado; no se inici\xF3 otra.',QUERY_INPUT_CONFLICT:'Los datos de consulta no coinciden con el expediente. Requiere revisi\xF3n t\xE9cnica.'};if(messages[e.error])throw Error(messages[e.error]);}throw Error('No se pudo completar la acci\xF3n. Actualiza la solicitud y revisa los pendientes.');}return image?r.blob():r.json();}
++async function api(payload,image=false){const r=await fetch(API,{method:'POST',headers:{authorization:'Bearer '+await authToken(),'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(30000)});if(!r.ok){if(r.status===401)throw Error('Tu sesi\xF3n venci\xF3. Vuelve a ingresar.');if(r.status===403)throw Error('Tu usuario no tiene acceso a esta solicitud.');if(r.status===409){const e=await r.json().catch(()=>({}));const messages={CONSENT_REVOKED:'La autorización general de datos está revocada. Conservamos el expediente, pero no se permiten nuevas gestiones ni abrir fotos.',PLATFORM_CONSENT_REQUIRED:'La autorizaci\xF3n de consulta del cliente venci\xF3 o falta. Debe renovarla el cliente; conservamos sus fotos y referencias.',SOURCE_AUTHORIZATION_NOT_CURRENT:'No se pudo verificar la autorizaci\xF3n de origen. Requiere revisi\xF3n t\xE9cnica; no vuelvas a registrar al cliente.',QUERY_IN_PROGRESS:'Ya hay una consulta en curso. Espera su resultado; no se inici\xF3 otra.',QUERY_INPUT_CONFLICT:'Los datos de consulta no coinciden con el expediente. Requiere revisi\xF3n t\xE9cnica.'};if(messages[e.error])throw Error(messages[e.error]);}throw Error('No se pudo completar la acci\xF3n. Actualiza la solicitud y revisa los pendientes.');}return image?r.blob():r.json();}
+ async function operate(run){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await run();}catch(e){say(e.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.locked==='true');}}
+ async function load(){const data=await api({action:'list'});actor=data.actor;rows=data.cases;$('legacy').hidden=!actor.global;$('login').hidden=true;$('workspace').hidden=false;$('identity').textContent=actor.name+' \xB7 '+(actor.global?'Todas las tiendas':actor.storeName);$('contact').hidden=Boolean(data.contact)||actor.global;if(!data.contact&&!actor.global)$('phone').value=data.proposedPhone||'';renderList();}
+ function renderList(){const query=$('search').value.trim().toLocaleLowerCase('es'),state=$('state').value;const filtered=rows.filter(c=>(!query||(c.name+' '+c.storeName).toLocaleLowerCase('es').includes(query))&&(!state||c.state===state));$('cases').replaceChildren();for(const c of filtered){const tr=node('tr');tr.append(node('td',c.name),node('td',c.storeName));const td=node('td'),badge=node('span',labels[c.state]||c.status);badge.className='pill '+c.state;td.append(badge);tr.append(td);const action=node('td');action.append(button('Abrir',()=>open(c.id),true));tr.append(action);$('cases').append(tr);}$('empty').hidden=filtered.length>0;}

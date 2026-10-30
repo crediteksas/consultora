@@ -1,0 +1,33 @@
+{
+  "tests": 20,
+  "passed": 20,
+  "baselineSha256": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
+  "candidateSha256": "6a5d0d76296d91c44f22398823c54749b4a2ae30ec5923c27e47da254eac0c7d",
+  "sqlSha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336",
+  "realNetworkRequests": 0,
+  "realMessages": 0,
+  "productionWrites": 0,
+  "smsEnabled": false,
+  "cases": [
+    "SQL guard preserves original service-only ACL, invoker rights and reservation function/budgets",
+    "accepted first HTTP200 lost to browser: second fresh CAPTCHA yields202 accepted without another reserve or Meta send; composed form keeps photos",
+    "concurrent same-context callers: both read no OTP, SQL reserves only one; loser rereads same active challenge",
+    "other document/link with same phone gets409 without disclosing OTP id, document, phone, link or accepted state",
+    "uncertain transport stays blocked until original TTL without another send",
+    "failed transport stays blocked until original TTL without another send",
+    "expired challenge permits a new explicit request while original quotas still apply",
+    "verified challenge permits a new explicit request while original quotas still apply",
+    "consumed challenge permits a new explicit request while original quotas still apply",
+    "active challenge lookup is after CAPTCHA and context; reused single-use CAPTCHA does not read DB or send again",
+    "DB active lookup network failure fails closed before reservation/send",
+    "DB active lookup non-success fails closed before reservation/send",
+    "DB active lookup oversized metadata fails closed before reservation/send",
+    "DB active lookup malformed JSON fails closed before reservation/send",
+    "DB active lookup inconsistent accepted and failed stamps fails closed before reservation/send",
+    "reservation uncertainty before commit sends zero; committed attempt remains recoverable",
+    "reservation uncertainty after commit sends zero; committed attempt remains recoverable",
+    "lost accepted PATCH acknowledgement returns503, retry discovers accepted state with no second Meta request",
+    "same phone remains protected across WhatsApp and SMS dispatch rows; SMS is never invoked by these tests",
+    "original 3-per-phone and60-per-link budgets remain enforced with no extra send"
+  ]
+}

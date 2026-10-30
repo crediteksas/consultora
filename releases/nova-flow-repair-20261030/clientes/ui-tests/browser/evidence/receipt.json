@@ -1,0 +1,324 @@
+{
+  "checkedAt": "2026-10-30T21:32:23.526Z",
+  "browser": "156.0.8078.74",
+  "playwright": "preinstalled package",
+  "isolation": "Headless Chrome, temporary /private/tmp profile, no existing profile attached, wildcard DNS disabled, all page routes intercepted, CSP connect-src none, closed fetch mocks",
+  "candidateFormSha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+  "baselineSha256": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+  "runnerSha256": "7e9a3e2a7fbfdd88a2d318ccaeea2457fd6003c82811baea2194795083eab1a2",
+  "tests": 4,
+  "passed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "case": "PHOTO01 real Chrome: expired documents → explicit OTP → same existing source",
+      "passed": true,
+      "files": true,
+      "name": "Persona de prueba",
+      "city": "Ciudad sintética",
+      "phone": "3000000000",
+      "cc": "12345678",
+      "panelCount": 1,
+      "registrationPosts": 0,
+      "uploadedTypes": [
+        "frente",
+        "reverso",
+        "selfie"
+      ],
+      "uploads": [
+        "reverso",
+        "selfie",
+        "reverso",
+        "selfie"
+      ],
+      "mobileButtonGeometry": [
+        {
+          "button": "repairRecoverySave",
+          "height": 48,
+          "width": 318,
+          "left": 36,
+          "right": 354,
+          "viewportWidth": 390,
+          "background": "rgb(0, 196, 204)",
+          "color": "rgb(255, 255, 255)",
+          "visibilityProbe": false
+        },
+        {
+          "button": "repairAuth",
+          "height": 44,
+          "width": 328,
+          "left": 31,
+          "right": 359,
+          "viewportWidth": 390,
+          "background": "rgb(11, 30, 61)",
+          "color": "rgb(255, 255, 255)",
+          "visibilityProbe": false
+        },
+        {
+          "button": "repairCheck",
+          "height": 44,
+          "width": 328,
+          "left": 31,
+          "right": 359,
+          "viewportWidth": 390,
+          "background": "rgb(11, 30, 61)",
+          "color": "rgb(255, 255, 255)",
+          "visibilityProbe": true
+        }
+      ],
+      "screenshots": [
+        "evidence/documents-expired-files-preserved.png",
+        "evidence/documents-resumed-same-files.png"
+      ],
+      "calls": [
+        {
+          "path": "/api/registro/contexto",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/config",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/verificar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-retomar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-calidad-fotos",
+          "channel": null,
+          "photoTypes": [
+            "reverso",
+            "selfie"
+          ]
+        },
+        {
+          "path": "/api/documentos",
+          "channel": null,
+          "type": "reverso"
+        },
+        {
+          "path": "/api/documentos",
+          "channel": null,
+          "type": "selfie"
+        },
+        {
+          "path": "/api/otp/opciones",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/verificar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-retomar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-calidad-fotos",
+          "channel": null,
+          "photoTypes": [
+            "reverso",
+            "selfie"
+          ]
+        },
+        {
+          "path": "/api/documentos",
+          "channel": null,
+          "type": "reverso"
+        },
+        {
+          "path": "/api/documentos",
+          "channel": null,
+          "type": "selfie"
+        },
+        {
+          "path": "/api/registro/nova-estado",
+          "channel": null
+        }
+      ]
+    },
+    {
+      "case": "PHOTO02 real Chrome: frozen Save and late A response after B selection",
+      "passed": true,
+      "sameSelectedB": true,
+      "otherFileObjectsPreserved": true,
+      "noStaleAUpload": true,
+      "qualityRequests": 2,
+      "uploads": 1,
+      "registrationPosts": 0,
+      "screenshots": [
+        "evidence/save-review-inputs-frozen.png",
+        "evidence/photo-B-preserved-after-stale-response.png"
+      ],
+      "calls": [
+        {
+          "path": "/api/registro/contexto",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/config",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/verificar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-retomar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-calidad-fotos",
+          "channel": null,
+          "photoTypes": [
+            "frente"
+          ]
+        },
+        {
+          "path": "/api/otp/opciones",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-calidad-fotos",
+          "channel": null,
+          "photoTypes": [
+            "frente"
+          ]
+        },
+        {
+          "path": "/api/documentos",
+          "channel": null,
+          "type": "frente"
+        },
+        {
+          "path": "/api/registro/nova-estado",
+          "channel": null
+        }
+      ]
+    },
+    {
+      "case": "OTP-L01 real Chrome: locally managed terminal identity edit",
+      "passed": true,
+      "files": true,
+      "otpVerified": false,
+      "registrationSession": null,
+      "terminalAttemptCleared": true,
+      "sendCount": 1,
+      "whatsappAvailable": true,
+      "smsAvailable": true,
+      "screenshots": [
+        "evidence/managed-identity-edit-preserves-files.png"
+      ],
+      "calls": [
+        {
+          "path": "/api/registro/contexto",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/config",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/opciones",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": "sms"
+        },
+        {
+          "path": "/api/otp/verificar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-retomar",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/nova-calidad-fotos",
+          "channel": null,
+          "photoTypes": [
+            "frente",
+            "reverso",
+            "selfie"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "OTP03 real Chrome: legacy 202 accepted versus uncertain",
+      "passed": true,
+      "acceptedText": "Ya hay un código solicitado. Si lo recibiste, ingrésalo; si no llega, espera antes de solicitar otro.",
+      "files": true,
+      "uncertainText": "El envío del código aún no está confirmado. Conservamos tus datos y fotos. Espera antes de solicitar otro.",
+      "codeHidden": true,
+      "sendCount": 2,
+      "screenshots": [
+        "evidence/legacy-202-uncertain-truthful.png"
+      ],
+      "calls": [
+        {
+          "path": "/api/registro/contexto",
+          "channel": null
+        },
+        {
+          "path": "/api/registro/config",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": null
+        },
+        {
+          "path": "/api/otp/enviar",
+          "channel": null
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "unexpectedNetworkRequests": [],
+  "networkRequests": [
+    {
+      "origin": "https://nova-local.invalid",
+      "path": "/",
+      "type": "document"
+    },
+    {
+      "origin": "https://nova-local.invalid",
+      "path": "/",
+      "type": "document"
+    },
+    {
+      "origin": "https://nova-local.invalid",
+      "path": "/",
+      "type": "document"
+    },
+    {
+      "origin": "https://nova-local.invalid",
+      "path": "/",
+      "type": "document"
+    }
+  ],
+  "actualApiNetworkRequests": 0,
+  "productionWrites": false,
+  "realOtpSends": false,
+  "realOcr": false,
+  "actualCustomerFiles": false
+}

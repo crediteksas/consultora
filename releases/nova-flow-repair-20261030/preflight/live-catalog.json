@@ -1,0 +1,115 @@
+{
+  "checkedAtUTC": "2026-10-30T21:21:29.381Z",
+  "readOnly": true,
+  "kora": [
+    {
+      "signature": "nova_client_otp_guard_sms()",
+      "definition_md5": "9a9046a33e7935940a09e4c7cb7ef04c",
+      "security_definer": false,
+      "settings": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "nova_retail_confirm_delivery(uuid,uuid,integer)",
+      "definition_md5": "7375e989f6db45b8ce30cceab502f7d1",
+      "security_definer": false,
+      "settings": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "nova_retail_request_queries(uuid,uuid,boolean)",
+      "definition_md5": "8a902ba5dbddf1ab8f02e7ce3a9d00ac",
+      "security_definer": false,
+      "settings": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "nova_retail_review(uuid,integer,uuid,text,text)",
+      "definition_md5": "ee2b3415f9ce09b72ecb8467e97e1ab3",
+      "security_definer": false,
+      "settings": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "nova_retail_save(uuid,text,jsonb,jsonb)",
+      "definition_md5": "8603bf29bcc5de6a05fbe030b67859f5",
+      "security_definer": false,
+      "settings": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "signature": "reservar_otp_registro_seguro(text,text,uuid,text,timestamp with time zone)",
+      "definition_md5": "dffb3c938eb7ff60681997c4af6745cc",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    }
+  ],
+  "aura": {
+    "functions": [
+      {
+        "body_md5": "78632826b01fb1f0e4a68da06e443417",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_reference_send_ack(uuid,uuid,boolean)",
+        "anon_execute": false,
+        "definition_md5": "5af2d1aac940fb82e2fa6e1fa38d8f2d",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "body_md5": "8ce803078e85ed1f775eef018dbc4ea3",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_reference_transition(uuid,text,text,timestamp with time zone,integer,text,text,jsonb,text)",
+        "anon_execute": false,
+        "definition_md5": "c5877af341cb5d97c59175fe6e944056",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "body_md5": "8b5caf659c1fd9600e5434edfc75193f",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_reference_status(text,text,text,timestamp with time zone,integer)",
+        "anon_execute": false,
+        "definition_md5": "59a89b4ffa8105cc083b7b950ec74cee",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      }
+    ],
+    "constraint": "CHECK ((send_state = ANY (ARRAY['none'::text, 'reserved'::text, 'accepted'::text, 'failed'::text])))"
+  },
+  "allPredecessorsMatched": true,
+  "allBackendAclsMatched": true
+}

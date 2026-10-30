@@ -1,0 +1,147 @@
+{
+  "capturedAt": "2026-10-30T21:01:18.152Z",
+  "functions": [
+    {
+      "proname": "nova_reference_context",
+      "definition_md5": "f6edc1397b0562da436cba3bb70a9048",
+      "prosecdef": false,
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "proname": "nova_reference_for_event",
+      "definition_md5": "94d748643d8f8ebf0e4661d23626ead3",
+      "prosecdef": false,
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "proname": "nova_reference_send_ack",
+      "definition_md5": "5af2d1aac940fb82e2fa6e1fa38d8f2d",
+      "prosecdef": false,
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "proname": "nova_reference_transition",
+      "definition_md5": "c5877af341cb5d97c59175fe6e944056",
+      "prosecdef": false,
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "proname": "nova_retail_reference_status",
+      "definition_md5": "59a89b4ffa8105cc083b7b950ec74cee",
+      "prosecdef": false,
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_application_id_fkey",
+      "definition": "FOREIGN KEY (application_id) REFERENCES nova_credit_applications(id)"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_contact_hash_check",
+      "definition": "CHECK ((contact_hash ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_outcome_check",
+      "definition": "CHECK ((outcome = ANY (ARRAY['response_collected'::text, 'does_not_know'::text, 'declined'::text])))"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_payload_hash_check",
+      "definition": "CHECK ((payload_hash ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_pkey",
+      "definition": "PRIMARY KEY (reference_id)"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_reference_id_fkey",
+      "definition": "FOREIGN KEY (reference_id) REFERENCES nova_reference_verifications(id)"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_revision_check",
+      "definition": "CHECK (((revision >= 0) AND (revision <= 30)))"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_send_state_check",
+      "definition": "CHECK ((send_state = ANY (ARRAY['none'::text, 'reserved'::text, 'accepted'::text, 'failed'::text])))"
+    },
+    {
+      "relname": "nova_reference_dialogues",
+      "conname": "nova_reference_dialogues_status_check",
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'declined'::text, 'stopped'::text])))"
+    },
+    {
+      "relname": "nova_reference_events",
+      "conname": "nova_reference_events_event_hash_check",
+      "definition": "CHECK ((event_hash ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "relname": "nova_reference_events",
+      "conname": "nova_reference_events_event_id_check",
+      "definition": "CHECK (((length(event_id) >= 1) AND (length(event_id) <= 200)))"
+    },
+    {
+      "relname": "nova_reference_events",
+      "conname": "nova_reference_events_pkey",
+      "definition": "PRIMARY KEY (reference_id, event_id)"
+    },
+    {
+      "relname": "nova_reference_events",
+      "conname": "nova_reference_events_reference_id_fkey",
+      "definition": "FOREIGN KEY (reference_id) REFERENCES nova_reference_dialogues(reference_id)"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch",
+      "conname": "nova_retail_reference_dispatch_contact_hash_check",
+      "definition": "CHECK ((contact_hash ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch",
+      "conname": "nova_retail_reference_dispatch_pkey",
+      "definition": "PRIMARY KEY (reference_id)"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch",
+      "conname": "nova_retail_reference_dispatch_reference_id_fkey",
+      "definition": "FOREIGN KEY (reference_id) REFERENCES nova_reference_verifications(id)"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch",
+      "conname": "nova_retail_reference_dispatch_state_check",
+      "definition": "CHECK ((state = ANY (ARRAY['sending'::text, 'accepted'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text, 'uncertain'::text, 'cancelled'::text])))"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch_events",
+      "conname": "nova_retail_reference_dispatch_events_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relname": "nova_retail_reference_dispatch_events",
+      "conname": "nova_retail_reference_dispatch_events_reference_id_fkey",
+      "definition": "FOREIGN KEY (reference_id) REFERENCES nova_reference_verifications(id)"
+    }
+  ]
+}

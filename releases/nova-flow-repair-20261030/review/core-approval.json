@@ -1,0 +1,48 @@
+{
+  "recordedAtUTC": "2026-10-30T21:32:09.028372+00:00",
+  "verdict": "APPROVED FINAL",
+  "scope": "Core logic and SQL before the three-line visual adjustment",
+  "reviewResultSHA256": "602c4850b61ffde0aac1c739506c60c7529ec42ab092b4e4224e23e2bf7de46f",
+  "artifacts": {
+    "clientes/index.mjs": {
+      "bytes": 559501,
+      "sha256": "aa5da9f0b434477a1800d30e33010744ec1b1756581d6870ed6eaedbed42da1e"
+    },
+    "clientes/form.html": {
+      "bytes": 85467,
+      "sha256": "236a2de7058e8ecfad89d8b42438d90d247a907ca3c93bdaf994271476c03890"
+    },
+    "nova/index.mjs": {
+      "bytes": 3095959,
+      "sha256": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355"
+    }
+  },
+  "migrations": [
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql",
+      "sha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336"
+    },
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql",
+      "sha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1"
+    },
+    {
+      "project": "ditiwpndvmyuqcagupea",
+      "file": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql",
+      "sha256": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207"
+    }
+  ],
+  "reviewerActuallyReran": {
+    "package": 15,
+    "ui": 33,
+    "otpFallback": 20,
+    "referenceAndPlatformFallback": 40
+  },
+  "reviewerDidNotRerun": [
+    "Platform SQL10 due env permission",
+    "Native PostgreSQL and Chrome per review scope"
+  ],
+  "deploymentAuthorizedByReview": false
+}

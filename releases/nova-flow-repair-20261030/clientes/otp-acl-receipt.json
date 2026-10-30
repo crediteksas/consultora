@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-10-30T21:09:10.177Z",
+  "functions": [
+    {
+      "proname": "reservar_otp_registro_seguro",
+      "signature": "reservar_otp_registro_seguro(text,text,uuid,text,timestamp with time zone)",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=public"
+      ]
+    },
+    {
+      "proname": "nova_client_otp_guard_sms",
+      "signature": "nova_client_otp_guard_sms()",
+      "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+      "prosecdef": false,
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    }
+  ]
+}

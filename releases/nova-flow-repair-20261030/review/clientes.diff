@@ -1,0 +1,85 @@
+diff --git a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/review/base-clientes.mjs b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/review/candidate-clientes.mjs
+index 551d4a4..9a2ba53 100644
+--- a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/review/base-clientes.mjs
++++ b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/review/candidate-clientes.mjs
+@@ -9040,7 +9040,8 @@ async function reserveOtp2(input, enlaceId, codigoHash, expiraAt, env22222, fetc
+   if (!response2.ok) {
+     return {
+       ok: false,
+-      quota: responseText.includes("otp_limite_celular") || responseText.includes("otp_limite_enlace")
++      quota: responseText.includes("otp_limite_celular") || responseText.includes("otp_limite_enlace"),
++      active: responseText.includes("OTP_ACTIVE")
+     };
+   }
+   try {
+@@ -9091,6 +9092,38 @@ __name(closeDelivery2, "closeDelivery2");
+ __name2(closeDelivery2, "closeDelivery2");
+ __name22(closeDelivery2, "closeDelivery2");
+ __name2222(closeDelivery2, "closeDelivery");
++async function novaActiveOtp2(input,enlaceId,env,fetcher,now){
++  let response;
++  try{
++    response=await fetcher(otpUrl2({cedula:'eq.'+input.cedula,celular:'eq.'+input.celular,
++      enlace_registro_id:'eq.'+enlaceId,codigo_hash:'not.is.null',verificado:'eq.false',
++      registro_consumido_at:'is.null',expira_at:'gt.'+new Date(now).toISOString(),
++      select:'id,expira_at,intentos,envio_aceptado_at,envio_fallido_at',order:'created_at.desc',limit:'1'}),
++      {headers:supabaseHeaders2(env),redirect:'error',signal:AbortSignal.timeout(8000)});
++    if(!response.ok||!response.body||Number(response.headers.get('content-length'))>4096){
++      void response.body?.cancel().catch(()=>{});return {ok:false};
++    }
++    const reader=response.body.getReader(),chunks=[];let size=0;
++    try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>4096)throw Error('OTP_METADATA_SIZE');chunks.push(value);}}
++    catch{void reader.cancel().catch(()=>{});return {ok:false};}
++    const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
++    const rows=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
++    if(!Array.isArray(rows)||rows.length>1)return {ok:false};
++    if(rows.length===0)return {ok:true,row:null};
++    const row=rows[0],stamp=v=>v===null||typeof v==='string'&&Number.isFinite(Date.parse(v));
++    if(!row||typeof row.id!=='string'||!/^[0-9a-f-]{36}$/i.test(row.id)||
++      typeof row.expira_at!=='string'||!Number.isFinite(Date.parse(row.expira_at))||Date.parse(row.expira_at)<=now||
++      !Number.isInteger(row.intentos)||row.intentos<0||!stamp(row.envio_aceptado_at)||!stamp(row.envio_fallido_at)||
++      row.envio_aceptado_at!==null&&row.envio_fallido_at!==null)return {ok:false};
++    return {ok:true,row};
++  }catch{return {ok:false};}
++}
++function novaActiveOtpReply2(row,now){
++  const seconds=Math.min(300,Math.max(1,Math.ceil((Date.parse(row.expira_at)-now)/1000)));
++  const accepted=row.envio_aceptado_at!==null&&row.envio_fallido_at===null&&row.intentos<3;
++  return {status:202,body:{ok:false,pending:true,reason:'active_challenge',state:accepted?'accepted':'uncertain',
++    retry_after:seconds,error:accepted?'Ya hay un código solicitado. Si lo recibiste, ingrésalo.':'El envío aún no está confirmado. Espera a que venza este intento antes de solicitar otro. Tus datos y fotos se conservan.'}};
++}
+ async function sendSecureOtp2(input, remoteIp, env22222, dependencies) {
+   if (!isSecureSendInput2(input)) {
+     return result4(400, "Datos inv\xE1lidos");
+@@ -9111,6 +9144,9 @@ async function sendSecureOtp2(input, remoteIp, env22222, dependencies) {
+   );
+   if (!resolved.ok) return resolved.response;
+   const now = (dependencies.now ?? Date.now)();
++  const active = await novaActiveOtp2(input, resolved.enlaceId, env22222, dependencies.fetcher, now);
++  if (!active.ok) return result4(503, "No se pudo comprobar el intento anterior. Tus datos y fotos se conservan.");
++  if (active.row) return novaActiveOtpReply2(active.row, now);
+   const codigo = (dependencies.generateCode ?? generateOtp2)();
+   let codigoHash;
+   try {
+@@ -9130,6 +9166,12 @@ async function sendSecureOtp2(input, remoteIp, env22222, dependencies) {
+     dependencies.fetcher
+   );
+   if (!reservation.ok) {
++    if (reservation.active) {
++      const current = await novaActiveOtp2(input, resolved.enlaceId, env22222, dependencies.fetcher, (dependencies.now ?? Date.now)());
++      if (!current.ok) return result4(503, "No se pudo comprobar el intento anterior. Tus datos y fotos se conservan.");
++      if (current.row) return novaActiveOtpReply2(current.row, (dependencies.now ?? Date.now)());
++      return {status:409,body:{ok:false,reason:"active_challenge",retry_after:300,error:"Ya hay un código vigente para este celular. Espera a que venza antes de solicitar otro."}};
++    }
+     return reservation.quota ? result4(429, "L\xEDmite de c\xF3digos alcanzado") : result4(503, "No se pudo reservar el c\xF3digo");
+   }
+   let sent = false;
+@@ -11120,7 +11162,7 @@ __name2(registrationGateway, "registrationGateway");
+ __name22(registrationGateway, "registrationGateway");
+ var KORA_DB_URL = "https://jfkmiyvcdfbsbwchyvol.supabase.co";
+ var READ = /* @__PURE__ */ new Set(["origenes", "perfiles", "documentos_solicitud", "kora_nova_sources", "nova_retail_cases", "nova_retail_case_events", "nova_retail_notifications", "nova_retail_store_contacts", "nova_retail_reference_replacements", "nova_retail_photo_reviews", "nova_retail_photo_events", "nova_retail_actor_emails", "nova_retail_reviewers"]);
+-var RPC = /* @__PURE__ */ new Set(["kora_nova_effective_references", "nova_retail_save", "nova_retail_review", "nova_retail_candidates", "nova_retail_notification_claim", "nova_retail_notification_finish", "nova_retail_request_queries", "nova_retail_confirm_delivery"]);
++var RPC = /* @__PURE__ */ new Set(["kora_nova_effective_references", "nova_retail_save", "nova_retail_review", "nova_retail_candidates", "nova_retail_notification_claim", "nova_retail_notification_finish", "nova_retail_request_queries", "nova_retail_confirm_delivery", "nova_retail_consent_current"]);
+ var WRITE = { nova_retail_cases: { PATCH: ["last_checked_at"] }, nova_retail_notifications: { PATCH: ["state", "error_code"] }, nova_retail_store_contacts: { POST: ["store_code", "recipient", "confirmed_by", "confirmed_at"] }, nova_retail_case_events: { POST: ["source_id", "revision", "actor_id", "actor_name", "action", "payload"] }, nova_retail_reference_replacements: { POST: ["id", "source_id", "reference_type", "superseded_reference_id", "nombre", "telefono", "parentesco", "actor_id"], PATCH: ["applied_at"] } };
+ async function equal(a, b) {
+   if (!b || typeof a !== "string" || a.length > 1024) return false;

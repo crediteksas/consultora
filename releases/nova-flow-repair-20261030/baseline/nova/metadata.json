@@ -1,0 +1,245 @@
+{
+  "checkedAtUTC": "2026-10-30T21:11:36.397376+00:00",
+  "worker": "creditek-nova",
+  "bindings": [
+    {
+      "name": "ENVIRONMENT",
+      "text": "production",
+      "type": "plain_text"
+    },
+    {
+      "id": "f217b67017314da3a20e6015de53bb5e",
+      "name": "KORA_READONLY",
+      "type": "hyperdrive"
+    },
+    {
+      "environment": "production",
+      "name": "KORA_REGISTRATION_SOURCE",
+      "service": "creditek-clientes",
+      "type": "service"
+    },
+    {
+      "name": "KORA_SUPABASE_SERVICE_ROLE_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_ALO_LOCAL_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_ALO_READ_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_EVENTS",
+      "namespace_id": "6dd6041ec9244377887da25651b6fb84",
+      "type": "kv_namespace"
+    },
+    {
+      "name": "NOVA_INTERNAL_API_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "class_name": "KrediyaChannel",
+      "name": "NOVA_KREDIYA_CHANNEL",
+      "namespace_id": "0da54d46253b40ffbea877fd972f4139",
+      "type": "durable_object_namespace"
+    },
+    {
+      "name": "NOVA_KREDIYA_EXECUTOR_ENABLED",
+      "text": "false",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_KREDIYA_PROBE_UNTIL",
+      "text": "2026-09-17T05:20:32.614Z",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_KREDIYA_TRANSPORT_VERIFIED",
+      "text": "false",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_META_ACCESS_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_META_APP_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_META_VERIFY_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_OUTBOUND_ENABLED",
+      "text": "false",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_PAYJOY_READ_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_PHONE_NUMBER_ID",
+      "text": "1238316279371001",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_PII_HASH_PEPPER",
+      "type": "secret_text"
+    },
+    {
+      "class_name": "NovaPilot",
+      "name": "NOVA_PILOT",
+      "namespace_id": "ee4f54db2deb41fd9a62b9faf8b96e37",
+      "type": "durable_object_namespace"
+    },
+    {
+      "name": "NOVA_PILOT_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_PLATFORM_EXECUTION_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_PLATFORM_RENEWAL_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_DELIVERY_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_INVITATIONS_APPROVED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_OTP_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_OTP_PREFLIGHT_UNTIL",
+      "text": "2026-09-18T22:37:17.579Z",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_OTP_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_OTP_STORAGE_READY",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCES_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REFERENCE_STORAGE_READY",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_ACCEPT_FROM",
+      "text": "2026-09-16T04:08:21.773Z",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_INTAKE_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_INTAKE_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_PILOT_ORIGINS",
+      "text": "CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,CK-07,CK-08,CK-09",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_STATUS_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "entrypoint": "NovaRetailDatabaseGateway",
+      "environment": "production",
+      "name": "NOVA_RETAIL_DATABASE",
+      "service": "creditek-clientes",
+      "type": "service"
+    },
+    {
+      "name": "NOVA_RETAIL_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_RETAIL_PREPARE_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_SUPERVISION_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_WABA_ID",
+      "text": "27206918652305029",
+      "type": "plain_text"
+    },
+    {
+      "name": "PAYJOY_API_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUPABASE_SERVICE_ROLE_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUPABASE_URL",
+      "text": "https://ditiwpndvmyuqcagupea.supabase.co",
+      "type": "plain_text"
+    }
+  ],
+  "settings": {
+    "compatibility_date": "2026-08-30",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ]
+  },
+  "crons": [
+    "* * * * *"
+  ],
+  "routes": [
+    {
+      "pattern": "aura.crediteksas.com/creditek/agentes/nova-supervision*",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    },
+    {
+      "pattern": "aura.crediteksas.com/api/nova/supervision",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    },
+    {
+      "pattern": "aura.crediteksas.com/api/nova/gestion",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    }
+  ],
+  "workersDev": true,
+  "migrationTag": "nova-krediya-v1"
+}

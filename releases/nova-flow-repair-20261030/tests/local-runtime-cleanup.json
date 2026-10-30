@@ -1,0 +1,12 @@
+{
+  "checkedAtUTC": "2026-10-30T21:22:46.655223+00:00",
+  "containerRemoved": "nova-flow-sql-20261030-a1",
+  "onlyOwnedContainerRemoved": true,
+  "networkNone": true,
+  "portsPublished": false,
+  "hostFilesMounted": false,
+  "vmWasInitiallyStopped": true,
+  "vmStoppedAfterTests": true,
+  "dockerContextAfter": "default",
+  "productionChanged": false
+}

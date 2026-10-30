@@ -1,0 +1,21 @@
+diff --git a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/clientes/ui-tests/style-delta/ui-transform-approved-base.mjs b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/clientes/ui-transform.mjs
+index a14d386..018f1f2 100644
+--- a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/clientes/ui-tests/style-delta/ui-transform-approved-base.mjs
++++ b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/clientes/ui-transform.mjs
+@@ -25,6 +25,8 @@ const repairNotice=document.createElement('section');repairNotice.hidden=true;re
+ const repairMessage=document.createElement('p'),repairAuth=document.createElement('button'),repairCheck=document.createElement('button');
+ repairAuth.type='button';repairAuth.textContent='Verificar celular sin perder mis fotos';
+ repairCheck.type='button';repairCheck.textContent='Comprobar registro';
++repairNotice.className='ref-block';repairMessage.style.cssText='margin:0 0 8px;font-size:14px';
++for(const button of [repairAuth,repairCheck]){button.className='btn-secondary';button.style.cssText='min-height:44px;width:100%;padding:12px 16px;white-space:normal;margin-top:8px';}
+ repairNotice.append(repairMessage,repairAuth,repairCheck);form.before(repairNotice);
+ function repairShow(message,{auth=false,check=false}={}){
+  repairNotice.hidden=false;repairMessage.textContent=message;repairAuth.hidden=!auth;repairCheck.hidden=!check;
+@@ -73,6 +75,7 @@ function repairShowPendingPhotos(existing){
+   repairRecoveryPanel.append(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
+   for(const id of Object.values(qualityIds))repairRecoveryPanel.append(document.getElementById(id).closest('.field'));
+   repairRecoverySave=document.createElement('button');repairRecoverySave.type='button';repairRecoverySave.textContent='Guardar fotos pendientes';
++  repairRecoverySave.className='btn-submit';repairRecoverySave.style.minHeight='44px';
+   repairRecoverySave.addEventListener('click',async()=>{
+    if(qualityBusy||subidaFotosEnCurso||repairNeedsAuth)return;
+    const consent=document.getElementById('autPhotoQuality'),previousConsent=consent.disabled;

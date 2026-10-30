@@ -1,0 +1,142 @@
+TAP version 13
+# Subtest: transform is deterministic, narrow and refuses drift or double application
+ok 1 - transform is deterministic, narrow and refuses drift or double application
+  ---
+  duration_ms: 4.934084
+  type: 'test'
+  ...
+# Subtest: SQL migration refuses changed predecessor
+ok 2 - SQL migration refuses changed predecessor
+  ---
+  duration_ms: 675.925
+  type: 'test'
+  ...
+# Subtest: reference transport: timeout
+ok 3 - reference transport: timeout
+  ---
+  duration_ms: 478.687916
+  type: 'test'
+  ...
+# Subtest: reference transport: 5xx with Graph error
+ok 4 - reference transport: 5xx with Graph error
+  ---
+  duration_ms: 523.630291
+  type: 'test'
+  ...
+# Subtest: reference transport: redirect
+ok 5 - reference transport: redirect
+  ---
+  duration_ms: 460.989959
+  type: 'test'
+  ...
+# Subtest: reference transport: malformed JSON
+ok 6 - reference transport: malformed JSON
+  ---
+  duration_ms: 470.982291
+  type: 'test'
+  ...
+# Subtest: reference transport: 2xx without message receipt
+ok 7 - reference transport: 2xx without message receipt
+  ---
+  duration_ms: 455.902791
+  type: 'test'
+  ...
+# Subtest: reference transport: 2xx invalid receipt id
+ok 8 - reference transport: 2xx invalid receipt id
+  ---
+  duration_ms: 449.017709
+  type: 'test'
+  ...
+# Subtest: reference transport: explicit 4xx rejection
+ok 9 - reference transport: explicit 4xx rejection
+  ---
+  duration_ms: 468.718166
+  type: 'test'
+  ...
+# Subtest: reference transport: valid accepted receipt
+ok 10 - reference transport: valid accepted receipt
+  ---
+  duration_ms: 495.946708
+  type: 'test'
+  ...
+# Subtest: timeout preserves same dialogue, replay/retap do not resend, next explicit consent continues
+ok 11 - timeout preserves same dialogue, replay/retap do not resend, next explicit consent continues
+  ---
+  duration_ms: 455.743583
+  type: 'test'
+  ...
+# Subtest: unknown OTP outcome keeps consent evidence and active dialogue; never resends old prompt
+ok 12 - unknown OTP outcome keeps consent evidence and active dialogue; never resends old prompt
+  ---
+  duration_ms: 444.1145
+  type: 'test'
+  ...
+# Subtest: uncertain dialogue still honors explicit decline without inventing consent
+ok 13 - uncertain dialogue still honors explicit decline without inventing consent
+  ---
+  duration_ms: 466.531084
+  type: 'test'
+  ...
+# Subtest: revocation and expiry prevent uncertain dialogue recovery
+ok 14 - revocation and expiry prevent uncertain dialogue recovery
+  ---
+  duration_ms: 452.665375
+  type: 'test'
+  ...
+# Subtest: abandoned reserved turn requires new inbound and wait, keeps expiry, rejects old ack/replay conflict
+ok 15 - abandoned reserved turn requires new inbound and wait, keeps expiry, rejects old ack/replay conflict
+  ---
+  duration_ms: 457.836375
+  type: 'test'
+  ...
+# Subtest: older sent callback cannot erase newer failure or retry eligibility
+ok 16 - older sent callback cannot erase newer failure or retry eligibility
+  ---
+  duration_ms: 468.737041
+  type: 'test'
+  ...
+# Subtest: provider time permits newer sent; ties preserve failure
+ok 17 - provider time permits newer sent; ties preserve failure
+  ---
+  duration_ms: 434.370666
+  type: 'test'
+  ...
+# Subtest: delivery/read proof never regresses to sent/failed and error stays cleared
+ok 18 - delivery/read proof never regresses to sent/failed and error stays cleared
+  ---
+  duration_ms: 433.908875
+  type: 'test'
+  ...
+# Subtest: callback replay is idempotent; old attempt, wrong recipient and cancelled rows cannot change current attempt
+ok 19 - callback replay is idempotent; old attempt, wrong recipient and cancelled rows cannot change current attempt
+  ---
+  duration_ms: 449.049958
+  type: 'test'
+  ...
+# Subtest: null, unknown, old and future provider statuses are rejected
+ok 20 - null, unknown, old and future provider statuses are rejected
+  ---
+  duration_ms: 437.353291
+  type: 'test'
+  ...
+# Subtest: SQL replacement preserves service-only privileges, invoker rights and empty search_path
+ok 21 - SQL replacement preserves service-only privileges, invoker rights and empty search_path
+  ---
+  duration_ms: 439.604875
+  type: 'test'
+  ...
+# Subtest: uncertain recovery cannot bypass revoked reference, different contact, payload, expiry or explicit consent
+ok 22 - uncertain recovery cannot bypass revoked reference, different contact, payload, expiry or explicit consent
+  ---
+  duration_ms: 457.721958
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9973.819917

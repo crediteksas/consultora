@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-30T21:34:24.925Z",
+  "node": "v26.7.0",
+  "artifacts": {
+    "baseline/clientes/index.mjs": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
+    "baseline/clientes/form.html": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+    "baseline/nova/index.mjs": "232513ce40c043e43c530ebad9bb9b3dbfc7d8061cae109f07fd82f841c411fb",
+    "deploy/clientes/index.mjs": "6a5d0d76296d91c44f22398823c54749b4a2ae30ec5923c27e47da254eac0c7d",
+    "deploy/clientes/form.html": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+    "deploy/nova/index.mjs": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355"
+  },
+  "evaluatedCompleteWorkers": [
+    "baseline/clientes/index.mjs",
+    "baseline/nova/index.mjs",
+    "deploy/clientes/index.mjs",
+    "deploy/nova/index.mjs"
+  ],
+  "networkFetchAttempts": 0,
+  "tcpUdpDnsFileIoAttempts": 0,
+  "deferredJobs": 0,
+  "nodeBuiltins": [
+    "crypto",
+    "dns",
+    "events",
+    "util",
+    "util/types"
+  ],
+  "productionWrites": false,
+  "realProviderCalls": false,
+  "scope": "Runtime metrics only; test runner determines pass/fail. Complete frozen bundles with Cloudflare class stubs and closed I/O; no credentialed database/provider behavior or production execution"
+}

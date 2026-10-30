@@ -1009,3 +1009,55 @@ html.creditek-shell-authenticated .kora-product-page > header:not(.kora-topbar) 
     transform: none;
   }
 }
+
+/* KORA visual refinement 2026-10-30. Presentation only; scoped away from navigation. */
+body.kora-product-page .main-content :is(.card,.panel,.metric,.kpi-card,.table-card) {
+  border-color: var(--ctk-color-border); border-top-color: var(--ctk-color-border);
+  box-shadow: var(--ctk-shadow-1); border-radius: 16px;
+}
+body.kora-product-page .main-content :is(.card,.panel) :is(.card,.panel) { box-shadow: none; }
+body.kora-product-page .main-content :is(.metric,.kpi-card) { min-width: 0; padding: 22px; }
+body.kora-product-page .main-content .metrics {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 16px;
+}
+body.kora-product-page .main-content .metric small { font-size: 13px; line-height: 1.5; min-height: 0; margin-bottom: 14px; }
+body.kora-product-page .main-content .metric strong { font-family: var(--ctk-font-family-ui); font-size: clamp(22px,2vw,28px); line-height: 1.25; letter-spacing: -.025em; font-variant-numeric: tabular-nums; white-space: nowrap; display: block; overflow-x: auto; }
+body.kora-product-page .main-content .kpi-valor { font-size: clamp(24px,2vw,30px); line-height: 1.3; font-variant-numeric: tabular-nums; overflow-x: auto; text-overflow: clip; }
+body.kora-product-page .main-content :is(.empty,.empty-state) { padding: 24px; min-height: 0; border-style: solid; }
+body.kora-product-page .main-content table :is(th,td) { word-break: normal; overflow-wrap: normal; }
+body.kora-product-page .main-content table th { white-space: nowrap; }
+body.kora-product-page .main-content :is(.badge,.tag) { word-break: normal; overflow-wrap: normal; line-height: 1.4; padding-block: 5px; }
+body.kora-product-page .main-content :is(.table-wrap,.kora-table-region) { scrollbar-width: auto; scrollbar-color: var(--ctk-color-neutral-400) var(--ctk-color-neutral-100); overscroll-behavior-inline: contain; }
+body.kora-product-page .main-content .gastos-table { table-layout: auto; min-width: 900px; }
+body.kora-product-page .main-content .gastos-table td:first-child { white-space: nowrap; min-width: 105px; }
+body.kora-product-page .main-content :is(input,select,textarea):not(:disabled):not([readonly]) { background-color: var(--ctk-color-surface); }
+body.kora-product-page .main-content :is(input,select,textarea):disabled { background-color: var(--ctk-color-neutral-100); color: var(--ctk-color-text-muted); }
+body.kora-product-page .main-content input[type="file"] { width: 100%; max-width: 100%; padding: 10px; height: auto; line-height: 1.6; }
+body.kora-product-page .main-content input[type="file"]::file-selector-button { background: var(--ctk-color-secondary-50); color: var(--ctk-color-secondary-700); border: 1px solid var(--ctk-color-secondary-100); border-radius: 7px; padding: 8px 12px; margin-right: 10px; font: inherit; cursor: pointer; }
+body.kora-product-page .main-content button:is(.secondary,.btn-secondary,.btn-outline,.ghost,.view-all,.export-btn):not(.active) { background: var(--ctk-color-surface); color: var(--ctk-color-text); border: 1px solid var(--ctk-color-border-strong); box-shadow: none; }
+body.kora-product-page .main-content button:is(.quick,.tab,.tab-btn,.vista-btn,[role="tab"]):not(.active):not([aria-selected="true"]) { background: var(--ctk-color-surface-subtle); color: var(--ctk-color-text-secondary); border: 1px solid var(--ctk-color-border); box-shadow: none; }
+body.kora-product-page .main-content button:is(.quick.active,.tab.active,.tab-btn.active,.vista-btn.active,[role="tab"][aria-selected="true"]) { background: var(--ctk-color-secondary-50); color: var(--ctk-color-secondary-700); border: 1px solid var(--ctk-color-secondary-700); box-shadow: inset 0 -2px var(--ctk-color-secondary-700); }
+body.kora-product-page .main-content .actions:has(> #showOperational) { display: flex; flex-wrap: wrap; gap: 8px; }
+body.kora-product-page .main-content .actions:has(> #showOperational) .btn { flex: 1 0 160px; line-height: 1.4; padding: 10px 14px; }
+body.kora-product-page .main-content .actions:has(> #showOperational) .active { background: var(--ctk-color-secondary-50); color: var(--ctk-color-secondary-700); border: 1px solid var(--ctk-color-secondary-700); box-shadow: inset 0 -2px var(--ctk-color-secondary-700); }
+body.kora-product-page .main-content :is(button,input,select,textarea,a,summary):focus-visible { outline: 3px solid var(--ctk-color-secondary-700); outline-offset: 3px; }
+body.kora-product-page .main-content .compra-totales { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 20px 0; }
+body.kora-product-page .main-content .compra-totales>div { background: var(--ctk-color-surface-subtle); border: 1px solid var(--ctk-color-border); padding: 18px; border-radius: 12px; min-width: 0; }
+body.kora-product-page .main-content .compra-totales dt { font-size: 13px; color: var(--ctk-color-text-secondary); }
+body.kora-product-page .main-content .compra-totales dd { margin: 10px 0 0; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-x: auto; }
+body.kora-product-page .main-content .compra-totales>div:last-child { background: var(--ctk-color-success-50); border-color: var(--ctk-color-success-100); }
+.kora-filter-disclosure { margin-bottom: 20px; border: 1px solid var(--ctk-color-border); border-radius: 14px; background: var(--ctk-color-surface); }
+.kora-filter-disclosure>summary { padding: 14px 18px; cursor: pointer; font-size: 13px; font-weight: 650; color: var(--ctk-color-text); }
+body.kora-product-page .main-content .kora-filter-disclosure .toolbar { border: 0; border-radius: 0 0 14px 14px; box-shadow: none; margin: 0; padding: 0 18px 18px; }
+@media(max-width: 700px) {
+ body.kora-product-page .main-content .metrics { grid-template-columns: minmax(0,1fr); gap: 12px; }
+ body.kora-product-page .main-content :is(.metric,.kpi-card) { padding: 18px; }
+ body.kora-product-page .main-content .compra-totales { grid-template-columns: minmax(0,1fr); gap: 10px; }
+ body.kora-product-page .main-content .compra-totales>div { padding: 14px 16px; }
+ body.kora-product-page .main-content .toolbar .control { min-width: 0; width: 100%; }
+ body.kora-product-page .main-content #sel-proveedor { min-width: 0; width: 100%; }
+ body.kora-product-page .modal-box { max-height: calc(100dvh - 24px); padding: 18px; }
+}
+@media(prefers-reduced-motion: reduce) {
+ body.kora-product-page .main-content :is(button,a,input,select) { transition: none; }
+}

@@ -418,6 +418,10 @@
     enhanceTables();
     enhanceControls();
     enhanceOverlays();
+    // Presentation only: keep filters available, but show results first on mobile.
+    if (window.matchMedia('(max-width: 700px)').matches) {
+      document.querySelectorAll('details.kora-filter-disclosure').forEach(panel => { panel.open = false; });
+    }
     ensureAudioPanel();
     loadAudioSettings();
     observeFeedbackSounds();

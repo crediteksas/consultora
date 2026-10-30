@@ -240,25 +240,15 @@
         <tbody id="tbody-items">
           <!-- filas dinámicas -->
         </tbody>
-        <tfoot>
-          <tr class="border-t-2 border-gray-300 bg-gray-50">
-            <td colspan="5" class="px-3 py-2 text-right font-semibold text-gray-700">Total factura (costo Creditek)</td>
-            <td colspan="2" class="px-3 py-2 text-right font-bold font-mono text-gray-900" id="total-factura">$ 0</td>
-            <td></td>
-          </tr>
-          <tr class="bg-gray-50">
-            <td colspan="5" class="px-3 py-2 text-right font-semibold text-gray-700">Total remisión (precio tiendas)</td>
-            <td colspan="2" class="px-3 py-2 text-right font-bold font-mono text-blue-800" id="total-remision">$ 0</td>
-            <td></td>
-          </tr>
-          <tr class="bg-emerald-50 border-t border-gray-300">
-            <td colspan="5" class="px-3 py-2 text-right font-semibold text-emerald-900">Margen bruto</td>
-            <td colspan="2" class="px-3 py-2 text-right font-bold text-lg font-mono text-emerald-900" id="total-margen">$ 0</td>
-            <td></td>
-          </tr>
-        </tfoot>
+
       </table>
     </div>
+
+    <dl class="compra-totales" aria-label="Totales de la compra">
+      <div class="summary-card"><dt class="label">Total factura (costo Creditek)</dt><dd class="value" id="total-factura">$ 0</dd></div>
+      <div class="summary-card"><dt class="label">Total remisión (precio tiendas)</dt><dd class="value" id="total-remision">$ 0</dd></div>
+      <div class="summary-card"><dt class="label">Margen bruto</dt><dd class="value" id="total-margen">$ 0</dd></div>
+    </dl>
 
     <div id="items-vacio" class="hidden mt-6 py-8 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
       No has agregado ítems. Presiona <b>+ Agregar ítem</b> para empezar.

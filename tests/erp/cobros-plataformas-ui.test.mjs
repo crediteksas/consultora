@@ -375,7 +375,8 @@ test('anular requiere canVoid y conserva el motivo; lectura no admite submits in
 test('CSS mantiene valores y etiquetas visibles en móviles sin recortes forzados', () => {
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /overflow-wrap: anywhere/);
-  assert.doesNotMatch(css, /text-overflow:\s*ellipsis|line-clamp|white-space:\s*nowrap|overflow:\s*hidden/);
+  assert.match(css, /\.cobros-metric dd\s*\{[^}]*white-space:\s*nowrap;[^}]*overflow-x:\s*auto;/);
+  assert.doesNotMatch(css, /text-overflow:\s*ellipsis|line-clamp|overflow:\s*hidden/);
 });
 test('vista por corte vincula solo sus abonos y oculta trazabilidad en detalle', async () => {
   const host = container();

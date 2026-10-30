@@ -38,3 +38,15 @@ body[data-kora-dashboard] button.kora-drilldown-link {
   min-height: 36px;
   text-align: inherit;
 }
+
+/* Shared across Executive, Aliados and B2B; never style operational buttons. */
+body.kora-product-page button.kora-summary-open:not(.secondary):not(.ghost):not(.danger),
+body.kora-product-page button.kora-drilldown-link:not(.secondary):not(.ghost):not(.danger) {
+  background: transparent; color: var(--ctk-color-primary-900); border: 0;
+  padding: 0; box-shadow: none; transform: none; font: inherit;
+}
+body.kora-product-page button.kora-summary-open { display: block; width: 100%; text-align: left; }
+body.kora-product-page button.kora-drilldown-link { display: inline-block; min-height: 36px; text-align: inherit; }
+body.kora-product-page .kora-drilldown-hint { color: #176777; font-size: 12px; font-weight: 600; line-height: 1.5; margin-top: 10px; }
+body.kora-product-page button:is(.kora-summary-open,.kora-drilldown-link):hover { color: #176777; }
+body.kora-product-page button:is(.kora-summary-open,.kora-drilldown-link):focus-visible { outline: 3px solid #00858c; outline-offset: 4px; border-radius: 4px; }

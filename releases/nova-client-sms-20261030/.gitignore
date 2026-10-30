@@ -1,0 +1,5 @@
+candidate-entry.mjs
+test-worker.mjs
+test-worker-entry.mjs
+cloudflare-test-shim.mjs
+deploy/

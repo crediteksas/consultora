@@ -10,7 +10,7 @@ Si el costo reportado supera la reserva, se conserva la aceptación y el costo
 real, pero options deshabilita SMS y reserve rechaza SMS_COST_ANOMALY hasta revisión
 administrativa. No modifica enabled ni requiere UPDATE policy para el servicio.
 
-`../../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql` añade dos tablas con RLS, un trigger acotado y seis funciones
+`../../../supabase/migrations/20261030180052_nova_client_sms_otp_budget.sql` añade dos tablas con RLS, un trigger acotado y seis funciones
 SECURITY INVOKER con `search_path=''` y ejecución solo para service_role. No cambia
 las funciones originales de reserva, verificación, registro, resume o seed.
 service_role puede leer la policy, pero no editarla, activar SMS ni elevar caps.

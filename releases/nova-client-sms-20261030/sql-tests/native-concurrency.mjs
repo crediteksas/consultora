@@ -7,7 +7,7 @@ const container=process.env.NOVA_SQL_NATIVE_CONTAINER;
 const db=new NativePostgres(container);
 const LINK='10000000-0000-4000-8000-000000000001',OTHER='10000000-0000-4000-8000-000000000002';
 const PHONE='3000000001',PHONE2='3000000002';
-const sha=async()=>createHash('sha256').update(await readFile(new URL('../../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql',import.meta.url))).digest('hex');
+const sha=async()=>createHash('sha256').update(await readFile(new URL('../../../supabase/migrations/20261030180052_nova_client_sms_otp_budget.sql',import.meta.url))).digest('hex');
 const initialSha=await sha(),results=[];
 function launch(sql,{ready=false}={}){
  const child=spawn('docker',['--context','colima','exec','-i',container,'psql','-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{stdio:['pipe','pipe','pipe']});

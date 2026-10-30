@@ -1,9 +1,9 @@
 {
-  "status": "LOCAL_APPROVED_READY_FOR_COMMIT",
+  "status": "APPROVED_COMMITTED_PUSHED_MIGRATION_APPLIED_SMS_DISABLED",
   "files": {
     ".gitattributes": "234b88eb06c5a453791bb051bc40a605f0ec6d372430a8faabf906670811ad61",
     ".gitignore": "e55e24bc1a8f4b69ca43eaa936f2114dcf16eb51dd205350b0e6e4a9124517ce",
-    "README.md": "17007ad7d2d02334dd3b899ab6c9ae73ea7f50748dc6089154ab2ad373585da4",
+    "README.md": "5e00b7542eb47a08f8078486901b0872f7f23a608d7c7adb6350edefa71e2c6c",
     "baseline-settings-sanitized.json": "ed845ead8e1833d02f6c635eec7b65fb993298df56e11f922549e415bc940ec7",
     "build-receipt.json": "007b744608cbfcf248238ff2a4d69d8226d71ded20cbbe1fee55b873d594f419",
     "build.mjs": "86cde63e607a645a3a266135c27948570eb7d1bf2dc24959a7726b44ab0b0231",
@@ -18,6 +18,7 @@
     "index.mjs": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
     "managed-otp.mjs": "c857c4b695c74d67c14b00bd2a63b48934ae069df8039d0bc8f8e72464d2933e",
     "managed-otp.test.mjs": "025c7fad21fd357d887f682709cd3d32f7446795391a5bc8091ec781f4f751cf",
+    "migration-history-reconciliation.json": "ddaff6ff58bdd9389bb47b52d0286310519fada4e0c88ee98c592d77b647503f",
     "preflight-receipt.json": "ac790cea34680cd792c4a02b515038d320d2318ef7a40a248921d99f7351c8db",
     "production-base.mjs": "744e1ee8db4cafde7a5774cc01799e00263b9af669f3af20a2fa615ff0e3ae18",
     "research-additional.md": "7de5449c1911da5ed61577eccf81bd0b933ed2f289271ab7d8968b97a37fb115",
@@ -26,18 +27,18 @@
     "sql-concurrency-receipt.json": "f676ca0207918398ccc1deb7d5d4200e52305aa4f0038acac0df83dcc269a3ae",
     "sql-native-receipt.json": "0d9cc325eb8b951c6c46c97249a70aad21ce7fef4e6a67477c4332d43eb349b0",
     "sql-test-receipt.json": "d440ffd1d2352ba9510f642d7d99021c156b82b9560f4f02226fdfaf64394be7",
-    "sql-tests/README.md": "1da5b1e029ca3133bc893df77994b6545c128f30d8a59502681d66da0341e607",
-    "sql-tests/control.mjs": "15670cf94153b4d4ce84f0d3f6d0e6322588a0fcc16c7d25ab8a10e85f7e30a8",
+    "sql-tests/README.md": "3d2b781031c60240906c153176b15e290dfaf66def13d21f14663fa86c8071f9",
+    "sql-tests/control.mjs": "2a2cdec61da4364f7d55f578c6e69e475af8328cd0fe2c90a037342345b43fb2",
     "sql-tests/current-otp-definitions.json": "a5ed3015ca1d4ef21777336a4315d3ce59d733452f77bb63f55a1f67abd5b024",
     "sql-tests/fixture.sql": "663200e60375384f3b2f8a331989c22cc42fc816e2cca437aede15aa2331b9d9",
     "sql-tests/native-concurrency-receipt.json": "44787ba3d6fce77c942382d665567cdffc2cce1abb5195b4a88e10ff2661488d",
-    "sql-tests/native-concurrency.mjs": "4bea16739a488d31c1ba7da8c8bc028955b3ea9836da29afdeb0da08e2300c54",
+    "sql-tests/native-concurrency.mjs": "cad5251fd110ac20e8425f56c9c9cbdb77e311b83ba26fa52ca7f65135027115",
     "sql-tests/native-postgres.mjs": "be8bcccef899540a355d9609be81d5e359b18af0b75253b8427c7c6fb11c3f3a",
     "sql-tests/native-test-receipt.json": "d667cd201797f0745e6a00594d4c29a7be8b0df30cb705abad576f5f2d8e9475",
     "sql-tests/native-tests.tap": "40fd80b3720d3a53572354f7afb77df526076911f5f39b36f34140119df55b5c",
     "sql-tests/sql-test-receipt.json": "9452906f320eba442ce3af5d7bd05bb83ce601ec23ab400a8582250f16993f29",
     "sql-tests/sql-tests.tap": "c1f7c96ccb14cf543be369465cccdd18cbf3b43ce1a0d13e61631ea849aebf5c",
-    "sql-tests/sql.test.mjs": "51bd18cb9060ecfdc8686f303a6b1d82bdf2bc6d34303fd19819ee5e9b7cede3",
+    "sql-tests/sql.test.mjs": "49037d69e5f2e227edbd11036e781ba02094837d0146c7d62024a972f3a70c0a",
     "ui-tests/.gitignore": "5806d6e8b7a5ff78027d4d00e5417a0c6d3e0dad139510604084c42457333078",
     "ui-tests/README.md": "ce3564b509817b540894c1d2217e2ccbaf05e12d8a432ead29a29ce0558554dd",
     "ui-tests/browser-fixture/README.md": "ba47e43ee891c6f384483463f73c8cd174637d8af6db022bc541aa629dbf92c1",
@@ -59,7 +60,7 @@
     "wrangler.jsonc": "95b95aa451fe7da1c5ea65ef97202b26134aeb38309b5198b4788a26d91f1ebf"
   },
   "migration": {
-    "path": "supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql",
+    "path": "supabase/migrations/20261030180052_nova_client_sms_otp_budget.sql",
     "sha256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd"
   }
 }

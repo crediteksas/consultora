@@ -37,7 +37,7 @@ before(async()=>{
  revoke all on function public.kora_nova_retail_resume(uuid,uuid,text,text),public.kora_nova_retail_seed_photos(uuid,uuid,text) from public,anon,authenticated;
  grant execute on function public.kora_nova_retail_resume(uuid,uuid,text,text),public.kora_nova_retail_seed_photos(uuid,uuid,text) to service_role;`);
  originalDefinitions=await q("select proname,pg_get_functiondef(oid) as definition from pg_proc where proname=any($1::text[]) order by proname",[preserved]);
- await db.exec(await readFile(new URL('../../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../../supabase/migrations/20261030180052_nova_client_sms_otp_budget.sql',import.meta.url),'utf8'));
  initialPolicy=await value('select to_jsonb(p) from public.nova_client_otp_policy p');
 });
 after(async()=>{await db?.close();});

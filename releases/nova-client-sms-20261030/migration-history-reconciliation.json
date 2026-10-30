@@ -1,0 +1,11 @@
+{
+  "oldCLIFile": "20261030165534_nova_client_sms_otp_budget.sql",
+  "canonicalFile": "20261030180052_nova_client_sms_otp_budget.sql",
+  "remoteVersion": "20261030180052",
+  "remoteName": "nova_client_sms_otp_budget",
+  "exactSQLSHA256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd",
+  "remoteStatementCount": 1,
+  "method": "Renamed local file to authoritative applied version. SQL bytes unchanged. No history repair or DDL re-execution. Historical review/test receipts retain their original paths.",
+  "oldReviewedCommit": "e74fa018ae3bc8877c8766972eb3ec0f5f97596e",
+  "recordedAtUTC": "2026-10-30T18:03:18.052009+00:00"
+}

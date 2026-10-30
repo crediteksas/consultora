@@ -100,7 +100,7 @@ continuar allí.
 - `production-base.mjs`, `form-base.html`: dos módulos reales descargados antes de modificar.
 - `build.mjs`:8anclajes, bundle completo `index.mjs` y mismo HTML externo/embebido.
 - `managed-otp.mjs`, `inalambria-express.mjs`: servidor y transporte sin efecto al importar.
-- `../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql`: migración CLI, deshabilitada inicialmente, RLS y SECURITY INVOKER.
+- `../../supabase/migrations/20261030180052_nova_client_sms_otp_budget.sql`: migración CLI, deshabilitada inicialmente, RLS y SECURITY INVOKER.
 - `sql-tests/`, `ui-tests/`: pruebas reproducibles con datos ficticios; recibos de PG nativo y Chrome real.
 - `wrangler.jsonc`: 30 bindings actuales conservados, 1 flag nuevo=false; secretos heredados por nombre, nunca incluidos. Mantiene 3 cron, AI, rate limit y 2 servicios actuales. `build.mjs` genera `deploy/` con solo index y form, idénticos a la raíz; Wrangler no adjunta fixtures, bases ni pruebas. `baseline-settings-sanitized.json` contiene solo nombres/tipos para 12 secretos y permite cotejar los demás valores; `verify-package.mjs` comprueba el paquete sin red.
 

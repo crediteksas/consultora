@@ -51,7 +51,7 @@ async function prepareAllyVideo(file, { signal, onProgress = () => {}, transcode
   return { file: prepared, converted: true };
 }
 async function transcodeVideoWithFallback(file, options = {}) {
-  const {nativeTranscode = transcodeBrowserVideo, wasmTranscode, importWasmModule = ()=>import('/creditek/convenios/video-codec/video-ffmpeg.mjs'), fallbackLoadTimeoutMs = 180000, ...forward} = options;
+  const {nativeTranscode = transcodeBrowserVideo, wasmTranscode, importWasmModule = ()=>import('/creditek/convenios/video-codec/video-ffmpeg-20261029.2.mjs'), fallbackLoadTimeoutMs = 180000, ...forward} = options;
   try { return await nativeTranscode(file, forward); }
   catch (error) {
     checkAbort(options.signal);

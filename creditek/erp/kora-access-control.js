@@ -78,12 +78,12 @@
       { label: 'Ejecutivos', href: 'aliados-ejecutivos.html', icon: 'users-round' },
       { label: 'Plataformas', href: 'aliados-plataformas.html', icon: 'panels-top-left' },
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', icon: 'file-spreadsheet' },
-      { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark' },
       { label: 'Calidad', href: 'aliados-calidad.html', icon: 'badge-check' },
       { label: 'Bonificaciones', href: 'aliados-bonificaciones.html', icon: 'badge-dollar-sign' },
       { label: 'Gastos', href: 'aliados-gastos.html', icon: 'receipt' },
     ] },
     { title: 'ADMINISTRACIÓN', icon: 'shield-check', items: [
+      { label: 'Tesorería', href: 'aliados-tesoreria.html', icon: 'landmark', capability: 'aliados' },
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', icon: 'clipboard-check', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
@@ -196,7 +196,8 @@
           ...section,
           items: section.items
             .filter(item => (!item.roles || item.roles.includes(profile.rol))
-              && (!item.users || item.users.includes(profile.id)))
+              && (!item.users || item.users.includes(profile.id))
+              && (!item.capability || hasFullCorporateAccess || capabilities[item.capability] === true))
             .map(item => ({ ...item })),
         }))
         .filter(section => section.items.length > 0);

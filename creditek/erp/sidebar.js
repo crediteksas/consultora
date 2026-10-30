@@ -283,13 +283,13 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
     { titulo: 'CREDITEK ALIADOS', aliados: true, icono: '🤝', lucide: 'handshake', description: 'Importa, revisa y aprueba liquidaciones de plataformas para aliados.', items: [
       { label: 'Liquidaciones', href: 'aliados-liquidaciones.html', lucide: 'file-spreadsheet', description: 'Gestiona liquidaciones PayJoy y ALO, novedades, pagos y auditoría.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Tesorería', href: 'aliados-tesoreria.html', lucide: 'landmark', description: 'Administra pagos, compensaciones y saldos separados de B2B y Tercerización.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'CLIENTES', icono: '👤', lucide: 'users', description: 'Registro y validación segura de clientes de Creditek.', items: [
       { label: 'Registrar cliente', href: 'registro-interno.html', lucide: 'user-plus', description: 'Crea un cliente desde KORA con validaciones y trazabilidad interna.', roles: ['gerencia', 'auditoria', 'admin_tienda', 'asesor'] },
       { label: 'Validación', href: 'validacion.html', lucide: 'badge-check', description: 'Revisa y valida la información registrada de los clientes.', roles: ['gerencia', 'auditoria'] },
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
+      { label: 'Tesorería', href: 'aliados-tesoreria.html', lucide: 'landmark', description: 'Administra pagos, compensaciones y saldos separados de B2B y Tercerización.', roles: ['gerencia', 'auditoria'], aliados: true },
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', lucide: 'clipboard-check', description: 'Revisa las confirmaciones diarias y diferencias de deuda de las tiendas con Creditek.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'target', description: 'Programa los presupuestos independientes de Retail, B2B y Aliados desde Administración.', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', lucide: 'landmark', description: 'Saldo bancario, solicitudes y pagos a proveedores con autorización de Gerencia y aplicación a facturas antiguas.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
@@ -489,7 +489,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     const rolLabel = ROL_LABEL[perfil.rol] || perfil.rol;
 
     const modulosHtml = MODULOS.filter(mod => (!mod.b2b || puedeVerB2B) && (!mod.aliados || perfil.es_operador_aliados)).map(mod => {
-      const items = mod.items.filter(it => it.roles.includes(perfil.rol) && (!it.users || it.users.includes(perfil.id)));
+      const items = mod.items.filter(it => it.roles.includes(perfil.rol) && (!it.users || it.users.includes(perfil.id)) && (!it.aliados || perfil.es_operador_aliados));
       if (!items.length) return '';
       const abierto = items.some(it => it.href === activa);
       return `
@@ -686,7 +686,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
   function koraNavigationHtml(modules, role, activeItem, profile) {
     const puedeVerB2B = profile.rol === 'gerencia' || profile.rol === 'auditoria' || profile.es_admin_b2b === true;
     return modules.filter(module => (!module.b2b || puedeVerB2B) && (!module.aliados || profile.es_operador_aliados)).map(module => {
-      const items = module.items.filter(item => (!item.roles || item.roles.includes(role)) && (!item.users || item.users.includes(profile.id)));
+      const items = module.items.filter(item => (!item.roles || item.roles.includes(role)) && (!item.users || item.users.includes(profile.id)) && (!item.aliados || profile.es_operador_aliados));
       if (!items.length) return '';
       const isActive = item => item === activeItem
         || (item.href && item.href === activeItem?.href)

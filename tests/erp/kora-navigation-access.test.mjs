@@ -213,6 +213,26 @@ test('Presupuestos tiene una sola entrada en Administración para los tres negoc
   assert.ok(!Array.from(tablero.items, item => item.href).includes('presupuestos.html'));
 });
 
+test('Tesorería se ubica únicamente en Administración y conserva la autorización por rol y capacidad', () => {
+  const route = 'aliados-tesoreria.html';
+  const cases = [
+    { profile: { rol: 'gerencia', activo: true }, capabilities: { aliados: false }, allowed: true },
+    { profile: { rol: 'auditoria', activo: true }, capabilities: { aliados: true }, allowed: true },
+    { profile: { rol: 'auditoria', activo: true }, capabilities: { aliados: false }, allowed: false },
+    { profile: { rol: 'auditoria', activo: true }, capabilities: {}, allowed: false },
+    { profile: { rol: 'admin_tienda', activo: true, tienda_codigo: 'T-01' }, capabilities: { aliados: true }, allowed: false },
+    { profile: { rol: 'asesor', activo: true, tienda_codigo: 'T-01' }, capabilities: { aliados: true }, allowed: false },
+    { profile: { rol: 'gerencia', activo: false }, capabilities: { aliados: true }, allowed: false },
+  ];
+  for (const { profile, capabilities, allowed } of cases) {
+    const navigation = access.navigationFor(profile, capabilities);
+    const locations = navigation.flatMap(section => Array.from(section.items)
+      .filter(item => item.href === route).map(() => section.title));
+    assert.deepEqual(Array.from(locations), allowed ? ['ADMINISTRACIÓN'] : [], profile.rol);
+    assert.equal(access.authorize(profile, route, capabilities).allowed, allowed, profile.rol);
+  }
+});
+
 test('toda página que monta el shell carga primero el control de acceso', async () => {
   const erpDir = new URL('../../creditek/erp/', import.meta.url);
   const files = (await readdir(erpDir)).filter(name => name.endsWith('.html'));

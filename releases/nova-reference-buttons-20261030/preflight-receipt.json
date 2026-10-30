@@ -1,0 +1,17 @@
+{
+  "dryRunWrangler": "4.156.0",
+  "dryRunExitCode": 0,
+  "dryRunWarnings": 0,
+  "artifactUnchanged": true,
+  "variablesMatchBaseline": true,
+  "runtimeAndObservabilityMatchBaseline": true,
+  "liveMigrationTagMatched": true,
+  "migrationActions": 0,
+  "baselineBindings": 44,
+  "secretsInherited": 11,
+  "crons": [
+    "* * * * *"
+  ],
+  "gitBase": "86c47cf0",
+  "deployed": false
+}

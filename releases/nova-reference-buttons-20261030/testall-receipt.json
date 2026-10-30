@@ -1,0 +1,31 @@
+{
+  "timestampUTC": "2026-10-30T15:47:44.333Z",
+  "command": "node --test --test-reporter=tap reference-quick-reply.test.mjs sender-integration.test.mjs meta-preflight.test.mjs reference-webhook.test.mjs",
+  "candidateSha256": "9814ebeddff63e6241cb4aa5504d85c76e68247af68f1ce629dcd4e85d8e56db",
+  "candidateUnchanged": true,
+  "tests": 45,
+  "pass": 45,
+  "fail": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "files": [
+    {
+      "path": "reference-quick-reply.test.mjs",
+      "sha256": "83925e41935b1482ff79a03a7c2e8af88939d15b6362811410782132469546b9"
+    },
+    {
+      "path": "sender-integration.test.mjs",
+      "sha256": "7f992e00887f9da85a01152acdfb4010dbd85512a890179c38c5d4eb846ab024"
+    },
+    {
+      "path": "meta-preflight.test.mjs",
+      "sha256": "634a55082534ba1febe6322d70061b828a8adb2c6694bb7494cfe4321b5e27c4"
+    },
+    {
+      "path": "reference-webhook.test.mjs",
+      "sha256": "b98954cc5f609487de0e2d1279b943081805051bf2db6d1030a8a5eb5a756463"
+    }
+  ],
+  "tap": "testall.tap",
+  "passed": true
+}

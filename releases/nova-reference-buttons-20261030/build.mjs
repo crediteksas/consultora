@@ -1,0 +1,36 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {transformReferenceReceiver} from './transform.mjs';
+import {PINNED_LOGO_SHA256} from './meta-preflight.mjs';
+const require=createRequire(import.meta.url),{build}=require(process.env.NOVA_ESBUILD_PATH||'esbuild');
+const root=new URL('.',import.meta.url),read=n=>readFile(new URL(n,root),'utf8');
+const once=(s,a,b)=>{if(s.split(a).length!==2)throw Error('REFERENCE_INTEGRATION_DRIFT:'+a.slice(0,60));return s.replace(a,b);};
+let source=transformReferenceReceiver(await read('production-base.mjs'));
+const start=source.indexOf('// meta-preflight.mjs\n'),end=source.indexOf('// policy.mjs\n',start);
+if(start<0||end<start)throw Error('REFERENCE_PREFLIGHT_ANCHOR_CHANGED');
+source=source.slice(0,start)+source.slice(end);
+source='import { prepareTemplates, templateHealth } from "./meta-preflight.mjs";\nimport { buildReferenceInvitationTemplate } from "./reference-dispatch.mjs";\nimport { referenceLogoResponse } from "./logo-response.mjs";\n'+source;
+source=once(source,'    if (env.NOVA_RETAIL_ENABLED !== "true" || !(await templateHealth(env)).ready || typeof makeInvitation !== "function") return;','    const invitationHealth = await templateHealth(env);\n    if (env.NOVA_RETAIL_ENABLED !== "true" || !invitationHealth.ready || typeof makeInvitation !== "function") return;');
+source=once(source,'        const attempt = await db(env, "aura", "rpc/nova_retail_reference_reserve",',
+`        const preparedSource = await source(env, id);
+        const preparedReference = preparedSource.effectiveReferences?.find(r => r.type === ref.reference_type);
+        if (preparedSource.revoked_at || preparedSource.consent?.granted !== true || preparedReference?.contact_authorized !== true || preparedReference.telefono !== expected.telefono) continue;
+        const invitationTemplate = await buildReferenceInvitationTemplate({health:invitationHealth,name:preparedSource.registration.p_nombre_completo,context:ctx,secret:env.NOVA_PII_HASH_PEPPER,now:now(),makeInvitation});
+        const attempt = await db(env, "aura", "rpc/nova_retail_reference_reserve",`);
+source=once(source,'          if (current.revoked_at) throw Error("CONSENT_CHANGED");\n          const invite = await makeInvitation(ctx, env.NOVA_PII_HASH_PEPPER, now());',
+`          const currentReference = current.effectiveReferences?.find(r => r.type === ref.reference_type);
+          if (current.revoked_at || current.consent?.granted !== true || currentReference?.contact_authorized !== true || currentReference.telefono !== expected.telefono || current.registration.p_nombre_completo !== preparedSource.registration.p_nombre_completo) throw Error("CONSENT_CHANGED");`);
+source=once(source,'template: { name: REFERENCE_TEMPLATE.name, language: { code: "es_CO" }, components: [{ type: "body", parameters: [{ type: "text", text: current.registration.p_nombre_completo }, { type: "text", text: invite.url }] }] }','template: invitationTemplate');
+source=once(source,'        let state = "uncertain", messageId = null, error = null;','        let state = "failed", messageId = null, error = null;');
+source=once(source,'          const r = await fetcher("https://graph.facebook.com/v26.0/" + env.NOVA_PHONE_NUMBER_ID + "/messages",','          state = "uncertain";\n          const r = await fetcher("https://graph.facebook.com/v26.0/" + env.NOVA_PHONE_NUMBER_ID + "/messages",');
+source=once(source,'var nova_entry_default = { ...stdin_default, async fetch(request, env, ctx) {\n  const u = new URL(request.url);','var nova_entry_default = { ...stdin_default, async fetch(request, env, ctx) {\n  const u = new URL(request.url);\n  if (u.pathname === "/branding/creditek-logo.png") return referenceLogoResponse(request);');
+const logo=await readFile(new URL('creditek-logo.png',root));
+if(createHash('sha256').update(logo).digest('hex')!==PINNED_LOGO_SHA256)throw Error('REFERENCE_LOGO_DRIFT');
+await writeFile(new URL('logo-base64.mjs',root),'export default '+JSON.stringify(logo.toString('base64'))+';\n');
+await writeFile(new URL('candidate-entry.mjs',root),source);
+await build({entryPoints:[fileURLToPath(new URL('candidate-entry.mjs',root))],outfile:fileURLToPath(new URL('index.mjs',root)),bundle:true,format:'esm',platform:'browser',external:['node:*','cloudflare:*'],logLevel:'warning'});
+const artifact=await read('index.mjs');
+await writeFile(new URL('build-receipt.json',root),JSON.stringify({baselineSha256:createHash('sha256').update(await read('production-base.mjs')).digest('hex'),candidateSha256:createHash('sha256').update(artifact).digest('hex'),logoSha256:PINNED_LOGO_SHA256},null,2)+'\n');
+console.log('NOVA reference visual candidate built; no network, sends or deployment.');

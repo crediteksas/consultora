@@ -1,0 +1,280 @@
+TAP version 13
+# Subtest: creation shape has sample handle, one name parameter and exact two labels
+ok 1 - creation shape has sample handle, one name parameter and exact two labels
+  ---
+  duration_ms: 1.033708
+  type: 'test'
+  ...
+# Subtest: validation rejects wrong identity, language, category, named params and body
+ok 2 - validation rejects wrong identity, language, category, named params and body
+  ---
+  duration_ms: 0.125791
+  type: 'test'
+  ...
+# Subtest: validation rejects missing/extra/duplicate/reordered components and wrong header
+ok 3 - validation rejects missing/extra/duplicate/reordered components and wrong header
+  ---
+  duration_ms: 0.147458
+  type: 'test'
+  ...
+# Subtest: button shape, order, count, type and labels are exact
+ok 4 - button shape, order, count, type and labels are exact
+  ---
+  duration_ms: 0.119
+  type: 'test'
+  ...
+# Subtest: selection retains approved v1 until approved v2 and fetched pinned logo are both ready
+ok 5 - selection retains approved v1 until approved v2 and fetched pinned logo are both ready
+  ---
+  duration_ms: 0.122166
+  type: 'test'
+  ...
+# Subtest: logo readiness requires fetched exact URL and pinned SHA plus fresh verification
+ok 6 - logo readiness requires fetched exact URL and pinned SHA plus fresh verification
+  ---
+  duration_ms: 0.060042
+  type: 'test'
+  ...
+# Subtest: send shape uses pinned public link, exactly one body value and two distinct indexed payloads
+ok 7 - send shape uses pinned public link, exactly one body value and two distinct indexed payloads
+  ---
+  duration_ms: 0.170958
+  type: 'test'
+  ...
+# Subtest: send validation rejects empty name, multiline, missing media, payload over cap or duplicate
+ok 8 - send validation rejects empty name, multiline, missing media, payload over cap or duplicate
+  ---
+  duration_ms: 0.161792
+  type: 'test'
+  ...
+# Subtest: preflight only GETs metadata, never creates templates or sends messages; complete contract gates v2
+ok 9 - preflight only GETs metadata, never creates templates or sends messages; complete contract gates v2
+  ---
+  duration_ms: 14.524
+  type: 'test'
+  ...
+# Subtest: missing visual v2 stays on legacy without POST; no ready from missing staff
+ok 10 - missing visual v2 stays on legacy without POST; no ready from missing staff
+  ---
+  duration_ms: 0.714709
+  type: 'test'
+  ...
+# Subtest: HTTP errors, oversized JSON, duplicate matches and malformed metadata never mark v2 approved
+ok 11 - HTTP errors, oversized JSON, duplicate matches and malformed metadata never mark v2 approved
+  ---
+  duration_ms: 1.199792
+  type: 'test'
+  ...
+# Subtest: health requires pinned logo proof and fresh state rather than trusting stored ready
+ok 12 - health requires pinned logo proof and fresh state rather than trusting stored ready
+  ---
+  duration_ms: 0.097417
+  type: 'test'
+  ...
+# Subtest: preflight hashes actual pinned official logo bytes and sends no auth to public asset
+ok 13 - preflight hashes actual pinned official logo bytes and sends no auth to public asset
+  ---
+  duration_ms: 0.411875
+  type: 'test'
+  ...
+# Subtest: wrong logo bytes, type, oversized stream, redirect and failure never verify
+ok 14 - wrong logo bytes, type, oversized stream, redirect and failure never verify
+  ---
+  duration_ms: 0.361666
+  type: 'test'
+  ...
+# Subtest: start and decline payloads are <=128 ASCII characters and carry no phone, fingerprint or UUID text
+ok 15 - start and decline payloads are <=128 ASCII characters and carry no phone, fingerprint or UUID text
+  ---
+  duration_ms: 4.593958
+  type: 'test'
+  ...
+# Subtest: signed action cannot be swapped and tampered signatures are denied
+ok 16 - signed action cannot be swapped and tampered signatures are denied
+  ---
+  duration_ms: 0.477292
+  type: 'test'
+  ...
+# Subtest: reference, fingerprint, recipient, application, source and type are cryptographically bound
+ok 17 - reference, fingerprint, recipient, application, source and type are cryptographically bound
+  ---
+  duration_ms: 0.763041
+  type: 'test'
+  ...
+# Subtest: expiry is exactly 24 hours; rejects future-issued, expired and extended claims
+ok 18 - expiry is exactly 24 hours; rejects future-issued, expired and extended claims
+  ---
+  duration_ms: 0.386792
+  type: 'test'
+  ...
+# Subtest: malformed, noncanonical, oversized and unsupported payloads are rejected
+ok 19 - malformed, noncanonical, oversized and unsupported payloads are rejected
+  ---
+  duration_ms: 0.379
+  type: 'test'
+  ...
+# Subtest: template button adapter uses payload, never its editable visible title
+ok 20 - template button adapter uses payload, never its editable visible title
+  ---
+  duration_ms: 0.620208
+  type: 'test'
+  ...
+# Subtest: frozen production transform rejects source drift and applying twice
+ok 21 - frozen production transform rejects source drift and applying twice
+  ---
+  duration_ms: 19.145417
+  type: 'test'
+  ...
+# Subtest: real production receiver: start opens explicit consent, sends no OTP and records no consent
+ok 22 - real production receiver: start opens explicit consent, sends no OTP and records no consent
+  ---
+  duration_ms: 16.826709
+  type: 'test'
+  ...
+# Subtest: real production receiver: same Meta event replays cause no second transition or message
+ok 23 - real production receiver: same Meta event replays cause no second transition or message
+  ---
+  duration_ms: 6.655458
+  type: 'test'
+  ...
+# Subtest: real production receiver: repeated start preserves ongoing dialogue without new send
+ok 24 - real production receiver: repeated start preserves ongoing dialogue without new send
+  ---
+  duration_ms: 6.292417
+  type: 'test'
+  ...
+# Subtest: real production receiver: decline records rejection and replay does not resend
+ok 25 - real production receiver: decline records rejection and replay does not resend
+  ---
+  duration_ms: 5.977583
+  type: 'test'
+  ...
+# Subtest: real production receiver: legacy links still open the same consent flow
+ok 26 - real production receiver: legacy links still open the same consent flow
+  ---
+  duration_ms: 11.041917
+  type: 'test'
+  ...
+# Subtest: real production receiver: invalid prefixed button is consumed, not treated as free text
+ok 27 - real production receiver: invalid prefixed button is consumed, not treated as free text
+  ---
+  duration_ms: 5.28625
+  type: 'test'
+  ...
+# Subtest: real production receiver: forwarded button and revoked source cannot change state or send
+ok 28 - real production receiver: forwarded button and revoked source cannot change state or send
+  ---
+  duration_ms: 11.164125
+  type: 'test'
+  ...
+# Subtest: receiver denies unverified, wrong-channel, stale and future envelopes before context lookup
+ok 29 - receiver denies unverified, wrong-channel, stale and future envelopes before context lookup
+  ---
+  duration_ms: 0.350042
+  type: 'test'
+  ...
+# Subtest: database failure propagates for webhook retry; it is never silently acknowledged
+ok 30 - database failure propagates for webhook retry; it is never silently acknowledged
+  ---
+  duration_ms: 0.237667
+  type: 'test'
+  ...
+# Subtest: bridge preserves compact expiry instead of granting a fresh 24-hour link
+ok 31 - bridge preserves compact expiry instead of granting a fresh 24-hour link
+  ---
+  duration_ms: 5.485291
+  type: 'test'
+  ...
+# Subtest: real signed wrapper converts template QUICK_REPLY and supplies only authenticated webhook identity
+ok 32 - real signed wrapper converts template QUICK_REPLY and supplies only authenticated webhook identity
+  ---
+  duration_ms: 18.889
+  type: 'test'
+  ...
+# Subtest: real signed wrapper excludes malformed owned payload without processing or free-text fallthrough
+ok 33 - real signed wrapper excludes malformed owned payload without processing or free-text fallthrough
+  ---
+  duration_ms: 4.151625
+  type: 'test'
+  ...
+# Subtest: real wrapper rejects bad HMAC before processing, diagnostics or pilot handling
+ok 34 - real wrapper rejects bad HMAC before processing, diagnostics or pilot handling
+  ---
+  duration_ms: 3.740833
+  type: 'test'
+  ...
+# Subtest: real wrapper preserves reference interactive choices and ordinary text routing
+ok 35 - real wrapper preserves reference interactive choices and ordinary text routing
+  ---
+  duration_ms: 3.859459
+  type: 'test'
+  ...
+# Subtest: real signed wrapper returns 503 on processing failure instead of acknowledging and falling through
+ok 36 - real signed wrapper returns 503 on processing failure instead of acknowledging and falling through
+  ---
+  duration_ms: 7.985458
+  type: 'test'
+  ...
+# Subtest: complete createRetailRuntime and sender are extracted, not string-only mocked
+ok 37 - complete createRetailRuntime and sender are extracted, not string-only mocked
+  ---
+  duration_ms: 1.008625
+  type: 'test'
+  ...
+# Subtest: V2 sender uses logo and two real signed action payloads before reserve
+ok 38 - V2 sender uses logo and two real signed action payloads before reserve
+  ---
+  duration_ms: 15.698417
+  type: 'test'
+  ...
+# Subtest: accepted and uncertain dispatches are never sent again
+ok 39 - accepted and uncertain dispatches are never sent again
+  ---
+  duration_ms: 4.011083
+  type: 'test'
+  ...
+# Subtest: transport acceptance, timeout and HTTP500 remain distinct and cannot duplicate sends
+ok 40 - transport acceptance, timeout and HTTP500 remain distinct and cannot duplicate sends
+  ---
+  duration_ms: 6.296375
+  type: 'test'
+  ...
+# Subtest: invalid logo, secret, name or context never reserves or records an uncertain send
+ok 41 - invalid logo, secret, name or context never reserves or records an uncertain send
+  ---
+  duration_ms: 5.829167
+  type: 'test'
+  ...
+# Subtest: fresh source revocation, loss of consent and changed recipient block dispatch
+ok 42 - fresh source revocation, loss of consent and changed recipient block dispatch
+  ---
+  duration_ms: 5.028083
+  type: 'test'
+  ...
+# Subtest: header verification failure with no approved V1 produces no reservation or send
+ok 43 - header verification failure with no approved V1 produces no reservation or send
+  ---
+  duration_ms: 0.777334
+  type: 'test'
+  ...
+# Subtest: source change only after reservation is failed without falsely recording a possible Meta send
+ok 44 - source change only after reservation is failed without falsely recording a possible Meta send
+  ---
+  duration_ms: 1.504167
+  type: 'test'
+  ...
+# Subtest: V1 fallback preserves its name and exactly two legacy body parameters
+ok 45 - V1 fallback preserves its name and exactly two legacy body parameters
+  ---
+  duration_ms: 1.201208
+  type: 'test'
+  ...
+1..45
+# tests 45
+# suites 0
+# pass 45
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 150.848125

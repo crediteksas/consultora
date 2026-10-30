@@ -3,7 +3,7 @@ export const REFERENCE_TEMPLATE_V1 = {name:'nova_referencia_directa_v1',language
 export const REFERENCE_TEMPLATE = {name:'nova_referencia_visual_v2',language:'es_CO',category:'UTILITY',components:[{type:'HEADER',format:'IMAGE'},{type:'BODY',text:'¿Nos ayudas con una referencia? Te registraron como referencia de {{1}}. Participar es voluntario y no te convierte en deudor ni fiador. Elige una opción para continuar. Política: https://registro.crediteksas.com/creditek/legal/',example:{body_text:[['Persona de ejemplo']]}},{type:'BUTTONS',buttons:[{type:'QUICK_REPLY',text:'Responder referencia'},{type:'QUICK_REPLY',text:'No participar'}]}]};
 export const TEMPLATE_STATE_KEY = 'nova:retail:templates:v2';
 export const PINNED_LOGO_URL = 'https://creditek-nova.comercial-853.workers.dev/branding/creditek-logo.png';
-export const PINNED_LOGO_SHA256 = '8e24591baa84201ea72eab0638b42e11af4503d24230548d6385aedad8a45191';
+export const PINNED_LOGO_SHA256 = '286b93a7e3d0f00e013b60f138e41fa7d36402b76cfeaad67ad36eb06cb3baff';
 const MAX_STATE_AGE_MS = 300000;
 const STATES = new Set(['APPROVED','PENDING','REJECTED','PAUSED','DISABLED','IN_APPEAL','PENDING_DELETION','DELETED','LIMIT_EXCEEDED']);
 const normalizedType = value => typeof value === 'string' ? value.toUpperCase() : '';

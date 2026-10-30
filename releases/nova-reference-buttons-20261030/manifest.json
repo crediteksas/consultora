@@ -1,5 +1,5 @@
 {
-  "frozenAtUTC": "2026-10-30T15:55:58.521159+00:00",
+  "frozenAtUTC": "2026-10-30T16:04:21.837640+00:00",
   "tests": 45,
   "pass": 45,
   "fail": 0,
@@ -12,13 +12,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 5165,
-      "sha256": "a8b9687a83249ee00bd05694d5f9500eefcf26e78988123506e1814047625bf6"
+      "bytes": 5341,
+      "sha256": "b1e75b68ea2695de8573be243b028493029bba9ea2389fe10c9604d972245204"
     },
     {
       "path": "build-receipt.json",
       "bytes": 264,
-      "sha256": "268b7776de55412b45ead1f42b5e0b8ff69693d28af6cd6c546cb2f4cbeb9518"
+      "sha256": "29596fd55b89aebce97e828b78763eeff0bb62e1ed673d17d4328dd9f455b57a"
     },
     {
       "path": "build.mjs",
@@ -32,13 +32,13 @@
     },
     {
       "path": "creditek-logo.png",
-      "bytes": 196287,
-      "sha256": "8e24591baa84201ea72eab0638b42e11af4503d24230548d6385aedad8a45191"
+      "bytes": 66608,
+      "sha256": "286b93a7e3d0f00e013b60f138e41fa7d36402b76cfeaad67ad36eb06cb3baff"
     },
     {
       "path": "index.mjs",
-      "bytes": 3266819,
-      "sha256": "9814ebeddff63e6241cb4aa5504d85c76e68247af68f1ce629dcd4e85d8e56db"
+      "bytes": 3093915,
+      "sha256": "232513ce40c043e43c530ebad9bb9b3dbfc7d8061cae109f07fd82f841c411fb"
     },
     {
       "path": "logo-response.mjs",
@@ -48,7 +48,7 @@
     {
       "path": "meta-preflight.mjs",
       "bytes": 10031,
-      "sha256": "8ed27bf5e455807e9251b1a8a83f9663cbc1d7502ff591fa68eda61f9a2c7b53"
+      "sha256": "fe00a91754056d545570fd81bf132138a1d633e6b4d08d7305f5521e49a05289"
     },
     {
       "path": "meta-preflight.test.mjs",
@@ -92,13 +92,13 @@
     },
     {
       "path": "testall-receipt.json",
-      "bytes": 1022,
-      "sha256": "43b6ec988fbfeca97e597f89d480d24adda39d8241483e520cdcbae356a3639f"
+      "bytes": 972,
+      "sha256": "750eb5746c1277cacb38c73d4d894993c3aada0be8f0c3807c23b002ce882354"
     },
     {
       "path": "testall.tap",
-      "bytes": 10633,
-      "sha256": "ada7502c560cc9c889365996fce4e1a7efe644f99ef7730321d9b36c1aeff607"
+      "bytes": 10628,
+      "sha256": "6dd3e184fa95ba84453d68f8a1fec6850e3e13d93527617c908397af5862bed9"
     },
     {
       "path": "transform.mjs",

@@ -1,7 +1,7 @@
 {
-  "timestampUTC": "2026-10-30T15:47:44.333Z",
-  "command": "node --test --test-reporter=tap reference-quick-reply.test.mjs sender-integration.test.mjs meta-preflight.test.mjs reference-webhook.test.mjs",
-  "candidateSha256": "9814ebeddff63e6241cb4aa5504d85c76e68247af68f1ce629dcd4e85d8e56db",
+  "timestampUTC": "2026-10-30T16:03:33.792556+00:00",
+  "command": "node --test --test-reporter=tap releases/nova-reference-buttons-20261030/*.test.mjs",
+  "candidateSha256": "232513ce40c043e43c530ebad9bb9b3dbfc7d8061cae109f07fd82f841c411fb",
   "candidateUnchanged": true,
   "tests": 45,
   "pass": 45,

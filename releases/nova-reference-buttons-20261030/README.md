@@ -6,7 +6,7 @@ Las referencias nuevas reciben el logo oficial de Creditek y dos respuestas ráp
 
 - Implementación local; todavía no publicada.
 - 45 pruebas aprobadas, cero omitidas. Claude aprobó el código; el manifiesto final fija los archivos de la entrega.
-- Plantilla `nova_referencia_visual_v2`, `es_CO`, categoría solicitada `UTILITY`: enviada a Meta el 30/10/2026, ID `1848451827284866`, estado visible `En revisión`.
+- Plantilla `nova_referencia_visual_v2`, `es_CO`, categoría `UTILITY`, ID `1848451827284866`: aprobada por Meta el 30/10/2026; estado visible `Activa: calidad pendiente`.
 - Sin mensajes de prueba a personas ni modificaciones de datos, fotos, decisiones o base de datos.
 - La selección usa V1 hasta que V2 esté aprobada, coincidan cuerpo/imagen/botones y se verifique el PNG público exacto. La aprobación del proveedor se comprueba desde el cron existente; este código no crea plantillas automáticamente.
 
@@ -31,7 +31,7 @@ Los payloads firmados de 87 caracteres vinculan acción, referencia, aplicación
 
 La reserva de envío existente sigue siendo la autoridad. Los componentes se validan antes de reservar; si el transporte puede haberse iniciado y falta respuesta concluyente, queda `uncertain`, sin reenvío automático a ciegas. Un cambio de fuente detectado antes del transporte no se registra como posible envío. Los mensajes aceptados o inciertos no se reenvían para cambiarles el diseño.
 
-El logo se sirve sin autenticación en `/branding/creditek-logo.png`; es el archivo de marca público, sin datos de clientes. Su SHA256 exacto es `8e24591baa84201ea72eab0638b42e11af4503d24230548d6385aedad8a45191`. El preflight solo lee metadata de las plantillas y la imagen; tiene límites de bytes, tiempo y redirecciones. Mantiene separados la aprobación de Meta y el estado efectivo de selección.
+El logo se sirve sin autenticación en `/branding/creditek-logo.png`; es el archivo oficial `creditek/assets/creditek-logo.png`, sin datos de clientes. Se usa la versión de 1024×1024 con margen, sin modificar sus píxeles, para que el encabezado de WhatsApp no recorte el símbolo ni el nombre. Su SHA256 exacto es `286b93a7e3d0f00e013b60f138e41fa7d36402b76cfeaad67ad36eb06cb3baff`. El preflight solo lee metadata de las plantillas y la imagen; tiene límites de bytes, tiempo y redirecciones. Mantiene separados la aprobación de Meta y el estado efectivo de selección.
 
 ## Publicación controlada
 

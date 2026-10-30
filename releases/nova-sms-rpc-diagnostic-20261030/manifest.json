@@ -1,0 +1,19 @@
+{
+  "status": "LOCAL_RPC_FIX_REVIEW_REQUIRED",
+  "baselineWorkerSha256": "6010453e3c6aa8d07fb9e4f213c67119cd0a8c9360a864a861b727810ff5fee4",
+  "candidateWorkerSha256": "97cc1e52d59e78d077b947b2ec24ac0960200021bb8ae830922fdc081b65c772",
+  "formSha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+  "formUnchanged": true,
+  "changedFunctions": [
+    "rpc",
+    "novaActiveOtp2",
+    "smsOtpDependencies"
+  ],
+  "publicResponseContractChanged": false,
+  "validationOrPermissionsChanged": false,
+  "sqlChanges": false,
+  "otherWorkersChanged": false,
+  "privateLogsAdded": false,
+  "productionWrites": 0,
+  "realMessages": 0
+}

@@ -1,0 +1,39 @@
+diff --git a/baseline/index.mjs b/deploy/index.mjs
+index 861bfaf..01a0848 100644
+--- a/baseline/index.mjs
++++ b/deploy/index.mjs
+@@ -167,10 +167,14 @@ function notSent(status, error3, requestId, channel3) {
+ async function rpc(name, body3, env3, deps) {
+   let response2;
+   try {
+-    response2 = await deps.fetcher(deps.supabaseUrl + "/rest/v1/rpc/" + name, { method: "POST", headers: deps.headers(env3), body: JSON.stringify(body3), signal: AbortSignal.timeout(8e3), redirect: "error" });
++    response2 = await deps.fetcher(deps.supabaseUrl + "/rest/v1/rpc/" + name, { method: "POST", headers: deps.headers(env3), body: JSON.stringify(body3), signal: AbortSignal.timeout(8e3), redirect: "manual" });
+   } catch {
+     return { ok: false, uncertain: true };
+   }
++  if (response2.status >= 300 && response2.status < 400) {
++    void response2.body?.cancel().catch(() => {});
++    return { ok: false, uncertain: true };
++  }
+   let value;
+   try {
+     value = await boundedJson(response2);
+@@ -308,7 +312,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
+ import { EventEmitter as EventEmitter222 } from "node:events";
+ import { EventEmitter as EventEmitter2222 } from "node:events";
+ function smsOtpDependencies() {
+-  return { fetcher: fetch, supabaseUrl: SUPABASE_URL22, headers: supabaseHeaders2, resolveContext: resolveContext2, verifyTurnstile: verifyTurnstile2, generateCode: generateOtp2, hash: hashOpaqueToken2 };
++  return { fetcher: (...args) => fetch(...args), supabaseUrl: SUPABASE_URL22, headers: supabaseHeaders2, resolveContext: resolveContext2, verifyTurnstile: verifyTurnstile2, generateCode: generateOtp2, hash: hashOpaqueToken2 };
+ }
+ var __defProp = Object.defineProperty;
+ var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+@@ -9099,7 +9103,8 @@ async function novaActiveOtp2(input,enlaceId,env,fetcher,now){
+       enlace_registro_id:'eq.'+enlaceId,codigo_hash:'not.is.null',verificado:'eq.false',
+       registro_consumido_at:'is.null',expira_at:'gt.'+new Date(now).toISOString(),
+       select:'id,expira_at,intentos,envio_aceptado_at,envio_fallido_at',order:'created_at.desc',limit:'1'}),
+-      {headers:supabaseHeaders2(env),redirect:'error',signal:AbortSignal.timeout(8000)});
++      {headers:supabaseHeaders2(env),redirect:'manual',signal:AbortSignal.timeout(8000)});
++    if(response.status>=300&&response.status<400){void response.body?.cancel().catch(()=>{});return {ok:false};}
+     if(!response.ok||!response.body||Number(response.headers.get('content-length'))>4096){
+       void response.body?.cancel().catch(()=>{});return {ok:false};
+     }

@@ -13,10 +13,10 @@
 .cobros-notice { margin: 14px 0; padding: 12px 14px; background: #ecfdf3; color: #067647; border: 1px solid #abefc6; border-radius: 12px; overflow-wrap: anywhere; }
 .cobros-notice--error { color: #912018; background: #fff1f0; border-color: #fecdca; }
 .cobros-filter { display: grid; gap: 6px; max-width: 340px; margin: 18px 0 14px; font-weight: 600; font-size: 13px; }
-.cobros-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 10px; margin: 14px 0; }
+.cobros-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 10px; margin: 14px 0; }
 .cobros-metric { min-width: 0; padding: 15px; border-radius: 12px; background: #fff; border: 1px solid var(--borde, #dce5ee); }
 .cobros-metric dt { color: var(--muted, #64748b); font-size: 12px; line-height: 1.45; }
-.cobros-metric dd { margin: 8px 0 0; font-size: clamp(17px, 1.6vw, 22px); font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
+.cobros-metric dd { margin: 8px 0 0; font-size: clamp(17px, 1.6vw, 22px); font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: normal; white-space: nowrap; overflow-x: auto; }
 .cobros-metric--alert { background: #fff8f7; border-color: #fecdca; }
 .cobros-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; margin-bottom: 20px; }
 .cobros-entry, .cobros-history, .cobros-void { min-width: 0; border: 1px solid var(--borde, #dce5ee); border-radius: 12px; background: #fff; }

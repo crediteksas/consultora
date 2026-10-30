@@ -6,8 +6,8 @@ export async function serveFFmpegAsset(request,{fetcher=fetch}={}){
  if(!['GET','HEAD'].includes(request.method))return new Response('Método no permitido',{status:405,headers:{allow:'GET, HEAD','cache-control':'no-store'}});
  const headers={'content-type':asset.mime,'cache-control':'public,max-age=31536000,immutable','x-content-type-options':'nosniff','cross-origin-resource-policy':'same-origin'};
  if(asset.upstream){
-  const upstream=await fetcher(asset.upstream,{method:request.method,redirect:'error',headers:{accept:'application/wasm','accept-encoding':'identity'},cf:{cacheEverything:true,cacheTtl:31536000}});
-  if(upstream.status!==200)return new Response('Conversor no disponible',{status:502,headers:{'cache-control':'no-store'}});
+  const upstream=await fetcher(asset.upstream,{method:request.method,redirect:'manual',headers:{accept:'application/wasm','accept-encoding':'identity'},cf:{cacheEverything:true,cacheTtl:31536000}});
+  if(upstream.status!==200){try{await upstream.body?.cancel();}catch{}return new Response('Conversor no disponible',{status:502,headers:{'cache-control':'no-store'}});}
   headers['content-length']=String(asset.bytes);return new Response(request.method==='HEAD'?null:upstream.body,{headers});
  }
  return new Response(request.method==='HEAD'?null:asset.body,{headers});

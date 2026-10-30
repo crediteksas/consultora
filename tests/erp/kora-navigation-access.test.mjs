@@ -224,3 +224,17 @@ test('toda página que monta el shell carga primero el control de acceso', async
     assert.ok(guard >= 0 && guard < shell, `${file} debe cargar el guard antes del shell`);
   }
 });
+
+
+test('Tesorería aparece una sola vez en Administración conservando la capacidad de Aliados', () => {
+  for (const rol of ['gerencia','auditoria','admin_tienda','asesor']) {
+    for (const aliados of [true,false]) {
+      const profile={rol,activo:true,tienda_codigo:rol==='admin_tienda'||rol==='asesor'?'PRUEBA':null};
+      const navigation=access.navigationFor(profile,{aliados});
+      const matches=Array.from(navigation).flatMap(section=>Array.from(section.items).filter(item=>item.href==='aliados-tesoreria.html').map(()=>section.title));
+      const expected=rol==='gerencia'||(rol==='auditoria'&&aliados);
+      assert.deepEqual(matches,expected?['ADMINISTRACIÓN']:[]);
+      assert.equal(access.authorize(profile,'aliados-tesoreria.html',{aliados}).allowed,expected);
+    }
+  }
+});

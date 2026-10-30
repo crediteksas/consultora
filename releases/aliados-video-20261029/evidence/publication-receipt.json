@@ -1,0 +1,33 @@
+{
+  "status": "published_and_verified",
+  "recordedAt": "2026-10-30T00:11:26.933260+00:00",
+  "reportedBy": "primary agent; live verification reported in parent task",
+  "commit": "d1f0dad4",
+  "worker": {
+    "name": "creditek-registro",
+    "version": "b3d2aacb-6bb6-47e0-9fd2-8208eaf21017",
+    "sourceSha256": "c0c7105e598929dbd31e4695f84a68d9fe908e352f23938c0954d8d1b0051f8d",
+    "apiSourceReadbackMatches": true,
+    "protectedSettingsUnchanged": true,
+    "bindingsUnchanged": true,
+    "domainsUnchanged": true,
+    "subdomainConfigurationUnchanged": true
+  },
+  "appsScript": {
+    "version": 34,
+    "publishedAndVerifiedByPrimaryAgent": true
+  },
+  "tests": {
+    "passed": 58
+  },
+  "productionChromeAviCheck": {
+    "inputHadAudio": true,
+    "result": "MP4 listo para enviar",
+    "preservedField": "comercial",
+    "preservedValue": "PRUEBA SIN ENVIAR",
+    "formSubmitted": false,
+    "convertedTestOutputUploadedToDrive": false
+  },
+  "scope": "Code/configuration verification and video preparation; no new ally registration or document approval claimed",
+  "containsCredentialsOrCustomerIdentifiers": false
+}

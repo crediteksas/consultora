@@ -1,0 +1,127 @@
+{
+  "checkedAtUTC": "2026-10-30T21:45:55.341939+00:00",
+  "status": "VERIFIED_PUBLISHED",
+  "workers": [
+    {
+      "worker": "creditek-clientes",
+      "checkedAtUTC": "2026-10-30T21:45:51.148387+00:00",
+      "modules": {
+        "form.html": {
+          "sha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+          "bytes": 85833
+        },
+        "index.mjs": {
+          "sha256": "6a5d0d76296d91c44f22398823c54749b4a2ae30ec5923c27e47da254eac0c7d",
+          "bytes": 559870
+        }
+      },
+      "version": "a6c1dc3e-6e5d-4001-98fc-dadef85d20d4",
+      "percentage": 100,
+      "bindingsPreserved": 31,
+      "cronsPreserved": [
+        "*/5 * * * *",
+        "*/5 0 * * *",
+        "*/5 16-23 * * *"
+      ],
+      "routesPreserved": [
+        {
+          "pattern": "registro.crediteksas.com/creditek/erp/registro*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "registro.crediteksas.com/nova/registro*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        }
+      ],
+      "compatibilityPreserved": true,
+      "noSecretsRead": true
+    },
+    {
+      "worker": "creditek-nova",
+      "checkedAtUTC": "2026-10-30T21:45:52.915078+00:00",
+      "modules": {
+        "index.mjs": {
+          "sha256": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355",
+          "bytes": 3095959
+        }
+      },
+      "version": "6fe638d1-d812-4e85-9187-a6ec06277539",
+      "percentage": 100,
+      "bindingsPreserved": 44,
+      "cronsPreserved": [
+        "* * * * *"
+      ],
+      "routesPreserved": [
+        {
+          "pattern": "aura.crediteksas.com/api/nova/supervision",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "aura.crediteksas.com/api/nova/gestion",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "aura.crediteksas.com/creditek/agentes/nova-supervision*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        }
+      ],
+      "compatibilityPreserved": true,
+      "noSecretsRead": true
+    }
+  ],
+  "publicChecks": [
+    {
+      "name": "registration_form",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "bodySHA256": "67d268fe4912f80be02df77f33f3159e1fe41ffa9bd3d9eacbcae666229f0028",
+      "bytes": 86933
+    },
+    {
+      "name": "sms_disabled",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "bodySHA256": "f00d21177e2231f0d1a2d2a411c567c5d45ce5d06f10ca8e7afd895058313965",
+      "bytes": 20
+    },
+    {
+      "name": "retail_portal",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "bodySHA256": "4a2fd2bf725d8973482a6427f6ff78d37e9b481051a5ba69bff05dc75f89c1a2",
+      "bytes": 22218
+    },
+    {
+      "name": "unauthenticated_retail",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "bodySHA256": "81a41dc586b23d3350a71f0125771e666a1568abff00644352e9b9ccf6c0726a",
+      "bytes": 27
+    },
+    {
+      "name": "untrusted_origin",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "bodySHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "name": "retail_health",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "bodySHA256": "855b6d64b0489431ecbf946413054f2fc4ceb50af438b97b3de2396d62fa9db6",
+      "bytes": 592,
+      "schemaReady": true
+    }
+  ],
+  "smsEnabled": false,
+  "realMessages": 0,
+  "realCreditQueries": 0,
+  "customerDataOrPhotosModifiedByVerification": false
+}

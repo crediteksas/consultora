@@ -1,0 +1,459 @@
+diff --git a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/baseline/clientes/form.html b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/deploy/clientes/form.html
+index 795ec19..92f1626 100644
+--- a/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/baseline/clientes/form.html
++++ b/Users/oscarm/.codex/visualizations/2026/10/23/01a1698b-25dc-7461-a98e-8b81521ce818/outputs/nova-operacion-20261029/source/releases/nova-flow-repair-20261030/deploy/clientes/form.html
+@@ -329,7 +329,8 @@ async function preparedQualityPhotos(){
+  return prepared;
+ }
+ async function reviewCapturedPhoto(){
+- if(documentosSession)return;
++ if(documentosSession||qualityBusy)return;
++ if(registroSession&&repairSessionExpired(registroSession)){repairRequireAuth('La sesión venció antes de revisar las fotos.');return;}
+  const selected=Object.entries(qualityIds).filter(([,id])=>document.getElementById(id).files.length);
+  if(!selected.length||selected.every(([type])=>['auto_approved','manual_pending'].includes(qualityStates[type]?.status)))return;
+  const missing=[];
+@@ -342,7 +343,11 @@ async function reviewCapturedPhoto(){
+   const prepared=await preparedQualityPhotos();if(!Object.keys(prepared).length)return;
+   const r=await fetch(API+'/api/registro/nova-calidad-fotos',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken,name:document.getElementById('nombreCompleto').value.trim(),consent:true,consent_version:'nova-photo-quality-v3',photos:prepared,partial:true})});
+   const d=await r.json();if(generation!==qualityGeneration)return;renderQuality(d);
+-  if(!r.ok&&!d.errors)mostrarErrorRegistro(d.error||'No pudimos guardar la revisión. Tus fotos se conservan; vuelve a intentarlo.');
++  if(!r.ok&&!d.errors){
++   if(r.status===403&&repairSessionExpired(registroSession))repairRequireAuth('La sesión venció antes de revisar las fotos.');
++   else if(r.status===403&&d.error==='Verifica el celular y acepta la revisión de fotos antes de continuar.')repairShow('No se pudo validar la sesión para revisar las fotos. Tus datos y fotos se conservan; puedes verificar de nuevo el celular.',{auth:true});
++   else mostrarErrorRegistro(d.error||'No pudimos guardar la revisión. Tus fotos se conservan; vuelve a intentarlo.');
++  }
+  }catch{mostrarErrorRegistro('No se pudo completar la revisión. Conservamos tus datos y fotos. Intenta nuevamente.');}
+  finally{qualityBusy=false;lockPhotoSteps();evaluarSubmit();}
+ }
+@@ -362,11 +367,20 @@ document.getElementById('autPhotoQuality').addEventListener('change',evaluarSubm
+ async function preparePhotoQuality(){
+  if(documentosSession&&qualityPhotos&&!recoveryMode)return true;
+  if(!document.getElementById('autPhotoQuality').checked){mostrarErrorRegistro('Acepta la revisión de fotos para continuar.');return false;}
++ if(repairSessionExpired(registroSession)){repairRequireAuth('La sesión venció antes de revisar las fotos.');return false;}
+  if(photoQualityReceipt&&qualityPhotos&&qualityExpiresAt>Date.now()+10000)return true;
+- const prepared=await preparedQualityPhotos();if((!recoveryMode&&Object.keys(prepared).length!==3)||(recoveryMode&&['frente','reverso','selfie'].some(t=>!uploadedTypes.has(t)&&!prepared[t]))){mostrarErrorRegistro('Completa las tres fotos.');return false;}
+- const response=await fetch(API+'/api/registro/nova-calidad-fotos',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken,name:document.getElementById('nombreCompleto').value.trim(),consent:true,consent_version:'nova-photo-quality-v3',photos:prepared,...recoveryMode?{partial:true,request_receipt:true}:{}})});
+- const result=await response.json();renderQuality(result);
+- if(!response.ok||result.ok!==true){mostrarErrorRegistro(result.error||'Corrige únicamente las fotos señaladas para continuar.');return false;}
++ const context=repairQualityContext(),prepared=await preparedQualityPhotos();
++ if(!repairQualityCurrent(context)){mostrarErrorRegistro('La foto o los datos cambiaron durante la revisión. Conservamos la selección actual; vuelve a continuar.');return false;}
++ if((!recoveryMode&&Object.keys(prepared).length!==3)||(recoveryMode&&['frente','reverso','selfie'].some(t=>!uploadedTypes.has(t)&&!prepared[t]))){mostrarErrorRegistro('Completa las tres fotos.');return false;}
++ const response=await fetch(API+'/api/registro/nova-calidad-fotos',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(60000),body:JSON.stringify({registro_session:context.session,enlace_token:enlaceToken,name:context.name,consent:true,consent_version:'nova-photo-quality-v3',photos:prepared,...recoveryMode?{partial:true,request_receipt:true}:{}})});
++ const result=await response.json();
++ if(!repairQualityCurrent(context)){mostrarErrorRegistro('La foto o los datos cambiaron durante la revisión. Conservamos la selección actual; vuelve a continuar.');return false;}
++ renderQuality(result);
++ if(!response.ok||result.ok!==true){
++  if((response.status===400&&result.error==='Sesión de registro inválida o vencida')||(response.status===403&&repairSessionExpired(context.session)))repairRequireAuth('La sesión venció antes de revisar las fotos.');
++  else if(response.status===403&&result.error==='Verifica el celular y acepta la revisión de fotos antes de continuar.')repairShow('No se pudo validar la sesión para revisar las fotos. Tus datos y fotos se conservan; puedes verificar de nuevo el celular.',{auth:true});
++  else mostrarErrorRegistro(result.error||'Corrige únicamente las fotos señaladas para continuar.');return false;
++ }
+  if(typeof result.receipt!=='string'||!Number.isFinite(result.expiresAt)||result.expiresAt<=Date.now()+10000)throw Error('Invalid quality receipt');
+  if(recoveryMode){if(typeof result.documentos_session!=='string')throw Error('missing_resume_session');documentosSession=result.documentos_session;}
+  photoQualityReceipt=result.receipt;qualityPhotos=prepared;qualityExpiresAt=result.expiresAt;return true;
+@@ -575,6 +589,121 @@ const codeRow = document.getElementById('codeRow');
+ const btnVerificarOtp = document.getElementById('btnVerificarOtp');
+ const codigoOtpInput = document.getElementById('codigoOtp');
+ 
++
++// BEGIN NOVA FLOW REPAIR 20261030.1
++let repairVerificationBusy=false,repairNeedsAuth=false,repairRegistrationUncertain=false;
++let repairPayloadMayRenew=false,repairRegistrationBlocked=false,repairPayloadIdentity=null;
++let repairRecoveryPanel=null,repairRecoveryInfo=null,repairRecoverySave=null,repairResumeBusy=false;
++let repairRecoveryIdentity=null,repairHadStoredRegistration=false;
++const repairClockSkewSessions=new Set();
++const repairNotice=document.createElement('section');repairNotice.hidden=true;repairNotice.setAttribute('role','status');
++const repairMessage=document.createElement('p'),repairAuth=document.createElement('button'),repairCheck=document.createElement('button');
++repairAuth.type='button';repairAuth.textContent='Verificar celular sin perder mis fotos';
++repairCheck.type='button';repairCheck.textContent='Comprobar registro';
++repairNotice.className='ref-block';repairMessage.style.cssText='margin:0 0 8px;font-size:14px';
++for(const button of [repairAuth,repairCheck]){button.className='btn-secondary';button.style.cssText='min-height:44px;width:100%;padding:12px 16px;white-space:normal;margin-top:8px';}
++repairNotice.append(repairMessage,repairAuth,repairCheck);form.before(repairNotice);
++function repairShow(message,{auth=false,check=false}={}){
++ repairNotice.hidden=false;repairMessage.textContent=message;repairAuth.hidden=!auth;repairCheck.hidden=!check;
++}
++function repairClearNotice(){repairNotice.hidden=true;repairAuth.hidden=true;repairCheck.hidden=true;}
++function repairSameIdentity(identity){return identity.cedula===document.getElementById('cedula').value&&identity.celular===celularInput.value;}
++// This untrusted read can only request reauthentication; the server still verifies the signature and context.
++function repairSessionExp(session){try{const data=JSON.parse(atob(String(session).split('.')[0].replace(/-/g,'+').replace(/_/g,'/')));return Number.isFinite(data.exp)?data.exp:null;}catch{return null;}}
++function repairMarkFreshSession(session){const exp=repairSessionExp(session);if(exp!==null&&exp<=Date.now())repairClockSkewSessions.add(session);}
++function repairSessionExpired(session){const exp=repairSessionExp(session);return !repairClockSkewSessions.has(session)&&exp!==null&&exp<=Date.now();}
++function repairQualityContext(){return {generation:qualityGeneration,session:registroSession,name:document.getElementById('nombreCompleto').value.trim(),consent:document.getElementById('autPhotoQuality').checked,files:Object.fromEntries(Object.entries(qualityIds).map(([type,id])=>[type,document.getElementById(id).files[0]]))};}
++function repairQualityCurrent(context){return context.generation===qualityGeneration&&context.session===registroSession&&context.name===document.getElementById('nombreCompleto').value.trim()&&context.consent===document.getElementById('autPhotoQuality').checked&&Object.entries(qualityIds).every(([type,id])=>context.files[type]===document.getElementById(id).files[0]);}
++function repairRequireAuth(message){
++ if(!repairNeedsAuth){
++  repairHadStoredRegistration=repairHadStoredRegistration||!!documentosSession||recoveryMode||uploadedTypes.size>0;
++  repairRecoveryIdentity=repairPayloadIdentity||{cedula:cedulaVerificada||document.getElementById('cedula').value,celular:celularVerificado||celularInput.value};
++  repairNeedsAuth=true;documentosSession=null;photoQualityReceipt=null;qualityExpiresAt=0;qualityGeneration++;invalidarSesionOtp();
++  document.getElementById('cedula').readOnly=true;celularInput.readOnly=true;
++ }
++ repairShow(message+' Tus datos y fotos se conservan en esta página.',{auth:true});lockPhotoSteps();evaluarSubmit();
++}
++function repairOpenAuth(){
++ if(repairRecoveryIdentity){document.getElementById('cedula').value=repairRecoveryIdentity.cedula;celularInput.value=repairRecoveryIdentity.celular;}
++ if(repairRecoveryPanel)repairRecoveryPanel.hidden=true;
++ document.getElementById('successScreen').classList.remove('show');form.classList.remove('form-hidden');
++ repairShow('Verifica nuevamente el mismo celular. Después recuperaremos la solicitud guardada sin repetir sus datos ni sus fotos.',{check:!!registroSession});
++ evaluarEnvioOtp();evaluarSubmit();celularInput.focus();
++}
++repairAuth.addEventListener('click',()=>{if(!repairNeedsAuth)repairRequireAuth('Necesitamos verificar de nuevo el celular para continuar.');repairOpenAuth();});
++repairCheck.addEventListener('click',async()=>{
++ if(repairResumeBusy)return;
++ if(!registroSession){repairRequireAuth('La sesión venció. Necesitamos verificar de nuevo el celular.');return;}
++ repairResumeBusy=true;repairCheck.disabled=true;
++ try{await repairResumeRegistration();}catch{repairShow('No pudimos comprobar el resultado. Se conserva el intento original; no crees otra solicitud.',{check:true,auth:repairClockSkewSessions.has(registroSession)});}
++ finally{repairResumeBusy=false;repairCheck.disabled=false;evaluarSubmit();}
++});
++function repairShowPendingPhotos(existing){
++ repairMarkFreshSession(existing.quality_session);
++ recoveryMode=true;registroSession=existing.quality_session;documentosSession=null;photoQualityReceipt=null;qualityExpiresAt=0;qualityGeneration++;
++ document.getElementById('nombreCompleto').value=existing.name;uploadedTypes.clear();
++ for(const type of existing.savedTypes)uploadedTypes.add(type);
++ if(!repairRecoveryPanel){
++  repairRecoveryPanel=document.createElement('section');repairRecoveryPanel.className='wrap';
++  const title=document.createElement('h2');title.textContent='Retomar fotos pendientes';repairRecoveryPanel.append(title);
++  repairRecoveryInfo=document.createElement('p');repairRecoveryPanel.append(repairRecoveryInfo);
++  repairRecoveryPanel.append(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
++  for(const id of Object.values(qualityIds))repairRecoveryPanel.append(document.getElementById(id).closest('.field'));
++  repairRecoverySave=document.createElement('button');repairRecoverySave.type='button';repairRecoverySave.textContent='Guardar fotos pendientes';
++  repairRecoverySave.className='btn-submit';repairRecoverySave.style.minHeight='44px';
++  repairRecoverySave.addEventListener('click',async()=>{
++   if(qualityBusy||subidaFotosEnCurso||repairNeedsAuth)return;
++   const consent=document.getElementById('autPhotoQuality'),previousConsent=consent.disabled;
++   qualityBusy=true;consent.disabled=true;repairRecoverySave.disabled=true;lockPhotoSteps();evaluarSubmit();
++   try{
++    if(!await preparePhotoQuality())return;
++    repairRecoveryPanel.hidden=true;document.getElementById('successScreen').classList.add('show');await manejarFotosPostRegistro();
++   }catch{repairRecoveryInfo.textContent='No se completó la revisión. Tus datos y fotos se conservan; vuelve a intentarlo.';}
++   finally{qualityBusy=false;consent.disabled=previousConsent;repairRecoverySave.disabled=false;lockPhotoSteps();evaluarSubmit();}
++  });
++  repairRecoveryPanel.append(repairRecoverySave);form.after(repairRecoveryPanel);
++ }
++ repairRecoveryInfo.textContent='Conservamos tus datos y las fotos guardadas. Continúa únicamente con las pendientes.';
++ for(const [type,id]of Object.entries(qualityIds)){
++  const saved=uploadedTypes.has(type);document.getElementById(id).closest('.field').hidden=saved;
++  if(saved)qualityStates[type]={status:'auto_approved'};
++ }
++ form.classList.add('form-hidden');repairRecoveryPanel.hidden=false;document.getElementById('successScreen').classList.remove('show');lockPhotoSteps();
++}
++async function repairResumeRegistration(){
++ const session=registroSession,identity={cedula:document.getElementById('cedula').value,celular:celularInput.value};
++ if(repairRecoveryIdentity&&!repairSameIdentity(repairRecoveryIdentity))throw Error('recovery_identity_changed');
++ if(repairSessionExpired(session)){repairRequireAuth('La sesión venció antes de comprobar el registro.');return;}
++ const response=await fetch(API+'/api/registro/nova-retomar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({registro_session:session,enlace_token:enlaceToken}),signal:AbortSignal.timeout(15000)});
++ const existing=await response.json();
++ if(session!==registroSession||!repairSameIdentity(identity))throw Error('resume_context_changed');
++ if(!response.ok){
++  if((response.status===400&&existing.error==='Sesión de registro inválida o vencida')||repairSessionExpired(session)){repairRequireAuth('La sesión venció. Necesitamos verificar de nuevo el celular.');return;}
++  throw Error('resume_unavailable');
++ }
++ if(existing.ok!==true||typeof existing.found!=='boolean')throw Error('resume_invalid_response');
++ if(existing.found){
++  repairNeedsAuth=false;repairRegistrationUncertain=false;repairRegistrationBlocked=false;repairPayloadMayRenew=false;repairClearNotice();
++  repairRecoveryIdentity=null;document.getElementById('cedula').readOnly=false;celularInput.readOnly=false;
++  if(existing.incomplete){repairShowPendingPhotos(existing);return;}
++  if(typeof existing.documentos_session!=='string')throw Error('resume_session_missing');
++  documentosSession=existing.documentos_session;for(const type of Object.keys(qualityIds))uploadedTypes.add(type);
++  if(repairRecoveryPanel)repairRecoveryPanel.hidden=true;form.classList.add('form-hidden');document.getElementById('successScreen').classList.add('show');await consultarRecepcion();return;
++ }
++ if(submittedPayload&&submittedPayload.registro_session!==registroSession&&!repairPayloadMayRenew)repairRegistrationUncertain=true;
++ if(repairRegistrationUncertain){
++  repairRegistrationBlocked=!!submittedPayload&&submittedPayload.registro_session!==registroSession;
++  repairShow('Todavía no se confirmó el resultado del intento original. Conservamos tus datos y fotos. Comprobar de nuevo no crea otra solicitud.',{check:true});return;
++ }
++ if(repairHadStoredRegistration){repairRegistrationBlocked=true;repairShow('No pudimos recuperar todavía la solicitud guardada. Tus datos y fotos se conservan; comprueba de nuevo sin crear otra solicitud.',{check:true});return;}
++ if(repairPayloadMayRenew&&submittedPayload){
++  if(!repairPayloadIdentity||!repairSameIdentity(repairPayloadIdentity))throw Error('registration_identity_changed');
++  submittedPayload.registro_session=registroSession;repairPayloadMayRenew=false;photoQualityReceipt=null;qualityExpiresAt=0;
++ }
++ repairNeedsAuth=false;repairRegistrationBlocked=false;repairRecoveryIdentity=null;document.getElementById('cedula').readOnly=false;celularInput.readOnly=false;repairClearNotice();queuePhotoReview();
++}
++// END NOVA FLOW REPAIR 20261030.1
++
+ // BEGIN NOVA SMS UI 20261030.1 — managed only when opciones.smsEnabled === true.
+ const btnEnviarOtpSms = document.getElementById('btnEnviarOtpSms');
+ const btnConsultarOtp = document.getElementById('btnConsultarOtp');
+@@ -604,7 +733,7 @@ function otpMismaIdentidad() {
+     otpManagedAttempt.cedula === document.getElementById('cedula').value;
+ }
+ function otpGestionadoBloqueado() {
+-  if (otpManagedSending || otpManagedChecking || otpManagedVerifying || otpVerificado) return true;
++  if (repairVerificationBusy || otpManagedSending || otpManagedChecking || otpManagedVerifying || otpVerificado) return true;
+   const a = otpManagedAttempt;
+   if (!a) return false;
+   if (['sending', 'reserved', 'uncertain', 'failed', 'verified'].includes(a.state)) return true;
+@@ -614,7 +743,7 @@ function otpGestionadoConsultable() {
+   return !!otpManagedAttempt && ['reserved', 'uncertain', 'failed'].includes(otpManagedAttempt.state);
+ }
+ function puedeVerificarOtpGestionado() {
+-  return !otpManagedSending && !otpManagedChecking && !otpManagedVerifying && !otpVerificado &&
++  return !repairVerificationBusy && !otpManagedSending && !otpManagedChecking && !otpManagedVerifying && !otpVerificado &&
+     otpManagedAttempt?.state === 'accepted' && otpManagedAttempt.lockUntil > Date.now() && otpMismaIdentidad();
+ }
+ function renderOtpGestionado() {
+@@ -800,6 +929,10 @@ function mostrarErrorOtp(mensaje) {
+ }
+ 
+ function invalidarSesionOtp() {
++  photoQualityReceipt=null;qualityExpiresAt=0;qualityGeneration++;
++  if(otpManagedAttempt?.state==='verified'){
++    otpManagedAttempt=null;if(otpManagedTimer){clearTimeout(otpManagedTimer);otpManagedTimer=null;}
++  }
+   otpVerificado = false;
+   celularVerificado = null;
+   cedulaVerificada = null;
+@@ -809,8 +942,8 @@ function invalidarSesionOtp() {
+ }
+ 
+ function evaluarEnvioOtp() {
+-  if (smsOtpEnabled) { renderOtpGestionado(); return; }
+-  btnEnviarOtp.disabled =
++  if (smsOtpEnabled) { renderOtpGestionado(); if(repairVerificationBusy)btnEnviarOtp.disabled=true; return; }
++  btnEnviarOtp.disabled = repairVerificationBusy ||
+     !contextoValido ||
+     !celularValido(celularInput.value) ||
+     !cedulaValida(document.getElementById('cedula').value) ||
+@@ -842,6 +975,7 @@ document.getElementById('cedula').addEventListener('input', (e) => {
+ });
+ 
+ btnEnviarOtp.addEventListener('click', async () => {
++  if(repairVerificationBusy)return;
+   if (smsOtpEnabled) return solicitarOtpGestionado('whatsapp');
+   otpLegacyStarted = true;
+   const celular = celularInput.value;
+@@ -870,7 +1004,16 @@ btnEnviarOtp.addEventListener('click', async () => {
+       }),
+     });
+     const data = await res.json().catch(() => ({}));
+-    if (res.ok && data.ok === true) {
++    if(res.status===202&&data.pending===true){
++      otpStatus.className='otp-status pending';
++      if(data.state==='accepted'){
++        otpStatus.textContent='Ya hay un código solicitado. Si lo recibiste, ingrésalo; si no llega, espera antes de solicitar otro.';codeRow.classList.add('show');
++      }else{
++        otpStatus.textContent='El envío del código aún no está confirmado. Conservamos tus datos y fotos. Espera antes de solicitar otro.';codeRow.classList.remove('show');
++      }
++    }else if(res.status===409&&data.reason==='active_challenge'){
++      mostrarErrorOtp('Ya hay una verificación en curso. Espera a que venza antes de solicitar otro código. Tus datos y fotos se conservan.');codeRow.classList.remove('show');
++    }else if (res.ok && data.ok === true) {
+       otpStatus.className = 'otp-status pending';
+       otpStatus.textContent = 'Código enviado por WhatsApp. Puede tardar unos segundos.';
+       codeRow.classList.add('show');
+@@ -899,79 +1042,42 @@ codigoOtpInput.addEventListener('input', (e) => {
+ });
+ 
+ btnVerificarOtp.addEventListener('click', async () => {
+-  const celular = celularInput.value;
+-  const codigo = codigoOtpInput.value;
+-  if (codigo.length !== 6) return;
+-  const otpVerifyManaged = smsOtpEnabled;
+-  if (otpVerifyManaged && !puedeVerificarOtpGestionado()) return;
+-  const releaseOtpIdentity = otpVerifyManaged ? bloquearIdentidadOtpGestionado() : () => {};
+-  if (otpVerifyManaged) { otpManagedVerifying = true; renderOtpGestionado(); }
+-  btnVerificarOtp.disabled = true;
+-  try {
+-    const res = await fetch(`${API}/api/otp/verificar`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({
+-        enlace_token: enlaceToken,
+-        cedula: document.getElementById('cedula').value,
+-        celular: celular,
+-        codigo
+-      }),
+-    });
+-    const data = await res.json().catch(() => ({}));
+-    if (
+-      res.ok &&
+-      data.ok === true &&
+-      typeof data.registro_session === 'string'
+-    ) {
+-      registroSession = data.registro_session;
+-      if (otpVerifyManaged && otpManagedAttempt) otpManagedAttempt.state = 'verified';
+-      otpVerificado = true;
+-      queuePhotoReview();
+-      celularVerificado = celular;
+-      cedulaVerificada = document.getElementById('cedula').value;
+-      otpStatus.className = 'otp-status ok';
+-      otpStatus.textContent = '✓ Celular verificado';
+-      codeRow.classList.remove('show');
+-      const existingResponse=await fetch(API+'/api/registro/nova-retomar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({registro_session:registroSession,enlace_token:enlaceToken}),signal:AbortSignal.timeout(15000)});
+-      const existing=await existingResponse.json();
+-      if(!existingResponse.ok)throw Error('resume_unavailable');
+-      if(existing.found&&existing.incomplete){
+-       recoveryMode=true;registroSession=existing.quality_session;document.getElementById('nombreCompleto').value=existing.name;form.classList.add('form-hidden');
+-       const panel=document.createElement('section');panel.className='wrap';const title=document.createElement('h2');title.textContent='Retomar fotos pendientes';panel.append(title);
+-       const info=document.createElement('p');info.textContent='Conservamos tus datos y las fotos guardadas. Adjunta únicamente las pendientes.';panel.append(info);
+-       panel.append(document.getElementById('autPhotoQuality').closest('.checkbox-row'));
+-       for(const [type,id]of Object.entries(qualityIds)){
+-        if(existing.savedTypes.includes(type)){uploadedTypes.add(type);qualityStates[type]={status:'auto_approved'};}
+-        else {delete qualityStates[type];panel.append(document.getElementById(id).closest('.field'));}
+-       }
+-       const save=document.createElement('button');save.type='button';save.textContent='Guardar fotos pendientes';save.onclick=async()=>{
+-        if(qualityBusy||subidaFotosEnCurso)return;save.disabled=true;
+-        try{if(!await preparePhotoQuality())return;panel.hidden=true;document.getElementById('successScreen').classList.add('show');await manejarFotosPostRegistro();}catch{info.textContent='No se completó la revisión. Tus datos se conservan; vuelve a intentarlo.';}finally{save.disabled=false;}
+-       };panel.append(save);form.after(panel);lockPhotoSteps();return;
+-      }
+-      if(existing.found&&existing.documentos_session){documentosSession=existing.documentos_session;for(const t of ['frente','reverso','selfie'])uploadedTypes.add(t);form.classList.add('form-hidden');document.getElementById('successScreen').classList.add('show');await consultarRecepcion();}
+-    } else if (res.status === 404) {
+-      mostrarBloqueoEnlace();
+-    } else if (res.status === 429) {
+-      mostrarErrorOtp(
+-        'Se agotaron los intentos de este código. Solicita uno nuevo.',
+-      );
+-    } else {
+-      mostrarErrorOtp('Código incorrecto, vencido o ya utilizado.');
+-    }
+-  } catch {
+-    mostrarErrorOtp('Error de conexión al verificar. Intenta de nuevo.');
+-  } finally {
+-    btnVerificarOtp.disabled = false;
+-    if (otpVerifyManaged) { otpManagedVerifying = false; releaseOtpIdentity(); renderOtpGestionado(); }
+-    evaluarSubmit();
++  const celular=celularInput.value,cedula=document.getElementById('cedula').value,codigo=codigoOtpInput.value;
++  if(codigo.length!==6||repairVerificationBusy)return;
++  const otpVerifyManaged=smsOtpEnabled;
++  if(otpVerifyManaged&&!puedeVerificarOtpGestionado())return;
++  const releaseOtpIdentity=bloquearIdentidadOtpGestionado();repairVerificationBusy=true;
++  if(otpVerifyManaged){otpManagedVerifying=true;renderOtpGestionado();}
++  btnVerificarOtp.disabled=true;evaluarEnvioOtp();
++  try{
++   const res=await fetch(API+'/api/otp/verificar',{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),body:JSON.stringify({enlace_token:enlaceToken,cedula,celular,codigo})});
++   const data=await res.json().catch(()=>({}));
++   if(!repairSameIdentity({cedula,celular})){
++    mostrarErrorOtp('La cédula o el celular cambiaron durante la verificación. Conservamos tus datos y fotos; verifica la identidad actual.');return;
++   }
++   if(res.ok&&data.ok===true&&typeof data.registro_session==='string'){
++    registroSession=data.registro_session;repairMarkFreshSession(registroSession);
++    if(otpVerifyManaged&&otpManagedAttempt)otpManagedAttempt.state='verified';
++    otpVerificado=true;celularVerificado=celular;cedulaVerificada=cedula;
++    otpStatus.className='otp-status ok';otpStatus.textContent='✓ Celular verificado';codeRow.classList.remove('show');
++    // Lookup first: an existing registration resumes without another registration or automatic OCR.
++    try{await repairResumeRegistration();}
++    catch{repairRegistrationBlocked=true;repairShow('El celular se verificó, pero no pudimos comprobar si la solicitud ya está guardada. Conservamos tus datos y fotos; pulsa Comprobar registro.',{check:true,auth:repairClockSkewSessions.has(registroSession)});}
++   }else if(res.status===404)mostrarBloqueoEnlace();
++   else if(res.status===429)mostrarErrorOtp('Se agotaron los intentos de este código. Solicita uno nuevo.');
++   else mostrarErrorOtp('Código incorrecto, vencido o ya utilizado.');
++  }catch{mostrarErrorOtp('Error de conexión al verificar. Tus datos y fotos se conservan; intenta de nuevo.');}
++  finally{
++   repairVerificationBusy=false;releaseOtpIdentity();btnVerificarOtp.disabled=false;
++   if(otpVerifyManaged){otpManagedVerifying=false;renderOtpGestionado();}
++   evaluarEnvioOtp();evaluarSubmit();
+   }
+ });
+ 
+ // ─── Habilitar botón final ──────────────────────────────────────────────
+ function evaluarSubmit() {
+   const ok =
++    !repairNeedsAuth && !repairRegistrationBlocked && !repairVerificationBusy &&
+     contextoValido &&
+     !!captadorSelect.value &&
+     cedulaValida(document.getElementById('cedula').value) &&
+@@ -1061,7 +1167,11 @@ async function subirFoto(file, tipo) {
+         foto_base64: base64
+       }),
+     });
+-    if (res.ok) uploadedTypes.add(tipo);
++    if(res.ok)uploadedTypes.add(tipo);
++    else if(res.status===400){
++      const data=await res.json().catch(()=>({}));
++      if(data.error==='Sesión de documentos inválida o vencida')repairRequireAuth('La sesión para subir fotos venció.');
++    }
+     return res.ok;
+   } catch {
+     return false;
+@@ -1091,7 +1201,7 @@ async function manejarFotosPostRegistro() {
+   if (ok) {
+     document.getElementById('fotoWarning').style.display = 'none';
+     await consultarRecepcion();
+-  } else {
++  } else if(!repairNeedsAuth) {
+     mostrarErrorDocumento(
+       'Tu registro está guardado. Faltan por confirmar: '+['frente','reverso','selfie'].filter(t=>!uploadedTypes.has(t)).map(t=>({frente:'frente de la cédula',reverso:'reverso de la cédula',selfie:'selfie'})[t]).join(', ')+'. Pulsa Reintentar subir fotos; solo se reintentarán las pendientes.',
+     );
+@@ -1101,6 +1211,7 @@ async function manejarFotosPostRegistro() {
+ document.getElementById('btnReintentarFotos').addEventListener('click', async (e) => {
+   const btn = e.target;
+   if (subidaFotosEnCurso) return;
++  if(repairNeedsAuth){repairOpenAuth();return;}
+   btn.disabled = true;
+   btn.textContent = 'Subiendo...';
+   const ok = await subirTresFotos();
+@@ -1109,7 +1220,7 @@ document.getElementById('btnReintentarFotos').addEventListener('click', async (e
+   if (ok) {
+     document.getElementById('fotoWarning').style.display = 'none';
+     await consultarRecepcion();
+-  } else {
++  } else if(!repairNeedsAuth) {
+     mostrarErrorDocumento(
+       'Las fotos siguen pendientes. Revisa tu conexión antes de reintentar.',
+     );
+@@ -1126,11 +1237,12 @@ function mostrarErrorRegistro(
+ 
+ form.addEventListener('submit', async (e) => {
+   e.preventDefault();
+-  if (btnSubmit.disabled || registroEnCurso || qualityBusy) return;
++  if (btnSubmit.disabled || registroEnCurso || qualityBusy || repairNeedsAuth || repairRegistrationBlocked) return;
++  if(submittedPayload&&submittedPayload.registro_session!==registroSession){repairRegistrationUncertain=true;repairRegistrationBlocked=true;repairShow('Se conserva el intento original sin confirmar. Comprueba su resultado antes de continuar.',{check:true});evaluarSubmit();return;}
+   qualityBusy=true;btnSubmit.disabled=true;btnSubmit.textContent='Revisando fotos…';
+   const controls=[...form.querySelectorAll('input,select,button')],previous=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);
+   let ready=false;
+-  try{ready=await preparePhotoQuality();}catch{mostrarErrorRegistro('No se pudo completar la revisión. Tus datos se conservan aquí; intenta nuevamente.');}
++  try{ready=repairRegistrationUncertain&&submittedPayload?true:await preparePhotoQuality();}catch{mostrarErrorRegistro('No se pudo completar la revisión. Tus datos se conservan aquí; intenta nuevamente.');}
+   finally{controls.forEach((c,i)=>c.disabled=previous[i]);qualityBusy=false;lockPhotoSteps();btnSubmit.textContent='Enviar registro';evaluarSubmit();}
+   if(!ready)return;
+   registroEnCurso = true;
+@@ -1157,7 +1269,8 @@ form.addEventListener('submit', async (e) => {
+     autorizacion_version: AUT_VERSION
+   };
+ 
+-  payload.photo_quality_receipt=photoQualityReceipt;
++  if(!repairRegistrationUncertain)payload.photo_quality_receipt=photoQualityReceipt;
++  if(!submittedPayload)repairPayloadIdentity={cedula:cedulaVerificada,celular:celularVerificado};
+   submittedPayload = payload;
+   try {
+     const res = await fetch(`${API}/api/registro`, {
+@@ -1172,22 +1285,30 @@ form.addEventListener('submit', async (e) => {
+       data.ok === true &&
+       typeof data.documentos_session === 'string'
+     ) {
++      repairRegistrationUncertain=false;repairRegistrationBlocked=false;repairPayloadMayRenew=false;repairClearNotice();
+       documentosSession = data.documentos_session;
+       form.classList.add('form-hidden');
+       document.getElementById('successScreen').classList.add('show');
+       await manejarFotosPostRegistro();
++    } else if(res.status===400&&data.error==='Sesión de registro inválida o vencida'){
++      if(!repairRegistrationUncertain)repairPayloadMayRenew=true;
++      else repairRegistrationBlocked=true;
++      repairRequireAuth(repairRegistrationUncertain?'El resultado del intento original sigue sin confirmar y su sesión venció.':'La sesión venció antes de guardar el registro.');
+     } else if (res.status === 400) {
+       mostrarErrorRegistro(
+         'No se confirmó el registro. Revisa los datos; no solicites otro código mientras verificamos esta solicitud.',
+       );
+     } else if (res.status === 422) {
+-      photoQualityReceipt=null;qualityPhotos=null;submittedPayload=null;mostrarErrorRegistro('La revisión de fotos venció o cambió. Pulsa Enviar registro para revisarlas nuevamente.');
++      if(repairRegistrationUncertain){repairRegistrationBlocked=true;repairShow('El resultado del intento original sigue sin confirmar. Compruébalo antes de volver a revisar las fotos o crear una solicitud.',{check:true});}
++      else{photoQualityReceipt=null;qualityPhotos=null;submittedPayload=null;mostrarErrorRegistro('La revisión de fotos venció o cambió. Pulsa Enviar registro para revisarlas nuevamente.');}
+     } else if (res.status === 409) {
+       mostrarErrorRegistro('Esta solicitud ya existe con otros datos. No la vuelvas a crear: solicita revisión.');
+     } else {
+-      mostrarErrorRegistro('No se confirmó el envío. Reintenta sin cambiar los datos ni pedir otro código.');
++      repairRegistrationUncertain=true;repairShow('No se confirmó el envío. Conservamos el intento original y las fotos. Comprueba su resultado o reintenta el mismo envío sin pedir otro código.',{check:true});
++      mostrarErrorRegistro('No se confirmó el envío. Reintenta el mismo intento sin cambiar los datos ni pedir otro código.');
+     }
+   } catch {
++    repairRegistrationUncertain=true;repairShow('No pudimos confirmar el resultado. Conservamos el intento original y las fotos. Comprueba el registro antes de crear otro.',{check:true});
+     mostrarErrorRegistro('No se pudo confirmar el envío. Tus datos y fotos siguen aquí. Reintenta sin cambiar los datos ni solicitar otro código; no crees una solicitud nueva.');
+   } finally {
+     if (!documentosSession) {
+@@ -1205,7 +1326,10 @@ async function consultarRecepcion() {
+   try {
+     const r = await fetch(API+'/api/registro/nova-estado',{signal:AbortSignal.timeout(15000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documentos_session:documentosSession})});
+     const data = await r.json();
+-    if (!r.ok || data.ok!==true) throw Error('unavailable');
++    if(!r.ok||data.ok!==true){
++      if(r.status===400&&data.error==='Sesión de documentos inválida o vencida'){repairRequireAuth('La sesión de consulta venció.');return;}
++      throw Error('unavailable');
++    }
+     const messages={received_by_nova:'NOVA recibió tu solicitud completa. Está pendiente de revisión; no es una aprobación de crédito.',pending_sync:'Documentos confirmados. La entrega a NOVA está en trámite; consulta de nuevo en unos minutos. No envíes otra solicitud.',pending_documents:'Tu solicitud está guardada, pero faltan fotografías por confirmar. Reintenta solo las fotos pendientes.',review_required:'Tu solicitud necesita revisión del equipo. No crees otra solicitud.',legacy_authorization_required:'Tu registro y fotografías están guardados con el formulario anterior. Falta completar la autorización específica para NOVA; solicita ayuda a tu asesor. No vuelvas a registrar al cliente.'};
+     label.textContent=messages[data.nova_status]||'La solicitud está guardada; aún no podemos confirmar su recepción en NOVA.';
+     if(data.nova_status==='received_by_nova')await cargarInvitaciones();

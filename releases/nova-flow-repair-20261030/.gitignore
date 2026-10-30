@@ -1,0 +1,5 @@
+deploy/
+review/base-clientes.mjs
+review/candidate-clientes.mjs
+clientes/otp-candidate.mjs
+.wrangler/

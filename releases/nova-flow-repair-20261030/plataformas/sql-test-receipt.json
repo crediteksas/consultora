@@ -1,0 +1,17 @@
+{
+  "mode": "isolated in-memory PGlite; zero production mutation or network",
+  "migrationSha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1",
+  "passed": 10,
+  "tests": [
+    "approve revoked blocked",
+    "request queries revoked blocked",
+    "confirm delivery revoked blocked",
+    "source revocation blocked",
+    "expired query TTL does not revoke general data authorization",
+    "cached approval invalidated; evidence retained",
+    "helper invoker, service only, boolean output",
+    "predecessor drift rejected",
+    "exact rollback bodies, existing history retained",
+    "unchanged manual approval retained; revocation/restoration audited without blind resurrection"
+  ]
+}

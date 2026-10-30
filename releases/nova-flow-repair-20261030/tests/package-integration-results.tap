@@ -1,0 +1,102 @@
+TAP version 13
+# (node:40610) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: package artifacts and live predecessors match the frozen manifest and exact reviewed hashes
+ok 1 - package artifacts and live predecessors match the frozen manifest and exact reviewed hashes
+  ---
+  duration_ms: 18.9915
+  type: 'test'
+  ...
+# Subtest: complete CLIENTES and NOVA modules evaluate with identical public exports to their inspected predecessors
+ok 2 - complete CLIENTES and NOVA modules evaluate with identical public exports to their inspected predecessors
+  ---
+  duration_ms: 96.092208
+  type: 'test'
+  ...
+# Subtest: compiled CLIENTES embeds exactly the standalone tested form and serves the existing recovery-link wrapper
+ok 3 - compiled CLIENTES embeds exactly the standalone tested form and serves the existing recovery-link wrapper
+  ---
+  duration_ms: 6.364833
+  type: 'test'
+  ...
+# Subtest: CLIENTES routing classification is unchanged outside the patch, including registration aliases and internal gates
+ok 4 - CLIENTES routing classification is unchanged outside the patch, including registration aliases and internal gates
+  ---
+  duration_ms: 0.170417
+  type: 'test'
+  ...
+# Subtest: CLIENTES preflight keeps allowed-origin behavior, exposes no data and performs no fetch
+ok 5 - CLIENTES preflight keeps allowed-origin behavior, exposes no data and performs no fetch
+  ---
+  duration_ms: 0.732083
+  type: 'test'
+  ...
+# Subtest: SMS disabled: options stays hidden/read-only and status cannot query a customer or reservation
+ok 6 - SMS disabled: options stays hidden/read-only and status cannot query a customer or reservation
+  ---
+  duration_ms: 1.008875
+  type: 'test'
+  ...
+# Subtest: SMS disabled: an explicit SMS request is rejected before provider/RPC and never falls back to WhatsApp
+ok 7 - SMS disabled: an explicit SMS request is rejected before provider/RPC and never falls back to WhatsApp
+  ---
+  duration_ms: 0.884834
+  type: 'test'
+  ...
+# Subtest: malformed/oversized OTP input is rejected without a reservation or any paid operation
+ok 8 - malformed/oversized OTP input is rejected without a reservation or any paid operation
+  ---
+  duration_ms: 1.712708
+  type: 'test'
+  ...
+# Subtest: legacy WhatsApp invalid-input behavior remains unchanged with the SMS flag off
+ok 9 - legacy WhatsApp invalid-input behavior remains unchanged with the SMS flag off
+  ---
+  duration_ms: 1.882292
+  type: 'test'
+  ...
+# Subtest: CLIENTES document, registration, context and admin routes expose no customer data without credentials
+ok 10 - CLIENTES document, registration, context and admin routes expose no customer data without credentials
+  ---
+  duration_ms: 2.154417
+  type: 'test'
+  ...
+# Subtest: NOVA public health responses preserve safe predecessor semantics without a database or provider
+ok 11 - NOVA public health responses preserve safe predecessor semantics without a database or provider
+  ---
+  duration_ms: 1.226375
+  type: 'test'
+  ...
+# Subtest: NOVA supervision and management reject unauthenticated access before auth/source/network queries
+ok 12 - NOVA supervision and management reject unauthenticated access before auth/source/network queries
+  ---
+  duration_ms: 0.862834
+  type: 'test'
+  ...
+# Subtest: NOVA allowed preflight returns an empty body; an untrusted origin cannot fetch supervision data
+ok 13 - NOVA allowed preflight returns an empty body; an untrusted origin cannot fetch supervision data
+  ---
+  duration_ms: 0.139
+  type: 'test'
+  ...
+# Subtest: NOVA retail portal serves only its public login shell, and case APIs require authentication
+ok 14 - NOVA retail portal serves only its public login shell, and case APIs require authentication
+  ---
+  duration_ms: 0.617625
+  type: 'test'
+  ...
+# Subtest: NOVA internal intake rejects missing credentials before parsing customer input or deferring messages
+ok 15 - NOVA internal intake rejects missing credentials before parsing customer input or deferring messages
+  ---
+  duration_ms: 0.268042
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 194.068792

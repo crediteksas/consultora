@@ -1,0 +1,38 @@
+Review this exact NOVA repair candidate, critically and independently. Oscar authorized sharing NOVA code/diff/tests with Claude and now asked to fix the complete audited flow. Read actual code and tests, not just receipts or this explanation. Give APPROVED FINAL only with no unresolved P1/P2; otherwise list precise blockers. Approval is code review, not deployment authority.
+
+Read-only review. No code edits, Git writes, push/deploy, database/provider calls, credential files, customer data, CAPTCHA solving or messages. MCP is disabled. All supplied fixture identities/codes/tokens are synthetic. Node tests have closed transports; receipts are allowed to be rewritten by tests. Do not run the native Docker scripts during this review: inspect their source and receipts honestly and state that limitation.
+
+Working directory is this release in the shared repository. Read ../../REGLAS.md and ../../CLAUDE.md. Baselines are actual published code, 30Oct2026 20:42UTC, rechecked unchanged at20:56. Settings/routes were reread around21:10. Source consent shape was verified live with aggregated SELECT only:8 sources, all8 authorized/unrevoked with explicit revoked=false. No live change has occurred during this repair.
+
+Exact final hashes:
+- deploy/clientes/index.mjs aa5da9f0b434477a1800d30e33010744ec1b1756581d6870ed6eaedbed42da1e
+- deploy/clientes/form.html 236a2de7058e8ecfad89d8b42438d90d247a907ca3c93bdaf994271476c03890
+- deploy/nova/index.mjs 3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355
+- ../../supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql 05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336
+- ../../supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql 25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1
+- aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql 6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207
+
+Start with README.md, manifest.json, review/{clientes,nova,form}.diff and transforms. The CLIENTES review diff omits ONLY the duplicated 85KB embedded form literal; the actual compiled module, external form and exact equality test remain available. Everything else is actual code. Do not consume entire megabytes of unchanged bundled libraries before reviewing the changed functions/context.
+
+Required review points:
+1. Photos: expired documents have an in-page OTP recovery with the same File nodes/objects and existing IDs. Save freezes selection and rejects stale A response after B selection. No proof of File persistence after closing/reloading; no weakened OCR, signature, attempts or consent rules. Local token expiry is only a hint and cannot grant access/extend TTL. Clock-skew and generic403 must not trigger false claims/renewal loops.
+2. Identity/session: verify response cannot mark DOM identityB verified with sessionA. Changing a terminal managed identity must permit new explicit verification without clearing an uncertain live attempt. Cached registration credentials may change only after definitive expired-session400 BEFORE any unknown outcome. Lost200/5xx keep original idempotent payload; found:false after uncertainty cannot authorize a new registration. Recovery found:true reuses existing IDs. No invented consent/session.
+3. Legacy WA duplicate protection: actual SQL guard serializes active hashed bound challenges across WA/SMS, including failed/unknown legacy boolean transport. Accepted same-context retry202 must expose code entry without a second reserve/send; uncertain keeps no delivery claim; other context409 reveals no identity. CAPTCHA/context first, same TTL/3phone-hour/60link-hour quota. A transport uncertainty holds the challenge until expiry; no automatic retry. SMS remains false and no budget reset.
+4. Reference callbacks: correct chronology, delivered/read precedence, attempts/recipient isolation and idempotent events. Uncertain transport remains active but does not resend old prompt, fabricate consent or extend expiry. New actual inbound may recover an abandoned reserved turn; replay and stale ack cannot advance/reopen wrong turn. Explicit rejection stays stopped. SQL precedes Worker because send_state gains uncertain.
+5. General consent: backend and SQL deny new approval/query/delivery/reference/photo access when master authorization is false or source revoked; history is retained. TTL of platform-query permission is separate. Shared row locks must serialize revocation and approval correctly. IMPORTANT final delta preserves the EXACT OLD fingerprint shape when authorization is active; only revoked=false-state adds a fingerprint field. Prevent invalidating previous manual decisions merely due deploying the fix. Reauthorization from revoked must force appropriate revalidation, not blindly restore an old manual approval.
+6. Requery: restore only missing inputs in same queued batch with current matching consent/context. CAS filters preserve status/batch and conflict checks; no new job/reservation/provider call, no enabling KrediYA. Revocation/expired platform permission prevents restoration. A failed/conflicting repair must not mislabel provider results.
+7. Package:31/44 bindings,4crons,5routes, exact current compatibility dates/DO tag and secret names preserved. No other Worker release, no global KORA permission gate modification. Private new RPC is service-role-only, invoker, empty search_path; no public grants. Three canonical migration files are project-separated and predecessor-pinned. Worker rollback first; do not narrow uncertain constraint over existing uncertain data. Verify no secret or real PII literals.
+
+Run only these local commands as useful; no install/network/Docker:
+- node verify-package.mjs
+- node --experimental-vm-modules --test tests/package-integration.test.mjs
+- node clientes/ui-tests/run-tests.mjs
+- NOVA_REPAIR_CLIENTES_CANDIDATE="$PWD/deploy/clientes/index.mjs" node --test clientes/otp-repair.test.mjs
+- NOVA_REPAIR_CANDIDATE="$PWD/deploy/nova/index.mjs" node --test referencias/repair.test.mjs plataformas/flow-repair.test.mjs
+- node --test plataformas/sql.test.mjs
+
+PGlite already exists, default fixture path /Users/oscarm/Creditek/baseline/consultora/node_modules/@electric-sql/pglite/dist/index.js. PGLITE_MODULE may point to that same installed package; never install. Imports outside current directory are only that public dependency and canonical migrations in this repository. Root performed real Chrome4 and native PG17.11 SQL10 plus7 races in two sessions; inspect browser/native receipts and sources but do not claim you reran them. Root full-bundle integration15, UI33, OTP20, reference22, platformWorker18 and platformSQL10 are the final expected counts; receipts must match final candidate hashes. Earlier intermediate hashes d0d6 were superseded by3dc0 when preserving unchanged fingerprints. The earlier conflicting-locator test had an invalid unprepared fixture; it now uses prepareRetailRequery and rejects TypeError. Audit the corrected test rather than trusting old receipts.
+
+Aló/PayJoy integrations are intentionally not declared fixed: current Aló official portal requires a fresh human Turnstile captchaToken absent from local reader; PayJoy valid=true without customer has no documented explanation; KrediYA disabled. No legitimate contract-backed autonomous provider fix was established, and no real queries were made. These are explicit operational limits, not grounds to invent debt-free observations.
+
+Return verdict, actionable P1/P2 with exact file/line/trigger, tests actually run and their counts, hash verification, and limits. Do not self-edit. If you find a real blocker we will correct it and request delta review before publication.

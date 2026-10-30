@@ -1,0 +1,39 @@
+{
+  "timestampUTC": "2026-10-30T21:09:57.833Z",
+  "engine": "PostgreSQL 17.11 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "sqlSha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1",
+  "tests": 4,
+  "pass": 4,
+  "fail": 0,
+  "results": [
+    {
+      "name": "customer revocation committed before approval prevents manual approval",
+      "passed": true,
+      "waitedMs": 808,
+      "approval": "CONSENT_REVOKED"
+    },
+    {
+      "name": "source revocation committed before approval prevents manual approval",
+      "passed": true,
+      "waitedMs": 814,
+      "approval": "CONSENT_REVOKED"
+    },
+    {
+      "name": "approval preceding customer revocation serializes and is invalidated on reconcile",
+      "passed": true,
+      "waitedMs": 815,
+      "priorApprovalRetainedInHistory": true,
+      "reconciledState": "review"
+    },
+    {
+      "name": "approval preceding source revocation serializes and is invalidated on reconcile",
+      "passed": true,
+      "waitedMs": 803,
+      "priorApprovalRetainedInHistory": true,
+      "reconciledState": "review"
+    }
+  ],
+  "connections": "Two simultaneous native PostgreSQL sessions per race; no TCP, ports or mounts",
+  "productionDDL": false,
+  "providerCalls": false
+}

@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: builder pins the actual baseline, deterministically transforms it and rejects drift/double application
+ok 1 - builder pins the actual baseline, deterministically transforms it and rejects drift/double application
+  ---
+  duration_ms: 2.665958
+  type: 'test'
+  ...
+# Subtest: PHOTO01: expired upload offers in-page verification, preserves File nodes, and resumes only missing photos
+ok 2 - PHOTO01: expired upload offers in-page verification, preserves File nodes, and resumes only missing photos
+  ---
+  duration_ms: 3.69275
+  type: 'test'
+  ...
+# Subtest: PHOTO01 negative: a stored registration not found after reauthentication cannot become a new registration
+ok 3 - PHOTO01 negative: a stored registration not found after reauthentication cannot become a new registration
+  ---
+  duration_ms: 0.98475
+  type: 'test'
+  ...
+# Subtest: PHOTO01: an expired receipt query can renew and return to the existing completed registration
+ok 4 - PHOTO01: an expired receipt query can renew and return to the existing completed registration
+  ---
+  duration_ms: 0.786083
+  type: 'test'
+  ...
+# Subtest: PHOTO02: Save locks photos/consent and a programmatic replacement discards the stale review without uploading photo A
+ok 5 - PHOTO02: Save locks photos/consent and a programmatic replacement discards the stale review without uploading photo A
+  ---
+  duration_ms: 1.179833
+  type: 'test'
+  ...
+# Subtest: PHOTO02 negative: a name change before compression settles prevents even the stale quality request
+ok 6 - PHOTO02 negative: a name change before compression settles prevents even the stale quality request
+  ---
+  duration_ms: 0.663709
+  type: 'test'
+  ...
+# Subtest: PHOTO01: a locally expired session offers verification before quality work and keeps the cached bytes and Files
+ok 7 - PHOTO01: a locally expired session offers verification before quality work and keeps the cached bytes and Files
+  ---
+  duration_ms: 0.629125
+  type: 'test'
+  ...
+# Subtest: PHOTO01: expiration in transit plus the real quality endpoint 403 recovers instead of looping the same review
+ok 8 - PHOTO01: expiration in transit plus the real quality endpoint 403 recovers instead of looping the same review
+  ---
+  duration_ms: 0.648041
+  type: 'test'
+  ...
+# Subtest: PHOTO01 negative: malformed or future token claims never grant access or bypass server validation
+ok 9 - PHOTO01 negative: malformed or future token claims never grant access or bypass server validation
+  ---
+  duration_ms: 1.071291
+  type: 'test'
+  ...
+# Subtest: PHOTO01 clock skew: a freshly server-verified token that looks expired locally is still checked by the server, with no renewal loop
+ok 10 - PHOTO01 clock skew: a freshly server-verified token that looks expired locally is still checked by the server, with no renewal loop
+  ---
+  duration_ms: 0.797791
+  type: 'test'
+  ...
+# Subtest: PHOTO01 clock skew negative: a generic quality 403 offers explicit recovery without claiming expiration or sending automatically
+ok 11 - PHOTO01 clock skew negative: a generic quality 403 offers explicit recovery without claiming expiration or sending automatically
+  ---
+  duration_ms: 0.61675
+  type: 'test'
+  ...
+# Subtest: PHOTO01: a second expiration reuses the same recovery panel and File inputs
+ok 12 - PHOTO01: a second expiration reuses the same recovery panel and File inputs
+  ---
+  duration_ms: 0.70025
+  type: 'test'
+  ...
+# Subtest: OTP01: both identity inputs stay locked for the entire legacy verify and a late DOM mutation cannot verify identity B
+ok 13 - OTP01: both identity inputs stay locked for the entire legacy verify and a late DOM mutation cannot verify identity B
+  ---
+  duration_ms: 0.536792
+  type: 'test'
+  ...
+# Subtest: OTP01 negative: a valid slow verification binds only the captured identity and checks resume before any photo work
+ok 14 - OTP01 negative: a valid slow verification binds only the captured identity and checks resume before any photo work
+  ---
+  duration_ms: 0.494166
+  type: 'test'
+  ...
+# Subtest: OTP01: failed resume lookup keeps verified access and exposes an explicit lookup retry without another OTP
+ok 15 - OTP01: failed resume lookup keeps verified access and exposes an explicit lookup retry without another OTP
+  ---
+  duration_ms: 0.53125
+  type: 'test'
+  ...
+# Subtest: OTP02: an exact pre-RPC session rejection can replace only the credential and receipt after explicit verification
+ok 16 - OTP02: an exact pre-RPC session rejection can replace only the credential and receipt after explicit verification
+  ---
+  duration_ms: 0.843416
+  type: 'test'
+  ...
+# Subtest: OTP02 negative: a generic 400 never authorizes swapping the OTP-bound credential
+ok 17 - OTP02 negative: a generic 400 never authorizes swapping the OTP-bound credential
+  ---
+  duration_ms: 0.675667
+  type: 'test'
+  ...
+# Subtest: OTP02 negative: another valid session after a generic 400 still cannot re-key or resend that cached attempt
+ok 18 - OTP02 negative: another valid session after a generic 400 still cannot re-key or resend that cached attempt
+  ---
+  duration_ms: 1.066917
+  type: 'test'
+  ...
+# Subtest: OTP02: a lost registration response retries the exact original payload and never refreshes photo review
+ok 19 - OTP02: a lost registration response retries the exact original payload and never refreshes photo review
+  ---
+  duration_ms: 0.756458
+  type: 'test'
+  ...
+# Subtest: OTP02: after an unknown send expires, fresh auth plus found:false cannot authorize a new registration or mutate its payload
+ok 20 - OTP02: after an unknown send expires, fresh auth plus found:false cannot authorize a new registration or mutate its payload
+  ---
+  duration_ms: 0.752208
+  type: 'test'
+  ...
+# Subtest: OTP02: an uncertain accepted registration found on lookup resumes the same source with no second registration
+ok 21 - OTP02: an uncertain accepted registration found on lookup resumes the same source with no second registration
+  ---
+  duration_ms: 0.603917
+  type: 'test'
+  ...
+# Subtest: OTP02 negative: an unknown prior send followed by 422 does not discard cached idempotence
+ok 22 - OTP02 negative: an unknown prior send followed by 422 does not discard cached idempotence
+  ---
+  duration_ms: 0.541709
+  type: 'test'
+  ...
+# Subtest: OTP-L01: correcting a verified managed identity releases only that terminal challenge, preserves Files and does not resend automatically
+ok 23 - OTP-L01: correcting a verified managed identity releases only that terminal challenge, preserves Files and does not resend automatically
+  ---
+  duration_ms: 0.97575
+  type: 'test'
+  ...
+# Subtest: OTP-L01 negative: editing while a managed send is uncertain never releases the active guard or creates another send
+ok 24 - OTP-L01 negative: editing while a managed send is uncertain never releases the active guard or creates another send
+  ---
+  duration_ms: 0.526208
+  type: 'test'
+  ...
+# Subtest: OTP03 UI: legacy 202 accepted is truthful and never sends a second request automatically
+ok 25 - OTP03 UI: legacy 202 accepted is truthful and never sends a second request automatically
+  ---
+  duration_ms: 0.4505
+  type: 'test'
+  ...
+# Subtest: OTP03 UI: legacy 202 uncertain is truthful and never sends a second request automatically
+ok 26 - OTP03 UI: legacy 202 uncertain is truthful and never sends a second request automatically
+  ---
+  duration_ms: 0.89375
+  type: 'test'
+  ...
+# Subtest: OTP03 UI: legacy 202 reserved is truthful and never sends a second request automatically
+ok 27 - OTP03 UI: legacy 202 reserved is truthful and never sends a second request automatically
+  ---
+  duration_ms: 0.633667
+  type: 'test'
+  ...
+# Subtest: OTP03 UI negative: another active identity exposes no challenge details and does not offer code entry
+ok 28 - OTP03 UI negative: another active identity exposes no challenge details and does not offer code entry
+  ---
+  duration_ms: 0.575084
+  type: 'test'
+  ...
+# Subtest: baseline→candidate PHOTO01: the same expired upload proof changes from repeated stale requests to in-page recovery
+ok 29 - baseline→candidate PHOTO01: the same expired upload proof changes from repeated stale requests to in-page recovery
+  ---
+  duration_ms: 2.444958
+  type: 'test'
+  ...
+# Subtest: baseline→candidate PHOTO02: the same Save race uploads stale A only in the baseline
+ok 30 - baseline→candidate PHOTO02: the same Save race uploads stale A only in the baseline
+  ---
+  duration_ms: 1.432167
+  type: 'test'
+  ...
+# Subtest: baseline→candidate OTP01: the exact same delayed verify cannot bind session A to identity B in the candidate
+ok 31 - baseline→candidate OTP01: the exact same delayed verify cannot bind session A to identity B in the candidate
+  ---
+  duration_ms: 0.794
+  type: 'test'
+  ...
+# Subtest: baseline→candidate OTP02: exact expired-session rejection recovers session B only in the candidate
+ok 32 - baseline→candidate OTP02: exact expired-session rejection recovers session B only in the candidate
+  ---
+  duration_ms: 1.167542
+  type: 'test'
+  ...
+# Subtest: baseline→candidate OTP-L01: correcting the terminal managed identity is blocked only in the baseline
+ok 33 - baseline→candidate OTP-L01: correcting the terminal managed identity is blocked only in the baseline
+  ---
+  duration_ms: 1.16125
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 89.614041

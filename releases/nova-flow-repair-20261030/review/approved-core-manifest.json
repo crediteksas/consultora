@@ -1,0 +1,123 @@
+{
+  "status": "LOCAL_CANDIDATE_NOT_PUBLISHED",
+  "baselines": {
+    "clientes/index.mjs": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
+    "clientes/form.html": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+    "nova/index.mjs": "232513ce40c043e43c530ebad9bb9b3dbfc7d8061cae109f07fd82f841c411fb"
+  },
+  "artifacts": {
+    "clientes/index.mjs": {
+      "bytes": 559501,
+      "sha256": "aa5da9f0b434477a1800d30e33010744ec1b1756581d6870ed6eaedbed42da1e"
+    },
+    "clientes/form.html": {
+      "bytes": 85467,
+      "sha256": "236a2de7058e8ecfad89d8b42438d90d247a907ca3c93bdaf994271476c03890"
+    },
+    "nova/index.mjs": {
+      "bytes": 3095959,
+      "sha256": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355"
+    }
+  },
+  "configs": {
+    "clientes": {
+      "sha256": "0d3f7ab25219ba4cb2a0dd2735cf14c239a68bf10daa167a592b212aeb048880",
+      "bindingsPreserved": 31,
+      "secretNamesPreserved": [
+        "ADMIN_ENLACES_TOKEN",
+        "ALLY_PROVISION_SECRET",
+        "ALLY_TOKEN_DERIVATION_SECRET",
+        "CLIENTES_AGREGADOS_TOKEN",
+        "NOVA_REGISTRATION_INTAKE_TOKEN",
+        "PHONE_NUMBER_ID",
+        "REGISTRATION_SIGNING_SECRET",
+        "SUPABASE_SERVICE_KEY",
+        "TOKEN_HASH_SECRET",
+        "TURNSTILE_SECRET_KEY",
+        "TURNSTILE_SITE_KEY",
+        "WHATSAPP_TOKEN"
+      ],
+      "crons": [
+        "*/5 * * * *",
+        "*/5 0 * * *",
+        "*/5 16-23 * * *"
+      ],
+      "routes": [
+        {
+          "pattern": "registro.crediteksas.com/nova/registro*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "registro.crediteksas.com/creditek/erp/registro*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        }
+      ]
+    },
+    "nova": {
+      "sha256": "ea865e0452433d1b83f60d3bf567f96cd0afba57e9087da58743f57a733067b5",
+      "bindingsPreserved": 44,
+      "secretNamesPreserved": [
+        "KORA_SUPABASE_SERVICE_ROLE_KEY",
+        "NOVA_ALO_LOCAL_TOKEN",
+        "NOVA_INTERNAL_API_TOKEN",
+        "NOVA_META_ACCESS_TOKEN",
+        "NOVA_META_APP_SECRET",
+        "NOVA_META_VERIFY_TOKEN",
+        "NOVA_PII_HASH_PEPPER",
+        "NOVA_REFERENCE_OTP_SECRET",
+        "NOVA_REGISTRATION_INTAKE_TOKEN",
+        "PAYJOY_API_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ],
+      "crons": [
+        "* * * * *"
+      ],
+      "routes": [
+        {
+          "pattern": "aura.crediteksas.com/creditek/agentes/nova-supervision*",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "aura.crediteksas.com/api/nova/supervision",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        },
+        {
+          "pattern": "aura.crediteksas.com/api/nova/gestion",
+          "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+        }
+      ]
+    }
+  },
+  "migrations": [
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql",
+      "sha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336"
+    },
+    {
+      "project": "jfkmiyvcdfbsbwchyvol",
+      "file": "supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql",
+      "sha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1"
+    },
+    {
+      "project": "ditiwpndvmyuqcagupea",
+      "file": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql",
+      "sha256": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207"
+    }
+  ],
+  "findings": [
+    "FOTO-01",
+    "FOTO-02",
+    "OTP-01",
+    "OTP-02",
+    "OTP-03",
+    "REF-01",
+    "REF-02",
+    "CONS-01",
+    "CONSULTA-01",
+    "SMS-01"
+  ],
+  "smsEnabled": false,
+  "customerMessagesSent": 0,
+  "productionWrites": 0
+}

@@ -1,0 +1,28 @@
+✔ SQL guard preserves original service-only ACL, invoker rights and reservation function/budgets (759.970458ms)
+✔ accepted first HTTP200 lost to browser: second fresh CAPTCHA yields202 accepted without another reserve or Meta send; composed form keeps photos (511.669709ms)
+✔ concurrent same-context callers: both read no OTP, SQL reserves only one; loser rereads same active challenge (481.181375ms)
+✔ other document/link with same phone gets409 without disclosing OTP id, document, phone, link or accepted state (446.784542ms)
+✔ uncertain transport stays blocked until original TTL without another send (439.961417ms)
+✔ failed transport stays blocked until original TTL without another send (443.156042ms)
+✔ expired challenge permits a new explicit request while original quotas still apply (447.358041ms)
+✔ verified challenge permits a new explicit request while original quotas still apply (434.294625ms)
+✔ consumed challenge permits a new explicit request while original quotas still apply (441.727084ms)
+✔ active challenge lookup is after CAPTCHA and context; reused single-use CAPTCHA does not read DB or send again (435.570667ms)
+✔ DB active lookup network failure fails closed before reservation/send (447.050208ms)
+✔ DB active lookup non-success fails closed before reservation/send (425.522125ms)
+✔ DB active lookup oversized metadata fails closed before reservation/send (438.735083ms)
+✔ DB active lookup malformed JSON fails closed before reservation/send (439.420708ms)
+✔ DB active lookup inconsistent accepted and failed stamps fails closed before reservation/send (426.935166ms)
+✔ reservation uncertainty before commit sends zero; committed attempt remains recoverable (463.2165ms)
+✔ reservation uncertainty after commit sends zero; committed attempt remains recoverable (480.644834ms)
+✔ lost accepted PATCH acknowledgement returns503, retry discovers accepted state with no second Meta request (486.132334ms)
+✔ same phone remains protected across WhatsApp and SMS dispatch rows; SMS is never invoked by these tests (413.767417ms)
+✔ original 3-per-phone and60-per-link budgets remain enforced with no extra send (428.728125ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9399.691584

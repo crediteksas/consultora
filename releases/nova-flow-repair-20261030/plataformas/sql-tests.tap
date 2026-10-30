@@ -1,0 +1,17 @@
+✔ SQL master revocation blocks approve (809.518209ms)
+✔ SQL master revocation blocks request queries (489.95225ms)
+✔ SQL master revocation blocks confirm delivery (461.795708ms)
+✔ SQL source revocation blocks approval even with current customer authorization (454.46125ms)
+✔ SQL general authorization is independent of expired platform query TTL (443.210875ms)
+✔ SQL save invalidates cached authorization after master revocation and retains historical evidence (450.416542ms)
+✔ SQL helper rejects unknown sources and exposes no identities or public execution (448.619333ms)
+✔ SQL predecessor drift aborts before creating helper (439.909916ms)
+✔ SQL rollback restores exact predecessor definitions and retains cases (435.058375ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4519.637667

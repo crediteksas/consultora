@@ -1,0 +1,13 @@
+{
+  "mode": "integrated",
+  "tests": 16,
+  "passed": 16,
+  "failed": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "passedAll": true,
+  "candidateSha256": "d0d6f9c374d561230e038c251efc718fbebf4b097020d7697e1c77d5f504f4b5",
+  "testSha256": "a89260e2a2c7e744e3df4643fcb909845ab2f90d5e3bacbc376214c1f41c7d0e",
+  "productionWrites": 0,
+  "networkCalls": 0
+}

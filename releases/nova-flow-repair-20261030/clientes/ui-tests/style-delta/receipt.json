@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-10-30T21:34:19.376Z",
+  "status": "PASS",
+  "approvedModuleSha256": "655c7238fbeac4532cf0d051eb0b4a26d982abfccd6fb6f13dc8c163a6bb921a",
+  "newModuleSha256": "c1cc97c0fee13b39a347255fa001997da7b4ad66fe3579cfc61f35c8ac2f4a71",
+  "approvedFormSha256": "236a2de7058e8ecfad89d8b42438d90d247a907ca3c93bdaf994271476c03890",
+  "newFormSha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+  "addedLines": 3,
+  "removedLines": 0,
+  "approvedCoreByteIdenticalAfterRemovingStyleLines": true,
+  "vmTests": {
+    "passed": 33,
+    "failed": 0
+  },
+  "chromeTests": {
+    "passed": 4,
+    "failed": 0,
+    "browser": "156.0.8078.74"
+  },
+  "mobileButtonGeometry": [
+    {
+      "button": "repairRecoverySave",
+      "height": 48,
+      "width": 318,
+      "left": 36,
+      "right": 354,
+      "viewportWidth": 390,
+      "background": "rgb(0, 196, 204)",
+      "color": "rgb(255, 255, 255)",
+      "visibilityProbe": false
+    },
+    {
+      "button": "repairAuth",
+      "height": 44,
+      "width": 328,
+      "left": 31,
+      "right": 359,
+      "viewportWidth": 390,
+      "background": "rgb(11, 30, 61)",
+      "color": "rgb(255, 255, 255)",
+      "visibilityProbe": false
+    },
+    {
+      "button": "repairCheck",
+      "height": 44,
+      "width": 328,
+      "left": 31,
+      "right": 359,
+      "viewportWidth": 390,
+      "background": "rgb(11, 30, 61)",
+      "color": "rgb(255, 255, 255)",
+      "visibilityProbe": true
+    }
+  ],
+  "screenshotSha256": {
+    "evidence/documents-expired-files-preserved.png": "c29af0a11669d8f9287b079aa9defa4d8b7ec31cbe6fe0b2d630dae34eea2c41",
+    "evidence/documents-resumed-same-files.png": "0a117d63cb9eafdd4720e0220fa7f9734b71be3bc4455d96d46e7a6a21396b14",
+    "evidence/save-review-inputs-frozen.png": "701d367f76e85b8240d3f888103978da7b3670b9d818ee0f70bac669da86083f",
+    "evidence/photo-B-preserved-after-stale-response.png": "0a117d63cb9eafdd4720e0220fa7f9734b71be3bc4455d96d46e7a6a21396b14",
+    "evidence/managed-identity-edit-preserves-files.png": "d66d678e38b7000935bd0968b8c18287b3a4e5a176d366b0d1f80e5162f888c9",
+    "evidence/legacy-202-uncertain-truthful.png": "968d617fd9a93d91b701b8b729ab3b866cb197697214e6ed8963da5496da2e05"
+  },
+  "productionWrites": false,
+  "realMessages": false
+}

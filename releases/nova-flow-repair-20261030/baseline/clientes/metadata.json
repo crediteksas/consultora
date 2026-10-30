@@ -1,0 +1,178 @@
+{
+  "checkedAtUTC": "2026-10-30T21:11:36.399606+00:00",
+  "worker": "creditek-clientes",
+  "bindings": [
+    {
+      "name": "ADMIN_ENLACES_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "ALLOWED_ORIGIN",
+      "text": "https://registro.crediteksas.com",
+      "type": "plain_text"
+    },
+    {
+      "name": "ALLOW_LEGACY_REGISTRATION_LINKS",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "ALLY_PROVISION_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "ALLY_TOKEN_DERIVATION_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "CLIENTES_AGREGADOS_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "ENVIRONMENT",
+      "text": "production",
+      "type": "plain_text"
+    },
+    {
+      "name": "KORA_NOVA_CONSENT_TEXT_VERSION",
+      "text": "nova-pilot-20260915-v1",
+      "type": "plain_text"
+    },
+    {
+      "name": "KORA_NOVA_POLICY_HASH",
+      "text": "e482ba5840a84938043c159e6787f07fb8748bf2e784b4e56946991d5de4af11",
+      "type": "plain_text"
+    },
+    {
+      "name": "KORA_NOVA_POLICY_VERSION",
+      "text": "2.0",
+      "type": "plain_text"
+    },
+    {
+      "environment": "production",
+      "name": "LEGACY_REGISTRATION_SITE",
+      "service": "creditek-registro",
+      "type": "service"
+    },
+    {
+      "name": "NOVA_DOCUMENT_AI",
+      "project": "<catalog>",
+      "type": "ai"
+    },
+    {
+      "name": "NOVA_PLATFORM_RENEWAL_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_QUALITY_LIMIT",
+      "namespace_id": "2026100101",
+      "simple": {
+        "limit": 12,
+        "period": 60
+      },
+      "type": "ratelimit"
+    },
+    {
+      "environment": "production",
+      "name": "NOVA_REGISTRATION",
+      "service": "creditek-nova",
+      "type": "service"
+    },
+    {
+      "name": "NOVA_REGISTRATION_ACCEPT_FROM",
+      "text": "2026-09-16T04:08:21.773Z",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_CAPTURE_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_DELIVERY_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_INTAKE_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_PILOT_ORIGINS",
+      "text": "CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,CK-07,CK-08,CK-09",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_REGISTRATION_RECOVERY_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_RETAIL_ENABLED",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "NOVA_SMS_ENABLED",
+      "text": "false",
+      "type": "plain_text"
+    },
+    {
+      "name": "PHONE_NUMBER_ID",
+      "type": "secret_text"
+    },
+    {
+      "name": "REGISTRATION_SIGNING_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "REPORTES_FORMATO_ORDENADO",
+      "text": "true",
+      "type": "plain_text"
+    },
+    {
+      "name": "SUPABASE_SERVICE_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "TOKEN_HASH_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "TURNSTILE_SECRET_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "TURNSTILE_SITE_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "WHATSAPP_TOKEN",
+      "type": "secret_text"
+    }
+  ],
+  "settings": {
+    "compatibility_date": "2026-01-15",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ]
+  },
+  "crons": [
+    "*/5 * * * *",
+    "*/5 0 * * *",
+    "*/5 16-23 * * *"
+  ],
+  "routes": [
+    {
+      "pattern": "registro.crediteksas.com/nova/registro*",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    },
+    {
+      "pattern": "registro.crediteksas.com/creditek/erp/registro*",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    }
+  ],
+  "workersDev": true,
+  "migrationTag": null
+}

@@ -1,0 +1,12 @@
+{
+  "tests": 22,
+  "passed": 22,
+  "failed": 0,
+  "realMetaRequests": 0,
+  "productionWrites": 0,
+  "sha256": {
+    "referencias/transform.mjs": "7d35289bed3cc424465ed2e0bcaf75942febf25220d405005060c41a7926c5e8",
+    "sql/aura-reference-repair.sql": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207",
+    "referencias/test-results.tap": "000053134543426355b7642648875823df604f50dd24152601613a5b9976373f"
+  }
+}

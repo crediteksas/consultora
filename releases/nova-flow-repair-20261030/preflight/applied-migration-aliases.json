@@ -1,0 +1,29 @@
+[
+  {
+    "project": "jfkmiyvcdfbsbwchyvol",
+    "oldFile": "supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql",
+    "newFile": "supabase/migrations/20261030213906_nova_otp_active_challenge_guard.sql",
+    "sha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336",
+    "md5": "5ba885356294b90bdb92c03d06e0032e",
+    "version": "20261030213906",
+    "name": "nova_otp_active_challenge_guard"
+  },
+  {
+    "project": "jfkmiyvcdfbsbwchyvol",
+    "oldFile": "supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql",
+    "newFile": "supabase/migrations/20261030213910_nova_retail_consent_and_query_recovery.sql",
+    "sha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1",
+    "md5": "2ecf0fc3b8b61845f03d90e1d0e0125c",
+    "version": "20261030213910",
+    "name": "nova_retail_consent_and_query_recovery"
+  },
+  {
+    "project": "ditiwpndvmyuqcagupea",
+    "oldFile": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql",
+    "newFile": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030213851_nova_reference_order_and_uncertainty.sql",
+    "sha256": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207",
+    "md5": "e754335588fe94301c78f7b9f9f28b1f",
+    "version": "20261030213851",
+    "name": "nova_reference_order_and_uncertainty"
+  }
+]

@@ -1,0 +1,114 @@
+{
+  "frozenAtUTC": "2026-10-30T16:04:21.837640+00:00",
+  "tests": 45,
+  "pass": 45,
+  "fail": 0,
+  "skipped": 0,
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 36,
+      "sha256": "1d0ac32aeff78c875b6dd23999a494254bc0adbc4967aef4107bfb29cba529f7"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5341,
+      "sha256": "b1e75b68ea2695de8573be243b028493029bba9ea2389fe10c9604d972245204"
+    },
+    {
+      "path": "build-receipt.json",
+      "bytes": 264,
+      "sha256": "29596fd55b89aebce97e828b78763eeff0bb62e1ed673d17d4328dd9f455b57a"
+    },
+    {
+      "path": "build.mjs",
+      "bytes": 4843,
+      "sha256": "ffbd676de8546e025b544045bfc0aa04fefdc207befeac96ed49b19d1a7d0530"
+    },
+    {
+      "path": "claude-review.md",
+      "bytes": 5341,
+      "sha256": "0cb27fbf6cebf86cfd94bb2738ee10fbc131993146bf6b6d33988abcc2fb0407"
+    },
+    {
+      "path": "creditek-logo.png",
+      "bytes": 66608,
+      "sha256": "286b93a7e3d0f00e013b60f138e41fa7d36402b76cfeaad67ad36eb06cb3baff"
+    },
+    {
+      "path": "index.mjs",
+      "bytes": 3093915,
+      "sha256": "232513ce40c043e43c530ebad9bb9b3dbfc7d8061cae109f07fd82f841c411fb"
+    },
+    {
+      "path": "logo-response.mjs",
+      "bytes": 505,
+      "sha256": "70a830738ef1c090854a791998990b3a6964de6802edc3e9acf2269904044219"
+    },
+    {
+      "path": "meta-preflight.mjs",
+      "bytes": 10031,
+      "sha256": "fe00a91754056d545570fd81bf132138a1d633e6b4d08d7305f5521e49a05289"
+    },
+    {
+      "path": "meta-preflight.test.mjs",
+      "bytes": 8916,
+      "sha256": "634a55082534ba1febe6322d70061b828a8adb2c6694bb7494cfe4321b5e27c4"
+    },
+    {
+      "path": "preflight-receipt.json",
+      "bytes": 383,
+      "sha256": "21b0b013ba43b990f4b586ade81998f3e10ed89455fc34a9630969f444803eca"
+    },
+    {
+      "path": "production-base.mjs",
+      "bytes": 2988089,
+      "sha256": "18b11dc3907fa57ad67c0756932db78684c3d74634924987e73a8481e4e6ada5"
+    },
+    {
+      "path": "reference-dispatch.mjs",
+      "bytes": 1267,
+      "sha256": "657c7603da68fd0b1d7fc24a13b570ffab457284c6269b7f8344ac640584be23"
+    },
+    {
+      "path": "reference-quick-reply.mjs",
+      "bytes": 8393,
+      "sha256": "312d72fc602441ad890c8a6dfcf51c99d0ee2ee2e7287319ec199c4a4175ad19"
+    },
+    {
+      "path": "reference-quick-reply.test.mjs",
+      "bytes": 15754,
+      "sha256": "83925e41935b1482ff79a03a7c2e8af88939d15b6362811410782132469546b9"
+    },
+    {
+      "path": "reference-webhook.test.mjs",
+      "bytes": 7550,
+      "sha256": "b98954cc5f609487de0e2d1279b943081805051bf2db6d1030a8a5eb5a756463"
+    },
+    {
+      "path": "sender-integration.test.mjs",
+      "bytes": 13425,
+      "sha256": "7f992e00887f9da85a01152acdfb4010dbd85512a890179c38c5d4eb846ab024"
+    },
+    {
+      "path": "testall-receipt.json",
+      "bytes": 972,
+      "sha256": "750eb5746c1277cacb38c73d4d894993c3aada0be8f0c3807c23b002ce882354"
+    },
+    {
+      "path": "testall.tap",
+      "bytes": 10628,
+      "sha256": "6dd3e184fa95ba84453d68f8a1fec6850e3e13d93527617c908397af5862bed9"
+    },
+    {
+      "path": "transform.mjs",
+      "bytes": 2172,
+      "sha256": "15d380e818c990960000c985eb71c4fe5f71186bcefe35719d6cf997ea2d3808"
+    },
+    {
+      "path": "wrangler.jsonc",
+      "bytes": 2822,
+      "sha256": "5b1f57e0c36df6725b9b7a783f0dc1772610165087cd4e6d377b6af93f0ad8d5"
+    }
+  ]
+}

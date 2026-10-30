@@ -1,0 +1,12 @@
+{
+  "configSHA256": "8667e416ad9231e29063736bf799544c509d7b2aa54e0026267e0a0e588080ed",
+  "predecessorConfigSHA256": "0d3f7ab25219ba4cb2a0dd2735cf14c239a68bf10daa167a592b212aeb048880",
+  "changes": [
+    "main",
+    "base_dir"
+  ],
+  "smsEnabled": false,
+  "sameWorker": true,
+  "routes": 2,
+  "cron": 3
+}

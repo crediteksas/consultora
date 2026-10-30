@@ -1,0 +1,13 @@
+diff --git a/baseline/index.mjs b/deploy/index.mjs
+index f41a384..861bfaf 100644
+--- a/baseline/index.mjs
++++ b/deploy/index.mjs
+@@ -10157,7 +10157,7 @@ async function handleOtpEnviarRoute2(request, env22222) {
+   } else {
+     body22 = await requestJson2(request);
+   }
+-  if (env22222.NOVA_SMS_ENABLED === "true" && isSecureOtpSendRequest2(body22) || body22?.channel !== void 0 || body22?.request_id !== void 0 || body22?.sms_reason !== void 0) {
++  if (body22?.channel !== void 0 || body22?.request_id !== void 0 || body22?.sms_reason !== void 0) {
+     const outcome = await sendManagedOtp(body22, request.headers.get("CF-Connecting-IP"), env22222, smsOtpDependencies());
+     const response2 = json22(outcome.body, outcome.status);
+     response2.headers.set("cache-control", "no-store");

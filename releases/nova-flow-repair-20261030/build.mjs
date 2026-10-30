@@ -54,9 +54,9 @@ for(const name of ['clientes','nova']){
  configs[name]={sha256:sha(read('wrangler.'+name+'.jsonc')),bindingsPreserved:meta.bindings.length,secretNamesPreserved:meta.bindings.filter(b=>b.type==='secret_text').map(b=>b.name),crons:cfg.triggers.crons,routes:cfg.routes};
 }
 const migrations=[
- {project:'jfkmiyvcdfbsbwchyvol',file:'supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql'},
- {project:'jfkmiyvcdfbsbwchyvol',file:'supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql'},
- {project:'ditiwpndvmyuqcagupea',file:'releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql'},
+ {project:'jfkmiyvcdfbsbwchyvol',file:'supabase/migrations/20261030213906_nova_otp_active_challenge_guard.sql'},
+ {project:'jfkmiyvcdfbsbwchyvol',file:'supabase/migrations/20261030213910_nova_retail_consent_and_query_recovery.sql'},
+ {project:'ditiwpndvmyuqcagupea',file:'releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030213851_nova_reference_order_and_uncertainty.sql'},
 ].map(m=>({...m,sha256:sha(fs.readFileSync(path.join(repo,m.file)))}));
 for(const m of migrations)assert.ok(fs.statSync(path.join(repo,m.file)).size>300,'Empty migration');
 

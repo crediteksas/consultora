@@ -91,17 +91,17 @@
   "migrations": [
     {
       "project": "jfkmiyvcdfbsbwchyvol",
-      "file": "supabase/migrations/20261030210313_nova_otp_active_challenge_guard.sql",
+      "file": "supabase/migrations/20261030213906_nova_otp_active_challenge_guard.sql",
       "sha256": "05aaff9f60fc842ac98dc957eb593f3def20c7c00595a1a4382be726e52d1336"
     },
     {
       "project": "jfkmiyvcdfbsbwchyvol",
-      "file": "supabase/migrations/20261030210315_nova_retail_consent_and_query_recovery.sql",
+      "file": "supabase/migrations/20261030213910_nova_retail_consent_and_query_recovery.sql",
       "sha256": "25bd38daedb828c1c909547042f8bb0865a44311302159be62a42285c2e4d4c1"
     },
     {
       "project": "ditiwpndvmyuqcagupea",
-      "file": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030210723_nova_reference_order_and_uncertainty.sql",
+      "file": "releases/nova-flow-repair-20261030/aura/supabase/migrations/20261030213851_nova_reference_order_and_uncertainty.sql",
       "sha256": "6213c57ad47e4d1aab5e99e86ff6f509601113d09e6e0f016c9fec6721e90207"
     }
   ],

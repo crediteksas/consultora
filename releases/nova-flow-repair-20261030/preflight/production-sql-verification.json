@@ -1,0 +1,146 @@
+{
+  "checkedAtUTC": "2026-10-30T21:40:07.354Z",
+  "kora": {
+    "functions": [
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_client_otp_guard_sms()",
+        "anon_execute": false,
+        "definition_md5": "ed908d4fb6f1907711a447aee5b99339",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_confirm_delivery(uuid,uuid,integer)",
+        "anon_execute": false,
+        "definition_md5": "9998f394a6413974d67a9d4c378d81fe",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_consent_current(uuid)",
+        "anon_execute": false,
+        "definition_md5": "c3f2c635691f2d58234fcf1d1cd9cc3b",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_request_queries(uuid,uuid,boolean)",
+        "anon_execute": false,
+        "definition_md5": "ba3b293c7280ec9deb6251b0170ae434",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_review(uuid,integer,uuid,text,text)",
+        "anon_execute": false,
+        "definition_md5": "4d356a25da0b4b5353a2443fe8f693bd",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_save(uuid,text,jsonb,jsonb)",
+        "anon_execute": false,
+        "definition_md5": "bb033e432b209323d30f9847bf937097",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      }
+    ],
+    "migrations": [
+      {
+        "name": "nova_otp_active_challenge_guard",
+        "sql_md5": "5ba885356294b90bdb92c03d06e0032e",
+        "version": "20261030213906",
+        "sql_length": 1296,
+        "statement_count": 1
+      },
+      {
+        "name": "nova_retail_consent_and_query_recovery",
+        "sql_md5": "2ecf0fc3b8b61845f03d90e1d0e0125c",
+        "version": "20261030213910",
+        "sql_length": 12340,
+        "statement_count": 1
+      }
+    ],
+    "current_consent": {
+      "active": 8,
+      "sources": 8
+    }
+  },
+  "aura": {
+    "functions": [
+      {
+        "body_md5": "557cd442bb525b2e48f4d2b522a3d5a0",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_reference_send_ack(uuid,uuid,boolean)",
+        "anon_execute": false,
+        "definition_md5": "c3878b407086cad9130ad7ce92aa9a0b",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "body_md5": "29fcc273e7e8d201af09be2c62c5c7a2",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_reference_transition(uuid,text,text,timestamp with time zone,integer,text,text,jsonb,text)",
+        "anon_execute": false,
+        "definition_md5": "9b3f6135209231bdd785341cf17ab805",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "body_md5": "95bb79c05284510a563f333408997a77",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "signature": "nova_retail_reference_status(text,text,text,timestamp with time zone,integer)",
+        "anon_execute": false,
+        "definition_md5": "715b63ab3decee7729164fc6410d5bde",
+        "service_execute": true,
+        "security_definer": false,
+        "authenticated_execute": false
+      }
+    ],
+    "constraint": "CHECK ((send_state = ANY (ARRAY['none'::text, 'reserved'::text, 'accepted'::text, 'failed'::text, 'uncertain'::text])))",
+    "migrations": [
+      {
+        "name": "nova_reference_order_and_uncertainty",
+        "sql_md5": "e754335588fe94301c78f7b9f9f28b1f",
+        "version": "20261030213851",
+        "sql_length": 10254,
+        "statement_count": 1
+      }
+    ]
+  },
+  "sqlBytesMatchReview": true,
+  "backendPrivilegesVerified": true,
+  "customerQueries": 0
+}

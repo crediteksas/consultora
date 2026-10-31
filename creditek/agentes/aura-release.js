@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
   // Product release, independent from design-system and navigation versions.
-  const version = '1.2.0';
+  const version = '1.3.0';
   root.AuraRelease = Object.freeze({ version, label: `AURA v${version}` });
   async function render() {
     const labels = document.querySelectorAll('[data-aura-release]');

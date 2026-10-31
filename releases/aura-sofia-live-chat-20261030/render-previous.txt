@@ -1,6 +1,0 @@
-  const msgsHtml=[...msgs].reverse().map(m=>{
-    const t=new Date(m.timestamp).toLocaleString('es-CO',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'});
-    const isIn=m.direccion==='entrada';
-    const intentTag=m.intent?'<div class="msg-intent">'+m.intent+'</div>':'';
-    return '<div class="msg '+(isIn?'msg-in':'msg-out')+'"><div>'+(m.contenido||'')+'</div><div class="msg-meta">'+(isIn?'Cliente':'Sofia')+' · '+t+'</div>'+intentTag+'</div>'
-  }).join('');

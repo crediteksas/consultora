@@ -1,345 +1,516 @@
-/* KORA-visual: capa local del Resumen ejecutivo. No altera datos ni lógica. */
+/* Selected screen treatment; retain the previous print layout, disable print motion. */
+@media screen {
+/* Resumen ejecutivo · dirección visual 1.
+   Capa de presentación local: conserva markup, datos, filtros y permisos. */
 body[data-kora-dashboard="1.0.0"] {
-  --dashboard-premium-border: color-mix(in srgb, var(--ctk-color-primary-900) 6%, transparent);
-  --dashboard-premium-shadow: 0 1px 3px color-mix(in srgb, var(--ctk-color-primary-900) 4%, transparent);
-  --dashboard-premium-shadow-hover: 0 8px 24px color-mix(in srgb, var(--ctk-color-primary-900) 10%, transparent);
+  --dashboard-premium-border: var(--ctk-color-neutral-200);
+  --dashboard-panel-padding: var(--ctk-space-2);
 }
 
-/* 1–2. KPI cards premium y jerarquía tipográfica. */
-.dashboard-metrics {
+body[data-kora-dashboard] .page {
+  padding: var(--ctk-space-3) var(--ctk-space-3) var(--ctk-space-6);
+}
+
+body[data-kora-dashboard] .dashboard-hero {
+  margin-bottom: var(--ctk-space-2);
+}
+
+/* Una superficie común para leer y comparar los cuatro indicadores. */
+body[data-kora-dashboard] .dashboard-metrics {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: var(--ctk-radius-md);
+  gap: 0;
+  box-shadow: var(--ctk-shadow-1);
+  overflow: hidden;
+}
+
+body[data-kora-dashboard] .dashboard-metric {
   background: transparent;
   border: 0;
   border-radius: 0;
-  gap: 16px;
-  overflow: visible;
-}
-
-.dashboard-metric {
-  background: var(--ctk-color-neutral-0);
-  border: 1px solid var(--dashboard-premium-border);
-  border-radius: 16px;
-  box-shadow: var(--dashboard-premium-shadow);
-  min-height: 152px;
-  overflow: hidden;
-  padding: 24px;
+  box-shadow: none;
+  min-width: 0;
+  padding: var(--ctk-space-3) var(--ctk-space-2);
   position: relative;
-  transition: box-shadow 300ms cubic-bezier(.25,.46,.45,.94),
-              transform 300ms cubic-bezier(.25,.46,.45,.94),
-              border-color 300ms cubic-bezier(.25,.46,.45,.94);
+  transition: background var(--ctk-duration-2) var(--ctk-ease-standard);
 }
 
-.dashboard-metric::before {
-  background: linear-gradient(90deg, var(--ctk-color-secondary-500), var(--ctk-color-secondary-400));
-  border-radius: 0 0 3px 3px;
+body[data-kora-dashboard] .dashboard-metric:not(:last-child)::after {
+  background: var(--dashboard-premium-border);
   content: "";
-  height: 3px;
-  left: 24px;
+  inset: var(--ctk-space-2) 0 var(--ctk-space-2) auto;
   position: absolute;
-  right: 24px;
-  top: 0;
+  width: 1px;
 }
 
-.dashboard-metric:not(:last-child)::after {
-  display: none;
+body[data-kora-dashboard] .dashboard-metric:hover {
+  background: var(--ctk-color-neutral-50);
 }
 
-.dashboard-metric:hover {
-  background: var(--ctk-color-neutral-0);
-  border-color: color-mix(in srgb, var(--ctk-color-secondary-500) 20%, transparent);
-  box-shadow: var(--dashboard-premium-shadow-hover);
-  transform: translateY(-2px);
+body[data-kora-dashboard] .dashboard-metric__header {
+  align-items: center;
+  gap: var(--ctk-space-1);
+  margin-bottom: var(--ctk-space-1);
 }
 
-.kpi-valor {
+body[data-kora-dashboard] .dashboard-metric__icon {
+  border-radius: var(--ctk-radius-full);
+  flex: 0 0 auto;
+  background: var(--ctk-color-secondary-50);
+  color: var(--ctk-color-secondary-700);
+}
+body[data-kora-dashboard] .dashboard-metric:nth-child(2) .dashboard-metric__icon {
+  background: var(--ctk-color-info-50);
+  color: var(--ctk-color-info-700);
+}
+body[data-kora-dashboard] .dashboard-metric:nth-child(3) .dashboard-metric__icon {
+  background: var(--ctk-color-success-50);
+  color: var(--ctk-color-success-700);
+}
+body[data-kora-dashboard] .dashboard-metric:nth-child(4) .dashboard-metric__icon {
+  background: var(--ctk-color-warning-50);
+  color: var(--ctk-color-warning-700);
+}
+
+body[data-kora-dashboard] .kpi-label {
   color: var(--ctk-color-primary-900);
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin: 8px 0 4px;
+  font-size: var(--ctk-font-size-caption);
+  font-weight: var(--ctk-font-weight-medium);
+  letter-spacing: normal;
+  text-transform: none;
 }
 
-/* Los importes completos prevalecen sobre la elipsis del estilo base. */
-.dashboard-metric .kpi-valor--moneda {
-  font-size: clamp(1.25rem, 1.7vw, 1.625rem);
+/* Importes completos: sin abreviar, ocultar decimales ni usar elipsis. */
+body[data-kora-dashboard] .kpi-valor {
+  color: var(--ctk-color-primary-900);
+  font-family: var(--ctk-font-family-ui);
+  font-size: var(--ctk-font-size-h1);
+  font-weight: var(--ctk-font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--ctk-line-height-heading);
+  margin: var(--ctk-space-1) 0;
   overflow: visible;
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
 }
-
-.kpi-label {
-  color: var(--ctk-color-neutral-500);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+body[data-kora-dashboard] .dashboard-metric .kpi-valor--moneda {
+  font-size: clamp(var(--ctk-font-size-h3), 1.7vw, var(--ctk-font-size-h1));
+}
+body[data-kora-dashboard] .kpi-var {
+  font-size: var(--ctk-font-size-small);
+  line-height: var(--ctk-line-height-body);
+  margin-top: var(--ctk-space-1);
+}
+body[data-kora-dashboard] .kora-drilldown-hint {
+  color: var(--ctk-color-secondary-700);
+  font-size: var(--ctk-font-size-small);
 }
 
-.kpi-var {
-  color: var(--ctk-color-neutral-400);
-  font-size: 13px;
-  margin-top: 4px;
-}
-
-/* 3. Tablas con contraste institucional y lectura rápida. */
-.dashboard-panel--table .tabla-wrap,
-.dashboard-executives .tabla-wrap {
+/* Filtros compactos, con los mismos controles y fechas condicionales. */
+body[data-kora-dashboard] .dashboard-filterbar {
+  background: var(--ctk-color-surface);
   border: 1px solid var(--dashboard-premium-border);
-  border-radius: 12px;
+  border-radius: var(--ctk-radius-md);
+  box-shadow: var(--ctk-shadow-1);
+  gap: var(--ctk-space-2);
+  padding: var(--ctk-space-2);
+}
+body[data-kora-dashboard] .dashboard-filterbar .campo {
+  flex: 1 1 0;
+  min-width: 0;
+}
+body[data-kora-dashboard] .campo label {
+  color: var(--ctk-color-primary-900);
+  font-weight: var(--ctk-font-weight-medium);
+}
+body[data-kora-dashboard] .campo :is(select, input) {
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-sm);
+  color: var(--ctk-color-primary-900);
+  font-size: var(--ctk-font-size-button);
+  min-height: var(--ctk-height-control-lg);
+  padding-inline: var(--ctk-space-2);
+}
+body[data-kora-dashboard] .campo :is(select, input):focus {
+  outline: 2px solid var(--ctk-color-secondary-700);
+  outline-offset: 2px;
+}
+
+body[data-kora-dashboard] .dashboard-panel {
+  background: var(--ctk-color-surface);
+  border: 1px solid var(--dashboard-premium-border);
+  border-radius: var(--ctk-radius-md);
+  box-shadow: var(--ctk-shadow-1);
+}
+body[data-kora-dashboard] .dashboard-section-heading {
+  margin-bottom: var(--ctk-space-2);
+}
+body[data-kora-dashboard] .dashboard-section-heading__eyebrow {
+  color: var(--ctk-color-primary-900);
+  font-size: var(--ctk-font-size-small);
+  font-weight: var(--ctk-font-weight-semibold);
+  letter-spacing: var(--ctk-letter-spacing-label);
+  margin-bottom: var(--ctk-space-0-5);
+}
+body[data-kora-dashboard] .dashboard-section-heading h2 {
+  font-size: var(--ctk-font-size-h3);
+  font-weight: var(--ctk-font-weight-bold);
+}
+body[data-kora-dashboard] .dashboard-primary-grid {
+  gap: var(--ctk-space-2);
+  grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
+}
+body[data-kora-dashboard] .dashboard-support-grid {
+  gap: var(--ctk-space-2);
+}
+body[data-kora-dashboard] :is(.dashboard-panel--table, .dashboard-executives) .tabla-wrap {
+  border: 1px solid var(--ctk-color-border);
+  border-radius: var(--ctk-radius-sm);
   overflow: auto;
 }
-
-.dashboard-table th {
+body[data-kora-dashboard] .dashboard-table th {
   background: var(--ctk-color-primary-900);
   color: var(--ctk-color-neutral-0);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 14px 16px;
-  text-transform: uppercase;
+  font-size: var(--ctk-font-size-small);
+  font-weight: var(--ctk-font-weight-semibold);
+  letter-spacing: normal;
+  padding: var(--ctk-space-2) var(--ctk-space-1);
+  text-transform: none;
 }
-
-.dashboard-table td {
-  color: var(--ctk-color-neutral-800);
-  font-size: 14px;
-  padding: 14px 16px;
+body[data-kora-dashboard] .dashboard-table td {
+  color: var(--ctk-color-primary-900);
+  font-size: var(--ctk-font-size-table);
+  padding: var(--ctk-space-2) var(--ctk-space-1);
 }
-
-.dashboard-table tbody tr:hover {
-  background: color-mix(in srgb, var(--ctk-color-secondary-500) 3%, transparent);
+body[data-kora-dashboard] .dashboard-table tbody tr:hover {
+  background: var(--ctk-color-secondary-50);
 }
-
-body[data-kora-dashboard] .dashboard-executives .dashboard-table th.centro,
-body[data-kora-dashboard] .dashboard-executives .dashboard-table td.centro {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-body[data-kora-dashboard] .dashboard-executives .dashboard-table th.num,
-body[data-kora-dashboard] .dashboard-executives .dashboard-table td.num {
+body[data-kora-dashboard] .dashboard-table :is(th, td).num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-
-.dashboard-executives-note {
-  margin: 12px 0 0;
+body[data-kora-dashboard] .dashboard-table :is(th, td).centro {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+body[data-kora-dashboard] .dashboard-table :is(.fila-total, tfoot) td {
+  background: var(--ctk-color-secondary-50);
+  border-top: 1px solid var(--ctk-color-border);
+}
+body[data-kora-dashboard] .dashboard-executives-note {
+  margin: var(--ctk-space-2) 0 0;
   color: var(--ctk-color-text-muted);
-  font-size: 12px;
+  font-size: var(--ctk-font-size-small);
 }
 
 body[data-kora-dashboard] .dashboard-profit-tabs {
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  margin: 0 0 16px;
-  border-radius: 10px;
+  gap: var(--ctk-space-0-5);
+  padding: var(--ctk-space-0-5);
+  margin: 0 0 var(--ctk-space-2);
+  border-radius: var(--ctk-radius-sm);
   background: var(--ctk-color-neutral-50);
-  border: 1px solid var(--dashboard-premium-border);
+  border: 1px solid var(--ctk-color-border);
 }
 body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button {
-  min-height: 36px;
-  padding: 7px 16px;
+  min-height: var(--ctk-height-control-md);
+  padding: var(--ctk-space-1) var(--ctk-space-2);
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--ctk-radius-xs);
   background: transparent;
   color: var(--ctk-color-neutral-600);
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--ctk-font-size-caption);
+  font-weight: var(--ctk-font-weight-semibold);
   cursor: pointer;
 }
 body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button[aria-selected="true"] {
   color: var(--ctk-color-primary-900);
-  background: var(--ctk-color-neutral-0);
-  box-shadow: 0 1px 3px rgb(11 30 61 / 10%);
+  background: var(--ctk-color-secondary-50);
+  box-shadow: var(--ctk-shadow-1);
 }
-body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button:focus-visible {
-  outline: 2px solid var(--ctk-color-secondary-500);
+body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button:focus {
+  outline: 2px solid var(--ctk-color-secondary-700);
   outline-offset: 2px;
 }
-.dashboard-profit-total { margin: 0 0 4px; color: var(--ctk-color-primary-900); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.dashboard-profit-context { margin: 4px 0 12px; color: var(--ctk-color-text-muted); font-size: 12px; line-height: 1.5; }
-
-.dashboard-table .fila-total td,
-.dashboard-table tfoot td {
-  background: color-mix(in srgb, var(--ctk-color-primary-900) 2%, transparent);
-  border-top: 2px solid color-mix(in srgb, var(--ctk-color-primary-900) 8%, transparent);
-}
-
-/* 4 y 7. Paneles y gráficas con profundidad contenida. */
-.dashboard-panel {
-  background: var(--ctk-color-neutral-0);
-  border: 1px solid var(--dashboard-premium-border);
-  border-radius: 16px;
-  box-shadow: var(--dashboard-premium-shadow);
-}
-
-.dashboard-alerts-panel {
-  padding: 24px;
-}
-
-.alerta {
-  color: var(--ctk-color-neutral-800);
-  font-size: 13px;
-  gap: 10px;
-  padding: 10px 0;
-}
-
-.dashboard-chart-panel {
-  padding: 24px;
-  transition: box-shadow 300ms cubic-bezier(.25,.46,.45,.94);
-}
-
-.dashboard-chart-panel:hover {
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--ctk-color-primary-900) 8%, transparent);
-}
-
-/* 5. Filtros táctiles, claros y consistentes. */
-.dashboard-filterbar {
-  border: 1px solid var(--dashboard-premium-border);
-  border-radius: 16px;
-  box-shadow: var(--dashboard-premium-shadow);
-  gap: 12px;
-  padding: 16px;
-}
-
-.campo select,
-.campo input {
-  border: 1.5px solid color-mix(in srgb, var(--ctk-color-primary-900) 12%, transparent);
-  border-radius: 12px;
+body[data-kora-dashboard] .dashboard-profit-total {
+  margin: 0 0 var(--ctk-space-0-5);
   color: var(--ctk-color-primary-900);
-  font-size: 14px;
-  min-height: 44px;
-  padding: 0 16px;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  font-size: var(--ctk-font-size-h2);
+  font-weight: var(--ctk-font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+body[data-kora-dashboard] .dashboard-profit-context {
+  margin: var(--ctk-space-0-5) 0 var(--ctk-space-2);
+  color: var(--ctk-color-text-muted);
+  font-size: var(--ctk-font-size-small);
+  line-height: var(--ctk-line-height-body);
+}
+body[data-kora-dashboard] .dashboard-updated {
+  color: var(--ctk-color-text-muted);
+  font-size: var(--ctk-font-size-small);
 }
 
-.campo select:focus-visible,
-.campo input:focus-visible {
-  border-color: var(--ctk-color-secondary-500);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ctk-color-secondary-500) 12%, transparent);
+/* El shell conserva su estructura, controles y comportamiento de plegado. */
+body[data-kora-dashboard] .kora-sidebar {
+  background: var(--ctk-color-surface);
+}
+body[data-kora-dashboard] .kora-nav-link[aria-current="page"] {
+  background: var(--ctk-color-secondary-50);
+}
+body[data-kora-dashboard] .kora-topbar {
+  box-shadow: var(--ctk-shadow-1);
 }
 
-/* 6. Títulos de sección refinados. */
-.dashboard-section-heading__eyebrow {
-  color: var(--ctk-color-neutral-500);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
+@media (min-width: 64rem) {
+  body[data-kora-dashboard] { --ctk-width-sidebar: 14rem; }
 }
-
-.dashboard-section-heading h2 {
-  color: var(--ctk-color-primary-900);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.dashboard-section-heading {
-  margin-bottom: 20px;
-}
-
-/* 10–11. Progreso e indicador de actualización. */
-.barra-pct {
-  background: color-mix(in srgb, var(--ctk-color-primary-900) 6%, transparent);
-  border-radius: 3px;
-  height: 6px;
-}
-
-.barra-pct div,
-.barra-pct > span {
-  border-radius: 3px;
-  transition: width 600ms cubic-bezier(.25,.46,.45,.94);
-}
-
-.dashboard-updated {
-  color: var(--ctk-color-neutral-400);
-  font-size: 12px;
-  gap: 6px;
-}
-
-.dashboard-updated__dot {
-  background: var(--ctk-color-success-500);
-  height: 6px;
-  width: 6px;
-}
-
-/* 12. Entrada escalonada, sutil y no bloqueante. */
-@keyframes dashboardSectionEnter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.dashboard-filterbar,
-.dashboard-metrics,
-.dashboard-primary-grid,
-.dashboard-support-grid,
-.dashboard-executives {
-  animation: dashboardSectionEnter 400ms cubic-bezier(.16,1,.3,1) backwards;
-}
-
-.dashboard-filterbar { animation-delay: 50ms; }
-.dashboard-metrics { animation-delay: 100ms; }
-.dashboard-primary-grid { animation-delay: 150ms; }
-.dashboard-support-grid { animation-delay: 200ms; }
-.dashboard-executives { animation-delay: 250ms; }
-
-/* Feedback inmediato en controles interactivos. */
-.dashboard-filterbar select:active,
-.dashboard-filterbar input:active,
-.kpi-link:active {
-  transform: scale(.985);
-}
-
-/* 13. Responsive. */
-@media (max-width: 768px) {
-  .dashboard-metrics {
-    gap: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-metric {
-    min-height: 144px;
-    padding: 20px;
-  }
-
-  .kpi-valor {
-    font-size: 1.5rem;
-  }
-
-  .dashboard-alerts-panel,
-  .dashboard-chart-panel,
-  .dashboard-panel--table,
-  .dashboard-executives {
-    padding: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .dashboard-metrics {
+@media (max-width: 79.999rem) {
+  body[data-kora-dashboard] .dashboard-primary-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+@media (max-width: 63.999rem) {
+  body[data-kora-dashboard] .dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body[data-kora-dashboard] .dashboard-metric:nth-child(2)::after { display: none; }
+  body[data-kora-dashboard] .dashboard-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--ctk-color-border);
+  }
+  body[data-kora-dashboard] .dashboard-filterbar .campo { flex: 1 1 12rem; }
+}
+@media (max-width: 47.999rem) {
+  body[data-kora-dashboard] .page {
+    padding: var(--ctk-space-2) var(--ctk-space-1) var(--ctk-space-5);
+  }
+  body[data-kora-dashboard] .dashboard-metric { padding: var(--ctk-space-2); }
+  body[data-kora-dashboard] .kpi-valor { font-size: var(--ctk-font-size-h2); }
+  body[data-kora-dashboard] .dashboard-filterbar .campo { flex-basis: 100%; }
+  body[data-kora-dashboard] .dashboard-metric:nth-child(odd) { border-right: 0; }
+  body[data-kora-dashboard] .dashboard-metric:nth-child(odd)::after { display: block; }
+}
+@media (max-width: 29.999rem) {
+  body[data-kora-dashboard] .dashboard-metrics { grid-template-columns: minmax(0, 1fr); }
+  body[data-kora-dashboard] .dashboard-metric:not(:last-child) {
+    border-bottom: 1px solid var(--ctk-color-border);
+  }
+  body[data-kora-dashboard] .dashboard-metric::after { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-kora-dashboard] .dashboard-metric { transition: none; }
+}
 
-  .dashboard-metric {
-    min-height: 136px;
+/* La capa de producto no debe convertir las fechas condicionales en campos visibles. */
+body[data-kora-dashboard] .dashboard-filterbar .campo-rango { display: none; }
+body[data-kora-dashboard] .dashboard-metric > .kpi-var {
+  display: block;
+  margin-top: var(--ctk-space-0-5);
+}
+body[data-kora-dashboard] .dashboard-table th,
+body[data-kora-dashboard] .dashboard-store-table th {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(1) { width: 20%; }
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(2) { width: 14%; }
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(3) { width: 23%; }
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(4) { width: 11%; }
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(5) { width: 21%; }
+body[data-kora-dashboard] .dashboard-store-table th:nth-child(6) { width: 11%; }
+body[data-kora-dashboard] .kora-sidebar .kora-nav-group__label {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: var(--ctk-radius-sm);
+  color: var(--ctk-color-neutral-600);
+  font-size: var(--ctk-font-size-small);
+  letter-spacing: normal;
+  min-height: var(--ctk-height-control-lg);
+  padding-inline: var(--ctk-space-1);
+  text-align: left;
+}
+body[data-kora-dashboard] .kora-sidebar .kora-nav-group__label:hover {
+  background: var(--ctk-color-neutral-50);
+}
+body[data-kora-dashboard] .kora-sidebar .kora-nav-group__label span { flex: 1; }
+body[data-kora-dashboard] .kora-sidebar__footer :is([data-kora-about], [data-kora-version]) {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Ajuste solicitado: cristal líquido discreto sobre la dirección 1.
+   Solo material, luz y profundidad; las superficies numéricas siguen opacas. */
+body[data-kora-dashboard="1.0.0"] {
+  --ctk-kora-liquid-canvas-start: color-mix(in srgb, var(--ctk-color-primary-100) 75%, var(--ctk-color-secondary-100));
+  --ctk-kora-liquid-edge: color-mix(in srgb, var(--ctk-color-neutral-0) 90%, transparent);
+  --ctk-kora-liquid-surface: color-mix(in srgb, var(--ctk-color-neutral-0) 76%, transparent);
+  --ctk-kora-liquid-outline: color-mix(in srgb, var(--ctk-color-primary-900) 8%, transparent);
+  --ctk-kora-liquid-shadow: inset 0 1px 0 var(--ctk-kora-liquid-edge), var(--ctk-shadow-2);
+  --ctk-kora-liquid-blur: var(--ctk-space-2);
+}
+@supports not (color: color-mix(in srgb, white 50%, black)) {
+  body[data-kora-dashboard] {
+    --ctk-kora-liquid-canvas-start: #eaf3f9;
+    --ctk-kora-liquid-edge: rgba(255,255,255,.9);
+    --ctk-kora-liquid-surface: rgba(255,255,255,.76);
+    --ctk-kora-liquid-outline: rgba(11,30,61,.08);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-filterbar,
-  .dashboard-metrics,
-  .dashboard-primary-grid,
-  .dashboard-support-grid,
-  .dashboard-executives {
-    animation: none;
-  }
+body[data-kora-dashboard] .kora-shell-root {
+  background-color: var(--ctk-color-primary-50);
+  background-image: linear-gradient(135deg, var(--ctk-kora-liquid-canvas-start), var(--ctk-color-neutral-50) 65%);
+}
+body[data-kora-dashboard] :is(.dashboard-subtitle, .dashboard-updated) {
+  background: transparent;
+  box-shadow: none;
+}
+body[data-kora-dashboard] :is(.dashboard-filterbar, .dashboard-metrics, .dashboard-panel) {
+  border-color: var(--ctk-kora-liquid-edge);
+  border-radius: var(--ctk-radius-xl);
+  box-shadow: var(--ctk-kora-liquid-shadow);
+  outline: 1px solid var(--ctk-kora-liquid-outline);
+  outline-offset: -1px;
+}
+/* Contenido financiero: la transparencia no queda detrás de cifras o filas. */
+body[data-kora-dashboard] :is(.dashboard-metrics, .dashboard-panel, .dashboard-table) {
+  background-color: var(--ctk-color-surface);
+}
+body[data-kora-dashboard] :is(.kora-topbar, .kora-sidebar, .dashboard-filterbar) {
+  background-color: var(--ctk-color-surface);
+  border-color: var(--ctk-kora-liquid-edge);
+  box-shadow: var(--ctk-kora-liquid-shadow);
+}
+body[data-kora-dashboard] .dashboard-filterbar .campo :is(select, input) {
+  background-color: var(--ctk-color-surface);
+  border-color: var(--ctk-color-primary-100);
+  border-radius: var(--ctk-radius-md);
+  box-shadow: inset 0 1px 0 var(--ctk-kora-liquid-edge), var(--ctk-shadow-1);
+}
+body[data-kora-dashboard] .dashboard-metric__icon {
+  box-shadow: inset 0 1px 0 var(--ctk-kora-liquid-edge), var(--ctk-shadow-1);
+}
+body[data-kora-dashboard] .kora-nav-link[aria-current="page"] {
+  border-radius: var(--ctk-radius-full);
+  background-color: var(--ctk-color-secondary-100);
+  box-shadow: inset 0 1px 0 var(--ctk-kora-liquid-edge), var(--ctk-shadow-1);
+}
+body[data-kora-dashboard] .kora-topbar .kora-icon-button {
+  border-color: var(--ctk-kora-liquid-edge);
+  border-radius: var(--ctk-radius-full);
+  box-shadow: inset 0 1px 0 var(--ctk-kora-liquid-edge), var(--ctk-shadow-1);
+}
+body[data-kora-dashboard] .kora-sidebar__footer .kora-nav-link {
+  border-radius: var(--ctk-radius-full);
+}
 
-  .dashboard-metric,
-  .dashboard-chart-panel,
-  .barra-pct div,
-  .barra-pct > span {
-    transition: none;
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body[data-kora-dashboard] :is(.kora-topbar, .kora-sidebar, .dashboard-filterbar) {
+    background-color: var(--ctk-kora-liquid-surface);
+    -webkit-backdrop-filter: blur(var(--ctk-kora-liquid-blur)) saturate(1.2);
+    backdrop-filter: blur(var(--ctk-kora-liquid-blur)) saturate(1.2);
   }
+}
+@media (max-width: 47.999rem) {
+  body[data-kora-dashboard] { --ctk-kora-liquid-blur: var(--ctk-space-1); }
+  body[data-kora-dashboard] .kora-sidebar {
+    background-color: var(--ctk-color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body[data-kora-dashboard] :is(.kora-topbar, .kora-sidebar, .dashboard-filterbar) {
+    background-color: var(--ctk-color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+body[data-kora-dashboard] .dashboard-hero { background: transparent; }
+@media (forced-colors: active) {
+  body[data-kora-dashboard] .kora-shell-root { background: Canvas; }
+  body[data-kora-dashboard] :is(.dashboard-filterbar,.dashboard-metrics,.dashboard-panel,.kora-sidebar,.kora-topbar) {
+    background: Canvas !important;
+    border-color: CanvasText;
+    box-shadow: none;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  body[data-kora-dashboard] :is(a,button,input,select):focus { outline-color: Highlight !important; }
+}
+
+}
+/* Existing print layout scoped to the dashboard; print motion removed. */
+@media print {
+  body[data-kora-dashboard="1.0.0"] { --dashboard-premium-border: color-mix(in srgb, var(--ctk-color-primary-900) 6%, transparent); --dashboard-premium-shadow: 0 1px 3px color-mix(in srgb, var(--ctk-color-primary-900) 4%, transparent); --dashboard-premium-shadow-hover: 0 8px 24px color-mix(in srgb, var(--ctk-color-primary-900) 10%, transparent); }
+  body[data-kora-dashboard] .dashboard-metrics { background: transparent; border: 0px; border-radius: 0px; gap: 16px; overflow: visible; }
+  body[data-kora-dashboard] .dashboard-metric { background: var(--ctk-color-neutral-0); border: 1px solid var(--dashboard-premium-border); border-radius: 16px; box-shadow: var(--dashboard-premium-shadow); min-height: 152px; overflow: hidden; padding: 24px; position: relative; transition: box-shadow 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  body[data-kora-dashboard] .dashboard-metric::before { background: linear-gradient(90deg, var(--ctk-color-secondary-500), var(--ctk-color-secondary-400)); border-radius: 0px 0px 3px 3px; content: ""; height: 3px; left: 24px; position: absolute; right: 24px; top: 0px; }
+  body[data-kora-dashboard] .dashboard-metric:not(:last-child)::after { display: none; }
+  body[data-kora-dashboard] .dashboard-metric:hover { background: var(--ctk-color-neutral-0); border-color: color-mix(in srgb, var(--ctk-color-secondary-500) 20%, transparent); box-shadow: var(--dashboard-premium-shadow-hover); transform: translateY(-2px); }
+  body[data-kora-dashboard] .kpi-valor { color: var(--ctk-color-primary-900); font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin: 8px 0px 4px; }
+  body[data-kora-dashboard] .dashboard-metric .kpi-valor--moneda { font-size: clamp(1.25rem, 1.7vw, 1.625rem); overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
+  body[data-kora-dashboard] .kpi-label { color: var(--ctk-color-neutral-500); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  body[data-kora-dashboard] .kpi-var { color: var(--ctk-color-neutral-400); font-size: 13px; margin-top: 4px; }
+  body[data-kora-dashboard] .dashboard-panel--table .tabla-wrap, body[data-kora-dashboard] .dashboard-executives .tabla-wrap { border: 1px solid var(--dashboard-premium-border); border-radius: 12px; overflow: auto; }
+  body[data-kora-dashboard] .dashboard-table th { background: var(--ctk-color-primary-900); color: var(--ctk-color-neutral-0); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; padding: 14px 16px; text-transform: uppercase; }
+  body[data-kora-dashboard] .dashboard-table td { color: var(--ctk-color-neutral-800); font-size: 14px; padding: 14px 16px; }
+  body[data-kora-dashboard] .dashboard-table tbody tr:hover { background: color-mix(in srgb, var(--ctk-color-secondary-500) 3%, transparent); }
+  body[data-kora-dashboard] .dashboard-executives .dashboard-table th.centro, body[data-kora-dashboard] .dashboard-executives .dashboard-table td.centro { text-align: center; font-variant-numeric: tabular-nums; }
+  body[data-kora-dashboard] .dashboard-executives .dashboard-table th.num, body[data-kora-dashboard] .dashboard-executives .dashboard-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  body[data-kora-dashboard] .dashboard-executives-note { margin: 12px 0px 0px; color: var(--ctk-color-text-muted); font-size: 12px; }
+  body[data-kora-dashboard] .dashboard-profit-tabs { display: inline-flex; gap: 4px; padding: 4px; margin: 0px 0px 16px; border-radius: 10px; background: var(--ctk-color-neutral-50); border: 1px solid var(--dashboard-premium-border); }
+  body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button { min-height: 36px; padding: 7px 16px; border: 0px; border-radius: 7px; background: transparent; color: var(--ctk-color-neutral-600); font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button[aria-selected="true"] { color: var(--ctk-color-primary-900); background: var(--ctk-color-neutral-0); box-shadow: rgba(11, 30, 61, 0.1) 0px 1px 3px; }
+  body.kora-product-page[data-kora-dashboard] .dashboard-chart-panel .dashboard-profit-tabs button:focus { outline: 2px solid var(--ctk-color-secondary-500); outline-offset: 2px; }
+  body[data-kora-dashboard] .dashboard-profit-total { margin: 0px 0px 4px; color: var(--ctk-color-primary-900); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  body[data-kora-dashboard] .dashboard-profit-context { margin: 4px 0px 12px; color: var(--ctk-color-text-muted); font-size: 12px; line-height: 1.5; }
+  body[data-kora-dashboard] .dashboard-table .fila-total td, body[data-kora-dashboard] .dashboard-table tfoot td { background: color-mix(in srgb, var(--ctk-color-primary-900) 2%, transparent); border-top: 2px solid color-mix(in srgb, var(--ctk-color-primary-900) 8%, transparent); }
+  body[data-kora-dashboard] .dashboard-panel { background: var(--ctk-color-neutral-0); border: 1px solid var(--dashboard-premium-border); border-radius: 16px; box-shadow: var(--dashboard-premium-shadow); }
+  body[data-kora-dashboard] .dashboard-alerts-panel { padding: 24px; }
+  body[data-kora-dashboard] .alerta { color: var(--ctk-color-neutral-800); font-size: 13px; gap: 10px; padding: 10px 0px; }
+  body[data-kora-dashboard] .dashboard-chart-panel { padding: 24px; transition: box-shadow 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  body[data-kora-dashboard] .dashboard-chart-panel:hover { box-shadow: 0 4px 16px color-mix(in srgb, var(--ctk-color-primary-900) 8%, transparent); }
+  body[data-kora-dashboard] .dashboard-filterbar { border: 1px solid var(--dashboard-premium-border); border-radius: 16px; box-shadow: var(--dashboard-premium-shadow); gap: 12px; padding: 16px; }
+  body[data-kora-dashboard] .campo select, body[data-kora-dashboard] .campo input { border: 1.5px solid color-mix(in srgb, var(--ctk-color-primary-900) 12%, transparent); border-radius: 12px; color: var(--ctk-color-primary-900); font-size: 14px; min-height: 44px; padding: 0px 16px; transition: border-color 200ms, box-shadow 200ms; }
+  body[data-kora-dashboard] .campo select:focus, body[data-kora-dashboard] .campo input:focus { border-color: var(--ctk-color-secondary-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ctk-color-secondary-500) 12%, transparent); }
+  body[data-kora-dashboard] .dashboard-section-heading__eyebrow { color: var(--ctk-color-neutral-500); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; margin-bottom: 4px; }
+  body[data-kora-dashboard] .dashboard-section-heading h2 { color: var(--ctk-color-primary-900); font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  body[data-kora-dashboard] .dashboard-section-heading { margin-bottom: 20px; }
+  body[data-kora-dashboard] .barra-pct { background: color-mix(in srgb, var(--ctk-color-primary-900) 6%, transparent); border-radius: 3px; height: 6px; }
+  body[data-kora-dashboard] .barra-pct div, body[data-kora-dashboard] .barra-pct > span { border-radius: 3px; transition: width 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  body[data-kora-dashboard] .dashboard-updated { color: var(--ctk-color-neutral-400); font-size: 12px; gap: 6px; }
+  body[data-kora-dashboard] .dashboard-updated__dot { background: var(--ctk-color-success-500); height: 6px; width: 6px; }
+  body[data-kora-dashboard] .dashboard-filterbar, body[data-kora-dashboard] .dashboard-metrics, body[data-kora-dashboard] .dashboard-primary-grid, body[data-kora-dashboard] .dashboard-support-grid, body[data-kora-dashboard] .dashboard-executives { }
+  body[data-kora-dashboard] .dashboard-filterbar { }
+  body[data-kora-dashboard] .dashboard-metrics { }
+  body[data-kora-dashboard] .dashboard-primary-grid { }
+  body[data-kora-dashboard] .dashboard-support-grid { }
+  body[data-kora-dashboard] .dashboard-executives { }
+  body[data-kora-dashboard] .dashboard-filterbar select:active, body[data-kora-dashboard] .dashboard-filterbar input:active, body[data-kora-dashboard] .kpi-link:active { transform: scale(0.985); }
+  @media (max-width: 768px) {
+  body[data-kora-dashboard] .dashboard-metrics { gap: 12px; grid-template-columns: repeat(2, minmax(0px, 1fr)); }
+  body[data-kora-dashboard] .dashboard-metric { min-height: 144px; padding: 20px; }
+  body[data-kora-dashboard] .kpi-valor { font-size: 1.5rem; }
+  body[data-kora-dashboard] .dashboard-alerts-panel, body[data-kora-dashboard] .dashboard-chart-panel, body[data-kora-dashboard] .dashboard-panel--table, body[data-kora-dashboard] .dashboard-executives { padding: 20px; }
+}
+  @media (max-width: 480px) {
+  body[data-kora-dashboard] .dashboard-metrics { grid-template-columns: minmax(0px, 1fr); }
+  body[data-kora-dashboard] .dashboard-metric { min-height: 136px; }
+}
+  @media (prefers-reduced-motion: reduce) {
+  body[data-kora-dashboard] .dashboard-filterbar, body[data-kora-dashboard] .dashboard-metrics, body[data-kora-dashboard] .dashboard-primary-grid, body[data-kora-dashboard] .dashboard-support-grid, body[data-kora-dashboard] .dashboard-executives { }
+  body[data-kora-dashboard] .dashboard-metric, body[data-kora-dashboard] .dashboard-chart-panel, body[data-kora-dashboard] .barra-pct div, body[data-kora-dashboard] .barra-pct > span { transition: none; }
+}
+}
+@media print {
+  body[data-kora-dashboard] .dashboard-table th { overflow-wrap: anywhere; white-space: normal; text-overflow: clip; }
+  body[data-kora-dashboard] :is(.dashboard-filterbar, .dashboard-metrics, .dashboard-primary-grid, .dashboard-support-grid, .dashboard-executives) { opacity: 1 !important; transform: none !important; }
+  body[data-kora-dashboard] .kpi-valor { max-width: 100%; font-size: var(--ctk-font-size-h3); line-height: 1.25; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
 }

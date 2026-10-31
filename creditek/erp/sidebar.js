@@ -10,8 +10,8 @@
   const SHELL_ERROR_CLASS = 'creditek-shell-error';
   const SHELL_READY_TIMEOUT_MS = 8_000;
   const KORA_TOOLTIP_DELAY_MS = 2_500;
-  const KORA_VERSION = '3.3.2';
-  const KORA_DISPLAY_VERSION = 'KORA v3.3.2';
+  const KORA_VERSION = '3.4.0';
+  const KORA_DISPLAY_VERSION = 'KORA v3.4.0';
   const SHELL_SCRIPT = document.currentScript;
   const KORA_SHELL_ENABLED = SHELL_SCRIPT?.dataset?.koraShell === '1.0.0';
   const KORA_SHELL_MODE = SHELL_SCRIPT?.dataset?.koraShellMode || 'erp';
@@ -290,7 +290,6 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     ]},
     { titulo: 'ADMINISTRACIÓN', lucide: 'shield-check', description: 'Incidencias, seguimiento y herramientas de soporte interno.', items: [
       { label: 'Tesorería', href: 'aliados-tesoreria.html', lucide: 'landmark', description: 'Administra pagos, compensaciones y saldos separados de B2B y Tercerización.', roles: ['gerencia', 'auditoria'] },
-      { label: 'Información exógena', href: 'exogena.html', lucide: 'file-spreadsheet', description: 'Descarga el auxiliar anual de pagos por tercero y sus pendientes de revisión.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', lucide: 'clipboard-check', description: 'Revisa las confirmaciones diarias y diferencias de deuda de las tiendas con Creditek.', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', lucide: 'target', description: 'Programa los presupuestos independientes de Retail, B2B y Aliados desde Administración.', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', lucide: 'landmark', description: 'Saldo bancario, solicitudes y pagos a proveedores con autorización de Gerencia y aplicación a facturas antiguas.', roles: ['gerencia', 'auditoria'], users: ['d1782db6-bacc-4caf-af6f-ce1b8d1c0391','6de0ad26-64af-4966-8cd9-d468880af627'] },
@@ -861,7 +860,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     <div class="kora-sidebar__footer">
       <button class="kora-nav-link ghost" type="button" data-kora-about><i data-lucide="info"></i><span class="kora-nav-text">Acerca de KORA</span></button>
       <button class="ghost kora-nav-text" type="button" data-kora-version style="display:block;width:100%;padding:4px 16px 10px;text-align:left;font-size:11px;line-height:1.45;opacity:.78">
-        <span style="display:block">KORA ERP v3.3.2</span><span style="display:block">Build: <span data-kora-build>—</span></span><span style="display:block">Ambiente: Producción</span>
+        <span style="display:block">KORA ERP v3.4.0</span><span style="display:block">Build: <span data-kora-build>—</span></span><span style="display:block">Ambiente: Producción</span>
       </button>
       <button class="kora-nav-link kora-logout ghost" type="button"><i data-lucide="log-out"></i><span class="kora-nav-text">Cerrar sesión</span></button>
     </div>`;

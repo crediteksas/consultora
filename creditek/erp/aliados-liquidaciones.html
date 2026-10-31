@@ -1,9 +1,9 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<!DOCTYPE html><html data-creditek-visual="liquid-1" lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>KORA · Creditek Aliados</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/creditek/erp/supabase-js-2.110.8.js"></script><script src="/config/kora-environment.generated.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="kora-access-control.js?v=2.0.35"></script>
-<script src="sidebar.js?v=2.0.35" data-kora-shell="1.0.0"></script><script src="aliados-liquidaciones-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-ux.js?v=2.0.1"></script>
+<script src="kora-access-control.js?v=2.0.36"></script>
+<script src="sidebar.js?v=2.0.36" data-kora-shell="1.0.0"></script><script src="aliados-liquidaciones-domain.js?v=2.0.1"></script><script src="aliados-liquidaciones-ux.js?v=2.0.1"></script>
 <style>
 #priceImpact{white-space:pre-line;line-height:1.8!important}#priceEditor .price-rule{font-size:13px;color:#475569}#priceEditor .price-payout{font-weight:600;color:#0B1E3D;border-left:3px solid #00C4CC;padding-left:12px}
 #liquidationsContent .badge.con_novedades{background:#F1F5F9!important;color:#334155!important;border:1px solid #CBD5E1;border-radius:6px;white-space:nowrap!important;line-height:1.4;font-size:12px}
@@ -94,7 +94,8 @@
 #addiFollowup .addi-action .btn{padding:6px 8px;min-height:32px;border-radius:8px;white-space:normal;font-size:10px}
 #addiFollowup tfoot th{font-variant-numeric:tabular-nums;background:#F1F5F9;color:var(--azul)}
 @media(max-width:850px){#addiFollowup thead{display:none}#addiFollowup table,#addiFollowup tbody,#addiFollowup tfoot{display:block}#addiFollowup tbody tr,#addiFollowup tfoot tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin:8px 0}#addiFollowup td,#addiFollowup tfoot th{display:block;border:0;padding:2px 0}#addiFollowup td::before{display:block;font-size:10px;color:var(--text2);content:attr(data-label)}#addiFollowup tbody td:first-child{grid-column:1/-1}#addiFollowup tfoot th:first-child{grid-column:1/-1}}
-</style><link rel="stylesheet" href="/design-system/components/kora-product.css"><link rel="stylesheet" href="krediya-gestiones.css?v=1.0.0"><link rel="stylesheet" href="liquidaciones-layout.css?v=1.1.1"><script src="/design-system/components/kora-product.js" defer></script><script src="liquidaciones-layout.js?v=1.0.0" defer></script></head><body class="liquidations-view" data-kora-requires-auth="true">
+</style><link rel="stylesheet" href="/design-system/components/kora-product.css"><link rel="stylesheet" href="krediya-gestiones.css?v=1.0.0"><link rel="stylesheet" href="liquidaciones-layout.css?v=1.1.1"><script src="/design-system/components/kora-product.js" defer></script><script src="liquidaciones-layout.js?v=1.0.0" defer></script><link rel="stylesheet" href="/design-system/components/creditek-liquid.css?v=1.0.0" media="screen">
+</head><body class="liquidations-view" data-kora-requires-auth="true">
 <div id="app" class="hidden"><div id="accessDenied" class="denied hidden"><div><h2>Acceso denegado</h2><p>Tu usuario no tiene permiso para consultar Creditek Aliados.</p></div></div><div id="liquidationsContent" class="main-content hidden"><main class="page">
 <div class="page-top"><div><h1>Creditek Aliados</h1><div class="muted">Liquidaciones de PayJoy, ALO Credit, Krediya y Addi</div></div><div class="actions"><button class="btn secondary" id="openKrediyaTariff">Tarifario Krediya</button><button class="btn secondary" id="refreshBatches">Actualizar</button><button class="btn primary" id="newImport">Nueva importación</button></div></div>
 <section class="card" id="monthlySummary" aria-live="polite">Consultando utilidad del mes…</section>

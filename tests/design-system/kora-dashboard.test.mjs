@@ -68,10 +68,11 @@ test('cada cambio de fechas o tienda refresca indicadores, detalle y utilidad', 
     cargarKPIs: () => calls.push('indicadores'),
     cargarTiendas_Tabla: () => calls.push('tiendas'),
     actualizarUtilidad: () => calls.push('utilidad'),
+    cargarCierreSeptiembre: () => calls.push('cierre'),
   };
   vm.runInNewContext(refresh, context);
   context.actualizarPeriodo();
-  assert.deepEqual(calls, ['indicadores', 'tiendas', 'utilidad']);
+  assert.deepEqual(calls, ['indicadores', 'tiendas', 'utilidad', 'cierre']);
 });
 
 test('la presentación del Dashboard depende de tokens y no introduce estilos inline', async () => {

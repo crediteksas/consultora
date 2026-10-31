@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {transformBundle,sourceProof,BASELINE_WORKER_SHA256,BASELINE_FORM_SHA256,sha} from './transform.mjs';
+const root=new URL('./',import.meta.url),baseline=new URL('../nova-sms-sync-pilot-20261031/deploy/clientes/',root),output=new URL('deploy/clientes/',root);
+const source=await readFile(new URL('index.mjs',baseline),'utf8'),form=await readFile(new URL('form.html',baseline),'utf8');
+const next=transformBundle(source,form),before=sourceProof(source),after=sourceProof(next.worker);
+assert.equal(source.slice(0,before.start),next.worker.slice(0,after.start));assert.equal(source.slice(before.end),next.worker.slice(after.end));
+await mkdir(output,{recursive:true});await writeFile(new URL('index.mjs',output),next.worker);await writeFile(new URL('form.html',output),next.form);
+const diff=spawnSync('git',['diff','--no-index','--',fileURLToPath(new URL('index.mjs',baseline)),fileURLToPath(new URL('index.mjs',output))],{encoding:'utf8'});assert.equal(diff.status,1);await writeFile(new URL('candidate.diff',root),diff.stdout);
+const manifest={status:'LOCAL_REVIEW_REQUIRED_NO_DEPLOY_OR_REPLAY',baselineWorkerSha256:BASELINE_WORKER_SHA256,baselineFormSha256:BASELINE_FORM_SHA256,candidateWorkerSha256:sha(next.worker),candidateFormSha256:sha(next.form),changedFunctions:['referenceSourceProof'],unchangedOutsideFunction:true,htmlChanged:false,configChanges:false,sqlChanges:false,newPermissions:false,providerCalls:0,productionWrites:0,realMessages:0,automaticReplay:false,fixes:['Respect existing configured CK-01 through CK-09 scope and exact active origin','Read effective references through existing service-only invoker RPC; no stale snapshot fallback']};
+await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2)+'\n');console.log(JSON.stringify(manifest,null,2));

@@ -1,0 +1,23 @@
+{
+  "status": "LOCAL_REVIEW_REQUIRED_NO_DEPLOY_OR_REPLAY",
+  "baselineWorkerSha256": "f3fd64f53e7e0d3049964a4f6fab384dd3941376ebae72fbe3324c654670665d",
+  "baselineFormSha256": "2a4948d8f71cde22baac7873cd9958f94b975d1c4cd9151871f3c7f4e84fe087",
+  "candidateWorkerSha256": "00105618218bba903271788cbfca5da68e6cc3c8e2d85050083760a1731b2f4a",
+  "candidateFormSha256": "2a4948d8f71cde22baac7873cd9958f94b975d1c4cd9151871f3c7f4e84fe087",
+  "changedFunctions": [
+    "referenceSourceProof"
+  ],
+  "unchangedOutsideFunction": true,
+  "htmlChanged": false,
+  "configChanges": false,
+  "sqlChanges": false,
+  "newPermissions": false,
+  "providerCalls": 0,
+  "productionWrites": 0,
+  "realMessages": 0,
+  "automaticReplay": false,
+  "fixes": [
+    "Respect existing configured CK-01 through CK-09 scope and exact active origin",
+    "Read effective references through existing service-only invoker RPC; no stale snapshot fallback"
+  ]
+}

@@ -8,17 +8,17 @@ test('release UI verifies matching build without touching authentication or publ
   const code = await readFile(new URL('../../creditek/agentes/aura-release.js', import.meta.url), 'utf8');
   const label = {}, build='a'.repeat(64), calls=[];
   const context = vm.createContext({document:{readyState:'complete',querySelectorAll:()=>[label],querySelector:()=>({content:build})},AbortSignal,
-    fetch:async (url,options)=>{calls.push([url,options]);return {ok:true,json:async()=>({version:'1.2.0',build})};}});
+    fetch:async (url,options)=>{calls.push([url,options]);return {ok:true,json:async()=>({version:'1.3.0',build})};}});
   vm.runInContext(code,context);
   await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(label.textContent,'AURA v1.2.0 · aaaaaaaa');
+  assert.equal(label.textContent,'AURA v1.3.0 · aaaaaaaa');
   assert.equal(calls.length,1);
   assert.equal(calls[0][1].cache,'no-store');
 });
 test('release UI does not claim a mismatched build is current', async()=>{
   const code=await readFile(new URL('../../creditek/agentes/aura-release.js',import.meta.url),'utf8');
   const label={};
-  vm.runInNewContext(code,{document:{readyState:'complete',querySelectorAll:()=>[label],querySelector:()=>({content:'old'})},AbortSignal,fetch:async()=>({ok:true,json:async()=>({version:'1.2.0',build:'a'.repeat(64)})})});
+  vm.runInNewContext(code,{document:{readyState:'complete',querySelectorAll:()=>[label],querySelector:()=>({content:'old'})},AbortSignal,fetch:async()=>({ok:true,json:async()=>({version:'1.3.0',build:'a'.repeat(64)})})});
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(label.textContent,/Recarga/);
 });

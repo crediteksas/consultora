@@ -8,7 +8,7 @@ const css = fs.readFileSync(new URL('../../design-system/components/kora-dashboa
 test('rendimiento por tienda prioriza el nombre y agrupa indicadores relacionados', () => {
   assert.match(html, /dashboard-table dashboard-store-table/);
   assert.match(html, /<th>Tienda<\/th><th class="centro">Créditos \/ meta<\/th><th>Avance y proyección<\/th>/);
-  assert.match(html, /class="store-name">\$\{escapeHtml\(f\.tienda\.nombre\)\}/);
+  assert.match(html, /class="store-name"><button type="button" class="kora-drilldown-link" data-summary-store="\$\{escapeHtml\(f\.tienda\.codigo\)\}">\$\{escapeHtml\(f\.tienda\.nombre\)\}<\/button>/);
   assert.match(html, /class="centro store-goal"/);
   assert.match(html, /class="store-progress__detail"/);
   assert.match(html, /Proy\. \$\{Math\.round\(f\.runRate\)\}/);

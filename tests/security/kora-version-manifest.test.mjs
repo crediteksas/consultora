@@ -18,7 +18,7 @@ async function fixture(t) {
     'creditek/erp/app.html': '<title>KORA · ERP — Creditek</title><script src="sidebar.js?v=2.0.34"></script><script src="kora-access-control.js?v=2.0.34"></script>',
     'creditek/erp/sidebar.js': '/* shell fixture */',
     'creditek/erp/kora-access-control.js': '/* guard fixture */',
-    'config/kora-environment.generated.js': 'const config = {"KORA_ENV": "production", "KORA_VERSION": "3.3.2", "url": "https://jfkmiyvcdfbsbwchyvol.supabase.co"};',
+    'config/kora-environment.generated.js': 'const config = {"KORA_ENV": "production", "KORA_VERSION": "3.4.0", "url": "https://jfkmiyvcdfbsbwchyvol.supabase.co"};',
   };
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(artifactRoot, file)), { recursive: true });
@@ -39,13 +39,13 @@ test('el verificador genera la ficha en el artefacto que Wrangler publica, no en
   // Esta prueba no depende de credenciales ni del entorno local de desarrollo.
   // El contrato de producción se verifica sobre una configuración ficticia.
   await writeFile(path.join(out, 'config/kora-environment.generated.js'),
-    'const config = {"KORA_ENV": "production", "KORA_VERSION": "3.3.2", "url": "https://jfkmiyvcdfbsbwchyvol.supabase.co"};');
+    'const config = {"KORA_ENV": "production", "KORA_VERSION": "3.4.0", "url": "https://jfkmiyvcdfbsbwchyvol.supabase.co"};');
   const expected = await verifyKoraProductionArtifact({ commit, artifactRoot: out, writeManifest: true });
   const written = JSON.parse(await readFile(path.join(out, 'kora-build-manifest.static.json')));
   assert.deepEqual(written, expected);
   assert.equal(written.commit, commit);
   assert.equal(written.environment, 'Producción');
-  assert.equal(written.displayVersion, 'KORA v3.3.2');
+  assert.equal(written.displayVersion, 'KORA v3.4.0');
   assert.equal(written.resources.length, 3);
   assert.equal(written.appSha256, hash(await readFile(path.join(out, written.appPath))));
   for (const resource of written.resources) {
@@ -78,7 +78,7 @@ test('preview y producción exigen ficha completa y archivos coincidentes', asyn
     served = { ...manifest, [field]: undefined };
     await assert.rejects(verifyPublishedKoraManifest('https://preview.example', manifest, { fetchImpl }), new RegExp(field));
   }
-  served = { product: 'KORA', version: '3.3.2', buildStatus: 'Aprobado', artifact: 'dist/kora', runtimeMatchesRelease: true };
+  served = { product: 'KORA', version: '3.4.0', buildStatus: 'Aprobado', artifact: 'dist/kora', runtimeMatchesRelease: true };
   await assert.rejects(verifyPublishedKoraManifest('https://preview.example', manifest, { fetchImpl }), /incompleto/);
   for (const resources of [undefined, [], [manifest.resources[0], manifest.resources[0], manifest.resources[0]]]) {
     served = { ...manifest, resources };

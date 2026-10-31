@@ -1,7 +1,7 @@
 {
   "product": "KORA",
-  "version": "3.3.2",
-  "displayVersion": "KORA v3.3.2",
+  "version": "3.4.0",
+  "displayVersion": "KORA v3.4.0",
   "worker": "creditek-kora",
   "productionUrl": "https://kora.crediteksas.com/creditek/erp/app",
   "supabaseProjectRef": "jfkmiyvcdfbsbwchyvol",

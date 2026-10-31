@@ -1,4 +1,12 @@
-# QA visual — Aliados
+# QA visual actual — KORA y AURA, 31 de octubre de 2026
+
+La unidad local de presentación de la propuesta 1 con efecto liquid moderado está aceptada para los estados enumerados, con revisión Claude R5 + suplemento R6 aprobados. Integración Git y publicación pendientes. No es una certificación de todas las sesiones productivas ni de la compatibilidad Supabase.
+
+Reporte y comparaciones actuales: [revisión visual](/Users/oscarm/.codex/visualizations/2026/09/22/01a0c75f-586c-72e1-9f42-530a139ffc9a/kora-aura-visual-20261031/design-qa.md), [estado](/Users/oscarm/.codex/visualizations/2026/09/22/01a0c75f-586c-72e1-9f42-530a139ffc9a/kora-aura-visual-20261031/estado-actual.md) y [próximos pasos](/Users/oscarm/.codex/visualizations/2026/09/22/01a0c75f-586c-72e1-9f42-530a139ffc9a/kora-aura-visual-20261031/NEXT-STEPS.md). Candidatas aún no publicadas: KORA 3.4.0 / AURA 1.3.0. Se preservan a continuación las revisiones históricas, que no son evidencia nueva de esta auditoría.
+
+final result: passed
+
+# Historial: QA visual — Aliados
 
 - Referencia: captura suministrada el 4 de septiembre de 2026.
 - Vista validada: `https://kora.crediteksas.com/creditek/erp/aliados.html`.

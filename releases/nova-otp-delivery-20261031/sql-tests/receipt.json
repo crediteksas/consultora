@@ -1,0 +1,96 @@
+{
+  "checkedAtUTC": "2026-10-31T17:12:23.127Z",
+  "engine": "PGlite embedded PostgreSQL, role/ACL SQL; native concurrency is a separate check",
+  "tests": 21,
+  "passed": 21,
+  "failed": 0,
+  "migrationSha256": "3425f877f2ce0c47c7f26244e0ccaa48ffffbea5daf740a0cb7061bc0f58d903",
+  "realMessages": 0,
+  "productionWrites": 0,
+  "results": [
+    {
+      "name": "register atomically binds exact context and preserves OTP/TTL/attempts",
+      "passed": true
+    },
+    {
+      "name": "missing accepted timestamp is set once and exact replay does not duplicate",
+      "passed": true
+    },
+    {
+      "name": "anonymous and authenticated cannot execute RPCs or read receipt table",
+      "passed": true
+    },
+    {
+      "name": "wrong cédula/celular/link cannot register or read another OTP",
+      "passed": true
+    },
+    {
+      "name": "inactive or revoked link and inactive origin are rejected",
+      "passed": true
+    },
+    {
+      "name": "plaintext unbound and expired/verified/consumed/failed OTPs cannot create a binding",
+      "passed": true
+    },
+    {
+      "name": "provider ID and accepted timestamp are immutable even through direct backend update",
+      "passed": true
+    },
+    {
+      "name": "one wamid cannot bind a second OTP",
+      "passed": true
+    },
+    {
+      "name": "signed failure is separate from API acceptance and code/TTL/quotas stay intact",
+      "passed": true
+    },
+    {
+      "name": "failed delivery blocks stale verifier update without changing other OTP fields",
+      "passed": true
+    },
+    {
+      "name": "normal bound and plaintext verification is unaffected by the new trigger",
+      "passed": true
+    },
+    {
+      "name": "wrong wamid/OTP and stale or future event timestamps are rejected",
+      "passed": true
+    },
+    {
+      "name": "same signed event is idempotent and failure cannot be overwritten by late progress",
+      "passed": true
+    },
+    {
+      "name": "out of order progress cannot regress state",
+      "passed": true
+    },
+    {
+      "name": "read followed by older signed failure is terminal and preserves accepted history/TTL",
+      "passed": true
+    },
+    {
+      "name": "whole second Meta timestamps before API acceptance are accepted only after OTP creation",
+      "passed": true
+    },
+    {
+      "name": "expired old attempt event never changes a newer OTP or its guard",
+      "passed": true
+    },
+    {
+      "name": "register replay stays bound to its original OTP even after a newer attempt exists",
+      "passed": true
+    },
+    {
+      "name": "opaque attempt ID pins reads to the original OTP despite a newer same-context attempt",
+      "passed": true
+    },
+    {
+      "name": "legacy read is bound, finite and excludes OTPs older than24h",
+      "passed": true
+    },
+    {
+      "name": "existing functions ACLs guard and quota implementation are byte-for-byte preserved",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "engine": "Complete candidate bundles in real workerd/Miniflare, closed outbound mocks and synthetic bindings only",
+  "checks": [
+    "NOVA unauthenticated internal request denied without database access",
+    "NOVA full deployed bundle returns exact-ID signed rejection only",
+    "CLIENTES full bundle synchronizes signed failure and returns safe public state without sends",
+    "Invalid link returns exactly404 without access to status data",
+    "Failed exact-code delivery blocks verification before reading code hash",
+    "Secure WhatsApp creates one reservation, sends once, and persists the exact Meta ID",
+    "Recovery of rejected active attempt returns failed without a second provider send",
+    "SMS remains unavailable and no SMS provider call is made"
+  ],
+  "tests": 8,
+  "passed": 8,
+  "counts": {
+    "graph": 1,
+    "sms": 0,
+    "reserve": 1,
+    "register": 1,
+    "apply": 2,
+    "captcha": 3,
+    "verify": 0,
+    "status": 5,
+    "service": 2,
+    "unexpected": 0
+  },
+  "realMessages": 0,
+  "productionWrites": 0
+}

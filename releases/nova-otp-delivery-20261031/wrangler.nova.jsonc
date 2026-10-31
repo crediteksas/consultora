@@ -1,0 +1,122 @@
+{
+  "name": "creditek-nova",
+  "account_id": "853eee9e3d80f805fee58f4f99507e8a",
+  "main": "deploy/nova/index.mjs",
+  "base_dir": "deploy/nova",
+  "no_bundle": true,
+  "keep_vars": true,
+  "compatibility_date": "2026-08-30",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "production",
+    "NOVA_ALO_READ_ENABLED": "true",
+    "NOVA_KREDIYA_EXECUTOR_ENABLED": "false",
+    "NOVA_KREDIYA_PROBE_UNTIL": "2026-09-17T05:20:32.614Z",
+    "NOVA_KREDIYA_TRANSPORT_VERIFIED": "false",
+    "NOVA_OUTBOUND_ENABLED": "false",
+    "NOVA_PAYJOY_READ_ENABLED": "true",
+    "NOVA_PHONE_NUMBER_ID": "1238316279371001",
+    "NOVA_PILOT_ENABLED": "true",
+    "NOVA_PLATFORM_EXECUTION_ENABLED": "true",
+    "NOVA_PLATFORM_RENEWAL_ENABLED": "true",
+    "NOVA_REFERENCE_DELIVERY_ENABLED": "true",
+    "NOVA_REFERENCE_INVITATIONS_APPROVED": "true",
+    "NOVA_REFERENCE_OTP_ENABLED": "true",
+    "NOVA_REFERENCE_OTP_PREFLIGHT_UNTIL": "2026-09-18T22:37:17.579Z",
+    "NOVA_REFERENCE_OTP_STORAGE_READY": "true",
+    "NOVA_REFERENCES_ENABLED": "true",
+    "NOVA_REFERENCE_STORAGE_READY": "true",
+    "NOVA_REGISTRATION_ACCEPT_FROM": "2026-09-16T04:08:21.773Z",
+    "NOVA_REGISTRATION_INTAKE_ENABLED": "true",
+    "NOVA_REGISTRATION_PILOT_ORIGINS": "CK-01,CK-02,CK-03,CK-04,CK-05,CK-06,CK-07,CK-08,CK-09",
+    "NOVA_REGISTRATION_STATUS_ENABLED": "true",
+    "NOVA_RETAIL_ENABLED": "true",
+    "NOVA_RETAIL_PREPARE_ENABLED": "true",
+    "NOVA_SUPERVISION_ENABLED": "true",
+    "NOVA_WABA_ID": "27206918652305029",
+    "SUPABASE_URL": "https://ditiwpndvmyuqcagupea.supabase.co"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "hyperdrive": [
+    {
+      "binding": "KORA_READONLY",
+      "id": "f217b67017314da3a20e6015de53bb5e"
+    }
+  ],
+  "services": [
+    {
+      "binding": "KORA_REGISTRATION_SOURCE",
+      "service": "creditek-clientes",
+      "environment": "production"
+    },
+    {
+      "binding": "NOVA_RETAIL_DATABASE",
+      "service": "creditek-clientes",
+      "environment": "production",
+      "entrypoint": "NovaRetailDatabaseGateway"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "NOVA_EVENTS",
+      "id": "6dd6041ec9244377887da25651b6fb84"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NOVA_KREDIYA_CHANNEL",
+        "class_name": "KrediyaChannel"
+      },
+      {
+        "name": "NOVA_PILOT",
+        "class_name": "NovaPilot"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "aura.crediteksas.com/creditek/agentes/nova-supervision*",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    },
+    {
+      "pattern": "aura.crediteksas.com/api/nova/supervision",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    },
+    {
+      "pattern": "aura.crediteksas.com/api/nova/gestion",
+      "zone_id": "4117c7a89e988ae0869c02755ffa77ab"
+    }
+  ],
+  "logpush": false,
+  "tail_consumers": [],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "migrations": [
+    {
+      "tag": "nova-krediya-v1"
+    }
+  ]
+}

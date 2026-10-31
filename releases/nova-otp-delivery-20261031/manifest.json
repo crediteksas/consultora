@@ -1,0 +1,19 @@
+{
+  "status": "LOCAL_REVIEW_REQUIRED",
+  "workers": {
+    "clientes": {
+      "baseline": "97cc1e52d59e78d077b947b2ec24ac0960200021bb8ae830922fdc081b65c772",
+      "candidate": "9c78d1e88609bd57caaf3b1ecaad3707379ae85cb77adca82fc4ab2b2efb47fa",
+      "form": "99ba019425732ba8ad5a4778e38d71f96d4cb87c19b308f53d91a4732e927b2a"
+    },
+    "nova": {
+      "baseline": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355",
+      "candidate": "9d675f31f04d683ec61a43ed6c5cab90fd21d8d9b0c9872136520cc361d7792f"
+    }
+  },
+  "sql": "Additive immutable OTP/wamid receipts +3invokerRPC +verification guard",
+  "smsPolicyChange": false,
+  "smsTransportChange": false,
+  "autoResends": false,
+  "realMessages": 0
+}

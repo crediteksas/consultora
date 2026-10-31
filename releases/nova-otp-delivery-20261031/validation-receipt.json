@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-31T17:12:10.566789+00:00",
+  "nodeTests": 69,
+  "nodePassed": 69,
+  "serverTests": 28,
+  "uiVmTests": 20,
+  "embeddedPostgresTests": 21,
+  "workerdFullBundleTests": 8,
+  "total": 77,
+  "passed": 77,
+  "nativePostgresConcurrencyExecuted": false,
+  "realMessages": 0,
+  "productionWritesByTests": 0,
+  "manifest": {
+    "status": "LOCAL_REVIEW_REQUIRED",
+    "workers": {
+      "clientes": {
+        "baseline": "97cc1e52d59e78d077b947b2ec24ac0960200021bb8ae830922fdc081b65c772",
+        "candidate": "9c78d1e88609bd57caaf3b1ecaad3707379ae85cb77adca82fc4ab2b2efb47fa",
+        "form": "99ba019425732ba8ad5a4778e38d71f96d4cb87c19b308f53d91a4732e927b2a"
+      },
+      "nova": {
+        "baseline": "3dc0b1d578bc5ebacccaae63310f8b11ca71c3e9a5a36b5e731f6a76a01ae355",
+        "candidate": "9d675f31f04d683ec61a43ed6c5cab90fd21d8d9b0c9872136520cc361d7792f"
+      }
+    },
+    "sql": "Additive immutable OTP/wamid receipts +3invokerRPC +verification guard",
+    "smsPolicyChange": false,
+    "smsTransportChange": false,
+    "autoResends": false,
+    "realMessages": 0
+  },
+  "sqlSha256": "3425f877f2ce0c47c7f26244e0ccaa48ffffbea5daf740a0cb7061bc0f58d903"
+}

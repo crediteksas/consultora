@@ -1,0 +1,166 @@
+TAP version 13
+# Subtest: valid provider key with SQL policy off reserves nothing and makes no provider call
+ok 1 - valid provider key with SQL policy off reserves nothing and makes no provider call
+  ---
+  duration_ms: 625.629625
+  type: 'test'
+  ...
+# Subtest: invalid provider configuration cannot reserve even with SQL policy on
+ok 2 - invalid provider configuration cannot reserve even with SQL policy on
+  ---
+  duration_ms: 419.183958
+  type: 'test'
+  ...
+# Subtest: worker hard-off blocks new sends without context/RPC/provider calls
+ok 3 - worker hard-off blocks new sends without context/RPC/provider calls
+  ---
+  duration_ms: 409.512083
+  type: 'test'
+  ...
+# Subtest: wrong pilot phone remains forbidden without a reservation or fallback
+ok 4 - wrong pilot phone remains forbidden without a reservation or fallback
+  ---
+  duration_ms: 507.287958
+  type: 'test'
+  ...
+# Subtest: provider 401 retains one reserved39 attempt and replay never resends
+ok 5 - provider 401 retains one reserved39 attempt and replay never resends
+  ---
+  duration_ms: 469.994917
+  type: 'test'
+  ...
+# Subtest: provider 429 retains one reserved39 attempt and replay never resends
+ok 6 - provider 429 retains one reserved39 attempt and replay never resends
+  ---
+  duration_ms: 496.819291
+  type: 'test'
+  ...
+# Subtest: published8s baseline reproduces cutoff before12s synchronous acknowledgement
+ok 7 - published8s baseline reproduces cutoff before12s synchronous acknowledgement
+  ---
+  duration_ms: 499.396542
+  type: 'test'
+  ...
+# Subtest: candidate30s provider wait accepts12s acknowledgement without extending original5min expiry
+ok 8 - candidate30s provider wait accepts12s acknowledgement without extending original5min expiry
+  ---
+  duration_ms: 433.965791
+  type: 'test'
+  ...
+# Subtest: 30s timeout remains uncertain; identical UUID and new UUID cannot duplicate transport
+ok 9 - 30s timeout remains uncertain; identical UUID and new UUID cannot duplicate transport
+  ---
+  duration_ms: 422.535625
+  type: 'test'
+  ...
+# Subtest: late trusted acknowledgement finalizes same UUID/attempt after SQL pause with no second SMS
+ok 10 - late trusted acknowledgement finalizes same UUID/attempt after SQL pause with no second SMS
+  ---
+  duration_ms: 400.052333
+  type: 'test'
+  ...
+# Subtest: accepted provider acknowledgement with lost DB finish remains reserved until same-attempt reconciliation
+ok 11 - accepted provider acknowledgement with lost DB finish remains reserved until same-attempt reconciliation
+  ---
+  duration_ms: 394.060917
+  type: 'test'
+  ...
+# Subtest: SQL pause during send allows finish/status/real HMAC verification but no new SMS
+ok 12 - SQL pause during send allows finish/status/real HMAC verification but no new SMS
+  ---
+  duration_ms: 402.091375
+  type: 'test'
+  ...
+# Subtest: late acknowledgement after original expiry never renews TTL or makes expired code verifiable
+ok 13 - late acknowledgement after original expiry never renews TTL or makes expired code verifiable
+  ---
+  duration_ms: 396.773209
+  type: 'test'
+  ...
+# Subtest: HTTP200 with unknown acceptance shape remains uncertain
+ok 14 - HTTP200 with unknown acceptance shape remains uncertain
+  ---
+  duration_ms: 395.284541
+  type: 'test'
+  ...
+# Subtest: existing202queued parser remains unchanged while requests still explicitly use asyncfalse
+ok 15 - existing202queued parser remains unchanged while requests still explicitly use asyncfalse
+  ---
+  duration_ms: 393.674792
+  type: 'test'
+  ...
+# Subtest: pins exact published Worker/HTML and reproduces candidate deterministically
+ok 16 - pins exact published Worker/HTML and reproduces candidate deterministically
+  ---
+  duration_ms: 4.1005
+  type: 'test'
+  ...
+# Subtest: reversing exactly the two timeout replacements restores all published bytes
+ok 17 - reversing exactly the two timeout replacements restores all published bytes
+  ---
+  duration_ms: 0.796875
+  type: 'test'
+  ...
+# Subtest: only managed SMS browser send receives90s; ordinary WhatsApp and all other endpoints are unchanged
+ok 18 - only managed SMS browser send receives90s; ordinary WhatsApp and all other endpoints are unchanged
+  ---
+  duration_ms: 0.081541
+  type: 'test'
+  ...
+# Subtest: stale baseline, modified HTML and second application fail closed
+ok 19 - stale baseline, modified HTML and second application fail closed
+  ---
+  duration_ms: 2.75375
+  type: 'test'
+  ...
+# Subtest: all inline scripts parse and no reset/replacement that could discard Files is introduced
+ok 20 - all inline scripts parse and no reset/replacement that could discard Files is introduced
+  ---
+  duration_ms: 0.770459
+  type: 'test'
+  ...
+# Subtest: async:false, response validation,5min TTL and8s RPC/WhatsApp waits remain unchanged
+ok 21 - async:false, response validation,5min TTL and8s RPC/WhatsApp waits remain unchanged
+  ---
+  duration_ms: 0.841792
+  type: 'test'
+  ...
+# Subtest: published SMS uses exact scoped browser timeout and preserves selected Files
+ok 22 - published SMS uses exact scoped browser timeout and preserves selected Files
+  ---
+  duration_ms: 2.596834
+  type: 'test'
+  ...
+# Subtest: candidate SMS uses exact scoped browser timeout and preserves selected Files
+ok 23 - candidate SMS uses exact scoped browser timeout and preserves selected Files
+  ---
+  duration_ms: 1.5265
+  type: 'test'
+  ...
+# Subtest: candidate managed WhatsApp uses exact scoped browser timeout and preserves selected Files
+ok 24 - candidate managed WhatsApp uses exact scoped browser timeout and preserves selected Files
+  ---
+  duration_ms: 0.612833
+  type: 'test'
+  ...
+# Subtest: browser uncertainty requires status-only consultation and never repeats send automatically
+ok 25 - browser uncertainty requires status-only consultation and never repeats send automatically
+  ---
+  duration_ms: 0.65125
+  type: 'test'
+  ...
+# Subtest: double click while provider response pending cannot create a second request UUID/send
+ok 26 - double click while provider response pending cannot create a second request UUID/send
+  ---
+  duration_ms: 0.5195
+  type: 'test'
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6839.005208

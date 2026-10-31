@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: one line only: all exports, functions, embedded form and bytes outside the gate remain unchanged
+ok 1 - one line only: all exports, functions, embedded form and bytes outside the gate remain unchanged
+  ---
+  duration_ms: 4.482417
+  type: 'test'
+  ...
+# Subtest: baseline regression with flag true, non-pilot WA, first200 lost
+ok 2 - baseline regression with flag true, non-pilot WA, first200 lost
+  ---
+  duration_ms: 705.912958
+  type: 'test'
+  ...
+# Subtest: candidate preserves non-pilot WA code entry after first200 lost with no second send
+ok 3 - candidate preserves non-pilot WA code entry after first200 lost with no second send
+  ---
+  duration_ms: 521.791625
+  type: 'test'
+  ...
+# Subtest: baseline regression with flag true, non-pilot WA, first200 received
+ok 4 - baseline regression with flag true, non-pilot WA, first200 received
+  ---
+  duration_ms: 470.105334
+  type: 'test'
+  ...
+# Subtest: candidate preserves non-pilot WA code entry after first200 received with no second send
+ok 5 - candidate preserves non-pilot WA code entry after first200 received with no second send
+  ---
+  duration_ms: 453.867084
+  type: 'test'
+  ...
+# Subtest: SMS flag off keeps repaired legacy WA recovery identical
+ok 6 - SMS flag off keeps repaired legacy WA recovery identical
+  ---
+  duration_ms: 461.812542
+  type: 'test'
+  ...
+# Subtest: explicit SMS while flag off is blocked without reserve or provider call
+ok 7 - explicit SMS while flag off is blocked without reserve or provider call
+  ---
+  duration_ms: 449.890209
+  type: 'test'
+  ...
+# Subtest: explicit managed UUID replay retains same accepted challenge and sends once
+ok 8 - explicit managed UUID replay retains same accepted challenge and sends once
+  ---
+  duration_ms: 452.99525
+  type: 'test'
+  ...
+# Subtest: explicit SMS outside pilot gets403 with no new OTP or provider call
+ok 9 - explicit SMS outside pilot gets403 with no new OTP or provider call
+  ---
+  duration_ms: 448.011042
+  type: 'test'
+  ...
+# Subtest: plaintext legacy routing remains unchanged with flag true
+ok 10 - plaintext legacy routing remains unchanged with flag true
+  ---
+  duration_ms: 485.543958
+  type: 'test'
+  ...
+# Subtest: plaintext legacy routing remains unchanged with flag false
+ok 11 - plaintext legacy routing remains unchanged with flag false
+  ---
+  duration_ms: 447.62925
+  type: 'test'
+  ...
+# Subtest: current SQL guard keeps WA active against a managed SMS reservation
+ok 12 - current SQL guard keeps WA active against a managed SMS reservation
+  ---
+  duration_ms: 459.823542
+  type: 'test'
+  ...
+# Subtest: current SQL guard keeps SMS active against legacy WA without changing code expiry
+ok 13 - current SQL guard keeps SMS active against legacy WA without changing code expiry
+  ---
+  duration_ms: 506.326209
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5950.468917

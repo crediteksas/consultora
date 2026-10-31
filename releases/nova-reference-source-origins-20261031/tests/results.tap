@@ -1,0 +1,382 @@
+TAP version 13
+# Subtest: exact published predecessor and external HTML are pinned; rebuild is identical
+ok 1 - exact published predecessor and external HTML are pinned; rebuild is identical
+  ---
+  duration_ms: 2.753333
+  type: 'test'
+  ...
+# Subtest: all bytes outside referenceSourceProof and both HTML copies remain identical
+ok 2 - all bytes outside referenceSourceProof and both HTML copies remain identical
+  ---
+  duration_ms: 1.230667
+  type: 'test'
+  ...
+# Subtest: baseline drift aborts before candidate output
+ok 3 - baseline drift aborts before candidate output
+  ---
+  duration_ms: 1.736792
+  type: 'test'
+  ...
+# Subtest: unchanged NOVA quick reply accepts its exact signed version and context
+ok 4 - unchanged NOVA quick reply accepts its exact signed version and context
+  ---
+  duration_ms: 2.148917
+  type: 'test'
+  ...
+# Subtest: unchanged signed quick reply rejects mismatched application_id
+ok 5 - unchanged signed quick reply rejects mismatched application_id
+  ---
+  duration_ms: 0.487334
+  type: 'test'
+  ...
+# Subtest: unchanged signed quick reply rejects mismatched source_application_id
+ok 6 - unchanged signed quick reply rejects mismatched source_application_id
+  ---
+  duration_ms: 0.374666
+  type: 'test'
+  ...
+# Subtest: unchanged signed quick reply rejects mismatched reference_type
+ok 7 - unchanged signed quick reply rejects mismatched reference_type
+  ---
+  duration_ms: 0.412125
+  type: 'test'
+  ...
+# Subtest: unchanged signed quick reply rejects mismatched payload_hash
+ok 8 - unchanged signed quick reply rejects mismatched payload_hash
+  ---
+  duration_ms: 0.360292
+  type: 'test'
+  ...
+# Subtest: unchanged signed quick reply rejects changed recipient and expiry; no old version can authorize a new contact
+ok 9 - unchanged signed quick reply rejects changed recipient and expiry; no old version can authorize a new contact
+  ---
+  duration_ms: 0.331667
+  type: 'test'
+  ...
+# Subtest: published baseline rejects CK-09 before current-source validation; candidate allows the bound case
+ok 10 - published baseline rejects CK-09 before current-source validation; candidate allows the bound case
+  ---
+  duration_ms: 23.505375
+  type: 'test'
+  ...
+# Subtest: configured CK-01 uses its own active origin
+ok 11 - configured CK-01 uses its own active origin
+  ---
+  duration_ms: 6.23275
+  type: 'test'
+  ...
+# Subtest: configured CK-02 uses its own active origin
+ok 12 - configured CK-02 uses its own active origin
+  ---
+  duration_ms: 4.579875
+  type: 'test'
+  ...
+# Subtest: configured CK-03 uses its own active origin
+ok 13 - configured CK-03 uses its own active origin
+  ---
+  duration_ms: 5.261875
+  type: 'test'
+  ...
+# Subtest: configured CK-04 uses its own active origin
+ok 14 - configured CK-04 uses its own active origin
+  ---
+  duration_ms: 5.776583
+  type: 'test'
+  ...
+# Subtest: configured CK-05 uses its own active origin
+ok 15 - configured CK-05 uses its own active origin
+  ---
+  duration_ms: 4.994584
+  type: 'test'
+  ...
+# Subtest: configured CK-06 uses its own active origin
+ok 16 - configured CK-06 uses its own active origin
+  ---
+  duration_ms: 4.546208
+  type: 'test'
+  ...
+# Subtest: configured CK-07 uses its own active origin
+ok 17 - configured CK-07 uses its own active origin
+  ---
+  duration_ms: 4.428
+  type: 'test'
+  ...
+# Subtest: configured CK-08 uses its own active origin
+ok 18 - configured CK-08 uses its own active origin
+  ---
+  duration_ms: 4.560667
+  type: 'test'
+  ...
+# Subtest: configured CK-09 uses its own active origin
+ok 19 - configured CK-09 uses its own active origin
+  ---
+  duration_ms: 4.096333
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: CK-00
+ok 20 - origin outside closed retail range is rejected: CK-00
+  ---
+  duration_ms: 4.547125
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: CK-10
+ok 21 - origin outside closed retail range is rejected: CK-10
+  ---
+  duration_ms: 3.874833
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: CK-019
+ok 22 - origin outside closed retail range is rejected: CK-019
+  ---
+  duration_ms: 4.372709
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: ck-09
+ok 23 - origin outside closed retail range is rejected: ck-09
+  ---
+  duration_ms: 3.807667
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: CK-09&activo=eq.true
+ok 24 - origin outside closed retail range is rejected: CK-09&activo=eq.true
+  ---
+  duration_ms: 4.225667
+  type: 'test'
+  ...
+# Subtest: origin outside closed retail range is rejected: OTHER
+ok 25 - origin outside closed retail range is rejected: OTHER
+  ---
+  duration_ms: 3.789666
+  type: 'test'
+  ...
+# Subtest: missing or subset allowlist cannot authorize CK-09
+ok 26 - missing or subset allowlist cannot authorize CK-09
+  ---
+  duration_ms: 12.218833
+  type: 'test'
+  ...
+# Subtest: retail switch controls non-CK02; existing CK02 still requires allowlist
+ok 27 - retail switch controls non-CK02; existing CK02 still requires allowlist
+  ---
+  duration_ms: 8.333292
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: inactive source origin
+ok 28 - NOVA existing source guard preserved: inactive source origin
+  ---
+  duration_ms: 3.905125
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: returned origin mismatch
+ok 29 - NOVA existing source guard preserved: returned origin mismatch
+  ---
+  duration_ms: 4.36075
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: missing origin
+ok 30 - NOVA existing source guard preserved: missing origin
+  ---
+  duration_ms: 6.071625
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: duplicate origins
+ok 31 - NOVA existing source guard preserved: duplicate origins
+  ---
+  duration_ms: 4.62175
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: source belongs to another client
+ok 32 - NOVA existing source guard preserved: source belongs to another client
+  ---
+  duration_ms: 4.538959
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: source revoked
+ok 33 - NOVA existing source guard preserved: source revoked
+  ---
+  duration_ms: 3.8785
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: consent not granted
+ok 34 - NOVA existing source guard preserved: consent not granted
+  ---
+  duration_ms: 4.426375
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: consent revoked
+ok 35 - NOVA existing source guard preserved: consent revoked
+  ---
+  duration_ms: 3.9515
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: WhatsApp not authorized
+ok 36 - NOVA existing source guard preserved: WhatsApp not authorized
+  ---
+  duration_ms: 4.3565
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: client authorization missing
+ok 37 - NOVA existing source guard preserved: client authorization missing
+  ---
+  duration_ms: 3.8975
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: client phone changed
+ok 38 - NOVA existing source guard preserved: client phone changed
+  ---
+  duration_ms: 4.31125
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: delivery incomplete
+ok 39 - NOVA existing source guard preserved: delivery incomplete
+  ---
+  duration_ms: 5.773959
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: outbox belongs to another application
+ok 40 - NOVA existing source guard preserved: outbox belongs to another application
+  ---
+  duration_ms: 4.495833
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: receipt belongs to another client
+ok 41 - NOVA existing source guard preserved: receipt belongs to another client
+  ---
+  duration_ms: 4.813084
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: receipt WhatsApp consent absent
+ok 42 - NOVA existing source guard preserved: receipt WhatsApp consent absent
+  ---
+  duration_ms: 3.93825
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: duplicate source records
+ok 43 - NOVA existing source guard preserved: duplicate source records
+  ---
+  duration_ms: 4.398125
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: missing client
+ok 44 - NOVA existing source guard preserved: missing client
+  ---
+  duration_ms: 3.920417
+  type: 'test'
+  ...
+# Subtest: NOVA existing source guard preserved: duplicate delivery records
+ok 45 - NOVA existing source guard preserved: duplicate delivery records
+  ---
+  duration_ms: 4.491875
+  type: 'test'
+  ...
+# Subtest: effective replacement permits new phone and rejects previous phone, per role
+ok 46 - effective replacement permits new phone and rejects previous phone, per role
+  ---
+  duration_ms: 4.540417
+  type: 'test'
+  ...
+# Subtest: current reference contact authorization remains mandatory
+ok 47 - current reference contact authorization remains mandatory
+  ---
+  duration_ms: 4.713208
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: RPC unavailable
+ok 48 - effective-reference contract fails closed without snapshot fallback: RPC unavailable
+  ---
+  duration_ms: 5.48125
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: RPC non-success
+ok 49 - effective-reference contract fails closed without snapshot fallback: RPC non-success
+  ---
+  duration_ms: 4.718125
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: null response
+ok 50 - effective-reference contract fails closed without snapshot fallback: null response
+  ---
+  duration_ms: 4.406958
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: object response
+ok 51 - effective-reference contract fails closed without snapshot fallback: object response
+  ---
+  duration_ms: 3.85625
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: no reference
+ok 52 - effective-reference contract fails closed without snapshot fallback: no reference
+  ---
+  duration_ms: 4.382417
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: too many references
+ok 53 - effective-reference contract fails closed without snapshot fallback: too many references
+  ---
+  duration_ms: 3.910917
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: duplicate role
+ok 54 - effective-reference contract fails closed without snapshot fallback: duplicate role
+  ---
+  duration_ms: 4.278209
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: unauthorized role
+ok 55 - effective-reference contract fails closed without snapshot fallback: unauthorized role
+  ---
+  duration_ms: 3.899459
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: invalid phone
+ok 56 - effective-reference contract fails closed without snapshot fallback: invalid phone
+  ---
+  duration_ms: 4.379375
+  type: 'test'
+  ...
+# Subtest: effective-reference contract fails closed without snapshot fallback: string permission
+ok 57 - effective-reference contract fails closed without snapshot fallback: string permission
+  ---
+  duration_ms: 5.650208
+  type: 'test'
+  ...
+# Subtest: one valid role remains independently verifiable; an absent role is not inferred
+ok 58 - one valid role remains independently verifiable; an absent role is not inferred
+  ---
+  duration_ms: 4.821292
+  type: 'test'
+  ...
+# Subtest: wrong app, source context, or recipient cannot verify another reference
+ok 59 - wrong app, source context, or recipient cannot verify another reference
+  ---
+  duration_ms: 4.6425
+  type: 'test'
+  ...
+# Subtest: two existing applications with the same reference phone remain bound to their own source/application
+ok 60 - two existing applications with the same reference phone remain bound to their own source/application
+  ---
+  duration_ms: 4.68275
+  type: 'test'
+  ...
+# Subtest: source endpoint still requires backend token and POST; no data reads on denial
+ok 61 - source endpoint still requires backend token and POST; no data reads on denial
+  ---
+  duration_ms: 4.455917
+  type: 'test'
+  ...
+# Subtest: closed pipeline uses only read GETs and canonical read RPC; no dispatch or provider calls
+ok 62 - closed pipeline uses only read GETs and canonical read RPC; no dispatch or provider calls
+  ---
+  duration_ms: 4.017084
+  type: 'test'
+  ...
+1..62
+# tests 62
+# suites 0
+# pass 62
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 403.731417

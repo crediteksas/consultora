@@ -1,0 +1,15 @@
+{
+  "checkedAtUTC": "2026-10-31T19:25:13.736Z",
+  "engine": "Actual CLIENTES source-proof function composed with actual NOVA verifyReferenceSource/context in closed VM",
+  "candidateWorkerSha256": "00105618218bba903271788cbfca5da68e6cc3c8e2d85050083760a1731b2f4a",
+  "tests": 62,
+  "passed": 62,
+  "failed": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "realNetworkCalls": 0,
+  "realMessages": 0,
+  "productionWrites": 0,
+  "productionReadsInTests": 0,
+  "scope": "Local synthetic backend-only read mocks; no replay or recovery"
+}

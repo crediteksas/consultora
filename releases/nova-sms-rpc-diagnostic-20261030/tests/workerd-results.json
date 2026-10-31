@@ -1,0 +1,156 @@
+{
+  "engine": "Real workerd through Miniflare4 in installed Wrangler4.156.0",
+  "baselineSha256": "6010453e3c6aa8d07fb9e4f213c67119cd0a8c9360a864a861b727810ff5fee4",
+  "candidateSha256": "97cc1e52d59e78d077b947b2ec24ac0960200021bb8ae830922fdc081b65c772",
+  "tests": 16,
+  "passed": 16,
+  "failed": 0,
+  "checks": [
+    {
+      "label": "baseline",
+      "mode": "options",
+      "redirect": false,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "ILLEGAL_INVOCATION"
+    },
+    {
+      "label": "baseline",
+      "mode": "options",
+      "redirect": true,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "ILLEGAL_INVOCATION"
+    },
+    {
+      "label": "baseline",
+      "mode": "active",
+      "redirect": false,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "baseline",
+      "mode": "active",
+      "redirect": true,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "direct_manual",
+      "mode": "options",
+      "redirect": false,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "ILLEGAL_INVOCATION"
+    },
+    {
+      "label": "direct_manual",
+      "mode": "options",
+      "redirect": true,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "ILLEGAL_INVOCATION"
+    },
+    {
+      "label": "direct_manual",
+      "mode": "active",
+      "redirect": false,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    },
+    {
+      "label": "direct_manual",
+      "mode": "active",
+      "redirect": true,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    },
+    {
+      "label": "wrapped_error",
+      "mode": "options",
+      "redirect": false,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "wrapped_error",
+      "mode": "options",
+      "redirect": true,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "wrapped_error",
+      "mode": "active",
+      "redirect": false,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "wrapped_error",
+      "mode": "active",
+      "redirect": true,
+      "passed": true,
+      "requests": 0,
+      "redirectsFollowed": 0,
+      "transportFailure": "UNSUPPORTED_REDIRECT"
+    },
+    {
+      "label": "candidate",
+      "mode": "options",
+      "redirect": false,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    },
+    {
+      "label": "candidate",
+      "mode": "options",
+      "redirect": true,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    },
+    {
+      "label": "candidate",
+      "mode": "active",
+      "redirect": false,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    },
+    {
+      "label": "candidate",
+      "mode": "active",
+      "redirect": true,
+      "passed": true,
+      "requests": 1,
+      "redirectsFollowed": 0,
+      "transportFailure": null
+    }
+  ],
+  "realProviderCalls": 0,
+  "productionWrites": 0
+}

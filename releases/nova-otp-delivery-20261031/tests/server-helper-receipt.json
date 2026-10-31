@@ -1,0 +1,30 @@
+{
+  "checkedAtUTC": "2026-10-31T17:12:10.566789+00:00",
+  "command": "node --test --test-reporter=tap releases/nova-otp-delivery-20261031/tests/server-helper.test.mjs",
+  "exitCode": 0,
+  "counts": {
+    "tests": 28,
+    "pass": 28,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "fixtureScope": "synthetic closed fetch, DB and service bindings only",
+  "networkCalls": 0,
+  "productionMutations": 0,
+  "testFileSha256": "b15e99c94950af0400a9b5abf566a91ea8ecf87833decd2012f786afaa1e963c",
+  "modules": {
+    "send-whatsapp.mjs": "cee9debe56c95694fbe83d83c987a4afa5aed9f47b72ece3e26b800590c9b9ed",
+    "common.mjs": "511c7e74a8bdf4aa2bd925eed6e3f189002e87b9a2e871ade005b5c12fc3ea39",
+    "nova-receipt.mjs": "f611322509b91fc01c8e61d4012ceceb429e9a656dda94648ca3764ff09f0120",
+    "client-delivery.mjs": "9826967620c37ca73537d8ecf400a0b6302039c30e8689907130e2a239684107"
+  },
+  "correlationCoverage": [
+    "optional attempt UUID to exact SQL p_otp_id",
+    "fallback null SQL selector",
+    "wrong returned OTP fails closed before bridge",
+    "malformed attempt UUID zero context/SQL/limiter/service",
+    "public opaque attempt UUID permitted; Meta IDs, codes, identity data and secrets forbidden"
+  ]
+}

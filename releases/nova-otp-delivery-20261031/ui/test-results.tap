@@ -1,0 +1,28 @@
+✔ pins full production HTML, deterministic transform, double application rejected, scripts parse (1.5005ms)
+✔ accepted means accepted, does not claim delivery, starts status-only read without another send (2.226ms)
+✔ failed delivery hides rejected code, gives concrete action and keeps identity, selected File objects and all other fields (0.6365ms)
+✔ failed countdown ends without automatic send and requires fresh CAPTCHA before next eligible click (0.634166ms)
+✔ expiry permits no automatic retry and a renewed CAPTCHA is still required (0.557792ms)
+✔ changing phone during status read discards old response and preserves Files (0.622542ms)
+✔ changing identity during initial send discards the old accepted response (0.458625ms)
+✔ transport and HTTP status uncertainty do not claim acceptance or resend (0.531625ms)
+✔ polling is bounded at most5min and at8s intervals with no CAPTCHA or customer write calls (1.700792ms)
+✔ a late acceptance cannot revive an already failed attempt or extend its original expiry (0.660209ms)
+✔ verification busy suppresses status application and resumes reading after completion (0.852792ms)
+✔ another-tab verification never invents a local verified session or enables resend (0.504833ms)
+✔ 202 accepted recovery consults status and reports failure instead of another delivery wait (0.444708ms)
+✔ quota errors remain truthful through polling and do not claim that a code was requested (0.40125ms)
+✔ successful verification ends status polling and preserves the verified session (0.676625ms)
+✔ status is pinned to the original attempt and ignores a newer attempt for the same identity (0.55125ms)
+✔ a local network failure keeps its bound attempt ID and never applies another server response (0.422625ms)
+✔ invalid attempt identifiers cannot pin a receipt or disclose provider IDs through later requests (0.400458ms)
+✔ legacy verification sends the bound attempt ID alongside the exact identity (0.392333ms)
+✔ managed verification does not inherit a legacy delivery attempt ID (0.469959ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62.381292

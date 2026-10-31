@@ -1,0 +1,32 @@
+{
+  "status": "LOCAL_REVIEW_REQUIRED_NO_ACTIVATION",
+  "baselineWorkerSha256": "9c78d1e88609bd57caaf3b1ecaad3707379ae85cb77adca82fc4ab2b2efb47fa",
+  "baselineFormSha256": "99ba019425732ba8ad5a4778e38d71f96d4cb87c19b308f53d91a4732e927b2a",
+  "candidateWorkerSha256": "f3fd64f53e7e0d3049964a4f6fab384dd3941376ebae72fbe3324c654670665d",
+  "candidateFormSha256": "2a4948d8f71cde22baac7873cd9958f94b975d1c4cd9151871f3c7f4e84fe087",
+  "changedFunctions": [
+    "sendPreparedExpressSms",
+    "solicitarOtpGestionado"
+  ],
+  "providerTimeoutMs": {
+    "before": 8000,
+    "after": 30000
+  },
+  "uiSendTimeoutMs": {
+    "smsBefore": 20000,
+    "smsAfter": 90000,
+    "whatsappBefore": 20000,
+    "whatsappAfter": 20000
+  },
+  "embeddedMatchesExternal": true,
+  "asyncModeChanged": false,
+  "responseParserChanged": false,
+  "sqlChanges": false,
+  "bindingOrSecretChanges": false,
+  "otpTtlMs": 300000,
+  "policyActivation": false,
+  "automaticRetries": false,
+  "realMessages": 0,
+  "realProviderRequests": 0,
+  "productionWrites": 0
+}

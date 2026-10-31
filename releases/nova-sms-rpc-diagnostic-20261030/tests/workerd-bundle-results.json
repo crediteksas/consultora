@@ -1,0 +1,46 @@
+{
+  "engine": "Complete deployed bundle in real workerd/Miniflare; closed outboundService, synthetic bindings only",
+  "baselineSha256": "6010453e3c6aa8d07fb9e4f213c67119cd0a8c9360a864a861b727810ff5fee4",
+  "candidateSha256": "97cc1e52d59e78d077b947b2ec24ac0960200021bb8ae830922fdc081b65c772",
+  "tests": 3,
+  "passed": 3,
+  "failed": 0,
+  "checks": [
+    {
+      "label": "baseline",
+      "endpoint": "POST /api/otp/opciones",
+      "passed": true,
+      "httpStatus": 200,
+      "smsEnabled": false,
+      "rpcCalls": 0
+    },
+    {
+      "label": "candidate",
+      "endpoint": "POST /api/otp/opciones",
+      "passed": true,
+      "httpStatus": 200,
+      "smsEnabled": true,
+      "rpcCalls": 1
+    },
+    {
+      "label": "candidate",
+      "endpoint": "POST /api/otp/enviar + identical replay",
+      "passed": true,
+      "httpStatus": 200,
+      "state": "accepted",
+      "deliveryClaimed": false,
+      "counts": {
+        "context": 3,
+        "options": 1,
+        "status": 2,
+        "reserve": 1,
+        "finish": 1,
+        "captcha": 1,
+        "provider": 1,
+        "unexpected": 0
+      }
+    }
+  ],
+  "realProviderCalls": 0,
+  "productionWrites": 0
+}

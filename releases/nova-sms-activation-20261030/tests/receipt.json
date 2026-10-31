@@ -1,0 +1,26 @@
+{
+  "tests": 13,
+  "passed": 13,
+  "baselineWorkerSha256": "6a5d0d76296d91c44f22398823c54749b4a2ae30ec5923c27e47da254eac0c7d",
+  "candidateWorkerSha256": "6010453e3c6aa8d07fb9e4f213c67119cd0a8c9360a864a861b727810ff5fee4",
+  "formSha256": "ef6c89485e34b4b80f7df3e68f962c0ac66232d4a0e7ec8e3a06073554810b07",
+  "sqlChanges": false,
+  "productionWrites": 0,
+  "realNetworkRequests": 0,
+  "realMessages": 0,
+  "cases": [
+    "one line only: all exports, functions, embedded form and bytes outside the gate remain unchanged",
+    "baseline regression with flag true, non-pilot WA, first200 lost",
+    "candidate preserves non-pilot WA code entry after first200 lost with no second send",
+    "baseline regression with flag true, non-pilot WA, first200 received",
+    "candidate preserves non-pilot WA code entry after first200 received with no second send",
+    "SMS flag off keeps repaired legacy WA recovery identical",
+    "explicit SMS while flag off is blocked without reserve or provider call",
+    "explicit managed UUID replay retains same accepted challenge and sends once",
+    "explicit SMS outside pilot gets403 with no new OTP or provider call",
+    "plaintext legacy routing remains unchanged with flag true",
+    "plaintext legacy routing remains unchanged with flag false",
+    "current SQL guard keeps WA active against a managed SMS reservation",
+    "current SQL guard keeps SMS active against legacy WA without changing code expiry"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "checkedAtUTC": "2026-10-31T19:02:54.035Z",
+  "engine": "Actual published/candidate functions and inline UI in closed VM + real local PGlite RPC/roles/triggers + actual WebCrypto HMAC/session",
+  "tests": 26,
+  "passed": 26,
+  "failed": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "candidateWorkerSha256": "f3fd64f53e7e0d3049964a4f6fab384dd3941376ebae72fbe3324c654670665d",
+  "candidateFormSha256": "2a4948d8f71cde22baac7873cd9958f94b975d1c4cd9151871f3c7f4e84fe087",
+  "realProviderCalls": 0,
+  "productionReads": 0,
+  "productionWrites": 0,
+  "realMessages": 0,
+  "localSyntheticSqlMutationsOnly": true,
+  "clock": "Synthetic time advances; no real30/90second sleeps",
+  "concurrency": "Client double-click and durable UUID replay tested; no native multi-session lock-race claim"
+}

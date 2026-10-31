@@ -1,0 +1,70 @@
+{
+  "checkedAtUTC": "2026-10-31T19:02:58.648Z",
+  "engine": "Complete candidate bundle in actual workerd/Miniflare; closed outboundService mocks and test-only native timeout observation",
+  "candidateWorkerSha256": "f3fd64f53e7e0d3049964a4f6fab384dd3941376ebae72fbe3324c654670665d",
+  "tests": 4,
+  "passed": 4,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "SQL disabled",
+      "passed": true,
+      "calls": {
+        "provider": 0,
+        "reserve": 1,
+        "finish": 0,
+        "captcha": 1,
+        "unknown": 0
+      },
+      "nativeProviderTimeoutObserved": null,
+      "responseState": "not_sent",
+      "realMessages": 0
+    },
+    {
+      "name": "accepted then identical UUID replay",
+      "passed": true,
+      "calls": {
+        "provider": 1,
+        "reserve": 1,
+        "finish": 1,
+        "captcha": 1,
+        "unknown": 0
+      },
+      "nativeProviderTimeoutObserved": 30000,
+      "responseState": "accepted",
+      "realMessages": 0
+    },
+    {
+      "name": "provider401 then replay",
+      "passed": true,
+      "calls": {
+        "provider": 1,
+        "reserve": 1,
+        "finish": 1,
+        "captcha": 1,
+        "unknown": 0
+      },
+      "nativeProviderTimeoutObserved": 30000,
+      "responseState": "failed",
+      "realMessages": 0
+    },
+    {
+      "name": "provider429 then replay",
+      "passed": true,
+      "calls": {
+        "provider": 1,
+        "reserve": 1,
+        "finish": 1,
+        "captcha": 1,
+        "unknown": 0
+      },
+      "nativeProviderTimeoutObserved": 30000,
+      "responseState": "failed",
+      "realMessages": 0
+    }
+  ],
+  "realProviderCalls": 0,
+  "productionReads": 0,
+  "productionWrites": 0,
+  "realMessages": 0
+}

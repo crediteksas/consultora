@@ -132,7 +132,7 @@ test('cuadro único conserva cuatro filas, valores numéricos, formatos mixtos y
 });
 
 test('colores de lectura: límites exactos y datos ausentes sin cambiar ratios o estados',()=>{
- for(const [ratio,tone]of [[1,'positive'],[1.27,'positive'],[.999999,'negative'],[.9,'negative'],[0,'negative'],[-.01,'negative'],[null,'neutral'],[undefined,'neutral'],[NaN,'neutral'],[Infinity,'neutral'],['1','neutral']])assert.equal(C.tonosCategoria({cumplimiento:ratio}).cumplimiento,tone);
+ for(const [ratio,tone]of [[1,'positive'],[1.27,'positive'],[.999999,'steady'],[.9999,'steady'],[.900001,'steady'],[.9,'steady'],[.899999,'negative'],[.8999,'negative'],[0,'negative'],[-.01,'negative'],[null,'neutral'],[undefined,'neutral'],[NaN,'neutral'],[Infinity,'neutral'],['1','neutral']])assert.equal(C.tonosCategoria({cumplimiento:ratio}).cumplimiento,tone);
  for(const [ratio,tone]of [[.00001,'positive'],[.42,'positive'],[0,'steady'],[-0,'steady'],[-.00001,'negative'],[-.27,'negative'],[null,'neutral'],[undefined,'neutral'],[NaN,'neutral'],[Infinity,'neutral'],['0','neutral']])assert.equal(C.tonosCategoria({crecimientoAnual:ratio}).crecimiento,tone);
  const c={cumplimiento:1.01,crecimientoAnual:-.2,estado:'Meta alcanzada',estadoCrecimiento:'Disminución'},before=JSON.stringify(c);C.tonosCategoria(c);assert.equal(JSON.stringify(c),before);
 });
@@ -144,5 +144,5 @@ test('PDF y Excel reciben colores solo para las dos columnas solicitadas, sin mu
   for(const col of [0,1,2,3,4,6])assert.equal(table.rowTones[i][col],'');
   assert.equal(table.rows[i][5],cierre.categorias[i].cumplimiento);assert.equal(table.rows[i][7],cierre.categorias[i].crecimientoAnual);
  }
- assert.ok(report.notes.includes(C.LEYENDA_COLORES));assert.match(C.LEYENDA_COLORES,/gris = sin porcentaje comparable/);
+ assert.ok(report.notes.includes(C.LEYENDA_COLORES));assert.match(C.LEYENDA_COLORES,/amarillo desde 90% y hasta menos de 100%/);assert.match(C.LEYENDA_COLORES,/rojo por debajo de 90%/);assert.match(C.LEYENDA_COLORES,/Gris: sin porcentaje comparable/);
 });

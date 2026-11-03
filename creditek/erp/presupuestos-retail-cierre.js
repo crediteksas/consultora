@@ -199,11 +199,11 @@
   function tonosCategoria(categoria) {
     const cumplimiento = categoria.cumplimiento, crecimiento = categoria.crecimientoAnual;
     return {
-      cumplimiento: !Number.isFinite(cumplimiento) ? 'neutral' : cumplimiento >= 1 ? 'positive' : 'negative',
+      cumplimiento: !Number.isFinite(cumplimiento) ? 'neutral' : cumplimiento >= 1 ? 'positive' : cumplimiento >= 0.9 ? 'steady' : 'negative',
       crecimiento: !Number.isFinite(crecimiento) ? 'neutral' : crecimiento > 0 ? 'positive' : crecimiento < 0 ? 'negative' : 'steady',
     };
   }
-  const LEYENDA_COLORES = 'Colores: verde = meta alcanzada o crecimiento; rojo = por debajo de la meta o disminución; amarillo = sin variación interanual; gris = sin porcentaje comparable. Los porcentajes y estados conservan su significado.';
+  const LEYENDA_COLORES = 'Cumplimiento: verde desde 100%; amarillo desde 90% y hasta menos de 100%; rojo por debajo de 90%. Crecimiento interanual: verde si aumenta; rojo si disminuye; amarillo sin variación. Gris: sin porcentaje comparable. Los porcentajes y estados conservan su significado.';
   function informe(cierre) {
     const { tienda, periodo: p, categorias } = cierre;
     const anioAnterior = Number(p.mes.slice(0, 4)) - 1;

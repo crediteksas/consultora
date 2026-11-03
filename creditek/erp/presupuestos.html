@@ -22,6 +22,7 @@
 <script id="koraReportExport" src="kora-report-export.js?v=1.4.4"></script>
 <script src="presupuestos-retail-cierre.js?v=1.1.1"></script>
 <script src="presupuestos-retail-cierre-ui.js?v=1.1.1"></script>
+<script src="presupuestos-retail-planificacion.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -162,6 +163,23 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .cierre-pdv .cierre-pdv-aviso { padding: 10px; border-left: 3px solid #ba7b12; background: #fff8e9; color: #765008; }
 .cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
 @media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }
+#comparativoPlanificacion { min-width: 0; margin-top: 18px; }
+#comparativoPlanificacion [data-plan-status] { font-size: 13px; margin-bottom: 10px; color: #526075; }
+#comparativoPlanificacion .plan-tienda { min-width: 0; margin-top: 16px; border: 1px solid #dce5eb; border-top: 3px solid #00c4cc; border-radius: 14px; padding: 16px; }
+#comparativoPlanificacion h3 { font-size: 16px; margin-bottom: 6px; }
+#comparativoPlanificacion p { font-size: 12px; line-height: 1.5; color: #526075; margin-bottom: 10px; }
+#comparativoPlanificacion .plan-tabla { overflow-x: auto; }
+#comparativoPlanificacion table { min-width: 700px; font-variant-numeric: tabular-nums; }
+#comparativoPlanificacion caption { text-align: left; padding-bottom: 10px; font-size: 12px; color: #526075; }
+#comparativoPlanificacion th, #comparativoPlanificacion td { position: static; white-space: normal; padding: 12px 10px; text-align: right; }
+#comparativoPlanificacion thead th { background: #0b1e3d; color: #fff; }
+#comparativoPlanificacion tr th:first-child { text-align: left; min-width: 140px; }
+#comparativoPlanificacion td:last-child { text-align: left; width: 30%; }
+#comparativoPlanificacion td.plan-propuesta { background: #effafb; font-weight: 700; }
+#comparativoPlanificacion small { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; }
+#comparativoPlanificacion thead small { color: #d5f5f7; }
+#comparativoPlanificacion .plan-aviso { color: #765008; }
+#comparativoPlanificacion .plan-tabla:focus-visible { outline: 2px solid #008a96; outline-offset: 3px; }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -238,6 +256,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
       <div class="campo"><label>Accesorios</label><input class="pct-metrica" data-metrica="meta_uds_acc" type="number" value="0" min="0" max="1000" step="1"></div>
     </div>
     <small id="genPctAyuda">Cada indicador conserva su propio porcentaje. 100% significa duplicar el resultado anterior.</small>
+    <section id="comparativoPlanificacion" aria-label="Comparativo para planificar"></section>
     <div class="modal-err" id="genErr"></div>
   </div>
 
@@ -414,6 +433,13 @@ function initPagina() {
     document.getElementById('btnEntregaInforme').disabled = true;
     document.getElementById('btnEntregaInforme').title = 'Actualiza para cargar el generador del cierre mensual.';
   }
+  window.KoraPresupuestoPlanificacion?.montar({
+    panel: document.getElementById('comparativoPlanificacion'),
+    button: document.getElementById('btnGenerar'),
+    tiendaInput: document.getElementById('genTienda'), monthInput: document.getElementById('genMes'),
+    inputs: [...document.querySelectorAll('.pct-metrica')], sb, perfil: currentPerfil,
+    tiendas: () => tiendasCache,
+  });
   cargarTiendas().then(cargarPresupuesto);
   actualizarAyudaCrecimiento();
 }

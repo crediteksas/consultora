@@ -5,7 +5,7 @@
  const PAGE_SIZE=20;
  const identityMap={id:value=>value,offer:row=>({...row}),name:(_id,fallback)=>fallback};
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(n);
+ const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
  const normalize=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
  // Presentation only: keep the saved reference and its matching key untouched.
  function referenceParts(reference){const parts=String(reference||'Referencia pendiente').split(';').map(s=>s.trim()).filter(Boolean);return {title:parts.shift()||'Referencia pendiente',details:parts.join(' · ')};}

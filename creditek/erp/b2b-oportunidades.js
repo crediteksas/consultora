@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(v);
+ const money=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
  const note='Revisión manual, sin aumento automático. Se muestran diferencias positivas, sin umbral mínimo, de mayor a menor en pesos. Promedio de los otros proveedores: un costo por proveedor para la misma referencia. Borradores y publicados se analizan por separado; las listas pueden tener distintas fechas y disponibilidad. La diferencia no es utilidad garantizada.';
  function find(report){
   const result=[];

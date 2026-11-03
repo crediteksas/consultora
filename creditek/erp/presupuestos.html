@@ -15,13 +15,14 @@
 <link rel="stylesheet" href="presupuestos-negocios.css?v=1.0.0">
 <script src="presupuestos-negocios.js?v=1.0.0"></script>
 <script src="presupuestos-b2b.js?v=1.0.0"></script>
-<script src="presupuestos-retail-cartas.js?v=1.2.0"></script>
+<script src="presupuestos-retail-cartas.js?v=1.2.1"></script>
 <script src="presupuestos-cartas-descarga.js?v=1.0.1"></script>
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.0.0"></script>
-<script id="koraReportExport" src="kora-report-export.js?v=1.4.5"></script>
-<script src="presupuestos-retail-cierre.js?v=1.1.3"></script>
-<script src="presupuestos-retail-cierre-ui.js?v=1.1.2"></script>
+<script id="koraReportExport" src="kora-report-export.js?v=1.5.0"></script>
+<script src="presupuestos-retail-cierre.js?v=1.2.0"></script>
+<script src="presupuestos-retail-cierre-descarga.js?v=1.0.0"></script>
+<script src="presupuestos-retail-cierre-ui.js?v=1.2.0"></script>
 <script src="presupuestos-retail-planificacion.js?v=1.0.0"></script>
 <style>
 :root {
@@ -146,20 +147,32 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 
 #informePuntosVenta { scroll-margin-top: 85px; }
 #informePuntosVenta [data-cierre-status] { margin: 14px 0; font-size: 13px; }
-.cierre-pdv { margin-top: 20px; padding: 18px; border: 1px solid #dce5eb; border-radius: 14px; background: #fff; }
+.cierre-pdv { min-width: 0; max-width: 100%; container: cierre-pdv / inline-size; margin-top: 20px; padding: 18px; border: 1px solid #dce5eb; border-radius: 14px; background: #fff; }
 .cierre-pdv h3 { font-size: 17px; margin-bottom: 6px; }
 .cierre-pdv p { margin: 8px 0; color: #526075; font-size: 12px; line-height: 1.5; }
 .cierre-pdv-tabla { overflow-x: auto; margin: 15px 0; }
-.cierre-pdv table { width: 100%; min-width: 960px; font-size: 12px; font-variant-numeric: tabular-nums; }
+#informePuntosVenta .cierre-pdv table { width: 100%; min-width: 0; table-layout: fixed; font-size: 12px; font-variant-numeric: tabular-nums; }
+#informePuntosVenta .cierre-pdv :is(th,td) { min-width: 0; white-space: normal; overflow-wrap: anywhere; padding: 10px 4px; position: static; }
+#informePuntosVenta .cierre-pdv thead th { width: 13%; text-align: center; font-size: 11px; line-height: 1.3; letter-spacing: 0; text-transform: none; overflow-wrap: normal; }
+#informePuntosVenta .cierre-pdv thead th:first-child { width: 15%; text-align: left; }
+#informePuntosVenta .cierre-pdv thead th:nth-child(4) { width: 14%; }
+#informePuntosVenta .cierre-pdv thead th:nth-child(6) { width: 10%; }
+#informePuntosVenta .cierre-pdv thead th:last-child { width: 9%; }
+#informePuntosVenta .cierre-pdv tr th:first-child { min-width: 0; }
+#informePuntosVenta .cierre-pdv-tabla { min-width: 0; max-width: 100%; }
+#informePuntosVenta .cierre-pdv td { font-size: clamp(13px,1.6cqi,14px); white-space: nowrap; overflow-wrap: normal; }
+#informePuntosVenta .cierre-pdv td strong { font-size: inherit; }
+#informePuntosVenta .cierre-pdv td small { white-space: normal; overflow-wrap: normal; }
 .cierre-pdv caption { text-align: left; padding: 0 0 10px; color: #526075; font-size: 12px; }
 .cierre-pdv small { display: block; margin-top: 5px; font-size: 10px; font-weight: 400; line-height: 1.4; }
 .cierre-pdv thead small { color: #d5f5f7; }
 .cierre-pdv-tabla:focus-visible { outline: 2px solid #008a96; outline-offset: 4px; }
 .cierre-pdv td.cierre-pdv-actual { background: #effafb; color: #0b1e3d; }
-.cierre-pdv th, .cierre-pdv td { position: static; white-space: normal; min-width: 100px; text-align: right; padding: 12px 9px; }
+.cierre-pdv th, .cierre-pdv td { position: static; white-space: normal; min-width: 100px; text-align: center; padding: 12px 9px; }
 .cierre-pdv thead th { background: #0b1e3d; color: #fff; }
 .cierre-pdv tr th:first-child { text-align: left; min-width: 155px; }
-.cierre-pdv td:last-child { text-align: right; }
+.cierre-pdv td { font-size: 14px; font-weight: 600; vertical-align: middle; }
+.cierre-pdv td:last-child { text-align: center; }
 .cierre-pdv .cierre-pdv-aviso { padding: 10px; border-left: 3px solid #ba7b12; background: #fff8e9; color: #765008; }
 /* Colores de lectura: conservan porcentajes y estados textuales, sin iconos. */
 .cierre-pdv td[data-cierre-tono="positive"] { background: #DCFCE7; color: #166534; }
@@ -169,6 +182,22 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .cierre-pdv td[data-cierre-tono] small { color: inherit; }
 .cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
 @media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }
+/* La consulta se adapta al espacio real que deja la navegación, también en ventanas estrechas. */
+@container cierre-pdv (max-width: 760px) {
+  #informePuntosVenta .cierre-pdv-tabla { overflow: visible; }
+  #informePuntosVenta .cierre-pdv table { display: block; }
+  #informePuntosVenta .cierre-pdv caption { display: block; }
+  #informePuntosVenta .cierre-pdv thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  #informePuntosVenta .cierre-pdv tbody { display: grid; gap: 14px; }
+  #informePuntosVenta .cierre-pdv tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border: 1px solid #dce5eb; border-radius: 10px; overflow: hidden; }
+  #informePuntosVenta .cierre-pdv tbody th { grid-column: 1 / -1; width: auto; height: auto; font-size: 15px; background: #f1f5f9; }
+  #informePuntosVenta .cierre-pdv tbody td { display: block; width: auto; height: auto; font-size: 14px; padding: 10px 8px; border: 0; text-align: center; }
+  #informePuntosVenta .cierre-pdv tbody td::before { content: attr(data-cierre-label); display: block; margin-bottom: 6px; font-size: 10px; font-weight: 600; line-height: 1.3; }
+}
+
+@container cierre-pdv (max-width: 300px) {
+  #informePuntosVenta .cierre-pdv tbody tr { grid-template-columns: minmax(0,1fr); }
+}
 #comparativoPlanificacion { min-width: 0; margin-top: 18px; }
 #comparativoPlanificacion [data-plan-status] { font-size: 13px; margin-bottom: 10px; color: #526075; }
 #comparativoPlanificacion .plan-tienda { min-width: 0; margin-top: 16px; border: 1px solid #dce5eb; border-top: 3px solid #00c4cc; border-radius: 14px; padding: 16px; }

@@ -146,3 +146,17 @@ test('PDF y Excel reciben colores solo para las dos columnas solicitadas, sin mu
  }
  assert.ok(report.notes.includes(C.LEYENDA_COLORES));assert.match(C.LEYENDA_COLORES,/amarillo desde 90% y hasta menos de 100%/);assert.match(C.LEYENDA_COLORES,/rojo por debajo de 90%/);assert.match(C.LEYENDA_COLORES,/Gris: sin porcentaje comparable/);
 });
+
+const ZIP=require('../../creditek/erp/presupuestos-retail-cierre-descarga.js');
+test('ZIP de cierres: un nombre PDF seguro por tienda, mismo mes y sin mutar importes',()=>{
+ const reports=C.compararConAnterior(C.resumir(fixture()),history()).map(C.informe),before=JSON.stringify(reports),files=ZIP.archivos(reports);
+ assert.equal(files.length,2);assert.match(files[0].nombre,/Cierre PPTO Punto Norte CK-01 2026-10\.pdf$/);assert.match(files[1].nombre,/Punto Sur/);assert.equal(JSON.stringify(reports),before);
+ reports[0].pdfBatch.tiendaNombre='../Punto / Norte:..';assert.doesNotMatch(ZIP.archivos(reports)[0].nombre,/[\\/:]/);
+ assert.equal(reports[0].tables[0].numericPresentation,'large-centered');
+});
+test('ZIP de cierres: rechaza mezcla, duplicados o cifras no verificables sin inventar PDFs',()=>{
+ const make=()=>C.resumir(fixture()).map(C.informe);
+ assert.throws(()=>ZIP.archivos([]));assert.throws(()=>ZIP.archivos([make()[0],make()[0]]));
+ for(const mutate of [r=>r[1].pdfBatch.mes='2026-09',r=>r[1].pdfBatch.cerrado=false,r=>r[0].tables[0].rows[0][3]=NaN,r=>r[0].tables[0].rows[0][3]='1200',r=>r[0].tables[0].rows.pop(),r=>r[0].scope.business='b2b',r=>r[0].pdfBatch.tiendaCodigo='']){const reports=make();mutate(reports);assert.throws(()=>ZIP.archivos(reports));}
+ const partial=make();partial.forEach(r=>r.pdfBatch.cerrado=false);assert.match(ZIP.archivos(partial)[0].nombre,/^Avance PPTO/);
+});

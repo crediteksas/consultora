@@ -486,7 +486,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -783,7 +783,7 @@ function renderTablaTiendas() {
     `;
   }).join('');
   const total = codigosTienda.reduce((s,codigo)=>s+Number(resumen[codigo]?.saldo||0),0);
-  pie.innerHTML = `<tr><th scope="row">TOTAL NETO</th><td data-kora-report-value="${fmtCOP(total)}"><strong>${fmtCOP(total)}</strong></td><td>—</td><td>—</td></tr>`;
+  pie.innerHTML = `<tr><th scope="row">TOTAL NETO</th><td data-kora-report-value="${total.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}"><strong>${fmtCOP(total)}</strong></td><td>—</td><td>—</td></tr>`;
   tbody.closest('table').dataset.koraReportTotals = 'explicit';
 
   tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => abrirDetalleTienda(tr.dataset.tienda, nombreTienda(tr.dataset.tienda))));

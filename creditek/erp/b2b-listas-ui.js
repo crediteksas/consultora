@@ -2,7 +2,7 @@
  'use strict';
  const D=root.KoraB2BListas;
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=v=>v==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(v);
+ const money=v=>v==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
  function download(rows,name){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([D.csv(rows)],{type:'text/csv;charset=utf-8'}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  async function sheetLibrary(){if(root.XLSX)return;await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=()=>reject(Error('No se pudo abrir el lector de Excel.'));document.head.append(s);});}
  root.KoraB2BListsUI={download,mount({sb,container,products,providers,onPublished}){

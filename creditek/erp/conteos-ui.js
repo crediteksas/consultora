@@ -831,7 +831,7 @@
         tabla('Saldo con Creditek B2B al corte',resumen,['Tienda','Deuda B2B al corte','A favor B2B al corte','Estado saldo B2B'])];
       if(detalleFilas.length){
         const detalleReporte=agregarTotalTiendas(detalleFilas,['Valor inventario','Valor diferencia']);
-        const monedaInforme=valor=>valor===''||valor==null?'Por confirmar':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(valor);
+        const monedaInforme=valor=>valor===''||valor==null?'Por confirmar':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}).format(valor);
         tables.push(tabla('Detalle inventario',detalleReporte,Object.keys(detalleFilas[0])));
         // Cinco columnas legibles en PDF vertical, conservando todos los campos del Excel.
         pdfTables.push({heading:'Detalle inventario',headers:['Tienda y corte','Referencia e identificación','Cantidades','Costo e inventario','Valor diferencia'],

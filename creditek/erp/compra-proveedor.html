@@ -364,7 +364,7 @@ const SB = (function () {
 // ============================================================
 // HELPERS
 // ============================================================
-const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 function fechaHoyColombia(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }

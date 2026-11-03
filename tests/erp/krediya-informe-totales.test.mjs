@@ -12,6 +12,6 @@ test('diferencias Krediya: cierre por fase, centavos, pérdidas y datos ausentes
  assert.equal(final[12],-20.5);assert.equal(preliminary[12],900);
  for(const c of [4,5])assert.equal(final[c],'','no sumar precios unitarios');
  for(const c of [10,11,18])assert.match(final[c],/Pendiente: 1 sin dato/);
- assert.match(final[11],/-5,50/);assert.match(final[14],/No acredita pago/);
+ assert.match(final[11],/-6/);assert.match(final[14],/No acredita pago/);
  assert.equal(T.diferenciasRows([]).length,1);
 });

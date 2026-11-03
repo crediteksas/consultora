@@ -34,7 +34,7 @@
     function render(){
       if(!reports)return;
       const rows=ordenar(reports,metric,order.value),money=metric==='ventas';
-      const fmt=n=>n==null?'—':new Intl.NumberFormat('es-CO',money?{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:2}).format(n);
+      const fmt=n=>n==null?'—':new Intl.NumberFormat('es-CO',money?{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}:{maximumFractionDigits:2}).format(n);
       const pct=n=>n==null?'—':new Intl.NumberFormat('es-CO',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
       const year=Number(loadedMonth.slice(0,4))-1;
       result.setAttribute('aria-labelledby','ranking-tab-'+metric);

@@ -1,6 +1,6 @@
 (function (global) {
   'use strict';
-  const money = n => new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(n));
+  const money = n => new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n));
   function el(tag,text){const n=document.createElement(tag);if(text!=null)n.textContent=text;return n;}
   async function mount({sb,profile}){
     if(profile?.rol!=='admin_tienda'||global.__koraDeudaMounted)return;

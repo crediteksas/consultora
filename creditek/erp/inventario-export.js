@@ -144,7 +144,7 @@
     for (let fila = 2; fila <= filas.length + 2; fila += 1) {
       for (const columna of columnasMoneda) {
         const celda = hoja[`${columna}${fila}`];
-        if (celda) celda.z = '$#,##0.00';
+        if (celda) celda.z = '$#,##0';
       }
     }
 
@@ -184,7 +184,7 @@
       { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 38 },
     ];
     for (const columna of ['G', 'H']) {
-      for (let fila = 2; fila <= 3; fila += 1) hoja[`${columna}${fila}`].z = '$#,##0.00';
+      for (let fila = 2; fila <= 3; fila += 1) hoja[`${columna}${fila}`].z = '$#,##0';
     }
 
     const instrucciones = XLSX.utils.aoa_to_sheet([

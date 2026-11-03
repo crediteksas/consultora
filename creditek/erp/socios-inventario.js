@@ -2,7 +2,7 @@
  'use strict';
  const root=document.getElementById('socios-inventario');if(!root||new URLSearchParams(location.search).get('vista')==='retail')return;
  const D=window.KoraFinancialDomain,esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=v=>v==null||!Number.isFinite(Number(v))?'No disponible':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(Number(v));
+ const money=v=>v==null||!Number.isFinite(Number(v))?'No disponible':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(v));
  const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'}),$=id=>root.querySelector('#'+id);
  let sb,cuts=[],invoices=[],operations=[],busy=false,loaded=false,request=crypto.randomUUID(),prepared=null,reviewPending=null;
  const day=v=>!v?'Sin fecha':/^\d{4}-\d{2}-\d{2}$/.test(v)?v.split('-').reverse().join('/'):new Date(v).toLocaleDateString('es-CO',{timeZone:'America/Bogota'});

@@ -41,5 +41,5 @@ test('el pie tiene cinco columnas, etiqueta accesible y versión nueva del scrip
  assert.match(html,/<tfoot id="totales" hidden>/);
  assert.match(html,/<th scope="row" colspan="2" id="totalEtiqueta">TOTAL<\/th>/);
  for(const id of ['totalSistema','totalDeclarado','totalAlcance'])assert.match(html,new RegExp('<td id="'+id+'">'));
- assert.match(html,/confirmaciones-deuda-gestion\.js\?v=1\.2\.0/);
+ assert.match(html,/confirmaciones-deuda-gestion\.js\?v=1\.2\.1/);
 });

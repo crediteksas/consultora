@@ -178,7 +178,7 @@
 
   function create({ sb, money, canEdit = false, canVoid = false, readOnlyMessage = 'Consulta de cobros. Tu perfil no permite registrar cambios.', initialMonth = todayBogota().slice(0, 7) } = {}) {
     if (!sb || typeof sb.rpc !== 'function') throw new Error('Se necesita la sesión actual de Tesorería para consultar cobros.');
-    const formatMoney = money || (value => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(value));
+    const formatMoney = money || (value => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value));
     const state = { container: null, data: null, platform: '', month: initialMonth, view: null, busy: false, stale: false, notice: '', error: false, generation: 0 };
     const cash = value => esc(formatMoney(value / 100));
     const options = selected => (state.data?.platforms || Object.keys(PLATFORMS).map(plataforma => ({ plataforma }))).map(row => `<option value="${esc(row.plataforma)}"${row.plataforma === selected ? ' selected' : ''}>${esc(platformName(row.plataforma))}</option>`).join('');

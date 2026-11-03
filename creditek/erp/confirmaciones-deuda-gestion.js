@@ -1,7 +1,7 @@
 (async function(){
  'use strict';
  const env=window.__KORA_ENV__,sb=supabase.createClient(env.KORA_ERP_SUPABASE_URL,env.KORA_ERP_SUPABASE_ANON_KEY);
- const $=id=>document.getElementById(id),money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(Number(n));
+ const $=id=>document.getElementById(id),money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n));
  const e=(tag,text)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;return node;};
  function sumarSaldos(diarias){
   const decimal=new Intl.NumberFormat('en-US',{useGrouping:false,minimumFractionDigits:2,maximumFractionDigits:2});

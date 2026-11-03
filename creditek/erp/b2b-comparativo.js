@@ -5,7 +5,7 @@
  const R=typeof module==='object'&&module.exports?require('./b2b-referencias-catalogo.js'):root.KoraB2BReferencias;
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const amount=value=>value==null||value===''?null:D.amount(value);
- const money=value=>value==null?'—':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(value);
+ const money=value=>value==null?'—':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(value);
  const date=value=>value?new Date(value).toLocaleString('es-CO',{timeZone:'America/Bogota'}):'—';
  const order=(a,b)=>a.costo-b.costo||a.precio_tienda-b.precio_tienda||String(a.proveedor_id).localeCompare(String(b.proveedor_id))||String(a.id||a.row||'').localeCompare(String(b.id||b.row||''));
  function latestDrafts(rows){

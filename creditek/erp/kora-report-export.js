@@ -447,12 +447,13 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
     popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument(report,logo));popup.document.close();await audit(sb,report,'pdf');
   }
   // Informes de ventanas: datos explícitos, sin capturar la pantalla que queda detrás.
-  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
+  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',percentage:'0.00%;[Red]-0.00%',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
   function dataDisplay(value,type){
     if(value==null||value==='')return '—';
     if(type==='datetime')return new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'}).format(value);
     if(type==='date')return value instanceof Date?new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short'}).format(value):String(value);
     if(type==='currency')return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+    if(type==='percentage')return new Intl.NumberFormat('es-CO',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
     if(type==='number')return new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(value);
     return String(value);
   }
@@ -486,7 +487,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
       const records=[...table.rows,...(table.totalRows||[])];
       records.forEach((values,position)=>{
         const row=sheet.getRow(position+9);row.values=values.map(value=>value===''||value==null?null:value);row.height=32;
-        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1);cell.numFmt=cell.value==null?'General':dataFormats[table.columnTypes?.[column]]||'@';cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number'].includes(table.columnTypes?.[column])?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
+        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1);cell.numFmt=cell.value==null?'General':dataFormats[table.columnTypes?.[column]]||'@';cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(table.columnTypes?.[column])?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
       });
       table.headers.forEach((header,column)=>{sheet.getColumn(column+1).width=table.columnTypes?.[column]==='datetime'?24:/ID corte/.test(header)?40:column===0?26:/Estado/.test(header)?32:22;});
       sheet.autoFilter={from:{row:8,column:1},to:{row:Math.max(8,table.rows.length+8),column:table.headers.length}};

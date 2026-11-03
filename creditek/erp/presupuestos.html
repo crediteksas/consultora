@@ -17,6 +17,11 @@
 <script src="presupuestos-b2b.js?v=1.0.0"></script>
 <script src="presupuestos-retail-cartas.js?v=1.2.0"></script>
 <script src="presupuestos-cartas-descarga.js?v=1.0.1"></script>
+<script src="aliados-reversiones-domain.js?v=1.0.0"></script>
+<script src="tablero-ejecutivos.js?v=1.0.0"></script>
+<script id="koraReportExport" src="kora-report-export.js?v=1.4.3"></script>
+<script src="presupuestos-retail-cierre.js?v=1.0.0"></script>
+<script src="presupuestos-retail-cierre-ui.js?v=1.0.0"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -137,6 +142,21 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .modal-actions button { flex: 1; border: none; border-radius: 999px; padding: 12px; font-size: 13.5px; font-weight: 700; cursor: pointer; }
 .modal-actions .btn-cancelar { background: var(--bg); color: var(--text2); flex: 0 0 auto; padding: 12px 20px; }
 .modal-actions .btn-guardar { background: var(--turquesa); color: white; }
+
+#informePuntosVenta { scroll-margin-top: 85px; }
+#informePuntosVenta [data-cierre-status] { margin: 14px 0; font-size: 13px; }
+.cierre-pdv { margin-top: 20px; padding: 18px; border: 1px solid #dce5eb; border-radius: 14px; background: #fff; }
+.cierre-pdv h3 { font-size: 17px; margin-bottom: 6px; }
+.cierre-pdv p { margin: 8px 0; color: #526075; font-size: 12px; line-height: 1.5; }
+.cierre-pdv-tabla { overflow-x: auto; margin: 15px 0; }
+.cierre-pdv table { font-variant-numeric: tabular-nums; }
+.cierre-pdv th, .cierre-pdv td { position: static; white-space: normal; min-width: 100px; text-align: right; }
+.cierre-pdv thead th { background: #0b1e3d; color: #fff; }
+.cierre-pdv tr th:first-child { text-align: left; min-width: 155px; }
+.cierre-pdv td:last-child { text-align: left; }
+.cierre-pdv .cierre-pdv-aviso { padding: 10px; border-left: 3px solid #ba7b12; background: #fff8e9; color: #765008; }
+.cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
+@media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -233,7 +253,9 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 
   <div class="form-inline" style="margin-bottom:12px;">
     <div class="campo"><label>Mes a ver</label><input type="month" id="verMes"></div>
+    <button type="button" class="btn-primary" id="btnEntregaInforme" aria-controls="informePuntosVenta" aria-expanded="false">Entrega de informe a puntos de venta</button>
   </div>
+  <section class="card" id="informePuntosVenta" data-kora-no-export hidden></section>
 
   <section id="totalesMes" class="totales-mes" aria-live="polite" hidden>
     <h2 id="totalesMesTitulo">Presupuesto total del mes · todas las tiendas</h2>
@@ -379,6 +401,14 @@ function initPagina() {
   });
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => cambiarTab(b)));
 
+  if (window.KoraPresupuestoCierreUI?.montar) window.KoraPresupuestoCierreUI.montar({
+    button: document.getElementById('btnEntregaInforme'), monthInput: document.getElementById('verMes'),
+    panel: document.getElementById('informePuntosVenta'), sb, perfil: currentPerfil, tiendas: () => tiendasCache,
+  });
+  else {
+    document.getElementById('btnEntregaInforme').disabled = true;
+    document.getElementById('btnEntregaInforme').title = 'Actualiza para cargar el generador del cierre mensual.';
+  }
   cargarTiendas().then(cargarPresupuesto);
   actualizarAyudaCrecimiento();
 }

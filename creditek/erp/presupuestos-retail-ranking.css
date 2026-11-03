@@ -1,0 +1,14 @@
+#rankingPresupuesto{margin:24px 0;padding:22px;min-width:0}
+#rankingPresupuesto p{font-size:13px;line-height:1.55;color:#526075}
+#rankingPresupuesto .ranking-controles,#rankingPresupuesto .ranking-tabs{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:16px 0}
+#rankingPresupuesto label{display:grid;gap:6px;font-size:13px;font-weight:600}
+#rankingPresupuesto input{padding:10px;border:1px solid #cdd8e4;border-radius:10px;background:#fff;min-height:44px;color:#0b1e3d}
+#rankingPresupuesto button{border:1px solid #cdd8e4;border-radius:10px;padding:11px 15px;min-height:44px;background:#fff;color:#0b1e3d;font:inherit;cursor:pointer}
+#rankingPresupuesto button[aria-selected=true],#rankingPresupuesto [data-ranking-consultar]{background:#0b1e3d;color:#fff}
+#rankingPresupuesto button:disabled{opacity:.6;cursor:wait}
+#rankingPresupuesto :focus-visible{outline:3px solid #00a0ad;outline-offset:3px}
+#rankingPresupuesto .ranking-tabla{overflow-x:auto;max-width:100%}
+#rankingPresupuesto table{min-width:690px;font-variant-numeric:tabular-nums}
+#rankingPresupuesto caption{text-align:left;font-weight:700;padding:10px 0;color:#0b1e3d}
+#rankingPresupuesto td:nth-child(n+3):not(:last-child){text-align:right;white-space:nowrap}
+@media(max-width:600px){#rankingPresupuesto{padding:14px}#rankingPresupuesto .ranking-tabs button{flex:1 1 40%}#rankingPresupuesto .ranking-controles{align-items:stretch;flex-direction:column}}

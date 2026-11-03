@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,mkdir} from 'node:fs/promises';
+import {chromium,webkit} from '@playwright/test';
+const source=await readFile('creditek/erp/tablero.html','utf8');
+assert.match(source,/presupuestos-retail-ranking.js/);assert.match(source,/KoraPresupuestoRanking\?\.montar/);
+for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Ranking mensual: cuatro pestañas, permisos, móvil y respuestas obsoletas · '+name,async()=>{
+ const browser=await engine.launch(name==='Chromium'?{channel:'chrome',headless:true}:{headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',r=>r.abort());
+  await page.setContent('<style>body{margin:0;font:14px Arial;background:#f5f8fc}main{max-width:1100px;margin:auto;padding:16px}*{box-sizing:border-box}table{border-collapse:collapse;width:100%}td,th{padding:14px;border-bottom:1px solid #dae3ec;text-align:left}thead{background:#0b1e3d;color:white}</style><main><section id="ranking" hidden></section></main>');
+  await page.addStyleTag({content:await readFile('creditek/erp/presupuestos-retail-ranking.css','utf8')});
+  await page.addScriptTag({content:await readFile('creditek/erp/presupuestos-retail-cierre.js','utf8')});
+  await page.evaluate(()=>{
+   const data=[['CK-A','Punto Norte',100,120],['CK-B','Punto Sur',1000,1000],['CK-C','Punto Centro',100,120],['CK-D','Punto sin meta',null,200]].map(([codigo,nombre,meta,real])=>({tienda:{codigo,nombre},periodo:{cerrado:true,corte:'2026-10-31'},categorias:KoraPresupuestoCierre.METRICAS.map(m=>({...m,presupuesto:meta,realizado:real,cumplimiento:meta?real/meta:null,estado:meta?'Meta alcanzada':'Presupuesto incompleto'}))}));
+   window.__fixture={data,calls:0,fail:false,defer:false,stores:[{codigo:'CK-A'},{codigo:'CK-B'}]};
+   window.KoraPresupuestoCierre={...KoraPresupuestoCierre,cargar:async args=>{window.__fixture.calls++;window.__fixture.lastStoreCount=args.tiendas.length;if(window.__fixture.fail)throw Error('Fuente ficticia no disponible');if(window.__fixture.defer)return await new Promise(resolve=>window.__resolve=()=>resolve(data));return data;}};
+  });
+  await page.addScriptTag({content:await readFile('creditek/erp/presupuestos-retail-ranking.js','utf8')});
+  await page.evaluate(()=>KoraPresupuestoRanking.montar({panel:document.getElementById('ranking'),perfil:{activo:true,rol:'gerencia'},tiendas:()=>window.__fixture.stores,sb:null,now:()=>new Date('2026-10-31T18:00Z')}));
+  await page.getByRole('cell',{name:'Sin posición',exact:true}).waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Ranking de cumplimiento del presupuesto',exact:true}).count(),1);
+  // El id real es el que define la página integrada; las reglas CSS se aplican también en el ensayo.
+  await page.locator('#ranking').evaluate(e=>e.id='rankingPresupuesto');
+  assert.equal(await page.getByRole('tab').count(),4);assert.equal(await page.locator('tbody tr').count(),4);
+  assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','1','3','Sin posición']);
+  assert.match(await page.locator('caption').innerText(),/Ventas · 2026-10 · COP/);
+  await page.getByRole('tab',{name:'Créditos',exact:true}).click();assert.match(await page.locator('caption').innerText(),/Créditos/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);
+  await page.getByRole('tab',{name:'Créditos',exact:true}).press('End');assert.equal(await page.getByRole('tab',{name:'Accesorios',exact:true}).getAttribute('aria-selected'),'true');
+  await page.locator('[data-ranking-mes]').fill('2026-09');await page.locator('[data-ranking-mes]').dispatchEvent('change');assert.equal(await page.locator('tbody').count(),0);
+  await page.evaluate(()=>window.__fixture.defer=true);await page.getByRole('button',{name:'Ver ranking',exact:true}).click();
+  await page.locator('[data-ranking-mes]').fill('2026-08');await page.locator('[data-ranking-mes]').dispatchEvent('change');await page.evaluate(()=>window.__resolve());
+  await page.waitForFunction(()=>!document.querySelector('[data-ranking-consultar]').disabled);assert.equal(await page.locator('tbody').count(),0);
+  await page.evaluate(()=>{window.__fixture.defer=false;window.__fixture.fail=true;});await page.getByRole('button',{name:'Ver ranking',exact:true}).click();await page.getByText(/No se pudo preparar el ranking/).waitFor();assert.equal(await page.locator('tbody').count(),0);
+  await page.evaluate(()=>{window.__fixture.fail=false;window.__fixture.stores=[{codigo:'CK-A'},{codigo:'CK-B'},{codigo:'CK-C'}];});await page.locator('[data-ranking-mes]').fill('2026-10');await page.getByRole('button',{name:'Ver ranking',exact:true}).click();await page.locator('tbody').waitFor();
+  assert.equal(await page.evaluate(()=>window.__fixture.lastStoreCount),3,'Cada consulta toma la lista vigente, incluso si fue reasignada.');
+  for(const width of [390,768,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+  if(process.env.KORA_CIERRE_QA_DIR&&name==='Chromium'){await mkdir(process.env.KORA_CIERRE_QA_DIR,{recursive:true});await page.screenshot({path:process.env.KORA_CIERRE_QA_DIR+'/ranking-ficticio.png',fullPage:true});}
+  const denied=await page.evaluate(()=>{const p=document.createElement('section');p.hidden=true;KoraPresupuestoRanking.montar({panel:p,perfil:{activo:true,rol:'admin_tienda'}});return p.hidden&&p.innerHTML==='';});assert.equal(denied,true);assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});

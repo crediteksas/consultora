@@ -1364,6 +1364,7 @@
     const dispatch=arguments[1];
     if(!dispatch?.consecutive)throw Error('La orden debe estar guardada antes de imprimir.');
     const amendment=window.CreditekPagosUnificados.dispatchAmendment(dispatch);
+    rows=window.CreditekPagosUnificados.orderPaymentReportRows(rows,paymentBusinessName);
     const now = new Date(dispatch.original_issued_at||dispatch.created_at),
       total = rows.reduce((n, p) => n + Number(p.valor || 0), 0),
       generated = new Intl.DateTimeFormat("es-CO", {

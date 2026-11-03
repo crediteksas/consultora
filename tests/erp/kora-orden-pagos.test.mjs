@@ -109,6 +109,21 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   assert.equal((sameName.match(/Titular de prueba/g) || []).length, 1);
 });
 
+test('la hoja de pagos agrupa alfabéticamente por aliado o beneficiario sin cambiar importes ni referencias', () => {
+  const rows=[
+    {report_ref:'PO-1',liquidation_id:'L1',payment_kind:'aliado',beneficiary_name:'Diego',bank_snapshot:{holder:'Diego',account_number:'22'},valor:423000},
+    {report_ref:'FIN-1',beneficiary_name:'Maythe Reyes',bank_snapshot:{holder:'Maythe Reyes',account_number:'33'},valor:15000},
+    {report_ref:'PO-2',liquidation_id:'L2',payment_kind:'aliado',beneficiary_name:'Ingrid',bank_snapshot:{holder:'Ingrid',account_number:'44'},valor:1009000},
+    {report_ref:'PO-3',liquidation_id:'L3',payment_kind:'aliado',beneficiary_name:'Diego',bank_snapshot:{holder:'Diego',account_number:'22'},valor:981000},
+    {report_ref:'FIN-2',beneficiary_name:'Luis Rivera',bank_snapshot:{holder:'Luis Rivera',account_number:'55'},valor:60000},
+  ];
+  const businessName=p=>({'PO-1':'Club Seven BM','PO-2':'Distriotys','PO-3':'Club Seven BM'})[p.report_ref];
+  const ordered=Unified.orderPaymentReportRows(rows,businessName);
+  assert.deepEqual(ordered.map(p=>p.report_ref),['PO-1','PO-3','PO-2','FIN-2','FIN-1']);
+  assert.deepEqual(rows.map(p=>p.report_ref),['PO-1','FIN-1','PO-2','PO-3','FIN-2']);
+  assert.equal(ordered.reduce((sum,p)=>sum+p.valor,0),rows.reduce((sum,p)=>sum+p.valor,0));
+});
+
 test('el informe de giros se obtiene por cualquier rango y consolida por persona', () => {
   const base = {
     estado:'pagado', fecha_pagada:'2026-09-10T18:00:00Z',

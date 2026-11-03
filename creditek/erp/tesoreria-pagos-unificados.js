@@ -19,6 +19,17 @@
     const matches=dispatches.filter(d=>!d.legacy&&d.created_at&&day(d.created_at)===day(now));
     return matches.length===1?matches[0]:null;
   }
+  function orderPaymentReportRows(rows,businessName=()=>null){
+    const collator=new Intl.Collator('es',{sensitivity:'base',numeric:true});
+    return rows.map((payment,index)=>{
+      const holder=String(payment.bank_snapshot?.holder||payment.beneficiary_name||'').trim();
+      const business=payment.liquidation_id?String(businessName(payment)||payment.report_business||'').trim():'';
+      const label=business&&business.toLocaleLowerCase('es-CO')!=='no aplica'
+        ?business:String(payment.beneficiary_name||holder||payment.concept||'').trim();
+      return {payment,index,label,holder,account:String(payment.bank_snapshot?.account_number||'').trim()};
+    }).sort((a,b)=>collator.compare(a.label,b.label)||collator.compare(a.holder,b.holder)
+      ||collator.compare(a.account,b.account)||a.index-b.index).map(item=>item.payment);
+  }
   function supplierRows(rows){return rows.filter(supplierApproved).map(row=>({
     id:row.id,report_ref:`BP-${row.id}`,report_kind:'Abono a proveedor',report_business:'B2B',report_platform:'',
     report_date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(row.autorizado_at)),
@@ -74,6 +85,6 @@
     }
     return {record};
   }
-  const api={approved,account,reportRows,cards,createRecorder,supplierApproved,supplierRows,supplierCards,dispatchAmendment,currentDispatch};
+  const api={approved,account,reportRows,orderPaymentReportRows,cards,createRecorder,supplierApproved,supplierRows,supplierCards,dispatchAmendment,currentDispatch};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekPagosUnificados=api;
 })(typeof window==='undefined'?globalThis:window);

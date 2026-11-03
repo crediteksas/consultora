@@ -199,17 +199,16 @@
     const { tienda, periodo: p, categorias } = cierre;
     const anioAnterior = Number(p.mes.slice(0, 4)) - 1;
     const anteriorLabel = `${p.mes.slice(5)}/${anioAnterior} · mes completo`;
-    const crecimiento = c => [c.valorAnterior ?? null, c.realizado, c.variacionAnual ?? null, c.crecimientoAnual ?? null, c.estadoCrecimiento || 'Sin histórico comparable'];
-    const values = c => [c.presupuesto, c.realizado, c.diferencia, c.cumplimiento, c.estado];
+    const values = c => [`${c.nombre} (${c.dinero ? 'COP' : 'unidades'})`, c.valorAnterior ?? null, c.presupuesto, c.realizado, c.diferencia, c.cumplimiento, c.variacionAnual ?? null, c.crecimientoAnual ?? null];
+    const rowTypes = c => ['text', ...Array(4).fill(c.dinero ? 'currency' : 'number'), 'percentage', c.dinero ? 'currency' : 'number', 'percentage'];
     const label = p.cerrado ? 'Cierre mensual' : 'Avance del mes · cifras parciales';
-    return { title: `${label} de presupuesto · ${tienda.nombre}`, mode: 'summary',
+    return { title: `${label} de presupuesto · ${tienda.nombre}`, mode: 'summary', orientation: 'landscape',
       route: '/creditek/erp/presupuestos.html#informe-puntos-venta', scope: { business: 'retail', label: `Retail · ${tienda.nombre}` },
       filters: [['Negocio', 'Retail'], ['Punto de venta', `${tienda.nombre} · ${tienda.codigo}`], ['Mes', p.mes], ['Desde', p.inicio], ['Corte de resultados', p.corte], ['Estado del mes', p.cerrado ? 'Mes transcurrido completo' : 'Mes en curso'], ['Comparativo interanual', `${p.mes.slice(5)}/${anioAnterior} · histórico mensual`]],
       tables: [
-        { heading: 'Ventas', headers: ['Presupuesto (COP)', 'Realizado (COP)', 'Diferencia (COP)', 'Cumplimiento', 'Estado'], rows: [values(categorias[0])], columnTypes: ['currency', 'currency', 'currency', 'percentage', 'text'] },
-        { heading: 'Créditos, celulares y accesorios', headers: ['Categoría', 'Presupuesto', 'Realizado', 'Diferencia', 'Cumplimiento', 'Estado'], rows: categorias.slice(1).map(c => [c.nombre, ...values(c)]), columnTypes: ['text', 'number', 'number', 'number', 'percentage', 'text'] },
-        { heading: 'Ventas · crecimiento interanual', headers: [anteriorLabel + ' (COP)', 'Realizado actual (COP)', 'Variación interanual (COP)', 'Crecimiento interanual', 'Comparativo'], rows: [crecimiento(categorias[0])], columnTypes: ['currency', 'currency', 'currency', 'percentage', 'text'] },
-        { heading: 'Categorías · crecimiento interanual', headers: ['Categoría', anteriorLabel, 'Realizado actual', 'Variación interanual', 'Crecimiento interanual', 'Comparativo'], rows: categorias.slice(1).map(c => [c.nombre, ...crecimiento(c)]), columnTypes: ['text', 'number', 'number', 'number', 'percentage', 'text'] },
+        { heading: 'Presupuesto y crecimiento', layout: 'matrix', headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
+          columnTypes: ['text', 'number', 'number', 'number', 'number', 'percentage', 'number', 'percentage'], rowTypes: categorias.map(rowTypes),
+          rowNotes: categorias.map(c => ['', '', '', '', '', c.estado, '', c.estadoCrecimiento || 'Sin histórico comparable']) },
       ],
       notes: [...cierre.notes,
         'Se compara el presupuesto mensual registrado con los resultados disponibles al generar el informe. Las propuestas sin aprobar no sustituyen las metas registradas.',

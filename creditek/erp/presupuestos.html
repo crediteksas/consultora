@@ -19,9 +19,9 @@
 <script src="presupuestos-cartas-descarga.js?v=1.0.1"></script>
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.0.0"></script>
-<script id="koraReportExport" src="kora-report-export.js?v=1.4.3"></script>
-<script src="presupuestos-retail-cierre.js?v=1.1.0"></script>
-<script src="presupuestos-retail-cierre-ui.js?v=1.1.0"></script>
+<script id="koraReportExport" src="kora-report-export.js?v=1.4.4"></script>
+<script src="presupuestos-retail-cierre.js?v=1.1.1"></script>
+<script src="presupuestos-retail-cierre-ui.js?v=1.1.1"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -149,11 +149,16 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .cierre-pdv h3 { font-size: 17px; margin-bottom: 6px; }
 .cierre-pdv p { margin: 8px 0; color: #526075; font-size: 12px; line-height: 1.5; }
 .cierre-pdv-tabla { overflow-x: auto; margin: 15px 0; }
-.cierre-pdv table { font-variant-numeric: tabular-nums; }
-.cierre-pdv th, .cierre-pdv td { position: static; white-space: normal; min-width: 100px; text-align: right; }
+.cierre-pdv table { width: 100%; min-width: 960px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.cierre-pdv caption { text-align: left; padding: 0 0 10px; color: #526075; font-size: 12px; }
+.cierre-pdv small { display: block; margin-top: 5px; font-size: 10px; font-weight: 400; line-height: 1.4; }
+.cierre-pdv thead small { color: #d5f5f7; }
+.cierre-pdv-tabla:focus-visible { outline: 2px solid #008a96; outline-offset: 4px; }
+.cierre-pdv td.cierre-pdv-actual { background: #effafb; color: #0b1e3d; }
+.cierre-pdv th, .cierre-pdv td { position: static; white-space: normal; min-width: 100px; text-align: right; padding: 12px 9px; }
 .cierre-pdv thead th { background: #0b1e3d; color: #fff; }
 .cierre-pdv tr th:first-child { text-align: left; min-width: 155px; }
-.cierre-pdv td:last-child { text-align: left; }
+.cierre-pdv td:last-child { text-align: right; }
 .cierre-pdv .cierre-pdv-aviso { padding: 10px; border-left: 3px solid #ba7b12; background: #fff8e9; color: #765008; }
 .cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
 @media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }

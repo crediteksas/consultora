@@ -31,8 +31,8 @@ test('cuatro categorías, dinero exacto y fuentes actuales sin mezclar tiendas',
  assert.equal(a.categorias[0].cumplimiento,1200.75/31007.75);
  assert.equal(a.notes.length,0);
  const report=C.informe(a);
- assert.equal(report.tables[0].columnTypes[3],'percentage');
- assert.equal(report.tables[0].rows[0][3],1200.75/31007.75);
+ assert.equal(report.tables[0].columnTypes[5],'percentage');
+ assert.equal(report.tables[0].rows[0][5],1200.75/31007.75);
  assert.match(report.title,/Punto Norte/);assert.doesNotMatch(JSON.stringify(report),/Punto Sur|cliente|external_id|op1|TOKEN/);
  assert.equal(report.mode,'summary');assert.match(report.notes.join(' '),/Liquidaciones/);
 });
@@ -89,7 +89,7 @@ test('crecimiento mismo mes/año anterior por categoría: diferencias exactas, s
  assert.deepEqual(a.categorias.map(m=>[m.valorAnterior,m.variacionAnual,m.crecimientoAnual]),[[960.6,240.15,.25],[2,-2,-1],[2,-1,-.5],[7,0,0]]);
  assert.deepEqual(a.categorias.map(m=>[m.presupuesto,m.realizado,m.cumplimiento]),current[0].categorias.map(m=>[m.presupuesto,m.realizado,m.cumplimiento]));
  assert.equal(b.categorias[0].variacionAnual,-99.9);assert.equal(b.categorias[1].crecimientoAnual,null);assert.equal(b.categorias[1].variacionAnual,1);assert.equal(a.comparativo.mesAnterior,'2025-10');
- const report=C.informe(a);assert.equal(report.tables.length,4);assert.deepEqual(report.tables[2].rows[0].slice(0,4),[960.6,1200.75,240.15,.25]);assert.equal(report.tables[2].columnTypes[3],'percentage');assert.equal(report.tables[3].rows[1][4],-.5);
+ const report=C.informe(a);assert.equal(report.tables.length,1);assert.deepEqual(report.tables[0].rows[0],['Ventas (COP)',960.6,31007.75,1200.75,-29807,1200.75/31007.75,240.15,.25]);assert.equal(report.tables[0].columnTypes[7],'percentage');assert.equal(report.tables[0].rows[2][7],-.5);
 });
 test('histórico ausente, duplicado, incompleto o fallido nunca se reemplaza por cero',()=>{
  const current=C.resumir(fixture());for(const h of [[],[...history(),history()[0]],history().map(x=>({...x,venta_total:null})),history().map(x=>({...x,venta_total:'bad'})),[null]]){
@@ -119,4 +119,14 @@ test('un histórico del año actual discordante no convierte falta de operacione
 
 test('cantidad cero en el histórico actual con venta positiva impide una caída no verificable',()=>{
  const current=C.resumir(fixture());current[0].categorias[3].realizado=0;const h=[...history(),{...history()[0],id:'current',anio:2026,acc_uds:0,acc_venta:50}];const a=C.compararConAnterior(current,h)[0];assert.equal(a.categorias[3].realizado,0);assert.equal(a.categorias[3].crecimientoAnual,null);assert.equal(a.categorias[3].estadoCrecimiento,'Resultado actual por conciliar');
+});
+
+test('cuadro único conserva cuatro filas, valores numéricos, formatos mixtos y avisos sin duplicar el realizado',()=>{
+ const a=C.compararConAnterior(C.resumir(fixture()),history())[0],before=JSON.stringify(a),r=C.informe(a),t=r.tables[0];
+ assert.equal(JSON.stringify(a),before);assert.equal(r.tables.length,1);assert.equal(t.rows.length,4);assert.equal(t.layout,'matrix');assert.equal(r.orientation,'landscape');
+ assert.equal(t.headers.filter(x=>/Realizado/.test(x)).length,1);assert.equal(t.headers.length,8);assert.match(t.headers[1],/2025/);
+ assert.deepEqual(t.rowTypes[0],['text','currency','currency','currency','currency','percentage','currency','percentage']);
+ assert.deepEqual(t.rowTypes[1],['text','number','number','number','number','percentage','number','percentage']);
+ a.categorias.forEach((m,i)=>{assert.deepEqual(t.rows[i].slice(1),[m.valorAnterior,m.presupuesto,m.realizado,m.diferencia,m.cumplimiento,m.variacionAnual,m.crecimientoAnual]);assert.equal(t.rowNotes[i][5],m.estado);assert.equal(t.rowNotes[i][7],m.estadoCrecimiento);});
+ const partial={...a,periodo:{...a.periodo,cerrado:false}};const p=C.compararConAnterior([partial],history())[0];assert.ok(C.informe(p).tables[0].rows.every(row=>row[6]===null&&row[7]===null));
 });

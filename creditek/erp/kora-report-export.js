@@ -417,21 +417,21 @@
     const totals=table.totalRows||[];
     const notes=[table.policyNote,...(table.notes||[])].filter(Boolean);
     const notesHtml=notes.length?`<aside class="table-notes">${notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:'';
-    if(table.headers.length>5){
+    if(table.headers.length>5 && table.layout!=='matrix'){
       const columns=Array.from({length:Math.min(4,table.headers.length)},()=>[]);
       table.headers.forEach((_,index)=>columns[index%columns.length].push(index));
       const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field"><small>${esc(table.headers[column])}</small><b>${esc(row[column]??'—')}</b></div>`).join('')}</td>`).join('')}</tr>`;
       return `<section><h2>${esc(table.heading)}</h2><table class="compact-detail"><thead><tr>${columns.map(indices=>`<th>${esc(table.headers[indices[0]])} / detalle</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(rowHtml).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
     }
-    const rowHtml=row=>`<tr>${table.headers.map((_,column)=>`<td>${esc(row[column])}</td>`).join('')}</tr>`;
-    return `<section><h2>${esc(table.heading)}</h2><table><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(rowHtml).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
+    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td>${esc(row[column])}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
+    return `<section><h2>${esc(table.heading)}</h2><table${table.layout==='matrix'?' class="report-matrix"':''}><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(row=>rowHtml(row)).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
   }
   function pdfDocument(report,logoUrl){
     logoUrl=logoUrl||(typeof location==='object'?new URL(LOGO,location.origin).href:LOGO);
     const filterText=report.filters.map(([key,value])=>`<span><b>${esc(key)}:</b> ${esc(value)}</span>`).join('');
     const metricText=report.metrics.map(([key,value])=>`<div><small>${esc(key)}</small><strong>${esc(value)}</strong></div>`).join('');
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(report.title)} · ${esc(report.id)}</title><style>
-@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4 ${report.orientation==='landscape'?'landscape':'portrait'};margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-height:1.4}h1,h2,h3{break-after:avoid}h1{font-size:23px;margin:5px 0}h2{font-size:14px;margin:0 0 7px}h3{font-size:11px;margin:0 0 6px}
 .head{border-bottom:3px solid #00C4CC;padding-bottom:9px;break-inside:avoid}.brand{display:flex;align-items:center;justify-content:space-between}.brand img{width:150px;height:45px;object-fit:contain}.brand span{font-size:17px;font-weight:800;color:#008A96}.meta{color:#526075;font-size:9px;overflow-wrap:anywhere}
 .filters{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}.filters span{background:#EAFBFC;border:1px solid #B7E8EB;border-radius:6px;padding:4px 6px;font-size:9px}
@@ -439,7 +439,7 @@ body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-hei
 section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}thead{display:table-header-group}tfoot{display:table-row-group;background:#EAFBFC;font-weight:bold}th{background:#0B1E3D;color:#fff;text-align:left;padding:7px}td{padding:6px;border-bottom:1px solid #DCE5EB;vertical-align:top;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#F5FAFC}tr{break-inside:avoid}.compact-field{margin-bottom:4px}.compact-field:last-child{margin:0}.compact-field small{display:block;color:#64748B;font-size:8px}.compact-field b{display:block;font-size:10px;font-weight:500}
 .record{border:1px solid #D9E3EA;border-top:2px solid #00C4CC;border-radius:7px;padding:10px;margin:9px 0;break-inside:avoid}.record.splittable{break-inside:auto}.record dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.record dl>div{break-inside:avoid}.record dt{font-size:9px;color:#64748B}.record dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
 ${report.scoped?'tfoot{display:table-row-group}':''}
-.notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.table-notes{font-size:9px;color:#526075}.table-notes p{margin:4px 0;break-inside:avoid}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}@media screen{body{max-width:186mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}
+.notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.table-notes{font-size:9px;color:#526075}.table-notes p{margin:4px 0;break-inside:avoid}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}.report-matrix th:first-child,.report-matrix td:first-child{width:20%}.report-matrix td{text-align:right;font-variant-numeric:tabular-nums}.report-matrix td:first-child{text-align:left;font-weight:bold}.matrix-note{display:block;margin-top:4px;color:#526075;font-size:8px;font-weight:normal}@media screen{body{max-width:${report.orientation==='landscape'?'273':'186'}mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}
 </style></head><body><header class="head"><div class="brand"><img src="${esc(logoUrl)}" alt="Creditek"><span>KORA</span></div><h1>${esc(report.title)}</h1><div class="meta"><b>${esc(report.id)}</b> · ${report.mode==='summary'?'Resumido · solo totales':'Detallado · datos y movimientos'}<br>Generado: ${esc(report.generated)} · Responsable: ${esc(report.user)}${report.role?` · ${esc(report.role)}`:''}<br>Origen: ${esc(report.route)}</div></header><div class="filters">${filterText}</div>${metricText?`<div class="metrics">${metricText}</div>`:''}${report.tables.map(pdfTable).join('')}${report.notes?.length?`<aside class="notes">${report.notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:''}<footer class="closing"><p><b>Trazabilidad KORA</b> · ${esc(report.id)}. Información visible con los filtros y permisos al generar el informe; no acredita un pago ni un saldo bancario.</p><p><b>Creditek S.A.S. · NIT 901.259.859-0</b> · Valores en COP cuando aplique.</p></footer><div class="tools"><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`;
   }
   async function exportPdf(report,sb,popup){
@@ -473,7 +473,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
       sheet.mergeCells(5,1,5,lastColumn);sheet.getCell(5,1).value=`${report.id} · ${report.generated}`;
       sheet.getCell(5,1).font={name:'Arial',size:10,color:{argb:COLORS.gray}};
       sheet.headerFooter.oddFooter=`KORA · Creditek S.A.S. · ${report.id} · Página &P de &N`;
-      sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:8'};
+      sheet.pageSetup={orientation:report.orientation==='landscape'?'landscape':'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:8'};
     };
     const styleHeader=row=>{row.height=36;row.eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};cell.font={name:'Arial',bold:true,color:{argb:COLORS.white}};cell.alignment={vertical:'middle',wrapText:true};});};
     const cover=book.addWorksheet('Informe',{views:[{showGridLines:false}]});cover.columns=[{width:30},{width:45},{width:24},{width:24}];brand(cover,4);
@@ -487,7 +487,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
       const records=[...table.rows,...(table.totalRows||[])];
       records.forEach((values,position)=>{
         const row=sheet.getRow(position+9);row.values=values.map(value=>value===''||value==null?null:value);row.height=32;
-        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1);cell.numFmt=cell.value==null?'General':dataFormats[table.columnTypes?.[column]]||'@';cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(table.columnTypes?.[column])?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
+        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1),type=table.rowTypes?.[position]?.[column]||table.columnTypes?.[column];cell.numFmt=cell.value==null?'General':dataFormats[type]||'@';if(table.rowNotes?.[position]?.[column])cell.note=table.rowNotes[position][column];cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(type)?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
       });
       table.headers.forEach((header,column)=>{sheet.getColumn(column+1).width=table.columnTypes?.[column]==='datetime'?24:/ID corte/.test(header)?40:column===0?26:/Estado/.test(header)?32:22;});
       sheet.autoFilter={from:{row:8,column:1},to:{row:Math.max(8,table.rows.length+8),column:table.headers.length}};
@@ -507,7 +507,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
     if(format==='xlsx')await exportDataExcel(report,sb);
     else {
       const tables=(data.pdfTables||data.tables).map(table=>({...table,
-        rows:table.rows.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col]))),
+        rows:table.rows.map((row,index)=>row.map((value,col)=>dataDisplay(value,table.rowTypes?.[index]?.[col]||table.columnTypes?.[col]))),
         totalRows:table.totalRows?.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col])))}));
       await exportPdf({...report,tables},sb,popup);
     }

@@ -170,3 +170,8 @@ test('todos los informes son completos por defecto; casilla Resumido permite sol
   assert.match(source,/Sin marcar: informe completo/);
   assert.match(source,/querySelector\('\[data-kora-report-summary\]'\)\.checked\?'summary':'detailed'/);
 });
+
+test('PDF matricial opcional conserva un cuadro ancho, estados escapados y horizontal sin alterar el diseño por defecto',()=>{
+ const report={title:'Cuadro ficticio',id:'FIXTURE',mode:'summary',generated:'Prueba',user:'Revisor ficticio',filters:[],metrics:[],orientation:'landscape',tables:[{heading:'Presupuesto y crecimiento',layout:'matrix',headers:['Categoría','Anterior','Presupuesto','Realizado','Diferencia','Cumplimiento','Variación','Crecimiento'],rows:[['Ventas','$ 100','$ 200','$ 150','-$ 50','75 %','$ 50','50 %']],rowNotes:[['','','','','','Meta <pendiente>','','Crecimiento']]}]};
+ const html=pdfDocument(report);assert.match(html,/@page\{size:A4 landscape/);assert.match(html,/class="report-matrix"/);assert.doesNotMatch(html,/class="compact-detail"/);assert.equal((html.match(/<table/g)||[]).length,1);assert.match(html,/Meta &lt;pendiente&gt;/);assert.equal((html.match(/<th>/g)||[]).length,8);
+});

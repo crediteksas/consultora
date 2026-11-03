@@ -45,13 +45,15 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   await page.getByRole('button',{name:'Preparar informes',exact:true}).click();
   const first=page.locator('[data-cierre-tienda="CK-01"]');await first.getByRole('heading',{name:'Punto Norte',exact:true}).waitFor();
   assert.equal(await page.locator('[data-cierre-tienda]').count(),2);
-  assert.equal(await first.locator('table').count(),2);assert.equal(await first.locator('table').first().locator('tbody tr').count(),4);assert.equal(await first.locator('table').nth(1).locator('tbody tr').count(),4);assert.match(await first.locator('table').nth(1).innerText(),/960,60/);assert.match(await first.locator('table').nth(1).innerText(),/25,00/);assert.match(await first.innerText(),/31\.007,75/);assert.match(await first.innerText(),/1\.200,75/);
+  assert.equal(await first.locator('table').count(),1);assert.equal(await first.locator('tbody tr').count(),4);assert.equal(await first.locator('thead th').count(),8);assert.match(await first.innerText(),/960,60/);assert.match(await first.innerText(),/25,00/);assert.match(await first.innerText(),/31\.007,75/);assert.match(await first.innerText(),/1\.200,75/);
+  assert.equal((await first.innerText()).match(/1\.200,75/g).length,1,'El realizado aparece una sola vez en el cuadro');
   assert.doesNotMatch(await first.innerText(),/Punto Sur|8\.888,25/);
   const [popup]=await Promise.all([page.waitForEvent('popup'),first.getByRole('button',{name:'PDF · Punto Norte',exact:true}).click()]);
   await popup.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
   await popup.waitForFunction(()=>document.querySelector('.brand img')?.naturalWidth>0);
   assert.match(await popup.locator('body').innerText(),/KORA-REP-|Trazabilidad KORA/);assert.match(await popup.locator('body').innerText(),/901.259.859-0/);
   assert.match(await popup.locator('body').innerText(),/31\.007,75/);assert.match(await popup.locator('body').innerText(),/1\.200,75/);
+  assert.equal(await popup.locator('table').count(),1);assert.equal(await popup.locator('table thead th').count(),8);assert.equal(await popup.locator('tbody tr').count(),4);assert.equal((await popup.locator('tbody').innerText()).match(/1\.200,75/g).length,1);
   assert.doesNotMatch(await popup.locator('body').innerText(),/Punto Sur|8\.888,25/);assert.equal(await popup.evaluate(()=>window.opener),null);
   if(qa&&name==='chromium'){
    await mkdir(qa,{recursive:true});await popup.pdf({path:resolve(qa,'cierre-punto-norte-octubre-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});
@@ -61,13 +63,13 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   assert.ok(excelPath,'La prueba requiere ExcelJS local para verificar el archivo real.');
   const [download]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
   const file=await download.path();const buffer=await readFile(file),book=XLSX.read(buffer,{type:'buffer',cellNF:true});
-  assert.deepEqual(book.SheetNames.slice(0,2),['Informe','01 Ventas']);
-  const sheet=book.Sheets['01 Ventas'];assert.equal(sheet.A9.v,31007.75);assert.equal(sheet.B9.v,1200.75);assert.equal(sheet.C9.v,-29807);assert.equal(sheet.D9.v,1200.75/31007.75);assert.match(sheet.D9.z,/0\.00%/);assert.equal(sheet.D9.t,'n');
-  const unit=book.Sheets[book.SheetNames[2]];assert.equal(unit.A9.v,'Créditos');assert.equal(unit.C9.v,1);assert.equal(unit.C10.v,1);assert.equal(unit.C11.v,3);
-  assert.equal(book.SheetNames.length,5);const growth=book.Sheets[book.SheetNames[3]];assert.equal(growth.A9.v,960.60);assert.equal(growth.C9.v,240.15);assert.equal(growth.D9.v,.25);assert.equal(growth.D9.t,'n');assert.match(growth.D9.z,/0\.00%/);assert.match(await first.innerText(),/Crecimiento frente al mismo mes/);
+  assert.deepEqual(book.SheetNames,['Informe','01 Presupuesto y crecimiento']);
+  const sheet=book.Sheets[book.SheetNames[1]];assert.equal(sheet.A9.v,'Ventas (COP)');assert.equal(sheet.B9.v,960.60);assert.equal(sheet.C9.v,31007.75);assert.equal(sheet.D9.v,1200.75);assert.equal(sheet.E9.v,-29807);assert.equal(sheet.F9.v,1200.75/31007.75);assert.equal(sheet.G9.v,240.15);assert.equal(sheet.H9.v,.25);assert.match(sheet.F9.z,/0\.00%/);assert.equal(sheet.F9.t,'n');assert.match(sheet.B9.z,/\$/);assert.equal(sheet.B10.z,'#,##0');
+  assert.equal(sheet.A10.v,'Créditos (unidades)');assert.equal(sheet.D10.v,1);assert.equal(sheet.D11.v,1);assert.equal(sheet.D12.v,3);assert.ok(sheet.F9.c?.some(c=>/meta/.test(c.t)),'Los estados se conservan como notas de celda');
+  assert.match(await first.innerText(),/Año anterior/i);
   assert.ok(Object.keys(unzipSync(new Uint8Array(buffer))).some(k=>k.startsWith('xl/media/')),'El Excel lleva el logo incorporado.');
   assert.doesNotMatch(JSON.stringify(book.Sheets),/Punto Sur|8888\.25/);
-  if(qa&&name==='chromium'){await download.saveAs(resolve(qa,'cierre-punto-norte-octubre-ficticio.xlsx'));await page.screenshot({path:resolve(qa,'pantalla-cierres.png'),fullPage:true});}
+  if(qa&&name==='chromium'){await download.saveAs(resolve(qa,'cierre-punto-norte-octubre-ficticio.xlsx'));await page.screenshot({path:resolve(qa,'pantalla-cierres.png'),fullPage:true});await first.screenshot({path:resolve(qa,'cuadro-unico-preview.png')});}
   const writes=await page.evaluate(()=>window.__fixture.writes);assert.equal(writes.length,2);assert.ok(writes.every(w=>w.name==='kora_registrar_exportacion'&&w.params.p_filtros.Mes==='2026-10'&&w.params.p_filtros['Punto de venta'].includes('Punto Norte')));
   await page.locator('#cierreTienda').selectOption('CK-01');assert.equal(await page.locator('[data-cierre-tienda]').count(),0);
   await page.getByRole('button',{name:'Preparar informes',exact:true}).click();await first.waitFor();assert.equal(await page.locator('[data-cierre-tienda]').count(),1);

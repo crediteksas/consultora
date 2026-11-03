@@ -1590,7 +1590,7 @@ function fmtNum(n) {
 // pesos desde Meta, no hay que convertir nada. Formato colombiano estándar,
 // sin decimales (igual convención que fmtCOP() en el resto del ERP Creditek).
 function fmtCOP(n) {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 , maximumFractionDigits: 0 }).format(n || 0);
 }
 
 function renderStatusBadge(status) {

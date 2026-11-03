@@ -2,7 +2,7 @@
   'use strict';
   const number = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
   const round = value => Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * 100) / 100;
-  const moneyFormat = '#,##0.00;[Red](#,##0.00);"—"';
+  const moneyFormat = '#,##0;[Red](#,##0);"—"';
   const names = { payjoy: 'PayJoy', alo: 'ALO Credit', krediya: 'Krediya' };
   const columns = [
     ['Fecha venta', 13, 'dd/mm/yyyy'], ['Comercio', 27], ['IMEI', 20, '@'], ['Referencia', 30], ['Cliente', 28],

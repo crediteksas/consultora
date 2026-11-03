@@ -14,15 +14,15 @@
 <link rel="stylesheet" href="/design-system/components/kora-dashboard-premium.css?v=1.1.0">
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.1.1"></script>
-<script src="presupuestos-retail-cierre.js?v=1.1.0"></script>
-<script src="presupuestos-retail-ranking.js?v=1.1.0"></script>
+<script src="presupuestos-retail-cierre.js?v=1.2.0"></script>
+<script src="presupuestos-retail-ranking.js?v=1.1.1"></script>
 <link rel="stylesheet" href="presupuestos-retail-ranking.css?v=1.1.0">
 <script src="tablero-utilidad.js?v=1.0.4"></script>
 <script src="alertas-celulares.js?v=1.0.0"></script>
 <script src="tiendas-canonicas.js?v=1.0.0"></script>
 <link rel="stylesheet" href="alertas-celulares.css?v=1.0.0">
 <script src="/design-system/components/kora-product.js" defer></script>
-<link rel="stylesheet" href="kora-sales-explorer.css?v=1.0.1"><script src="kora-sales-explorer.js?v=1.0.0"></script>
+<link rel="stylesheet" href="kora-sales-explorer.css?v=1.0.1"><script src="kora-sales-explorer.js?v=1.0.1"></script>
 <link rel="stylesheet" href="/design-system/components/creditek-liquid.css?v=1.0.0" media="screen">
 </head>
 <body data-kora-dashboard="1.0.0">
@@ -295,7 +295,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
+function fmtCOP(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0); }
 function fmtCorto(n) {
   n = Number(n || 0);
   if (Math.abs(n) >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
@@ -718,7 +718,7 @@ async function cargarCierreSeptiembre() {
     if (error) console.error('Cierre de utilidades:', error);
     return;
   }
-  const format = value => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:2, maximumFractionDigits:2 }).format(Number(value));
+  const format = value => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0, maximumFractionDigits:0 }).format(Number(value));
   const byBusiness = new Map(data.map(row => [row.negocio, row]));
   if (['retail','b2b','aliados'].some(business => !byBusiness.has(business))) return;
   detail.innerHTML = [['retail','Retail'],['b2b','B2B'],['aliados','Aliados']].map(([business,label]) => {

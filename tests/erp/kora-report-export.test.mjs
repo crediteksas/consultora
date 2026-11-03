@@ -53,7 +53,7 @@ test('el shell instala informes Excel y PDF en todas las pantallas KORA', async 
     read('creditek/erp/sidebar.js'),
     read('creditek/erp/kora-report-export.js'),
   ]);
-  assert.match(shell, /kora-report-export\.js\?v=1\.4\.2/);
+  assert.match(shell, /kora-report-export\.js\?v=1\.5\.0/);
   assert.match(shell, /KoraReportExport\?\.mount/);
   assert.match(exporter, /data-format="xlsx"/);
   assert.match(exporter, /data-format="pdf"/);
@@ -187,4 +187,61 @@ test('colores opcionales del PDF: paleta finita, notas legibles e ignorar estilo
  const palette=[['166534','DCFCE7'],['991B1B','FEE2E2'],['854D0E','FEF3C7'],['475569','F1F5F9']];
  const luminance=hex=>{const c=hex.match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*c[0]+.7152*c[1]+.0722*c[2];};
  for(const [fg,bg]of palette){assert.ok((luminance(bg)+.05)/(luminance(fg)+.05)>=4.5,'Contraste de texto normal AA');assert.match(html,new RegExp('background:#'+bg+';color:#'+fg));}
+});
+
+test('matriz opt-in: números más grandes y centrados; otros PDF mantienen el formato anterior',()=>{
+ const table={heading:'Prueba',layout:'matrix',headers:['Categoría','Resultado'],rows:[['Ventas','$ 100']],numericPresentation:'large-centered'};
+ const report={title:'Prueba ficticia',id:'FIXTURE',mode:'summary',generated:'Prueba',user:'Revisor ficticio',filters:[],metrics:[],tables:[table]};
+ const html=pdfDocument(report);assert.match(html,/class="report-matrix report-large-centered"/);assert.match(html,/report-large-centered td\{font-size:14px;font-weight:600;text-align:center/);
+ const plain=pdfDocument({...report,tables:[{...table,numericPresentation:undefined}]});assert.doesNotMatch(plain,/class="report-matrix report-large-centered"/);
+});
+test('ZIP PDF: rol de tienda, inactivo y sin perfil se rechazan antes de generar o descargar',async()=>{
+ for(const profile of [null,{activo:false,rol:'gerencia',nombre:'Ficticio'},{activo:true,rol:'admin_tienda',nombre:'Ficticio'}])await assert.rejects(()=>context.window.KoraReportExport.exportDataPdfZip([],{profile}),/Solo Gerencia o Auditoría/);
+});
+
+// Las fracciones se conservan en la fuente y en Excel; PDF solo cambia su presentación.
+test('pesos sin centavos en PDF y formato Excel, con datos y tasas intactos',()=>{
+ const E=context.window.KoraReportExport;
+ const rows=[['Registro ficticio','$ 1.234,75','12,50 %','001234.75']];
+ const report={id:'COP-FICTICIO',title:'Pesos',filters:[],metrics:[['Saldo','$ 1.234,75']],tables:[{heading:'Importes',headers:['Concepto','Valor COP','Margen %','Cuenta'],rows}]};
+ const original=JSON.stringify(report),html=E.pdfDocument(report);
+ assert.match(html,/\$ 1\.235/);assert.doesNotMatch(html,/1\.234,75/);assert.match(html,/12,50 %/);assert.match(html,/001234\.75/);assert.equal(JSON.stringify(report),original);
+ const cell=E.typedCell('$ 1.234,75','Valor COP');assert.equal(cell.value,1234.75);assert.equal(cell.format,'"$"#,##0');
+ const rate=E.typedCell('12,50 %','Margen %');assert.equal(rate.value,.125);assert.match(rate.format,/%/);
+});
+
+test('fábricas COP de pantallas operativas muestran pesos enteros; las fuentes exactas quedan separadas',async()=>{
+ const {readdir}=await import('node:fs/promises');
+ const raw={
+  'ventas.html':/const exact=/,'presupuestos.html':/const formatoReporte =/,'presupuestos-b2b.js':/headers:\['Indicador','Meta mensual'\]/,
+  'cobros-plataformas.js':/exact=n=>/,'finanzas-programadas-domain.js':/function formatMoneyInput\(/,
+  'resumen-saldos-b2b-app.js':/const reportMoney =/,'kora-report-export.js':/const money = value/,'banco-creditek.js':/const exact=/,
+  'gastos.html':/data-kora-report-value=/,'aliados-v1-1-app.js':/const reportCop =/,
+ };
+ let visible=0,exact=0;
+ for(const directory of ['creditek/erp','creditek/agentes'])for(const name of await readdir(directory)){
+  if(!/\.(?:js|mjs|html)$/.test(name)||/\.min\./.test(name))continue;
+  const code=await read(directory+'/'+name);
+  for(const match of code.matchAll(/\{[^{}]*\bcurrency\s*:\s*['"]COP['"][^{}]*\}/g)){
+   const prefix=code.slice(code.lastIndexOf('\n',match.index)+1,match.index);
+   const editing=name==='finanzas-programadas-domain.js'&&code.slice(0,match.index).lastIndexOf('function formatMoneyInput(')>code.slice(0,match.index).lastIndexOf('function parseMoneyInput(');
+   if((raw[name]?.test(prefix))||editing){exact++;continue;}
+   const options=vm.runInNewContext('('+match[0]+')');assert.equal(options.maximumFractionDigits,0,directory+'/'+name);
+   for(const n of [1234.75,-1234.75,0,1234.25])assert.doesNotMatch(new Intl.NumberFormat('es-CO',options).format(n),/,\d/,directory+'/'+name);
+   visible++;
+  }
+ }
+ assert.ok(visible>=50,'Cubre las fábricas existentes de todos los negocios');assert.equal(exact,10,'Fuentes numéricas ocultas y editor financiero existentes, sin nuevas excepciones');
+});
+
+test('el menú carga el exportador nuevo y los módulos monetarios tienen versión explícita',async()=>{
+ for(const page of ['cartera-b2b.html','presupuestos.html']){const html=await read('creditek/erp/'+page);assert.match(html,/<script id="koraReportExport" src="kora-report-export\.js\?v=1\.5\.0"><\/script>/,page);assert.doesNotMatch(html,/kora-report-export\.js\?v=1\.4\.[0-9]+/,page);}
+ const shell=await read('creditek/erp/sidebar.js');assert.match(shell,/kora-report-export\.js\?v=1\.5\.0/);assert.doesNotMatch(shell,/kora-report-export\.js\?v=1\.4\.2/);assert.match(shell,/confirmacion-deuda\.js\?v=1\.0\.1/);
+ assert.match(await read('creditek/erp/caja.html'),/src="caja-ciclo-ui\.js\?v=1\.0\.1"/);assert.match(await read('creditek/erp/inventario.html'),/src="inventario-export\.js\?v=1\.0\.1"/);
+});
+
+test('las dependencias PDF y ZIP ya versionadas producen archivos reales con datos ficticios',async()=>{
+ const {createRequire}=await import('node:module'),require=createRequire(import.meta.url),{jsPDF}=require('../../creditek/erp/vendor/jspdf-4.2.1.umd.min.js'),{zipSync,unzipSync}=require('../../creditek/erp/vendor/fflate-0.8.3.js');
+ const doc=new jsPDF();doc.text('Informe ficticio',15,20);const pdf=new Uint8Array(doc.output('arraybuffer'));assert.equal(new TextDecoder().decode(pdf.slice(0,5)),'%PDF-');
+ const zip=zipSync({'punto-ficticio.pdf':pdf});assert.deepEqual(unzipSync(zip)['punto-ficticio.pdf'],pdf);
 });

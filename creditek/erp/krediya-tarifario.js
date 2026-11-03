@@ -35,7 +35,7 @@
       for(const column of [6,7,8,9,10,11,12,17,18]){
         const values=group.map(row=>numeric(row[column])),missing=values.filter(v=>v===null).length;
         const known=values.reduce((sum,value)=>sum+(value===null?0:Math.round(value*100)),0)/100;
-        total[column]=missing?`Pendiente: ${missing} sin dato · subtotal conocido COP ${known.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}`:known;
+        total[column]=missing?`Pendiente: ${missing} sin dato · subtotal conocido COP ${known.toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0})}`:known;
       }
       matrix.push(total);
     }
@@ -69,7 +69,7 @@
     sheet['!autofilter']={ref:root.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:firstSubtotal<0?rows.length-1:firstSubtotal-1,c:rows[0].length-1}})};
     // Text stays text; no user-supplied Excel formulas are created.
     for(let r=1;r<rows.length;r++) for(let c=0;c<rows[0].length;c++) {
-      const cell=sheet[root.XLSX.utils.encode_cell({r,c})]; if(cell?.t==='n') cell.z='"$"#,##0.00';
+      const cell=sheet[root.XLSX.utils.encode_cell({r,c})]; if(cell?.t==='n') cell.z='"$"#,##0';
     }
     root.XLSX.utils.book_append_sheet(book,sheet,sheetName);
     if(context.length){const metadata=root.XLSX.utils.aoa_to_sheet([['Parámetro','Valor'],...context]);metadata['!cols']=[{wch:32},{wch:80}];root.XLSX.utils.book_append_sheet(book,metadata,'Contexto');}

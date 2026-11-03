@@ -24,7 +24,7 @@
       style: "currency",
       currency: "COP",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(Number(v) || 0);
   const date = (v) => (v ? String(v).slice(0, 10) : "—");
   const approvalDay = (value) => value ? new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value)) : '';
@@ -579,7 +579,7 @@
       ['Menos: resultado ya cerrado / retirado', -closedUtility],
       ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
     ];
-    const formatExact = v => complete ? new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(v) : 'No disponible · revisar datos';
+    const formatExact = v => complete ? reportCop(v) : 'No disponible · revisar datos';
     const historicalExpenses = expenseSelection.rows.filter(x=>x.fecha_causacion_historica);
     const historicalExpensesHtml = historicalExpenses.length ? `<div data-kora-report-kind="detail" data-kora-report-heading="Gastos históricos ya pagados"><h3>Gastos históricos ya pagados</h3><p class="muted">Distribución contable autorizada por Gerencia. No son pagos nuevos ni modifican Banco, caja o cierres anteriores.</p>${table(['Fecha contable','Concepto','Valor','Autorización real'],rows(historicalExpenses,[x=>esc(x.fecha_causacion_historica),x=>esc(x.concepto),x=>reportCop(x.valor),x=>esc(approvalDay(x.aprobado_at))]))}</div>` : '';
     const reconciliationHtml = `<section class="card" data-kora-report-kind="summary"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior; las regularizaciones históricas ya pagadas usan su fecha contable explícita y conservan la autorización real. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted" data-kora-report-note>Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted" data-kora-report-note data-kora-no-export>${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted" data-kora-report-note>Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}${historicalExpensesHtml}</section>`;

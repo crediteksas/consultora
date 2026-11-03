@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const fechaColombia = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  const pesos = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(Number(n));
+  const pesos = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n));
   function elemento(tag, texto, clase) {
     const el = document.createElement(tag);
     if (texto !== undefined) el.textContent = texto;

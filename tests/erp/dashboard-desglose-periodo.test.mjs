@@ -82,12 +82,12 @@ test('todas las plataformas incluye agosto histórico, deduplica contrato y no r
  const before=JSON.stringify(db);ctx.renderDashboard();
  assert.equal(ctx.cards.find(x=>x[0]==='Créditos del periodo')[1],3);
  assert.equal(ctx.cards.find(x=>x[0]==='Ventas del periodo')[1],'600');
- assert.match(nodes['#content'].innerHTML,/Resultado no cerrado \(no equivale a saldo bancario\)\|\$\s*72,00/);
+ assert.match(nodes['#content'].innerHTML,/Resultado no cerrado \(no equivale a saldo bancario\)\|<span data-kora-report-value="\$\s*72,00">72<\/span>/);
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'122');
  assert.equal(JSON.stringify(db),before);
  nodes['#dashboardTo'].value='2026-08-30';ctx.renderDashboard();assert.equal(ctx.cards[0][1],2);
  nodes['#dashboardPlatform'].value='payjoy';ctx.renderDashboard();assert.equal(ctx.cards[0][1],1);
- assert.match(nodes['#content'].innerHTML,/Resultado no cerrado \(no equivale a saldo bancario\)\|\$\s*0,00/);
+ assert.match(nodes['#content'].innerHTML,/Resultado no cerrado \(no equivale a saldo bancario\)\|<span data-kora-report-value="\$\s*0,00">0<\/span>/);
 });
 test('filtros ciudad, ejecutivo y tipo también se aplican al histórico',()=>{
  const {ctx,db,nodes}=fixture();db.origins=[{codigo:'t',nombre:'Tienda',ciudad:'Cereté'}];

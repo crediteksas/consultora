@@ -31,7 +31,7 @@ function harness({central=true,mes='2026-10',resumido=true,cortes=tiendas.map(t=
 }
 
 test('el botón mensual está en la misma pestaña, tiene mes seleccionable y no se ofrece a la tienda',()=>{
-  assert.match(readFileSync(new URL('../../creditek/erp/inventario.html',import.meta.url),'utf8'),/conteos-ui\.js\?v=1\.2\.5/);
+  assert.match(readFileSync(new URL('../../creditek/erp/inventario.html',import.meta.url),'utf8'),/conteos-ui\.js\?v=1\.2\.6/);
   assert.match(source,/id="conteos-mensual-panel"[^>]*hidden/);
   assert.match(source,/id="conteos-mes" type="month"/);
   assert.match(source,/id="conteos-informe-mes"[^>]*>Descargar informe del mes/);

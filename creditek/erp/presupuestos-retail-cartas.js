@@ -74,7 +74,7 @@
       .format(new Date(carta.mes + '-01T12:00:00Z'));
     const administradores = carta.administradores.length ? carta.administradores.map(esc).join(', ') : 'Administración de la tienda';
     const premio = carta.premio;
-    const importePremio = valor => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:2 }).format(Number(valor));
+    const importePremio = valor => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(Number(valor));
     const nivel = (cantidad,valor) => valor == null ? '' : `<div class="nivel"><span>${cantidad === 3 ? 'Si cumples exactamente 3 de las 4 metas' : 'Si cumples las 4 metas'}</span><strong>${importePremio(valor)}</strong></div>`;
     const estrategia = premio?.activo ? `<section class="premio"><div class="eyebrow">PREMIO POR CUMPLIMIENTO</div><h3>${esc(premio.estrategia)}</h3><div class="niveles">${nivel(3,premio.premio_tres)}${nivel(4,premio.premio_cuatro)}</div><p>Las metas son ventas, créditos, celulares de contado y accesorios. Cada meta se cumple al alcanzar el 100% del objetivo mensual. Aplica el premio del nivel alcanzado; los premios no se suman.</p></section>` : '';
     const aviso = carta.accesoriosPendientes ? '<p class="aviso">La meta de accesorios está pendiente de verificar. Esta carta requiere completar ese dato antes de su entrega.</p>' : '';

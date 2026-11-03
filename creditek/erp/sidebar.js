@@ -628,7 +628,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
     if (!document.getElementById('koraReportExport')) {
       const reports = document.createElement('script');
       reports.id = 'koraReportExport';
-      reports.src = '/creditek/erp/kora-report-export.js?v=1.4.2';
+      reports.src = '/creditek/erp/kora-report-export.js?v=1.5.0';
       document.head.appendChild(reports);
     }
     if (!document.getElementById('koraInstall')) {
@@ -1343,7 +1343,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       if (perfil.rol === 'admin_tienda') {
         await withBootTimeout(new Promise((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = '/creditek/erp/confirmacion-deuda.js?v=1';
+          script.src = '/creditek/erp/confirmacion-deuda.js?v=1.0.1';
           script.onload = resolve; script.onerror = () => reject(new Error('No se pudo cargar la confirmación diaria de deuda'));
           document.head.appendChild(script);
         }));

@@ -21,7 +21,7 @@
     sheet['!autofilter'] = {ref: `A1:P${rows.length+1}`};
     for (let r=1;r<=rows.length+1;r++) {
       for (const c of [7,10,15]) { const cell=sheet[XLSX.utils.encode_cell({r,c})]; if(cell) {cell.t='s';cell.z='@';delete cell.f;} }
-      const amount=sheet[XLSX.utils.encode_cell({r,c:12})]; if(amount) amount.z='"$"#,##0.00';
+      const amount=sheet[XLSX.utils.encode_cell({r,c:12})]; if(amount) amount.z='"$"#,##0';
     }
     const summary=[['KORA · Creditek S.A.S.'],['Gastos y retiros · movimientos consultados'],['Registros',rows.length],['Total movimientos mostrados (COP)',total],[],['Estado','Registros','Importe COP']];
     for(const status of [...new Set(rows.map(row=>row.status))]){const selected=rows.filter(row=>row.status===status);summary.push([domain.STATUS_LABELS[status]||status,selected.length,selected.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)/100]);}

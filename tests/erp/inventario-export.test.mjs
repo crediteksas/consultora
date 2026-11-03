@@ -160,7 +160,7 @@ test('genera un libro con filtros, anchos y formato monetario sin mutar datos', 
   );
   assert.ok(hoja['!cols'].every(columna => columna.wch >= 10));
   assert.equal(hoja.G2.t, 'n');
-  assert.equal(hoja.G2.z, '$#,##0.00');
+  assert.equal(hoja.G2.z, '$#,##0');
   assert.equal(hoja.H3.v,56088);
   assert.equal(hoja.F3.v,8);
 });

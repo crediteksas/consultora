@@ -30,7 +30,7 @@ test('footer Retail suma solamente las tiendas visibles y conserva centavos',()=
   vm.runInContext(section('cuenta-corriente.html','function fmtCOP','function mostrarBanner'),ctx);
   vm.runInContext(section('cuenta-corriente.html','function renderTablaTiendas()','async function cargarCompensacionesRecibidas'),ctx);
   ctx.renderTablaTiendas();const footer=document.getElementById('tfootTiendas').innerHTML;
-  assert.match(footer,/TOTAL NETO/);assert.match(footer,/80,15/);assert.doesNotMatch(footer,/9999/);
+  assert.match(footer,/TOTAL NETO/);assert.match(footer,/80,15/);assert.match(footer,/<strong>\$\s*80<\/strong>/);assert.doesNotMatch(footer,/9999/);
   ctx.tiendasCache=[];ctx.renderTablaTiendas();assert.equal(document.getElementById('tfootTiendas').innerHTML,'');
 });
 

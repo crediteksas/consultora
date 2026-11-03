@@ -1065,7 +1065,7 @@ window.KoraReportData = {prepareExcel(report){
 // ============================================================================
 // HELPERS
 // ============================================================================
-const fmtCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtInt = new Intl.NumberFormat('es-CO');
 function money(n) { return n == null ? '—' : fmtCOP.format(Number(n)); }
 function costoConocido(n) { return n !== null && n !== undefined && n !== '' && Number.isFinite(Number(n)) && Number(n) >= 0; }

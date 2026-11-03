@@ -27,6 +27,8 @@ test('informes Aliados: sin tienda del shell, dos variantes y mismos totales aut
     });
     await page.goto('https://kora.test/creditek/erp/aliados-dashboard.html');
     await page.getByRole('heading',{name:'Cómo se obtiene la utilidad'}).waitFor();
+    assert.doesNotMatch(await page.locator('#content').innerText(),/<span\s+data-kora-report-value/,'La conciliación se inserta como HTML, no como texto literal.');
+    assert.ok(await page.locator('#content [data-kora-report-kind=\"summary\"] span[data-kora-report-value]').count()>0,'Fuente exacta oculta junto al valor visible.');
     await page.locator('#dashboardFrom-display').fill('01/09/2026');
     await page.locator('#dashboardTo-display').fill('30/09/2026');
     await page.locator('#dashboardTo-display').press('Enter');

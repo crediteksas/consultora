@@ -19,7 +19,9 @@
   const textHeader = /(?:^|\b)(?:id|imei|serial|c[oó]digo|identificaci[oó]n|nit|cuenta|tel[eé]fono|documento|consecutivo)(?:\b|$)/i;
   const amountHeader = /(?:^|\b)(?:valor(?:es)?|monto|total|costos?|precios?|pagos?|pagamos|utilidad|margen|saldos?|abonos?|bonos?|gastos?|ingresos?|egresos?|efectivo|facturado|cartera|comisi[oó]n)(?:\b|$)/i;
   const percentHeader = /%|porcentaje|participaci[oó]n|tasa/i;
+  // Fuentes internas de reportes conservan centavos para sumar y exportar valores exactos.
   const money = value => clean(new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(value));
+  const displayMoney = value => clean(new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}).format(value));
   const numberText = value => new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(value);
   // Contratos explícitos de columnas de la tabla original, antes de quitar acciones.
   // No sumar costos unitarios, saldos corridos ni promediar tasas/porcentajes.
@@ -168,7 +170,7 @@
       // (0.15 = 15%, 1.5 = 150%). No inferir escala por magnitud:
       // dividir 1.5 entre 100 dañaría crecimientos legítimos superiores al 100%.
       if(percentHeader.test(header))return {value,kind:'percent',format:'0.0%'};
-      return {value,kind:amountHeader.test(header)?'currency':'number',format:amountHeader.test(header)?'"$"#,##0.00':'#,##0.##'};
+      return {value,kind:amountHeader.test(header)?'currency':'number',format:amountHeader.test(header)?'"$"#,##0':'#,##0.##'};
     }
     if(value instanceof Date)return {value,kind:'date',format:'dd/mm/yyyy'};
     const raw=clean(value);if(!raw)return {value:'',kind:'blank',format:'General'};
@@ -182,7 +184,7 @@
     }
     const number=colombianNumber(raw);
     if(number!=null&&percentHeader.test(header))return {value:Math.abs(number)>1?number/100:number,kind:'percent',format:'0.0%'};
-    if(number!=null&&(raw.includes('$')||amountHeader.test(header)))return {value:number,kind:'currency',format:'"$"#,##0.00'};
+    if(number!=null&&(raw.includes('$')||amountHeader.test(header)))return {value:number,kind:'currency',format:'"$"#,##0'};
     if(number!=null&&/cantidad|unidades?|operaciones?|ventas?|compras?|cr[eé]ditos?|d[ií]as?/i.test(header))return {value:number,kind:'number',format:'#,##0'};
     return {value:raw,kind:'text',format:'@'};
   }
@@ -308,11 +310,11 @@
     report.notes=report.notes?.map(label);
     return report;
   }
-  async function audit(sb, report, format) {
-    if (!sb?.rpc) return;
+  async function audit(sb, report, format, {strict=false}={}) {
+    if (!sb?.rpc) { if(strict)throw new Error('No se pudo registrar la trazabilidad del ZIP.'); return; }
     const records=report.recordCount??report.tables.reduce((n,t)=>n+t.rows.length,0);
     const { error } = await sb.rpc('kora_registrar_exportacion', { p_reporte_id:report.id, p_formato:format, p_ruta:report.route, p_titulo:report.title, p_filtros:Object.fromEntries(report.filters), p_registros:records });
-    if (error) console.warn('[KORA Reportes] No se registró la exportación', error.message);
+    if (error) { if(strict)throw new Error('No se descargó el ZIP porque no se pudo registrar su trazabilidad.'); console.warn('[KORA Reportes] No se registró la exportación', error.message); }
   }
   function loadScript(id,src,globalName){if(window[globalName])return Promise.resolve(window[globalName]);return new Promise((resolve,reject)=>{const prior=document.getElementById(id);if(prior){prior.addEventListener('load',()=>resolve(window[globalName]),{once:true});prior.addEventListener('error',reject,{once:true});return}const script=document.createElement('script');script.id=id;script.src=src;script.onload=()=>resolve(window[globalName]);script.onerror=()=>reject(new Error('No fue posible cargar el generador de Excel.'));document.head.appendChild(script)})}
   async function logoBase64(){const response=await fetch(LOGO);if(!response.ok)throw new Error('No fue posible cargar el logo Creditek.');const blob=await response.blob();return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)})}
@@ -412,12 +414,16 @@
     }
     const buffer=await workbook.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);await audit(sb,report,'xlsx');
   }
+  function pdfValue(value,header=''){
+    const parsed=typedCell(value,header);
+    return parsed.kind==='currency'&&typeof parsed.value==='number'?displayMoney(parsed.value):value;
+  }
   function pdfTable(table){
     if(table.structured){
       const display=(value,column)=>{
         if(value&&typeof value==='object'&&'formula' in value)value=value.result;
         if(value instanceof Date)return new Intl.DateTimeFormat('es-CO',{timeZone:'UTC'}).format(value);
-        if(typeof value==='number')return /%/.test(table.columns[column]?.[2]||'')?numberText(value*100)+' %':column>=6&&column<=22?money(value):numberText(value);
+        if(typeof value==='number')return /%/.test(table.columns[column]?.[2]||'')?numberText(value*100)+' %':column>=6&&column<=22?displayMoney(value):numberText(value);
         return value??'Sin dato registrado';
       };
       table={...table,rows:table.rows.map(row=>row.map(display))};
@@ -428,16 +434,16 @@
     if(table.headers.length>5 && table.layout!=='matrix'){
       const columns=Array.from({length:Math.min(4,table.headers.length)},()=>[]);
       table.headers.forEach((_,index)=>columns[index%columns.length].push(index));
-      const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field"><small>${esc(table.headers[column])}</small><b>${esc(row[column]??'—')}</b></div>`).join('')}</td>`).join('')}</tr>`;
+      const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field"><small>${esc(table.headers[column])}</small><b>${esc(pdfValue(row[column]??'—',table.headers[column]))}</b></div>`).join('')}</td>`).join('')}</tr>`;
       return `<section><h2>${esc(table.heading)}</h2><table class="compact-detail"><thead><tr>${columns.map(indices=>`<th>${esc(table.headers[indices[0]])} / detalle</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(rowHtml).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
     }
-    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td${cellTone(table.rowTones?.[index]?.[column]) ? ` data-report-tone="${cellTone(table.rowTones[index][column])}"` : ''}>${esc(row[column])}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
-    return `<section><h2>${esc(table.heading)}</h2><table${table.layout==='matrix'?' class="report-matrix"':''}><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(row=>rowHtml(row)).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
+    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td${cellTone(table.rowTones?.[index]?.[column]) ? ` data-report-tone="${cellTone(table.rowTones[index][column])}"` : ''}>${esc(pdfValue(row[column],table.headers[column]))}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
+    return `<section><h2>${esc(table.heading)}</h2><table${table.layout==='matrix'?' class="report-matrix'+(table.numericPresentation==='large-centered'?' report-large-centered':'')+'"':''}><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(row=>rowHtml(row)).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
   }
   function pdfDocument(report,logoUrl){
     logoUrl=logoUrl||(typeof location==='object'?new URL(LOGO,location.origin).href:LOGO);
     const filterText=report.filters.map(([key,value])=>`<span><b>${esc(key)}:</b> ${esc(value)}</span>`).join('');
-    const metricText=report.metrics.map(([key,value])=>`<div><small>${esc(key)}</small><strong>${esc(value)}</strong></div>`).join('');
+    const metricText=report.metrics.map(([key,value])=>`<div><small>${esc(key)}</small><strong>${esc(pdfValue(value,key))}</strong></div>`).join('');
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(report.title)} · ${esc(report.id)}</title><style>
 @page{size:A4 ${report.orientation==='landscape'?'landscape':'portrait'};margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-height:1.4}h1,h2,h3{break-after:avoid}h1{font-size:23px;margin:5px 0}h2{font-size:14px;margin:0 0 7px}h3{font-size:11px;margin:0 0 6px}
@@ -448,6 +454,7 @@ section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px;t
 .record{border:1px solid #D9E3EA;border-top:2px solid #00C4CC;border-radius:7px;padding:10px;margin:9px 0;break-inside:avoid}.record.splittable{break-inside:auto}.record dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.record dl>div{break-inside:avoid}.record dt{font-size:9px;color:#64748B}.record dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
 ${report.scoped?'tfoot{display:table-row-group}':''}
 .notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.table-notes{font-size:9px;color:#526075}.table-notes p{margin:4px 0;break-inside:avoid}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}.report-matrix th:first-child,.report-matrix td:first-child{width:20%}.report-matrix td{text-align:right;font-variant-numeric:tabular-nums}.report-matrix td:first-child{text-align:left;font-weight:bold}.matrix-note{display:block;margin-top:4px;color:#526075;font-size:8px;font-weight:normal}@media screen{body{max-width:${report.orientation==='landscape'?'273':'186'}mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}
+.report-matrix.report-large-centered td{font-size:14px;font-weight:600;text-align:center;vertical-align:middle;padding:10px 8px}.report-matrix.report-large-centered td:first-child{font-size:11px;text-align:left}.report-matrix.report-large-centered th{text-align:center}.report-matrix.report-large-centered th:first-child{text-align:left}.report-matrix.report-large-centered .matrix-note{font-size:9px;font-weight:normal}
 ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"]{background:#${colors.background};color:#${colors.foreground}}`).join('')}td[data-report-tone] .matrix-note{color:inherit}
 </style></head><body><header class="head"><div class="brand"><img src="${esc(logoUrl)}" alt="Creditek"><span>KORA</span></div><h1>${esc(report.title)}</h1><div class="meta"><b>${esc(report.id)}</b> · ${report.mode==='summary'?'Resumido · solo totales':'Detallado · datos y movimientos'}<br>Generado: ${esc(report.generated)} · Responsable: ${esc(report.user)}${report.role?` · ${esc(report.role)}`:''}<br>Origen: ${esc(report.route)}</div></header><div class="filters">${filterText}</div>${metricText?`<div class="metrics">${metricText}</div>`:''}${report.tables.map(pdfTable).join('')}${report.notes?.length?`<aside class="notes">${report.notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:''}<footer class="closing"><p><b>Trazabilidad KORA</b> · ${esc(report.id)}. Información visible con los filtros y permisos al generar el informe; no acredita un pago ni un saldo bancario.</p><p><b>Creditek S.A.S. · NIT 901.259.859-0</b> · Valores en COP cuando aplique.</p></footer><div class="tools"><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`;
   }
@@ -456,12 +463,12 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument(report,logo));popup.document.close();await audit(sb,report,'pdf');
   }
   // Informes de ventanas: datos explícitos, sin capturar la pantalla que queda detrás.
-  const dataFormats={currency:'"$" #,##0.00;[Red]-"$" #,##0.00',number:'#,##0',percentage:'0.00%;[Red]-0.00%',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
+  const dataFormats={currency:'"$" #,##0;[Red]-"$" #,##0',number:'#,##0',percentage:'0.00%;[Red]-0.00%',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
   function dataDisplay(value,type){
     if(value==null||value==='')return '—';
     if(type==='datetime')return new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'}).format(value);
     if(type==='date')return value instanceof Date?new Intl.DateTimeFormat('es-CO',{timeZone:'UTC',dateStyle:'short'}).format(value):String(value);
-    if(type==='currency')return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+    if(type==='currency')return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0,maximumFractionDigits:0}).format(value);
     if(type==='percentage')return new Intl.NumberFormat('es-CO',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
     if(type==='number')return new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(value);
     return String(value);
@@ -496,7 +503,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
       const records=[...table.rows,...(table.totalRows||[])];
       records.forEach((values,position)=>{
         const row=sheet.getRow(position+9);row.values=values.map(value=>value===''||value==null?null:value);row.height=32;
-        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1),type=table.rowTypes?.[position]?.[column]||table.columnTypes?.[column];cell.numFmt=cell.value==null?'General':dataFormats[type]||'@';if(table.rowNotes?.[position]?.[column])cell.note=table.rowNotes[position][column];cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(type)?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};const tone=position<table.rows.length?CELL_TONES[cellTone(table.rowTones?.[position]?.[column])]:null;if(tone){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:tone.background}};cell.font={...cell.font,color:{argb:tone.foreground},bold:true};}});
+        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1),type=table.rowTypes?.[position]?.[column]||table.columnTypes?.[column];cell.numFmt=cell.value==null?'General':dataFormats[type]||'@';if(table.rowNotes?.[position]?.[column])cell.note=table.rowNotes[position][column];cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(type)?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};if(table.numericPresentation==='large-centered'&&['currency','number','percentage'].includes(type)){cell.font={...cell.font,size:12};cell.alignment={...cell.alignment,horizontal:'center'};}const tone=position<table.rows.length?CELL_TONES[cellTone(table.rowTones?.[position]?.[column])]:null;if(tone){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:tone.background}};cell.font={...cell.font,color:{argb:tone.foreground},bold:true};}});
       });
       table.headers.forEach((header,column)=>{sheet.getColumn(column+1).width=table.columnTypes?.[column]==='datetime'?24:/ID corte/.test(header)?40:column===0?26:/Estado/.test(header)?32:22;});
       sheet.autoFilter={from:{row:8,column:1},to:{row:Math.max(8,table.rows.length+8),column:table.headers.length}};
@@ -505,22 +512,43 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     const link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     await audit(sb,report,'xlsx');
   }
-  async function exportData(data,{format='xlsx',sb,profile,popup=null}={}){
-    if(!['xlsx','pdf'].includes(format))throw new Error('Selecciona Excel o PDF.');
-    if(format==='pdf'&&!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');
+  function dataReport(data,profile){
     if(!profile?.nombre&&!profile?.email)throw new Error('No se pudo verificar el responsable del informe. Actualiza la sesión.');
     if(!data.tables?.some(table=>table.rows?.length))throw new Error('No hay datos para generar el informe.');
     const report={...data,scoped:true,id:reportId(),generated:nowBogota(),user:profile.nombre||profile.email,role:profile.rol||'',
       recordCount:data.tables.reduce((count,table)=>count+table.rows.length,0),
       route:data.route||location.pathname+'#conteos',filters:[...data.filters,['Formato del informe',data.mode==='summary'?'Resumido':'Completo']],metrics:[],notes:data.notes||[]};
+    return report;
+  }
+  function pdfDataReport(report){
+    const tables=(report.pdfTables||report.tables).map(table=>({...table,rows:table.rows.map((row,index)=>row.map((value,col)=>dataDisplay(value,table.rowTypes?.[index]?.[col]||table.columnTypes?.[col]))),totalRows:table.totalRows?.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col])))}));
+    return {...report,tables};
+  }
+  async function exportData(data,{format='xlsx',sb,profile,popup=null}={}){
+    if(!['xlsx','pdf'].includes(format))throw new Error('Selecciona Excel o PDF.');
+    if(format==='pdf'&&!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');
+    const report=dataReport(data,profile);
     if(format==='xlsx')await exportDataExcel(report,sb);
-    else {
-      const tables=(data.pdfTables||data.tables).map(table=>({...table,
-        rows:table.rows.map((row,index)=>row.map((value,col)=>dataDisplay(value,table.rowTypes?.[index]?.[col]||table.columnTypes?.[col]))),
-        totalRows:table.totalRows?.map(row=>row.map((value,col)=>dataDisplay(value,table.columnTypes?.[col])))}));
-      await exportPdf({...report,tables},sb,popup);
-    }
+    else await exportPdf(pdfDataReport(report),sb,popup);
     return report.id;
+  }
+  async function exportDataPdfZip(data,{sb,profile,isCurrent=()=>true,onProgress=()=>{}}={}){
+    if(!profile?.activo||!['gerencia','auditoria'].includes(profile.rol))throw new Error('Solo Gerencia o Auditoría pueden descargar estos informes.');
+    if(!window.KoraCierrePdfZip||!window.jspdf?.jsPDF||!window.fflate?.zipSync)throw new Error('No se cargaron las herramientas PDF/ZIP. Actualiza e intenta de nuevo.');
+    const guard=()=>{if(!isCurrent())throw new Error('La selección cambió. No se descargó el ZIP del mes anterior.');};
+    window.KoraCierrePdfZip.archivos(data);const snapshot=JSON.parse(JSON.stringify(data)),files=window.KoraCierrePdfZip.archivos(snapshot),reports=snapshot.map(d=>dataReport(d,profile)),ids=new Set(),entries=Object.create(null);
+    for(const report of reports){let attempts=0;while(ids.has(report.id)&&attempts++<10)report.id=reportId();if(ids.has(report.id))throw new Error('No se pudo generar una trazabilidad única.');ids.add(report.id);report.filters.push(['Entrega','ZIP de PDF']);}
+    guard();const logo=await logoBase64();guard();
+    for(let i=0;i<reports.length;i++){
+      guard();onProgress(i+1,reports.length);
+      const bytes=window.KoraCierrePdfZip.pdf(pdfDataReport(reports[i]),logo,window.jspdf.jsPDF,CELL_TONES);
+      if(!(bytes instanceof Uint8Array)||bytes.length<5||String.fromCharCode(...bytes.slice(0,5))!=='%PDF-')throw new Error('No se generó un archivo PDF válido. No se descargó el ZIP.');
+      entries[files[i].nombre]=bytes;await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    guard();const zipped=window.fflate.zipSync(entries,{level:0});
+    for(const report of reports){guard();await audit(sb,report,'pdf',{strict:true});}
+    guard();const url=URL.createObjectURL(new Blob([zipped],{type:'application/zip'})),link=document.createElement('a');link.href=url;link.download=`${files[0].cerrado?'Cierres':'Avances'} PPTO Tiendas ${files[0].mes}.zip`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    return {count:reports.length,ids:[...ids]};
   }
   function toast(message,error=false){let node=document.getElementById('koraReportToast');if(!node){node=document.createElement('div');node.id='koraReportToast';node.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647;max-width:360px;padding:12px 16px;border-radius:10px;color:#fff;font:600 13px Montserrat,Arial,sans-serif;box-shadow:0 8px 24px rgba(11,30,61,.25)';document.body.appendChild(node)}node.textContent=message;node.style.background=error?'#B42318':'#0B1E3D';node.hidden=false;setTimeout(()=>node.hidden=true,4500)}
   function mount({profile,sb}={}){
@@ -549,6 +577,6 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     document.addEventListener('click',event=>{if(!wrap.contains(event.target))menu.hidden=true});
     window.lucide?.createIcons();
   }
-  window.KoraReportExport={mount,snapshot,prepareReport,typedCell,excelColumn,reportScope,summaryTables,pdfDocument,completeTable,totalValue,cellText,tablePolicy,exportData};
+  window.KoraReportExport={mount,snapshot,prepareReport,typedCell,excelColumn,reportScope,summaryTables,pdfDocument,completeTable,totalValue,cellText,tablePolicy,exportData,exportDataPdfZip};
   document.dispatchEvent(new CustomEvent('kora-report-export-ready'));
 })();

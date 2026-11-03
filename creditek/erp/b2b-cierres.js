@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(n);
+ const money=n=>n==null?'Pendiente':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
  const date=d=>new Date(d).toLocaleString('es-CO',{timeZone:'America/Bogota'});
  function totals(items){return {pedidos:new Set(items.map(i=>i.pedido_id)).size,unidades:items.reduce((s,i)=>s+Number(i.cantidad),0),costo:items.some(i=>i.costo==null)?null:items.reduce((s,i)=>s+i.cantidad*i.costo,0),retail:items.some(i=>i.precio==null)?null:items.reduce((s,i)=>s+i.cantidad*i.precio,0)};}
  function changed(item){const before=item.origen;return !!before&&(before.proveedor_id!==item.proveedor_id||Number(before.costo)!==Number(item.costo)||Number(before.precio)!==Number(item.precio));}

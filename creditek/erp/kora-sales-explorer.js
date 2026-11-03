@@ -7,7 +7,7 @@
   const text = value => typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
   const number = value => value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
   const cents = value => number(value) == null ? null : Math.round(Number(value) * 100);
-  const money = value => value == null ? 'No disponible' : new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',maximumFractionDigits:2}).format(value / 100);
+  const money = value => value == null ? 'No disponible' : new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',maximumFractionDigits:0}).format(value / 100);
   const uuid = value => /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(String(value || ''));
   function day(value) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return value;

@@ -431,7 +431,7 @@
     return "";
   }
   function isClosedPayment(p) {
-    return Boolean(p.historico_inicial) || (p.estado === 'anulado' && Number(p.valor)===0) || p.estado === "conciliado" || (p.estado === 'pagado' && Boolean(p.soporte_path));
+    return window.CreditekTesoreriaTercerizacion.paymentQueue(p) === "history";
   }
   function paymentHistoryRange() {
     const from = $("#historyFrom")?.value || "";
@@ -507,9 +507,9 @@
       })
       .map((row) => row.payment);
   }
-  function paymentGroups(kind) {
+  function paymentGroups(kind, queue = "authorization") {
     const groups = new Map();
-    const source = paymentsForCurrentView().filter((x) => x.payment_kind === kind);
+    const source = paymentsForCurrentView().filter((x) => x.payment_kind === kind && (treasuryView === "history" || window.CreditekTesoreriaTercerizacion.paymentQueue(x) === queue));
     const visible = treasuryView === "history" ? filtered(source) : source;
     for (const payment of visible) {
       const key = window.CreditekTesoreriaTercerizacion.paymentGroupKey(payment);
@@ -518,8 +518,8 @@
     }
     return [...groups.values()].flatMap(group => Array.from({length:Math.ceil(group.length/50)},(_,i)=>group.slice(i*50,i*50+50)));
   }
-  function paymentCards(kind) {
-    const groups = paymentGroups(kind);
+  function paymentCards(kind, queue = "authorization") {
+    const groups = paymentGroups(kind, queue);
     if (!groups.length)
       return '<div class="empty">No hay información para los filtros seleccionados.</div>';
     return `<div class="payment-list">${groups
@@ -684,6 +684,13 @@
       ]);
     $("#allyPayments").innerHTML = paymentCards("aliado");
     $("#executivePayments").innerHTML = paymentCards("ejecutivo");
+    const historical = treasuryView === "history";
+    $("#allyPaymentsTitle").textContent = historical ? "Histórico de pagos a Aliados" : "Pagos a Aliados · pendientes de autorización";
+    $("#executivePaymentsTitle").textContent = historical ? "Histórico de pagos a Ejecutivos" : "Pagos a Ejecutivos · pendientes de autorización";
+    $("#authorizedPaymentsSection").classList.toggle("hidden", historical);
+    $("#authorizedAllyPayments").innerHTML = historical ? "" : paymentCards("aliado", "support");
+    $("#authorizedExecutivePayments").innerHTML = historical ? "" : paymentCards("ejecutivo", "support");
+    $("#authorizedPaymentsCount").textContent = historical ? 0 : ["aliado", "ejecutivo"].reduce((n, kind) => n + paymentGroups(kind, "support").flat().length, 0);
     const expenseSource = data.movements.filter((x) => {
         if (!x.aliados_gasto_id) return false;
         const closed = ["pagado", "conciliado", "rechazado", "anulado"].includes(x.status);
@@ -821,8 +828,8 @@
       ? `${storeName(selected.store_code)} · ${cop(selected.compensation_value)} · IMEI ${selected.imei || "—"}`
       : "Ninguna compensación seleccionada";
     $("#openStoreLedger").disabled = !selected;
-    $("#allyCount").textContent = ally.length;
-    $("#executiveCount").textContent = exec.length;
+    $("#allyCount").textContent = paymentGroups("aliado").flat().length;
+    $("#executiveCount").textContent = paymentGroups("ejecutivo").flat().length;
     $("#expenseCount").textContent = expenseMovements.length + (treasuryView === 'history' ? 0 : financialPending.length);
     $("#compensationCount").textContent = visibleCompensations.length;
     $("#retailCommissionCount").textContent = retailCommissions.length;

@@ -430,7 +430,7 @@
             <section class="card">
               <div class="section-head">
                 <div>
-                  <h2>Pagos a Aliados</h2>
+                  <h2 id="allyPaymentsTitle">Pagos a Aliados · pendientes de autorización</h2>
                   <p class="section-copy">
                     Cada tarjeta muestra beneficiario, valor, cuenta, estado y
                     autorización.
@@ -443,7 +443,7 @@
         <section class="card">
           <div class="section-head">
             <div>
-              <h2>Pagos a Ejecutivos</h2>
+              <h2 id="executivePaymentsTitle">Pagos a Ejecutivos · pendientes de autorización</h2>
                   <p class="section-copy">
                     Bonificaciones agrupadas por beneficiario y periodo.
                   </p>
@@ -451,6 +451,19 @@
                 <span id="executiveCount" class="badge">0</span>
               </div>
           <div id="executivePayments"></div>
+        </section>
+        <section id="authorizedPaymentsSection" class="card">
+          <div class="section-head">
+            <div>
+              <h2>Pagos autorizados · pendientes de soporte</h2>
+              <p class="section-copy">Mayte adjunta aquí el comprobante y registra el pago realizado. Autorizar no registra el pago.</p>
+            </div>
+            <span id="authorizedPaymentsCount" class="badge">0</span>
+          </div>
+          <h3>Aliados</h3>
+          <div id="authorizedAllyPayments"></div>
+          <h3>Ejecutivos</h3>
+          <div id="authorizedExecutivePayments"></div>
         </section>
         <section class="card">
           <div class="section-head">
@@ -686,7 +699,7 @@
       .metric-group .metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:14px}
       @media (max-width:760px){.history-tools{grid-template-columns:1fr}.history-tools .btn{width:100%}}
     </style>
-    <script src="aliados-tesoreria-domain.js?v=1.6.1"></script>
+    <script src="aliados-tesoreria-domain.js?v=1.6.2"></script>
     <script src="cobros-plataformas.js?v=1.3.8"></script>
     <script src="aliados-cuentas-domain.js"></script>
     <script src="tesoreria-clientes.js?v=1.2.0"></script>
@@ -706,6 +719,6 @@
     <script src="payment-destination.js?v=1.0.0"></script>
     <script src="tesoreria-pagos-unificados.js?v=20261027.1"></script>
     <script src="banco-proveedores-tesoreria.js?v=20261006.1.0"></script>
-    <script src="aliados-tesoreria-app.js?v=20261027.1.0"></script>
+    <script src="aliados-tesoreria-app.js?v=20261103.1.0"></script>
   </body>
 </html>

@@ -97,6 +97,13 @@
   function pagoAutorizado(p) {
     return Boolean(p.authorized_by && p.authorized_at && !p.recovery_review_required);
   }
+  function paymentQueue(p) {
+    if (p.historico_inicial || p.estado === 'conciliado' ||
+        (p.estado === 'anulado' && Number(p.valor) === 0) ||
+        (p.estado === 'pagado' && p.soporte_path)) return 'history';
+    if (p.estado === 'pagado' || pagoAutorizado(p)) return 'support';
+    return 'authorization';
+  }
   function paymentReadiness(p) {
     if (p.historico_inicial || p.estado === 'conciliado') return {ready:false,reason:'Pago cerrado'};
     if (p.estado === 'pagado') return {ready:!p.soporte_path,reason:p.soporte_path ? 'Pago con soporte registrado' : '',supportOnly:true};
@@ -166,5 +173,5 @@
     });
     return `\uFEFF${[header.map(csvCell).join(';'),...lines].join('\r\n')}`;
   }
-  return { diaBogota, mesBogota, enMes, filtrarMovimientosTiendas, saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
+  return { diaBogota, mesBogota, enMes, filtrarMovimientosTiendas, saldosActualesTiendas, loteAutorizado, pagoAutorizado, paymentQueue, paymentReadiness, paymentGroupKey, paymentBusinessName, paymentPaidDate, paymentHistoryRows, paymentHistorySummary, paymentHistoryCsv, destinoRetail, destinoAliado, aplicarCompensacion, validarMovimiento, filtrarCompensaciones, tiendasCompensaciones, B2B_TYPES, OUTSOURCING_TYPES };
 });

@@ -7,3 +7,5 @@ Las promesas vencidas piden verificar cumplimiento. Los datos faltantes no se in
 Pruebas: 16 dirigidas aprobadas; suite test:local 1425 aprobadas incluyendo 7 nuevas de agenda. Browser con datos ficticios: navegación de agenda, historial, compromiso, campos requeridos y tarjetas a 390 px sin desbordamiento. La observación del evento de descarga del navegador agotó espera; la selección de filas y mapeo CSV se validaron por código y prueba de dominio, sin afirmar descarga verificada.
 
 Claude aprobó tras corregir las observaciones de filtro de exportación, encabezado numérico y fechas inválidas. Revisión sin datos reales autorizada por Óscar. No se enviaron mensajes a clientes ni se registraron pagos durante las pruebas.
+
+La suite conserva intacto el runner revisado por el control de permisos. La prueba de dominio existente importa las regresiones nuevas de agenda para ejecutarlas en cada despliegue.

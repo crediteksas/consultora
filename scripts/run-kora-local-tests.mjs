@@ -137,6 +137,7 @@ const erp = [
   'tests/erp/remisiones-visual-impresion.test.mjs',
   'tests/erp/remision-proveedor-producto.test.mjs',
   'tests/erp/creditos-cartera-domain.test.mjs',
+  'tests/erp/creditos-cartera-agenda.test.mjs',
   'tests/erp/creditos-cartera-migration.test.mjs',
   'tests/erp/creditos-cartera-nova-ready.test.mjs',
   'tests/erp/aliados-recuperaciones.test.mjs',

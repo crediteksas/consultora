@@ -130,3 +130,19 @@ test('cuadro único conserva cuatro filas, valores numéricos, formatos mixtos y
  a.categorias.forEach((m,i)=>{assert.deepEqual(t.rows[i].slice(1),[m.valorAnterior,m.presupuesto,m.realizado,m.diferencia,m.cumplimiento,m.variacionAnual,m.crecimientoAnual]);assert.equal(t.rowNotes[i][5],m.estado);assert.equal(t.rowNotes[i][7],m.estadoCrecimiento);});
  const partial={...a,periodo:{...a.periodo,cerrado:false}};const p=C.compararConAnterior([partial],history())[0];assert.ok(C.informe(p).tables[0].rows.every(row=>row[6]===null&&row[7]===null));
 });
+
+test('colores de lectura: límites exactos y datos ausentes sin cambiar ratios o estados',()=>{
+ for(const [ratio,tone]of [[1,'positive'],[1.27,'positive'],[.999999,'negative'],[.9,'negative'],[0,'negative'],[-.01,'negative'],[null,'neutral'],[undefined,'neutral'],[NaN,'neutral'],[Infinity,'neutral'],['1','neutral']])assert.equal(C.tonosCategoria({cumplimiento:ratio}).cumplimiento,tone);
+ for(const [ratio,tone]of [[.00001,'positive'],[.42,'positive'],[0,'steady'],[-0,'steady'],[-.00001,'negative'],[-.27,'negative'],[null,'neutral'],[undefined,'neutral'],[NaN,'neutral'],[Infinity,'neutral'],['0','neutral']])assert.equal(C.tonosCategoria({crecimientoAnual:ratio}).crecimiento,tone);
+ const c={cumplimiento:1.01,crecimientoAnual:-.2,estado:'Meta alcanzada',estadoCrecimiento:'Disminución'},before=JSON.stringify(c);C.tonosCategoria(c);assert.equal(JSON.stringify(c),before);
+});
+test('PDF y Excel reciben colores solo para las dos columnas solicitadas, sin mutar valores',()=>{
+ const cierre=C.compararConAnterior(C.resumir(fixture()),history())[0],before=JSON.stringify(cierre),report=C.informe(cierre),table=report.tables[0];
+ assert.equal(JSON.stringify(cierre),before);assert.equal(table.rowTones.length,4);
+ for(let i=0;i<4;i++){
+  assert.equal(table.rowTones[i].length,8);assert.deepEqual(table.rowTones[i].filter(Boolean),Object.values(C.tonosCategoria(cierre.categorias[i])));
+  for(const col of [0,1,2,3,4,6])assert.equal(table.rowTones[i][col],'');
+  assert.equal(table.rows[i][5],cierre.categorias[i].cumplimiento);assert.equal(table.rows[i][7],cierre.categorias[i].crecimientoAnual);
+ }
+ assert.ok(report.notes.includes(C.LEYENDA_COLORES));assert.match(C.LEYENDA_COLORES,/gris = sin porcentaje comparable/);
+});

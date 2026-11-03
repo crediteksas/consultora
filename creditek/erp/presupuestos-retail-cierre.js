@@ -195,6 +195,15 @@
     for (let i = 0; i < ids.length; i += 200) productos.push(...await credits.allRows(sb, 'productos', 'id,tipo', 'id', q => q.in('id', ids.slice(i, i + 200))));
     return compararConAnterior(resumir({ tiendas: selected, mes, presupuestos, ventas, items, productos, creditData, now }), historico.rows, { errorHistorico: historico.error });
   }
+  // Solo presentación: se usan las proporciones existentes, sin redondearlas ni cambiar estados.
+  function tonosCategoria(categoria) {
+    const cumplimiento = categoria.cumplimiento, crecimiento = categoria.crecimientoAnual;
+    return {
+      cumplimiento: !Number.isFinite(cumplimiento) ? 'neutral' : cumplimiento >= 1 ? 'positive' : 'negative',
+      crecimiento: !Number.isFinite(crecimiento) ? 'neutral' : crecimiento > 0 ? 'positive' : crecimiento < 0 ? 'negative' : 'steady',
+    };
+  }
+  const LEYENDA_COLORES = 'Colores: verde = meta alcanzada o crecimiento; rojo = por debajo de la meta o disminución; amarillo = sin variación interanual; gris = sin porcentaje comparable. Los porcentajes y estados conservan su significado.';
   function informe(cierre) {
     const { tienda, periodo: p, categorias } = cierre;
     const anioAnterior = Number(p.mes.slice(0, 4)) - 1;
@@ -208,9 +217,10 @@
       tables: [
         { heading: 'Presupuesto y crecimiento', layout: 'matrix', headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
           columnTypes: ['text', 'number', 'number', 'number', 'number', 'percentage', 'number', 'percentage'], rowTypes: categorias.map(rowTypes),
+          rowTones: categorias.map(c => { const tonos = tonosCategoria(c); return ['', '', '', '', '', tonos.cumplimiento, '', tonos.crecimiento]; }),
           rowNotes: categorias.map(c => ['', '', '', '', '', c.estado, '', c.estadoCrecimiento || 'Sin histórico comparable']) },
       ],
-      notes: [...cierre.notes,
+      notes: [...cierre.notes, LEYENDA_COLORES,
         'Se compara el presupuesto mensual registrado con los resultados disponibles al generar el informe. Las propuestas sin aprobar no sustituyen las metas registradas.',
         'Crecimiento interanual: (resultado actual − resultado del mismo mes del año anterior) / resultado anterior. Solo se calcula para meses completos con base anterior positiva y datos verificables; la variación es la diferencia entre ambos resultados.',
         'Ventas: registros Retail vigentes por fecha comercial, sin ventas anuladas. Créditos: Liquidaciones por fecha de venta, con el mismo tratamiento de duplicados y reversiones del Resumen ejecutivo.',
@@ -218,5 +228,5 @@
         ...(p.cerrado ? [] : ['El mes está en curso: el presupuesto es mensual y los resultados son parciales hasta el corte indicado.']),
       ] };
   }
-  return Object.freeze({ METRICAS, diaColombia, periodo, tiendasElegidas, resumir, compararConAnterior, cargar, informe });
+  return Object.freeze({ METRICAS, diaColombia, periodo, tiendasElegidas, resumir, compararConAnterior, cargar, informe, tonosCategoria, LEYENDA_COLORES });
 });

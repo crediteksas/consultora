@@ -175,3 +175,16 @@ test('PDF matricial opcional conserva un cuadro ancho, estados escapados y horiz
  const report={title:'Cuadro ficticio',id:'FIXTURE',mode:'summary',generated:'Prueba',user:'Revisor ficticio',filters:[],metrics:[],orientation:'landscape',tables:[{heading:'Presupuesto y crecimiento',layout:'matrix',headers:['Categoría','Anterior','Presupuesto','Realizado','Diferencia','Cumplimiento','Variación','Crecimiento'],rows:[['Ventas','$ 100','$ 200','$ 150','-$ 50','75 %','$ 50','50 %']],rowNotes:[['','','','','','Meta <pendiente>','','Crecimiento']]}]};
  const html=pdfDocument(report);assert.match(html,/@page\{size:A4 landscape/);assert.match(html,/class="report-matrix"/);assert.doesNotMatch(html,/class="compact-detail"/);assert.equal((html.match(/<table/g)||[]).length,1);assert.match(html,/Meta &lt;pendiente&gt;/);assert.equal((html.match(/<th>/g)||[]).length,8);
 });
+
+test('colores opcionales del PDF: paleta finita, notas legibles e ignorar estilos inyectados',()=>{
+ const tones=['positive','negative','steady','neutral','bad" onclick="alert(1)','__proto__'];
+ const report={title:'Colores ficticios',id:'FIXTURE',mode:'summary',generated:'Prueba',user:'Revisor ficticio',filters:[],metrics:[],tables:[{heading:'Indicadores',headers:['Valor'],rows:tones.map(()=>['50 %']),rowTones:tones.map(t=>[t]),rowNotes:tones.map(()=>['Estado visible'])}]};
+ const html=pdfDocument(report);
+ for(const tone of tones.slice(0,4))assert.match(html,new RegExp(`<td data-report-tone="${tone}">50 %`));
+ assert.equal((html.match(/<td data-report-tone=/g)||[]).length,4);assert.doesNotMatch(html,/onclick="alert|data-report-tone="__proto__/);
+ assert.match(html,/td\[data-report-tone\] \.matrix-note\{color:inherit\}/);
+ const plain=pdfDocument({...report,tables:[{...report.tables[0],rowTones:undefined}]});assert.equal((plain.match(/<td data-report-tone=/g)||[]).length,0);
+ const palette=[['166534','DCFCE7'],['991B1B','FEE2E2'],['854D0E','FEF3C7'],['475569','F1F5F9']];
+ const luminance=hex=>{const c=hex.match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*c[0]+.7152*c[1]+.0722*c[2];};
+ for(const [fg,bg]of palette){assert.ok((luminance(bg)+.05)/(luminance(fg)+.05)>=4.5,'Contraste de texto normal AA');assert.match(html,new RegExp('background:#'+bg+';color:#'+fg));}
+});

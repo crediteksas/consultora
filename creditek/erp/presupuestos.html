@@ -19,9 +19,9 @@
 <script src="presupuestos-cartas-descarga.js?v=1.0.1"></script>
 <script src="aliados-reversiones-domain.js?v=1.0.0"></script>
 <script src="tablero-ejecutivos.js?v=1.0.0"></script>
-<script id="koraReportExport" src="kora-report-export.js?v=1.4.4"></script>
-<script src="presupuestos-retail-cierre.js?v=1.1.1"></script>
-<script src="presupuestos-retail-cierre-ui.js?v=1.1.1"></script>
+<script id="koraReportExport" src="kora-report-export.js?v=1.4.5"></script>
+<script src="presupuestos-retail-cierre.js?v=1.1.2"></script>
+<script src="presupuestos-retail-cierre-ui.js?v=1.1.2"></script>
 <script src="presupuestos-retail-planificacion.js?v=1.0.0"></script>
 <style>
 :root {
@@ -161,6 +161,12 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .cierre-pdv tr th:first-child { text-align: left; min-width: 155px; }
 .cierre-pdv td:last-child { text-align: right; }
 .cierre-pdv .cierre-pdv-aviso { padding: 10px; border-left: 3px solid #ba7b12; background: #fff8e9; color: #765008; }
+/* Colores de lectura: conservan porcentajes y estados textuales, sin iconos. */
+.cierre-pdv td[data-cierre-tono="positive"] { background: #DCFCE7; color: #166534; }
+.cierre-pdv td[data-cierre-tono="negative"] { background: #FEE2E2; color: #991B1B; }
+.cierre-pdv td[data-cierre-tono="steady"] { background: #FEF3C7; color: #854D0E; }
+.cierre-pdv td[data-cierre-tono="neutral"] { background: #F1F5F9; color: #475569; }
+.cierre-pdv td[data-cierre-tono] small { color: inherit; }
 .cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
 @media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }
 #comparativoPlanificacion { min-width: 0; margin-top: 18px; }

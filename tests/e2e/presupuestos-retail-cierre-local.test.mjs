@@ -59,18 +59,45 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
    await mkdir(qa,{recursive:true});await popup.pdf({path:resolve(qa,'cierre-punto-norte-octubre-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});
    await popup.screenshot({path:resolve(qa,'pdf-preview.png'),fullPage:true});
   }
+  const pdfColors=await popup.locator('tbody tr').first().locator('td[data-report-tone]').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
+  assert.deepEqual(pdfColors,['rgb(254, 226, 226)','rgb(220, 252, 231)']);
   await popup.close();
   assert.ok(excelPath,'La prueba requiere ExcelJS local para verificar el archivo real.');
   const [download]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
-  const file=await download.path();const buffer=await readFile(file),book=XLSX.read(buffer,{type:'buffer',cellNF:true});
+  const file=await download.path();const buffer=await readFile(file),book=XLSX.read(buffer,{type:'buffer',cellNF:true,cellStyles:true});
   assert.deepEqual(book.SheetNames,['Informe','01 Presupuesto y crecimiento']);
   const sheet=book.Sheets[book.SheetNames[1]];assert.equal(sheet.A9.v,'Ventas (COP)');assert.equal(sheet.B9.v,960.60);assert.equal(sheet.C9.v,31007.75);assert.equal(sheet.D9.v,1200.75);assert.equal(sheet.E9.v,-29807);assert.equal(sheet.F9.v,1200.75/31007.75);assert.equal(sheet.G9.v,240.15);assert.equal(sheet.H9.v,.25);assert.match(sheet.F9.z,/0\.00%/);assert.equal(sheet.F9.t,'n');assert.match(sheet.B9.z,/\$/);assert.equal(sheet.B10.z,'#,##0');
   assert.equal(sheet.A10.v,'Créditos (unidades)');assert.equal(sheet.D10.v,1);assert.equal(sheet.D11.v,1);assert.equal(sheet.D12.v,3);assert.ok(sheet.F9.c?.some(c=>/meta/.test(c.t)),'Los estados se conservan como notas de celda');
   assert.match(await first.innerText(),/Año anterior/i);
+  const salesRow=first.locator('[data-cierre-categoria="ventas"]');
+  assert.equal(await salesRow.locator('td').nth(4).getAttribute('data-cierre-tono'),'negative');
+  assert.equal(await salesRow.locator('td').nth(6).getAttribute('data-cierre-tono'),'positive');
+  const colors=await salesRow.locator('td[data-cierre-tono]').evaluateAll(cells=>cells.map(c=>({bg:getComputedStyle(c).backgroundColor,fg:getComputedStyle(c).color})));
+  assert.deepEqual(colors,[{bg:'rgb(254, 226, 226)',fg:'rgb(153, 27, 27)'},{bg:'rgb(220, 252, 231)',fg:'rgb(22, 101, 52)'}]);
+  assert.match(await first.innerText(),/amarillo = sin variación interanual/);
+  assert.equal(sheet.F9.s.fgColor.rgb,'FEE2E2');assert.equal(sheet.H9.s.fgColor.rgb,'DCFCE7');
+  assert.equal(sheet.F9.v,1200.75/31007.75);assert.equal(sheet.H9.v,.25);
   assert.ok(Object.keys(unzipSync(new Uint8Array(buffer))).some(k=>k.startsWith('xl/media/')),'El Excel lleva el logo incorporado.');
   assert.doesNotMatch(JSON.stringify(book.Sheets),/Punto Sur|8888\.25/);
   if(qa&&name==='chromium'){await download.saveAs(resolve(qa,'cierre-punto-norte-octubre-ficticio.xlsx'));await page.screenshot({path:resolve(qa,'pantalla-cierres.png'),fullPage:true});await first.screenshot({path:resolve(qa,'cuadro-unico-preview.png')});}
   const writes=await page.evaluate(()=>window.__fixture.writes);assert.equal(writes.length,2);assert.ok(writes.every(w=>w.name==='kora_registrar_exportacion'&&w.params.p_filtros.Mes==='2026-10'&&w.params.p_filtros['Punto de venta'].includes('Punto Norte')));
+  await page.evaluate(()=>{const h=window.__fixture.data.historico_mensual.find(r=>r.tienda_codigo==='CK-01');h.venta_total=1200.75;h.acc_uds=0;h.acc_venta=30;window.__fixture.data.presupuestos.filter(r=>r.tienda_codigo==='CK-01').forEach(r=>r.meta_venta_total=20);});
+  await page.getByRole('button',{name:'Preparar informes',exact:true}).click();await first.waitFor();
+  assert.equal(await first.locator('[data-cierre-categoria="ventas"] td').nth(4).getAttribute('data-cierre-tono'),'positive');
+  assert.equal(await first.locator('[data-cierre-categoria="ventas"] td').nth(6).getAttribute('data-cierre-tono'),'steady');
+  assert.equal(await first.locator('[data-cierre-categoria="accesorios"] td').nth(6).getAttribute('data-cierre-tono'),'neutral');
+  const [colorsPdf]=await Promise.all([page.waitForEvent('popup'),first.getByRole('button',{name:'PDF · Punto Norte',exact:true}).click()]);
+  await colorsPdf.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
+  const tonesPdf=await colorsPdf.locator('tbody tr').first().locator('td[data-report-tone]').evaluateAll(cells=>cells.map(c=>({tone:c.getAttribute('data-report-tone'),background:getComputedStyle(c).backgroundColor})));
+  assert.deepEqual(tonesPdf,[{tone:'positive',background:'rgb(220, 252, 231)'},{tone:'steady',background:'rgb(254, 243, 199)'}]);
+  assert.equal(await colorsPdf.locator('tbody tr').nth(3).locator('td[data-report-tone="neutral"]').count(),1);
+  if(qa&&name==='chromium'){await colorsPdf.pdf({path:resolve(qa,'colores-cuatro-tonos-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});}
+  await colorsPdf.close();
+  const [colorsDownload]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
+  const colorsBook=XLSX.read(await readFile(await colorsDownload.path()),{type:'buffer',cellStyles:true,cellNF:true}),colorsSheet=colorsBook.Sheets[colorsBook.SheetNames[1]];
+  assert.equal(colorsSheet.F9.s.fgColor.rgb,'DCFCE7');assert.equal(colorsSheet.H9.s.fgColor.rgb,'FEF3C7');assert.equal(colorsSheet.H12.s.fgColor.rgb,'F1F5F9');assert.equal(colorsSheet.F10.s.fgColor.rgb,'FEE2E2');assert.equal(colorsSheet.H9.v,0);assert.equal(colorsSheet.H12.v,undefined);assert.equal(colorsSheet.F9.v,1200.75/620);
+  if(qa&&name==='chromium')await colorsDownload.saveAs(resolve(qa,'colores-cuatro-tonos-ficticio.xlsx'));
+  if(qa&&name==='chromium')await first.screenshot({path:resolve(qa,'colores-cumplimiento-crecimiento-ficticio.png')});
   await page.locator('#cierreTienda').selectOption('CK-01');assert.equal(await page.locator('[data-cierre-tienda]').count(),0);
   await page.getByRole('button',{name:'Preparar informes',exact:true}).click();await first.waitFor();assert.equal(await page.locator('[data-cierre-tienda]').count(),1);
   await page.evaluate(()=>window.__fixture.failTable='historico_mensual');await page.getByRole('button',{name:'Preparar informes',exact:true}).click();await page.getByText(/1 informe\(s\) preparados/).waitFor();assert.match(await first.innerText(),/Histórico no disponible/);assert.match(await first.innerText(),/1\.200,75/);

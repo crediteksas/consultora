@@ -4,6 +4,14 @@
   const LOGO = '/creditek/shared/branding/creditek-logo.png';
   const EXCELJS = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
   const COLORS = { navy: '0B1E3D', teal: '00C4CC', pale: 'EAFBFC', gray: '64748B', white: 'FFFFFF' };
+  // Propiedad opcional de presentación; sin ella, el exportador conserva sus estilos anteriores.
+  const CELL_TONES = Object.freeze({
+    positive: { background: 'DCFCE7', foreground: '166534' },
+    negative: { background: 'FEE2E2', foreground: '991B1B' },
+    steady: { background: 'FEF3C7', foreground: '854D0E' },
+    neutral: { background: 'F1F5F9', foreground: '475569' },
+  });
+  const cellTone = value => typeof value === 'string' && Object.keys(CELL_TONES).includes(value) ? value : '';
   let mounted = false;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -423,7 +431,7 @@
       const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field"><small>${esc(table.headers[column])}</small><b>${esc(row[column]??'—')}</b></div>`).join('')}</td>`).join('')}</tr>`;
       return `<section><h2>${esc(table.heading)}</h2><table class="compact-detail"><thead><tr>${columns.map(indices=>`<th>${esc(table.headers[indices[0]])} / detalle</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(rowHtml).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
     }
-    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td>${esc(row[column])}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
+    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td${cellTone(table.rowTones?.[index]?.[column]) ? ` data-report-tone="${cellTone(table.rowTones[index][column])}"` : ''}>${esc(row[column])}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
     return `<section><h2>${esc(table.heading)}</h2><table${table.layout==='matrix'?' class="report-matrix"':''}><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(row=>rowHtml(row)).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
   }
   function pdfDocument(report,logoUrl){
@@ -440,6 +448,7 @@ section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px;t
 .record{border:1px solid #D9E3EA;border-top:2px solid #00C4CC;border-radius:7px;padding:10px;margin:9px 0;break-inside:avoid}.record.splittable{break-inside:auto}.record dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.record dl>div{break-inside:avoid}.record dt{font-size:9px;color:#64748B}.record dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
 ${report.scoped?'tfoot{display:table-row-group}':''}
 .notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.table-notes{font-size:9px;color:#526075}.table-notes p{margin:4px 0;break-inside:avoid}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}.report-matrix th:first-child,.report-matrix td:first-child{width:20%}.report-matrix td{text-align:right;font-variant-numeric:tabular-nums}.report-matrix td:first-child{text-align:left;font-weight:bold}.matrix-note{display:block;margin-top:4px;color:#526075;font-size:8px;font-weight:normal}@media screen{body{max-width:${report.orientation==='landscape'?'273':'186'}mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}
+${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"]{background:#${colors.background};color:#${colors.foreground}}`).join('')}td[data-report-tone] .matrix-note{color:inherit}
 </style></head><body><header class="head"><div class="brand"><img src="${esc(logoUrl)}" alt="Creditek"><span>KORA</span></div><h1>${esc(report.title)}</h1><div class="meta"><b>${esc(report.id)}</b> · ${report.mode==='summary'?'Resumido · solo totales':'Detallado · datos y movimientos'}<br>Generado: ${esc(report.generated)} · Responsable: ${esc(report.user)}${report.role?` · ${esc(report.role)}`:''}<br>Origen: ${esc(report.route)}</div></header><div class="filters">${filterText}</div>${metricText?`<div class="metrics">${metricText}</div>`:''}${report.tables.map(pdfTable).join('')}${report.notes?.length?`<aside class="notes">${report.notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:''}<footer class="closing"><p><b>Trazabilidad KORA</b> · ${esc(report.id)}. Información visible con los filtros y permisos al generar el informe; no acredita un pago ni un saldo bancario.</p><p><b>Creditek S.A.S. · NIT 901.259.859-0</b> · Valores en COP cuando aplique.</p></footer><div class="tools"><button onclick="window.print()">Imprimir / Guardar PDF</button></div></body></html>`;
   }
   async function exportPdf(report,sb,popup){
@@ -487,7 +496,7 @@ ${report.scoped?'tfoot{display:table-row-group}':''}
       const records=[...table.rows,...(table.totalRows||[])];
       records.forEach((values,position)=>{
         const row=sheet.getRow(position+9);row.values=values.map(value=>value===''||value==null?null:value);row.height=32;
-        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1),type=table.rowTypes?.[position]?.[column]||table.columnTypes?.[column];cell.numFmt=cell.value==null?'General':dataFormats[type]||'@';if(table.rowNotes?.[position]?.[column])cell.note=table.rowNotes[position][column];cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(type)?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};});
+        table.headers.forEach((_,column)=>{const cell=row.getCell(column+1),type=table.rowTypes?.[position]?.[column]||table.columnTypes?.[column];cell.numFmt=cell.value==null?'General':dataFormats[type]||'@';if(table.rowNotes?.[position]?.[column])cell.note=table.rowNotes[position][column];cell.font={name:'Arial',size:11,color:{argb:COLORS.navy},bold:position>=table.rows.length};cell.alignment={vertical:'middle',wrapText:true,horizontal:['currency','number','percentage'].includes(type)?'right':'left'};if(position>=table.rows.length||position%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:position>=table.rows.length?COLORS.pale:'F5FAFC'}};const tone=position<table.rows.length?CELL_TONES[cellTone(table.rowTones?.[position]?.[column])]:null;if(tone){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:tone.background}};cell.font={...cell.font,color:{argb:tone.foreground},bold:true};}});
       });
       table.headers.forEach((header,column)=>{sheet.getColumn(column+1).width=table.columnTypes?.[column]==='datetime'?24:/ID corte/.test(header)?40:column===0?26:/Estado/.test(header)?32:22;});
       sheet.autoFilter={from:{row:8,column:1},to:{row:Math.max(8,table.rows.length+8),column:table.headers.length}};

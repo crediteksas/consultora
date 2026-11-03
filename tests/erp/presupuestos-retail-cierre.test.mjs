@@ -82,3 +82,41 @@ test('errores de fuentes y perfiles no autorizados bloquean la preparación sin 
   const sb=client(tables);await assert.rejects(()=>C.cargar({sb,perfil,tiendas:stores,mes:'2026-10',now:NOW}));assert.equal(sb.calls.length,0);
  }
 });
+
+function history(){return [{id:'ha',tienda_codigo:'CK-01',anio:2025,mes:10,venta_total:'960.60',cred_uds:2,cel_uds:2,acc_uds:7,cel_venta:300,acc_venta:100},{id:'hb',tienda_codigo:'CK-02',anio:2025,mes:10,venta_total:1000,cred_uds:0,cel_uds:1,acc_uds:0,cel_venta:100,acc_venta:0}];}
+test('crecimiento mismo mes/año anterior por categoría: diferencias exactas, sin modificar el cierre',()=>{
+ const current=C.resumir(fixture()),saved=JSON.stringify(current),[a,b]=C.compararConAnterior(current,history());assert.equal(JSON.stringify(current),saved);
+ assert.deepEqual(a.categorias.map(m=>[m.valorAnterior,m.variacionAnual,m.crecimientoAnual]),[[960.6,240.15,.25],[2,-2,-1],[2,-1,-.5],[7,0,0]]);
+ assert.deepEqual(a.categorias.map(m=>[m.presupuesto,m.realizado,m.cumplimiento]),current[0].categorias.map(m=>[m.presupuesto,m.realizado,m.cumplimiento]));
+ assert.equal(b.categorias[0].variacionAnual,-99.9);assert.equal(b.categorias[1].crecimientoAnual,null);assert.equal(b.categorias[1].variacionAnual,1);assert.equal(a.comparativo.mesAnterior,'2025-10');
+ const report=C.informe(a);assert.equal(report.tables.length,4);assert.deepEqual(report.tables[2].rows[0].slice(0,4),[960.6,1200.75,240.15,.25]);assert.equal(report.tables[2].columnTypes[3],'percentage');assert.equal(report.tables[3].rows[1][4],-.5);
+});
+test('histórico ausente, duplicado, incompleto o fallido nunca se reemplaza por cero',()=>{
+ const current=C.resumir(fixture());for(const h of [[],[...history(),history()[0]],history().map(x=>({...x,venta_total:null})),history().map(x=>({...x,venta_total:'bad'})),[null]]){
+  const a=C.compararConAnterior(current,h)[0];assert.equal(a.categorias[0].valorAnterior,null);assert.equal(a.categorias[0].crecimientoAnual,null);assert.equal(a.categorias[0].variacionAnual,null);assert.equal(a.categorias[0].realizado,1200.75);assert.ok(a.notes.length);
+ }
+ const a=C.compararConAnterior(current,history(),{errorHistorico:true})[0];assert.equal(a.categorias[0].estadoCrecimiento,'Histórico no disponible');
+});
+test('unidades históricas cero con venta positiva y base cero/negativa no inventan crecimiento',()=>{
+ const cur=C.resumir(fixture()),h=history();h[0].acc_uds=0;h[0].cel_uds=0;h[0].venta_total=0;let a=C.compararConAnterior(cur,h)[0];assert.equal(a.categorias[3].valorAnterior,null);assert.equal(a.categorias[2].valorAnterior,null);assert.equal(a.categorias[0].valorAnterior,0);assert.equal(a.categorias[0].crecimientoAnual,null);assert.equal(a.categorias[0].variacionAnual,1200.75);
+ h[0].venta_total=-100;a=C.compararConAnterior(cur,h)[0];assert.equal(a.categorias[0].variacionAnual,1300.75);assert.equal(a.categorias[0].crecimientoAnual,null);
+ h[0].acc_venta=0;a=C.compararConAnterior(cur,h)[0];assert.equal(a.categorias[3].valorAnterior,0);assert.equal(a.categorias[3].crecimientoAnual,null);
+});
+test('mes actual parcial conserva referencia mensual pero no calcula variación/porcentaje incomparable',()=>{
+ const cur=C.resumir(fixture()).map(c=>({...c,periodo:{...c.periodo,cerrado:false,corte:'2026-10-15'}}));const a=C.compararConAnterior(cur,history())[0];assert.equal(a.categorias[0].valorAnterior,960.6);assert.ok(a.categorias.every(m=>m.crecimientoAnual===null&&m.variacionAnual===null));assert.match(a.notes.join(' '),/histórico diario verificado/);assert.equal(a.comparativo.comparable,false);
+ const shifted=C.resumir(fixture()).map(c=>({...c,periodo:{...c.periodo,mes:'2027-10'}}));assert.equal(C.compararConAnterior(shifted,history())[0].categorias[0].valorAnterior,null);assert.equal(C.compararConAnterior(shifted,history().map(h=>({...h,anio:2026})))[0].categorias[0].crecimientoAnual,.25);
+});
+test('carga consulta histórico restringido al año/mes y tiendas; su error no oculta resultados actuales',async()=>{
+ const x=fixture(),tables={presupuestos:x.presupuestos,ventas:x.ventas,venta_items_lectura:x.items,productos:x.productos,liquidation_operations:x.creditData.operations,aliados_reversiones:x.creditData.reversions,historico_mensual:[...history(),{...history()[0],id:'wrongyear',anio:2024},{...history()[0],id:'wrongmonth',mes:9}]};
+ const args={perfil:{activo:true,rol:'gerencia'},tiendas:stores,mes:'2026-10',codigo:'CK-01',now:NOW},sb=client(tables);const [a]=await C.cargar({...args,sb});assert.equal(a.categorias[0].crecimientoAnual,.25);assert.equal(a.notes.length,0);assert.equal(a.tienda.codigo,'CK-01');
+ const [b]=await C.cargar({...args,sb:client(tables,'historico_mensual')});assert.equal(b.categorias[0].realizado,1200.75);assert.equal(b.categorias[0].crecimientoAnual,null);assert.equal(b.categorias[0].estadoCrecimiento,'Histórico no disponible');
+});
+
+test('un histórico del año actual discordante no convierte falta de operaciones en caída ficticia',()=>{
+ const current=C.resumir(fixture()),h=[...history(),{...history()[0],id:'current',anio:2026,venta_total:9000}];const a=C.compararConAnterior(current,h)[0];assert.equal(a.categorias[0].realizado,1200.75);assert.equal(a.categorias[0].crecimientoAnual,null);assert.equal(a.categorias[0].variacionAnual,null);assert.equal(a.categorias[0].estadoCrecimiento,'Resultado actual por conciliar');assert.match(a.notes.join(' '),/no coincide/);
+ h[2].venta_total=1200.75;assert.equal(C.compararConAnterior(current,h)[0].categorias[0].crecimientoAnual,.25);
+});
+
+test('cantidad cero en el histórico actual con venta positiva impide una caída no verificable',()=>{
+ const current=C.resumir(fixture());current[0].categorias[3].realizado=0;const h=[...history(),{...history()[0],id:'current',anio:2026,acc_uds:0,acc_venta:50}];const a=C.compararConAnterior(current,h)[0];assert.equal(a.categorias[3].realizado,0);assert.equal(a.categorias[3].crecimientoAnual,null);assert.equal(a.categorias[3].estadoCrecimiento,'Resultado actual por conciliar');
+});

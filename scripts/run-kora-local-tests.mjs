@@ -52,6 +52,8 @@ const erp = [
   'tests/erp/presupuestos-b2b.test.mjs',
   'tests/erp/presupuestos-sin-utilidad.test.mjs',
   'tests/erp/presupuestos-accesorios-estimados.test.mjs',
+  'tests/erp/presupuestos-retail-cierre.test.mjs',
+  'tests/erp/presupuestos-retail-ranking.test.mjs',
   'tests/erp/kora-2026-000029-busqueda-producto-factura.test.mjs',
   'tests/erp/reportes-query-cache.test.mjs',
   'tests/erp/aliados-dashboard-presupuesto.test.mjs',

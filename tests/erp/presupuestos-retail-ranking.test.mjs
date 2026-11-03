@@ -21,3 +21,8 @@ test('rechaza categoría desconocida, faltante y tiendas repetidas',()=>{
  assert.throws(()=>R.ordenar([],'utilidad'));assert.throws(()=>R.ordenar([row('a','Alfa',1,1)],'creditos'));
  assert.throws(()=>R.ordenar([row('a','Alfa',1,1),row('a','Alfa',2,2)],'ventas'));
 });
+
+test('crecimiento ordena por aumento porcentual con bases válidas, incluso sin presupuesto asignado',()=>{
+ const r=(c,prior,current)=>{const x=row(c,c,null,current);x.categorias[0].crecimientoAnual=prior>0?(current-prior)/prior:null;return x;};
+ const ranked=R.ordenar([r('A',100,90),r('B',1000,1200),r('C',10,15),r('D',0,100),r('E',100,100)],'ventas','crecimiento');assert.deepEqual(ranked.map(x=>[x.tienda.codigo,x.posicion]),[['C',1],['B',2],['E',3],['A',4],['D',null]]);assert.throws(()=>R.ordenar([],'ventas','otro'));
+});

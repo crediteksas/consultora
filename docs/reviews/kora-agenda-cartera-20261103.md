@@ -9,3 +9,5 @@ Pruebas: 16 dirigidas aprobadas; suite test:local 1425 aprobadas incluyendo 7 nu
 Claude aprobó tras corregir las observaciones de filtro de exportación, encabezado numérico y fechas inválidas. Revisión sin datos reales autorizada por Óscar. No se enviaron mensajes a clientes ni se registraron pagos durante las pruebas.
 
 La suite conserva intacto el runner revisado por el control de permisos. La prueba de dominio existente importa las regresiones nuevas de agenda para ejecutarlas en cada despliegue.
+
+Ajuste final revisado y aprobado por Claude: cartera loss permanece visible para revisión prioritaria; no se oculta como cerrada. Se agregó regresión específica.

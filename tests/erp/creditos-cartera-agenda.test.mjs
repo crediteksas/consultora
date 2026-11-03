@@ -42,3 +42,5 @@ test('descarga y pantalla comparten el mismo filtro de agenda',()=>{
  assert.equal(D.selectAgenda(items,'data')[0].row.id,'missing');
  assert.equal(D.selectAgenda(items,'all').length,2);
 });
+
+test('cartera clasificada como pérdida permanece visible para revisión',()=>{const items=D.agenda([{...row,status:'loss'}],[],'2026-11-03');assert.equal(items.length,1);assert.equal(items[0].priority,1);assert.equal(items[0].reason,'Revisar cartera clasificada como pérdida');});

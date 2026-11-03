@@ -62,7 +62,7 @@
   }
   function collection(row, events = [], today = bogotaToday()) {
     const history = events.filter(e => e.obligation_id === row.id).slice().sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)) || String(b.id).localeCompare(String(a.id)));
-    const closed = ['paid','cancelled','refinanced','loss'].includes(row.status);
+    const closed = ['paid','cancelled','refinanced'].includes(row.status);
     const validBalance = row.outstanding_amount !== null && row.outstanding_amount !== '' && row.outstanding_amount !== undefined && Number.isFinite(Number(row.outstanding_amount)) && Number(row.outstanding_amount) >= 0;
     const missing = [];
     if (!row.cliente_id) missing.push('Vincular cliente');
@@ -75,6 +75,7 @@
     let priority = 6;
     if (!closed) {
       if (missing.length) { reason = 'Completar datos'; priority = 0; }
+      else if (row.status === 'loss') { reason = 'Revisar cartera clasificada como pérdida'; priority = 1; }
       else if (history.some(e=>e.event_type === 'dispute')) { reason = 'Revisar reclamo'; priority = 1; }
       else if (promise?.event_type === 'promise_broken') { reason = 'Promesa incumplida registrada'; priority = 2; }
       else if (pendingPromise && validDay(pendingPromise.promise_date) && pendingPromise.promise_date < today) { reason = 'Verificar promesa vencida'; priority = 2; }

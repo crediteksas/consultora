@@ -1,0 +1,20 @@
+{
+  "timestampUTC": "2026-10-30T17:40:37.082Z",
+  "engine": "PostgreSQL 18.3 (PGlite 0.5.8) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+  "sqlSha256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd",
+  "sqlUnchanged": true,
+  "tests": 28,
+  "pass": 28,
+  "fail": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "fixtureSha256": "663200e60375384f3b2f8a331989c22cc42fc816e2cca437aede15aa2331b9d9",
+  "currentDefinitionsSha256": "a5ed3015ca1d4ef21777336a4315d3ce59d733452f77bb63f55a1f67abd5b024",
+  "testSha256": "51bd18cb9060ecfdc8686f303a6b1d82bdf2bc6d34303fd19819ee5e9b7cede3",
+  "concurrency": "Single PostgreSQL WASM session; true multi-connection lock contention NOT certified",
+  "productionDDL": false,
+  "providerCalls": false,
+  "passed": true,
+  "harnessDirectory": "sql-tests",
+  "migrationPath": "../../supabase/migrations/20261030165534_nova_client_sms_otp_budget.sql"
+}

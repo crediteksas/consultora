@@ -1,0 +1,19 @@
+{
+  "candidateSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+  "browser": "Chrome/156.0.0.0",
+  "checkpoints": 8,
+  "allFileObjectsPreserved": true,
+  "allFileNodesPreserved": true,
+  "allFieldsPreserved": true,
+  "sameRequestIdsForStatusQueries": true,
+  "simulatedSendOperations": 4,
+  "simulatedStatusQueries": 4,
+  "actualApiNetworkRequests": 0,
+  "actualProviderMessages": 0,
+  "terminalVerifiedPersistsBeyondTTL": true,
+  "screenshots": [
+    "sms-verified-terminal-ui.jpg",
+    "file-preserved-ui.jpg"
+  ],
+  "sourceUnchanged": true
+}

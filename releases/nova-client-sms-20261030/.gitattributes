@@ -1,0 +1,3 @@
+# Unified diff evidence has a required single-space prefix on empty context lines.
+# Preserve the reviewed patch bytes; source files retain normal whitespace checks.
+ui-tests/evidence/pilot-ui-delta.patch -whitespace

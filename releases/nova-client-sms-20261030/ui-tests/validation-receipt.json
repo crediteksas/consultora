@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-30T17:41:38.041775+00:00",
+  "commands": [
+    {
+      "command": "python3 ui-tests/build-form-candidate.py",
+      "result": "passed",
+      "anchors": 11,
+      "frozenFormUnchangedByBuilder": true
+    },
+    {
+      "command": "node --test ui-tests/form-candidate.test.mjs",
+      "result": "passed",
+      "tests": 21
+    }
+  ],
+  "currentFormSha256": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+  "baseFormSha256": "72bdd44f7982ca86a8d459403541142a2fd92119a1501d48da03e8489e2c1fc2",
+  "productionBaselineSha256": "744e1ee8db4cafde7a5774cc01799e00263b9af669f3af20a2fa615ff0e3ae18",
+  "baseAndProductionBaselineUnchanged": true,
+  "manifestFilesVerified": true,
+  "chrome": {
+    "scope": "BASE only",
+    "formSha256": "3a87f636b8d173d7c883424a58cc97510d4730cf841c41465f55dc2527bf4ce2",
+    "checkpoints": 8,
+    "currentDeltaChromeVerified": false,
+    "supplementalAttempt": "CUA timeout; no result claimed"
+  },
+  "realApiCalls": 0,
+  "realProviderMessages": 0,
+  "absoluteWorkspacePathsRequired": false,
+  "scopeWrites": "release form.html and ui-tests only; root manifest/build/index not written"
+}

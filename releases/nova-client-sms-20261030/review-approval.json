@@ -1,0 +1,18 @@
+{
+  "verdict": "APPROVED FINAL",
+  "scope": "NOVA customer SMS pilot code, migration and tests; no spending or publication approval",
+  "reviewer": "Claude Code",
+  "reviewedAtUTC": "2026-10-30T17:50:40.975405+00:00",
+  "reviewedWorkerSHA256": "9a9c81c37a504c12be12b9fcc9a681be7209d9556367d1bb2f517936640d56e1",
+  "reviewedFormSHA256": "0f95fd3046df2e74b607a6f5dd9182c02048a5571e26a2689e73d72e61379c2e",
+  "reviewedMigrationSHA256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd",
+  "reviewerExecuted": {
+    "workerProviderIntegration": 42,
+    "ui": 21,
+    "hashes": true,
+    "verifyPackage": true
+  },
+  "sqlEvidence": "28 native PostgreSQL and 5 real concurrent cases by test agent; sources and matching receipts reviewed by Claude; not rerun by Claude",
+  "published": false,
+  "realSmsSent": 0
+}

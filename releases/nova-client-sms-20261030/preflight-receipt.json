@@ -1,0 +1,41 @@
+{
+  "status": "LOCAL_APPROVED_READY_FOR_COMMIT",
+  "published": false,
+  "smsEnabled": false,
+  "providerAccountCreated": false,
+  "smsPurchased": false,
+  "realMessagesSent": 0,
+  "tests": {
+    "workerProvider": 42,
+    "ui": 21,
+    "sqlNative": 28,
+    "sqlPglite": 28,
+    "sqlConcurrency": 5,
+    "chromeBaseOnlyCheckpoints": 8
+  },
+  "wranglerDryRun": "passed_no_warnings_exactly_index_and_form",
+  "priorBindingsPreserved": 30,
+  "priorCronsPreserved": 3,
+  "review": "claude_base_and_pilot_delta_approved",
+  "cost": {
+    "provider": "inalambria_express",
+    "upfrontCOP": 19500,
+    "sms": 500,
+    "unitCOP": 39,
+    "maxMonthlyReservedCOP": 3900,
+    "maxMonthlyReservations": 100,
+    "dailyLimit": 10
+  },
+  "migrationSHA256": "8e1b3bdc4a88aba5be9a12fbd146b85d751503fa0654dbd93c9312317fe8f0bd",
+  "pilot": {
+    "mode": "pilot",
+    "enabled": false,
+    "allowedPhones": [],
+    "dailyLimit": 1,
+    "monthlyLimit": 1,
+    "monthlyBudgetCOP": 39,
+    "phoneGuard": "database_before_reservation"
+  },
+  "purchaseAuthorized": false,
+  "publicationAuthorized": false
+}

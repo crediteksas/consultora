@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: migration preserves the exact original reserve/resume/seed function definitions
+ok 1 - migration preserves the exact original reserve/resume/seed function definitions
+  ---
+  duration_ms: 373.620333
+  type: 'test'
+  ...
+# Subtest: active-mode regression preserves general ceilings and WA while SMS is paused
+ok 2 - active-mode regression preserves general ceilings and WA while SMS is paused
+  ---
+  duration_ms: 162.298667
+  type: 'test'
+  ...
+# Subtest: all new RPCs are SECURITY INVOKER with empty search_path and service-only EXECUTE
+ok 3 - all new RPCs are SECURITY INVOKER with empty search_path and service-only EXECUTE
+  ---
+  duration_ms: 265.813292
+  type: 'test'
+  ...
+# Subtest: only explicit no_whatsapp SMS requests with valid active pilot links are allowed
+ok 4 - only explicit no_whatsapp SMS requests with valid active pilot links are allowed
+  ---
+  duration_ms: 342.290834
+  type: 'test'
+  ...
+# Subtest: repeated request is canSend=false even if a retry generated another hash and expiry
+ok 5 - repeated request is canSend=false even if a retry generated another hash and expiry
+  ---
+  duration_ms: 209.925958
+  type: 'test'
+  ...
+# Subtest: a request UUID cannot change recipient, identity, origin, channel or reason
+ok 6 - a request UUID cannot change recipient, identity, origin, channel or reason
+  ---
+  duration_ms: 230.600666
+  type: 'test'
+  ...
+# Subtest: wrapper blocks any live unverified legacy OTP including boolean-FAILED, across channels and links
+ok 7 - wrapper blocks any live unverified legacy OTP including boolean-FAILED, across channels and links
+  ---
+  duration_ms: 257.557542
+  type: 'test'
+  ...
+# Subtest: SMS ledger guard blocks a late original WA caller even after SMS is paused or failed
+ok 8 - SMS ledger guard blocks a late original WA caller even after SMS is paused or failed
+  ---
+  duration_ms: 253.750875
+  type: 'test'
+  ...
+# Subtest: original WA-only behavior is unchanged when no live SMS ledger exists
+ok 9 - original WA-only behavior is unchanged when no live SMS ledger exists
+  ---
+  duration_ms: 119.579333
+  type: 'test'
+  ...
+# Subtest: accepted requires provider ID, updates compatible fields, and cannot regress on retry
+ok 10 - accepted requires provider ID, updates compatible fields, and cannot regress on retry
+  ---
+  duration_ms: 278.258875
+  type: 'test'
+  ...
+# Subtest: uncertain can retain a provider ID but sets neither accepted nor failed; no duplicate send lease
+ok 11 - uncertain can retain a provider ID but sets neither accepted nor failed; no duplicate send lease
+  ---
+  duration_ms: 276.419209
+  type: 'test'
+  ...
+# Subtest: wrong attempt or malformed receipt cannot mutate or acknowledge an OTP
+ok 12 - wrong attempt or malformed receipt cannot mutate or acknowledge an OTP
+  ---
+  duration_ms: 215.3465
+  type: 'test'
+  ...
+# Subtest: daily count, monthly count and monthly money all reserve before a second spend
+ok 13 - daily count, monthly count and monthly money all reserve before a second spend
+  ---
+  duration_ms: 600.317041
+  type: 'test'
+  ...
+# Subtest: FAILED and UNCERTAIN retain the full reserved cost; reported lower cost never refunds budget
+ok 14 - FAILED and UNCERTAIN retain the full reserved cost; reported lower cost never refunds budget
+  ---
+  duration_ms: 257.266209
+  type: 'test'
+  ...
+# Subtest: three SMS per phone/hour counts failed dispatches even though old quota excluded them
+ok 15 - three SMS per phone/hour counts failed dispatches even though old quota excluded them
+  ---
+  duration_ms: 384.421584
+  type: 'test'
+  ...
+# Subtest: a reported price above its reservation retains acceptance and immediately gates all further SMS
+ok 16 - a reported price above its reservation retains acceptance and immediately gates all further SMS
+  ---
+  duration_ms: 247.369625
+  type: 'test'
+  ...
+# Subtest: status derives expiry, revalidates binding/link, and returns no provider ID or cost
+ok 17 - status derives expiry, revalidates binding/link, and returns no provider ID or cost
+  ---
+  duration_ms: 442.621375
+  type: 'test'
+  ...
+# Subtest: metrics count unique reservations, verifications and retained money without PII or delivered claims
+ok 18 - metrics count unique reservations, verifications and retained money without PII or delivered claims
+  ---
+  duration_ms: 218.541375
+  type: 'test'
+  ...
+# Subtest: real existing resume/seed contracts recover original IDs and saved photos after an SMS OTP
+ok 19 - real existing resume/seed contracts recover original IDs and saved photos after an SMS OTP
+  ---
+  duration_ms: 582.676
+  type: 'test'
+  ...
+# Subtest: candidate defaults are disabled pilot with empty phone scope and caps1/1/39
+ok 20 - candidate defaults are disabled pilot with empty phone scope and caps1/1/39
+  ---
+  duration_ms: 127.885583
+  type: 'test'
+  ...
+# Subtest: enabling an empty pilot still sends nothing and creates no OTP or ledger
+ok 21 - enabling an empty pilot still sends nothing and creates no OTP or ledger
+  ---
+  duration_ms: 210.777333
+  type: 'test'
+  ...
+# Subtest: other phone is rejected before OTP/budget insertion even with a valid active link
+ok 22 - other phone is rejected before OTP/budget insertion even with a valid active link
+  ---
+  duration_ms: 243.363375
+  type: 'test'
+  ...
+# Subtest: one authorized pilot reservation consumes cap even when failed; no automatic second try
+ok 23 - one authorized pilot reservation consumes cap even when failed; no automatic second try
+  ---
+  duration_ms: 300.135584
+  type: 'test'
+  ...
+# Subtest: service cannot edit pilot destination, mode or budget; options has only the two-argument defaulted signature
+ok 24 - service cannot edit pilot destination, mode or budget; options has only the two-argument defaulted signature
+  ---
+  duration_ms: 276.520166
+  type: 'test'
+  ...
+# Subtest: pilot array accepts at most one canonical Colombian phone, not null/multidimensional/bound tricks
+ok 25 - pilot array accepts at most one canonical Colombian phone, not null/multidimensional/bound tricks
+  ---
+  duration_ms: 303.552583
+  type: 'test'
+  ...
+# Subtest: options and metrics never return the pilot phone or phone allowlist
+ok 26 - options and metrics never return the pilot phone or phone allowlist
+  ---
+  duration_ms: 202.834834
+  type: 'test'
+  ...
+# Subtest: active mode is an explicit administrative switch and keeps the general ceilings
+ok 27 - active mode is an explicit administrative switch and keeps the general ceilings
+  ---
+  duration_ms: 261.270333
+  type: 'test'
+  ...
+# Subtest: admin can authorize another pilot attempt without refunding or erasing the first; phone scope remains
+ok 28 - admin can authorize another pilot attempt without refunding or erasing the first; phone scope remains
+  ---
+  duration_ms: 379.442875
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8072.255041

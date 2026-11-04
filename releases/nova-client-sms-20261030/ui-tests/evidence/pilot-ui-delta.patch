@@ -1,0 +1,101 @@
+--- a/form.html
++++ b/form.html
+@@ -157,7 +157,7 @@
+       <div class="otp-status" id="otpStatus" role="status" aria-live="polite"></div>
+       <button type="button" class="btn-otp-alternative" id="btnEnviarOtpSms" hidden disabled>No tengo WhatsApp: recibir por SMS</button>
+       <button type="button" class="btn-otp-alternative" id="btnConsultarOtp" hidden disabled>Consultar envío</button>
+-      <p class="help" id="otpChannelHelp" hidden>WhatsApp es la opción habitual. Usa SMS solo si este celular no tiene WhatsApp.</p>
++      <p class="help" id="otpChannelHelp" hidden>WhatsApp es la opción habitual. Usa SMS solo si este celular no tiene WhatsApp. Durante el piloto, SMS aparece únicamente para celulares habilitados.</p>
+       <div class="code-row" id="codeRow">
+         <input type="text" id="codigoOtp" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos">
+         <button type="button" class="btn-secondary" id="btnVerificarOtp">Verificar</button>
+@@ -579,6 +579,9 @@
+ const btnEnviarOtpSms = document.getElementById('btnEnviarOtpSms');
+ const btnConsultarOtp = document.getElementById('btnConsultarOtp');
+ let smsOtpEnabled = false;
++let smsOtpAllowed = false;
++let otpOptionsGeneration = 0;
++let otpOptionsDebounce = null;
+ let otpLegacyStarted = false;
+ let otpManagedAttempt = null;
+ let otpManagedSending = false;
+@@ -615,13 +618,13 @@
+     otpManagedAttempt?.state === 'accepted' && otpManagedAttempt.lockUntil > Date.now() && otpMismaIdentidad();
+ }
+ function renderOtpGestionado() {
+-  document.getElementById('otpChannelHelp').hidden = !smsOtpEnabled;
++  document.getElementById('otpChannelHelp').hidden = !smsOtpAllowed;
+   if (!smsOtpEnabled) { btnEnviarOtpSms.hidden = true; btnConsultarOtp.hidden = true; return; }
+   const invalid = !contextoValido || !celularValido(celularInput.value) ||
+     !cedulaValida(document.getElementById('cedula').value) || !turnstileToken;
+   const busy = otpGestionadoBloqueado();
+   btnEnviarOtp.disabled = invalid || busy;
+-  btnEnviarOtpSms.hidden = otpVerificado || otpManagedAttempt?.state === 'verified';
++  btnEnviarOtpSms.hidden = !smsOtpAllowed || otpVerificado || otpManagedAttempt?.state === 'verified';
+   btnEnviarOtpSms.disabled = invalid || busy;
+   btnConsultarOtp.hidden = !otpGestionadoConsultable() || otpVerificado;
+   btnConsultarOtp.disabled = otpManagedSending || otpManagedChecking || otpManagedVerifying;
+@@ -693,21 +696,49 @@
+     } else { dejarOtpIncierto(); }
+   } else { dejarOtpIncierto(); }
+ }
++function aplicarPermisoSmsOtp(allowed) {
++  smsOtpAllowed = allowed;
++  // Capability is dynamic; the protocol of an existing attempt is not.
++  if (!otpManagedAttempt && !otpManagedSending && !otpManagedChecking && !otpManagedVerifying) {
++    smsOtpEnabled = allowed && !otpLegacyStarted && !otpVerificado && !registroSession;
++  }
++  if (smsOtpEnabled) renderOtpGestionado();
++  else {
++    btnEnviarOtpSms.hidden = true; btnConsultarOtp.hidden = true;
++    document.getElementById('otpChannelHelp').hidden = true;
++    evaluarEnvioOtp();
++  }
++}
++function programarOpcionesOtp() {
++  if (otpOptionsDebounce !== null) clearTimeout(otpOptionsDebounce);
++  otpOptionsDebounce = null;
++  ++otpOptionsGeneration;
++  // Hide stale permission immediately; do not touch the ordinary WhatsApp flow.
++  aplicarPermisoSmsOtp(false);
++  if (!contextoValido || !celularValido(celularInput.value)) {
++    return;
++  }
++  otpOptionsDebounce = setTimeout(() => {
++    otpOptionsDebounce = null; void cargarOpcionesOtp();
++  }, 350);
++}
+ async function cargarOpcionesOtp() {
++  const generation = ++otpOptionsGeneration;
++  const celular = celularInput.value;
++  const current = () => generation === otpOptionsGeneration && celular === celularInput.value && contextoValido;
++  if (!contextoValido || !celularValido(celular)) { aplicarPermisoSmsOtp(false); return; }
+   try {
+     const res = await fetch(`${API}/api/otp/opciones`, {
+       method: 'POST', headers: { 'Content-Type': 'application/json' },
+-      signal: AbortSignal.timeout(10000), body: JSON.stringify({ enlace_token: enlaceToken }),
++      signal: AbortSignal.timeout(10000), body: JSON.stringify({ enlace_token: enlaceToken, celular }),
+     });
+     const data = await res.json().catch(() => ({}));
+-    // A late capability response cannot convert an already-started legacy OTP into another protocol.
+-    smsOtpEnabled = res.ok && data.smsEnabled === true && !otpLegacyStarted && !otpVerificado && !registroSession;
+-  } catch { smsOtpEnabled = false; }
+-  if (smsOtpEnabled) renderOtpGestionado();
+-  else { btnEnviarOtpSms.hidden = true; btnConsultarOtp.hidden = true; }
++    if (current()) aplicarPermisoSmsOtp(res.ok && data.smsEnabled === true);
++  } catch { if (current()) aplicarPermisoSmsOtp(false); }
+ }
+ async function solicitarOtpGestionado(channel) {
+   if (!smsOtpEnabled || !['whatsapp', 'sms'].includes(channel) || otpGestionadoBloqueado()) return;
++  if (channel === 'sms' && !smsOtpAllowed) return;
+   const celular = celularInput.value, cedula = document.getElementById('cedula').value;
+   if (!contextoValido || !celularValido(celular) || !cedulaValida(cedula) || !turnstileToken) return;
+   const now = Date.now();
+@@ -788,6 +819,7 @@
+ 
+ celularInput.addEventListener('input', () => {
+   celularInput.value = celularInput.value.replace(/\D/g, '').slice(0, 10);
++  programarOpcionesOtp();
+   if (otpVerificado && celularInput.value !== celularVerificado) {
+     invalidarSesionOtp();
+   }

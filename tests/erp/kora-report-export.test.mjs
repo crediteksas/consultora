@@ -252,3 +252,12 @@ test('las dependencias PDF y ZIP ya versionadas producen archivos reales con dat
  assert.match(html,/<td>Utilidad bruta del negocio<\/td><td>/);
  assert.match(html,/<td>Utilidad final del periodo<\/td><td class="profit-highlight">/);
  });
+
+ test('resumen omite desgloses redundantes declarados sin alterar el detalle',()=>{
+ const platform={heading:'Plataformas',kind:'summary',summaryMode:'omit',headers:['Plataforma','Valor'],rows:[['Ejemplo',100]],totalRows:[['Total',100]]};
+ const detail={...platform,heading:'Operaciones',kind:'detail'};
+ const reconciliation={heading:'Cómo se obtiene la utilidad',kind:'summary',headers:['Concepto','Valor'],rows:[['Utilidad final del periodo',80]]};
+ assert.deepEqual(Array.from(summaryTables([platform,detail,reconciliation]),t=>t.heading),['Cómo se obtiene la utilidad']);
+ assert.equal(platform.rows.length,1);assert.equal(platform.totalRows.length,1);
+ assert.equal(summaryTables([{...platform,summaryMode:undefined},reconciliation]).length,2);
+ });

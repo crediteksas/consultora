@@ -256,7 +256,7 @@
       const kind=table.closest('[data-kora-report-kind]')?.dataset.koraReportKind||policy.kind||'detail';
       const declared=table.dataset.koraReportSums?.split(',').map(Number);
       const notes=[...table.querySelectorAll('tbody tr')].filter(visible).flatMap(tr=>[...tr.children].flatMap((cell,column)=>kept.some(item=>item.column===column)?cellNotes(cell).map(note=>`${cellText(tr.firstElementChild)} · ${rawHeaders[column]}: ${note}`):[]));
-      const result={sourceId,heading,kind,headers,rows,totalRows,notes,policyNote:policy.note,explicitTotals:table.dataset.koraReportTotals==='explicit',sumColumns:map(declared||policy.sums),currencyColumns:map(policy.currency),balanceColumns:map(policy.balances),ratios:policy.ratios?.filter(([c,n,d])=>[c,n,d].every(column=>kept.some(item=>item.column===column))).map(([c,n,d,f])=>[...map([c,n,d]),f]),subtotal:policy.subtotal,summaryColumns:table.dataset.koraReportSummaryColumns?.split(',').map(Number)};
+      const result={summaryMode:table.closest('[data-kora-report-summary]')?.dataset.koraReportSummary,sourceId,heading,kind,headers,rows,totalRows,notes,policyNote:policy.note,explicitTotals:table.dataset.koraReportTotals==='explicit',sumColumns:map(declared||policy.sums),currencyColumns:map(policy.currency),balanceColumns:map(policy.balances),ratios:policy.ratios?.filter(([c,n,d])=>[c,n,d].every(column=>kept.some(item=>item.column===column))).map(([c,n,d,f])=>[...map([c,n,d]),f]),subtotal:policy.subtotal,summaryColumns:table.dataset.koraReportSummaryColumns?.split(',').map(Number)};
       // Una tabla sin datos ni cierre declarado puede estar en error: no inventar
       // cero registros ni importes cero. Las búsquedas vacías válidas traen su cierre.
       return rows.length||totalRows.length?completeTable(result):result;
@@ -265,7 +265,7 @@
   function summaryTables(items) {
     // Solo agregados declarados o totales calculados por la pantalla. Nunca sumar saldos,
     // precios unitarios, porcentajes o resultados parciales para inventar un total.
-    return items.flatMap(table=>table.kind==='summary'?[table]:table.totalRows?.length?[{...table,heading:`Totales · ${table.heading}`,kind:'summary',rows:table.totalRows,totalRows:[]}]:[]).map(table=>{
+    return items.filter(table=>table.summaryMode!=='omit').flatMap(table=>table.kind==='summary'?[table]:table.totalRows?.length?[{...table,heading:`Totales · ${table.heading}`,kind:'summary',rows:table.totalRows,totalRows:[]}]:[]).map(table=>{
       const columns=table.summaryColumns||((table.sumColumns?.length||table.balanceColumns?.length||table.structured)&&table.kind==='summary'?table.headers.map((_,column)=>column).filter(column=>table.rows.some(row=>row[column]!==''&&row[column]!=null)):table.headers.map((_,column)=>column));
       const remap=indexes=>indexes?.map(column=>columns.indexOf(column)).filter(column=>column>=0);
       return {...table,notes:[],structured:false,headers:columns.map(column=>table.headers[column]),rows:table.rows.map(row=>columns.map(column=>row[column])),sumColumns:remap(table.sumColumns),currencyColumns:remap(table.currencyColumns),balanceColumns:remap(table.balanceColumns)};

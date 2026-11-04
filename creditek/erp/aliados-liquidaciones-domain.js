@@ -172,7 +172,8 @@
         reconocida: clave(valor(row,'Estado del Contrato')) === 'activo',
         movimientos: [{ fila: index + 2, tipo: 'contrato', original: row }], incidencias: [...new Set(problemas)],
       };
-      operacion.valorCredito = operacion.montoCredito;
+      // importarAlo es exclusivo de Aló: Monto Total incluye los accesorios.
+      operacion.valorCredito = operacion.montoTotal;
       operacion.inicialPlataforma = operacion.inicial;
       operacion.valorComercial = operacion.valorCredito + operacion.inicialPlataforma;
       operacion.incidencias.forEach(tipo => incidencias.push({ tipo, sourceKey }));
@@ -251,7 +252,9 @@
     return matches[0];
   }
   function normalizarOperacion(operation) {
-    const valorCredito = dinero(operation.valorCredito ?? operation.montoCredito ?? operation.montoBase);
+    const valorCredito = operation.plataforma === 'alo'
+      ? dinero(operation.montoTotal ?? operation.montoBase ?? (dinero(operation.montoCredito) + dinero(operation.accesorios)))
+      : dinero(operation.valorCredito ?? operation.montoCredito ?? operation.montoBase);
     const inicialPlataforma = dinero(operation.inicialPlataforma ?? operation.inicial);
     return {
       ...operation,

@@ -23,7 +23,7 @@
 <script src="presupuestos-retail-cierre.js?v=1.2.2"></script>
 <script src="presupuestos-retail-cierre-descarga.js?v=1.0.3"></script>
 <script src="presupuestos-retail-cierre-ui.js?v=1.2.1"></script>
-<script src="presupuestos-retail-planificacion.js?v=1.0.0"></script>
+<script src="presupuestos-retail-planificacion.js?v=1.0.1"></script>
 <style>
 :root {
   --azul: #0B1E3D; --turquesa: #00C4CC; --bg: #F5F5F7; --surface: #FFFFFF;
@@ -212,10 +212,12 @@ body.kora-responsive-ready #informePuntosVenta .cierre-pdv table :is(thead th, t
 #comparativoPlanificacion .plan-tabla { overflow-x: auto; }
 #comparativoPlanificacion table { min-width: 700px; font-variant-numeric: tabular-nums; }
 #comparativoPlanificacion caption { text-align: left; padding-bottom: 10px; font-size: 12px; color: #526075; }
-#comparativoPlanificacion th, #comparativoPlanificacion td { position: static; white-space: normal; padding: 12px 10px; text-align: right; }
+#comparativoPlanificacion th, #comparativoPlanificacion td { position: static; white-space: normal; padding: 12px 10px; text-align: center; }
 #comparativoPlanificacion thead th { background: #0b1e3d; color: #fff; }
 #comparativoPlanificacion tr th:first-child { text-align: left; min-width: 140px; }
-#comparativoPlanificacion td:last-child { text-align: left; width: 30%; }
+#comparativoPlanificacion td:nth-child(5) { text-align: left; width: 25%; }
+#comparativoPlanificacion .plan-ajuste { min-width: 125px; text-align: center; white-space: nowrap; }
+#comparativoPlanificacion .plan-ajuste input { width: 78px; padding: 8px; border: 1px solid #b8cbd5; border-radius: 6px; text-align: center; font-size: 14px; }
 #comparativoPlanificacion td.plan-propuesta { background: #effafb; font-weight: 700; }
 #comparativoPlanificacion small { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; }
 #comparativoPlanificacion thead small { color: #d5f5f7; }

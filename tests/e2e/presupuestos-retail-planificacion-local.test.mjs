@@ -24,7 +24,7 @@ async function setup(browser,role='gerencia'){
   const saved=stores.flatMap(t=>Array.from({length:31},(_,i)=>({id:t.codigo+i,tienda_codigo:t.codigo,fecha:'2026-10-'+String(i+1).padStart(2,'0'),meta_venta_total:'1000.25',meta_creditos:1,meta_uds_cel:2,meta_uds_acc:3})));
   const sales=[{id:'sale1',fecha:'2026-10-05',tienda_codigo:'CK-01',tipo:'contado',total:'1200.75',anulada:false},{id:'sale2',fecha:'2026-10-06',tienda_codigo:'CK-02',tipo:'contado',total:'8888.25',anulada:false}];
   const data={origenes:stores,presupuestos:saved,ventas:sales,venta_items_lectura:[{id:'item1',venta_id:'sale1',producto_id:'phone',cantidad:1},{id:'item2',venta_id:'sale1',producto_id:'case',cantidad:3},{id:'item3',venta_id:'sale2',producto_id:'phone',cantidad:9}],productos:[{id:'phone',tipo:'serializado'},{id:'case',tipo:'cantidad'}],liquidation_operations:[{id:'credit1',plataforma:'payjoy',external_id:'credit1',operation_at:'2026-10-08T15:00:00Z',origen_codigo:'CK-01',tipo_establecimiento:'propia',reconocida:true,utilidad_creditek:0}],aliados_reversiones:[],historico_mensual:[{id:'h1',tienda_codigo:'CK-01',anio:2025,mes:10,venta_total:960.60,cred_uds:2,cel_uds:1,acc_uds:2,cel_venta:100,acc_venta:50},{id:'h2',tienda_codigo:'CK-02',anio:2025,mes:10,venta_total:4444,cred_uds:1,cel_uds:3,acc_uds:0,cel_venta:200,acc_venta:30}]};
-  window.__fixture={data,failTable:null,calls:[],writes:[],rpcCalls:[],failMetric:null,pause:false,release:[]};
+  window.__fixture={data,failTable:null,calls:[],writes:[],rpcCalls:[],failMetric:null,pause:false,release:[],allowSave:false};
   window.__KORA_ENV__={KORA_ERP_SUPABASE_URL:'https://fixture.invalid',KORA_ERP_SUPABASE_ANON_KEY:'synthetic-not-a-key'};
   window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:{user:{id:'fixture-user'}}}})},from(table){
    const predicates=[];let key='id',start=0,end=Infinity;
@@ -32,7 +32,7 @@ async function setup(browser,role='gerencia'){
    const q={select(columns){window.__fixture.calls.push({table,columns});return this;},eq(c,v){predicates.push(r=>r[c]===v);return this;},gte(c,v){predicates.push(r=>r[c]>=v);return this;},lt(c,v){predicates.push(r=>r[c]<v);return this;},in(c,v){predicates.push(r=>v.includes(r[c]));return this;},order(k){key=k;return this;},range(a,b){start=a;end=b;return this;},maybeSingle:async()=>({data:{id:'fixture-user',nombre:'Revisor de prueba',rol:role,activo:true},error:null}),then(ok,no){return Promise.resolve(result()).then(ok,no);}};return q;
   },async rpc(name,params){
     window.__fixture.rpcCalls.push({name,params});
-    if(name!=='proponer_presupuesto_operativo'){window.__fixture.writes.push({name,params});throw Error('Escritura denegada en el ensayo.');}
+    if(name!=='proponer_presupuesto_operativo'){window.__fixture.writes.push({name,params});if(name==='guardar_presupuesto_operativo_general'&&window.__fixture.allowSave)return {data:null,error:null};throw Error('Escritura denegada en el ensayo.');}
     if(window.__fixture.pause)await new Promise(resolve=>window.__fixture.release.push(resolve));
     if(window.__fixture.failMetric===params.p_metrica)return {data:null,error:{message:'Histórico de prueba no disponible'}};
     const mes=params.p_mes.slice(0,7),[y,m]=mes.split('-').map(Number),days=new Date(Date.UTC(y,m,0)).getUTCDate();
@@ -54,12 +54,22 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Planif
   await page.getByRole('button',{name:'Calcular propuesta',exact:true}).click();
   const status=page.locator('[data-plan-status]'),first=page.locator('[data-plan-tienda="CK-01"]');
   await page.getByText('Comparativo preparado para 2 tienda(s). Propuestas sin guardar.',{exact:true}).waitFor();
-  assert.equal(await page.locator('[data-plan-tienda]').count(),2);assert.equal(await first.locator('table').count(),1);assert.equal(await first.locator('tbody tr').count(),4);assert.equal(await first.locator('thead th').count(),5);
+  assert.equal(await page.locator('[data-plan-tienda]').count(),2);assert.equal(await first.locator('table').count(),1);assert.equal(await first.locator('tbody tr').count(),4);assert.equal(await first.locator('thead th').count(),6);
   const sales=first.locator('[data-plan-metrica="meta_venta_total"]');
   assert.match(await sales.innerText(),/101/);assert.match(await sales.innerText(),/50%/);assert.equal((await sales.locator('td.plan-propuesta').innerText()).replace(/[^0-9]/g,''),'152');
   assert.match(await first.innerText(),/2025-10|2025/);assert.match(await first.innerText(),/2026-10/);assert.match(await first.innerText(),/Base estimada/);assert.doesNotMatch(await first.innerText(),/Punto Sur/);
   assert.match(await page.locator('[data-plan-tienda="CK-02"]').innerText(),/Base cero: revisa el histórico/);
   assert.equal(await page.locator('.pct-metrica').count(),4,'Se conservan los cuatro campos originales.');
+  const adjustment=first.getByRole('spinbutton',{name:'Crecimiento de Ventas para Punto Norte (%)'});
+  await adjustment.fill('25');await page.waitForFunction(()=>document.querySelector('[data-plan-tienda="CK-01"] [data-plan-metrica="meta_venta_total"] .plan-propuesta').textContent.includes('126'));
+  assert.equal((await page.locator('[data-plan-tienda="CK-02"] [data-plan-metrica="meta_venta_total"] .plan-propuesta').innerText()).replace(/[^0-9]/g,''),'303');
+  assert.equal(await page.locator('#btnAprobarTodo').isDisabled(),true);assert.deepEqual(await page.evaluate(()=>window.__fixture.writes),[]);
+  await adjustment.fill('1001');assert.equal(await first.getByRole('button',{name:'Aprobar presupuesto · Punto Norte'}).isDisabled(),true);
+  await adjustment.fill('25');await page.waitForFunction(()=>!document.querySelector('[data-plan-tienda="CK-01"] button').disabled);
+  await page.evaluate(()=>window.__fixture.allowSave=true);await first.getByRole('button',{name:'Aprobar presupuesto · Punto Norte'}).click();
+  await first.getByText('Presupuesto aprobado y guardado para Punto Norte.').waitFor();
+  const writes=await page.evaluate(()=>window.__fixture.writes);assert.equal(writes.length,1);assert.equal(writes[0].params.p_tienda,'CK-01');assert.equal(writes[0].params.p_pct_ventas,25);
+  await page.evaluate(()=>{window.__fixture.writes=[];window.__fixture.rpcCalls=[];window.__fixture.allowSave=false;});
   if(qa&&name==='chromium'){await mkdir(qa,{recursive:true});await first.screenshot({path:resolve(qa,'planificacion-cuadro-ficticio.png')});}
   await page.locator('.pct-metrica[data-metrica="meta_venta_total"]').fill('100');assert.equal(await page.locator('[data-plan-tienda]').count(),0);assert.match(await status.innerText(),/actualizar/);
   await page.getByRole('button',{name:'Calcular propuesta',exact:true}).click();await first.waitFor();assert.equal((await sales.locator('td.plan-propuesta').innerText()).replace(/[^0-9]/g,''),'202');

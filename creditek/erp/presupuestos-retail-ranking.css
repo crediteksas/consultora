@@ -8,9 +8,9 @@
 #rankingPresupuesto button:disabled{opacity:.6;cursor:wait}
 #rankingPresupuesto :focus-visible{outline:3px solid #00a0ad;outline-offset:3px}
 #rankingPresupuesto .ranking-tabla{overflow-x:auto;max-width:100%}
-#rankingPresupuesto table{min-width:1180px;font-variant-numeric:tabular-nums}
+#rankingPresupuesto table{min-width:1000px;font-variant-numeric:tabular-nums}
 #rankingPresupuesto caption{text-align:left;font-weight:700;padding:10px 0;color:#0b1e3d}
-#rankingPresupuesto td:nth-child(n+3):not(:last-child){text-align:right;white-space:nowrap}
+#rankingPresupuesto td:nth-child(n+3){text-align:right;white-space:nowrap}
 #rankingPresupuesto td[data-ranking-tono]{font-weight:700}
 #rankingPresupuesto td[data-ranking-tono=positive]{background:#dcfce7;color:#166534}
 #rankingPresupuesto td[data-ranking-tono=steady]{background:#fef3c7;color:#92400e}

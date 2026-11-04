@@ -25,6 +25,7 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   await page.locator('#ranking').evaluate(e=>e.id='rankingPresupuesto');
   assert.equal(await page.getByRole('tab').count(),4);assert.equal(await page.locator('tbody tr').count(),4);
   assert.equal(await page.getByRole('columnheader',{name:'Estado',exact:true}).count(),0);
+  assert.equal(await page.getByRole('columnheader',{name:'Comparativo',exact:true}).count(),0);
   assert.match(await page.locator('thead').innerText(),/Variación %/);
   assert.match(await page.locator('thead').innerText(),/Crecimiento \(COP\)/);
   const north=page.locator('tbody tr').filter({has:page.getByRole('rowheader',{name:'Punto Norte'})});
@@ -34,7 +35,7 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   assert.deepEqual(await page.locator('tbody tr').last().locator('[data-ranking-tono]').evaluateAll(cells=>cells.map(c=>c.dataset.rankingTono)),['neutral','neutral']);
   assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','1','3','Sin posición']);
   assert.match(await page.locator('caption').innerText(),/Ventas · 2026-10 · COP/);
-  await page.locator('[data-ranking-orden]').selectOption('crecimiento');assert.deepEqual(await page.locator('tbody th').allTextContents(),['Punto Norte','Punto Centro','Punto Sur','Punto sin meta']);assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','2','3','Sin posición']);assert.match(await page.locator('thead').innerText(),/Resultado 2025/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);await page.locator('[data-ranking-orden]').selectOption('cumplimiento');
+  await page.locator('[data-ranking-orden]').selectOption('crecimiento');assert.deepEqual(await page.locator('tbody th').allTextContents(),['Punto Norte','Punto Centro','Punto Sur','Punto sin meta']);assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','2','3','Sin posición']);assert.match(await page.locator('thead').innerText(),/Venta\s+2025/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);await page.locator('[data-ranking-orden]').selectOption('cumplimiento');
   await page.getByRole('tab',{name:'Créditos',exact:true}).click();assert.match(await page.locator('caption').innerText(),/Créditos/);assert.match(await page.locator('thead').innerText(),/Crecimiento \(unidades\)/);assert.doesNotMatch(await north.locator('td').nth(7).innerText(),/\$/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);
   await page.getByRole('tab',{name:'Créditos',exact:true}).press('End');assert.equal(await page.getByRole('tab',{name:'Accesorios',exact:true}).getAttribute('aria-selected'),'true');
   await page.locator('[data-ranking-mes]').fill('2026-09');await page.locator('[data-ranking-mes]').dispatchEvent('change');assert.equal(await page.locator('tbody').count(),0);
@@ -47,8 +48,9 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   for(const width of [390,768,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
   await page.evaluate(()=>{for(const r of window.__fixture.data){r.periodo={mes:'2026-11',corte:'2026-11-03',cerrado:false};for(const m of r.categorias){m.valorAnterior=300;m.realizado=60;m.estadoCrecimiento='Sin comparativo al corte';}}});
   await page.getByRole('button',{name:'Ver ranking',exact:true}).click();await page.getByText(/base del año anterior al corte es estimada/i).waitFor();
-  assert.match(await page.locator('thead').innerText(),/Base 2025 al corte · estimada/);
-  assert.match(await page.locator('tbody tr').first().innerText(),/Estimado · crecimiento/);
+  assert.match(await page.locator('thead').innerText(),/Accesorios\s+al corte\s+2025/);
+  assert.match(await page.locator('tbody tr').first().locator('[data-ranking-tono]').last().getAttribute('title'),/Estimado · crecimiento/);
+  await page.getByRole('tab',{name:'Ventas',exact:true}).click();assert.match(await page.locator('thead').innerText(),/Venta\s+al corte\s+2025/);
   if(process.env.KORA_CIERRE_QA_DIR&&name==='Chromium'){await mkdir(process.env.KORA_CIERRE_QA_DIR,{recursive:true});await page.screenshot({path:process.env.KORA_CIERRE_QA_DIR+'/ranking-ficticio.png',fullPage:true});}
   const denied=await page.evaluate(()=>{const p=document.createElement('section');p.hidden=true;KoraPresupuestoRanking.montar({panel:p,perfil:{activo:true,rol:'admin_tienda'}});return p.hidden&&p.innerHTML==='';});assert.equal(denied,true);assert.deepEqual(errors,[]);
  }finally{await browser.close();}

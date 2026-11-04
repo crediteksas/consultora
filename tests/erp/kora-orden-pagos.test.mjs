@@ -109,6 +109,35 @@ test('la orden impresa numera los pagos y abrevia solo las referencias internas'
   assert.equal((sameName.match(/Titular de prueba/g) || []).length, 1);
 });
 
+test('la hoja de pagos agrupa alfabéticamente por aliado o beneficiario sin cambiar importes ni referencias', () => {
+  const rows=[
+    {report_ref:'PO-1',liquidation_id:'L1',payment_kind:'aliado',beneficiary_name:'Titular Z ficticio',bank_snapshot:{holder:'Titular Z ficticio',account_number:'22'},valor:10125},
+    {report_ref:'FIN-1',beneficiary_name:'Persona M ficticia',bank_snapshot:{holder:'Persona M ficticia',account_number:'33'},valor:20250},
+    {report_ref:'PO-2',liquidation_id:'L2',payment_kind:'aliado',beneficiary_name:'Titular B ficticio',bank_snapshot:{holder:'Titular B ficticio',account_number:'44'},valor:30375},
+    {report_ref:'PO-3',liquidation_id:'L3',payment_kind:'aliado',beneficiary_name:'Titular Z ficticio',bank_snapshot:{holder:'Titular Z ficticio',account_number:'22'},valor:40400},
+    {report_ref:'FIN-2',beneficiary_name:'Persona L ficticia',bank_snapshot:{holder:'Persona L ficticia',account_number:'55'},valor:50550},
+  ];
+  const businessName=p=>({'PO-1':'Comercio Alfa ficticio','PO-2':'Comercio Beta ficticio','PO-3':'Comercio Alfa ficticio'})[p.report_ref];
+  const ordered=Unified.orderPaymentReportRows(rows,businessName);
+  assert.deepEqual(ordered.map(p=>p.report_ref),['PO-1','PO-3','PO-2','FIN-2','FIN-1']);
+  assert.deepEqual(rows.map(p=>p.report_ref),['PO-1','FIN-1','PO-2','PO-3','FIN-2']);
+  assert.equal(ordered.reduce((sum,p)=>sum+p.valor,0),rows.reduce((sum,p)=>sum+p.valor,0));
+});
+
+test('la ordenación conserva objetos, destinos y empates sin mutar una orden congelada',()=>{
+  const make=(ref,holder,account,extra={})=>Object.freeze({report_ref:ref,beneficiary_name:'Beneficiario de prueba',bank_snapshot:Object.freeze({holder,account_number:account,bank:'Banco ficticio'}),valor:125.75,...extra});
+  const a=make('A','Álvaro ficticio','10'),b=make('B','alvaro ficticio','2'),c=make('C','ALVARO FICTICIO','2'),rows=Object.freeze([a,b,c]);
+  const before=JSON.stringify(rows),ordered=Unified.orderPaymentReportRows(rows);
+  assert.deepEqual(ordered.map(p=>p.report_ref),['B','C','A']);assert.equal(JSON.stringify(rows),before);assert.equal(ordered[0],b);assert.equal(ordered[1],c);assert.equal(ordered[2],a);
+  assert.deepEqual(Unified.orderPaymentReportRows([]),[]);
+});
+test('sin nombre de aliado usa beneficiario/titular/concepto y el HTML carga ambas versiones nuevas',async()=>{
+  const rows=[{report_ref:'C',concept:'Zeta ficticia',bank_snapshot:{},valor:1},{report_ref:'B',bank_snapshot:{holder:'Beta ficticia'},valor:2},{report_ref:'A',liquidation_id:'L-ficticia',beneficiary_name:'Alfa ficticia',bank_snapshot:{},valor:3}];
+  assert.deepEqual(Unified.orderPaymentReportRows(rows,()=> 'No aplica').map(p=>p.report_ref),['A','B','C']);
+  const html=await readFile('creditek/erp/aliados-tesoreria.html','utf8');
+  for(const file of ['tesoreria-pagos-unificados','aliados-tesoreria-app'])assert.match(html,new RegExp(file+'\\.js\\?v=20261103\\.2\\.0'));
+});
+
 test('el informe de giros se obtiene por cualquier rango y consolida por persona', () => {
   const base = {
     estado:'pagado', fecha_pagada:'2026-09-10T18:00:00Z',

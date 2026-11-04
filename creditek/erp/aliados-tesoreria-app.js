@@ -1396,6 +1396,7 @@
           ]),
       ).values(),
     ];
+    rows=window.CreditekPagosUnificados.orderPaymentReportRows(rows,paymentBusinessName);
     // Render inside KORA: installed apps and popup blockers must not hide the order.
     const previousReport = document.getElementById('treasuryPaymentReportDialog');
     const previousTitle = previousReport?.dataset.pageTitle || document.title;

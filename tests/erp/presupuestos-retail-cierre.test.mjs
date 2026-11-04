@@ -148,6 +148,10 @@ test('PDF y Excel reciben colores solo para las dos columnas solicitadas, sin mu
 });
 
 const ZIP=require('../../creditek/erp/presupuestos-retail-cierre-descarga.js');
+test('el logo del PDF conserva las proporciones originales en ambas cabeceras',()=>{
+ for(const [width,height] of [[40,12],[30,9]]){const s=ZIP.logoSize({width:1906,height:825},width,height);assert.ok(s.width<=width&&s.height<=height);assert.ok(Math.abs(s.width/s.height-1906/825)<1e-10);}
+ assert.throws(()=>ZIP.logoSize({width:0,height:825},40,12));
+});
 test('ZIP de cierres: un nombre PDF seguro por tienda, mismo mes y sin mutar importes',()=>{
  const reports=C.compararConAnterior(C.resumir(fixture()),history()).map(C.informe),before=JSON.stringify(reports),files=ZIP.archivos(reports);
  assert.equal(files.length,2);assert.match(files[0].nombre,/Cierre PPTO Punto Norte CK-01 2026-10\.pdf$/);assert.match(files[1].nombre,/Punto Sur/);assert.equal(JSON.stringify(reports),before);

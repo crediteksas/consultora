@@ -30,6 +30,11 @@
     if (/[^\x20-\x7e\u00a0-\u00ff\n\r]/u.test(s)) throw new Error('Un texto del informe contiene caracteres no compatibles con el PDF. Revisa el nombre o las notas.');
     return s;
   }
+  function logoSize(image, maxWidth, maxHeight) {
+    if (!(image.width > 0 && image.height > 0)) throw new Error('No se pudo determinar el tamaño del logo Creditek.');
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    return { width: image.width * scale, height: image.height * scale };
+  }
   function pdf(report, logo, JsPDF, colors) {
     if (!report.id || !logo || !colors || typeof JsPDF !== 'function' || report.tables?.length !== 1) throw new Error('No se pudo preparar el documento PDF.');
     const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true, putOnlyUsedFonts: true });
@@ -43,7 +48,8 @@
     const lines = (value, max) => doc.splitTextToSize(text(value), max);
     const lh = size => size * .352778 * 1.2;
     function heading(first) {
-      doc.addImage(logo, 'PNG', M, M, first ? 40 : 30, first ? 12 : 9);
+      const size = logoSize(doc.getImageProperties(logo), first ? 40 : 30, first ? 12 : 9);
+      doc.addImage(logo, 'PNG', M, M, size.width, size.height);
       font(first ? 17 : 13, true, '#008A96'); doc.text('KORA', W - M, M + 8, { align: 'right' });
       y = M + 16; font(first ? 15 : 11, true);
       const title = lines(report.title, width); doc.text(title, M, y); y += title.length * lh(first ? 15 : 11) + 1.5;
@@ -96,5 +102,5 @@
     doc.setProperties({title:text(report.title),author:'Creditek S.A.S.',subject:text(`Cierre mensual · ${report.id}`)});
     return new Uint8Array(doc.output('arraybuffer'));
   }
-  return Object.freeze({ archivos, pdf });
+  return Object.freeze({ archivos, pdf, logoSize });
 });

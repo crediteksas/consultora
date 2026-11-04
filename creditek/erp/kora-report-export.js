@@ -431,6 +431,13 @@
     const totals=table.totalRows||[];
     const notes=[table.policyNote,...(table.notes||[])].filter(Boolean);
     const notesHtml=notes.length?`<aside class="table-notes">${notes.map(note=>`<p>${esc(note)}</p>`).join('')}</aside>`:'';
+    if(table.layout==='matrix'&&Array.isArray(table.pdfColumnGroups)){
+      return table.pdfColumnGroups.map((columns,groupIndex)=>{
+        const rowHtml=(row,index)=>`<tr>${columns.map(column=>`<td${cellTone(table.rowTones?.[index]?.[column])?` data-report-tone="${cellTone(table.rowTones[index][column])}"`:''}>${esc(pdfValue(row[column],table.headers[column]))}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
+        const heading=groupIndex===0?table.heading:'Cumplimiento y comparación interanual';
+        return `<section><h2>${esc(heading)}</h2><table class="report-matrix${table.numericPresentation==='large-centered'?' report-large-centered':''}"><thead><tr>${columns.map(column=>`<th>${esc(table.headers[column])}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody></table>${groupIndex===table.pdfColumnGroups.length-1?notesHtml:''}</section>`;
+      }).join('');
+    }
     if(table.headers.length>5 && table.layout!=='matrix'){
       const columns=Array.from({length:Math.min(4,table.headers.length)},()=>[]);
       table.headers.forEach((_,index)=>columns[index%columns.length].push(index));

@@ -53,7 +53,8 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   await popup.waitForFunction(()=>document.querySelector('.brand img')?.naturalWidth>0);
   assert.match(await popup.locator('body').innerText(),/KORA-REP-|Trazabilidad KORA/);assert.match(await popup.locator('body').innerText(),/901.259.859-0/);
   assert.match(await popup.locator('body').innerText(),/31\.008/);assert.match(await popup.locator('body').innerText(),/1\.201/);
-  assert.equal(await popup.locator('table').count(),1);assert.equal(await popup.locator('table thead th').count(),8);assert.equal(await popup.locator('tbody tr').count(),4);assert.equal((await popup.locator('tbody').innerText()).match(/1\.201/g).length,1);
+  assert.equal(await popup.locator('table').count(),2);assert.equal(await popup.locator('table thead th').count(),9);assert.equal(await popup.locator('tbody tr').count(),8);assert.equal((await popup.locator('tbody').allInnerTexts()).join(' ').match(/1\.201/g).length,1);
+  assert.match(await popup.locator('style').innerText(),/@page\{size:A4 portrait/);
   assert.doesNotMatch(await popup.locator('body').innerText(),/Punto Sur|8\.888/);assert.equal(await popup.evaluate(()=>window.opener),null);
   if(qa&&name==='chromium'){
    await mkdir(qa,{recursive:true});await popup.pdf({path:resolve(qa,'cierre-punto-norte-octubre-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});
@@ -61,7 +62,7 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   }
   assert.equal(await popup.locator('tbody tr').first().locator('td').nth(3).evaluate(c=>getComputedStyle(c).fontSize),'14px');
   assert.equal(await popup.locator('tbody tr').first().locator('td').nth(3).evaluate(c=>getComputedStyle(c).textAlign),'center');
-  const pdfColors=await popup.locator('tbody tr').first().locator('td[data-report-tone]').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
+  const pdfColors=await popup.locator('.report-matrix tbody tr:first-child td[data-report-tone]').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
   assert.deepEqual(pdfColors,['rgb(254, 226, 226)','rgb(220, 252, 231)']);
   await popup.close();
   assert.ok(excelPath,'La prueba requiere ExcelJS local para verificar el archivo real.');
@@ -95,9 +96,9 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   assert.equal(await first.locator('[data-cierre-categoria="accesorios"] td').nth(6).getAttribute('data-cierre-tono'),'neutral');
   const [colorsPdf]=await Promise.all([page.waitForEvent('popup'),first.getByRole('button',{name:'PDF · Punto Norte',exact:true}).click()]);
   await colorsPdf.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
-  const tonesPdf=await colorsPdf.locator('tbody tr').first().locator('td[data-report-tone]').evaluateAll(cells=>cells.map(c=>({tone:c.getAttribute('data-report-tone'),background:getComputedStyle(c).backgroundColor})));
+  const tonesPdf=await colorsPdf.locator('.report-matrix tbody tr:first-child td[data-report-tone]').evaluateAll(cells=>cells.map(c=>({tone:c.getAttribute('data-report-tone'),background:getComputedStyle(c).backgroundColor})));
   assert.deepEqual(tonesPdf,[{tone:'positive',background:'rgb(220, 252, 231)'},{tone:'steady',background:'rgb(254, 243, 199)'}]);
-  assert.equal(await colorsPdf.locator('tbody tr').nth(3).locator('td[data-report-tone="neutral"]').count(),1);
+  assert.equal(await colorsPdf.locator('.report-matrix').nth(1).locator('tbody tr').nth(3).locator('td[data-report-tone="neutral"]').count(),1);
   if(qa&&name==='chromium'){await colorsPdf.pdf({path:resolve(qa,'colores-cuatro-tonos-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});}
   await colorsPdf.close();
   const [colorsDownload]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
@@ -113,8 +114,8 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   assert.equal(await first.locator('[data-cierre-categoria="accesorios"] td').nth(4).getAttribute('data-cierre-tono'),'positive');
   const [middlePdf]=await Promise.all([page.waitForEvent('popup'),first.getByRole('button',{name:'PDF · Punto Norte',exact:true}).click()]);
   await middlePdf.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
-  assert.equal(await middlePdf.locator('tbody tr').first().locator('td').nth(5).getAttribute('data-report-tone'),'steady');
-  assert.equal(await middlePdf.locator('tbody tr').first().locator('td').nth(5).evaluate(c=>getComputedStyle(c).backgroundColor),'rgb(254, 243, 199)');
+  assert.equal(await middlePdf.locator('.report-matrix').nth(1).locator('tbody tr').first().locator('td').nth(1).getAttribute('data-report-tone'),'steady');
+  assert.equal(await middlePdf.locator('.report-matrix').nth(1).locator('tbody tr').first().locator('td').nth(1).evaluate(c=>getComputedStyle(c).backgroundColor),'rgb(254, 243, 199)');
   if(qa&&name==='chromium')await middlePdf.pdf({path:resolve(qa,'cumplimiento-90-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});await middlePdf.close();
   const [middleDownload]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
   const middleBook=XLSX.read(await readFile(await middleDownload.path()),{type:'buffer',cellStyles:true,cellNF:true}),middleSheet=middleBook.Sheets[middleBook.SheetNames[1]];
@@ -141,7 +142,11 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('ZIP PD
   const [zipDownload]=await Promise.all([page.waitForEvent('download'),zipButton.click()]);await page.getByText('ZIP preparado con 2 PDF, uno por punto de venta de 2026-10. Revisa Descargas en tu navegador.',{exact:true}).waitFor();
   assert.equal(zipDownload.suggestedFilename(),'Cierres PPTO Tiendas 2026-10.zip');
   const zip=await readFile(await zipDownload.path()),entries=unzipSync(new Uint8Array(zip)),names=Object.keys(entries);assert.equal(names.length,2);assert.ok(names.every(n=>n.endsWith('.pdf')&&!/[\\/]/.test(n)));assert.ok(names.some(n=>n.includes('Punto Norte'))&&names.some(n=>n.includes('Punto Sur')));
-  for(const bytes of Object.values(entries)){assert.equal(new TextDecoder().decode(bytes.slice(0,5)),'%PDF-');assert.ok(bytes.length>3000);assert.doesNotMatch(new TextDecoder().decode(bytes.slice(0,100)),/<html/i);}
+  for(const bytes of Object.values(entries)){
+   assert.equal(new TextDecoder().decode(bytes.slice(0,5)),'%PDF-');assert.ok(bytes.length>3000);assert.doesNotMatch(new TextDecoder().decode(bytes.slice(0,100)),/<html/i);
+   const mediaBox=new TextDecoder('latin1').decode(bytes).match(/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/);
+   assert.ok(mediaBox,'El PDF declara el tamaño de página');assert.ok(Number(mediaBox[2])>Number(mediaBox[1]),'Cada PDF del ZIP usa hoja vertical');
+  }
   const writes=await page.evaluate(()=>window.__fixture.writes);assert.equal(writes.length,2);assert.ok(writes.every(w=>w.name==='kora_registrar_exportacion'&&w.params.p_formato==='pdf'&&w.params.p_filtros.Entrega==='ZIP de PDF'&&w.params.p_filtros.Mes==='2026-10'&&w.params.p_registros===4));assert.equal(new Set(writes.map(w=>w.params.p_reporte_id)).size,2);assert.equal(await page.locator('#cierreTienda').inputValue(),'CK-01');
   if(qa&&name==='chromium'){await mkdir(qa,{recursive:true});await zipDownload.saveAs(resolve(qa,'informes-dos-tiendas-ficticios.zip'));for(let i=0;i<names.length;i++)await (await import('node:fs/promises')).writeFile(resolve(qa,'zip-informe-'+(i+1)+'.pdf'),entries[names[i]]);}
   // Un fallo en el segundo documento no descarga un ZIP parcial ni registra el primero.

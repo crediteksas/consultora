@@ -123,7 +123,7 @@ test('cantidad cero en el histórico actual con venta positiva impide una caída
 
 test('cuadro único conserva cuatro filas, valores numéricos, formatos mixtos y avisos sin duplicar el realizado',()=>{
  const a=C.compararConAnterior(C.resumir(fixture()),history())[0],before=JSON.stringify(a),r=C.informe(a),t=r.tables[0];
- assert.equal(JSON.stringify(a),before);assert.equal(r.tables.length,1);assert.equal(t.rows.length,4);assert.equal(t.layout,'matrix');assert.equal(r.orientation,'landscape');
+ assert.equal(JSON.stringify(a),before);assert.equal(r.tables.length,1);assert.equal(t.rows.length,4);assert.equal(t.layout,'matrix');assert.equal(r.orientation,'portrait');assert.deepEqual(t.pdfColumnGroups,[[0,1,2,3,4],[0,5,6,7]]);
  assert.equal(t.headers.filter(x=>/Realizado/.test(x)).length,1);assert.equal(t.headers.length,8);assert.match(t.headers[1],/2025/);
  assert.deepEqual(t.rowTypes[0],['text','currency','currency','currency','currency','percentage','currency','percentage']);
  assert.deepEqual(t.rowTypes[1],['text','number','number','number','number','percentage','number','percentage']);

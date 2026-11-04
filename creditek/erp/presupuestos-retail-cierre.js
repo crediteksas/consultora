@@ -211,12 +211,12 @@
     const values = c => [`${c.nombre} (${c.dinero ? 'COP' : 'unidades'})`, c.valorAnterior ?? null, c.presupuesto, c.realizado, c.diferencia, c.cumplimiento, c.variacionAnual ?? null, c.crecimientoAnual ?? null];
     const rowTypes = c => ['text', ...Array(4).fill(c.dinero ? 'currency' : 'number'), 'percentage', c.dinero ? 'currency' : 'number', 'percentage'];
     const label = p.cerrado ? 'Cierre mensual' : 'Avance del mes · cifras parciales';
-    return { title: `${label} de presupuesto · ${tienda.nombre}`, mode: 'summary', orientation: 'landscape',
+    return { title: `${label} de presupuesto · ${tienda.nombre}`, mode: 'summary', orientation: 'portrait',
       pdfBatch: { kind: 'retail-budget-close', mes: p.mes, cerrado: p.cerrado, tiendaCodigo: tienda.codigo, tiendaNombre: tienda.nombre },
       route: '/creditek/erp/presupuestos.html#informe-puntos-venta', scope: { business: 'retail', label: `Retail · ${tienda.nombre}` },
       filters: [['Negocio', 'Retail'], ['Punto de venta', `${tienda.nombre} · ${tienda.codigo}`], ['Mes', p.mes], ['Desde', p.inicio], ['Corte de resultados', p.corte], ['Estado del mes', p.cerrado ? 'Mes transcurrido completo' : 'Mes en curso'], ['Comparativo interanual', `${p.mes.slice(5)}/${anioAnterior} · histórico mensual`]],
       tables: [
-        { heading: 'Presupuesto y crecimiento', layout: 'matrix', numericPresentation: 'large-centered', headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
+        { heading: 'Presupuesto y crecimiento', layout: 'matrix', numericPresentation: 'large-centered', pdfColumnGroups: [[0, 1, 2, 3, 4], [0, 5, 6, 7]], headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
           columnTypes: ['text', 'number', 'number', 'number', 'number', 'percentage', 'number', 'percentage'], rowTypes: categorias.map(rowTypes),
           rowTones: categorias.map(c => { const tonos = tonosCategoria(c); return ['', '', '', '', '', tonos.cumplimiento, '', tonos.crecimiento]; }),
           rowNotes: categorias.map(c => ['', '', '', '', '', c.estado, '', c.estadoCrecimiento || 'Sin histórico comparable']) },

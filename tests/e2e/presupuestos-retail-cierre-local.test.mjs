@@ -178,15 +178,17 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   for(const width of [1440,1208,1024,768,390,320]){
    await page.setViewportSize({width,height:1000});
    if(width<1000)await page.evaluate(()=>document.querySelector('.main-content').style.maxWidth='100%');
-   const bounds=await first.evaluate(article=>{const region=article.querySelector('.cierre-pdv-tabla'),table=region.querySelector('table'),r=region.getBoundingClientRect(),row=table.querySelector('tbody tr');return {region:region.clientWidth,scroll:region.scrollWidth,table:table.getBoundingClientRect().width,layout:getComputedStyle(row).display,viewport:innerWidth,document:document.documentElement.scrollWidth,cells:[...row.children].map(c=>{const b=c.getBoundingClientRect();return {left:b.left-r.left,right:b.right-r.left,width:b.width,content:c.scrollWidth,visible:c.clientWidth,label:c.dataset.cierreLabel,tag:c.tagName,font:getComputedStyle(c).fontSize,pseudo:getComputedStyle(c,'::before').content};})};});
+   const bounds=await first.evaluate(article=>{const region=article.querySelector('.cierre-pdv-tabla'),table=region.querySelector('table'),r=region.getBoundingClientRect(),row=table.querySelector('tbody tr');return {region:region.clientWidth,scroll:region.scrollWidth,table:table.getBoundingClientRect().width,layout:getComputedStyle(row).display,viewport:innerWidth,document:document.documentElement.scrollWidth,headers:[...table.querySelectorAll('thead th')].map(c=>({align:getComputedStyle(c).textAlign,size:parseFloat(getComputedStyle(c).fontSize)})),cells:[...row.children].map(c=>{const b=c.getBoundingClientRect();return {left:b.left-r.left,right:b.right-r.left,width:b.width,content:c.scrollWidth,visible:c.clientWidth,label:c.dataset.cierreLabel,tag:c.tagName,font:getComputedStyle(c).fontSize,align:getComputedStyle(c).textAlign,pseudo:getComputedStyle(c,'::before').content};})};});
    assert.ok(bounds.document<=width+1,`${name}/${width}: sin desplazamiento de toda la página`);
    assert.ok(bounds.scroll<=bounds.region+1,`${name}/${width}: todas las columnas o campos caben (${JSON.stringify(bounds)})`);
    assert.ok(bounds.cells.every(c=>c.left>=-1&&c.right<=bounds.region+1&&c.content<=c.visible+1),`${name}/${width}: ninguna cifra recortada`);
+   assert.ok(bounds.headers.every(c=>c.align==='center'&&c.size>=12.5),`${name}/${width}: títulos centrados y legibles`);
+   assert.ok(bounds.cells.every(c=>c.align==='center'),`${name}/${width}: categorías y cifras centradas`);
    assert.equal(await first.getByRole('rowheader').count(),4);assert.equal(await first.getByRole('cell').count(),28);
    assert.equal(bounds.cells.filter(c=>c.label).length,7);assert.match(await first.innerText(),/33\.876\.543/);assert.doesNotMatch(await first.innerText(),/33\.876\.543,25/);
    if(bounds.layout==='grid')assert.ok(bounds.cells.filter(c=>c.label).every(c=>c.pseudo.includes(c.label)),`${name}/${width}: cada valor conserva su etiqueta`);
    else assert.equal(bounds.layout,'table-row');
-   if(qa&&name==='chromium'&&[1208,390].includes(width))await first.screenshot({path:resolve(qa,`responsive-${width}.png`)});
+   if(qa&&name==='chromium'&&[1440,1208,390].includes(width))await first.screenshot({path:resolve(qa,`responsive-${width}.png`)});
   }
   assert.deepEqual(await page.evaluate(()=>window.__fixture.writes),[]);assert.deepEqual(errors,[]);
  }finally{await browser.close();}

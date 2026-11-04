@@ -161,6 +161,10 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 #informePuntosVenta .cierre-pdv tr th:first-child { min-width: 0; }
 #informePuntosVenta .cierre-pdv-tabla { min-width: 0; max-width: 100%; }
 #informePuntosVenta .cierre-pdv td { font-size: clamp(13px,1.6cqi,14px); white-space: nowrap; overflow-wrap: normal; }
+#informePuntosVenta .cierre-pdv table :is(thead th, tbody th, tbody td) { text-align: center; }
+#informePuntosVenta .cierre-pdv table thead th { font-size: 12.5px; }
+#informePuntosVenta .cierre-pdv table thead th:first-child { text-align: center; }
+#informePuntosVenta .cierre-pdv table tbody th { font-size: 13px; }
 #informePuntosVenta .cierre-pdv td strong { font-size: inherit; }
 #informePuntosVenta .cierre-pdv td small { white-space: normal; overflow-wrap: normal; }
 .cierre-pdv caption { text-align: left; padding: 0 0 10px; color: #526075; font-size: 12px; }
@@ -183,7 +187,7 @@ td.manual { color: var(--turquesa); font-weight: 700; }
 .cierre-pdv-descargas { display: flex; gap: 8px; flex-wrap: wrap; }
 @media(max-width:600px) { .cierre-pdv { padding: 12px; }.cierre-pdv-descargas button { width: 100%; } }
 /* La consulta se adapta al espacio real que deja la navegación, también en ventanas estrechas. */
-@container cierre-pdv (max-width: 760px) {
+@container cierre-pdv (max-width: 820px) {
   #informePuntosVenta .cierre-pdv-tabla { overflow: visible; }
   #informePuntosVenta .cierre-pdv table { display: block; }
   #informePuntosVenta .cierre-pdv caption { display: block; }

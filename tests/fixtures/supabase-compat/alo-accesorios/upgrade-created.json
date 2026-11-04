@@ -1,0 +1,37 @@
+[
+  {
+    "schema": "liquidaciones_api_private",
+    "name": "calcular_liquidacion_sin_datos_pago",
+    "kind": "function",
+    "identity": "p_id uuid"
+  },
+  {
+    "schema": "public",
+    "name": "aliados_impedir_cambio_aprobado",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "aliados_impedir_cambio_operacion_aprobada",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "tesoreria_generar_destinos_liquidacion",
+    "kind": "function",
+    "identity": "p_liquidation_id uuid"
+  },
+  {
+    "schema": "kora_private",
+    "name": "rectificar_alo_accesorios",
+    "kind": "function",
+    "identity": "p_operation uuid, p_actor uuid, p_expected_credit numeric, p_expected_accessory numeric, p_expected_delta numeric"
+  },
+  {
+    "schema": "kora_private",
+    "name": "rectificaciones_alo_accesorios",
+    "kind": "r"
+  }
+]

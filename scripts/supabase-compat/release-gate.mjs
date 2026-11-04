@@ -55,7 +55,26 @@ export async function verifySupabasePermissionRelease({root}) {
   let evidence;
   try { evidence=await json(root,'config/kora-permission-release.json'); }
   catch(e) { if(e.code==='ENOENT')throw Error('SQL changed: reviewed upgrade/rebuild permission evidence is required before publication');throw e; }
-  if(evidence.schema_version!==1 || evidence.project!=='kora' || !equal(changed,evidence.migration_sha256 || {})) throw Error('Permission evidence does not match every changed migration');
+  // Independent reviewed deltas retain their own isolated catalogs. Never merge
+  // catalogs from separate databases or weaken coverage of the older batch.
+  const releases=[evidence];
+  if(evidence.additional_releases!==undefined && !Array.isArray(evidence.additional_releases))throw Error('Additional releases must be pinned evidence');
+  for(const ref of evidence.additional_releases || []) {
+    const extra=await pinned(root,ref);
+    if(extra.additional_releases!==undefined)throw Error('Nested release evidence is not supported');
+    releases.push(extra);
+  }
+  const covered={};
+  for(const release of releases) {
+    if(release.schema_version!==1 || release.project!=='kora' || !release.migration_sha256 || Array.isArray(release.migration_sha256) || !Object.keys(release.migration_sha256).length)throw Error('Invalid permission release evidence');
+    for(const [file,hash] of Object.entries(release.migration_sha256)) {
+      if(Object.hasOwn(covered,file))throw Error('Migration covered by multiple releases');
+      covered[file]=hash;
+    }
+  }
+  if(!equal(changed,covered))throw Error('Permission evidence does not match every changed migration');
+  const checked=[],contracted=new Map();
+  for(const evidence of releases) {
   if(!Array.isArray(evidence.isolation_tests) || !evidence.isolation_tests.length) throw Error('Negative/isolation test sources are required');
   const testPaths = new Set();
   for(const item of evidence.isolation_tests) {
@@ -69,8 +88,7 @@ export async function verifySupabasePermissionRelease({root}) {
   // source that the real pipeline would never execute.
   if(!/^[a-f0-9]{64}$/.test(evidence.test_runner_sha256 || '') || sha(runner)!==evidence.test_runner_sha256)throw Error('Reviewed test runner fingerprint differs');
   if(!runner.includes("readdirSync('tests/security')") || !runner.includes("name.endsWith('.test.mjs')"))throw Error('test:local discovery changed; review the permission gate integration');
-  const declarations=Object.keys(changed).flatMap(file=>createdObjects(sqlStatements(sources.get(file))).map(o=>({...o,file})));
-  const checked=[];
+  const declarations=Object.keys(evidence.migration_sha256).flatMap(file=>createdObjects(sqlStatements(sources.get(file))).map(o=>({...o,file})));
   for(const scenario of ['upgrade','rebuild']) {
     const bundle=evidence[scenario];
     if(!bundle)throw Error('Both isolated upgrade and rebuild scenarios are required');
@@ -78,6 +96,11 @@ export async function verifySupabasePermissionRelease({root}) {
     if(contract.project!=='kora')throw Error('Catalog contract belongs to another project');
     if(!Array.isArray(contract.objects) || contract.objects.some(o=>!testPaths.has(o.isolation_test)))throw Error('Every permission contract must name a pinned isolation test');
     if(!Array.isArray(created))throw Error('Created/recreated inventory must be explicit');
+    for(const o of contract.objects) {
+      const objectKey=scenario+':'+key(o);
+      if(contracted.has(objectKey))throw Error('Overlapping release objects require a combined isolated run: '+key(o));
+      contracted.set(objectKey,true);
+    }
     const objects=[...after.relations,...after.functions.map(f=>({...f,kind:'function'}))];
     for(const declaration of declarations) {
       if(!declaration.schema)throw Error('Unqualified created object requires manual resolution: '+declaration.file);
@@ -89,6 +112,7 @@ export async function verifySupabasePermissionRelease({root}) {
     const result=checkPermissionContract({before,after,contract,created});
     if(!result.ok)throw Error(scenario+': '+result.errors.join('; '));
     checked.push({scenario,checked_objects:result.checked_objects});
+  }
   }
   return {ok:true,scope:'offline-release-permission-contract-only',changed_files:Object.keys(changed),checked,
     limitations:['Code review and full business/negative tests still required.','No production access was granted or database operation performed.','The historical hash baseline is not a full schema reconstruction certification.']};

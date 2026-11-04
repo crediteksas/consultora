@@ -269,3 +269,30 @@ La reversión también rechaza una deriva ficticia ajena antes de retirar SELECT
 Las fuentes de pruebas de seguridad fijadas en el preflight siguen siendo acotadas a
 este contrato; los casos HTTP previos y el resto de módulos requieren su propia
 evidencia. El resultado offline no autoriza cambiar la rama o eludir el pipeline.
+
+## Aló accesorios: evidencia adicional aislada
+
+El control acepta `additional_releases` fijados por SHA-256. Cada lote conserva
+sus propios catálogos de actualización/reconstrucción y se valida con el mismo
+contrato. La unión debe cubrir exactamente todas las fuentes SQL cambiadas;
+se rechazan duplicados, lotes anidados y objetos solapados (estos necesitan una
+ejecución aislada conjunta). La baseline y las pruebas anteriores no se alteran.
+
+`alo-permission-evidence.mjs` ejecuta la migración real en dos PGlite vacíos:
+defaults legados y defaults futuros sin EXECUTE automático. La fixture conserva
+los cuerpos de las cuatro funciones modificadas, revirtiendo únicamente el
+parche Aló para construir el estado previo. Sus cuatro huellas posteriores
+coincidieron con las definiciones leídas en KORA el 4 de noviembre de 2026.
+Las tablas dependientes son mínimas; no certifica la reconstrucción completa,
+PostgREST ni flujos RLS de todo KORA. No contiene filas ni credenciales reales.
+
+La prueba ejecuta denegaciones de lectura/ejecución con anon, authenticated y
+service_role, incluso con USAGE de esquema concedido solo en la prueba. Comprueba
+que las cuatro funciones preservan ACL y modo de seguridad, y que el nuevo
+registro privado tiene RLS y ningún permiso de API. Los cálculos y la corrección
+idempotente se prueban por separado en alo-accesorios-rectificacion.test.mjs.
+Los catálogos fijados provienen de las instancias locales, no de producción.
+
+Generación explícita: `node scripts/supabase-compat/alo-permission-evidence.mjs --emit`.
+Después de regenerar se requiere revisión y actualizar el pin de ese manifiesto;
+generar JSON por sí solo no autoriza publicación.

@@ -115,3 +115,47 @@ test('release gate: new SQL under historical-named subfolders cannot evade sourc
     await assert.rejects(verifySupabasePermissionRelease(f),/reviewed upgrade\/rebuild permission evidence/);
   });
 });
+
+async function additionalFixture(f,{overlap=false}={}) {
+ const secondSql='supabase/migrations/20990102000000_synthetic.sql';
+ const secondName=overlap?'fixture_gate':'fixture_second';
+ const secondSource=source.replaceAll('fixture_gate',secondName);
+ await f.put(secondSql,secondSource);
+ const extra=structuredClone(f.evidence);
+ delete extra.additional_releases;
+ extra.migration_sha256={[secondSql]:hash(secondSource)};
+ for(const scenario of ['upgrade','rebuild']){
+  extra[scenario]={};
+  const data=JSON.parse(JSON.stringify(f.data[scenario]).replaceAll('fixture_gate',secondName));
+  for(const [key,value] of Object.entries(data)){
+   const file='tests/fixtures/gate/second-'+scenario+'-'+key+'.json',body=JSON.stringify(value);
+   await f.put(file,body);extra[scenario][key]={path:file,sha256:hash(body)};
+  }
+ }
+ const saveExtra=async()=>{
+  const file='tests/fixtures/gate/second-release.json',body=JSON.stringify(extra);
+  await f.put(file,body);f.evidence.additional_releases=[{path:file,sha256:hash(body)}];
+  await f.putJson('config/kora-permission-release.json',f.evidence);
+ };
+ await saveExtra();return {extra,saveExtra,secondSql};
+}
+test('release gate: independent pinned delta preserves both old and new contracts',async()=>withFixture({},async f=>{
+ await additionalFixture(f);const result=await verifySupabasePermissionRelease(f);
+ assert.equal(result.checked.length,4);assert.equal(result.changed_files.length,2);
+}));
+test('release gate: additional delta cannot omit rebuild, weaken grants, duplicate coverage or overlap objects',async()=>{
+ for(const kind of ['rebuild','grants','duplicate','overlap','nested','hash'])await withFixture({},async f=>{
+  const {extra,saveExtra}=await additionalFixture(f,{overlap:kind==='overlap'});
+  if(kind==='rebuild')delete extra.rebuild;
+  if(kind==='duplicate')extra.migration_sha256[sqlPath]=hash(source);
+  if(kind==='nested')extra.additional_releases=[];
+  if(kind==='grants'){
+   const ref=extra.rebuild.after,d=JSON.parse(await readFile(path.join(f.root,ref.path),'utf8'));
+   d.relations[0].grants.push({grantor:'postgres',grantee:'anon',privilege:'SELECT',grantable:false});
+   const body=JSON.stringify(d);await f.put(ref.path,body);ref.sha256=hash(body);
+  }
+  await saveExtra();
+  if(kind==='hash'){f.evidence.additional_releases[0].sha256='a'.repeat(64);await f.putJson('config/kora-permission-release.json',f.evidence);}
+  await assert.rejects(verifySupabasePermissionRelease(f),/Both isolated|API grants differ|multiple releases|Overlapping release|Nested release|Evidence changed/);
+ });
+});

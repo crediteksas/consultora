@@ -66,5 +66,11 @@
   "native_result": {
     "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/native-result.json",
     "sha256": "a51ea15d18e3dde79749047eef36a7a1d153cadbf753827d14fc0496f70e5856"
-  }
+  },
+  "additional_releases": [
+    {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/release.json",
+      "sha256": "d2d67d0b708f6755a8bb7a9fef1c11d7c8820dc6e7f4b879355ad99b7f6228dd"
+    }
+  ]
 }

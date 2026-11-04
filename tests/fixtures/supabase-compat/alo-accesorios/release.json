@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Aló isolated permission delta. Real code-only modified functions; reduced dependency tables; not a full schema or HTTP/RLS certification.",
+  "migration_sha256": {
+    "supabase/migrations/20261104174100_alo_total_accesorios_rectificacion.sql": "6a8efd01126c26f35cc70f522c13e97fe5010a2e93a7b3ab65946634b58d22a6"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-alo-accesorios.test.mjs",
+      "sha256": "10c808837dde8587bb5f74b466cedf3d0762cf112e85d9ebe6ff7bbd9b8a80e5"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/upgrade-before.json",
+      "sha256": "c3f371c2e0debb7b2c961ce2eaad59c478351fa5da9a21293ef1c28792e0d0a1"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/upgrade-after.json",
+      "sha256": "3eae858a954917dcac491209367ce2e9b32d7e18a87ccc1e61ab77fa3b14949c"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/upgrade-contract.json",
+      "sha256": "1d26a0e5789f8aac9bb0720ac836f4b07d0fee418d0674c7f5972485f35a12ad"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/upgrade-created.json",
+      "sha256": "633ecf567fb255387238e99135003415d0ca91a5f99ffdb0b157c54014989fbb"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/rebuild-before.json",
+      "sha256": "b8584a2106f59c53274761bbb096587fc177124d72074b6b1a652865f6187cc9"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/rebuild-after.json",
+      "sha256": "7dda988220b4619e76e40e8598e6776cb8ad04b0d7b0aa8fc283c0cf336904e3"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/rebuild-contract.json",
+      "sha256": "1d26a0e5789f8aac9bb0720ac836f4b07d0fee418d0674c7f5972485f35a12ad"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/rebuild-created.json",
+      "sha256": "633ecf567fb255387238e99135003415d0ca91a5f99ffdb0b157c54014989fbb"
+    }
+  }
+}

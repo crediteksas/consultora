@@ -75,6 +75,11 @@ test('Consolidado conserva nombres, ciudad, proveedor, totales y costo faltante'
  const csv=C.providerExportRows(items);assert.equal(csv.length,6);assert.deepEqual(csv.at(-1),['TOTAL GENERAL','','',4,'',1500000]);assert.equal(csv.find(row=>row[0]==='TOTAL MPS')[5],1200000);assert.equal(C.summarizeReferences([{...items[0],costo:null}])[0].total,null);
  assert.equal(C.brand('Redmi 17 4/128'),'XIAOMI');assert.equal(C.brand('Moto G06'),'MOTOROLA');assert.equal(C.brand('Cable sin marca'),'OTRAS');
 });
+test('el bloqueo identifica los pedidos y referencias que no tienen oferta vigente',()=>{
+ const issue=C.closureIssue({pedidos:1,items:[{numero:'PED-000017',tienda:'Chinucell',referencia:'Redmi 15C',proveedor_id:null,costo:null,precio:null}]});
+ assert.match(issue,/PED-000017/);assert.match(issue,/Chinucell/);assert.match(issue,/Redmi 15C/);assert.match(issue,/sin oferta publicada vigente/);
+ assert.equal(C.closureIssue({pedidos:1,items:[{proveedor_id:'p',costo:10,precio:12,cantidad_ordenada:0}]}),'');
+});
 test('Correo consolidado agrupa proveedor y ciudad; no confunde cierre con entrega',async()=>{
  const r={tipo:'cierre',id:'test',numero:'CIE-000001',tienda:'Consolidado',fecha:'2026-09-18T15:00:00Z',items:[{item_id:'synthetic-item',pedido_id:'a',numero:'PED-000001',tienda:'Chinucell',ciudad:'Chinú',referencia:'<b>Equipo</b>',cantidad:2,costo:400000,precio:420000,proveedor:'MPS'}]};
  const html=renderReport(r);assert.match(html,/Cierre de período/);assert.match(html,/MPS/);assert.match(html,/Chinú/);assert.match(html,/800.000/);assert.match(html,/no confirma recepción/);assert.doesNotMatch(html,/<b>Equipo/);assert.match(html,/&lt;b&gt;Equipo/);

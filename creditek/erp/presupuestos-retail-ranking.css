@@ -11,4 +11,9 @@
 #rankingPresupuesto table{min-width:1180px;font-variant-numeric:tabular-nums}
 #rankingPresupuesto caption{text-align:left;font-weight:700;padding:10px 0;color:#0b1e3d}
 #rankingPresupuesto td:nth-child(n+3):not(:last-child){text-align:right;white-space:nowrap}
+#rankingPresupuesto td[data-ranking-tono]{font-weight:700}
+#rankingPresupuesto td[data-ranking-tono=positive]{background:#dcfce7;color:#166534}
+#rankingPresupuesto td[data-ranking-tono=steady]{background:#fef3c7;color:#92400e}
+#rankingPresupuesto td[data-ranking-tono=negative]{background:#fee2e2;color:#991b1b}
+#rankingPresupuesto td[data-ranking-tono=neutral]{background:#f1f5f9;color:#526075}
 @media(max-width:600px){#rankingPresupuesto{padding:14px}#rankingPresupuesto .ranking-tabs button{flex:1 1 40%}#rankingPresupuesto .ranking-controles{align-items:stretch;flex-direction:column}}

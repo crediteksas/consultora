@@ -24,6 +24,9 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   // El id real es el que define la página integrada; las reglas CSS se aplican también en el ensayo.
   await page.locator('#ranking').evaluate(e=>e.id='rankingPresupuesto');
   assert.equal(await page.getByRole('tab').count(),4);assert.equal(await page.locator('tbody tr').count(),4);
+  assert.equal(await page.getByRole('columnheader',{name:'Estado',exact:true}).count(),0);
+  assert.deepEqual(await page.locator('tbody tr').filter({has:page.getByRole('rowheader',{name:'Punto Norte'})}).locator('[data-ranking-tono]').evaluateAll(cells=>cells.map(c=>c.dataset.rankingTono)),['positive','positive']);
+  assert.deepEqual(await page.locator('tbody tr').last().locator('[data-ranking-tono]').evaluateAll(cells=>cells.map(c=>c.dataset.rankingTono)),['neutral','neutral']);
   assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','1','3','Sin posición']);
   assert.match(await page.locator('caption').innerText(),/Ventas · 2026-10 · COP/);
   await page.locator('[data-ranking-orden]').selectOption('crecimiento');assert.deepEqual(await page.locator('tbody th').allTextContents(),['Punto Norte','Punto Centro','Punto Sur','Punto sin meta']);assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','2','3','Sin posición']);assert.match(await page.locator('thead').innerText(),/Resultado 2025/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);await page.locator('[data-ranking-orden]').selectOption('cumplimiento');

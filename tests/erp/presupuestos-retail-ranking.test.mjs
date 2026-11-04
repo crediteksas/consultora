@@ -13,6 +13,19 @@ test('el ranking usa la meta acumulada al corte, no la mensual',()=>{
  b.categorias[0].presupuestoCorte=300;b.categorias[0].cumplimientoCorte=1;
  assert.deepEqual(R.ordenar([b,a],'ventas').map(r=>[r.tienda.codigo,r.posicion]),[['a',1],['b',2]]);
 });
+test('estima únicamente noviembre y diciembre de 2025, conserva el total y no inventa datos',()=>{
+ const informe={tienda:{codigo:'a',nombre:'Alfa'},periodo:{mes:'2026-11',corte:'2026-11-03',cerrado:false},categorias:[
+  {id:'ventas',valorAnterior:10000000,realizado:1500000,estadoCrecimiento:'Sin comparativo al corte'},
+  {id:'creditos',valorAnterior:30,realizado:6,estadoCrecimiento:'Sin comparativo al corte'},
+  {id:'accesorios',valorAnterior:null,realizado:5,estadoCrecimiento:'Histórico por validar'}]};
+ const before=JSON.stringify(informe),[r]=R.estimarComparativo([informe]);
+ assert.equal(JSON.stringify(informe),before);assert.equal(r.categorias[0].valorAnterior,10000000);assert.equal(r.categorias[0].valorAnteriorCorte,1000000);assert.equal(r.categorias[0].variacionAnual,500000);assert.equal(r.categorias[0].crecimientoAnual,.5);
+ assert.equal(r.categorias[1].valorAnteriorCorte,3);assert.equal(r.categorias[1].variacionAnual,3);assert.equal(r.categorias[1].crecimientoAnual,1);
+ assert.equal(r.categorias[2].valorAnteriorCorte,undefined);assert.equal(r.categorias[2].estadoCrecimiento,'Histórico por validar');
+ const december={...informe,periodo:{mes:'2026-12',corte:'2026-12-03',cerrado:false},categorias:[{id:'creditos',valorAnterior:31,realizado:6,estadoCrecimiento:'Sin comparativo al corte'}]};
+ assert.equal(R.estimarComparativo([december])[0].categorias[0].valorAnteriorCorte,3);
+ assert.equal(R.estimarComparativo([{...informe,periodo:{mes:'2026-10',corte:'2026-10-03',cerrado:false}}])[0].categorias[0].variacionAnual,undefined);
+});
 test('ninguna meta incompleta/cero o resultado desconocido recibe posición',()=>{
  const input=[row('a','Sin presupuesto',null,500),row('b','Cero',0,100),row('c','Pendiente',100,null),row('d','Con datos',100,0)];
  const r=R.ordenar(input,'ventas');assert.equal(r[0].tienda.codigo,'d');assert.equal(r[0].posicion,1);assert.ok(r.slice(1).every(x=>x.posicion===null));assert.equal(input[0].categorias[0].presupuesto,null);

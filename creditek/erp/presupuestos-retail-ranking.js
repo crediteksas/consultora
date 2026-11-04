@@ -3,6 +3,22 @@
   else root.KoraPresupuestoRanking=factory(root.KoraPresupuestoCierre);
 })(typeof globalThis!=='undefined'?globalThis:this,function(cierre){
   'use strict';
+  // Solo noviembre y diciembre de 2025: promedio mensual, no ventas diarias reales.
+  function estimarComparativo(informes) {
+    return informes.map(report => {
+      const p=report.periodo;
+      if (!p || p.cerrado || !['2026-11','2026-12'].includes(p.mes)) return report;
+      const dias=new Date(Date.UTC(2025,Number(p.mes.slice(5)),0)).getUTCDate(), transcurridos=Number(p.corte.slice(8));
+      if (!Number.isInteger(transcurridos) || transcurridos<1 || transcurridos>dias) return report;
+      return {...report,categorias:report.categorias.map(m=>{
+        if (m.estadoCrecimiento!=='Sin comparativo al corte' || !Number.isFinite(m.valorAnterior) || !Number.isFinite(m.realizado)) return m;
+        const base=m.valorAnterior*transcurridos/dias;
+        const diferencia=m.realizado-base;
+        return {...m,valorAnteriorCorte:base,variacionAnual:diferencia,crecimientoAnual:base>0?diferencia/base:null,
+          estadoCrecimiento:base<=0?'Estimado · sin base porcentual':diferencia>0?'Estimado · crecimiento':diferencia<0?'Estimado · disminución':'Estimado · sin variación'};
+      }),comparativo:{...report.comparativo,estimadoAlCorte:true}};
+    });
+  }
   function ordenar(informes,indicador,orden='cumplimiento'){
     if(!['cumplimiento','crecimiento'].includes(orden))throw Error('Orden del ranking no válido.');
     if(!cierre.METRICAS.some(m=>m.id===indicador))throw Error('Indicador no válido.');
@@ -39,17 +55,18 @@
       const tonoCumplimiento=n=>cierre.tonosCategoria({cumplimiento:n}).cumplimiento;
       const tonoVariacion=n=>!Number.isFinite(n)?'neutral':n>0?'positive':n<0?'negative':'steady';
       const year=Number(loadedMonth.slice(0,4))-1;
+      const estimado=!!reports[0]?.comparativo?.estimadoAlCorte;
       result.setAttribute('aria-labelledby','ranking-tab-'+metric);
-      result.innerHTML='<div class="ranking-tabla" role="region" aria-label="Ranking por '+(order.value==='crecimiento'?'crecimiento interanual':'cumplimiento')+'" tabindex="0"><table class="dashboard-table"><caption>'+esc(cierre.METRICAS.find(m=>m.id===metric).nombre)+' · '+esc(loadedMonth)+(money?' · COP':' · unidades')+'</caption><thead><tr><th>Posición</th><th>Tienda</th><th>Presupuesto mensual</th><th>Meta al corte</th><th>Realizado al corte</th><th>Cumplimiento al corte</th><th>Resultado '+year+' · mes completo</th><th>Variación %</th><th>Crecimiento '+(money?'(COP)':'(unidades)')+'</th><th>Comparativo</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${r.posicion??'Sin posición'}</td><th scope="row">${esc(r.tienda.nombre)}</th><td>${fmt(r.presupuesto)}</td><td>${fmt(r.presupuestoCorte)}</td><td>${fmt(r.realizado)}</td><td data-ranking-tono="${tonoCumplimiento(r.cumplimientoCorte)}" title="${esc(r.estadoCorte || 'Sin datos')}" >${pct(r.cumplimientoCorte)}</td><td>${fmt(r.valorAnterior)}</td><td data-ranking-tono="${tonoVariacion(r.crecimientoAnual)}" title="${esc(r.estadoCrecimiento || 'Sin datos comparables')}">${pct(r.crecimientoAnual)}</td><td>${r.variacionAnual > 0 ? '+' : ''}${fmt(r.variacionAnual)}</td><td>${esc(r.estadoCrecimiento||'Sin histórico comparable')}</td></tr>`).join('')+'</tbody></table></div>';
+      result.innerHTML='<div class="ranking-tabla" role="region" aria-label="Ranking por '+(order.value==='crecimiento'?'crecimiento interanual':'cumplimiento')+'" tabindex="0"><table class="dashboard-table"><caption>'+esc(cierre.METRICAS.find(m=>m.id===metric).nombre)+' · '+esc(loadedMonth)+(money?' · COP':' · unidades')+'</caption><thead><tr><th>Posición</th><th>Tienda</th><th>Presupuesto mensual</th><th>Meta al corte</th><th>Realizado al corte</th><th>Cumplimiento al corte</th><th>Resultado '+year+' · mes completo</th>'+(estimado?'<th>Base '+year+' al corte · estimada</th>':'')+'<th>Variación %</th><th>Crecimiento '+(money?'(COP)':'(unidades)')+'</th><th>Comparativo</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${r.posicion??'Sin posición'}</td><th scope="row">${esc(r.tienda.nombre)}</th><td>${fmt(r.presupuesto)}</td><td>${fmt(r.presupuestoCorte)}</td><td>${fmt(r.realizado)}</td><td data-ranking-tono="${tonoCumplimiento(r.cumplimientoCorte)}" title="${esc(r.estadoCorte || 'Sin datos')}" >${pct(r.cumplimientoCorte)}</td><td>${fmt(r.valorAnterior)}</td>${estimado?`<td>${fmt(r.valorAnteriorCorte)}</td>`:''}<td data-ranking-tono="${tonoVariacion(r.crecimientoAnual)}" title="${esc(r.estadoCrecimiento || 'Sin datos comparables')}">${pct(r.crecimientoAnual)}</td><td>${r.variacionAnual > 0 ? '+' : ''}${fmt(r.variacionAnual)}</td><td>${esc(r.estadoCrecimiento||'Sin histórico comparable')}</td></tr>`).join('')+'</tbody></table></div>';
       const p=reports[0]?.periodo,ranked=rows.filter(r=>r.posicion!==null).length;
-      status.textContent=`${ranked} de ${rows.length} tiendas con posición · ${p?.cerrado?'Mes completo':'Mes en curso: resultado frente a la suma de las metas diarias hasta el corte'} · Corte ${p?.corte||loadedMonth}. Orden: ${order.value==='crecimiento'?'crecimiento interanual':'cumplimiento del presupuesto al corte'}. Todas las tiendas se comparan aquí, independientemente del filtro general de tienda.${p?.cerrado?'':' El histórico anterior es mensual completo; no se calcula crecimiento con un corte parcial.'}`;
+      status.textContent=`${ranked} de ${rows.length} tiendas con posición · ${p?.cerrado?'Mes completo':'Mes en curso: resultado frente a la suma de las metas diarias hasta el corte'} · Corte ${p?.corte||loadedMonth}. Orden: ${order.value==='crecimiento'?'crecimiento interanual':'cumplimiento del presupuesto al corte'}. Todas las tiendas se comparan aquí, independientemente del filtro general de tienda.${reports[0]?.comparativo?.estimadoAlCorte?' La base del año anterior al corte es estimada: total mensual dividido entre los días del mes y multiplicado por los días transcurridos.':p?.cerrado?'':' El histórico anterior es mensual completo; no se calcula crecimiento con un corte parcial.'}`;
     }
     async function load(){
       clear();const token=request,mes=month.value;button.disabled=true;status.textContent='Consultando presupuesto y resultados de las cuatro categorías…';
       try{
         const data=await cierre.cargar({sb,perfil,tiendas:tiendas(),mes,now:now()});
         if(token!==request||month.value!==mes)return;
-        reports=data;loadedMonth=mes;render();
+        reports=estimarComparativo(data);loadedMonth=mes;render();
       }catch(e){if(token!==request)return;reports=null;result.innerHTML='';status.textContent='No se pudo preparar el ranking: '+(e.message||'Intenta de nuevo.');}
       finally{button.disabled=false;}
     }
@@ -60,5 +77,5 @@
     });
     load();
   }
-  return Object.freeze({ordenar,montar});
+  return Object.freeze({ordenar,montar,estimarComparativo});
 });

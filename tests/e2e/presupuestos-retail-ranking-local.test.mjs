@@ -45,6 +45,10 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   await page.evaluate(()=>{window.__fixture.fail=false;window.__fixture.stores=[{codigo:'CK-A'},{codigo:'CK-B'},{codigo:'CK-C'}];});await page.locator('[data-ranking-mes]').fill('2026-10');await page.getByRole('button',{name:'Ver ranking',exact:true}).click();await page.locator('tbody').waitFor();
   assert.equal(await page.evaluate(()=>window.__fixture.lastStoreCount),3,'Cada consulta toma la lista vigente, incluso si fue reasignada.');
   for(const width of [390,768,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+  await page.evaluate(()=>{for(const r of window.__fixture.data){r.periodo={mes:'2026-11',corte:'2026-11-03',cerrado:false};for(const m of r.categorias){m.valorAnterior=300;m.realizado=60;m.estadoCrecimiento='Sin comparativo al corte';}}});
+  await page.getByRole('button',{name:'Ver ranking',exact:true}).click();await page.getByText(/base del año anterior al corte es estimada/i).waitFor();
+  assert.match(await page.locator('thead').innerText(),/Base 2025 al corte · estimada/);
+  assert.match(await page.locator('tbody tr').first().innerText(),/Estimado · crecimiento/);
   if(process.env.KORA_CIERRE_QA_DIR&&name==='Chromium'){await mkdir(process.env.KORA_CIERRE_QA_DIR,{recursive:true});await page.screenshot({path:process.env.KORA_CIERRE_QA_DIR+'/ranking-ficticio.png',fullPage:true});}
   const denied=await page.evaluate(()=>{const p=document.createElement('section');p.hidden=true;KoraPresupuestoRanking.montar({panel:p,perfil:{activo:true,rol:'admin_tienda'}});return p.hidden&&p.innerHTML==='';});assert.equal(denied,true);assert.deepEqual(errors,[]);
  }finally{await browser.close();}

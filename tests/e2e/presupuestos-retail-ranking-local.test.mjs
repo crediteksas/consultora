@@ -25,12 +25,17 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   await page.locator('#ranking').evaluate(e=>e.id='rankingPresupuesto');
   assert.equal(await page.getByRole('tab').count(),4);assert.equal(await page.locator('tbody tr').count(),4);
   assert.equal(await page.getByRole('columnheader',{name:'Estado',exact:true}).count(),0);
+  assert.match(await page.locator('thead').innerText(),/Variación %/);
+  assert.match(await page.locator('thead').innerText(),/Crecimiento \(COP\)/);
+  const north=page.locator('tbody tr').filter({has:page.getByRole('rowheader',{name:'Punto Norte'})});
+  assert.match(await north.locator('td').nth(6).innerText(),/100,00\s*%/);
+  assert.match(await north.locator('td').nth(7).innerText(),/\+\s*\$\s*60/);
   assert.deepEqual(await page.locator('tbody tr').filter({has:page.getByRole('rowheader',{name:'Punto Norte'})}).locator('[data-ranking-tono]').evaluateAll(cells=>cells.map(c=>c.dataset.rankingTono)),['positive','positive']);
   assert.deepEqual(await page.locator('tbody tr').last().locator('[data-ranking-tono]').evaluateAll(cells=>cells.map(c=>c.dataset.rankingTono)),['neutral','neutral']);
   assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','1','3','Sin posición']);
   assert.match(await page.locator('caption').innerText(),/Ventas · 2026-10 · COP/);
   await page.locator('[data-ranking-orden]').selectOption('crecimiento');assert.deepEqual(await page.locator('tbody th').allTextContents(),['Punto Norte','Punto Centro','Punto Sur','Punto sin meta']);assert.deepEqual(await page.locator('tbody td:first-child').allTextContents(),['1','2','3','Sin posición']);assert.match(await page.locator('thead').innerText(),/Resultado 2025/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);await page.locator('[data-ranking-orden]').selectOption('cumplimiento');
-  await page.getByRole('tab',{name:'Créditos',exact:true}).click();assert.match(await page.locator('caption').innerText(),/Créditos/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);
+  await page.getByRole('tab',{name:'Créditos',exact:true}).click();assert.match(await page.locator('caption').innerText(),/Créditos/);assert.match(await page.locator('thead').innerText(),/Crecimiento \(unidades\)/);assert.doesNotMatch(await north.locator('td').nth(7).innerText(),/\$/);assert.equal(await page.evaluate(()=>window.__fixture.calls),1);
   await page.getByRole('tab',{name:'Créditos',exact:true}).press('End');assert.equal(await page.getByRole('tab',{name:'Accesorios',exact:true}).getAttribute('aria-selected'),'true');
   await page.locator('[data-ranking-mes]').fill('2026-09');await page.locator('[data-ranking-mes]').dispatchEvent('change');assert.equal(await page.locator('tbody').count(),0);
   await page.evaluate(()=>window.__fixture.defer=true);await page.getByRole('button',{name:'Ver ranking',exact:true}).click();

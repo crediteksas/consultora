@@ -2,10 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),R=require('../../creditek/erp/presupuestos-retail-ranking.js');
-function row(code,name,meta,real,id='ventas'){return{tienda:{codigo:code,nombre:name},categorias:[{id,presupuesto:meta,realizado:real,cumplimiento:meta>0&&real!=null?real/meta:null,estado:meta==null?'Presupuesto incompleto':meta===0?'Sin meta asignada':real==null?'Resultado por validar':'Meta alcanzada'}]};}
+function row(code,name,meta,real,id='ventas'){return{tienda:{codigo:code,nombre:name},categorias:[{id,presupuesto:meta,presupuestoCorte:meta,realizado:real,cumplimientoCorte:meta>0&&real!=null?real/meta:null,estado:meta==null?'Presupuesto incompleto':meta===0?'Sin meta asignada':real==null?'Resultado por validar':'Meta alcanzada'}]};}
 test('ordena por cumplimiento, no por tamaño de ventas; empate comparte posición',()=>{
  const r=R.ordenar([row('a','Alfa',100,120),row('b','Beta',1000,1000),row('c','Gamma',10,12),row('d','Delta',100,90)],'ventas');
  assert.deepEqual(r.map(x=>[x.tienda.codigo,x.posicion]),[['a',1],['c',1],['b',3],['d',4]]);
+});
+test('el ranking usa la meta acumulada al corte, no la mensual',()=>{
+ const a=row('a','Alfa',1000,200),b=row('b','Beta',1000,300);
+ a.categorias[0].presupuestoCorte=100;a.categorias[0].cumplimientoCorte=2;
+ b.categorias[0].presupuestoCorte=300;b.categorias[0].cumplimientoCorte=1;
+ assert.deepEqual(R.ordenar([b,a],'ventas').map(r=>[r.tienda.codigo,r.posicion]),[['a',1],['b',2]]);
 });
 test('ninguna meta incompleta/cero o resultado desconocido recibe posición',()=>{
  const input=[row('a','Sin presupuesto',null,500),row('b','Cero',0,100),row('c','Pendiente',100,null),row('d','Con datos',100,0)];

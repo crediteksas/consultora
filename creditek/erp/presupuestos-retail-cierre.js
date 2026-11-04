@@ -102,13 +102,14 @@
     return tiendas.map(tienda => {
       const a = actual.get(tienda.codigo), notes = [];
       const categorias = METRICAS.map(metric => {
-        let target = 0, registrados = 0;
+        let target = 0, targetCorte = 0, registrados = 0, registradosCorte = 0;
         for (let d = 1; d <= p.dias; d++) {
           const b = budgets.get(tienda.codigo + '|' + mes + '-' + String(d).padStart(2, '0'));
           if (b?.[metric.campo] == null || b[metric.campo] === '') continue;
           const value = numero(b[metric.campo], 'meta de ' + metric.nombre);
           target = metric.dinero ? suma(target, centavos(value, 'meta de ventas')) : target + value;
           registrados++;
+          if (b.fecha <= p.corte) { targetCorte = metric.dinero ? suma(targetCorte, centavos(value, 'meta de ventas')) : targetCorte + value; registradosCorte++; }
         }
         const presupuesto = registrados === p.dias ? (metric.dinero ? target / 100 : target) : null;
         const desconocido = a[metric.id + 'Pendientes'] || 0;
@@ -116,9 +117,13 @@
         const cumplimiento = presupuesto != null && presupuesto > 0 && realizado != null ? realizado / presupuesto : null;
         const diferencia = presupuesto != null && realizado != null ? metric.dinero ? (a[metric.id] - target) / 100 : realizado - presupuesto : null;
         const estado = realizado == null ? 'Resultado por validar' : presupuesto == null ? 'Presupuesto incompleto' : presupuesto === 0 ? 'Sin meta asignada' : cumplimiento >= 1 ? 'Meta alcanzada' : 'Por debajo de la meta';
+        const diasCorte = Number(p.corte.slice(8));
+        const presupuestoCorte = registradosCorte === diasCorte ? (metric.dinero ? targetCorte / 100 : targetCorte) : null;
+        const cumplimientoCorte = presupuestoCorte != null && presupuestoCorte > 0 && realizado != null ? realizado / presupuestoCorte : null;
+        const estadoCorte = realizado == null ? 'Resultado por validar' : presupuestoCorte == null ? 'Meta al corte incompleta' : presupuestoCorte === 0 ? 'Sin meta al corte' : cumplimientoCorte >= 1 ? 'Meta al corte alcanzada' : 'Por debajo de la meta al corte';
         if (presupuesto == null) notes.push(`${metric.nombre}: ${registrados} de ${p.dias} días con meta registrada; no se presenta una meta parcial como total mensual.`);
         if (desconocido) notes.push(`${metric.nombre}: ${desconocido} registro(s) sin clasificación o detalle suficiente; el resultado queda pendiente de validar.`);
-        return { ...metric, presupuesto, realizado, diferencia, cumplimiento, estado, diasRegistrados: registrados };
+        return { ...metric, presupuesto, realizado, diferencia, cumplimiento, estado, presupuestoCorte, cumplimientoCorte, estadoCorte, diasRegistrados: registrados };
       });
       return { tienda, periodo: p, categorias, notes };
     });

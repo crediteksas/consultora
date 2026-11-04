@@ -36,6 +36,12 @@ test('cuatro categorías, dinero exacto y fuentes actuales sin mezclar tiendas',
  assert.match(report.title,/Punto Norte/);assert.doesNotMatch(JSON.stringify(report),/Punto Sur|cliente|external_id|op1|TOKEN/);
  assert.equal(report.mode,'summary');assert.match(report.notes.join(' '),/Liquidaciones/);
 });
+test('meta al corte suma los días registrados y conserva el presupuesto mensual',()=>{
+ const x=fixture();x.now=new Date('2026-10-03T18:00:00Z');x.ventas[0].fecha='2026-10-03';
+ const a=C.resumir(x)[0];assert.equal(a.categorias[0].presupuesto,31007.75);assert.equal(a.categorias[0].presupuestoCorte,3000.75);assert.equal(a.categorias[0].cumplimientoCorte,500.50/3000.75);assert.equal(a.categorias[1].presupuestoCorte,3);
+ x.presupuestos.find(b=>b.tienda_codigo==='CK-01'&&b.fecha==='2026-10-02').meta_creditos=null;
+ const b=C.resumir(x)[0];assert.equal(b.categorias[1].presupuestoCorte,null);assert.equal(b.categorias[1].cumplimientoCorte,null);assert.equal(b.categorias[1].estadoCorte,'Meta al corte incompleta');
+});
 test('metas incompletas no se presentan como ceros ni como totales mensuales',()=>{
  const x=fixture();x.presupuestos.find(b=>b.tienda_codigo==='CK-01'&&b.fecha==='2026-10-15').meta_uds_acc=null;
  const a=C.resumir(x)[0];assert.equal(a.categorias[3].presupuesto,null);assert.equal(a.categorias[3].realizado,7);assert.equal(a.categorias[3].diferencia,null);assert.equal(a.categorias[3].cumplimiento,null);

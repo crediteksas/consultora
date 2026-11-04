@@ -114,6 +114,7 @@
     return {value,missing,text:missing?`Pendiente: ${missing} dato(s) sin registrar · subtotal conocido ${formatted}`:formatted};
   }
   function completeTable(table) {
+    if(table.omitSingleTotal && table.rows?.length===1)return {...table,totalRows:[],explicitTotals:true};
     if(table.totalRows?.length)return {...table,explicitTotals:true};
     if(table.kind==='summary'&&!table.sumColumns?.length&&!table.balanceColumns?.length)return table;
     if(table.structured){
@@ -256,7 +257,7 @@
       const kind=table.closest('[data-kora-report-kind]')?.dataset.koraReportKind||policy.kind||'detail';
       const declared=table.dataset.koraReportSums?.split(',').map(Number);
       const notes=[...table.querySelectorAll('tbody tr')].filter(visible).flatMap(tr=>[...tr.children].flatMap((cell,column)=>kept.some(item=>item.column===column)?cellNotes(cell).map(note=>`${cellText(tr.firstElementChild)} · ${rawHeaders[column]}: ${note}`):[]));
-      const result={summaryMode:table.closest('[data-kora-report-summary]')?.dataset.koraReportSummary,sourceId,heading,kind,headers,rows,totalRows,notes,policyNote:policy.note,explicitTotals:table.dataset.koraReportTotals==='explicit',sumColumns:map(declared||policy.sums),currencyColumns:map(policy.currency),balanceColumns:map(policy.balances),ratios:policy.ratios?.filter(([c,n,d])=>[c,n,d].every(column=>kept.some(item=>item.column===column))).map(([c,n,d,f])=>[...map([c,n,d]),f]),subtotal:policy.subtotal,summaryColumns:table.dataset.koraReportSummaryColumns?.split(',').map(Number)};
+      const result={omitSingleTotal:table.closest('[data-kora-report-single-total]')?.dataset.koraReportSingleTotal==='omit',summaryMode:table.closest('[data-kora-report-summary]')?.dataset.koraReportSummary,sourceId,heading,kind,headers,rows,totalRows,notes,policyNote:policy.note,explicitTotals:table.dataset.koraReportTotals==='explicit',sumColumns:map(declared||policy.sums),currencyColumns:map(policy.currency),balanceColumns:map(policy.balances),ratios:policy.ratios?.filter(([c,n,d])=>[c,n,d].every(column=>kept.some(item=>item.column===column))).map(([c,n,d,f])=>[...map([c,n,d]),f]),subtotal:policy.subtotal,summaryColumns:table.dataset.koraReportSummaryColumns?.split(',').map(Number)};
       // Una tabla sin datos ni cierre declarado puede estar en error: no inventar
       // cero registros ni importes cero. Las búsquedas vacías válidas traen su cierre.
       return rows.length||totalRows.length?completeTable(result):result;

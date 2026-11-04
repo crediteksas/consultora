@@ -261,3 +261,13 @@ test('las dependencias PDF y ZIP ya versionadas producen archivos reales con dat
  assert.equal(platform.rows.length,1);assert.equal(platform.totalRows.length,1);
  assert.equal(summaryTables([{...platform,summaryMode:undefined},reconciliation]).length,2);
  });
+
+test('una plataforma conserva resumen sin total duplicado; varias conservan total',()=>{
+ const one={heading:'Resumen por plataforma',kind:'summary',omitSingleTotal:true,headers:['Plataforma','Valor'],rows:[['Ejemplo',100]],sumColumns:[1]};
+ const report=completeTable(completeTable(one));
+ assert.equal(report.rows.length,1);assert.equal(report.totalRows.length,0);
+ assert.equal(summaryTables([report]).length,1);
+ assert.equal(summaryTables([report])[0].rows[0][0],'Ejemplo');
+ const many=completeTable({...one,rows:[['Ejemplo',100],['Otra',50]]});
+ assert.equal(many.totalRows.length,1);assert.equal(typedCell(many.totalRows[0][1],'Valor').value,150);
+});

@@ -90,7 +90,7 @@ test('vista: escapa proveedores, muestra estado y abre las listas guardadas con 
  assert.doesNotMatch(html,/<img/);assert.match(html,/&lt;img/);assert.match(html,/<span class="badge">Publicada anteriormente<\/span>/);assert.match(html,/Revisar dudas/);assert.match(html,/Ver lista/);assert.match(html,/Ver excluidos/);
  assert.match(html,/<th>Sin dudas<\/th>/);assert.match(html,/data-label="Sin dudas">1/);assert.match(container.innerHTML,/>Cargar lista<\/button>/);
  assert.equal(loaded[0].pendingIncluded,1);assert.equal(loaded[0].excluded,1);assert.equal(loaded[0].totalDrafts,1);
- for(const mode of ['pending','all','excluded'])container.querySelector('[data-summary-results]').onclick({target:{closest:()=>({dataset:{summaryOpen:id,summaryMode:mode}})}});
+ for(const mode of ['pending','all','excluded'])container.querySelector('[data-summary-results]').onclick({target:{closest:selector=>selector==='[data-summary-open]'?({dataset:{summaryOpen:id,summaryMode:mode}}):null}});
  assert.deepEqual(opened,[[id,'pending'],[id,'all'],[id,'excluded']]);
  container.querySelector('[data-summary-new]').onclick();assert.equal(newLists,1);
  container.querySelector('[data-summary-search]').value='Otro proveedor';container.querySelector('[data-summary-search]').oninput();
@@ -105,4 +105,18 @@ test('vista: un fallo de lectura informa el error y emite conteos desconocidos',
  assert.match(container.querySelector('[data-summary-status]').textContent,/Sin conexión/);
  assert.doesNotMatch(container.querySelector('[data-summary-results]').innerHTML,/No hay listas guardadas/);
  assert.equal(container.querySelector('[data-summary-refresh]').disabled,false);
+});
+
+test('vista conserva la tabla y muestra ofertas vigentes aunque la lista guardada sea anterior',async()=>{
+ const metadata=[{id:'old',proveedor_id:'a',creado_at:'2026-09-18T12:00:00Z',lista_id:'old-list'}],container=mockContainer(),opened=[];
+ const offers=[{id:'o1',proveedor_id:'a',vigente:true,b2b_listas_precios:{creado_at:'2026-11-03T20:00:00Z'}},{id:'o2',proveedor_id:'a',vigente:true,b2b_listas_precios:{creado_at:'2026-11-03T20:00:00Z'}}];
+ const control=R.mount({container,sb:mockDb({metadata,details:[{id:'old',filas:[row()],lista_id:'old-list'}]}),providers:[{id:'a',nombre:'Comunicaribe'}],loadOffers:async()=>offers,onOpenOffers:items=>opened.push(items)});
+ await control.ready;const html=container.querySelector('[data-summary-results]').innerHTML;
+ assert.match(html,/<th>Proveedor<\/th>/);assert.match(html,/3 de nov/);assert.match(html,/data-label="Sin dudas">2/);assert.match(html,/data-label="Dudas">—/);assert.doesNotMatch(html,/18 de sept/);
+ container.querySelector('[data-summary-results]').onclick({target:{closest:selector=>selector==='[data-summary-offers]'?{dataset:{summaryOffers:'a'}}:null}});assert.equal(opened[0].length,2);
+});
+
+test('error al cargar ofertas no presenta listas antiguas como vigentes',async()=>{
+ const container=mockContainer();const control=R.mount({container,sb:mockDb({metadata:[]}),providers:[],loadOffers:async()=>{throw Error('Sin conexión a ofertas');}});
+ await control.ready;assert.match(container.querySelector('[data-summary-status]').textContent,/Sin conexión a ofertas/);assert.doesNotMatch(container.querySelector('[data-summary-results]').innerHTML,/Publicada/);
 });

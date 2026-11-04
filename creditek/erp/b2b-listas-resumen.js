@@ -77,17 +77,21 @@
   container.innerHTML='<div class="list-heading"><div><h2>Listas guardadas</h2><p class="sub">Continúa con la última lista de cada proveedor.</p></div><div class="actions"><button type="button" class="btn" data-summary-refresh>Actualizar</button><button type="button" class="btn primary" data-summary-new>Cargar lista</button></div></div><div class="grid"><label>Buscar proveedor<input type="search" data-summary-search placeholder="Nombre del proveedor"></label><label>Mostrar<select data-summary-filter><option value="all">Todas las listas</option><option value="pending">Con dudas</option><option value="draft">Borradores</option><option value="published">Publicadas</option></select></label></div><p class="sub" data-summary-status role="status"></p><div data-summary-results></div>';
   const $=selector=>container.querySelector(selector);
   const providerName=id=>ctx.providers?.find(provider=>provider.id===id)?.nombre||'Proveedor sin nombre disponible';
-  const dateLabel=value=>Number.isFinite(Date.parse(value))?new Date(value).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'}):'Fecha no disponible';
+  const dateLabel=value=>Number.isFinite(Date.parse(value))?new Date(value).toLocaleDateString('es-CO',{timeZone:'America/Bogota',day:'numeric',month:'short',year:'numeric'}):'Fecha no disponible';
   function render(){
    const search=normalize($('[data-summary-search]').value),filter=$('[data-summary-filter]').value;
    const shown=entries.filter(entry=>normalize(providerName(entry.proveedor_id)).includes(search)&&
-    (filter==='all'||filter==='pending'&&entry.summary.pendingIncluded>0||filter==='draft'&&!entry.lista_id||filter==='published'&&entry.lista_id));
+    (filter==='all'||filter==='pending'&&entry.id&&!entry.lista_id&&entry.summary.pendingIncluded>0||filter==='draft'&&entry.id&&!entry.lista_id||filter==='published'&&(entry.offers?.length||(!ctx.loadOffers&&entry.lista_id))));
    if(!entries.length){$('[data-summary-results]').innerHTML=totalDrafts===0?'<p>No hay listas guardadas todavía. Usa «Cargar lista» para cargar la primera.</p>':'';return;}
    if(!shown.length){$('[data-summary-results]').innerHTML='<p>No hay listas que coincidan con estos filtros.</p>';return;}
    const count=value=>value==null?'No disponible':String(value);
    $('[data-summary-results]').innerHTML='<div class="table-wrap"><table class="list-preview saved-lists-table"><thead><tr><th>Proveedor</th><th>Sin dudas</th><th>Dudas</th><th>Productos excluidos</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+shown.map(entry=>{
     const s=entry.summary,id=esc(entry.id);
-    return `<tr><td data-label="Proveedor"><strong>${esc(providerName(entry.proveedor_id))}</strong><small>${esc(dateLabel(entry.creado_at))}</small></td><td data-label="Sin dudas">${count(s.validIncluded)}</td><td data-label="Dudas">${count(s.pendingIncluded)}</td><td data-label="Productos excluidos">${count(s.excluded)}${s.headers?`<small>${s.headers} textos auxiliares aparte</small>`:''}${s.excludedWithoutReason?`<small>${s.excludedWithoutReason} sin motivo de exclusión</small>`:''}</td><td data-label="Estado"><span class="badge${entry.lista_id?'':' warn'}">${entry.lista_id?'Publicada anteriormente':'Borrador'}</span>${!s.available?`<small>${esc(entry.loadError||'No se pudieron calcular los conteos de esta lista.')}</small>`:''}</td><td data-label="Acciones"><div class="actions">${s.pendingIncluded>0?`<button type="button" class="btn primary" data-summary-open="${id}" data-summary-mode="pending">Revisar dudas</button>`:''}<button type="button" class="btn" data-summary-open="${id}" data-summary-mode="all">Ver lista</button>${s.excluded>0?`<button type="button" class="btn" data-summary-open="${id}" data-summary-mode="excluded">Ver excluidos</button>`:''}</div></td></tr>`;
+    if(entry.offers?.length&&filter!=='draft'&&filter!=='pending'){
+     const times=entry.offers.map(o=>o.b2b_listas_precios?.creado_at).filter(Boolean).sort().reverse(),providerId=esc(entry.proveedor_id);
+     return `<tr><td data-label="Proveedor"><strong>${esc(providerName(entry.proveedor_id))}</strong><small>${esc(dateLabel(times[0]))} · publicación en KORA</small></td><td data-label="Sin dudas">${entry.offers.length}</td><td data-label="Dudas">—</td><td data-label="Productos excluidos">—</td><td data-label="Estado"><span class="badge">Publicada</span></td><td data-label="Acciones"><div class="actions"><button type="button" class="btn" data-summary-offers="${providerId}">Ver lista</button>${entry.id&&!entry.lista_id?`<button type="button" class="btn" data-summary-open="${id}" data-summary-mode="all">Ver borrador</button>`:''}</div></td></tr>`;
+    }
+    return `<tr><td data-label="Proveedor"><strong>${esc(providerName(entry.proveedor_id))}</strong><small>${esc(dateLabel(entry.creado_at))}</small></td><td data-label="Sin dudas">${count(s.validIncluded)}</td><td data-label="Dudas">${count(s.pendingIncluded)}</td><td data-label="Productos excluidos">${count(s.excluded)}${s.headers?`<small>${s.headers} textos auxiliares aparte</small>`:''}${s.excludedWithoutReason?`<small>${s.excludedWithoutReason} sin motivo de exclusión</small>`:''}</td><td data-label="Estado"><span class="badge${entry.lista_id?'':' warn'}">${entry.lista_id?(ctx.loadOffers?'Sin ofertas vigentes':'Publicada anteriormente'):'Borrador'}</span>${!s.available?`<small>${esc(entry.loadError||'No se pudieron calcular los conteos de esta lista.')}</small>`:''}</td><td data-label="Acciones"><div class="actions">${s.pendingIncluded>0?`<button type="button" class="btn primary" data-summary-open="${id}" data-summary-mode="pending">Revisar dudas</button>`:''}<button type="button" class="btn" data-summary-open="${id}" data-summary-mode="all">Ver lista</button>${s.excluded>0?`<button type="button" class="btn" data-summary-open="${id}" data-summary-mode="excluded">Ver excluidos</button>`:''}</div></td></tr>`;
    }).join('')+'</tbody></table></div>';
   }
   function refresh(){
@@ -96,11 +100,15 @@
     container.setAttribute('aria-busy','true');$('[data-summary-refresh]').disabled=true;
     $('[data-summary-status]').textContent='Consultando listas guardadas…';
     try{
-     const loaded=await loadLatest(ctx.sb);totalDrafts=loaded.totalDrafts;
-     entries=loaded.drafts.map(draft=>({...draft,summary:summarize(draft.filas)})).sort((a,b)=>providerName(a.proveedor_id).localeCompare(providerName(b.proveedor_id),'es'));
+     const [loaded,offers]=await Promise.all([loadLatest(ctx.sb),ctx.loadOffers?ctx.loadOffers():Promise.resolve([])]);totalDrafts=loaded.totalDrafts;
+     if(!Array.isArray(offers))throw Error('No se pudieron consultar las ofertas vigentes.');
+     const grouped=new Map();for(const offer of offers){if(!offer.vigente||!offer.proveedor_id)continue;if(!grouped.has(offer.proveedor_id))grouped.set(offer.proveedor_id,[]);grouped.get(offer.proveedor_id).push(offer);}
+     entries=loaded.drafts.map(draft=>({...draft,offers:grouped.get(draft.proveedor_id)||[],summary:summarize(draft.filas)}));
+     for(const [providerId,rows] of grouped)if(!entries.some(e=>e.proveedor_id===providerId))entries.push({proveedor_id:providerId,offers:rows,summary:summarize([])});
+     entries.sort((a,b)=>providerName(a.proveedor_id).localeCompare(providerName(b.proveedor_id),'es'));
      const complete=entries.every(entry=>entry.summary.available),sum=field=>complete?entries.reduce((total,entry)=>total+entry.summary[field],0):null;
      render();
-     $('[data-summary-status]').textContent=complete?`${entries.length} proveedores con lista guardada. Puedes abrirlas sin volver a cargarlas.`:'Algunas listas no pudieron consultarse por completo. Sus conteos aparecen como no disponibles; usa «Actualizar» para reintentar.';
+     $('[data-summary-status]').textContent=complete?(ctx.loadOffers?`${entries.length} proveedores. Las filas publicadas muestran ofertas vigentes; los guiones indican datos no disponibles para esas ofertas.`:`${entries.length} proveedores con lista guardada. Puedes abrirlas sin volver a cargarlas.`):'Algunas listas no pudieron consultarse por completo. Sus conteos aparecen como no disponibles; usa «Actualizar» para reintentar.';
      const summary={available:complete,totalDrafts,latestDrafts:entries.length,providersWithLists:entries.length,pendingIncluded:sum('pendingIncluded'),validIncluded:sum('validIncluded'),excluded:sum('excluded'),headers:sum('headers')};
      ctx.onLoaded?.(summary);return summary;
     }catch(error){
@@ -115,7 +123,7 @@
   $('[data-summary-search]').oninput=render;$('[data-summary-filter]').onchange=render;
   $('[data-summary-refresh]').onclick=refresh;
   $('[data-summary-new]').onclick=()=>ctx.onNewList?.();
-  $('[data-summary-results]').onclick=event=>{const button=event.target.closest('[data-summary-open]');if(button&&container.contains(button))ctx.onOpenDraft?.(button.dataset.summaryOpen,button.dataset.summaryMode);};
+  $('[data-summary-results]').onclick=event=>{const offerButton=event.target.closest('[data-summary-offers]');if(offerButton&&container.contains(offerButton)){const entry=entries.find(e=>e.proveedor_id===offerButton.dataset.summaryOffers);if(entry)ctx.onOpenOffers?.(entry.offers);return;}const button=event.target.closest('[data-summary-open]');if(button&&container.contains(button))ctx.onOpenDraft?.(button.dataset.summaryOpen,button.dataset.summaryMode);};
   const ready=refresh();return {refresh,ready};
  }
  const api={mount,summarize,latestPerProvider,isAuxiliary,loadLatest};

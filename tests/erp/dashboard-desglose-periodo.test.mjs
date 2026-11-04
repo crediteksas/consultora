@@ -159,3 +159,15 @@ test('Addi aprobado entra una sola vez al resultado Aliados sin inventar una ope
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'114312');
  assert.match(nodes['#content'].innerHTML.replace(/<[^>]*>/g,''),/addi\|1\|550000\|0\|114312/);
 });
+
+test('plataforma descuenta gastos históricos una vez y conserva plataformas con solo gastos',()=>{
+ const {ctx,db,nodes}=fixture();
+ nodes['#dashboardFrom'].value='2026-10-01';nodes['#dashboardTo'].value='2026-10-31';
+ db.operations=[{id:'p',external_id:'p',plataforma:'krediya',operation_at:'2026-10-05',tipo_establecimiento:'aliado',monto_base:10000,bonos_aplicados:0,utilidad_creditek:8000,policy_snapshot:{krediya_v2:{gasto_financiero:0,provision:0}}}];
+ db.expenses=[{id:'e1',plataforma:'krediya',estado:'aprobado',fecha_causacion_historica:'2026-10-05',valor:1500},{id:'e2',plataforma:'alo',estado:'aprobado',fecha_causacion_historica:'2026-10-21',valor:500}];
+ ctx.renderDashboard();
+ const text=nodes['#content'].innerHTML.split('id="resumen-plataformas"')[1].split('</section>')[0].replace(/<[^>]*>/g,'');
+ assert.match(text,/krediya\|1\|10000\|0\|8000\|1500\|6500/);
+ assert.match(text,/alo\|0\|0\|0\|0\|500\|-500/);
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'6000');
+});

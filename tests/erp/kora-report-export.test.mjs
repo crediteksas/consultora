@@ -137,13 +137,13 @@ test('PDF vertical conserva cuentas completas, notas y encabezados y compacta de
   assert.match(html,/>KORA<\/span>/);
 });
 
-test('las dos aclaraciones internas de Aliados permanecen en KORA pero no se exportan',async()=>{
+test('las aclaraciones de gastos de Aliados se conservan en el informe',async()=>{
   const app=await read('creditek/erp/aliados-v1-1-app.js');
   const notes=app.match(/<p\b[^>]*data-kora-report-note[^>]*>[\s\S]*?<\/p>/g)||[];
   for(const text of ['Utilidad de liquidaciones: antes de gastos operativos','de gastos generales de Aliados no se distribuyen']){
     const note=notes.find(html=>html.includes(text));
     assert.ok(note,`mantener la aclaración en el software: ${text}`);
-    assert.match(note,/data-kora-no-export/);
+    assert.doesNotMatch(note,/data-kora-no-export/);
   }
   assert.doesNotMatch(notes.find(html=>html.includes('Desglose parcial:')),/data-kora-no-export/,'conservar las advertencias de datos incompletos');
   assert.match(source,/\[data-kora-no-export\]/);
@@ -245,3 +245,10 @@ test('las dependencias PDF y ZIP ya versionadas producen archivos reales con dat
  const doc=new jsPDF();doc.text('Informe ficticio',15,20);const pdf=new Uint8Array(doc.output('arraybuffer'));assert.equal(new TextDecoder().decode(pdf.slice(0,5)),'%PDF-');
  const zip=zipSync({'punto-ficticio.pdf':pdf});assert.deepEqual(unzipSync(zip)['punto-ficticio.pdf'],pdf);
 });
+
+ test('PDF resalta solo utilidad después de gastos aplicados',()=>{
+ const html=pdfDocument({title:'Prueba',id:'TEST',mode:'detailed',filters:[],metrics:[['Utilidad bruta del negocio','$ 8.000'],['Utilidad final del periodo','$ 6.500']],tables:[{headers:['Concepto','Valor'],rows:[['Utilidad bruta del negocio','$ 8.000'],['Menos: gastos operativos aprobados','-$ 1.500'],['Utilidad final del periodo','$ 6.500']]}]});
+ assert.equal((html.match(/class="profit-highlight"/g)||[]).length,2);
+ assert.match(html,/<td>Utilidad bruta del negocio<\/td><td>/);
+ assert.match(html,/<td>Utilidad final del periodo<\/td><td class="profit-highlight">/);
+ });

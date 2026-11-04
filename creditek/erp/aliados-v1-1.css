@@ -120,3 +120,7 @@ body[data-aliados-view="platforms"] .platform-card th:nth-child(n+3),body[data-a
 .dashboard-goal-track>span{display:block;height:100%;background:#00bec8;border-radius:8px}
 .dashboard-goal p{overflow-wrap:anywhere}
 @media(max-width:520px){.dashboard-goal-heading strong{font-size:18px}.dashboard-goals .head{align-items:flex-start}.dashboard-goal-heading{gap:6px 12px}}
+
+/* Resultado visible sin confundirlo con el saldo de Banco. */
+body[data-aliados-view="dashboard"] .metric[data-explore-component="net"], body[data-aliados-view="dashboard"] .kora-profit-highlight { background:#eafbfc; font-weight:700; }
+body[data-aliados-view="dashboard"] .kora-profit-highlight { display:inline-block; padding:4px 7px; border-radius:5px; }

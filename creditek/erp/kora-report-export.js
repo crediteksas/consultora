@@ -62,6 +62,8 @@
     'Fecha|Tienda|Movimiento|Beneficiario|Valor|Estado|Acción':{sums:[4],currency:[4]},
     'Fecha|Negocio|Movimiento|Beneficiario|Valor|Estado|Acción':{sums:[4],currency:[4]},
     'Plataforma|Créditos|Valor financiado|Bonos|Utilidad de liquidaciones':{sums:[1,2,3,4],currency:[2,3,4]},
+    'Plataforma|Créditos|Valor financiado|Bonos|Utilidad de liquidaciones|Gastos operativos asignados|Utilidad después de gastos asignados':{sums:[1,2,3,4,5,6],currency:[2,3,4,5,6]},
+    'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Resultado antes de gastos operativos|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
     'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Resultado calculado|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
     'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Utilidad disponible|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
     'Fecha contable|Concepto|Valor|Autorización real':{sums:[2],currency:[2]},
@@ -418,6 +420,9 @@
     const parsed=typedCell(value,header);
     return parsed.kind==='currency'&&typeof parsed.value==='number'?displayMoney(parsed.value):value;
   }
+  function isNetUtility(label){
+    return ['Utilidad después de gastos asignados','Utilidad final del periodo','Utilidad antes de gastos generales'].includes(String(label).trim());
+  }
   function pdfTable(table){
     if(table.structured){
       const display=(value,column)=>{
@@ -434,16 +439,16 @@
     if(table.headers.length>5 && table.layout!=='matrix'){
       const columns=Array.from({length:Math.min(4,table.headers.length)},()=>[]);
       table.headers.forEach((_,index)=>columns[index%columns.length].push(index));
-      const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field"><small>${esc(table.headers[column])}</small><b>${esc(pdfValue(row[column]??'—',table.headers[column]))}</b></div>`).join('')}</td>`).join('')}</tr>`;
+      const rowHtml=row=>`<tr>${columns.map(indices=>`<td>${indices.map(column=>`<div class="compact-field${isNetUtility(table.headers[column])?' profit-highlight':''}"><small>${esc(table.headers[column])}</small><b>${esc(pdfValue(row[column]??'—',table.headers[column]))}</b></div>`).join('')}</td>`).join('')}</tr>`;
       return `<section><h2>${esc(table.heading)}</h2><table class="compact-detail"><thead><tr>${columns.map(indices=>`<th>${esc(table.headers[indices[0]])} / detalle</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(rowHtml).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
     }
-    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td${cellTone(table.rowTones?.[index]?.[column]) ? ` data-report-tone="${cellTone(table.rowTones[index][column])}"` : ''}>${esc(pdfValue(row[column],table.headers[column]))}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
+    const rowHtml=(row,index)=>`<tr>${table.headers.map((_,column)=>`<td${isNetUtility(table.headers[column]) || (column===1 && isNetUtility(row[0])) ? ' class="profit-highlight"' : ''}${cellTone(table.rowTones?.[index]?.[column]) ? ` data-report-tone="${cellTone(table.rowTones[index][column])}"` : ''}>${esc(pdfValue(row[column],table.headers[column]))}${table.rowNotes?.[index]?.[column]?`<small class="matrix-note">${esc(table.rowNotes[index][column])}</small>`:''}</td>`).join('')}</tr>`;
     return `<section><h2>${esc(table.heading)}</h2><table${table.layout==='matrix'?' class="report-matrix'+(table.numericPresentation==='large-centered'?' report-large-centered':'')+'"':''}><thead><tr>${table.headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${table.rows.map(rowHtml).join('')}</tbody>${totals.length?`<tfoot>${totals.map(row=>rowHtml(row)).join('')}</tfoot>`:''}</table>${notesHtml}</section>`;
   }
   function pdfDocument(report,logoUrl){
     logoUrl=logoUrl||(typeof location==='object'?new URL(LOGO,location.origin).href:LOGO);
     const filterText=report.filters.map(([key,value])=>`<span><b>${esc(key)}:</b> ${esc(value)}</span>`).join('');
-    const metricText=report.metrics.map(([key,value])=>`<div><small>${esc(key)}</small><strong>${esc(pdfValue(value,key))}</strong></div>`).join('');
+    const metricText=report.metrics.map(([key,value])=>`<div${isNetUtility(key)?' class="profit-highlight"':''}><small>${esc(key)}</small><strong>${esc(pdfValue(value,key))}</strong></div>`).join('');
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(report.title)} · ${esc(report.id)}</title><style>
 @page{size:A4 ${report.orientation==='landscape'?'landscape':'portrait'};margin:12mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-height:1.4}h1,h2,h3{break-after:avoid}h1{font-size:23px;margin:5px 0}h2{font-size:14px;margin:0 0 7px}h3{font-size:11px;margin:0 0 6px}
@@ -451,6 +456,7 @@ body{font-family:Arial,sans-serif;color:#0B1E3D;margin:0;font-size:11px;line-hei
 .filters{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}.filters span{background:#EAFBFC;border:1px solid #B7E8EB;border-radius:6px;padding:4px 6px;font-size:9px}
 .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.metrics>div{border:1px solid #D9E3EA;border-top:3px solid #00C4CC;border-radius:7px;padding:7px;break-inside:avoid}.metrics small{display:block;color:#64748B}.metrics strong{display:block;font-size:19px;overflow-wrap:anywhere;margin-top:2px}
 section{margin:13px 0}table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}thead{display:table-header-group}tfoot{display:table-row-group;background:#EAFBFC;font-weight:bold}th{background:#0B1E3D;color:#fff;text-align:left;padding:7px}td{padding:6px;border-bottom:1px solid #DCE5EB;vertical-align:top;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#F5FAFC}tr{break-inside:avoid}.compact-field{margin-bottom:4px}.compact-field:last-child{margin:0}.compact-field small{display:block;color:#64748B;font-size:8px}.compact-field b{display:block;font-size:10px;font-weight:500}
+.profit-highlight{background:#EAFBFC;font-weight:700}.profit-highlight b,.profit-highlight strong{font-weight:700}.compact-field.profit-highlight{padding:5px;border-radius:4px}
 .record{border:1px solid #D9E3EA;border-top:2px solid #00C4CC;border-radius:7px;padding:10px;margin:9px 0;break-inside:avoid}.record.splittable{break-inside:auto}.record dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}.record dl>div{break-inside:avoid}.record dt{font-size:9px;color:#64748B}.record dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
 ${report.scoped?'tfoot{display:table-row-group}':''}
 .notes{border-left:3px solid #00C4CC;background:#F5FAFC;padding:7px 10px;font-size:10px;break-inside:avoid}.notes p{margin:3px 0}.table-notes{font-size:9px;color:#526075}.table-notes p{margin:4px 0;break-inside:avoid}.closing{break-inside:avoid;margin-top:13px;font-size:9px;color:#526075;border-top:1px solid #CAD7DF;padding-top:7px}.closing p{margin:3px 0}.tools{position:fixed;right:14px;bottom:14px}.tools button{background:#00C4CC;color:#0B1E3D;border:0;border-radius:10px;padding:12px 18px;font-weight:800}.report-matrix th:first-child,.report-matrix td:first-child{width:20%}.report-matrix td{text-align:right;font-variant-numeric:tabular-nums}.report-matrix td:first-child{text-align:left;font-weight:bold}.matrix-note{display:block;margin-top:4px;color:#526075;font-size:8px;font-weight:normal}@media screen{body{max-width:${report.orientation==='landscape'?'273':'186'}mm;margin:20px auto;padding:12px}}@media print{.tools{display:none}}

@@ -19,7 +19,7 @@ dialog.kora-date-dialog { width: min(360px, calc(100vw - 24px)); max-height: cal
 .kora-calendar-nav button { font-size: 22px; min-height: 32px; }
 .kora-date-dialog button:hover:not(:disabled) { background: #eafbfc; border-color: #00c4cc; }
 .kora-date-dialog table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 2px; margin: 0; }
-body dialog.kora-date-dialog table thead th { padding: 4px 0; position: static; color: #64748b; background: #fff; font: 600 12px/1.4 'DM Sans', sans-serif; text-align: center; }
+body dialog.kora-date-dialog table thead th[scope="col"] { padding: 4px 0; position: static; color: #64748b; background: #fff; font: 600 12px/1.4 'DM Sans', sans-serif; text-align: center !important; vertical-align: middle; }
 body dialog.kora-date-dialog table tbody td { padding: 0; border: 0; text-align: center; background: #fff; }
 .kora-date-dialog td button { width: 100%; min-height: 34px; font-variant-numeric: tabular-nums; }
 .kora-date-dialog td[aria-selected="true"] button { color: #fff; background: #0b1e3d; }

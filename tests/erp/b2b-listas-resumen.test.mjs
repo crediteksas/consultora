@@ -87,7 +87,7 @@ test('vista: escapa proveedores, muestra estado y abre las listas guardadas con 
  assert.equal(control.refresh(),control.ready,'No se duplican consultas mientras la lectura está en curso');
  await control.ready;
  const html=container.querySelector('[data-summary-results]').innerHTML;
- assert.doesNotMatch(html,/<img/);assert.match(html,/&lt;img/);assert.match(html,/<span class="badge">Publicada<\/span>/);assert.match(html,/Revisar dudas/);assert.match(html,/Ver lista/);assert.match(html,/Ver excluidos/);
+ assert.doesNotMatch(html,/<img/);assert.match(html,/&lt;img/);assert.match(html,/<span class="badge">Publicada anteriormente<\/span>/);assert.match(html,/Revisar dudas/);assert.match(html,/Ver lista/);assert.match(html,/Ver excluidos/);
  assert.match(html,/<th>Sin dudas<\/th>/);assert.match(html,/data-label="Sin dudas">1/);assert.match(container.innerHTML,/>Cargar lista<\/button>/);
  assert.equal(loaded[0].pendingIncluded,1);assert.equal(loaded[0].excluded,1);assert.equal(loaded[0].totalDrafts,1);
  for(const mode of ['pending','all','excluded'])container.querySelector('[data-summary-results]').onclick({target:{closest:()=>({dataset:{summaryOpen:id,summaryMode:mode}})}});

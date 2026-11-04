@@ -165,6 +165,8 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
  const browser=await engine.launch(name==='chromium'?{channel:'chrome',headless:true}:{headless:true});
  try{
   const {page,errors}=await setup(browser);await page.getByRole('heading',{name:'Presupuesto de Retail',exact:true}).waitFor();
+  await page.addStyleTag({url:'/design-system/components/kora-responsive.css'});
+  await page.addScriptTag({url:'/creditek/erp/kora-responsive.js'});
   await page.evaluate(()=>{
    document.body.classList.add('kora-product-page');
    const data=window.__fixture.data;data.ventas.find(s=>s.id==='sale1').total='33876543.25';

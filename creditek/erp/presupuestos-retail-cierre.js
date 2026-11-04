@@ -216,7 +216,7 @@
       route: '/creditek/erp/presupuestos.html#informe-puntos-venta', scope: { business: 'retail', label: `Retail · ${tienda.nombre}` },
       filters: [['Negocio', 'Retail'], ['Punto de venta', `${tienda.nombre} · ${tienda.codigo}`], ['Mes', p.mes], ['Desde', p.inicio], ['Corte de resultados', p.corte], ['Estado del mes', p.cerrado ? 'Mes transcurrido completo' : 'Mes en curso'], ['Comparativo interanual', `${p.mes.slice(5)}/${anioAnterior} · histórico mensual`]],
       tables: [
-        { heading: 'Presupuesto y crecimiento', layout: 'matrix', numericPresentation: 'large-centered', pdfColumnGroups: [[0, 1, 2, 3, 4], [0, 5, 6, 7]], headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
+        { heading: 'Presupuesto y crecimiento', layout: 'matrix', numericPresentation: 'large-centered', headers: ['Categoría', anteriorLabel, 'Presupuesto', 'Realizado', 'Diferencia vs. meta', 'Cumplimiento', 'Variación interanual', 'Crecimiento interanual'], rows: categorias.map(values),
           columnTypes: ['text', 'number', 'number', 'number', 'number', 'percentage', 'number', 'percentage'], rowTypes: categorias.map(rowTypes),
           rowTones: categorias.map(c => { const tonos = tonosCategoria(c); return ['', '', '', '', '', tonos.cumplimiento, '', tonos.crecimiento]; }),
           rowNotes: categorias.map(c => ['', '', '', '', '', c.estado, '', c.estadoCrecimiento || 'Sin histórico comparable']) },

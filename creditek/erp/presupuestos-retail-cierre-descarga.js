@@ -36,8 +36,7 @@
     const M = 12, W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), width = W - 2 * M, bottom = H - 21;
     const table = report.tables[0];
     const groups = [
-      { title: table.heading, columns: [0, 1, 2, 3, 4], widths: [38, 37, 37, 37, 37] },
-      { title: 'Cumplimiento y comparación interanual', columns: [0, 5, 6, 7], widths: [38, 49, 49, 50] },
+      { title: table.heading, columns: [0, 1, 2, 3, 4, 5, 6, 7], widths: [26, 24, 24, 24, 24, 21, 22, 21] },
     ];
     let y = M;
     const font = (size, bold = false, color = '#0B1E3D') => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(color); };
@@ -60,10 +59,10 @@
     function ensure(height) { if (y + height > bottom) nextPage(); }
     function tableHeader(group) {
       const { columns, widths } = group;
-      font(8.3, true, '#FFFFFF'); const labels = columns.map((column,i) => lines(table.headers[column], widths[i] - 5));
-      const h = Math.max(11, ...labels.map(a => a.length * lh(8.3) + 4)); ensure(h + 18);
+      font(7.2, true, '#FFFFFF'); const labels = columns.map((column,i) => lines(table.headers[column], widths[i] - 3));
+      const h = Math.max(13, ...labels.map(a => a.length * lh(7.2) + 4)); ensure(h + 18);
       let x = M;
-      labels.forEach((a,i) => { doc.setFillColor('#0B1E3D'); doc.rect(x,y,widths[i],h,'F'); font(8.3,true,'#FFFFFF'); doc.text(a,i ? x+widths[i]/2 : x+3,y+(h-a.length*lh(8.3))/2+3,{align:i?'center':'left',lineHeightFactor:1.2}); x += widths[i]; });
+      labels.forEach((a,i) => { doc.setFillColor('#0B1E3D'); doc.rect(x,y,widths[i],h,'F'); font(7.2,true,'#FFFFFF'); doc.text(a,x+widths[i]/2,y+(h-a.length*lh(7.2))/2+3,{align:'center',lineHeightFactor:1.2}); x += widths[i]; });
       y += h;
     }
     heading(true);
@@ -71,7 +70,7 @@
       const { columns, widths } = group;
       font(11,true);ensure(25);doc.text(text(group.title),M,y);y+=5;tableHeader(group);
       table.rows.forEach((row,index) => {
-        const cells = columns.map((col,i) => {const size=col?11:10.5;font(size,col===0);const valueLines=lines(row[col],widths[i]-6);font(7.5);const note=table.rowNotes?.[index]?.[col];const noteLines=note?lines(note,widths[i]-6):[];return {valueLines,noteLines,size,height:valueLines.length*lh(size)+noteLines.length*lh(7.5)+(noteLines.length?1:0)+4};});
+        const cells = columns.map((col,i) => {const size=col?8:8;font(size,true);const valueLines=lines(row[col],widths[i]-2);font(6.5);const note=table.rowNotes?.[index]?.[col];const noteLines=note?lines(note,widths[i]-2):[];return {valueLines,noteLines,size,height:valueLines.length*lh(size)+noteLines.length*lh(6.5)+(noteLines.length?1:0)+4};});
         const h=Math.max(15,...cells.map(c=>c.height));if(h>bottom-45)throw new Error('Una fila es demasiado extensa para el PDF.');
         if(y+h>bottom){nextPage();tableHeader(group);if(y+h>bottom)throw new Error('Una fila es demasiado extensa para este encabezado.');}
         let x=M;
@@ -79,9 +78,9 @@
           const col=columns[i],key=table.rowTones?.[index]?.[col],tone=typeof key==='string'&&Object.prototype.hasOwnProperty.call(colors,key)?colors[key]:null;
           const bg=tone?'#'+tone.background:col===0?'#F1F5F9':col===3?'#EFFAFB':index%2?'#F5FAFC':'#FFFFFF',fg=tone?'#'+tone.foreground:'#0B1E3D';
           doc.setFillColor(bg);doc.setDrawColor('#DCE5EB');doc.setLineWidth(.12);doc.rect(x,y,widths[i],h,'FD');
-          const content=c.height-4,base=y+(h-content)/2+c.size*.352778*.8,tx=col?x+widths[i]/2:x+3;
-          font(c.size,true,fg);doc.text(c.valueLines,tx,base,{align:col?'center':'left',lineHeightFactor:1.2});
-          if(c.noteLines.length){font(7.5,false,tone?fg:'#526075');doc.text(c.noteLines,tx,base+c.valueLines.length*lh(c.size)+1,{align:col?'center':'left',lineHeightFactor:1.2});}
+          const content=c.height-4,base=y+(h-content)/2+c.size*.352778*.8,tx=x+widths[i]/2;
+          font(c.size,true,fg);doc.text(c.valueLines,tx,base,{align:'center',lineHeightFactor:1.2});
+          if(c.noteLines.length){font(6.5,false,tone?fg:'#526075');doc.text(c.noteLines,tx,base+c.valueLines.length*lh(c.size)+1,{align:'center',lineHeightFactor:1.2});}
           x+=widths[i];
         });y+=h;
       });

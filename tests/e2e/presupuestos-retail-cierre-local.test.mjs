@@ -53,14 +53,14 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   await popup.waitForFunction(()=>document.querySelector('.brand img')?.naturalWidth>0);
   assert.match(await popup.locator('body').innerText(),/KORA-REP-|Trazabilidad KORA/);assert.match(await popup.locator('body').innerText(),/901.259.859-0/);
   assert.match(await popup.locator('body').innerText(),/31\.008/);assert.match(await popup.locator('body').innerText(),/1\.201/);
-  assert.equal(await popup.locator('table').count(),2);assert.equal(await popup.locator('table thead th').count(),9);assert.equal(await popup.locator('tbody tr').count(),8);assert.equal((await popup.locator('tbody').allInnerTexts()).join(' ').match(/1\.201/g).length,1);
+  assert.equal(await popup.locator('table').count(),1);assert.equal(await popup.locator('table thead th').count(),8);assert.equal(await popup.locator('tbody tr').count(),4);assert.equal((await popup.locator('tbody').innerText()).match(/1\.201/g).length,1);
   assert.match(await popup.locator('style').innerText(),/@page\{size:A4 portrait/);
   assert.doesNotMatch(await popup.locator('body').innerText(),/Punto Sur|8\.888/);assert.equal(await popup.evaluate(()=>window.opener),null);
   if(qa&&name==='chromium'){
    await mkdir(qa,{recursive:true});await popup.pdf({path:resolve(qa,'cierre-punto-norte-octubre-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});
    await popup.screenshot({path:resolve(qa,'pdf-preview.png'),fullPage:true});
   }
-  assert.equal(await popup.locator('tbody tr').first().locator('td').nth(3).evaluate(c=>getComputedStyle(c).fontSize),'14px');
+  assert.equal(await popup.locator('tbody tr').first().locator('td').nth(3).evaluate(c=>getComputedStyle(c).fontSize),'10px');
   assert.equal(await popup.locator('tbody tr').first().locator('td').nth(3).evaluate(c=>getComputedStyle(c).textAlign),'center');
   const pdfColors=await popup.locator('.report-matrix tbody tr:first-child td[data-report-tone]').evaluateAll(cells=>cells.map(c=>getComputedStyle(c).backgroundColor));
   assert.deepEqual(pdfColors,['rgb(254, 226, 226)','rgb(220, 252, 231)']);
@@ -98,7 +98,7 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   await colorsPdf.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
   const tonesPdf=await colorsPdf.locator('.report-matrix tbody tr:first-child td[data-report-tone]').evaluateAll(cells=>cells.map(c=>({tone:c.getAttribute('data-report-tone'),background:getComputedStyle(c).backgroundColor})));
   assert.deepEqual(tonesPdf,[{tone:'positive',background:'rgb(220, 252, 231)'},{tone:'steady',background:'rgb(254, 243, 199)'}]);
-  assert.equal(await colorsPdf.locator('.report-matrix').nth(1).locator('tbody tr').nth(3).locator('td[data-report-tone="neutral"]').count(),1);
+  assert.equal(await colorsPdf.locator('.report-matrix').nth(0).locator('tbody tr').nth(3).locator('td[data-report-tone="neutral"]').count(),1);
   if(qa&&name==='chromium'){await colorsPdf.pdf({path:resolve(qa,'colores-cuatro-tonos-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});}
   await colorsPdf.close();
   const [colorsDownload]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
@@ -114,8 +114,8 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('Cierre
   assert.equal(await first.locator('[data-cierre-categoria="accesorios"] td').nth(4).getAttribute('data-cierre-tono'),'positive');
   const [middlePdf]=await Promise.all([page.waitForEvent('popup'),first.getByRole('button',{name:'PDF · Punto Norte',exact:true}).click()]);
   await middlePdf.getByRole('heading',{name:'Cierre mensual de presupuesto · Punto Norte',exact:true}).waitFor();
-  assert.equal(await middlePdf.locator('.report-matrix').nth(1).locator('tbody tr').first().locator('td').nth(1).getAttribute('data-report-tone'),'steady');
-  assert.equal(await middlePdf.locator('.report-matrix').nth(1).locator('tbody tr').first().locator('td').nth(1).evaluate(c=>getComputedStyle(c).backgroundColor),'rgb(254, 243, 199)');
+  assert.equal(await middlePdf.locator('.report-matrix').nth(0).locator('tbody tr').first().locator('td').nth(5).getAttribute('data-report-tone'),'steady');
+  assert.equal(await middlePdf.locator('.report-matrix').nth(0).locator('tbody tr').first().locator('td').nth(5).evaluate(c=>getComputedStyle(c).backgroundColor),'rgb(254, 243, 199)');
   if(qa&&name==='chromium')await middlePdf.pdf({path:resolve(qa,'cumplimiento-90-ficticio.pdf'),preferCSSPageSize:true,printBackground:true});await middlePdf.close();
   const [middleDownload]=await Promise.all([page.waitForEvent('download'),first.getByRole('button',{name:'Excel · Punto Norte',exact:true}).click()]);
   const middleBook=XLSX.read(await readFile(await middleDownload.path()),{type:'buffer',cellStyles:true,cellNF:true}),middleSheet=middleBook.Sheets[middleBook.SheetNames[1]];
@@ -137,6 +137,7 @@ for(const [name,engine]of [['chromium',chromium],['webkit',webkit]])test('ZIP PD
  const browser=await engine.launch(name==='chromium'?{channel:'chrome',headless:true}:{headless:true});
  try{
   const {page,errors}=await setup(browser);await page.getByRole('heading',{name:'Presupuesto de Retail',exact:true}).waitFor();
+  await page.evaluate(()=>{window.__fixture.data.ventas[0].total='12296000';window.__fixture.data.presupuestos.filter(r=>r.tienda_codigo==='CK-01').forEach(r=>r.meta_venta_total=470623.23);window.__fixture.data.historico_mensual[0].venta_total=12577000;});
   await page.locator('#verMes').fill('2026-10');await page.locator('#verMes').dispatchEvent('change');await page.getByRole('button',{name:'Entrega de informe a puntos de venta',exact:true}).click();await page.locator('#cierreTienda').selectOption('CK-01');
   const zipButton=page.getByRole('button',{name:'Descargar todos los PDF (ZIP)',exact:true});let downloads=0;page.on('download',()=>downloads++);
   const [zipDownload]=await Promise.all([page.waitForEvent('download'),zipButton.click()]);await page.getByText('ZIP preparado con 2 PDF, uno por punto de venta de 2026-10. Revisa Descargas en tu navegador.',{exact:true}).waitFor();

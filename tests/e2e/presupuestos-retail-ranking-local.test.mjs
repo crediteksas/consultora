@@ -23,6 +23,7 @@ for(const [name,engine]of [['Chromium',chromium],['WebKit',webkit]])test('Rankin
   assert.equal(await page.getByRole('heading',{name:'Ranking de cumplimiento y crecimiento',exact:true}).count(),1);
   // El id real es el que define la página integrada; las reglas CSS se aplican también en el ensayo.
   await page.locator('#ranking').evaluate(e=>e.id='rankingPresupuesto');
+  assert.ok(await page.locator('#rankingPresupuesto table :is(th,td)').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).textAlign==='center')),'Los títulos y resultados están centrados.');
   assert.equal(await page.getByRole('tab').count(),4);assert.equal(await page.locator('tbody tr').count(),4);
   assert.equal(await page.getByRole('columnheader',{name:'Estado',exact:true}).count(),0);
   assert.equal(await page.getByRole('columnheader',{name:'Comparativo',exact:true}).count(),0);

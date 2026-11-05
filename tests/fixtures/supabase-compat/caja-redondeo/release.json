@@ -3,7 +3,7 @@
   "project": "kora",
   "scope": "Caja rounding permission delta; reduced isolated cash fixture, not full RLS or HTTP certification.",
   "migration_sha256": {
-    "supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql": "c24a7dd5e738634eff180db9009c99d8344060d0deb2f412dc8210b58ce5d370"
+    "supabase/migrations/20261105180752_caja_arqueo_redondeo_pesos.sql": "c24a7dd5e738634eff180db9009c99d8344060d0deb2f412dc8210b58ce5d370"
   },
   "isolation_tests": [
     {

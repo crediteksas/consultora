@@ -3,7 +3,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 export const folder='tests/fixtures/supabase-compat/caja-redondeo';
-export const migration='supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql';
+export const migration='supabase/migrations/20261105180752_caja_arqueo_redondeo_pesos.sql';
 export const testPath='tests/security/supabase-compatibility-caja-redondeo.test.mjs';
 const read=p=>readFileSync(p,'utf8'),hash=s=>createHash('sha256').update(s).digest('hex');
 export async function capture(scenario){

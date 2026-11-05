@@ -39,7 +39,7 @@ before(async()=>{
  await db.exec(await readFile(new URL('../../supabase/migrations/20260920181612_caja_corte_arqueo_apertura.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260921231517_caja_cierre_manual_y_corte_automatico.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260926221259_caja_primera_apertura_sin_doble_descuento.sql',import.meta.url),'utf8'));
- await db.exec(await readFile(new URL('../../supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../supabase/migrations/20261105180752_caja_arqueo_redondeo_pesos.sql',import.meta.url),'utf8'));
  const d=(await query("select (now() at time zone 'America/Bogota')::date::text hoy, ((now() at time zone 'America/Bogota')::date-1)::text ayer, ((now() at time zone 'America/Bogota')::date-2)::text antes, ((now() at time zone 'America/Bogota')::date-3)::text ancla")).rows[0];
  ({hoy,ayer,antes,ancla}=d);
 });

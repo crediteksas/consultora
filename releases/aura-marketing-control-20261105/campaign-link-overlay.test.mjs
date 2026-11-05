@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{readFile}from'node:fs/promises';import{createRequire}from'node:module';
+const require=createRequire(process.env.MARKETING_PACKAGE_JSON || new URL('../../package.json',import.meta.url));const{Miniflare}=require('miniflare');
+test('real HTMLRewriter inserts one link while preserving fictional campaign controls',async()=>{
+const overlay=await readFile('campaign-link-overlay.mjs','utf8');
+const script=overlay+`\nconst legacy={fetch(request){return new Response('<html><div class="header-right"><button>Actualizar</button></div><main>Fictional campaigns</main></html>',{headers:{'content-type':'text/html','etag':'old'}})}};export default campaignLinkOverlay(legacy);`;
+const mf=new Miniflare({modules:true,script,compatibilityDate:'2026-07-23'});try{const response=await mf.dispatchFetch('https://fixture.invalid/creditek/agentes/agente3-meta-ads.html');const html=await response.text();assert.equal((html.match(/Control de resultados/g)||[]).length,1);assert.ok(html.includes('<button>Actualizar</button>'));assert.ok(html.includes('Fictional campaigns'));assert.equal(response.headers.get('etag'),null);assert.equal(response.headers.get('cache-control'),'no-store');
+for(const [path,method]of [['/creditek/agentes/campaign-thumbnails.js','GET'],['/creditek/agentes/agente3-meta-ads.html','POST'],['/creditek/agentes/agente3-meta-ads.html','HEAD']]){const r=await mf.dispatchFetch('https://fixture.invalid'+path,{method});assert.ok(!(await r.text()).includes('Control de resultados'));assert.equal(r.headers.get('etag'),'old');}}finally{await mf.dispose();}
+});

@@ -1,0 +1,23 @@
+{
+  "name": "creditek-aura-shell",
+  "main": "../package/creditek-aura-shell.mjs",
+  "compatibility_date": "2026-07-23",
+  "compatibility_flags": [],
+  "no_bundle": true,
+  "unsafe": {
+    "metadata": {
+      "placement": {},
+      "compatibility_date": "2026-07-23",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "annotations": {
+        "workers/message": "Refresh the active Sofia conversation after existing polling; preserve reply drafts, details and reading position",
+        "workers/triggered_by": "upload"
+      },
+      "keep_bindings": []
+    }
+  }
+}

@@ -1,0 +1,14 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {metric,normalizeMetrics,comparison,normalizeDashboard,loadDashboard} from './marketing-metrics.mjs';
+test('missing, malformed, negative are unavailable',()=>{for(const v of [null,undefined,'',false,{},[],NaN,Infinity,-1,'abc'])assert.equal(metric(v),null)});
+test('observed zero and decimal money preserved',()=>{assert.equal(metric('0'),0);assert.equal(metric('123.45'),123.45)});
+test('outcomes remain separate even when conversion zero',()=>{const m=normalizeMetrics({spend:120,conversations:10,leads:5,conversions:0});assert.equal(m.combinedResults,0);assert.equal(m.costConversation,12);assert.equal(m.costLead,24);assert.equal('costConversion' in m,false)});
+test('no revenue or ROAS invented',()=>{const m=normalizeMetrics({spend:100,leads:9});assert.equal('roas' in m,false);assert.equal('revenue' in m,false)});
+test('zero spend with observed leads is zero cost',()=>assert.equal(normalizeMetrics({spend:0,leads:5}).costLead,0));
+test('unknown denominator or spend never gives zero cost',()=>{assert.equal(normalizeMetrics({spend:10}).costLead,null);assert.equal(normalizeMetrics({leads:5}).costLead,null)});
+test('no prior range means no comparison',()=>assert.equal(comparison(5,null).state,'unavailable'));
+test('zero base never infinite growth',()=>{assert.equal(comparison(3,0).percent,null);assert.equal(comparison(0,0).state,'unchanged')});
+test('valid comparison',()=>assert.equal(comparison(120,100).percent,20));
+test('invalid payload rejected',()=>{for(const x of [{},null,{ok:true},{ok:true,metrics:[]}])assert.throws(()=>normalizeDashboard(x))});
+test('session invalid sends nothing',async()=>{let calls=0;for(const token of ['',{},'bad token'])await assert.rejects(loadDashboard({token,fetchImpl:async()=>{calls++}}));assert.equal(calls,0)});
+test('read only authorized endpoint; no silent retry',async()=>{let calls=0;await assert.rejects(loadDashboard({token:'fictional-token',fetchImpl:async(url,options)=>{calls++;assert.ok(url.endsWith('period=7'));assert.equal(options.method,undefined);assert.equal(options.headers.Authorization,'Bearer fictional-token');return {ok:false}}}));assert.equal(calls,1)});

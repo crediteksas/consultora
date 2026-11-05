@@ -1,0 +1,74 @@
+[
+  {
+    "worker": "creditek-aura-shell",
+    "version": "f9a32bdc-926e-45cb-a39f-e8541dab593a",
+    "modules": [
+      {
+        "name": "07f587f94f163f8da5d7b52258e477f142f99052-navigation.css.txt",
+        "type": "text/plain",
+        "sha256": "593c26323272a618f0ddc9cb143136d41a8b1d250206afa8ece7ecaa8c28842d"
+      },
+      {
+        "name": "4faa85bcc6ea69ce8fa4a5e6861e171e48dccd3f-navigation.js.txt",
+        "type": "text/plain",
+        "sha256": "1df482d91cecba9362396f466f987cbb40a13273ab5eab00014071ba42e34113"
+      },
+      {
+        "name": "chat-fit.mjs",
+        "type": "application/javascript+module",
+        "sha256": "6b8a1dcd6dd0f6c071ea4c346d85d6877d145b210a25dce911a5ffd0f5789490"
+      },
+      {
+        "name": "live-chat-ui.mjs",
+        "type": "application/javascript+module",
+        "sha256": "fe4b17682079ae340ec3bd4d64b2731f027da7ded2b1e4ea2642d50a67bb8d10"
+      },
+      {
+        "name": "quality-ui.mjs",
+        "type": "application/javascript+module",
+        "sha256": "a5b6ce79fd893e6d84773f1728ed9c7fde088064e22bd2c664daefccf067f864"
+      },
+      {
+        "name": "entry.js",
+        "type": "application/javascript+module",
+        "sha256": "1d861112a997fa6dd1a92d063fdf58acad671909a983706cba3f870d9a7aa991"
+      },
+      {
+        "name": "intervention-ui.mjs",
+        "type": "application/javascript+module",
+        "sha256": "11b4f0d96514dcd475fcff230a4a426de7a31d541dfd539db272c69a7ac04923"
+      },
+      {
+        "name": "sofia-ui.mjs",
+        "type": "application/javascript+module",
+        "sha256": "b3328fc1e61cfd2e573c89b39e5c7da3c88466a30ce716dd5d85ea4d06c980b1"
+      },
+      {
+        "name": "visibility-ui.mjs",
+        "type": "application/javascript+module",
+        "sha256": "49a396408a81736a4553f6c2cc45c37f9a793e66668ff2abd240dcc725a47f81"
+      }
+    ]
+  },
+  {
+    "worker": "aura-campaign-view",
+    "version": "7996add7-693d-4542-9546-469711795f16",
+    "modules": [
+      {
+        "name": "5f53f1b4b4cbaf2cd68ec34382764f0a783ffe64-5f53f1b4b4cbaf2cd68ec34382764f0a783ffe64-campaign-thumbnails.js",
+        "type": "text/plain",
+        "sha256": "7620ac01b22b7b27deb543827f66b73970cdccc3466f8cdd128e122582e1f1c7"
+      },
+      {
+        "name": "d5eac22d2e690ddd73cb2a154e52cd1d9981bc94-f16d4577704ffc1765f2b8ddce7a80a5aa088c79-agente3-meta-ads.html",
+        "type": "text/plain",
+        "sha256": "7cd7a26bbaee71f4d69ebeb5795a012baa0c79d839cf8979708560813a687836"
+      },
+      {
+        "name": "campaign-view.js",
+        "type": "application/javascript+module",
+        "sha256": "b547b3319a428c5ff062e6f8a38a512078d477d9dd00e08b8e14eee66c8f8356"
+      }
+    ]
+  }
+]

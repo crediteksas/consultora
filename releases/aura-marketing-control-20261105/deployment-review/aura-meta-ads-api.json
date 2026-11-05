@@ -1,0 +1,28 @@
+{
+  "name": "aura-meta-ads-api",
+  "main": "../package/worker.mjs",
+  "compatibility_date": "2026-08-02",
+  "compatibility_flags": [],
+  "no_bundle": true,
+  "unsafe": {
+    "metadata": {
+      "placement": {},
+      "compatibility_date": "2026-08-02",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "annotations": {
+        "workers/message": "Reviewed organic calendar release 67b7aca; automation disabled; preserve existing ads routes",
+        "workers/triggered_by": "upload"
+      },
+      "keep_bindings": [
+        "plain_text",
+        "secret_text",
+        "durable_object_namespace",
+        "r2_bucket"
+      ]
+    }
+  }
+}

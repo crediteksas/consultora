@@ -1,0 +1,53 @@
+window.installAuraAutoNavigation = function (applySidebar) {
+  const app = document.getElementById('app'), sidebar = app.querySelector('.sidebar');
+  if (sidebar.dataset.autoNavigation) return;
+  sidebar.dataset.autoNavigation = 'true';
+  let peekTimer;
+  const close = () => {
+    clearTimeout(peekTimer);
+    app.classList.remove('sidebar-peek');
+    if (!app.classList.contains('sidebar-collapsed')) applySidebar(true);
+    const toggle = document.getElementById('sidebar-toggle');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Expandir barra lateral');
+  };
+  document.getElementById('sidebar-toggle').onclick = () => {
+    const collapsed = app.classList.contains('sidebar-collapsed');
+    app.classList.remove('sidebar-peek');
+    applySidebar(!collapsed, true);
+  };
+  const peek = () => {
+    if (app.classList.contains('sidebar-collapsed')) app.classList.add('sidebar-peek');
+    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', 'true');
+    document.getElementById('sidebar-toggle').setAttribute('aria-label', 'Replegar barra lateral');
+  };
+  sidebar.addEventListener('pointerenter', event => { if (event.pointerType === 'mouse') { clearTimeout(peekTimer); peekTimer = setTimeout(peek, 150); } });
+  sidebar.addEventListener('pointerdown', () => clearTimeout(peekTimer));
+  sidebar.addEventListener('pointerleave', close);
+  sidebar.addEventListener('focusin', event => { if (event.target.id !== 'sidebar-toggle' && event.target.matches(':focus-visible')) peek(); });
+  sidebar.addEventListener('focusout', event => { if (!sidebar.contains(event.relatedTarget)) close(); });
+  sidebar.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
+  document.addEventListener('click', event => { if (!event.composedPath().includes(sidebar)) close(); });
+  const registration = sidebar.querySelector('[data-aura-app="registro_links"]');
+  const nova = sidebar.querySelector('a[href="/creditek/agentes/nova-supervision.html"]');
+  if (registration && nova) nova.after(registration);
+  sidebar.querySelectorAll('.sidebar-section').forEach((heading, index) => {
+    const items = []; let next = heading.nextElementSibling;
+    while (next?.classList.contains('nav-item')) { items.push(next); next = next.nextElementSibling; }
+    if (!items.length) return;
+    const group = document.createElement('div'); group.className = 'aura-nav-group';
+    const button = document.createElement('div');
+    button.className = 'sidebar-section aura-group-toggle'; button.textContent = heading.textContent;
+    if (heading.dataset.auraApp) button.dataset.auraApp = heading.dataset.auraApp;
+    const content = document.createElement('div'); content.id = `aura-nav-group-${index}`; content.className = 'aura-group-items';
+    heading.before(group); group.append(button, content); items.forEach(item => content.append(item)); heading.remove();
+
+  });
+  sidebar.querySelectorAll('.nav-item').forEach(link => {
+    link.setAttribute('aria-label', link.querySelector('.nav-label')?.textContent || link.textContent.trim()); link.tabIndex = 0;
+    link.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); link.click(); } });
+    link.addEventListener('click', () => {
+      close();
+    });
+  });
+};

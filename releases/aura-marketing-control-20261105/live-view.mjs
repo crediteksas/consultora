@@ -1,0 +1,18 @@
+import {auraAuth} from './aura-auth.mjs';
+import {loadDashboardV2} from './dashboard-client-v2.mjs';
+let generation=0;
+const $=id=>document.getElementById(id);
+function clear(){for(const key of ['spend','conversations','leads','costConversation','costLead'])$(key).textContent='Sin datos';$('campaigns').replaceChildren();$('comparison-note').textContent='Sin comparativo disponible';$('range-note').textContent='';$('last-query').textContent='';$('currency-note').textContent='Moneda pendiente de la cuenta';$('capture-quality').className='badge';}
+function format(value,currency){if(value===null)return'Sin datos';return new Intl.NumberFormat('es-CO',currency?{style:'currency',currency,maximumFractionDigits:0,minimumFractionDigits:0}:{maximumFractionDigits:0}).format(value)}
+function paint(d){for(const k of ['spend','conversations','leads'])$(k).textContent=format(d.metrics[k],k==='spend'?d.currency:null);for(const k of ['costConversation','costLead'])$(k).textContent=format(d.metrics[k],d.currency)+' por '+(k==='costLead'?'lead':'conversación');for(const c of d.campaigns){const tr=document.createElement('tr');for(const text of [c.name,format(c.metrics.spend,d.currency),format(c.metrics.conversations),format(c.metrics.costConversation,d.currency),format(c.metrics.leads),format(c.metrics.costLead,d.currency)]){const td=document.createElement('td');td.textContent=text;tr.append(td)}$('campaigns').append(tr)}
+ $('currency-note').textContent=d.currency+' · valores monetarios sin centavos en pantalla';
+ $('capture-quality').textContent=d.complete?'Captura completa':'Captura incompleta: datos parciales; crecimiento no comparable';$('capture-quality').className=d.complete?'badge good':'badge warn';
+ const range=d.ranges?.current,previous=d.ranges?.previous;
+ $('range-note').textContent=range?`${range.since} a ${range.until} · ${d.timezone} · días completos`:'Periodo no disponible';
+ const c=d.comparisons.spend;const delta=c.state==='comparable'?`${c.percent.toFixed(1)}%`:c.state==='unchanged'?'Sin variación':c.state==='no_base'?'Sin base positiva':c.state==='incomplete'?'No comparable: captura incompleta':'No comparable';
+ $('comparison-note').textContent=`Variación del gasto: ${delta}. ${previous?`Base: ${previous.since} a ${previous.until}.`:''} Un aumento de gasto no implica mejor rendimiento.`;
+ $('last-query').textContent=d.queriedAt?`Consulta al proveedor: ${d.queriedAt}. No representa necesariamente la última actualización de Meta.`:'Fecha de consulta no disponible';}
+async function update(){const own=++generation;clear();$('refresh').disabled=true;$('capture-quality').textContent='Consultando…';try{const token=await auraAuth.token();if(own!==generation)return;const d=await loadDashboardV2({token,period:Number($('period').value)});if(own!==generation)return;paint(d)}catch{if(own!==generation)return;clear();$('capture-quality').textContent='No se pudieron cargar las métricas. Revisa la sesión y vuelve a intentar.';$('capture-quality').className='badge warn'}finally{if(own===generation)$('refresh').disabled=false}}
+$('refresh').addEventListener('click',update);$('period').addEventListener('change',()=>{generation++;clear();$('capture-quality').textContent='Periodo cambiado. Pulsa Actualizar métricas.';$('range-note').textContent='';$('last-query').textContent='';$('refresh').disabled=false});
+for(const b of document.querySelectorAll('[data-tab]'))b.addEventListener('click',()=>{for(const x of document.querySelectorAll('[data-tab]'))x.setAttribute('aria-selected',String(x===b));for(const id of ['results','posts'])$(id).hidden=id!==b.dataset.tab});
+clear();

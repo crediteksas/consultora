@@ -1,0 +1,6 @@
+import{readFile,writeFile,mkdir}from'node:fs/promises';import{createHash}from'node:crypto';import{createRequire}from'node:module';
+const require=createRequire(process.env.MARKETING_PACKAGE_JSON || new URL('../../package.json',import.meta.url));const esbuild=require('esbuild');
+const raw=await readFile('worker-published-source.mjs','utf8'),source=await readFile('handle-source.js','utf8'),candidate=await readFile('handle-candidate.js','utf8');if(raw.split(source).length!==2)throw Error('Published handler changed; stop');
+const assembled="import {readDashboardV2} from './dashboard-service-v2.mjs';\n"+raw.replace(source,candidate);await writeFile('worker-candidate.mjs',assembled);await mkdir('package',{recursive:true});
+await esbuild.build({entryPoints:['worker-candidate.mjs'],outfile:'package/worker.mjs',bundle:true,format:'esm',platform:'neutral',target:'es2022',external:['cloudflare:*'],logLevel:'silent'});
+const sha=s=>createHash('sha256').update(s).digest('hex');await writeFile('package/build.json',JSON.stringify({publishedSource:sha(raw),candidate:sha(assembled),bundle:sha(await readFile('package/worker.mjs')),deployed:false,preservedSourceOutsideHandle:true},null,2));console.log('Worker candidate bundle built; no deployment');

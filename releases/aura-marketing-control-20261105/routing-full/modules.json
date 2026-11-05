@@ -48,7 +48,8 @@
         "type": "application/javascript+module",
         "sha256": "49a396408a81736a4553f6c2cc45c37f9a793e66668ff2abd240dcc725a47f81"
       }
-    ]
+    ],
+    "main_module": "live-chat-ui.mjs"
   },
   {
     "worker": "aura-campaign-view",
@@ -69,6 +70,7 @@
         "type": "application/javascript+module",
         "sha256": "b547b3319a428c5ff062e6f8a38a512078d477d9dd00e08b8e14eee66c8f8356"
       }
-    ]
+    ],
+    "main_module": "campaign-view.js"
   }
 ]

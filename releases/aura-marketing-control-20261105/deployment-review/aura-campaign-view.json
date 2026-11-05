@@ -30,8 +30,7 @@
         }
       },
       "annotations": {
-        "workers/message": "COP display only; commit d12ce4747c827f9df45fca74e9519adba4fa5f9b",
-        "workers/triggered_by": "version_upload"
+        "workers/message": "COP display only; commit d12ce4747c827f9df45fca74e9519adba4fa5f9b"
       },
       "keep_bindings": []
     }

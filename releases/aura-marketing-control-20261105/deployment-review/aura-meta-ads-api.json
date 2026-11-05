@@ -14,8 +14,7 @@
       "tail_consumers": [],
       "logpush": false,
       "annotations": {
-        "workers/message": "Reviewed organic calendar release 67b7aca; automation disabled; preserve existing ads routes",
-        "workers/triggered_by": "upload"
+        "workers/message": "Reviewed organic calendar release 67b7aca; automation disabled; preserve existing ads routes"
       },
       "keep_bindings": [
         "plain_text",

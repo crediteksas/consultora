@@ -1,0 +1,8 @@
+package/
+worker-candidate.mjs
+routed-*.mjs
+!routed-build.test.mjs
+deployment-review/*.multipart
+deployment-review/*dry-run.txt
+deployment-review/payload-verification.json
+deployment-review/routed-build.json

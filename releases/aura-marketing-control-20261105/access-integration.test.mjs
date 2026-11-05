@@ -1,0 +1,17 @@
+import{readFileSync}from'node:fs';import vm from'node:vm';import test from'node:test';import assert from'node:assert/strict';
+const source=readFileSync(new URL('./published-auth-exact.js',import.meta.url),'utf8')+'\n'+readFileSync(new URL('./handle-candidate.js',import.meta.url),'utf8');
+function fixture({active=true,permission=true,rate=true,audit=true,mismatch=false,banned=false,providerError=false}={}){
+ const calls={provider:0,legacy:0,audit:0,rate:0,auth:0};
+ const ctx=vm.createContext({Response,Headers,URL,Date,APP_ID:'meta_ads',ALL_PERMISSIONS:['meta_ads.read'],
+ supabase:async(_env,path)=>{calls.auth++;let body;if(path==='/auth/v1/user')body={id:'fictional-id',email:'fictional@example.invalid',banned_until:banned?'2099-01-01':null};else if(path.includes('aura_my_access'))body={user_id:mismatch?'other':'fictional-id',email:'fictional@example.invalid',active,apps:[]};else body={active,permissions:permission?['meta_ads.read']:[],role_id:'fictional.reader'};return{ok:true,json:async()=>body}},
+ reply:(body,status=200)=>Response.json(body,{status}),allowed:async()=>{calls.rate++;return{ok:rate}},audit:async()=>{calls.audit++;return audit},dateRange:()=>({period:7}),
+ dashboard:async()=>{calls.legacy++;return{ok:true,contract:1}},readDashboardV2:async()=>{calls.provider++;if(providerError)throw Error('fictional-secret');return{ok:true,contract:2}}
+ });vm.runInContext(source+';globalThis.handleCandidate=handle',ctx);return{calls,call:(path='?contract=2&period=7',method='GET',auth=true)=>ctx.handleCandidate(new Request('https://fixture.invalid/v1/dashboard'+path,{method,headers:auth?{Authorization:'Bearer fictional-session'}:{}}),{},'https://fictional.invalid')};
+}
+test('published auth rejects absent session before provider',async()=>{const f=fixture();assert.equal((await f.call('', 'GET',false)).status,401);assert.equal(f.calls.auth,0);assert.equal(f.calls.provider,0)});
+test('inactive mismatched banned and no read grant are denied',async()=>{for(const options of[{active:false},{mismatch:true},{banned:true},{permission:false}]){const f=fixture(options);assert.ok([401,403].includes((await f.call()).status));assert.equal(f.calls.provider,0);assert.equal(f.calls.audit,0)}});
+test('rate and audit guards preserved before v2',async()=>{for(const [opts,status]of[[{rate:false},429],[{audit:false},503]]){const f=fixture(opts);assert.equal((await f.call()).status,status);assert.equal(f.calls.provider,0)}});
+test('authorized v2 uses new reader exactly once after audit',async()=>{const f=fixture();const r=await f.call();assert.equal(r.status,200);assert.equal((await r.json()).contract,2);assert.deepEqual(f.calls,{provider:1,legacy:0,audit:1,rate:1,auth:3})});
+test('legacy dashboard remains on original reader',async()=>{const f=fixture();assert.equal((await(await f.call('')).json()).contract,1);assert.equal(f.calls.provider,0);assert.equal(f.calls.legacy,1)});
+test('invalid v2 period contract and method emit no provider request',async()=>{for(const [path,method,status]of[['?contract=2&period=90','GET',400],['?contract=3','GET',400],['?contract=2','POST',405]]){const f=fixture();assert.equal((await f.call(path,method)).status,status);assert.equal(f.calls.provider,0)}});
+test('provider error stays generic',async()=>{const f=fixture({providerError:true});const r=await f.call();assert.equal(r.status,502);assert.equal((await r.text()).includes('fictional-secret'),false)});

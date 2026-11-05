@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{validateRetainedBindings as validate}from'./validate-retained-bindings.mjs';
+test('retention equals independently supplied fictional baseline',()=>{validate({keep_bindings:['fictional-b','fictional-a']},['fictional-a','fictional-b']);for(const value of [undefined,[],['fictional-a'],['fictional-a','fictional-b','extra'],['fictional-a','fictional-a']])assert.throws(()=>validate({keep_bindings:value},['fictional-a','fictional-b']));});
+test('empty bindings permitted only for known empty baseline',()=>{validate({keep_bindings:[]},[]);assert.throws(()=>validate({keep_bindings:[]},undefined));assert.throws(()=>validate({},[]));});

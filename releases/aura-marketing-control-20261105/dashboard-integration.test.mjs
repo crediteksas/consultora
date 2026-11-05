@@ -1,0 +1,10 @@
+import test from'node:test';import assert from'node:assert/strict';import{loadDashboardV2,presentDashboardV2}from'./dashboard-client-v2.mjs';import{handleDashboardV2}from'./dashboard-service-v2.mjs';
+const env={META_AD_ACCOUNT_ID:'act_12345',META_ACCESS_TOKEN:'fictional-secret',META_GRAPH_VERSION:'v25.0'};
+test('client to guarded service to fictional provider roundtrip',async()=>{
+ const provider=async raw=>{const u=new URL(raw);let data;if(u.pathname.endsWith('act_12345'))return{ok:true,json:async()=>({id:'act_12345',currency:'COP',timezone_name:'America/Bogota'})};if(u.pathname.endsWith('/campaigns'))data=[{id:'one',name:'Fictional A'}];else data=[{campaign_id:'one',spend:'100',actions:[{action_type:'lead',value:'2'},{action_type:'offsite_conversion.fb_pixel_lead',value:'2'},{action_type:'onsite_conversion.messaging_conversation_started_7d',value:'4'}]}];return{ok:true,json:async()=>({data})}};
+ let calls=0;const d=await loadDashboardV2({token:'fictional-session',fetchImpl:async(url,opts)=>{calls++;assert.ok(url.includes('contract=2'));return handleDashboardV2(new Request(url,opts),{env,now:new Date('2026-11-05T18:00:00Z'),authenticate:async req=>req.headers.get('Authorization')==='Bearer fictional-session'?{id:'fictional'}:null,canRead:async()=>true,fetchImpl:provider})}});
+ assert.equal(calls,1);assert.equal(d.metrics.leads,2);assert.equal(d.metrics.conversations,4);assert.equal(d.metrics.costLead,50);assert.equal(d.attribution.sales,null);assert.equal(d.currency,'COP');assert.equal(d.comparisons.spend.percent,0);
+});
+test('legacy response refused not silently interpreted',()=>assert.throws(()=>presentDashboardV2({ok:true,metrics:{conversions:10}})));
+test('incomplete data prevents growth comparison',()=>{const d=presentDashboardV2({ok:true,contract:2,mode:'read',source:'meta',currency:'COP',campaigns:[],quality:{complete:false},current:{totals:{spend:10}},previous:{totals:{spend:5}}});assert.equal(d.comparisons.spend.percent,null)});
+test('invalid client session emits no request',async()=>{let calls=0;await assert.rejects(loadDashboardV2({token:'',fetchImpl:()=>{calls++}}));assert.equal(calls,0)});

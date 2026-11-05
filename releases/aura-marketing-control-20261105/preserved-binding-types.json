@@ -1,0 +1,10 @@
+{
+  "aura-meta-ads-api": [
+    "durable_object_namespace",
+    "plain_text",
+    "r2_bucket",
+    "secret_text"
+  ],
+  "creditek-aura-shell": [],
+  "aura-campaign-view": []
+}

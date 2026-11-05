@@ -1,0 +1,27 @@
+import legacy from './entry.js';
+function sofiaVisualOverlay(legacy,css) {
+ return {...legacy,async fetch(request,env,ctx){
+  const path=new URL(request.url).pathname;
+  const target=['/creditek/agentes/creditek-agente-respuestas','/creditek/agentes/creditek-agente-respuestas.html'].includes(path);
+  const response=await legacy.fetch(request,env,ctx);
+  if(!target||request.method!=='GET'||!response.ok||!response.headers.get('content-type')?.includes('text/html'))return response;
+  const headers=new Headers(response.headers);
+  for(const name of ['etag','content-length','last-modified','content-encoding'])headers.delete(name);
+  headers.set('cache-control','no-store');headers.set('x-sofia-visual-release','20261028-1');
+  return new HTMLRewriter()
+   .on('head',{element(e){e.append('<style id="sofia-layout-20261028">'+css+'</style>',{html:true});}})
+   .on('.topbar-left h1',{element(e){e.setInnerContent('<i class="ti ti-message-chatbot" aria-hidden="true"></i> Sofía <span>· Conversaciones</span>',{html:true});}})
+   .transform(new Response(response.body,{status:response.status,statusText:response.statusText,headers}));
+ }};
+}
+
+// Oscar requested disabling the floating dictation feature. Microphone permissions are untouched.
+function withoutAuraDictation(legacy) {
+ const disabled='export function installDictation(){return false;}\nexport function insertTranscript(value,start,end){return {value,cursor:start};}\n';
+ return {...legacy,async fetch(request,env,ctx){
+  if(new URL(request.url).pathname==='/creditek/agentes/aura-dictation.mjs'&&['GET','HEAD'].includes(request.method))return new Response(request.method==='HEAD'?null:disabled,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-store','x-aura-dictation':'disabled','x-content-type-options':'nosniff'}});
+  return legacy.fetch(request,env,ctx);
+ }};
+}
+
+export default withoutAuraDictation(sofiaVisualOverlay(legacy,"/* Scoped to Sofía: keep the AURA shell, brand tokens and operational handlers. */\nbody[data-aura-page=\"sofia\"] { height:100dvh; }\nbody[data-aura-page=\"sofia\"] .topbar {\n  display:grid; grid-template-columns:minmax(0,1fr) auto;\n  grid-template-areas:\"title actions\" \"stats stats\";\n  height:auto !important; min-height:0; max-height:none;\n  gap:14px 20px; padding:16px 20px; overflow:visible; flex-shrink:0;\n}\nbody[data-aura-page=\"sofia\"] .topbar-left { grid-area:title; min-width:0; gap:10px; }\nbody[data-aura-page=\"sofia\"] .topbar-left h1 { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; margin:0; font-size:18px; line-height:1.35; }\nbody[data-aura-page=\"sofia\"] .topbar-left h1 span { font-size:13px; font-weight:500; }\nbody[data-aura-page=\"sofia\"] .live-dot { flex:0 0 8px; width:8px; height:8px; }\nbody[data-aura-page=\"sofia\"] .topbar-actions { grid-area:actions; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; min-width:0; }\nbody[data-aura-page=\"sofia\"] .topbar-actions .btn { min-height:40px; padding:8px 12px; font-size:12px; line-height:1.2; white-space:nowrap; }\nbody[data-aura-page=\"sofia\"] .topbar-stats { grid-area:stats; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); order:initial; width:100%; min-width:0; gap:8px; overflow:visible; padding:0; }\nbody[data-aura-page=\"sofia\"] .top-stat { min-width:0; padding:9px 8px; background:#f7f9fc; border:1px solid var(--border); border-radius:10px; }\nbody[data-aura-page=\"sofia\"] .top-stat-val { font-size:20px; line-height:1.3; }\nbody[data-aura-page=\"sofia\"] .top-stat-label { margin-top:3px; font-size:10px; line-height:1.4; white-space:normal; overflow-wrap:anywhere; }\nbody[data-aura-page=\"sofia\"] .main { min-width:0; min-height:0; }\nbody[data-aura-page=\"sofia\"] .sidebar { width:clamp(290px,28vw,340px); min-width:0; }\nbody[data-aura-page=\"sofia\"] .sidebar-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); flex-wrap:initial; overflow:visible; }\nbody[data-aura-page=\"sofia\"] .sidebar-tab { min-width:0; min-height:40px; padding:8px 3px; font-size:12px; gap:4px; }\nbody[data-aura-page=\"sofia\"] .sidebar-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:12px; }\nbody[data-aura-page=\"sofia\"] .sidebar-filters .search-box { min-width:0; min-height:44px; padding:9px 12px; font-size:14px; }\nbody[data-aura-page=\"sofia\"] .sidebar-filters .filter-sel { min-width:0; min-height:42px; width:100%; max-width:100%; padding:8px 10px; font-size:12px; }\nbody[data-aura-page=\"sofia\"] #filterChannel,\nbody[data-aura-page=\"sofia\"] #filterStatus { grid-column:1/-1; }\nbody[data-aura-page=\"sofia\"] .conv-preview { white-space:normal; line-height:1.4; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }\n@media (max-width:47.999rem) {\n  body[data-aura-page=\"sofia\"] .topbar { grid-template-columns:minmax(0,1fr); grid-template-areas:\"title\" \"actions\" \"stats\"; padding:12px; gap:10px; max-height:42dvh; overflow:auto; }\n  body[data-aura-page=\"sofia\"] .topbar-actions { width:100%; justify-content:flex-start; }\n  body[data-aura-page=\"sofia\"] .topbar-actions .btn { min-height:44px; }\n  body[data-aura-page=\"sofia\"] .topbar-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }\n  body[data-aura-page=\"sofia\"] .top-stat { padding:6px; }\n  body[data-aura-page=\"sofia\"] .top-stat-val { font-size:17px; }\n  body[data-aura-page=\"sofia\"] .sidebar { width:100%; }\n}\n"));

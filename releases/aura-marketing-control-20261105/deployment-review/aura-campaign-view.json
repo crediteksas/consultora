@@ -1,0 +1,39 @@
+{
+  "name": "aura-campaign-view",
+  "main": "../package/aura-campaign-view.mjs",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": [],
+  "no_bundle": true,
+  "unsafe": {
+    "metadata": {
+      "placement": {},
+      "compatibility_date": "2026-09-10",
+      "compatibility_flags": [],
+      "usage_model": "standard",
+      "tags": [],
+      "tail_consumers": [],
+      "logpush": false,
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "redact_query_string": false,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "persist": true,
+          "invocation_logs": true
+        },
+        "traces": {
+          "enabled": false,
+          "persist": true,
+          "head_sampling_rate": 1
+        }
+      },
+      "annotations": {
+        "workers/message": "COP display only; commit d12ce4747c827f9df45fca74e9519adba4fa5f9b",
+        "workers/triggered_by": "version_upload"
+      },
+      "keep_bindings": []
+    }
+  }
+}

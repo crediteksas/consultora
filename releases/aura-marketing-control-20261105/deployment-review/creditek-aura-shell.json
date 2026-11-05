@@ -14,8 +14,7 @@
       "tail_consumers": [],
       "logpush": false,
       "annotations": {
-        "workers/message": "Refresh the active Sofia conversation after existing polling; preserve reply drafts, details and reading position",
-        "workers/triggered_by": "upload"
+        "workers/message": "Refresh the active Sofia conversation after existing polling; preserve reply drafts, details and reading position"
       },
       "keep_bindings": []
     }

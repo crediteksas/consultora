@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   const fechaColombia = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  const pesos = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(n));
+  const pesos = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n));
+  const redondearPesos = n => Number(n)<0 ? -Math.round(-Number(n)) : Math.round(Number(n));
   function elemento(tag, texto, clase) {
     const el = document.createElement(tag);
     if (texto !== undefined) el.textContent = texto;
@@ -54,7 +55,7 @@
           form.style.cssText = 'display:grid;gap:12px;margin-top:14px;max-width:640px';
           const label = elemento('label', 'Efectivo contado físicamente');
           const input = elemento('input');
-          input.type = 'number'; input.min = '0'; input.step = '0.01'; input.required = true;
+          input.type = 'number'; input.min = '0'; input.step = '1'; input.required = true;
           input.style.cssText = 'width:100%;min-height:44px;font-size:18px';
           // Revisión central: se conserva el conteo comunicado por la tienda.
           if (central && estado.corte.efectivo_contado !== null) input.value = estado.corte.efectivo_contado;
@@ -63,7 +64,7 @@
           const nota = elemento('textarea'); nota.rows = 2; nota.style.width = '100%'; notaLabel.append(nota);
           const diferencia = elemento('p', 'Ingresa el conteo, no el saldo esperado.');
           input.addEventListener('input', () => {
-            diferencia.textContent = input.value === '' ? 'Ingresa el conteo, no el saldo esperado.' : `Diferencia: ${pesos(Number(input.value) - Number(estado.resumen.esperado))}`;
+            diferencia.textContent = input.value === '' ? 'Ingresa el conteo, no el saldo esperado.' : `Diferencia: ${pesos(Number(input.value) - redondearPesos(estado.resumen.esperado))}`;
           });
           const guardar = elemento('button', 'Registrar arqueo y validar', 'btn-primary'); guardar.type = 'submit';
           const respuesta = elemento('p'); respuesta.setAttribute('role', 'status'); respuesta.style.overflowWrap = 'anywhere';

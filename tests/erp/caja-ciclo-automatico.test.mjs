@@ -39,6 +39,7 @@ before(async()=>{
  await db.exec(await readFile(new URL('../../supabase/migrations/20260920181612_caja_corte_arqueo_apertura.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260921231517_caja_cierre_manual_y_corte_automatico.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../../supabase/migrations/20260926221259_caja_primera_apertura_sin_doble_descuento.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql',import.meta.url),'utf8'));
  const d=(await query("select (now() at time zone 'America/Bogota')::date::text hoy, ((now() at time zone 'America/Bogota')::date-1)::text ayer, ((now() at time zone 'America/Bogota')::date-2)::text antes, ((now() at time zone 'America/Bogota')::date-3)::text ancla")).rows[0];
  ({hoy,ayer,antes,ancla}=d);
 });
@@ -75,6 +76,25 @@ test('no se salta días sin cierre y el arqueo arrastra el saldo una sola vez',a
  assert.equal((await calcular(hoy)).apertura,350);
  await venta(hoy,10);
  assert.equal((await calcular(hoy)).esperado,360);
+});
+test('redondea al peso sin volver a arrastrar centavos ni alterar el conteo físico',async()=>{
+ await query("update caja_ciclo_config set fecha_inicio=$1",[hoy]); await venta(ayer,0.77); await query("update caja_ciclo_config set fecha_inicio=$1",[ayer]);
+ const cierre=await validar(351);
+ assert.equal(cierre.ok,true); assert.equal(cierre.diferencia,0);
+ assert.equal(cierre.esperado,351); assert.equal(cierre.esperado_sin_redondear,350.77);
+ assert.equal(cierre.ajuste_redondeo,0.23);
+ const guardado=(await query("select efectivo_esperado,efectivo_contado,diferencia from caja_diaria where tienda_codigo='TEST-A' and fecha=$1",[ayer])).rows[0];
+ assert.equal(Number(guardado.efectivo_esperado),350.77); assert.equal(Number(guardado.efectivo_contado),351); assert.equal(Number(guardado.diferencia),0);
+ await venta(hoy,10);
+ assert.equal((await calcular(hoy)).apertura,351); assert.equal((await calcular(hoy)).esperado,361);
+});
+test('redondea medio peso hacia arriba y mantiene las diferencias reales',async()=>{
+ await query("update caja_ciclo_config set fecha_inicio=$1",[hoy]); await venta(ayer,0.50); await query("update caja_ciclo_config set fecha_inicio=$1",[ayer]);
+ const pendiente=await validar(350,'Diferencia de un peso');
+ assert.equal(pendiente.ok,false);assert.equal(pendiente.diferencia,-1);assert.equal(pendiente.esperado,351);
+});
+test('la caja física solo recibe pesos enteros',async()=>{
+ await assert.rejects(validar(350.23,'Conteo'),/pesos enteros/);
 });
 test('un registro abierto previo se completa con el arqueo, no se ignora por conflicto',async()=>{
  await query("insert into caja_diaria(tienda_codigo,fecha,estado) values('TEST-A',$1,'abierta')",[ayer]);

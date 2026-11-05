@@ -18,9 +18,9 @@ try {
   await window.CreditekCajaCiclo.montar({sb:window.sbTest,perfil:{rol:'admin_tienda',tienda_codigo:'TEST'},contenedor:document.getElementById('test')});
  });
  assert.equal(await page.getByLabel('Efectivo contado físicamente').inputValue(),'');
- assert.match(await page.locator('#test').innerText(),/816\.399,77/);
+ assert.match(await page.locator('#test').innerText(),/816\.400/);
  await page.getByLabel('Efectivo contado físicamente').fill('816400');
- assert.match(await page.locator('#test').innerText(),/Diferencia:.*0,23/);
+ assert.match(await page.locator('#test').innerText(),/Diferencia:.*\$\s*0/);
  assert.equal(await page.getByRole('link').getAttribute('href'),'gastos.html?fecha=2026-09-21');
  await page.getByLabel('Efectivo contado físicamente').fill('340000');
  await page.getByLabel('Observación').fill('Conteo verificado, falta revisar');

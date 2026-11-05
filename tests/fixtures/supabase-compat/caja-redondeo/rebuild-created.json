@@ -1,0 +1,8 @@
+[
+  {
+    "schema": "public",
+    "name": "validar_arqueo_caja",
+    "kind": "function",
+    "identity": "p_tienda_codigo text, p_fecha date, p_efectivo_contado numeric, p_idempotency_key uuid, p_nota text, p_autorizar boolean"
+  }
+]

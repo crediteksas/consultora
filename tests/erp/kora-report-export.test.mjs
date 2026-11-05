@@ -237,7 +237,7 @@ test('fábricas COP de pantallas operativas muestran pesos enteros; las fuentes 
 test('el menú carga el exportador nuevo y los módulos monetarios tienen versión explícita',async()=>{
  for(const page of ['cartera-b2b.html','presupuestos.html']){const html=await read('creditek/erp/'+page);assert.match(html,/<script id="koraReportExport" src="kora-report-export\.js\?v=1\.5\.[0-9]+"><\/script>/,page);assert.doesNotMatch(html,/kora-report-export\.js\?v=1\.4\.[0-9]+/,page);}
  const shell=await read('creditek/erp/sidebar.js');assert.match(shell,/kora-report-export\.js\?v=1\.5\.0/);assert.doesNotMatch(shell,/kora-report-export\.js\?v=1\.4\.2/);assert.match(shell,/confirmacion-deuda\.js\?v=1\.0\.1/);
- assert.match(await read('creditek/erp/caja.html'),/src="caja-ciclo-ui\.js\?v=1\.0\.1"/);assert.match(await read('creditek/erp/inventario.html'),/src="inventario-export\.js\?v=1\.0\.1"/);
+ assert.match(await read('creditek/erp/caja.html'),/src="caja-ciclo-ui\.js\?v=1\.0\.2"/);assert.match(await read('creditek/erp/inventario.html'),/src="inventario-export\.js\?v=1\.0\.1"/);
 });
 
 test('las dependencias PDF y ZIP ya versionadas producen archivos reales con datos ficticios',async()=>{

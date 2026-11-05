@@ -276,7 +276,8 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
+function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0); }
+function redondearCaja(n) { return n < 0 ? -Math.round(-n) : Math.round(n); }
 function fmtUtilidad(n) { return n === null ? 'Pendiente de cálculo' : fmtCOP(n); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -526,7 +527,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
           <div class="cierre-box" id="cierreCajaHoy">
             <h3>${fecha === window.CreditekCajaCiclo.fechaColombia() ? 'Cerrar caja de hoy' : 'Completar cierre pendiente'}</h3>
             <p class="meta">Cuenta el dinero físico. KORA comparará ese valor con el efectivo esperado y conservará la trazabilidad del cierre.</p>
-            <div class="campo"><label>Efectivo contado (arqueo físico)</label><input type="number" id="efectivoContado" min="0" step="0.01" placeholder="0"></div>
+            <div class="campo"><label>Efectivo contado (arqueo físico)</label><input type="number" id="efectivoContado" min="0" step="1" placeholder="0"></div>
             <div class="diferencia-preview" id="diferenciaPreview"></div>
             <div class="campo" id="campoNota" style="display:none;"><label>¿Por qué no cuadra?</label><textarea id="notaDiferencia" rows="2"></textarea></div>
             <div class="modal-err" id="cierreErr"></div>
@@ -561,7 +562,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
     const inputContado = document.getElementById('efectivoContado');
     inputContado.addEventListener('input', () => {
       const contado = Number(inputContado.value || 0);
-      const dif = contado - c.esperado;
+      const dif = contado - (fecha >= c.fechaInicioCiclo ? redondearCaja(c.esperado) : c.esperado);
       const prev = document.getElementById('diferenciaPreview');
       prev.textContent = `Diferencia: ${fmtCOP(dif)}`;
       prev.className = 'diferencia-preview ' + (dif === 0 ? 'ok' : 'mal');
@@ -584,9 +585,12 @@ async function cerrarCajaAccion(tienda, fecha, esperado, fechaInicioCiclo) {
   if (document.getElementById('efectivoContado').value === '') {
     err.textContent = 'Ingresa el efectivo contado.'; err.classList.add('show'); return;
   }
+  if (fecha >= fechaInicioCiclo && !Number.isInteger(efectivo)) {
+    err.textContent = 'Ingresa el efectivo contado en pesos enteros.'; err.classList.add('show'); return;
+  }
   const validacion = cajaPiloto.validarCierre({
     efectivoContado: efectivo,
-    efectivoEsperado: esperado,
+    efectivoEsperado: fecha >= fechaInicioCiclo ? redondearCaja(esperado) : esperado,
   });
   if (!validacion.ok) {
     err.textContent = validacion.mensaje; err.classList.add('show'); return;

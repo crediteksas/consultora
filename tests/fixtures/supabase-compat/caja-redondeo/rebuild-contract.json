@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "validar_arqueo_caja",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_tienda_codigo text, p_fecha date, p_efectivo_contado numeric, p_idempotency_key uuid, p_nota text, p_autorizar boolean",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "cbde6e1ba8f62c1f9ab8b64eca1b1336",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-redondeo.test.mjs",
+      "justification": "Existing RPC retains its exact grants and security mode; fixture checks access and cash rounding"
+    }
+  ]
+}

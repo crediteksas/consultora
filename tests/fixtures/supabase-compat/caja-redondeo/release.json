@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Caja rounding permission delta; reduced isolated cash fixture, not full RLS or HTTP certification.",
+  "migration_sha256": {
+    "supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql": "081162e952882294b9b1fa9e6d260760faaf6a22d1c4a6319737169844a3ae76"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-caja-redondeo.test.mjs",
+      "sha256": "3f1a4e235af6e013d1c257405d416e4de2fad2271890bd21ea9ffacf5e81b2b2"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-before.json",
+      "sha256": "cfe86e7a27d2a1d8a678ca9772d8192956c818bbb15854027303a84177ce8a12"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-after.json",
+      "sha256": "98ad5b1397bf7a5a837b67f6a60af34d611d02b8b7937aa852b2f6b32b711172"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-contract.json",
+      "sha256": "92b8e2fe2f2a91f4c8af94719ec0a39c7a4e1cd2c8e3c491e4e8b570b09d6c88"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-created.json",
+      "sha256": "5c131aa7e82397c06f1cbc0ba8b61efc0bb3523766a3ea8915d7af233c8998cd"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-before.json",
+      "sha256": "7e292f706b624d7d42c1c1b0bfdaf279fc3b655ed5787a9c62f0c76d377f45b2"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-after.json",
+      "sha256": "5a246cbb6486c9d479f54432def4326cd51d7ffb60a52dc1ffef752083773255"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-contract.json",
+      "sha256": "92b8e2fe2f2a91f4c8af94719ec0a39c7a4e1cd2c8e3c491e4e8b570b09d6c88"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-created.json",
+      "sha256": "5c131aa7e82397c06f1cbc0ba8b61efc0bb3523766a3ea8915d7af233c8998cd"
+    }
+  }
+}

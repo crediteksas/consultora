@@ -13,11 +13,14 @@ try {
   window.llamadas=[];
   window.sbTest={rpc:async(name,p)=>{
    window.llamadas.push({name,p});
-   return name==='estado_apertura_caja' ? {data:{bloqueada:true,fecha_pendiente:'2026-09-21',resumen:{esperado:350000,gastos_pendientes:0},corte:{estado:'pendiente',efectivo_contado:null}}} : {data:{ok:false,mensaje:'Diferencia registrada. Solicita revisión a Gestión.'}};
+   return name==='estado_apertura_caja' ? {data:{bloqueada:true,fecha_pendiente:'2026-09-21',resumen:{esperado:816399.77,gastos_pendientes:0},corte:{estado:'pendiente',efectivo_contado:null}}} : {data:{ok:false,mensaje:'Diferencia registrada. Solicita revisión a Gestión.'}};
   }};
   await window.CreditekCajaCiclo.montar({sb:window.sbTest,perfil:{rol:'admin_tienda',tienda_codigo:'TEST'},contenedor:document.getElementById('test')});
  });
  assert.equal(await page.getByLabel('Efectivo contado físicamente').inputValue(),'');
+ assert.match(await page.locator('#test').innerText(),/816\.399,77/);
+ await page.getByLabel('Efectivo contado físicamente').fill('816400');
+ assert.match(await page.locator('#test').innerText(),/Diferencia:.*0,23/);
  assert.equal(await page.getByRole('link').getAttribute('href'),'gastos.html?fecha=2026-09-21');
  await page.getByLabel('Efectivo contado físicamente').fill('340000');
  await page.getByLabel('Observación').fill('Conteo verificado, falta revisar');

@@ -218,7 +218,7 @@ tr.fila-abierta { background: #FEF2F2; }
   </div>
 </div>
 
-<script src="caja-ciclo-ui.js?v=1.0.1"></script>
+<script src="caja-ciclo-ui.js?v=1.0.2"></script>
 <script>
 const KORA_ENV = window.__KORA_ENV__;
 const SUPABASE_URL = KORA_ENV.KORA_ERP_SUPABASE_URL;
@@ -276,7 +276,7 @@ function pintarNavUser() {
 
 sb.auth.getSession().then(({ data }) => { if (data.session) entrarApp(data.session.user); });
 
-function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0); }
+function fmtCOP(n) { return n === null ? 'No disponible' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0); }
 function fmtUtilidad(n) { return n === null ? 'Pendiente de cálculo' : fmtCOP(n); }
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';

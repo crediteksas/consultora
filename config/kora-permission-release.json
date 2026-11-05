@@ -74,7 +74,7 @@
     },
     {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/release.json",
-      "sha256": "3ecd5ee652b25a1df6cffb1f1c996985098590d27a27cdcfe0ad94fe5c4de0c3"
+      "sha256": "0c975257938d18c74db745277692f847fc036cf4f3d56e56027988d485dd6cd3"
     }
   ]
 }

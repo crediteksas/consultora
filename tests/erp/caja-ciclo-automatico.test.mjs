@@ -96,6 +96,12 @@ test('redondea medio peso hacia arriba y mantiene las diferencias reales',async(
 test('la caja física solo recibe pesos enteros',async()=>{
  await assert.rejects(validar(350.23,'Conteo'),/pesos enteros/);
 });
+test('un reintento histórico con centavos conserva el resultado original',async()=>{
+ const key=randomUUID();
+ await query("select caja_asegurar_corte('TEST-A',$1)",[ayer]);
+ await query("insert into caja_arqueo_intentos(tienda_codigo,fecha,creado_por,idempotency_key,efectivo_contado,resumen,resultado) values('TEST-A',$1,$2,$3,350.23,'{}','{\"ok\":true,\"historico\":true}')",[ayer,admin,key]);
+ assert.equal((await validar(350.23,null,false,key)).historico,true);
+});
 test('un registro abierto previo se completa con el arqueo, no se ignora por conflicto',async()=>{
  await query("insert into caja_diaria(tienda_codigo,fecha,estado) values('TEST-A',$1,'abierta')",[ayer]);
  assert.equal((await validar(350)).ok,true);

@@ -3,7 +3,7 @@
   "project": "kora",
   "scope": "Caja rounding permission delta; reduced isolated cash fixture, not full RLS or HTTP certification.",
   "migration_sha256": {
-    "supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql": "081162e952882294b9b1fa9e6d260760faaf6a22d1c4a6319737169844a3ae76"
+    "supabase/migrations/20261105174630_caja_arqueo_redondeo_pesos.sql": "c24a7dd5e738634eff180db9009c99d8344060d0deb2f412dc8210b58ce5d370"
   },
   "isolation_tests": [
     {
@@ -19,11 +19,11 @@
     },
     "after": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-after.json",
-      "sha256": "98ad5b1397bf7a5a837b67f6a60af34d611d02b8b7937aa852b2f6b32b711172"
+      "sha256": "bddec16a7b984a9a094f8f65e78ac04d1524f67bc53f8e3e281e2ba867688aea"
     },
     "contract": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-contract.json",
-      "sha256": "92b8e2fe2f2a91f4c8af94719ec0a39c7a4e1cd2c8e3c491e4e8b570b09d6c88"
+      "sha256": "b05d143320f7ee0f43e41b80bd9cef7889ed9f42a00e25151210bb9afc387de5"
     },
     "created": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/upgrade-created.json",
@@ -37,11 +37,11 @@
     },
     "after": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-after.json",
-      "sha256": "5a246cbb6486c9d479f54432def4326cd51d7ffb60a52dc1ffef752083773255"
+      "sha256": "bc914d38f99d183a358ed046ccc42691deac8361b40c1e60e9861381dee099ab"
     },
     "contract": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-contract.json",
-      "sha256": "92b8e2fe2f2a91f4c8af94719ec0a39c7a4e1cd2c8e3c491e4e8b570b09d6c88"
+      "sha256": "b05d143320f7ee0f43e41b80bd9cef7889ed9f42a00e25151210bb9afc387de5"
     },
     "created": {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/rebuild-created.json",

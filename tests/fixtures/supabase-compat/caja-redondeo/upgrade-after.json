@@ -380,7 +380,7 @@
       "identity": "p_tienda_codigo text, p_fecha date, p_efectivo_contado numeric, p_idempotency_key uuid, p_nota text, p_autorizar boolean",
       "config_md5": "eac5bef9b92039986bf93dc486753f77",
       "routine_kind": "f",
-      "definition_md5": "cbde6e1ba8f62c1f9ab8b64eca1b1336",
+      "definition_md5": "262a2d9c22f642dbc18c6c67c90cb5e0",
       "security_definer": true
     }
   ],

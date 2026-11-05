@@ -38,9 +38,6 @@ begin
     p_efectivo_contado::text in ('NaN','Infinity','-Infinity') or p_idempotency_key is null then
     raise exception 'Ingresa el efectivo contado real';
   end if;
-  if p_efectivo_contado<>round(p_efectivo_contado,0) then
-    raise exception 'El efectivo contado debe ingresarse en pesos enteros';
-  end if;
 
   perform pg_advisory_xact_lock(hashtextextended('caja-arrastre:'||p_tienda_codigo,0));
   select * into intento from public.caja_arqueo_intentos where idempotency_key=p_idempotency_key;
@@ -50,6 +47,9 @@ begin
       raise exception 'Identificador de intento ya utilizado';
     end if;
     return intento.resultado;
+  end if;
+  if p_efectivo_contado<>round(p_efectivo_contado,0) then
+    raise exception 'El efectivo contado debe ingresarse en pesos enteros';
   end if;
 
   pendiente:=public.caja_pendiente_interno(p_tienda_codigo);

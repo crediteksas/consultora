@@ -7,7 +7,7 @@ export async function metaRead(env,token,path,params,fetchImpl=fetch){
  if(!token||!/^v\d+\.0$/.test(env.META_GRAPH_VERSION||'v25.0')||!/^\d+(?:_\d+)?\/(?:media|published_posts|insights)$/.test(path))throw Error('READ_CONFIG_INVALID');
  const u=new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION||'v25.0'}/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));
  let r,j;try{r=await fetchImpl(u,{method:'GET',redirect:'error',headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});j=await r.json()}catch{throw Error('META_READ_UNAVAILABLE')}
- if(!r.ok||!j||j.error)throw Error([10,190,200].includes(j?.error?.code)?'META_READ_PERMISSION_REQUIRED':'META_READ_UNAVAILABLE');return j;
+ if(!r.ok||!j||j.error)throw Object.assign(Error([10,190,200].includes(j?.error?.code)?'META_READ_PERMISSION_REQUIRED':'META_READ_UNAVAILABLE'),{providerStatus:r.status,providerCode:Number.isInteger(j?.error?.code)?j.error.code:null});return j;
 }
 export async function readExistingPosts({channel,after=null,connection,read,now=()=>Date.now()}){
  if(!['instagram','facebook'].includes(channel)||after&&!CURSOR.test(after))throw Error('INVALID_QUERY');
@@ -26,3 +26,5 @@ export async function readExistingPosts({channel,after=null,connection,read,now=
  }
  const next=page.paging?.cursors?.after;const hasMore=Boolean(page.paging?.next);return{source:'meta_read_only',channel,accountId,rows,omitted,nextCursor:hasMore&&typeof next==='string'&&CURSOR.test(next)&&next!==after?next:null,paginationIncomplete:hasMore&&!(typeof next==='string'&&CURSOR.test(next)&&next!==after),queriedAt:new Date(now()).toISOString(),metricScope:'lifetime_as_returned_by_meta',writes:false};
 }
+
+export function readFailure(error,stage){const reason=['INVALID_QUERY','META_READ_PERMISSION_REQUIRED'].includes(error?.message)?error.message:'META_READ_UNAVAILABLE';return{error:reason,diagnostic:{stage:['query','connection','list'].includes(stage)?stage:'unknown',providerStatus:Number.isInteger(error?.providerStatus)?error.providerStatus:null,providerCode:Number.isInteger(error?.providerCode)?error.providerCode:null}}}

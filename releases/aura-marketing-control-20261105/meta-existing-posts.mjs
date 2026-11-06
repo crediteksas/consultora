@@ -6,7 +6,7 @@ export function readOptions(url){const q=new URL(url).searchParams;const channel
 export async function metaRead(env,token,path,params,fetchImpl=fetch){
  if(!token||!/^v\d+\.0$/.test(env.META_GRAPH_VERSION||'v25.0')||!/^\d+(?:_\d+)?\/(?:media|published_posts|insights)$/.test(path))throw Error('READ_CONFIG_INVALID');
  const u=new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION||'v25.0'}/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));
- let r,j;try{r=await fetchImpl(u,{method:'GET',redirect:'error',headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});j=await r.json()}catch{throw Error('META_READ_UNAVAILABLE')}
+ let r,j;try{r=await fetchImpl(u,{method:'GET',redirect:'manual',headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});j=await r.json()}catch{throw Error('META_READ_UNAVAILABLE')}
  if(!r.ok||!j||j.error)throw Object.assign(Error([10,190,200].includes(j?.error?.code)?'META_READ_PERMISSION_REQUIRED':'META_READ_UNAVAILABLE'),{providerStatus:r.status,providerCode:Number.isInteger(j?.error?.code)?j.error.code:null});return j;
 }
 export async function readExistingPosts({channel,after=null,connection,read,now=()=>Date.now()}){

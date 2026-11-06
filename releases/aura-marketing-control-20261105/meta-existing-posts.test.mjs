@@ -51,3 +51,11 @@ test('Facebook lifetime total_value response supported and day data never substi
  assert.equal(r.rows[0].metrics.views,0);assert.equal(r.rows[0].metrics.uniqueViewers,10);
  const missing=await execute(async(p,q)=>p.endsWith('published_posts')?{data:[fb]}:{data:[{name:q.metric,period:'day',total_value:{value:99}}]},{channel:'facebook'});assert.equal(missing.rows[0].metrics.views,null);assert.equal(missing.rows[0].metrics.uniqueViewers,null);
 });
+
+test('optional-field diagnostic preserves only field, numeric code and allowlisted permission names',async()=>{
+ const r=await execute(async(p,q)=>{if(p.endsWith('insights'))return{data:[]};if(q.fields.includes('message')&&q.fields.includes('comments'))throw Error('META_READ_PERMISSION_REQUIRED');if(q.fields==='id,comments.limit(0).summary(true)')throw Object.assign(Error('SECRET_RAW_MESSAGE'),{providerCode:10,requiredPermissions:['pages_read_user_content','SECRET_VALUE']});return{data:[fb]};},{channel:'facebook'});
+ assert.deepEqual(r.optionalFieldDiagnostics,[{field:'comments',code:10,requiredPermissions:['pages_read_user_content']}]);assert.equal(JSON.stringify(r).includes('SECRET'),false);
+});
+test('transport classifies named permissions without exposing provider message',async()=>{
+ await assert.rejects(metaRead({},'fictional','100/published_posts',{},async()=>new Response(JSON.stringify({error:{code:10,message:'Requires pages_read_user_content. SECRET_RESPONSE'}}),{status:400})),e=>{assert.deepEqual(e.requiredPermissions,['pages_read_user_content']);assert.equal(e.message,'META_READ_PERMISSION_REQUIRED');assert.equal(JSON.stringify(e).includes('SECRET_RESPONSE'),false);return true;});
+});

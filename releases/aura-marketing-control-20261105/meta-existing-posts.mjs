@@ -20,13 +20,28 @@ export async function readExistingPosts({channel,after=null,connection,read,now=
   page=await read(path,{...params,fields:'id,message,created_time,permalink_url,is_published'});basicOnly=true;
  }
  if(!Array.isArray(page.data)||page.data.length>10)throw Error('META_RESPONSE_INVALID');
+ // Recover each optional field independently; retain only exact IDs in this page.
+ const engagement=new Map();
+ if(basicOnly&&page.data.length){
+  const ids=new Set(page.data.map(p=>p?.id).filter(id=>typeof id==='string'&&id.startsWith(accountId+'_')&&POST.test(id)));
+  for(const [key,field] of [['reactions','reactions.limit(0).summary(true)'],['comments','comments.limit(0).summary(true)'],['shares','shares']]){
+   try{const extra=await read(path,{...params,fields:'id,'+field});if(!Array.isArray(extra.data)||extra.data.length>10)continue;
+    const counts=new Map();for(const x of extra.data){if(!ids.has(x?.id))continue;counts.set(x.id,(counts.get(x.id)||0)+1)}
+    for(const x of extra.data){if(counts.get(x?.id)!==1)continue;const v=scalar(key==='shares'?x.shares?.count:x[key]?.summary?.total_count);if(v!==null)engagement.set(x.id,{...engagement.get(x.id),[key]:v})}
+   }catch{/* Independent field failure must not discard the publications or other counts. */}
+  }
+ }
  const rows=[],seen=new Set();let omitted=0;
  for(const p of page.data){const id=p?.id,date=channel==='instagram'?p?.timestamp:p?.created_time;const ts=typeof date==='string'?Date.parse(date):NaN;const link=safePostLink(channel==='instagram'?p?.permalink:p?.permalink_url,channel);
  if(typeof id!=='string'||!POST.test(id)||channel==='facebook'&&(!id.startsWith(accountId+'_')||p.is_published!==true)||seen.has(id)||!Number.isFinite(ts)||ts>now()||!link){omitted++;continue}seen.add(id);
- const metrics={views:null,reach:null,reactions:scalar(channel==='instagram'?p.like_count:p.reactions?.summary?.total_count),comments:scalar(channel==='instagram'?p.comments_count:p.comments?.summary?.total_count),shares:channel==='facebook'?scalar(p.shares?.count):null,saved:null};const unavailable=basicOnly?['ENGAGEMENT_UNAVAILABLE']:[];
+ const metrics={views:null,reach:null,reactions:scalar(channel==='instagram'?p.like_count:p.reactions?.summary?.total_count),comments:scalar(channel==='instagram'?p.comments_count:p.comments?.summary?.total_count),shares:channel==='facebook'?scalar(p.shares?.count):null,saved:null};const unavailable=[];if(channel==='facebook'){Object.assign(metrics,engagement.get(id));for(const key of ['reactions','comments','shares'])if(metrics[key]===null)unavailable.push(key);metrics.uniqueViewers=null;}
  // Missing/unsupported metrics are never synthesized as zero or summed across posts.
  const names=channel==='instagram'?['reach','views','saved','shares']:['post_media_view'];
- try{const insights=await read(`${id}/insights`,{metric:names.join(',')});if(!Array.isArray(insights.data))throw Error('META_RESPONSE_INVALID');for(const name of names){const items=insights.data.filter(x=>x?.name===name);const m=items.length===1?items[0]:null;const values=m?.values;const value=scalar(m?.total_value?.value??(Array.isArray(values)&&values.length===1?values[0].value:null));const key=name==='post_media_view'?'views':name;metrics[key]=value;if(value===null)unavailable.push(name)}}catch(e){unavailable.push(e.message==='META_READ_PERMISSION_REQUIRED'?'PERMISSION_REQUIRED':'INSIGHTS_UNAVAILABLE')}
+ try{const insights=await read(`${id}/insights`,{metric:names.join(','),...(channel==='facebook'?{period:'lifetime'}:{})});if(!Array.isArray(insights.data))throw Error('META_RESPONSE_INVALID');for(const name of names){const items=insights.data.filter(x=>x?.name===name&&(channel!=='facebook'||x.period==='lifetime'));const m=items.length===1?items[0]:null;const values=m?.values;const value=scalar(m?.total_value?.value??(Array.isArray(values)&&values.length===1?values[0].value:null));const key=name==='post_media_view'?'views':name;metrics[key]=value;if(value===null)unavailable.push(name)}}catch(e){unavailable.push(e.message==='META_READ_PERMISSION_REQUIRED'?'PERMISSION_REQUIRED':'INSIGHTS_UNAVAILABLE')}
+ if(channel==='facebook'){
+  try{const result=await read(`${id}/insights`,{metric:'post_total_media_view_unique',period:'lifetime'});const items=Array.isArray(result.data)?result.data.filter(x=>x?.name==='post_total_media_view_unique'&&x.period==='lifetime'):[];const m=items.length===1?items[0]:null;metrics.uniqueViewers=scalar(m?.total_value?.value??(Array.isArray(m?.values)&&m.values.length===1?m.values[0].value:null))}catch{/* Keep views when unique viewers is unsupported or denied. */}
+  if(metrics.uniqueViewers===null)unavailable.push('uniqueViewers');
+ }
  rows.push({id,accountId,channel,caption:typeof(p.caption??p.message)==='string'?(p.caption??p.message).slice(0,2000):'',type:channel==='instagram'?String(p.media_type||'PUBLICATION'):'PUBLICATION',publishedAt:new Date(ts).toISOString(),permalink:link,metrics,observedAt:new Date(now()).toISOString(),unavailable});
  }
  const next=page.paging?.cursors?.after;const hasMore=Boolean(page.paging?.next);return{source:'meta_read_only',channel,accountId,rows,omitted,nextCursor:hasMore&&typeof next==='string'&&CURSOR.test(next)&&next!==after?next:null,paginationIncomplete:hasMore&&!(typeof next==='string'&&CURSOR.test(next)&&next!==after),queriedAt:new Date(now()).toISOString(),metricScope:'lifetime_as_returned_by_meta',writes:false};

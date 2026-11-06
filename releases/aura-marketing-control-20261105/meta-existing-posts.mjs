@@ -7,7 +7,7 @@ export async function metaRead(env,token,path,params,fetchImpl=fetch){
  if(!token||!/^v\d+\.0$/.test(env.META_GRAPH_VERSION||'v25.0')||!/^\d+(?:_\d+)?\/(?:media|published_posts|insights)$/.test(path))throw Error('READ_CONFIG_INVALID');
  const u=new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION||'v25.0'}/${path}`);for(const[k,v]of Object.entries(params))u.searchParams.set(k,String(v));
  let r,j;try{r=await fetchImpl(u,{method:'GET',redirect:'manual',headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(12000)});j=await r.json()}catch{throw Error('META_READ_UNAVAILABLE')}
- if(!r.ok||!j||j.error)throw Object.assign(Error([10,190,200].includes(j?.error?.code)?'META_READ_PERMISSION_REQUIRED':'META_READ_UNAVAILABLE'),{providerStatus:r.status,providerCode:Number.isInteger(j?.error?.code)?j.error.code:null});return j;
+ if(!r.ok||!j||j.error)throw Object.assign(Error([10,190,200].includes(j?.error?.code)?'META_READ_PERMISSION_REQUIRED':'META_READ_UNAVAILABLE'),{requiredPermissions:['pages_read_engagement','pages_read_user_content','read_insights'].filter(x=>typeof j?.error?.message==='string'&&j.error.message.includes(x)),providerStatus:r.status,providerCode:Number.isInteger(j?.error?.code)?j.error.code:null});return j;
 }
 export async function readExistingPosts({channel,after=null,connection,read,now=()=>Date.now()}){
  if(!['instagram','facebook'].includes(channel)||after&&!CURSOR.test(after))throw Error('INVALID_QUERY');
@@ -21,14 +21,14 @@ export async function readExistingPosts({channel,after=null,connection,read,now=
  }
  if(!Array.isArray(page.data)||page.data.length>10)throw Error('META_RESPONSE_INVALID');
  // Recover each optional field independently; retain only exact IDs in this page.
- const engagement=new Map();
+ const engagement=new Map(),optionalFieldDiagnostics=[];
  if(basicOnly&&page.data.length){
   const ids=new Set(page.data.map(p=>p?.id).filter(id=>typeof id==='string'&&id.startsWith(accountId+'_')&&POST.test(id)));
   for(const [key,field] of [['reactions','reactions.limit(0).summary(true)'],['comments','comments.limit(0).summary(true)'],['shares','shares']]){
    try{const extra=await read(path,{...params,fields:'id,'+field});if(!Array.isArray(extra.data)||extra.data.length>10)continue;
     const counts=new Map();for(const x of extra.data){if(!ids.has(x?.id))continue;counts.set(x.id,(counts.get(x.id)||0)+1)}
     for(const x of extra.data){if(counts.get(x?.id)!==1)continue;const v=scalar(key==='shares'?x.shares?.count:x[key]?.summary?.total_count);if(v!==null)engagement.set(x.id,{...engagement.get(x.id),[key]:v})}
-   }catch{/* Independent field failure must not discard the publications or other counts. */}
+   }catch(e){optionalFieldDiagnostics.push({field:key,code:Number.isInteger(e?.providerCode)?e.providerCode:null,requiredPermissions:Array.isArray(e?.requiredPermissions)?e.requiredPermissions.filter(x=>['pages_read_engagement','pages_read_user_content','read_insights'].includes(x)):[]})}
   }
  }
  const rows=[],seen=new Set();let omitted=0;
@@ -44,7 +44,7 @@ export async function readExistingPosts({channel,after=null,connection,read,now=
  }
  rows.push({id,accountId,channel,caption:typeof(p.caption??p.message)==='string'?(p.caption??p.message).slice(0,2000):'',type:channel==='instagram'?String(p.media_type||'PUBLICATION'):'PUBLICATION',publishedAt:new Date(ts).toISOString(),permalink:link,metrics,observedAt:new Date(now()).toISOString(),unavailable});
  }
- const next=page.paging?.cursors?.after;const hasMore=Boolean(page.paging?.next);return{source:'meta_read_only',channel,accountId,rows,omitted,nextCursor:hasMore&&typeof next==='string'&&CURSOR.test(next)&&next!==after?next:null,paginationIncomplete:hasMore&&!(typeof next==='string'&&CURSOR.test(next)&&next!==after),queriedAt:new Date(now()).toISOString(),metricScope:'lifetime_as_returned_by_meta',writes:false};
+ const next=page.paging?.cursors?.after;const hasMore=Boolean(page.paging?.next);return{source:'meta_read_only',channel,accountId,rows,omitted,optionalFieldDiagnostics,nextCursor:hasMore&&typeof next==='string'&&CURSOR.test(next)&&next!==after?next:null,paginationIncomplete:hasMore&&!(typeof next==='string'&&CURSOR.test(next)&&next!==after),queriedAt:new Date(now()).toISOString(),metricScope:'lifetime_as_returned_by_meta',writes:false};
 }
 
 export function readFailure(error,stage){const reason=['INVALID_QUERY','META_READ_PERMISSION_REQUIRED'].includes(error?.message)?error.message:'META_READ_UNAVAILABLE';return{error:reason,diagnostic:{reason:['ACCOUNT_NOT_CONNECTED','META_RESPONSE_INVALID','READ_CONFIG_INVALID','META_READ_UNAVAILABLE','META_READ_PERMISSION_REQUIRED'].includes(error?.message)?error.message:'UNKNOWN',stage:['query','connection','list'].includes(stage)?stage:'unknown',providerStatus:Number.isInteger(error?.providerStatus)?error.providerStatus:null,providerCode:Number.isInteger(error?.providerCode)?error.providerCode:null}}}

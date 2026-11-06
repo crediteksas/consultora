@@ -53,9 +53,10 @@
   "validate-retained-bindings.mjs": "5d65b60d8ce0fe2483a261fe79acfb73c29083bc4bcc9f2f5c413e06320e76ae",
   "validate-retained-bindings.test.mjs": "6e3ed794ab893aae5382a4e989ff42aefd679b62d78c5fecc0511dc568a0869f",
   "preserved-binding-types.json": "fada615c395abffbe4e90511a5adafae85468078dcd2d0f36d5de048bbf9860a",
-  "meta-existing-posts.mjs": "b5694792cc96933208ce0a3e61ccd0b5c1c8e179a72576984f37c09e188c878c",
-  "meta-existing-posts.test.mjs": "01f714629e0a16b1cfb084f15d316014586910c5c7b5f34af3ad16168e0271b4",
+  "meta-existing-posts.mjs": "fb44553d5c8a66f4e736e7533f0d7f051071e2889bf54778d44bf6a4f452a5ae",
+  "meta-existing-posts.test.mjs": "ff1fe540981a193e78b2fa9be486e7352f2b09bb72686c7ac80fea1cff92948f",
   "meta-existing-view.mjs": "f9b0cb41fe3d5252e88c3fb60d452ff017be712e199b4fc648a0402bce63c8ef",
   "creditek-aura-marketing-public-candidate/creditek/agentes/meta-existing-view.mjs": "f9b0cb41fe3d5252e88c3fb60d452ff017be712e199b4fc648a0402bce63c8ef",
-  "meta-existing-route.test.mjs": "c77d983bad86c0aab224e2a6d94b766bcb4a8bac77f14e3dbba89376af144876"
+  "meta-existing-route.test.mjs": "c77d983bad86c0aab224e2a6d94b766bcb4a8bac77f14e3dbba89376af144876",
+  "meta-existing-runtime.test.mjs": "c896ef786cf7bafd037144d5520a8d276c6aa4a78be6ab50ad7247a16d848af3"
 }

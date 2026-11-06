@@ -13,12 +13,17 @@ export async function readExistingPosts({channel,after=null,connection,read,now=
  if(!['instagram','facebook'].includes(channel)||after&&!CURSOR.test(after))throw Error('INVALID_QUERY');
  const accountId=channel==='facebook'?connection.page_id:connection.instagram_id;if(typeof accountId!=='string'||!ID.test(accountId))throw Error('ACCOUNT_NOT_CONNECTED');
  const fields=channel==='instagram'?'id,caption,timestamp,media_type,permalink,like_count,comments_count':'id,message,created_time,permalink_url,is_published,reactions.limit(0).summary(true),comments.limit(0).summary(true),shares';
- const page=await read(`${accountId}/${channel==='instagram'?'media':'published_posts'}`,{fields,limit:10,...(after?{after}:{})});
+ let page,basicOnly=false;const path=`${accountId}/${channel==='instagram'?'media':'published_posts'}`,params={fields,limit:10,...(after?{after}:{})};
+ try{page=await read(path,params)}catch(e){
+  if(channel!=='facebook'||e.message!=='META_READ_PERMISSION_REQUIRED')throw e;
+  // Optional engagement fields must not block a permitted base publication read.
+  page=await read(path,{...params,fields:'id,message,created_time,permalink_url,is_published'});basicOnly=true;
+ }
  if(!Array.isArray(page.data)||page.data.length>10)throw Error('META_RESPONSE_INVALID');
  const rows=[],seen=new Set();let omitted=0;
  for(const p of page.data){const id=p?.id,date=channel==='instagram'?p?.timestamp:p?.created_time;const ts=typeof date==='string'?Date.parse(date):NaN;const link=safePostLink(channel==='instagram'?p?.permalink:p?.permalink_url,channel);
  if(typeof id!=='string'||!POST.test(id)||channel==='facebook'&&(!id.startsWith(accountId+'_')||p.is_published!==true)||seen.has(id)||!Number.isFinite(ts)||ts>now()||!link){omitted++;continue}seen.add(id);
- const metrics={views:null,reach:null,reactions:scalar(channel==='instagram'?p.like_count:p.reactions?.summary?.total_count),comments:scalar(channel==='instagram'?p.comments_count:p.comments?.summary?.total_count),shares:channel==='facebook'?scalar(p.shares?.count):null,saved:null};const unavailable=[];
+ const metrics={views:null,reach:null,reactions:scalar(channel==='instagram'?p.like_count:p.reactions?.summary?.total_count),comments:scalar(channel==='instagram'?p.comments_count:p.comments?.summary?.total_count),shares:channel==='facebook'?scalar(p.shares?.count):null,saved:null};const unavailable=basicOnly?['ENGAGEMENT_UNAVAILABLE']:[];
  // Missing/unsupported metrics are never synthesized as zero or summed across posts.
  const names=channel==='instagram'?['reach','views','saved','shares']:['post_media_view'];
  try{const insights=await read(`${id}/insights`,{metric:names.join(',')});if(!Array.isArray(insights.data))throw Error('META_RESPONSE_INVALID');for(const name of names){const items=insights.data.filter(x=>x?.name===name);const m=items.length===1?items[0]:null;const values=m?.values;const value=scalar(m?.total_value?.value??(Array.isArray(values)&&values.length===1?values[0].value:null));const key=name==='post_media_view'?'views':name;metrics[key]=value;if(value===null)unavailable.push(name)}}catch(e){unavailable.push(e.message==='META_READ_PERMISSION_REQUIRED'?'PERMISSION_REQUIRED':'INSIGHTS_UNAVAILABLE')}

@@ -13,3 +13,12 @@ test('provider error details and token never returned',async()=>{await assert.re
 test('diagnostics expose only enum and numeric codes, never raw provider text',()=>{const r=readFailure({message:'secret token text',providerStatus:400,providerCode:100},'list');assert.deepEqual(r,{error:'META_READ_UNAVAILABLE',diagnostic:{reason:'UNKNOWN',stage:'list',providerStatus:400,providerCode:100}});assert.equal(readFailure({message:'META_RESPONSE_INVALID'},'connection').error,'META_READ_UNAVAILABLE');assert.equal(JSON.stringify(readFailure({message:'secret',providerCode:'secret'},'secret')).includes('secret'),false)});
 
 test('diagnostic cause is separate from stable primary error and allowlisted',()=>{assert.equal(readFailure({message:'READ_CONFIG_INVALID'},'list').error,'META_READ_UNAVAILABLE');assert.equal(readFailure({message:'READ_CONFIG_INVALID'},'list').diagnostic.reason,'READ_CONFIG_INVALID');assert.equal(readFailure({message:'PRIVATE'},'list').diagnostic.reason,'UNKNOWN')});
+
+test('Facebook denied engagement retries only bounded base fields, keeps cursor and missing counts',async()=>{
+ const calls=[];const r=await execute(async(p,q)=>{calls.push([p,q]);if(calls.length===1)throw Error('META_READ_PERMISSION_REQUIRED');if(p==='100/published_posts')return{data:[{id:'100_1',created_time:ig.timestamp,permalink_url:'https://facebook.com/100/posts/1',is_published:true}]};return{data:[{name:'post_media_view',values:[{value:12}]}]}},{channel:'facebook',after:'next_1'});
+ assert.equal(calls.length,3);assert.equal(calls[1][0],'100/published_posts');assert.deepEqual(calls[1][1],{fields:'id,message,created_time,permalink_url,is_published',limit:10,after:'next_1'});
+ assert.equal(r.rows[0].metrics.views,12);for(const k of ['reactions','comments','shares'])assert.equal(r.rows[0].metrics[k],null);assert.deepEqual(r.rows[0].unavailable,['ENGAGEMENT_UNAVAILABLE']);assert.equal(r.writes,false);
+});
+test('base Facebook denial remains failure; no retries for Instagram or transport errors',async()=>{
+ for(const [channel,error,max] of [['facebook','META_READ_PERMISSION_REQUIRED',2],['instagram','META_READ_PERMISSION_REQUIRED',1],['facebook','META_READ_UNAVAILABLE',1]]){let n=0;await assert.rejects(execute(async()=>{n++;throw Error(error)},{channel}),{message:error});assert.equal(n,max)}
+});

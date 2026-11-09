@@ -3,12 +3,12 @@
   "project": "kora",
   "scope": "Isolated historical cash correction fixture.",
   "migration_sha256": {
-    "supabase/migrations/20261109235216_caja_rectificacion_historica_ck02.sql": "64ad6ef411b59799ff13ec44b2def3847cd58c11c65c57ec6d6fcb95acc0bef4"
+    "supabase/migrations/20261109235736_caja_rectificacion_historica_ck02.sql": "64ad6ef411b59799ff13ec44b2def3847cd58c11c65c57ec6d6fcb95acc0bef4"
   },
   "isolation_tests": [
     {
       "path": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
-      "sha256": "6629fcd9cf63f5f4735ed1f7d587441bfa8effa8400ef863813d2110590803b4"
+      "sha256": "0a375d951b899a677f5a5da4057d21af220f501f8474679aa62290da3e966e4b"
     }
   ],
   "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",

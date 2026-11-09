@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {checkPermissionContract} from './check-permission-contract.mjs';
 
 const folder='tests/fixtures/supabase-compat/caja-rectificacion-corozal';
-const migration='supabase/migrations/20261109235216_caja_rectificacion_historica_ck02.sql';
+const migration='supabase/migrations/20261109235736_caja_rectificacion_historica_ck02.sql';
 const testPath='tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs';
 const read=file=>readFileSync(file,'utf8');
 const hash=body=>createHash('sha256').update(body).digest('hex');

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 
-const migration = await readFile(new URL('../../supabase/migrations/20261109235216_caja_rectificacion_historica_ck02.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../../supabase/migrations/20261109235736_caja_rectificacion_historica_ck02.sql', import.meta.url), 'utf8');
 const maite = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
 const oscar = '6de0ad26-64af-4966-8cd9-d468880af627';
 

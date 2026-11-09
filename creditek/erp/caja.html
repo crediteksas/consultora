@@ -420,6 +420,7 @@ async function calcularCuadrito(tienda, fecha) {
     aperturaCierreAnterior: Number(cuadre.apertura_cierre_anterior ?? apertura),
     ajusteArrastre: Number(cuadre.ajuste_arrastre_movimientos || 0),
     caja: cuadre.caja || null,
+    rectificacionCierre: cuadre.rectificacion_cierre || null,
     movimientosCaja: movimientosCaja || [],
     libroCaja: window.CreditekCajaLibro.construir({ cuadre, ventas:ventas || [], gastos:gastos || [], movimientos:movimientosCaja || [] }),
   };
@@ -520,6 +521,7 @@ async function cargarCuadritoDatos(tienda, fecha) {
             <div class="cuadrito-linea"><span class="izq">Saldo esperado al cerrar</span><span class="der">${fmtCOP(c.caja.efectivo_esperado)}</span></div>
             <div class="cuadrito-linea"><span class="izq">Efectivo registrado al cerrar</span><span class="der">${fmtCOP(c.caja.efectivo_contado)}</span></div>
             <div class="cuadrito-linea"><span class="izq">Diferencia registrada al cerrar</span><span class="der">${fmtCOP(c.caja.diferencia)}</span></div>
+            ${c.rectificacionCierre ? `<div class="cuadrito-linea"><span class="izq">Efectivo corregido por Gerencia</span><span class="der">${fmtCOP(c.rectificacionCierre.efectivo_corregido)}</span></div>` : ''}
             ${c.caja.nota ? `<div class="cuadrito-vacio" style="margin-top:6px;">Nota: ${escapeHtml(c.caja.nota)}</div>` : ''}
             <button class="btn-primary" id="btnCompartirWA" style="margin-top:14px;">Compartir por WhatsApp</button>
           </div>
@@ -708,6 +710,7 @@ async function cargarConsolidadoDatos() {
         saldoActualizado: cerrada && Number(c.caja.efectivo_esperado) !== c.esperado,
         contadoReal: cerrada ? c.caja.efectivo_contado : null,
         diferencia: cerrada ? c.caja.diferencia : null,
+        efectivoCorregido: c.rectificacionCierre?.efectivo_corregido ?? null,
         cerrada,
       });
     }
@@ -727,7 +730,7 @@ async function cargarConsolidadoDatos() {
       <td>${fmtUtilidad(f.utilidad)}</td>
       <td>${fmtCOP(f.salidasExplicitas)}</td>
       <td>${fmtCOP(f.esperado)}${f.saldoActualizado ? '<div class="meta">Actualizado tras el cierre</div>' : ''}</td>
-      <td>${f.contadoReal !== null ? fmtCOP(f.contadoReal) : '—'}</td>
+      <td>${f.contadoReal !== null ? fmtCOP(f.contadoReal) : '—'}${f.efectivoCorregido !== null ? `<div class="meta">Corregido: ${fmtCOP(f.efectivoCorregido)}</div>` : ''}</td>
       <td>${f.diferencia !== null ? fmtCOP(f.diferencia) : '—'}</td>
       <td><span class="badge ${f.cerrada ? 'cerrada' : 'abierta'}">${f.cerrada ? 'Cerrada ✓' : 'Abierta'}</span></td>
     </tr>

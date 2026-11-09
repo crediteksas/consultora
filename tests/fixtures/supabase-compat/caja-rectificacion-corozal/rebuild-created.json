@@ -1,0 +1,49 @@
+[
+  {
+    "schema": "kora_private",
+    "name": "rectificacion_cierre_corozal",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_private",
+    "name": "exigir_actor_rectificacion_corozal",
+    "kind": "function",
+    "identity": "p_rol text"
+  },
+  {
+    "schema": "kora_private",
+    "name": "verificar_cierre_corozal",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "caja_calcular_interno",
+    "kind": "function",
+    "identity": "p_tienda text, p_fecha date"
+  },
+  {
+    "schema": "public",
+    "name": "decidir_rectificacion_corozal",
+    "kind": "function",
+    "identity": "p_id uuid, p_aprobar boolean, p_motivo text"
+  },
+  {
+    "schema": "public",
+    "name": "listar_rectificaciones_corozal",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "preparar_rectificacion_corozal",
+    "kind": "function",
+    "identity": "p_motivo text, p_nombre text, p_soporte text"
+  },
+  {
+    "schema": "public",
+    "name": "soporte_rectificacion_corozal",
+    "kind": "function",
+    "identity": "p_id uuid"
+  }
+]

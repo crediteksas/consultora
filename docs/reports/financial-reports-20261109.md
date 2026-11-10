@@ -10,3 +10,11 @@ Administración → Información exógena e informes. Acceso de los responsables
 - Exportación XLSX: números numéricos, cuentas y documentos como texto, celdas string sin fórmula; hojas fuentes para rastrear documentos.
 
 Validación: `node --test tests/erp/reportes-financieros.test.mjs`; suite `npm run test:local`; build/pipeline oficial. El ejecutor de suite no se altera: su huella está sellada por el control de publicación de permisos. Pruebas nuevas se corren además de la suite. Revisión Claude del código anonimizado aprobada; no se transmitieron filas reales.
+
+## Cruce local de extractos y bandeja de revisión
+
+- Importación Excel/CSV local, sin subir archivos a Supabase ni registrar movimientos. Una cuenta COP seleccionada explícitamente; columnas, fecha e importes se confirman sobre una muestra. Errores de filas bloquean el cruce y filas fuera del período se enumeran en el Excel.
+- Candidatos por cuenta exacta, importe con signo exacto y tolerancia de fecha de 0 a 7 días. Referencia exacta refina candidatos. Coincidencia única sigue siendo sugerencia; candidatos compartidos son ambiguos. Selección manual uno a uno, deshacer y exportación con IDs, parámetros y fuente KORA. Ajustes, aperturas y reversos separados. No certifica saldo final ni cobertura completa del extracto.
+- Bandeja: históricos, datos incompletos, pagos sin soporte y diferencias de cobros, deduplicados por fuente/ID. Búsqueda, motivos, paginación y acceso al módulo de origen. Responsable y notas son exclusivamente locales a la consulta y se conservan mediante descarga; no cambian el estado de fuentes.
+- Cambiar período, cuenta o mapeo invalida los resultados relacionados. Reconsultar descarta revisión local con aviso visible. No hay nueva tabla, permiso, RPC ni efecto en saldos.
+- Pruebas adicionales: `node --test tests/erp/kora-bank-match.test.mjs tests/erp/reportes-financieros.test.mjs`. Recorrido visual con CSV ficticio, selección manual y lectura de ambos Excel comprobados. Nunca se usa un extracto real en las pruebas compartidas con Claude.

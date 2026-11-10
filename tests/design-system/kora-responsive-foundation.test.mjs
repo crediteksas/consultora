@@ -88,7 +88,7 @@ test('el drawer móvil abierto prevalece sobre la preferencia compacta del escri
   ]);
   const mobile = css.slice(css.indexOf('@media (max-width: 63.999rem)'));
   assert.match(mobile, /\.kora-shell-root\[data-sidebar-collapsed="true"\] \.kora-sidebar\[data-open="true"\]\s*\{\s*transform:\s*translateX\(0\)/);
-  assert.match(shell, /kora-shell\.css\?v=2\.0\.6/);
+  assert.match(shell, /kora-shell\.css\?v=2\.0\.7/);
   assert.match(shell, /navigationMedia\.addEventListener\?\.\('change', \(\) => \{[\s\S]*?if \(aside\.dataset\.open === 'true'\) closeDrawer\(\);[\s\S]*?syncNavigationControl\(\);\s*\}\)/);
 });
 

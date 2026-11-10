@@ -91,7 +91,7 @@ html.creditek-shell-pending body::after {
 .kora-nav-group__label .lucide-chevron-down { margin-left: auto; transition: transform var(--ctk-duration-2) var(--ctk-ease-standard); }
 .kora-nav-group[data-open="false"] .kora-nav-group__label .lucide-chevron-down { transform: rotate(-90deg); }
 .kora-nav-group[data-open="false"] .kora-nav-group__items { display: none; }
-.kora-nav-group__items { display: grid; gap: var(--ctk-space-0-5); }
+.kora-nav-group__items { display: grid; gap: var(--ctk-space-0-5); padding-block-start: calc(var(--ctk-space-1) + var(--ctk-space-0-5)); }
 .kora-nav-link {
   align-items: center; border-radius: var(--ctk-radius-sm); color: var(--ctk-color-text-secondary);
   display: flex; font: var(--ctk-font-weight-medium) var(--ctk-font-size-button)/var(--ctk-line-height-body) var(--ctk-font-family-ui);

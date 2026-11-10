@@ -29,7 +29,7 @@
     'validacion.html', 'caja.html', 'inventario.html', 'catalogo.html',
     'traslados.html', 'ajustes.html', 'cierre-periodo.html', 'kardex.html',
     'gastos.html', 'reportes.html', 'conciliacion.html', 'auditoria-cruzada.html',
-    'incidencias.html', 'compartir-instalacion.html', 'documentos-gestion.html', 'ajustes-gerencia.html', 'banco-creditek.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
+    'incidencias.html', 'compartir-instalacion.html', 'documentos-gestion.html', 'ajustes-gerencia.html', 'banco-creditek.html', 'exogena.html', ...B2B_ROUTES, ...ALLIES_ROUTES,
     ...CREDIT_PORTFOLIO_ROUTES, ...FINANCIAL_CONTROLLER_ROUTES,
   ]);
   const STORE_ROUTES_BY_ROLE = Object.freeze({
@@ -87,6 +87,7 @@
       { label: 'Confirmaciones de deuda', href: 'confirmaciones-deuda.html', icon: 'clipboard-check', roles: ['gerencia', 'auditoria'] },
       { label: 'Presupuestos', href: 'presupuestos.html', icon: 'target', roles: ['gerencia', 'auditoria'] },
       { label: 'Banco Creditek', href: 'banco-creditek.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
+      { label: 'Información exógena e informes', href: 'exogena.html', icon: 'landmark', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Editar o anular documentos', href: 'documentos-gestion.html', icon: 'file-pen-line', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Ajustes de Gerencia', href: 'ajustes-gerencia.html', icon: 'scale', roles: ['gerencia', 'auditoria'], users: [...DOCUMENT_MANAGERS] },
       { label: 'Gastos y retiros', href: 'finanzas-programadas.html?vista=general', icon: 'hand-coins', users: [...FINANCIAL_CONTROLLERS] },
@@ -169,7 +170,7 @@
     const hasFullCorporateAccess = profile.rol === 'gerencia';
     const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
     if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
-    if ((normalized === 'documentos-gestion.html' || normalized === 'ajustes-gerencia.html' || normalized === 'banco-creditek.html') && !canManageDocuments(profile)) {
+    if ((normalized === 'documentos-gestion.html' || normalized === 'ajustes-gerencia.html' || normalized === 'banco-creditek.html' || normalized === 'exogena.html') && !canManageDocuments(profile)) {
       return { allowed: false, route: normalized, experience };
     }
     if (FINANCIAL_CONTROLLER_ROUTES.has(normalized) && !FINANCIAL_CONTROLLERS.has(profile.id)) {

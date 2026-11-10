@@ -1,0 +1,11 @@
+{
+  "claudeDelta": "APPROVED subject to Codex route confirmation",
+  "codexRouteReservationResolved": true,
+  "newVersionPathStatus": 200,
+  "legacyAliasStatus": 200,
+  "unknownVersionStatus": 404,
+  "queryInjectionStatus": 404,
+  "testTotal": 57,
+  "upstreamCredentialsNeverForwarded": true,
+  "productionRetestPending": true
+}

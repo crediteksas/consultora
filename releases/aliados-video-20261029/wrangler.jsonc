@@ -1,0 +1,45 @@
+{
+  "name": "creditek-registro",
+  "account_id": "853eee9e3d80f805fee58f4f99507e8a",
+  "main": "registro-video-candidate.mjs",
+  "compatibility_date": "2026-08-29",
+  "compatibility_flags": [],
+  "keep_vars": true,
+  "logpush": false,
+  "tail_consumers": [],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "ASSETS",
+        "type": "assets"
+      }
+    ],
+    "metadata": {
+      "keep_assets": true
+    }
+  },
+  "workers_dev": true,
+  "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "registro.crediteksas.com",
+      "custom_domain": true
+    }
+  ]
+}

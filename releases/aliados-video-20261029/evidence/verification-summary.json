@@ -1,0 +1,15 @@
+{
+  "claudeFullReview": "APPROVED",
+  "claudeFinalDeltaReview": "APPROVED FINAL",
+  "converterAndConvenioTests": 51,
+  "registrationIsolationTests": 4,
+  "totalTests": 55,
+  "buildRegistroPassed": true,
+  "syntaxPassed": true,
+  "diffCheckPassed": true,
+  "chromeMovConversionVerified": true,
+  "appsScriptExactDeltaVerified": true,
+  "productionWorkerBaselineVerified": true,
+  "staticLiveDomAnchorCompatibilityVerified": true,
+  "published": false
+}

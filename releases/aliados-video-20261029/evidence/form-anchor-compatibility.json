@@ -1,0 +1,12 @@
+{
+  "source": "Actual live DOM captured by principal through CUA",
+  "genericScriptCount": 2,
+  "sourceChars": 52209,
+  "patchedChars": 65877,
+  "configAnchorCount": 1,
+  "extraScriptPreserved": true,
+  "extraScriptOccurrences": 1,
+  "videoHandlerUpdated": true,
+  "sourceSha256": "47a23c6a89f830c7d074ebf0ff8e965493d483d8ca96326f0782c443e248f791",
+  "patchedSha256": "67e7947253f44f73189f4904001df9b2b1fa10c5856b06ba8b7126c8bff508a9"
+}

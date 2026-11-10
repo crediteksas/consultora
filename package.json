@@ -22,7 +22,9 @@
     "test:live": "node --test tests/security/live-smoke.test.mjs",
     "preview:upload": "npm run build:environment && wrangler versions upload",
     "deploy": "node scripts/deny-direct-kora-deploy.mjs",
-    "deploy:kora:production": "node scripts/deploy-kora-production.mjs"
+    "deploy:kora:production": "node scripts/deploy-kora-production.mjs",
+    "build:aliados-video": "node releases/aliados-video-20261029/build-candidate.mjs",
+    "test:aliados-video": "node --test tests/convenios/*.test.mjs"
   },
   "keywords": [],
   "author": "",

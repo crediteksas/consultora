@@ -1,0 +1,22 @@
+{
+  "status": "APPROVED_READY_TO_PUBLISH",
+  "productionBaselineLiveVerified": true,
+  "productionReadBlockedByAutomaticReview": false,
+  "capturedSnapshots": {
+    "form.html": "d5a5f17153a2d6a3fd688dbb5ed2694db94a2fd76c1bba22c6d5d1288f690caa",
+    "registro-alo.mjs": "ec96c1f2c408796d5f3281e3ee9c396fd554606c4b37792a356843fce44ab983",
+    "pendientes-app.js": "eb3125b595715e1872e658109e6578339379bad1d270ec1153c9e859160dac6a",
+    "pendientes.html": "a2edd441b5dadf074dde2d1b95f5a08c4fb4ad7797550f78771c2fd3e28009ba"
+  },
+  "backendBases": {
+    "Codigo.gs.v33": "772b7fd90e8b8c9eacff220409c4face86df6f9f243aba6cbb24c35f8bc03098",
+    "Pendientes.gs.known": "4b6d4d8fb9b58e628e57ae4aa0252ab6c5dffff3c041f07887c5fd68537ac8e1"
+  },
+  "wasmNotCommitted": true,
+  "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+  "staticAssetsLiveVerified": false,
+  "backendLiveVerified": true,
+  "workerCodeBackupAt": "2026-10-29",
+  "scopeOfLiveVerification": "Exact Worker backup, settings, custom domain and workers.dev verified. Rendered live HTML anchors verified with existing second facade script. Original static asset bytes are not asserted identical to historical form snapshot; publication preserves ASSETS unchanged. Apps Script head readback matches exactly one guard insertion and one accept substitution.",
+  "staticAssetCompatibilityCheckedInChrome": true
+}

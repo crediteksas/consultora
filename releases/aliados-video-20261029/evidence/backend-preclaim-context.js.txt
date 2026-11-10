@@ -1,0 +1,19 @@
+function doPost(e) {
+  var data;
+  try { data=JSON.parse(e.postData.contents); } catch (_) {
+    return respuestaSolicitud_({ok:false,error:'Solicitud inválida'});
+  }
+  if (String(data.action || '').indexOf('pending_') === 0) return auraPendientesApi_(data);
+  if(!data.radicado || !data.cedula || !data.nombreComercial){
+    return respuestaSolicitud_({ok:false,error:'Faltan datos de la solicitud'});
+  }
+  // Validate final video before claims, folders, mail or any registration side effect.
+  if(data.documentos && data.documentos.video360){
+    try{auraArchivo_(data.documentos.video360,'video');}
+    catch(videoError){return respuestaSolicitud_({ok:false,error:videoError.message||'El video debe estar preparado como MP4 antes de enviar.'});}
+  }
+  var fingerprintData=Object.assign({},data);
+  delete fingerprintData.radicado;
+  delete fingerprintData.fecha;
+  var key='ally_request_'+hashSolicitud_(String(data.radicado));
+  var fingerprintKey='ally_payload_'+hashSolicitud_(JSON.stringify(fingerprintData));

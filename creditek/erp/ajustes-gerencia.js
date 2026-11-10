@@ -149,8 +149,10 @@
     }
   }
   async function cargarRectificacion(){
+    if(perfil.id===MAITE)$('rectificarCorozal').hidden=false;
     const {data,error}=await sb.rpc('listar_rectificaciones_corozal');
     if(error){$('rectificarCorozalEstado').textContent=error.message;return;}
+    $('rectificarCorozal').hidden=perfil.id!==MAITE&&data.length===0;
     $('rectificarCorozalForm').hidden=perfil.id!==MAITE||data.some(s=>s.estado!=='rechazada');
     const lista=$('rectificarCorozalSolicitudes');
     const solicitudes=data;

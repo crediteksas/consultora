@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2}).format(v);
+const money=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
 const sourceLinks={payment_orders:'aliados-tesoreria.html',financial_entries:'finanzas-programadas.html',treasury_movements:'aliados-tesoreria.html',banco_creditek_pagos_proveedor:'banco-creditek.html',cobros_expected:'banco-creditek.html?vista=cobros',creditos_historicos_plataforma:'aliados-liquidaciones.html'};
 function reset(){const box=document.getElementById('bankReview');if(box)box.replaceChildren();}
 function mount({report,raw,stamp,appendSheet}){

@@ -130,7 +130,7 @@
       <div class="flex-1">
         <p class="font-semibold text-green-900">Compra registrada</p>
         <p class="text-sm text-green-800">
-          Factura <b id="exito-factura"></b> creada por <b id="exito-total"></b>.
+          Factura <b id="exito-factura"></b> creada por <b id="exito-total"></b>. <span id="exito-retenciones"></span>
           La mercancía entró a <b>Bodega Central</b> y ya puede ser despachada a tiendas.
         </p>
       </div>
@@ -254,6 +254,27 @@
     <div id="items-vacio" class="hidden mt-6 py-8 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
       No has agregado ítems. Presiona <b>+ Agregar ítem</b> para empezar.
     </div>
+  </section>
+
+  <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <h2 class="font-semibold">Retenciones de Creditek</h2>
+    <p class="text-sm text-gray-600 mb-3">Agrega cada retención aplicable. El neto se calcula al registrar la factura.</p>
+    <div id="compra-retenciones" class="grid gap-3"></div>
+    <template id="compra-retencion-fila">
+      <fieldset class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 items-end border rounded p-3">
+        <label>Tipo
+          <select name="tipo" required class="block w-full rounded border p-2">
+            <option value="">Selecciona</option><option>ReteFuente</option><option>ReteIVA</option><option>ReteICA</option>
+          </select>
+        </label>
+        <label>Base <input name="base" type="number" min="0.01" step="0.01" required class="block w-full rounded border p-2"></label>
+        <label>Tarifa (%) <input name="tarifa" type="number" min="0.00001" max="100" step="0.00001" required class="block w-full rounded border p-2"></label>
+        <label>Valor retenido <input name="valor" type="number" min="0.01" step="0.01" required class="block w-full rounded border p-2"></label>
+        <button type="button" class="rounded border p-2" data-quitar-retencion>Quitar retención</button>
+      </fieldset>
+    </template>
+    <button type="button" id="compra-agregar-retencion" class="mt-3 rounded border px-3 py-2 font-semibold">Agregar retención</button>
+    <p class="mt-3 text-sm">Total retenido <b id="compra-total-retenido">$ 0</b> · Neto al proveedor <b id="compra-neto">$ 0</b></p>
   </section>
 
   <!-- =========================== 3. GUARDAR =========================== -->
@@ -560,6 +581,10 @@ function actualizarTotal() {
       utilidad.style.color = completos && unitario<0 ? '#b42318' : '';
     }
   });
+  const retenciones = document.querySelectorAll('#compra-retenciones input[name=valor]');
+  const retenido = Array.from(retenciones).reduce((total, campo) => total + Math.round(Number(campo.value) * 100), 0) / 100;
+  document.getElementById('compra-total-retenido').textContent = money(retenido);
+  document.getElementById('compra-neto').textContent = money(totalCosto - retenido);
   document.getElementById('total-factura').textContent = money(totalCosto);
   document.getElementById('total-remision').textContent = money(totalRemision);
   document.getElementById('total-margen').textContent = money(totalRemision - totalCosto);
@@ -899,6 +924,16 @@ async function guardarCompra() {
       });
     }
 
+    const retenciones = Array.from(document.querySelectorAll('#compra-retenciones fieldset')).map(fila => {
+      const campos = [...fila.querySelectorAll('select,input')];
+      const invalido = campos.find(campo => !campo.validity.valid);
+      if (invalido) {
+        invalido.reportValidity();
+        throw new Error('Completa los datos de cada retención');
+      }
+      return Object.fromEntries(campos.map(campo => [campo.name, campo.value]));
+    });
+
     // Soporte opcional
     let soportePath = null;
     try { soportePath = await subirSoporteSiExiste(numero); }
@@ -919,6 +954,7 @@ async function guardarCompra() {
       p_soporte_path: soportePath,
       p_nota: nota || null,
       p_idempotency_key: compraIdempotencyKey,
+      p_retenciones: retenciones,
     });
 
     if (error) throw new Error(error.message);
@@ -927,6 +963,9 @@ async function guardarCompra() {
     // Éxito
     document.getElementById('exito-factura').textContent = numero;
     document.getElementById('exito-total').textContent = money(data.total);
+    document.getElementById('exito-retenciones').textContent = Number(data.total_retenido) > 0
+      ? 'Retenciones ' + money(data.total_retenido) + ' · Neto al proveedor ' + money(Number(data.total) - Number(data.total_retenido))
+      : '';
     const remisionar = document.getElementById('btn-remisionar-factura');
     remisionar.classList.toggle('hidden', !data.factura_id);
     if (data.factura_id) remisionar.href = `bodega-central.html?factura=${encodeURIComponent(data.factura_id)}`;
@@ -956,12 +995,35 @@ function limpiarFormulario() {
   document.getElementById('panel-exito').classList.add('hidden');
   items = [];
   compraIdempotencyKey = crypto.randomUUID();
+  document.getElementById('compra-retenciones').replaceChildren();
   renderItems();
 }
 
 // ============================================================
 // EVENT LISTENERS
 // ============================================================
+const compraRetenciones = document.getElementById('compra-retenciones');
+document.getElementById('compra-agregar-retencion').addEventListener('click', () => {
+  const fila = document.getElementById('compra-retencion-fila').content.cloneNode(true);
+  const tipo = fila.querySelector('select');
+  compraRetenciones.append(fila);
+  tipo.focus();
+});
+compraRetenciones.addEventListener('input', event => {
+  if (event.target.matches('[name=base], [name=tarifa]')) {
+    const fila = event.target.closest('fieldset');
+    const base = fila.querySelector('[name=base]').valueAsNumber;
+    const tarifa = fila.querySelector('[name=tarifa]').valueAsNumber;
+    fila.querySelector('[name=valor]').value = Number.isFinite(base * tarifa)
+      ? (base * tarifa / 100).toFixed(2) : '';
+  }
+  actualizarTotal();
+});
+compraRetenciones.addEventListener('click', event => {
+  if (!event.target.matches('[data-quitar-retencion]')) return;
+  event.target.closest('fieldset').remove();
+  actualizarTotal();
+});
 document.getElementById('btn-agregar-item').addEventListener('click', nuevoItem);
 document.getElementById('btn-guardar').addEventListener('click', guardarCompra);
 document.getElementById('tipo-compra').addEventListener('change', event => {

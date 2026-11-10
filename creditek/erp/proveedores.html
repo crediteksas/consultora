@@ -228,7 +228,7 @@
         <p class="text-xs text-gray-500 mb-4">Historial de compras registradas y saldo pendiente por documento.</p>
         <details class="rounded border border-gray-200 p-3 mb-4">
           <summary class="font-semibold">IVA y retenciones por factura</summary>
-          <p class="text-sm text-gray-600 mt-2">Carga los XML o ZIP de las facturas de este proveedor. Los soportes se leen en esta sesión y los saldos de KORA se consultan sin modificarlos.</p>
+          <p class="text-sm text-gray-600 mt-2">Puedes registrar las retenciones de Creditek sin cargar soportes. Los XML o ZIP se usan para consultar los impuestos de la factura durante esta sesión.</p>
           <div class="flex flex-wrap gap-3 items-end mt-3">
             <label class="text-sm">Soportes XML o ZIP
               <input id="impuestos-archivos" type="file" accept=".xml,.zip" multiple class="block">
@@ -240,7 +240,7 @@
           <p id="impuestos-estado" role="status" class="text-sm text-gray-600 mt-2"></p>
           <div class="proveedores-table mt-3">
             <table class="w-full text-sm">
-              <thead><tr><th>Factura</th><th>Fecha</th><th>Subtotal XML</th><th>IVA</th><th>Retenciones</th><th>Total KORA</th><th>Saldo KORA</th><th>Soporte</th></tr></thead>
+              <thead><tr><th>Factura</th><th>Fecha</th><th>Subtotal XML</th><th>IVA</th><th>Retención XML</th><th>Retención registrada en KORA</th><th>Total KORA</th><th>Saldo KORA</th><th>Soporte</th><th>Acción</th></tr></thead>
               <tbody id="impuestos-filas"></tbody>
             </table>
           </div>
@@ -363,6 +363,28 @@
   </div>
 </main>
 
+<dialog id="modal-retencion" class="rounded-lg border p-5 w-full max-w-md" aria-labelledby="retencion-titulo">
+  <form id="form-retencion" class="grid gap-3">
+    <h2 id="retencion-titulo" class="text-lg font-semibold">Registrar retención histórica</h2>
+    <p id="retencion-factura"></p>
+    <p class="text-sm text-gray-600">Este registro queda en el informe y no cambia el saldo.</p>
+    <label>Tipo
+      <select name="tipo" required class="block w-full rounded border p-2">
+        <option value="">Selecciona</option><option>ReteFuente</option><option>ReteIVA</option><option>ReteICA</option>
+      </select>
+    </label>
+    <label>Base <input name="base" type="number" min="0.01" step="0.01" required class="block w-full rounded border p-2"></label>
+    <label>Tarifa (%) <input name="tarifa" type="number" min="0.00001" max="100" step="0.00001" required class="block w-full rounded border p-2"></label>
+    <label>Valor retenido <input name="valor" type="number" min="0.01" step="0.01" required class="block w-full rounded border p-2"></label>
+    <label>Fecha <input name="fecha" type="date" required class="block w-full rounded border p-2"></label>
+    <label>Referencia del soporte <input name="referencia" maxlength="250" required class="block w-full rounded border p-2"></label>
+    <p id="retencion-error" role="alert" class="text-sm text-red-700"></p>
+    <div class="flex justify-end gap-3">
+      <button type="button" id="retencion-cancelar" class="rounded border px-3 py-2">Cancelar</button>
+      <button type="submit" class="rounded bg-teal-700 text-white px-3 py-2">Guardar</button>
+    </div>
+  </form>
+</dialog>
 <div id="modal-saldo-inicial" class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-50 p-4 items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="saldo-inicial-titulo">
   <section class="w-full max-w-lg max-h-full overflow-y-auto bg-white rounded-xl shadow-2xl p-6">
     <h2 id="saldo-inicial-titulo" class="text-lg font-semibold text-gray-800">Saldo inicial con proveedor</h2>
@@ -650,12 +672,18 @@ function renderInformeImpuestos() {
     const xml = soporte?.xml;
     const detalle = xml?.detalleRetencion.map(linea => linea.tipo || linea.codigo).filter(Boolean).join(', ');
     const tributo = xml ? mostrarImporte(xml.retencion) + (detalle ? ' · ' + detalle : '') : 'Por verificar';
+    const retenciones = f.retenciones_factura_proveedor || [];
+    const registro = retenciones.length
+      ? retenciones.map(r => esc(r.tipo) + ' · ' + money(r.valor) + (r.descontada_al_registrar ? '' : ' · Registro histórico')).join('<br>')
+      : 'Sin registro';
     return `<tr><td>${esc(f.numero)}</td><td>${fecha(f.fecha)}</td>
       <td>${xml ? mostrarImporte(xml.subtotal) : 'Por verificar'}</td>
       <td>${xml ? mostrarImporte(xml.iva) : 'Por verificar'}</td>
-      <td>${esc(tributo)}</td><td>${money(f.total)}</td><td>${money(f.saldo)}</td>
-      <td>${esc(soporte?.nombre || 'Sin XML verificado')}</td></tr>`;
-  }).join('') || '<tr><td colspan="8">No hay facturas para el período seleccionado.</td></tr>';
+      <td>${esc(tributo)}</td><td>${registro}</td><td>${money(f.total)}</td><td>${money(f.saldo)}</td>
+      <td>${esc(soporte?.nombre || 'Sin XML verificado')}</td>
+      <td><button type="button" data-registrar-retencion="${esc(f.id)}" class="text-teal-700 font-semibold">Registrar retención histórica</button></td></tr>`;
+  }).join('') || '<tr><td colspan="10">No hay facturas para el período seleccionado.</td></tr>';
+  etiquetarTablas();
   document.getElementById('impuestos-exportar').disabled = exportandoImpuestos || !filas.length;
 }
 
@@ -729,7 +757,9 @@ async function exportarInformeImpuestos() {
       const xml = soporte?.xml;
       return [f.numero,f.fecha,xml ? xml.subtotal ?? noDiscriminado : 'Por verificar',
         xml ? xml.iva ?? noDiscriminado : 'Por verificar',Number(f.total),
-        xml ? xml.retencion ?? noDiscriminado : 'Por verificar',abonos[i],Number(f.saldo),soporte?.nombre || 'Sin XML verificado'];
+        xml ? xml.retencion ?? noDiscriminado : 'Por verificar',
+        f.retenciones_factura_proveedor.length ? f.retenciones_factura_proveedor.reduce((total,r) => total + Number(r.valor), 0) : 'Sin registro',
+        abonos[i],Number(f.saldo),soporte?.nombre || 'Sin XML verificado'];
     });
     const detalle = facturas.flatMap((f,i) => {
       const xml = documentos[i]?.xml;
@@ -740,14 +770,21 @@ async function exportarInformeImpuestos() {
       ]);
       return [...filasDe('IVA',xml.detalleIVA),...filasDe('Retención',xml.detalleRetencion)];
     });
-    const tablas = [{heading:'Facturas',headers:['Factura','Fecha','Subtotal XML','IVA','Total KORA','Retención','Abonos registrados','Saldo KORA','Soporte'],
-      columnTypes:['text','text','currency','currency','currency','currency','currency','currency','text'],rows:filas}];
+    const tablas = [{heading:'Facturas',headers:['Factura','Fecha','Subtotal XML','IVA','Total KORA','Retención XML','Retención registrada en KORA','Abonos registrados','Saldo KORA','Soporte'],
+      columnTypes:['text','text','currency','currency','currency','currency','currency','currency','currency','text'],rows:filas}];
     if (detalle.length) tablas.push({heading:'Detalle tributario',headers:['Factura','Grupo','Tipo','Base','Tarifa','Importe'],
       columnTypes:['text','text','text','currency','percentage','currency'],rows:detalle});
+    const registros = facturas.flatMap(f => f.retenciones_factura_proveedor.map(r => [
+      f.numero,r.fecha,r.tipo,Number(r.base),Number(r.tarifa_porcentaje) / 100,Number(r.valor),r.referencia,
+      r.descontada_al_registrar ? 'Descontada al registrar la factura' : 'Registro histórico sin movimiento nuevo',
+    ]));
+    if (registros.length) tablas.push({heading:'Retenciones registradas en KORA',
+      headers:['Factura','Fecha de retención','Tipo','Base','Tarifa','Valor','Referencia del soporte','Efecto en el saldo'],
+      columnTypes:['text','text','text','currency','percentage','currency','text','text'],rows:registros});
     await window.KoraReportExport.exportData({title:'IVA y retenciones por factura',route:location.pathname+'#panel-facturas',
       scope:{label:'Facturas del proveedor seleccionado'},orientation:'landscape',
       filters:[['Proveedor',proveedor.nombre],['Desde',desde || 'Sin límite'],['Hasta',hasta || 'Sin límite']],
-      notes:['IVA y retenciones provienen del XML cruzado. Abonos y saldo se consultan en KORA. Los valores no discriminados no se consideran cero.'],
+      notes:['El IVA y la retención del XML se muestran por separado de la retención registrada en KORA. El detalle indica si se descontó al crear la factura o si es un registro histórico. Los valores sin verificar no se consideran cero.'],
       tables:tablas}, {sb:SB,profile:{email:usuarioActual.email,rol:rolActual}});
     estado.textContent = 'Informe Excel generado.';
   } catch (error) {
@@ -764,6 +801,63 @@ for (const id of ['impuestos-desde','impuestos-hasta']) {
   document.getElementById(id).addEventListener('change', renderInformeImpuestos);
 }
 
+const modalRetencion = document.getElementById('modal-retencion');
+const formRetencion = document.getElementById('form-retencion');
+const errorRetencion = document.getElementById('retencion-error');
+const cancelarRetencion = document.getElementById('retencion-cancelar');
+const guardarRetencion = formRetencion.querySelector('[type=submit]');
+
+document.getElementById('impuestos-filas').addEventListener('click', event => {
+  const boton = event.target.closest('[data-registrar-retencion]');
+  const factura = facturasInformeImpuestos.find(f => f.id === boton?.dataset.registrarRetencion);
+  if (!factura) return;
+  formRetencion.reset();
+  formRetencion.dataset.facturaId = factura.id;
+  formRetencion.elements.fecha.min = factura.fecha;
+  document.getElementById('retencion-factura').textContent = 'Factura ' + factura.numero;
+  errorRetencion.textContent = '';
+  modalRetencion.showModal();
+});
+formRetencion.addEventListener('input', event => {
+  if (!event.target.matches('[name=base], [name=tarifa]')) return;
+  const base = formRetencion.elements.base.valueAsNumber;
+  const tarifa = formRetencion.elements.tarifa.valueAsNumber;
+  formRetencion.elements.valor.value = Number.isFinite(base * tarifa)
+    ? (base * tarifa / 100).toFixed(2) : '';
+});
+cancelarRetencion.addEventListener('click', () => modalRetencion.close());
+modalRetencion.addEventListener('cancel', event => {
+  if (guardarRetencion.disabled) event.preventDefault();
+});
+formRetencion.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (guardarRetencion.disabled) return;
+  const proveedorId = proveedorSeleccionado;
+  const campos = new FormData(formRetencion);
+  guardarRetencion.disabled = cancelarRetencion.disabled = true;
+  errorRetencion.textContent = '';
+  try {
+    const {error} = await SB.rpc('registrar_retencion_factura_proveedor', {
+      p_factura_id: formRetencion.dataset.facturaId,
+      p_tipo: campos.get('tipo'),
+      p_base: campos.get('base'),
+      p_tarifa_porcentaje: campos.get('tarifa'),
+      p_valor: campos.get('valor'),
+      p_fecha: campos.get('fecha'),
+      p_referencia: campos.get('referencia').trim(),
+    });
+    if (error) throw error;
+    modalRetencion.close();
+    toast('Retención registrada.');
+    if (proveedorSeleccionado === proveedorId) await mostrarFacturas(proveedorId);
+  } catch (error) {
+    if (modalRetencion.open) errorRetencion.textContent = error.message;
+    else toast('Actualiza el listado para ver la retención registrada.', 'warn');
+  } finally {
+    guardarRetencion.disabled = cancelarRetencion.disabled = false;
+  }
+});
+
 async function mostrarFacturas(provId) {
   proveedorSeleccionado = provId;
   facturasInformeImpuestos = [];
@@ -778,7 +872,7 @@ async function mostrarFacturas(provId) {
   let data, error;
   try {
     data = await proveedoresDomain.leerTodas(() => SB.from('facturas_proveedor')
-      .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota, origen_registro')
+      .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota, origen_registro, retenciones_factura_proveedor(tipo, base, tarifa_porcentaje, valor, fecha, referencia, descontada_al_registrar)')
       .eq('proveedor_id', provId)
       .order('fecha', { ascending: false }).order('id'));
   } catch (e) {

@@ -131,6 +131,77 @@
     if(error){alert('No se aplicó ninguna decisión: '+error.message);await cargar();return;}
     await cargar();
   }
+  async function operarRectificacion(rpc, parametros, despues){
+    const panel=$('rectificarCorozal');
+    const botones=[...panel.querySelectorAll('button')];
+    botones.forEach(b=>b.disabled=true);
+    const estado=$('rectificarCorozalEstado');
+    estado.textContent='Procesando…';
+    try{
+      const {data,error}=await sb.rpc(rpc,parametros);
+      if(error)throw error;
+      estado.textContent='';
+      await despues(data);
+    }catch(error){
+      estado.textContent=error.message;
+    }finally{
+      botones.forEach(b=>b.disabled=false);
+    }
+  }
+  async function cargarRectificacion(){
+    const {data,error}=await sb.rpc('listar_rectificaciones_corozal');
+    if(error){$('rectificarCorozalEstado').textContent=error.message;return;}
+    $('rectificarCorozalForm').hidden=perfil.id!==MAITE||data.some(s=>s.estado!=='rechazada');
+    const lista=$('rectificarCorozalSolicitudes');
+    const solicitudes=data;
+    lista.innerHTML=solicitudes.map(s=>`<article class="card">
+      <strong>${escapeHtml(s.estado)}</strong>
+      <p>${escapeHtml(s.motivo)}</p>
+      ${s.motivo_rechazo?`<p>${escapeHtml(s.motivo_rechazo)}</p>`:''}
+      <button class="btn" data-soporte-corozal="${escapeHtml(s.id)}">Descargar soporte · ${escapeHtml(s.soporte_nombre)}</button>
+      ${s.estado==='pendiente'&&perfil.id===OSCAR?`
+        <button class="btn primary" data-decidir-corozal="autorizar" data-id="${escapeHtml(s.id)}">Autorizar rectificación</button>
+        <button class="btn" data-decidir-corozal="rechazar" data-id="${escapeHtml(s.id)}">Rechazar rectificación</button>`:''}
+    </article>`).join('');
+    for(const boton of lista.querySelectorAll('[data-soporte-corozal]')){
+      boton.onclick=()=>operarRectificacion('soporte_rectificacion_corozal',{p_id:boton.dataset.soporteCorozal},data=>{
+        if(!data)throw new Error('Soporte no disponible.');
+        const solicitud=solicitudes.find(s=>s.id===boton.dataset.soporteCorozal);
+        const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));
+        const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'}));
+        const enlace=document.createElement('a');
+        enlace.href=url;enlace.download=solicitud.soporte_nombre;enlace.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+      });
+    }
+    for(const boton of lista.querySelectorAll('[data-decidir-corozal]')){
+      boton.onclick=()=>{
+        const aprobar=boton.dataset.decidirCorozal==='autorizar';
+        const motivo=aprobar?null:prompt('Motivo del rechazo (mínimo 10 caracteres)');
+        if(aprobar&&!confirm('¿Autorizar el cierre corregido de $2.588.560 para el 8 de noviembre?'))return;
+        if(!aprobar&&(motivo===null||motivo.trim().length<10))return;
+        return operarRectificacion('decidir_rectificacion_corozal',{p_id:boton.dataset.id,p_aprobar:aprobar,p_motivo:motivo},cargarRectificacion);
+      };
+    }
+  }
+  function iniciarRectificacion(){
+    const formulario=$('rectificarCorozalForm');
+    formulario.onsubmit=async evento=>{
+      evento.preventDefault();
+      const archivo=$('rectificarCorozalSoporte').files[0];
+      if(!archivo||archivo.size>2097152){
+        $('rectificarCorozalEstado').textContent='Adjunta un soporte de hasta 2 MB.';
+        return;
+      }
+      const bytes=new Uint8Array(await archivo.arrayBuffer());
+      let binario='';
+      for(const byte of bytes)binario+=String.fromCharCode(byte);
+      await operarRectificacion('preparar_rectificacion_corozal',{
+        p_motivo:$('rectificarCorozalMotivo').value,p_nombre:archivo.name,p_soporte:btoa(binario),
+      },async()=>{formulario.reset();await cargarRectificacion()});
+    };
+    return cargarRectificacion();
+  }
   async function iniciar(){
     const {data:{session}}=await sb.auth.getSession();if(!session)return;
     const {data:p,error}=await sb.from('perfiles').select('id,rol,activo').eq('id',session.user.id).single();
@@ -146,7 +217,7 @@
     $('tipo').onchange=cambiarTipo;$('codigo').onchange=saldoActual;
     $('objetivo').oninput=()=>{requestId=null;preview()};$('motivo').oninput=()=>{requestId=null;preview()};
     $('preparar').onclick=preparar;
-    await cargar();
+    await Promise.all([cargar(),iniciarRectificacion()]);
   }
   iniciar();
 })();

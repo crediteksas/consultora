@@ -75,6 +75,10 @@
     {
       "path": "tests/fixtures/supabase-compat/caja-redondeo/release.json",
       "sha256": "590d3a60b1c74471ec591287e8cab1e8fc16ea21a38bf939146769a17f785f4b"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/release.json",
+      "sha256": "efdf384ca7e6667c8b5c284fecdfc0eaea5500b3adcadee09222187dc2fb4a88"
     }
   ]
 }

@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "rectificacion_cierre_corozal",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "kora_private",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cierre_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_original",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_corregido",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "soporte_nombre",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "soporte",
+          "type": "bytea",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "preparado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "preparado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "decidido_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "decidido_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo_rechazo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "Internal operation with no API grants."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "exigir_actor_rectificacion_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_rol text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6225b11b2bdd220503d198b0ebe673e8",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "Internal operation with no API grants."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "verificar_cierre_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "7d11a62fe944bfd22cb0a3809859a6c5",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "Internal operation with no API grants."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "caja_calcular_interno",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "p_tienda text, p_fecha date",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "b6309753d3cbf4f6f7eb292c7212ba17",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "Internal operation with no API grants."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "decidir_rectificacion_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_id uuid, p_aprobar boolean, p_motivo text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "49551487389a37929299ce5b43bbfad0",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "RPC restricted by identity and active profile in its body."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "listar_rectificaciones_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "cb2fd113cb731dc16a710cb7c225f13b",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "RPC restricted by identity and active profile in its body."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "preparar_rectificacion_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_motivo text, p_nombre text, p_soporte text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ea92ba33a107ce36c1a4efeb192d1588",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "RPC restricted by identity and active profile in its body."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "soporte_rectificacion_corozal",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "1fca05cbf533f0dffcebcda7e76e5fb0",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "justification": "RPC restricted by identity and active profile in its body."
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Isolated historical cash correction fixture.",
+  "migration_sha256": {
+    "supabase/migrations/20261109235736_caja_rectificacion_historica_ck02.sql": "64ad6ef411b59799ff13ec44b2def3847cd58c11c65c57ec6d6fcb95acc0bef4"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs",
+      "sha256": "0a375d951b899a677f5a5da4057d21af220f501f8474679aa62290da3e966e4b"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/upgrade-before.json",
+      "sha256": "884b6f23aa3d206b9e7d5cd00a9e6a8f07a32855ca454e60d56f56fc0d568132"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/upgrade-after.json",
+      "sha256": "f89ef6f421912d0c8277b63a2e8940886741248eec61de5062f2d8e07274933a"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/upgrade-contract.json",
+      "sha256": "5bdba3faaf3b9d6a45445380b885de3cb3a0669a5fd060b11cc7ed059736ba7d"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/upgrade-created.json",
+      "sha256": "ba1681dbed5d65549e86d7cafcbb08a28971eb36e69502e1834bf650a93e5620"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/rebuild-before.json",
+      "sha256": "abb32d2d2dbf9766824bc2d52106b96a141188810b7354dea91660309c97cd43"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/rebuild-after.json",
+      "sha256": "06015e7cebb3c76ad7ca5a8b48a5ddb0b32597f4de56104caf7648cc2a6e3a24"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/rebuild-contract.json",
+      "sha256": "5bdba3faaf3b9d6a45445380b885de3cb3a0669a5fd060b11cc7ed059736ba7d"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/rebuild-created.json",
+      "sha256": "ba1681dbed5d65549e86d7cafcbb08a28971eb36e69502e1834bf650a93e5620"
+    }
+  }
+}

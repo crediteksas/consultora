@@ -240,3 +240,65 @@ test('las fuentes de pendientes solicitan refresco después de leer o guardar',(
   const incident=readFileSync('creditek/erp/incidencias-app.js','utf8');
   assert.match(incident.slice(incident.indexOf('async function confirmFixed()'),incident.indexOf('function bind()')),/kora-notifications-refresh/);
 });
+
+test('Gerencia y Auditoría reciben los ajustes de inventario pendientes como cola separada',async()=>{
+  for(const rol of ['gerencia','auditoria']){
+    const source=pendingSources({id:'persona-ficticia',activo:true,rol}).find(s=>s.table==='ajustes_inventario');
+    assert.ok(source,'Falta la cola de ajustes de inventario en la campanita');
+    const states=['pendiente','rechazado','autorizado','pendiente'];
+    const filters=[];
+    const sb={from(table){assert.equal(table,'ajustes_inventario');const q={
+      select(column,options){assert.equal(column,'id');assert.deepEqual(JSON.parse(JSON.stringify(options)),{count:'exact',head:true});return q;},
+      eq(column,value){filters.push([column,value]);return q;},
+      then(ok,bad){return Promise.resolve({count:states.filter(estado=>filters.every(([column,value])=>column==='estado'&&estado===value)).length}).then(ok,bad);}
+    };return q;}};
+    assert.equal((await pendingCount(sb,source)).count,2);
+    assert.equal(source.path,'/creditek/erp/ajustes.html#seccionCola');
+    assert.deepEqual(filters,[['estado','pendiente']]);
+  }
+});
+
+test('La página refresca la campanita solo después de confirmar los estados consultados',async()=>{
+  const page=readFileSync('creditek/erp/ajustes.html','utf8');
+  const loader=page.slice(page.indexOf('async function cargarAjustes()'),page.indexOf('function renderColaAprobacion()'));
+  const events=[];let result={data:[{id:'solicitud-ficticia',estado:'rechazado'}]};
+  const query={select(){return query;},order:async()=>result};
+  const context=vm.createContext({sb:{from(table){assert.equal(table,'ajustes_inventario');return query;}},
+    document:{getElementById(){return {style:{}};},dispatchEvent(event){events.push(event.type);}},
+    CustomEvent:class{constructor(type){this.type=type;}},renderColaAprobacion(){},renderTablaAjustes(){}
+  });
+  vm.runInContext('let ajustesCache=[];'+loader,context);
+  await context.cargarAjustes();
+  assert.deepEqual(events,['kora-notifications-refresh']);
+  result={error:{message:'Fallo ficticio'}};
+  await context.cargarAjustes();
+  assert.equal(events.length,1);
+});
+
+
+test('ajustes de inventario no agrega colas centrales a tiendas, asesores o usuarios inactivos',()=>{
+  for(const profile of [null,{id:'ficticio',rol:'gerencia',activo:false},{id:'ficticio',rol:'auditoria',activo:false},{id:'ficticio',rol:'admin_tienda',activo:true,tienda_codigo:'TIENDA-FICTICIA'},{id:'ficticio',rol:'asesor',activo:true},{rol:'gerencia',activo:true}]){
+    assert.ok(!pendingSources(profile).some(s=>s.table==='ajustes_inventario'));
+  }
+});
+
+
+test('cerrar un ajuste con éxito refresca la campana; una decisión denegada no dispara el evento',async()=>{
+  const page=readFileSync('creditek/erp/ajustes.html','utf8');
+  assert.match(page,/id="seccionCola"/);
+  const loader=page.slice(page.indexOf('async function cargarAjustes()'),page.indexOf('function renderColaAprobacion()'));
+  const close=page.slice(page.indexOf('async function confirmarRechazo()'),page.indexOf('function renderTablaAjustes()'));
+  const events=[],calls=[];let fail=false;
+  const node={value:'Cierre ficticio para prueba',style:{},classList:{remove(){},add(){}}};
+  const query={select(){return query;},order:async()=>({data:[{id:'ajuste-ficticio',estado:'rechazado'}]})};
+  const ctx=vm.createContext({sb:{from(table){assert.equal(table,'ajustes_inventario');return query;},rpc:async(name,args)=>{calls.push([name,args]);return fail?{error:{message:'Denegado ficticio'}}:{error:null};}},
+    document:{getElementById(){return node;},dispatchEvent(e){events.push(e.type);}},CustomEvent:class{constructor(type){this.type=type;}},
+    renderColaAprobacion(){},renderTablaAjustes(){},mostrarBanner(){}
+  });
+  vm.runInContext("let ajustesCache=[],ajusteIdParaRechazar='ajuste-ficticio';"+loader+close,ctx);
+  await ctx.confirmarRechazo();await new Promise(setImmediate);
+  assert.deepEqual(events,['kora-notifications-refresh']);
+  assert.equal(calls[0][0],'autorizar_ajuste');assert.equal(calls[0][1].p_accion,'rechazar');
+  fail=true;await ctx.confirmarRechazo();await new Promise(setImmediate);
+  assert.equal(events.length,1,'no presenta una decisión denegada como éxito');
+});

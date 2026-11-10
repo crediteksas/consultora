@@ -416,6 +416,7 @@ async function cargarAjustes() {
   ajustesCache = data || [];
   renderColaAprobacion();
   renderTablaAjustes();
+  document.dispatchEvent(new CustomEvent('kora-notifications-refresh'));
 }
 
 function renderColaAprobacion() {

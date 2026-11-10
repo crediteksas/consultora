@@ -23,6 +23,9 @@
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="/config/kora-environment.generated.js"></script>
   <script src="proveedores-domain.js?v=1.2.0"></script>
+  <script src="vendor/fflate-0.8.3.js" defer></script>
+  <script src="proveedores-impuestos.js?v=1.0.0" defer></script>
+  <script id="koraReportExport" src="kora-report-export.js?v=1.5.0" defer></script>
   <script src="proveedores-saldo-inicial.js?v=1.0.0"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -223,6 +226,25 @@
           Facturas de <span id="facturas-prov-nombre" class="text-blue-700"></span>
         </h2>
         <p class="text-xs text-gray-500 mb-4">Historial de compras registradas y saldo pendiente por documento.</p>
+        <details class="rounded border border-gray-200 p-3 mb-4">
+          <summary class="font-semibold">IVA y retenciones por factura</summary>
+          <p class="text-sm text-gray-600 mt-2">Carga los XML o ZIP de las facturas de este proveedor. Los soportes se leen en esta sesión y los saldos de KORA se consultan sin modificarlos.</p>
+          <div class="flex flex-wrap gap-3 items-end mt-3">
+            <label class="text-sm">Soportes XML o ZIP
+              <input id="impuestos-archivos" type="file" accept=".xml,.zip" multiple class="block">
+            </label>
+            <label class="text-sm">Desde <input id="impuestos-desde" type="date" class="block rounded border p-2"></label>
+            <label class="text-sm">Hasta <input id="impuestos-hasta" type="date" class="block rounded border p-2"></label>
+            <button id="impuestos-exportar" type="button" disabled class="rounded border px-3 py-2 text-sm font-semibold">Descargar Excel</button>
+          </div>
+          <p id="impuestos-estado" role="status" class="text-sm text-gray-600 mt-2"></p>
+          <div class="proveedores-table mt-3">
+            <table class="w-full text-sm">
+              <thead><tr><th>Factura</th><th>Fecha</th><th>Subtotal XML</th><th>IVA</th><th>Retenciones</th><th>Total KORA</th><th>Saldo KORA</th><th>Soporte</th></tr></thead>
+              <tbody id="impuestos-filas"></tbody>
+            </table>
+          </div>
+        </details>
         <div class="proveedores-table">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 text-left">
@@ -439,6 +461,10 @@ let proveedores = [];
 let saldoPorProveedor = {};   // id -> saldo pendiente agregado
 let facturas = [];
 let proveedorSeleccionado = null;
+let facturasInformeImpuestos = [];
+const impuestosPorFactura = new Map();
+const impuestosEnConflicto = new Set();
+let exportandoImpuestos = false;
 let detalleFacturaActual = null;
 let pagoIdempotencyKey = null;
 let pagoSoportePath = null;
@@ -610,20 +636,158 @@ function renderResumen(proveedoresFiltrados) {
 // ============================================================
 // FACTURAS DEL PROVEEDOR SELECCIONADO
 // ============================================================
+function filasInformeImpuestos() {
+  const desde = document.getElementById('impuestos-desde').value;
+  const hasta = document.getElementById('impuestos-hasta').value;
+  return facturasInformeImpuestos.filter(f => (!desde || f.fecha >= desde) && (!hasta || f.fecha <= hasta));
+}
+
+function renderInformeImpuestos() {
+  const filas = filasInformeImpuestos();
+  const mostrarImporte = value => value === null ? 'No discriminado' : money(value);
+  document.getElementById('impuestos-filas').innerHTML = filas.map(f => {
+    const soporte = impuestosPorFactura.get(f.id);
+    const xml = soporte?.xml;
+    const detalle = xml?.detalleRetencion.map(linea => linea.tipo || linea.codigo).filter(Boolean).join(', ');
+    const tributo = xml ? mostrarImporte(xml.retencion) + (detalle ? ' · ' + detalle : '') : 'Por verificar';
+    return `<tr><td>${esc(f.numero)}</td><td>${fecha(f.fecha)}</td>
+      <td>${xml ? mostrarImporte(xml.subtotal) : 'Por verificar'}</td>
+      <td>${xml ? mostrarImporte(xml.iva) : 'Por verificar'}</td>
+      <td>${esc(tributo)}</td><td>${money(f.total)}</td><td>${money(f.saldo)}</td>
+      <td>${esc(soporte?.nombre || 'Sin XML verificado')}</td></tr>`;
+  }).join('') || '<tr><td colspan="8">No hay facturas para el período seleccionado.</td></tr>';
+  document.getElementById('impuestos-exportar').disabled = exportandoImpuestos || !filas.length;
+}
+
+async function cargarSoportesImpuestos(evento) {
+  const input = evento.currentTarget;
+  const archivos = Array.from(input.files || []);
+  input.value = '';
+  const proveedor = proveedores.find(p => p.id === proveedorSeleccionado);
+  const facturasSeleccionadas = facturasInformeImpuestos;
+  const estado = document.getElementById('impuestos-estado');
+  const lector = window.CreditekProveedoresImpuestos;
+  let cruzadas = 0;
+  let omitidas = 0;
+  const errores = [];
+  input.disabled = true;
+  try {
+    for (const archivo of archivos) {
+      try {
+        const documentos = await lector.leerArchivo(archivo);
+        if (proveedor?.id !== proveedorSeleccionado || facturasSeleccionadas !== facturasInformeImpuestos) return;
+        for (const xml of documentos) {
+          const coincidencias = facturasSeleccionadas.filter(f => xml.nit === lector.nit(proveedor.nit) &&
+            xml.numero === lector.numeroFactura(f.numero) && Math.round(xml.total * 100) === Math.round(Number(f.total) * 100));
+          if (coincidencias.length !== 1) { omitidas++; continue; }
+          const factura = coincidencias[0];
+          if (impuestosEnConflicto.has(factura.id)) { omitidas++; continue; }
+          const previo = impuestosPorFactura.get(factura.id);
+          if (previo && JSON.stringify(previo.xml) !== JSON.stringify(xml)) {
+            impuestosPorFactura.delete(factura.id);
+            impuestosEnConflicto.add(factura.id);
+            omitidas++;
+            continue;
+          }
+          impuestosPorFactura.set(factura.id, {xml, nombre:archivo.name});
+          cruzadas++;
+        }
+      } catch (error) { errores.push(`${archivo.name}: ${error.message}`); }
+    }
+    if (proveedor?.id !== proveedorSeleccionado || facturasSeleccionadas !== facturasInformeImpuestos) return;
+    estado.textContent = `${cruzadas} soportes cruzados · ${omitidas} sin coincidencia única o con diferencias. ${errores.join(' ')}`;
+    renderInformeImpuestos();
+  } finally {
+    input.disabled = false;
+  }
+}
+
+async function exportarInformeImpuestos() {
+  const proveedor = proveedores.find(p => p.id === proveedorSeleccionado);
+  const facturas = filasInformeImpuestos();
+  const boton = document.getElementById('impuestos-exportar');
+  const estado = document.getElementById('impuestos-estado');
+  const desde = document.getElementById('impuestos-desde').value;
+  const hasta = document.getElementById('impuestos-hasta').value;
+  if (exportandoImpuestos || !proveedor || !facturas.length) return;
+  exportandoImpuestos = true;
+  const documentos = facturas.map(f => impuestosPorFactura.get(f.id));
+  boton.disabled = true;
+  try {
+    estado.textContent = 'Consultando abonos registrados…';
+    const abonos = [];
+    for (let inicio = 0; inicio < facturas.length; inicio += 6) {
+      const grupo = await Promise.all(facturas.slice(inicio,inicio+6).map(async f => {
+        const {data,error} = await SB.rpc('obtener_detalle_factura_proveedor',{p_factura_id:f.id});
+        return error || !data ? 'Por verificar' : proveedoresDomain.normalizarDetalle(data).totalPagado;
+      }));
+      abonos.push(...grupo);
+    }
+    const noDiscriminado = 'No discriminado';
+    const filas = facturas.map((f,i) => {
+      const soporte = documentos[i];
+      const xml = soporte?.xml;
+      return [f.numero,f.fecha,xml ? xml.subtotal ?? noDiscriminado : 'Por verificar',
+        xml ? xml.iva ?? noDiscriminado : 'Por verificar',Number(f.total),
+        xml ? xml.retencion ?? noDiscriminado : 'Por verificar',abonos[i],Number(f.saldo),soporte?.nombre || 'Sin XML verificado'];
+    });
+    const detalle = facturas.flatMap((f,i) => {
+      const xml = documentos[i]?.xml;
+      if (!xml) return [];
+      const filasDe = (grupo,lineas) => lineas.map(linea => [
+        f.numero,grupo,linea.tipo || linea.codigo || noDiscriminado,linea.base ?? noDiscriminado,
+        linea.tarifa === null ? noDiscriminado : linea.tarifa / 100,linea.monto ?? noDiscriminado,
+      ]);
+      return [...filasDe('IVA',xml.detalleIVA),...filasDe('Retención',xml.detalleRetencion)];
+    });
+    const tablas = [{heading:'Facturas',headers:['Factura','Fecha','Subtotal XML','IVA','Total KORA','Retención','Abonos registrados','Saldo KORA','Soporte'],
+      columnTypes:['text','text','currency','currency','currency','currency','currency','currency','text'],rows:filas}];
+    if (detalle.length) tablas.push({heading:'Detalle tributario',headers:['Factura','Grupo','Tipo','Base','Tarifa','Importe'],
+      columnTypes:['text','text','text','currency','percentage','currency'],rows:detalle});
+    await window.KoraReportExport.exportData({title:'IVA y retenciones por factura',route:location.pathname+'#panel-facturas',
+      scope:{label:'Facturas del proveedor seleccionado'},orientation:'landscape',
+      filters:[['Proveedor',proveedor.nombre],['Desde',desde || 'Sin límite'],['Hasta',hasta || 'Sin límite']],
+      notes:['IVA y retenciones provienen del XML cruzado. Abonos y saldo se consultan en KORA. Los valores no discriminados no se consideran cero.'],
+      tables:tablas}, {sb:SB,profile:{email:usuarioActual.email,rol:rolActual}});
+    estado.textContent = 'Informe Excel generado.';
+  } catch (error) {
+    estado.textContent = 'No se pudo generar el Excel: ' + error.message;
+  } finally {
+    exportandoImpuestos = false;
+    boton.disabled = !filasInformeImpuestos().length;
+  }
+}
+
+document.getElementById('impuestos-archivos').addEventListener('change', cargarSoportesImpuestos);
+document.getElementById('impuestos-exportar').addEventListener('click', exportarInformeImpuestos);
+for (const id of ['impuestos-desde','impuestos-hasta']) {
+  document.getElementById(id).addEventListener('change', renderInformeImpuestos);
+}
+
 async function mostrarFacturas(provId) {
   proveedorSeleccionado = provId;
+  facturasInformeImpuestos = [];
+  document.getElementById('impuestos-estado').textContent = '';
+  renderInformeImpuestos();
   render();
 
   const prov = proveedores.find(p => p.id === provId);
   document.getElementById('facturas-prov-nombre').textContent = prov ? prov.nombre : '';
   document.getElementById('panel-detalle-factura').classList.add('hidden');
 
-  const { data, error } = await SB
-    .from('facturas_proveedor')
-    .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota, origen_registro')
-    .eq('proveedor_id', provId)
-    .order('fecha', { ascending: false });
+  let data, error;
+  try {
+    data = await proveedoresDomain.leerTodas(() => SB.from('facturas_proveedor')
+      .select('id, numero, fecha, fecha_vencimiento, total, saldo, nota, origen_registro')
+      .eq('proveedor_id', provId)
+      .order('fecha', { ascending: false }).order('id'));
+  } catch (e) {
+    error = e;
+  }
 
+  if (proveedorSeleccionado !== provId) return;
+  facturasInformeImpuestos = (data || []).filter(f => !['saldo_inicial','ajuste_gerencia','anticipo_proveedor'].includes(f.origen_registro));
+  renderInformeImpuestos();
   const tbody = document.getElementById('tbody-facturas');
   if (error) {
     tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-red-600">Error: ' + esc(error.message) + '</td></tr>';

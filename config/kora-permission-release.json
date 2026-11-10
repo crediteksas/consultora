@@ -79,6 +79,10 @@
     {
       "path": "tests/fixtures/supabase-compat/caja-rectificacion-corozal/release.json",
       "sha256": "efdf384ca7e6667c8b5c284fecdfc0eaea5500b3adcadee09222187dc2fb4a88"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/release.json",
+      "sha256": "b2a7ce78692164e337ec376c841ec2c6cf3a9a03d5bde46bcf4f481bf2dca7eb"
     }
   ]
 }

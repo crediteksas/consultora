@@ -1,0 +1,25 @@
+[
+  {
+    "schema": "public",
+    "name": "retenciones_factura_proveedor",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "registrar_compra_proveedor_operativa",
+    "kind": "function",
+    "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid"
+  },
+  {
+    "schema": "public",
+    "name": "registrar_compra_proveedor_operativa",
+    "kind": "function",
+    "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "registrar_retencion_factura_proveedor",
+    "kind": "function",
+    "identity": "p_factura_id uuid, p_tipo text, p_base numeric, p_tarifa_porcentaje numeric, p_valor numeric, p_fecha date, p_referencia text"
+  }
+]

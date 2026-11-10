@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "retenciones_factura_proveedor",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "base",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tarifa_porcentaje",
+          "type": "numeric(8,5)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "descontada_al_registrar",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-proveedor.test.mjs",
+      "justification": "Authenticated users are limited by the central-role policy and server authorization. Service role retains the project default."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_compra_proveedor_operativa",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "350b22f54d5015037c83283a7babf795",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-proveedor.test.mjs",
+      "justification": "Authenticated users are limited by the central-role policy and server authorization. Service role retains the project default."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_compra_proveedor_operativa",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "a1ba2dc6cb2197bae48493520fbd2dc6",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-proveedor.test.mjs",
+      "justification": "Authenticated users are limited by the central-role policy and server authorization. Service role retains the project default."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_retencion_factura_proveedor",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_factura_id uuid, p_tipo text, p_base numeric, p_tarifa_porcentaje numeric, p_valor numeric, p_fecha date, p_referencia text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "5f1454931cd7f220d40c7b6dd7af4bb6",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-proveedor.test.mjs",
+      "justification": "Authenticated users are limited by the central-role policy and server authorization. Service role retains the project default."
+    }
+  ],
+  "allow_catalog_changes": {
+    "policies": "[{\"check_md5\":null,\"command\":\"r\",\"name\":\"movimientos_tesoreria_central_select\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"movimientos_tesoreria_central\",\"using_md5\":\"9ab8f7f3967d6ce73fcc1b033aec1963\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"retenciones_proveedor_lectura_central\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"retenciones_factura_proveedor\",\"using_md5\":\"31934ac23b934564c237304d2e2c9913\"}]"
+  }
+}

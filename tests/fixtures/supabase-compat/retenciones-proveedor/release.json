@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Reduced isolated supplier-withholding fixture.",
+  "migration_sha256": {
+    "supabase/migrations/20261110180316_registro_retenciones_proveedor.sql": "c0efd85132f061c537ac55cd05ec3329740d5c1fd4763ead6ab6ea64ae0039ee"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-retenciones-proveedor.test.mjs",
+      "sha256": "b1ae4f10b0f0f03adb303b0f485d6bb1a2a614034fa31b2264864d38d5541ab2"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/upgrade-before.json",
+      "sha256": "95c56dbfcdbfc057bbec33df4dbbb2a266910bc82eb59d21a8d30b4e4d05c61e"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/upgrade-after.json",
+      "sha256": "a49e048e35d11212dc7d82ba86745709861107386011a8361a719a681eaf557d"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/upgrade-contract.json",
+      "sha256": "be375c34d40bb4911a10b144d13411651a39b087e5c0cd872ae7885405f1ac5a"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/upgrade-created.json",
+      "sha256": "7eff6586812c7d79179325fa3cf80f9d73b6f9f343430a27d398bc9902369e43"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/rebuild-before.json",
+      "sha256": "0536360557eca586cc11d52b14dd6a22058fe007a852ae892994da3787abbba8"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/rebuild-after.json",
+      "sha256": "42a86ae7b405a46d60e20f25ae99f1dafbcddf3a7b4dae0951b606d61979c514"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/rebuild-contract.json",
+      "sha256": "be375c34d40bb4911a10b144d13411651a39b087e5c0cd872ae7885405f1ac5a"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/retenciones-proveedor/rebuild-created.json",
+      "sha256": "7eff6586812c7d79179325fa3cf80f9d73b6f9f343430a27d398bc9902369e43"
+    }
+  }
+}

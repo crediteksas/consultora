@@ -13,6 +13,7 @@ test('Corozal: doble control, soporte privado, arqueo intacto y arrastre único'
     await db.exec(await readFile(new URL('../fixtures/supabase-compat/caja-rectificacion-corozal/fixture.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../../supabase/migrations/20260926221259_caja_primera_apertura_sin_doble_descuento.sql',import.meta.url),'utf8'));
     await db.exec(migration);
+    await db.exec(await readFile(new URL('../../supabase/migrations/20261111225941_caja_arrastre_rectificacion_corozal.sql',import.meta.url),'utf8'));
     const actor = async id => {
       await db.exec('reset role; set role authenticated');
       await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);
@@ -40,11 +41,15 @@ test('Corozal: doble control, soporte privado, arqueo intacto y arrastre único'
     await actor(oscar);
     const {soporte} = (await db.query('select soporte_rectificacion_corozal($1) soporte',[id])).rows[0];
     assert.equal(soporte,'JVBERi0xLjQK');
-    await db.exec("reset role; insert into caja_cortes values ('CK-02','2026-11-09','validada',3920360)");
+    await db.exec(`reset role;
+      insert into caja_cortes values ('CK-02','2026-11-09','validada',3920360);
+      insert into caja_diaria(tienda_codigo,fecha,estado,apertura,efectivo_esperado,efectivo_contado,arrastre_movimientos_incorporado)
+        values ('CK-02','2026-11-09','cerrada',3360360,3920360,3920360,0);
+      insert into gastos values ('CK-02','2026-11-08','aprobado')`);
     await actor(oscar);
-    await assert.rejects(decidir(id), /cierre posterior/);
+    await assert.rejects(decidir(id), /ya hay gastos/);
     assert.equal((await caja('2026-11-09')).apertura, 3360360);
-    await db.exec("delete from caja_cortes where fecha='2026-11-09'");
+    await db.exec("delete from gastos");
     await actor(oscar);
     await decidir(id);
     await assert.rejects(decidir(id), /no está disponible/);
@@ -55,10 +60,13 @@ test('Corozal: doble control, soporte privado, arqueo intacto y arrastre único'
     assert.equal(siguiente.apertura,2588560);
     assert.equal(siguiente.esperado,3148560);
     assert.equal((await caja('2026-11-09','OTRA')).apertura,1000000);
+    assert.equal(siguiente.caja.efectivo_contado,3920360);
+    const posterior = await caja('2026-11-10');
+    assert.equal(posterior.apertura,3148560);
     await db.query(`insert into caja_diaria(tienda_codigo,fecha,estado,apertura,efectivo_esperado,efectivo_contado,arrastre_movimientos_incorporado)
-      values ('CK-02','2026-11-09','cerrada',$1,$2,$2,$3)`,[siguiente.apertura,siguiente.esperado,siguiente.arrastre_movimientos_total]);
-    assert.equal((await caja('2026-11-10')).apertura,3148560);
-    assert.equal((await db.query('select efectivo_contado from caja_cortes')).rows[0].efectivo_contado,'3360360');
+      values ('CK-02','2026-11-10','cerrada',$1,$2,$2,$3)`,[posterior.apertura,posterior.esperado,posterior.arrastre_movimientos_total]);
+    assert.equal((await caja('2026-11-11')).apertura,3148560);
+    assert.equal((await db.query("select efectivo_contado from caja_cortes where fecha='2026-11-08'")).rows[0].efectivo_contado,'3360360');
   } finally {
     await db.close();
   }

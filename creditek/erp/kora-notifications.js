@@ -1,6 +1,8 @@
 (function (global) {
   'use strict';
 
+  const OSCAR = '6de0ad26-64af-4966-8cd9-d468880af627';
+
   // Consultas de solo lectura: RLS sigue siendo la autoridad sobre lo visible.
   const colombiaToday = (now = new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
@@ -29,6 +31,12 @@
         {key:'expense-corrections',table:'gastos',title:'Gastos devueltos · corregir y reenviar',path:'/creditek/erp/gastos.html',filters:[['eq','correccion_pendiente',true],['eq','tienda_codigo',profile.tienda_codigo]]},
       );
     }
+    if (profile.rol === 'gerencia' && profile.id === OSCAR) sources.push(
+      {key:'management-adjustments',table:'ajustes_gerencia_solicitudes',title:'Ajustes de caja y cartera por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'supplier-adjustments',table:'proveedores_ajustes_solicitudes',title:'Ajustes de proveedores por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'bank-supplier-payments',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Banco Creditek',path:'/creditek/erp/banco-creditek.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'corozal-cash-correction',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
+    );
     if (financialAccess) sources.push(
       {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general',filters:[['eq','status','pendiente_aprobacion']]},
       {key:'financial-payment',table:'financial_entries',title:'Ya autorizados · falta registrar el pago',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=ordenes',filters:[['eq','status','aprobado']]},
@@ -45,6 +53,12 @@
         const rows=result.data?.[source.resultKey];
         if(result.error||!Array.isArray(rows)||rows.some(row=>!row||typeof row!=='object'||(source.resultKey==='diarias'&&(!Object.hasOwn(row,'confirmacion')||(row.confirmacion!==null&&typeof row.confirmacion!=='object')))))throw new Error('No se pudieron consultar todos los pendientes.');
         return {...source,count:source.resultKey==='diarias'?rows.filter(row=>row.confirmacion===null).length:rows.length};
+      }
+      if (source.pendingStatus) {
+        if (result.error || !Array.isArray(result.data) || result.data.some(row => typeof row?.estado !== 'string')) {
+          throw new Error('No se pudieron consultar todos los pendientes.');
+        }
+        return {...source,count:result.data.filter(row => row.estado === source.pendingStatus).length};
       }
       const count = Number(result.data);
       if (result.error || !['number','string'].includes(typeof result.data) || String(result.data).trim()==='' || !Number.isSafeInteger(count) || count < 0) throw new Error('No se pudieron consultar todos los pendientes.');

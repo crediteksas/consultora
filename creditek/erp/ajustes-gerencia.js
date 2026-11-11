@@ -129,6 +129,7 @@
         {p_id:id,p_aprobar:aprobar,p_motivo_rechazo:motivo}));
     }catch(e){error=e;}finally{busy=false;}
     if(error){alert('No se aplicó ninguna decisión: '+error.message);await cargar();return;}
+    document.dispatchEvent(new Event('kora-notifications-refresh'));
     await cargar();
   }
   async function operarRectificacion(rpc, parametros, despues){
@@ -142,6 +143,7 @@
       if(error)throw error;
       estado.textContent='';
       await despues(data);
+      if(rpc==='decidir_rectificacion_corozal') document.dispatchEvent(new Event('kora-notifications-refresh'));
     }catch(error){
       estado.textContent=error.message;
     }finally{
@@ -202,7 +204,10 @@
         p_motivo:$('rectificarCorozalMotivo').value,p_nombre:archivo.name,p_soporte:btoa(binario),
       },async()=>{formulario.reset();await cargarRectificacion()});
     };
-    return cargarRectificacion();
+    return cargarRectificacion().then(()=>{
+      const panel=$('rectificarCorozal');
+      if(location.hash==='#rectificarCorozal'&&!panel.hidden)panel.scrollIntoView();
+    });
   }
   async function iniciar(){
     const {data:{session}}=await sb.auth.getSession();if(!session)return;

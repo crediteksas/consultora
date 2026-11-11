@@ -302,3 +302,20 @@ test('cerrar un ajuste con éxito refresca la campana; una decisión denegada no
   fail=true;await ctx.confirmarRechazo();await new Promise(setImmediate);
   assert.equal(events.length,1,'no presenta una decisión denegada como éxito');
 });
+
+test('los ajustes y pagos de Gerencia solo cuentan solicitudes que Óscar puede decidir', async () => {
+  const id = '6de0ad26-64af-4966-8cd9-d468880af627';
+  const keys = ['management-adjustments', 'supplier-adjustments', 'bank-supplier-payments', 'corozal-cash-correction'];
+  const sources = pendingSources({id, rol:'gerencia'}).filter(source => keys.includes(source.key));
+  assert.equal(sources.length, 4);
+  assert.ok(!pendingSources({id, rol:'auditoria'}).some(source => keys.includes(source.key)));
+  assert.ok(!pendingSources({id:'otra-persona', rol:'gerencia'}).some(source => keys.includes(source.key)));
+  const correction = sources.find(source => source.key === 'corozal-cash-correction');
+  assert.match(correction.path, /#rectificarCorozal$/);
+  const data = [{estado:'pendiente'}, {estado:'autorizada'}, {estado:'rechazada'}];
+  const sb = {rpc: async () => ({data})};
+  assert.equal((await pendingCount(sb, correction)).count, 1);
+  data[0].estado = 'autorizada';
+  assert.equal((await pendingCount(sb, correction)).count, 0);
+  await assert.rejects(pendingCount({rpc:async()=>({data:[{}]})}, correction), /pendientes/);
+});

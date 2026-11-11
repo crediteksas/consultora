@@ -13,7 +13,7 @@ test('Corozal: doble control, soporte privado, arqueo intacto y arrastre único'
     await db.exec(await readFile(new URL('../fixtures/supabase-compat/caja-rectificacion-corozal/fixture.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../../supabase/migrations/20260926221259_caja_primera_apertura_sin_doble_descuento.sql',import.meta.url),'utf8'));
     await db.exec(migration);
-    await db.exec(await readFile(new URL('../../supabase/migrations/20261111225941_caja_arrastre_rectificacion_corozal.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../../supabase/migrations/20261111230357_caja_arrastre_rectificacion_corozal.sql',import.meta.url),'utf8'));
     const actor = async id => {
       await db.exec('reset role; set role authenticated');
       await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);

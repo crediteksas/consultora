@@ -241,3 +241,46 @@ test('ajustes de inventario: alerta persistente, error visible y enlace a revisi
     }
   }finally{await browser.close();}
 });
+
+test('la rectificación de Corozal aparece primero y abre la sección de autorización', async () => {
+  const browser = await chromium.launch({channel:'chrome', headless:true});
+  try {
+    const page = await browser.newPage({viewport:{width:390,height:700}});
+    await page.route('https://kora.test/**', route => route.fulfill({
+      contentType:'text/html',
+      body:'<button data-kora-notifications>Campana</button><h2 id="rectificarCorozal">Rectificación de Corozal</h2>',
+    }));
+    await page.goto('https://kora.test/creditek/erp/dashboard.html');
+    await page.addScriptTag({content:await readFile('creditek/erp/kora-notifications.js','utf8')});
+    await page.evaluate(() => {
+      const sb = {
+        rpc: async name => ({data: {
+          es_controlador_financiero:false,
+          puede_autorizar_venta_excepcional:false,
+          listar_confirmaciones_deuda:{diarias:[],diferencias:[]},
+          conteos_pendientes_cantidad:0,
+          inventario_fotos_pendientes_cantidad:0,
+          listar_rectificaciones_corozal:[{estado:'pendiente'}],
+        }[name]}),
+        from() {
+          let count=false;
+          const query={
+            select(_fields,options){count=!!options?.head;return query;},
+            eq(){return query;},in(){return query;},order(){return query;},limit(){return query;},
+            then(ok,bad){return Promise.resolve(count?{count:1}:{data:[]}).then(ok,bad);},
+          };
+          return query;
+        },
+      };
+      KoraNotifications.mount({sb,profile:{id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia',activo:true}});
+    });
+    await page.locator('[data-kora-notifications]').click();
+    const first=page.locator('[data-pending]').first();
+    assert.equal(await first.getAttribute('data-pending'),'corozal-cash-correction');
+    assert.match(await first.textContent(),/1 · Rectificación del cierre de Corozal por autorizar/);
+    await first.click();
+    await page.waitForURL('https://kora.test/creditek/erp/ajustes-gerencia.html#rectificarCorozal');
+  } finally {
+    await browser.close();
+  }
+});

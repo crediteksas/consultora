@@ -31,11 +31,11 @@
         {key:'expense-corrections',table:'gastos',title:'Gastos devueltos · corregir y reenviar',path:'/creditek/erp/gastos.html',filters:[['eq','correccion_pendiente',true],['eq','tienda_codigo',profile.tienda_codigo]]},
       );
     }
-    if (profile.rol === 'gerencia' && profile.id === OSCAR) sources.push(
+    if (profile.rol === 'gerencia' && profile.id === OSCAR) sources.unshift(
+      {key:'corozal-cash-correction',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
       {key:'management-adjustments',table:'ajustes_gerencia_solicitudes',title:'Ajustes de caja y cartera por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
       {key:'supplier-adjustments',table:'proveedores_ajustes_solicitudes',title:'Ajustes de proveedores por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
       {key:'bank-supplier-payments',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Banco Creditek',path:'/creditek/erp/banco-creditek.html#pendientes',filters:[['eq','estado','pendiente']]},
-      {key:'corozal-cash-correction',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
     );
     if (financialAccess) sources.push(
       {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general',filters:[['eq','status','pendiente_aprobacion']]},

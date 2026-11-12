@@ -489,7 +489,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
   }
   async function exportPdf(report,sb,popup){
     if(!popup)throw new Error('Permite ventanas emergentes para generar el PDF.');
-    popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument(report,logo));popup.document.close();await audit(sb,report,'pdf');
+    popup.opener=null;const logo=await logoBase64();popup.document.write(pdfDocument({...report,tables:report.pdfTables||report.tables},logo));popup.document.close();await audit(sb,report,'pdf');
   }
   // Informes de ventanas: datos explícitos, sin capturar la pantalla que queda detrás.
   const dataFormats={currency:'"$" #,##0;[Red]-"$" #,##0',number:'#,##0',percentage:'0.00%;[Red]-0.00%',datetime:'dd/mm/yyyy hh:mm',date:'dd/mm/yyyy',text:'@'};
@@ -603,7 +603,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
         menu.querySelector('#koraReportModeHelp').textContent='Se incluyen las tiendas y referencias de la pestaña activa, respetando sus filtros. Los conteos físicos se gestionan por separado.';
         let settings=menu.querySelector('[data-inventory-options]');
         if(!settings){settings=document.createElement('div');settings.setAttribute('data-inventory-options','');menu.prepend(settings);}
-        settings.innerHTML='<strong style="display:block;margin-bottom:12px">Informe de '+(options.celulares?'celulares':'accesorios')+'</strong><label style="display:block;margin-bottom:12px">Presentación<select data-inventory-imei style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="no">Por tienda y referencia</option>'+(options.celulares?'<option value="si">Detalle con IMEI</option>':'')+'</select></label><label style="display:block;margin-bottom:12px">Costos<select data-inventory-cost style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="ninguno">Sin costos</option><option value="remision">Con costo de remisión</option>'+(options.interno?'<option value="interno">Con costo interno Creditek</option>':'')+'</select></label>';
+        settings.innerHTML='<strong style="display:block;margin-bottom:12px">Informe de '+(options.celulares?'celulares':'accesorios')+'</strong><label style="display:block;margin-bottom:12px">Presentación<select data-inventory-imei style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="no">Tiendas × referencias</option>'+(options.celulares?'<option value="si">Detalle con IMEI</option>':'')+'</select></label><label style="display:block;margin-bottom:12px">Costos<select data-inventory-cost style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="ninguno">Sin costos</option><option value="remision">Con costo de remisión</option>'+(options.interno?'<option value="interno">Con costo interno Creditek</option>':'')+'</select></label>';
       }
       const rect=toggle.getBoundingClientRect();
       menu.style.top=`${Math.min(rect.bottom+8,window.innerHeight-120)}px`;

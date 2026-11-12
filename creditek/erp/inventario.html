@@ -793,10 +793,19 @@ window.KoraInventoryReport = {
       costo:costo==='ninguno'?null:(celulares?inventarioDomain.valorVisibleUnidad(r,costo==='interno'):inventarioDomain.valorVisibleStock(r,costo==='interno')),
     }));
     if(!registros.length)throw new Error('No hay inventario con los filtros seleccionados.');
-    const tabla=window.CreditekInventarioExport.tablaInforme({registros,celulares,incluirImei,costo});
-    return {...report,title:celulares?'Inventario de celulares':'Inventario de accesorios',metrics:[],tables:[tabla],notes:[],
+    const tables=celulares&&incluirImei?[window.CreditekInventarioExport.tablaInforme({registros,celulares,incluirImei,costo})]:window.CreditekInventarioExport.matrizInforme({registros,costo});
+    const pdfTables=tables.flatMap(table=>{
+      if(table.layout!=='matrix'||table.headers.length<=7)return [table];
+      const parts=[];
+      for(let start=1;start<table.headers.length-1;start+=5){
+        const cols=[0,...Array.from({length:Math.min(5,table.headers.length-1-start)},(_,i)=>start+i),table.headers.length-1];
+        parts.push({...table,heading:table.heading+' · referencias '+start+'–'+(start+cols.length-3),headers:cols.map(i=>table.headers[i]),rows:table.rows.map(row=>cols.map(i=>row[i])),totalRows:table.totalRows.map(row=>cols.map(i=>row[i])),currencyColumns:table.currencyColumns.length?cols.slice(1).map((_,i)=>i+1):[],notes:[...table.notes,'El total por tienda incluye todas las referencias; se repite como contexto en cada bloque.']});
+      }
+      return parts;
+    });
+    return {...report,title:celulares?'Inventario de celulares':'Inventario de accesorios',metrics:[],tables,pdfTables,orientation:'landscape',notes:[],
       filters:[...report.filters.filter(([label])=>label!=='Formato del informe'),
-        ['Presentación',celulares&&incluirImei?'Detalle por IMEI':'Por tienda y referencia'],['Costos',costo==='ninguno'?'Sin costos':costo==='interno'?'Costo interno Creditek':'Costo de remisión']],recordCount:registros.length};
+        ['Presentación',celulares&&incluirImei?'Detalle por IMEI':'Matriz de tiendas y referencias'],['Costos',costo==='ninguno'?'Sin costos':costo==='interno'?'Costo interno Creditek':'Costo de remisión']],recordCount:registros.length};
   }
 };
 

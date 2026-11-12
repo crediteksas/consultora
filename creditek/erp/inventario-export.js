@@ -226,8 +226,35 @@
     return { heading: detalle ? 'Celulares por IMEI' : 'Inventario por tienda y referencia', kind: 'detail', headers, rows, sumColumns: [cantidadCol, ...(conCosto ? [headers.length - 1] : [])], currencyColumns: conCosto ? [headers.length - 2, headers.length - 1] : [], notes: conCosto ? ['Costo promedio ponderado por cantidad. Los costos faltantes se muestran como pendientes; no se convierten en cero.'] : [] };
   }
 
+  function matrizInforme({ registros, costo = 'ninguno' }) {
+    const tiendas = new Map(), referencias = new Map(), celdas = new Map();
+    for (const r of registros) {
+      tiendas.set(r.tiendaCodigo, r.tienda);
+      referencias.set(r.productoId, `${r.referencia} · ${r.productoCodigo || r.productoId}`);
+      const key=JSON.stringify([r.tiendaCodigo,r.productoId]);
+      const cell=celdas.get(key)||{cantidad:0,centavos:0,falta:false};
+      cell.cantidad+=Number(r.cantidad);
+      if(costo!=='ninguno'&&Number(r.cantidad)!==0){
+        if(r.costo==null||!Number.isFinite(Number(r.costo)))cell.falta=true;
+        else cell.centavos+=Math.round(Number(r.costo)*Number(r.cantidad)*100);
+      }
+      celdas.set(key,cell);
+    }
+    const refs=[...referencias.keys()], stores=[...tiendas.keys()];
+    const build=(valor)=>{
+      const total=values=>values.some(v=>typeof v!=='number')?'Sin costo registrado':Math.round(values.reduce((a,b)=>a+b,0)*100)/100;
+      const rows=stores.map(store=>{const values=refs.map(ref=>{const c=celdas.get(JSON.stringify([store,ref]));return !c?0:valor?(c.falta?'Sin costo registrado':c.centavos/100):c.cantidad;});return [tiendas.get(store),...values,total(values)];});
+      const headers=['Tienda',...refs.map(ref=>referencias.get(ref)),valor?'Total valor por tienda':'Unidades por tienda'];
+      const footer=['Total general',...headers.slice(1).map((_,i)=>total(rows.map(row=>row[i+1])))];
+      const formatted=values=>values.map((value,i)=>valor&&i>0&&typeof value==='number'?'$ '+new Intl.NumberFormat('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value):value);
+      return {heading:valor?'Valor del inventario · '+(costo==='interno'?'costo interno':'costo de remisión'):'Cantidades · tiendas y referencias',kind:'detail',layout:'matrix',headers,rows:rows.map(formatted),totalRows:[formatted(footer)],explicitTotals:true,currencyColumns:valor?headers.slice(1).map((_,i)=>i+1):[],notes:[valor?'Valores totales en COP; los costos faltantes se identifican expresamente.':'Cantidades de los registros filtrados. Cero significa que no hay unidades registradas en ese cruce.']};
+    };
+    return [build(false),...(costo==='ninguno'?[]:[build(true)])];
+  }
+
   global.CreditekInventarioExport = Object.freeze({
     tablaInforme,
+    matrizInforme,
     protegerCelda,
     fechaCorte,
     exportarCelulares,

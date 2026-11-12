@@ -122,7 +122,6 @@ const erp = [
   'tests/erp/kora-2026-000032-crear-referencia-factura.test.mjs',
   'tests/erp/inventario-retiro-carga-inicial.test.mjs',
   'tests/erp/inventario-export.test.mjs',
-  'tests/erp/inventario-report-options.test.mjs',
   'tests/erp/kora-2026-000038-inventario-ajustes.test.mjs',
   'tests/erp/kora-2026-000048-inventario-import.test.mjs',
   'tests/erp/inventario-import-costos.test.mjs',

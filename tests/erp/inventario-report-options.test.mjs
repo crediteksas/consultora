@@ -49,6 +49,16 @@ test('consulta agrupa referencias, abre solo su detalle y gestión permite ver t
  c.gestionCostos=false;c.prepararVistaInventario(rows.slice(2),'celulares');assert.equal(c.detalleSeleccionado.celulares,null);assert.equal(el('detalleCelulares').hidden,true);
 });
 
+test('detalle muestra costo de tienda y mantiene el costo interno protegido',()=>{
+ const html=readFileSync('creditek/erp/inventario.html','utf8');
+ for(const id of ['thCostoCel','thCostoAcc','thValorTotalAcc']) assert.match(html,new RegExp(`<th id="${id}"`));
+ assert.match(html,/<td>\$\{inventarioDomain\.valorVisibleUnidad\(u\)/);
+ assert.match(html,/<td>\$\{costoRemision === null/);
+ assert.match(html,/class="inventario-costo" id="thCostoInternoCel"/);
+ assert.match(html,/class="inventario-costo" id="thCostoInternoAcc"/);
+ assert.match(html,/esCentral\(\) \? `<td class="inventario-costo"/);
+});
+
 test('ordena marcas y modelos naturalmente, sin alterar totales ni mezclar accesorios compatibles',()=>{
  const refs=['SAMSUNG A17','REDMI 13','SAMSUNG A9','Cargador para Samsung','IPHONE 12'];
  const t=context.window.CreditekInventarioExport.matrizInforme({registros:refs.map((referencia,i)=>({...registros[0],referencia,productoId:'P'+i,productoCodigo:'R'+i}))})[0];

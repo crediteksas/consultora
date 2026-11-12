@@ -249,7 +249,7 @@ body.kora-product-page .export-actions .btn-export { background:white;color:#102
 <div id="referenciasCelulares" class="inventario-referencias" data-kora-no-export></div><button type="button" id="volverCelulares" class="btn-export" hidden>Volver a referencias</button>
       <div class="tabla-wrap" id="detalleCelulares" hidden>
         <table>
-          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th class="inventario-costo" id="thCostoCel">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoCel" style="display:none">Costo interno Creditek</th><th>Fecha ingreso</th><th class="inventario-costo" id="thAccionCostoCel" style="display:none">Acción</th></tr></thead>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoCel" style="display:none">Costo interno Creditek</th><th>Fecha ingreso</th><th class="inventario-costo" id="thAccionCostoCel" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyCelulares"></tbody>
         </table>
         <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
@@ -266,7 +266,7 @@ body.kora-product-page .export-actions .btn-export { background:white;color:#102
 <div id="referenciasAccesorios" class="inventario-referencias" data-kora-no-export></div><button type="button" id="volverAccesorios" class="btn-export" hidden>Volver a referencias</button>
       <div class="tabla-wrap" id="detalleAccesorios" hidden>
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th class="inventario-costo" id="thCostoAcc">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoAcc" style="display:none">Costo interno Creditek</th><th class="inventario-costo" id="thValorTotalAcc">Total al costo de remisión</th><th class="inventario-costo" id="thAccionCostoAcc" style="display:none">Acción</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoAcc" style="display:none">Costo interno Creditek</th><th id="thValorTotalAcc">Total al costo de remisión</th><th class="inventario-costo" id="thAccionCostoAcc" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -663,7 +663,7 @@ function renderCelulares() {
       <td>${escapeHtml(u.productos?.nombre || '—')}</td>
       <td><span class="badge ${u.estado}">${u.estado}</span></td>
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
-      <td class="inventario-costo">${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
+      <td>${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
       ${esCentral() ? `<td class="inventario-costo">${inventarioDomain.valorVisibleUnidad(u, true) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, true))}</td>` : ''}
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
       ${gestionCostos && puedeEditarCostos() ? `<td class="inventario-costo"><button type="button" class="btn-costo" data-costo-unidad="${u.id}">Modificar costo</button></td>` : ''}
@@ -711,9 +711,9 @@ function renderAccesorios() {
         <td>${escapeHtml(r.productos?.nombre || '—')}</td>
         <td>${escapeHtml(r.tiendas?.nombre || r.tienda_codigo || '—')}</td>
         <td>${r.cantidad}${bajoStock ? ' ⚠️' : ''}</td>
-        <td class="inventario-costo">${costoRemision === null ? 'Pendiente' : fmtCOP(costoRemision)}</td>
+        <td>${costoRemision === null ? 'Pendiente' : fmtCOP(costoRemision)}</td>
         ${esCentral() ? `<td class="inventario-costo">${costoInterno === null ? 'Pendiente' : fmtCOP(costoInterno)}</td>` : ''}
-        <td class="inventario-costo">${costoRemision === null ? 'Pendiente' : fmtCOP(r.cantidad * costoRemision)}</td>
+        <td>${costoRemision === null ? 'Pendiente' : fmtCOP(r.cantidad * costoRemision)}</td>
         ${gestionCostos && puedeEditarCostos() ? `<td class="inventario-costo"><button type="button" class="btn-costo" data-costo-producto="${r.producto_id}" data-costo-tienda="${escapeHtml(r.tienda_codigo)}">Modificar costo</button></td>` : ''}
       </tr>
     `;

@@ -10,38 +10,57 @@
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
     const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central || (profile.rol === 'admin_tienda' && profile.tienda_codigo)) sources.push(
-      {key:'inventory-photo-tasks',rpc:'inventario_fotos_pendientes_cantidad',title:'Fotos de inventario pendientes · tarea de la tienda',hint:'El ajuste está aplicado. Adjunta las fotos pendientes en Inventario; no bloquean la operación ni el cierre de utilidad y no descuentan otra vez.',path:'/creditek/erp/inventario.html#conteos'},
+      {key:'inventory-photo-tasks',owner:'tienda',rpc:'inventario_fotos_pendientes_cantidad',title:'Fotos de inventario pendientes · tarea de la tienda',hint:'El ajuste está aplicado. Adjunta las fotos pendientes en Inventario; no bloquean la operación ni el cierre de utilidad y no descuentan otra vez.',path:'/creditek/erp/inventario.html#conteos'},
     );
     if (central) {
       sources.push(
-        {key:'store-debt-confirmations',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diarias',title:'Tiendas sin confirmar el saldo de hoy',hint:'Cuenta administradoras activas que aún no confirmaron hoy. No significa que tengan una diferencia de saldo.',path:'/creditek/erp/confirmaciones-deuda.html#confirmacionesDelDia'},
-        {key:'store-debt-differences',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diferencias',title:'Reportes de diferencias de deuda por revisar',hint:'Incluye días anteriores: una tienda puede tener varios reportes. No son las tiendas sin confirmar hoy. Revisar no modifica su deuda.',path:'/creditek/erp/confirmaciones-deuda.html#diferenciasPendientes'},
-        {key:'inventory-adjustments',table:'ajustes_inventario',title:'Ajustes de inventario por revisar',hint:'Revisa estas solicitudes en su cola: puedes revisar con un corte o cerrarlas sin aplicar. Leer el aviso no aplica ajustes ni retira el pendiente.',path:'/creditek/erp/ajustes.html#seccionCola',filters:[['eq','estado','pendiente']]},
-        {key:'inventory-counts',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
-        {key:'transfers',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
-        {key:'store-expenses',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
-        {key:'ally-expenses',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
+        {key:'store-debt-confirmations',owner:'tienda',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diarias',title:'Tiendas sin confirmar el saldo de hoy',hint:'Cuenta administradoras activas que aún no confirmaron hoy. No significa que tengan una diferencia de saldo.',path:'/creditek/erp/confirmaciones-deuda.html#confirmacionesDelDia'},
+        {key:'store-debt-differences',owner:'compartido',rpc:'listar_confirmaciones_deuda',args:{p_fecha:colombiaToday()},resultKey:'diferencias',title:'Reportes de diferencias de deuda por revisar',hint:'Incluye días anteriores: una tienda puede tener varios reportes. No son las tiendas sin confirmar hoy. Revisar no modifica su deuda.',path:'/creditek/erp/confirmaciones-deuda.html#diferenciasPendientes'},
+        {key:'inventory-adjustments',owner:'compartido',table:'ajustes_inventario',title:'Ajustes de inventario por revisar',hint:'Revisa estas solicitudes en su cola: puedes revisar con un corte o cerrarlas sin aplicar. Leer el aviso no aplica ajustes ni retira el pendiente.',path:'/creditek/erp/ajustes.html#seccionCola',filters:[['eq','estado','pendiente']]},
+        {key:'inventory-counts',owner:'compartido',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
+        {key:'transfers',owner:'compartido',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
+        {key:'store-expenses',owner:'compartido',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
+        {key:'ally-expenses',owner:'gerencia',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
       );
       if (salesApprovalAccess) sources.push(
-        {key:'sales-approval',table:'ventas_autorizaciones',title:'Ventas bajo costo u obsequios por autorizar',hint:'Mayte y Óscar reciben este mismo pendiente. Incluye ventas de $0; se retira al aprobar o rechazar, no al leerlo.',path:'/creditek/erp/ventas.html#tituloAutorizaciones',filters:[['eq','estado','pendiente']]},
+        {key:'sales-approval',owner:'compartido',table:'ventas_autorizaciones',title:'Ventas bajo costo u obsequios por autorizar',hint:'Mayte y Óscar reciben este mismo pendiente. Incluye ventas de $0; se retira al aprobar o rechazar, no al leerlo.',path:'/creditek/erp/ventas.html#tituloAutorizaciones',filters:[['eq','estado','pendiente']]},
       );
     } else if (profile.rol === 'admin_tienda' && profile.tienda_codigo) {
       sources.push(
-        {key:'transfers',table:'traslados',title:'Traslados por recibir',path:'/creditek/erp/traslados.html',filters:[['eq','estado','despachado'],['eq','tienda_destino',profile.tienda_codigo]]},
-        {key:'expense-corrections',table:'gastos',title:'Gastos devueltos · corregir y reenviar',path:'/creditek/erp/gastos.html',filters:[['eq','correccion_pendiente',true],['eq','tienda_codigo',profile.tienda_codigo]]},
+        {key:'transfers',owner:'tienda',table:'traslados',title:'Traslados por recibir',path:'/creditek/erp/traslados.html',filters:[['eq','estado','despachado'],['eq','tienda_destino',profile.tienda_codigo]]},
+        {key:'expense-corrections',owner:'tienda',table:'gastos',title:'Gastos devueltos · corregir y reenviar',path:'/creditek/erp/gastos.html',filters:[['eq','correccion_pendiente',true],['eq','tienda_codigo',profile.tienda_codigo]]},
       );
     }
     if (profile.rol === 'gerencia' && profile.id === OSCAR) sources.unshift(
-      {key:'corozal-cash-correction',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
-      {key:'management-adjustments',table:'ajustes_gerencia_solicitudes',title:'Ajustes de caja y cartera por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
-      {key:'supplier-adjustments',table:'proveedores_ajustes_solicitudes',title:'Ajustes de proveedores por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
-      {key:'bank-supplier-payments',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Banco Creditek',path:'/creditek/erp/banco-creditek.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'corozal-cash-correction',owner:'gerencia',rpc:'listar_rectificaciones_corozal',pendingStatus:'pendiente',title:'Rectificación del cierre de Corozal por autorizar',path:'/creditek/erp/ajustes-gerencia.html#rectificarCorozal'},
+      {key:'management-adjustments',owner:'gerencia',table:'ajustes_gerencia_solicitudes',title:'Ajustes de caja y cartera por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'supplier-adjustments',owner:'gerencia',table:'proveedores_ajustes_solicitudes',title:'Ajustes de proveedores por autorizar',path:'/creditek/erp/ajustes-gerencia.html#pendientes',filters:[['eq','estado','pendiente']]},
+      {key:'bank-supplier-payments',owner:'gerencia',table:'banco_creditek_pagos_proveedor',title:'Pagos a proveedores por autorizar en Banco Creditek',path:'/creditek/erp/banco-creditek.html#pendientes',filters:[['eq','estado','pendiente']]},
     );
     if (financialAccess) sources.push(
-      {key:'financial-approval',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general',filters:[['eq','status','pendiente_aprobacion']]},
-      {key:'financial-payment',table:'financial_entries',title:'Ya autorizados · falta registrar el pago',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=ordenes',filters:[['eq','status','aprobado']]},
+      {key:'financial-approval',owner:'gerencia',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general#pendientes',filters:[['eq','status','pendiente_aprobacion']]},
+      {key:'financial-payment',owner:'gestion',table:'financial_entries',title:'Ya autorizados · falta registrar el pago',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=ordenes',filters:[['eq','status','aprobado']]},
     );
     return sources;
+  }
+
+  const pendingOwnerLabels = Object.freeze({
+    gerencia:'Gerencia',
+    gestion:'Gestión · Mayte',
+    compartido:'Gerencia y Gestión',
+    tienda:'Tiendas',
+    seguimiento:'Seguimiento',
+  });
+
+  function pendingGroups(items, role) {
+    const order = role === 'auditoria'
+      ? ['gestion','gerencia','compartido','tienda','seguimiento']
+      : ['gerencia','gestion','compartido','tienda','seguimiento'];
+    return order.map(owner=>({
+      owner,
+      label:pendingOwnerLabels[owner],
+      items:items.filter(item=>(item.owner||'seguimiento')===owner&&(item.stale||item.count>0)),
+    })).filter(group=>group.items.length);
   }
 
   async function pendingCount(sb, source, requests = new Map()) {
@@ -165,18 +184,23 @@
       list.replaceChildren();
       if (pending.some(item=>item.stale||item.count>0)) {
         list.append(element('p','Pendientes por gestionar · se retiran al resolver el trámite, no al leerlos.','kora-notifications-empty'));
-        pending.filter(item=>item.stale||item.count>0).forEach(item=>{
-          const button=element('button',undefined,'kora-notification-item ghost');
-          button.type='button';
-          button.dataset.pending=item.key;
-          button.dataset.unread='true';
-          button.dataset.stale=String(Boolean(item.stale));
-          button.append(element('strong',`${item.stale?'Por comprobar':item.count} · ${item.title}`));
-          if(item.stale)button.append(element('span',Number.isSafeInteger(item.count)?`Último conteo: ${item.count}. No está actualizado; pulsa Actualizar.`:'No se pudo comprobar esta categoría; pulsa Actualizar.','kora-notification-item__detail'));
-          if (item.hint) button.append(element('span',item.hint,'kora-notification-item__detail'));
-          button.append(element('span','Abrir pendientes','kora-notification-item__link'));
-          button.addEventListener('click',()=>location.assign(item.path));
-          list.append(button);
+        pendingGroups(pending, profile.rol).forEach(group=>{
+          const heading=element('h3',group.label,'kora-notifications-empty');
+          heading.dataset.pendingOwner=group.owner;
+          list.append(heading);
+          group.items.forEach(item=>{
+            const button=element('button',undefined,'kora-notification-item ghost');
+            button.type='button';
+            button.dataset.pending=item.key;
+            button.dataset.unread='true';
+            button.dataset.stale=String(Boolean(item.stale));
+            button.append(element('strong',`${item.stale?'Por comprobar':item.count} · ${item.title}`));
+            if(item.stale)button.append(element('span',Number.isSafeInteger(item.count)?`Último conteo: ${item.count}. No está actualizado; pulsa Actualizar.`:'No se pudo comprobar esta categoría; pulsa Actualizar.','kora-notification-item__detail'));
+            if (item.hint) button.append(element('span',item.hint,'kora-notification-item__detail'));
+            button.append(element('span','Abrir pendientes','kora-notification-item__link'));
+            button.addEventListener('click',()=>location.assign(item.path));
+            list.append(button);
+          });
         });
       }
       if (!notifications.length) {
@@ -329,6 +353,6 @@
     load();
   }
 
-  global.KoraNotifications = Object.freeze({ mount, pendingSources, pendingCount, colombiaToday });
+  global.KoraNotifications = Object.freeze({ mount, pendingSources, pendingGroups, pendingCount, colombiaToday });
   document.dispatchEvent(new CustomEvent('kora-notifications-ready'));
 })(window);

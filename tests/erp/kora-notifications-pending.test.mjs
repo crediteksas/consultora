@@ -319,3 +319,25 @@ test('los ajustes y pagos de Gerencia solo cuentan solicitudes que Óscar puede 
   assert.equal((await pendingCount(sb, correction)).count, 0);
   await assert.rejects(pendingCount({rpc:async()=>({data:[{}]})}, correction), /pendientes/);
 });
+
+test('la campana agrupa aprobaciones y pagos según quién debe actuar', () => {
+  const {pendingGroups} = context.window.KoraNotifications;
+  const profile = {id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia'};
+  const active = new Set(['financial-approval','financial-payment','inventory-counts']);
+  const pending = pendingSources(profile,true).map(item=>({...item,count:active.has(item.key)?1:0}));
+  const groups = pendingGroups(pending,'gerencia');
+  assert.deepEqual(Array.from(groups,group=>group.label),['Gerencia','Gestión · Mayte','Gerencia y Gestión']);
+  assert.equal(groups[0].items[0].key,'financial-approval');
+  assert.match(groups[0].items[0].path,/#pendientes$/);
+  assert.equal(groups[1].items[0].key,'financial-payment');
+  assert.equal(pendingGroups(pending,'auditoria')[0].owner,'gestion');
+});
+
+test('Gastos y retiros muestra las aprobaciones antes de los informes', () => {
+  const html=readFileSync('creditek/erp/finanzas-programadas.html','utf8');
+  const approvals=html.indexOf('id="pendientes"');
+  assert.ok(approvals>=0);
+  for(const report of ['metrics','exportCsv','socios-inventario','historyContent']){
+    assert.ok(html.indexOf('id="'+report+'"')>approvals);
+  }
+});

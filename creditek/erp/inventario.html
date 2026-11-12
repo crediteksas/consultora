@@ -774,7 +774,31 @@ function datosExportables() {
 }
 
 let controlConteos;
-function descargarInventario() { return controlConteos.abrir(); }
+function descargarInventario(conteoCiego = false) {
+  if(conteoCiego)return controlConteos.abrir();
+  const toggle=document.querySelector('[data-kora-report-toggle]');
+  if(toggle)toggle.click();
+}
+window.KoraInventoryReport = {
+  options: () => ({ celulares: tabActual === 'celulares', interno: esCentral() }),
+  create(report, { incluirImei = false, costo = 'ninguno' } = {}) {
+    if(!['ninguno','remision','interno'].includes(costo))throw new Error('Selecciona cómo mostrar los costos.');
+    if(costo === 'interno' && !esCentral())throw new Error('No tienes permiso para consultar costos internos.');
+    const celulares=tabActual === 'celulares';
+    const registros=datosExportables().map(r=>({
+      tiendaCodigo:celulares?r.tienda_actual:r.tienda_codigo,
+      tienda:r.tiendas?.nombre || (celulares?r.tienda_actual:r.tienda_codigo),
+      productoId:r.producto_id,productoCodigo:r.productos?.codigo,referencia:r.productos?.nombre || 'Sin referencia',
+      estado:celulares?r.estado:'',imei:celulares?r.imei:'',cantidad:celulares?1:r.cantidad,
+      costo:costo==='ninguno'?null:(celulares?inventarioDomain.valorVisibleUnidad(r,costo==='interno'):inventarioDomain.valorVisibleStock(r,costo==='interno')),
+    }));
+    if(!registros.length)throw new Error('No hay inventario con los filtros seleccionados.');
+    const tabla=window.CreditekInventarioExport.tablaInforme({registros,celulares,incluirImei,costo});
+    return {...report,title:celulares?'Inventario de celulares':'Inventario de accesorios',metrics:[],tables:[tabla],notes:[],
+      filters:[...report.filters.filter(([label])=>label!=='Formato del informe'),
+        ['Presentación',celulares&&incluirImei?'Detalle por IMEI':'Por tienda y referencia'],['Costos',costo==='ninguno'?'Sin costos':costo==='interno'?'Costo interno Creditek':'Costo de remisión']],recordCount:registros.length};
+  }
+};
 
 
 // Los ajustes se realizan únicamente en KoraConteosUI, con autorización de servidor.

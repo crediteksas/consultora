@@ -204,7 +204,30 @@
     return libro;
   }
 
+  function tablaInforme({ registros, celulares, incluirImei = false, costo = 'ninguno' }) {
+    const conCosto = costo !== 'ninguno', detalle = celulares && incluirImei;
+    const grupos = new Map();
+    for (const r of registros) {
+      const cantidad = Number(r.cantidad);
+      if (!Number.isFinite(cantidad)) throw new Error('Cantidad de inventario sin verificar.');
+      const key = detalle ? String(grupos.size) : JSON.stringify([r.tiendaCodigo, r.productoId, r.estado]);
+      let g = grupos.get(key);
+      if (!g) { g = { ...r, cantidad: 0, centavos: 0, faltantes: false }; grupos.set(key, g); }
+      g.cantidad += cantidad;
+      if (conCosto && cantidad !== 0) {
+        if (r.costo == null || !Number.isFinite(Number(r.costo))) g.faltantes = true;
+        else g.centavos += Math.round(Number(r.costo) * cantidad * 100);
+      }
+    }
+    const headers = ['Tienda', 'Código producto', 'Referencia', ...(celulares ? ['Estado'] : []), ...(detalle ? ['IMEI'] : []), 'Cantidad'];
+    const cantidadCol = headers.length - 1;
+    if (conCosto) headers.push(costo === 'interno' ? 'Costo interno promedio' : 'Costo de remisión promedio', costo === 'interno' ? 'Valor total al costo interno' : 'Valor total al costo de remisión');
+    const rows = [...grupos.values()].map(g => [g.tienda, g.productoCodigo || g.productoId, g.referencia, ...(celulares ? [g.estado] : []), ...(detalle ? [g.imei] : []), g.cantidad, ...(conCosto ? [g.faltantes || !g.cantidad ? 'Sin costo registrado' : g.centavos / 100 / g.cantidad, g.faltantes ? 'Sin costo registrado' : g.centavos / 100] : [])]);
+    return { heading: detalle ? 'Celulares por IMEI' : 'Inventario por tienda y referencia', kind: 'detail', headers, rows, sumColumns: [cantidadCol, ...(conCosto ? [headers.length - 1] : [])], currencyColumns: conCosto ? [headers.length - 2, headers.length - 1] : [], notes: conCosto ? ['Costo promedio ponderado por cantidad. Los costos faltantes se muestran como pendientes; no se convierten en cero.'] : [] };
+  }
+
   global.CreditekInventarioExport = Object.freeze({
+    tablaInforme,
     protegerCelda,
     fechaCorte,
     exportarCelulares,

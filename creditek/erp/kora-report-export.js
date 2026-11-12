@@ -272,11 +272,12 @@
       return {...table,notes:[],structured:false,headers:columns.map(column=>table.headers[column]),rows:table.rows.map(row=>columns.map(column=>row[column])),sumColumns:remap(table.sumColumns),currencyColumns:remap(table.currencyColumns),balanceColumns:remap(table.balanceColumns)};
     });
   }
-  async function prepareReport(profile,{mode='detailed'}={}) {
+  async function prepareReport(profile,{mode='detailed',inventory}={}) {
     // Los adaptadores históricos se llaman prepareExcel, pero su contrato de datos
     // también alimenta PDF y el resumen. Proyectar totales solo después de cargarlos.
     let report=snapshot(profile,{mode:'detailed'});
-    if(window.KoraReportData?.prepareExcel)report=await window.KoraReportData.prepareExcel(report);
+    if(window.KoraInventoryReport){report=window.KoraInventoryReport.create(report,inventory);mode='detailed';}
+    else if(window.KoraReportData?.prepareExcel)report=await window.KoraReportData.prepareExcel(report);
     if(!report.tables.some(table=>table.rows?.length||table.totalRows?.length)&&!report.metrics.some(([,value])=>!/^\s*(?:—|-|No disponible|Sin dato)\s*$/i.test(String(value))))throw new Error('No hay datos consultados para generar este informe.');
     report.tables=report.tables.map(completeTable);
     if(mode==='summary')report.tables=summaryTables(report.tables);
@@ -596,6 +597,14 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     const closeMenu=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');};
     toggle.onclick=()=>{
       if(!menu.hidden){closeMenu();return;}
+      if(window.KoraInventoryReport){
+        const options=window.KoraInventoryReport.options();
+        menu.querySelector('[data-kora-report-summary]').closest('label').style.display='none';
+        menu.querySelector('#koraReportModeHelp').textContent='Se incluyen las tiendas y referencias de la pestaña activa, respetando sus filtros. Los conteos físicos se gestionan por separado.';
+        let settings=menu.querySelector('[data-inventory-options]');
+        if(!settings){settings=document.createElement('div');settings.setAttribute('data-inventory-options','');menu.prepend(settings);}
+        settings.innerHTML='<strong style="display:block;margin-bottom:12px">Informe de '+(options.celulares?'celulares':'accesorios')+'</strong><label style="display:block;margin-bottom:12px">Presentación<select data-inventory-imei style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="no">Por tienda y referencia</option>'+(options.celulares?'<option value="si">Detalle con IMEI</option>':'')+'</select></label><label style="display:block;margin-bottom:12px">Costos<select data-inventory-cost style="display:block;width:100%;min-height:44px;margin-top:6px"><option value="ninguno">Sin costos</option><option value="remision">Con costo de remisión</option>'+(options.interno?'<option value="interno">Con costo interno Creditek</option>':'')+'</select></label>';
+      }
       const rect=toggle.getBoundingClientRect();
       menu.style.top=`${Math.min(rect.bottom+8,window.innerHeight-120)}px`;
       const width=Math.min(270,window.innerWidth-24);
@@ -611,7 +620,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
       const popup=button.dataset.format==='pdf'?window.open('','_blank'):null;
       if(popup)popup.opener=null;
       try{
-        const report=await prepareReport(profile,{mode:menu.querySelector('[data-kora-report-summary]').checked?'summary':'detailed'});
+        const report=await prepareReport(profile,{mode:menu.querySelector('[data-kora-report-summary]').checked?'summary':'detailed',inventory:{incluirImei:menu.querySelector('[data-inventory-imei]')?.value==='si',costo:menu.querySelector('[data-inventory-cost]')?.value||'ninguno'}});
         if(button.dataset.format==='xlsx')await exportExcel(report,sb);
         else await exportPdf(await includeStoreNames(report,sb),sb,popup);
         toast(`Informe ${button.dataset.format.toUpperCase()} generado · ${report.id}`);

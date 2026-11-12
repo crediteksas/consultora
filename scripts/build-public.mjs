@@ -30,8 +30,8 @@ const KORA_PWA_FILES = [
   'creditek/erp/kora-release-label.js',
   'creditek/erp/kora-service-worker.js',
 ];
-const KORA_SHELL_ASSET_VERSION = '2.0.39';
-const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.39';
+const KORA_SHELL_ASSET_VERSION = '2.0.40';
+const KORA_ACCESS_CONTROL_ASSET_VERSION = '2.0.40';
 const KORA_PRODUCT_ASSET_VERSION = '2.0.5';
 const KORA_AUDIT_ASSET_VERSIONS = Object.freeze({
   'conteos-ui.js': '1.2.6',

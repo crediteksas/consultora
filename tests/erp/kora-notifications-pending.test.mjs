@@ -320,17 +320,19 @@ test('los ajustes y pagos de Gerencia solo cuentan solicitudes que Óscar puede 
   await assert.rejects(pendingCount({rpc:async()=>({data:[{}]})}, correction), /pendientes/);
 });
 
-test('la campana agrupa aprobaciones y pagos según quién debe actuar', () => {
-  const {pendingGroups} = context.window.KoraNotifications;
-  const profile = {id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia'};
-  const active = new Set(['financial-approval','financial-payment','inventory-counts']);
-  const pending = pendingSources(profile,true).map(item=>({...item,count:active.has(item.key)?1:0}));
-  const groups = pendingGroups(pending,'gerencia');
-  assert.deepEqual(Array.from(groups,group=>group.label),['Gerencia','Gestión · Mayte','Gerencia y Gestión']);
-  assert.equal(groups[0].items[0].key,'financial-approval');
-  assert.match(groups[0].items[0].path,/#pendientes$/);
-  assert.equal(groups[1].items[0].key,'financial-payment');
-  assert.equal(pendingGroups(pending,'auditoria')[0].owner,'gestion');
+test('Óscar solo recibe autorizaciones y Mayte solo recibe tareas que puede gestionar', () => {
+  const oscar = {id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia'};
+  const mayte = {id:'d1782db6-bacc-4caf-af6f-ce1b8d1c0391',rol:'auditoria'};
+  const approvals = pendingSources(oscar,true,true);
+  const management = pendingSources(mayte,true,true);
+  assert.match(approvals.find(source=>source.key==='financial-approval').path,/#pendientes$/);
+  assert.ok(management.some(source=>source.key==='financial-payment'));
+  assert.ok(approvals.every(source=>source.owner==='gerencia'||source.owner==='compartido'));
+  assert.ok(management.every(source=>source.owner==='gestion'||source.owner==='compartido'));
+  assert.ok(approvals.every(source=>source.key!=='store-debt-differences'));
+  for(const sources of [approvals,management]){
+    assert.ok(sources.some(source=>source.key==='sales-approval'));
+  }
 });
 
 test('Gastos y retiros muestra las aprobaciones antes de los informes', () => {

@@ -3,6 +3,14 @@
 
   const OSCAR = '6de0ad26-64af-4966-8cd9-d468880af627';
 
+  const MAYTE = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
+  const sharedApprovals = new Set(['inventory-counts','transfers','store-expenses','sales-approval']);
+  function personalQueue(profile) {
+    if (profile.rol==='gerencia' && profile.id===OSCAR) return 'gerencia';
+    if (profile.rol==='auditoria' && profile.id===MAYTE) return 'gestion';
+    return null;
+  }
+
   // Consultas de solo lectura: RLS sigue siendo la autoridad sobre lo visible.
   const colombiaToday = (now = new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
@@ -41,6 +49,9 @@
       {key:'financial-approval',owner:'gerencia',table:'financial_entries',title:profile.rol==='gerencia'?'Gastos y retiros por autorizar':'Gastos y retiros · esperando autorización',path:'/creditek/erp/finanzas-programadas.html?vista=general#pendientes',filters:[['eq','status','pendiente_aprobacion']]},
       {key:'financial-payment',owner:'gestion',table:'financial_entries',title:'Ya autorizados · falta registrar el pago',hint:'Ya están autorizados. Siguen visibles hasta registrar y validar el pago con su soporte; no necesitan otra aprobación.',path:'/creditek/erp/aliados-tesoreria.html?vista=ordenes',filters:[['eq','status','aprobado']]},
     );
+    const queue = personalQueue(profile);
+    if (queue === 'gerencia') return sources.filter(source=>source.owner===queue||sharedApprovals.has(source.key));
+    if (queue === 'gestion') return sources.filter(source=>source.owner===queue||source.owner==='compartido');
     return sources;
   }
 
@@ -248,7 +259,7 @@
         Promise.resolve(request).then(resolve,reject).finally(()=>global.clearTimeout(timer));
       });
       try {
-        const results = await Promise.allSettled([sb.from('kora_notifications')
+        const results = await Promise.allSettled([personalQueue(profile)?Promise.resolve({data:[]}):sb.from('kora_notifications')
           .select('id,type,title,message,incident_id,read_at,created_at,metadata')
           .order('created_at', { ascending: false })
           .limit(50),

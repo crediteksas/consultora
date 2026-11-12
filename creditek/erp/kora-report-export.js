@@ -375,9 +375,10 @@
     // Un segundo gesto explícito permite guardar el archivo si el navegador móvil
     // no acepta la descarga automática después de preparar el Excel.
     let panel=document.getElementById('koraReportDownload');
-    if(!panel){panel=document.createElement('div');panel.id='koraReportDownload';panel.setAttribute('role','status');panel.style.cssText='position:fixed;left:12px;right:12px;bottom:16px;z-index:2147483647;padding:16px;background:#fff;border:2px solid #02bbc1;border-radius:12px;color:#102641;box-shadow:0 4px 24px #10264133';document.body.appendChild(panel);}
+    if(!panel){panel=document.createElement('div');panel.id='koraReportDownload';panel.setAttribute('role','status');panel.style.cssText='position:fixed;left:12px;right:12px;bottom:16px;z-index:2147483647;padding:16px;background:#fff;border:2px solid #02bbc1;border-radius:12px;color:#102641;box-shadow:0 4px 24px #10264133';const host=document.querySelector?.('.page-top');
+      if(host){panel.style.position='static';panel.style.width='100%';panel.style.boxSizing='border-box';panel.style.marginTop='12px';panel.style.boxShadow='none';host.appendChild(panel);}else document.body.appendChild(panel);}
     panel._release?.();panel.replaceChildren();
-    const label=document.createElement('p');label.textContent='Inventario listo. Toca Guardar Excel para descargarlo.';
+    const label=document.createElement('p');label.textContent='Excel generado. Último paso: toca Guardar Excel y elige dónde guardarlo.';
     link.textContent='Guardar Excel';link.style.cssText='display:inline-block;padding:12px;background:#102641;color:white;border-radius:8px;font-weight:bold';
     const close=document.createElement('button');close.type='button';close.textContent='Cerrar';close.style.cssText='margin-left:16px;padding:12px';
     panel.append(label,link,close);
@@ -630,6 +631,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
       if(!menu.hidden){closeMenu();return;}
       if(window.KoraInventoryReport){
         const options=window.KoraInventoryReport.options();
+        menu.querySelector('[data-format="xlsx"]').textContent='Generar Excel';
         menu.querySelector('[data-kora-report-summary]').closest('label').style.display='none';
         menu.querySelector('#koraReportModeHelp').textContent='Se incluyen las tiendas y referencias de la pestaña activa, respetando sus filtros. Los conteos físicos se gestionan por separado.';
         let settings=menu.querySelector('[data-inventory-options]');

@@ -175,7 +175,7 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
 .inventario-referencia strong { font-size:26px;color:#102641; }
 .inventario-referencia button { align-self:flex-start;min-height:44px; }
 body:not(.inventario-gestion-costos) .inventario-costo { display:none!important; }
-.export-actions .btn-export { background:white;color:#102641;box-shadow:none;border:1px solid #dce5eb; }
+body.kora-product-page .export-actions .btn-export { background:white;color:#102641;box-shadow:none;border:1px solid #dce5eb; }
 .export-actions #btnExportarInventario { background:#102641;color:white; }
 .export-actions #btnGestionCostos[hidden] { display:none!important; }
 @media(max-width:600px){.export-actions{display:grid;grid-template-columns:1fr 1fr}.export-actions .btn-export{padding:10px;min-height:48px;font-size:13px}.resumen{grid-template-columns:1fr 1fr}.resumen .valor{font-size:26px}}
@@ -216,7 +216,7 @@ body:not(.inventario-gestion-costos) .inventario-costo { display:none!important;
       <h1>Inventario</h1><p class="inventario-ayuda" id="inventarioModoAyuda">Consulta referencias y cantidades por tienda. Abre una referencia para ver su detalle.</p>
       <div class="export-actions">
         <a class="btn-export" href="kardex.html" aria-label="Informe de movimientos por fecha">Movimientos por fecha</a>
-        <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
+        <button class="btn-export" id="btnExportarInventario">Informes de inventario</button>
 
         <details class="inventario-conteos"><summary>Conteos físicos y ajustes</summary><button class="btn-export" id="btnControlConteos">Abrir conteos y ajustes</button><button class="btn-export" id="btnExportarConteo">Preparar conteo ciego</button></details><button class="btn-export" id="btnGestionCostos" type="button" hidden aria-pressed="false">Gestionar costos</button>
       </div>

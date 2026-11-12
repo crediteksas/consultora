@@ -386,9 +386,40 @@
     panel._release=release;window.addEventListener('pagehide',release,{once:true});
     close.onclick=()=>{panel._release();panel.remove();};
   }
+  function inventoryWorkbook(ExcelJS,report,logo) {
+    const book=new ExcelJS.Workbook();book.creator='KORA · Creditek';book.created=new Date();
+    report.tables.forEach((table,index)=>{
+      const name=table.layout==='matrix'?(index===0?'Cantidades':'Valores'):'Detalle IMEI';
+      const sheet=book.addWorksheet(name,{views:[{state:'normal',showGridLines:true}]});
+      sheet.properties.defaultRowHeight=24;
+      const header=sheet.addRow(table.headers);header.height=60;
+      header.eachCell(cell=>{cell.font={name:'Arial',bold:true,size:11,color:{argb:COLORS.white}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+      [...table.rows,...(table.totalRows||[])].forEach((values,i)=>{
+        const parsed=values.map((value,j)=>typedCell(value,table.headers[j]));
+        const row=sheet.addRow(parsed.map(cell=>cell.value));
+        row.eachCell((cell,j)=>{cell.numFmt=parsed[j-1]?.format||'General';cell.font={name:'Arial',size:11,bold:i>=table.rows.length,color:{argb:COLORS.navy}};cell.alignment={vertical:'middle',horizontal:j===1?'left':'center',wrapText:true};if(i>=table.rows.length||i%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:i>=table.rows.length?COLORS.pale:'F5FAFC'}};});
+        row.height=32;
+      });
+      sheet.columns.forEach((column,i)=>{column.width=table.layout==='matrix'?(i===0?22:18):(/Referencia|Tienda/.test(table.headers[i])?26:/IMEI/.test(table.headers[i])?20:18);});
+      if(table.rows.length)sheet.autoFilter={from:{row:1,column:1},to:{row:table.rows.length+1,column:table.headers.length}};
+      sheet.pageSetup={orientation:report.orientation==='landscape'?'landscape':'portrait',paperSize:9,fitToPage:false};
+    });
+    const info=book.addWorksheet('Información',{views:[{state:'normal',showGridLines:false}]});
+    info.columns=[{width:25},{width:60}];
+    if(logo){const id=book.addImage({base64:logo,extension:'png'});info.addImage(id,{tl:{col:0,row:0},ext:{width:170,height:50}});}
+    const lines=[['Informe',report.title],['Código',report.id],['Generado',report.generated],['Responsable',report.user],...report.filters,...(report.notes||[]).map(note=>['Nota',note])];
+    lines.forEach((values,i)=>{const row=info.getRow(i+5);row.values=values;row.height=36;row.eachCell((cell,j)=>{cell.font={name:'Arial',size:11,bold:j===1,color:{argb:COLORS.navy}};cell.alignment={wrapText:true,vertical:'middle'};});});
+    return book;
+  }
+
   async function exportExcel(report,sb){
     report=await includeStoreNames(report,sb);
     const ExcelJS=await loadScript('koraExcelJs',EXCELJS,'ExcelJS'),workbook=new ExcelJS.Workbook();workbook.creator='KORA · Creditek S.A.S.';workbook.created=new Date();workbook.subject=`${report.title} · ${report.id}`;workbook.calcProperties.fullCalcOnLoad=true;
+    if(report.inventory){
+      let logo=null;try{logo=await logoBase64();}catch(error){console.warn('[KORA] Logo no disponible',error.message);}
+      const book=inventoryWorkbook(ExcelJS,report,logo);
+      downloadWorkbook(await book.xlsx.writeBuffer(),report);await audit(sb,report,'xlsx');return;
+    }
     let imageId=null;try{imageId=workbook.addImage({base64:await logoBase64(),extension:'png'})}catch(error){console.warn('[KORA Reportes] Excel continuará sin imagen',error.message)}
     const summary=workbook.addWorksheet('Resumen',{views:[{showGridLines:false}]});summary.properties.defaultRowHeight=20;summary.columns=[{width:28},{width:42},{width:24},{width:24}];summary.mergeCells('A1:D3');if(imageId!==null)summary.addImage(imageId,{tl:{col:.15,row:.15},ext:{width:180,height:52}});summary.mergeCells('A5:D5');summary.getCell('A5').value=report.title;summary.getCell('A5').font={name:'Montserrat',size:20,bold:true,color:{argb:COLORS.navy}};summary.getCell('A6').value='Código de trazabilidad';summary.getCell('B6').value=report.id;summary.getCell('A7').value='Generado';summary.getCell('B7').value=report.generated;summary.getCell('A8').value='Responsable';summary.getCell('B8').value=`${report.user}${report.role?` · ${report.role}`:''}`;summary.getCell('A9').value='Alcance';summary.getCell('B9').value=report.scope?.code?`${report.scope.label} · ${report.scope.code}`:report.scope?.label||'Según permisos del usuario';summary.getCell('A10').value='Ruta de origen';summary.getCell('B10').value=report.route;
     let row=12;if(report.filters.length){summary.getCell(`A${row}`).value='Parámetros aplicados';summary.getCell(`A${row}`).font={bold:true,color:{argb:COLORS.white}};summary.getCell(`A${row}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};summary.mergeCells(`A${row}:D${row}`);row++;report.filters.forEach(([label,value])=>{summary.getCell(`A${row}`).value=label;summary.getCell(`B${row}`).value=value;row++});row++}if(report.metrics.length){summary.getCell(`A${row}`).value='Indicadores visibles';summary.getCell(`A${row}`).font={bold:true,color:{argb:COLORS.white}};summary.getCell(`A${row}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.navy}};summary.mergeCells(`A${row}:D${row}`);row++;report.metrics.forEach(([label,value])=>{summary.getCell(`A${row}`).value=label;summary.getCell(`B${row}`).value=value;row++})}

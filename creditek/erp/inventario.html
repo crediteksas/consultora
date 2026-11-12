@@ -856,7 +856,7 @@ window.KoraInventoryReport = {
       }
       return parts;
     });
-    return {...report,title:celulares?'Inventario de celulares':'Inventario de accesorios',metrics:[],tables,pdfTables,orientation:'landscape',notes:[],
+    return {...report,inventory:true,title:celulares?'Inventario de celulares':'Inventario de accesorios',metrics:[],tables,pdfTables,orientation:'landscape',notes:['Referencias ordenadas por marca identificable al inicio del nombre del catálogo y luego por modelo. Referencias sin marca identificable al final, por nombre.'],
       filters:[...report.filters.filter(([label])=>label!=='Formato del informe'),
         ['Presentación',celulares&&incluirImei?'Detalle por IMEI':'Matriz de tiendas y referencias'],['Costos',costo==='ninguno'?'Sin costos':costo==='interno'?'Costo interno Creditek':'Costo de remisión']],recordCount:registros.length};
   }

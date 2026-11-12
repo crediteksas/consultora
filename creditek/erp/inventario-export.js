@@ -204,6 +204,16 @@
     return libro;
   }
 
+  const ordenReferencia = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+  function marcaReferencia(nombre) {
+    const text=String(nombre||'').trim().replace(/^CELULAR\s+/i,'');
+    const match=text.match(/^(SAMSUNG|APPLE|IPHONE|XIAOMI|REDMI|POCO|MOTOROLA|MOTO|HONOR|HUAWEI|INFINIX|TECNO|REALME|OPPO|VIVO|NOKIA|ZTE|ITEL)\b/i);
+    return match?match[1].toUpperCase().replace(/^IPHONE$/,'APPLE').replace(/^MOTO$/,'MOTOROLA'):'ZZZ';
+  }
+  function compararReferencias(a,b) {
+    return ordenReferencia.compare(marcaReferencia(a.referencia),marcaReferencia(b.referencia))||ordenReferencia.compare(a.referencia||'',b.referencia||'')||ordenReferencia.compare(a.productoCodigo||a.productoId||'',b.productoCodigo||b.productoId||'');
+  }
+
   function tablaInforme({ registros, celulares, incluirImei = false, costo = 'ninguno' }) {
     const conCosto = costo !== 'ninguno', detalle = celulares && incluirImei;
     const grupos = new Map();
@@ -222,14 +232,15 @@
     const headers = ['Tienda', 'Código producto', 'Referencia', ...(celulares ? ['Estado'] : []), ...(detalle ? ['IMEI'] : []), 'Cantidad'];
     const cantidadCol = headers.length - 1;
     if (conCosto) headers.push(costo === 'interno' ? 'Costo interno promedio' : 'Costo de remisión promedio', costo === 'interno' ? 'Valor total al costo interno' : 'Valor total al costo de remisión');
-    const rows = [...grupos.values()].map(g => [g.tienda, g.productoCodigo || g.productoId, g.referencia, ...(celulares ? [g.estado] : []), ...(detalle ? [g.imei] : []), g.cantidad, ...(conCosto ? [g.faltantes || !g.cantidad ? 'Sin costo registrado' : g.centavos / 100 / g.cantidad, g.faltantes ? 'Sin costo registrado' : g.centavos / 100] : [])]);
+    const rows = [...grupos.values()].sort((a,b)=>compararReferencias(a,b)||ordenReferencia.compare(a.tienda||'',b.tienda||'')||ordenReferencia.compare(a.imei||'',b.imei||'')).map(g => [g.tienda, g.productoCodigo || g.productoId, g.referencia, ...(celulares ? [g.estado] : []), ...(detalle ? [g.imei] : []), g.cantidad, ...(conCosto ? [g.faltantes || !g.cantidad ? 'Sin costo registrado' : g.centavos / 100 / g.cantidad, g.faltantes ? 'Sin costo registrado' : g.centavos / 100] : [])]);
     return { heading: detalle ? 'Celulares por IMEI' : 'Inventario por tienda y referencia', kind: 'detail', headers, rows, sumColumns: [cantidadCol, ...(conCosto ? [headers.length - 1] : [])], currencyColumns: conCosto ? [headers.length - 2, headers.length - 1] : [], notes: conCosto ? ['Costo promedio ponderado por cantidad. Los costos faltantes se muestran como pendientes; no se convierten en cero.'] : [] };
   }
 
   function matrizInforme({ registros, costo = 'ninguno' }) {
-    const tiendas = new Map(), referencias = new Map(), celdas = new Map();
+    const tiendas = new Map(), referencias = new Map(), productos = new Map(), celdas = new Map();
     for (const r of registros) {
       tiendas.set(r.tiendaCodigo, r.tienda);
+      productos.set(r.productoId,r);
       referencias.set(r.productoId, `${r.referencia} · ${r.productoCodigo || r.productoId}`);
       const key=JSON.stringify([r.tiendaCodigo,r.productoId]);
       const cell=celdas.get(key)||{cantidad:0,centavos:0,falta:false};
@@ -240,7 +251,7 @@
       }
       celdas.set(key,cell);
     }
-    const refs=[...referencias.keys()], stores=[...tiendas.keys()];
+    const refs=[...referencias.keys()].sort((a,b)=>compararReferencias(productos.get(a),productos.get(b))), stores=[...tiendas.keys()].sort((a,b)=>ordenReferencia.compare(tiendas.get(a)||a,tiendas.get(b)||b));
     const build=(valor)=>{
       const total=values=>values.some(v=>typeof v!=='number')?'Sin costo registrado':Math.round(values.reduce((a,b)=>a+b,0)*100)/100;
       const rows=stores.map(store=>{const values=refs.map(ref=>{const c=celdas.get(JSON.stringify([store,ref]));return !c?0:valor?(c.falta?'Sin costo registrado':c.centavos/100):c.cantidad;});return [tiendas.get(store),...values,total(values)];});

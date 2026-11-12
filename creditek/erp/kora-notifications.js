@@ -4,7 +4,8 @@
   const OSCAR = '6de0ad26-64af-4966-8cd9-d468880af627';
 
   const MAYTE = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
-  const sharedApprovals = new Set(['inventory-counts','transfers','store-expenses','sales-approval']);
+  const sharedApprovals = new Set(['inventory-counts','sales-approval']);
+  const delegatedToMayte = new Set(['transfers','store-expenses']);
   function personalQueue(profile) {
     if (profile.rol==='gerencia' && profile.id===OSCAR) return 'gerencia';
     if (profile.rol==='auditoria' && profile.id===MAYTE) return 'gestion';
@@ -51,7 +52,9 @@
     );
     const queue = personalQueue(profile);
     if (queue === 'gerencia') return sources.filter(source=>source.owner===queue||sharedApprovals.has(source.key));
-    if (queue === 'gestion') return sources.filter(source=>source.owner===queue||source.owner==='compartido');
+    if (queue === 'gestion') return sources
+      .filter(source=>source.owner===queue||source.owner==='compartido')
+      .map(source=>delegatedToMayte.has(source.key)?{...source,owner:queue}:source);
     return sources;
   }
 

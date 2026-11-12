@@ -327,6 +327,10 @@ test('Óscar solo recibe autorizaciones y Mayte solo recibe tareas que puede ges
   const management = pendingSources(mayte,true,true);
   assert.match(approvals.find(source=>source.key==='financial-approval').path,/#pendientes$/);
   assert.ok(management.some(source=>source.key==='financial-payment'));
+  for(const key of ['transfers','store-expenses']){
+    assert.ok(approvals.every(source=>source.key!==key));
+    assert.equal(management.find(source=>source.key===key)?.owner,'gestion');
+  }
   assert.ok(approvals.every(source=>source.owner==='gerencia'||source.owner==='compartido'));
   assert.ok(management.every(source=>source.owner==='gestion'||source.owner==='compartido'));
   assert.ok(approvals.every(source=>source.key!=='store-debt-differences'));

@@ -598,7 +598,9 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
       if(!menu.hidden){closeMenu();return;}
       const rect=toggle.getBoundingClientRect();
       menu.style.top=`${Math.min(rect.bottom+8,window.innerHeight-120)}px`;
-      menu.style.right=`${Math.max(12,window.innerWidth-rect.right)}px`;
+      const width=Math.min(270,window.innerWidth-24);
+      menu.style.boxSizing='border-box';menu.style.width=`${width}px`;
+      menu.style.right=`${Math.min(Math.max(12,window.innerWidth-rect.right),Math.max(12,window.innerWidth-width-12))}px`;
       menu.hidden=false;toggle.setAttribute('aria-expanded','true');
     };
     window.addEventListener('resize',closeMenu);

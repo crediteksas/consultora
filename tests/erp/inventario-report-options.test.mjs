@@ -37,3 +37,14 @@ test('Excel recibe valores monetarios numéricos y cantidades sin formato de pes
  const amount=typed(tables[1].rows[0][1],tables[1].headers[1]);assert.equal(amount.value,300);assert.equal(amount.kind,'currency');
  const quantity=typed(tables[0].rows[0].at(-1),tables[0].headers.at(-1));assert.equal(quantity.value,2);assert.equal(quantity.kind,'number');
 });
+test('consulta agrupa referencias, abre solo su detalle y gestión permite ver todas las filas',()=>{
+ const source=readFileSync('creditek/erp/inventario.html','utf8');
+ const fn=source.slice(source.indexOf('function prepararVistaInventario('),source.indexOf('function renderCelulares()'));
+ const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,style:{},innerHTML:'',querySelectorAll(){return [];}});return elements.get(id);};
+ const c=vm.createContext({document:{getElementById:el},gestionCostos:false,detalleSeleccionado:{celulares:null,accesorios:null},escapeHtml:x=>String(x??'').replaceAll('<','&lt;').replaceAll('>','&gt;')});vm.runInContext(fn,c);
+ const rows=[{tienda_actual:'T1',producto_id:'P1',productos:{nombre:'<Referencia>'}},{tienda_actual:'T1',producto_id:'P1',productos:{nombre:'<Referencia>'}},{tienda_actual:'T2',producto_id:'P1',productos:{nombre:'<Referencia>'}}];
+ c.prepararVistaInventario(rows,'celulares');assert.equal(el('detalleCelulares').hidden,true);assert.match(el('referenciasCelulares').innerHTML,/2 <small>unidades/);assert.match(el('referenciasCelulares').innerHTML,/&lt;Referencia&gt;/);
+ c.detalleSeleccionado.celulares=JSON.stringify(['T1','P1']);assert.equal(c.prepararVistaInventario(rows,'celulares').length,2);assert.equal(el('referenciasCelulares').hidden,true);assert.equal(el('detalleCelulares').hidden,false);
+ c.gestionCostos=true;assert.equal(c.prepararVistaInventario(rows,'celulares').length,3);assert.equal(el('volverCelulares').hidden,true);
+ c.gestionCostos=false;c.prepararVistaInventario(rows.slice(2),'celulares');assert.equal(c.detalleSeleccionado.celulares,null);assert.equal(el('detalleCelulares').hidden,true);
+});

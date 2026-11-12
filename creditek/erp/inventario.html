@@ -165,6 +165,20 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
 .btn-costo { border:1px solid rgba(11,30,61,.12); background:#fff; color:var(--azul); border-radius:10px; min-height:38px; padding:0 12px; font:700 12px 'DM Sans',sans-serif; cursor:pointer; }
 .btn-costo:hover { border-color:var(--turquesa); color:#04777c; }
 .cost-note { background:#eefbfc; border-left:3px solid var(--turquesa); border-radius:8px; color:#475569; font-size:12px; line-height:1.5; padding:10px 12px; }
+
+.inventario-conteos { padding:12px;border:1px solid #dce5eb;border-radius:12px;background:white; }.inventario-conteos summary { cursor:pointer;font-weight:600; }.inventario-conteos button { margin-top:10px; }.tabla-wrap[hidden],[id^="volver"][hidden] { display:none!important; }
+.inventario-ayuda { color:#526075;line-height:1.5;margin:8px 0 16px; }
+.inventario-referencias { display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px;margin:16px 0; }
+.inventario-referencia { border:1px solid #dce5eb;border-radius:16px;background:white;padding:20px;display:flex;flex-direction:column;gap:10px; }
+.inventario-referencia h3 { margin:0;font-size:16px;line-height:1.4; }
+.inventario-referencia p { margin:0;color:#526075; }
+.inventario-referencia strong { font-size:26px;color:#102641; }
+.inventario-referencia button { align-self:flex-start;min-height:44px; }
+body:not(.inventario-gestion-costos) .inventario-costo { display:none!important; }
+.export-actions .btn-export { background:white;color:#102641;box-shadow:none;border:1px solid #dce5eb; }
+.export-actions #btnExportarInventario { background:#102641;color:white; }
+.export-actions #btnGestionCostos[hidden] { display:none!important; }
+@media(max-width:600px){.export-actions{display:grid;grid-template-columns:1fr 1fr}.export-actions .btn-export{padding:10px;min-height:48px;font-size:13px}.resumen{grid-template-columns:1fr 1fr}.resumen .valor{font-size:26px}}
 </style>
 <link rel="stylesheet" href="/design-system/components/kora-product.css">
 <script src="/design-system/components/kora-product.js" defer></script>
@@ -199,12 +213,12 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
 
   <div class="page">
     <div class="page-top">
-      <h1>Inventario en vivo</h1>
+      <h1>Inventario</h1><p class="inventario-ayuda" id="inventarioModoAyuda">Consulta referencias y cantidades por tienda. Abre una referencia para ver su detalle.</p>
       <div class="export-actions">
-        <a class="btn-export" href="kardex.html">Informe de movimientos por fecha</a>
+        <a class="btn-export" href="kardex.html">Movimientos por fecha</a>
         <button class="btn-export" id="btnExportarInventario">Descargar inventario</button>
-        <button class="btn-export" id="btnExportarConteo">Descargar conteo ciego</button>
-        <button class="btn-export" id="btnControlConteos">Conteos, ajustes e informes</button>
+
+        <details class="inventario-conteos"><summary>Conteos físicos y ajustes</summary><button class="btn-export" id="btnControlConteos">Abrir conteos y ajustes</button><button class="btn-export" id="btnExportarConteo">Preparar conteo ciego</button></details><button class="btn-export" id="btnGestionCostos" type="button" hidden aria-pressed="false">Gestionar costos</button>
       </div>
     </div>
 
@@ -232,9 +246,10 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
         <select id="filtroProductoCel"><option value="">Todos los productos</option></select>
         <input type="text" id="filtroImei" placeholder="Buscar IMEI...">
       </div>
-      <div class="tabla-wrap">
+<div id="referenciasCelulares" class="inventario-referencias" data-kora-no-export></div><button type="button" id="volverCelulares" class="btn-export" hidden>Volver a referencias</button>
+      <div class="tabla-wrap" id="detalleCelulares" hidden>
         <table>
-          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th id="thCostoCel">Costo de remisión</th><th id="thCostoInternoCel" style="display:none">Costo interno Creditek</th><th>Fecha ingreso</th><th id="thAccionCostoCel" style="display:none">Acción</th></tr></thead>
+          <thead><tr><th>IMEI</th><th>Producto</th><th>Estado</th><th>Tienda</th><th class="inventario-costo" id="thCostoCel">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoCel" style="display:none">Costo interno Creditek</th><th>Fecha ingreso</th><th class="inventario-costo" id="thAccionCostoCel" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyCelulares"></tbody>
         </table>
         <div class="empty-state" id="emptyCelulares" style="display:none;">Cargando...</div>
@@ -248,9 +263,10 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
         <input type="search" id="filtroBusquedaAcc" placeholder="Buscar accesorio por nombre o código…" aria-label="Buscar accesorio por nombre o código">
         <label class="chk"><input type="checkbox" id="chkAgotados"> Solo agotados</label>
       </div>
-      <div class="tabla-wrap">
+<div id="referenciasAccesorios" class="inventario-referencias" data-kora-no-export></div><button type="button" id="volverAccesorios" class="btn-export" hidden>Volver a referencias</button>
+      <div class="tabla-wrap" id="detalleAccesorios" hidden>
         <table>
-          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th id="thCostoAcc">Costo de remisión</th><th id="thCostoInternoAcc" style="display:none">Costo interno Creditek</th><th id="thValorTotalAcc">Total al costo de remisión</th><th id="thAccionCostoAcc" style="display:none">Acción</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th class="inventario-costo" id="thCostoAcc">Costo de remisión</th><th class="inventario-costo" id="thCostoInternoAcc" style="display:none">Costo interno Creditek</th><th class="inventario-costo" id="thValorTotalAcc">Total al costo de remisión</th><th class="inventario-costo" id="thAccionCostoAcc" style="display:none">Acción</th></tr></thead>
           <tbody id="tbodyAccesorios"></tbody>
         </table>
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
@@ -304,6 +320,8 @@ const inventarioExport = window.CreditekInventarioExport;
 
 let currentUser = null;
 let currentPerfil = null;
+let gestionCostos = false;
+const detalleSeleccionado = { celulares: null, accesorios: null };
 let unidadesCache = [];
 let stockCache = [];
 let productosCache = [];
@@ -399,8 +417,20 @@ function initPagina() {
   document.getElementById('btnCerrarHistorial').addEventListener('click', () => document.getElementById('modalHistorial').classList.remove('show'));
   document.getElementById('btnCancelarCosto').addEventListener('click', cerrarEditorCosto);
   document.getElementById('formCosto').addEventListener('submit', guardarCosto);
-  document.getElementById('btnExportarInventario').addEventListener('click', () => descargarInventario(false));
-  document.getElementById('btnExportarConteo').addEventListener('click', () => descargarInventario(true));
+  document.getElementById('btnExportarInventario').addEventListener('click', evento => { evento.stopPropagation(); descargarInventario(); });
+  document.getElementById('btnExportarConteo').addEventListener('click',()=>controlConteos.abrir());
+  const gestion=document.getElementById('btnGestionCostos');
+  gestion.hidden=!puedeEditarCostos();
+  gestion.addEventListener('click',()=>{
+    gestionCostos=!gestionCostos&&puedeEditarCostos();
+    document.body.classList.toggle('inventario-gestion-costos',gestionCostos);
+    gestion.setAttribute('aria-pressed',String(gestionCostos));
+    gestion.textContent=gestionCostos?'Volver a inventario':'Gestionar costos';
+    document.getElementById('inventarioModoAyuda').textContent=gestionCostos?'Gestión de costos: selecciona el producto que necesitas corregir.':'Consulta referencias y cantidades por tienda. Abre una referencia para ver su detalle.';
+    detalleSeleccionado.celulares=null;detalleSeleccionado.accesorios=null;
+    cerrarEditorCosto();renderCelulares();renderAccesorios();
+  });
+  for(const [tipo,sufijo] of [['celulares','Celulares'],['accesorios','Accesorios']])document.getElementById('volver'+sufijo).addEventListener('click',()=>{detalleSeleccionado[tipo]=null;tipo==='celulares'?renderCelulares():renderAccesorios();});
 
   cargarTodo();
 }
@@ -572,19 +602,39 @@ function renderResumen() {
   let cards = `
     <div class="resumen-card"><div class="label">Celulares disponibles</div><div class="valor">${resumen.celularesDisponibles}</div></div>
     <div class="resumen-card"><div class="label">Accesorios disponibles</div><div class="valor">${resumen.accesoriosDisponibles}</div></div>
-    <div class="resumen-card"><div class="label">Valor inventario al costo de remisión</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
+    <div class="resumen-card inventario-costo"><div class="label">Valor inventario al costo de remisión</div><div class="valor">${fmtCOP(resumen.valorTienda)}</div></div>
   `;
   if (esCentral()) {
-    cards += `<div class="resumen-card"><div class="label">Costo real Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
+    cards += `<div class="resumen-card inventario-costo"><div class="label">Costo real Creditek</div><div class="valor">${fmtCOP(resumen.valorInterno)}</div></div>`;
   }
   if (resumen.preciosPendientes > 0) {
-    cards += `<div class="resumen-card"><div class="label">Precios de tienda pendientes</div><div class="valor">${resumen.preciosPendientes}</div></div>`;
+    cards += `<div class="resumen-card inventario-costo"><div class="label">Precios de tienda pendientes</div><div class="valor">${resumen.preciosPendientes}</div></div>`;
   }
   const tiendaSeleccionada = tiendasCache.find(tienda => tienda.codigo === tiendaActiva());
   if (esCentral() && tiendaSeleccionada) {
-    cards += `<div class="resumen-card"><div class="label">Control financiero por IMEI</div><div class="valor">${tiendaSeleccionada.inventario_control_activo ? 'Activo' : 'Pendiente de finalizar carga'}</div></div>`;
+    cards += `<div class="resumen-card inventario-costo"><div class="label">Control financiero por IMEI</div><div class="valor">${tiendaSeleccionada.inventario_control_activo ? 'Activo' : 'Pendiente de finalizar carga'}</div></div>`;
   }
   document.getElementById('resumenCards').innerHTML = cards;
+}
+
+function prepararVistaInventario(registros,tipo) {
+  const sufijo=tipo==='celulares'?'Celulares':'Accesorios';
+  const key=r=>JSON.stringify([tipo==='celulares'?r.tienda_actual:r.tienda_codigo,r.producto_id]);
+  const grupos=new Map();
+  for(const r of registros){const k=key(r);if(!grupos.has(k))grupos.set(k,{registro:r,cantidad:0});grupos.get(k).cantidad+=tipo==='celulares'?1:Number(r.cantidad);}
+  if(detalleSeleccionado[tipo]&&!grupos.has(detalleSeleccionado[tipo]))detalleSeleccionado[tipo]=null;
+  const panel=document.getElementById('referencias'+sufijo);
+  panel.hidden=gestionCostos||!!detalleSeleccionado[tipo];
+  // display:grid is explicit, so also hide by style when entering detail.
+  panel.style.display=panel.hidden?'none':'';
+  document.getElementById('detalle'+sufijo).hidden=!gestionCostos&&!detalleSeleccionado[tipo];
+  document.getElementById('volver'+sufijo).hidden=gestionCostos||!detalleSeleccionado[tipo];
+  if(!panel.hidden){
+    const entries=[...grupos.entries()];
+    panel.innerHTML=entries.length?entries.map(([k,g],i)=>`<article class="inventario-referencia"><h3>${escapeHtml(g.registro.productos?.nombre||'Sin referencia')}</h3><p>${escapeHtml(g.registro.tiendas?.nombre||(tipo==='celulares'?g.registro.tienda_actual:g.registro.tienda_codigo)||'Sin tienda')}</p><strong>${g.cantidad} <small>unidades</small></strong><button type="button" class="btn-export" data-referencia-index="${i}">Ver detalle</button></article>`).join(''):'<p>No hay existencias con estos filtros.</p>';
+    panel.querySelectorAll('[data-referencia-index]').forEach(button=>button.addEventListener('click',()=>{detalleSeleccionado[tipo]=entries[Number(button.dataset.referenciaIndex)][0];tipo==='celulares'?renderCelulares():renderAccesorios();}));
+  }
+  return !gestionCostos&&detalleSeleccionado[tipo]?registros.filter(r=>key(r)===detalleSeleccionado[tipo]):registros;
 }
 
 function renderCelulares() {
@@ -594,7 +644,7 @@ function renderCelulares() {
   const imei = document.getElementById('filtroImei').value.trim().toLowerCase();
 
   const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
-  const filtradas = inventarioDomain.acotarTienda(unidadesCache, 'tienda_actual', tiendaPermitida, esCentral()).filter(u => {
+  let filtradas = inventarioDomain.acotarTienda(unidadesCache, 'tienda_actual', tiendaPermitida, esCentral()).filter(u => {
     if (tiendaPermitida && u.tienda_actual !== tiendaPermitida) return false;
     if (estado && u.estado !== estado) return false;
     if (producto && u.producto_id !== producto) return false;
@@ -602,6 +652,7 @@ function renderCelulares() {
     return true;
   });
 
+  filtradas = prepararVistaInventario(filtradas,'celulares');
   const tbody = document.getElementById('tbodyCelulares');
   const empty = document.getElementById('emptyCelulares');
   if (!filtradas.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay unidades con estos filtros.'; return; }
@@ -612,10 +663,10 @@ function renderCelulares() {
       <td>${escapeHtml(u.productos?.nombre || '—')}</td>
       <td><span class="badge ${u.estado}">${u.estado}</span></td>
       <td>${escapeHtml(u.tiendas?.nombre || u.tienda_actual || '—')}</td>
-      <td>${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
-      ${esCentral() ? `<td>${inventarioDomain.valorVisibleUnidad(u, true) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, true))}</td>` : ''}
+      <td class="inventario-costo">${inventarioDomain.valorVisibleUnidad(u) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u))}</td>
+      ${esCentral() ? `<td class="inventario-costo">${inventarioDomain.valorVisibleUnidad(u, true) === null ? 'Pendiente' : fmtCOP(inventarioDomain.valorVisibleUnidad(u, true))}</td>` : ''}
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '—'}</td>
-      ${puedeEditarCostos() ? `<td><button type="button" class="btn-costo" data-costo-unidad="${u.id}">Modificar costo</button></td>` : ''}
+      ${gestionCostos && puedeEditarCostos() ? `<td class="inventario-costo"><button type="button" class="btn-costo" data-costo-unidad="${u.id}">Modificar costo</button></td>` : ''}
     </tr>
   `).join('');
 
@@ -641,11 +692,12 @@ function renderAccesorios() {
   const soloAgotados = document.getElementById('chkAgotados').checked;
 
   const tiendaPermitida = esCentral() ? tienda : currentPerfil.tienda_codigo;
-  const filtrados = inventarioDomain.filtrarAccesorios(stockCache, {
+  let filtrados = inventarioDomain.filtrarAccesorios(stockCache, {
     tiendaCodigo: tiendaPermitida, esCentral: esCentral(), categoria, soloAgotados,
     busqueda: document.getElementById('filtroBusquedaAcc').value,
   });
 
+  filtrados = prepararVistaInventario(filtrados,'accesorios');
   const tbody = document.getElementById('tbodyAccesorios');
   const empty = document.getElementById('emptyAccesorios');
   if (!filtrados.length) { tbody.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No hay accesorios con estos filtros.'; return; }
@@ -659,10 +711,10 @@ function renderAccesorios() {
         <td>${escapeHtml(r.productos?.nombre || '—')}</td>
         <td>${escapeHtml(r.tiendas?.nombre || r.tienda_codigo || '—')}</td>
         <td>${r.cantidad}${bajoStock ? ' ⚠️' : ''}</td>
-        <td>${costoRemision === null ? 'Pendiente' : fmtCOP(costoRemision)}</td>
-        ${esCentral() ? `<td>${costoInterno === null ? 'Pendiente' : fmtCOP(costoInterno)}</td>` : ''}
-        <td>${costoRemision === null ? 'Pendiente' : fmtCOP(r.cantidad * costoRemision)}</td>
-        ${puedeEditarCostos() ? `<td><button type="button" class="btn-costo" data-costo-producto="${r.producto_id}" data-costo-tienda="${escapeHtml(r.tienda_codigo)}">Modificar costo</button></td>` : ''}
+        <td class="inventario-costo">${costoRemision === null ? 'Pendiente' : fmtCOP(costoRemision)}</td>
+        ${esCentral() ? `<td class="inventario-costo">${costoInterno === null ? 'Pendiente' : fmtCOP(costoInterno)}</td>` : ''}
+        <td class="inventario-costo">${costoRemision === null ? 'Pendiente' : fmtCOP(r.cantidad * costoRemision)}</td>
+        ${gestionCostos && puedeEditarCostos() ? `<td class="inventario-costo"><button type="button" class="btn-costo" data-costo-producto="${r.producto_id}" data-costo-tienda="${escapeHtml(r.tienda_codigo)}">Modificar costo</button></td>` : ''}
       </tr>
     `;
   }).join('');
@@ -678,7 +730,7 @@ function renderAccesorios() {
 }
 
 function abrirEditorCosto(objetivo) {
-  if (!puedeEditarCostos()) return;
+  if (!gestionCostos || !puedeEditarCostos()) return;
   costoObjetivo = objetivo;
   const tienda = tiendasCache.find(item => item.codigo === objetivo.tiendaCodigo);
   document.getElementById('costoSub').textContent = `${objetivo.nombre || 'Producto'} · ${tienda?.nombre || objetivo.tiendaCodigo} · ${objetivo.detalle || ''}`;
@@ -778,6 +830,7 @@ function descargarInventario(conteoCiego = false) {
   if(conteoCiego)return controlConteos.abrir();
   const toggle=document.querySelector('[data-kora-report-toggle]');
   if(toggle)toggle.click();
+  else alert('El generador de informes aún está cargando. Espera unos segundos e inténtalo de nuevo.');
 }
 window.KoraInventoryReport = {
   options: () => ({ celulares: tabActual === 'celulares', interno: esCentral() }),

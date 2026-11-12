@@ -112,5 +112,8 @@ test('inventario muestra defectuosos separados, filtrados por tienda y con texto
  assert.equal(panel.hidden,false);assert.match(panel.innerHTML,/INC-64/);assert.match(panel.innerHTML,/K9 &lt;defectuoso&gt;/);assert.doesNotMatch(panel.innerHTML,/OTRA-TIENDA/);
  assert.doesNotMatch(panel.innerHTML,/YA-REEMPLAZADO/);
  assert.match(html,/\.eq\('estado_producto','defectuoso_en_tienda'\)/);
- context.defectuososError='Error de carga';vm.runInContext('renderDefectuosos()',context);assert.equal(panel.textContent,'Error de carga');
+ context.defectuososError='Error de carga <externo>';vm.runInContext('renderDefectuosos()',context);
+ assert.match(panel.innerHTML,/<summary>No se pudo consultar productos defectuosos<\/summary>/);
+ assert.match(panel.innerHTML,/Error de carga &lt;externo&gt;/);
+ assert.doesNotMatch(panel.innerHTML,/<externo>/);
 });

@@ -588,21 +588,35 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     wrap.innerHTML='<button class="kora-icon-button ghost" type="button" data-kora-report-toggle aria-label="Generar informe" title="Generar informe"><i data-lucide="file-down"></i></button><div data-kora-report-menu hidden style="position:absolute;right:0;top:calc(100% + 8px);z-index:2000;width:270px;max-width:90vw;background:#fff;border:1px solid #DCE5EB;border-radius:12px;padding:10px;box-shadow:0 14px 34px rgba(11,30,61,.18)"><label style="display:flex;align-items:center;gap:8px;font:700 12px Arial;color:#0B1E3D;padding:9px 0;cursor:pointer"><input type="checkbox" data-kora-report-summary aria-label="Resumido" aria-describedby="koraReportModeHelp" style="width:18px;min-width:18px;height:18px;margin:0"><span>Resumido · solo totales</span></label><small id="koraReportModeHelp" style="display:block;color:#64748B;font:11px Arial;margin:8px 0">Sin marcar: informe completo. Formato vertical; conserva los filtros de esta pantalla.</small><button type="button" data-format="xlsx" style="display:block;width:100%;padding:10px;border:0;border-radius:8px;background:#fff;text-align:left;font:700 12px Arial;color:#0B1E3D;cursor:pointer">Descargar Excel</button><button type="button" data-format="pdf" style="display:block;width:100%;padding:10px;border:0;border-radius:8px;background:#fff;text-align:left;font:700 12px Arial;color:#0B1E3D;cursor:pointer">Generar PDF</button></div>';
     actions.insertBefore(wrap,actions.querySelector('[data-kora-help]'));
     const menu=wrap.querySelector('[data-kora-report-menu]');
-    wrap.querySelector('[data-kora-report-toggle]').onclick=()=>menu.hidden=!menu.hidden;
-    wrap.querySelectorAll('[data-format]').forEach(button=>button.onclick=async()=>{
-      menu.hidden=true;button.disabled=true;
+    // El menú vive fuera de la barra: en móvil sus acciones recortan overflow.
+    document.body.appendChild(menu);
+    menu.style.position='fixed';menu.style.zIndex='2147483646';menu.style.maxHeight='70vh';menu.style.overflowY='auto';
+    const toggle=wrap.querySelector('[data-kora-report-toggle]');
+    toggle.setAttribute('aria-expanded','false');
+    const closeMenu=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');};
+    toggle.onclick=()=>{
+      if(!menu.hidden){closeMenu();return;}
+      const rect=toggle.getBoundingClientRect();
+      menu.style.top=`${Math.min(rect.bottom+8,window.innerHeight-120)}px`;
+      menu.style.right=`${Math.max(12,window.innerWidth-rect.right)}px`;
+      menu.hidden=false;toggle.setAttribute('aria-expanded','true');
+    };
+    window.addEventListener('resize',closeMenu);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden){closeMenu();toggle.focus();}});
+    menu.querySelectorAll('[data-format]').forEach(button=>button.onclick=async()=>{
+      closeMenu();button.disabled=true;
       // Abrir en el gesto del usuario, antes de consultar nombres: evita el bloqueo del navegador.
       const popup=button.dataset.format==='pdf'?window.open('','_blank'):null;
       if(popup)popup.opener=null;
       try{
-        const report=await prepareReport(profile,{mode:wrap.querySelector('[data-kora-report-summary]').checked?'summary':'detailed'});
+        const report=await prepareReport(profile,{mode:menu.querySelector('[data-kora-report-summary]').checked?'summary':'detailed'});
         if(button.dataset.format==='xlsx')await exportExcel(report,sb);
         else await exportPdf(await includeStoreNames(report,sb),sb,popup);
         toast(`Informe ${button.dataset.format.toUpperCase()} generado · ${report.id}`);
       }catch(error){popup?.close();toast(error.message||'No fue posible generar el informe.',true)}
       finally{button.disabled=false}
     });
-    document.addEventListener('click',event=>{if(!wrap.contains(event.target))menu.hidden=true});
+    document.addEventListener('click',event=>{if(!wrap.contains(event.target)&&!menu.contains(event.target))closeMenu()});
     window.lucide?.createIcons();
   }
   window.KoraReportExport={mount,snapshot,prepareReport,typedCell,excelColumn,reportScope,summaryTables,pdfDocument,completeTable,totalValue,cellText,tablePolicy,exportData,exportDataPdfZip};

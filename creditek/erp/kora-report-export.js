@@ -368,6 +368,23 @@
     sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:5',printTitlesColumn:'A:C'};
     sheet.headerFooter.oddFooter=`Creditek S.A.S. · ${report.id} · Página &P de &N`;
   }
+  function downloadWorkbook(buffer,report){
+    const url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    const link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');
+    // Un segundo gesto explícito permite guardar el archivo si el navegador móvil
+    // no acepta la descarga automática después de preparar el Excel.
+    let panel=document.getElementById('koraReportDownload');
+    if(!panel){panel=document.createElement('div');panel.id='koraReportDownload';panel.setAttribute('role','status');panel.style.cssText='position:fixed;left:12px;right:12px;bottom:16px;z-index:2147483647;padding:16px;background:#fff;border:2px solid #02bbc1;border-radius:12px;color:#102641;box-shadow:0 4px 24px #10264133';document.body.appendChild(panel);}
+    panel._release?.();panel.replaceChildren();
+    const label=document.createElement('p');label.textContent='Inventario listo. Toca Guardar Excel para descargarlo.';
+    link.textContent='Guardar Excel';link.style.cssText='display:inline-block;padding:12px;background:#102641;color:white;border-radius:8px;font-weight:bold';
+    const close=document.createElement('button');close.type='button';close.textContent='Cerrar';close.style.cssText='margin-left:16px;padding:12px';
+    panel.append(label,link,close);
+    // Mantener la URL disponible mientras el usuario decide dónde guardar.
+    const release=()=>{URL.revokeObjectURL(url);window.removeEventListener('pagehide',release);};
+    panel._release=release;window.addEventListener('pagehide',release,{once:true});
+    close.onclick=()=>{panel._release();panel.remove();};
+  }
   async function exportExcel(report,sb){
     report=await includeStoreNames(report,sb);
     const ExcelJS=await loadScript('koraExcelJs',EXCELJS,'ExcelJS'),workbook=new ExcelJS.Workbook();workbook.creator='KORA · Creditek S.A.S.';workbook.created=new Date();workbook.subject=`${report.title} · ${report.id}`;workbook.calcProperties.fullCalcOnLoad=true;
@@ -415,7 +432,10 @@
       for(const control of controls){summary.getCell(row,1).value=control.sheet.name;summary.getCell(row,2).value=control.heading;summary.getCell(row,3).value={formula:`COUNTA(${quoteSheet(control.sheet.name)}!A6:A${control.last})`,result:Math.max(0,control.last-5)};summary.getCell(row,4).value='Datos y fórmulas incluidos';row++;}
       summary.getCell(row,2).value='Total de registros';summary.getCell(row,3).value={formula:`SUM(C${row-controls.length}:C${row-1})`,result:controls.reduce((total,control)=>total+Math.max(0,control.last-5),0)};summary.getRow(row).eachCell(cell=>{cell.font={bold:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:COLORS.pale}};});
     }
-    const buffer=await workbook.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);await audit(sb,report,'xlsx');
+    const buffer=await workbook.xlsx.writeBuffer();
+    if(/\/inventario(?:\.html)?$/.test(location.pathname))downloadWorkbook(buffer,report);
+    else {const url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download=filename(report,'xlsx');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+    await audit(sb,report,'xlsx');
   }
   function pdfValue(value,header=''){
     const parsed=typedCell(value,header);

@@ -209,7 +209,7 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
     </div>
 
     <div class="resumen" id="resumenCards"></div>
-    <section id="inventarioDefectuoso" class="tabla-wrap" hidden aria-label="Productos defectuosos en tienda"></section>
+
 
     <div class="tabs">
       <button class="active" id="tabCelulares">Celulares</button>
@@ -256,6 +256,7 @@ body.kora-product-page a.btn-export { display:inline-flex; align-items:center; j
         <div class="empty-state" id="emptyAccesorios" style="display:none;">Cargando...</div>
       </div>
     </div>
+    <details id="inventarioDefectuoso" class="tabla-wrap" hidden data-kora-no-export aria-label="Productos defectuosos en tienda"><summary>Productos defectuosos · ver detalle</summary></details>
   </div>
   </div>
 </div>
@@ -469,8 +470,8 @@ function renderDefectuosos() {
   const tienda = tiendaActiva();
   const filas = defectuososCache.filter(d => d.estado_producto==='defectuoso_en_tienda' && (!tienda || d.tienda_codigo===tienda) && (esCentral() || d.tienda_codigo===currentPerfil?.tienda_codigo));
   panel.hidden = !defectuososError && !filas.length;
-  if(defectuososError) { panel.textContent=defectuososError; return; }
-  panel.innerHTML = '<h2>Defectuosos en tienda</h2><p>Existencias físicas separadas del inventario disponible para vender.</p><table><thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th>Devolución</th><th>Referencia</th></tr></thead><tbody>' + filas.map(d=>`<tr><td>${escapeHtml(productosCache.find(p=>p.id===d.producto_id)?.nombre || d.producto_id)}</td><td>${escapeHtml(tiendasCache.find(t=>t.codigo===d.tienda_codigo)?.nombre || d.tienda_codigo)}</td><td>${Number(d.cantidad)}</td><td>${escapeHtml(d.fecha_devolucion)}</td><td>${escapeHtml(d.referencia)}</td></tr>`).join('')+'</tbody></table>';
+  if(defectuososError) { panel.innerHTML='<summary>No se pudo consultar productos defectuosos</summary><p>'+escapeHtml(defectuososError)+'</p>'; return; }
+  panel.innerHTML = '<summary style="padding:16px;cursor:pointer;font-weight:700">Productos defectuosos · ver detalle</summary><p>Existencias físicas separadas del inventario disponible para vender.</p><table><thead><tr><th>Producto</th><th>Tienda</th><th>Cantidad</th><th>Devolución</th><th>Referencia</th></tr></thead><tbody>' + filas.map(d=>`<tr><td>${escapeHtml(productosCache.find(p=>p.id===d.producto_id)?.nombre || d.producto_id)}</td><td>${escapeHtml(tiendasCache.find(t=>t.codigo===d.tienda_codigo)?.nombre || d.tienda_codigo)}</td><td>${Number(d.cantidad)}</td><td>${escapeHtml(d.fecha_devolucion)}</td><td>${escapeHtml(d.referencia)}</td></tr>`).join('')+'</tbody></table>';
 }
 async function cargarTodo() {
   defectuososCache = []; defectuososError = ''; renderDefectuosos();

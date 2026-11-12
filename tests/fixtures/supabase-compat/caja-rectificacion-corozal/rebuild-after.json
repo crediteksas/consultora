@@ -59,7 +59,7 @@
       "identity": "",
       "config_md5": "033ede72622928c856582b307dccfe4b",
       "routine_kind": "f",
-      "definition_md5": "7d11a62fe944bfd22cb0a3809859a6c5",
+      "definition_md5": "a855de2d547c3a550b938086b898193b",
       "security_definer": false
     },
     {
@@ -81,7 +81,7 @@
       "identity": "p_tienda text, p_fecha date",
       "config_md5": "eac5bef9b92039986bf93dc486753f77",
       "routine_kind": "f",
-      "definition_md5": "b6309753d3cbf4f6f7eb292c7212ba17",
+      "definition_md5": "15f11e36f1a19854e94d669e55bca08e",
       "security_definer": true
     },
     {

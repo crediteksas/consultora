@@ -6,6 +6,7 @@ import {checkPermissionContract} from './check-permission-contract.mjs';
 
 const folder='tests/fixtures/supabase-compat/caja-rectificacion-corozal';
 const migration='supabase/migrations/20261109235736_caja_rectificacion_historica_ck02.sql';
+const followup='supabase/migrations/20261111230357_caja_arrastre_rectificacion_corozal.sql';
 const testPath='tests/security/supabase-compatibility-caja-rectificacion-corozal.test.mjs';
 const read=file=>readFileSync(file,'utf8');
 const hash=body=>createHash('sha256').update(body).digest('hex');
@@ -30,6 +31,7 @@ async function capture(scenario){
     };
     const before=await catalog();
     await db.exec(read(migration));
+    await db.exec(read(followup));
     const after=await catalog();
     const rpc=new Set(['preparar_rectificacion_corozal','listar_rectificaciones_corozal','soporte_rectificacion_corozal','decidir_rectificacion_corozal']);
     const functions=after.functions.filter(f=>rpc.has(f.name)||['exigir_actor_rectificacion_corozal','verificar_cierre_corozal','caja_calcular_interno'].includes(f.name));
@@ -50,7 +52,7 @@ async function capture(scenario){
 }
 
 const evidence={schema_version:1,project:'kora',scope:'Isolated historical cash correction fixture.',
-  migration_sha256:{[migration]:hash(read(migration))},
+  migration_sha256:{[migration]:hash(read(migration)),[followup]:hash(read(followup))},
   isolation_tests:[{path:testPath,sha256:hash(read(testPath))}],
   test_runner_sha256:hash(read('scripts/run-kora-local-tests.mjs'))};
 for(const scenario of ['upgrade','rebuild']){

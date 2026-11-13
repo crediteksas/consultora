@@ -63,6 +63,7 @@
     'Fecha|Negocio|Movimiento|Beneficiario|Valor|Estado|Acción':{sums:[4],currency:[4]},
     'Plataforma|Créditos|Valor financiado|Bonos|Utilidad de liquidaciones':{sums:[1,2,3,4],currency:[2,3,4]},
     'Plataforma|Créditos|Valor financiado|Bonos|Utilidad de liquidaciones|Gastos operativos asignados|Utilidad después de gastos asignados':{sums:[1,2,3,4,5,6],currency:[2,3,4,5,6]},
+    'Plataforma|Créditos|Valor financiado|Bonos|Utilidad de liquidaciones|Gastos operativos|Utilidad neta':{sums:[1,2,3,4,5,6],currency:[2,3,4,5,6]},
     'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Resultado antes de gastos operativos|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
     'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Resultado calculado|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
     'Tipo|Establecimiento|Ciudad|Ejecutivo|Operaciones|Ventas|Pago|Provisión|Utilidad disponible|Asociación':{sums:[4,5,6,7,8],currency:[5,6,7,8]},
@@ -475,7 +476,7 @@
     return parsed.kind==='currency'&&typeof parsed.value==='number'?displayMoney(parsed.value):value;
   }
   function isNetUtility(label){
-    return ['Utilidad después de gastos asignados','Utilidad final del periodo','Utilidad antes de gastos generales'].includes(String(label).trim());
+    return ['Utilidad neta','Utilidad después de gastos asignados','Utilidad final del periodo','Utilidad antes de gastos generales'].includes(String(label).trim());
   }
   function pdfTable(table){
     if(table.structured){

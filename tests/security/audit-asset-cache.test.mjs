@@ -17,5 +17,7 @@ test('el artefacto renueva versiones de los módulos corregidos sin cambiar ruta
   assert.match(incidentes,/incidencias-app\.js\?v=1\.3\.5/);
   assert.match(incidentes,/kora-product\.css\?v=2\.0\.5/);
   const aliados=await readFile(path.join(out,'creditek/erp/aliados-gastos.html'),'utf8');
-  assert.match(aliados,/aliados-v1-1-app\.js\?v=1\.1\.40/);
+  assert.match(aliados,/aliados-v1-1-app\.js\?v=1\.1\.44/);
+  const dashboard=await readFile(path.join(out,'creditek/erp/aliados-dashboard.html'),'utf8');
+  assert.match(dashboard,/aliados-v1-1-app\.js\?v=1\.1\.44/);
 });

@@ -38,7 +38,7 @@ const KORA_AUDIT_ASSET_VERSIONS = Object.freeze({
   'tablero-utilidad.js': '1.0.5',
   'incidencias-app.js': '1.3.5',
   'kora-incident-management.js': '1.2.5',
-  'aliados-v1-1-app.js': '1.1.40',
+  'aliados-v1-1-app.js': '1.1.44',
 });
 
 async function copyFileFromRoot(rootDir, outDir, relative) {

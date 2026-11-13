@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {checkPermissionContract} from '../../scripts/supabase-compat/check-permission-contract.mjs';
 
-const migration='supabase/migrations/20261113010715_ecredit_liquidacion_venta.sql';
+const migration='supabase/migrations/20261113011603_ecredit_liquidacion_venta.sql';
 const fixture='tests/fixtures/supabase-compat/ecredit';
 const isolationTest='tests/security/supabase-compatibility-ecredit.test.mjs';
 const read=file=>readFileSync(file,'utf8');

@@ -86,7 +86,7 @@
     },
     {
       "path": "tests/fixtures/supabase-compat/ecredit/release.json",
-      "sha256": "da787a99d3dc95882069c6001dabf37f4da58358d33004ca7e10be6457b22316"
+      "sha256": "6ce536f788a79f847ba41c36f35ab549ddbd0b5053a898345b9c535d6e9b6761"
     }
   ]
 }

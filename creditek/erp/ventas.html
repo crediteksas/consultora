@@ -530,9 +530,10 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
           <option value="krediya">Krediya</option>
           <option value="alocredit">Alo Credit</option>
           <option value="addi">Addi</option>
+          <option value="ecredit">eCredit</option>
         </select>
       </div>
-      <div class="campo"><label for="creditoInicial">Cuota inicial</label><input type="number" id="creditoInicial" min="0" placeholder="0"></div>
+      <div class="campo"><label id="creditoInicialLabel" for="creditoInicial">Cuota inicial</label><input type="number" id="creditoInicial" min="0" placeholder="0"></div>
       <div class="campo"><label for="creditoValorEsperado" id="creditoValorEsperadoLabel">Valor esperado de la financiera</label><input type="number" id="creditoValorEsperado" min="0" step="1" placeholder="0"></div>
       <div class="aviso-validacion" id="addiLiquidacionVista" role="status" aria-live="polite" hidden></div>
       <div class="campo" id="addiComplementoGrupo" style="display:none"><label for="addiComplemento">Falta cobrar al cliente por otro medio</label><input type="number" id="addiComplemento" readonly></div>
@@ -1087,7 +1088,7 @@ function abrirWizard() {
   document.getElementById('addiReferencia').value = '';
   document.getElementById('creditoFinanciera').value = 'payjoy';
   document.getElementById('motivoVentaExcepcion').value = '';
-  actualizarVistaAddi();
+  actualizarCamposFinanciera();
   actualizarTotalParcial();
   mostrarPaso(1);
   document.getElementById('modalVenta').classList.add('show');
@@ -1104,6 +1105,7 @@ function mostrarPaso(n) {
   if (n === 2) {
     document.getElementById('labelCliente').textContent = venta.tipo === 'credito' ? 'Cliente (obligatorio para crédito)' : 'Cliente (opcional — vacío = Cliente general)';
   }
+  if (n === 4) actualizarCamposFinanciera();
   if (n === 5) {
     renderResumenFinal();
     const pendiente = ventaRequiereAutorizacion();
@@ -1119,17 +1121,22 @@ function seleccionarTipo(tipo) {
   document.getElementById('btnTipoCredito').classList.toggle('seleccionado', tipo === 'credito');
 }
 
-function actualizarVistaAddi() {
-  const esAddi = document.getElementById('creditoFinanciera').value === 'addi';
+function actualizarCamposFinanciera() {
+  const financiera = document.getElementById('creditoFinanciera').value;
+  const esAddi = financiera === 'addi';
+  const esECredit = financiera === 'ecredit';
   const inicial = document.getElementById('creditoInicial');
   const campo = document.getElementById('creditoValorEsperado');
   const vista = document.getElementById('addiLiquidacionVista');
   const total = venta.items.reduce((s, item) => s + Number(item.precio_venta || 0) * Number(item.cantidad || 1), 0);
   const medio = document.getElementById('addiMedio');
-  document.getElementById('creditoValorEsperadoLabel').textContent = esAddi ? 'Valor por el que se está haciendo el crédito Addi' : 'Valor esperado de la financiera';
+  document.getElementById('creditoValorEsperadoLabel').textContent = esAddi ? 'Valor por el que se está haciendo el crédito Addi' : esECredit ? 'Saldo por cobrar a eCredit' : 'Valor esperado de la financiera';
+  document.getElementById('creditoInicialLabel').textContent = esECredit ? 'Inicial recibida en efectivo' : 'Cuota inicial';
+  campo.readOnly = esECredit;
+  if (esECredit) campo.value = String(Math.max(0, total - Number(inicial.value || 0)));
   inicial.readOnly = esAddi;
   inicial.closest('.campo').style.display = esAddi ? 'none' : '';
-  document.getElementById('creditoPlazo').closest('.campo').style.display = esAddi ? 'none' : '';
+  document.getElementById('creditoPlazo').closest('.campo').style.display = esAddi || esECredit ? 'none' : '';
   document.getElementById('addiComplementoGrupo').style.display = esAddi ? '' : 'none';
   if (!esAddi) { vista.hidden = true; document.getElementById('addiMedioGrupo').style.display = 'none'; document.getElementById('addiReferenciaGrupo').style.display = 'none'; return; }
   const credito = Number(campo.value || 0);
@@ -1148,9 +1155,14 @@ function actualizarVistaAddi() {
   } catch (error) { vista.textContent = error.message; }
 }
 
-document.getElementById('creditoFinanciera').addEventListener('change', actualizarVistaAddi);
-document.getElementById('creditoValorEsperado').addEventListener('input', actualizarVistaAddi);
-document.getElementById('addiMedio').addEventListener('change', actualizarVistaAddi);
+document.getElementById('creditoFinanciera').addEventListener('change', () => {
+  const saldo = document.getElementById('creditoValorEsperado');
+  if (saldo.readOnly) saldo.value = '';
+  actualizarCamposFinanciera();
+});
+document.getElementById('creditoInicial').addEventListener('input', actualizarCamposFinanciera);
+document.getElementById('creditoValorEsperado').addEventListener('input', actualizarCamposFinanciera);
+document.getElementById('addiMedio').addEventListener('change', actualizarCamposFinanciera);
 
 function avanzarPaso() {
   const err = document.getElementById('modalVentaErr');
@@ -1179,7 +1191,7 @@ function avanzarPaso() {
     return;
   }
   if (pasoActual === 4) {
-    actualizarVistaAddi();
+    actualizarCamposFinanciera();
     const inicial = Number(document.getElementById('creditoInicial').value || 0);
     const esperado = Number(document.getElementById('creditoValorEsperado').value || 0);
     if (esperado <= 0) { err.textContent = 'Ingresa el valor esperado de la financiera.'; err.classList.add('show'); return; }
@@ -1187,7 +1199,8 @@ function avanzarPaso() {
       (suma, item) => suma + Number(item.precio_venta || 0) * Number(item.cantidad || 1),
       0
     );
-    const esAddi = document.getElementById('creditoFinanciera').value === 'addi';
+    const financiera = document.getElementById('creditoFinanciera').value;
+    const esAddi = financiera === 'addi';
     let complemento = 0;
     let medioComplementario = null;
     let referenciaComplementaria = null;
@@ -1208,10 +1221,10 @@ function avanzarPaso() {
       return;
     }
     venta.credito = {
-      financiera: document.getElementById('creditoFinanciera').value,
+      financiera,
       cuota_inicial: esAddi ? complemento : inicial,
       valor_esperado: esperado,
-      plazo_meses: esAddi ? null : Number(document.getElementById('creditoPlazo').value),
+      plazo_meses: esAddi || financiera === 'ecredit' ? null : Number(document.getElementById('creditoPlazo').value),
       ...(esAddi ? { medio_pago_complementario: medioComplementario, referencia_pago_complementario: referenciaComplementaria } : {}),
     };
     mostrarPaso(5);
@@ -1474,10 +1487,10 @@ function renderResumenFinal() {
   let creditoHtml = '';
   if (venta.tipo === 'credito' && venta.credito) {
     creditoHtml = `
-      <div class="linea"><span>Financiera</span><span>${escapeHtml(venta.credito.financiera)}</span></div>
+      <div class="linea"><span>Financiera</span><span>${escapeHtml(venta.credito.financiera === 'ecredit' ? 'eCredit' : venta.credito.financiera)}</span></div>
       <div class="linea"><span>${venta.credito.financiera === 'addi' ? `Cobrado al cliente (${escapeHtml(venta.credito.medio_pago_complementario || 'ninguno')})` : 'Cuota inicial'}</span><span>${fmtCOP(venta.credito.cuota_inicial)}</span></div>
-      <div class="linea"><span>${venta.credito.financiera === 'addi' ? 'Valor bruto del crédito Addi' : 'Valor esperado'}</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
-      ${venta.credito.financiera === 'addi' ? '' : `<div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>`}
+      <div class="linea"><span>${venta.credito.financiera === 'addi' ? 'Valor bruto del crédito Addi' : venta.credito.financiera === 'ecredit' ? 'Saldo por cobrar a eCredit' : 'Valor esperado'}</span><span>${fmtCOP(venta.credito.valor_esperado)}</span></div>
+      ${venta.credito.plazo_meses == null ? '' : `<div class="linea"><span>Plazo</span><span>${venta.credito.plazo_meses} cuotas</span></div>`}
     `;
     if (venta.credito.financiera === 'addi') {
       const addi = window.CreditekAddiLiquidacion.calcular(venta.credito.valor_esperado);

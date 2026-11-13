@@ -70,7 +70,7 @@ function pantallaVenta({ articulo = 110000, credito = 110000, financiera = 'addi
     ventasUtilidad: { calcular: () => ({ utilidad: null }) },
     escapeHtml: value => String(value),
   });
-  const preview = sale.slice(sale.indexOf('function actualizarVistaAddi()'), sale.indexOf("document.getElementById('creditoFinanciera').addEventListener"));
+  const preview = sale.slice(sale.indexOf('function actualizarCamposFinanciera()'), sale.indexOf("document.getElementById('creditoFinanciera').addEventListener"));
   const summary = sale.slice(sale.indexOf('function renderResumenFinal()'), sale.indexOf('async function confirmarVenta()'));
   vm.runInContext(sale.match(/function fmtCOP\(n\) \{[^\n]+/)[0] + '\n' + preview + summary, ui);
   return { element, venta, ui };
@@ -82,7 +82,7 @@ test('el aviso Addi de tienda solo muestra crédito, pago a tienda y diferencia 
   for (const [articulo, credito, pago, diferencia] of [[110000,110000,83600,26400], [552600,600000,456000,96600], [456000,600000,456000,0]]) {
     for (const medio of ['efectivo', 'tarjeta', 'transferencia', 'otro']) {
       const f = pantallaVenta({ articulo, credito, medio });
-      vm.runInContext('actualizarVistaAddi()', f.ui);
+      vm.runInContext('actualizarCamposFinanciera()', f.ui);
       const aviso = f.element('addiLiquidacionVista').textContent.replace(/\s+/g, ' ');
       const pesos = valor => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(valor).replace(/\s+/g, ' ');
       assert.ok(aviso.includes(`Crédito Addi: ${pesos(credito)}`));
@@ -113,12 +113,12 @@ test('el resumen final Addi tampoco expone tarifa, IVA, porcentaje ni consignaci
 
 test('mantiene el aviso de ingreso del crédito y las otras financieras sin cambios', () => {
   const vacio = pantallaVenta({ credito:null });
-  vm.runInContext('actualizarVistaAddi()', vacio.ui);
+  vm.runInContext('actualizarCamposFinanciera()', vacio.ui);
   assert.match(vacio.element('addiLiquidacionVista').textContent, /Ingresa el valor bruto del crédito Addi/);
   assert.doesNotMatch(vacio.element('addiLiquidacionVista').textContent, datosInternos);
   for (const financiera of ['payjoy', 'krediya']) {
     const f = pantallaVenta({ financiera });
-    vm.runInContext('actualizarVistaAddi(); renderResumenFinal()', f.ui);
+    vm.runInContext('actualizarCamposFinanciera(); renderResumenFinal()', f.ui);
     assert.equal(f.element('addiLiquidacionVista').hidden, true);
     assert.equal(f.element('creditoInicial').readOnly, false);
     assert.equal(f.element('creditoValorEsperadoLabel').textContent, 'Valor esperado de la financiera');

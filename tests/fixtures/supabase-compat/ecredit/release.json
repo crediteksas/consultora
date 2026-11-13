@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "migration_sha256": {
+    "supabase/migrations/20261113010715_ecredit_liquidacion_venta.sql": "7b8a82901c55e8125bdccf1626b4e2cd504f30bd96c061b85a3436cc99add15e"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "sha256": "c7b4465592cf24c44de7eb898dd071bff9571df5c441df6e6711f2a9c6b4f8ef"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/ecredit/upgrade-before.json",
+      "sha256": "d112ca972248fc386d7b97d15120b26e8f9808dc8e4b5bb3687c2bf85bb33c94"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/ecredit/upgrade-after.json",
+      "sha256": "e26e53b2548c4256539fa6af9f364728f803e4b6d8c3e56b5d7d2bc9be76e3e0"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/ecredit/upgrade-contract.json",
+      "sha256": "dab39c5dc6f10e132e3196fa64af9ca5be9d4478ce4ca645d47f8b7717983741"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/ecredit/upgrade-created.json",
+      "sha256": "20f576ae9be67c0638069877233d4c250545c34ed5b2a5a8675e91a1a913e47c"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/ecredit/rebuild-before.json",
+      "sha256": "c34bc4c52f35ccc10ab26843b5a55ffe5c70020bd36aadeddf6e361cd179873c"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/ecredit/rebuild-after.json",
+      "sha256": "e98d32e484acef7abefb9f40a755735f6763422c4a4f90516188f9e330e6aae5"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/ecredit/rebuild-contract.json",
+      "sha256": "dab39c5dc6f10e132e3196fa64af9ca5be9d4478ce4ca645d47f8b7717983741"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/ecredit/rebuild-created.json",
+      "sha256": "20f576ae9be67c0638069877233d4c250545c34ed5b2a5a8675e91a1a913e47c"
+    }
+  }
+}

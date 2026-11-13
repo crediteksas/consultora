@@ -1,0 +1,43 @@
+[
+  {
+    "schema": "ecredit_private",
+    "name": "ecredit_liquidaciones",
+    "kind": "r"
+  },
+  {
+    "schema": "ecredit_private",
+    "name": "ecredit_confirmar",
+    "kind": "function",
+    "identity": "p_venta_id uuid, p_desembolso numeric, p_pagamos numeric, p_utilidad numeric, p_referencia text"
+  },
+  {
+    "schema": "ecredit_private",
+    "name": "ecredit_listar",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "ecredit_private",
+    "name": "ecredit_proteger_venta",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "ecredit_private",
+    "name": "ecredit_validar_credito",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "ecredit_confirmar",
+    "kind": "function",
+    "identity": "p_venta_id uuid, p_desembolso numeric, p_pagamos numeric, p_utilidad numeric, p_referencia text"
+  },
+  {
+    "schema": "public",
+    "name": "ecredit_listar",
+    "kind": "function",
+    "identity": ""
+  }
+]

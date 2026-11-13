@@ -17,6 +17,7 @@
   let preparacion;
   let batches = [];
   let addiRecords = [];
+  let ecreditRecords = [];
   let addiStores = new Map();
   let addiBuyerDocuments = new Map();
   let monthlyExpenses = null;
@@ -41,7 +42,71 @@
     return Math.floor(amount) + (amount - Math.floor(amount) > 0.50 ? 1 : 0);
   };
   const addiMoney = value => money(addiPesos(value));
-  const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : value === 'addi' ? 'Addi' : 'PayJoy';
+  const platformName = (value) => value === 'alo' ? 'ALO Credit' : value === 'krediya' ? 'Krediya' : value === 'addi' ? 'Addi' : value === 'ecredit' ? 'eCredit' : 'PayJoy';
+  const canConfirmECredit = () => profile?.rol === 'auditoria'
+    && profile.id === 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
+
+  async function loadECredit() {
+    if (!canConfirmECredit() && profile?.rol !== 'gerencia') return;
+    $('ecreditLiquidaciones').hidden = false;
+    const status = $('ecreditEstado');
+    status.textContent = 'Consultando ventas eCredit…';
+    const {data, error} = await sb.rpc('ecredit_listar');
+    if (error || !Array.isArray(data)) {
+      status.textContent = 'No se pudieron consultar las ventas eCredit. Pulsa Actualizar eCredit para reintentar.';
+      $('ecreditVentas').replaceChildren();
+      return;
+    }
+    ecreditRecords = data;
+    renderBatches();
+    status.textContent = data.length
+      ? `${data.filter(row => !row.confirmado_at).length} por liquidar`
+      : 'No hay ventas eCredit registradas.';
+    $('ecreditVentas').innerHTML = data.map(row => `
+      <details class="card" data-ecredit-detail="${esc(row.venta_id)}">
+        <summary>Venta #${esc(row.consecutivo)} · ${esc(row.tienda || row.tienda_codigo)}
+          · ${esc(row.fecha)} · ${row.confirmado_at ? 'Desembolso confirmado' : 'Pendiente de desembolso'}</summary>
+        <p>Precio de venta ${money(row.total)} · Inicial en efectivo ${money(row.cuota_inicial)}
+          · Saldo financiado ${money(row.saldo_financiado)}</p>
+        ${row.confirmado_at ? `<p>Desembolso ${money(row.desembolso)} · Pagamos ${money(row.pagamos)}
+          · Utilidad ${money(row.utilidad)} · Ref. ${esc(row.referencia)}</p>` : ''}
+        ${!row.confirmado_at && canConfirmECredit() ? `
+          <form class="actions" data-ecredit-venta="${esc(row.venta_id)}">
+            <label>Desembolso recibido<input class="control" name="desembolso" type="number" min="0.01" step="0.01" required></label>
+            <label>Pagamos a la tienda<input class="control" name="pagamos" type="number" min="0" step="0.01" required></label>
+            <label>Utilidad Creditek<input class="control" name="utilidad" type="number" step="0.01" required></label>
+            <label>Referencia del desembolso<input class="control" name="referencia" maxlength="120" required></label>
+            <button class="btn primary" type="submit">Confirmar liquidación</button>
+            <p role="status"></p>
+          </form>` : ''}
+      </details>`).join('');
+  }
+
+  async function confirmECredit(event) {
+    const form = event.target.closest('form[data-ecredit-venta]');
+    if (!form || !canConfirmECredit()) return;
+    event.preventDefault();
+    const values = new FormData(form);
+    const button = form.querySelector('button');
+    const status = form.querySelector('[role="status"]');
+    button.disabled = true;
+    try {
+      const {error} = await sb.rpc('ecredit_confirmar', {
+        p_venta_id: form.dataset.ecreditVenta,
+        p_desembolso: values.get('desembolso'),
+        p_pagamos: values.get('pagamos'),
+        p_utilidad: values.get('utilidad'),
+        p_referencia: values.get('referencia'),
+      });
+      if (error) throw error;
+      await loadECredit();
+    } catch (error) {
+      status.textContent = error.message || 'No se pudo confirmar la liquidación.';
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   async function loadAddiFollowup() {
     const status = $('addiFollowupStatus');
     const body = $('addiFollowupRows');
@@ -213,10 +278,14 @@
     $('openKrediyaTariff').onclick = () => tarifarioKrediya.openTariff();
     gestionKrediya = CreditekKrediyaGestiones.create({ sb, userId:session.user.id, capability:operator.capacidad, money, onReport:()=>loadTab('management'), onOperation:openInstructionOperation });
     $('liquidationsContent').classList.remove('hidden');
+    $('ecreditActualizar').addEventListener('click', loadECredit);
+    $('ecreditVentas').addEventListener('submit', confirmECredit);
+    void loadECredit();
     $('refreshBatches').addEventListener('click', async()=>{await loadAddiFollowup();await loadBatches();});
     $('addiFollowupRows').addEventListener('click', actOnAddi);
     const requestedPlatform=new URLSearchParams(location.search).get('plataforma');
-    if(['payjoy','alo','krediya','addi'].includes(requestedPlatform))$('filterPlatform').value=requestedPlatform;
+    if(['payjoy','alo','krediya','addi','ecredit'].includes(requestedPlatform))$('filterPlatform').value=requestedPlatform;
+    if(requestedPlatform==='ecredit') setListMode('pending');
     await loadAddiFollowup();
     await loadBatches();
     const requestedBatch=new URLSearchParams(location.search).get('lote');
@@ -291,8 +360,17 @@
         calculoPendiente:row.estado==='aprobada'
           && Number(row.pago_tienda)!==addiPesos(Number(row.credito_bruto)*Number(row.porcentaje_politica))};
     });
+    const ecreditInList=(typeof ecreditRecords==='undefined'?[]:ecreditRecords).map(row=>({
+      id:row.venta_id,ecredit:true,plataforma:'ecredit',consecutivo:row.consecutivo,
+      fecha_corte:row.fecha,imported_at:row.fecha+'T12:00:00-05:00',
+      approved_at:row.confirmado_at,estado:row.confirmado_at?'aprobada':'validada',
+      operaciones_tiendas:1,total_utilidad_creditek:row.utilidad,
+      liquidation_operations:[{establishment_name:row.tienda,origen_codigo:row.tienda_codigo}],
+      storeName:row.tienda||row.tienda_codigo,pagamos:row.pagamos,
+    }));
     const platformFilter=$('filterPlatform').value;
-    const visibleBatches=[...batches.filter(batch=>!platformFilter||batch.plataforma===platformFilter),...(platformFilter&&platformFilter!=='addi'?[]:addiInList)];
+    const visibleBatches=[...batches,...addiInList,...ecreditInList]
+      .filter(batch=>!platformFilter||batch.plataforma===platformFilter);
     const addiNeedsCorrection=addiInList.some(batch=>batch.calculoPendiente);
     const month=Summary.utilidadMes(addiNeedsCorrection?batches:[...batches,...addiInList],periodo);
     const expensesTotal=monthlyExpenses?.reduce((total,row)=>total-row.value,0);
@@ -312,7 +390,12 @@
       .filter((b) => !search || [b.id,b.plataforma,b.fecha_corte,UX.traducirEstado(b.estado),...(b.liquidation_operations||[]).flatMap(o=>[o.establishment_name,o.origen_codigo,o.imei])].some(value=>String(value||'').toLowerCase().includes(search)));
     const from=$('historyFrom')?.value,until=$('historyUntil')?.value;
     if(listMode==='history')rows.splice(0,rows.length,...rows.filter(b=>(!from||b.fecha_corte>=from)&&(!until||b.fecha_corte<=until)));
-    $('batches').innerHTML = rows.map((b) => b.addiId ? `<tr>
+    $('batches').innerHTML = rows.map((b) => b.ecredit ? `<tr>
+      <td>${UX.fechaAuditoria(b.approved_at||b.imported_at)}</td><td>eCredit<small>#${esc(b.consecutivo)} · ${esc(b.storeName)}</small></td>
+      <td>${UX.fechaCorta(b.fecha_corte)}</td><td>${b.approved_at?'Desembolso confirmado':'Pendiente de desembolso'}</td>
+      <td>1</td><td>${b.approved_at?money(b.pagamos):'Por definir'}</td><td>—</td>
+      <td>${b.approved_at?money(b.total_utilidad_creditek):'Por definir'}</td><td>${b.approved_at?money(b.pagamos):'Por definir'}</td>
+      <td><button class="btn secondary" data-open-ecredit="${esc(b.id)}">Ver detalle</button></td></tr>` : b.addiId ? `<tr>
       <td>${UX.fechaAuditoria(b.approved_at||b.imported_at)}</td><td>Addi<small>#${esc(b.consecutivo)} · ${esc(b.storeName)}</small></td><td>${UX.fechaCorta(b.fecha_corte)}</td>
       <td>${b.calculoPendiente?'<span class="badge con_novedades">Revisar cálculo</span>':state(b.estado)}</td><td>1</td><td>${money(b.total_pago_tiendas)}<small>${b.calculoPendiente?'Pendiente de rectificación':'Tiendas: '+money(b.total_pago_tiendas)}</small></td>
       <td>${money(0)}</td><td>${b.calculoPendiente?'Por rectificar':money(b.total_utilidad_creditek)}</td><td>${money(b.total_pagar)}</td>
@@ -322,6 +405,13 @@
       ${(awaitingCalculation(b)&&b.previewValues?b.previewValues:[b.total_pago_aliados,b.total_bonos,businessUtility(b),b.total_pagar]).map((v,i) => `<td>${i===0?commercePayment(b):awaitingCalculation(b) ? b.previewValues?money(v)+'<small>Automático · sin aprobar</small>':esc(b.previewError||(b.plataforma==='krediya'?'Consultando…':'Por calcular')) : v==null?'No informado':money(v)}${!awaitingCalculation(b)&&i>0&&provisionalBatch(b)?'<small>Provisional</small>':''}</td>`).join('')}
       <td><button class="btn secondary" data-open="${b.id}">Ver detalle</button></td></tr>`).join('') || `<tr><td colspan="10">${listMode === 'week' ? 'No hay liquidaciones en esta semana. Puedes consultar otras fechas en el historial.' : listMode === 'pending' ? 'No hay liquidaciones pendientes.' : 'No hay liquidaciones en el historial para este rango.'}</td></tr>`;
     document.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDetail(button.dataset.open); });
+    document.querySelectorAll('[data-open-ecredit]').forEach(button => {
+      button.onclick = () => {
+        const detail = Array.from($('ecreditVentas').children)
+          .find(item => item.dataset.ecreditDetail === button.dataset.openEcredit);
+        if (detail) { detail.open = true; detail.scrollIntoView({block:'start'}); }
+      };
+    });
     document.querySelectorAll('[data-open-addi]').forEach((button) => { button.onclick = () => showAddiDetail(button.dataset.openAddi); });
   }
 

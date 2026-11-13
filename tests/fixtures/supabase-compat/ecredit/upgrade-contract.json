@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "ecredit_liquidaciones",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "ecredit_private",
+      "columns": [
+        {
+          "acl": null,
+          "name": "venta_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "desembolso",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "pagamos",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "utilidad",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "confirmado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "confirmado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "Private settlement or trigger inaccessible to API roles."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "ecredit_confirmar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "ecredit_private",
+      "identity": "p_venta_id uuid, p_desembolso numeric, p_pagamos numeric, p_utilidad numeric, p_referencia text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "e7a6af1255e3de87dd80e33413463b53",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "RPC verifies the active operator and role."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "ecredit_listar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "ecredit_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "55f3768720168a47701f55f4cd2a8999",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "RPC verifies the active operator and role."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "ecredit_proteger_venta",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "ecredit_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "2920135e700d1fb6ecf3ca152d92012d",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "Private settlement or trigger inaccessible to API roles."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "ecredit_validar_credito",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "ecredit_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "7fc01a2201a92447e1db77fae2e8ff6d",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "Private settlement or trigger inaccessible to API roles."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "ecredit_confirmar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_venta_id uuid, p_desembolso numeric, p_pagamos numeric, p_utilidad numeric, p_referencia text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "dc32335d3a6ae569ae49f76109f79c1c",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "RPC verifies the active operator and role."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "ecredit_listar",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "8307ec1adcb2240f552a35eb14cec925",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-ecredit.test.mjs",
+      "justification": "RPC verifies the active operator and role."
+    }
+  ],
+  "allow_catalog_changes": {
+    "schema_grants": "[{\"acl\":\"{postgres=UC/postgres,authenticated=U/postgres}\",\"grants\":[{\"grantable\":false,\"grantee\":\"postgres\",\"grantor\":\"postgres\",\"privilege\":\"CREATE\"},{\"grantable\":false,\"grantee\":\"postgres\",\"grantor\":\"postgres\",\"privilege\":\"USAGE\"},{\"grantable\":false,\"grantee\":\"authenticated\",\"grantor\":\"postgres\",\"privilege\":\"USAGE\"}],\"owner\":\"postgres\",\"schema\":\"ecredit_private\"},{\"acl\":\"{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner}\",\"grants\":[{\"grantable\":false,\"grantee\":\"PUBLIC\",\"grantor\":\"pg_database_owner\",\"privilege\":\"USAGE\"},{\"grantable\":false,\"grantee\":\"pg_database_owner\",\"grantor\":\"pg_database_owner\",\"privilege\":\"CREATE\"},{\"grantable\":false,\"grantee\":\"pg_database_owner\",\"grantor\":\"pg_database_owner\",\"privilege\":\"USAGE\"}],\"owner\":\"pg_database_owner\",\"schema\":\"public\"}]",
+    "triggers": "[{\"definition_md5\":\"be3898fb8e9813f01f0b5c719fcb8cef\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"ecredit_validar_credito\",\"function_schema\":\"ecredit_private\",\"name\":\"ecredit_validar_credito\",\"schema\":\"public\",\"table\":\"creditos\"},{\"definition_md5\":\"f12e1695faf8cbcc67a38f2f4b98958e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"ecredit_proteger_venta\",\"function_schema\":\"ecredit_private\",\"name\":\"ecredit_proteger_venta\",\"schema\":\"public\",\"table\":\"ventas\"}]"
+  }
+}

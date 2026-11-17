@@ -92,6 +92,7 @@
           </form><div id="conteos-no-conformes" style="margin:12px 0"></div>
           <div id="conteos-nc-resumen" style="margin:12px 0"></div>
         </details>
+        <section id="conteos-utilidad-general" hidden tabindex="-1"></section>
         <p id="conteos-mensaje" role="status" style="margin:12px 0;white-space:pre-wrap"></p>
         <section id="conteos-mensual-panel" aria-label="Informe mensual de inventarios" hidden>
           <h3>Informe de inventarios del mes · todas las tiendas</h3>
@@ -669,7 +670,7 @@
         } while(filas.length===1000);
         return Math.round(saldo*100)/100;
     }
-    async function informeUltimos() {
+    async function informeUltimos({vista=false}={}) {
       if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el último corte de todas las tiendas.');
       // El informe general no depende de los filtros visibles ni de su rango de fechas.
       const hoy=local(new Date()).slice(0,10);
@@ -693,7 +694,7 @@
         const diferenciasCorte=lineas.filter(l=>l.diferencia!=null&&Number(l.diferencia)!==0);
         const valorCompleto=contado&&valores.sinCosto===0;
         let pasivoSaldo=null;
-        try { pasivoSaldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at); }
+        try { if(!vista)pasivoSaldo=await saldoB2BAlCorte(tienda.codigo,c.corte_at); }
         catch(errorSaldo) { pendientes.push({Tienda:tienda.nombre,'ID corte':c.id,Motivo:errorSaldo.message}); }
         const {data:liquidacion,error:liquidacionError}=await sb.rpc('cierre_utilidad_retail',{p_accion:'vista',p_corte_id:c.id});
         const camposResultado=['ventas_totales','costo_vendido','gastos_totales','perdidas_ajustes',
@@ -720,6 +721,10 @@
           'Ajuste físico neto al costo':valorCompleto?valores.impactoNeto:'',
           'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
           Resultado:resultado,'Estado de utilidad':estadoCorto,'Observaciones de utilidad':estadoLiquidacion});
+        if(vista)continue;
+        const cuadre=utilidadDisponible?Math.abs(Number(liquidacion.ventas_totales)-Number(liquidacion.costo_vendido)
+          -Number(liquidacion.gastos_totales)-Number(liquidacion.perdidas_ajustes)+Number(liquidacion.ganancias_ajustes)
+          +Number(liquidacion.ajuste_conciliacion)-utilidad)<0.01:null;
         resultadoCortes.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,
           'Inicio del tramo':liquidacion?.inicio_at?local(liquidacion.inicio_at):'',
           'Fin del tramo':fechaCorte(c),
@@ -730,7 +735,8 @@
           'Sobrantes de inventario':utilidadDisponible?Number(liquidacion.ganancias_ajustes):'',
           'Ajuste financiero':utilidadDisponible?Number(liquidacion.ajuste_conciliacion):'',
           'Utilidad o pérdida del corte':utilidad===null?'':utilidad,
-          Resultado:resultado,'Estado de utilidad':estadoLiquidacion,'ID corte':c.id});
+          Resultado:resultado,'Cuadre de utilidad':cuadre===null?'No disponible':cuadre?'Cuadra':'Revisar',
+          'Estado de utilidad':estadoLiquidacion,'ID corte':c.id});
         control.push({Tienda:tienda.nombre,'Código tienda':tienda.codigo,Estado:estadoCorte(c),
           'Fecha del corte':fechaCorte(c),'Fecha de carga':c.recibido_at?local(c.recibido_at):'',
           'Referencias/IMEI':lineas.length,'Referencias con diferencia':contado?diferenciasCorte.length:'',
@@ -758,14 +764,50 @@
           if(l.diferencia!=null&&Number(l.diferencia)!==0)diferencias.push(fila);
         }
       }
-      const libro=XLSX.utils.book_new();
-      hoja(libro,resumen,'Resumen tiendas');
-      if(resultadoCortes.length)hoja(libro,resultadoCortes,'Resultado del corte');
-      if(control.length)hoja(libro,control,'Control de cortes');
-      if(diferencias.length)hoja(libro,diferencias,'Diferencias');
-      if(detalleFilas.length)hoja(libro,detalleFilas,'Detalle inventario');
-      if(pendientes.length)hoja(libro,pendientes,'Por aclarar');
-      guardarLibro(libro,`ultimos-cortes-tiendas-${hoy}.xlsx`);
+      if(vista) {
+        const confirmadas=resumen.filter(r=>r['Estado de utilidad']==='Confirmada');
+        const total=confirmadas.reduce((suma,r)=>suma+Number(r['Utilidad o pérdida del corte']),0);
+        const panel=el('utilidad-general');
+        panel.innerHTML=`
+          <h3>Utilidad del último corte · Todas las tiendas</h3>
+          <p>Se toma el último corte físico de cada tienda. Las fechas pueden variar entre tiendas.</p>
+          <p>${confirmadas.length ? `<strong>Utilidad neta confirmada: ${money(total)}</strong> · ${confirmadas.length} de ${resumen.length} tiendas` : 'Todavía no hay utilidades confirmadas para sumar.'}</p>
+          <ul>${resumen.map(r=>`<li><strong>${esc(r.Tienda)}</strong> · ${esc(r['Fecha del corte']||'Sin corte')}
+            · ${typeof r['Utilidad o pérdida del corte']==='number'?money(r['Utilidad o pérdida del corte']):'Por confirmar'}
+            · ${esc(r['Estado de utilidad']||r['Estado del corte'])}</li>`).join('')}</ul>
+          <button id="conteos-utilidad-general-excel" type="button" class="btn-export">Descargar Excel del último corte</button>`;
+        el('utilidad-general-excel').onclick=()=>run(informeUltimos,'utilidad-general-estado');
+        panel.insertAdjacentHTML('beforeend','<p id="conteos-utilidad-general-estado" role="status" tabindex="-1"></p>');
+        panel.focus();
+        return;
+      }
+      if(!global.KoraReportExport?.exportData)throw new Error('El generador de informes aún no está listo. Actualiza KORA y vuelve a intentarlo.');
+      const moneda=/^(inventario .*costo|deuda con|saldo a favor|ajuste.*(?:costo|financiero)|utilidad o pérdida|ventas del|costo vendido|gastos aprobados|pérdidas de|sobrantes de|valor (?:faltantes|sobrantes|diferencia)|impacto neto|inventario (?:sistema|reportado)|costo tienda)/i;
+      const cantidad=/^(referencias|unidades|sistema al corte|reportado al corte|diferencia$|actual al consultar|posterior al ajuste)/i;
+      const tabla=(heading,filas,totalRows=[])=>{
+        const headers=[...new Set(filas.flatMap(fila=>Object.keys(fila)))];
+        return {heading,headers,totalRows:totalRows.map(fila=>headers.map(campo=>fila[campo]??'')),
+          columnTypes:headers.map(campo=>moneda.test(campo)?'currency':cantidad.test(campo)?'number':'text'),
+          rows:filas.map(fila=>headers.map(campo=>fila[campo]??'')),
+          rowTones:filas.map(fila=>headers.map(campo=>
+            (campo==='Utilidad o pérdida del corte'||campo==='Resultado')&&fila['Utilidad o pérdida del corte']<0
+              ?'negative':campo==='Cuadre de utilidad'&&fila[campo]==='Revisar'?'negative':null))};
+      };
+      const campoUtilidad='Utilidad o pérdida del corte';
+      const confirmadas=resumen.filter(fila=>fila['Estado de utilidad']==='Confirmada');
+      const totales=confirmadas.length?[{Tienda:`Total confirmado (${confirmadas.length}/${resumen.length})`,
+        [campoUtilidad]:confirmadas.reduce((suma,fila)=>suma+Number(fila[campoUtilidad]),0)}]:[];
+      const tablas=[tabla('Resumen tiendas',resumen,totales)];
+      for(const [nombre,filas] of [['Resultado del corte',resultadoCortes],['Control de cortes',control],
+        ['Diferencias',diferencias],['Detalle inventario',detalleFilas],['Por aclarar',pendientes]]){
+        if(filas.length)tablas.push(tabla(nombre,filas));
+      }
+      const id=await global.KoraReportExport.exportData({title:'Último corte de inventario por tienda',mode:'detailed',
+        orientation:'landscape',logoCompleto:true,scope:{label:'Todas las tiendas Retail',code:''},
+        filters:[['Cortes incluidos','Último corte físico de cada tienda'],['Moneda','COP sin centavos']],
+        tables:tablas,notes:['Las fechas de los cortes pueden variar por tienda. El total confirmado excluye resultados pendientes de cierre.']},
+        {format:'xlsx',sb,profile:perfil||global.creditekSidebar?.perfil});
+      return `Excel descargado. Código: ${id}.`;
     }
     async function informeMensual(formato='xlsx',popup=null) {
       if(!config.central)throw new Error('Solo Gestión o Gerencia pueden descargar el informe mensual de todas las tiendas.');
@@ -874,7 +916,18 @@
     });
     // Mantener rechazo observable, sin promesas rechazadas huérfanas.
     ready.catch(e=>{el('mensaje').textContent=e.message;});
-    return { async abrir(){el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };
+    return {
+      async abrirUtilidadUltima(){
+        el('modal').classList.add('show');
+        const panel=el('utilidad-general');
+        panel.hidden=false;
+        await run(async()=>{
+          panel.innerHTML='<h3>Utilidad del último corte · Todas las tiendas</h3><p role="status">Consultando cortes…</p>';
+          try { await ready; await informeUltimos({vista:true}); }
+          catch(error) { panel.textContent=error.message; throw error; }
+        });
+      },
+      async abrir(){el('utilidad-general').hidden=true;el('modal').classList.add('show');await run(async()=>{await ready;const tienda=tiendaActual();if(tienda&&config.tiendas.some(t=>t.codigo===tienda))el('tienda').value=tienda;await historial();await cargarNoConformes();});} };
   }
   global.KoraConteosUI=Object.freeze({init,resumirValores,seleccionarCortesCerrados,agregarTotalTiendas});
 })(window);

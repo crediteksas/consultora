@@ -544,7 +544,7 @@ ${Object.entries(CELL_TONES).map(([tone,colors])=>`td[data-report-tone="${tone}"
     const brand=(sheet,lastColumn)=>{
       sheet.properties.defaultRowHeight=24;
       sheet.mergeCells(1,1,3,lastColumn);
-      sheet.addImage(imageId,{tl:{col:.12,row:.15},ext:{width:170,height:50}});
+      sheet.addImage(imageId,{tl:{col:.12,row:.15},ext:report.logoCompleto?{width:160,height:160*825/1906}:{width:170,height:50}});
       sheet.getRow(1).height=22;sheet.getRow(2).height=22;sheet.getRow(3).height=18;
       sheet.mergeCells(4,1,4,lastColumn);sheet.getCell(4,1).value=`KORA · ${report.title}`;
       sheet.getCell(4,1).font={name:'Arial',bold:true,size:18,color:{argb:COLORS.navy}};sheet.getRow(4).height=30;

@@ -27,7 +27,20 @@ const sql=fs.readFileSync('supabase/migrations/20260905034907_krediya_flujo_tari
 const engine=sql.slice(sql.indexOf('create function krediya_private.calcular_y_enviar_aprobacion'),sql.indexOf('create or replace function public.aliados_cambiar_estado'));
 test('tarifario exporta referencia, PVP y Pagamos originales como números',()=>{
  const rows=api.tarifaRows([{codigo:'T0924',referencia:'REDMI 15C 128GB 4RAM',precio_venta:646400,pagamos:484800,vigente_desde:'2026-08-12'}]);
- assert.deepEqual(rows[1],['T0924','REDMI 15C 128GB 4RAM',646400,484800,'2026-08-12','']);
+ assert.deepEqual(rows[1].slice(0,5),['T0924','REDMI 15C 128GB 4RAM',646400,484800,'2026-08-12']);
+ assert.equal(rows[0].length,21);
+ assert.equal(rows[1].length,21);
+ assert.ok(rows[1].slice(5).every(value=>value===null));
+});
+test('el cruce acepta ambos códigos y calcula los importes con los precios correspondientes',()=>{
+ const reference=Array(21).fill(null);
+ Object.assign(reference,{0:'LEGACY',1:'SPARK 50',5:600,12:'T1038',13:1000,14:950,15:750});
+ const current={codigo:'T1038',referencia:'Otro nombre',precio_venta:1100,pagamos:700};
+ const [,row]=api.tarifaRows([current],[reference]);
+ assert.deepEqual([row[5],row[6],row[9],row[16],row[18]],[600,100,'Cruce por código',100,150]);
+ const [,ambiguous]=api.tarifaRows([current],[reference,[...reference]]);
+ assert.equal(ambiguous[5],null);
+ assert.equal(ambiguous[9],'Cruce ambiguo');
 });
 test('informe exporta snapshot del cálculo, resta inicial una sola vez y conserva pérdidas',()=>{
  const result=api.diferenciasRows([{estado:'pendiente',contexto:{referencia:'Equipo',tienda:'Comercio',imei:'012345678901234',fecha:'2026-08-12',pvp_guardado:646400,pvp_liquidado:701500,impacto_bruto:55100,pagamos:484800,inicial:70150,bonos:50000,utilidad_neta:-100,impacto_neto:-20}}]);

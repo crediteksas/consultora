@@ -17,9 +17,60 @@
     const today = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bogota'}).format(now);
     return rows.filter(r => r.activo !== false && r.vigente_desde && r.vigente_desde <= today && (!r.vigente_hasta || r.vigente_hasta >= today));
   }
-  function tarifaRows(rows) {
-    return [['Código','Referencia','PVP configurado','PAGAMOS antes de inicial','Vigente desde','Vigente hasta'],
-      ...rows.map(r=>[r.codigo || '',r.referencia,numeric(r.precio_venta),numeric(r.pagamos),r.vigente_desde,r.vigente_hasta || ''])];
+  const tariffHeaders = [
+    'Código', 'Referencia', 'PVP configurado', 'PAGAMOS antes de inicial', 'Vigente desde',
+    'Costo proveedor', 'Ganancia bruta estimada', 'Ganancia / costo', 'Referencia proveedor',
+    'Observación del cruce', 'Proveedor del costo', 'Fuente del costo', 'Código KrediYA',
+    'PVP máximo portal', 'PVP NECESARIO', 'PAGAMOS NUEVO', 'Exceso sobre máximo',
+    'Cruce PVP', 'UTILIDAD ESPERADA ', 'CREDITEK', 'Observación PVP'
+  ];
+  const tariffKey = value => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+  function indexReference(rows, keys) {
+    const index = new Map();
+    for (const row of rows) {
+      for (const key of new Set(keys(row).map(tariffKey).filter(Boolean))) {
+        index.set(key, index.has(key) ? null : row);
+      }
+    }
+    return index;
+  }
+  function tarifaRows(rows, referenceRows = []) {
+    const references = indexReference(referenceRows, row => [row[1]]);
+    const codes = indexReference(referenceRows, row => [row[0], row[12]]);
+    return [tariffHeaders, ...rows.map(r => {
+      const code = tariffKey(r.codigo);
+      const byCode = codes.get(code);
+      const name = tariffKey(r.referencia);
+      const byName = references.get(name);
+      const nameCodes = byName ? [byName[0], byName[12]].map(tariffKey).filter(Boolean) : [];
+      const compatibleName = byName && (!code || !nameCodes.length || nameCodes.includes(code));
+      const reference = byCode ?? (byCode === null ? null : compatibleName ? byName : null);
+      const extra = tariffHeaders.slice(5).map((_, i) => reference?.[i + 5] ?? null);
+      const pvp = numeric(r.precio_venta);
+      const pagamos = numeric(r.pagamos);
+      const cost = numeric(extra[0]);
+      const cap = numeric(extra[8]);
+      const proposedPayment = numeric(extra[10]);
+      extra[1] = pagamos === null || cost === null ? null : pagamos - cost;
+      extra[2] = cost > 0 && extra[1] !== null ? extra[1] / cost : null;
+      extra[4] = reference
+        ? [byCode ? 'Cruce por código' : 'Cruce por nombre exacto', extra[4]].filter(Boolean).join(' · ')
+        : referenceRows.length ? (byCode === null || byName === null ? 'Cruce ambiguo' : 'Sin coincidencia') : null;
+      extra[11] = pvp === null || cap === null ? null : Math.max(0, pvp - cap);
+      extra[13] = proposedPayment === null || cost === null ? null : proposedPayment - cost;
+      return [r.codigo || '', r.referencia, pvp, pagamos, r.vigente_desde, ...extra];
+    })];
+  }
+  function readTariffReference(data) {
+    const book = root.XLSX.read(data, {type:'array'});
+    const matchingSheets = book.SheetNames.map(name => root.XLSX.utils.sheet_to_json(book.Sheets[name], {
+      header:1, raw:true, defval:null, blankrows:false
+    })).filter(([headers]) => headers &&
+      tariffHeaders.every((header, i) => tariffKey(header) === tariffKey(headers[i])));
+    if (matchingSheets.length !== 1) {
+      throw new Error('Selecciona un Excel con una hoja que tenga las 21 columnas del tarifario en el mismo orden.');
+    }
+    return matchingSheets[0].slice(1);
   }
   function diferenciasRows(rows) {
     const matrix=[['Referencia','Comercio','IMEI','Fecha venta','PVP configurado','PVP Krediya','Diferencia PVP','PAGAMOS pactado','Inicial','Giro al aliado','Bonos','Utilidad neta','Impacto neto','Responsables','Estado','Última gestión','Soporte','Gasto financiero','Provisión'],
@@ -69,10 +120,16 @@
     sheet['!autofilter']={ref:root.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:firstSubtotal<0?rows.length-1:firstSubtotal-1,c:rows[0].length-1}})};
     // Text stays text; no user-supplied Excel formulas are created.
     for(let r=1;r<rows.length;r++) for(let c=0;c<rows[0].length;c++) {
-      const cell=sheet[root.XLSX.utils.encode_cell({r,c})]; if(cell?.t==='n') cell.z='"$"#,##0';
+      const cell=sheet[root.XLSX.utils.encode_cell({r,c})];
+      if(cell?.t!=='n') continue;
+      if(sheetName!=='Tarifario' || [2,3,5,6,13,14,15,16,18,19].includes(c)) cell.z='"$"#,##0';
+      if(sheetName==='Tarifario' && c===7) cell.z='0.00%';
+    }
+    if(sheetName==='Tarifario' && context.length) {
+      sheet.T1.c=[{a:'KORA',t:'Importe de la propuesta comercial del archivo de referencia: '+context[0]}];
     }
     root.XLSX.utils.book_append_sheet(book,sheet,sheetName);
-    if(context.length){const metadata=root.XLSX.utils.aoa_to_sheet([['Parámetro','Valor'],...context]);metadata['!cols']=[{wch:32},{wch:80}];root.XLSX.utils.book_append_sheet(book,metadata,'Contexto');}
+    if(context.length && sheetName!=='Tarifario'){const metadata=root.XLSX.utils.aoa_to_sheet([['Parámetro','Valor'],...context]);metadata['!cols']=[{wch:32},{wch:80}];root.XLSX.utils.book_append_sheet(book,metadata,'Contexto');}
     root.XLSX.writeFile(book,name);
   }
   function create({sb,money}) {
@@ -113,16 +170,41 @@
       const dialog=modal;
       document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
       const content=modal.querySelector('[data-content]');let rows=[];
+      let referenceRows=[];
+      let referenceName='';
+      let readingReference=false;
       async function load() {
         try {rows=await all(()=>sb.from('krediya_price_rules').select('*').eq('activo',true).order('referencia').order('vigente_desde',{ascending:false}).order('id'));render();}
         catch(e){content.textContent='No se pudo cargar el tarifario: '+e.message;}
       }
       function render(search='') {
         const filtered=tarifasVigentes(rows).filter(r=>`${r.codigo||''} ${r.referencia}`.toLowerCase().includes(search.toLowerCase()));
-        content.innerHTML=`<div class="tariff-controls"><label>Buscar código o referencia<input class="control" data-search value="${esc(search)}"></label><button class="btn primary" data-download>Descargar tarifario Excel</button></div><p>${filtered.length} tarifas vigentes hoy · Los precios anteriores se conservan para liquidar según la fecha de venta.</p><p data-export-error role="alert"></p><div class="tariff-list">${filtered.map(r=>`<article><div><h3>${esc(r.referencia)}</h3><p>${esc(r.codigo||'Sin código')} · Desde ${esc(r.vigente_desde)}${r.vigente_hasta?' hasta '+esc(r.vigente_hasta):''}</p></div><dl><div><dt>PVP configurado</dt><dd>${amount(r.precio_venta)}</dd></div><div><dt>PAGAMOS pactado</dt><dd>${amount(r.pagamos)}</dd></div></dl>${r.vigente_hasta?'':'<button class="btn secondary" data-edit="'+esc(r.id)+'">Editar precios</button>'}</article>`).join('')||'<p>No hay referencias con ese filtro.</p>'}</div>`;
+        content.innerHTML=`<div class="tariff-controls"><label>Buscar código o referencia<input class="control" data-search value="${esc(search)}"></label><button class="btn primary" data-download ${readingReference?'disabled':''}>Descargar tarifario Excel</button><label>Excel de referencia<input class="control" type="file" accept=".xlsx" data-reference></label></div><p data-reference-status role="status">${esc(referenceName || 'Selecciona el Excel de referencia para incluir costos, topes y propuestas.')}</p><p>${filtered.length} tarifas vigentes hoy · Los precios anteriores se conservan para liquidar según la fecha de venta.</p><p data-export-error role="alert"></p><div class="tariff-list">${filtered.map(r=>`<article><div><h3>${esc(r.referencia)}</h3><p>${esc(r.codigo||'Sin código')} · Desde ${esc(r.vigente_desde)}${r.vigente_hasta?' hasta '+esc(r.vigente_hasta):''}</p></div><dl><div><dt>PVP configurado</dt><dd>${amount(r.precio_venta)}</dd></div><div><dt>PAGAMOS pactado</dt><dd>${amount(r.pagamos)}</dd></div></dl>${r.vigente_hasta?'':'<button class="btn secondary" data-edit="'+esc(r.id)+'">Editar precios</button>'}</article>`).join('')||'<p>No hay referencias con ese filtro.</p>'}</div>`;
         const searchInput=content.querySelector('[data-search]');
         searchInput.oninput=()=>{const pos=searchInput.selectionStart;render(searchInput.value);const input=content.querySelector('[data-search]');input.focus();input.setSelectionRange(pos,pos);};
-        content.querySelector('[data-download]').onclick=()=>{try{download(tarifaRows(filtered),'Tarifario-Krediya.xlsx','Tarifario');}catch{content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
+        content.querySelector('[data-reference]').onchange=async event=>{
+          const input=event.currentTarget;
+          const file=input.files[0];
+          if(!file)return;
+          const downloadButton=content.querySelector('[data-download]');
+          readingReference=true;
+          downloadButton.disabled=true;
+          try {
+            const nextRows=readTariffReference(await file.arrayBuffer());
+            referenceRows=nextRows;
+            const matched=tarifaRows(tarifasVigentes(rows),nextRows).slice(1).filter(row=>row[9]?.startsWith('Cruce por')).length;
+            referenceName=`${file.name} · ${matched} referencias cruzadas`;
+            content.querySelector('[data-reference-status]').textContent=referenceName;
+            content.querySelector('[data-export-error]').textContent='';
+          }catch(error){
+            content.querySelector('[data-export-error]').textContent=error.message;
+          }finally{
+            input.value='';
+            readingReference=false;
+            content.querySelector('[data-download]').disabled=false;
+          }
+        };
+        content.querySelector('[data-download]').onclick=()=>{try{download(tarifaRows(filtered, referenceRows),'Tarifario-Krediya.xlsx','Tarifario',referenceName?[referenceName]:[]);}catch{content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
         content.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>edit(rows.find(r=>r.id===b.dataset.edit)));
       }
       function edit(r) {
@@ -202,6 +284,6 @@
     }
     return {openTariff,openOperationTariff,report};
   }
-  const api={create,tarifasVigentes,tarifaRows,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
+  const api={create,tarifasVigentes,tarifaRows,readTariffReference,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekKrediyaTarifario=api;
 })(typeof window==='undefined'?globalThis:window);

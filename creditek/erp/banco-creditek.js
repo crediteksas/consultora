@@ -10,13 +10,17 @@
   const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Bogota'});
   let perfil=null,cuenta=null,proveedores=[],facturas=[],solicitudes=[],aplicaciones=[],busy=false,requestId=null;
   let reporteListo=false;
+  function estadoPresentacion(s){
+    return s.estado==='rechazado' && s.pagado_at && String(s.concepto||'').includes('SUSTITUIDO: pago directo de Óscar, sin Banco Creditek') ? 'sustituido' : s.estado;
+  }
+  function etiquetaEstado(s){return estadoPresentacion(s)==='sustituido'?'Registro sustituido · pago personal de Óscar':s.estado;}
   function reportData(){
     if(!reporteListo)throw new Error('Actualiza Banco antes de exportar; la consulta no ha terminado.');
     const exact=n=>n==null?'Sin saldo registrado':new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n));
-    const estados=['pendiente','autorizado','pagado','rechazado'];
+    const estados=['pendiente','autorizado','pagado','rechazado','sustituido'];
     return {filters:[['Cuenta','Banco Creditek · •••• 4006'],['Corte del saldo',cuenta?.fecha_corte||'Sin apertura registrada'],['Cobertura de pagos','Hasta 200 solicitudes más recientes; los importes son de esta consulta']],
-      metrics:[['Saldo de control de Banco',exact(cuenta?.saldo_actual)],...estados.map(estado=>['Importe '+estado+' · solicitudes consultadas',exact(solicitudes.filter(s=>s.estado===estado).reduce((n,s)=>n+Number(s.monto),0))])],
-      tables:estados.map(estado=>({heading:'Pagos a proveedores · '+estado,kind:'detail',headers:['Fecha solicitud','Proveedor','Concepto','Estado','Valor COP','Fecha giro','Referencia bancaria'],rows:solicitudes.filter(s=>s.estado===estado).map(s=>[fecha(s.solicitado_at),nombre(s.proveedor_id),s.concepto,s.estado,exact(s.monto),s.pagado_at?fecha(s.pagado_at):'—',s.referencia_bancaria||'—']),sumColumns:[4],currencyColumns:[4]}))};
+      metrics:[['Saldo de control de Banco',exact(cuenta?.saldo_actual)],...estados.map(estado=>['Importe '+estado+' · solicitudes consultadas',exact(solicitudes.filter(s=>estadoPresentacion(s)===estado).reduce((n,s)=>n+Number(s.monto),0))])],
+      tables:estados.map(estado=>({heading:'Pagos a proveedores · '+estado,kind:'detail',headers:['Fecha solicitud','Proveedor','Concepto','Estado','Valor COP',estado==='sustituido'?'Fecha pago personal':'Fecha giro','Referencia bancaria'],rows:solicitudes.filter(s=>estadoPresentacion(s)===estado).map(s=>[fecha(s.solicitado_at),nombre(s.proveedor_id),s.concepto,etiquetaEstado(s),exact(s.monto),s.pagado_at?fecha(s.pagado_at):'—',estado==='sustituido'?'—':s.referencia_bancaria||'—']),sumColumns:[4],currencyColumns:[4]}))};
   }
   function nombre(id){return proveedores.find(p=>p.id===id)?.nombre||id}
   function deuda(id){return facturas.filter(f=>f.proveedor_id===id).reduce((sum,f)=>sum+Number(f.saldo||0),0)}
@@ -53,6 +57,7 @@
     $('solicitar').disabled=busy||!id||!Number.isSafeInteger(monto)||monto<=0||monto>=1e15||concepto.length<8;
   }
   function tarjeta(s,acciones){
+    const sustituido=estadoPresentacion(s)==='sustituido';
     const asignaciones=aplicaciones.filter(a=>a.solicitud_id===s.id).sort((a,b)=>a.orden-b.orden);
     const detalle=asignaciones.length?`<details><summary>Aplicación a ${asignaciones.length} documento(s), incluidos anticipos si hubo excedente</summary><ol>${asignaciones.map(a=>{
       const f=facturas.find(row=>row.id===a.factura_id);
@@ -65,12 +70,12 @@
         <label class="field wide">Comprobante bancario (PDF, JPG o PNG; máximo 10 MB)<input name="soporte" type="file" accept="application/pdf,image/jpeg,image/png" required></label></div>
         <button class="btn primary" type="submit" ${cuenta?.saldo_actual==null?'disabled':''}>Registrar giro comprobado y aplicar a facturas</button>
         ${cuenta?.saldo_actual==null?'<p class="error">Pendiente de sincronizar Banco. La autorización no permite mover saldos todavía.</p>':''}</form>`:'';
-    return `<article class="card"><strong>${esc(nombre(s.proveedor_id))}</strong> <span class="tag ${esc(s.estado)}">${esc(s.estado)}</span>
+    return `<article class="card"><strong>${esc(nombre(s.proveedor_id))}</strong> <span class="tag ${esc(estadoPresentacion(s))}">${esc(etiquetaEstado(s))}</span>
       <p><strong>${money(s.monto)}</strong> · ${esc(s.concepto)}</p>
       ${s.estado==='pagado'&&Number(s.saldo_favor_generado)>0?`<p class="ok">Excedente registrado a favor de Creditek: ${money(s.saldo_favor_generado)}.</p>`:''}
-      ${s.estado!=='pagado'&&s.monto>Math.max(0,deuda(s.proveedor_id))?`<p>Supera la deuda neta actual; después del giro quedaría ${money(Number(s.monto)-deuda(s.proveedor_id))} a favor de Creditek.</p>`:''}
-      <p class="muted">Solicitó Maite · ${esc(fecha(s.solicitado_at))}${s.autorizado_at?' · Decisión '+esc(fecha(s.autorizado_at)):''}${s.pagado_at?' · Giro '+esc(fecha(s.pagado_at)):''}</p>
-      ${s.motivo_rechazo?`<p class="error">Rechazo: ${esc(s.motivo_rechazo)}</p>`:''}
+      ${!sustituido&&s.estado!=='pagado'&&s.monto>Math.max(0,deuda(s.proveedor_id))?`<p>Supera la deuda neta actual; después del giro quedaría ${money(Number(s.monto)-deuda(s.proveedor_id))} a favor de Creditek.</p>`:''}
+      <p class="muted">Solicitó Maite · ${esc(fecha(s.solicitado_at))}${s.autorizado_at?' · Decisión '+esc(fecha(s.autorizado_at)):''}${s.pagado_at?(sustituido?' · Pago personal ':' · Giro ')+esc(fecha(s.pagado_at)):''}</p>
+      ${s.motivo_rechazo?`<p class="${sustituido?'muted':'error'}">${sustituido?'Motivo de sustitución':'Rechazo'}: ${esc(s.motivo_rechazo)}</p>`:''}
       ${s.estado==='pagado'?`<p>Banco ${money(s.saldo_banco_antes)} → ${money(s.saldo_banco_despues)} · Referencia ${esc(s.referencia_bancaria)}</p>`:''}
       ${detalle}${control}</article>`;
   }

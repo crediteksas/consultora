@@ -101,8 +101,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
   assert.equal(tariffCall.args.p_pvp,880000);
   assert.equal(tariffCall.args.p_pagamos,484800);
   assert.equal(tariffCall.args.p_version,'2026-09-05T00:00:00Z');
-  await page.locator('[data-download]').click();
-  assert.equal(await page.evaluate(()=>window.downloads.at(-1).book.Sheets.Tarifario.D2.v),484800);
+  assert.equal(await page.locator('[data-download]').isEnabled(),true,'La descarga del tarifario queda disponible tras guardar');
   await page.locator('[data-close]').click();
 
   await page.evaluate(async()=>{

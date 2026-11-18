@@ -65,12 +65,51 @@
     const book = root.XLSX.read(data, {type:'array'});
     const matchingSheets = book.SheetNames.map(name => root.XLSX.utils.sheet_to_json(book.Sheets[name], {
       header:1, raw:true, defval:null, blankrows:false
-    })).filter(([headers]) => headers &&
-      tariffHeaders.every((header, i) => tariffKey(header) === tariffKey(headers[i])));
+    })).map(rows => {
+      const start=rows.findIndex(headers=>headers && tariffHeaders.every((header,i)=>tariffKey(header)===tariffKey(headers[i])));
+      return start<0?null:rows.slice(start);
+    }).filter(Boolean);
     if (matchingSheets.length !== 1) {
       throw new Error('Selecciona un Excel con una hoja que tenga las 21 columnas del tarifario en el mismo orden.');
     }
     return matchingSheets[0].slice(1);
+  }
+  function addB2BCosts(matrix, products, offers, providers, aliases) {
+    const supplier=new Map(providers.map(p=>[p.id,p.nombre]));
+    const byName=new Map();
+    for(const product of products){const key=tariffKey(product.nombre);if(!byName.has(key))byName.set(key,[]);byName.get(key).push(product);}
+    for(const row of matrix.slice(1)){
+      const exact=tariffKey(row[1]), alias=tariffKey(aliases[row[1]]), candidates=byName.get(exact)||byName.get(alias)||[];
+      if(candidates.length!==1){if(candidates.length>1)row[9]='Cruce B2B ambiguo · requiere revisión';continue;}
+      const product=candidates[0];
+      const available=offers.filter(o=>o.producto_id===product.id && supplier.has(o.proveedor_id) && numeric(o.costo)>0).sort((a,b)=>numeric(a.costo)-numeric(b.costo)||String(a.id).localeCompare(String(b.id)));
+      if(!available.length)continue;
+      const best=available[0];row[5]=numeric(best.costo);row[6]=numeric(row[3])===null?null:numeric(row[3])-row[5];row[7]=row[6]===null?null:row[6]/row[5];
+      row[8]=product.nombre;row[9]=exact===tariffKey(product.nombre)?'Coincidencia exacta B2B':'Equivalencia del archivo de trabajo';row[10]=supplier.get(best.proveedor_id);row[11]='Oferta vigente B2B · menor costo';
+    }
+    return matrix;
+  }
+  async function exportTariff(matrix) {
+    if(!root.ExcelJS){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el generador de Excel.'));document.head.appendChild(script);});}
+    const response=await fetch('/creditek/shared/branding/creditek-logo.png');if(!response.ok)throw new Error('No se pudo cargar el logo de Creditek.');
+    const logo=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;response.blob().then(blob=>reader.readAsDataURL(blob),reject);});
+    const book=new root.ExcelJS.Workbook();book.creator='KORA · Creditek';book.calcProperties.fullCalcOnLoad=true;
+    const sheet=book.addWorksheet('Tarifario',{views:[{state:'frozen',ySplit:6,xSplit:2,showGridLines:false}]});
+    sheet.addImage(book.addImage({base64:logo,extension:'png'}),{tl:{col:0.1,row:0.15},ext:{width:150,height:150*825/1906}});
+    sheet.mergeCells('D2:U2');sheet.getCell('D2').value='TARIFARIO KREDIYA · CREDITEK';sheet.getCell('D2').font={name:'Arial',size:17,bold:true,color:{argb:'FF0B1E3D'}};
+    sheet.mergeCells('D3:U3');sheet.getCell('D3').value='Valores vigentes al descargar · COP · Costo: menor oferta B2B identificada';sheet.getCell('D3').font={name:'Arial',size:10,color:{argb:'FF5E6F88'}};
+    sheet.getRow(6).values=matrix[0];sheet.getRow(6).height=38;
+    sheet.getRow(6).eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B1E3D'}};cell.font={name:'Arial',bold:true,color:{argb:'FFFFFFFF'},size:10};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+    matrix.slice(1).forEach((values,i)=>{const row=sheet.getRow(i+7);row.values=values;row.height=24;for(let c=1;c<=matrix[0].length;c++){const cell=row.getCell(c);cell.font={name:'Arial',size:10,color:{argb:'FF10213E'}};cell.alignment={vertical:'middle',horizontal:c===2||c===9||c===10||c===11||c===12?'left':'center',wrapText:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:(c===15||c===16)?'FFFFF2CC':i%2?'FFF1F9FA':'FFFFFFFF'}};if([3,4,6,7,14,15,16,17,19,20].includes(c))cell.numFmt='"$"#,##0';if(c===8)cell.numFmt='0.00%';}
+      const n=i+7;row.getCell(15).value=null;row.getCell(16).value=null;
+      row.getCell(7).value={formula:`IF(AND(ISNUMBER(D${n}),ISNUMBER(F${n})),D${n}-F${n},"")`};
+      row.getCell(8).value={formula:`IF(AND(ISNUMBER(F${n}),F${n}>0,ISNUMBER(G${n})),G${n}/F${n},"")`};
+      row.getCell(17).value={formula:`IF(AND(ISNUMBER(C${n}),ISNUMBER(N${n})),MAX(0,C${n}-N${n}),"")`};
+      row.getCell(19).value={formula:`IF(AND(ISNUMBER(P${n}),ISNUMBER(F${n})),P${n}-F${n},"")`};
+      row.getCell(20).value={formula:`IF(AND(ISNUMBER(O${n}),ISNUMBER(P${n})),O${n}-P${n}-55000,"")`};
+    });
+    sheet.columns.forEach((col,i)=>{col.width=i===1?39:[8,9,10,11,20].includes(i)?29:19;});sheet.autoFilter={from:'A6',to:`U${matrix.length+5}`};sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
+    const buffer=await book.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download='Tarifario-Krediya.xlsx';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function diferenciasRows(rows) {
     const matrix=[['Referencia','Comercio','IMEI','Fecha venta','PVP configurado','PVP Krediya','Diferencia PVP','PAGAMOS pactado','Inicial','Giro al aliado','Bonos','Utilidad neta','Impacto neto','Responsables','Estado','Última gestión','Soporte','Gasto financiero','Provisión'],
@@ -204,7 +243,17 @@
             content.querySelector('[data-download]').disabled=false;
           }
         };
-        content.querySelector('[data-download]').onclick=()=>{try{download(tarifaRows(filtered, referenceRows),'Tarifario-Krediya.xlsx','Tarifario',referenceName?[referenceName]:[]);}catch{content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel. Recarga la página y vuelve a intentar.';}};
+        content.querySelector('[data-download]').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{
+          const [products,offers,providers,aliasesResponse]=await Promise.all([
+            all(()=>sb.from('productos').select('id,nombre').eq('activo',true).order('id')),
+            all(()=>sb.from('b2b_ofertas').select('id,producto_id,proveedor_id,costo').eq('vigente',true).order('id')),
+            all(()=>sb.from('proveedores').select('id,nombre').eq('activo',true).order('id')),
+            fetch('/creditek/erp/krediya-b2b-equivalencias.json')
+          ]);if(!aliasesResponse.ok)throw new Error('No se pudieron cargar las equivalencias B2B.');
+          const matrix=addB2BCosts(tarifaRows(filtered,referenceRows),products,offers,providers,await aliasesResponse.json());
+          await exportTariff(matrix);
+          content.querySelector('[data-export-error]').textContent=`Archivo generado · ${matrix.slice(1).filter(row=>row[11]==='Oferta vigente B2B · menor costo').length} costos B2B identificados. Las referencias sin coincidencia segura quedan sin costo.`;
+        }catch(error){content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel: '+error.message;}finally{button.disabled=false;}};
         content.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>edit(rows.find(r=>r.id===b.dataset.edit)));
       }
       function edit(r) {
@@ -284,6 +333,6 @@
     }
     return {openTariff,openOperationTariff,report};
   }
-  const api={create,tarifasVigentes,tarifaRows,readTariffReference,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
+  const api={create,tarifasVigentes,tarifaRows,readTariffReference,addB2BCosts,exportTariff,diferenciasRows,last,numeric,giro,impacto,pvpSummary,compactPvpHtml};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CreditekKrediyaTarifario=api;
 })(typeof window==='undefined'?globalThis:window);

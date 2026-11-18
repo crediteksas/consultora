@@ -40,6 +40,17 @@ test('socios UI: reparto, soporte, confirmación, reintento idéntico, historial
   page.on('dialog',dialog=>dialog.accept());
   await page.goto('https://kora.test/creditek/erp/finanzas-programadas.html?vista=general#socios-inventario');
   await page.locator('#siFuente option[value=positive]').waitFor({state:'attached'});
+  for(const width of [390,768,1100,1440]){
+   await page.setViewportSize({width,height:1000});
+   const overflow=await page.locator('#siResultados').evaluate(el=>el.scrollWidth-el.clientWidth);
+   assert.ok(overflow<=1,`la comparación no debe requerir desplazamiento horizontal a ${width}px`);
+  }
+  assert.equal(await page.locator('#siResultados .socios-notes').count(),1);
+  assert.equal(await page.locator('#siResultados .socios-notes').evaluate(el=>el.open),false);
+  await page.locator('#siResultados .socios-notes summary').click();
+  assert.match(await page.locator('#siResultados .socios-notes').textContent(),/Pendiente ficticio de conciliación/);
+  await page.locator('#siResultados .socios-notes summary').click();
+  await page.setViewportSize({width:1280,height:1000});
   assert.equal(await page.locator('#siFuente option[value=blocked]').count(),1);
   await page.locator('#siFuente').selectOption('blocked');
   assert.match(await page.locator('#siEfectos').textContent(),/todavía no habilitado.*Pendiente ficticio/s);

@@ -177,7 +177,7 @@
     try{await cargar()}catch(e){$('cuentaEstado').textContent='No fue posible cargar Banco: '+e.message;}
     try {
       if (!window.CreditekCobrosPlataformas) throw new Error('No se cargó el módulo de cobros.');
-      const cobros=window.CreditekCobrosPlataformas.create({sb,canEdit:p.id===OSCAR,canVoid:p.id===OSCAR});
+      const cobros=window.CreditekCobrosPlataformas.create({sb,canEdit:p.id===OSCAR,canVoid:p.id===OSCAR,compactBank:true,openDetails:new URLSearchParams(location.search).get('vista')==='cobros'});
       await cobros.mount($('cobrosPlataformas'));
       if (new URLSearchParams(location.search).get('vista') === 'cobros')
         $('cobrosPlataformas').scrollIntoView({block:'start'});

@@ -22,6 +22,19 @@ const allocation = (id, expected_id, deposit_id, importe, overrides = {}) => ({ 
 const dataset = overrides => ({ expected: [], deposits: [], allocations: [], events: [], candidates: [], ...overrides });
 const clone = value => JSON.parse(JSON.stringify(value));
 
+test('Banco mantiene las confirmaciones visibles antes del detalle cerrado', async () => {
+  const host = container();
+  const raw = dataset({ expected: [expected('addi-1', 500913, { plataforma: 'addi', venta_id: 'venta-1' })] });
+  await domain.create({ initialMonth: '', canEdit: true, compactBank: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(host);
+  const detail=host.innerHTML.indexOf('<details class="cobros-history" data-cobros-detail>');
+  assert.ok(detail>0);
+  assert.ok(host.innerHTML.indexOf('addi-1')<detail);
+  assert.match(host.innerHTML,/Ver detalle de cobros de plataformas/);
+  const direct=container();
+  await domain.create({ initialMonth: '', compactBank: true, openDetails: true, sb: { rpc: async () => ({ data: raw, error: null }) } }).mount(direct);
+  assert.match(direct.innerHTML,/<details class="cobros-history" data-cobros-detail open>/);
+});
+
 test('seguimiento de Tesorería no muestra formularios aunque Gerencia pueda editar en Banco', async () => {
   const host = container();
   await domain.create({ sb: { rpc: async () => ({ data: dataset({ expected: [expected('e1', 100)] }), error: null }) },

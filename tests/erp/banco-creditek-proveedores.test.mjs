@@ -16,6 +16,13 @@ const first='a151d606-1929-4115-b30b-f3ccf1601b7e';
 const second='89039af3-472d-461d-85af-c153a1a23e6b';
 const request='c6d305b8-1d9c-4897-9ce2-029f93418bc5';
 
+test('Banco prioriza autorizaciones y ofrece el detalle de plataformas por separado',()=>{
+  assert.ok(page.indexOf('Solicitudes pendientes de Gerencia')<page.indexOf('id="cobrosPlataformas"'));
+  assert.ok(page.indexOf('Autorizados · por girar')<page.indexOf('id="cobrosPlataformas"'));
+  assert.match(app,/compactBank:true/);
+  assert.match(app,/openDetails:new URLSearchParams\(location.search\).get\('vista'\)==='cobros'/);
+});
+
 test('Banco está en Administración y la autorización de proveedor en Tesorería; no se elige factura',()=>{
   assert.match(page,/Banco Creditek/);
   assert.match(page,/sin escoger factura/);

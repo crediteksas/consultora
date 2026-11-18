@@ -24,6 +24,52 @@
     'PVP máximo portal', 'PVP NECESARIO', 'PAGAMOS NUEVO', 'Exceso sobre máximo',
     'Cruce PVP', 'UTILIDAD ESPERADA ', 'CREDITEK', 'Observación PVP'
   ];
+  // Equivalencias revisadas en el tarifario de trabajo de noviembre de 2026.
+  const b2bAliases = {
+  "TECNO SPARK 50 256GB 4RAM": "TECNO Spark 50 4GB+256GB",
+  "INFINIX SMART 20 128GB 4+4RAM": "INFINIX SMART 20 4GB+128GB",
+  "INFINIX SMART 20 64GB 4+4RAM": "CEL INFINIX SMART 20 4/64",
+  "REDMI A7 PRO 64GB 4RAM": "REDMI A7 PRO 64GB 4RAM",
+  "HONOR PLAY 10 128GB 4RAM": "HONOR PLAY 10 128 4GB",
+  "SAMSUNG GALAXY A17 256GB 8RAM": "SAMSUNG A17 256GB 8RAM",
+  "XIAOMI REDMI NOTE 15 5G PRO 256GB 8RAM": "XIAOMI REDMI NOTE 15 PRO 5G 8GB+256GB",
+  "REDMI A7 PRO 128GB 4+4RAM": "REDMI A7 PRO 128GB/4GB",
+  "REDMI 15C 128GB 4RAM": "REDMI 15C 128GB/4RAM",
+  "OPPO A5X 128GB 4+4RAM": "OPPO A5X 128/4",
+  "INFINIX HOT 70 256GB 4+4RAM": "INFINIX HOT 70 4GB+256GB",
+  "MOTOROLA G06 256GB 4RAM": "MOTO G06 256GB/4GB",
+  "NUBIA V80 MAX 256GB 8+12 RAM": "ZTE NUBIA V80 MAX 8GB+256GB",
+  "SAMSUNG A17 128GB 4 RAM": "SAMSUNG A17 4/128",
+  "SAMSUNG GALAXY A17 128GB 4RAM": "SAMSUNG A17 4/128",
+  "REDMI 15C 256GB 8RAM": "REDMI 15C 256 8GB",
+  "SAMSUNG GALAXY A07 64GB 4RAM": "GALAXY A07 64 4GB",
+  "MOTOROLA G05 128GB 4RAM": "MOTOROLA G05 4/128GB",
+  "HONOR 400 SMART 256GB 6RAM": "HONOR 400 Smart 6GB+256GB",
+  "TECNO SPARK GO 3 64GB 4RAM": "CEL TECNO GO 3 4/64",
+  "REDMI 15C 256GB 4RAM": "REDMI 15C 256GB/4GB",
+  "HONOR PLAY 10 64GB 3RAM": "HONOR PLAY 10 64GB/3GB",
+  "TECNO SPARK GO 3 128GB 4RAM": "TECNO SPARK GO 3 128GB 4RAM",
+  "HONOR X5D 128GB 4RAM": "HONOR X5D 128GB/4GB",
+  "INFINIX SMART 20 256GB 4+4RAM": "INFINIX SMART 20 4/256GB",
+  "MOTOROLA MOTO G17 POWER 256GB 4RAM": "MOTOROLA MOTO G17 POWER 4GB+256GB",
+  "SAMSUNG GALAXY A07 128GB 4RAM": "SAMSUNG A07 4/128GB",
+  "SAMSUNG GALAXY A07 128GB 6RAM": "SAMSUNG A07 128GB 6GB",
+  "ZTE NUBIA V80 PRO 256GB 8+12RAM": "ZTE NUBIA V80 PRO 8GB+256GB",
+  "SAMSUNG GALAXY A17 5G 256GB 8RAM": "SAMSUNG A17 5G 256GB 8GB",
+  "TECNO SPARK 50 5G 256GB 8RAM": "TECNO SPARK 50 5G 256GB 8GB",
+  "SAMSUNG GALAXY A37 5G 128GB 6RAM": "SM A37 5G 6+128GB (CM)",
+  "XIAOMI POCO C71 128GB 4RAM": "POCO C71 4GB+128GB",
+  "SAMSUNG A36 5G 256G 8RAM": "SAMSUNG A36 5G 8+256GB",
+  "REDMI 15 256GB 8RAM": "REDMI 15 256GB 8RAM",
+  "OPPO A6C 128GB 4RAM": "OPPO A6C 128GB/4GB",
+  "HONOR X7D 256GB 8RAM": "HONOR X7D 256GB/8GB",
+  "REDMI NOTE 17 256GB 6+6RAM": "REDMI NOTE 17 6+256GB",
+  "REDMI 17 256GB 4+4RAM": "REDMI 17 256GB 4GB",
+  "HONOR X5D 256GB 4RAM": "HONOR X5D 256GB/4GB",
+  "REDMI 17 128GB 4+4RAM": "REDMI 17 4/128GB",
+  "MOTOROLA G06 128GB 4RAM": "MOTO g06 de 128 y 4 ram",
+  "ZTE NUBIA FOCUS 2 5G 256GB 8+12RAM": "ZTE NUBIA FOCUS 2 5G 8GB+256GB"
+};
   const tariffKey = value => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
   function indexReference(rows, keys) {
     const index = new Map();
@@ -244,13 +290,12 @@
           }
         };
         content.querySelector('[data-download]').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{
-          const [products,offers,providers,aliasesResponse]=await Promise.all([
+          const [products,offers,providers]=await Promise.all([
             all(()=>sb.from('productos').select('id,nombre').eq('activo',true).order('id')),
             all(()=>sb.from('b2b_ofertas').select('id,producto_id,proveedor_id,costo').eq('vigente',true).order('id')),
-            all(()=>sb.from('proveedores').select('id,nombre').eq('activo',true).order('id')),
-            fetch('/creditek/erp/krediya-b2b-equivalencias.json')
-          ]);if(!aliasesResponse.ok)throw new Error('No se pudieron cargar las equivalencias B2B.');
-          const matrix=addB2BCosts(tarifaRows(filtered,referenceRows),products,offers,providers,await aliasesResponse.json());
+            all(()=>sb.from('proveedores').select('id,nombre').eq('activo',true).order('id'))
+          ]);
+          const matrix=addB2BCosts(tarifaRows(filtered,referenceRows),products,offers,providers,b2bAliases);
           await exportTariff(matrix);
           content.querySelector('[data-export-error]').textContent=`Archivo generado · ${matrix.slice(1).filter(row=>row[11]==='Oferta vigente B2B · menor costo').length} costos B2B identificados. Las referencias sin coincidencia segura quedan sin costo.`;
         }catch(error){content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel: '+error.message;}finally{button.disabled=false;}};

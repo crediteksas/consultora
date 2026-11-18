@@ -25,7 +25,8 @@
     'Cruce PVP', 'UTILIDAD ESPERADA ', 'CREDITEK', 'Observación PVP'
   ];
   const compactTariffHeaders=tariffHeaders.filter((_,i)=>i!==12);
-  const reportTariffHeaders=[...compactTariffHeaders.slice(0,8),'Utilidad Creditek estimada · antes de gastos y provisión',...compactTariffHeaders.slice(8)];
+  const priorReportHeaders=[...compactTariffHeaders.slice(0,8),'Utilidad Creditek estimada · antes de gastos y provisión',...compactTariffHeaders.slice(8)];
+  const reportTariffHeaders=[...compactTariffHeaders.slice(0,6),'Precio tienda B2B vigente','Utilidad Retail estimada','Rentabilidad Retail / costo','Utilidad Creditek estimada · antes de gastos y provisión',...compactTariffHeaders.slice(8)];
   // Equivalencias revisadas en el tarifario de trabajo de noviembre de 2026.
   const b2bAliases = {
   "TECNO SPARK 50 256GB 4RAM": "TECNO Spark 50 4GB+256GB",
@@ -188,11 +189,12 @@
     })).map(rows => {
       const full=headers=>headers && tariffHeaders.every((header,i)=>tariffKey(header)===tariffKey(headers[i]));
       const compact=headers=>headers && compactTariffHeaders.every((header,i)=>tariffKey(header)===tariffKey(headers[i]));
+      const prior=headers=>headers && priorReportHeaders.every((header,i)=>tariffKey(header)===tariffKey(headers[i]));
       const report=headers=>headers && reportTariffHeaders.every((header,i)=>tariffKey(header)===tariffKey(headers[i]));
-      const start=rows.findIndex(headers=>full(headers)||compact(headers)||report(headers));
+      const start=rows.findIndex(headers=>full(headers)||compact(headers)||prior(headers)||report(headers));
       if(start<0)return null;
       if(full(rows[start]))return rows.slice(start);
-      const normalized=report(rows[start])?rows.slice(start).map(row=>[...row.slice(0,8),...row.slice(9)]):rows.slice(start);
+      const normalized=report(rows[start])?rows.slice(start).map(row=>[...row.slice(0,6),...row.slice(7,9),...row.slice(10)]):prior(rows[start])?rows.slice(start).map(row=>[...row.slice(0,8),...row.slice(9)]):rows.slice(start);
       return normalized.map(row=>[...row.slice(0,12),null,...row.slice(12)]);
     }).filter(Boolean);
     if (matchingSheets.length !== 1) {
@@ -200,17 +202,19 @@
     }
     return matchingSheets[0].slice(1);
   }
-  function addB2BCosts(matrix, products, offers, providers, aliases) {
+  function addB2BCosts(matrix, products, offers, providers, aliases, references=[]) {
     const supplier=new Map(providers.map(p=>[p.id,p.nombre]));
+    const canonical=new Map(references.map(r=>[r.producto_id,r.referencia_id]));
     const byName=new Map();
     for(const product of products){const key=tariffKey(product.nombre);if(!byName.has(key))byName.set(key,[]);byName.get(key).push(product);}
     for(const row of matrix.slice(1)){
       const exact=tariffKey(row[1]), alias=tariffKey(aliases[row[1]]), candidates=byName.get(exact)||byName.get(alias)||[];
       if(candidates.length!==1){if(candidates.length>1)row[9]='Cruce B2B ambiguo · requiere revisión';else if(numeric(row[5])===null)row[9]='Sin costo B2B identificado';continue;}
       const product=candidates[0];
-      const available=offers.filter(o=>o.producto_id===product.id && supplier.has(o.proveedor_id) && numeric(o.costo)>0).sort((a,b)=>numeric(a.costo)-numeric(b.costo)||String(a.id).localeCompare(String(b.id)));
-      if(!available.length){if(numeric(row[5])===null)row[9]='Sin oferta B2B vigente';continue;}
+      const available=offers.filter(o=>o.producto_id===(canonical.get(product.id)||product.id) && supplier.has(o.proveedor_id) && numeric(o.costo)>0);
+      if(available.length!==1){if(numeric(row[5])===null)row[9]=available.length?'Oferta B2B ambigua · requiere revisión':'Sin oferta B2B vigente';continue;}
       const best=available[0];row[5]=numeric(best.costo);row[6]=numeric(row[3])===null?null:numeric(row[3])-row[5];row[7]=row[6]===null?null:row[6]/row[5];
+      row[21]=numeric(best.precio_tienda)>0?numeric(best.precio_tienda):null;
       row[8]=product.nombre;row[9]=exact===tariffKey(product.nombre)?'Coincidencia exacta B2B':'Equivalencia del archivo de trabajo';row[10]=supplier.get(best.proveedor_id);row[11]='Oferta vigente B2B · menor costo';
     }
     return matrix;
@@ -222,22 +226,22 @@
     const book=new root.ExcelJS.Workbook();book.creator='KORA · Creditek';book.calcProperties.fullCalcOnLoad=true;
     const sheet=book.addWorksheet('Tarifario',{views:[{state:'frozen',ySplit:6,xSplit:2,showGridLines:false}]});
     sheet.addImage(book.addImage({base64:logo,extension:'png'}),{tl:{col:0.1,row:0.15},ext:{width:150,height:150*825/1906}});
-    sheet.mergeCells('D2:U2');sheet.getCell('D2').value='TARIFARIO KREDIYA · CREDITEK';sheet.getCell('D2').font={name:'Arial',size:17,bold:true,color:{argb:'FF0B1E3D'}};
-    sheet.mergeCells('D3:U3');sheet.getCell('D3').value='Valores vigentes · COP · Creditek: PVP − Pagamos − $55.000 de bonos, antes de gastos y provisión · Códigos cotejados 17/11/2026';sheet.getCell('D3').font={name:'Arial',size:10,color:{argb:'FF5E6F88'}};
+    sheet.mergeCells('D2:V2');sheet.getCell('D2').value='TARIFARIO KREDIYA · CREDITEK';sheet.getCell('D2').font={name:'Arial',size:17,bold:true,color:{argb:'FF0B1E3D'}};
+    sheet.mergeCells('D3:V3');sheet.getCell('D3').value='Retail: Pagamos − precio tienda B2B vigente (estimado). Creditek: PVP − Pagamos − $55.000 de bonos, antes de gastos y provisión.';sheet.getCell('D3').font={name:'Arial',size:10,color:{argb:'FF5E6F88'}};
     const compact=row=>row.filter((_,index)=>index!==12);
-    const reportRow=row=>{const values=compact(row);return [...values.slice(0,8),null,...values.slice(8)];};
+    const reportRow=row=>{const values=compact(row.slice(0,21));return [...values.slice(0,6),row[21]??null,...values.slice(6,8),null,...values.slice(8)];};
     sheet.getRow(6).values=reportTariffHeaders;sheet.getRow(6).height=44;
     sheet.getRow(6).eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B1E3D'}};cell.font={name:'Arial',bold:true,color:{argb:'FFFFFFFF'},size:10};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
-    matrix.slice(1).forEach((values,i)=>{const row=sheet.getRow(i+7);row.values=reportRow(values);row.height=24;for(let c=1;c<=21;c++){const cell=row.getCell(c);cell.font={name:'Arial',size:10,color:{argb:'FF10213E'}};cell.alignment={vertical:'middle',horizontal:c===2||c===10||c===11||c===12||c===13?'left':'center',wrapText:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:(c===15||c===16)?'FFFFF2CC':i%2?'FFF1F9FA':'FFFFFFFF'}};if([3,4,6,7,9,14,15,16,17,19,20].includes(c))cell.numFmt='"$"#,##0';if(c===8)cell.numFmt='0.00%';}
-      const n=i+7,pagamos=numeric(values[3]),cost=numeric(values[5]),pvp=numeric(values[2]),cap=numeric(values[13]);row.getCell(15).value=null;row.getCell(16).value=null;
-      row.getCell(7).value={formula:`IF(AND(ISNUMBER(D${n}),ISNUMBER(F${n})),D${n}-F${n},"")`,result:pagamos!==null&&cost!==null?pagamos-cost:''};
-      row.getCell(8).value={formula:`IF(AND(ISNUMBER(F${n}),F${n}>0,ISNUMBER(G${n})),G${n}/F${n},"")`,result:pagamos!==null&&cost!==null&&cost>0?(pagamos-cost)/cost:''};
-      row.getCell(9).value={formula:`IF(AND(ISNUMBER(C${n}),ISNUMBER(D${n})),C${n}-D${n}-55000,"")`,result:pvp!==null&&pagamos!==null?pvp-pagamos-55000:''};
-      row.getCell(17).value={formula:`IF(AND(ISNUMBER(C${n}),ISNUMBER(N${n})),MAX(0,C${n}-N${n}),"")`,result:pvp!==null&&cap!==null?Math.max(0,pvp-cap):''};
-      row.getCell(19).value={formula:`IF(AND(ISNUMBER(P${n}),ISNUMBER(F${n})),P${n}-F${n},"")`,result:''};
-      row.getCell(20).value={formula:`IF(AND(ISNUMBER(O${n}),ISNUMBER(P${n})),O${n}-P${n}-55000,"")`,result:''};
+    matrix.slice(1).forEach((values,i)=>{const row=sheet.getRow(i+7);row.values=reportRow(values);row.height=24;for(let c=1;c<=22;c++){const cell=row.getCell(c);cell.font={name:'Arial',size:10,color:{argb:'FF10213E'}};cell.alignment={vertical:'middle',horizontal:c===2||c===11||c===12||c===13||c===14?'left':'center',wrapText:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:(c===16||c===17)?'FFFFF2CC':i%2?'FFF1F9FA':'FFFFFFFF'}};if([3,4,6,7,8,10,15,16,17,18,20,21].includes(c))cell.numFmt='"$"#,##0';if(c===9)cell.numFmt='0.00%';}
+      const n=i+7,pagamos=numeric(values[3]),storeCost=numeric(values[21]),pvp=numeric(values[2]),cap=numeric(values[13]);row.getCell(16).value=null;row.getCell(17).value=null;
+      row.getCell(8).value={formula:`IF(AND(ISNUMBER(D${n}),ISNUMBER(G${n})),D${n}-G${n},"")`,result:pagamos!==null&&storeCost!==null?pagamos-storeCost:''};
+      row.getCell(9).value={formula:`IF(AND(ISNUMBER(G${n}),G${n}>0,ISNUMBER(H${n})),H${n}/G${n},"")`,result:pagamos!==null&&storeCost!==null&&storeCost>0?(pagamos-storeCost)/storeCost:''};
+      row.getCell(10).value={formula:`IF(AND(ISNUMBER(C${n}),ISNUMBER(D${n})),C${n}-D${n}-55000,"")`,result:pvp!==null&&pagamos!==null?pvp-pagamos-55000:''};
+      row.getCell(18).value={formula:`IF(AND(ISNUMBER(C${n}),ISNUMBER(O${n})),MAX(0,C${n}-O${n}),"")`,result:pvp!==null&&cap!==null?Math.max(0,pvp-cap):''};
+      row.getCell(20).value={formula:`IF(AND(ISNUMBER(Q${n}),ISNUMBER(G${n})),Q${n}-G${n},"")`,result:''};
+      row.getCell(21).value={formula:`IF(AND(ISNUMBER(P${n}),ISNUMBER(Q${n})),P${n}-Q${n}-55000,"")`,result:''};
     });
-    sheet.columns.forEach((col,i)=>{col.width=i===1?39:[8,9,10,11,12,20].includes(i)?29:19;});sheet.autoFilter={from:'A6',to:`U${matrix.length+5}`};sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
+    sheet.columns.forEach((col,i)=>{col.width=i===1?39:[9,10,11,12,13,21].includes(i)?29:19;});sheet.autoFilter={from:'A6',to:`V${matrix.length+5}`};sheet.pageSetup={orientation:'portrait',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
     const buffer=await book.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download='Tarifario-Krediya.xlsx';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function diferenciasRows(rows) {
@@ -373,12 +377,13 @@
           }
         };
         content.querySelector('[data-download]').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{
-          const [products,offers,providers]=await Promise.all([
+          const [products,offers,providers,references]=await Promise.all([
             all(()=>sb.from('productos').select('id,nombre').eq('activo',true).order('id')),
-            all(()=>sb.from('b2b_ofertas').select('id,producto_id,proveedor_id,costo').eq('vigente',true).order('id')),
-            all(()=>sb.from('proveedores').select('id,nombre').eq('activo',true).order('id'))
+            all(()=>sb.from('b2b_mejor_oferta').select('id,producto_id,proveedor_id,costo,precio_tienda').order('producto_id')),
+            all(()=>sb.from('proveedores').select('id,nombre').eq('activo',true).order('id')),
+            all(()=>sb.from('b2b_referencias_catalogo').select('producto_id,referencia_id').order('producto_id'))
           ]);
-          const matrix=addB2BCosts(tarifaRows(filtered,referenceRows),products,offers,providers,b2bAliases);
+          const matrix=addB2BCosts(tarifaRows(filtered,referenceRows),products,offers,providers,b2bAliases,references);
           await exportTariff(matrix);
           content.querySelector('[data-export-error]').textContent=`Archivo generado · ${matrix.slice(1).filter(row=>row[11]==='Oferta vigente B2B · menor costo').length} costos B2B identificados. Las referencias sin coincidencia segura quedan sin costo.`;
         }catch(error){content.querySelector('[data-export-error]').textContent='No se pudo descargar el Excel: '+error.message;}finally{button.disabled=false;}};

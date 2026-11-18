@@ -70,6 +70,77 @@
   "MOTOROLA G06 128GB 4RAM": "MOTO g06 de 128 y 4 ram",
   "ZTE NUBIA FOCUS 2 5G 256GB 8+12RAM": "ZTE NUBIA FOCUS 2 5G 8GB+256GB"
 };
+  // Códigos cotejados por nombre exacto en el portal Krediya el 17/11/2026.
+  const portalCodes = {
+  "TECNO SPARK 50 256GB 4RAM": "T1038",
+  "INFINIX SMART 20 128GB 4+4RAM": "T1010",
+  "INFINIX SMART 20 64GB 4+4RAM": "T1020",
+  "REDMI A7 PRO 64GB 4RAM": "T1028",
+  "HONOR PLAY 10 128GB 4RAM": "T1036",
+  "SAMSUNG GALAXY A17 256GB 8RAM": "T0952",
+  "XIAOMI REDMI NOTE 15 5G PRO 256GB 8RAM": "T1023",
+  "REDMI A7 PRO 128GB 4+4RAM": "T1081",
+  "REDMI 15C 128GB 4RAM": "T0924",
+  "OPPO A5X 128GB 4+4RAM": "T0933",
+  "INFINIX HOT 70 256GB 4+4RAM": "T1048",
+  "MOTOROLA G06 256GB 4RAM": "T0974",
+  "NUBIA V80 MAX 256GB 8+12 RAM": "T1076",
+  "SAMSUNG GALAXY A17 128GB 4RAM": "T0954",
+  "REDMI 15C 256GB 8RAM": "T0934",
+  "SAMSUNG GALAXY A07 64GB 4RAM": "T0956",
+  "MOTOROLA G05 128GB 4RAM": "T0713",
+  "HONOR 400 SMART 256GB 6RAM": "T1047",
+  "REDMI 15C 256GB 4RAM": "T0925",
+  "HONOR PLAY 10 64GB 3RAM": "T1079",
+  "REDMI NOTE 15 128GB 6RAM": "T0994",
+  "TECNO SPARK GO 3 128GB 4RAM": "T1000",
+  "HONOR X5D 128GB 4RAM": "T1046",
+  "REDMI NOTE 15 256GB 8+8RAM": "T0992",
+  "INFINIX SMART 20 256GB 4+4RAM": "T1065",
+  "MOTOROLA MOTO G17 POWER 256GB 4RAM": "T1044",
+  "SAMSUNG GALAXY A07 128GB 4RAM": "T0955",
+  "SAMSUNG GALAXY A07 128GB 6RAM": "T0959",
+  "ZTE NUBIA V80 PRO 256GB 8+12RAM": "T1075",
+  "GALAXY A17 5G 256GB 8RAM NEGRO": "T0984",
+  "SAMSUNG GALAXY A17 5G 256GB 8RAM": "T0951",
+  "TECNO SPARK 50 5G 256GB 8RAM": "T1022",
+  "SAMSUNG GALAXY A37 5G 128GB 6RAM": "T1089",
+  "XIAOMI POCO C71 128GB 4RAM": "T1056",
+  "SAMSUNG A36 5G 256G 8RAM": "T0827",
+  "REDMI 15 256GB 8RAM": "T0927",
+  "OPPO A6C 128GB 4RAM": "T1082",
+  "HONOR X7D 256GB 8RAM": "T0969",
+  "REDMI NOTE 17 256GB 6+6RAM": "T1125",
+  "REDMI 17 256GB 4+4RAM": "T1110",
+  "HONOR X5D 256GB 4RAM": "T1107",
+  "REDMI 17 128GB 4+4RAM": "T1109",
+  "MOTOROLA G06 128GB 4RAM": "T0975",
+  "ZTE NUBIA FOCUS 2 5G 256GB 8+12RAM": "T0898",
+  "HONOR 400 SMART 5G 5G 256GB 12 RAM": "T0957",
+  "HONOR X6C 128GB 6RAM": "T0949",
+  "HONOR X6C 256GB 6RAM": "T1024",
+  "HONOR X6C 256GB 8RAM": "T0873",
+  "HONOR X8D 512GB 8RAM": "T1037",
+  "INFINIX HOT 60 PRO+ 256GB 8+8RAM": "T0918",
+  "MOTOROLA EDGE 50 FUSION 5G 256GB 8RAM": "T0663",
+  "MOTOROLA G15 512GB 4 RAM": "T0897",
+  "MOTOROLA MOTO G17 256GB 4RAM": "T1025",
+  "NUBIA V80 MAX 256GB 4+10 RAM": "T1087",
+  "OPPO A5 256GB 4RAM": "T0914",
+  "OPPO A5 5G 256GB 8RAM": "T0892",
+  "OPPO A5M 256GB 8RAM": "T0915",
+  "REDMI 15 128GB 6RAM": "T0926",
+  "REDMI A7 PRO 128GB 4RAM 5G": "T1021",
+  "REDMI NOTE 14 PRO 256GB 8RAM": "T0707",
+  "REDMI NOTE 15 512GB 8RAM": "T1009",
+  "SAMSUNG GALAXY A17 128GB 6RAM": "T0953",
+  "TECNO CAMON 30S 256GB 8RAM": "T0658",
+  "TECNO SPARK GO 3 4GB RAM 64GB REGULAR": "TWR0291",
+  "XIAOMI REDMI NOTE 15 5G 256GB 8RAM": "T1066",
+  "GALAXY A17 5G 256GB 8RAM GRIS": "T0985",
+  "OPPO A6C 128GB 4RAM EXT": "T1083",
+  "XIAOMI REDMI NOTE 17 4G 128GB 4+4RAM": "T1133"
+};
   const tariffKey = value => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
   function indexReference(rows, keys) {
     const index = new Map();
@@ -84,7 +155,7 @@
     const references = indexReference(referenceRows, row => [row[1]]);
     const codes = indexReference(referenceRows, row => [row[0], row[12]]);
     return [tariffHeaders, ...rows.map(r => {
-      const code = tariffKey(r.codigo);
+      const code = tariffKey(r.codigo || portalCodes[tariffKey(r.referencia)]);
       const byCode = codes.get(code);
       const name = tariffKey(r.referencia);
       const byName = references.get(name);
@@ -92,6 +163,7 @@
       const compatibleName = byName && (!code || !nameCodes.length || nameCodes.includes(code));
       const reference = byCode ?? (byCode === null ? null : compatibleName ? byName : null);
       const extra = tariffHeaders.slice(5).map((_, i) => reference?.[i + 5] ?? null);
+      if (!extra[7] && portalCodes[name]) extra[7] = portalCodes[name];
       const pvp = numeric(r.precio_venta);
       const pagamos = numeric(r.pagamos);
       const cost = numeric(extra[0]);
@@ -104,7 +176,7 @@
         : referenceRows.length ? (byCode === null || byName === null ? 'Cruce ambiguo' : 'Sin coincidencia') : null;
       extra[11] = pvp === null || cap === null ? null : Math.max(0, pvp - cap);
       extra[13] = proposedPayment === null || cost === null ? null : proposedPayment - cost;
-      return [r.codigo || '', r.referencia, pvp, pagamos, r.vigente_desde, ...extra];
+      return [r.codigo || portalCodes[name] || '', r.referencia, pvp, pagamos, r.vigente_desde, ...extra];
     })];
   }
   function readTariffReference(data) {
@@ -143,7 +215,7 @@
     const sheet=book.addWorksheet('Tarifario',{views:[{state:'frozen',ySplit:6,xSplit:2,showGridLines:false}]});
     sheet.addImage(book.addImage({base64:logo,extension:'png'}),{tl:{col:0.1,row:0.15},ext:{width:150,height:150*825/1906}});
     sheet.mergeCells('D2:U2');sheet.getCell('D2').value='TARIFARIO KREDIYA · CREDITEK';sheet.getCell('D2').font={name:'Arial',size:17,bold:true,color:{argb:'FF0B1E3D'}};
-    sheet.mergeCells('D3:U3');sheet.getCell('D3').value='Valores vigentes al descargar · COP · Costo: menor oferta B2B identificada';sheet.getCell('D3').font={name:'Arial',size:10,color:{argb:'FF5E6F88'}};
+    sheet.mergeCells('D3:U3');sheet.getCell('D3').value='Valores vigentes al descargar · COP · Códigos cotejados en Krediya el 17/11/2026 · Costo: oferta B2B identificada';sheet.getCell('D3').font={name:'Arial',size:10,color:{argb:'FF5E6F88'}};
     sheet.getRow(6).values=matrix[0];sheet.getRow(6).height=38;
     sheet.getRow(6).eachCell(cell=>{cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B1E3D'}};cell.font={name:'Arial',bold:true,color:{argb:'FFFFFFFF'},size:10};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
     matrix.slice(1).forEach((values,i)=>{const row=sheet.getRow(i+7);row.values=values;row.height=24;for(let c=1;c<=matrix[0].length;c++){const cell=row.getCell(c);cell.font={name:'Arial',size:10,color:{argb:'FF10213E'}};cell.alignment={vertical:'middle',horizontal:c===2||c===9||c===10||c===11||c===12?'left':'center',wrapText:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:(c===15||c===16)?'FFFFF2CC':i%2?'FFF1F9FA':'FFFFFFFF'}};if([3,4,6,7,14,15,16,17,19,20].includes(c))cell.numFmt='"$"#,##0';if(c===8)cell.numFmt='0.00%';}

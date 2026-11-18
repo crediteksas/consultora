@@ -30,7 +30,8 @@ test('tarifario exporta referencia, PVP y Pagamos originales como números',()=>
  assert.deepEqual(rows[1].slice(0,5),['T0924','REDMI 15C 128GB 4RAM',646400,484800,'2026-08-12']);
  assert.equal(rows[0].length,21);
  assert.equal(rows[1].length,21);
- assert.ok(rows[1].slice(5).every(value=>value===null));
+ assert.equal(rows[1][12],'T0924');
+ assert.ok(rows[1].slice(5).every((value,index)=>index===7||value===null));
 });
 test('el cruce acepta ambos códigos y calcula los importes con los precios correspondientes',()=>{
  const reference=Array(21).fill(null);

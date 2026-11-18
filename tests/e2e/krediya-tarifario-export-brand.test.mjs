@@ -23,9 +23,10 @@ test('tarifario con costos B2B, marca y propuestas editables',{skip:!process.env
    await api.exportTariff(matrix);
    const bytes=await saved.arrayBuffer();const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(bytes);const sheet=workbook.getWorksheet('Tarifario');
    const data=XLSX.read(bytes,{type:'array'});const roundtrip=api.readTariffReference(bytes);
-   return {cost:sheet.getCell('F7').value,supplier:sheet.getCell('K7').value,missing:sheet.getCell('F8').value,logo:sheet.getImages().length,header:sheet.getCell('A6').value,editable:sheet.getCell('O7').value,fill:sheet.getCell('O7').fill.fgColor.argb,formula:sheet.getCell('T7').value.formula,roundtrip:roundtrip.length,sheets:data.SheetNames,bytes:Array.from(new Uint8Array(bytes))};
+   const old=XLSX.utils.book_new();XLSX.utils.book_append_sheet(old,XLSX.utils.aoa_to_sheet(matrix),'Tarifario');const legacy=api.readTariffReference(XLSX.write(old,{type:'array',bookType:'xlsx'}));
+   return {cost:sheet.getCell('F7').value,supplier:sheet.getCell('K7').value,missing:sheet.getCell('F8').value,logo:sheet.getImages().length,headers:sheet.getRow(6).values.slice(1),editable:sheet.getCell('N7').value,fill:sheet.getCell('N7').fill.fgColor.argb,formula:sheet.getCell('S7').value.formula,profit:sheet.getCell('G7').value,missingProfit:sheet.getCell('G8').value,roundtrip:roundtrip.length,legacy:legacy.length,sheets:data.SheetNames,bytes:Array.from(new Uint8Array(bytes))};
   });
-  assert.equal(result.cost,350000);assert.equal(result.supplier,'B');assert.equal(result.missing,null);assert.equal(result.logo,1);assert.equal(result.header,'Código');assert.equal(result.editable,null);assert.equal(result.fill,'FFFFF2CC');assert.match(result.formula,/-55000/);assert.equal(result.roundtrip,2);
+  assert.equal(result.cost,350000);assert.equal(result.supplier,'B');assert.equal(result.missing,null);assert.equal(result.logo,1);assert.equal(result.headers[0],'Código');assert.equal(result.headers.length,20);assert.ok(!result.headers.includes('Código KrediYA'));assert.equal(result.editable,null);assert.equal(result.fill,'FFFFF2CC');assert.match(result.formula,/-55000/);assert.match(result.profit.formula,/D7-F7/);assert.equal(result.profit.result,200000);assert.equal(result.missingProfit.result??'','');assert.equal(result.roundtrip,2);assert.equal(result.legacy,2);
   if(process.env.KORA_TEST_OUTPUT)await fs.writeFile(process.env.KORA_TEST_OUTPUT,Buffer.from(result.bytes));
  }finally{await browser.close();}
 });

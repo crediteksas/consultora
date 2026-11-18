@@ -38,7 +38,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
    window.downloads=[];XLSX.writeFile=(book,name)=>window.downloads.push({name,book});
    window.loadFailure=null;window.rpcFailure=null;
    window.reportRows=[{operation_id:'op',estado:'pendiente',contexto:{referencia:fixture.referencia,tienda:'COMERCIO DE PRUEBA CON NOMBRE COMPLETO',imei:'012345678901234',fecha:'2026-08-12',pvp_guardado:646400,pvp_liquidado:701500,impacto_bruto:55100,pagamos:484800,inicial:70150,bonos:50000,gasto_financiero:2525.4,provision:45968.89,utilidad_neta:120000,impacto_neto:39672}}];
-   const sb={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},range:async()=>({data:window.loadFailure?null:table==='krediya_price_rules'?[fixture]:window.reportRows,error:window.loadFailure})};return q;},rpc:async(name,args)=>{window.calls.push({name,args});return {error:window.rpcFailure};}};
+   const sb={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},maybeSingle:async()=>({data:null,error:window.loadFailure}),range:async()=>({data:window.loadFailure?null:table==='krediya_price_rules'?[fixture]:window.reportRows,error:window.loadFailure})};return q;},rpc:async(name,args)=>{window.calls.push({name,args});return {error:window.rpcFailure};}};
    window.component=CreditekKrediyaTarifario.create({sb,money:n=>'$ '+Number(n).toLocaleString('es-CO')});
   });
   for(const width of [390,768,1128,1440]){
@@ -56,6 +56,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
     await window.component.report(document.getElementById('report-test'),{id:'batch',fecha_corte:'2026-08-30'});
    });
    await page.locator('#report-test').waitFor({state:'visible'});
+   await page.locator('[data-report-details] > summary').click();
    assert.equal(await page.locator('#report-test').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,`informe ${width}`);
    assert.equal(await page.locator('.difference-card').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,`tarjeta ${width}`);
    assert.equal(await page.locator('.difference-status').evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap');

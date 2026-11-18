@@ -33,7 +33,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
    document.getElementById('app').classList.remove('hidden');
    document.getElementById('liquidationsContent').classList.remove('hidden');
    document.getElementById('detail').classList.remove('hidden');
-   const fixture={codigo:'T0924',id:'price',updated_at:'2026-09-05T00:00:00Z',referencia:'REDMI 15C 128GB 4RAM',precio_venta:646400,pagamos:484800,vigente_desde:'2026-08-12'};
+   const fixture={codigo:null,id:'price',updated_at:'2026-09-05T00:00:00Z',referencia:'REDMI 15C 128GB 4RAM',precio_venta:646400,pagamos:484800,vigente_desde:'2026-08-12'};
    window.calls=[];
    window.downloads=[];XLSX.writeFile=(book,name)=>window.downloads.push({name,book});
    window.loadFailure=null;window.rpcFailure=null;
@@ -45,6 +45,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
    await page.setViewportSize({width,height:900});
    await page.evaluate(()=>window.component.openTariff());
    await page.getByRole('heading',{name:'Tarifario Krediya'}).waitFor();
+   assert.match(await page.locator('dialog').innerText(),/T0924/);
    assert.equal(await page.locator('dialog').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,`tarifario ${width}`);
    assert.match(await page.locator('dialog').evaluate(e=>getComputedStyle(e).fontFamily),/Inter|DM Sans/);
    await page.locator('[data-edit]').click();

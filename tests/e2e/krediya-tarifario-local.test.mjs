@@ -75,6 +75,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
   const calls=await page.evaluate(()=>window.calls);
   assert.equal(calls[0].name,'krediya_gestionar_diferencia');
   assert.equal(calls[0].args.p_estado,'en_gestion');
+  await page.locator('[data-report-details] > summary').click();
   await page.getByText('Gestionar / ver historial',{exact:true}).click();
   await page.locator('[name=estado]').selectOption('resuelta');
   await page.locator('[name=comentario]').fill('Precio corregido en la plataforma.');
@@ -109,6 +110,7 @@ test('tarifario, edición e informe se adaptan a 390/768/1128/1440 con estilos K
    window.reportRows.push({operation_id:'missing',estado:'pendiente',contexto:{referencia:'Referencia sin impacto',pagamos:null,inicial:100,impacto_neto:null},krediya_diferencias_gestiones:[{created_at:'2026-09-05',comentario:'=HYPERLINK("https://invalid.example")',autor_nombre:'QA',soporte:'Soporte '+ 'x'.repeat(250)}]});
    await window.component.report(document.getElementById('report-test'),{id:'batch',fecha_corte:'2026-08-30'});
   });
+  await page.locator('[data-report-details] > summary').click();
   assert.match(await page.locator('.difference-summary').innerText(),/Impacto neto parcial/);
   assert.match(await page.locator('.difference-card').last().innerText(),/No disponible/);
   await page.setViewportSize({width:390,height:900});

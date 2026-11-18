@@ -49,6 +49,7 @@
   "MOTOROLA G05 128GB 4RAM": "MOTOROLA G05 4/128GB",
   "HONOR 400 SMART 256GB 6RAM": "HONOR 400 Smart 6GB+256GB",
   "TECNO SPARK GO 3 64GB 4RAM": "CEL TECNO GO 3 4/64",
+  "TECNO SPARK GO 3 4GB RAM 64GB REGULAR": "CEL TECNO GO 3 4/64",
   "REDMI 15C 256GB 4RAM": "REDMI 15C 256GB/4GB",
   "HONOR PLAY 10 64GB 3RAM": "HONOR PLAY 10 64GB/3GB",
   "TECNO SPARK GO 3 128GB 4RAM": "TECNO SPARK GO 3 128GB 4RAM",
@@ -208,11 +209,16 @@
     const byName=new Map();
     for(const product of products){const key=tariffKey(product.nombre);if(!byName.has(key))byName.set(key,[]);byName.get(key).push(product);}
     for(const row of matrix.slice(1)){
-      const exact=tariffKey(row[1]), alias=tariffKey(aliases[row[1]]), candidates=byName.get(exact)||byName.get(alias)||[];
-      if(candidates.length!==1){if(candidates.length>1)row[9]='Cruce B2B ambiguo · requiere revisión';else if(numeric(row[5])===null)row[9]='Sin costo B2B identificado';continue;}
-      const product=candidates[0];
-      const available=offers.filter(o=>o.producto_id===(canonical.get(product.id)||product.id) && supplier.has(o.proveedor_id) && numeric(o.costo)>0);
+      const exact=tariffKey(row[1]), alias=tariffKey(aliases[row[1]]);
+      // La equivalencia revisada también debe consultarse cuando existe un
+      // producto homónimo sin oferta vigente; registros duplicados sin oferta
+      // no deben ocultar una única oferta válida.
+      const candidates=[...new Map([...(byName.get(exact)||[]),...(alias?(byName.get(alias)||[]):[])].map(p=>[p.id,p])).values()];
+      const candidateIds=new Set(candidates.map(p=>canonical.get(p.id)||p.id));
+      const available=offers.filter(o=>candidateIds.has(o.producto_id) && supplier.has(o.proveedor_id) && numeric(o.costo)>0);
+      if(!candidates.length){if(numeric(row[5])===null)row[9]='Sin costo B2B identificado';continue;}
       if(available.length!==1){if(numeric(row[5])===null)row[9]=available.length?'Oferta B2B ambigua · requiere revisión':'Sin oferta B2B vigente';continue;}
+      const product=candidates.find(p=>(canonical.get(p.id)||p.id)===available[0].producto_id);
       const best=available[0];row[5]=numeric(best.costo);row[6]=numeric(row[3])===null?null:numeric(row[3])-row[5];row[7]=row[6]===null?null:row[6]/row[5];
       row[21]=numeric(best.precio_tienda)>0?numeric(best.precio_tienda):null;
       row[8]=product.nombre;row[9]=exact===tariffKey(product.nombre)?'Coincidencia exacta B2B':'Equivalencia del archivo de trabajo';row[10]=supplier.get(best.proveedor_id);row[11]='Oferta vigente B2B · menor costo';

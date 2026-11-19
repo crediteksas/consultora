@@ -26,3 +26,16 @@ test('B2B conserva signo y gastos autorizados',()=>{
  assert.equal(r.net,-30);
  assert.equal(r.cost,800);
 });
+
+test('CENTRAL y márgenes de tiendas fuera del catálogo se conservan',()=>{
+ const report=D.retail({sales:[{tienda_codigo:'CENTRAL',total:1000}],
+ itemRows:[{store:'CENTRAL',value:300},{store:'Z',value:500}],
+ expenses:[{tienda_codigo:'CENTRAL',monto:200}],writeoffs:[],generalExpenses:[{amount:50}]},[]);
+ assert.equal(report.summary.income,1000);
+ assert.equal(report.summary.net,550);
+ assert.equal(report.stores.find(s=>s.code==='Z').net,500);
+});
+test('un contrato de gastos con signo inverso detiene el informe',()=>{
+ assert.throws(()=>D.b2b([],[{value:230}]),/signo inválido/);
+ assert.throws(()=>D.allies([],[{value:230}]),/signo inválido/);
+});

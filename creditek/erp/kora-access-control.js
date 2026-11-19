@@ -11,7 +11,7 @@
     'd1782db6-bacc-4caf-af6f-ce1b8d1c0391', // Maite Reyes
     '6de0ad26-64af-4966-8cd9-d468880af627', // Oscar Pacheco
   ]);
-  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html']);
+  const FINANCIAL_CONTROLLER_ROUTES = new Set(['finanzas-programadas.html', 'pyg.html']);
   const PUBLIC_ROUTES = new Set(['app.html', 'cambiar-clave.html', 'index.html']);
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
@@ -171,7 +171,7 @@
     const hasFullCorporateAccess = profile.rol === 'gerencia';
     const hasB2BReadAccess = hasFullCorporateAccess || profile.rol === 'auditoria';
     if (!CORPORATE_ROUTES.has(normalized)) return { allowed: false, route: normalized, experience };
-    if ((normalized === 'documentos-gestion.html' || normalized === 'ajustes-gerencia.html' || normalized === 'banco-creditek.html' || normalized === 'exogena.html' || normalized === 'pyg.html') && !canManageDocuments(profile)) {
+    if ((normalized === 'documentos-gestion.html' || normalized === 'ajustes-gerencia.html' || normalized === 'banco-creditek.html' || normalized === 'exogena.html') && !canManageDocuments(profile)) {
       return { allowed: false, route: normalized, experience };
     }
     if (FINANCIAL_CONTROLLER_ROUTES.has(normalized) && !FINANCIAL_CONTROLLERS.has(profile.id)) {

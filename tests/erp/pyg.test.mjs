@@ -70,3 +70,17 @@ test('un snapshot ausente produce desglose parcial y conserva el margen',()=>{
  assert.equal(report.platforms[0].financial,null);
  assert.equal(report.platforms[0].status,'Desglose parcial');
 });
+test('un margen nulo no aporta cargos a la conciliación y se señala en la cobertura',()=>{
+ const r=D.alliesBreakdown([{plataforma:'krediya',utilidad_creditek:null,policy_snapshot:{krediya_v2:{gasto_financiero:20,provision:100}}}],[]);
+ assert.equal(r.financial,0);
+ assert.equal(r.provision,0);
+ assert.equal(r.missing,1);
+ assert.equal(r.platforms[0].financial,null);
+ assert.equal(r.platforms[0].status,'Margen pendiente o parcial');
+});
+test('un concepto ausente conserva importe, fuente e ID con detalle parcial',()=>{
+ const detail=D.describeExpenses([{date:'2026-10-01',source:'financial_entries',id:'test',value:-100}],new Map());
+ assert.equal(detail.rows[0][2],100);
+ assert.match(detail.rows[0][1],/Sin concepto.*financial_entries.*test/);
+ assert.equal(detail.missing,1);
+});

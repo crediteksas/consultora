@@ -25,16 +25,16 @@
     for(const source of ['financial_entries','aliados_gastos_operativos']) {
       const ids=expenses.filter(row=>row.source===source).map(row=>row.id);
       for(let offset=0;offset<ids.length;offset+=200) {
-        const columns=source==='financial_entries'?'id,concept,category':'id,concepto';
-        const records=await C.allRows(sb,source,columns,'id',q=>q.in('id',ids.slice(offset,offset+200)));
-        for(const row of records)labels.set(source+'|'+row.id,row.concept||row.concepto);
+        const columns=source==='financial_entries'?'id,concept':'id,concepto';
+        try {
+          const records=await C.allRows(sb,source,columns,'id',q=>q.in('id',ids.slice(offset,offset+200)));
+          for(const row of records)labels.set(source+'|'+row.id,row.concept||row.concepto);
+        } catch(error) {
+          console.warn('PYG: conceptos pendientes de '+source,error.message);
+        }
       }
     }
-    return expenses.map(row=>{
-      const concept=labels.get(row.source+'|'+row.id);
-      if(!concept)throw Error('Falta el concepto de un gasto operativo de Aliados.');
-      return [row.date,concept,-row.value,row.source,row.id];
-    });
+    return D.describeExpenses(expenses,labels);
   }
   async function exportAllies() {
     if(!report || report.start!==$('from').value || report.end!==$('to').value) {
@@ -55,7 +55,9 @@
         notes:['Los gastos financieros y provisiones desglosados ya están descontados del margen de liquidaciones.',
           'El resultado antes de cargos desglosados se reconstruye añadiendo esos cargos al margen, y la conciliación los descuenta una sola vez.',
           'Las plataformas sin desglose registrado conservan sus cargos dentro del margen. La provisión es una reserva calculada.',
-          current.breakdown.missing?'Desglose parcial: '+current.breakdown.missing+' componentes pendientes.':'Componentes disponibles conciliados.']
+          current.breakdown.missing?'Desglose parcial: '+current.breakdown.missing+' importes o componentes pendientes.':'Componentes disponibles conciliados.',
+          current.expenseMissing?'Detalle parcial: '+current.expenseMissing+' conceptos de gasto no disponibles; se conservan sus importes, fuente e ID.':'Conceptos de gasto disponibles.',
+          'Los gastos se muestran negativos en la conciliación y positivos en el detalle.']
       },{sb,profile});
       $('status').textContent='Excel de Aliados descargado. Código '+id+'.';
     }catch(error){$('status').textContent='No se pudo descargar el PYG. '+error.message;}
@@ -87,15 +89,17 @@
       const operations=[...C.credits(creditData,period),...addi.map(row=>({...row,plataforma:'addi'}))];
       const breakdown=D.alliesBreakdown(operations,alliesExpenses);
       const a=breakdown.summary;
-      const expenses=await expenseDetails(alliesExpenses);
+      const expenseDetail=await expenseDetails(alliesExpenses);
+      const expenses=expenseDetail.rows;
       $('business').innerHTML=table([r.summary,b,a]);
       $('stores').innerHTML=table(r.stores);
       $('alliesBridge').innerHTML=detailTable(['Concepto','Valor COP'],breakdown.bridge);
       $('alliesCharges').innerHTML=detailTable(['Plataforma','Gastos financieros','Provisiones','Estado'],
         breakdown.platforms.map(row=>[row.platform,row.financial,row.provision,row.status]));
       $('alliesExpenses').innerHTML=expenses.length?detailTable(['Fecha','Concepto','Valor COP'],expenses.map(row=>row.slice(0,3))):'<p>Sin gastos operativos autorizados en el período.</p>';
-      $('alliesCoverage').textContent=breakdown.missing?'Desglose parcial: '+breakdown.missing+' componentes pendientes.':'Componentes disponibles conciliados con el margen.';
-      report={start,end,breakdown,expenses};
+      $('alliesCoverage').textContent=breakdown.missing?'Desglose parcial: '+breakdown.missing+' importes o componentes pendientes.':'Componentes disponibles conciliados con el margen.';
+      if(expenseDetail.missing)$('alliesCoverage').textContent+=' Detalle parcial: '+expenseDetail.missing+' conceptos pendientes; sus importes se mantienen en el cálculo.';
+      report={start,end,breakdown,expenses,expenseMissing:expenseDetail.missing};
       $('alliesPanel').hidden=false;
       $('status').textContent='PYG del '+start+' al '+end+' · Valores en pesos colombianos.';
     }catch(error){$('status').textContent='No se pudo completar el PYG. '+error.message;}

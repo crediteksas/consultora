@@ -50,22 +50,25 @@
     const summary=allies(rows,expenses);
     const components=[];
     for(const row of rows) {
-      if(row.plataforma==='krediya') {
+      if(total([row],'utilidad_creditek').missing)continue;
+      const platform=String(row.plataforma||'').toLowerCase();
+      if(platform==='krediya') {
         const snapshot=row.policy_snapshot?.krediya_v2;
         components.push({platform:'Krediya',financial:snapshot?.gasto_financiero,provision:snapshot?.provision});
-      } else if(row.plataforma==='addi') {
+      } else if(platform==='addi') {
         const tariff=total([row],'tarifa_addi'),vat=total([row],'iva_tarifa');
         components.push({platform:'Addi',financial:tariff.missing||vat.missing?null:tariff.amount+vat.amount,provision:0});
       }
     }
     const financial=total(components,'financial'),provision=total(components,'provision');
-    const missing=financial.missing+provision.missing;
-    const platforms=[...new Set(rows.map(row=>row.plataforma||'Sin plataforma'))].map(platform=>{
+    const missing=financial.missing+provision.missing+summary.missing;
+    const platforms=[...new Set(rows.map(row=>String(row.plataforma||'Sin plataforma').toLowerCase()))].map(platform=>{
       const entries=components.filter(row=>row.platform.toLowerCase()===platform);
       const f=total(entries,'financial'),p=total(entries,'provision');
+      const marginMissing=total(rows.filter(row=>String(row.plataforma||'Sin plataforma').toLowerCase()===platform),'utilidad_creditek').missing;
       return {platform,financial:entries.length&&!f.missing?f.amount:null,
         provision:entries.length&&!p.missing?p.amount:null,
-        status:!entries.length?'Incluido en margen; sin desglose registrado':f.missing||p.missing?'Desglose parcial':'Desglosado'};
+        status:marginMissing?'Margen pendiente o parcial':!entries.length?'Incluido en margen; sin desglose registrado':f.missing||p.missing?'Desglose parcial':'Desglosado'};
     });
     return {summary,financial:financial.amount,provision:provision.amount,missing,platforms,
       bridge:[
@@ -77,5 +80,14 @@
         ['Utilidad neta',summary.net]
       ]};
   }
-  return {total,retail,b2b,allies,alliesBreakdown};
+  function describeExpenses(expenses,labels) {
+    let missing=0;
+    const rows=expenses.map(row=>{
+      const label=String(labels.get(row.source+'|'+row.id)||'').trim();
+      if(!label)missing++;
+      return [row.date,label||'Sin concepto ('+row.source+' · '+row.id+')',-row.value,row.source,row.id];
+    });
+    return {rows,missing};
+  }
+  return {total,retail,b2b,allies,alliesBreakdown,describeExpenses};
 });

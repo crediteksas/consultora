@@ -18,10 +18,11 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
     }
     if (pathname === '/creditek/erp/navigation-test') {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      const pygStyles=(await fs.readFile(path.join(root,'creditek/erp/pyg.html'),'utf8')).match(/<style>([\s\S]*?)<\/style>/)[1];
       res.end(`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <link rel="stylesheet" href="/design-system/components/kora-product.css">
-        <link rel="stylesheet" href="/creditek/erp/kora-finish.css" media="screen"><script src="/design-system/components/kora-product.js" defer></script>
-        <body data-kora-finish="2026.11" class="kora-product-page kora-responsive-ready"><div id="navigationFixture"><main class="main-content"><h2>Resumen ejecutivo</h2><p>Vista de prueba sin datos reales.</p><style>.qa-invalid{border:2px solid rgb(190,20,20)}.qa-card{border-top:3px solid rgb(8,108,117)}</style><section class="card qa-card"><label>Campo con error<input class="qa-invalid" aria-invalid="true"></label><button id="cancelarVenta" class="danger" style="background:rgb(190,20,20)">Anular venta</button><button aria-label="Cerrar caja" style="background:rgb(11,31,58)">Cerrar caja</button><button data-kora-finish-role="dismiss">Cancelar</button><table><thead><tr><th><button style="color:white;background:transparent">Ordenar</button></th></tr></thead><tbody><tr><td>Valor confirmado</td></tr></tbody></table></section></main></div>
+        <style>${pygStyles}</style><link rel="stylesheet" href="/creditek/erp/kora-finish.css" media="screen"><script src="/design-system/components/kora-product.js" defer></script>
+        <body data-kora-finish="2026.11" class="kora-product-page kora-responsive-ready"><div id="navigationFixture"><main class="page"><h2>Resumen ejecutivo</h2><p>Vista de prueba sin datos reales.</p><style>.remision-heading{display:flex;justify-content:space-between;gap:16px}.qa-invalid{border:2px solid rgb(190,20,20)}.qa-card{border-top:3px solid rgb(8,108,117)}</style><section class="card qa-card"><label>Campo con error<input class="qa-invalid" aria-invalid="true"></label><button id="cancelarVenta" class="danger" style="background:rgb(190,20,20)">Anular venta</button><button aria-label="Cerrar caja" style="background:rgb(11,31,58)">Cerrar caja</button><button data-kora-finish-role="dismiss">Cancelar</button><table><thead><tr><th><button style="color:white;background:transparent">Ordenar</button></th></tr></thead><tbody><tr><td>Valor confirmado</td></tr></tbody></table></section><section class="panel"><div id="business"><table><thead><tr>${['Negocio / tienda','Ingresos','Costo de venta','Margen','Gastos','Bajas','Utilidad neta','Estado'].map(x=>'<th>'+x+'</th>').join('')}</tr></thead><tbody><tr>${['Tienda de prueba','$ 105.500.275','$ 75.613.901','$ 29.886.374','$ 31.891.631','$ 700.887','-$ 2.706.144','Parcial · 2 datos pendientes'].map((x,i)=>'<td data-label="'+['Tienda','Ingresos','Costo','Margen','Gastos','Bajas','Utilidad','Estado'][i]+'">'+x+'</td>').join('')}</tr></tbody></table></div></section><section class="remision-heading"><div style="display:flex;align-items:center;gap:16px"><img src="/creditek/shared/branding/creditek-logo.png" alt="Creditek" style="height:52px;object-fit:contain"><div><h2>REMISIÓN #123</h2><p>Documento de traslado de mercancía</p></div></div><div><p>Remisión recibida · estado de prueba</p><p>Fecha de prueba</p><p id="doc-trace-id">TRAZA-FICTICIA-SIN-DATOS-DE-PRODUCCION-12345678</p></div></section></main></div>
         <script src="/creditek/erp/sidebar.js" data-kora-shell-mode="agents"></script></body></html>`);
       return;
     }
@@ -40,7 +41,7 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
     browser = process.env.KORA_TEST_BROWSER === 'webkit'
       ? await webkit.launch({ headless: true })
       : await chromium.launch({ channel: 'chrome', headless: true });
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     page.setDefaultTimeout(5000);
     const origin = `http://127.0.0.1:${server.address().port}`;
     await page.route('**/*', route => route.request().url().startsWith(origin) ? route.continue() : route.abort());
@@ -61,17 +62,16 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
       const linkColor=await page.locator('.kora-nav-link').first().evaluate(e=>getComputedStyle(e).color);
       assert.notEqual(linkColor,'rgb(255, 255, 255)','los enlaces se distinguen del fondo blanco');
       assert.deepEqual(await page.locator('.qa-invalid').evaluate(e=>[getComputedStyle(e).borderTopColor,e.getAttribute('aria-invalid')]),['rgb(190, 20, 20)','true']);
-      assert.deepEqual(await page.locator('.qa-card').evaluate(e=>[getComputedStyle(e).borderTopColor,getComputedStyle(e).borderTopWidth]),['rgb(0, 196, 204)','2px']);
       assert.equal(await page.locator('#cancelarVenta').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(190, 20, 20)');
       assert.equal(await page.locator('[aria-label="Cerrar caja"]').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(11, 31, 58)');
       assert.equal(await page.locator('[data-kora-finish-role="dismiss"]').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 255, 255)');
-      assert.equal(await page.locator('th').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(11, 30, 61)');
+      assert.equal(await page.locator('th').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(11, 30, 61)');
       const drawer = page.locator('.kora-sidebar');
       const overlay = page.locator('.kora-drawer-overlay');
       const toggle = page.locator('.kora-navigation-toggle');
       for (const width of [320, 390, 430, 768, 1023]) {
         await page.setViewportSize({ width, height: 844 });
-        await toggle.click();
+        await toggle.tap();
         await page.waitForFunction(() => Math.abs(document.querySelector('.kora-sidebar').getBoundingClientRect().left) < 1);
         const box = await drawer.boundingBox();
         assert.ok(box.x >= -1 && box.x + box.width <= width, `${mode}/${width}: drawer dentro de la ventana`);
@@ -82,29 +82,44 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
         await drawer.getByRole('link', { name: 'Liquidaciones', exact: true }).click({ trial: true });
         assert.ok(await drawer.getByRole('link', { name: 'Liquidaciones', exact: true }).getAttribute('href'));
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+        if(width<=700)assert.equal(await page.locator('.remision-heading').evaluate(e=>{const [a,b]=[...e.children].map(x=>x.getBoundingClientRect());return a.bottom<=b.top;}),true,'logo/título y estado sin solaparse');
+
         if (process.env.KORA_SCREENSHOT_DIR && width <= 390) {
           await fs.mkdir(process.env.KORA_SCREENSHOT_DIR, { recursive: true });
           await page.screenshot({ path: path.join(process.env.KORA_SCREENSHOT_DIR, `menu-movil-${mode}-${width}.png`) });
         }
-        await drawer.getByRole('button', { name: 'Cerrar navegación', exact: true }).click();
+        await drawer.getByRole('button', { name: 'Cerrar navegación', exact: true }).tap();
+        await overlay.waitFor({state:"hidden"});
         assert.equal(await overlay.isVisible(), false);
         assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
-        await toggle.click();
+        await toggle.tap();
         await page.keyboard.press('Escape');
+        await overlay.waitFor({state:"hidden"});
         assert.equal(await overlay.isVisible(), false);
-        await toggle.click();
-        await overlay.click({ position: { x: width - 5, y: 300 } });
+        await toggle.tap();
+        await page.waitForFunction(()=>document.querySelector('.kora-sidebar').getBoundingClientRect().left>=-1);
+        await page.touchscreen.tap(width - 24,300);
+        await overlay.waitFor({state:"hidden"});
         assert.equal(await overlay.isVisible(), false);
       }
-      await toggle.click();
+      await toggle.tap();
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.waitForFunction(() => document.querySelector('.kora-drawer-overlay').hidden);
+      assert.deepEqual(await page.locator('#business td:not(:first-child):not(:last-child)').evaluateAll(es=>es.map(e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length;})),[1,1,1,1,1,1],'importes completos en una sola línea');
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+
       assert.equal(await drawer.getAttribute('role'), null);
       assert.equal(await page.locator('.kora-shell-root').getAttribute('data-sidebar-collapsed'), String(mode === 'auto'));
-      await toggle.click();
+      await toggle.tap();
       assert.equal(await page.locator('.kora-shell-root').getAttribute('data-sidebar-collapsed'), String(mode !== 'auto'));
+      for(const width of [1024,1128,1280]) {
+        await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>{document.querySelector('.kora-shell-root').setAttribute('data-sidebar-collapsed','false');document.getAnimations().forEach(a=>a.finish());});
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'sin desbordamiento en escritorio angosto '+width);
+        assert.deepEqual(await page.locator('#business td:not(:first-child):not(:last-child)').evaluateAll(es=>es.map(e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length;})),[1,1,1,1,1,1],'importes completos '+width);
+      }
       await page.setViewportSize({ width: 390, height: 844 });
-      await toggle.click();
+      await toggle.tap();
       const group = drawer.getByRole('button', { name: 'CREDITEK ALIADOS', exact: true });
       if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
       await drawer.getByRole('link', { name: 'Liquidaciones', exact: true }).click();

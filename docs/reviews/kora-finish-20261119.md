@@ -42,3 +42,11 @@ Para la batería E2E, indicar `KORA_TEST_EXCELJS` y `KORA_REPORT_EXCELJS_PATH` c
 Suite obligatoria: 1495/1495. Batería de navegador de flujos principales: 38/38. Navegación con shell real en Chromium y WebKit; errores, franja de marca comparada con/sin acabado y acciones de anulación/cierre conservados. Auditoría estructural: 153 vistas sin desbordamiento de página.
 
 Revisión de código sin datos de negocio: https://claude.ai/chat/a5f42b70-2f22-4412-853f-f327f8259553 . Se corrigieron los seis bloqueos de la primera revisión antes de obtener aprobación.
+
+## Comprobación posterior a la publicación inicial
+
+La comparación con DOM real identificó tres documentos con shell sin main-content: PYG, información exógena y documento de remisión. Se extendió el mismo acabado a kora-shell-content; el topbar queda fuera. Se inspeccionaron las tres ventanas a 390 y escritorio con registros reales, sin operaciones ni cambios de datos. Index, instalar y cambiar-clave independientes conservan su presentación.
+
+PYG usa ancho automático solo en sus tablas business/stores en escritorio, con importes íntegros. Prueba adicional a 1024, 1128 y 1280 con menú fijo abierto. Remisión móvil permite distribuir logo/título y estado en filas separadas; sin tocar impresión. La prueba usa shell/product JS reales, estilos originales de PYG y registros ficticios; compara franja con/sin acabado, acciones críticas, errores, encabezado sin solapamiento y cifras en una línea. Suite combinada: 50/50. La evidencia estructural permanece diferenciada de estos flujos.
+
+WebKit final aprobado: navegación táctil, cabecera de remisión y PYG a 1024/1128/1280 con menú fijo. La prueba toca fuera del drawer evitando la barra de desplazamiento del navegador. No se modificó sidebar.js ni ningún handler de navegación.

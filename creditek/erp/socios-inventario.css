@@ -23,3 +23,5 @@
  #socios-inventario .socios-table td:first-child::before{display:none}
  #socios-inventario .socios-notes{grid-column:2}
 }
+
+.socios-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.socios-summary article{padding:16px;border:1px solid var(--line);border-radius:12px;min-width:0}.socios-summary h3{font-size:14px;margin:0 0 10px}.socios-summary strong{font-size:22px;overflow-wrap:anywhere}.socios-summary p{font-size:12px;line-height:1.5}.socios-negative{color:#b42318}#siResultados [data-si-diagnostico]{white-space:normal;margin-top:8px;width:100%}@media(max-width:640px){.socios-summary{grid-template-columns:minmax(0,1fr)}}

@@ -18,7 +18,7 @@ test('socios UI: reparto, soporte, confirmación, reintento idéntico, historial
    const cuts=[{corte_id:'positive',tienda_codigo:'A',tienda_nombre:'Tienda positiva ficticia',inicio_at:'2026-09-01',fin_at:'2026-10-07',huella:'source-hash',grupo:'socios-retail',listo:true,utilidad_neta:1000,retiros_anteriores:0,retirado:0,disponible:1000,perdida_cubierta:0,perdida_pendiente:0},
     {corte_id:'negative',tienda_codigo:'B',tienda_nombre:'Tienda negativa ficticia',inicio_at:'2026-09-01',fin_at:'2026-10-08',huella:'target-hash',grupo:'socios-retail',listo:true,utilidad_neta:-300,retiros_anteriores:0,retirado:0,disponible:0,perdida_cubierta:0,perdida_pendiente:300},
     {corte_id:'blocked',tienda_codigo:'C',tienda_nombre:'Resultado por validar',inicio_at:'2026-09-01',fin_at:'2026-10-09',huella:'blocked',grupo:'socios-retail',listo:false,utilidad_neta:50,disponible:50,bloqueos:['Pendiente ficticio de conciliación.']}];
-   const tables={origenes:[{codigo:'A',nombre:'Tienda positiva ficticia'}],financial_entries:[],financial_recurring_templates:[],proveedores:[{id:'supplier',nombre:'Proveedor ficticio',activo:true}],facturas_proveedor:[{id:'bill',proveedor_id:'supplier',numero:'QA-001',saldo:1000}]};
+   const tables={ventas:[{id:'sale-ficticia',consecutivo:123,tienda_codigo:'C',fecha:'2026-09-01',created_at:'2026-09-02T15:00:00Z',total:0,anulada:false,venta_items:[{cantidad:1,costo_tienda_congelado:1500}]}],origenes:[{codigo:'A',nombre:'Tienda positiva ficticia'}],financial_entries:[],financial_recurring_templates:[],proveedores:[{id:'supplier',nombre:'Proveedor ficticio',activo:true}],facturas_proveedor:[{id:'bill',proveedor_id:'supplier',numero:'QA-001',saldo:1000}]};
    const sb={rpc:async(name,args)=>{
     if(name==='finanzas_generar_pendientes')return {data:[]};
     if(name!=='socios_inventario')throw Error('RPC no prevista: '+name);
@@ -33,7 +33,7 @@ test('socios UI: reparto, soporte, confirmación, reintento idéntico, historial
     }
     if(window.siNetworkFailure){window.siNetworkFailure=false;return {error:{message:'Respuesta perdida ficticia'}};}
     return {data:{ok:true,operacion:args.p_request_id}};
-   },from(table){return {select(){return this},eq(){return this},order(){return this},range:async(a,b)=>({data:(tables[table]||[]).slice(a,b+1)}),then(resolve){resolve({data:tables[table]||[]});}};},
+   },from(table){return {select(){return this},eq(){return this},gte(){return this},lt(){return this},order(){return this},range:async(a,b)=>({data:(tables[table]||[]).slice(a,b+1)}),then(resolve){resolve({data:tables[table]||[]});}};},
    storage:{from(){return {upload:async(path,file)=>{window.siUploads.push({path,name:file.name,size:file.size});if(window.siUploadResponseLost){window.siUploadResponseLost=false;return {error:{message:'Respuesta de subida perdida ficticia'}};}return {};},createSignedUrl:async path=>({data:{signedUrl:'https://kora.test/proof/'+path}})};}}};
    window.creditekSidebar={sb,perfil:{id:'fictitious-controller',rol:'auditoria',activo:true}};
   });
@@ -45,6 +45,11 @@ test('socios UI: reparto, soporte, confirmación, reintento idéntico, historial
    const overflow=await page.locator('#siResultados').evaluate(el=>el.scrollWidth-el.clientWidth);
    assert.ok(overflow<=1,`la comparación no debe requerir desplazamiento horizontal a ${width}px`);
   }
+  assert.match(await page.locator('#siResumen').textContent(),/Resultado general provisional.*750.*Resultado validado.*700.*Resultado pendiente de validar.*50/s);
+  await page.locator('[data-si-diagnostico="blocked"]').click();
+  await page.locator('#siEstado').filter({hasText:'Detalle de revisión cargado'}).waitFor();
+  assert.match(await page.locator('#siRevisiones').textContent(),/Venta 123.*Causa el bloqueo.*1\.500/s);
+  assert.equal((await page.evaluate(()=>window.siCalls)).length,0);assert.equal((await page.evaluate(()=>window.siUploads)).length,0);
   assert.equal(await page.locator('#siResultados .socios-notes').count(),1);
   assert.equal(await page.locator('#siResultados .socios-notes').evaluate(el=>el.open),false);
   await page.locator('#siResultados .socios-notes summary').click();
@@ -122,7 +127,7 @@ test('socios UI: todos positivos bloqueados visibles, revisión explícita y rei
   page.on('dialog',d=>d.accept());
   await page.goto('https://kora.test/creditek/erp/finanzas-programadas.html?vista=general#socios-inventario');
   await page.locator('#siFuente option[value=cut-synthetic]').waitFor({state:'attached'});
-  assert.match(await page.locator('#siEstado').textContent(),/0 con utilidad habilitada.*1 resultados positivos por revisar/);
+  assert.match(await page.locator('#siEstado').textContent(),/0 con utilidad habilitada.*1 resultados por revisar/);
   assert.match(await page.locator('#siResultados').textContent(),/inventario cerrado.*Resultado por revisar/s);
   assert.match(await page.locator('#siResultados').textContent(),/Pérdida pendiente de cubrir/);
   await page.locator('#siFuente').selectOption('cut-synthetic');assert.equal(await page.locator('#siGuardar').isDisabled(),true);

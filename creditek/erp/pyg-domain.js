@@ -51,7 +51,7 @@
     const components=[];
     for(const row of rows) {
       if(total([row],'utilidad_creditek').missing)continue;
-      const platform=String(row.plataforma||'').toLowerCase();
+      const platform=String(row.plataforma||'').trim().toLowerCase();
       if(platform==='krediya') {
         const snapshot=row.policy_snapshot?.krediya_v2;
         components.push({platform:'Krediya',financial:snapshot?.gasto_financiero,provision:snapshot?.provision});
@@ -62,10 +62,10 @@
     }
     const financial=total(components,'financial'),provision=total(components,'provision');
     const missing=financial.missing+provision.missing+summary.missing;
-    const platforms=[...new Set(rows.map(row=>String(row.plataforma||'Sin plataforma').toLowerCase()))].map(platform=>{
+    const platforms=[...new Set(rows.map(row=>String(row.plataforma||'Sin plataforma').trim().toLowerCase()))].map(platform=>{
       const entries=components.filter(row=>row.platform.toLowerCase()===platform);
       const f=total(entries,'financial'),p=total(entries,'provision');
-      const marginMissing=total(rows.filter(row=>String(row.plataforma||'Sin plataforma').toLowerCase()===platform),'utilidad_creditek').missing;
+      const marginMissing=total(rows.filter(row=>String(row.plataforma||'Sin plataforma').trim().toLowerCase()===platform),'utilidad_creditek').missing;
       return {platform,financial:entries.length&&!f.missing?f.amount:null,
         provision:entries.length&&!p.missing?p.amount:null,
         status:marginMissing?'Margen pendiente o parcial':!entries.length?'Incluido en margen; sin desglose registrado':f.missing||p.missing?'Desglose parcial':'Desglosado'};

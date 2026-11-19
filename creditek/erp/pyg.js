@@ -46,7 +46,15 @@
       const id=await KoraReportExport.exportData({
         title:'PYG Aliados',mode:'detailed',orientation:'portrait',logoCompleto:true,
         route:location.pathname,scope:{label:'Negocio Aliados',code:'aliados'},
-        filters:[['Desde',current.start],['Hasta',current.end],['Moneda','COP sin centavos']],
+        filters:[
+          ['Desde',current.start],['Hasta',current.end],['Moneda','COP sin centavos'],
+          ['Conciliación','Resultado previo reconstruido = margen + cargos desglosados. Estos se restan una sola vez.'],
+          ['Cobertura financiera',current.breakdown.missing?'Parcial: '+current.breakdown.missing+' importes o componentes pendientes.':'Componentes disponibles conciliados.'],
+          ['Cobertura de conceptos',current.expenseMissing?'Parcial: '+current.expenseMissing+' conceptos pendientes; importes, fuente e ID conservados.':'Conceptos de gasto disponibles.'],
+          ['Plataformas sin desglose','Sus cargos permanecen incluidos en el margen liquidado.'],
+          ['Provisión','Reserva calculada por el motor de liquidación.'],
+          ['Signos','Gastos negativos en conciliación y positivos en el detalle.']
+        ],
         tables:[
           {heading:'Conciliación del resultado',headers:['Concepto','Valor COP'],columnTypes:['text','currency'],rows:current.breakdown.bridge},
           {heading:'Cargos incluidos por plataforma',headers:['Plataforma','Gastos financieros','Provisiones','Estado'],columnTypes:['text','currency','currency','text'],rows:current.breakdown.platforms.map(row=>[row.platform,row.financial,row.provision,row.status])},

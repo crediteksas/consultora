@@ -39,3 +39,34 @@ test('un contrato de gastos con signo inverso detiene el informe',()=>{
  assert.throws(()=>D.b2b([],[{value:230}]),/signo inválido/);
  assert.throws(()=>D.allies([],[{value:230}]),/signo inválido/);
 });
+test('Aliados expone financieros y provisiones sin descontarlos dos veces',()=>{
+ const rows=[
+  {plataforma:'krediya',utilidad_creditek:1000,policy_snapshot:{krediya_v2:{gasto_financiero:20,provision:100}}},
+  {plataforma:'alo',utilidad_creditek:500},
+  {plataforma:'addi',utilidad_creditek:200,tarifa_addi:75,iva_tarifa:14.25}
+ ];
+ const report=D.alliesBreakdown(rows,[{value:-300}]);
+ assert.equal(report.financial,109.25);
+ assert.equal(report.provision,100);
+ assert.equal(report.bridge[0][1],1909.25);
+ assert.equal(report.summary.net,1400);
+ assert.equal(report.bridge[0][1]+report.bridge[1][1]+report.bridge[2][1]+report.bridge[4][1],1400);
+ assert.equal(report.platforms.find(row=>row.platform==='alo').financial,null);
+ assert.equal(report.missing,0);
+});
+test('la reversión financiera revierte cargos y provisión con su signo',()=>{
+ const report=D.alliesBreakdown([
+  {plataforma:'krediya',utilidad_creditek:1000,policy_snapshot:{krediya_v2:{gasto_financiero:20,provision:100}}},
+  {plataforma:'krediya',utilidad_creditek:-1000,policy_snapshot:{krediya_v2:{gasto_financiero:-20,provision:-100}}}
+ ],[]);
+ assert.equal(report.summary.net,0);
+ assert.equal(report.financial,0);
+ assert.equal(report.provision,0);
+});
+test('un snapshot ausente produce desglose parcial y conserva el margen',()=>{
+ const report=D.alliesBreakdown([{plataforma:'krediya',utilidad_creditek:1000}],[]);
+ assert.equal(report.summary.net,1000);
+ assert.equal(report.missing,2);
+ assert.equal(report.platforms[0].financial,null);
+ assert.equal(report.platforms[0].status,'Desglose parcial');
+});

@@ -46,5 +46,36 @@
     const margin=total(rows,'utilidad_creditek'),expense=total(expenses,'value');
     return result('Aliados',null,null,margin.amount,-expense.amount,0,margin.missing+expense.missing);
   }
-  return {total,retail,b2b,allies};
+  function alliesBreakdown(rows,expenses) {
+    const summary=allies(rows,expenses);
+    const components=[];
+    for(const row of rows) {
+      if(row.plataforma==='krediya') {
+        const snapshot=row.policy_snapshot?.krediya_v2;
+        components.push({platform:'Krediya',financial:snapshot?.gasto_financiero,provision:snapshot?.provision});
+      } else if(row.plataforma==='addi') {
+        const tariff=total([row],'tarifa_addi'),vat=total([row],'iva_tarifa');
+        components.push({platform:'Addi',financial:tariff.missing||vat.missing?null:tariff.amount+vat.amount,provision:0});
+      }
+    }
+    const financial=total(components,'financial'),provision=total(components,'provision');
+    const missing=financial.missing+provision.missing;
+    const platforms=[...new Set(rows.map(row=>row.plataforma||'Sin plataforma'))].map(platform=>{
+      const entries=components.filter(row=>row.platform.toLowerCase()===platform);
+      const f=total(entries,'financial'),p=total(entries,'provision');
+      return {platform,financial:entries.length&&!f.missing?f.amount:null,
+        provision:entries.length&&!p.missing?p.amount:null,
+        status:!entries.length?'Incluido en margen; sin desglose registrado':f.missing||p.missing?'Desglose parcial':'Desglosado'};
+    });
+    return {summary,financial:financial.amount,provision:provision.amount,missing,platforms,
+      bridge:[
+        ['Resultado antes de cargos desglosados',summary.margin+financial.amount+provision.amount],
+        ['Gastos financieros desglosados',-financial.amount],
+        ['Provisiones desglosadas',-provision.amount],
+        ['Margen de liquidaciones',summary.margin],
+        ['Gastos operativos y generales',-summary.expenses],
+        ['Utilidad neta',summary.net]
+      ]};
+  }
+  return {total,retail,b2b,allies,alliesBreakdown};
 });

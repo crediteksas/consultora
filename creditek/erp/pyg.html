@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es" data-creditek-visual="liquid-1">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KORA · PYG por negocio</title>
+<link rel="stylesheet" href="/design-system/components/kora-product.css">
+<script src="/creditek/erp/supabase-js-2.110.8.js"></script>
+<script src="/config/kora-environment.generated.js"></script>
+<script src="kora-access-control.js?v=2.0.37"></script>
+<script src="sidebar.js?v=2.0.37" data-kora-shell="1.0.0"></script>
+<script src="/design-system/components/kora-product.js" defer></script>
+<style>
+body{margin:0;background:#f4f8fb;color:#102641;font-family:Inter,Arial,sans-serif}
+.page{max-width:1400px;margin:auto;padding:24px}
+.panel{padding:24px;margin:18px 0;background:#fff;border:1px solid #dae6ed;border-top:3px solid #02bbc1;border-radius:18px}
+.filters{display:flex;flex-wrap:wrap;gap:16px;align-items:end}
+label{display:flex;flex-direction:column;gap:8px}input,button{font:inherit;padding:12px;border:1px solid #ccd7e3;border-radius:10px}
+button{background:#102641;color:#fff;cursor:pointer}button:disabled{opacity:.5}
+table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+th,td{padding:14px 8px;border-bottom:1px solid #dae6ed;overflow-wrap:anywhere}
+th{background:#102641;color:#fff;text-align:left}
+td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.negative{color:#c21d37;font-weight:700}.net{font-weight:700}p{line-height:1.6}
+tr.total{background:#e7f6f5;font-weight:700}
+[hidden]{display:none!important}
+@media(max-width:760px){
+.page{padding:12px}.panel{padding:16px}.filters>*{width:100%}input{box-sizing:border-box;width:100%}
+table,tbody,tr,td{display:block;width:auto}thead{display:none}tr{padding:12px 0;border-bottom:1px solid #ccd7e3}
+td{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px;border:0}
+td:before{content:attr(data-label);text-align:left;color:#50647d}td:first-child{font-weight:700}
+}
+</style>
+</head>
+<body><div data-kora-shell-root><main class="page">
+<h1>PYG por negocio</h1>
+<p id="status" role="status">Verificando acceso…</p>
+<div id="app" hidden>
+<section class="panel"><form id="filters" class="filters">
+<label>Desde<input id="from" type="date" required></label>
+<label>Hasta<input id="to" type="date" required></label>
+<button type="submit" id="load">Consultar PYG</button>
+</form></section>
+<section class="panel"><h2>Resultado por negocio</h2><div id="business"></div>
+<p>Aliados presenta el margen registrado en sus liquidaciones, después de bonos, provisiones y cargos incluidos por cada plataforma. Sus ingresos y costos brutos se consultan en el detalle de las liquidaciones.</p>
+</section>
+<section class="panel"><h2>Retail por tienda</h2><div id="stores"></div></section>
+<section class="panel"><h2>Criterios del período</h2>
+<p>Retail usa la fecha de venta y el margen registrado en los productos. Los gastos de tienda se reconocen por fecha de registro, las bajas autorizadas por su fecha y los gastos generales por autorización. Aliados usa fecha de operación y sus reversiones. B2B usa el resultado de remisiones del período.</p>
+<p>Las cifras con datos pendientes aparecen como parciales. Los gastos generales Retail se muestran en su propia fila. Los retiros de utilidad se excluyen del gasto.</p>
+</section>
+</div></main></div>
+<script src="aliados-reversiones-domain.js?v=1.0.0"></script>
+<script src="tablero-ejecutivos.js?v=1.1.0"></script>
+<script src="tablero-utilidad.js?v=1.0.4"></script>
+<script src="pyg-domain.js?v=1.0.0"></script>
+<script src="pyg.js?v=1.0.0"></script>
+</body></html>

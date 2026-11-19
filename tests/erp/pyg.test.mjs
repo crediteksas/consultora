@@ -42,16 +42,16 @@ test('un contrato de gastos con signo inverso detiene el informe',()=>{
 test('Aliados expone financieros y provisiones sin descontarlos dos veces',()=>{
  const rows=[
   {plataforma:'krediya',utilidad_creditek:1000,policy_snapshot:{krediya_v2:{gasto_financiero:20,provision:100}}},
-  {plataforma:'alo',utilidad_creditek:500},
+  {plataforma:'alo',utilidad_creditek:500,pago_neto_beneficiario:1000},
   {plataforma:'addi',utilidad_creditek:200,tarifa_addi:75,iva_tarifa:14.25}
  ];
  const report=D.alliesBreakdown(rows,[{value:-300}]);
- assert.equal(report.financial,109.25);
+ assert.equal(report.financial,113.25);
  assert.equal(report.provision,100);
  assert.equal(report.bridge[0][1],1909.25);
- assert.equal(report.summary.net,1400);
- assert.equal(report.bridge[0][1]+report.bridge[1][1]+report.bridge[2][1]+report.bridge[4][1],1400);
- assert.equal(report.platforms.find(row=>row.platform==='alo').financial,null);
+ assert.equal(report.summary.net,1396);
+ assert.equal(report.bridge[0][1]+report.bridge[1][1]+report.bridge[2][1]+report.bridge[4][1],1396);
+ assert.equal(report.platforms.find(row=>row.platform==='alo').financial,4);
  assert.equal(report.missing,0);
 });
 test('la reversión financiera revierte cargos y provisión con su signo',()=>{
@@ -83,4 +83,42 @@ test('un concepto ausente conserva importe, fuente e ID con detalle parcial',()=
  assert.equal(detail.rows[0][2],100);
  assert.match(detail.rows[0][1],/Sin concepto.*financial_entries.*test/);
  assert.equal(detail.missing,1);
+});
+
+test('GMF PayJoy y Aló sobre giro neto se descuenta una vez y conserva reversión',()=>{
+ const rows=[{plataforma:'payjoy',utilidad_creditek:200,pago_neto_beneficiario:470000},
+ {plataforma:'alo',utilidad_creditek:300,pago_neto_beneficiario:416000}];
+ const r=D.alliesBreakdown(rows,[]);
+ assert.equal(r.financial,3544);assert.equal(r.summary.net,-3044);
+ assert.equal(r.bridge[0][1],500);
+ const reversed=D.alliesBreakdown([...rows,...rows.map(x=>({...x,utilidad_creditek:-x.utilidad_creditek,pago_neto_beneficiario:-x.pago_neto_beneficiario}))],[]);
+ assert.equal(reversed.financial,0);assert.equal(reversed.summary.net,0);
+});
+test('GMF persistido ya incluido no vuelve a reducir utilidad',()=>{
+ const r=D.alliesBreakdown([{plataforma:'payjoy',utilidad_creditek:100,pago_neto_beneficiario:5000,policy_snapshot:{gmf_tiendas:{importe:20,incluido_en_utilidad:true}}}],[]);
+ assert.equal(r.financial,20);assert.equal(r.additionalFinancial,0);assert.equal(r.summary.net,100);
+});
+test('giro ausente o GMF guardado inválido señala parcial sin inventar importe',()=>{
+ for(const row of [{plataforma:'alo',utilidad_creditek:100},{plataforma:'payjoy',utilidad_creditek:100,pago_neto_beneficiario:1000,policy_snapshot:{gmf_tiendas:{importe:4}}}]){
+ const r=D.alliesBreakdown([row],[]);assert.equal(r.financial,0);assert.equal(r.summary.net,100);assert.equal(r.missing,1);assert.equal(r.summary.missing,0);assert.equal(r.platforms[0].financial,null);
+ }
+});
+
+test('GMF usa redondeo simétrico a centavos y consultar otra vez no acumula',()=>{
+ const rows=[{plataforma:'alo',utilidad_creditek:100,pago_neto_beneficiario:1.25}];
+ assert.equal(D.alliesBreakdown(rows,[]).financial,.01);
+ assert.equal(D.alliesBreakdown(rows,[]).summary.net,99.99);
+ assert.equal(D.alliesBreakdown(rows,[]).summary.net,99.99);
+ assert.equal(D.alliesBreakdown([{...rows[0],utilidad_creditek:-100,pago_neto_beneficiario:-1.25}],[]).financial,-.01);
+});
+
+test('la reversión real no presume devolución bancaria del GMF ya incurrido',async()=>{
+ const {default:R}=await import('../../creditek/erp/aliados-reversiones-domain.js');
+ for(const plataforma of ['payjoy','Aló'])for(const included of [null,true,false]){
+ const policy=included===null?{}:{gmf_tiendas:{importe:20,incluido_en_utilidad:included}};
+ const original={id:'original',plataforma,external_id:'test',pago_neto_beneficiario:5000,utilidad_creditek:100,policy_snapshot:policy};
+ const reversions=R.entries([{id:'reversal',tipo:'reversion_liquidada',fecha:'2026-10-02',snapshot:{original,calculo:{pago_aliado:5000,utilidad_creditek:100,policy_snapshot:policy}}}]);
+ const r=D.alliesBreakdown([original,...reversions],[]);
+ assert.equal(r.financial,20);assert.equal(r.summary.net,-20);assert.equal(r.missing,0);
+ }
 });

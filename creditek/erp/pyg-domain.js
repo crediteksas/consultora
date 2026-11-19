@@ -46,31 +46,53 @@
     const margin=total(rows,'utilidad_creditek'),expense=total(expenses,'value');
     return result('Aliados',null,null,margin.amount,-expense.amount,0,margin.missing+expense.missing);
   }
+  const platformKey=value=>String(value||'Sin plataforma').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   function alliesBreakdown(rows,expenses) {
     const summary=allies(rows,expenses);
     const components=[];
+    let additionalFinancial=0;
     for(const row of rows) {
       if(total([row],'utilidad_creditek').missing)continue;
-      const platform=String(row.plataforma||'').trim().toLowerCase();
+      const platform=platformKey(row.plataforma);
       if(platform==='krediya') {
         const snapshot=row.policy_snapshot?.krediya_v2;
         components.push({platform:'Krediya',financial:snapshot?.gasto_financiero,provision:snapshot?.provision});
+      } else if(platform==='payjoy'||platform==='alo') {
+        // GMF authorized on the net payout, never on PVP or the initial payment.
+        // An explicitly persisted charge already included in profit is only exposed.
+        const saved=row.policy_snapshot?.gmf_tiendas;
+        // A cancelled sale does not imply the bank refunded GMF already incurred.
+        if(row.reversion_id) {
+          if(saved?.incluido_en_utilidad===true && !total([{value:saved.importe}],'value').missing)
+            additionalFinancial+=Math.round(Math.abs(Number(saved.importe))*100);
+          components.push({platform,financial:0,provision:0});
+          continue;
+        }
+        const payout=total([row],'pago_neto_beneficiario');
+        const stored=total([{value:saved?.importe}],'value');
+        const validSaved=saved && !stored.missing && typeof saved.incluido_en_utilidad==='boolean';
+        const financial=saved ? (validSaved?stored.amount:null) : payout.missing?null:Math.sign(payout.amount)*Math.round(Math.abs(payout.amount)*0.004*100)/100;
+        if(financial!==null && (!saved || !saved.incluido_en_utilidad))additionalFinancial+=Math.round(financial*100);
+        components.push({platform,financial,provision:0});
       } else if(platform==='addi') {
         const tariff=total([row],'tarifa_addi'),vat=total([row],'iva_tarifa');
         components.push({platform:'Addi',financial:tariff.missing||vat.missing?null:tariff.amount+vat.amount,provision:0});
       }
     }
     const financial=total(components,'financial'),provision=total(components,'provision');
+    additionalFinancial/=100;
+    summary.margin-=additionalFinancial;
+    summary.net-=additionalFinancial;
     const missing=financial.missing+provision.missing+summary.missing;
-    const platforms=[...new Set(rows.map(row=>String(row.plataforma||'Sin plataforma').trim().toLowerCase()))].map(platform=>{
+    const platforms=[...new Set(rows.map(row=>platformKey(row.plataforma)))].map(platform=>{
       const entries=components.filter(row=>row.platform.toLowerCase()===platform);
       const f=total(entries,'financial'),p=total(entries,'provision');
-      const marginMissing=total(rows.filter(row=>String(row.plataforma||'Sin plataforma').trim().toLowerCase()===platform),'utilidad_creditek').missing;
+      const marginMissing=total(rows.filter(row=>platformKey(row.plataforma)===platform),'utilidad_creditek').missing;
       return {platform,financial:entries.length&&!f.missing?f.amount:null,
         provision:entries.length&&!p.missing?p.amount:null,
         status:marginMissing?'Margen pendiente o parcial':!entries.length?'Incluido en margen; sin desglose registrado':f.missing||p.missing?'Desglose parcial':'Desglosado'};
     });
-    return {summary,financial:financial.amount,provision:provision.amount,missing,platforms,
+    return {summary,additionalFinancial,financial:financial.amount,provision:provision.amount,missing,platforms,
       bridge:[
         ['Resultado antes de cargos desglosados',summary.margin+financial.amount+provision.amount],
         ['Gastos financieros desglosados',-financial.amount],

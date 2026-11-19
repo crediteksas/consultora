@@ -52,6 +52,7 @@
           ['Cobertura financiera',current.breakdown.missing?'Parcial: '+current.breakdown.missing+' importes o componentes pendientes.':'Componentes disponibles conciliados.'],
           ['Cobertura de conceptos',current.expenseMissing?'Parcial: '+current.expenseMissing+' conceptos pendientes; importes, fuente e ID conservados.':'Conceptos de gasto disponibles.'],
           ['Plataformas sin desglose','Sus cargos permanecen incluidos en el margen liquidado.'],
+          ['GMF PayJoy y Aló','4 × 1.000 del giro neto. Un solo descuento; anular la venta no presume devolución bancaria del GMF.'],
           ['Provisión','Reserva calculada por el motor de liquidación.'],
           ['Signos','Gastos negativos en conciliación y positivos en el detalle.']
         ],
@@ -60,7 +61,7 @@
           {heading:'Cargos incluidos por plataforma',headers:['Plataforma','Gastos financieros','Provisiones','Estado'],columnTypes:['text','currency','currency','text'],rows:current.breakdown.platforms.map(row=>[row.platform,row.financial,row.provision,row.status])},
           {heading:'Gastos operativos y generales',headers:['Fecha','Concepto','Valor COP','Fuente','ID'],columnTypes:['text','text','currency','text','text'],rows:current.expenses}
         ],
-        notes:['Los gastos financieros y provisiones desglosados ya están descontados del margen de liquidaciones.',
+        notes:['El margen presentado incluye el GMF PayJoy/Aló sobre el giro neto, descontado una sola vez.',
           'El resultado antes de cargos desglosados se reconstruye añadiendo esos cargos al margen, y la conciliación los descuenta una sola vez.',
           'Las plataformas sin desglose registrado conservan sus cargos dentro del margen. La provisión es una reserva calculada.',
           current.breakdown.missing?'Desglose parcial: '+current.breakdown.missing+' importes o componentes pendientes.':'Componentes disponibles conciliados.',

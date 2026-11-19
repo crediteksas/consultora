@@ -31,7 +31,7 @@
   }
   async function loadCreditData(sb, {breakdown = false} = {}) {
     const [operations, reversions] = await Promise.all([
-      allRows(sb,'liquidation_operations','id,plataforma,external_id,operation_at,origen_codigo,ejecutivo_id,tipo_establecimiento,reconocida,normalized_data,utilidad_creditek' + (breakdown ? ',policy_snapshot' : '')),
+      allRows(sb,'liquidation_operations','id,plataforma,external_id,operation_at,origen_codigo,ejecutivo_id,tipo_establecimiento,reconocida,normalized_data,utilidad_creditek' + (breakdown ? ',policy_snapshot,pago_neto_beneficiario' : '')),
       allRows(sb,'aliados_reversiones','id,tipo,fecha,original_operation_id,cancellation_operation_id,liquidation_id,snapshot'),
     ]);
     return {operations, reversions};

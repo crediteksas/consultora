@@ -10,13 +10,14 @@
     return (reversions||[]).filter(r=>r.tipo==='reversion_liquidada').map(r=>{
       const original=r.snapshot.original,c=r.snapshot.calculo;
       if(!original||!c)throw new Error('Reversión sin cálculo original: no se presenta un informe parcial.');
+      const gmf=original.policy_snapshot?.gmf_tiendas||c.policy_snapshot?.gmf_tiendas;
       return {...original,id:`reversion|${r.id}`,reversion_id:r.id,original_operation_id:original.id,
         liquidation_id:r.liquidation_id,operation_at:`${r.fecha}T12:00:00-05:00`,resultado_cerrado:0,reconocida:true,
         monto_base:negative(original.monto_base),monto_credito:negative(original.monto_credito),
         valor_comercial:negative(original.valor_comercial),inicial:negative(original.inicial),
         pagamos:negative(c.pagamos),pago_aliado:negative(c.pago_aliado),pago_neto_beneficiario:negative(c.pago_aliado),
         bonos_aplicados:negative(c.total_bonos),utilidad_creditek:negative(c.utilidad_creditek),
-        policy_snapshot:{krediya_v2:{...c.policy_snapshot,
+        policy_snapshot:{...(gmf?{gmf_tiendas:{...gmf,importe:negative(gmf.importe)}}:{}),krediya_v2:{...c.policy_snapshot,
           provision:negative(c.policy_snapshot.provision),gasto_financiero:negative(c.policy_snapshot.gasto_financiero)}},
       };
     });

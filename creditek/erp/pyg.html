@@ -41,19 +41,19 @@ td:before{content:attr(data-label);text-align:left;color:#50647d}td:first-child{
 <button type="submit" id="load">Consultar PYG</button>
 </form></section>
 <section class="panel"><h2>Resultado por negocio</h2><div id="business"></div>
-<p>Aliados presenta el margen registrado en sus liquidaciones, después de bonos, provisiones y cargos incluidos por cada plataforma. Sus ingresos y costos brutos se consultan en el detalle de las liquidaciones.</p>
+<p>Aliados presenta el margen registrado en sus liquidaciones, después de bonos, provisiones y cargos incluidos por cada plataforma. El PYG también descuenta una sola vez el GMF de PayJoy y Aló: 4 × 1.000 sobre el giro neto a la tienda. Sus ingresos y costos brutos se consultan en el detalle de las liquidaciones.</p>
 </section>
 <section class="panel" id="alliesPanel" hidden><div class="filters"><h2>Aliados · Desglose del resultado</h2><button id="exportAllies" type="button">Descargar PYG de Aliados · Excel</button></div><div id="alliesBridge"></div><h3>Cargos incluidos por plataforma</h3><div id="alliesCharges"></div><p>Los cargos desglosados se añaden al margen para mostrar el punto de partida y se restan una vez en la conciliación. Las plataformas sin desglose conservan sus cargos dentro del margen liquidado. La provisión es una reserva calculada por el motor de liquidación.</p><h3>Gastos operativos y generales</h3><div id="alliesExpenses"></div><p id="alliesCoverage"></p></section>
 <section class="panel"><h2>Retail por tienda</h2><div id="stores"></div></section>
 <section class="panel"><h2>Criterios del período</h2>
-<p>Retail usa la fecha de venta y el margen registrado en los productos. Los gastos de tienda se reconocen por fecha de registro, las bajas autorizadas por su fecha y los gastos generales por autorización. Aliados usa fecha de operación y sus reversiones. B2B usa el resultado de remisiones del período.</p>
+<p>Retail usa la fecha de venta y el margen registrado en los productos. Los gastos de tienda se reconocen por fecha de registro, las bajas autorizadas por su fecha y los gastos generales por autorización. Aliados usa fecha de operación y sus reversiones. El GMF PayJoy/Aló se incorpora en este PYG; las liquidaciones originales conservan su cálculo histórico. B2B usa el resultado de remisiones del período.</p>
 <p>Las cifras con datos pendientes aparecen como parciales. Los gastos generales Retail se muestran en su propia fila. Los retiros de utilidad se excluyen del gasto.</p>
 </section>
 </div></main></div>
-<script src="aliados-reversiones-domain.js?v=1.0.0"></script>
-<script src="tablero-ejecutivos.js?v=1.1.1"></script>
+<script src="aliados-reversiones-domain.js?v=1.1.0"></script>
+<script src="tablero-ejecutivos.js?v=1.2.0"></script>
 <script src="tablero-utilidad.js?v=1.0.4"></script>
 <script id="koraReportExport" src="kora-report-export.js?v=20261119"></script>
-<script src="pyg-domain.js?v=1.1.0"></script>
-<script src="pyg.js?v=1.1.0"></script>
+<script src="pyg-domain.js?v=1.2.0"></script>
+<script src="pyg.js?v=1.2.0"></script>
 </body></html>

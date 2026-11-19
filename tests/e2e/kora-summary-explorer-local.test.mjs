@@ -15,6 +15,7 @@ async function fixture(browser,role='gerencia',extra={}){
   window.__KORA_ENV__={KORA_ERP_SUPABASE_URL:'https://fake.invalid',KORA_ERP_SUPABASE_ANON_KEY:'synthetic-not-a-key'};
   const data={perfiles:[{id:U(1),rol:role,activo:true,nombre:'Usuario de prueba'}],origenes:[{id:U(2),codigo:'CK-01',nombre:'Tienda propia A',tipo:'propia',activo:true},{id:U(3),codigo:'CK-02',nombre:'Tienda propia B',tipo:'propia',activo:true},{id:U(4),codigo:'AL-01',nombre:'Aliado de prueba A',tipo:'aliado',activo:true,ejecutivo_id:'exec-1'},{id:U(5),codigo:'AL-02',nombre:'Aliado de prueba B',tipo:'aliado',activo:true,ejecutivo_id:'exec-1'}],ejecutivos:[{id:'exec-1',nombre:'Ejecutivo de prueba',activo:true,esquema_comision:{tipo:'fijo'}}],liquidations:[{id:U(30),created_at:today+'T17:00:00Z'}],ventas:[{id:U(10),consecutivo:10,fecha:today,tienda_codigo:'CK-01',tipo:'contado',total:50000,anulada:false},{id:U(11),consecutivo:11,fecha:today,tienda_codigo:'CK-02',tipo:'contado',total:100000,anulada:false}],venta_items_lectura:[{id:U(12),venta_id:U(10),cantidad:1,precio_venta:50000,utilidad:10000,productos:{nombre:'Equipo de prueba A'}},{id:U(13),venta_id:U(11),cantidad:2,precio_venta:50000,utilidad:20000,productos:{nombre:'Equipo de prueba B'}}],liquidation_operations:[{id:U(31),liquidation_id:U(30),external_id:'FICTICIO-1',plataforma:'alo',operation_at:today+'T17:00:00Z',origen_codigo:'AL-01',establishment_name:'Aliado de prueba A',tipo_establecimiento:'aliado',ejecutivo_id:'exec-1',referencia:'Equipo de prueba A',monto_base:50000,reconocida:true,bonos_aplicados:0,utilidad_creditek:5000},{id:U(32),liquidation_id:U(30),external_id:'FICTICIO-2',plataforma:'payjoy',operation_at:today+'T17:00:00Z',origen_codigo:'AL-02',establishment_name:'Aliado de prueba B',tipo_establecimiento:'aliado',ejecutivo_id:'exec-1',referencia:'Equipo de prueba B',monto_base:100000,reconocida:true,bonos_aplicados:0,utilidad_creditek:10000}]};
   if(extra.storeCredit){data.liquidation_operations.push({id:U(33),liquidation_id:U(30),external_id:'FICTICIO-PROPIO',plataforma:'alo',operation_at:today+'T17:00:00Z',origen_codigo:'CK-01',tipo_establecimiento:'propia',referencia:'Equipo propio',monto_base:25000,utilidad_creditek:3000});data.ventas.push({id:U(14),consecutivo:14,fecha:today,tienda_codigo:'CK-01',tipo:'credito',total:30000,anulada:false});data.venta_items_lectura.push({id:U(15),venta_id:U(14),cantidad:1,precio_venta:30000,utilidad:4000,productos:{nombre:'Equipo crédito propio'}});data.financial_entries=[{id:U(80),entry_type:'gasto',scope:'business_general',business_unit:'retail',approved_at:today+'T17:00:00Z',amount:900,status:'aprobado'}];}
+  if(extra.pending)data.liquidation_operations.push({id:U(39),liquidation_id:U(30),external_id:'FICTICIO-PENDIENTE',plataforma:'krediya',operation_at:today+'T17:00:00Z',origen_codigo:'AL-01',establishment_name:'Aliado de prueba A',monto_base:1000});
   if(extra.expenses)data.aliados_gastos_operativos=[{id:U(81),valor:700,estado:'aprobado',aprobado_at:today+'T17:00:00Z',origen_codigo:'AL-01',plataforma:'alo'}];
   if(extra.profit){data.liquidation_beneficiaries=[{id:U(82),tipo:'ejecutivo',ejecutivo_id:'exec-1',identificacion:'11111111'}];const financial=(id,concept,amount,document,status,day)=>({id:U(id),entry_type:'gasto',business_unit:'aliados',scope:'business_general',category:'nomina',concept,beneficiary_document:document,status,amount,approved_at:day+'T17:00:00Z',due_date:day,paid_at:status==='pagado'?today+'T18:00:00Z':null});data.financial_entries=[financial(83,'Quincena ficticia A',4000,'11111111','pagado',today.slice(0,7)+'-01'),financial(84,'Quincena ficticia B',4000,'11111111','aprobado',today),{...financial(85,'General sin identificación',150,'99999999','aprobado',today),category:'otro'}];}
   data.addi_liquidaciones=[{id:U(90),venta_id:U(10),tienda_codigo:'CK-01',fecha_venta:today,utilidad_creditek:1000,credito_bruto:20000,pago_tienda:19000,estado:'aprobada'}];
@@ -78,6 +79,62 @@ test('sin permiso financiero no consulta nóminas ni ofrece exportar rentabilida
 test('descarga real de Excel y PDF mantiene logo, trazabilidad y tablas numéricas ficticias',{skip:!process.env.KORA_TEST_EXCELJS},async()=>{
  const browser=await chromium.launch({channel:'chrome',headless:true});try{const{page,errors}=await fixture(browser,'gerencia',{profit:true});page.setDefaultTimeout(10000);await page.goto('https://kora.test/creditek/erp/aliados-ejecutivos.html');await page.locator('#profitExecutive').selectOption('exec-1');await page.locator('#profitMode').selectOption('detailed');await page.addScriptTag({path:resolve(process.env.KORA_TEST_EXCELJS)});await page.addScriptTag({path:resolve('creditek/erp/kora-report-export.js')});
  await mkdir(OUT,{recursive:true});const downloading=page.waitForEvent('download');await page.locator('[data-profit-export="xlsx"]').click();const file=await downloading;await file.saveAs(OUT+'/profit-synthetic.xlsx');assert.match(file.suggestedFilename(),/rentabilidad-por-ejecutivo.*detallado.*\.xlsx$/);
- const opening=page.waitForEvent('popup');await page.locator('[data-profit-export="pdf"]').click();const popup=await opening;await popup.locator('footer.closing').waitFor();assert.match(await popup.locator('body').textContent(),/Trazabilidad KORA/);assert.equal(await popup.locator('header img').count(),1);assert.match(await popup.locator('body').textContent(),/7.000,00/);await popup.pdf({path:OUT+'/profit-synthetic.pdf',format:'A4',printBackground:true});assert.deepEqual(errors,[]);
+ const opening=page.waitForEvent('popup');await page.locator('[data-profit-export="pdf"]').click();const popup=await opening;await popup.locator('footer.closing').waitFor();assert.match(await popup.locator('body').textContent(),/Trazabilidad KORA/);assert.equal(await popup.locator('header img').count(),1);assert.match(await popup.locator('body').textContent(),/7\.000(?:,00)?/);await popup.pdf({path:OUT+'/profit-synthetic.pdf',format:'A4',printBackground:true});assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+
+test('pendiente visible y filtrable sin ocultar suma confirmada; detalle compacto',async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ const {page,errors}=await fixture(browser,'gerencia',{expenses:true,pending:true});
+ await page.goto('https://kora.test/creditek/erp/aliados-dashboard.html');
+ const trigger=page.locator('[data-explore-component="net"] button');await trigger.waitFor();
+ assert.match(await trigger.textContent(),/15.300.*parcial/);
+ assert.match(await page.locator('.kora-review-list').textContent(),/FICTICIO-PENDIENTE/);
+ await trigger.click();const dialog=page.locator('dialog.kora-explorer');
+ await dialog.getByRole('button',{name:'Solo pendientes de revisión',exact:true}).click();
+ assert.match(await dialog.locator('#koraExplorerResults').textContent(),/FICTICIO-PENDIENTE/);
+ assert.doesNotMatch(await dialog.locator('#koraExplorerResults').textContent(),/FICTICIO-1/);
+ assert.match(await dialog.locator('#koraExplorerResults').textContent(),/Falta registrar/);
+ await dialog.getByRole('button',{name:'Mostrar todos',exact:true}).click();
+ await dialog.getByRole('button',{name:'Por tienda o cliente',exact:true}).click();
+ for(const width of [390,1280]){await page.setViewportSize({width,height:900});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ const link=dialog.locator('.kora-explorer__link').first();
+ assert.equal(await link.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
+ assert.ok(await dialog.locator('.kora-explorer__body').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
+ await mkdir(OUT,{recursive:true});await page.screenshot({path:OUT+'/confirmed-'+width+'.png'});
+ }
+ assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+test('exportar Aliados parcial conserva importes numéricos, notas y pendientes',{skip:!process.env.KORA_TEST_EXCELJS},async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ const {page,errors}=await fixture(browser,'gerencia',{expenses:true,pending:true});
+ await page.goto('https://kora.test/creditek/erp/aliados-dashboard.html');await page.locator('.kora-review-list').waitFor();
+ await page.addScriptTag({path:resolve(process.env.KORA_TEST_EXCELJS)});await page.addScriptTag({path:resolve('creditek/erp/kora-report-export.js')});
+ const exported=await page.evaluate(()=>{
+ const report=window.KoraReportExport.snapshot({nombre:'Prueba ficticia',rol:'gerencia'},{mode:'detailed'});
+ const row=report.tables.find(t=>t.heading==='Resumen por plataforma').rows.find(r=>r[0]==='PayJoy');
+ const reconciliation=report.tables.find(t=>t.heading==='Cómo se obtiene la utilidad');
+ const net=reconciliation.rows.find(r=>r[0]==='Utilidad final del periodo');
+ const expense=reconciliation.rows.find(r=>r[0]==='Menos: gastos operativos aprobados');
+ const actions=document.createElement('div');actions.className='kora-topbar__actions';document.body.prepend(actions);
+ window.KoraReportExport.mount({profile:{nombre:'Prueba ficticia',rol:'gerencia'},sb:window.SB});
+ return {net,expense,row,notes:report.notes,pending:report.tables.find(t=>t.heading==='Operaciones por revisar')};
+ });
+ assert.equal(Number(exported.net[1].replace(/[^0-9,-]/g,'').replace(',','.')),15300);
+ assert.equal(Number(exported.expense[1].replace(/[^0-9,-]/g,'').replace(',','.')),-700);
+ assert.match(JSON.stringify(exported.pending),/FICTICIO-PENDIENTE/);assert.match(exported.notes.join(' '),/gastos completos/);
+ await page.getByRole('button',{name:'Generar informe',exact:true}).click();
+ const downloadPromise=page.waitForEvent('download',{timeout:10000});await page.getByRole('button',{name:'Descargar Excel',exact:true}).click();
+ const download=await downloadPromise.catch(async e=>{throw Error(e.message+' '+await page.locator('body').textContent());});await mkdir(OUT,{recursive:true});await download.saveAs(OUT+'/dashboard-partial.xlsx');
+ const bytes=await readFile(OUT+'/dashboard-partial.xlsx');
+ const workbook=await page.evaluate(async base64=>{const book=new window.ExcelJS.Workbook();await book.xlsx.load(Uint8Array.from(atob(base64),c=>c.charCodeAt(0)));const cells=[];book.eachSheet(sheet=>sheet.eachRow(row=>row.eachCell(cell=>cells.push(cell.value))));return cells;},bytes.toString('base64'));
+ assert.ok(workbook.includes(15300));assert.ok(workbook.includes('FICTICIO-PENDIENTE'));
+ await page.getByRole('button',{name:'Generar informe',exact:true}).click();
+ const opening=page.waitForEvent('popup');await page.getByRole('button',{name:'Generar PDF',exact:true}).click();const popup=await opening;await popup.locator('footer.closing').waitFor();
+ assert.match(await popup.locator('body').textContent(),/FICTICIO-PENDIENTE/);await popup.pdf({path:OUT+'/dashboard-partial.pdf',format:'A4',printBackground:true});
+ assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });

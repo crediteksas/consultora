@@ -125,7 +125,7 @@ test('carga paginada no trunca registros ni convierte fallos en cero',async()=>{
 });
 test('no presenta utilidad final numérica cuando el desglose falta',()=>{
  const {ctx,db}=fixture();db.operations=[{id:'x',plataforma:'krediya',operation_at:'2026-08-15',monto_base:100,utilidad_creditek:100}];ctx.renderDashboard();
- assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'No disponible · revisar datos');
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'Sin valores confirmados');
 });
 
 test('resumen por plataforma vive en Aliados y suma bonos y utilidad guardados por fecha de venta',()=>{
@@ -170,4 +170,18 @@ test('plataforma descuenta gastos históricos una vez y conserva plataformas con
  assert.match(text,/krediya\|1\|10000\|0\|8000\|1500\|6500/);
  assert.match(text,/alo\|0\|0\|0\|0\|500\|-500/);
  assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'6000');
+});
+
+
+test('dos pendientes no ocultan los confirmados ni se sustituyen por cero',()=>{
+ const {ctx,db,nodes}=fixture();nodes['#dashboardFrom'].value='2026-09-01';nodes['#dashboardTo'].value='2026-09-30';
+ db.operations=[{id:'good',external_id:'OK',plataforma:'payjoy',operation_at:'2026-09-15',monto_base:500,utilidad_creditek:100,bonos_aplicados:20},
+ {id:'pending',external_id:'WAIT',establishment_name:'Tienda pendiente',plataforma:'krediya',operation_at:'2026-09-15',monto_base:300,utilidad_creditek:null}];
+ db.financialExpenses=[{id:'expense',business_unit:'aliados',scope:'business_general',entry_type:'gasto',approved_at:'2026-09-15T15:00:00Z',status:'aprobado',amount:30}];
+ const before=JSON.stringify(db);ctx.renderDashboard();
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad bruta del negocio')[1],'120 · parcial');
+ assert.equal(ctx.cards.find(x=>x[0]==='Utilidad final del periodo')[1],'70 · parcial');
+ assert.match(nodes['#content'].innerHTML,/Operaciones por revisar \(1\)/);
+ assert.match(nodes['#content'].innerHTML,/WAIT/);assert.match(nodes['#content'].innerHTML,/Falta registrar: utilidad, bonificación, gasto financiero, provisión/);
+ assert.equal(JSON.stringify(db),before);
 });

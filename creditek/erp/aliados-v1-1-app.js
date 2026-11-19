@@ -405,7 +405,9 @@
     const gross = o.plataforma === 'krediya' && number(o.valor_comercial) !== null && number(o.pagamos) !== null
       ? Number(o.valor_comercial) - Number(o.pagamos) : reconstructed;
     const reconciled = !complete || gross === null || Math.abs(gross - reconstructed) <= 0.02;
-    return {net, bonus, financial, provision, complete: complete && reconciled, gross};
+    const missing = [[net,'utilidad'],[bonus,'bonificación'],[financial,'gasto financiero'],[provision,'provisión']].filter(([v])=>v===null).map(([,label])=>label);
+    return {net, bonus, financial, provision, complete: complete && reconciled, gross,
+      reviewReason: missing.length ? 'Falta registrar: '+missing.join(', ') : !reconciled ? 'El margen no coincide con el desglose registrado' : ''};
   }
   function dashboardGoalCharts(ops, selection) {
     const {from,to,platform,business,executive,establishment,city,paymentState} = selection;
@@ -485,14 +487,16 @@
         selectedCreditKeys.has(`${x.plataforma}|${String(x.codigo_credito).trim().toLowerCase()}`),
     );
     const expenseSelection = dashboardExpenses({from,to,business,platform,executive,establishment,city,paymentState});
-    const newUtility = ops.reduce((n, x) => n + operationUtilityAvailable(x), 0),
+    const newUtility = ops.filter(o=>dashboardBreakdown(o).complete).reduce((n, x) => n + operationUtilityAvailable(x), 0),
       expenseTotal = sum(expenseSelection.rows, "valor");
     const breakdown = ops.map(dashboardBreakdown);
     const complete = breakdown.every(x => x.complete);
-    const component = field => breakdown.reduce((n, x) => n + (x[field] ?? 0), 0);
-    const amount = value => complete ? cop(value) : 'No disponible · revisar datos';
+    const confirmed = breakdown.filter(x => x.complete);
+    const pendingCount = breakdown.length-confirmed.length;
+    const component = field => confirmed.reduce((n, x) => n + x[field], 0);
+    const amount = value => complete ? cop(value) : confirmed.length ? cop(value)+' · parcial' : 'Sin valores confirmados';
     const finalUtility = component('net') - expenseTotal;
-    const closedUtility = sum(ops, 'resultado_cerrado');
+    const closedUtility = sum(ops.filter(o=>dashboardBreakdown(o).complete), 'resultado_cerrado');
     metrics([
       ["Créditos del periodo", CreditekReversiones.creditCount(ops), "credits"],
       ["Utilidad bruta del negocio", amount(component('gross')), "gross"],
@@ -580,10 +584,10 @@
       ['Menos: resultado ya cerrado / retirado', -closedUtility],
       ['Resultado no cerrado (no equivale a saldo bancario)', newUtility - expenseTotal],
     ];
-    const formatExact = v => complete ? reportCop(v) : 'No disponible · revisar datos';
+    const formatExact = v => complete ? reportCop(v) : confirmed.length ? reportCop(v)+'<small>Parcial: solo operaciones confirmadas</small>' : 'Sin valores confirmados';
     const historicalExpenses = expenseSelection.rows.filter(x=>x.fecha_causacion_historica);
     const historicalExpensesHtml = historicalExpenses.length ? `<div data-kora-report-kind="detail" data-kora-report-heading="Gastos históricos ya pagados" data-kora-report-summary="omit"><h3>Gastos históricos ya pagados</h3><p class="muted">Distribución contable autorizada por Gerencia. No son pagos nuevos ni modifican Banco, caja o cierres anteriores.</p>${table(['Fecha contable','Concepto','Valor','Autorización real'],rows(historicalExpenses,[x=>esc(x.fecha_causacion_historica),x=>esc(x.concepto),x=>reportCop(x.valor),x=>esc(approvalDay(x.aprobado_at))]))}</div>` : '';
-    const reconciliationHtml = `<section class="card" data-kora-report-kind="summary"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior; las regularizaciones históricas ya pagadas usan su fecha contable explícita y conservan la autorización real. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted" data-kora-report-note>Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted" data-kora-report-note>${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted" data-kora-report-note>Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>formatExact(x[1])]))}${historicalExpensesHtml}</section>`;
+    const reconciliationHtml = `<section class="card" data-kora-report-kind="summary"><h2>Cómo se obtiene la utilidad</h2><p class="muted">Margen de la liquidación, no ganancia del inventario Retail. Incluye gastos de Aliados autorizados, sin retiros de utilidad. Cada gasto se resta en la fecha de su autorización, aunque el pago bancario sea posterior; las regularizaciones históricas ya pagadas usan su fecha contable explícita y conservan la autorización real. No incluye costos sin registrar. La comisión operativa de referencia del histórico Krediya está incluida en su provisión, no se descuenta otra vez.</p>${expenseSelection.restricted ? '<p class="muted" data-kora-report-note>Los gastos generales requieren permiso financiero; esta vista no acredita la utilidad neta final.</p>' : expenseSelection.unallocated ? `<p class="muted" data-kora-report-note>${cop(expenseSelection.unallocated)} de gastos generales de Aliados no se distribuyen por estos filtros. Consulta «Propios y aliados» y todos los filtros para ver la utilidad final del negocio.</p>` : ''}${complete ? '' : '<p class="muted" data-kora-report-note>Desglose parcial: hay créditos sin cálculo completo. No se interpreta un dato faltante como cero.</p>'}${table(['Concepto','Valor'],rows(reconciliation,[x=>esc(x[0]),x=>x[0]==='Menos: gastos operativos aprobados'?reportCop(x[1]):formatExact(x[1])]))}${historicalExpensesHtml}</section>`;
     const platforms = [...new Set([...ops.map(o => o.plataforma), ...expenseSelection.rows.map(e => e.plataforma).filter(Boolean)])].map(platform => {
       const credits = ops.filter(o => o.plataforma === platform);
       const components = credits.map(dashboardBreakdown);
@@ -591,21 +595,24 @@
         platform, count:CreditekReversiones.creditCount(credits), sales:sum(credits,'monto_base'),
         expenses:sum(expenseSelection.rows.filter(e => e.plataforma === platform),'valor'),
         complete:components.every(x => x.complete),
-        bonuses:components.reduce((total, x) => total + (x.bonus ?? 0), 0),
-        utility:components.reduce((total, x) => total + (x.net ?? 0), 0),
+        bonuses:components.filter(x=>x.complete).reduce((total, x) => total + x.bonus, 0),
+        utility:components.filter(x=>x.complete).reduce((total, x) => total + x.net, 0),
+        confirmed:components.filter(x=>x.complete).length,
       };
     });
-    const platformSummary = `<section class="card" id="resumen-plataformas" data-kora-report-kind="summary" data-kora-report-single-total="omit"><h2>Resumen por plataforma</h2><p class="muted" data-kora-report-note>Utilidad de liquidaciones: antes de gastos operativos. La utilidad neta los descuenta por plataforma. Los gastos generales se descuentan en el consolidado.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones','Gastos operativos','Utilidad neta'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>reportCop(x.sales),x=>x.complete?reportCop(x.bonuses):'Pendiente de cálculo',x=>x.complete?reportCop(x.utility):'Pendiente de cálculo',x=>reportCop(x.expenses),x=>x.complete?`<strong class="kora-profit-highlight">${reportCop(x.utility-x.expenses)}</strong>`:'Pendiente de cálculo']))}</section>`;
-    $("#content").innerHTML = `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + '<p class="muted">El resultado por operación no descuenta actas gerenciales de retiro mensual. Consulta el disponible por retirar en Tablero.</p>' + $("#content").innerHTML;
+    const platformSummary = `<section class="card" id="resumen-plataformas" data-kora-report-kind="summary" data-kora-report-single-total="omit"><h2>Resumen por plataforma</h2><p class="muted" data-kora-report-note>Utilidad de liquidaciones: antes de gastos operativos. La utilidad neta los descuenta por plataforma. Los gastos generales se descuentan en el consolidado.</p>${table(['Plataforma','Créditos','Valor financiado','Bonos','Utilidad de liquidaciones','Gastos operativos','Utilidad neta'],rows(platforms,[x=>esc(platformName(x.platform)),x=>x.count,x=>reportCop(x.sales),x=>x.complete?reportCop(x.bonuses):x.confirmed?reportCop(x.bonuses)+'<small>Parcial</small>':'Sin valores confirmados',x=>x.complete?reportCop(x.utility):x.confirmed?reportCop(x.utility)+'<small>Parcial</small>':'Sin valores confirmados',x=>reportCop(x.expenses),x=>x.complete?`<strong class="kora-profit-highlight">${reportCop(x.utility-x.expenses)}</strong>`:x.confirmed?reportCop(x.utility-x.expenses)+'<small>Parcial</small>':'Sin valores confirmados']))}</section>`;
+    const pending = ops.filter((o,i)=>!breakdown[i].complete);
+    const reviewHtml = pending.length ? `<section class="card kora-review-list" data-kora-report-kind="detail" data-kora-report-heading="Operaciones por revisar"><h2>Operaciones por revisar (${pendingCount})</h2><p data-kora-report-note>Los indicadores muestran únicamente ${confirmed.length} operaciones con desglose confirmado. Se descuentan los gastos completos del periodo contra la utilidad solo de las operaciones confirmadas, una sola vez. El resultado parcial no es la utilidad total.</p>${table(['Fecha','Establecimiento','Plataforma','Crédito','Qué falta revisar'],rows(pending,[o=>esc(operationSaleDay(o)),o=>esc(operationName(o)),o=>esc(platformName(o.plataforma)),o=>esc(o.external_id || o.id),o=>esc(dashboardBreakdown(o).reviewReason || 'Desglose incompleto')]))}</section>` : '';
+    $("#content").innerHTML = reviewHtml + `<section class="card"><p>Periodo de ventas visible: ${esc(from || 'Desde el inicio')} a ${esc(to || 'hoy')}. ${esc(filterSummary)}</p>${paymentState ? '<p>El estado de pago selecciona lotes con órdenes en ese estado; no confirma el pago individual de cada crédito. Los gastos corresponden al periodo, no al estado del pago.</p>' : ''}</section>` + dashboardGoalCharts(ops,{from,to,platform,business,executive,establishment,city,paymentState}) + platformSummary + reconciliationHtml + '<p class="muted">El resultado por operación no descuenta actas gerenciales de retiro mensual. Consulta el disponible por retirar en Tablero.</p>' + $("#content").innerHTML;
     if(globalThis.KoraSalesExplorer){
       const names=new Map(db.origins.map(o=>[o.codigo,o.nombre]));
       Array.from($("#metrics").children).forEach(metric=>{
         const strong=metric.querySelector('strong'),label=metric.querySelector('small')?.textContent || "Indicador",component=metric.dataset.exploreComponent;
         if(!strong || !component)return;
         const button=document.createElement('button');button.type='button';button.className='kora-summary-open';button.setAttribute('aria-label','Explorar '+label);strong.replaceWith(button);button.append(strong);button.insertAdjacentHTML('beforeend','<span class="kora-drilldown-hint">Ver detalle →</span>');
-        button.onclick=()=>globalThis.KoraSalesExplorer.open({title:label,from:from||OPERATION_CUTOFF,to:to||bogotaDateParts().today,valueLabel:component==='credits'||component==='sales'?'Valor financiado':label,note:'Mismos filtros del resumen. Los gastos generales no se asignan arbitrariamente a una tienda o plataforma.',load:async()=>{
+        button.onclick=()=>globalThis.KoraSalesExplorer.open({title:label,from:from||OPERATION_CUTOFF,to:to||bogotaDateParts().today,valueLabel:component==='credits'||component==='sales'?'Valor financiado':label,partialTotals:!['credits','sales','expenses'].includes(component),note:'Mismos filtros del resumen. Los gastos generales no se asignan arbitrariamente a una tienda o plataforma.',load:async()=>{
           const X=globalThis.KoraSalesExplorer,rows=component==='expenses'?[]:X.fromOperations(ops,names,!['credits','sales'].includes(component),value=>operationSaleDay({operation_at:value}));
-          if(!['credits','sales','expenses'].includes(component))rows.forEach((row,i)=>{const part=dashboardBreakdown(ops[i]);row.amount=part.complete?X.cents(part[component]):null;});
+          if(!['credits','sales','expenses'].includes(component))rows.forEach(row=>{const operation=ops.find(o=>String(o.id)===row.id);const part=dashboardBreakdown(operation);row.amount=part.complete?X.cents(part[component]):null;row.reviewReason=part.reviewReason;});
           if(component==='expenses' || component==='net')rows.push(...X.ledgerRows(expenseSelection.rows.map(e=>({id:e.id,date:e.fecha,store:e.origen_codigo,value:(component==='expenses'?1:-1)*Number(e.valor)})),component==='expenses'?'Gasto aplicado':'Gasto autorizado',names));
           return rows;
         }});

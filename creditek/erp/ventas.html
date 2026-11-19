@@ -463,7 +463,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <h2 id="detalleVentaTitulo">Detalle de venta</h2>
     <div id="detalleVentaContenido" class="empty-state">Cargando...</div>
     <div class="modal-err" id="detalleVentaErr"></div>
-    <div class="detalle-actions"><button class="secondary" id="btnGestionarVenta" style="display:none;">Corregir o anular</button><button id="btnCerrarDetalleVenta">Cerrar</button></div>
+    <div class="detalle-actions"><button class="secondary" id="btnGestionarVenta" style="display:none;">Corregir o anular</button><button id="btnCerrarDetalleVenta" data-kora-finish-role="dismiss">Cerrar</button></div>
   </div>
 </div>
 
@@ -479,7 +479,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     </div>
     <div class="campo"><label>Motivo obligatorio (mínimo 10 caracteres)</label><input id="ajusteMotivo" maxlength="500" placeholder="Explica por qué se realiza el ajuste"></div>
     <div class="modal-err" id="ajusteVentaErr"></div>
-    <div class="detalle-actions"><button class="secondary" id="btnCancelarAjuste">Cancelar</button><button id="btnAplicarAjuste">Aplicar con trazabilidad</button></div>
+    <div class="detalle-actions"><button class="secondary" id="btnCancelarAjuste" data-kora-finish-role="dismiss">Cancelar</button><button id="btnAplicarAjuste">Aplicar con trazabilidad</button></div>
   </div>
 </div>
 
@@ -563,7 +563,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <div class="modal-err" id="modalVentaErr"></div>
     <div class="wizard-nav">
-      <button class="btn-cerrar-wizard" id="btnCerrarWizard">Cancelar</button>
+      <button class="btn-cerrar-wizard" id="btnCerrarWizard" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-atras" id="btnAtras" style="display:none;">Atrás</button>
       <button class="btn-siguiente" id="btnSiguiente">Siguiente</button>
     </div>

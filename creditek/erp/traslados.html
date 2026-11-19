@@ -268,7 +268,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
 
     <div class="modal-err" id="modalTrasladoErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCancelarTraslado">Cancelar</button>
+      <button class="btn-cancelar" id="btnCancelarTraslado" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-guardar" id="btnConfirmarDespacho">Confirmar despacho</button>
     </div>
   </div>
@@ -288,7 +288,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     </div>
     <div class="modal-err" id="modalVerTrasladoErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCerrarVerTraslado">Cerrar</button>
+      <button class="btn-cancelar" id="btnCerrarVerTraslado" data-kora-finish-role="dismiss">Cerrar</button>
       <button type="button" class="btn-anular-traslado" id="btnAnularDetalleTraslado" style="display:none;">Anular traslado</button>
       <button class="btn-guardar" id="btnConfirmarRecepcionTra" style="display:none;">Confirmar recepción</button>
       <button class="btn-guardar" id="btnAprobarRecepcionTra" style="display:none;">Dar visto bueno y cerrar</button>
@@ -308,7 +308,7 @@ tbody tr:hover { background: rgba(11,30,61,0.02); }
     <label class="confirmar-anulacion" for="anularTrasladoConfirmacion"><input type="checkbox" id="anularTrasladoConfirmacion" required>Confirmo que revisé el número, el origen y el destino, y quiero anular todo este traslado.</label>
     <p class="modal-err" id="anularTrasladoErr" role="alert" aria-live="assertive"></p>
     <div class="modal-actions">
-      <button type="button" class="btn-cancelar" id="btnCancelarAnulacionTraslado">Volver sin anular</button>
+      <button type="button" class="btn-cancelar" id="btnCancelarAnulacionTraslado" data-kora-finish-role="dismiss">Volver sin anular</button>
       <button type="submit" class="btn-anular-traslado" id="btnConfirmarAnulacionTraslado">Confirmar anulación</button>
     </div>
   </form>

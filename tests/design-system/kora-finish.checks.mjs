@@ -20,3 +20,20 @@ test('acabado: los encabezados de tabla tienen contraste AA y las cifras usan an
  assert.ok((luminance('ffffff')+.05)/(luminance('0b1f3a')+.05)>=4.5);
  assert.ok((luminance('ffffff')+.05)/(luminance('086c75')+.05)>=4.5);
 });
+
+test('ventanas: las acciones secundarias se marcan explícitamente sin cambiar acciones de negocio',async()=>{
+ const names=(await readdir(new URL('../../creditek/erp/',import.meta.url))).filter(x=>x.endsWith('.html'));
+ let marked=0;
+ for(const name of names){
+  const html=await read('creditek/erp/'+name);
+  for(const button of html.matchAll(/<button\b[^>]*data-kora-finish-role="dismiss"[^>]*>([\s\S]*?)<\/button>/g)){
+   const label=button[1].replace(/<[^>]+>/g,'').trim();
+   assert.ok(['Cancelar','Cerrar','Cerrar informe','Volver sin anular'].includes(label)||/aria-label="Cerrar"/.test(button[0]),name+': '+label);marked++;
+  }
+ }
+ assert.ok(marked>=40);
+ const css=await read('creditek/erp/kora-finish.css');
+ assert.match(css,/--kora-field-font-size:\s*16px/);
+ assert.match(css,/not\(\[aria-invalid="true"\]\)/);
+ assert.match(css,/not\(\.has-error \*\)/);
+});

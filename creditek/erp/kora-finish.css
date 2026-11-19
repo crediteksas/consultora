@@ -101,13 +101,13 @@
     border-radius: 12px;
     box-shadow: none;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]) {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]) {
     border-radius: 9px;
     font-family: var(--ctk-font-family-ui);
-    font-size: 14px;
+    font-size: var(--kora-field-font-size,14px);
     line-height: 1.45;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) :is(button,.btn,a.btn):not(.rounded-full):not(.kora-icon-button):not(.pill) {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) :is(button,.btn,a.btn):not(.rounded-full):not(.kora-icon-button):not(.pill) {
     font-family: var(--ctk-font-family-ui);
     font-size: 13px;
     font-weight: 600;
@@ -117,22 +117,24 @@
     box-shadow: none;
     transition: background-color 140ms ease,color 140ms ease,border-color 140ms ease;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger) {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger) {
     background: #fff;
     color: var(--kora-finish-ink);
     border: 1px solid #cdd5df;
+    align-self: flex-start;
+    flex-shrink: 0;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) :is(button,a,summary,input,select,textarea):focus-visible {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) :is(button,a,summary,input,select,textarea):focus-visible {
     outline: 2px solid var(--kora-finish-accent);
     outline-offset: 3px;
     box-shadow: none;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) table {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table {
     font-family: var(--ctk-font-family-ui);
     font-size: 13px;
     font-variant-numeric: tabular-nums;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) table thead th {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table thead th {
     border-bottom: 1px solid #d5dde5;
     font-family: var(--ctk-font-family-ui);
     font-size: 11px;
@@ -142,8 +144,8 @@
     padding-block: 12px;
     box-shadow: none;
   }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) table td { border-bottom-color: #e8edf1; }
-  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *) {
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table td { border-bottom-color: #e8edf1; }
+  html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *) {
     background: #fff;
     color: var(--kora-finish-accent);
     border: 1px solid #d5dde5;
@@ -155,19 +157,32 @@
     box-shadow: 0 24px 80px rgb(20 35 50 / 18%),0 2px 8px rgb(20 35 50 / 8%);
     font-family: var(--ctk-font-family-ui);
   }
-  html body.kora-product-page[data-kora-finish] :is(dialog,[role="dialog"]) :is(h1,h2,h3,.modal-title) {
+  html body.kora-product-page[data-kora-finish] :is(dialog,[role="dialog"],.modal-bg,.modal) :is(h1,h2,h3,.modal-title) {
     font-family: var(--ctk-font-family-ui);
     font-weight: 650;
     letter-spacing: -.025em;
     line-height: 1.3;
   }
+  html body.kora-product-page[data-kora-finish] :is(.modal-bg,.modal,dialog,[role="dialog"]) input[type="file"] {
+    width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.modal-bg,.modal,dialog,[role="dialog"]) select { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  /* Legacy windows share the same presentation, with explicit dismissal roles. */
+  html body.kora-product-page[data-kora-finish] .modal-bg>.modal-box.ancho { max-width: min(68rem,calc(100vw - 2rem)); }
+  html body.kora-product-page[data-kora-finish] .modal-bg>.modal-box:not(.ancho) {
+    max-width: min(42rem,calc(100vw - 2rem));
+  }
+  html body.kora-product-page[data-kora-finish] :is(.modal-bg,.modal) .campo :is(input,select,textarea):not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([aria-invalid="true"]):not(:user-invalid):not(.error):not(.is-invalid):not([class*="border-red"]):not(.error *):not(.is-invalid *):not(.has-error *) {
+    border-color: #8793a5;
+  }
   html body.kora-product-page[data-kora-finish] dialog::backdrop { background: rgb(20 32 46 / 35%); }
   html body.kora-product-page[data-kora-finish] :is(.kora-explorer__head,.modal-header) h2 { font-family: var(--ctk-font-family-ui);font-weight:650;letter-spacing:-.025em; }
   html body.kora-product-page[data-kora-finish] :is(.main-content,.kora-shell-content) :is(.card,.panel,.widget,.metric,.kpi-card):hover { transform: none; }
   @media (hover:hover) and (pointer:fine) {
-    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger):not(:disabled):hover { background: #edf1f5; }
+    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger):not(:disabled):hover { background: #edf1f5; }
     html body.kora-product-page[data-kora-finish] .kora-nav-link:hover { background: #f0f3f6; }
-    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(:disabled):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *):hover {
+    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(:disabled):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *):hover {
       background: #edf5f6;
       border-color: #9fbfc4;
     }
@@ -192,6 +207,7 @@
     }
   }
   @media(max-width:700px) {
+    body[data-kora-finish].kora-product-page { --kora-field-font-size: 16px; }
     html body.kora-product-page[data-kora-finish] .kora-shell-content .remision-heading { flex-wrap: wrap; gap: 16px; }
     html body.kora-product-page[data-kora-finish] .kora-shell-content .remision-heading>div { flex: 1 1 100%; min-width: 0; text-align: left; }
     html body.kora-product-page[data-kora-finish] .kora-shell-content .remision-heading>div:first-child { flex-wrap: wrap; gap: 12px; }
@@ -201,9 +217,9 @@
     html body.kora-product-page[data-kora-finish] :is(.main-content,.kora-shell-content) :is(.card,.panel,.widget) { padding: 16px; }
     html body.kora-product-page[data-kora-finish] :is(.main-content,.kora-shell-content) :is(.metric,.metric-card,.kpi-card,.stat) { padding: 14px; }
     html body.kora-product-page[data-kora-finish] :is(.main-content,.kora-shell-content) h1 { font-size: 24px; }
-    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) :is(input,select,button,.btn):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not(.kora-summary-open):not(.kora-drilldown-link):not(.kora-explorer__link) { min-height: 44px; }
+    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) :is(input,select,button,.btn):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not(.kora-summary-open):not(.kora-drilldown-link):not(.kora-explorer__link) { min-height: 44px; }
   }
   @media(prefers-reduced-motion:reduce) {
-    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"]) :is(button,a,input,select,textarea) { transition: none; }
+    html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) :is(button,a,input,select,textarea) { transition: none; }
   }
 }

@@ -276,7 +276,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label for="buscarAjustes">Buscar por tienda, referencia o motivo</label><input type="search" id="buscarAjustes" autocomplete="off"></div>
     <p id="estadoInformeAjustes" role="status"></p>
     <div id="contenidoInformeAjustes"></div>
-    <div class="modal-actions"><button type="button" class="btn-secondary" id="btnCerrarInformeAjustes">Cerrar informe</button></div>
+    <div class="modal-actions"><button type="button" class="btn-secondary" id="btnCerrarInformeAjustes" data-kora-finish-role="dismiss">Cerrar informe</button></div>
   </div>
 </div>
 
@@ -299,7 +299,7 @@ body.modal-open { overflow: hidden; }
     </div>
     <div class="modal-err" id="modalSaldoInicialErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCancelarSaldoInicial">Cancelar</button>
+      <button class="btn-cancelar" id="btnCancelarSaldoInicial" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-guardar" id="btnGuardarSaldoInicial">Registrar cargo inicial</button>
     </div>
   </div>
@@ -332,7 +332,7 @@ body.modal-open { overflow: hidden; }
       <thead><tr><th>Fecha</th><th>Concepto</th><th>Cargo</th><th>Abono</th><th>Saldo</th></tr></thead>
       <tbody id="tbodyDetalle"></tbody>
     </table>
-    <div class="modal-actions"><button class="btn-cancelar" id="btnCerrarDetalle" style="flex:1;">Cerrar</button></div>
+    <div class="modal-actions"><button class="btn-cancelar" id="btnCerrarDetalle" style="flex:1;" data-kora-finish-role="dismiss">Cerrar</button></div>
   </div>
 </div>
 
@@ -363,7 +363,7 @@ body.modal-open { overflow: hidden; }
     </div>
     <div class="modal-err" id="modalAbonoErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCancelarAbono">Cancelar</button>
+      <button class="btn-cancelar" id="btnCancelarAbono" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-guardar" id="btnGuardarAbono">Guardar abono</button>
     </div>
   </div>
@@ -385,7 +385,7 @@ body.modal-open { overflow: hidden; }
     <div class="campo"><label>Observación</label><textarea id="instruccionObservacion" rows="2" maxlength="500"></textarea></div>
     <div class="modal-err" id="modalInstruccionErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCancelarInstruccion">Cancelar</button>
+      <button class="btn-cancelar" id="btnCancelarInstruccion" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-guardar" id="btnGuardarInstruccion">Crear instrucción</button>
     </div>
   </div>
@@ -402,7 +402,7 @@ body.modal-open { overflow: hidden; }
     <img class="foto-preview" id="comprobantePreview" alt="Vista previa del comprobante">
     <div class="modal-err" id="modalComprobanteErr"></div>
     <div class="modal-actions">
-      <button class="btn-cancelar" id="btnCancelarComprobante">Cancelar</button>
+      <button class="btn-cancelar" id="btnCancelarComprobante" data-kora-finish-role="dismiss">Cancelar</button>
       <button class="btn-guardar" id="btnEnviarComprobante">Enviar comprobante</button>
     </div>
   </div>

@@ -17,7 +17,6 @@ const responsive = [
 // se incluye puntualmente el test de regresión de cada fix ya validado.
 const erp = [
   'tests/erp/socios-inventario.test.mjs',
-  'tests/erp/socios-inventario-informe.test.mjs',
   'tests/erp/socios-revision.test.mjs',
   'tests/erp/audit-remediation-20261020.test.mjs',
   'tests/erp/audit-fechas-costos-20261020.test.mjs',

@@ -1,3 +1,4 @@
+import './socios-inventario-informe.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDb,payload,register,consult,state,admin,user,id,cut,who,attachCashCycle} from './fixtures/socios-inventario.mjs';

@@ -102,3 +102,5 @@ test('B2B usa un encabezado de contenido sin duplicar la barra de navegación', 
     assert.equal((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, id);
   }
 });
+
+import './kora-finish.checks.mjs';

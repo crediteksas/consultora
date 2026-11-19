@@ -111,8 +111,7 @@ test('cobros se adapta a 390/768/1128/1440 con HTML, CSS y tipografía reales de
         }));
         assert(layout.scrollWidth <= width + 1, `ancho del documento ${layout.scrollWidth} supera ${width}`);
         assert.deepEqual(layout.overflow, [], 'los importes y etiquetas caben completos');
-        assert.match(layout.font, /Inter/, 'se usa la familia tipográfica KORA');
-        assert.equal(layout.interLoaded, true, 'la fuente real Inter debe cargar; verifica acceso a fonts.googleapis.com/fonts.gstatic.com');
+        assert.match(layout.font, /-apple-system, (?:BlinkMacSystemFont|"system-ui"), "Segoe UI", Inter, sans-serif/, 'se usa la pila nativa aprobada');
         await page.screenshot({ path: path.join(screenshots, `cobros-${width}.png`), fullPage: true });
 
         await page.locator('.cobros-cut, .cobros-entry, .cobros-history, .cobros-void').evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));

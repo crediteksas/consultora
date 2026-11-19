@@ -92,6 +92,6 @@ test('hub restringe acceso y la edición integrada de gastos usa RPC auditada si
   assert.match(html,/id="docFrom"/);assert.match(html,/id="docTo"/);
   assert.match(html,/docNotice.*role="status"/);assert.match(html,/app" hidden/);
   assert.match(html,/documentos-gestion-app\.js\?v=1\.0\.1/,'la publicación invalida el script anterior en caché');
-  assert.match(html,/<body data-kora-requires-auth="true">/,'sin sesión se abre el login compartido, no una página vacía');
+  assert.match(html,/<body\b[^>]*data-kora-requires-auth="true"[^>]*>/,'sin sesión se abre el login compartido, no una página vacía');
   new vm.Script(app);new vm.Script(domain);
 });

@@ -1,0 +1,197 @@
+/* KORA Finish 1.0 — screen-only, opt-in on KORA documents.
+   Presentation only; preserves visibility, finance semantics and print styles. */
+@media screen {
+  body[data-kora-finish].kora-product-page {
+    --kora-finish-ink: #192433;
+    --kora-finish-muted: #586575;
+    --kora-finish-line: #dce2e8;
+    --kora-finish-soft: #f5f7f9;
+    --kora-finish-accent: #086c75;
+    --ctk-font-family-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+    --ctk-color-surface: #fff;
+    --ctk-color-surface-subtle: #f7f8fa;
+    --ctk-color-text: #192433;
+    --ctk-color-text-secondary: #586575;
+    --ctk-color-text-muted: #657181;
+    --ctk-color-border: #dce2e8;
+    --ctk-radius-lg: 14px;
+    --ctk-shadow-1: 0 1px 2px rgb(20 35 50 / 3%);
+    background: #f5f7f9;
+    color: var(--kora-finish-ink);
+    font-family: var(--ctk-font-family-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  html body.kora-product-page[data-kora-finish] {
+    background: #f5f7f9;
+  }
+  html body.kora-product-page[data-kora-finish] .kora-shell-root { background: transparent; }
+  html body.kora-product-page[data-kora-finish] :is(.kora-sidebar,.kora-topbar) {
+    background: #fff !important;
+    border-color: var(--kora-finish-line);
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] .kora-sidebar__brand { border-bottom-color: #eef1f4; }
+  html body.kora-product-page[data-kora-finish] .kora-nav-group__label.ghost {
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    box-shadow: none;
+    color: var(--kora-finish-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .055em;
+    padding: 10px 8px;
+    min-height: 40px;
+  }
+  html body.kora-product-page[data-kora-finish] .kora-nav-link {
+    border-radius: 8px;
+    font-size: 13px;
+    min-height: 40px;
+    line-height: 1.4;
+  }
+  html body.kora-product-page[data-kora-finish] .kora-nav-link[aria-current="page"] {
+    background: #e8f2f3;
+    color: #16474e;
+    font-weight: 650;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] .kora-topbar :is(.kora-icon-button,.kora-navigation-toggle) {
+    border-radius: 9px;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content {
+    color: var(--kora-finish-ink);
+    font-family: var(--ctk-font-family-ui);
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(h1,h2,h3,.page-title,.modal-title) {
+    font-family: var(--ctk-font-family-ui);
+    letter-spacing: -.025em;
+    line-height: 1.3;
+    font-weight: 650;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content h1 { font-size: clamp(24px,2.2vw,30px); }
+  html body.kora-product-page[data-kora-finish] .main-content h2 { font-size: clamp(18px,1.7vw,22px); }
+  html body.kora-product-page[data-kora-finish] .main-content h3 { font-size: 16px; }
+  html body.kora-product-page[data-kora-finish] .main-content :is(header.head,header.page-head,.proveedores-heading) {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin-block: 0 20px;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.card,.panel,.widget,.metric,.metric-card,.kpi-card,.resumen-card,.table-card) {
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgb(20 35 50 / 3%);
+    transform: none;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.card,.panel,.widget) { padding: clamp(16px,1.8vw,24px); }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.card,.panel,.widget) :is(.card,.panel,.widget) {
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.metric,.metric-card,.kpi-card,.resumen-card,.stat) {
+    padding: 18px;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.metric,.metric-card,.kpi-card,.resumen-card,.stat) :is(strong,.value,.valor) {
+    font-family: var(--ctk-font-family-ui);
+    font-weight: 650;
+    letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums;
+  }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.toolbar,.filter-bar,.filters,.filtros) {
+    border-radius: 12px;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]) {
+    border-radius: 9px;
+    font-family: var(--ctk-font-family-ui);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) :is(button,.btn,a.btn):not(.rounded-full):not(.kora-icon-button):not(.pill) {
+    font-family: var(--ctk-font-family-ui);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.4;
+    border-radius: 9px;
+    box-shadow: none;
+    transition: background-color 140ms ease,color 140ms ease,border-color 140ms ease;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger) {
+    background: #fff;
+    color: var(--kora-finish-ink);
+    border: 1px solid #cdd5df;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) :is(button,a,summary,input,select,textarea):focus-visible {
+    outline: 2px solid var(--kora-finish-accent);
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) table {
+    font-family: var(--ctk-font-family-ui);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) table thead th {
+    border-bottom: 1px solid #d5dde5;
+    font-family: var(--ctk-font-family-ui);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .025em;
+    line-height: 1.4;
+    padding-block: 12px;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) table td { border-bottom-color: #e8edf1; }
+  html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *) {
+    background: #fff;
+    color: var(--kora-finish-accent);
+    border: 1px solid #d5dde5;
+    font-size: 12px;
+    box-shadow: none;
+  }
+  html body.kora-product-page[data-kora-finish] :is(dialog,.modal-box,.modal-content,[role="dialog"]>section) {
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgb(20 35 50 / 18%),0 2px 8px rgb(20 35 50 / 8%);
+    font-family: var(--ctk-font-family-ui);
+  }
+  html body.kora-product-page[data-kora-finish] :is(dialog,[role="dialog"]) :is(h1,h2,h3,.modal-title) {
+    font-family: var(--ctk-font-family-ui);
+    font-weight: 650;
+    letter-spacing: -.025em;
+    line-height: 1.3;
+  }
+  html body.kora-product-page[data-kora-finish] dialog::backdrop { background: rgb(20 32 46 / 35%); }
+  html body.kora-product-page[data-kora-finish] :is(.kora-explorer__head,.modal-header) h2 { font-family: var(--ctk-font-family-ui);font-weight:650;letter-spacing:-.025em; }
+  html body.kora-product-page[data-kora-finish] .main-content :is(.card,.panel,.widget,.metric,.kpi-card):hover { transform: none; }
+  @media (hover:hover) and (pointer:fine) {
+    html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) button:is([data-kora-finish-role="dismiss"],[data-explorer-action="close"]):not(.danger):not(.btn-danger):not(:disabled):hover { background: #edf1f5; }
+    html body.kora-product-page[data-kora-finish] .kora-nav-link:hover { background: #f0f3f6; }
+    html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) table button:is(.secondary,.ghost,.btn-secondary,.btn-outline,[data-facturas],[data-editar],[data-saldo-inicial],[data-ver],[data-view],[data-detail]):not(:disabled):not(.danger):not(.btn-danger):not(.success):not(.btn-success):not(.kora-explorer__link):not(.kora-drilldown-link):not([aria-selected="true"]):not([aria-current]):not(.active):not(.selected):not(.is-selected):not([aria-selected="true"] *):hover {
+      background: #edf5f6;
+      border-color: #9fbfc4;
+    }
+  }
+  html body.kora-product-page[data-kora-finish] .main-content .proveedores-heading h2 { font-size: clamp(24px,2.2vw,28px); }
+  @media(min-width:1100px) {
+    html body.kora-product-page[data-kora-finish] .main-content [aria-label="Resumen de cartera"]:has(>article:nth-child(5):last-child) { grid-template-columns: repeat(6,minmax(0,1fr)); }
+    html body.kora-product-page[data-kora-finish] .main-content [aria-label="Resumen de cartera"]:has(>article:nth-child(5):last-child)>article { grid-column: span 2; }
+    html body.kora-product-page[data-kora-finish] .main-content [aria-label="Resumen de cartera"]:has(>article:nth-child(5):last-child)>article:nth-child(n+4) { grid-column: span 3; }
+  }
+  @media(max-width:1000px) {
+    html body.kora-product-page[data-kora-finish] .main-content :is(nav.tabs,.kora-period-segments) {
+      flex-wrap: wrap;
+      min-width: 0;
+      width: 100%;
+    }
+  }
+  @media(max-width:700px) {
+    html body.kora-product-page[data-kora-finish] .main-content :is(.card,.panel,.widget) { padding: 16px; }
+    html body.kora-product-page[data-kora-finish] .main-content :is(.metric,.metric-card,.kpi-card,.stat) { padding: 14px; }
+    html body.kora-product-page[data-kora-finish] .main-content h1 { font-size: 24px; }
+    html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) :is(input,select,button,.btn):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not(.kora-summary-open):not(.kora-drilldown-link):not(.kora-explorer__link) { min-height: 44px; }
+  }
+  @media(prefers-reduced-motion:reduce) {
+    html body.kora-product-page[data-kora-finish] :is(.main-content,dialog,[role="dialog"]) :is(button,a,input,select,textarea) { transition: none; }
+  }
+}

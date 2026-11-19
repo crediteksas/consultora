@@ -20,8 +20,8 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <link rel="stylesheet" href="/design-system/components/kora-product.css">
-        <script src="/design-system/components/kora-product.js" defer></script>
-        <body class="kora-product-page kora-responsive-ready"><div id="navigationFixture"><main><h2>Resumen ejecutivo</h2><p>Vista de prueba sin datos reales.</p></main></div>
+        <link rel="stylesheet" href="/creditek/erp/kora-finish.css" media="screen"><script src="/design-system/components/kora-product.js" defer></script>
+        <body data-kora-finish="2026.11" class="kora-product-page kora-responsive-ready"><div id="navigationFixture"><main class="main-content"><h2>Resumen ejecutivo</h2><p>Vista de prueba sin datos reales.</p><style>.qa-invalid{border:2px solid rgb(190,20,20)}.qa-card{border-top:3px solid rgb(8,108,117)}</style><section class="card qa-card"><label>Campo con error<input class="qa-invalid" aria-invalid="true"></label><button id="cancelarVenta" class="danger" style="background:rgb(190,20,20)">Anular venta</button><button aria-label="Cerrar caja" style="background:rgb(11,31,58)">Cerrar caja</button><button data-kora-finish-role="dismiss">Cancelar</button><table><thead><tr><th><button style="color:white;background:transparent">Ordenar</button></th></tr></thead><tbody><tr><td>Valor confirmado</td></tr></tbody></table></section></main></div>
         <script src="/creditek/erp/sidebar.js" data-kora-shell-mode="agents"></script></body></html>`);
       return;
     }
@@ -56,6 +56,16 @@ test('menú móvil abre con preferencia automática o fijada, sin perder navegac
           onLogout() {},
         });
       }, mode);
+      const originalBorder=await page.evaluate(()=>{document.body.removeAttribute('data-kora-finish');const s=getComputedStyle(document.querySelector('.qa-card'));const border=[s.borderTopColor,s.borderTopWidth];document.body.setAttribute('data-kora-finish','2026.11');return border;});
+      assert.deepEqual(await page.locator('.qa-card').evaluate(e=>[getComputedStyle(e).borderTopColor,getComputedStyle(e).borderTopWidth]),originalBorder);
+      const linkColor=await page.locator('.kora-nav-link').first().evaluate(e=>getComputedStyle(e).color);
+      assert.notEqual(linkColor,'rgb(255, 255, 255)','los enlaces se distinguen del fondo blanco');
+      assert.deepEqual(await page.locator('.qa-invalid').evaluate(e=>[getComputedStyle(e).borderTopColor,e.getAttribute('aria-invalid')]),['rgb(190, 20, 20)','true']);
+      assert.deepEqual(await page.locator('.qa-card').evaluate(e=>[getComputedStyle(e).borderTopColor,getComputedStyle(e).borderTopWidth]),['rgb(0, 196, 204)','2px']);
+      assert.equal(await page.locator('#cancelarVenta').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(190, 20, 20)');
+      assert.equal(await page.locator('[aria-label="Cerrar caja"]').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(11, 31, 58)');
+      assert.equal(await page.locator('[data-kora-finish-role="dismiss"]').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 255, 255)');
+      assert.equal(await page.locator('th').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(11, 30, 61)');
       const drawer = page.locator('.kora-sidebar');
       const overlay = page.locator('.kora-drawer-overlay');
       const toggle = page.locator('.kora-navigation-toggle');

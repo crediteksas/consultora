@@ -1,0 +1,109 @@
+[
+  {
+    "schema": "kora_private",
+    "name": "banco_creditek_asentar",
+    "kind": "function",
+    "identity": "p_tipo text, p_monto numeric, p_fuente_tabla text, p_fuente_id uuid, p_ocurrido_at timestamp with time zone, p_referencia text, p_soporte text, p_usuario uuid"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago_real",
+    "kind": "function",
+    "identity": "p_id uuid, p_support_path text, p_desde_banco_creditek boolean, p_fecha_pago date"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago_con_origen",
+    "kind": "function",
+    "identity": "uuid, text, boolean"
+  },
+  {
+    "schema": "public",
+    "name": "finanzas_registrar_pago",
+    "kind": "function",
+    "identity": "uuid, text"
+  },
+  {
+    "schema": "public",
+    "name": "krediya_price_rules",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiros_revisiones",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_grupos_tienda",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultados",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_operaciones",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_destinos",
+    "kind": "r"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "cierre_utilidad_api",
+    "kind": "function",
+    "identity": "p_accion text, p_corte_id uuid, p_huella text"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_retiro_fuente",
+    "kind": "function",
+    "identity": "p_retiro financial_entries, p_tienda text"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_revision_api",
+    "kind": "function",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_api",
+    "kind": "function",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_finanzas_guardar",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_inmutable",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "inventario_control",
+    "name": "socios_resultado",
+    "kind": "function",
+    "identity": "p_corte uuid"
+  },
+  {
+    "schema": "public",
+    "name": "socios_inventario",
+    "kind": "function",
+    "identity": "p_accion text, p_datos jsonb, p_request_id uuid"
+  },
+  {
+    "schema": "inventario_control",
+    "name": "ventas_fechas_conciliadas",
+    "kind": "r"
+  }
+]

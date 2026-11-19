@@ -1,3 +1,4 @@
+import './inventario-fecha-conciliada.test.mjs';
 import './socios-inventario-informe.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';

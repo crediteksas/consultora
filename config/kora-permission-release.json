@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
   "project": "kora",
-  "scope": "four source deltas, native PG17 isolated; only pagos_realizados migration pending production",
+  "scope": "Combined isolated PGlite upgrade/rebuild of five exact SQL source deltas; bounded fixtures, not full production reconstruction. Prior native proofs retained.",
   "migration_sha256": {
     "supabase/migrations/20261023032131_socios_inventario_retiros_aportes.sql": "99304db38948cc4991ae58b8c46a1c4897759a84f5ce6a60cb6c98fde27fa305",
     "supabase/migrations/20261021161019_kora_compat_select_krediya_price_rules.sql": "66cc1f0304cf6695c248f2b35adb3a7c6f4c986055c028a2a40a75ec3ab1de66",
     "supabase/migrations/20261027192103_socios_revision_retiros_por_corte.sql": "dc7f6abe159eeda38216216e262c4457700cc3be5a31922fcbd7ec3f04da04e9",
-    "supabase/migrations/20261027203123_pagos_realizados_fecha_conciliacion.sql": "1fae91d0003e252251c1a6381e1901095e68d0de9826d164bae77c894fb8c330"
+    "supabase/migrations/20261027203123_pagos_realizados_fecha_conciliacion.sql": "1fae91d0003e252251c1a6381e1901095e68d0de9826d164bae77c894fb8c330",
+    "supabase/migrations/20261119181116_inventario_conciliar_fecha_registro.sql": "547511d41b520d035804bd9b28442d49f9927b18c17b0a9df61739f1375696ad"
   },
   "isolation_tests": [
     {
@@ -24,49 +25,19 @@
     {
       "path": "tests/security/supabase-compatibility-pagos-reales.test.mjs",
       "sha256": "f933aa9f6d578bb8a156be39170de2fd4832930f46003cfa7c174f14c5efdee3"
+    },
+    {
+      "path": "tests/security/supabase-compatibility-inventario-fecha.test.mjs",
+      "sha256": "0ddd4e4bdad6df4df12d02778cc1c6619e0f46c65ca768fac69adabc64fba2f7"
     }
   ],
   "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
-  "upgrade": {
-    "before": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-before.json",
-      "sha256": "e3b9e301ea02ca554fede752ac22ce7dbd1b7dcc05fb5762191aebd1ac0898a0"
-    },
-    "after": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-after.json",
-      "sha256": "10a80d2effacaf51753cdfbd4f1c2aa82b022a430d1a6347b557b777f815dba1"
-    },
-    "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-contract.json",
-      "sha256": "77d0ce1ce8399e9281a327f97898f148d2a75751c74977a4bd8397a00d22a5f4"
-    },
-    "created": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/upgrade-created.json",
-      "sha256": "7687b9c40b369bcb06fea52bbb09880dc6abd700743bba913c5f93587eba6fba"
-    }
+  "prior_native_release": {
+    "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/prior-native-release.json",
+    "sha256": "d398cda1d24e69635224f1a9992fdbbbfda3f2c0d220d5ae0d5f3a0da3cb8391"
   },
-  "rebuild": {
-    "before": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-before.json",
-      "sha256": "3692bad0c3a395226a147ce4248a947a93fce1c6e34e6735b5652d08f37bca2c"
-    },
-    "after": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-after.json",
-      "sha256": "121c5f4f900be4a12cf880861197860bb88b4bf1c3ad1053dddde50ee0f09a46"
-    },
-    "contract": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-contract.json",
-      "sha256": "bba447db0d5142b274a35308ea7572e041a5799d00ec585c7130c75ddb6cc9db"
-    },
-    "created": {
-      "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/rebuild-created.json",
-      "sha256": "7687b9c40b369bcb06fea52bbb09880dc6abd700743bba913c5f93587eba6fba"
-    }
-  },
-  "native_result": {
-    "path": "tests/fixtures/supabase-compat/kora-pagos-reales-native17/native-result.json",
-    "sha256": "a51ea15d18e3dde79749047eef36a7a1d153cadbf753827d14fc0496f70e5856"
-  },
+  "fixture_sha256": "71c14b3b29efe55aa4d50a93f0eabf99a771be9faa9e60eae0e675c1ad3196fd",
+  "emitter_sha256": "f8b28fbd7c43e5c793a9feed6b1ce157a129b356f0aed9e2aee9fbb84a327d50",
   "additional_releases": [
     {
       "path": "tests/fixtures/supabase-compat/alo-accesorios/release.json",
@@ -88,5 +59,41 @@
       "path": "tests/fixtures/supabase-compat/ecredit/release.json",
       "sha256": "6ce536f788a79f847ba41c36f35ab549ddbd0b5053a898345b9c535d6e9b6761"
     }
-  ]
+  ],
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/upgrade-before.json",
+      "sha256": "5ac9355506138dd95334f506718db60d0e9b69f0e9a965b8a806dd2b8cf26251"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/upgrade-after.json",
+      "sha256": "6504dad0c0fa9e359d507c497eb2e36733b4b32378e5a4291eb310caca99fc88"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/upgrade-contract.json",
+      "sha256": "7ae1c78f1fdc8ceb5cc90ca8b7428ec2b7026fb67a9ddc1850e2070bf7b780e1"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/upgrade-created.json",
+      "sha256": "e66d26a5b6fb7e6d3be475063c9492cb05cd1afcb8d38995d784435e0428c728"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/rebuild-before.json",
+      "sha256": "b378faf274c930527c111ca1477a764f1b49ee24819a95c375378dc0c2cba6aa"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/rebuild-after.json",
+      "sha256": "7c8d919d26218662c3942bb2d0db9aa21ca5152629d18cb59b2719bf2a8ca8c3"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/rebuild-contract.json",
+      "sha256": "21e7f4fde7956762667533729caac5283a80ef1250d86f67d38eacd4e28ef4cf"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/inventario-fecha-combined/rebuild-created.json",
+      "sha256": "e66d26a5b6fb7e6d3be475063c9492cb05cd1afcb8d38995d784435e0428c728"
+    }
+  }
 }

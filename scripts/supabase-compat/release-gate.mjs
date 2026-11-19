@@ -39,6 +39,31 @@ async function migrationFiles(root, folder) {
 const key = o => `${o.schema}.${o.name}${o.identity === undefined ? '' : '('+o.identity+')'}`;
 const definitionKind = kind => ({table:['r','p'],view:['v'],'materialized view':['m'],sequence:['S'],function:['function'],procedure:['function']})[kind] || [];
 
+// Preserve and actively verify earlier native proof when a combined later release supersedes its contract.
+export async function verifyPriorNativeEvidence({root,ref,release}) {
+  root=await realpath(root);
+  const prior=await pinned(root,ref);
+  if(prior.prior_native_release || prior.project!=='kora' || prior.schema_version!==1 || !prior.native_result)throw Error('Invalid prior native release');
+  const native=await pinned(root,prior.native_result);
+  if(native.complete!==true || !Array.isArray(native.checks) || !native.checks.length || native.checks.some(c=>c.passed!==true)
+    || native.production_operations!==0 || native.external_sends!==0)throw Error('Prior native run is incomplete or unsafe');
+  if(prior.test_runner_sha256!==sha(await localFile(root,'scripts/run-kora-local-tests.mjs')))throw Error('Prior native runner changed');
+  for(const [file,hash] of Object.entries(prior.migration_sha256 || {})) {
+    if(release.migration_sha256?.[file]!==hash || sha(await localFile(root,file))!==hash)throw Error('Prior native SQL pin changed');
+  }
+  for(const test of prior.isolation_tests || []) {
+    if(!release.isolation_tests?.some(t=>t.path===test.path&&t.sha256===test.sha256) || sha(await localFile(root,test.path))!==test.sha256)throw Error('Prior native isolation test omitted or changed');
+  }
+  for(const delta of prior.additional_releases || [])if(!release.additional_releases?.some(r=>r.path===delta.path&&r.sha256===delta.sha256))throw Error('Prior native additional release omitted');
+  for(const scenario of ['upgrade','rebuild']) {
+    const b=prior[scenario];if(!b)throw Error('Prior native scenario omitted');
+    const [before,after,contract,created]=await Promise.all(['before','after','contract','created'].map(k=>pinned(root,b[k])));
+    const result=checkPermissionContract({before,after,contract,created});
+    if(!result.ok)throw Error('Prior native '+scenario+': '+result.errors.join('; '));
+  }
+  return {ok:true,native_checks:native.checks.length};
+}
+
 export async function verifySupabasePermissionRelease({root}) {
   root=await realpath(root);
   const baseline=await json(root,'config/kora-permission-baseline.json');
@@ -57,6 +82,7 @@ export async function verifySupabasePermissionRelease({root}) {
   catch(e) { if(e.code==='ENOENT')throw Error('SQL changed: reviewed upgrade/rebuild permission evidence is required before publication');throw e; }
   // Independent reviewed deltas retain their own isolated catalogs. Never merge
   // catalogs from separate databases or weaken coverage of the older batch.
+  if(evidence.prior_native_release)await verifyPriorNativeEvidence({root,ref:evidence.prior_native_release,release:evidence});
   const releases=[evidence];
   if(evidence.additional_releases!==undefined && !Array.isArray(evidence.additional_releases))throw Error('Additional releases must be pinned evidence');
   for(const ref of evidence.additional_releases || []) {

@@ -6,7 +6,7 @@ export const who={mayte:id(1),oscar:id(2),store:id(3),auditor:id(4),off:id(5)};
 export const cut={positive:id(11),negative:id(12),second:id(13),other:id(14),prior:id(15)};
 export const migration='supabase/migrations/20261023032131_socios_inventario_retiros_aportes.sql';
 export async function user(db,actor=who.mayte){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[actor]);await db.exec('set role authenticated');}
-export async function createDb({supabaseFutureDefaults=false}={}){
+export async function createDb({supabaseFutureDefaults=false,preSocios=false}={}){
  const db=await PGlite.create();
  await db.exec(`create role anon;create role authenticated;create role service_role;
  create schema auth;create schema storage;create schema inventario_control;create schema proveedores_control_private;
@@ -69,6 +69,7 @@ export async function createDb({supabaseFutureDefaults=false}={}){
  alter default privileges for role postgres in schema public revoke select,insert,update,delete on tables from anon,authenticated,service_role;
  alter default privileges for role postgres in schema public revoke usage,select on sequences from anon,authenticated,service_role;
  `);
+ if(preSocios)return db;
  try{await db.exec(read(migration));}catch(error){await db.close();throw new Error('Migración local: '+error.message+' posición '+error.position);}
  await user(db);
  return db;

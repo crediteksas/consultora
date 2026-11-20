@@ -264,14 +264,15 @@
         </div>
       </div>
 
-      <div id="panel-detalle-factura" class="hidden bg-white rounded-lg shadow-sm border border-teal-200 p-5 fade-in">
+      <div id="panel-detalle-factura" tabindex="-1" role="region" aria-labelledby="detalle-factura-titulo" class="hidden bg-white rounded-lg shadow-sm border border-teal-200 p-5 fade-in">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
-            <h2 id="detalle-factura-titulo" class="text-lg font-semibold text-gray-800">Detalle de factura</h2>
+            <p class="proveedores-detalle-contexto">Proveedores y cartera / Factura</p>
+            <h2 id="detalle-factura-titulo" tabindex="-1" class="text-lg font-semibold text-gray-800">Detalle de factura</h2>
             <p id="detalle-factura-sub" class="text-xs text-gray-500"></p>
           </div>
           <a id="btn-remisionar-factura" class="hidden bg-blue-900 text-white px-4 py-2 rounded text-sm">Remisionar esta factura</a>
-          <button id="btn-cerrar-detalle-factura" class="text-sm text-gray-500 hover:text-gray-800">Cerrar</button>
+          <button id="btn-cerrar-detalle-factura" type="button" data-kora-finish-role="dismiss" class="text-sm text-gray-500 hover:text-gray-800">← Volver a facturas</button>
         </div>
         <div id="detalle-factura-resumen" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
 
@@ -489,6 +490,8 @@ const impuestosPorFactura = new Map();
 const impuestosEnConflicto = new Set();
 let exportandoImpuestos = false;
 let detalleFacturaActual = null;
+let navegacionDetalleFactura = null;
+let solicitudDetalleFactura = 0;
 let pagoIdempotencyKey = null;
 let pagoSoportePath = null;
 let saldoInicialIdempotencyKey = null;
@@ -860,6 +863,7 @@ formRetencion.addEventListener('submit', async event => {
 });
 
 async function mostrarFacturas(provId) {
+  if (navegacionDetalleFactura) cerrarDetalleFactura();
   proveedorSeleccionado = provId;
   facturasInformeImpuestos = [];
   document.getElementById('impuestos-estado').textContent = '';
@@ -1010,18 +1014,44 @@ async function cargarAplicacionesFifo(facturaId) {
   etiquetarTablas();
 }
 
-async function mostrarDetalleFactura(facturaId) {
+function cerrarDetalleFactura() {
+  solicitudDetalleFactura++;
+  detalleFacturaActual = null;
+  document.getElementById('panel-detalle-factura').classList.add('hidden');
+  document.getElementById('panel-detalle-factura').removeAttribute('aria-busy');
+  document.getElementById('app').classList.remove('proveedor-factura-abierta');
+  const origen = navegacionDetalleFactura;
+  navegacionDetalleFactura = null;
+  if (origen) {
+    window.scrollTo({top:origen.scrollY,behavior:'auto'});
+    if (origen.activador?.isConnected) origen.activador.focus({preventScroll:true});
+  }
+}
+
+async function mostrarDetalleFactura(facturaId, activador = null) {
+  const solicitud = ++solicitudDetalleFactura;
+  if (!navegacionDetalleFactura) {
+    navegacionDetalleFactura = {activador,scrollY:window.scrollY};
+    const desdeVencimientos = !!activador?.closest('#tbody-vencimientos');
+    document.getElementById('btn-cerrar-detalle-factura').textContent = desdeVencimientos ? '← Volver a vencimientos' : '← Volver a facturas';
+  }
+  document.getElementById('app').classList.add('proveedor-factura-abierta');
   detalleFacturaActual = null;
   document.getElementById('form-pago-proveedor').classList.add('hidden');
   for (const id of ['detalle-factura-resumen','tbody-detalle-lineas','tbody-detalle-pagos','tbody-aplicaciones-fifo','detalle-factura-nota']) document.getElementById(id).textContent = '';
   document.getElementById('btn-remisionar-factura').classList.add('hidden');
   const panel = document.getElementById('panel-detalle-factura');
   panel.classList.remove('hidden');
+  panel.setAttribute('aria-busy','true');
+  panel.scrollIntoView({behavior:'auto',block:'start'});
+  document.getElementById('detalle-factura-titulo').focus({preventScroll:true});
   document.getElementById('detalle-factura-titulo').textContent = 'Cargando detalle...';
   document.getElementById('detalle-factura-sub').textContent = '';
   const { data, error } = await SB.rpc('obtener_detalle_factura_proveedor', {
     p_factura_id: facturaId,
   });
+  if (solicitud !== solicitudDetalleFactura) return;
+  panel.removeAttribute('aria-busy');
   if (error) {
     document.getElementById('detalle-factura-titulo').textContent = 'No se pudo cargar la factura';
     document.getElementById('detalle-factura-sub').textContent = error.message;
@@ -1030,7 +1060,7 @@ async function mostrarDetalleFactura(facturaId) {
   renderDetalleFactura(data);
   const {data:ajustes,error:ajustesError}=await SB.from('proveedores_ajustes_detalle')
     .select('solicitud_id,diferencia,saldo_anterior,saldo_nuevo').eq('factura_id',facturaId);
-  if(detalleFacturaActual?.factura?.id!==facturaId)return;
+  if(solicitud!==solicitudDetalleFactura||detalleFacturaActual?.factura?.id!==facturaId)return;
   const puedeConsultarAjustes=(usuarioActual?.id==='d1782db6-bacc-4caf-af6f-ce1b8d1c0391'&&rolActual==='auditoria')||
     (usuarioActual?.id==='6de0ad26-64af-4966-8cd9-d468880af627'&&rolActual==='gerencia');
   const resumenAjustes=document.createElement('div');
@@ -1045,7 +1075,6 @@ async function mostrarDetalleFactura(facturaId) {
     enlace.className='block text-blue-600 text-sm';resumenAjustes.append(enlace);
   }
   await cargarAplicacionesFifo(facturaId);
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function subirSoportePago() {
@@ -1070,6 +1099,7 @@ async function registrarPago(event) {
   const btn = document.getElementById('btn-registrar-pago');
   btn.disabled = true;
   btn.textContent = 'Registrando...';
+  document.getElementById('btn-cerrar-detalle-factura').disabled = true;
   let soportePath = null;
   try {
     const pago = proveedoresDomain.validarPago({
@@ -1116,6 +1146,7 @@ async function registrarPago(event) {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Registrar pago';
+    document.getElementById('btn-cerrar-detalle-factura').disabled = false;
   }
 }
 
@@ -1299,16 +1330,14 @@ document.getElementById('tbody-vencimientos').addEventListener('click', e => {
   if (!btn) return;
   proveedorSeleccionado = btn.dataset.proveedorId;
   document.getElementById('panel-facturas').classList.add('hidden');
-  mostrarDetalleFactura(btn.dataset.detalleFactura);
+  mostrarDetalleFactura(btn.dataset.detalleFactura, btn);
 });
 document.getElementById('filtro-texto').addEventListener('input', render);
 document.getElementById('filtro-estado').addEventListener('change', render);
-document.getElementById('btn-cerrar-detalle-factura').addEventListener('click', () => {
-  document.getElementById('panel-detalle-factura').classList.add('hidden');
-});
+document.getElementById('btn-cerrar-detalle-factura').addEventListener('click', cerrarDetalleFactura);
 document.getElementById('tbody-facturas').addEventListener('click', event => {
   const btn = event.target.closest('[data-detalle-factura]');
-  if (btn) mostrarDetalleFactura(btn.dataset.detalleFactura);
+  if (btn) mostrarDetalleFactura(btn.dataset.detalleFactura, btn);
 });
 document.getElementById('panel-detalle-factura').addEventListener('click', event => {
   const btn = event.target.closest('[data-soporte]');

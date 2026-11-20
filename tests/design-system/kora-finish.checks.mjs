@@ -28,7 +28,7 @@ test('ventanas: las acciones secundarias se marcan explícitamente sin cambiar a
   const html=await read('creditek/erp/'+name);
   for(const button of html.matchAll(/<button\b[^>]*data-kora-finish-role="dismiss"[^>]*>([\s\S]*?)<\/button>/g)){
    const label=button[1].replace(/<[^>]+>/g,'').trim();
-   assert.ok(['Cancelar','Cerrar','Cerrar informe','Volver sin anular'].includes(label)||/aria-label="Cerrar"/.test(button[0]),name+': '+label);marked++;
+   assert.ok(['Cancelar','Cerrar','Cerrar informe','Volver sin anular','← Volver a facturas','← Volver a vencimientos'].includes(label)||/aria-label="Cerrar"/.test(button[0]),name+': '+label);marked++;
   }
  }
  assert.ok(marked>=40);

@@ -99,6 +99,7 @@ test('proveedores: formulario modal, agenda conciliada y diseño adaptable', {ti
   await page.locator('#tbody-vencimientos [data-detalle-factura="pas"]').click();
   await expect(page.locator('#detalle-factura-titulo')).toContainText('VENCIDA');
   assert.ok((await page.evaluate(()=>window.qa.reads)).includes('obtener_detalle_factura_proveedor'));
+  await page.locator('#btn-cerrar-detalle-factura').click();
   await page.evaluate(()=>window.qa.fail=true);await page.locator('#btn-actualizar').click();await expect(page.locator('#error-cartera')).toContainText('desactualizados');
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}

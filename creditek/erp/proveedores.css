@@ -61,3 +61,18 @@ body:has(#modal-proveedor) > header .flex { min-width:0; flex-wrap:wrap; }
   .vencimientos-filtro select { width:100%; }
   .proveedores-filtros input, .proveedores-filtros select { width:100%; }
 }
+
+/* A single reading surface; closing restores the existing list and filters. */
+@media screen {
+  #app.proveedor-factura-abierta .proveedores-heading,
+  #app.proveedor-factura-abierta [aria-label="Resumen de cartera"],
+  #app.proveedor-factura-abierta .proveedores-listado > :not(#panel-detalle-factura) { display: none; }
+  #panel-detalle-factura { scroll-margin-top: 84px; }
+  .proveedores-detalle-contexto { margin: 0 0 8px; color: #586575; font-size: 12px; }
+  #detalle-factura-titulo { overflow-wrap: anywhere; }
+  #btn-cerrar-detalle-factura { min-height: 44px; }
+  @media(max-width:700px) {
+    #panel-detalle-factura { scroll-margin-top: 130px; }
+    #btn-cerrar-detalle-factura { width: 100%; }
+  }
+}

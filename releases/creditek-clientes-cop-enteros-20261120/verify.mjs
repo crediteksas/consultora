@@ -28,7 +28,7 @@ if(stage==='payload'){
   async function read(path){const r=await fetch(api+path,{headers});assert.ok(r.ok);const j=await r.json();assert.ok(j.success);return j.result;}
   const res=await fetch(api+service+'/content',{headers});assert.ok(res.ok);const form=await res.formData();
   assert.deepEqual([...form.keys()].sort(),Object.keys(base.modules).sort());
-  const hashes={};for(const [n,f] of form){const hash=sha(typeof f==='string'?f:Buffer.from(await f.arrayBuffer()));hashes[n]=hash;assert.equal(hash,stage==='postflight'&&n==='index.mjs'?manifest.candidateSha256:base.modules[n].sha256);}
+  const hashes={};for(const [n,f] of form){const hash=sha(typeof f==='string'?f:Buffer.from(await f.arrayBuffer()));hashes[n]=hash;assert.equal(hash,stage!=='preflight'&&n==='index.mjs'?manifest.candidateSha256:base.modules[n].sha256);}
   const settings=await read(service+'/settings');
   const normalize=bindings=>[...bindings].sort((a,b)=>a.name.localeCompare(b.name));
   assert.deepEqual(normalize(settings.bindings),normalize(base.settings.bindings),'Bindings or variables changed');

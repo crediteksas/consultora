@@ -1,3 +1,4 @@
+import { pesosReporte as moneda } from './moneda-cop';
 import { paginarReporte, type PaginaReporte } from './reportes-formato';
 import { prepararReporteDeudaCompacto } from './reporte-deuda-compacto';
 
@@ -11,7 +12,6 @@ type Dependencias = {
  destinatarios: readonly { id: string; telefono: string }[];
  enviar: (telefono: string, pagina: PaginaReporte) => Promise<string>;
 };
-const moneda = (n: number) => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(Number(n));
 const limpio = (s: string) => String(s || '').replace(/[\r\n\t*_~`]/g, ' ').replace(/\s+/g, ' ').trim();
 const hora = (s: string) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(s));
 

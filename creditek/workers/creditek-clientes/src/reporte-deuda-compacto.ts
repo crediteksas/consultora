@@ -1,12 +1,8 @@
+import { pesosDesdeCentavos as moneda } from './moneda-cop';
 import type { CorteDeuda } from './reporte-deuda';
 import type { PaginaReporte } from './reportes-formato';
 
 const limpio = (s: string) => String(s || '').replace(/[\r\n\t*_~`]/g, ' ').replace(/\s+/g, ' ').trim();
-const moneda = (centavos: number) => {
-  const n = BigInt(centavos), absoluto = n < 0n ? -n : n;
-  return '$' + (n < 0n ? '-' : '') + new Intl.NumberFormat('es-CO').format(absoluto / 100n)
-    + ',' + String(absoluto % 100n).padStart(2, '0');
-};
 const hora = (s: string) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(s));
 
 function centavos(valor: number): number {

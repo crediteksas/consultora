@@ -62,3 +62,28 @@
 @media(prefers-reduced-motion:reduce){.kora-incident-trigger{transition:none}}
 .kora-notifications-panel{display:flex;flex-direction:column}.kora-notifications-panel__header,.kora-notifications-status{flex-shrink:0}.kora-notifications-list{min-height:0;flex:1 1 auto}
 .kora-notifications-panel__header .kora-notifications-panel__actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.kora-notifications-updated{margin:0;padding:9px 16px;border-bottom:1px solid var(--ctk-color-border-subtle,#eef2f7);font-size:11px;color:var(--ctk-color-text-secondary,#64748b)}.kora-notifications-panel .kora-notification-item[data-stale=true]{background:#fff8e8}.kora-notifications-panel .kora-notification-item[data-stale=true] strong{color:#8a5400}.kora-notifications-panel__actions button:disabled{opacity:.6;cursor:wait}
+
+/* Incident reading mode: keep list state in the DOM while its detail is open. */
+@media screen {
+  .kora-incidents-page:has([data-incident-detail]:not([hidden])) > :is(.kora-incidents-kpis,.kora-incidents-filters),
+  .kora-incidents-page:has([data-incident-detail]:not([hidden])) .kora-incidents-panel > :is(.kora-incidents-table-wrap,[data-incident-pagination]) { display: none; }
+  .kora-incident-detail { scroll-margin-top: 100px; }
+  .kora-incident-detail-grid { grid-template-columns: minmax(0,2fr) minmax(260px,1fr); align-items: start; }
+  .kora-incident-detail-grid > * { min-width: 0; }
+  .kora-incident-detail > [data-incident-back] { margin-bottom: 20px; }
+  .kora-incident-detail h2 { margin: 0 0 16px; line-height: 1.35; overflow-wrap: anywhere; }
+  .kora-incident-detail h3 { margin: 24px 0 12px; }
+  .kora-incident-detail :is(p,li) { line-height: 1.6; overflow-wrap: anywhere; }
+  .kora-incident-detail [data-detail-content] p { margin: 0 0 12px; }
+  .kora-incident-detail [data-incident-comment-form]:not([hidden]) { display: grid; gap: 16px; margin-top: 16px; }
+  .kora-incident-detail [data-incident-comment-form] label { display: grid; gap: 8px; min-width: 0; font-size: 12px; font-weight: 600; }
+  .kora-incident-detail [data-incident-comment-form] :is(textarea,input) { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
+  .kora-incident-detail [data-incident-comment-form] textarea { min-height: 120px; resize: vertical; padding: 12px; }
+  .kora-incident-detail [data-incident-comment-form] input[type=file] { overflow: hidden; text-overflow: ellipsis; }
+  .kora-incident-detail [data-incident-add-comment] { justify-self: start; }
+  @media(max-width:720px) {
+    .kora-incident-detail { padding: 16px; scroll-margin-top: 130px; }
+    .kora-incident-detail-grid { grid-template-columns: minmax(0,1fr); gap: 24px; }
+    .kora-incident-detail [data-incident-add-comment] { justify-self: stretch; }
+  }
+}

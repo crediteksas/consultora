@@ -57,7 +57,30 @@
     let revisionClave='', decisionesConteo=new Map(), costosConteo=new Map();
     const el = id => document.getElementById(`conteos-${id}`);
     document.body.insertAdjacentHTML('beforeend', `<div id="conteos-modal" class="modal-bg" style="z-index:10000" role="dialog" aria-modal="true" aria-label="Conteos y ajustes de inventario">
-      <style>#conteos-evidencia-form[hidden],#conteos-edicion[hidden],#conteos-form-decidir[hidden],#conteos-crear[hidden],#conteos-ciego[hidden]{display:none!important}</style>
+      <style>#conteos-evidencia-form[hidden],#conteos-edicion[hidden],#conteos-form-decidir[hidden],#conteos-crear[hidden],#conteos-ciego[hidden]{display:none!important}
+
+@media screen {
+  html body.kora-product-page[data-kora-finish] #conteos-utilidad-general { margin: 24px 0; padding: 20px; border: 1px solid #dce2e8; border-radius: 14px; background: #f7f8fa; }
+  html body.kora-product-page[data-kora-finish] #conteos-utilidad-general h3 { margin: 0 0 12px; }
+  html body.kora-product-page[data-kora-finish] #conteos-utilidad-general > p { margin: 8px 0; line-height: 1.5; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; margin: 20px 0; padding: 0; list-style: none; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts > li { min-width: 0; padding: 18px; background: #fff; border: 1px solid #dce2e8; border-radius: 12px; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts__store { display: block; font-size: 15px; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts__status { display: block; margin-top: 8px; color: #586575; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts dl { margin: 16px 0 0; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts dl > div + div { margin-top: 14px; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts dt { font-size: 11px; color: #586575; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts dd { margin: 5px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts__amount { font-size: 20px; font-weight: 700; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts__amount[data-resultado="Pérdida"] { color: #b42318; }
+  html body.kora-product-page[data-kora-finish] .kora-last-cuts__amount[data-resultado="Utilidad"] { color: #137343; }
+  @media(max-width:1000px) { html body.kora-product-page[data-kora-finish] .kora-last-cuts { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media(max-width:700px) {
+    html body.kora-product-page[data-kora-finish] #conteos-utilidad-general { padding: 16px; }
+    html body.kora-product-page[data-kora-finish] .kora-last-cuts { grid-template-columns: minmax(0,1fr); }
+  }
+}
+</style>
       <div class="modal-box" style="max-width:1250px;width:100%">
         <div style="display:flex;justify-content:space-between;gap:16px"><h2>Conteos y ajustes</h2><button id="conteos-cerrar" class="btn-export">Cerrar</button></div>
         <p style="margin:12px 0">Un solo archivo para equipos y accesorios. Subirlo no modifica existencias: Mayte u Óscar revisan y autorizan. Reporta cantidades reconstruidas a la fecha del corte: físico + salidas posteriores − entradas posteriores. El sistema compara solamente contra el corte.</p>
@@ -772,9 +795,12 @@
           <h3>Utilidad del último corte · Todas las tiendas</h3>
           <p>Se toma el último corte físico de cada tienda. Las fechas pueden variar entre tiendas.</p>
           <p>${confirmadas.length ? `<strong>Utilidad neta confirmada: ${money(total)}</strong> · ${confirmadas.length} de ${resumen.length} tiendas` : 'Todavía no hay utilidades confirmadas para sumar.'}</p>
-          <ul>${resumen.map(r=>`<li><strong>${esc(r.Tienda)}</strong> · ${esc(r['Fecha del corte']||'Sin corte')}
-            · ${typeof r['Utilidad o pérdida del corte']==='number'?money(r['Utilidad o pérdida del corte']):'Por confirmar'}
-            · ${esc(r['Estado de utilidad']||r['Estado del corte'])}</li>`).join('')}</ul>
+          <ul class="kora-last-cuts">${resumen.map(r=>`<li>
+            <strong class="kora-last-cuts__store">${esc(r.Tienda)}</strong>
+            <span class="kora-last-cuts__status">${esc(r['Estado de utilidad']||r['Estado del corte'])}</span>
+            <dl><div><dt>Corte físico</dt><dd>${esc(r['Fecha del corte']||'Sin corte')}</dd></div>
+            <div><dt>Utilidad / pérdida</dt><dd class="kora-last-cuts__amount" data-resultado="${esc(r.Resultado||'Pendiente')}">${typeof r['Utilidad o pérdida del corte']==='number'?money(r['Utilidad o pérdida del corte']):'Por confirmar'}</dd></div></dl>
+            </li>`).join('')}</ul>
           <button id="conteos-utilidad-general-excel" type="button" class="btn-export">Descargar Excel del último corte</button>`;
         el('utilidad-general-excel').onclick=()=>run(informeUltimos,'utilidad-general-estado');
         panel.insertAdjacentHTML('beforeend','<p id="conteos-utilidad-general-estado" role="status" tabindex="-1"></p>');

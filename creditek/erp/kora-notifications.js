@@ -4,7 +4,7 @@
   const OSCAR = '6de0ad26-64af-4966-8cd9-d468880af627';
 
   const MAYTE = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
-  const sharedApprovals = new Set(['inventory-counts','sales-approval']);
+  const sharedApprovals = new Set(['inventory-counts','sales-approval','incidents']);
   const delegatedToMayte = new Set(['transfers','store-expenses']);
   function personalQueue(profile) {
     if (profile.rol==='gerencia' && profile.id===OSCAR) return 'gerencia';
@@ -17,7 +17,7 @@
   function pendingSources(profile, financialAccess = false, salesApprovalAccess = false) {
     if (!profile?.id || profile.activo === false) return [];
     const central = ['gerencia', 'auditoria'].includes(profile.rol);
-    const sources = [{key:'incidents',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
+    const sources = [{key:'incidents',owner:central?'compartido':'tienda',table:'kora_incidents',title:'Incidencias abiertas en KORA',hint:'Responder no cambia el estado. Se retiran del contador al resolver, cerrar o descartar la incidencia.',path:'/creditek/erp/incidencias.html',filters:[['in','status',['nuevo','en_revision','confirmado','en_desarrollo','pendiente_validacion','reabierto']]]}];
     if (central || (profile.rol === 'admin_tienda' && profile.tienda_codigo)) sources.push(
       {key:'inventory-photo-tasks',owner:'tienda',rpc:'inventario_fotos_pendientes_cantidad',title:'Fotos de inventario pendientes · tarea de la tienda',hint:'El ajuste está aplicado. Adjunta las fotos pendientes en Inventario; no bloquean la operación ni el cierre de utilidad y no descuentan otra vez.',path:'/creditek/erp/inventario.html#conteos'},
     );

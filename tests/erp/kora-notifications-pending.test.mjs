@@ -7,6 +7,14 @@ const source=readFileSync('creditek/erp/kora-notifications.js','utf8');
 const context=vm.createContext({window:{},document:{dispatchEvent(){}},CustomEvent:class{}});
 vm.runInContext(source,context);
 const {pendingSources,pendingCount,colombiaToday}=context.window.KoraNotifications;
+test('las incidencias abiertas aparecen en las colas reales de Óscar y Mayte',async()=>{
+  for(const profile of [{id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia'},{id:'d1782db6-bacc-4caf-af6f-ce1b8d1c0391',rol:'auditoria'}]){
+    const incident=pendingSources(profile).find(s=>s.key==='incidents');
+    assert.ok(incident);assert.equal(incident.owner,'compartido');assert.equal(incident.path,'/creditek/erp/incidencias.html');
+    const sb={from(table){assert.equal(table,'kora_incidents');const q={select(){return q;},in(_column,values){assert.ok(values.includes('nuevo'));assert.ok(!values.includes('cerrado'));return Promise.resolve({count:5,error:null});}};return q;}};
+    assert.equal((await pendingCount(sb,incident)).count,5);
+  }
+});
 test('confirmaciones de hoy y reportes históricos son controles separados desde la misma consulta',async()=>{
   const sources=pendingSources({id:'a',rol:'gerencia'}),daily=sources.find(s=>s.key==='store-debt-confirmations'),differences=sources.find(s=>s.key==='store-debt-differences');
   assert.equal(daily.rpc,'listar_confirmaciones_deuda');assert.match(daily.path,/#confirmacionesDelDia$/);assert.match(differences.path,/#diferenciasPendientes$/);

@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "ventas_iniciales_retenidas",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "kora_private",
+      "columns": [
+        {
+          "acl": null,
+          "name": "venta_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "credito_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "ajuste_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "autorizado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operador_sql",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": null,
+      "rls": true,
+      "kind": "r",
+      "name": "facturas_proveedor",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "proveedor_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "numero",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "total",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "saldo",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "origen_registro",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo_compra",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha_vencimiento",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operacion_idempotency_key",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "retencion_automatica_snapshot",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "proveedores_retencion_automatica",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "proveedor_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tarifa_porcentaje",
+          "type": "numeric(8,5)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "anulacion_con_inicial_retenida_permitida",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_tabla text, p_operacion text, p_antes jsonb, p_despues jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "90a6a85d1b26f19f805ce20b1a19e4b1",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "completar_retencion_proveedor_pendiente",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_factura uuid, p_base numeric, p_iva_xml numeric, p_total_xml numeric, p_total_esperado numeric, p_saldo_esperado numeric, p_actor uuid, p_referencia text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "4702d10e46872b748a42b07d611fe9ee",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "proteger_retencion_automatica",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "911e3f67ce99b355f0f5c5ca4ab5a1f3",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "rectificar_credito_retail_con_inicial_retenida",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_solicitud uuid, p_incidencia uuid, p_venta uuid, p_compensacion uuid, p_autorizado_por uuid, p_motivo text, p_abono_esperado numeric, p_inicial_esperada numeric",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "26e52814da287845ed0dc25fc9da9f5d",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "registrar_compra_retencion_automatica",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb, p_base_sin_iva numeric",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "1db34ed2bddda16cd32429e09eba5dfb",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "validar_retencion_compra_automatica",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "cb98aa0769c80f9d43954ed57e183da7",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": null,
+      "name": "caja_componentes_rango",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_tienda text, p_desde date, p_hasta date",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "820213073d29676b31c6448ae4c2e820",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": null,
+      "name": "caja_guardar_movimiento",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "9d7b70508e9bb4e4268fd8382cf041ad",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_compra_proveedor_automatica",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb, p_base_sin_iva numeric",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "df35b78fc9b510d9489a5f9d306292db",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "justification": "Central-only fiscal entry; private audited repair and retained-initial support preserve immutable originals. Fictitious isolated fixture."
+    }
+  ],
+  "allow_catalog_changes": {
+    "policies": "[{\"check_md5\":null,\"command\":\"r\",\"name\":\"proveedores_retencion_lectura\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"proveedores_retencion_automatica\",\"using_md5\":\"31934ac23b934564c237304d2e2c9913\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"retenciones_proveedor_lectura_central\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"retenciones_factura_proveedor\",\"using_md5\":\"31934ac23b934564c237304d2e2c9913\"}]",
+    "triggers": "[{\"definition_md5\":\"7d714138d6d79e25f5059b6278ec5503\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_libro_cartera_retail\",\"function_schema\":\"public\",\"name\":\"trg_cartera_inmutable\",\"schema\":\"public\",\"table\":\"cuenta_corriente\"},{\"definition_md5\":\"ae2a51270b46a38d445e70f84d9aed26\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"validar_retencion_compra_automatica\",\"function_schema\":\"kora_private\",\"name\":\"compra_exige_retencion_automatica\",\"schema\":\"public\",\"table\":\"facturas_proveedor\"},{\"definition_md5\":\"75ce0c5fec354deac60dda91f3a4175a\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"test_kardex_inmutable\",\"function_schema\":\"public\",\"name\":\"kardex_inmutable\",\"schema\":\"public\",\"table\":\"movimientos\"},{\"definition_md5\":\"2308368debfb78e0870750d0401f372e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_retencion_automatica\",\"function_schema\":\"kora_private\",\"name\":\"proteger_retencion_automatica\",\"schema\":\"public\",\"table\":\"retenciones_factura_proveedor\"},{\"definition_md5\":\"681d2c3b77ee88b35d352dcececead6c\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"caja_guardar_movimiento\",\"function_schema\":\"public\",\"name\":\"caja_ciclo_ventas\",\"schema\":\"public\",\"table\":\"ventas\"},{\"definition_md5\":\"1a5c59e4aab44797a354bac26d1407fb\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"proteger_registro_venta_confirmada\",\"function_schema\":\"public\",\"name\":\"ventas_confirmadas_inmutables\",\"schema\":\"public\",\"table\":\"ventas\"}]"
+  }
+}

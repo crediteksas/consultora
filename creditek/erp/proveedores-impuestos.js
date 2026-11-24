@@ -50,7 +50,7 @@
     const retenciones = impuestos('WithholdingTaxTotal');
     const sum = lineas => lineas.length && lineas.every(linea => linea.monto !== null)
       ? lineas.reduce((centavos, linea) => centavos + Math.round(linea.monto * 100), 0) / 100 : null;
-    return { nit: nitEmisor, numero, total, subtotal: importe(valor(totales, 'LineExtensionAmount')),
+    return { nit: nitEmisor, numero, total, baseAntesIVA: importe(valor(totales, 'TaxExclusiveAmount')), subtotal: importe(valor(totales, 'LineExtensionAmount')),
       iva: sum(iva), retencion: sum(retenciones), detalleIVA: iva, detalleRetencion: retenciones };
   }
 

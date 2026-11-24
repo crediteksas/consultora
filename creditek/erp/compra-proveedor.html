@@ -25,6 +25,9 @@
   <link rel="stylesheet" href="/design-system/components/kora-product.css">
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="producto-foto.js?v=1.1.0"></script>
+  <script src="vendor/fflate-0.8.3.js" defer></script>
+  <script src="proveedores-impuestos.js?v=1.1.0" defer></script>
+  <script src="compra-retencion-automatica.js?v=1.0.0" defer></script>
   <script src="/config/kora-environment.generated.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -259,7 +262,21 @@
 
   <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
     <h2 class="font-semibold">Retenciones de Creditek</h2>
-    <p class="text-sm text-gray-600 mb-3">Agrega cada retención aplicable. El neto se calcula al registrar la factura.</p>
+    <p id="retencion-instrucciones" class="text-sm text-gray-600 mb-3">Agrega cada retención aplicable. El neto se calcula al registrar la factura.</p>
+    <div id="retencion-auto-panel" hidden class="border rounded-lg p-4 mb-4">
+      <h3 class="font-semibold">ReteFuente automática del 2,5 %</h3>
+      <p class="text-sm text-gray-600 mt-1">Se calcula sobre el valor antes de IVA y se descuenta una sola vez del saldo al proveedor.</p>
+      <div class="grid gap-3 sm:grid-cols-2 mt-3">
+        <label class="text-sm">Base antes de IVA
+          <input id="retencion-auto-base" type="number" min="0.01" step="0.01" inputmode="decimal" class="block w-full rounded border p-2" aria-describedby="retencion-auto-estado">
+        </label>
+        <label class="text-sm">Completar desde XML o ZIP (opcional)
+          <input id="retencion-auto-xml" type="file" accept=".xml,.zip" class="block w-full mt-1">
+        </label>
+      </div>
+      <label class="flex items-center gap-2 text-sm mt-3"><input id="retencion-auto-sin-iva" type="checkbox">Confirmo que esta factura no tiene IVA</label>
+      <p id="retencion-auto-estado" class="text-sm mt-3" role="status" aria-live="polite">Confirma la base o carga el XML de esta factura.</p>
+    </div>
     <div id="compra-retenciones" class="grid gap-3"></div>
     <template id="compra-retencion-fila">
       <fieldset class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 items-end border rounded p-3">
@@ -432,6 +449,9 @@ async function verificarAuth() {
 // ESTADO
 // ============================================================
 let proveedores = [];   // [{id, nombre, nit}]
+let politicasRetencion = [];
+let politicasRetencionCargadas = false;
+let xmlRetencionContext = null;
 let productos = [];     // [{id, codigo, nombre, categoria, tipo, margen_tipo, margen_valor}]
 let estadoProductos = 'pendiente';
 let paginaProductos = 0;
@@ -471,17 +491,21 @@ async function cargarProductos() {
   }
 }
 async function cargarCatalogos() {
-  const [pv, pr, cr] = await Promise.all([
+  const [pv, pr, cr, rt] = await Promise.all([
     SB.from('proveedores').select('id, nombre, nit').eq('activo', true).order('nombre'),
     // SPEC v2 · traer margen_tipo, margen_valor por producto (default de la ficha).
     cargarProductos(),
-    SB.from('categorias_producto').select('codigo, nombre, margen_tipo, margen_valor, orden').order('orden')
+    SB.from('categorias_producto').select('codigo, nombre, margen_tipo, margen_valor, orden').order('orden'),
+    SB.from('proveedores_retencion_automatica').select('proveedor_id,tarifa_porcentaje').eq('activo',true)
   ]);
 
   if (pv.error) { toast('Error cargando proveedores: ' + pv.error.message, 'error'); return; }
   if (pr.error) toast('Error cargando productos: ' + pr.error.message, 'error');
   if (cr.error) { toast('Error cargando categorías: ' + cr.error.message, 'error'); return; }
 
+  if (rt.error) { toast('No se pudo verificar la retención de proveedores. Actualiza antes de registrar.', 'error'); return; }
+  politicasRetencion = rt.data || [];
+  politicasRetencionCargadas = true;
   proveedores = pv.data || [];
   productos = pr.data || [];
   categorias = cr.data || [];
@@ -583,9 +607,25 @@ function actualizarTotal() {
     }
   });
   const retenciones = document.querySelectorAll('#compra-retenciones input[name=valor]');
-  const retenido = Array.from(retenciones).reduce((total, campo) => total + Math.round(Number(campo.value) * 100), 0) / 100;
-  document.getElementById('compra-total-retenido').textContent = money(retenido);
-  document.getElementById('compra-neto').textContent = money(totalCosto - retenido);
+  let retenidoAutomatico = 0;
+  let retencionPorConfirmar = false;
+  const politica = politicaRetencionActiva();
+  if (politica) {
+    const base = document.getElementById('retencion-auto-base');
+    if (xmlRetencionContext && Math.abs(xmlRetencionContext.total-totalCosto)>0.5) { base.value='';xmlRetencionContext=null;document.getElementById('retencion-auto-xml').value=''; }
+    if (document.getElementById('retencion-auto-sin-iva').checked) base.value = totalCosto > 0 ? String(Math.round(totalCosto*100)/100) : '';
+    try {
+      const calculo = window.CreditekRetencionAutomatica.calcular({total:totalCosto,base:base.value,tarifa:politica.tarifa_porcentaje});
+      retenidoAutomatico = calculo.valor;
+      document.getElementById('retencion-auto-estado').textContent = 'ReteFuente: '+money(calculo.valor)+' sobre '+money(calculo.base)+' antes de IVA.';
+    } catch (_) {
+      retencionPorConfirmar = true;
+      document.getElementById('retencion-auto-estado').textContent = 'Confirma la base antes de IVA para calcular la retención.';
+    }
+  }
+  const retenido = retenidoAutomatico + Array.from(retenciones).reduce((total, campo) => total + Math.round(Number(campo.value) * 100), 0) / 100;
+  document.getElementById('compra-total-retenido').textContent = retencionPorConfirmar ? 'Por calcular' : money(retenido);
+  document.getElementById('compra-neto').textContent = retencionPorConfirmar ? 'Por calcular' : money(totalCosto - retenido);
   document.getElementById('total-factura').textContent = money(totalCosto);
   document.getElementById('total-remision').textContent = money(totalRemision);
   document.getElementById('total-margen').textContent = money(totalRemision - totalCosto);
@@ -925,6 +965,12 @@ async function guardarCompra() {
       });
     }
 
+    if (!politicasRetencionCargadas) throw new Error('No se pudo verificar la retención. Actualiza la página.');
+    const politica = politicaRetencionActiva();
+    const baseAutomatica = politica ? window.CreditekRetencionAutomatica.calcular({
+      total:payload.reduce((total,item)=>total+Number(item.cantidad)*Number(item.costo_unitario),0),
+      base:document.getElementById('retencion-auto-base').value,tarifa:politica.tarifa_porcentaje
+    }).base : null;
     const retenciones = Array.from(document.querySelectorAll('#compra-retenciones fieldset')).map(fila => {
       const campos = [...fila.querySelectorAll('select,input')];
       const invalido = campos.find(campo => !campo.validity.valid);
@@ -944,7 +990,7 @@ async function guardarCompra() {
     }
 
     // RPC
-    const { data, error } = await SB.rpc('registrar_compra_proveedor_operativa', {
+    const { data, error } = await SB.rpc(politica ? 'registrar_compra_proveedor_automatica' : 'registrar_compra_proveedor_operativa', {
       p_proveedor_id: provId,
       p_numero_factura: numero,
       p_fecha: fecha,
@@ -956,6 +1002,7 @@ async function guardarCompra() {
       p_nota: nota || null,
       p_idempotency_key: compraIdempotencyKey,
       p_retenciones: retenciones,
+      ...(politica ? {p_base_sin_iva:baseAutomatica} : {}),
     });
 
     if (error) throw new Error(error.message);
@@ -997,16 +1044,74 @@ function limpiarFormulario() {
   items = [];
   compraIdempotencyKey = crypto.randomUUID();
   document.getElementById('compra-retenciones').replaceChildren();
+  cambiarProveedorRetencion();
   renderItems();
 }
 
 // ============================================================
 // EVENT LISTENERS
 // ============================================================
+function politicaRetencionActiva() {
+  return politicasRetencion.find(p=>p.proveedor_id===document.getElementById('sel-proveedor').value);
+}
+function cambiarProveedorRetencion() {
+  xmlRetencionContext=null;
+  const activa = Boolean(politicaRetencionActiva());
+  document.getElementById('retencion-auto-panel').hidden = !activa;
+  document.getElementById('retencion-instrucciones').textContent=activa ? 'ReteFuente se calcula automáticamente. Agrega otra retención solo si corresponde.' : 'Agrega cada retención aplicable. El neto se calcula al registrar la factura.';
+  document.getElementById('compra-agregar-retencion').textContent=activa ? 'Agregar otra retención' : 'Agregar retención';
+  document.getElementById('retencion-auto-base').value = '';
+  document.getElementById('retencion-auto-sin-iva').checked = false;
+  document.getElementById('retencion-auto-base').readOnly = false;
+  document.getElementById('retencion-auto-xml').value = '';
+  document.querySelectorAll('#compra-retenciones fieldset').forEach(fila=>{
+    const tipo=fila.querySelector('select');
+    if (activa && tipo.value==='ReteFuente') fila.remove();
+    else tipo.querySelectorAll('option').forEach(o=>{ if(o.value==='ReteFuente')o.disabled=activa; });
+  });
+  actualizarTotal();
+}
+document.getElementById('sel-proveedor').addEventListener('change',cambiarProveedorRetencion);
+document.getElementById('retencion-auto-base').addEventListener('input',()=>{xmlRetencionContext=null;actualizarTotal();});
+document.getElementById('num-factura').addEventListener('input',()=>{
+  if(xmlRetencionContext){document.getElementById('retencion-auto-base').value='';document.getElementById('retencion-auto-xml').value='';xmlRetencionContext=null;actualizarTotal();}
+});
+document.getElementById('retencion-auto-sin-iva').addEventListener('change',event=>{
+  document.getElementById('retencion-auto-base').readOnly=event.target.checked;
+  if(!event.target.checked)document.getElementById('retencion-auto-base').value='';
+  actualizarTotal();
+});
+document.getElementById('retencion-auto-xml').addEventListener('change',async event=>{
+  const estado=document.getElementById('retencion-auto-estado');
+  const proveedor=proveedores.find(p=>p.id===document.getElementById('sel-proveedor').value);
+  const numero=document.getElementById('num-factura').value;
+  const archivo=event.target.files[0];
+  document.getElementById('retencion-auto-base').value='';
+  document.getElementById('retencion-auto-sin-iva').checked=false;
+  document.getElementById('retencion-auto-base').readOnly=false;
+  if(!archivo)return actualizarTotal();
+  try {
+    if(!proveedor || !numero)throw new Error('Selecciona proveedor y número de factura antes del XML.');
+    const lector=window.CreditekProveedoresImpuestos;
+    const facturas=await lector.leerArchivo(archivo);
+    if(proveedor.id!==document.getElementById('sel-proveedor').value || numero!==document.getElementById('num-factura').value)
+      throw new Error('Cambió el proveedor o la factura. Carga nuevamente el XML.');
+    const candidatas=facturas.filter(f=>f.nit===lector.nit(proveedor.nit) && f.numero===lector.numeroFactura(numero));
+    if(candidatas.length!==1)throw new Error('El XML debe corresponder a este proveedor y a esta factura, sin duplicados.');
+    const f=candidatas[0];
+    const total=items.reduce((s,i)=>s+Number(i.cantidad||0)*Number(i.costo_unitario||0),0);
+    if(Math.abs(total-f.total)>0.5)throw new Error('El total del XML no coincide con los productos. Revisa los costos de la factura.');
+    if(f.baseAntesIVA==null)throw new Error('El XML no discrimina la base antes de IVA. Confírmala en la factura.');
+    document.getElementById('retencion-auto-base').value=String(f.baseAntesIVA);
+    xmlRetencionContext={total:f.total};
+    actualizarTotal();
+  }catch(error){actualizarTotal();estado.textContent=error.message;}
+});
 const compraRetenciones = document.getElementById('compra-retenciones');
 document.getElementById('compra-agregar-retencion').addEventListener('click', () => {
   const fila = document.getElementById('compra-retencion-fila').content.cloneNode(true);
   const tipo = fila.querySelector('select');
+  if(politicaRetencionActiva())tipo.querySelectorAll('option').forEach(o=>{if(o.value==='ReteFuente')o.disabled=true;});
   compraRetenciones.append(fila);
   tipo.focus();
 });

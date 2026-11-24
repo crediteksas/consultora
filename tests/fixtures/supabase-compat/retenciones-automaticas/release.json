@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Combined isolated update/rebuild of supplier automation and already-published retained-initial support; fictitious data only.",
+  "migration_sha256": {
+    "supabase/migrations/20261121165939_retail_anulacion_inicial_retenida_auditada.sql": "eaeb91557708144e703d25a72015970c10d0737421ff647ca7d34f9facf61cb8",
+    "supabase/migrations/20261124164506_proveedores_retencion_automatica.sql": "c5790348f1925c4ebd2d3c88e4d961fea30eb16090a85c0f2135cb61a89cf66f"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-retenciones-automaticas.test.mjs",
+      "sha256": "1ce44a6233931693febb4bc447df420695173514da0624d975cdd499047e0034"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/upgrade-before.json",
+      "sha256": "7693a3a739a443eec2797d008b3ef313f3f8b9ffb45879967f37101130e83e31"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/upgrade-after.json",
+      "sha256": "6d62a16ad0bf65d07d972aef15dfc680314a667b27327983797327ceafdd9d8b"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/upgrade-contract.json",
+      "sha256": "6366cf6ad9e73b22d1bd2c9b038678fdf8a74f40c857f1a077d9a5a585be47ad"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/upgrade-created.json",
+      "sha256": "c9cd7c890d7ce81a36a77f6cfaeb223f62a6c9b2189ff68e007c66094391ab44"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/rebuild-before.json",
+      "sha256": "e1784b58a5f3602833a05f99e6abf9882bd99ede70644bac69ed0dd303d42855"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/rebuild-after.json",
+      "sha256": "460fb6920fe2db036c2e0ec57709941b2991b66e1a0d6101295f79dc66db6f7f"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/rebuild-contract.json",
+      "sha256": "6366cf6ad9e73b22d1bd2c9b038678fdf8a74f40c857f1a077d9a5a585be47ad"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/rebuild-created.json",
+      "sha256": "c9cd7c890d7ce81a36a77f6cfaeb223f62a6c9b2189ff68e007c66094391ab44"
+    }
+  }
+}

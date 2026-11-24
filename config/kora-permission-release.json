@@ -58,6 +58,10 @@
     {
       "path": "tests/fixtures/supabase-compat/ecredit/release.json",
       "sha256": "6ce536f788a79f847ba41c36f35ab549ddbd0b5053a898345b9c535d6e9b6761"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/retenciones-automaticas/release.json",
+      "sha256": "4e5c922dc05c33a2822069e97aed251c71a293e054047bf37fe92724a14c34b8"
     }
   ],
   "upgrade": {

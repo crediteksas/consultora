@@ -1,0 +1,71 @@
+[
+  {
+    "schema": "kora_private",
+    "name": "ventas_iniciales_retenidas",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "facturas_proveedor",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "proveedores_retencion_automatica",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_private",
+    "name": "anulacion_con_inicial_retenida_permitida",
+    "kind": "function",
+    "identity": "p_tabla text, p_operacion text, p_antes jsonb, p_despues jsonb"
+  },
+  {
+    "schema": "kora_private",
+    "name": "completar_retencion_proveedor_pendiente",
+    "kind": "function",
+    "identity": "p_factura uuid, p_base numeric, p_iva_xml numeric, p_total_xml numeric, p_total_esperado numeric, p_saldo_esperado numeric, p_actor uuid, p_referencia text"
+  },
+  {
+    "schema": "kora_private",
+    "name": "proteger_retencion_automatica",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "rectificar_credito_retail_con_inicial_retenida",
+    "kind": "function",
+    "identity": "p_solicitud uuid, p_incidencia uuid, p_venta uuid, p_compensacion uuid, p_autorizado_por uuid, p_motivo text, p_abono_esperado numeric, p_inicial_esperada numeric"
+  },
+  {
+    "schema": "kora_private",
+    "name": "registrar_compra_retencion_automatica",
+    "kind": "function",
+    "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb, p_base_sin_iva numeric"
+  },
+  {
+    "schema": "kora_private",
+    "name": "validar_retencion_compra_automatica",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "caja_componentes_rango",
+    "kind": "function",
+    "identity": "p_tienda text, p_desde date, p_hasta date"
+  },
+  {
+    "schema": "public",
+    "name": "caja_guardar_movimiento",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "registrar_compra_proveedor_automatica",
+    "kind": "function",
+    "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb, p_base_sin_iva numeric"
+  }
+]

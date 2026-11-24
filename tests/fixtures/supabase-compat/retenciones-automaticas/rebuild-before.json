@@ -1,0 +1,4199 @@
+{
+  "defaults": [
+    {
+      "acl": "{postgres=X/postgres}",
+      "kind": "f",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "*global*"
+    },
+    {
+      "acl": "{service_role=X/postgres}",
+      "kind": "f",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public"
+    },
+    {
+      "acl": "{service_role=arwdDxtm/postgres}",
+      "kind": "r",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public"
+    }
+  ],
+  "policies": [
+    {
+      "name": "retenciones_proveedor_lectura_central",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "retenciones_factura_proveedor",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "31934ac23b934564c237304d2e2c9913",
+      "permissive": true
+    }
+  ],
+  "triggers": [
+    {
+      "name": "trg_cartera_inmutable",
+      "table": "cuenta_corriente",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "proteger_libro_cartera_retail",
+      "definition_md5": "7d714138d6d79e25f5059b6278ec5503",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "kardex_inmutable",
+      "table": "movimientos",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "test_kardex_inmutable",
+      "definition_md5": "75ce0c5fec354deac60dda91f3a4175a",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "caja_ciclo_ventas",
+      "table": "ventas",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "caja_guardar_movimiento",
+      "definition_md5": "681d2c3b77ee88b35d352dcececead6c",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "ventas_confirmadas_inmutables",
+      "table": "ventas",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "proteger_registro_venta_confirmada",
+      "definition_md5": "1a5c59e4aab44797a354bac26d1407fb",
+      "function_schema": "public",
+      "function_identity": ""
+    }
+  ],
+  "functions": [
+    {
+      "acl": null,
+      "name": "devolucion_parcial_permitida",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "kora_private",
+      "identity": "text, text, jsonb, jsonb",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "f801a6531ae8cea4f6721ceac2955173",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "venta_cero_autorizada_tras_arqueo",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "kora_private",
+      "identity": "text, text, jsonb, text, date",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "588573295674d15e3e9e7f3d0dd4ab49",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "caja_calcular_interno",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_tienda text, p_fecha date",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "15f11e36f1a19854e94d669e55bca08e",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "caja_componentes_rango",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_tienda text, p_desde date, p_hasta date",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "a6d6a64efaa6b557c3948dc44ea59b68",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "caja_exigir_apertura",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_tienda text, p_fecha date, p_es_gasto boolean",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "83ccb3290dfc0b630beb537056f1c600",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "caja_guardar_movimiento",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "967672587b96a1d0ec487fd6bf97a944",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "caja_pendiente_interno",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "text",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "e657c6da417b80cfa71dfd1a4624a581",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "es_central",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "eb43441a4b467d6d48a44564d5858bcf",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "proteger_libro_cartera_retail",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "61d7f142ff2a9bd0b61a9abdf8ae6be0",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "proteger_registro_venta_confirmada",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "b27e1303d2d6392d1b4f288b7ce0fedf",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "registrar_compra_proveedor",
+      "owner": "postgres",
+      "config": [
+        "search_path=public"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "uuid, text, date, jsonb, text, text",
+      "config_md5": "0249ac0d9fc5e40c25bd93ad085c3c77",
+      "routine_kind": "f",
+      "definition_md5": "d9ee1711193b1750f3b19f97f85bb450",
+      "security_definer": false
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,service_role=X/postgres}",
+      "name": "registrar_compra_proveedor_operativa",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "350b22f54d5015037c83283a7babf795",
+      "security_definer": true
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_compra_proveedor_operativa",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_proveedor_id uuid, p_numero_factura text, p_fecha date, p_tipo_compra text, p_fecha_vencimiento date, p_fuente_fondos text, p_items jsonb, p_soporte_path text, p_nota text, p_idempotency_key uuid, p_retenciones jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "a1ba2dc6cb2197bae48493520fbd2dc6",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "registrar_pago_proveedor",
+      "owner": "postgres",
+      "config": [
+        "search_path=public"
+      ],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "uuid, numeric, date, text, text, text, text, uuid",
+      "config_md5": "0249ac0d9fc5e40c25bd93ad085c3c77",
+      "routine_kind": "f",
+      "definition_md5": "f7603c4d613f54f767a85dddcca2f5af",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "name": "registrar_retencion_factura_proveedor",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_factura_id uuid, p_tipo text, p_base numeric, p_tarifa_porcentaje numeric, p_valor numeric, p_fecha date, p_referencia text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "5f1454931cd7f220d40c7b6dd7af4bb6",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "test_kardex_inmutable",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "6268ed6bf0569fc1291df8f93c88a7f5",
+      "security_definer": false
+    }
+  ],
+  "relations": [
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "rectificacion_cierre_corozal",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "kora_private",
+      "columns": [
+        {
+          "acl": null,
+          "name": "cierre_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_corregido",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_original",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "audit_log",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "usuario",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "accion",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tabla",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registro_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "detalle",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "S",
+      "name": "audit_log_id_seq",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "last_value",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "log_cnt",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "is_called",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "caja_ciclo_config",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha_inicio",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "caja_cortes",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_contado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "caja_diaria",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_contado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_esperado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "apertura",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "arrastre_movimientos_incorporado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "conceptos_gasto",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "preautorizado",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "credit_portfolio_obligations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "credito_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "creditos",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "venta_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "financiera",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cuota_inicial",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor_esperado_financiera",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor_real_financiera",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "contrato_ref",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "plazo_meses",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado_conciliacion",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "conciliado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "importacion_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "medio_pago_complementario",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_pago_complementario",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "cuenta_corriente",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "concepto",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "usuario",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nota",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "S",
+      "name": "cuenta_corriente_id_seq",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "last_value",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "log_cnt",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "is_called",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": true,
+      "kind": "r",
+      "name": "facturas_proveedor",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "proveedor_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "numero",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "total",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "saldo",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "origen_registro",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo_compra",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha_vencimiento",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operacion_idempotency_key",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "gastos",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "concepto_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "importacion_detalle",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "credito_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "inventario_prueba",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cantidad",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "kora_incidents",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "incident_code",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "liquidation_operations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "liquidation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "plataforma",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "imei",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "origen_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "credito_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "movimientos",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "producto_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "unidad_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cantidad",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "costo",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "precio",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "reverso_de",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "usuario",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nota",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "movimientos_caja_tienda",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "creado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "autorizado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "idempotency_key",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "S",
+      "name": "movimientos_id_seq",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "last_value",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "log_cnt",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "is_called",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "movimientos_tesoreria_central",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_fondos",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "soporte_path",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "observacion",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "idempotency_key",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "origenes",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "pagos_proveedor",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "pagos_prueba",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "perfiles",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nombre",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "rol",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "periodos",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha_inicio",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha_fin",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "proveedores",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nombre",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "proveedores_ajustes_detalle",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "retail_b2b_compensations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "liquidation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "store_code",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "platform",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "imei",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "compensation_value",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "initial_value",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "reversed_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "retenciones_factura_proveedor",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "base",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tarifa_porcentaje",
+          "type": "numeric(8,5)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "descontada_al_registrar",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_por",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "saldo_ajustes_auditoria",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "movimiento_caja_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "caja_objetivo",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "caja_base",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "unidades",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "imei",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "producto_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_actual",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "costo_remision",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "venta_ajustes_administrativos",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "venta_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valores_anteriores",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valores_nuevos",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "usuario_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "venta_items",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "venta_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "producto_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "unidad_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cantidad",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "precio_venta",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "costo_congelado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "ventas",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "consecutivo",
+          "type": "bigint",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tienda_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "vendedor",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "total",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "anulada",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nota",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "efectivo_devuelto_registrado",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    }
+  ],
+  "role_config": [],
+  "schema_grants": [
+    {
+      "acl": null,
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "CREATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "kora_private"
+    },
+    {
+      "acl": "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner}",
+      "owner": "pg_database_owner",
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "CREATE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public"
+    }
+  ],
+  "server_version": "18.3"
+}

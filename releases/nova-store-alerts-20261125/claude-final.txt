@@ -1,0 +1,36 @@
+# Veredicto: NO APROBADO PARA PUBLICAR todavía. Faltan dos correcciones pequeñas.
+
+Revisé solo leyendo. No modifiqué nada, no consulté la base de datos y no leí credenciales. Los dos bundles candidatos pasan `node --check`.
+
+## Lo que está bien
+
+- **Función SQL y migración:** la migración coincide byte a byte con `review-after.sql`. Respecto a `review-before.sql` solo se agrega una línea, y va después de `REVIEW_NOT_ALLOWED`.
+  - Se conserva `SET search_path TO ''`, no aparece `SECURITY DEFINER` y no hay cambios de permisos.
+  - El caso con `reasons` igual a `null` no provoca error: el `?|` sobre un `null` de JSON devuelve falso, y la prueba con PGlite lo cubre.
+  - Rechazar un caso con mora sigue funcionando.
+- **El error llega bien a la pantalla:** el Worker deja pasar el error de la RPC (`:77881`) y lo devuelve como 409 (`:78360`). La pantalla de supervisión lo traduce a un mensaje.
+- **Reglas de evaluación:** no cambian. La prueba 8 confirma que los motivos se guardan como texto.
+- **Privacidad ante la tienda:** `commercialStoreWorkflow` vacía `checks` y elimina los pendientes de plataforma. El único dato que usa de la verificación es `historyRequired`, y solo para elegir entre dos textos neutros.
+  - No aparecen mora, importes ni nombres de plataformas.
+  - El registro del cliente filtra por `kind` y no por la etiqueta visible. El campo `terminal` sí existe en `registrationProgress` (`clientes:7323/7349/7351/7352`).
+- **Se mantiene lo demás:** los mensajes de aprobado y rechazado no cambian. Al cerrar el caso, `pending` queda en 0. La lista y el detalle usan la misma proyección. No se tocó cómo se ocultan los aliados cerrados.
+- **Observabilidad:** el campo `redact_query_string: false` en `wrangler.nova.jsonc:48` ya estaba antes y este cambio no lo toca.
+
+## Correcciones obligatorias
+
+1. **El Worker y la pantalla de supervisión agregan `consent_revoked` a la lista de motivos que impiden aprobar.** Pasa en `build.py`, en el control del Worker en `:78312` y en el `restrictive` de la pantalla de supervisión.
+   - Cuando se revoca el consentimiento, `:78043` reemplaza los motivos por `["consent_revoked"]`. Con este cambio, el Worker corta antes de llegar a la RPC y la API devuelve `RESTRICTED_CONDITIONS` («condiciones restrictivas») en vez de `CONSENT_REVOKED` («autorización revocada»).
+   - Esto incumple la condición 6 del plan aprobado («con consentimiento revocado sigue devolviendo `CONSENT_REVOKED`») y también tu premisa de que los motivos que bloquean no cambian. La prueba con PGlite solo comprueba la parte SQL, así que no detecta lo que pasa en la API.
+   - **Corrección:** quitar `consent_revoked` de las dos listas, la del Worker y la de la pantalla. Así coinciden exactamente con la SQL (`zero_payments`, `more_than_two_overdue`, `overdue_with_less_than_four_paid`). La SQL ya frena ese caso con `CONSENT_REVOKED` o `REVIEW_NOT_ALLOWED`.
+   - Agregar una prueba que confirme que el control del Worker no reacciona a `consent_revoked`.
+   - Aparte, para que lo tengas claro: con el control del Worker, aprobar un caso con `zero_payments` ahora devuelve en la API `RESTRICTED_CONDITIONS` (409), no `REVIEW_NOT_ALLOWED`. En la SQL el error es el mismo de antes. Me parece aceptable, pero tienes que aceptarlo de forma explícita.
+
+2. **Se elimina un aviso que no se pidió quitar.** El nuevo `renderCaseNotice` de la pantalla de la tienda borra el aviso «NOVA actualizó N solicitudes», que avisaba cuando cambiaba la revisión de un caso.
+   - Con eso, la tienda ya no ve en la lista que un caso pasó a «Puedes continuar» o a rechazado. Es un cambio de comportamiento que no estaba en el plan (regla 3 de CLAUDE.md).
+   - **Corrección:** conservar el prefijo `changed` sobre el aviso nuevo, o confirmar de forma explícita que quitarlo es intencional.
+
+## Menor, no bloquea
+
+- La prueba 7 verifica la posición del control del Worker con un regex sobre el código, no ejecutándolo. Es aceptable, pero la prueba nueva del punto 1 debería ejecutar la lógica del control.
+
+Con los puntos 1 y 2 corregidos, volviendo a correr `build.py` y `tests.mjs`, y manteniendo la comparación del config antes y después de publicar, queda **APROBADO PARA PUBLICAR**.

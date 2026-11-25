@@ -1,0 +1,46 @@
+# Hallazgos: aún no está APROBADO PARA IMPLEMENTAR
+
+El diagnóstico es correcto en lo que pude comprobar. Hay cuatro puntos que conviene cerrar antes de implementar, porque así como está la propuesta podría cambiar criterios sin quererlo o dejar un hueco en el bloqueo. Revisé solo leyendo; no consulté la base de datos ni ningún secreto.
+
+## Lo que se confirma
+
+- **Pantalla de la tienda** (`creditek-nova/index.mjs:77737-77748`): `commercialStoreWorkflow` solo deja pasar pendientes de tipo `reference` y `photo`. La alerta `attention` solo se activa con tareas de la tienda o referencias en espera. En `review` el título queda en "Solicitud en revisión" y no explica nada más.
+- **Lista y detalle**: los dos usan `storeResult` (`:78263` y `:78297`). La lista cuenta `workflow.notice.attention` (`retail.html:62`). Por eso un solo cambio en `commercialStoreWorkflow` sirve para ambas vistas.
+- **Aprobación manual** (`:78306`): solo frena cuando `platformsReady === false`. No revisa `decision.reasons`.
+- **Reglas de evaluación** (`:77518-77547`): coinciden con lo que describe el diagnóstico.
+- **Refresco cada 15 s** (`retail.html:269-295`): existe. Vuelve a dibujar el estado cuando cambia `workflow`, así que la alerta nueva aparecerá sola.
+
+## Puntos a resolver
+
+1. **Definir exactamente qué motivos impiden aprobar.** La frase "motivos restrictivos ya definidos" es ambigua. El bloqueo duro debe ser exactamente `more_than_two_overdue`, `overdue_with_less_than_four_paid` y `zero_payments` (este último por defensa, porque ya llega como rechazo). Además se conserva el bloqueo actual de `platformsReady`.
+   - `incomplete_payment_history` y `platform_result_verification_required` **no** deben bloquear la aprobación. Son justamente lo que Andrea revisa (`historyRequired`, `:77703`, `:78037`).
+   - Si se bloquearan, los casos en revisión quedarían rechazados en la práctica, y eso sí cambia el criterio.
+
+2. **Hay un camino por el que se pierden los motivos de mora.** Cuando se revoca el consentimiento, la línea `:78039` reemplaza todos los motivos por `["consent_revoked"]`. Un caso con mora y consentimiento revocado ya no mostraría la mora, y un bloqueo basado en `reasons` lo dejaría pasar. Hay que hacer una de dos cosas:
+   - conservar los motivos de mora al revocar, o
+   - impedir también aprobar con `consent_revoked`.
+
+   Necesito tu decisión aquí. Además, el bloqueo de `platformsReady` solo frena cuando el valor es `false`. En casos con la política anterior el valor no existe, y la aprobación pasa. El bloqueo nuevo no debe depender de ese campo.
+
+3. **La función SQL no se ha podido verificar.** No hay ningún `.sql` con `nova_retail_review` en `/Users/oscarm/Creditek` ni en `/private/tmp`. La afirmación de que la base de datos tampoco impide aprobar no está comprobada. Como primer paso hay que guardar en el repo la definición actual de la función, tomada del snapshot de producción. Después, el cambio debe:
+   - leer los motivos de la fila bloqueada (`FOR UPDATE`) en la misma transacción, comparando contra `p_revision`;
+   - no confiar en lo que reconcilió el Worker antes, para evitar una carrera entre la comprobación y el uso.
+
+4. **Proteger la privacidad del cliente frente a la tienda.** La propuesta dice "sin importes ni nombres de plataformas". También debe prohibir revelar la mora, es decir, información de crédito del cliente.
+   - Para motivos de mora, el texto a la tienda debe ser neutro, por ejemplo "Creditek está revisando la solicitud". No debe decir que el cliente tiene cuotas vencidas ni que hay que validar su historial.
+   - Se puede mencionar la validación del historial solo para `historyRequired`, sin detalles.
+   - La pantalla de supervisión conserva toda la evidencia.
+
+## Ajustes menores (no bloquean)
+
+- `commercialRegistrationProgress` (`creditek-clientes/index.mjs:7314`) oculta las plataformas comparando el texto visible (`'Aló','Krediya','PayJoy'`). El código nuevo debería filtrar por un campo `kind` y no por la etiqueta.
+- "No puedes continuar por ahora" debe verse claramente distinto del rechazo definitivo ("No puedes continuar", `:77740` y `:77760`), para que la tienda no los confunda.
+- Al cerrar o entregar el caso hay que mantener `pending.length=0` (`:77706`), para que la alerta no siga apareciendo en casos ya terminados.
+- Faltan algunos casos en las pruebas aisladas:
+  - mora junto con consentimiento revocado;
+  - política anterior, donde `platformsReady` no existe;
+  - carrera de revisiones en la RPC;
+  - que la lista y el detalle den el mismo `notice`;
+  - que el registro del cliente no muestre motivos.
+
+Si resuelves los puntos 1 a 4 (sobre todo la decisión del punto 2) y el resto se mantiene como lo planteaste (sin decidir el caso real, que sigue en revisión, y con snapshot, commit y revisión antes de publicar), queda **APROBADO PARA IMPLEMENTAR**.

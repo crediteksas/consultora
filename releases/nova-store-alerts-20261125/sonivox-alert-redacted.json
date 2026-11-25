@@ -1,0 +1,38 @@
+{
+  "state": "review",
+  "canProcess": false,
+  "workflow": {
+    "schema": "nova-store-progress-v1",
+    "checks": [],
+    "pending": [
+      {
+        "kind": "reference",
+        "type": "family",
+        "label": "Referencia familiar",
+        "owner": "Creditek",
+        "action": null,
+        "detail": "El equipo de Creditek debe revisar la respuesta de esta referencia y confirmar que corresponde al tipo solicitado. Conservamos la respuesta recibida."
+      },
+      {
+        "kind": "validation",
+        "label": "Validación pendiente de Creditek",
+        "owner": "Creditek",
+        "action": null,
+        "detail": "El equipo de Creditek debe completar la validación del historial recibido. La tienda no debe registrar al cliente de nuevo."
+      }
+    ],
+    "nextAction": {
+      "owner": "Creditek",
+      "title": "No puedes continuar por ahora",
+      "detail": "Revisa los pendientes y el responsable indicado abajo. Espera a que NOVA muestre «Puedes continuar»; no registres al cliente de nuevo."
+    },
+    "received": 0,
+    "total": 0,
+    "renewalRequired": false,
+    "notice": {
+      "attention": true,
+      "title": "No puedes continuar por ahora",
+      "detail": "Revisa los pendientes y el responsable indicado abajo. Espera a que NOVA muestre «Puedes continuar»; no registres al cliente de nuevo."
+    }
+  }
+}

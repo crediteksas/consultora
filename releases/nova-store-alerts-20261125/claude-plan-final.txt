@@ -1,0 +1,35 @@
+# Veredicto: APROBADO PARA IMPLEMENTAR, con condiciones menores
+
+Revisé solo leyendo. No consulté la base de datos y no guardé nada. La resolución cierra los puntos 1 a 4. Lo comprobé contra la función SQL de producción que me pasaste:
+
+- **Punto 1 (motivos que impiden aprobar):** queda acotado a `more_than_two_overdue`, `overdue_with_less_than_four_paid` y `zero_payments`. `historyRequired` y `platform_result_verification_required` no bloquean, y no se agregan umbrales nuevos.
+- **Punto 2 (mora con consentimiento revocado):** ya lo cubre la función SQL actual, por tres caminos independientes:
+  - `nova_retail_consent_current() is not true` lanza `CONSENT_REVOKED`.
+  - `s.revoked_at is not null` lanza `REVIEW_NOT_ALLOWED`.
+  - `reasons ?| [...'consent_revoked'...]` lanza `REVIEW_NOT_ALLOWED`.
+
+  Que el Worker reemplace los motivos por `["consent_revoked"]` (`:78039`) no abre ninguna vía para aprobar. Basta con no tocar esos tres controles. El bloqueo nuevo tampoco depende de `platformsReady`, así que los casos de la política anterior quedan cubiertos.
+- **Punto 3 (función SQL):** al revisar el motivo sobre la fila bloqueada con `FOR UPDATE`, después de `REVISION_CHANGED`, no hay carrera entre la comprobación y el uso.
+- **Punto 4 (privacidad ante la tienda):** el aviso a la tienda es neutro y genérico. No menciona mora, plataformas ni importes.
+
+## Condiciones al implementar
+
+1. **Dónde va la línea en la SQL.** Ponla después de la línea `REVIEW_NOT_ALLOWED`, no inmediatamente después de `REVISION_CHANGED`.
+   - `zero_payments` ya queda frenado por `REVIEW_NOT_ALLOWED`, tanto para aprobar como para rechazar. Si la línea nueva va antes, cambia el código de error que hoy devuelve ese caso.
+   - Con esta posición los errores actuales quedan iguales, y la línea nueva solo afecta a los dos motivos de mora:
+   ```sql
+   if p_action='approve' and coalesce(r.decision->'reasons','[]'::jsonb) ?| array['more_than_two_overdue','overdue_with_less_than_four_paid','zero_payments'] then raise exception 'OVERDUE_APPROVAL_BLOCKED' using errcode='P0001'; end if;
+   ```
+   - El bloqueo es solo para aprobar. Rechazar manualmente un caso con mora tiene que seguir siendo posible. Si no, esos casos se quedarían para siempre en `review`.
+2. **Formato de los motivos.** `?|` solo encuentra el motivo si `reasons` es una lista de textos. El control existente ya da eso por hecho, pero agrega una prueba que confirme que el Worker guarda los motivos de mora como texto y no como objetos.
+3. **El Worker debe reconocer el error nuevo.** Que traduzca el código nuevo a un mensaje para supervisión y no lo deje como un error 500 genérico.
+4. **Comparar antes y después.** Después de publicar, obtén la definición desde `pg_get_functiondef` y compárala con `review-before.sql`. La única diferencia debe ser la línea nueva. Así confirmas que se conservan `SET search_path TO ''` y que la función no pasa a `SECURITY DEFINER`. `CREATE OR REPLACE` mantiene el dueño y los permisos.
+5. **Dónde guardar la definición.** `/private/tmp/nova-alerts-20261125` no es un repositorio git. Copia `review-before.sql` y la migración nueva a `/Users/oscarm/Creditek` y haz el commit antes de publicar, como se acordó.
+6. **Pruebas.** Además de las que ya listaba la revisión anterior:
+   - Aprobar con mora devuelve `OVERDUE_APPROVAL_BLOCKED`.
+   - Rechazar con mora funciona.
+   - Aprobar con `zero_payments` sigue devolviendo `REVIEW_NOT_ALLOWED`.
+   - Con consentimiento revocado sigue devolviendo `CONSENT_REVOKED`.
+   - Un caso con `reasons` ausente o `null` no provoca un error de SQL.
+
+No veo riesgos sin resolver aparte de estos. El caso real sigue en revisión y no se decide.

@@ -562,7 +562,11 @@
           : i.tipo.replaceAll('_',' ');
         groups.set(key, (groups.get(key) || 0) + 1);
       });
-      $('workflowError').innerHTML = (administrative.length ? `<div class="batch-followup"><strong>${administrative.length} pendientes administrativos · no detienen el cálculo</strong><p>Liquida el lote. Completa cliente, ejecutivo y cuenta en Tesorería; el bono del ejecutivo y la utilidad serán provisionales si falta su asignación.</p><a class="btn secondary" href="aliados-tesoreria.html?vista=pagos&amp;lote=${encodeURIComponent(id)}">Completar en Tesorería</a></div>` : '') + (blocking.length
+      const stageMessage = selected.estado === 'calculada'
+        ? '<p>Pendiente de revisión administrativa: Maite debe marcar la liquidación como revisada antes de que Gerencia pueda aprobarla.</p>'
+        : selected.estado === 'revisada' && operator.capacidad === 'aprobador'
+          ? '<p>Lista para aprobación de Gerencia. Después de aprobarla se crearán los destinos de Tesorería.</p>' : '';
+      $('workflowError').innerHTML = stageMessage + (administrative.length ? `<div class="batch-followup"><strong>${administrative.length} pendientes administrativos · no detienen el cálculo</strong><p>Liquida el lote. Completa cliente, ejecutivo y cuenta en Tesorería; el bono del ejecutivo y la utilidad serán provisionales si falta su asignación.</p><a class="btn secondary" href="aliados-tesoreria.html?vista=pagos&amp;lote=${encodeURIComponent(id)}">Completar en Tesorería</a></div>` : '') + (blocking.length
         ? '<strong>Datos indispensables que sí detienen el lote</strong><ul>' + [...groups].map(([label,count]) => `<li>${count} operaciones: ${esc(label)}</li>`).join('') + '</ul><button type="button" class="btn secondary" id="openBatchIssues">Corregir datos indispensables</button>'
         : '') + (followup.length
         ? `<div class="batch-followup"><strong>${followup.length} anotaciones en seguimiento</strong><p>No requieren aprobación individual ni cambian PAGAMOS.</p><button class="btn secondary" id="openFollowupReport">Ver informe · Gestión y Gerencia</button></div>`

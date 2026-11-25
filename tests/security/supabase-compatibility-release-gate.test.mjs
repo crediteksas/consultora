@@ -159,3 +159,15 @@ test('release gate: additional delta cannot omit rebuild, weaken grants, duplica
   await assert.rejects(verifySupabasePermissionRelease(f),/Both isolated|API grants differ|multiple releases|Overlapping release|Nested release|Evidence changed/);
  });
 });
+
+test('release gate: a combined run preserves and verifies the prior proof and all its objects',async()=>withFixture({},async f=>{
+ const {extra,secondSql}=await additionalFixture(f);
+ const previous=f.evidence.additional_releases[0];
+ const thirdSql='supabase/migrations/20990103000000_synthetic.sql';
+ const thirdSource=source.replaceAll('fixture_gate','fixture_second');await f.put(thirdSql,thirdSource);
+ const combined=structuredClone(extra);combined.supersedes=[structuredClone(previous)];combined.migration_sha256[thirdSql]=hash(thirdSource);
+ const save=async()=>{const body=JSON.stringify(combined),file='tests/fixtures/gate/combined-release.json';await f.put(file,body);f.evidence.additional_releases=[previous,{path:file,sha256:hash(body)}];await f.putJson('config/kora-permission-release.json',f.evidence);};
+ await save();assert.equal((await verifySupabasePermissionRelease(f)).ok,true);
+ delete combined.migration_sha256[secondSql];await save();await assert.rejects(verifySupabasePermissionRelease(f),/omitted superseded migration/);
+ combined.migration_sha256[secondSql]=hash(thirdSource);combined.supersedes[0].sha256='0'.repeat(64);await save();await assert.rejects(verifySupabasePermissionRelease(f),/earlier pinned independent/);
+}));

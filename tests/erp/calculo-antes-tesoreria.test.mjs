@@ -355,3 +355,85 @@ test('incorporación automática no aumenta órdenes autorizadas, programadas ni
   await db.exec('rollback');
  }
 });
+
+test('nuevas liquidaciones redondean a peso y conservan los lotes aprobados',async()=>{
+ const source=await read('../../supabase/migrations/20261125215257_liquidaciones_alo_payjoy_pesos_enteros.sql');
+ const start=source.indexOf('CREATE OR REPLACE FUNCTION liquidaciones_api_private.calcular_liquidacion_sin_datos_pago');
+ const end=source.indexOf('$function$;',start)+'$function$;'.length;
+ assert.ok(start>=0&&end>start);
+ await db.exec('create schema if not exists liquidaciones_api_private');
+ await db.exec(source.slice(start,end));
+ const historical=(await db.query("select to_jsonb(l) data from liquidations l where frozen_at is not null order by id")).rows;
+ for(const [platform,pct] of [['payjoy',.76],['alo',.76]]){
+  if(!(await db.query('select count(*)::int n from settlement_policy_versions where plataforma=$1 and tipo_establecimiento=$2',[platform,'propia'])).rows[0].n){
+   await db.query("insert into settlement_policy_versions(plataforma,tipo_establecimiento,estado,vigente_desde,porcentaje,base_field,formula_code) values($1,'propia','aprobada','2026-08-05',$2,'valor_comercial','VALOR_COMERCIAL_X_PORCENTAJE_MENOS_INICIAL')",[platform,pct]);
+  }
+  const lot=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values($1,'importada','2026-11-24') returning id",[platform])).rows[0].id;
+  await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,$2,'2026-11-24T17:00:00Z','CK-09','CK-09','propia',101,101,0,true,'{}')",[lot,platform]);
+  await db.query('select liquidaciones_api_private.calcular_liquidacion_sin_datos_pago($1)',[lot]);
+  const o=(await db.query('select pagamos,pago_neto_tienda,utilidad_creditek_tienda,policy_snapshot from liquidation_operations where liquidation_id=$1',[lot])).rows[0];
+  assert.deepEqual([o.pagamos,o.pago_neto_tienda,o.utilidad_creditek_tienda].map(Number),[77,77,24]);
+  assert.equal(o.policy_snapshot.redondeo_peso_entero,true);
+ }
+ assert.deepEqual((await db.query("select to_jsonb(l) data from liquidations l where frozen_at is not null order by id")).rows,historical);
+ for(const [pct,expected] of [[.5049,50],[.505,51]]){
+  await db.exec('begin');
+  await db.query("update settlement_policy_versions set porcentaje=$1 where plataforma='payjoy' and tipo_establecimiento='propia'",[pct]);
+  const trial=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('payjoy','importada','2026-11-24') returning id")).rows[0].id;
+  await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'payjoy','2026-11-24T17:00:00Z','CK-09','CK-09','propia',100,100,0,true,'{}')",[trial]);
+  await db.query('select liquidaciones_api_private.calcular_liquidacion_sin_datos_pago($1)',[trial]);
+  assert.equal(Number((await db.query('select pagamos from liquidation_operations where liquidation_id=$1',[trial])).rows[0].pagamos),expected);
+  await db.exec('rollback');
+ }
+ const legacy=(await db.query("insert into liquidations(plataforma,estado,fecha_corte) values('payjoy','importada','2026-11-24') returning id")).rows[0].id;
+ await db.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,establishment_name,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,reconocida,normalized_data) values($1,'payjoy','2026-11-24T17:00:00Z','CK-09','CK-09','propia',100.49,100.49,0,true,'{}')",[legacy]);
+ await assert.rejects(()=>db.query('select liquidaciones_api_private.calcular_liquidacion_sin_datos_pago($1)',[legacy]),/requiere revisión y ajuste auditado/);
+ assert.equal(Number((await db.query('select monto_credito from liquidation_operations where liquidation_id=$1',[legacy])).rows[0].monto_credito),100.49);
+ assert.equal((await db.query('select estado from liquidations where id=$1',[legacy])).rows[0].estado,'importada');
+});
+
+test('importaciones nuevas redondean 49 y 50 centavos y conservan los datos originales',async()=>{
+ const source=await read('../../supabase/migrations/20261125215257_liquidaciones_alo_payjoy_pesos_enteros.sql');
+ const start=source.indexOf('CREATE OR REPLACE FUNCTION public.aliados_importar_liquidacion');
+ const end=source.indexOf('$function$;',start)+'$function$;'.length;
+ assert.ok(start>=0&&end>start);
+ await db.exec(source.slice(start,end));
+ for(const [index,platform] of ['alo','payjoy'].entries()){
+  const ops=[.49,.50].map((c,i)=>({externalId:`redondeo-${platform}-${i}`,sourceKey:`${platform}|redondeo-${i}`,fecha:'2026-11-24T17:00:00Z',establecimientoNombre:'Prueba',montoCredito:100+c,montoBase:100+c,inicial:10+c,accesorios:20+c,reconocida:true,tipoEstablecimiento:'aliado'}));
+  const key=`20000000-0000-4000-8000-00000000000${index+1}`;
+  const id=(await db.query(`select aliados_importar_liquidacion($1,'redondeo.xlsx',$2::text,'test',1,'xlsx','2026-11-24','2026-11-24','2026-11-24','[]'::jsonb,$3::jsonb,'[]'::jsonb,$2::text::uuid) id`,[platform,key,JSON.stringify(ops)])).rows[0].id;
+  const rows=(await db.query('select monto_credito,monto_base,inicial,accesorios,normalized_data from liquidation_operations where liquidation_id=$1 order by external_id',[id])).rows;
+  assert.deepEqual(rows.map(x=>[x.monto_credito,x.monto_base,x.inicial,x.accesorios].map(Number)),[[100,100,10,20],[101,101,11,21]]);
+  assert.deepEqual(rows.map(x=>x.normalized_data.montoCredito),[100.49,100.5]);
+ }
+});
+
+test('Tesorería usa importes congelados en pesos para nuevos lotes y conserva el cálculo anterior',async()=>{
+ const sql=await read('../../supabase/migrations/20261125215257_liquidaciones_alo_payjoy_pesos_enteros.sql');
+ const start=sql.indexOf('CREATE OR REPLACE FUNCTION public.tesoreria_generar_destinos_liquidacion');
+ const isolated=await PGlite.create();
+ try {
+  await isolated.exec(`create schema auth; create schema kora_private;
+   create function auth.uid() returns uuid language sql as $$select '${actor}'::uuid$$;
+   create function tiene_capacidad_aliados(text) returns boolean language sql as $$select true$$;`);
+  await isolated.exec(fixture);
+  await isolated.exec(`alter table liquidation_domain_events add unique(idempotency_key);
+   create table kora_private.bonos_diferidos(operation_id uuid,completed_at timestamptz);
+   create table cuenta_corriente(tienda_codigo text,tipo text,monto numeric);
+   create table treasury_unit_balances(unit text,balance numeric);
+   create table treasury_movements(unit text,direction text,type text,concept text,amount numeric,movement_date date,liquidation_id uuid,balance_before numeric,balance_after numeric,status text,requested_by uuid,idempotency_key text);
+   create function tesoreria_aplicar_saldo(text,text,numeric,text) returns jsonb language sql as $$select jsonb_build_object('before',0,'after',$3)$$;
+   create table retail_b2b_compensations(id uuid default gen_random_uuid(),liquidation_id uuid,operation_id uuid unique,store_code text,platform text,cutoff_date date,imei text,commercial_value numeric,initial_value numeric,policy_percentage numeric,compensation_value numeric,outsourcing_commission numeric,account_balance_before numeric,account_balance_after numeric,created_by uuid);
+   create table liquidation_treasury_destinations(liquidation_id uuid,received_from_platform numeric,total_allies numeric,total_executives numeric,total_b2b_compensations numeric,total_outsourcing_commission numeric,generated_by uuid);`);
+  await isolated.exec(sql.slice(start));
+  for(const fresh of [true,false]){
+   const lot=(await isolated.query("insert into liquidations(plataforma,estado,fecha_corte,frozen_at) values('payjoy','aprobada','2026-11-24',now()) returning id")).rows[0].id;
+   await isolated.query("insert into liquidation_operations(liquidation_id,plataforma,operation_at,origen_codigo,tipo_establecimiento,monto_credito,monto_base,inicial,valor_comercial,porcentaje_politica,policy_snapshot,pagamos,utilidad_creditek,reconocida) values($1,'payjoy',now(),'T-TEST','propia',101,101,0,101,.76,$2::jsonb,77,24,true)",[lot,JSON.stringify(fresh?{redondeo_peso_entero:true}:{})]);
+   await isolated.query('select public.tesoreria_generar_destinos_liquidacion($1)',[lot]);
+   const comp=(await isolated.query('select compensation_value,outsourcing_commission from retail_b2b_compensations where liquidation_id=$1',[lot])).rows[0];
+   assert.deepEqual([comp.compensation_value,comp.outsourcing_commission].map(Number),fresh?[77,24]:[76.76,24.24]);
+   await isolated.query('select public.tesoreria_generar_destinos_liquidacion($1)',[lot]);
+   assert.equal((await isolated.query('select count(*)::int n from retail_b2b_compensations where liquidation_id=$1',[lot])).rows[0].n,1);
+  }
+ } finally { await isolated.close(); }
+});

@@ -83,24 +83,39 @@ export async function verifySupabasePermissionRelease({root}) {
   // Independent reviewed deltas retain their own isolated catalogs. Never merge
   // catalogs from separate databases or weaken coverage of the older batch.
   if(evidence.prior_native_release)await verifyPriorNativeEvidence({root,ref:evidence.prior_native_release,release:evidence});
-  const releases=[evidence];
+  const releases=[{ref:{path:'config/kora-permission-release.json'},evidence}];
   if(evidence.additional_releases!==undefined && !Array.isArray(evidence.additional_releases))throw Error('Additional releases must be pinned evidence');
   for(const ref of evidence.additional_releases || []) {
     const extra=await pinned(root,ref);
     if(extra.additional_releases!==undefined)throw Error('Nested release evidence is not supported');
-    releases.push(extra);
+    releases.push({ref,evidence:extra});
   }
-  const covered={};
-  for(const release of releases) {
+  const byPath=new Map(releases.map(x=>[x.ref.path,x]));
+  if(byPath.size!==releases.length)throw Error('Duplicate release evidence path');
+  const supersedes=(later,earlier)=>Array.isArray(later.evidence.supersedes)&&later.evidence.supersedes.some(x=>x.path===earlier.ref.path&&x.sha256===earlier.ref.sha256);
+  for(const item of releases) {
+    if(item.evidence.supersedes!==undefined&&!Array.isArray(item.evidence.supersedes))throw Error('Invalid superseded evidence');
+    for(const ref of item.evidence.supersedes||[]) {
+      const old=byPath.get(ref.path);
+      if(!old||old===item||old.ref.sha256!==ref.sha256||releases.indexOf(old)>=releases.indexOf(item)||old.evidence.supersedes?.length)throw Error('Superseded release must be an earlier pinned independent release');
+      for(const [file,hash] of Object.entries(old.evidence.migration_sha256||{}))if(item.evidence.migration_sha256?.[file]!==hash)throw Error('Combined release omitted superseded migration');
+    }
+  }
+  const covered={},coverageOwner=new Map();
+  for(const item of releases) {
+    const release=item.evidence;
     if(release.schema_version!==1 || release.project!=='kora' || !release.migration_sha256 || Array.isArray(release.migration_sha256) || !Object.keys(release.migration_sha256).length)throw Error('Invalid permission release evidence');
     for(const [file,hash] of Object.entries(release.migration_sha256)) {
-      if(Object.hasOwn(covered,file))throw Error('Migration covered by multiple releases');
+      if(Object.hasOwn(covered,file)&&(!supersedes(item,coverageOwner.get(file))||covered[file]!==hash))throw Error('Migration covered by multiple releases');
       covered[file]=hash;
+      coverageOwner.set(file,item);
     }
   }
   if(!equal(changed,covered))throw Error('Permission evidence does not match every changed migration');
   const checked=[],contracted=new Map();
-  for(const evidence of releases) {
+  const contractKeys=new Map();
+  for(const item of releases) {
+  const evidence=item.evidence;
   if(!Array.isArray(evidence.isolation_tests) || !evidence.isolation_tests.length) throw Error('Negative/isolation test sources are required');
   const testPaths = new Set();
   for(const item of evidence.isolation_tests) {
@@ -124,8 +139,10 @@ export async function verifySupabasePermissionRelease({root}) {
     if(!Array.isArray(created))throw Error('Created/recreated inventory must be explicit');
     for(const o of contract.objects) {
       const objectKey=scenario+':'+key(o);
-      if(contracted.has(objectKey))throw Error('Overlapping release objects require a combined isolated run: '+key(o));
-      contracted.set(objectKey,true);
+      if(contracted.has(objectKey)&&!supersedes(item,contracted.get(objectKey)))throw Error('Overlapping release objects require a combined isolated run: '+key(o));
+      contracted.set(objectKey,item);
+      if(!contractKeys.has(item.ref.path))contractKeys.set(item.ref.path,new Set());
+      contractKeys.get(item.ref.path).add(objectKey);
     }
     const objects=[...after.relations,...after.functions.map(f=>({...f,kind:'function'}))];
     for(const declaration of declarations) {
@@ -140,6 +157,7 @@ export async function verifySupabasePermissionRelease({root}) {
     checked.push({scenario,checked_objects:result.checked_objects});
   }
   }
+  for(const item of releases)for(const ref of item.evidence.supersedes||[])for(const objectKey of contractKeys.get(ref.path)||[])if(!contractKeys.get(item.ref.path)?.has(objectKey))throw Error('Combined release omitted superseded object: '+objectKey);
   return {ok:true,scope:'offline-release-permission-contract-only',changed_files:Object.keys(changed),checked,
     limitations:['Code review and full business/negative tests still required.','No production access was granted or database operation performed.','The historical hash baseline is not a full schema reconstruction certification.']};
 }

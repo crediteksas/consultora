@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Combined isolated Aló correction and whole-peso liquidation upgrade/rebuild; reduced fictitious fixture, not a production RLS certification.",
+  "supersedes": [
+    {
+      "path": "tests/fixtures/supabase-compat/alo-accesorios/release.json",
+      "sha256": "d2d67d0b708f6755a8bb7a9fef1c11d7c8820dc6e7f4b879355ad99b7f6228dd"
+    }
+  ],
+  "migration_sha256": {
+    "supabase/migrations/20261104174100_alo_total_accesorios_rectificacion.sql": "6a8efd01126c26f35cc70f522c13e97fe5010a2e93a7b3ab65946634b58d22a6",
+    "supabase/migrations/20261125215257_liquidaciones_alo_payjoy_pesos_enteros.sql": "f2ab099419136196fb236ff4faa5248a73ca3e9572ad7bb2f14972bad8c8dfad"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-liquidaciones-pesos.test.mjs",
+      "sha256": "9e260d54f4d4ef92f91152b79d64a5b0c48dc4104d0de096100dfbecd712fa8f"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/upgrade-before.json",
+      "sha256": "9863b388be45fdaf239bce6028cffbb78092d052ca863a6e08c5615a6ba88324"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/upgrade-after.json",
+      "sha256": "0ec5654192145a345ed6794aa002cf61c485b18da9eeedddbd19ba5246709a4d"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/upgrade-contract.json",
+      "sha256": "cff64c4139b3af0c1d3230a7363c275634abce8b7e2dae338108fec834916db4"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/upgrade-created.json",
+      "sha256": "a620c97a4d7effe4c5ebb0e02f496f7b7e06768be2b0dc279294f1317ed11862"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/rebuild-before.json",
+      "sha256": "969738a2cb68ccb403cdb3404c5324340115b882ffe507eaea4f47378bbad424"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/rebuild-after.json",
+      "sha256": "9db1fddd734d173f7454d8bad8070c1763346deda40a9a94e6599a52a2516403"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/rebuild-contract.json",
+      "sha256": "cff64c4139b3af0c1d3230a7363c275634abce8b7e2dae338108fec834916db4"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/rebuild-created.json",
+      "sha256": "a620c97a4d7effe4c5ebb0e02f496f7b7e06768be2b0dc279294f1317ed11862"
+    }
+  }
+}

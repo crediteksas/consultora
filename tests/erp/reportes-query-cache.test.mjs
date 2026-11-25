@@ -67,7 +67,7 @@ test('reportes comparte ventas, cartera e inventario durante cada refresco', asy
   assert.match(html, /<script src="reportes-query-cache\.js\?v=1\.0\.1"><\/script>/);
   assert.match(html, /const cache = crearCacheRefresco\(\)/);
   assert.match(html, /cargarKPIs\(cache\)/);
-  assert.match(html, /cargarVentas\(cache\)/);
+  assert.match(html, /cargarVentas\(cache, rentabilidad\)/);
   assert.match(html, /cargarCartera\(cache\)/);
   assert.match(html, /cargarInventario\(cache\)/);
   assert.match(html, /function exigirRespuestas\(\.\.\.respuestas\)/);

@@ -737,7 +737,7 @@
       <summary class="p-4 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">💰 1.1 Cuadro de ventas por tienda</h2>
-          <p class="text-xs text-gray-500">Ventas del período, agrupadas por tienda con comparación semanal.</p>
+          <p class="text-xs text-gray-500">Ventas del período, agrupadas por tienda; utilidad según el mismo rango de fechas.</p>
         </div>
         <span class="text-xs text-gray-400">▾</span>
       </summary>
@@ -753,12 +753,13 @@
                 <th class="px-3 py-2 text-right font-semibold">Ticket promedio</th>
                 <th class="px-3 py-2 text-right font-semibold">Celulares</th>
                 <th class="px-3 py-2 text-right font-semibold">Accesorios</th>
-                <th class="px-3 py-2 text-right font-semibold">vs sem. pasada</th>
+                <th class="px-3 py-2 text-right font-semibold solo-central">Utilidad del período</th>
               </tr>
             </thead>
             <tbody id="tbody-ventas"><tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando...</td></tr></tbody>
           </table>
         </div>
+        <p class="text-xs text-gray-500 mt-2 solo-central" data-kora-report-note>Utilidad del período: ventas menos costo de mercancía, gastos aprobados y bajas de inventario de cada tienda. Los gastos generales no distribuidos se muestran aparte en Rentabilidad por tienda. Si falta un costo, aparece «Por confirmar».</p>
       </div>
     </details>
   </section>
@@ -1436,15 +1437,25 @@ async function cargarKPIs(cache) {
 // ============================================================================
 // 1.1 CUADRO DE VENTAS POR TIENDA
 // ============================================================================
-async function cargarVentas(cache) {
-  const { data, error } = await cache.obtener('ventas');
-  if (error) { document.getElementById('tbody-ventas').innerHTML = `<tr><td colspan="7" class="text-red-600 py-4 text-center">${esc(error.message)}</td></tr>`; return; }
+async function cargarVentas(cache, rentabilidad) {
+  const tbody = document.getElementById('tbody-ventas');
+  const columnas = esCentral() ? 7 : 6;
+  tbody.innerHTML = `<tr><td colspan="${columnas}" class="text-center py-6 text-gray-400">Cargando...</td></tr>`;
+  let respuesta, utilidadPorTienda;
+  try {
+    [respuesta, utilidadPorTienda] = await Promise.all([cache.obtener('ventas'), rentabilidad]);
+    exigirRespuestas(respuesta);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="${columnas}" class="text-red-600 py-4 text-center">No se pudo completar la consulta: ${esc(error.message)}</td></tr>`;
+    throw error;
+  }
+  const data = respuesta.data;
 
   // Agrupar por tienda
   const porTienda = {};
   (data || []).forEach(v => {
     const cod = v.tienda_codigo;
-    if (!porTienda[cod]) porTienda[cod] = { nombre: v.origen?.nombre || cod, ventas: 0, total: 0, celulares: 0, accesorios: 0 };
+    if (!porTienda[cod]) porTienda[cod] = { codigo: cod, nombre: v.origen?.nombre || cod, ventas: 0, total: 0, celulares: 0, accesorios: 0 };
     porTienda[cod].ventas += 1;
     porTienda[cod].total += Number(v.total || 0);
     (v.venta_items || []).forEach(vi => {
@@ -1454,12 +1465,14 @@ async function cargarVentas(cache) {
   });
 
   const filas = Object.values(porTienda).sort((a, b) => b.total - a.total);
-  const tbody = document.getElementById('tbody-ventas');
   if (filas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">Sin ventas en este período.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${columnas}" class="text-center py-6 text-gray-400">Sin ventas en este período.</td></tr>`;
   } else {
     tbody.innerHTML = filas.map(t => {
       const ticket = t.ventas ? t.total / t.ventas : 0;
+      const utilidad = utilidadPorTienda?.get(t.codigo)?.utilidad;
+      const utilidadPendiente = utilidad == null || !Number.isFinite(utilidad);
+      const utilidadClase = utilidadPendiente ? 'text-gray-500' : utilidad >= 0 ? 'text-emerald-700' : 'text-red-700';
       return `<tr>
         <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
         <td class="px-3 py-2 text-right">${num(t.ventas)}</td>
@@ -1467,7 +1480,7 @@ async function cargarVentas(cache) {
         <td class="px-3 py-2 text-right font-mono">${money(ticket)}</td>
         <td class="px-3 py-2 text-right">${num(t.celulares)}</td>
         <td class="px-3 py-2 text-right">${num(t.accesorios)}</td>
-        <td class="px-3 py-2 text-right text-gray-400 text-xs">—</td>
+        ${esCentral() ? `<td class="px-3 py-2 text-right font-mono font-semibold solo-central ${utilidadClase}">${utilidadPendiente ? 'Por confirmar' : money(utilidad)}</td>` : ''}
       </tr>`;
     }).join('');
   }
@@ -1589,20 +1602,35 @@ async function cargarInventario(cache) {
 // ============================================================================
 async function cargarPresupuesto() {
   const hoy = new Date();
-  const mesActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(hoy) + '-01';
+  const hoyColombia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(hoy);
+  const mesActual = hoyColombia.slice(0, 7) + '-01';
   const [anioActual, mesActualParte] = mesActual.slice(0, 7).split('-').map(Number);
   const finMesActual = new Date(Date.UTC(anioActual, mesActualParte, 1)).toISOString().slice(0, 10);
-  const mesActualNum = hoy.getMonth() + 1; // 1-12
-  const [pRes, vRes, h2025Res] = await Promise.all([
-    sb.from('presupuestos').select('tienda_codigo, meta_venta_total, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').gte('fecha', mesActual).lt('fecha', finMesActual),
-    sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).neq('anulada', true),
-    sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum),
-  ]);
-  exigirRespuestas(pRes, vRes, h2025Res);
-
+  const mesActualNum = mesActualParte;
+  const filtro = [...tiendasFiltro];
+  const filtrar = query => filtro.length === 0 ? query : filtro.length === 1 ? query.eq('tienda_codigo', filtro[0]) : query.in('tienda_codigo', filtro);
   const msgEl = document.getElementById('msg-presupuestos');
+  msgEl.textContent = '';
+  msgEl.classList.add('hidden');
+  const tbody = document.getElementById('tbody-presupuesto');
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">Cargando presupuesto completo...</td></tr>';
+  let pRes, vRes, h2025Res;
+  try {
+    [pRes, vRes, h2025Res] = await Promise.all([
+      queryCache.todas(() => filtrar(sb.from('presupuestos').select('tienda_codigo, meta_venta_total, meta_creditos, meta_unidades_contado, origen:tienda_codigo(nombre)').gte('fecha', mesActual).lt('fecha', finMesActual).order('id'))),
+      queryCache.todas(() => filtrar(sb.from('ventas').select('tienda_codigo, total').gte('fecha', mesActual).lte('fecha', hoyColombia).neq('anulada', true).order('id'))),
+      queryCache.todas(() => filtrar(sb.from('historico_mensual').select('tienda_codigo, venta_total').eq('anio', 2025).eq('mes', mesActualNum).order('id'))),
+    ]);
+    exigirRespuestas(pRes, vRes, h2025Res);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-red-600 py-4 text-center">No se pudo completar el presupuesto: ${esc(error.message)}</td></tr>`;
+    throw error;
+  }
+
   if (!pRes.data || pRes.data.length === 0) {
-    msgEl.textContent = `No hay presupuestos definidos para el mes ${mesActual.slice(0, 7)}. Configúralos desde presupuestos.html.`;
+    msgEl.textContent = filtro.length
+      ? `No hay presupuesto configurado para las tiendas seleccionadas en ${mesActual.slice(0, 7)}.`
+      : `No hay presupuestos definidos para el mes ${mesActual.slice(0, 7)}. Configúralos desde presupuestos.html.`;
     msgEl.classList.remove('hidden');
     document.getElementById('tbody-presupuesto').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">Sin presupuesto configurado.</td></tr>';
     return;
@@ -1614,8 +1642,8 @@ async function cargarPresupuesto() {
   const hist2025 = {};
   (h2025Res.data || []).forEach(h => { hist2025[h.tienda_codigo] = Number(h.venta_total || 0); });
 
-  const diaMes = hoy.getDate();
-  const diasTotal = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const diaMes = Number(hoyColombia.slice(8, 10));
+  const diasTotal = new Date(Date.UTC(anioActual, mesActualParte, 0)).getUTCDate();
 
   const presupuestoPorTienda = Object.values(pRes.data.reduce((acc, p) => {
     if (!acc[p.tienda_codigo]) acc[p.tienda_codigo] = { ...p, meta_venta_total: 0, meta_creditos: 0, meta_unidades_contado: 0 };
@@ -1624,7 +1652,7 @@ async function cargarPresupuesto() {
     acc[p.tienda_codigo].meta_unidades_contado += Number(p.meta_unidades_contado || 0);
     return acc;
   }, {}));
-  const filas = presupuestoPorTienda.filter(p => tiendaVisible(p.tienda_codigo));
+  const filas = presupuestoPorTienda.filter(p => !filtro.length || filtro.includes(p.tienda_codigo));
   document.getElementById('tbody-presupuesto').innerHTML = filas.map(p => {
     const real = ventasPorTienda[p.tienda_codigo] || 0;
     const meta = Number(p.meta_venta_total || 0);
@@ -1657,6 +1685,12 @@ async function cargarPresupuesto() {
 async function cargarRentabilidadTienda(cache) {
   if (!esCentral()) return;
   const { desde, hasta } = getPeriodo();
+  const filtro = [...tiendasFiltro];
+  const visible = codigo => !filtro.length || filtro.includes(codigo);
+  const tbody = document.getElementById('tbody-rent-tienda');
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">Cargando rentabilidad...</td></tr>';
+  totalesReporte('tbody-rent-tienda', []);
+  try {
   const [vRes, viRes, gRes] = await Promise.all([
     queryCache.todas(() => sb.from('ventas').select('id, tienda_codigo, total, origen:tienda_codigo(nombre)').gte('fecha', desde).lte('fecha', hasta).neq('anulada', true).order('id')),
     queryCache.todas(() => sb.from('venta_items_lectura').select('id, venta_id, cantidad, costo_congelado, ventas!inner(tienda_codigo, fecha, anulada)').gte('ventas.fecha', desde).lte('ventas.fecha', hasta).neq('ventas.anulada', true).order('id')),
@@ -1668,7 +1702,7 @@ async function cargarRentabilidadTienda(cache) {
   if (!Array.isArray(bRes.data)) throw new Error('No se pudieron verificar las bajas de inventario');
   const porTienda = {};
   (vRes.data || []).forEach(v => {
-    if (!tiendaVisible(v.tienda_codigo)) return;
+    if (!visible(v.tienda_codigo)) return;
     if (!porTienda[v.tienda_codigo]) porTienda[v.tienda_codigo] = { nombre: v.origen?.nombre || v.tienda_codigo, ingresos: 0, costo: 0, gastos: 0, sinCosto: 0 };
     porTienda[v.tienda_codigo].ingresos += Number(v.total || 0);
   });
@@ -1683,17 +1717,17 @@ async function cargarRentabilidadTienda(cache) {
     if (porTienda[v.tienda_codigo] && !ventasConItems.has(v.id)) porTienda[v.tienda_codigo].sinCosto++;
   });
   (gRes.data || []).forEach(g => {
-    if (g.tienda_codigo === 'CENTRAL' || !tiendaVisible(g.tienda_codigo)) return;
+    if (g.tienda_codigo === 'CENTRAL' || !visible(g.tienda_codigo)) return;
     if (!porTienda[g.tienda_codigo]) porTienda[g.tienda_codigo] = { nombre: tiendasCache.find(t => t.codigo === g.tienda_codigo)?.nombre || g.tienda_codigo, ingresos: 0, costo: 0, gastos: 0, sinCosto: 0 };
     porTienda[g.tienda_codigo].gastos += Number(g.monto || 0);
   });
   bRes.data.forEach(b=>{
-    if (!tiendaVisible(b.tienda_codigo)) return;
+    if (!visible(b.tienda_codigo)) return;
     const t=porTienda[b.tienda_codigo] ||= {nombre:tiendasCache.find(t=>t.codigo===b.tienda_codigo)?.nombre||b.tienda_codigo,ingresos:0,costo:0,gastos:0,sinCosto:0};
     t.gastos += Number(b.valor);
   });
 
-  const filas = Object.values(porTienda).map(t => ({ ...t, margen: t.sinCosto ? null : t.ingresos - t.costo, utilidad: t.sinCosto ? null : t.ingresos - t.costo - t.gastos })).sort((a, b) => b.utilidad - a.utilidad);
+  const filas = Object.entries(porTienda).map(([codigo, t]) => ({ codigo, ...t, margen: t.sinCosto ? null : t.ingresos - t.costo, utilidad: t.sinCosto ? null : t.ingresos - t.costo - t.gastos })).sort((a, b) => b.utilidad - a.utilidad);
   document.getElementById('tbody-rent-tienda').innerHTML = filas.length ? filas.map(t => `<tr>
     <td class="px-3 py-2 font-medium">${esc(t.nombre)}</td>
     <td class="px-3 py-2 text-right font-mono">${money(t.ingresos)}</td>
@@ -1704,12 +1738,18 @@ async function cargarRentabilidadTienda(cache) {
     <td class="px-3 py-2 text-right">${t.sinCosto?'—':pct(t.utilidad, t.ingresos)}</td>
   </tr>`).join('') : '<tr><td colspan="7" class="text-center py-6 text-gray-400">Sin datos en el período.</td></tr>';
   const total = filas.reduce((s,t)=>({ingresos:s.ingresos+t.ingresos,costo:s.costo+t.costo,gastos:s.gastos+t.gastos,sinCosto:s.sinCosto+t.sinCosto}),{ingresos:0,costo:0,gastos:0,sinCosto:0});
-  const generales = !tiendasFiltro.length ? (await window.CreditekTableroUtilidad.authorizedExpenses(sb,'retail',desde,hasta)).reduce((s,g)=>s-g.value,0)+(gRes.data||[]).filter(g=>g.tienda_codigo==='CENTRAL').reduce((s,g)=>s+Number(g.monto),0) : 0;
+  const generales = !filtro.length ? (await window.CreditekTableroUtilidad.authorizedExpenses(sb,'retail',desde,hasta)).reduce((s,g)=>s-g.value,0)+(gRes.data||[]).filter(g=>g.tienda_codigo==='CENTRAL').reduce((s,g)=>s+Number(g.monto),0) : 0;
   const pendientes=total.sinCosto>0, neta=total.ingresos-total.costo-total.gastos-generales;
   totalesReporte('tbody-rent-tienda',[
     ['Gastos generales no distribuidos','—','—','—',money(generales),'—','—'],
     ['TOTAL RETAIL',money(total.ingresos),pendientes?'Por confirmar':money(total.costo),pendientes?'Por confirmar':money(total.ingresos-total.costo),money(total.gastos+generales),pendientes?'Por confirmar':money(neta),pendientes?'—':pct(neta,total.ingresos)],
   ]);
+  return new Map(filas.map(t => [t.codigo, t]));
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-red-600 py-4 text-center">No se pudo completar la rentabilidad: ${esc(error.message)}</td></tr>`;
+    totalesReporte('tbody-rent-tienda', []);
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -1937,13 +1977,14 @@ async function refrescarTodo() {
   document.getElementById('estado-reportes').textContent='Actualizando cifras. La descarga estará disponible cuando termine la consulta completa.';
   const cache = crearCacheRefresco();
   try {
+    const rentabilidad = cargarRentabilidadTienda(cache);
     const resultados=await Promise.allSettled([
       cargarKPIs(cache),
-      cargarVentas(cache),
+      cargarVentas(cache, rentabilidad),
       cargarCartera(cache),
       cargarInventario(cache),
       cargarPresupuesto(),
-      cargarRentabilidadTienda(cache),
+      rentabilidad,
       cargarRentabilidadCategoria(),
       cargarCrecimiento(),
       cargarTopProductos(),

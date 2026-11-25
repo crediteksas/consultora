@@ -29,7 +29,7 @@
   <script src="/creditek/erp/supabase-js-2.110.8.js"></script>
   <script src="/config/kora-environment.generated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="reportes-query-cache.js?v=1.0.1"></script>
+<script src="reportes-query-cache.js?v=1.0.2"></script>
 <script src="reportes-historico.js?v=1.0.0"></script>
 <script src="aliados-reversiones-domain.js"></script>
 <script src="tablero-ejecutivos.js"></script>
@@ -1254,7 +1254,7 @@ function crearCacheRefresco() {
         sb.from('stock_cantidad_lectura')
           .select('producto_id, tienda_codigo, cantidad, precio_tienda, costo_promedio, origen:tienda_codigo(nombre)')
           .order('tienda_codigo').order('producto_id'),
-      )),
+      ), { pageSize: 100 }),
     ]),
     gastos: () => queryCache.todas(() => filtrar(
       sb.from('gastos').select('tienda_codigo, monto, created_at').gte('created_at', `${desde}T05:00:00.000Z`).lt('created_at', `${new Date(Date.parse(`${hasta}T12:00:00Z`) + 86400000).toISOString().slice(0,10)}T05:00:00.000Z`).eq('estado', 'aprobado').order('id'),

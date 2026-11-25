@@ -101,3 +101,15 @@ test('orquestación comparte P&L real una sola vez y conserva rango/filtro del c
  const sales=h.calls.filter(x=>x.table==='ventas');assert.equal(sales.length,2);
  assert.ok(sales.every(x=>x.filters.some(f=>f[0]==='gte'&&f[2]==='2026-11-01')&&x.filters.some(f=>f[0]==='lte'&&f[2]==='2026-11-25')));
 });
+
+test('inventario usa páginas de cien y conserva filtro, orden y caché compartida',async()=>{
+ const data={stock_cantidad_lectura:Array.from({length:205},(_,i)=>({producto_id:String(i).padStart(4,'0'),tienda_codigo:'S01',cantidad:2,costo_promedio:5})),unidades_lectura:[]};
+ data.stock_cantidad_lectura.push({producto_id:'9999',tienda_codigo:'S02',cantidad:9,costo_promedio:99});
+ const h=await harness({data,filter:['S01']});
+ const [first,second]=await h.run(`(async()=>{const c=crearCacheRefresco();return Promise.all([c.obtener('inventario'),c.obtener('inventario')]);})()`);
+ assert.equal(first,second);assert.equal(first[1].data.length,205);
+ assert.equal(first[1].data.reduce((sum,r)=>sum+r.cantidad*r.costo_promedio,0),2050);
+ const calls=h.calls.filter(c=>c.table==='stock_cantidad_lectura');
+ assert.deepEqual(calls.map(c=>[c.from,c.to]),[[0,99],[100,199],[200,299]]);
+ assert.ok(calls.every(c=>c.filters.some(f=>f[0]==='eq'&&f[1]==='tienda_codigo'&&f[2]==='S01')&&c.orders.join(',')==='tienda_codigo,producto_id'));
+});

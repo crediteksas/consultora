@@ -3,9 +3,11 @@
 
   // El límite del API no es el total del informe. Cada página conserva los
   // filtros/RLS y requiere un orden único definido por el consumidor.
-  async function todas(factory) {
+  async function todas(factory, { pageSize = 500 } = {}) {
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 500) {
+      throw new RangeError('Tamaño de página inválido');
+    }
     const data = [];
-    const pageSize = 500;
     for (let from = 0; ; from += pageSize) {
       const response = await factory().range(from, from + pageSize - 1);
       if (response.error) throw response.error;

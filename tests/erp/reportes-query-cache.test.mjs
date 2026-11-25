@@ -64,7 +64,7 @@ test('reportes comparte ventas, cartera e inventario durante cada refresco', asy
     'utf8',
   );
 
-  assert.match(html, /<script src="reportes-query-cache\.js\?v=1\.0\.1"><\/script>/);
+  assert.match(html, /<script src="reportes-query-cache\.js\?v=1\.0\.2"><\/script>/);
   assert.match(html, /const cache = crearCacheRefresco\(\)/);
   assert.match(html, /cargarKPIs\(cache\)/);
   assert.match(html, /cargarVentas\(cache, rentabilidad\)/);
@@ -99,4 +99,30 @@ test('falla una página: no entrega un total parcial como si fuera completo', as
   await assert.rejects(()=>api.todas(()=>({range:async()=>++calls===1 ? {data:Array(500).fill({})} : {error:new Error('sin permiso')}})),/sin permiso/);
   await assert.rejects(()=>api.todas(()=>({range:async()=>({data:null})})),/incompleta/);
   assert.equal((await api.todas(()=>({range:async()=>({data:[]})}))).data.length,0);
+});
+
+test('páginas pequeñas mantienen todas las filas, incluyendo múltiplos exactos', async () => {
+  const api = await cargarModulo();
+  const values = Array.from({length:300},(_,id)=>({id}));
+  const ranges=[];
+  const result=await api.todas(()=>({range:async(from,to)=>{
+    ranges.push([from,to]);return {data:values.slice(from,to+1),error:null};
+  }}),{pageSize:100});
+  assert.deepEqual(ranges,[[0,99],[100,199],[200,299],[300,399]]);
+  assert.equal(result.data.length,300);
+  assert.equal(new Set(result.data.map(x=>x.id)).size,300);
+});
+
+test('tamaño inválido se rechaza antes de consultar', async () => {
+  const api=await cargarModulo();let calls=0;
+  for(const pageSize of [0,-1,1.5,501,NaN,Infinity,'100',null]) {
+    await assert.rejects(api.todas(()=>{calls++;},{pageSize}),/Tamaño de página inválido/);
+  }
+  assert.equal(calls,0);
+});
+
+test('páginas pequeñas tampoco devuelven un parcial si la siguiente falla', async () => {
+  const api=await cargarModulo();let calls=0;
+  await assert.rejects(api.todas(()=>({range:async()=>++calls===1?{data:Array(100).fill({})}:{error:new Error('timeout ficticio')}}),{pageSize:100}),/timeout ficticio/);
+  assert.equal(calls,2);
 });

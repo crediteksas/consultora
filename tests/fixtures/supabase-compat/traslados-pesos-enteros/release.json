@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Isolated upgrade/rebuild of one transfer approval precision fix; fictitious fixture, no production operations or new permissions.",
+  "migration_sha256": {
+    "supabase/migrations/20261125211717_traslados_cartera_pesos_enteros.sql": "c3a9fc08720f0da90a087aa7f99582dd4cbe6ef0012c4e794225d4c6c3053fa3"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-traslados-pesos-enteros.test.mjs",
+      "sha256": "7a8a0586879d90cd52d3ce803ce297b644c6b80ea5f651e00046c66a39660b7b"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "fixture_sha256": "200e56482b849979659cc6b3732d0ee3f582a1f7f39d56aa77c354fa1a864385",
+  "emitter_sha256": "3b289e8002e03a88b5c8812ac5e69b666fda0e31a3b1b6f7d61d0300010c3114",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/upgrade-before.json",
+      "sha256": "a68b203290bb582b689480ec183489c2da765789877cd50507f2b4bd8c5b674d"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/upgrade-after.json",
+      "sha256": "3d2d6f8f131492da5e36e7b15f63b30c83f3f0cd41a03687e9b77f620fc94944"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/upgrade-contract.json",
+      "sha256": "735673b7d9a779a3f2bcdef83e392c9eff8ce7c418b3ce999fe0bab89daafeba"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/upgrade-created.json",
+      "sha256": "676e10d5665f2ba9d39600d20a3b72d49d9a118428b55220be2b8b14350e181d"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/rebuild-before.json",
+      "sha256": "3bcb03140eb127f7b2a8074857abf5a1d00627440a96916f0b7fba7067c6e2fd"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/rebuild-after.json",
+      "sha256": "f78c24597a67e2df7288bb31e9b31269266e744152c6d30b43dfb9881932672b"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/rebuild-contract.json",
+      "sha256": "735673b7d9a779a3f2bcdef83e392c9eff8ce7c418b3ce999fe0bab89daafeba"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/rebuild-created.json",
+      "sha256": "676e10d5665f2ba9d39600d20a3b72d49d9a118428b55220be2b8b14350e181d"
+    }
+  }
+}

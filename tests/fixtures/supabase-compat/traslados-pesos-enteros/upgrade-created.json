@@ -1,0 +1,8 @@
+[
+  {
+    "schema": "public",
+    "name": "aprobar_traslado_recepcion",
+    "kind": "function",
+    "identity": "p_traslado_id uuid"
+  }
+]

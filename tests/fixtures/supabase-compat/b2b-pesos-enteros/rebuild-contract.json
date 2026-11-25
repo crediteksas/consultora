@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "publicar_lista_b2b",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_archivo text, p_huella text, p_alcance text, p_filas jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "9d19c366e007e99e94c2ee3f41a75d30",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-b2b-pesos-enteros.test.mjs",
+      "justification": "Existing approval RPC keeps identical grants and security mode. Fictitious tests cover price rounding and role denial."
+    }
+  ]
+}

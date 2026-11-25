@@ -47,7 +47,7 @@
    const categoria=products.find(p=>p.id===productId)?.categoria||'';
    const margin=special?Number(rule.margen):D.defaultMargin(r.costo,categoria);
    return {...r,proveedor_id:provider,producto_id:productId,categoria,
-    precio_tienda:r.costo==null?null:Math.round((r.costo+margin)*100)/100,motivo:special?rule.motivo:'',
+    precio_tienda:r.costo==null?null:Math.round(r.costo+margin),motivo:special?rule.motivo:'',
     learned:!!rule||fromLegacy,legacyExpected:expected,remember:false,included:!blocked,exclusion:blocked?'No disponible como equipo nuevo para entrega':'',
     priceWarning:r.costo!==null&&r.costo<10000?'Precio bajo: confirma si el proveedor lo expresó en miles. No se multiplica automáticamente.':''};
   }

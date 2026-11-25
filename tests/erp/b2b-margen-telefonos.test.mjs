@@ -21,7 +21,8 @@ test('WhatsApp, Excel y memoria recalculan el estándar sin congelarlo',()=>{
  for(const cost of [800000,800000.01,1300000,1300000.01]){
   const [wa]=W.parse(`PHONE $${cost}`,'s',products,rules);
   const [excel]=D.prepare([['ref','costo'],['PHONE',cost]],{header:0,reference:0,cost:1,provider:-1,price:-1,margin:-1},products,providers,'s');
-  assert.equal(wa.categoria,'CELULAR');assert.equal(wa.precio_tienda,cost+D.defaultMargin(cost,'CELULAR'));
+  const roundedCost=Math.round(cost);
+  assert.equal(wa.categoria,'CELULAR');assert.equal(wa.precio_tienda,roundedCost+D.defaultMargin(roundedCost,'CELULAR'));
   assert.equal(excel.precio_tienda,wa.precio_tienda);assert.deepEqual(D.validate([wa]),[]);assert.deepEqual(D.validate([excel]),[]);
  }
  const exception=W.parse('PHONE $900000','s',products,[{...rules[0],margen:40000,motivo:'Excepción autorizada'}])[0];
@@ -66,5 +67,21 @@ test('servidor usa categoría real, conserva publicaciones y permisos; no modifi
   assert.equal((await q('select count(*)::int n from pedidos_b2b'))[0].n,0);
   await db.exec(`reset role;select set_config('request.jwt.claim.sub','${uid(3)}',false);set role authenticated;`);
   await assert.rejects(()=>publish([row(900000,30000)]),/Solo Maite/);
+ }finally{await db.close();}
+});
+test('servidor redondea costos y precios a pesos antes de aplicar los tramos',async()=>{
+ const db=new PGlite();try{
+  const source=read('./b2b-listas.test.mjs'),start=source.indexOf('await db.'+'exec(`create role anon'),end=source.indexOf('`);',start);
+  assert.ok(start>=0&&end>start);
+  const fixture=source.slice(start+15,end).replace(/\$\{uid\((\d+)\)\}/g,(_,n)=>uid(n));
+  await db.exec(fixture);await db.exec('create schema kora_private;');
+  for(const name of ['20260917174237_listas_precios_pedidos_kora','20260917220853_b2b_catalogo_whatsapp_memoria','20260918163447_b2b_margen_12pct_menor_150mil','20261015140353_b2b_margen_telefonos_por_tramos','20261125212442_b2b_publicacion_pesos_enteros'])await db.exec(read(`../../supabase/migrations/${name}.sql`));
+  await db.exec(`select set_config('request.jwt.claim.sub','${uid(1)}',false);set role authenticated;`);
+  for(const [i,costo,precio,esperado] of [[1,149999.49,167999,149999],[2,149999.50,170000,150000],[3,800000.49,820000,800000],[4,800000.50,830001,800001]]){
+   const rows=[{producto_id:uid(10),proveedor_id:uid(20),costo,precio_tienda:precio,motivo:''}];
+   await db.query('select publicar_lista_b2b($1,$2,$3,$4::jsonb)',['pesos enteros',String(i).repeat(64),'proveedores',JSON.stringify(rows)]);
+   const result=(await db.query('select costo,precio_tienda from b2b_ofertas where vigente')).rows;
+   assert.equal(Number(result[0].costo),esperado);assert.equal(Number(result[0].precio_tienda),precio);
+  }
  }finally{await db.close();}
 });

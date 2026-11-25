@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Isolated upgrade/rebuild of B2B price publication rounding; fictitious fixture, no production operations or new permissions.",
+  "migration_sha256": {
+    "supabase/migrations/20261125212442_b2b_publicacion_pesos_enteros.sql": "3b8731054fea4c8613ddc1e9ad04ad1b93bc61ee8bfc3bd53accdd8022cf306d"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-b2b-pesos-enteros.test.mjs",
+      "sha256": "02a01e5b2d7ed3bff32ed792e15d499d324abbc5ed2bdc80d0e355747f30d69d"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "fixture_sha256": "57f88fbb9b495c125c4efa2c4932c4c4413d77bef4a922418b6d207534d243ac",
+  "emitter_sha256": "b42a894608517e860852e221b9128b409e889229a1d54627bd57152c5a1b8bcf",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/upgrade-before.json",
+      "sha256": "838ce9990447fe92c9ba19d9656af1f254b8a9e0703c4118909841b785c2c459"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/upgrade-after.json",
+      "sha256": "d6e47696e04075e1be5eb4c482e21f94a8a39b9a55e3d3b545f37235f565fd08"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/upgrade-contract.json",
+      "sha256": "00ef7f9a79d19ba42f24462b50177a2d2b678479b68aff4ff4fac87dbf9059b8"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/upgrade-created.json",
+      "sha256": "fee5aed231f35e620a44ae0ec258f6c578ce6ff31577267ddae29a2d4b224796"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/rebuild-before.json",
+      "sha256": "fc6f18bda3de0f335e837da4bbde8a39dd99180cc6b1733fa7457b1d8d4441b4"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/rebuild-after.json",
+      "sha256": "b252f4b446fcdc3fa4b69a0db0c7f250d5ae05f591ed3a64a74bc25700d6d7d3"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/rebuild-contract.json",
+      "sha256": "00ef7f9a79d19ba42f24462b50177a2d2b678479b68aff4ff4fac87dbf9059b8"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/rebuild-created.json",
+      "sha256": "fee5aed231f35e620a44ae0ec258f6c578ce6ff31577267ddae29a2d4b224796"
+    }
+  }
+}

@@ -13,7 +13,8 @@ test('utilidad por costo: límite de 150000, WhatsApp, Excel, memoria y comparat
   assert.equal(D.defaultMargin(cost),margin);
   const map={header:0,reference:0,provider:1,cost:2,price:-1,margin:-1};
   const [excel]=D.prepare([['r','p','c'],['ACC','Proveedor',cost]],map,products,providers);
-  assert.equal(excel.precio_tienda,Math.round((cost+margin)*100)/100);assert.deepEqual(D.validate([excel]),[]);
+  const roundedCost=Math.round(cost);
+  assert.equal(excel.precio_tienda,roundedCost+D.defaultMargin(roundedCost));assert.deepEqual(D.validate([excel]),[]);
   const rules=[{proveedor_id:'s',referencia_key:'ACC',producto_id:'p',margen:20000,motivo:''}];
   const [wa]=W.parse('ACC $'+cost,'s',products,rules);
   assert.equal(wa.precio_tienda,excel.precio_tienda,'La memoria de equivalencias no congela el margen estándar');
@@ -34,7 +35,7 @@ test('importación conserva costo real, margen variable, precio final y errores 
  const map={header:0,reference:0,provider:1,cost:2,price:3,margin:4};
  const rows=D.prepare([['ref','prov','costo','precio','margen'],['SM17','Proveedor A','430.000','',''],['SM17','Proveedor A',430000,445000,''],['SM17','Proveedor A',430000,'',0],['SM17','Proveedor A','',450000,'']],map,products,providers);
  assert.equal(rows[0].precio_tienda,450000);assert.equal(rows[1].precio_tienda,445000);assert.equal(rows[1].costo,430000);assert.equal(rows[2].precio_tienda,430000);assert.equal(rows[3].costo,null);assert.ok(D.validate(rows).length>0);
- assert.equal(D.amount('$ 430.000,50'),430000.5);assert.equal(D.amount('#VALUE!'),null);assert.equal(D.amount(''),null);
+ assert.equal(D.amount('$ 430.000,49'),430000);assert.equal(D.amount('$ 430.000,50'),430001);assert.equal(D.amount('#VALUE!'),null);assert.equal(D.amount(''),null);
  const missing=D.prepare([['ref','prov','costo'],['SM17 8/256GB','Proveedor A',430000]],{...map,price:-1,margin:-1},products,providers);assert.equal(missing[0].producto_id,'');
  assert.match(D.csv([['=HYPERLINK("evil")']]),/"'=HYPERLINK/);
 });

@@ -97,6 +97,7 @@
    tr.querySelector('.wa-row-summary').innerHTML=summary(r,classify(rows)[Number(tr.dataset.row)].state);updateCounts();controls();comparison();status('Hay cambios sin guardar. Guarda el borrador para conservarlos; publicar es una acción aparte.');
   };
   $('[data-rows]').addEventListener('toggle',e=>{if(e.target.matches?.('details[data-row]')&&e.target.open)expanded=Number(e.target.dataset.row);},true);
+  $('[data-rows]').onchange=e=>{if(['costo','precio_tienda'].includes(e.target.dataset.field)){const value=D.amount(e.target.value);e.target.value=value??'';}};
   $('[data-confirm]').onchange=controls;$('[data-search]').oninput=()=>{page=0;expanded=null;render();};
   for(const button of container.querySelectorAll('[data-mode]'))button.onclick=()=>{mode=button.dataset.mode;page=0;expanded=null;render();};
   $('[data-prev]').onclick=()=>{page--;expanded=null;render();};$('[data-next]').onclick=()=>{page++;expanded=null;render();};

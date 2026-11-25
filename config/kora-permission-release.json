@@ -66,6 +66,10 @@
     {
       "path": "tests/fixtures/supabase-compat/traslados-pesos-enteros/release.json",
       "sha256": "af8010490ba164ff2d07396269e1d25ddb08fb832cd2678ad2f618e46373d15d"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/b2b-pesos-enteros/release.json",
+      "sha256": "6fde4a6b286bae1d64d6c8ae8b04c3c5df7767cf6ec9757fe2b49e79b2159963"
     }
   ],
   "upgrade": {

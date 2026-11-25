@@ -1,0 +1,8 @@
+[
+  {
+    "schema": "public",
+    "name": "publicar_lista_b2b",
+    "kind": "function",
+    "identity": "p_archivo text, p_huella text, p_alcance text, p_filas jsonb"
+  }
+]

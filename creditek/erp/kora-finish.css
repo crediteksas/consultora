@@ -129,6 +129,34 @@
     outline-offset: 3px;
     box-shadow: none;
   }
+  /* Forced-color users retain the existing system focus treatment. */
+  @media not (forced-colors: active) {
+    /* Contain focus on full-size controls, including clipped notification lists.
+       Small native inputs and inline actions keep their ring. Table/dialog containers
+       keep theirs; full-size child controls inside tables and dialogs ARE covered.
+       Use the control foreground so dark and selected states retain contrast. */
+    html body.kora-product-page[data-kora-finish] :where(button,summary,a.btn,a.kora-nav-link,a.kora-logout,a[role="button"],input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),select,textarea):not(.kora-command *):not(:is(.kora-summary-open,.kora-drilldown-link,.kora-explorer__link,.rounded-full,.pill)):focus-visible,
+    html[data-creditek-visual="liquid-1"] body.kora-product-page[data-kora-finish] :where(button,summary,a.btn,a.kora-nav-link,a.kora-logout,a[role="button"],input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),select,textarea):not(.kora-command *):not(:is(.kora-summary-open,.kora-drilldown-link,.kora-explorer__link,.rounded-full,.pill)):focus {
+      outline: 2px solid currentColor !important;
+      outline-offset: -3px !important;
+      /* Legacy transition: all must not animate the ring from outside to inside. */
+      transition-property: background-color,color,border-color,box-shadow;
+    }
+    /* Replace only the generic field focus halo; retain validation indicators. */
+    html body.kora-product-page[data-kora-finish] :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),select,textarea):not(.kora-command *):not(:is(.kora-summary-open,.kora-drilldown-link,.kora-explorer__link,.rounded-full,.pill)):not([aria-invalid="true"]):not(:user-invalid):not(.error):not(.is-invalid):not([class*="border-red"]):not(.error *):not(.is-invalid *):not(.has-error *):focus-visible {
+      box-shadow: inset 0 0 0 1px var(--kora-finish-accent, #086c75);
+    }
+    /* The borderless command input has no padding: its wrapper owns the ring. */
+    html body.kora-product-page[data-kora-finish] .kora-command input:focus {
+      outline: none !important;
+      box-shadow: none;
+    }
+    html body.kora-product-page[data-kora-finish] .kora-command:focus-within {
+      outline: 2px solid var(--kora-finish-accent, #086c75);
+      outline-offset: -3px;
+      box-shadow: none;
+    }
+  }
   html body.kora-product-page[data-kora-finish] :is(:is(.main-content,.kora-shell-content),dialog,[role="dialog"],.modal-bg,.modal) table {
     font-family: var(--ctk-font-family-ui);
     font-size: 13px;

@@ -4,8 +4,8 @@
   const OSCAR = '6de0ad26-64af-4966-8cd9-d468880af627';
 
   const MAYTE = 'd1782db6-bacc-4caf-af6f-ce1b8d1c0391';
-  const sharedApprovals = new Set(['inventory-counts','sales-approval','incidents']);
-  const delegatedToMayte = new Set(['transfers','store-expenses']);
+  const sharedApprovals = new Set(['inventory-counts','sales-approval','incidents','store-expenses']);
+  const delegatedToMayte = new Set(['transfers']);
   function personalQueue(profile) {
     if (profile.rol==='gerencia' && profile.id===OSCAR) return 'gerencia';
     if (profile.rol==='auditoria' && profile.id===MAYTE) return 'gestion';
@@ -28,7 +28,7 @@
         {key:'inventory-adjustments',owner:'compartido',table:'ajustes_inventario',title:'Ajustes de inventario por revisar',hint:'Revisa estas solicitudes en su cola: puedes revisar con un corte o cerrarlas sin aplicar. Leer el aviso no aplica ajustes ni retira el pendiente.',path:'/creditek/erp/ajustes.html#seccionCola',filters:[['eq','estado','pendiente']]},
         {key:'inventory-counts',owner:'compartido',rpc:'conteos_pendientes_cantidad',title:'Conteos de inventario por revisar',hint:'Maite y Gerencia ven el mismo pendiente. Abre el comparativo antes de autorizar diferencias; leer el aviso no aplica ajustes.',path:'/creditek/erp/inventario.html#conteos'},
         {key:'transfers',owner:'compartido',table:'traslados',title:'Traslados recibidos · falta autorización',path:'/creditek/erp/traslados.html',filters:[['eq','estado','recibido_pendiente_aprobacion']]},
-        {key:'store-expenses',owner:'compartido',table:'gastos',title:'Gastos de tiendas por aprobar',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
+        {key:'store-expenses',owner:'compartido',table:'gastos',title:'Gastos de tiendas por aprobar',hint:'Óscar y Mayte ven el mismo gasto pendiente. Se retira de ambas campanas al aprobarlo o rechazarlo; abrir el aviso no lo aprueba.',path:'/creditek/erp/gastos.html?pendientes=1',filters:[['eq','estado','registrado']]},
         {key:'ally-expenses',owner:'gerencia',table:'aliados_gastos_operativos',title:'Gastos de Aliados pendientes de aprobación',path:'/creditek/erp/aliados-gastos.html',filters:[['eq','estado','pendiente']]},
       );
       if (salesApprovalAccess) sources.push(

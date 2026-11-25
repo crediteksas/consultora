@@ -404,7 +404,10 @@ body.kora-responsive-ready :where(
     grid-row: 2;
     margin: 0;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
+    /* Reserva espacio para el foco exterior y el contador de la campana. */
+    padding: .375rem;
+    box-sizing: border-box;
     width: 100%;
   }
 
@@ -617,12 +620,12 @@ body.kora-responsive-ready :where(
   }
 
   .kora-topbar__actions {
-    overflow-x: auto;
+    flex-wrap: wrap;
   }
 
   .kora-store {
-    flex-basis: 8rem;
-    min-width: 8rem;
+    flex-basis: 100%;
+    min-width: 0;
   }
 
   body.kora-responsive-ready table.kora-responsive-cards :where(tbody, tfoot) td {

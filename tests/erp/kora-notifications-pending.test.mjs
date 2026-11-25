@@ -328,16 +328,20 @@ test('los ajustes y pagos de Gerencia solo cuentan solicitudes que Óscar puede 
   await assert.rejects(pendingCount({rpc:async()=>({data:[{}]})}, correction), /pendientes/);
 });
 
-test('Óscar solo recibe autorizaciones y Mayte solo recibe tareas que puede gestionar', () => {
+test('Óscar y Mayte comparten gastos pendientes; los traslados siguen solo en Gestión', () => {
   const oscar = {id:'6de0ad26-64af-4966-8cd9-d468880af627',rol:'gerencia'};
   const mayte = {id:'d1782db6-bacc-4caf-af6f-ce1b8d1c0391',rol:'auditoria'};
   const approvals = pendingSources(oscar,true,true);
   const management = pendingSources(mayte,true,true);
   assert.match(approvals.find(source=>source.key==='financial-approval').path,/#pendientes$/);
   assert.ok(management.some(source=>source.key==='financial-payment'));
-  for(const key of ['transfers','store-expenses']){
-    assert.ok(approvals.every(source=>source.key!==key));
-    assert.equal(management.find(source=>source.key===key)?.owner,'gestion');
+  assert.ok(approvals.every(source=>source.key!=='transfers'));
+  assert.equal(management.find(source=>source.key==='transfers')?.owner,'gestion');
+  for(const sources of [approvals,management]){
+    const expense=sources.find(source=>source.key==='store-expenses');
+    assert.equal(expense?.owner,'compartido');
+    assert.deepEqual(JSON.parse(JSON.stringify(expense.filters)),[['eq','estado','registrado']]);
+    assert.equal(expense.path,'/creditek/erp/gastos.html?pendientes=1');
   }
   assert.ok(approvals.every(source=>source.owner==='gerencia'||source.owner==='compartido'));
   assert.ok(management.every(source=>source.owner==='gestion'||source.owner==='compartido'));

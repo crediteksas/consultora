@@ -205,6 +205,7 @@ const erp = [
   'tests/erp/kora-2026-000014-destinos-consignacion.test.mjs',
   'tests/erp/finanzas-programadas.test.mjs',
   'tests/erp/finanzas-programadas-db.test.mjs',
+  'tests/erp/kora-tesoreria-tercerizacion.test.mjs',
   'tests/erp/tesoreria-gastos.test.mjs',
   'tests/erp/payjoy-neto-real.test.mjs',
 ];

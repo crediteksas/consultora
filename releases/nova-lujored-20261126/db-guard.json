@@ -1,0 +1,24 @@
+[
+  {
+    "policy_hash": "e2369ac72aa3bcccf4e63622d216aa81",
+    "allowed_origins": [
+      "CK-01",
+      "CK-02",
+      "CK-03",
+      "CK-04",
+      "CK-05",
+      "CK-06",
+      "CK-07",
+      "CK-08",
+      "CK-09",
+      "distritoys",
+      "club-seven",
+      "ALIADO-D7750CF7-6CBE-4F64-A2DC-D319941AAD3C"
+    ],
+    "checks": {
+      "nova_retail_cases_store_code_check": "CHECK ((store_code ~ '^(CK-0[1-9]|distritoys|club-seven|ALIADO-D7750CF7-6CBE-4F64-A2DC-D319941AAD3C)$'::text))",
+      "nova_client_otp_policy_allowed_origins_check": "CHECK ((allowed_origins <@ ARRAY['CK-01'::text, 'CK-02'::text, 'CK-03'::text, 'CK-04'::text, 'CK-05'::text, 'CK-06'::text, 'CK-07'::text, 'CK-08'::text, 'CK-09'::text, 'distritoys'::text, 'club-seven'::text, 'ALIADO-D7750CF7-6CBE-4F64-A2DC-D319941AAD3C'::text]))"
+    },
+    "executive_active": true
+  }
+]

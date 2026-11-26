@@ -1,0 +1,28 @@
+**APROBADO PARA PUBLICAR.** I found no defects that block the release. I only read files: nothing was changed, nothing was run, and no one was contacted.
+
+**What I confirmed:**
+- **Origin lists (`build.py`):** every replacement is an exact text match, and only the fourth origin is appended. In all 25 candidate files, the number of lines containing `ALIADO-D7750CF7…` equals the number containing `ALIADO-5D608D3F…`, so no list was missed (`changes.json` agrees). The only other change is `alliedPilotStores`: the default list now has 4 entries and the cap is `> 4` (`candidate/nova/index.mjs:77496-77497`). The rules that reject an empty or invalid config, or a CK store code, are unchanged.
+- **kora migration:**
+  - The guard runs before any change. It compares both check constraints to the captured definitions and the policy to the exact 12-origin list plus its `md5` hash, and it stops if any `perfiles` or `nova_allied_login_members` row exists for the new origin (`kora-migration.sql:4-7`).
+  - Only after the guard does it drop and re-add the two check constraints, then append the new origin to the policy with `array_append … WHERE NOT …=ANY` (`:9-13`). Limits and budgets are not touched.
+  - The function bodies are the captured definitions, each with exactly one literal change.
+- **aura migration:** only the 10 captured functions, each with the literal expansion. `SET search_path TO ''` is kept.
+- **`provision-lujo.sql`:**
+  - It locks the origin row and checks it is active, of type `aliado`, and named LUJO RED SAS.
+  - It checks that Luis, the assigned executive, is active, and it refuses to run if more than one active link exists.
+  - It creates a `tercero` seller only if the origin has no active seller, and a general link (`captador_id=NULL`) only if it has no active link. The token is a random 43-character base64url value with an 8-character suffix.
+  - Its audit row matches `audit2` (`clientes/index.mjs:9964-9975`). Writing `registro_id` as text matches the live helper (`helper-crear_registro_cliente_seguro.sql:101`).
+  - The `id` columns default to `gen_random_uuid()` in the live schema. It creates no identity, login or account.
+- **Tests:** all 30 pass (`tests.log`).
+  - The Lujo test runs the script twice and checks it is idempotent: one active link, one audit row, no new member, and `perfiles` unchanged.
+  - The browser JS test parses the three scripts C5 required: `form.html`, the embedded `pilot_form_default` and `recoveryPage`.
+  - The pipeline test runs all 4 origins end to end and confirms an unknown 5th origin is rejected by the check constraint.
+  - `regression-overdue` is unaffected.
+
+**Non-blocking notes:**
+1. **The guard test checks a copy, not the real guard.** `tests.mjs:33` only pattern-matches the real `DO $guard$` block and then runs a hand-written copy of the `perfiles` check. I checked the real guard line by reading it, and it is correct.
+2. **The migration guard doesn't count `nova_retail_actor_emails`.** Allied login access requires joining `perfiles` (`kora-migration.sql:256,276`), so the `perfiles`=0 check covers the risk. `db-guard.json` also reported zero actor-email rows.
+3. **Run each migration inside a single transaction.** They start with `SET LOCAL`, which has no effect outside a transaction. Without one, the guard and the `ALTER`/`UPDATE` statements wouldn't be atomic. Your usual migration tooling handles this, so this is a check on how you run it, not a code defect.
+4. **An existing seller-specific link would block the general one.** If Lujo already has an active link tied to a specific seller, the script won't create the general link. That matches the "keep existing links" rule.
+
+Keep the C1 order: database migrations → Worker publish and post-checks → `provision-lujo.sql` → check that AURA lists the new link. If the staff read check can't be run after publish, report it as unverified.

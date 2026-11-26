@@ -1,0 +1,52 @@
+# Review result: NOT YET APPROVED. Six concrete changes needed (C1–C6 below)
+
+The plan's overall approach matches the captured code. Six gaps would either break the release or widen access by accident. After C1–C6 are folded in, the plan can be approved without another review round.
+
+## What the captured code confirms
+- **Site count:**
+  - `clientes/index.mjs` has 9 code sites.
+  - `form.html` has 1.
+  - `nova/index.mjs` has 16.
+  - The SQL captures have 22 functions (12 kora, 10 aura). The two login functions `kora-4` and `kora-5` use a different exact list: `('distritoys','ALIADO-D775…','club-seven')`.
+- **Pilot cap:** `alliedPilotStores` (`nova/index.mjs:77494`) has a built-in default list and rejects more than 3 entries. `NOVA_ALLIED_PILOT_STORES` is not set in `live.json`, so bumping both the default and the cap to 4 is enough.
+- **Append helper:** `novaDistritoysOrigins` exists twice, at `clientes/index.mjs:11874` and `nova/index.mjs:78874`. Both copies need the new origin, because the `NOVA_REGISTRATION_PILOT_ORIGINS` setting only lists CK-01…09. Leave that setting unchanged.
+- **AURA gateway:** `registrationGateway` (`clientes/index.mjs:11381–11402`) lets staff with read permission list. Create and revoke need `canManage` and otherwise return 403. No AURA frontend change is needed.
+- **Live code path:** registration routes and the gateway both use the second bundled module (`index_default2`, `:11643`, `:11616`). Its resolver `resolveRegistrationContext2` (`:8735`) accepts `nr1.` links. The first copy (`:4088`) only handles the legacy hash, but no live registration route uses it.
+- **Link format:** links are signed with `TOKEN_HASH_SECRET` inside the gateway (`:7525`). Writing a random 43-character base64url `token_hash` that no real token produces matches the format `createOriginLink` uses (`:5431`). No secret is needed in the one-off script.
+- **Seller record is required:** the plan is right to create the business-level seller ("captador"). A general store link loads every active seller for that origin (`:4127–4148`). With zero sellers, the form disables submission (`form.html:482–489`), and the server rejects the submission with `captador_invalido` (`:5120`).
+
+## Concrete changes needed
+
+**C1 – Order of steps.** Run the one-off data script after the Workers deploy and its post-checks, not before.
+- The AURA list does not filter by the hardcoded origin list (`:7498`). Once the link exists, staff can copy it right away.
+- While the old Worker version is still live, that link would fail the frontend check (`form.html:596`) or take a non-NOVA path.
+- Required order: database migrations → Workers upload/deploy → verify → one-off data → verify the active entry.
+
+**C2 – Check for existing logins before raising the cap to 4.** Raising the cap does not create users. It does immediately give NOVA panel access to any existing active `perfiles` row with `tienda_codigo` = the new origin and `rol=admin_tienda`, if that person also has a `nova_retail_actor_emails` row (`nova/index.mjs:77960–77976`).
+- Add a read-only check that counts `perfiles`, `nova_allied_login_members` and actor-email rows for this origin.
+- Stop if any count is not 0, unless the user explicitly approves.
+- Add a test: "an existing synthetic perfil for the fourth origin is denied unless the pre-check passes."
+
+**C3 – Uncaptured baseline items.** The two check constraints and the current OTP policy row (`allowed_origins`, plus `enabled` and limits) are not in the captures. That means the "exact SQL diff" can't be proven for them.
+- Capture their current definitions read-only first.
+- The migration must first confirm the current value matches exactly, then append only the new origin using `array_append` guarded by `NOT (… = ANY …)`.
+- Also confirm that `tercero` is allowed by the `captadores` type constraint. This is needed for the business-level seller.
+
+**C4 – One-off script must be safe for the AURA list.** `listOriginLinksBatched` makes the whole AURA list fail with a 503 if any origin has two active links (`:7511`). The script must:
+- validate the origin as `activo=true` and `tipo='aliado'`; the list only shows `propia`/`aliado` (`:7498`);
+- check that the assigned executive (Luis) is active, or the list shows `ejecutivo_responsable: null`;
+- lock the origin row, re-check for an active link inside the same transaction, and confirm a partial unique index on active links exists (or rely on it);
+- set `captador_id = NULL`, so the link stays a general store link (`tipo: "tienda"`);
+- write the same `enlace_registro_creado` audit row that `createOriginLink` writes (`:5450`), so it matches the normal creation path.
+
+**C5 – Two copies of the frontend check in clientes.** The frontend check appears both in the `form.html` file and inside a JavaScript string in `index.mjs:7447`, which uses escaped `\n`. The photo page's inline script (`:6818`) has it too. The "browser JS valid" test must parse each of these three after the edit, not only `form.html`.
+
+**C6 – Things not to claim.** The live config capture doesn't show the `creditek-aura-shell` bindings, so the claim that it forwards to `AuraRegistrationGateway` can't be verified from these files. Verify it read-only after deploy (a staff GET of `/api/aura/enlaces/origenes` lists the new origin), or report it as unverified. Note also that `registro.crediteksas.com/creditek/agentes/*` is still routed to `creditek-aura`. Not patching it is fine, but don't call it unrouted.
+
+## Unchanged and correct
+- The first three allies' settings, budgets, prices and mode stay as they are.
+- The allied view keeps hiding closed cases (`state not in (authorized,rejected)`, `delivered_at is null`, `:78260`). There is still no ERP access.
+- No SMS or outreach is sent by the task.
+- Missing contact data: no name or phone for a personal shop login was supplied, so none is created. The shop-account question is still pending with you.
+
+Once C1–C6 are in the plan, the verdict is **APROBADO PARA IMPLEMENTAR**. This was a read-only review: I changed no files, ran no commands, and sent no messages.

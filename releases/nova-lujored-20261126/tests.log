@@ -1,0 +1,38 @@
+✔ verified aggregate rejects without paid count or fabricated obligations (1.786084ms)
+✔ aggregate 2 with unknown paid count stays review; no inference (0.09475ms)
+✔ per-obligation 3 with missing paid rejects before completeness (0.062709ms)
+✔ exact existing boundaries: 2 vs3 overdue, paid3vs4 (0.137708ms)
+✔ missing/negative/noninteger overdue or paid does not imply a restriction (0.096083ms)
+✔ identity, foreign binding, authorization, future/stale statements never generate aggregate signal (0.239792ms)
+✔ invalid or inactive aggregate is not conclusive (0.151333ms)
+✔ unknown active per-obligation status cannot reject; stale identity cannot reject (0.064667ms)
+✔ confirmed restriction wins over incomplete photo/reference/provider evidence; no Andrea wait (0.486125ms)
+✔ valid complete clean case still continues automatically (0.266333ms)
+✔ all independently confirmed hard reasons are retained, including same obligation (0.34125ms)
+✔ revoked consent keeps existing override priority over financial restriction (0.442709ms)
+✔ policy version unchanged; v2 case still requires all3; existing detail reevaluation follows restrictive rule (1.274625ms)
+✔ aggregate restriction wins even if item counts differ; phone-no-match preserved (0.060542ms)
+✔ nonrestrictive fingerprint input is identical; restriction version included only in decision when applicable (6.987792ms)
+✔ real summary builder preserves review and waiting fingerprints; projection fields are excluded (9.550042ms)
+✔ all4 have NOVA registration URLs and exactly scoped helper; empty config fails closed (0.552333ms)
+✔ server, recovery page and actual form modules all remove old admission regex (4.437375ms)
+✔ SQL scope expansion preserves every other function byte (1.093875ms)
+✔ all4 clean and restrictive model decisions, closed and cross-store access, private outcome (1.723ms)
+✔ provisioning is atomic, idempotent, preserves existing links, seller names match approved members (625.340959ms)
+✔ provisioning name mismatch and ambiguous sellers roll back all writes (848.137ms)
+✔ isolated real SQL pipeline for all4: verified OTP, reviewed photos, registration,3 jobs,refs,saved decision (840.064541ms)
+✔ gateway derives a signed own-store entry; rejects unknown stores and unauthorized internal calls (13.245334ms)
+✔ revoked links stay revoked; provisioning creates a fresh entry once and preserves budgets (410.033166ms)
+✔ real signed-entry resolver uses active ID filter, never token hash, and refuses revocation (2.249916ms)
+✔ closed allies receive only a short-lived minimal result, never the client record (0.290375ms)
+✔ browser scripts in additional and embedded photo forms remain valid JavaScript (2.1895ms)
+✔ Lujo general provisioning creates no login and preserves other stores (404.960791ms)
+✔ rollout guard rejects any preexisting fourth-origin profile (405.458375ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3633.704875

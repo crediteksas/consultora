@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import test from 'node:test';
+// Include the Treasury regressions while preserving the runner pinned by native permission evidence.
+import './kora-tesoreria-tercerizacion.test.mjs';
 import { PGlite } from '@electric-sql/pglite';
 
 const require = createRequire(import.meta.url);

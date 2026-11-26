@@ -133,3 +133,13 @@ test('un error del servidor se muestra y permite reintentar con valores válidos
  const e=editor({...base,inicial:10});await e.context.open('credit',{operationOnly:true});e.context.sb.rpc=async()=>({error:{message:'Liquidación bloqueada'}});
  await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.$('priceSaveError').textContent,'Liquidación bloqueada');assert.equal(e.$('savePriceDecision').disabled,false);
 });
+
+test('la ventana destaca lo guardado y deja el archivo y la referencia en consulta cerrada',async()=>{
+ const e=editor({...base,pvp_guardado:1000000,pagamos_guardado:700000,pvp_recibido:900000,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Ficticio'}});
+ await e.context.open('fixture-credit',{operationOnly:true});const html=e.$('priceEditorContent').innerHTML;
+ assert.match(html,/<p id="saleSavedPrices"[^>]*>Corrección guardada: PVP 1050000 · PAGAMOS 750000/);
+ const details=html.match(/<details[^>]*id="priceSourceDetails"[\s\S]*?<\/details>/)[0];assert.doesNotMatch(details,/<details[^>]*\bopen\b|<input|<textarea|<select/);assert.match(details,/1000000/);assert.match(details,/900000/);
+ assert.equal(e.$('decisionPvp').value,1050000);assert.equal(e.$('decisionPagamos').value,750000);assert.doesNotMatch(html,/Si Krediya reportó un error/);
+ const legacy=editor(base);await legacy.context.open('fixture-credit');assert.doesNotMatch(legacy.$('priceEditorContent').innerHTML,/saleSavedPrices|priceSourceDetails/);assert.match(legacy.$('priceEditorContent').innerHTML,/Guardado en KORA/);assert.match(legacy.$('priceEditorContent').innerHTML,/Si Krediya reportó un error/);assert.match(legacy.$('priceEditorContent').innerHTML,/id="priceReason" required/);
+ const fresh=editor(base);await fresh.context.open('fixture-credit',{operationOnly:true});assert.match(fresh.$('priceEditorContent').innerHTML,/Valores aplicados actualmente/);assert.doesNotMatch(fresh.$('priceEditorContent').innerHTML,/Corrección guardada/);
+});

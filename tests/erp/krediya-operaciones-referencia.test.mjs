@@ -376,7 +376,7 @@ test('resumen calculado conserva los totales calculados y permite cero real', ()
 
 test('corrección marcada se muestra aun si falta un bono; conserva fuente y tarifa histórica',()=>{
  const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Acuerdo ficticio revisado'},automatica:{disponible:false,motivo:'Falta bono del ejecutivo'}};
- const result=operations([row],[c]);assert.match(metricHtml(result.html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(result.html,'PAGAMOS pactado'),/750000/);assert.match(metricHtml(result.html,'PVP KORA'),/646400/);assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(result.html,/Acuerdo ficticio revisado/);assert.doesNotMatch(result.html,/class="pvp-difference-notice"/);assert.equal(result.buttons('[data-edit-operation-price]').length,1);assert.equal(result.buttons('[data-open-tariff]').length,0);
+ const result=operations([row],[c]);assert.match(metricHtml(result.html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(result.html,'PAGAMOS pactado'),/750000/);assert.match(metricHtml(result.html,'PVP configurado de referencia'),/646400/);assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(result.html,/Acuerdo ficticio revisado/);assert.doesNotMatch(result.html,/class="pvp-difference-notice"/);assert.equal(result.buttons('[data-edit-operation-price]').length,1);assert.equal(result.buttons('[data-open-tariff]').length,0);
 });
 
 test('corrección posterior al cálculo muestra los nuevos importes y retiene utilidad hasta recalcular',()=>{
@@ -386,7 +386,7 @@ test('corrección posterior al cálculo muestra los nuevos importes y retiene ut
  assert.match(metricHtml(result.html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(result.html,'PAGAMOS pactado'),/750000/);assert.match(metricHtml(result.html,'Giro estimado · PAGAMOS menos inicial'),/679850/);
  assert.match(metricHtml(result.html,'Utilidad después de bonos, gasto financiero y provisión'),/Pendiente de recalcular el lote/);
  assert.doesNotMatch(result.html,/COP 123456|Giro al beneficiario|Pago neto liquidado|Bonos liquidados/);
- assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(metricHtml(result.html,'PVP KORA'),/646400/);
+ assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(metricHtml(result.html,'PVP configurado de referencia'),/646400/);
 });
 
 test('un cálculo corregido vigente conserva pendiente el bono señalado en su snapshot',()=>{
@@ -395,4 +395,23 @@ test('un cálculo corregido vigente conserva pendiente el bono señalado en su s
  const calc={explanation:{valor_comercial:1050000},pagamos:750000,pago_aliado:679850,total_bonos:20000,utilidad_creditek:123456,policy_snapshot:{motor:'krediya_v2',...c,bono_ejecutivo_pendiente:true}};
  const {html}=operations([{...row,ejecutivo_id:'fixture-executive',liquidation_calculations:[calc]}],[c]);
  assert.match(metricHtml(html,'Utilidad después de bonos, gasto financiero y provisión'),/Falta bono del ejecutivo/);assert.doesNotMatch(html,/COP 123456/);
+});
+
+test('tarjeta automática usa el PVP y PAGAMOS guardados y aparta la referencia',()=>{
+ const correction={ambito:'venta_v1',precio_venta:1050000,pagamos:750000,fecha:'2026-11-26',motivo:'Corrección individual de PVP y PAGAMOS'};
+ const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:correction,automatica:{disponible:true,pvp:1050000,pagamos:750000,giro:679850,bonos:20000,utilidad_neta:213696}};
+ for(const mismatch of [false,true]){
+  const {html}=operations([row],[mismatch?{...c,automatica:{...c.automatica,pvp:999999,pagamos:888888,utilidad_neta:123456}}:c]);
+  assert.match(metricHtml(html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(html,'PAGAMOS pactado'),/750000/);assert.match(html,/Corrección guardada: PVP COP 1050000 · PAGAMOS COP 750000/);
+  const top=html.match(/<dl class="operation-values">([\s\S]*?)<\/dl>/)[1];assert.doesNotMatch(top,/PVP KORA|COP 646400/);assert.match(metricHtml(html,'PVP configurado de referencia'),/646400/);
+  if(mismatch){assert.match(metricHtml(html,'Utilidad después de bonos, gasto financiero y provisión'),/Pendiente de recalcular/);assert.doesNotMatch(html,/COP 999999|COP 888888|COP 123456|Giro al beneficiario/);}
+  else assert.match(metricHtml(html,'Utilidad después de bonos, gasto financiero y provisión'),/213696/);
+ }
+ const result=operations([{...row,id:'reviewed'},{...row,id:'pending'}],[{...c,operation_id:'reviewed'},{...tariff,operation_id:'pending'}]);result.$('operationPriceFilter').onchange({target:{value:'difference'}});assert.doesNotMatch(result.$('detailBody').innerHTML,/data-edit-operation-price="reviewed"/);assert.match(result.$('detailBody').innerHTML,/data-edit-operation-price="pending"/);
+});
+test('una tarjeta congelada usa la corrección del snapshot y conserva sus importes',()=>{
+ const old={ambito:'venta_v1',precio_venta:950000,pagamos:720000,motivo:'Histórico'};
+ const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:{...old,precio_venta:1050000,pagamos:750000}};
+ const calc={explanation:{valor_comercial:950000},pagamos:720000,pago_aliado:649850,utilidad_creditek:100000,policy_snapshot:{motor:'krediya_v2',...tariff,correccion_venta:old}};
+ const {html}=operations([{...row,liquidation_calculations:[calc]}],[c],[],{frozen_at:'2026-11-26'});assert.match(metricHtml(html,'PVP corregido para esta venta'),/950000/);assert.match(html,/Corrección guardada: PVP COP 950000 · PAGAMOS COP 720000/);assert.doesNotMatch(html,/COP 1050000|COP 750000/);
 });

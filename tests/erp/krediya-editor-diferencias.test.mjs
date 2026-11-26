@@ -93,11 +93,11 @@ test('novedades no usan pastillas rosadas para explicaciones largas',()=>{
  assert.match(html,/#priceImpact\{white-space:pre-line/);
 });
 
-test('corregir una venta habilita ambos importes, conserva la corrección previa y exige motivo y pesos enteros',async()=>{
+test('corregir una venta habilita ambos importes, conserva la corrección previa y admite nota opcional',async()=>{
  const current={...base,pvp_aplicado:1050000,pagamos_aplicado:750000,pvp_guardado:1000000,pvp_recibido:900000,pagamos_guardado:700000,inicial:100000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Revisión ficticia anterior'}};
  const e=editor(current);let destination;e.context.loadTab=async(...args)=>{destination=args};await e.context.open('fixture-credit',{operationOnly:true});
  assert.match(e.$('priceEditorContent').innerHTML,/type="hidden" id="priceDecision" value="editar_operacion"/);assert.doesNotMatch(e.$('priceEditorContent').innerHTML,/Aplicar a ventas desde/);
- assert.match(e.$('priceEditorContent').innerHTML,/min="1" step="1"/);assert.equal(e.$('decisionPvp').value,1050000);assert.equal(e.$('decisionPagamos').value,750000);assert.equal(e.$('decisionPvp').disabled,false);assert.equal(e.$('savePriceDecision').disabled,true);
+ assert.match(e.$('priceEditorContent').innerHTML,/min="1" step="1"/);assert.equal(e.$('decisionPvp').value,1050000);assert.equal(e.$('decisionPagamos').value,750000);assert.equal(e.$('decisionPvp').disabled,false);assert.equal(e.$('savePriceDecision').disabled,false);
  e.$('priceReason').value='Corrección confirmada de esta venta';e.$('priceReason').oninput();assert.equal(e.$('savePriceDecision').disabled,false);assert.match(e.$('priceImpact').textContent,/Margen parcial antes de gasto financiero/);assert.doesNotMatch(e.$('priceImpact').textContent,/Utilidad neta estimada/);
  e.$('decisionPvp').value=1050000.5;e.$('decisionPvp').oninput();assert.equal(e.$('savePriceDecision').disabled,true);e.$('decisionPvp').value=1050000;e.$('decisionPvp').oninput();
  await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.calls.length,2);assert.equal(e.calls[1].name,'aliados_resolver_precio_krediya');assert.equal(e.calls[1].args.p_operation_id,'fixture-credit');assert.equal(e.calls[1].args.p_decision,'editar_operacion');assert.deepEqual(destination,['operations','fixture-credit']);assert.ok(!e.calls.some(c=>/guardar_tarifa|calcular|pagar/.test(c.name)));
@@ -110,4 +110,26 @@ test('un fallo de conexión mantiene el formulario y pide comprobar la venta ant
  await e.$('priceDecisionForm').onsubmit({preventDefault(){}});
  assert.match(e.$('priceSaveError').textContent,/Reabre esta venta para comprobar/);
  assert.equal(e.$('savePriceDecision').disabled,false);
+});
+
+test('una venta se guarda sin nota y conserva la auditoría con motivo automático',async()=>{
+ for(const reason of ['', '   ', '  Acuerdo confirmado  ']){
+  const e=editor({...base,inicial:10});await e.context.open('credit',{operationOnly:true});
+  assert.match(e.$('priceEditorContent').innerHTML,/Nota \(opcional\)/);assert.doesNotMatch(e.$('priceEditorContent').innerHTML,/id="priceReason" required/);
+  e.$('priceReason').value=reason;e.$('priceReason').oninput();assert.equal(e.$('savePriceDecision').disabled,false);
+  await e.$('priceDecisionForm').onsubmit({preventDefault(){}});
+  assert.equal(e.calls[1].args.p_justificacion,reason.trim()||'Corrección individual de PVP y PAGAMOS');
+ }
+});
+test('el submit forzado no elude importes inválidos ni el motivo del flujo anterior',async()=>{
+ for(const [p,paid] of [[1.5,75],[0,75],[100,9],[1e14,75]]){
+  const e=editor({...base,inicial:10});await e.context.open('credit',{operationOnly:true});e.$('decisionPvp').value=p;e.$('decisionPagamos').value=paid;
+  await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.calls.length,1);assert.equal(e.$('savePriceDecision').disabled,true);
+ }
+ const e=editor({...base,inicial:10});await e.context.open('credit');e.$('priceDecision').value='editar_operacion';e.$('priceDecision').onchange();
+ assert.match(e.$('priceEditorContent').innerHTML,/id="priceReason" required/);await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.calls.length,1);
+});
+test('un error del servidor se muestra y permite reintentar con valores válidos',async()=>{
+ const e=editor({...base,inicial:10});await e.context.open('credit',{operationOnly:true});e.context.sb.rpc=async()=>({error:{message:'Liquidación bloqueada'}});
+ await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.$('priceSaveError').textContent,'Liquidación bloqueada');assert.equal(e.$('savePriceDecision').disabled,false);
 });

@@ -1028,10 +1028,13 @@
       <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="1" step="1" max="99999999999999" required ${operationOnly ? '' : 'disabled'}></label><label>Pagamos antes de inicial<input class="control" id="decisionPagamos" type="number" min="1" step="1" max="99999999999999" required value="${c.pagamos_guardado ?? ''}"></label></div>
       <p id="pricePayout" class="price-payout">Inicial del crédito: ${amount(c.inicial)}. Pago al aliado = Pagamos − inicial.</p>
       <p id="priceImpact" aria-live="polite">Selecciona una decisión para ver el impacto.</p>
-      <label>Motivo de la decisión<textarea class="control" id="priceReason" required rows="2" maxlength="1000" placeholder="Ejemplo: diferencia confirmada o posible error de Krediya"></textarea></label>
+      <label>${operationOnly ? 'Nota (opcional)' : 'Motivo de la decisión'}<textarea class="control" id="priceReason" ${operationOnly ? '' : 'required'} rows="2" maxlength="1000" placeholder="Ejemplo: diferencia confirmada o posible error de Krediya"></textarea></label>
       ${correction ? `<p class="price-rule">Corrección individual registrada: ${esc(correction.motivo)}.</p>` : ''}
       <p class="muted">Aplica únicamente a este crédito. Conserva el archivo original y no modifica el tarifario maestro. No autoriza ni registra pagos.</p>
       <div id="priceSaveError" class="error" role="alert"></div><div class="actions"><button class="btn primary" id="savePriceDecision" type="submit" disabled>${operationOnly ? 'Guardar corrección de esta venta' : 'Guardar decisión'}</button></div></form>`;
+    let saving = false;
+    const readDecision = () => ({mode:$('priceDecision').value,pvp:Number($('decisionPvp').value),pagamos:Number($('decisionPagamos').value),reason:$('priceReason').value.trim()});
+    const validDecision = (v) => Boolean(v.mode) && Number.isSafeInteger(v.pvp) && Number.isSafeInteger(v.pagamos) && v.pvp>0 && v.pagamos>0 && v.pvp<1e14 && v.pagamos<1e14 && v.pagamos>=Number(c.inicial ?? 0) && (operationOnly || Boolean(v.reason));
     const refresh = () => {
       const mode = $('priceDecision').value;
       const p = Number($('decisionPvp').value), paid = Number($('decisionPagamos').value);
@@ -1042,7 +1045,7 @@
       const previous = c.pvp_guardado == null || c.pagamos_guardado == null || !known ? null : Number(c.pvp_guardado)-Number(c.pagamos_guardado)-Number(c.bonos);
       $('priceImpact').textContent = !(p>0 && paid>0) ? 'Falta PVP o Pagamos para calcular el impacto.' : !known ? 'La utilidad queda pendiente de resolver la vigencia de bonos. Los precios sí pueden guardarse.' : `Utilidad bruta (PVP − Pagamos − bonos): ${money(bruto)}.\nProvisión 28 %: ${money(Math.round(bruto*28)/100)}.\nUtilidad neta estimada: ${money(bruto-Math.round(bruto*28)/100)}.${previous == null ? '' : `\nCambio bruto frente al precio guardado: ${money(bruto-previous)}.`}`;
       if (operationOnly) $('priceImpact').textContent = !(p>0 && paid>0) ? 'Completa PVP y PAGAMOS en pesos enteros.' : `PVP aplicado a esta venta: ${money(p)}. PAGAMOS antes de inicial: ${money(paid)}.${known ? ` Margen parcial antes de gasto financiero, provisión y bonos del ejecutivo: ${money(bruto)}.` : ''} El resultado completo se actualizará al guardar.`;
-      $('savePriceDecision').disabled = !mode || !Number.isSafeInteger(p) || !Number.isSafeInteger(paid) || !(p>0 && paid>0) || p>=1e14 || paid>=1e14 || paid<initial || !$('priceReason').value.trim();
+      $('savePriceDecision').disabled = saving || !validDecision(readDecision());
     };
     $('priceDecision').onchange = () => {
       const mode = $('priceDecision').value;
@@ -1054,12 +1057,15 @@
     };
     ['decisionPvp','decisionPagamos','priceReason'].forEach((id) => { $(id).oninput = refresh; });
     $('priceDecisionForm').onsubmit = async (event) => {
-      event.preventDefault(); $('savePriceDecision').disabled = true;
+      event.preventDefault();
+      const decision = readDecision();
+      if (saving || !validDecision(decision)) { refresh(); return; }
+      saving = true; $('savePriceDecision').disabled = true; $('priceSaveError').textContent = '';
       const batchId = selected.id;
       try {
-        const { error: saveError } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId,p_decision:$('priceDecision').value,p_precio_venta:Number($('decisionPvp').value),p_pagamos:Number($('decisionPagamos').value),p_justificacion:$('priceReason').value.trim() });
-        if (saveError) { $('priceSaveError').textContent = saveError.message; refresh(); return; }
-      } catch (_) { $('priceSaveError').textContent = 'No se pudo confirmar el guardado. Reabre esta venta para comprobar sus valores antes de intentarlo de nuevo.'; refresh(); return; }
+        const { error: saveError } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId,p_decision:decision.mode,p_precio_venta:decision.pvp,p_pagamos:decision.pagamos,p_justificacion:operationOnly ? decision.reason || 'Corrección individual de PVP y PAGAMOS' : decision.reason });
+        if (saveError) { saving = false; $('priceSaveError').textContent = saveError.message; refresh(); return; }
+      } catch (_) { saving = false; $('priceSaveError').textContent = 'No se pudo confirmar el guardado. Reabre esta venta para comprobar sus valores antes de intentarlo de nuevo.'; refresh(); return; }
       modal.classList.remove('show');
       await loadBatches(); await openDetail(batchId); await loadTab(operationOnly ? 'operations' : 'incidents',operationId);
     };

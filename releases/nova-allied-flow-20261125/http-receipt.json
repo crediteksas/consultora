@@ -1,0 +1,19 @@
+{
+  "routes": [
+    {
+      "url": "https://creditek-nova.comercial-853.workers.dev/pilot/retail",
+      "status": 200,
+      "committedHtmlMatches": true
+    },
+    {
+      "url": "https://aura.crediteksas.com/creditek/agentes/nova-supervision.html",
+      "status": 200,
+      "committedHtmlMatches": true
+    },
+    {
+      "url": "https://registro.crediteksas.com/nova/registro",
+      "status": 200,
+      "threeAlliedOriginsPresent": true
+    }
+  ]
+}

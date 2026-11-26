@@ -1,0 +1,44 @@
+✔ verified aggregate rejects without paid count or fabricated obligations (1.587292ms)
+✔ aggregate 2 with unknown paid count stays review; no inference (0.112416ms)
+✔ per-obligation 3 with missing paid rejects before completeness (0.073959ms)
+✔ exact existing boundaries: 2 vs3 overdue, paid3vs4 (0.147875ms)
+✔ missing/negative/noninteger overdue or paid does not imply a restriction (0.098ms)
+✔ identity, foreign binding, authorization, future/stale statements never generate aggregate signal (0.248041ms)
+✔ invalid or inactive aggregate is not conclusive (0.189375ms)
+✔ unknown active per-obligation status cannot reject; stale identity cannot reject (0.098334ms)
+✔ confirmed restriction wins over incomplete photo/reference/provider evidence; no Andrea wait (0.606208ms)
+✔ valid complete clean case still continues automatically (0.293084ms)
+✔ all independently confirmed hard reasons are retained, including same obligation (0.350458ms)
+✔ revoked consent keeps existing override priority over financial restriction (0.481333ms)
+✔ policy version unchanged; v2 case still requires all3; existing detail reevaluation follows restrictive rule (1.329542ms)
+✔ aggregate restriction wins even if item counts differ; phone-no-match preserved (0.062041ms)
+✔ nonrestrictive fingerprint input is identical; restriction version included only in decision when applicable (7.429875ms)
+✔ real summary builder preserves review and waiting fingerprints; projection fields are excluded (9.881458ms)
+(node:91663) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Andrea receives official store, all concrete tasks, same authenticated direct link (1.186792ms)
+✔ template rendered body stays under1024, params no forbidden whitespace (0.210958ms)
+✔ stale/missing metadata fails without inventing details (0.406708ms)
+✔ closed states do not invent pending tasks (0.156334ms)
+✔ family refusal/contact issues are never inferred as relationship-only (0.066166ms)
+✔ today defaults to stable Colombia intake window, including exact midnight (0.850791ms)
+✔ archive keeps earlier cases and validates page input; scopes unchanged (0.206166ms)
+✔ old direct links do not depend on loaded daily list; server remains scope authority (1.442333ms)
+✔ list races, midnight and logout invalidate old data; page changes clear documents (10.384209ms)
+✔ browser module scripts parse; no new decision/classification code (2.854916ms)
+✔ authorized replay preserves receipt without phone, is idempotent, actualclaim+finish works (695.980708ms)
+✔ uncertain replay never sends again nor creates audit marker (444.263708ms)
+✔ actual sender snapshots detailed alert, preserves URL button, honors accepted state (1.622541ms)
+✔ other audience provider payload byte-identical to baseline (1.51575ms)
+✔ lookup or metadata failure never leaves lease sending or sends fabricated notice (1.433709ms)
+✔ uncertain network send stays uncertain, no second send (0.740417ms)
+✔ actual deployed gateway rejects audit_log yet detailed Andrea alert sends and persists privately in KV (16.626375ms)
+✔ KV snapshot outage cannot block authorized alert delivery through gateway (3.156083ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1278.664666

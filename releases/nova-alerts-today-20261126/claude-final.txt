@@ -1,0 +1,37 @@
+**Verdict: NOT APPROVED — one blocker.** Don't deploy or run `resend.sql` yet. Nothing was written, sent or queried. The Write tool isn't available here, so this message is the whole review.
+
+## Blocker: the new `audit_log` write is rejected in production, so every Andrea notice will fail
+
+- In production, NOVA's `db()` sends every `kora` call through the `NOVA_RETAIL_DATABASE` gateway. That binding is in `baseline/live.json:414-418`, and the routing is at `candidate/nova/index.mjs:77916-77917`.
+- The gateway only accepts writes listed in its `WRITE` allowlist (`baseline/clientes/index.mjs:11445`, enforced at `:11593-11594`). `audit_log` isn't on that list. It allows reads from `origenes` and `nova_retail_cases`, so those two lookups are fine.
+- So the `audit_log` POST at `candidate/nova/index.mjs:78203` will throw. The catch at `:78204` then finishes every Andrea notice as `failed` / `NOTICE_DETAILS_UNAVAILABLE`.
+- The retries hit the same error each time until the 5-attempt cap. For the one-off replay, the notice would go from attempt 2 to 5 and stop without ever sending. All other Andrea notices would also stop being sent. It's safe in that nothing wrong gets sent, but it's a silent outage.
+- The tests pass because none of them run through the gateway. They all use the direct-fetch path.
+
+**Fix (NOVA-only, keeps your plan to deploy only NOVA):**
+- Remove the `nova_alerta_detalle_preparada` write, or move it outside the details try and make it best-effort (a `catch` that does nothing).
+- Don't add `audit_log` to the gateway allowlist. That would mean a deploy of `creditek-clientes` and a wider write permission.
+- Add a test where `env.NOVA_RETAIL_DATABASE.fetch` behaves like the real gateway (rejects any write not on its allowlist), and check that Andrea's notice still sends through it.
+
+## Reviewed and OK
+- **(1) Direct links:** the UI only checks the UUID format, and a failed `open` clears the detail. The server's `assertScope` still decides access.
+- **(2) Length:** parameter 1 is at most 126 characters and parameter 2 at most 650. `clean` turns all whitespace and control characters into single spaces. Minor: when the "Otros pendientes en la ficha." suffix is added after the loop, the final `slice(0,650)` can cut up to 2 characters from its end (≤622 + 30). That's cosmetic, but worth tidying.
+- **(3) Lookups:** the reviewer and contact lookups are now inside the try, so a failure finishes as `failed` instead of being stuck in `sending`. The claim returns `revision` (through `to_jsonb(v_notice)`) plus `case_state` and `store_code`. The helper refuses to build the message if any of them don't match.
+- **Your SAFE alternative (fail instead of a generic fallback):** I accept it. It never sends stale or generic text as if it were exact. The trade-off is that an Andrea notice can now stop for good after 5 tries. After deploy, watch for `error_code='NOTICE_DETAILS_UNAVAILABLE'` and confirm every pilot store has an `origenes.nombre`.
+- **(4)–(7):** all OK.
+  - The family check is one shared helper used in both places.
+  - The photo task only reacts to the existing `name_mismatch` issue and puts no names in the message.
+  - The list query names the foreign key explicitly, sorts stably and leaves the privacy filters unchanged.
+  - The allied "closed" receipt needs the same period, page and day, plus the case in the previous rows. Changing the list window clears the detail and photos. Logout and the list generation counter discard stale responses. The midnight reset works. `changeListWindow` is `async`, and `lastListHasMore` is declared.
+- **P1:**
+  - A requeued notice with `attempts=1` and `next_attempt_at=now()` gets claimed (`state='queued'`, `attempts<5`). The claim marks it `sending` and sets attempts to 2.
+  - `finish` only matches the new `attempt_id` while the notice is `sending`.
+  - Clearing `provider_message_id` means webhooks for the old message no longer match.
+  - The claim only cancels notices whose revision doesn't match the case.
+- **P2:** `resend.sql` copies `to_jsonb(n)-'recipient'` and doesn't copy the phone. It writes to `audit_log` directly in SQL, not through the gateway, so it isn't affected by the blocker.
+- **Consent check:** it's unchanged and still outside a try. If it throws, the notice ends up `uncertain` after 2 minutes and is never sent twice. That's acceptable.
+
+## Recommended hardening (not blocking)
+- In `resend.sql`, add `AND c.revision = 10` to the case guard, so the script matches exactly the case state you checked.
+
+Once the `audit_log` write is removed or made best-effort and a test through the gateway passes, my verdict becomes **APROBADO PARA PUBLICAR Y REENVIAR**. Everything else in your sequence stays as planned: deploy only NOVA, check today's list of 2, the archive and the direct link, then run the one-off and wait for the signed receipt with a new message ID.

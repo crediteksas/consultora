@@ -1,0 +1,86 @@
+{
+  "server": [
+    [
+      "ref?.type==='family'&&ref.responded===true&&ref.knowsCustomer===true&&ref.contactConfirmed===true&&['friend','neighbor','coworker','other'].includes(ref.reportedRelationship)&&[null,undefined,'contradictory_information','relationship_unconfirmed'].includes(ref.reason)",
+      "referenceFamilyMismatch(ref)"
+    ],
+    [
+      "function createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation } = {}) {",
+      "function referenceFamilyMismatch(ref){return ref?.type==='family'&&ref.responded===true&&ref.knowsCustomer===true&&ref.contactConfirmed===true&&['friend','neighbor','coworker','other'].includes(ref.reportedRelationship)&&[null,undefined,'contradictory_information','relationship_unconfirmed'].includes(ref.reason);}\n// Staff notice content only; never decides or modifies eligibility.\nfunction andreaNoticeContent(notice,c,storeName){\n if(!/^[a-f0-9-]{36}$/i.test(notice?.source_id||'')||!Number.isSafeInteger(notice.revision)||c?.revision!==notice.revision||c?.store_code!==notice.store_code||c?.state!==notice.case_state||typeof storeName!=='string'||!storeName.trim())throw Error('NOTICE_DETAILS_UNAVAILABLE');\n const clean=(v,max)=>String(v||'').replace(/[\\p{Cc}\\p{Cf}]/gu,' ').replace(/\\s+/g,' ').trim().slice(0,max);\n const state=c.state,workflow=storeWorkflow(c),refs=Array.isArray(c.summary?.references)?c.summary.references:[],photos=Array.isArray(c.summary?.photos)?c.summary.photos:[];\n const tasks=workflow.pending.map(p=>{\n  const r=refs.find(r=>r.type===p.type);\n  if(p.kind==='reference'&&p.type==='personal'&&r?.status==='replace'&&r?.reportedRelationship==='family')return 'Referencia personal: indicó ser familiar; la tienda debe cambiarla por una persona que no sea familiar.';\n  if(p.kind==='reference'&&r?.status==='review'&&referenceFamilyMismatch(r))return 'Referencia familiar: respondió «'+({friend:'Amistad',neighbor:'Vecino',coworker:'Compañero de trabajo',other:'Otra relación'}[r.reportedRelationship])+'»; aclarar la relación registrada con la tienda.';\n  if(p.kind==='photo'&&p.label==='Frente de cédula'&&photos.some(x=>x.type==='frente'&&x.issues?.includes('name_mismatch')))return 'Frente de cédula: revisar la diferencia detectada entre el nombre registrado y el documento.';\n  return clean(p.label,100)+': '+clean(p.detail,220)+' Responsable: '+clean(p.owner,40)+'.';\n });\n let text=state==='authorized'?'Puedes continuar.':state==='rejected'?'No puedes continuar. Consulta la decisión registrada.':'Revisión pendiente.';\n for(let i=0;i<tasks.length;i++){\n  const suffix=i<tasks.length-1?' Más pendientes en la ficha.':'';\n  if((text+' '+tasks[i]+suffix).length>650){text+=' Otros pendientes en la ficha.';break;}text+=' '+tasks[i];\n }\n if(!tasks.length&&!['authorized','rejected'].includes(state))text+=' Revisar la observación registrada en la ficha antes de continuar.';\n return {reference:clean(storeName,110)+' · NOVA-'+notice.source_id.slice(0,8).toUpperCase(),text:clean(text,650),url:'https://aura.crediteksas.com/creditek/agentes/nova-supervision.html?solicitud='+notice.source_id};\n}\n// Stable intake date; midnight in Colombia is 05:00 UTC. Archiving is a view only.\nfunction novaCaseListWindow(input={},at=Date.now()){\n const period=input.period??'today',offset=input.offset??0;\n if(!['today','archive'].includes(period)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('INVALID_LIST_WINDOW');\n const day=new Date(at-5*3600000).toISOString().slice(0,10),start=Date.parse(day+'T05:00:00.000Z'),end=start+86400000;\n return {period,offset,day,start:new Date(start).toISOString(),end:new Date(end).toISOString()};\n}\nfunction novaCaseListQuery(actor,input,at){\n const w=novaCaseListWindow(input,at);\n const scope=actor.global?'':'&store_code=eq.'+encodeURIComponent(actor.store);\n const privacy=actor.allied?'&state=not.in.(authorized,rejected)&delivered_at=is.null':'';\n const date=w.period==='today'?'&source.submitted_at=gte.'+w.start+'&source.submitted_at=lt.'+w.end:'&source.submitted_at=lt.'+w.start;\n return {window:w,path:'nova_retail_cases?select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at,source:kora_nova_sources!nova_retail_cases_source_id_fkey!inner(submitted_at)'+scope+privacy+date+'&order=source(submitted_at).desc,source_id.desc&limit=101&offset='+w.offset};\n}\n\nfunction createRetailRuntime({ fetcher = fetch, now = Date.now, makeInvitation } = {}) {"
+    ],
+    [
+      "      let recipient = null;\n      if (n.audience === \"andrea\") {\n        const people = await db(env, \"kora\", \"nova_retail_reviewers?can_review=eq.true&select=recipient\");\n        if (people.length === 1) recipient = people[0].recipient;\n      } else {\n        const contact = await db(env, \"kora\", \"nova_retail_store_contacts?store_code=eq.\" + n.store_code + \"&select=recipient&limit=1\");\n        recipient = contact[0]?.recipient;\n      }\n      const finish = /* @__PURE__ */ __name((state, id = null, error = null) => rpc(env, \"nova_retail_notification_finish\", { p_id: n.id, p_attempt: n.attempt_id, p_state: state, p_recipient: recipient || null, p_message: id, p_error: error }), \"finish\");\n",
+      "      let recipient = null;\n      const finish = /* @__PURE__ */ __name((state, id = null, error = null) => rpc(env, \"nova_retail_notification_finish\", { p_id: n.id, p_attempt: n.attempt_id, p_state: state, p_recipient: recipient || null, p_message: id, p_error: error }), \"finish\");\n      try{\n      if (n.audience === \"andrea\") {\n        const people = await db(env, \"kora\", \"nova_retail_reviewers?can_review=eq.true&select=recipient\");\n        if (people.length === 1) recipient = people[0].recipient;\n      } else {\n        const contact = await db(env, \"kora\", \"nova_retail_store_contacts?store_code=eq.\" + n.store_code + \"&select=recipient&limit=1\");\n        recipient = contact[0]?.recipient;\n      }\n      }catch{await finish(\"failed\",null,\"CONTACT_LOOKUP_UNAVAILABLE\");continue;}\n"
+    ],
+    [
+      "      const text = n.case_state === \"review\" ? \"Solicitud pendiente de revisi\\xF3n de Andrea\" : n.case_state === \"authorized\" ? \"Autorizado para tramitar\" : \"Rechazado\";",
+      "      let text = n.case_state === \"review\" ? \"Solicitud pendiente de revisión de Andrea\" : n.case_state === \"authorized\" ? \"Autorizado para tramitar\" : \"Rechazado\";\n      let noticeReference=\"NOVA-\"+n.source_id.slice(0,8).toUpperCase();\n      if(n.audience===\"andrea\"){\n        try{\n          const cases=await db(env,\"kora\",\"nova_retail_cases?source_id=eq.\"+n.source_id+\"&revision=eq.\"+n.revision+\"&select=source_id,revision,store_code,state,summary,decision&limit=1\");\n          const origins=await db(env,\"kora\",\"origenes?codigo=eq.\"+encodeURIComponent(n.store_code)+\"&select=codigo,nombre&limit=1\");\n          const content=andreaNoticeContent(n,cases[0],origins[0]?.nombre);\n          noticeReference=content.reference;text=content.text;\n          try{await env.NOVA_EVENTS?.put(\"nova:retail:notice-content:v1:\"+n.id+\":\"+n.attempt_id,JSON.stringify({notice_id:n.id,attempt_id:n.attempt_id,source_id:n.source_id,revision:n.revision,template:\"nova_aviso_ejecutivo_v1\",body_parameters:[content.reference,content.text],direct_url:content.url}),{expirationTtl:2592000});}catch{console.warn(JSON.stringify({event:\"retail_notice_snapshot_unavailable\"}));}\n        }catch{await finish(\"failed\",null,\"NOTICE_DETAILS_UNAVAILABLE\");continue;}\n      }"
+    ],
+    [
+      "{ type: \"text\", text: \"NOVA-\" + n.source_id.slice(0, 8).toUpperCase() }, { type: \"text\", text }",
+      "{ type: \"text\", text: noticeReference }, { type: \"text\", text }"
+    ],
+    [
+      "        const rows2 = await db(env, \"kora\", \"nova_retail_cases?select=source_id,store_code,state,revision,decision,summary,valid_until,updated_at\" + (actor.global ? \"\" : \"&store_code=eq.\" + actor.store) + (actor.allied ? \"&state=not.in.(authorized,rejected)&delivered_at=is.null\" : \"\") + \"&order=updated_at.desc&limit=100\");",
+      "        const listing=novaCaseListQuery(actor,b,now());\n        const pageRows=await db(env,\"kora\",listing.path),hasMore=pageRows.length>100,rows2=pageRows.slice(0,100);"
+    ],
+    [
+      "return reply({ registrationUrl:entry?.url||null, proposedPhone:",
+      "return reply({ listWindow:{period:listing.window.period,day:listing.window.day,offset:listing.window.offset,hasMore},registrationUrl:entry?.url||null, proposedPhone:"
+    ],
+    [
+      "updatedAt: c2.updated_at, ...actor.global ?",
+      "updatedAt: c2.updated_at, submittedAt:c2.source?.submitted_at||null,...actor.global ?"
+    ]
+  ],
+  "ui": [
+    [
+      "<div class=\"card\"><div class=\"row\"><label>Buscar tienda o cliente",
+      "<div class=\"card\"><div class=\"row\"><label>Mostrar<select id=\"period\"><option value=\"today\">Solicitudes de hoy</option><option value=\"archive\">Archivo · Días anteriores</option></select></label><label>Buscar tienda o cliente"
+    ],
+    [
+      "<p id=\"empty\" hidden>No hay solicitudes para mostrar.</p>",
+      "<p id=\"empty\" hidden>No hay solicitudes para mostrar.</p><p id=\"listScope\" class=\"muted\" role=\"status\"></p><div class=\"row\"><button id=\"previousPage\" class=\"secondary\" disabled>Anterior</button><button id=\"nextPage\" class=\"secondary\" disabled>Siguiente</button></div>"
+    ],
+    [
+      "historyMore=false;",
+      "historyMore=false;let listOffset=0,listDay=null,listGeneration=0,lastListPeriod=null,lastListOffset=null;"
+    ],
+    [
+      "async function load(){let closedId=null;const previous=rows;const data=await api({action:'list'});actor=data.actor;rows=data.cases;",
+      "async function load(){let closedId=null;const previous=rows,requestedPeriod=$('period').value,requestedOffset=listOffset,generation=++listGeneration;const data=await api({action:'list',period:requestedPeriod,offset:requestedOffset});if(generation!==listGeneration||requestedPeriod!==$('period').value||requestedOffset!==listOffset)return;\n const samePage=lastListPeriod===requestedPeriod&&lastListOffset===requestedOffset&&listDay===data.listWindow.day;\n if(listDay&&listDay!==data.listWindow.day){clearCommercialClosure();clearAlliedDetail();if(listOffset!==0){listOffset=0;listDay=data.listWindow.day;return load();}}\n actor=data.actor;rows=data.cases;listDay=data.listWindow.day;lastListPeriod=requestedPeriod;lastListOffset=requestedOffset;\n $('listScope').textContent=(requestedPeriod==='today'?'Solicitudes ingresadas hoy, '+listDay+' (hora de Colombia).':'Archivo: solicitudes ingresadas antes de '+listDay+'.')+' Mostrando '+rows.length+' en esta página.';\n $('previousPage').disabled=listOffset===0;$('nextPage').disabled=!data.listWindow.hasMore;\n"
+    ],
+    [
+      "if(actor.allied && selected && !rows.some(c=>c.id===selected)){",
+      "if(actor.allied && selected && samePage&&previous.some(c=>c.id===selected)&&!rows.some(c=>c.id===selected)){"
+    ],
+    [
+      "if(!/^[a-f0-9-]{36}$/i.test(wanted)||!rows.some(r=>r.id===wanted)){",
+      "if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(wanted)){"
+    ],
+    [
+      " await open(wanted);\n}",
+      " try{await open(wanted);}catch{clearAlliedDetail();say('Esta solicitud no está disponible para tu acceso. Los aliados solo pueden ver sus solicitudes en trámite.');}\n}"
+    ],
+    [
+      "function clearAlliedSession(){\n",
+      "function clearAlliedSession(){\n listGeneration++;\n"
+    ],
+    [
+      "async function operate(run){if(busy)return;busy=true;",
+      "async function operate(run){if(busy)return;busy=true;$('period').disabled=true;"
+    ],
+    [
+      "finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.locked==='true');}",
+      "finally{busy=false;$('period').disabled=false;document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.locked==='true');}"
+    ],
+    [
+      "$('logout').onclick=()=>{",
+      "$('logout').onclick=()=>{listGeneration++;"
+    ],
+    [
+      " try{\n  if(actor.allied){await load();if(!selected)return;}",
+      " try{\n  const day=new Date(Date.now()-5*3600000).toISOString().slice(0,10);if(listDay&&day!==listDay&&!editingDetail()){listOffset=0;clearCommercialClosure();clearAlliedDetail();rows=[];$('cases').replaceChildren();await load();return;}\n  if(actor.allied){await load();if(!selected)return;}"
+    ]
+  ]
+}

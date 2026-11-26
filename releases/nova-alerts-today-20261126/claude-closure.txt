@@ -1,0 +1,25 @@
+**Verdict: APROBADO PARA PUBLICAR Y REENVIAR.** The blocker is closed and I found no other blocker. I only read the files you listed. Nothing was edited, deployed, sent or queried. The Write tool is disabled here, so this message is the whole result instead of a plan file.
+
+**Blocker closure:**
+- **No `audit_log` write left** (`build.py:22-30`): the sender for Andrea only reads `nova_retail_cases` and `origenes`, and the gateway allows both.
+- **Message snapshot can't block the send** (`build.py:28`): it uses `env.NOVA_EVENTS?.put(...)` with a 30-day expiry (`expirationTtl: 2592000`). It has its own `try/catch`, which only logs a warning. A KV failure never reaches the outer `NOTICE_DETAILS_UNAVAILABLE` catch. The saved snapshot holds no phone number.
+- **The gateway test is real** (`tests.mjs:24-34`):
+  - It runs the real `retailDatabaseGateway` code from `baseline/clientes/index.mjs`.
+  - It runs the real `db()` and `sendNotices` from `candidate/nova/index.mjs` (`s` is set at `tests.mjs:2`).
+  - Every call goes through `env.NOVA_RETAIL_DATABASE.fetch` into that gateway.
+  - It checks that an `audit_log` POST is rejected with **403**.
+- **The test would fail if the bug were still there:** a blocked write would make `db()` throw, the notice would finish as `failed`, and nothing would be sent. Tests 35 and 36 both check that exactly one message is sent and the notice finishes as `accepted`.
+- **KV outage covered** (test 36): when the KV write throws, the notice still sends and is accepted, and no snapshot is stored.
+- **All tests pass** (`tests.log`): 34 of 34, 0 failures.
+- **Replay guard** (`resend.sql:10`): it now also requires `c.revision<>10` to be false, so it only runs on revision 10. I saw nothing else outside the approved plan.
+
+**Not blocking:**
+- The KV write runs before the send, so each Andrea notice waits a little longer. Delivery doesn't depend on it.
+- The small cut where `slice(0,650)` can trim the end of "Otros pendientes en la ficha." is still there. Fixing it is optional.
+
+**Your sequence, unchanged:**
+1. Deploy NOVA only.
+2. Check today's list of 2, the archive and the direct link.
+3. Run `resend.sql` once.
+4. Wait for the signed receipt with a new message ID.
+5. Afterwards, watch for `error_code='NOTICE_DETAILS_UNAVAILABLE'` and `retail_notice_snapshot_unavailable` warnings.

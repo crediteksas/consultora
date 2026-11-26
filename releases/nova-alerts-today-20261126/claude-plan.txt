@@ -1,0 +1,37 @@
+**Verdict: APROBADO PARA IMPLEMENTAR for the code in Plans A and B, but only with the 7 changes below.** The one-off Club Seven replay stays blocked until you check three things (P1–P3 below), because the database functions it relies on aren't in the captured files. I couldn't save the plan file because the Write tool is disabled here, so this message is the whole review. Nothing was edited, sent or queried.
+
+**What already holds up**
+- **Old direct links:** the server's `detail` and `progress` actions load the case by its ID and run `assertScope` without looking at the list (`baseline/nova/index.mjs:78283-78299`). Archiving can't widen access.
+- **Day boundaries:** `kora_nova_sources.submitted_at` exists (`index.mjs:64488`). Colombia is UTC-5 all year, so cutting days at 05:00 UTC is correct.
+- **Old WhatsApp receipts:** the status webhook finds notices by `provider_message_id` plus recipient (`index.mjs:78189-78191`). Once the old ID is cleared, late receipts for the old message are ignored.
+- **Pending text:** `storeWorkflow` (`index.mjs:77648-77728`) uses fixed wording with no personal data. It already covers "personal reference says they're family" (`:77704`). It also clears pending items once a case is authorized or rejected (`:77713`), so those cases can't show invented pending items.
+- **Audit row:** the history panel reads `nova_retail_case_events` and photo events, not `audit_log` (`:78230-78239`). The internal audit row won't show up in the UI.
+
+**Required changes**
+1. **Direct link in the UI:** `ui-current.html:67` refuses any `?solicitud=` that isn't in the loaded `rows`. Under Plan B, Andrea's button would fail for any case not in today's list. Check only the ID format there and let the server decide access.
+2. **Message length:** capping parameter 2 at 900 characters isn't enough. Meta limits the whole message body (template text plus both parameters) to 1024 characters. It also rejects tabs and runs of 4+ spaces, as well as newlines. A rejection counts as `failed` in the sender, which would use up the one authorized send. Set the limit from the approved template's actual text and leave a margin.
+3. **Fail safely without losing the notice:** today the reviewer and contact lookups (`sender-current.js:8-13`) sit outside the try. If an added lookup fails there, the notice is left stuck in `sending`. Put all new lookups inside the try. If the case has changed or the store name is missing, send the current generic text (`sender-current.js:23`) instead of a placeholder like "Tienda sin nombre". If the claim function doesn't return a revision, compare `n.case_state` with the case's current state.
+4. **Family mismatch:** the "family reference says they're not family" check only exists in `commercialStoreWorkflow` (`index.mjs:77750`). Move it into one shared helper rather than copying it.
+5. **Photo name mismatch:** `storeWorkflow` has no field for this. Use an existing field in `summary.photos[]` if there is one, otherwise the generic label and detail. Never put the actual names in WhatsApp.
+6. **Stable pages:** the list at `api-current.js:14` is sorted by `updated_at.desc`, so rows would move between pages as cases update.
+   - Sort by `source(submitted_at).desc,source_id.desc`.
+   - Name the foreign key explicitly: `kora_nova_sources!nova_retail_cases_source_id_fkey!inner(submitted_at)`.
+   - Leave the store and allied filters and the `FORBIDDEN` check (`:14-15`) unchanged.
+7. **Allied "closed" receipt:** at `ui-current.html:60`, only show it when the previous rows were for the same period and page and contained the selected case. Clear `previous` when the period or page changes. Clear the detail and photo first by reusing `clearAlliedDetail` (`:180`).
+
+**Before the replay (read-only checks)**
+- **P1:** Read the SQL for `nova_retail_notification_claim` and `nova_retail_notification_finish`. Confirm a notice put back to `queued` with attempts=1 will be picked up: no backoff or time window blocks it, and the 5-attempt cap allows it. Confirm `finish` matches the new attempt ID.
+- **P2:** Confirm `audit_log` exists with columns that fit the marker and the original receipt, since schema changes aren't allowed. Don't copy Andrea's phone number into the audit row.
+- **P3:** Confirm these still hold:
+  - exactly one reviewer has `can_review=true`
+  - Club Seven's consent is current
+  - the staff template's status is `APPROVED`
+  - the case is still in `review` at the same revision
+
+After that, the transaction, guards and delivery check can run as you described.
+
+**Tests to add** on top of your list:
+- the 1024-character and whitespace limits
+- the fallback to the generic text when data is missing
+- other audiences' messages staying byte-for-byte the same
+- a webhook for the old message ID being ignored after the requeue

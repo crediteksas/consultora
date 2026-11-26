@@ -617,7 +617,9 @@
       && inMonth(x.movement_date)
       && (!selectedPlatform || movementPlatform(x) === selectedPlatform));
     const pendingForPlatform = (x) => !selectedPlatform || x.platform_snapshot === selectedPlatform;
-    const out = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0)-Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0)),
+    const ledgerBalance = Number(data.balances.find((x) => x.unit === "tercerizacion")?.balance || 0),
+      reversedProfit = Math.max(0,data.reversions.reduce((n,r)=>n+Number(r.treasury_adjustment),0));
+    const out = ledgerBalance - reversedProfit,
       ally = data.payments.filter(
         (x) =>
           pendingForPlatform(x) &&
@@ -657,7 +659,7 @@
       x.unit === "tercerizacion" && ["pagado", "conciliado"].includes(x.status));
     const historicalNet = historicalMovementTotals.reduce((n, x) =>
       n + (x.direction === "credit" ? Number(x.amount) : -Number(x.amount)), 0);
-    const outsourcingDifference = historicalNet - out;
+    const outsourcingDifference = historicalNet - ledgerBalance;
     const metricCard = ({ label, value, detail, className = "" }) =>
       `<article class="metric ${className}"><small>${esc(label)}</small><strong>${cop(value)}</strong><span class="metric-detail">${esc(detail)}</span></article>`;
     const metricGroup = (heading, detail, cards) =>
@@ -679,7 +681,8 @@
         { label: "Compensaciones pendientes de aplicar a B2B", value: pendingB2B, detail: "Todavía no forman parte del saldo contable B2B.", className: "metric-b2b" },
       ]) + metricGroup("Saldo contable actual · todos los meses", "No se reinicia al cambiar de mes ni equivale al saldo bancario. Consulta Banco Creditek para movimientos de dinero real.", [
         { label: "Saldo neto contable de Tercerización", value: out, detail: "Saldo acumulado del libro de Tesorería; no es efectivo disponible en banco.", className: "metric-outsourcing" },
-        ...(Math.abs(outsourcingDifference) > 0.01 ? [{ label: "Diferencia por conciliar · Tercerización", value: outsourcingDifference, detail: "El histórico de movimientos no coincide con el saldo contable; revisar antes de usarlo.", className: "metric-outsourcing" }] : []),
+        ...(reversedProfit > 0.01 ? [{ label: "Utilidad reversada por anulación", value: reversedProfit, detail: "Ya descontada del saldo neto de Tercerización; no es una salida adicional de dinero.", className: "metric-outsourcing" }] : []),
+        ...(Math.abs(outsourcingDifference) > 0.01 ? [{ label: "Diferencia por conciliar · Tercerización", value: outsourcingDifference, detail: "El histórico de movimientos no coincide con el saldo contable antes de ajustes por anulaciones; revisar antes de usarlo.", className: "metric-outsourcing" }] : []),
         ...(out < 0 ? [{ label: "Faltante operativo por anulaciones", value: -out, detail: "Valor por cubrir antes de nuevas salidas.", className: "metric-outsourcing" }] : []),
       ]);
     $("#allyPayments").innerHTML = paymentCards("aliado");

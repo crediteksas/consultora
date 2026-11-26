@@ -1,0 +1,10 @@
+{
+  "commercial": [
+    "if(!closed)for(const p of pending){if(p.kind==='reference'&&p.owner==='Andrea'){p.owner='Creditek';p.detail='El equipo de Creditek debe revisar la respuesta de esta referencia y confirmar que corresponde al tipo solicitado. Conservamos la respuesta recibida.';}}",
+    "if(!closed)for(const p of pending){if(p.kind==='reference'&&p.owner==='Andrea'){p.owner='Creditek';const ref=references.find(r=>r.type===p.type);const mismatch=ref?.type==='family'&&ref.responded===true&&ref.knowsCustomer===true&&ref.contactConfirmed===true&&['friend','neighbor','coworker','other'].includes(ref.reportedRelationship)&&[null,undefined,'contradictory_information','relationship_unconfirmed'].includes(ref.reason);p.detail=mismatch?'Se registró como referencia familiar, pero indicó que no es familiar del cliente. Creditek debe aclarar la relación con la tienda antes de continuar. Conservamos la respuesta recibida.':'El equipo de Creditek debe revisar la respuesta de esta referencia y confirmar que corresponde al tipo solicitado. Conservamos la respuesta recibida.';}}"
+  ],
+  "ui": [
+    "const reasons={response_timeout:",
+    "const reasons={personal_reference_is_family:'La referencia personal indicó que es familiar. Registra una referencia personal que no sea familiar.',response_timeout:"
+  ]
+}

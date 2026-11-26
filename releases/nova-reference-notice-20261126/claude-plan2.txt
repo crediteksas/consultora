@@ -1,0 +1,33 @@
+**APROBADO PARA IMPLEMENTAR.** Nothing here blocks it, but the tests must actually pass against the real baseline before you publish. I read only the five files you listed, nothing else, and modified nothing.
+
+**What I checked**
+
+- **`build.py:6-8`, commercial detail:** the old string is matched exactly once (`assert count==1`) and replaced in one place. It only changes `p.detail` text; owner stays `Creditek` and nothing touches `state`, `decision`, `action` or reference data. The mismatch rule is narrow: it needs a family reference that responded, knows the customer, confirmed the contact and reported a non-family relationship, and a reason that is empty, `contradictory_information` or `relationship_unconfirmed`. Refusals, contact problems and "doesn't know the customer" keep the generic text. Closed requests are skipped as before.
+- **`build.py:9-11`, UI reasons map:** it adds the one `personal_reference_is_family` entry. Unknown or missing reasons still fall back to "motivo aún no está disponible". Decoding and re-encoding the embedded UI string with `json.loads`/`json.dumps` keeps its value the same, even if some escape characters change.
+- **`tests.mjs`** covers:
+  - the positive case for both references, the front photo still pending, and the input object left unchanged;
+  - the new reason label, and that an unknown reason isn't made up;
+  - seven negative or priority variants;
+  - closed states;
+  - the decision functions being byte-identical to baseline;
+  - the browser scripts still parsing.
+
+**Things the tests rely on but I couldn't confirm from these files**
+
+1. Pending items need a `type` field for `references.find(r=>r.type===p.type)` to work. If they don't have one, test 1 fails rather than letting a wrong result through.
+2. Test 1 expects the personal pending item's server-side detail to already contain "personal indicó que es familiar". The build doesn't change that text, so the baseline must already produce it.
+
+**Non-blocking recommendations**
+
+- **Tighter diff check:** test 6 only compares two regions. Add a whole-file check: undo the two replacements in the candidate and assert it equals `base`. That proves those are the only changes.
+- **Two more negative cases:** a family reference with `reportedRelationship:'family'`, and two references of the same type, where `find` would just take the first.
+- **Wording:** `referenceObservation` is written for Creditek staff ("Gestión: solicitar a la tienda…"), but the new entry says "Registra una referencia personal…", which addresses the store. Consider "La referencia personal indicó que es familiar; debe registrarse una referencia personal que no sea familiar."
+- **Stale files:** `copytree(..., dirs_exist_ok=True)` can leave old files from earlier runs in `candidate/`. Clean that directory before building.
+
+**Plan steps these files don't cover (still required)**
+
+- Run the privacy and baseline financial regression suites.
+- Capture the live Worker, settings and routes before patching.
+- Commit and push before publishing.
+- Deploy only `creditek-nova`.
+- Verify the live UI with the same request.

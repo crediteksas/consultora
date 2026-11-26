@@ -1,0 +1,35 @@
+✔ verified aggregate rejects without paid count or fabricated obligations (1.57675ms)
+✔ aggregate 2 with unknown paid count stays review; no inference (0.117833ms)
+✔ per-obligation 3 with missing paid rejects before completeness (0.072667ms)
+✔ exact existing boundaries: 2 vs3 overdue, paid3vs4 (0.156416ms)
+✔ missing/negative/noninteger overdue or paid does not imply a restriction (0.113042ms)
+✔ identity, foreign binding, authorization, future/stale statements never generate aggregate signal (0.263917ms)
+✔ invalid or inactive aggregate is not conclusive (0.15975ms)
+✔ unknown active per-obligation status cannot reject; stale identity cannot reject (0.063ms)
+✔ confirmed restriction wins over incomplete photo/reference/provider evidence; no Andrea wait (0.525459ms)
+✔ valid complete clean case still continues automatically (0.280083ms)
+✔ all independently confirmed hard reasons are retained, including same obligation (0.345208ms)
+✔ revoked consent keeps existing override priority over financial restriction (0.536334ms)
+✔ policy version unchanged; v2 case still requires all3; existing detail reevaluation follows restrictive rule (1.44375ms)
+✔ aggregate restriction wins even if item counts differ; phone-no-match preserved (0.090792ms)
+✔ nonrestrictive fingerprint input is identical; restriction version included only in decision when applicable (7.891083ms)
+✔ real summary builder preserves review and waiting fingerprints; projection fields are excluded (9.943791ms)
+(node:87867) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ advisor sees which personal reference to change plus family and front-photo reviews (1.175375ms)
+✔ saved reason renders actionable replacement, never unavailable diagnosis (0.12325ms)
+✔ unknown reason never fabricated from relation alone (0.050041ms)
+✔ negative knowledge, contact refusal and other reasons retain generic review priority (0.251334ms)
+✔ completed decisions still hide pending references and platform data (0.091625ms)
+✔ only commercial review detail and one UI dictionary entry changed; decisions byte-identical (4.826292ms)
+✔ embedded browser scripts remain valid (0.716583ms)
+✔ whole source differs only in the two approved display edits (6.319833ms)
+✔ a genuine family answer keeps generic review; no mismatch claim (0.191458ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.650458

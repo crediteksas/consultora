@@ -1,0 +1,35 @@
+**I can't approve this as written yet.** The approach is sound, but the plan makes three claims about the code that are wrong, and they need fixing first. Once the changes below are in the plan, I'd mark it APROBADO PARA IMPLEMENTAR.
+
+I only read `baseline/nova/index.mjs` (lines 77488–77770 and 77986–78056). I couldn't write a plan file or use the plan-approval step because those tools aren't available in this session, so the review is all here.
+
+## What the plan gets right
+- **The bug is real.** `evaluatePlatforms` (77536–77546) only rejects when there are zero payments. More than 2 overdue, and 1–2 overdue with fewer than 4 paid, only add reasons that end in `review`. A missing paid count is checked before the overdue count, so a confirmed >2 currently ends up as `incomplete_payment_history`.
+- **The rejection reaches the store correctly.** `evaluateApplication` returns at 77574, before photos and references are checked.
+- **The validation override leaves rejected cases alone.** Line 78041 is guarded by `decision.state!=='rejected'`, and the change to `waiting` at 78047 only applies to `review` cases.
+- **The store never sees financial detail.** `commercialStoreWorkflow` blanks `checks:[]`, which is where the Krediya account label would appear. A rejected case shows "No puedes continuar" (77745, and 77764 for allied stores). The internal `storeWorkflow` keeps the reasons.
+
+## Fixes needed
+1. **Policy version: bumping the wrong constant breaks old cases.** Line 78035 decides whether all three platforms are required by checking `existing.decision?.policyVersion === THREE_PLATFORM_POLICY`. If `THREE_PLATFORM_POLICY` is bumped, every case already saved under v2 quietly switches to the two-platform rule.
+   - Bump only `POLICY_VERSION`. The fingerprint picks it up through `policy:` at 78054.
+   - Note that `decision.policyVersion` will still read `THREE_PLATFORM_POLICY` when all three platforms are required, because 78051 overwrites it. If you want the decision itself to record the new rule, add a separate field such as `overdueRuleVersion`.
+2. **Revoked consent does override a rejection.** The plan says rejections stay out of the review overrides, but line 78043 turns any decision, rejections included, into `review` / `requiresAndrea:true` with reasons `["consent_revoked"]`. Keeping consent handling unchanged is fine, but then the "automatic rejection" guarantee doesn't hold when consent is revoked. Say that in the plan and add a test that pins it.
+3. **The fingerprint change will re-save every case at the next reconcile.** That includes previously authorized cases evaluated with `requireAllPlatforms=false`, and those can now flip from authorized to rejected. Confirm that this is intended. Also confirm, outside this file, what `nova_retail_save` and the cron do when the fingerprint changes: whether they notify, and whether delivered cases are among the candidates. "No DB change necessary" can't be verified from this file alone.
+4. **Spell out how the Krediya aggregate is wired:**
+   - Set the value only when `bound && verified && fresh && o.platform===job.platform && o.platform==='KREDIYA'`. Today `verified` doesn't check freshness or `o.platform`.
+   - Call `classifyKrediyaAccount({platform:job.platform,status:job.status,observation:o,reason:job.reason_code})` with the reason mapped, and require `code==='active_arrears'`.
+   - Keep an explicit `Number.isSafeInteger(n) && n>2` check in `evaluatePlatforms`. Don't rely on the classifier alone, which also accepts any finite number ≥0 before its integer check.
+   - Read the aggregate inside the existing observed / identity-verified / fresh gate (77528), before the `Array.isArray(o.obligations)` check.
+   - Update the classifier's comment "Does not determine lending eligibility". It will now drive a decision, so changes to `krediya-account-state-v1` need their own review.
+5. **Merge all hard reasons into one result.** Don't return early on zero payments (77544). Return `rejected` with all hard reasons together (`zero_payments`, `more_than_two_overdue`, `overdue_with_less_than_four_paid`) plus `overrideAllowed:false`.
+6. **Per-obligation order:** first require `active===true` and a non-empty `id`. Then, if the overdue count is a valid integer above 2, reject. Then, if paid and overdue are both valid and overdue is 1–2 with paid below 4, reject. Anything else is `incomplete_payment_history`.
+7. **Additional tests:**
+   - Revoked consent combined with a hard rejection.
+   - A legacy authorized case that flips to rejected.
+   - A previous v2 policy case that still requires all three platforms after the version bump.
+   - A Krediya aggregate of 3 with per-obligation overdue of 0, which should reject.
+   - A PayJoy phone-no-match result alongside a hard reason elsewhere.
+   - An aggregate count that is not an integer, for example 3.5.
+
+## Not in scope, but worth knowing
+- `evaluateApplication` checks `lastRejectedAt`, but `evidence` never passes it (78038), so the 15-day cooldown never applies on this path.
+- `evaluateApplication` (77569) treats every allied store except `distritoys` as out of scope, even though `alliedPilotStores` enables other stores.

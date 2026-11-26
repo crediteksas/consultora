@@ -1,0 +1,13 @@
+APROBADO PARA PUBLICAR
+
+This closes the only blocker.
+
+Why it is closed:
+1. The real summary builder lists platform fields explicitly (platform, status, attempts, checkedAt, fresh, reason, observation, validated). It reads only `resultReceived` from the projection. There is no spread, so `confirmedOverdueInstallments` and `bindingVerified` cannot reach `summary.platforms` or the fingerprint.
+2. `observation: j.observation` comes from the raw saved job, not the projection. Baseline and candidate get identical input there.
+3. Test 16 takes the exact production lines for the summary and the fingerprint from both baseline and candidate. It guards against a spread with `doesNotMatch`. It asserts the state for review and waiting under both versions and compares the summaries and fingerprints byte for byte. That is the proof I asked for.
+4. You confirmed `bindingVerified` already existed in the baseline, so it is not a new key either way.
+
+Non-blocking nit: add `assert.ok(start>0)` after the fingerprint `indexOf`, as you already do for the summary. Today a missing line would make the test throw a ReferenceError, so it still fails, but with a less clear message.
+
+The earlier optional items (dedupe reasons, KREDIYA check in the evaluator, one-time re-save of consent-revoked restrictive cases) remain optional and do not block publishing.

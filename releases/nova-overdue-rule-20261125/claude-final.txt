@@ -1,0 +1,71 @@
+
+<invoke name="Write">
+<parameter name="file_path">/Users/oscarm/.claude/plans/final-code-only-review-no-lexical-whale.md</parameter>
+<parameter name="content"># Final code-only review: NOVA Worker retail restrictions (retail-restrictions-20261125-v1)
+
+## Context
+This is the final review before publishing the restrictive-rule change in the NOVA Worker. It covers the evaluator, the Krediya aggregate projection, the consent/review precedence and the 15 tests. It is based only on the code and logs in the prompt. No files, DB or connectors were accessed.
+
+## Verdict
+**NO APROBADO TODAVÍA.** One fix is required (or a proof that it isn't needed). Everything else is correct.
+
+### Required fix: new projection keys can change fingerprints for review and waiting cases
+- `projectSavedPlatform` now always returns `confirmedOverdueInstallments` (usually `null`), and possibly `bindingVerified`, if that key is also new.
+- The `storeResult` test shows that `summary` has a `platforms` array. `summary` is part of the fingerprint input.
+- If `summary.platforms` is built by spreading the projection, every review or waiting case gets a new fingerprint. The cron would then re-save all of them in bulk. Condition 1 of the plan exists to prevent exactly this.
+- The fingerprint test does not catch it, for two reasons:
+  - It passes a synthetic `summary: {name:'FICTIONAL'}`.
+  - It only checks an authorized case, and authorized cases are not cron candidates.
+
+**Fix (smallest option):** emit the key only when it is present, the same pattern as condition 1:
+```js
+...(confirmedOverdueInstallments != null ? { confirmedOverdueInstallments } : {})
+```
+- Do the same for `bindingVerified` if that key is new.
+- Change test 6 to `assert.equal(Object.hasOwn(p,'confirmedOverdueInstallments'), false)`, or to `?? null`.
+- `count(undefined)` is already false, so the evaluator needs no change.
+
+**Alternative:** confirm that the builder for `summary.platforms` uses an explicit whitelist of fields that excludes these keys.
+
+**Either way, extend test 15:**
+- Build the fingerprint with the real summary builder, not a synthetic summary.
+- Cover a nonrestrictive **review** case, e.g. `model(null,2)` or a Krediya statement with overdue=0.
+- Cover a **waiting** case.
+- Assert that the baseline and candidate fingerprints are identical.
+
+## Verified correct (no change needed)
+- **Thresholds**
+  - zero payments → reject.
+  - More than 2 overdue → reject, even when the paid count is unknown.
+  - 1–2 overdue with fewer than 4 paid → reject.
+  - The boundary tests for 2 vs 3 overdue and 3 vs 4 paid match these rules.
+- **Aggregate gate**
+  - The aggregate counts only when binding, identity and freshness are all confirmed, `o.platform === job.platform === KREDIYA`, and the account is classified `active_arrears`.
+  - No obligations or paid counts are fabricated.
+- **Rejection shape**
+  - `restrictionRuleVersion` and `overrideAllowed:false` appear only on the single rejected return, which covers every restriction, including zero payments.
+  - Non-rejected results are byte-identical to the baseline for the clean case.
+- **Reasons and evidence**
+  - No early return, so all hard reasons are kept.
+  - Invalid counts go to review unless there is an independent confirmed restriction.
+  - PAYJOY phone-no-match is preserved.
+- **Precedence**
+  - Review evidence does not override a rejection, because of the `state!=='rejected'` guard.
+  - Consent revocation still has final priority and resets `reasons` to `['consent_revoked']`.
+- Both policy constants are unchanged, and the v2 rule requiring all 3 platforms still holds.
+
+## Non-blocking (optional)
+1. Duplicate reasons are possible, e.g. `more_than_two_overdue` from both the aggregate and an obligation, or from two platforms. This is deterministic and harmless, because the UI shows a generic message. You can dedupe with `[...new Set(restrictiveReasons)]` if you want clean output.
+2. The consent override spreads the rejected decision, so the review state keeps `overrideAllowed:false` and `restrictionRuleVersion`.
+   - This is harmless.
+   - It means existing consent-revoked review cases with Krediya arrears will re-save once. This affects only restrictive cases, which is expected, and the store is not notified.
+3. Defense in depth: the evaluator's aggregate check could also require `o.platform === 'KREDIYA'` instead of relying only on the projection.
+
+## Verification after the fix
+- Run `node --test` and confirm all 15 tests pass, plus the extended test 15.
+- Run the syntax check and the dry-run.
+- Confirm that the fingerprints of real-builder review and waiting cases match the baseline.
+</parameter>
+</invoke>
+<invoke name="ExitPlanMode">
+</invoke>

@@ -1,0 +1,23 @@
+**APROBADO PARA IMPLEMENTAR**, with two conditions on how `restrictionRuleVersion` is wired into the fingerprint.
+
+Your resolutions cover all seven required fixes. This is a review only: I didn't read any more code, and I couldn't write a plan file or call the plan-approval step because those tools aren't available in this session.
+
+## Conditions for implementation
+1. **Add `restrictionRuleVersion` to the fingerprint only when it is present.** It has to feed the fingerprint input at 78054, or the affected cases won't get a new fingerprint. Add the key conditionally, or use an object spread that leaves it out. Never write `?? null` or an always-present key: that changes every fingerprint and brings back the bulk re-save you are avoiding. Add a test that a non-restrictive decision produces exactly the same fingerprint as before the change.
+2. **Set it on every conclusive rejection, including zero payments.** This doesn't cause re-saves, because rejected cases aren't cron candidates. It also gives every rejection the same shape.
+
+## How each earlier fix is resolved
+| # | Earlier fix | Status |
+|---|---|---|
+| 1 | Policy version | Resolved. Both constants stay unchanged, so the v2 three-platform rule at 78035 is untouched. Keep the v2 regression test. |
+| 2 | Revoked consent | Resolved. Consent keeps priority and sends the case to review, and a test pins this. |
+| 3 | Re-saves and existing cases | Resolved, based on the DB facts Codex read: authorized and delivered cases aren't candidates, there's no batch reprocessing, and the store is notified only on a change to rejected. |
+| 4 | Krediya aggregate wiring | Resolved. All the gates are explicit, including the safe-integer check and the >2 check, both before the array check. The classifier comment is updated. |
+| 5 | Merging hard reasons | Resolved. No early return. |
+| 6 | Per-obligation order | Resolved. A zero-payment reason doesn't stop the overdue checks, more than 2 overdue rejects even when the paid count is unknown, and invalid counts go to review unless there's an independent confirmed restriction. |
+| 7 | Additional tests | Covered. The "legacy authorized case flips to rejected" test no longer applies, because authorized cases aren't reprocessed. Swap it for a test that they keep their current decision. |
+
+## Accepted residual risks
+- Authorized cases that are still undelivered and do have a hard restriction keep their authorization, unless the existing detail reconciliation re-evaluates them. If it does, they can flip to rejected and the store gets notified.
+- A rejection is not guaranteed when consent is revoked; the case goes to review instead.
+- Any future change to `krediya-account-state-v1` now affects decisions and needs its own review.

@@ -1,0 +1,24 @@
+✔ verified aggregate rejects without paid count or fabricated obligations (2.1835ms)
+✔ aggregate 2 with unknown paid count stays review; no inference (0.152708ms)
+✔ per-obligation 3 with missing paid rejects before completeness (0.091166ms)
+✔ exact existing boundaries: 2 vs3 overdue, paid3vs4 (0.161542ms)
+✔ missing/negative/noninteger overdue or paid does not imply a restriction (0.143708ms)
+✔ identity, foreign binding, authorization, future/stale statements never generate aggregate signal (0.277584ms)
+✔ invalid or inactive aggregate is not conclusive (0.15525ms)
+✔ unknown active per-obligation status cannot reject; stale identity cannot reject (0.068208ms)
+✔ confirmed restriction wins over incomplete photo/reference/provider evidence; no Andrea wait (0.636958ms)
+✔ valid complete clean case still continues automatically (0.304791ms)
+✔ all independently confirmed hard reasons are retained, including same obligation (0.877084ms)
+✔ revoked consent keeps existing override priority over financial restriction (0.508292ms)
+✔ policy version unchanged; v2 case still requires all3; existing detail reevaluation follows restrictive rule (1.409334ms)
+✔ aggregate restriction wins even if item counts differ; phone-no-match preserved (0.058125ms)
+✔ nonrestrictive fingerprint input is identical; restriction version included only in decision when applicable (6.331417ms)
+✔ real summary builder preserves review and waiting fingerprints; projection fields are excluded (8.263125ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 83.300917

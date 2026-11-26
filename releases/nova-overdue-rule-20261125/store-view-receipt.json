@@ -1,0 +1,10 @@
+{
+  "savedState": "rejected",
+  "requiresAndrea": false,
+  "canProcess": false,
+  "automaticEventVerified": true,
+  "queriesRepeated": false,
+  "title": "No puedes continuar",
+  "detail": "Esta solicitud no permite continuar. Consulta con el equipo de Creditek si necesitas ayuda.",
+  "financialInformationExposed": false
+}

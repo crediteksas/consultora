@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-26",
+  "project": "jfkmiyvcdfbsbwchyvol",
+  "implementationCommit": "8c1f2f03",
+  "migration": "nova_automatic_review_notices",
+  "migrationApplied": true,
+  "productionDefinitionMatchesCandidate": true,
+  "claimAndFinishUnchanged": true,
+  "securityInvoker": true,
+  "owner": "postgres",
+  "acl": "{postgres=X/postgres,service_role=X/postgres}",
+  "searchPath": "",
+  "securityAdvisoryFindingsUnchanged": true,
+  "newTestsPassed": 16,
+  "senderRegressionsPassed": 34,
+  "enabledRetail": 9,
+  "enabledAllies": 4,
+  "workerCodeAndSettingsUnchanged": true,
+  "historicalReplay": false,
+  "liveTestSends": false,
+  "claudeApproved": true
+}

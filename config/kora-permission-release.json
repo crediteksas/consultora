@@ -82,6 +82,10 @@
     {
       "path": "tests/fixtures/supabase-compat/prior-nova-main/release.json",
       "sha256": "d7e1bd550cfa84edb08ff597f68caf9d182e571212f002b334cd16b8534b5435"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/cobra-krediya/release.json",
+      "sha256": "b0b768e62bcb143f5f2d66648cb2d934bb4ad8984e9a69dfb956bb971f2c6234"
     }
   ],
   "upgrade": {

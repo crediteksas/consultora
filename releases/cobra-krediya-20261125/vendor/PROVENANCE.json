@@ -1,0 +1,7 @@
+{
+  "version": "0.20.3",
+  "source": "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js",
+  "documentation": "https://docs.sheetjs.com/docs/getting-started/installation/standalone/",
+  "sha256": "cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41",
+  "scope": "Local review package only; no global dependency changes."
+}

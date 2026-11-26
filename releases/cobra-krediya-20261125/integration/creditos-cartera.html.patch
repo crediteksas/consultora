@@ -1,0 +1,55 @@
+--- a/creditek/erp/creditos-cartera.html
++++ b/creditek/erp/creditos-cartera.html
+@@ -22,6 +22,7 @@
+   </style>
+ <link rel="stylesheet" href="/design-system/components/creditek-liquid.css?v=1.0.0" media="screen">
+ <link rel="stylesheet" href="kora-finish.css?v=1.0.0" media="screen">
++<link rel="stylesheet" href="/creditek/erp/cobra-krediya-panel.css?v=1.0.0">
+ </head>
+ <body data-kora-requires-auth="true" data-kora-finish="2026.11">
+ <main id="app" class="main-content" hidden>
+@@ -37,11 +38,12 @@
+       <button type="button" data-tab="cobra">Gestión Cobra · gestionar hoy</button>
+       <button type="button" data-tab="promises">Compromisos</button>
+       <button type="button" data-tab="history">Historial de gestiones</button>
++      <button type="button" data-tab="quality">Calidad KrediYA</button>
+       <button type="button" data-tab="performance">Desempeño de crédito</button>
+     </nav>
+     <section class="metrics" id="metrics"></section>
+     <p id="collectionCoverage" class="notice card" role="status"></p>
+-    <section class="toolbar card">
++    <section class="toolbar card" id="portfolioFilters">
+       <input id="query" class="control" type="search" placeholder="Cliente, cédula, crédito o tienda" aria-label="Buscar crédito">
+       <select id="platform" class="control" aria-label="Filtrar por plataforma"><option value="">Todas las plataformas</option></select>
+       <select id="status" class="control" aria-label="Filtrar por estado"><option value="">Todos los estados</option><option value="current">Al día</option><option value="active">Activo</option><option value="late">En mora</option><option value="delinquent">Mora crítica</option><option value="paid">Pagado</option></select>
+@@ -53,10 +55,28 @@
+     <section id="cobra" class="panel"><div class="toolbar card"><label for="agendaScope">Ver gestiones</label><select id="agendaScope" class="control"><option value="today">Prioridades de hoy</option><option value="data">Datos por completar</option><option value="unmanaged">Sin gestión registrada</option><option value="all">Todos los abiertos</option></select><button id="exportCollections" class="btn" type="button">Descargar agenda CSV</button></div><div id="cobraContent"></div></section>
+     <section id="promises" class="panel"><p class="notice card">Compromisos registrados. Una fecha vencida requiere verificar el pago; no se declara incumplida automáticamente.</p><div id="promisesContent"></div></section>
+     <section id="history" class="panel"><div id="historyContent"></div></section>
+-    <section id="performance" class="panel"><div class="explainer" id="performanceContent"></div></section>
++    <section id="quality" class="panel"><div id="q-root">
++<header class="q-head"><div><small>COBRA · SEGUIMIENTO KREDIYA</small><h2>Calidad del mes y gestión de cartera</h2><p>El crédito ya existe en KORA. Cada corte añade una observación de sus cuotas.</p></div><button id="q-recover" type="button">Comprobar pendientes</button></header>
++<p id="q-status" role="status">Validando sesión y permisos…</p>
++<div id="q-pending-actions"></div>
++<div id="q-content" hidden><div class="q-controls"><label>Mes de venta<input id="q-month" type="month" value="2026-10"></label><button id="q-refresh" type="button">Consultar cortes</button><label>Corte guardado<select id="q-cut"><option value="">Selecciona un corte</option></select></label></div>
++<details id="q-import"><summary>Incorporar exportación de KrediYA</summary><p>Se guardan todos los créditos del mes elegido en el archivo, incluyendo todas sus tiendas. El servidor comprueba cada vínculo con la liquidación.</p><form id="q-import-form"><label>Exportación de ventas<input id="q-file" type="file" accept=".xlsx" required></label><label>Fecha del corte<input id="q-cutoff" type="date" required></label><button type="submit">Revisar archivo</button></form><p id="q-import-info"></p><button id="q-save-cut" type="button" hidden>Guardar corte validado</button></details>
++<div id="q-snapshot" hidden><p id="q-source"></p><div class="q-metrics"><article><span>Mora estimada del corte</span><strong id="q-ratio">—</strong><small id="q-base"></small><small>Objetivo de seguimiento: menos del 22%</small></article><article><span>Créditos vinculados</span><strong id="q-total"></strong><small>Sin crear nuevas deudas</small></article><article><span>Sin pagos y con atraso</span><strong id="q-zero"></strong><small>Primera prioridad</small></article><article><span>Un pago y con atraso</span><strong id="q-one"></strong><small id="q-target">Prioridad de seguimiento</small></article></div>
++<p class="q-warning">La estimación usa cuotas × valor nominal; requiere conciliación con KrediYA para confirmar la calidad oficial. Un aumento de cuotas pagadas no identifica quién pagó ni registra un abono en KORA.</p>
++<label>Buscar en la cola<input id="q-query" type="search" placeholder="Cliente, contrato o tienda"></label><p id="q-count"></p><div class="q-scroll" role="region" aria-label="Créditos KrediYA" tabindex="0"><table><thead><tr><th>Cliente / crédito</th><th>Tienda</th><th>Cuotas</th><th>Mora estimada</th><th>Seguimiento</th></tr></thead><tbody id="q-rows"></tbody></table></div><div class="q-pagination"><button id="q-prev" type="button">Anterior</button><span id="q-page"></span><button id="q-next" type="button">Siguiente</button></div></div>
++<p class="q-warning">La provisión disponible sigue pendiente de conciliación. Solo Óscar autoriza su uso. Este seguimiento no aprueba desembolsos ni cambia las decisiones de Nova.</p></div>
++<dialog id="q-dialog"><form id="q-event-form"><button id="q-close" type="button">Cerrar</button><h3 id="q-client"></h3><p id="q-operation"></p><div id="q-history"></div><h4>Registrar seguimiento</h4><label>Resultado<select id="q-type"><option value="contact_attempt">Intento de contacto</option><option value="contacted">Cliente contactado</option><option value="note">Nota</option><option value="promise">Compromiso de pago</option></select></label><label>Canal<select id="q-channel"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo</option><option value="platform">Plataforma</option><option value="internal">Interno</option></select></label><div id="q-promise" hidden><label>Fecha prometida<input id="q-date" type="date"></label><label>Importe prometido (COP)<input id="q-amount" type="number" min="1" step="1"></label></div><label>Observación<textarea id="q-note" maxlength="600" required rows="3"></textarea></label><p id="q-event-status" role="status"></p><button id="q-save-event" type="submit">Guardar gestión</button></form></dialog>
++</div></section>
++
++<section id="performance" class="panel"><div class="explainer" id="performanceContent"></div></section>
+   </div>
+ </main>
+ <div id="modalBg" class="modal-bg" hidden><form id="actionForm" class="modal card"><h2 id="modalTitle"></h2><input id="modalObligation" type="hidden"><div id="modalFields" class="form-grid"></div><div id="modalMessage" class="notice error" hidden></div><div class="modal-actions"><button class="btn" type="button" id="modalCancel" data-kora-finish-role="dismiss">Cancelar</button><button class="btn primary" type="submit" id="modalSubmit">Guardar</button></div></form></div>
+-<script src="creditos-cartera-app.js?v=1.1.0"></script>
++<script src="/creditek/erp/vendor/cobra-krediya/xlsx-0.20.3.full.min.js"></script>
++<script src="/creditek/erp/cobra-krediya-domain.js?v=1.0.0"></script>
++<script src="/creditek/erp/cobra-krediya-persistence.js?v=1.0.0"></script>
++<script src="/creditek/erp/cobra-krediya-connection.js?v=1.0.0"></script>
++<script src="creditos-cartera-app.js?v=1.3.0"></script>
++<script src="/creditek/erp/cobra-krediya-panel.js?v=1.0.0"></script>
+ </body>
+ </html>

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import vm from 'node:vm';
 
 const migration = await readFile(new URL('../../supabase/migrations/20260910200436_creditos_cartera_nova_ready.sql', import.meta.url), 'utf8');
 const andreaPermission = await readFile(new URL('../../supabase/migrations/20260910204442_cartera_permiso_andrea.sql', import.meta.url), 'utf8');
@@ -58,5 +59,8 @@ test('Andrea recibe capacidad explícita para ver Cartera sin acciones financier
   assert.doesNotMatch(andreaPermission,/update public\.perfiles[\s\S]+set rol/i);
   assert.match(sidebar,/tiene_capacidad_cartera/);
   assert.match(sidebar,/perfil\.es_gestor_cartera = puedeGestionarCartera/);
-  assert.match(app,/profile\?\.es_gestor_cartera === true/);
+  const manage=app.match(/function canManage\(\) \{([^}]+)\}/);
+  assert.ok(manage,'Legacy action guard must exist');
+  for(const rol of ['admin_tienda','vendedor',null])assert.equal(vm.runInNewContext(`(function(){${manage[1]}})()`,{profile:{rol,es_gestor_cartera:true}}),false);
+  for(const rol of ['gerencia','auditoria'])assert.equal(vm.runInNewContext(`(function(){${manage[1]}})()`,{profile:{rol,es_gestor_cartera:false}}),true);
 });

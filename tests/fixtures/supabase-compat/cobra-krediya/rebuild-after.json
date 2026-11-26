@@ -1,0 +1,1615 @@
+{
+  "defaults": [
+    {
+      "acl": "{postgres=X/postgres}",
+      "kind": "f",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "*global*"
+    }
+  ],
+  "policies": [
+    {
+      "name": "cobra_quality_links_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ad3e55fd8c7d0a06c8feb233abd87f29",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_links_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "6f9a5b4bf5d98af1c706a3b9298d8d12",
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_cuts_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ffde43a5080ffd46fc7d7d01c972421b",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_cuts_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "6f9a5b4bf5d98af1c706a3b9298d8d12",
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_events_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_collection_events",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ece778d20918509294bddec0f965693b",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_events_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_collection_events",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "b6f3a09e34025787617bdc891c559855",
+      "permissive": true
+    },
+    {
+      "name": "fictional_legacy_event_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_collection_events",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "c2ff2e926a4cb105fcfb3c3457f06d5d",
+      "permissive": true
+    },
+    {
+      "name": "fictional_obligation_access",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_portfolio_obligations",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "c2ff2e926a4cb105fcfb3c3457f06d5d",
+      "permissive": true
+    },
+    {
+      "name": "fictional_source_access",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "liquidation_operations",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "516f878f087403eb71953f933ab8d9a2",
+      "permissive": true
+    }
+  ],
+  "triggers": [
+    {
+      "name": "cobra_links_immutable",
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "58c92dbeecae9bd685c44700a0f3ef57",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_links_no_truncate",
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "461842698dec806d8025f4300122957b",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_cuts_immutable",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "3cdcbee0b15f3cb09694dce5967585f6",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_cuts_no_truncate",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "0a9ad81f9298a7cbbceb68c266d0f036",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_link_cut",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_link_cut",
+      "definition_md5": "613ffdb5726b7a4d7c7e4ee818f5619f",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_prepare_cut",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_prepare_cut",
+      "definition_md5": "fef7547e4c1fc930a1edb736221fd8e7",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_events_no_truncate",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "14b2b20a7e535868724b8c4871c47d03",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_guard_event_history",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_guard_event_history",
+      "definition_md5": "fdfcfc6cfba944e5c110f956afb62fae",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_validate_event",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_validate_event",
+      "definition_md5": "d76f6db6ff84c83c5c72c05637724842",
+      "function_schema": "public",
+      "function_identity": ""
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_guard_event_history",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6a9a3c9d12ecf1265805ff69f5f4ce81",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_immutable",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "761c8c600690c40f9aaed0b99af1e6a1",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_link_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "e69addecd1fe4d881a7ce57e6e47a0e2",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_payload_digest",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_rows jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "c513dcd6e610b33923683cec579c3f6c",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_prepare_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "068b76530485172733853b40bf54df43",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_save_collection",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date, p_promise_amount numeric",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "9ded2229e4c0f09292278010efef595f",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_save_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_file_sha256 text, p_cohort_month date, p_cutoff date, p_source_name text, p_rows jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "4471bc090d763cd4e25c70dec49cd304",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_validate_event",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "619802e296d0e4e8fb8c003c5cd0e2b7",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_document",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_value text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ca895d10e56387367f31c9e81c42604a",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_fold",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_value text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "18d94f7aadc59b87a566a3b3f735b863",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_importer",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ae58e5f4a241ae148b89f86d48a7ec51",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_operator",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "fdfa3953e70bb6a20113d88172395ba8",
+      "security_definer": false
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "fictional_legacy_collection",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_obligation uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6124b1d5f18c892888e50da0bef2d24b",
+      "security_definer": true
+    },
+    {
+      "acl": null,
+      "name": "rol_actual",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "ad0d5bf25c4361340e51ba45a2e1ea05",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "tiene_capacidad_aliados",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "text",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "ade8955b2393e8e53789d0bce215e521",
+      "security_definer": false
+    },
+    {
+      "acl": null,
+      "name": "tiene_capacidad_cartera",
+      "owner": "postgres",
+      "config": [],
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "text",
+      "config_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "routine_kind": "f",
+      "definition_md5": "375e7dbf76c32d5d719ab714f023a6b6",
+      "security_definer": false
+    }
+  ],
+  "relations": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "cobra_krediya_cut_operations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "cut_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": true,
+      "policy_count": 2,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "cobra_krediya_cuts",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "request_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "file_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "payload_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "cohort_month",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "cutoff",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "source_name",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "source_rows",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "observations",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "link_keys",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "row_count",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "received_by",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "schema_version",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": true,
+      "policy_count": 2,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=ar/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "credit_collection_events",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "obligation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "actor_type",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "event_type",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "channel",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "note",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "promise_date",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "promise_amount",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "created_by",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "client_request_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 3,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "credit_portfolio_obligations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "outstanding_amount",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "kind": "r",
+      "name": "credit_repayments",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "amount",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "liquidation_operations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "liquidation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "plataforma",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "reconocida",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "external_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_documento",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_nombre",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "establishment_name",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "origen_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "operation_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "normalized_data",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "monto_credito",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": false,
+      "kind": "r",
+      "name": "liquidations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "approved_by",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "frozen_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": false,
+      "kind": "r",
+      "name": "perfiles",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "rol",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "activo",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "manage",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "source_access",
+          "type": "boolean",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 0,
+      "definition_md5": null
+    }
+  ],
+  "role_config": [],
+  "schema_grants": [
+    {
+      "acl": "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,authenticated=U/pg_database_owner,anon=U/pg_database_owner,service_role=U/pg_database_owner}",
+      "owner": "pg_database_owner",
+      "grants": [
+        {
+          "grantee": "PUBLIC",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "CREATE"
+        },
+        {
+          "grantee": "pg_database_owner",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "anon",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "pg_database_owner",
+          "grantable": false,
+          "privilege": "USAGE"
+        }
+      ],
+      "schema": "public"
+    }
+  ],
+  "server_version": "17.6"
+}

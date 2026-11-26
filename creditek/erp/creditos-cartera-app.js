@@ -11,7 +11,9 @@
     return new Promise(resolve => document.addEventListener('kora-sidebar-ready', () => resolve(window.creditekSidebar), { once:true }));
   }
   function setNotice(message, error=false) { const n=$('notice'); n.hidden=!message; n.textContent=message||''; n.className=`notice card${error?' error':''}`; }
-  function canManage() { return ['gerencia','auditoria'].includes(profile?.rol) || profile?.es_gestor_cartera === true; }
+  // These legacy RPCs only accept corporate roles. Quality follow-up has its
+  // own capability check and must not expose legacy payment controls.
+  function canManage() { return ['gerencia','auditoria'].includes(profile?.rol); }
   function unique(key) { return [...new Map(rows.filter(r=>r[key]).map(r=>[r[key],r])).values()]; }
   function selectedRows() { return D.filter(rows,{query:$('query').value,platform:$('platform').value,status:$('status').value,origin:$('origin').value}); }
 
@@ -81,6 +83,9 @@
   }
 
   function render() {
+    const quality = activeTab === 'quality';
+    for (const id of ['metrics','portfolioFilters','collectionCoverage']) $(id).hidden = quality;
+    if (quality) return;
     const filtered=selectedRows(); renderMetrics(filtered);
     $('portfolioContent').innerHTML=portfolioTable(filtered);
     $('novaContent').innerHTML=renderNova(filtered);
@@ -104,7 +109,7 @@
   async function loadCollectionEvents() {
     const all=[], pageSize=500;
     for(let from=0;;from+=pageSize){
-      const result=await sb.from('credit_collection_events').select('id,obligation_id,event_type,channel,note,promise_date,promise_amount,created_at,actor_type')
+      const result=await sb.from('credit_collection_events').select('id,obligation_id,operation_id,event_type,channel,note,promise_date,promise_amount,created_at,actor_type')
         .order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+pageSize-1);
       if(result.error) return result;
       all.push(...(result.data||[]));
@@ -119,9 +124,13 @@
       loadCollectionEvents(),
     ]);
     if(config.error||portfolio.error){ console.error(config.error||portfolio.error); setNotice('No fue posible consultar el nuevo módulo. Verifica que la migración de Créditos y Cartera esté aplicada.',true); return; }
-    settings=config.data; rows=portfolio.data||[]; eventsAvailable=!events.error; collectionEvents=events.error?[]:(events.data||[]);
+    settings=config.data; rows=portfolio.data||[]; eventsAvailable=!events.error; collectionEvents=[];
+    if(eventsAvailable){
+      try{collectionEvents=window.CobraQualityPersistence.mapEventsToPortfolio(events.data||[],rows).events;}
+      catch(error){eventsAvailable=false;events.error={message:error.code==='COBRA_REFERENCE_INVALID'?'collection_reference_mismatch':'collection_component_missing'};}
+    }
     const saved={platform:$('platform').value,origin:$('origin').value};fillFilters();$('platform').value=saved.platform;$('origin').value=saved.origin;
-    setNotice(events.error?'No fue posible consultar las gestiones. La agenda y el historial están incompletos.':'',Boolean(events.error));
+    setNotice(events.error?(events.error.message==='collection_component_missing'?'No se pudo cargar el componente de seguimiento. La cartera sigue disponible; recarga KORA para consultar gestiones.':'No fue posible consultar las gestiones. La agenda y el historial están incompletos.'):'',Boolean(events.error));
     const state=$('novaState'); state.classList.toggle('on',Boolean(settings?.nova_enforcement_enabled));
     state.querySelector('span').textContent=settings?.nova_enforcement_enabled?`Nova obligatoria desde ${settings.nova_enforcement_from}`:'Nova preparada · validación obligatoria desactivada';
     render();

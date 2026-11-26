@@ -1,0 +1,47 @@
+{
+  "integrated": false,
+  "published": false,
+  "sources": {
+    "quality-domain.js": {
+      "target": "creditek/erp/cobra-krediya-domain.js",
+      "sha256": "ad8a9e89996cf6dc20b2f7bad0cd8dfc395330ea72c817df9d48a445e83dd62e"
+    },
+    "quality-persistence.js": {
+      "target": "creditek/erp/cobra-krediya-persistence.js",
+      "sha256": "a108e969421f177e857d00644d1609ddc8d830f15b5a08a21ca1bc54950eca4f"
+    },
+    "quality-connection.js": {
+      "target": "creditek/erp/cobra-krediya-connection.js",
+      "sha256": "00136056e2ccdc0c1d10403e1526f42e9554099f13c7017055ee818a4bf12448"
+    },
+    "vendor/xlsx-0.20.3.full.min.js": {
+      "target": "creditek/erp/vendor/cobra-krediya/xlsx-0.20.3.full.min.js",
+      "sha256": "cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41"
+    },
+    "integration/quality-panel.js": {
+      "target": "creditek/erp/cobra-krediya-panel.js",
+      "sha256": "0e5234032604cf8ab235413e9b2724c2ccf9c11a60be705ac89270a8adae9790"
+    },
+    "integration/quality-panel.css": {
+      "target": "creditek/erp/cobra-krediya-panel.css",
+      "sha256": "fdce914b496efb1a20622b508fc6e62f25e04fe973bca52c73a7af244e03c1f0"
+    },
+    "integration/creditos-cartera-app.candidate.js": {
+      "target": "creditek/erp/creditos-cartera-app.js",
+      "sha256": "7e0c2e8975039bd79afea7ab87aa8821794656c623b4f32ba001c384414a893d"
+    },
+    "integration/creditos-cartera.candidate.html": {
+      "target": "creditek/erp/creditos-cartera.html",
+      "sha256": "703f37f28e7cf2fae0d20e7d6c4ed90ace8991cbe83265acbf5594a4f3a96416"
+    },
+    "vendor/LICENSE-SheetJS.txt": {
+      "target": "creditek/erp/vendor/cobra-krediya/LICENSE-SheetJS.txt",
+      "sha256": "4d2a38ac35cda06a555c84074a819d413339cd3691b822cae50f8f322fe01f64"
+    }
+  },
+  "baseline": {
+    "creditek/erp/creditos-cartera-app.js": "04985c86cd9b3c9a30069699933eb9d1f639b992ab2b254ec8605fbcc2e6ec90",
+    "creditek/erp/creditos-cartera.html": "ccfccfe278df28ff715f19392962b0a9cd5f6cfe7de089f28b332569b847d019"
+  },
+  "note": "Only explicit browser assets go into ERP; SQL, tests, private evidence and review packets must never be copied to public output."
+}

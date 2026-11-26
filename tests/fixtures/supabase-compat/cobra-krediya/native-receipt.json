@@ -1,0 +1,57 @@
+{
+  "run_id": "afb14fa4-c568-4801-89a8-9c9537b0fe92",
+  "image": "sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94",
+  "runner_sha256": "a57e77fdf2680c014646999c8361c7b846aba3615c8cc3dde3e9ff64cef0aee7",
+  "fixture_sha256": "ab03d1f9cf126bd85e0adbbdc5987e2d0bcbd7b24df870a5b503de6c3da9ea08",
+  "setup_sha256": "c32095a2d8791fbc95fc5b158753e7045ade362ab28272e0bff17a2d8bb01528",
+  "expected_catalog_sha256": "d5894adce83f450959f22c112cd451961661ffb6d52fb795cb524a0788b1e384",
+  "catalog_query_sha256": "5e988706c93d8cad7504f2cd5962551fe2348a055a64902998755094344cfbf4",
+  "network": "none",
+  "production_operations": 0,
+  "scenarios": {
+    "upgrade": {
+      "database": "cobra_release_2889251d29904f35aec78f9c144941b9",
+      "server_version": "17.6",
+      "contracted_objects": 15,
+      "captured_before_and_after": true,
+      "checks": [
+        "qualified importer saves a cut",
+        "tracking manager saves a note without payment",
+        "manager has no source rows",
+        "anonymous RPC denied",
+        "ordinary user cannot read cuts",
+        "payment table unchanged"
+      ],
+      "snapshot_sha256": {
+        "before": "4b77a30ec584f09fb800207449a35958845053466fb872c33f9e278c0df16e75",
+        "after": "ecf48d73850364fdc3eac8df9a3f2ac2addbb02875f27aae82e69b8e52b781c3",
+        "contract": "e5e26a972bd8b873c0f8b987dbebd163a924df75f32d5c85178a63977a2af3ed",
+        "created": "dc1898c16a07eba6678a44e07d22a3c1e8f35e23ce70ea2540b68899c2c7a891"
+      }
+    },
+    "rebuild": {
+      "database": "cobra_release_cf64f04f86994b24b182e37b01e38c7e",
+      "server_version": "17.6",
+      "contracted_objects": 15,
+      "captured_before_and_after": true,
+      "checks": [
+        "qualified importer saves a cut",
+        "tracking manager saves a note without payment",
+        "manager has no source rows",
+        "anonymous RPC denied",
+        "ordinary user cannot read cuts",
+        "payment table unchanged"
+      ],
+      "snapshot_sha256": {
+        "before": "63dc0f6b150261e76ba6e2e764faaf1bd8bfb1562031ea5113dd2664e4945e09",
+        "after": "73e3fb9c8a4992670e90d3a6672655dae0a401c5e287e3fc2502068f0e792923",
+        "contract": "e5e26a972bd8b873c0f8b987dbebd163a924df75f32d5c85178a63977a2af3ed",
+        "created": "dc1898c16a07eba6678a44e07d22a3c1e8f35e23ce70ea2540b68899c2c7a891"
+      }
+    }
+  },
+  "migration_sha256": {
+    "supabase/migrations/20261126012515_cobra_krediya_cut_history.sql": "33e8674a20415126c38431937b31317ad0b2a73c58449b1dc20419e53f5d813b",
+    "supabase/migrations/20261126013403_cobra_krediya_collection_operation_link.sql": "6f69b6a7f5e7f1026230267c7093563e79c3df259b39576d53e487932fc6d021"
+  }
+}

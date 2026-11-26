@@ -1,0 +1,168 @@
+{
+  "policies": [
+    {
+      "name": "cobra_quality_links_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ad3e55fd8c7d0a06c8feb233abd87f29",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_links_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "6f9a5b4bf5d98af1c706a3b9298d8d12",
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_cuts_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ffde43a5080ffd46fc7d7d01c972421b",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_cuts_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "6f9a5b4bf5d98af1c706a3b9298d8d12",
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_events_insert",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_collection_events",
+      "schema": "public",
+      "command": "a",
+      "check_md5": "ece778d20918509294bddec0f965693b",
+      "using_md5": null,
+      "permissive": true
+    },
+    {
+      "name": "cobra_quality_events_read",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "credit_collection_events",
+      "schema": "public",
+      "command": "r",
+      "check_md5": null,
+      "using_md5": "b6f3a09e34025787617bdc891c559855",
+      "permissive": true
+    }
+  ],
+  "triggers": [
+    {
+      "name": "cobra_links_immutable",
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "58c92dbeecae9bd685c44700a0f3ef57",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_links_no_truncate",
+      "table": "cobra_krediya_cut_operations",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "461842698dec806d8025f4300122957b",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_cuts_immutable",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "3cdcbee0b15f3cb09694dce5967585f6",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_cuts_no_truncate",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "0a9ad81f9298a7cbbceb68c266d0f036",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_link_cut",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_link_cut",
+      "definition_md5": "613ffdb5726b7a4d7c7e4ee818f5619f",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_prepare_cut",
+      "table": "cobra_krediya_cuts",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_prepare_cut",
+      "definition_md5": "fef7547e4c1fc930a1edb736221fd8e7",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_events_no_truncate",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_immutable",
+      "definition_md5": "14b2b20a7e535868724b8c4871c47d03",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_guard_event_history",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_guard_event_history",
+      "definition_md5": "fdfcfc6cfba944e5c110f956afb62fae",
+      "function_schema": "public",
+      "function_identity": ""
+    },
+    {
+      "name": "cobra_krediya_validate_event",
+      "table": "credit_collection_events",
+      "schema": "public",
+      "enabled": "O",
+      "function_name": "cobra_krediya_validate_event",
+      "definition_md5": "d76f6db6ff84c83c5c72c05637724842",
+      "function_schema": "public",
+      "function_identity": ""
+    }
+  ]
+}

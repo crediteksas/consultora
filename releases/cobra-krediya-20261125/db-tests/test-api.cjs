@@ -1,0 +1,42 @@
+const assert=require('node:assert/strict'),crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process');
+const base='http://127.0.0.1:8790/rest/v1',out=process.argv[2],setup=JSON.parse(fs.readFileSync(path.join(out,'api-setup.json'))),checks=[];
+const A='11111111-1111-4111-8111-111111111111',STORE='33333333-3333-4333-8333-333333333333',MANAGER='66666666-6666-4666-8666-666666666666',INACTIVE='55555555-5555-4555-8555-555555555555';
+function token(sub=A,exp=Math.floor(Date.now()/1000)+900){const a=Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'),b=Buffer.from(JSON.stringify({role:'authenticated',sub,exp})).toString('base64url');return a+'.'+b+'.'+crypto.createHmac('sha256','fictional-only-signing-secret-at-least-32-bytes').update(a+'.'+b).digest('base64url');}
+async function http(p,body,auth=token()){const r=await fetch(base+p,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:body===undefined?undefined:JSON.stringify(body)});const text=await r.text();return {status:r.status,data:JSON.parse(text)};}
+const ck=(name,ok)=>{assert.ok(ok,name);checks.push(name);};
+const row={contract:'fiction001',document:'111001',customer:'Ana Ejemplo',store:'Tienda Ficticia A',created:'2026-10-01',financed_cents:40000000,fee_cents:5000000,total_installments:12,frequency:15,cycled:3,paid:1,overdue:2,contract_status:'signed_approved'};
+const cut=rows=>({p_request_id:crypto.randomUUID(),p_file_sha256:crypto.randomBytes(32).toString('hex'),p_cohort_month:'2026-10-01',p_cutoff:'2026-11-25',p_source_name:'fiction.xlsx',p_rows:rows});
+function sql(q){return execFileSync('docker',['--context',setup.context,'exec','-i',setup.container,'psql','-X','-qAt','-U','postgres','-d',setup.database,'-v','ON_ERROR_STOP=1'],{input:q,encoding:'utf8'}).trim();}
+const financial=()=>sql("select md5(jsonb_build_object('operations',(select jsonb_agg(to_jsonb(x) order by x.id) from liquidation_operations x),'obligations',(select jsonb_agg(to_jsonb(x) order by x.id) from credit_portfolio_obligations x),'payments',(select count(*) from credit_repayments))::text)");
+(async()=>{const before=financial();
+ ck('authenticated timeout is still 8s',sql("select rolconfig::text from pg_roles where rolname='authenticated'").includes('statement_timeout=8s'));
+ ck('anonymous cut read rejected',(await http('/cobra_krediya_cuts?select=id',undefined,null)).status===401);
+ ck('expired JWT rejected',(await http('/cobra_krediya_cuts?select=id',undefined,token(A,1))).status===401);
+ ck('invalid JWT signature rejected',(await http('/cobra_krediya_cuts?select=id',undefined,token()+'x')).status===401);
+ ck('ordinary user capability false',(await http('/rpc/cobra_quality_operator',{},token(STORE))).data===false);
+ ck('inactive profile capability false',(await http('/rpc/cobra_quality_operator',{},token(INACTIVE))).data===false);
+ ck('store cannot write cut',(await http('/rpc/cobra_krediya_save_cut',cut([row]),token(STORE))).status===403);
+ ck('manager cannot import',(await http('/rpc/cobra_krediya_save_cut',cut([row]),token(MANAGER))).status===403);
+ const fingerprint=await http('/rpc/cobra_krediya_payload_digest',{p_rows:[row]});ck('canonical digest endpoint returns a hash without storing a cut',fingerprint.status===200&&/^[a-f0-9]{64}$/.test(fingerprint.data));
+ ck('non-importer cannot use digest endpoint',(await http('/rpc/cobra_krediya_payload_digest',{p_rows:[row]},token(MANAGER))).status===403);
+ const request=cut([row,{...row,contract:'fiction002',document:'111002',customer:'Luis Ejemplo',store:'Tienda Ficticia B'}]);const first=await http('/rpc/cobra_krediya_save_cut',request);ck('JWT authorized cut committed atomically',first.status===200&&first.data.row_count===2);
+ const retry=await http('/rpc/cobra_krediya_save_cut',request);ck('identical HTTP retry has same cut id',retry.data.id===first.data.id&&retry.data.duplicate===true);
+ const conflict=await http('/rpc/cobra_krediya_save_cut',{...request,p_rows:[{...row,paid:0,overdue:3}]});ck('changed HTTP retry rejected',conflict.status===400);
+ ck('raw submitted identities not selectable by operator',(await http('/cobra_krediya_cuts?select=source_rows')).status===403);
+ const view=await http('/cobra_krediya_cuts?select=id,observations&id=eq.'+first.data.id,undefined,token(MANAGER));ck('tracking manager can read canonical cut',view.status===200&&view.data[0].observations.length===2);
+ ck('ordinary store cannot read canonical cut',(await http('/cobra_krediya_cuts?select=id,observations',undefined,token(STORE))).data.length===0);
+ const event={p_request_id:crypto.randomUUID(),p_operation_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',p_event_type:'note',p_channel:'call',p_note:'Seguimiento ficticio sin pago',p_promise_date:null,p_promise_amount:null};
+ const saved=await http('/rpc/cobra_krediya_save_collection',event,token(MANAGER));ck('manager tracks operation without financial obligation',saved.status===200&&saved.data.obligation_id===null&&saved.data.payment_created===false);
+ ck('event retry does not duplicate',(await http('/rpc/cobra_krediya_save_collection',event,token(MANAGER))).data.id===saved.data.id);
+ ck('event recovery GET returns saved request',(await http('/credit_collection_events?select=id,client_request_id&client_request_id=eq.'+event.p_request_id,undefined,token(MANAGER))).data[0].id===saved.data.id);
+ ck('other user cannot reuse event intent',(await http('/rpc/cobra_krediya_save_collection',event)).status===400);
+ const concurrent=cut([row]);const both=await Promise.all([http('/rpc/cobra_krediya_save_cut',concurrent),http('/rpc/cobra_krediya_save_cut',concurrent)]);ck('concurrent HTTP calls converge',both.every(x=>x.status===200)&&both[0].data.id===both[1].data.id);
+ const big=Array.from({length:10000},(_,i)=>({...row,contract:'load'+(i+1),document:'700'+(i+1),customer:'Persona Ejemplo '+(i+1),store:'Tienda Ficticia'}));
+ const invalid=cut(big.map((r,i)=>i===9999?{...r,document:'wrong999'}:r));const old=sql('select count(*) from cobra_krediya_cuts');const bad=await http('/rpc/cobra_krediya_save_cut',invalid);ck('invalid last row rolls back all 10000',bad.status===400&&sql('select count(*) from cobra_krediya_cuts')===old);
+ const large=cut(big),start=performance.now(),result=await http('/rpc/cobra_krediya_save_cut',large),elapsed=performance.now()-start;ck('10000 rows commit through JWT HTTP under unchanged DB timeout',result.status===200&&result.data.row_count===10000);
+ const complete=await http('/cobra_krediya_cuts?select=id,row_count,observations&id=eq.'+result.data.id);ck('single stored snapshot contains all 10000 not API default 1000',complete.data[0].observations.length===10000);
+ ck('all 10000 linkage rows committed',Number(sql("select count(*) from cobra_krediya_cut_operations where cut_id='"+result.data.id+"'"))===10000);
+ ck('large retry returns same committed snapshot',(await http('/rpc/cobra_krediya_save_cut',large)).data.id===result.data.id);
+ ck('sources obligations and payments unchanged',financial()===before);
+ const receipt={ok:true,checks,passed:checks.length,large_rows:10000,http_wall_ms:Math.round(elapsed),large_cut_id:result.data.id,small_cut_id:first.data.id,setup,scope:'PostgREST 16.5 / PG17.6 with synthetic JWT and fictional source policies; managed Auth excluded',production_changes:false};fs.writeFileSync(path.join(out,'api-result.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify({passed:checks.length,http_wall_ms:Math.round(elapsed)}));
+})().catch(e=>{console.error(e);process.exitCode=1;});

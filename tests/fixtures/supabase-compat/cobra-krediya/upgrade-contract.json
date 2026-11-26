@@ -1,0 +1,586 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "cobra_krediya_cut_operations",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "cut_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": true,
+      "policy_count": 2,
+      "definition_md5": null,
+      "column_acls": {
+        "cut_id": "{authenticated=a/postgres}",
+        "operation_id": "{authenticated=a/postgres}"
+      },
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "cobra_krediya_cuts",
+      "owner": "postgres",
+      "grants": [],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "request_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "file_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "payload_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "cohort_month",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "cutoff",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=ar/postgres}",
+          "name": "source_name",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "source_rows",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "observations",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "link_keys",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "row_count",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "received_by",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=r/postgres}",
+          "name": "schema_version",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": true,
+      "policy_count": 2,
+      "definition_md5": null,
+      "column_acls": {
+        "id": "{authenticated=r/postgres}",
+        "request_id": "{authenticated=ar/postgres}",
+        "file_sha256": "{authenticated=ar/postgres}",
+        "payload_sha256": "{authenticated=r/postgres}",
+        "cohort_month": "{authenticated=ar/postgres}",
+        "cutoff": "{authenticated=ar/postgres}",
+        "source_name": "{authenticated=ar/postgres}",
+        "source_rows": "{authenticated=a/postgres}",
+        "observations": "{authenticated=r/postgres}",
+        "link_keys": "{authenticated=r/postgres}",
+        "row_count": "{authenticated=r/postgres}",
+        "received_by": "{authenticated=r/postgres}",
+        "received_at": "{authenticated=r/postgres}",
+        "schema_version": "{authenticated=r/postgres}"
+      },
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=ar/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "credit_collection_events",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "obligation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "actor_type",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "event_type",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "channel",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "note",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "promise_date",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "promise_amount",
+          "type": "numeric",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "created_by",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "operation_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": "{authenticated=a/postgres}",
+          "name": "client_request_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 3,
+      "definition_md5": null,
+      "column_acls": {
+        "obligation_id": "{authenticated=a/postgres}",
+        "actor_type": "{authenticated=a/postgres}",
+        "event_type": "{authenticated=a/postgres}",
+        "channel": "{authenticated=a/postgres}",
+        "note": "{authenticated=a/postgres}",
+        "promise_date": "{authenticated=a/postgres}",
+        "promise_amount": "{authenticated=a/postgres}",
+        "created_by": "{authenticated=a/postgres}",
+        "operation_id": "{authenticated=a/postgres}",
+        "client_request_id": "{authenticated=a/postgres}"
+      },
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_guard_event_history",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6a9a3c9d12ecf1265805ff69f5f4ce81",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_immutable",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "761c8c600690c40f9aaed0b99af1e6a1",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_link_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "e69addecd1fe4d881a7ce57e6e47a0e2",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_payload_digest",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_rows jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "c513dcd6e610b33923683cec579c3f6c",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_prepare_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "068b76530485172733853b40bf54df43",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_save_collection",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date, p_promise_amount numeric",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "9ded2229e4c0f09292278010efef595f",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_krediya_save_cut",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_file_sha256 text, p_cohort_month date, p_cutoff date, p_source_name text, p_rows jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "4471bc090d763cd4e25c70dec49cd304",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "cobra_krediya_validate_event",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "619802e296d0e4e8fb8c003c5cd0e2b7",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_document",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_value text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ca895d10e56387367f31c9e81c42604a",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_fold",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_value text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "18d94f7aadc59b87a566a3b3f735b863",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_importer",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "ae58e5f4a241ae148b89f86d48a7ec51",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+      "name": "cobra_quality_operator",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "fdfa3953e70bb6a20113d88172395ba8",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-cobra-krediya.test.mjs",
+      "justification": "Immutable provider cuts and validated collection events; explicit operators only; no payment or source-ledger writes. Fictional native dependency model."
+    }
+  ],
+  "allow_catalog_changes": {
+    "policies": "[{\"check_md5\":\"ad3e55fd8c7d0a06c8feb233abd87f29\",\"command\":\"a\",\"name\":\"cobra_quality_links_insert\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"cobra_krediya_cut_operations\",\"using_md5\":null},{\"check_md5\":null,\"command\":\"r\",\"name\":\"cobra_quality_links_read\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"cobra_krediya_cut_operations\",\"using_md5\":\"6f9a5b4bf5d98af1c706a3b9298d8d12\"},{\"check_md5\":\"ffde43a5080ffd46fc7d7d01c972421b\",\"command\":\"a\",\"name\":\"cobra_quality_cuts_insert\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\",\"using_md5\":null},{\"check_md5\":null,\"command\":\"r\",\"name\":\"cobra_quality_cuts_read\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\",\"using_md5\":\"6f9a5b4bf5d98af1c706a3b9298d8d12\"},{\"check_md5\":\"ece778d20918509294bddec0f965693b\",\"command\":\"a\",\"name\":\"cobra_quality_events_insert\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"credit_collection_events\",\"using_md5\":null},{\"check_md5\":null,\"command\":\"r\",\"name\":\"cobra_quality_events_read\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"credit_collection_events\",\"using_md5\":\"b6f3a09e34025787617bdc891c559855\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"fictional_legacy_event_read\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"credit_collection_events\",\"using_md5\":\"c2ff2e926a4cb105fcfb3c3457f06d5d\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"fictional_obligation_access\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"credit_portfolio_obligations\",\"using_md5\":\"c2ff2e926a4cb105fcfb3c3457f06d5d\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"fictional_source_access\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"liquidation_operations\",\"using_md5\":\"516f878f087403eb71953f933ab8d9a2\"}]",
+    "triggers": "[{\"definition_md5\":\"58c92dbeecae9bd685c44700a0f3ef57\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_immutable\",\"function_schema\":\"public\",\"name\":\"cobra_links_immutable\",\"schema\":\"public\",\"table\":\"cobra_krediya_cut_operations\"},{\"definition_md5\":\"461842698dec806d8025f4300122957b\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_immutable\",\"function_schema\":\"public\",\"name\":\"cobra_links_no_truncate\",\"schema\":\"public\",\"table\":\"cobra_krediya_cut_operations\"},{\"definition_md5\":\"3cdcbee0b15f3cb09694dce5967585f6\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_immutable\",\"function_schema\":\"public\",\"name\":\"cobra_cuts_immutable\",\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\"},{\"definition_md5\":\"0a9ad81f9298a7cbbceb68c266d0f036\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_immutable\",\"function_schema\":\"public\",\"name\":\"cobra_cuts_no_truncate\",\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\"},{\"definition_md5\":\"613ffdb5726b7a4d7c7e4ee818f5619f\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_link_cut\",\"function_schema\":\"public\",\"name\":\"cobra_krediya_link_cut\",\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\"},{\"definition_md5\":\"fef7547e4c1fc930a1edb736221fd8e7\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_prepare_cut\",\"function_schema\":\"public\",\"name\":\"cobra_krediya_prepare_cut\",\"schema\":\"public\",\"table\":\"cobra_krediya_cuts\"},{\"definition_md5\":\"14b2b20a7e535868724b8c4871c47d03\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_immutable\",\"function_schema\":\"public\",\"name\":\"cobra_events_no_truncate\",\"schema\":\"public\",\"table\":\"credit_collection_events\"},{\"definition_md5\":\"fdfcfc6cfba944e5c110f956afb62fae\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_guard_event_history\",\"function_schema\":\"public\",\"name\":\"cobra_krediya_guard_event_history\",\"schema\":\"public\",\"table\":\"credit_collection_events\"},{\"definition_md5\":\"d76f6db6ff84c83c5c72c05637724842\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"cobra_krediya_validate_event\",\"function_schema\":\"public\",\"name\":\"cobra_krediya_validate_event\",\"schema\":\"public\",\"table\":\"credit_collection_events\"}]"
+  }
+}

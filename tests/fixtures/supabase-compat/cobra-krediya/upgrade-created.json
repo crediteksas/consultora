@@ -1,0 +1,89 @@
+[
+  {
+    "schema": "public",
+    "name": "cobra_krediya_cut_operations",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_cuts",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "credit_collection_events",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_guard_event_history",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_immutable",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_link_cut",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_payload_digest",
+    "kind": "function",
+    "identity": "p_rows jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_prepare_cut",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_save_collection",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_operation_id uuid, p_event_type text, p_channel text, p_note text, p_promise_date date, p_promise_amount numeric"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_save_cut",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_file_sha256 text, p_cohort_month date, p_cutoff date, p_source_name text, p_rows jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_krediya_validate_event",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_document",
+    "kind": "function",
+    "identity": "p_value text"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_fold",
+    "kind": "function",
+    "identity": "p_value text"
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_importer",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "cobra_quality_operator",
+    "kind": "function",
+    "identity": ""
+  }
+]

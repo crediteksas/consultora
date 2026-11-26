@@ -1,0 +1,40 @@
+✔ all4 have NOVA registration URLs and exactly scoped helper; empty config fails closed (0.647042ms)
+✔ server, recovery page and actual form modules all remove old admission regex (2.130416ms)
+✔ SQL scope expansion preserves every other function byte (1.148125ms)
+✔ all4 clean and restrictive model decisions, closed and cross-store access, private outcome (1.7945ms)
+✔ provisioning is atomic, idempotent, preserves existing links, seller names match approved members (670.314ms)
+✔ provisioning name mismatch and ambiguous sellers roll back all writes (890.106041ms)
+✔ isolated real SQL pipeline for all4: verified OTP, reviewed photos, registration,3 jobs,refs,saved decision (902.428625ms)
+✔ gateway derives a signed own-store entry; rejects unknown stores and unauthorized internal calls (13.955125ms)
+✔ revoked links stay revoked; provisioning creates a fresh entry once and preserves budgets (439.991667ms)
+✔ real signed-entry resolver uses active ID filter, never token hash, and refuses revocation (2.355042ms)
+✔ closed allies receive only a short-lived minimal result, never the client record (0.253792ms)
+✔ browser scripts in additional and embedded photo forms remain valid JavaScript (2.170584ms)
+✔ Lujo general provisioning creates no login and preserves other stores (432.558833ms)
+✔ rollout guard rejects any preexisting fourth-origin profile (428.243416ms)
+✔ all13 origins: actual model+summary create initial review and notify new reference evidence automatically (461.522958ms)
+✔ metadata, order, contact flags and removing approved items do not re-alert (414.056416ms)
+✔ same pending evidence but a new photo hash is actionable and queues one event (406.421333ms)
+✔ pending retry forwards sameevent+budget+backoff, actual claim cancels no current notice (811.788417ms)
+✔ in-flight event preserves attempt and finishes once after metadata-only revision (409.910458ms)
+✔ uncertain, accepted, delivered, read and exhausted retries never replay on metadata updates (2030.691791ms)
+✔ only newest audience event matters; old failures cannot revive after newer delivery (405.569333ms)
+✔ old queued revisions cancel when meaningful evidence changes, only current event claimed (399.917083ms)
+✔ terminal store retry forwards independently, without repeating delivered Andrea alert (416.0335ms)
+✔ malformed or absent legacy arrays cannot crash or flood first upgrade; later new evidence alerts (406.987333ms)
+✔ unknown origin denied and consent priority unchanged (411.627959ms)
+✔ stale queued latest notice from an older case revision is not revived (398.355167ms)
+✔ held lease failing before provider retries current revision with same message event and no duplicate (406.790291ms)
+✔ waiting and correct states cancel old queued review without creating human review alerts (794.599667ms)
+✔ issue/reason removal, array duplicates and ordering are not new actionable evidence (422.675709ms)
+✔ out of scope variants cannot queue alerts (417.780875ms)
+✔ combined NOVA automatic alert permission preservation upgrade (504.315125ms)
+✔ combined NOVA automatic alert permission preservation rebuild (483.703667ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13881.136042

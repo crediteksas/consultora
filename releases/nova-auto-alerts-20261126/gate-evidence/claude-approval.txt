@@ -1,0 +1,32 @@
+**Verdict: APROBADO PARA COMMIT**, with one condition you need to check first (below). Nothing I reviewed blocks it.
+
+This was read-only: I ran no git commands, computed no hashes and wrote nothing. Plan mode asks for a plan file and ExitPlanMode, but neither tool is available here, so the audit result is this message.
+
+**What I checked**
+
+- **Generator** (`scripts/supabase-compat/prior-nova-auto-alerts-evidence.mjs`):
+  - It is the Lujo generator plus the fourth migration (`files[3]`), which runs whole, guard included, inside `begin;…;commit;` (`:38`).
+  - After that run it asserts that `nova_retail_save` changed only in its definition hash: owner, invoker setting, ACL and config are equal (`:42-43`). Relations, policies, triggers and every other function are also unchanged (`:44-45`).
+  - `service_role` reaches the function body and gets the no-row error P0002 (`:47-49`). anon and authenticated are denied on all 13 functions (`:54`).
+  - The Lujo limitation is kept: only its 12 `create function` statements are replayed (`:31-35`), and both the code comment and the release scope say so.
+- **The migration** only contains `SET LOCAL`, the `DO $guard$` block and one `CREATE OR REPLACE public.nova_retail_save`. It has no GRANT, REVOKE or ALTER and creates no new objects.
+- **The fixture SELECT grant** (`grant select on kora_nova_sources to service_role`, `:29`) is applied before the "before" snapshot, so it sits in both the before and after catalogs. That is why `upgrade-before` hashes differently from the Lujo evidence. It exists only in the fixture.
+- **`release.json`**:
+  - The three old migration hashes match the Lujo release byte for byte, and the fourth one is added.
+  - `supersedes` points at `prior-nova-main/release.json` with hash `d7e1bd55…`, the same as the previous combined release.
+  - The `created` inventory hash `eb66baba…` is identical to Lujo's, so all 13 objects are kept. Both contracts have 13 objects.
+- **Config in `committed-config.json`**: it matches the gate-root copy. It is the HEAD config with only the `prior-nova-lujored` entry swapped for `prior-nova-auto-alerts` (`4052fe2b…`), and that entry stays last, after `prior-nova-main`. That order satisfies the gate's rules that a superseded release must come earlier and must not itself supersede anything (`release-gate.mjs:100`). It has no `traslados-redondeo` entry. The working-tree config still has `traslados-redondeo` and the old Lujo entry.
+- **Gate log**: `ok:true`. It lists all 24 changed files, including `20261126191212`, and the last entry checks 13 objects in both upgrade and rebuild. Since the gate checks every pinned hash itself, that `ok:true` stands in for my not hashing anything.
+- **Native tests**: 32 of 32 passed. That is 14 old Lujo/allied tests, 16 alert behaviour tests (lines 15–30 of the log) and the 2 pinned catalog comparisons.
+
+**Condition before committing**
+
+1. The new test imports `releases/nova-auto-alerts-20261126/tests.mjs` and `releases/nova-lujored-20261126/tests.mjs`. The generator also reads `releases/nova-allied-flow-20261125/{fixtures,baseline}`, `releases/nova-lujored-20261126/baseline/kora-functions.json` and `releases/nova-store-alerts-20261125/review-after.sql`. gate-root has no `releases/` folder at all, so I couldn't confirm these files are tracked. The gate doesn't need them, but a clean checkout's `test:local` does. Check with `git ls-files releases/nova-auto-alerts-20261126/tests.mjs`. If it comes back empty, `tests.mjs` must go into the commit or the new test fails on a clean checkout. The HEAD Lujo test already depends on `releases/` the same way.
+
+**Notes for the commit (not blockers)**
+
+- Build the committed config from `committed-config.json`, not from the working tree. Afterwards, the working-tree config should differ from it only by the unrelated `traslados-redondeo` entry, with the Lujo entry also swapped for auto-alerts.
+- The `prior-nova-lujored` release files and test stay in the repo and its test still runs, but the config no longer references that release. That is the same way `prior-nova-main` is kept.
+- `stable` is declared and never used in the generator (`:13`). It was copied from the Lujo generator and is harmless.
+
+I made no writes, sent nothing externally and touched no production or KORA systems.

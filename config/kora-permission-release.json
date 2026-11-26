@@ -92,8 +92,8 @@
       "sha256": "03f5631ff65e1e49184a662a1a86c3c16acb3c5a0b0f5f3940738c7900320797"
     },
     {
-      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/release.json",
-      "sha256": "47c514f51d60de8ba0e03be4985c82194383ea1f796177bef5e6651ffd0fb0fa"
+      "path": "tests/fixtures/supabase-compat/prior-nova-auto-alerts/release.json",
+      "sha256": "4052fe2b672b241310078e64121d642ac69b3b61f7c97d54db4ee7b9a4ff4b49"
     }
   ],
   "upgrade": {

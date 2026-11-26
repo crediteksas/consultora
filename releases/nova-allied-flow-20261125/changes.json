@@ -1,0 +1,115 @@
+{
+  "nova": {
+    "regex": 3,
+    "inlineSqlList": 11
+  },
+  "clientes": {
+    "regex": 7,
+    "inlineSqlList": 0,
+    "form.htmlRegex": 1
+  },
+  "koraFunctions": [
+    {
+      "file": "kora-0-kora_nova_recover.sql",
+      "beforeSha256": "e1dae02e4daf0d0f818e536cdc53b3716a1c2d2cfed54f527da48d3b53854d7c",
+      "afterSha256": "ca9b63277df847aeebfdd000e72beebe3161c3a02c8567fb8acc5d5cb559ac6d"
+    },
+    {
+      "file": "kora-1-kora_nova_renew_platforms.sql",
+      "beforeSha256": "12d7315f223d132a78e223088d8c1aa0e174c31ec3db37478cd6bfed8eeb6953",
+      "afterSha256": "09c5082e126969a052a16665d0c50933cbaf186522741484a984dd1024afea70"
+    },
+    {
+      "file": "kora-10-nova_payjoy_source_matches.sql",
+      "beforeSha256": "b520efdf724731ba3d50106ca8b3a439dc6aa35e8c34f7a2f1bc0dbc1ea3e40a",
+      "afterSha256": "699f7af7c540dcc0638fb84d79efe6895f41b4382453c18bcdd0aae6966408f5"
+    },
+    {
+      "file": "kora-11-nova_retail_candidates.sql",
+      "beforeSha256": "f1744c68b7c59fab4edeacfce9b095a024dff939d15ac775111aa9d9640e56a4",
+      "afterSha256": "1bce330391b1c35f100b84dfb9d068c59dddb742e84844f31484f4256164e694"
+    },
+    {
+      "file": "kora-12-nova_retail_save.sql",
+      "beforeSha256": "dc16d1c7d28c7b9e10efe7de7bf86d1f775bcedb3be929423890753d7ab3d977",
+      "afterSha256": "a2f3eeefb334f8dfe52d8461869d2c16bdeb8d1117f3101bfe4f61b198687886"
+    },
+    {
+      "file": "kora-2-kora_nova_retail_register.sql",
+      "beforeSha256": "76d54521e197d2132cf02342a3c603bb0f7571d8cd29c0016d211eb57dadfebf",
+      "afterSha256": "8cb1d4eb154dc48e392089f4f07ff707af00a0f5f290474a9a438a01c2fe948b"
+    },
+    {
+      "file": "kora-3-kora_nova_retail_resume.sql",
+      "beforeSha256": "326efc2b590c2f694c674d5eaf307cafd9b32f40cd6f723d04fd8b897a3e91b7",
+      "afterSha256": "34f1df9ffa952d942044df07b0cea8e868e0082c81040f2f5cee2e6d192fd42b"
+    },
+    {
+      "file": "kora-7-nova_client_otp_options.sql",
+      "beforeSha256": "8317977e5dfc93da447a392c59cdb924bd02b14e7a68c8a6f287903c3791ec4a",
+      "afterSha256": "f85fa9e75ad7f3b1610d3e7343ae5962670ce32436c48a80dac4d646ee2d3570"
+    },
+    {
+      "file": "kora-8-nova_client_otp_reserve.sql",
+      "beforeSha256": "3d64b751d026805d970a4e77f8c1d3222d5cc9d41824f29ad045faba24044724",
+      "afterSha256": "877d77893afff3eb1af0032860057943241fab20abfb39bafe8e2bacae553b6f"
+    },
+    {
+      "file": "kora-9-nova_client_otp_status.sql",
+      "beforeSha256": "25b8528ace38d3da912b7f6f69b6cd97f3206dde0d4ff3e5f6d672e635d435d0",
+      "afterSha256": "cbc7eada8949381e885e3478f7ca8a95ab0c0ad5a164ef656d0656f5d1498f19"
+    }
+  ],
+  "auraFunctions": [
+    {
+      "file": "aura-0-nova_accept_platform_renewal.sql",
+      "beforeSha256": "e81af6955a8fddc91826d847d51852fd5b5815b1ec372270f9d74c491c05abc1",
+      "afterSha256": "bfd72bd7b9fcfafa12bfe40b09794a4e49721cf75e34d0bbd1a690df3e7c612a"
+    },
+    {
+      "file": "aura-10-nova_retail_reference_reserve.sql",
+      "beforeSha256": "8e5b61be7d0d712d51737d29b320a848cfc5fa8e5c4835b18efdf6616d9e359c",
+      "afterSha256": "f6670c25ea35a7fa7ea0cba4ccf67f0a10145c5fa762179f14e66a3a900bebea"
+    },
+    {
+      "file": "aura-11-nova_retail_replace_reference.sql",
+      "beforeSha256": "7d40289fff572dc85163761330246c6de5b21e5cc5e0d2328a697ef9ae9f3457",
+      "afterSha256": "441f25e3abb57f5eac8fc88742c04f3e888f706afd163b703d8c8e4eeb4e8589"
+    },
+    {
+      "file": "aura-12-nova_retail_requery.sql",
+      "beforeSha256": "3811c45dad201025c56abb7f7a74ccbd4e77da9cc78a51c73517baddced0ba8b",
+      "afterSha256": "481d47cc693070a6c7958342bfdc1576d5488ee4e4498fd5ff47c3a9e4e4eeac"
+    },
+    {
+      "file": "aura-3-nova_claim_platform_jobs.sql",
+      "beforeSha256": "b9241ab0799c0b606cf022c0032f061f4ef3542237f8835929c70652cdd78ae1",
+      "afterSha256": "591799aa5d84e3e40a0de9a1e6e6e65822f2a68f8909e1909c07e6ec3b6f4228"
+    },
+    {
+      "file": "aura-4-nova_enqueue_platform_jobs.sql",
+      "beforeSha256": "f7c5915291bac36f5a5a6b3ffe1afbf35539270d462f6a8c7213bcaca13f9db8",
+      "afterSha256": "010879251c5bc268eea262dfd663e0bc4c26458ecfc2551f98d88b31aff6e9af"
+    },
+    {
+      "file": "aura-5-nova_next_krediya_browser_job.sql",
+      "beforeSha256": "a8a794b99e1103d461430c9893ee15c77cd02210881a61b1fa41cc3df8f12012",
+      "afterSha256": "f4d102381df01802e37586f350786328b3639a4842568d4d48897e976794a403"
+    },
+    {
+      "file": "aura-6-nova_payjoy_retry_eligible.sql",
+      "beforeSha256": "a2375c4eb256512cbdd87d48d2ee13c462f459c9fe6167ee07b3bf1fef9fca5c",
+      "afterSha256": "7e3f156f8619dc2f33c77997936cd0a1a5bf935a3db5e006462989da6c57aed9"
+    },
+    {
+      "file": "aura-7-nova_read_krediya_browser_job.sql",
+      "beforeSha256": "1cdb79e1faccef0e7093586b060a637911f13041eb17cbe85aba5bcc5b44df56",
+      "afterSha256": "be604d04324ee2334ed1456cc921749c433abcf1fe608d6ea066dc495db5cd4d"
+    },
+    {
+      "file": "aura-9-nova_reference_context.sql",
+      "beforeSha256": "05aebc8e939496aa66538b5378ea9c509d5cc4d6c30f28dd2d23355aff5df7f2",
+      "afterSha256": "8e8a3420af8c848d0e194245decda83b662b3a414c923f2c818a335878e4f615"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+# Review: conditionally approved, with the changes below
+
+I haven't read the code in this session. Wherever I describe how something works, I'm relying on your description, and the items marked **verify** need a code check before merging.
+
+## Approved as proposed
+- Scope limited to the exact 3 origin IDs. Each aliado origin row is locked with `FOR UPDATE`, and the migration fails if an origin or member is missing or inactive.
+- Captadores (`tipo tercero`, `activo true`) are created only when no normalized-name match exists. Inactive matches are reactivated. Nothing is deleted or renamed, and the Distritoys seller is untouched.
+- A link is created only when the origin has no active, non-revoked link. Existing links are never rotated, reactivated or replaced.
+- No secrets are read, nothing is sent, and no customer data is touched.
+
+## Required changes
+
+1. **Make the name check explicit.** Embed the 3 preauthorized names in the migration as `(origin_id, store, expected_normalized_name)` tuples. Compare them against `normalizar_nombre_aliado(profile.name)` and `RAISE` on mismatch. Otherwise "preauthorized" just means whatever the profile currently says.
+
+2. **Handle ambiguous captador matches.** If there are two or more matches (active or inactive), `RAISE` instead of picking one. If an active match exists with a different `tipo`, leave it as is and don't change it.
+
+3. **Match the existing `token_hash` format.** Use the same length, charset and uniqueness constraints as current rows. If existing rows hold a hex SHA-256, use `encode(digest(gen_random_bytes(32),'sha256'),'hex')`, which is your alternative. Otherwise use base64url of 32 random bytes. The value then fits the schema and still has no known preimage.
+   - **Verify** that `pgcrypto` (`gen_random_bytes`) is available in every environment.
+
+4. **Check what the 8-char suffix is for.** **Verify** whether the UI or support tools treat the suffix as a fragment of the bearer token for identification. If they do, a random suffix is fine, but document that it matches no token.
+
+5. **Confirm the nr1 assumption in code.**
+   - **Verify** that `shareTokenFilter` really authorizes by HMAC(id) plus active/non-revoked status, with no `token_hash` comparison anywhere on that path.
+   - **Verify** that no other consumer (legacy lookup, admin views, analytics) reads `token_hash`.
+   - Add a code comment at the link insert pointing to this dependency.
+
+6. **Decide how other environments behave.** A migration hardcoded to 3 production IDs will hard-fail in dev, staging, CI or fresh databases. Pick one:
+   - **(a) Recommended:** keep the change outside the schema migration chain, as a one-off reviewed data script run explicitly against prod.
+   - **(b)** Skip with `NOTICE` only when *none* of the 3 origins exist. Still `RAISE` if any exist but invariants fail.
+
+   Either way the run must be all-or-nothing: any failure rolls back all 3 origins.
+
+7. **Keep secrets out of logs.** `RAISE NOTICE` output must not include `token_hash`. Log only origin ID, link ID, and the created/reactivated/skipped counts.
+
+8. **Down migration.** Make it a documented no-op with manual rollback steps. Don't auto-delete anything.
+
+## Additional tests to add, beyond your list
+- One invalid origin (out of 3) leaves zero changes for all 3, confirming atomicity.
+- Revoked or inactive existing links are not reactivated. Whether a new link is then created depends on the "no active link" rule, so assert the intended behavior.
+- A signed nr1 link to the new row fails after that row is revoked.
+- A name mismatch raises an error.
+- Ambiguous duplicate captador names raise an error.
+- Generated `token_hash` passes the column constraints and is unique.
+- No `token_hash` appears in captured notices.
+
+With items 1–7 resolved, the extension is fine to implement. The prior plan conditions still apply.

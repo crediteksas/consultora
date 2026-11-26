@@ -1,0 +1,24 @@
+**Verdict: APROBADO PARA IMPLEMENTAR, with the conditions below.** I only read code: the baseline Workers, the `kora-*`/`aura-*` SQL files and `form.html`. I did not open `live.json` because it may hold live data, and I ran nothing. I also had no write tool here, so I couldn't create the plan file or formally hand the plan back for approval. This message is the review.
+
+## Your blocker list is complete
+- **SQL:** 20 gating functions use the old store list: kora 0, 1, 2, 3, 7, 8, 9, 10, 11, 12 and aura 0, 3, 4, 5, 6, 7, 9, 10, 11, 12. `aura-1/2/8` (the old CK-02-only Krediya ones), `kora-4` (supervision) and `kora-5/6` (login, already all three stores) don't need to change.
+- **nova Worker:**
+  - The inline `IN (...)` lists are copied at 5917 (twice), 5924, 5930, 5993, 11826, 12007, 18300, 46487, 52363 and 64494.
+  - The regex appears at 58622, 76717 and 78770.
+  - Also: the evaluator at `baseline/nova/index.mjs:77574` and the store helper at `:78874`.
+- **clientes Worker:**
+  - The regex appears at 6645, 6818, 7447, 7452, 9723, 11296 and 11494.
+  - The registration-link gateway is at 11545–11551 and the store helper at 11874.
+- **Access control holds:** both login paths take the store from the authenticated user, and the caller sends that store to the gateway (`baseline/nova/index.mjs:78270`). `alliedCaseClosed`, `assertAlliedCaseAccess` and the allied list filter at 78260 already keep closed cases hidden from allies.
+
+## Risks to handle during implementation
+1. **Two of the clientes regexes run in the customer's browser** (`clientes/index.mjs:6818` and `:7447`). Line 7447 is inside an escaped string, and `form.html:596` looks like a copy of it. If these two are missed, the registration page will reject links from the two new allies even though the server accepts them. The Worker tests should check the page that is actually served.
+2. **`NOVA_ALLIED_PILOT_STORES` config:** `alliedPilotStores` (`nova/index.mjs:77494`) only uses its built-in three-store default when this setting is empty. If production sets it to just `distritoys`, shop admins from the other two stores are refused. A value with more than three entries turns all allies off. Check the actual value after deploy.
+3. **Partial edits:** the nova bundle repeats the same SQL many times. After editing, search the code: the old literal should appear zero times and the new one exactly as often as the old one did.
+4. **Rewriting functions:** build each `CREATE OR REPLACE` from the exact current production definition and change only the store list. That keeps `SECURITY DEFINER`, the search path and the grants as they are. Compare hashes of every part except the store list before and after.
+5. **Order inside each DB migration:** change the check first, then append the stores to the OTP policy row only where they're missing (no duplicates), all in one transaction. The new checks only add allowed values, so existing rows still pass. The change briefly takes a heavy lock on the table, so set a `lock_timeout`.
+6. **Store helper:** if the setting is non-empty, add only the stores that are missing and trim spaces. If it is empty or only whitespace, still let no one in.
+7. **Registration-link gateway:** check the store against the exact three-store list before building the query. The ALIADO code only contains letters, digits and dashes, but encode it anyway. If a store has more than one active link, the oldest is picked; this matches the current behaviour.
+8. **Rollout order:** apply the DB migrations first, then deploy the Workers. In the meantime the new stores are just refused, nothing leaks. Keep the captured function definitions and the old checks as a ready rollback script.
+
+Nothing above conflicts with your constraints: no new tables or roles, no auth/RLS changes, the restriction and three-platform rules stay, and shops still get no financial data.

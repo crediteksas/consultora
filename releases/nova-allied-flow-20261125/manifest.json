@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "creditek-nova": {
+      "index.mjs": "54d6b40802848fe038d1e4b6a55cdd22e927d14748f034abd3be67389aeac0cd"
+    },
+    "creditek-clientes": {
+      "form.html": "556902d2a0d8c0782e263e53c14670ab85172fb838d5745b82b7bc75317c9d31",
+      "index.mjs": "6166cb19bba3111ae8e4c112c8733ee0b53a1219ba4f17f7bfc1258b22c1a99e"
+    }
+  },
+  "candidate": {
+    "creditek-nova": {
+      "index.mjs": "c10cb2bbe9f61f0ebbd52e30e9c97e39bbaad7cd46b296fb420f3f35b91c9ca7"
+    },
+    "creditek-clientes": {
+      "form.html": "a00930b4ff1b87606034c966e8b144b5ef4b57fdc460b0feea5f8db78a1090c5",
+      "index.mjs": "4bc8badc702fddbc95c62c796a2cffe18ad9c49f69c0752405a2d1a94a8aa463"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+**APROBADO PARA PUBLICAR.** I found no material blockers. This is a static review: I did not re-run the 10 tests, `node --check` or `wrangler versions --dryrun`, so for those I'm relying on the results you reported. I read nothing outside the files you listed (plus the fixtures, the Wrangler configs and the db-aura migration copy), and no live.json or credentials.
+
+**What I checked and confirmed**
+- **Build and scope:** `build.py` changes only the one regex, the IN list and three exact one-off replacements, and each one has an `assert`. 10 Kora and 10 Aura functions change. Login (`kora-5`, `kora-6`), supervision (`kora-4`) and the CK02 legacy functions (`aura-1`, `aura-2`, `aura-8`) are unchanged. Test 12 checks that each candidate file equals its baseline with only those replacements. The db-aura migration has the same 10 functions as `aura-migration.sql`.
+- **Kora migration:** the case constraint is retail + 3. The SMS origin constraint lists exactly 12 entries. Only `allowed_origins` on the policy row is updated, with no duplicates and the original order kept. Limits, budget, mode and pilot phones are untouched. The constraints only add allowed values, so existing rows still pass. `lock_timeout` is set.
+- **Gateway:** it checks the store against the exact 3-store list before querying, uses `encodeURIComponent(p.store)`, returns `p.store` and signs the link with `createShareToken(id)`. The nova caller sends only `actor.store`. With `NOVA_ALLIED_PILOT_STORES` absent from wrangler, the built-in 3-store default applies. List and closed-case filters are unchanged.
+- **Link resolver:** `/nova/registro` uses `resolveRegistrationContext2`. For `nr1.` tokens it verifies the signature and filters by `id` + `activo` + `revoked_at is null`. The hash lookup is used only for non-nr1 tokens. Links with `captador_id` NULL fall back to the existing store-wide seller dropdown of active captadores.
+- **Provisioning script:**
+  - It runs as a single DO block, so a failure rolls back everything.
+  - It validates and locks all three origin rows (type `aliado`, expected names) before any write.
+  - `INTO STRICT` plus `IS DISTINCT FROM` fail closed on a missing, duplicated or NULL member/profile name.
+  - It fails on more than one name match (active or inactive), and only reactivates a matching inactive seller.
+  - It inserts a new link only if the store has no active, non-revoked link. It never touches revoked or old links.
+  - The new hash is base64url of 32 random bytes, which gives 43 characters.
+
+**Non-blocking items for your preflight**
+1. **Constraints the fixtures can't show.** The fixtures contain columns only, with no constraints, triggers or indexes. Your metadata preflight should cover:
+   - checks or triggers on `enlaces_registro`, especially `token_sufijo` length or format;
+   - checks on `captadores` (the `tipo='tercero'` value, and the normalized-name uniqueness implied by `captadores_duplicados_normalizados` at `clientes/index.mjs:4559`);
+   - any `store_code` check on Aura `nova_credit_applications`, which the Aura migration doesn't change.
+
+   Any of these would fail closed: the transaction rolls back, or new-store deliveries are refused. None of them would expose data.
+2. **Suffix length.** The existing ally provisioning stores a 6-character suffix (`token.slice(-6)`, `clientes/index.mjs:4554`), while the new script stores 8 (`right(v_hash,8)`). It's cosmetic since the suffix is admin-only, but admins will see two different lengths.
+3. **Member rows aren't locked.** The member and profile rows are read without `FOR SHARE`, so there is a small gap between the check and the writes. It's negligible because the script only writes to captadores and links.
+4. **Search path when applying.** `aura-3` and `aura-6` use the unqualified type `nova_platform_jobs`, so the session that applies the migration needs `public` on its search_path. That's the Supabase default; otherwise the migration fails as a whole.
+
+The rollout order (commit/push, then preflight, then Kora, Aura, the one-off script and both Workers) and the manual rollback with no data deletion are sound as described.

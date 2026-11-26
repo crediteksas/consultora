@@ -1,0 +1,36 @@
+✔ verified aggregate rejects without paid count or fabricated obligations (1.857292ms)
+✔ aggregate 2 with unknown paid count stays review; no inference (0.112083ms)
+✔ per-obligation 3 with missing paid rejects before completeness (0.071084ms)
+✔ exact existing boundaries: 2 vs3 overdue, paid3vs4 (0.139458ms)
+✔ missing/negative/noninteger overdue or paid does not imply a restriction (0.119667ms)
+✔ identity, foreign binding, authorization, future/stale statements never generate aggregate signal (0.251667ms)
+✔ invalid or inactive aggregate is not conclusive (0.153708ms)
+✔ unknown active per-obligation status cannot reject; stale identity cannot reject (0.068083ms)
+✔ confirmed restriction wins over incomplete photo/reference/provider evidence; no Andrea wait (0.513541ms)
+✔ valid complete clean case still continues automatically (0.276833ms)
+✔ all independently confirmed hard reasons are retained, including same obligation (0.699083ms)
+✔ revoked consent keeps existing override priority over financial restriction (0.645375ms)
+✔ policy version unchanged; v2 case still requires all3; existing detail reevaluation follows restrictive rule (1.432833ms)
+✔ aggregate restriction wins even if item counts differ; phone-no-match preserved (0.079333ms)
+✔ nonrestrictive fingerprint input is identical; restriction version included only in decision when applicable (5.764125ms)
+✔ real summary builder preserves review and waiting fingerprints; projection fields are excluded (7.951584ms)
+✔ all3 have NOVA registration URLs and exactly scoped helper; empty config fails closed (0.569458ms)
+✔ server, recovery page and actual form modules all remove old admission regex (2.632125ms)
+✔ SQL changes are only approved origin expansions; login/legacy/supervision definitions untouched (1.184041ms)
+✔ all3 clean and restrictive model decisions, closed and cross-store access, private outcome (1.878ms)
+✔ provisioning is atomic, idempotent, preserves existing links, seller names match approved members (767.0225ms)
+✔ provisioning name mismatch and ambiguous sellers roll back all writes (961.221958ms)
+✔ isolated real SQL pipeline for all3: verified OTP, reviewed photos, registration,3 jobs,refs,saved decision (996.897875ms)
+✔ gateway derives a signed own-store entry; rejects unknown stores and unauthorized internal calls (15.279333ms)
+✔ revoked links stay revoked; provisioning creates a fresh entry once and preserves budgets (480.307083ms)
+✔ real signed-entry resolver uses active ID filter, never token hash, and refuses revocation (2.684875ms)
+✔ closed allies receive only a short-lived minimal result, never the client record (0.380375ms)
+✔ browser scripts in additional and embedded photo forms remain valid JavaScript (1.865709ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3316.980375

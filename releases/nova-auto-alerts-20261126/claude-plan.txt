@@ -1,0 +1,46 @@
+# Review: `nova_retail_save` notification fix plan
+
+**Verdict: NO APROBADO todavía.** The overall approach is sound. Replacing the same function in the database alone, keeping the early return, keeping unique(source, revision, audience), and adding no backfill is the right fix for the state-change-only bug in `baseline.sql:31-34`. But seven defects need to be fixed in the plan before implementation. Most of them could cause duplicate sends or alerts about Andrea's own actions.
+
+I could only check the plan against `baseline.sql` and `baseline.json`. The folder doesn't include the claim/Worker code, the notifications table schema, the table grants or a real summary sample, so anything that depends on those is listed as something to verify. `claude-plan.txt` is empty.
+
+The baseline matches what you described: owner `postgres`, ACL `{postgres=X, service_role=X}`, `prosecdef=false`, `search_path ''`. The regex at `baseline.sql:10` covers exactly 13 codes: CK-01 to CK-09, distritoys, club-seven and the two ALIADO IDs.
+
+## Defects
+
+**D1. Carry must only look at the newest notice per audience, not at "any earlier queued/failed".**
+As written, it can send twice. Example: revision 1 fails, gets carried to revision 2, and revision 2 is delivered. Revision 1's row still says `failed`, so revision 3 would carry it again. The rule should be: for each audience, take the row with the highest revision below `v_revision`, and carry only if that row is queued or failed.
+
+**D2. Race with the Worker's claim.**
+The advisory lock and `FOR UPDATE` on `nova_retail_cases` don't stop the Worker from claiming the old notice. The Worker could move it from queued to sending between your status read and your insert, and then both the old and new notices get delivered. Fixes:
+- Read the old notice rows with `FOR UPDATE`, so the claim has to wait until this transaction commits.
+- Check in PGlite whether the claim uses `SKIP LOCKED` or a plain update, and that it cancels the stale row after the wait.
+- Because grants can't change, confirm `service_role` already has SELECT and UPDATE on `nova_retail_notifications`. `FOR UPDATE` needs UPDATE. Today the function only INSERTs there, so this privilege has never been exercised.
+
+**D3. Carrying `failed` can deliver twice.**
+Carrying a failed notice is only safe if the claim also cancels old-revision rows that are `failed`, or if failed is a final state the Worker never retries. Otherwise the Worker retries the old row and also sends the new one. You need a test that proves this, using the real claim function.
+
+**D4. Alerts about Andrea's own actions.**
+"Meaningful pending change" compares the full pending sets in both directions. When Andrea approves a photo, it leaves the pending set. When she contacts a reference, the `contact` flag changes. Either one creates a new revision with a different pending set, so she gets alerted about her own work. Recommended rule: alert only when the pending set gains an item, or when an existing item's hash/status/issues/responded value changes in the direction of new evidence. Removing items or reasons alone should not alert. Add tests for removal-only changes and for operator-set flags.
+
+**D5. The comparison can crash, or silently never fire.**
+- `jsonb_array_elements` raises an error on non-arrays. Guard each path with a `jsonb_typeof(...) = 'array'` check so a malformed summary can never abort the save.
+- `jsonb_agg` over zero rows returns NULL. Coalesce to `'[]'` so a missing key and an empty array compare as equal.
+- If the JSON paths are wrong, the comparison never changes and no alerts fire, with no error. Test fixtures must be real summaries produced by the actual validator, not hand-written JSON.
+
+**D6. Spurious alerts from old data.**
+- **Shape mismatch.** Summaries saved before this change may have a different structure. The first revalidation after deploy could then look like a change for every review case. Mitigation: if the old summary is missing a key, skip that comparison and rely on the state-change rule.
+- **Existing failed/queued notices.** With carry, every case whose newest notice is currently queued or failed gets re-sent on its next revision. That is a partial backfill, which contradicts "no backfill spam." Either accept that knowingly, or limit carry to rows created after the migration. You could check the scale with an aggregate-only count (`audience, status, count(*)` over each source's newest row, no client fields), but only if you agree that doesn't count as client data.
+
+**D7. Sort order isn't fully stable.**
+Several photos can share a type. Sort photos by (type, hash, status) and references by (id, type), and de-duplicate and sort the reasons.
+
+## To confirm in the plan or tests (not blocking on their own)
+
+- Under `consent_revoked`, the decision is overwritten but `p_summary` is still stored. Decide whether pending-item changes should alert Andrea while consent is revoked. Recommendation: while consent is revoked, compare only the reasons.
+- Andrea has a queued notice and the new final state is `waiting` or `correct`: there is no carry and the claim cancels the old notice. Test this explicitly.
+- An old notice is `sending` and the new revision is metadata-only: confirm the in-flight send still finishes or is cancelled exactly as it is today.
+- `CREATE OR REPLACE` keeps owner and ACL only if the migration runs as `postgres`. Check the identical signature, that `SECURITY DEFINER` is absent, `search_path ''`, and that there is no PUBLIC EXECUTE afterwards. Your post-apply checks already cover this.
+- The rest is fine as written: the 13 codes plus an unknown code being denied, terminal and consent priority, keeping the financial/privacy/gateway tests, advisors before and after, and committing and pushing before `apply_migration` on KORA only.
+
+Once D1–D7 are in the plan and tests, I'd give it APROBADO PARA IMPLEMENTAR. I made no writes, sends or live queries.

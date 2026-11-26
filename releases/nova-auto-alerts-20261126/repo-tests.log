@@ -1,0 +1,24 @@
+✔ all13 origins: actual model+summary create initial review and notify new reference evidence automatically (732.282917ms)
+✔ metadata, order, contact flags and removing approved items do not re-alert (464.616042ms)
+✔ same pending evidence but a new photo hash is actionable and queues one event (439.747458ms)
+✔ pending retry forwards sameevent+budget+backoff, actual claim cancels no current notice (876.690583ms)
+✔ in-flight event preserves attempt and finishes once after metadata-only revision (435.403625ms)
+✔ uncertain, accepted, delivered, read and exhausted retries never replay on metadata updates (2153.994291ms)
+✔ only newest audience event matters; old failures cannot revive after newer delivery (441.392875ms)
+✔ old queued revisions cancel when meaningful evidence changes, only current event claimed (446.897834ms)
+✔ terminal store retry forwards independently, without repeating delivered Andrea alert (432.1375ms)
+✔ malformed or absent legacy arrays cannot crash or flood first upgrade; later new evidence alerts (436.148542ms)
+✔ unknown origin denied and consent priority unchanged (431.133333ms)
+✔ stale queued latest notice from an older case revision is not revived (426.639834ms)
+✔ held lease failing before provider retries current revision with same message event and no duplicate (426.832791ms)
+✔ waiting and correct states cancel old queued review without creating human review alerts (829.212417ms)
+✔ issue/reason removal, array duplicates and ordering are not new actionable evidence (413.127584ms)
+✔ out of scope variants cannot queue alerts (417.059959ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9890.49675

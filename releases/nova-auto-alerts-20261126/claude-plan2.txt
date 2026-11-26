@@ -1,0 +1,37 @@
+# NO APROBADO: 8 defects need fixing before implementation
+
+I read only the five files you named. I made no writes, ran nothing and sent nothing. The overall approach holds up against the real `claim.sql` and `finish.sql`. Moving the same row forward keeps `created_at`, so it stays in its place in the queue. `finish` doesn't check the revision, so an old attempt that is still `sending` can still finish as `accepted`. And `claim` step 2 only cancels rows whose revision doesn't match the case, so a moved row survives. What's left are defects in the details.
+
+## Blocking defects
+
+1. **Stale rows can come back to life.** "Latest notice per audience" is not enough. Old rows from before the deploy can be the latest for their audience while sitting at a revision older than the case (for example, the case is at revision 3 and the latest store notice is still `queued` at revision 2). Today `claim` would cancel that row; under the plan, `save` would move it forward and send it. **Fix:** after taking the lock, only move the row forward if `latest.revision = v_old_revision`. Read `v_old_revision` from `r.revision` before the upsert.
+
+2. **The lock query must not filter by state.** If `queued`, `failed`, `sending` or `attempts<5` is in the `WHERE` clause, there's a problem when `claim` holds the row. After the lock wait, Postgres re-checks the row and may drop it, and `LIMIT 1` then returns no row at all; it does not fall through to the next row. **Fix:** filter only by `source_id` and `audience`, then `ORDER BY revision DESC LIMIT 1 FOR UPDATE`. Decide what to do based on the state as it is after the lock. The same goes for a row that `claim` step 1 has just turned `uncertain`: do not move it.
+
+3. **Moving a row and inserting a fresh one collide.** Both use `(source, new revision, audience)`. If the row is moved first, the existing `on conflict do nothing` (`baseline.sql:32`) silently drops the new alert. If the fresh row is inserted first, moving the old row breaks the unique constraint. **Fix:** decide per audience first, then do exactly one of three things: insert fresh, move, or nothing. Insert fresh when the state changed, or when it stayed `review` (both before and after the overrides on lines 18–25) and gained a task. Gains apply only to the Andrea audience.
+
+4. **The old values get overwritten.** `returning * into r` (`baseline.sql:29`) replaces the previous summary, decision and revision. **Fix:** copy `v_old_summary`, `v_old_decision` and `v_old_revision` before line 26. The `automatic_validation` event insert (line 30) also runs before the notification logic. Move it after, so the payload can include `forwarded:[{id,audience,from_revision,state}]`, added as new keys only.
+
+5. **Comparing tasks with `@>` gives wrong answers.** `@>` matches partial objects and ignores array order and duplicates. For example, `[{"a":1,"b":2}] @> [{"a":1}]` is true, so a real gain would be missed. **Fix:** use exact equality, `not exists(select 1 from jsonb_array_elements(old) o where o = n)`. Build each task with `jsonb_build_object` from an explicit list of allowed keys, not by deleting the excluded keys; a deny list will let new time or counter fields leak in. Sort nested issue lists before building the object.
+
+6. **"Null arrays coalesce to []" conflicts with the legacy guard.** Coalescing the old value to `[]` makes every task look new on the first re-evaluation, which is the flood you want to avoid. **Fix:** check `jsonb_typeof(old->kind) <> 'array'` on the raw old value first and skip that kind of task if so. Coalesce only the new side.
+
+7. **The sender code isn't in the read set.** Moving a `sending` row forward is only safe if the sender does one of two things on a revision mismatch: call `finish('queued'|'failed')` before contacting the provider, or skip the check altogether. If it abandons the row without calling `finish`, `claim` step 1 marks it `uncertain` after 2 minutes and it is never retried, which is the exact loss this change is meant to prevent. I need to see that code path.
+
+8. **Possible deadlock.** `claim` step 1 (`claim.sql:8`) is a plain `UPDATE` without `SKIP LOCKED`. If both audience rows are stale `sending`, `save` and `claim` can each lock one and wait on the other. Postgres detects this and rolls one back, so no data is lost, but the error surfaces. **Fix:** lock the two audiences in a fixed order, make the caller retry on error `40P01`, and document this as a known risk.
+
+## Missing information and test gaps
+
+- **Task JSON paths:** the plan doesn't say where in `p_summary` or `p_decision` the tasks live, or which fields make up a platform identity or history task. I can't review the final SQL without that.
+- **Schema checks:** confirm the unique constraint behind `on conflict`, any triggers on `nova_retail_notifications`, and the allowed values in its `state` check. Moving a row is an `UPDATE`, so any trigger on that table will fire.
+- **PGlite is single-connection.** It can test the logic step by step, but not the save-versus-claim race, the lock-wait re-check, or the deadlock. Either add a two-session test on a disposable Postgres or explicitly accept that risk. The test tables must be built from the live schema (structure only), or the constraint behaviour isn't really being tested.
+- **Unknown-origin tests** should include `CK-00`, `CK-10`, a lowercase `aliado-…` code and a null origin. The 13 codes are 9 CK codes, distritoys, club-seven and 2 ALIADO codes.
+- **ACL:** use `CREATE OR REPLACE` with the exact same signature and never `DROP`. The test should assert that `proacl` equals `{postgres=X/postgres,service_role=X/postgres}` and that the function is still not `SECURITY DEFINER`.
+
+## Please confirm (not blocking)
+
+- With status, `responded` and `knows` part of a reference's identity, a reference changing from `review` to `replace`, or `responded` flipping, will trigger a new alert. Is that intended?
+- Revision numbers start again at 1 if a case row is deleted and recreated. That would make existing notification rows collide. Confirm case rows are never deleted.
+- If the case is already `review` and consent is then revoked, the pending Andrea notice is moved forward rather than replaced with a fresh one. That matches today's behaviour.
+
+I couldn't create the plan file or formally submit the plan for approval because those tools aren't available in this session, so the review is all here. Send the corrected SQL, the task JSON paths and the sender's mismatch code, and I'll review the exact SQL and tests.

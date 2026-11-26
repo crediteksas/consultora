@@ -1,0 +1,24 @@
+**APROBADO PARA PUBLICAR.** I found no concrete code blocker in `candidate.sql` as written.
+
+I only read files; nothing was written, sent or run. I did not run the tests myself: the 16/16 pass comes from `tests.log`. The earlier 34 sender/privacy/gateway/financial results, the captured schema and the live checks are your evidence; I didn't re-check them.
+
+**Checked against the code**
+- **Signature and header:** `candidate.sql` is the same as `baseline.sql`: same signature, `RETURNS jsonb`, `plpgsql`, `SET search_path TO ''`, no `SECURITY DEFINER`. So `CREATE OR REPLACE` keeps the owner (`postgres`) and ACL (`{postgres=X/postgres,service_role=X/postgres}`). No schema, grant or Worker changes.
+- **Validation, scope, consent, cooldown and renewal:** lines 8–25 are the same as the baseline.
+- **D1/D2:** `DISTINCT ON(audience) … ORDER BY audience, revision DESC` has no state filter. The outer query locks with `FOR UPDATE OF n` in audience order. A notice is forwarded only if it is `sending`, or `queued`/`failed` with `attempts<5`, and its revision equals the old case revision. Stale, uncertain, accepted, delivered, read, cancelled and exhausted rows are left alone. The forwarding `UPDATE` can't hit `unique(source,revision,aud)` because the new revision is always old+1.
+- **D3:** For each audience the code does exactly one of insert / forward / nothing (`if … elsif`). A meaningful gain inserts a new event. The old unsent row is cancelled by the existing claim `UPDATE`, which I confirmed is unchanged in `claim.sql:9`.
+- **D4:** The old values are saved (line 15) before the upsert. The task comparison runs before `r` is overwritten. The event is inserted after forwarding. `noticeForwarded` only adds id, audience, fromRevision and state, with no personal data.
+- **D5/D6:** Tasks are compared by exact object equality using whitelisted fields. Photo issues are separate tasks. `jsonb_typeof(...)='array'` is checked on both old and new data, so legacy rows can't flood alerts or crash.
+- **D7:** Confirmed in the published Worker. `andreaNoticeContent` throws `NOTICE_DETAILS_UNAVAILABLE` when `c?.revision!==notice.revision`, and the sender catches it and finishes `failed` before calling the provider (`sender-current.js:29-34`). `finish.sql` keeps the id and attempt count, and the next claim retries the current revision. The store path has no revision check, but forwarding only happens when the state is unchanged, so the store text is still correct.
+- **D8:** Agreed, this is documented risk and not a blocker. A deadlock (40P01) on save is caught by `reconcile`'s per-source `try/catch`. A failed claim makes `sendNotices` throw, and the next scheduled run tries again. Each transaction is all-or-nothing either way.
+
+**Two things to know, neither blocking**
+1. A reference still in `review`/`replace` sends a new Andrea alert when `responded` or `knowsCustomer` changes. That seems intended (a new response is new evidence), but it's a product choice.
+2. If the old revision's case data is read just before forwarding and the provider then accepts, the forwarded row is marked accepted with the old revision's text. This only happens on metadata-only changes, so it's acceptable.
+
+**Conditions for the migration on KORA and the checks afterwards**
+- Apply `candidate.sql` exactly as it is, as the only statement, in one transaction.
+- Afterwards, `pg_get_functiondef('public.nova_retail_save(uuid,text,jsonb,jsonb)'::regprocedure)` should match `candidate.sql` (ignoring the trailing `;`/newline).
+- Afterwards, `proacl`, `proowner`, `prosecdef=false` and `proconfig={search_path=""}` should match `baseline.json`.
+- `nova_retail_notification_claim` and `nova_retail_notification_finish` should be unchanged (compare with `claim.sql` and `finish.sql`).
+- No backfill, replay or test sends.

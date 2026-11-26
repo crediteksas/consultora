@@ -734,7 +734,7 @@
     const stores=[...new Map(rows.map(r=>[r.origen_codigo,r.establishment_name])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'es'));
     $('operationControls').classList.remove('hidden');$('operationPaging').classList.remove('hidden');
     function render() {
-    const filtered=Review.filterOperations(rows,{search,store}).filter(r=>!focusOperationId||r.id===focusOperationId).filter(r=>{const c=contextById.get(r.id)||{};return !priceFilter||(priceFilter==='missing'?(c.pvp_guardado==null||c.pagamos_guardado==null):c.diferencia_pvp!=null&&Number.isFinite(Number(c.diferencia_pvp))&&Number(c.diferencia_pvp)!==0);}),pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
+    const filtered=Review.filterOperations(rows,{search,store}).filter(r=>!focusOperationId||r.id===focusOperationId).filter(r=>{const c=contextById.get(r.id)||{};return !priceFilter||(priceFilter==='missing'?(c.correccion_venta?.ambito==='venta_v1'?(c.pvp_aplicado==null||c.pagamos_aplicado==null):(c.pvp_guardado==null||c.pagamos_guardado==null)):c.diferencia_pvp!=null&&Number.isFinite(Number(c.diferencia_pvp))&&Number(c.diferencia_pvp)!==0);}),pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
     $('operationControls').innerHTML=`<label>Buscar referencia, cliente o IMEI<input class="control" id="operationSearch" value="${esc(search)}"></label><label>Tienda<select class="control" id="operationStore"><option value="">Todas las tiendas del lote</option>${stores.map(([code,name])=>`<option value="${esc(code)}" ${store===code?'selected':''}>${esc(name)}</option>`).join('')}</select></label><span>${filtered.length} de ${rows.length} operaciones${focusOperationId?' · Operación vinculada a la consulta':''}</span>${focusOperationId?'<button class="btn secondary" id="allOperations">Ver todo el lote</button>':''}`;
     $('operationControls').innerHTML+=`<label>Precios<select class="control" id="operationPriceFilter"><option value="">Todos</option><option value="missing">Falta PVP o PAGAMOS</option><option value="difference">Diferencia con PVP KORA</option></select></label>`;
     $('operationPriceFilter').value=priceFilter;$('operationPriceFilter').onchange=e=>{priceFilter=e.target.value;page=0;render();};
@@ -745,48 +745,55 @@
       const saved = Array.isArray(row.liquidation_calculations) ? row.liquidation_calculations[0] : row.liquidation_calculations;
       const live = contextById.get(row.id) || {};
       const automatic = !selected.frozen_at && !selected.approved_at ? live.automatica : null;
-      const calc = automatic ? (automatic.disponible ? {pagamos:automatic.pagamos,pago_aliado:automatic.giro,total_bonos:automatic.bonos,utilidad_creditek:automatic.utilidad_neta,explanation:{valor_comercial:automatic.pvp},policy_snapshot:{...live,motor:'krediya_v2',...automatic}} : null) : saved;
-      const c = calc?.policy_snapshot?.motor === 'krediya_v2' ? calc.policy_snapshot : live;
-      // Frozen calculations remain authoritative. Editable lots show live mathematics without writes.
+      let calc = automatic ? (automatic.disponible ? {pagamos:automatic.pagamos,pago_aliado:automatic.giro,total_bonos:automatic.bonos,utilidad_creditek:automatic.utilidad_neta,explanation:{valor_comercial:automatic.pvp},policy_snapshot:{...live,motor:'krediya_v2',...automatic}} : null) : saved;
+      const currentCorrection = !selected.frozen_at && !selected.approved_at && live.correccion_venta?.ambito === 'venta_v1' ? live.correccion_venta : null;
+      const staleCalculation = Boolean(currentCorrection && calc && !automatic &&
+        (calc.policy_snapshot?.correccion_venta?.fecha !== currentCorrection.fecha ||
+         Number(calc.explanation?.valor_comercial ?? calc.explanation?.base_liquidable ?? row.valor_comercial) !== Number(currentCorrection.precio_venta) || Number(calc.pagamos) !== Number(currentCorrection.pagamos)));
+      if (staleCalculation) calc = null;
+      const c = currentCorrection ? live : calc?.policy_snapshot?.motor === 'krediya_v2' ? calc.policy_snapshot : live;
+      // Frozen calculations remain authoritative. An older calculation never stands in for a new correction.
       const calculated = Boolean(calc);
-      const pendingExecutive=!automatic && calculated && !selected.frozen_at && row.tipo_establecimiento==='aliado' && (c.bono_ejecutivo_pendiente || !row.ejecutivo_id);
-      const pvp = calculated ? (calc.explanation?.valor_comercial ?? calc.explanation?.base_liquidable ?? row.valor_comercial) : c.pvp_recibido;
-      const paid = calculated ? calc.pagamos : c.pagamos_guardado;
+      const pendingExecutive=!automatic && calculated && !selected.frozen_at && row.tipo_establecimiento==='aliado' && (c.bono_ejecutivo_pendiente || calc?.policy_snapshot?.bono_ejecutivo_pendiente || !row.ejecutivo_id);
+      const pvp = calculated ? (calc.explanation?.valor_comercial ?? calc.explanation?.base_liquidable ?? row.valor_comercial) : c.pvp_aplicado ?? c.pvp_recibido;
+      const paid = calculated ? calc.pagamos : c.pagamos_aplicado ?? c.pagamos_guardado;
       const net = calculated ? calc.pago_aliado : paid == null || !row.reconocida ? null : Number(paid) - Number(row.inicial || 0);
       const openIssues = incidents.filter((i) => i.operation_id === row.id);
       const priceIssue = openIssues.some((i) => ['krediya_regla_precio_ausente','krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(i.tipo));
+      const correction = c.correccion_venta?.ambito === 'venta_v1' ? c.correccion_venta : null;
       const delta = c.diferencia_pvp;
       const hasPriceDifference = delta != null && Number.isFinite(Number(delta)) && Number(delta) !== 0;
-      const differenceTone = row.reconocida && pvp != null && c.pvp_guardado != null && hasPriceDifference ? (Number(delta) < 0 ? 'lower' : 'higher') : '';
+      const differenceTone = !correction && row.reconocida && pvp != null && c.pvp_guardado != null && hasPriceDifference ? (Number(delta) < 0 ? 'lower' : 'higher') : '';
       const differenceNotice = differenceTone ? `<div class="pvp-difference-notice"><strong>Revisar diferencia PVP: ${esc(money(delta))}</strong><span>PVP de Krediya ${differenceTone === 'lower' ? 'menor' : 'mayor'} que PVP KORA. Seguimiento, no bloquea. Se respeta PAGAMOS.</span></div>` : '';
-      const missingData = row.reconocida && (pendingExecutive || c.pvp_guardado == null || paid == null || pvp == null || (!calculated && automatic?.disponible === false));
+      const missingData = row.reconocida && (pendingExecutive || (!correction && c.pvp_guardado == null) || paid == null || pvp == null || (!calculated && automatic?.disponible === false));
       const blockingIssue = row.reconocida && openIssues.find((issue) => issue.bloquea_aprobacion === true && !['krediya_precio_venta_diferente','krediya_pagamos_diferente'].includes(issue.tipo));
       const needsAttention = missingData || blockingIssue;
       const note = !row.reconocida ? 'Excluida del cálculo. Consulta su novedad.'
+        : staleCalculation ? 'Pendiente de recalcular el lote. El giro mostrado es estimado.'
+        : correction ? 'Esta venta usa los importes de su corrección individual.'
         : paid == null || c.pvp_guardado == null ? 'Falta completar PVP o PAGAMOS de esta referencia.'
         : pvp == null ? 'Falta PVP recibido de Krediya para calcular.'
         : hasPriceDifference ? `Diferencia PVP: ${money(delta)} · Seguimiento, no bloquea. Se respeta PAGAMOS.`
         : automatic?.disponible ? 'Utilidad automática. Se respeta PAGAMOS, incluso si hay pérdida.' : calculated ? 'Valores calculados de esta operación.' : automatic?.motivo || 'No se pudo obtener el desglose automático.';
-      const priceAction = !selected.frozen_at && row.reconocida
-        ? `<button class="btn secondary" data-open-tariff="${row.id}">${c.pvp_guardado==null||c.pagamos_guardado==null?'Crear datos · PVP y PAGAMOS':'Editar PVP y PAGAMOS'}</button>`
+      const priceAction = !selected.frozen_at && !selected.approved_at && row.reconocida
+        ? `<button class="btn secondary" data-edit-operation-price="${row.id}">${!correction&&(c.pvp_guardado==null||c.pagamos_guardado==null)?'Crear datos · PVP y PAGAMOS':'Editar PVP y PAGAMOS'}</button>`
         : openIssues.length ? `<button class="btn secondary" data-manage-issue="${row.id}">Ver novedad</button>` : '';
       const attentionNotice = needsAttention ? `<div class="krediya-attention-notice" role="status"><strong>${missingData ? 'Faltan datos para liquidar' : 'Error por revisar'}</strong><span>${esc(pendingExecutive ? 'Falta el bono del ejecutivo para obtener la utilidad final.' : missingData ? note : blockingIssue.descripcion || 'Esta operación tiene una novedad que requiere revisión.')}</span></div>` : '';
       return `<tr><td><article class="krediya-operation compact-krediya" data-pvp-difference="${differenceTone}" data-krediya-attention="${needsAttention ? 'true' : 'false'}" aria-label="${esc(row.referencia || row.modelo || 'Referencia no informada')}">
-        <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
+        <header class="operation-heading"><div><h3>${esc(row.referencia || row.modelo || 'Referencia no informada')}</h3><p>${esc(row.establishment_name)} · ${row.tipo_establecimiento === 'propia' ? 'Tienda propia' : 'Aliado'}</p></div><span class="operation-status">${!row.reconocida ? 'Excluida' : staleCalculation ? 'Pendiente de recalcular el lote' : automatic?.disponible ? 'Utilidad automática' : calculated ? 'Calculada' : 'Datos incompletos'}</span></header>
         ${executiveIdentity(row)}
         ${operationIdentity(row, c.fecha || String(row.operation_at || '').slice(0,10))}
-        <dl class="operation-values">${metric(calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
-        <footer class="operation-footer">${attentionNotice}${differenceNotice || (needsAttention ? '' : `<p>${esc(note)}</p>`)}<div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
+        <dl class="operation-values">${metric(correction?'PVP corregido para esta venta':calculated?'PVP liquidado':'PVP Krediya',pvp)}${metric('PVP KORA',c.pvp_guardado)}${metric('PAGAMOS pactado',paid)}${metric(calculated?'Giro al beneficiario':'Giro estimado · PAGAMOS menos inicial',net)}${metric('Utilidad después de bonos, gasto financiero y provisión',calculated&&!pendingExecutive?calc.utilidad_creditek:null,!row.reconocida?'No aplica: excluida':staleCalculation?'Pendiente de recalcular el lote':automatic?.motivo || (pendingExecutive?'Falta bono del ejecutivo':paid==null?'Falta PAGAMOS':'Datos incompletos'))}</dl>
+        <footer class="operation-footer">${correction ? `<p class="operation-clear">Corrección individual aplicada · ${esc(correction.motivo)}. La tarifa de referencia se conserva.</p>` : ''}${attentionNotice}${differenceNotice || (needsAttention ? '' : `<p>${esc(note)}</p>`)}<div class="operation-actions">${priceAction}${row.instruction_count?`<button class="btn secondary" data-operation-instructions="${esc(row.id)}">Ver instrucciones (${row.instruction_count})</button>`:''}</div></footer>
         ${pendingExecutive?'<p class="value-pending">Principal calculado; faltan el bono del ejecutivo y la utilidad final. Completar en Tesorería.</p>':''}
         <details class="operation-details"><summary>Ver cliente y desglose</summary>
         <dl class="operation-values">${metric(calculated ? 'PVP liquidado' : 'PVP recibido para liquidar', pvp)}${metric('PVP configurado de referencia', c.pvp_guardado)}${metric('PVP recibido de Krediya', c.pvp_recibido, 'No informado')}${metric('Pagamos antes de inicial', paid)}${metric('Inicial', row.inicial, 'No informada')}${metric(calculated ? 'Pago neto liquidado' : 'Pagamos − inicial · estimado', net, row.reconocida ? 'Pendiente de tarifa' : 'No aplica: operación excluida')}${metric('Crédito financiado', row.monto_credito ?? row.monto_base, 'No informado')}</dl>
-        <div class="operation-totals"><span>Bonos ${pendingExecutive ? 'conocidos' : calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(pendingExecutive ? null : calc.policy_snapshot?.provision, pendingExecutive ? 'Pendiente de bono' : 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated && !pendingExecutive ? calc.utilidad_creditek : null, pendingExecutive ? 'Pendiente de bono' : 'Pendiente de calcular')}</span></div>
+        <div class="operation-totals"><span>Bonos ${pendingExecutive ? 'conocidos' : calculated ? 'liquidados' : 'operativos configurados'}: ${amount(calculated ? calc.total_bonos : c.bonos, 'No aplica')}</span>${calculated ? `<span>Gasto financiero: ${amount(calc.policy_snapshot?.gasto_financiero, 'No disponible')}</span><span>Provisión: ${amount(pendingExecutive ? null : calc.policy_snapshot?.provision, pendingExecutive ? 'Pendiente de bono' : 'No disponible')}</span>` : '<span>Los bonos del ejecutivo se suman al calcular.</span>'}<span>Utilidad: ${amount(calculated && !pendingExecutive ? calc.utilidad_creditek : null, pendingExecutive ? 'Pendiente de bono' : staleCalculation ? 'Pendiente de recalcular el lote' : 'Pendiente de calcular')}</span></div>
         <p>${priceIssue ? 'La diferencia queda en el informe consolidado de 7 días. ' : ''}${!calculated && paid != null && row.reconocida ? 'El giro es estimado; no es un pago autorizado.' : ''}</p></details>
       </article></td></tr>`;
     }).join('') || '<tr><td>Sin operaciones.</td></tr>';
-    document.querySelectorAll('[data-edit-operation-price]').forEach((button) => { button.onclick = () => openPriceEditor(button.dataset.editOperationPrice); });
+    document.querySelectorAll('[data-edit-operation-price]').forEach((button) => { button.onclick = () => openPriceEditor(button.dataset.editOperationPrice, { operationOnly: true }); });
     document.querySelectorAll('[data-operation-instructions]').forEach(button=>button.onclick=()=>loadTab('management',button.dataset.operationInstructions));
-    document.querySelectorAll('[data-open-tariff]').forEach((button) => { button.onclick = () => tarifarioKrediya.openOperationTariff(button.dataset.openTariff,async()=>{await loadTab('operations');}); });
     document.querySelectorAll('[data-manage-issue]').forEach((button) => { button.onclick = () => {
       const row=rows.find(r=>r.id===button.dataset.manageIssue);
       const calc=Array.isArray(row.liquidation_calculations)?row.liquidation_calculations[0]:row.liquidation_calculations;
@@ -1001,28 +1008,30 @@
     if (error) return alert(error.message);
     await loadTab('incidents');
   }
-  async function openPriceEditor(operationId) {
+  async function openPriceEditor(operationId, { operationOnly = false } = {}) {
     const modal = $('priceEditor');
     modal.classList.add('show');
     $('priceEditorContent').textContent = 'Cargando comparación…';
     $('closePriceEditor').onclick = () => modal.classList.remove('show');
     const { data: c, error } = await sb.rpc('aliados_contexto_precio_krediya', { p_operation_id: operationId });
     if (error) { $('priceEditorContent').textContent = error.message; return; }
+    const correction = c.correccion_venta?.ambito === 'venta_v1' ? c.correccion_venta : null;
     const amount = (value) => value == null ? 'No registrado' : money(value);
     const delta = (received, saved) => received == null || saved == null ? '—' : money(Number(received) - Number(saved));
     $('priceEditorContent').innerHTML = `<p><strong>${esc(c.referencia)}</strong><br>${esc(c.tienda)} · IMEI ${esc(c.imei)} · ${esc(c.fecha)}</p>
-      <div class="price-comparison"><table><thead><tr><th>Concepto</th><th>Guardado en KORA</th><th>Recibido de Krediya</th><th>Diferencia</th></tr></thead><tbody>
+      <div class="price-comparison"><table><thead><tr><th>Concepto</th><th>${operationOnly ? 'Tarifa de referencia' : 'Guardado en KORA'}</th><th>Recibido de Krediya</th><th>Diferencia</th></tr></thead><tbody>
       <tr><th>PVP</th><td>${amount(c.pvp_guardado)}</td><td>${amount(c.pvp_recibido)}</td><td>${delta(c.pvp_recibido,c.pvp_guardado)}</td></tr>
       <tr><th>Pagamos</th><td>${amount(c.pagamos_guardado)}</td><td>${c.pagamos_recibido == null ? 'No viene en el archivo' : money(c.pagamos_recibido)}</td><td>${delta(c.pagamos_recibido,c.pagamos_guardado)}</td></tr></tbody></table></div>
       <p class="price-rule">Tarifario: PVP de la columna PVP y Pagamos de la columna PAGAMOS. No se usa Precio sugerido. El valor de Krediya se compara; no reemplaza la tarifa sin una decisión.</p>
       <p>${c.pvp_guardado == null ? 'No se encontró una tarifa para esta referencia. No se sustituye por cero.' : 'Si Krediya reportó un error, puedes conservar el precio guardado y registrar el motivo.'}</p>
-      <form id="priceDecisionForm"><label>Decisión<select class="control" id="priceDecision" required><option value="">Selecciona qué hacer</option><option value="aceptar_krediya">Aceptar el PVP recibido de Krediya</option><option value="conservar_guardado" ${c.pvp_guardado == null || c.pagamos_guardado == null ? 'disabled' : ''}>Conservar los valores guardados en KORA</option><option value="editar_operacion">Corregir valores de esta operación</option></select></label>
-      <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="0.01" step="0.01" required disabled></label><label>Pagamos antes de inicial<input class="control" id="decisionPagamos" type="number" min="0.01" step="0.01" required value="${c.pagamos_guardado ?? ''}"></label></div>
+      <form id="priceDecisionForm">${operationOnly ? '<input type="hidden" id="priceDecision" value="editar_operacion">' : `<label>Decisión<select class="control" id="priceDecision" required><option value="">Selecciona qué hacer</option><option value="aceptar_krediya">Aceptar el PVP recibido de Krediya</option><option value="conservar_guardado" ${c.pvp_guardado == null || c.pagamos_guardado == null ? 'disabled' : ''}>Conservar los valores guardados en KORA</option><option value="editar_operacion">Corregir valores de esta operación</option></select></label>`}
+      <div class="price-fields"><label>PVP a aplicar<input class="control" id="decisionPvp" type="number" min="1" step="1" max="99999999999999" required ${operationOnly ? '' : 'disabled'}></label><label>Pagamos antes de inicial<input class="control" id="decisionPagamos" type="number" min="1" step="1" max="99999999999999" required value="${c.pagamos_guardado ?? ''}"></label></div>
       <p id="pricePayout" class="price-payout">Inicial del crédito: ${amount(c.inicial)}. Pago al aliado = Pagamos − inicial.</p>
       <p id="priceImpact" aria-live="polite">Selecciona una decisión para ver el impacto.</p>
       <label>Motivo de la decisión<textarea class="control" id="priceReason" required rows="2" maxlength="1000" placeholder="Ejemplo: diferencia confirmada o posible error de Krediya"></textarea></label>
+      ${correction ? `<p class="price-rule">Corrección individual registrada: ${esc(correction.motivo)}.</p>` : ''}
       <p class="muted">Aplica únicamente a este crédito. Conserva el archivo original y no modifica el tarifario maestro. No autoriza ni registra pagos.</p>
-      <div id="priceSaveError" class="error" role="alert"></div><div class="actions"><button class="btn primary" id="savePriceDecision" type="submit" disabled>Guardar decisión</button></div></form>`;
+      <div id="priceSaveError" class="error" role="alert"></div><div class="actions"><button class="btn primary" id="savePriceDecision" type="submit" disabled>${operationOnly ? 'Guardar corrección de esta venta' : 'Guardar decisión'}</button></div></form>`;
     const refresh = () => {
       const mode = $('priceDecision').value;
       const p = Number($('decisionPvp').value), paid = Number($('decisionPagamos').value);
@@ -1032,25 +1041,29 @@
       const bruto = p - paid - Number(c.bonos);
       const previous = c.pvp_guardado == null || c.pagamos_guardado == null || !known ? null : Number(c.pvp_guardado)-Number(c.pagamos_guardado)-Number(c.bonos);
       $('priceImpact').textContent = !(p>0 && paid>0) ? 'Falta PVP o Pagamos para calcular el impacto.' : !known ? 'La utilidad queda pendiente de resolver la vigencia de bonos. Los precios sí pueden guardarse.' : `Utilidad bruta (PVP − Pagamos − bonos): ${money(bruto)}.\nProvisión 28 %: ${money(Math.round(bruto*28)/100)}.\nUtilidad neta estimada: ${money(bruto-Math.round(bruto*28)/100)}.${previous == null ? '' : `\nCambio bruto frente al precio guardado: ${money(bruto-previous)}.`}`;
-      $('savePriceDecision').disabled = !mode || !(p>0 && paid>0) || paid<initial || !$('priceReason').value.trim();
+      if (operationOnly) $('priceImpact').textContent = !(p>0 && paid>0) ? 'Completa PVP y PAGAMOS en pesos enteros.' : `PVP aplicado a esta venta: ${money(p)}. PAGAMOS antes de inicial: ${money(paid)}.${known ? ` Margen parcial antes de gasto financiero, provisión y bonos del ejecutivo: ${money(bruto)}.` : ''} El resultado completo se actualizará al guardar.`;
+      $('savePriceDecision').disabled = !mode || !Number.isSafeInteger(p) || !Number.isSafeInteger(paid) || !(p>0 && paid>0) || p>=1e14 || paid>=1e14 || paid<initial || !$('priceReason').value.trim();
     };
     $('priceDecision').onchange = () => {
       const mode = $('priceDecision').value;
       $('decisionPvp').disabled = mode !== 'editar_operacion';
       $('decisionPagamos').disabled = mode === 'conservar_guardado';
-      $('decisionPvp').value = mode === 'aceptar_krediya' ? c.pvp_recibido ?? '' : c.pvp_guardado ?? '';
-      $('decisionPagamos').value = c.pagamos_guardado ?? c.pagamos_recibido ?? '';
+      $('decisionPvp').value = mode === 'aceptar_krediya' ? c.pvp_recibido ?? '' : mode === 'editar_operacion' ? correction?.precio_venta ?? (operationOnly ? c.pvp_aplicado ?? c.pvp_recibido ?? c.pvp_guardado : c.pvp_guardado) ?? '' : c.pvp_guardado ?? '';
+      $('decisionPagamos').value = mode === 'conservar_guardado' ? c.pagamos_guardado ?? '' : correction?.pagamos ?? c.pagamos_aplicado ?? c.pagamos_guardado ?? c.pagamos_recibido ?? '';
       refresh();
     };
     ['decisionPvp','decisionPagamos','priceReason'].forEach((id) => { $(id).oninput = refresh; });
     $('priceDecisionForm').onsubmit = async (event) => {
       event.preventDefault(); $('savePriceDecision').disabled = true;
-      const { error: saveError } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId,p_decision:$('priceDecision').value,p_precio_venta:Number($('decisionPvp').value),p_pagamos:Number($('decisionPagamos').value),p_justificacion:$('priceReason').value.trim() });
-      if (saveError) { $('priceSaveError').textContent = saveError.message; refresh(); return; }
+      const batchId = selected.id;
+      try {
+        const { error: saveError } = await sb.rpc('aliados_resolver_precio_krediya', { p_operation_id:operationId,p_decision:$('priceDecision').value,p_precio_venta:Number($('decisionPvp').value),p_pagamos:Number($('decisionPagamos').value),p_justificacion:$('priceReason').value.trim() });
+        if (saveError) { $('priceSaveError').textContent = saveError.message; refresh(); return; }
+      } catch (_) { $('priceSaveError').textContent = 'No se pudo confirmar el guardado. Reabre esta venta para comprobar sus valores antes de intentarlo de nuevo.'; refresh(); return; }
       modal.classList.remove('show');
-      const batchId = selected.id; await loadBatches(); await openDetail(batchId); await loadTab('incidents',operationId);
+      await loadBatches(); await openDetail(batchId); await loadTab(operationOnly ? 'operations' : 'incidents',operationId);
     };
-    $('priceDecision').focus();
+    if(operationOnly){$('priceDecision').value='editar_operacion';$('priceDecision').onchange();$('decisionPvp').focus();}else $('priceDecision').focus();
   }
   async function stateRpc(next, comment = null) {
     const batchId = selected.id;

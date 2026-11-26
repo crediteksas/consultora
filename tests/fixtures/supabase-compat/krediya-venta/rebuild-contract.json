@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "name": "calcular_y_enviar_aprobacion",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "krediya_private",
+      "identity": "p_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6af2a5d0e91b97a84243e947c068b482",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-krediya-venta.test.mjs",
+      "justification": "Replace four existing financial functions with identical ACL, owner and security settings. Only new explicitly audited per-sale corrections are applied; existing source, tariffs and all unmarked legacy decisions retain their behaviour. Fictional schema, no production operations."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "name": "utilidad_consulta",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "krediya_private",
+      "identity": "p_operation_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "0385cef923e56e6b7f76199e0ed77606",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-krediya-venta.test.mjs",
+      "justification": "Replace four existing financial functions with identical ACL, owner and security settings. Only new explicitly audited per-sale corrections are applied; existing source, tariffs and all unmarked legacy decisions retain their behaviour. Fictional schema, no production operations."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "name": "aliados_contexto_precio_krediya",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_operation_id uuid",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "d8f65a2ee1eb6bada2202245a94a1059",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-krediya-venta.test.mjs",
+      "justification": "Replace four existing financial functions with identical ACL, owner and security settings. Only new explicitly audited per-sale corrections are applied; existing source, tariffs and all unmarked legacy decisions retain their behaviour. Fictional schema, no production operations."
+    },
+    {
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "name": "aliados_resolver_precio_krediya",
+      "owner": "postgres",
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_operation_id uuid, p_decision text, p_precio_venta numeric, p_pagamos numeric, p_justificacion text",
+      "config_md5": "eac5bef9b92039986bf93dc486753f77",
+      "routine_kind": "f",
+      "definition_md5": "b641483a4074e07d21c3bac580dcc504",
+      "security_definer": true,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-krediya-venta.test.mjs",
+      "justification": "Replace four existing financial functions with identical ACL, owner and security settings. Only new explicitly audited per-sale corrections are applied; existing source, tariffs and all unmarked legacy decisions retain their behaviour. Fictional schema, no production operations."
+    }
+  ]
+}

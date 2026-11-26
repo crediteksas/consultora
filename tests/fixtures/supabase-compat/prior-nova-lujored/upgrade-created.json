@@ -1,0 +1,80 @@
+[
+  {
+    "schema": "public",
+    "name": "kora_nova_recover",
+    "kind": "function",
+    "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "kora_nova_renew_platforms",
+    "kind": "function",
+    "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "kora_nova_retail_register",
+    "kind": "function",
+    "identity": "p_registration jsonb, p_consent jsonb, p_photo_subject text, p_photo_hashes jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "kora_nova_retail_resume",
+    "kind": "function",
+    "identity": "p_otp uuid, p_enlace uuid, p_cedula text, p_celular text"
+  },
+  {
+    "schema": "public",
+    "name": "nova_allied_login_reserve",
+    "kind": "function",
+    "identity": "p_phone text, p_challenge_id uuid, p_code_hash text, p_ip_hash text"
+  },
+  {
+    "schema": "public",
+    "name": "nova_allied_login_session",
+    "kind": "function",
+    "identity": "p_session_hash text"
+  },
+  {
+    "schema": "public",
+    "name": "nova_client_otp_options",
+    "kind": "function",
+    "identity": "p_enlace_registro_id uuid, p_celular text"
+  },
+  {
+    "schema": "public",
+    "name": "nova_client_otp_reserve",
+    "kind": "function",
+    "identity": "p_cedula text, p_celular text, p_enlace_registro_id uuid, p_request_id uuid, p_channel text, p_selected_reason text, p_codigo_hash text, p_expira_at timestamp with time zone"
+  },
+  {
+    "schema": "public",
+    "name": "nova_client_otp_status",
+    "kind": "function",
+    "identity": "p_request_id uuid, p_cedula text, p_celular text, p_enlace_registro_id uuid"
+  },
+  {
+    "schema": "public",
+    "name": "nova_payjoy_source_matches",
+    "kind": "function",
+    "identity": "p_source uuid, p_application uuid, p_payload_hash text, p_document text, p_phone text, p_consent jsonb"
+  },
+  {
+    "schema": "public",
+    "name": "nova_retail_candidates",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "public",
+    "name": "nova_retail_review",
+    "kind": "function",
+    "identity": "p_source uuid, p_revision integer, p_actor uuid, p_action text, p_note text"
+  },
+  {
+    "schema": "public",
+    "name": "nova_retail_save",
+    "kind": "function",
+    "identity": "p_source uuid, p_fingerprint text, p_decision jsonb, p_summary jsonb"
+  }
+]

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Permission-only source evidence for three already-applied Nova sources. The first two exact migrations and twelve exact Lujo function declarations run in fictional fixtures. Lujo production drift guards/data updates are not replayed; separate existing Lujo source tests remain required. No Nova Worker deployment or production change.",
+  "migration_sha256": {
+    "supabase/migrations/20261125233814_nova_retail_restrictive_approval_guard.sql": "866fffe8bcf848045632b9602f45bfc5c663dffc3d9311949273cf6e8661cb75",
+    "supabase/migrations/20261126002712_nova_three_allied_kora_flow.sql": "310944798a8f57a182756a23dc949438263852d343bbc9632f6ab441bd534f68",
+    "supabase/migrations/20261126153311_nova_lujored_registration_scope.sql": "f0270c99b61ad78ee8c149ef9620c09c81692f867698a05b3bfa8eb79066b093"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "sha256": "a9a671d3075dd98ac4a19603f89a9b56c84f254ae65be3714c044c46f42571b8"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/upgrade-before.json",
+      "sha256": "cd094592f93359ebf92aabe714252f26b295e69533578d6043d7f0007bb3a098"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/upgrade-after.json",
+      "sha256": "ad61d0fdf55d95575575588f40c2cbf1a1ab4fd1c0f94e7300664a00659a2286"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/upgrade-contract.json",
+      "sha256": "a96225f8aa8a4e9e754328b9177430677c5dc73ed0059b5751b4bea0443e137e"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/upgrade-created.json",
+      "sha256": "eb66baba811817b9f39b122d4ad47dec1e7954c978a736cfd2dc567999639f44"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/rebuild-before.json",
+      "sha256": "fb5c7164e53a7efede4b53f3713ac9a6f2c992b143cf6c7704465d5a9dbb752d"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/rebuild-after.json",
+      "sha256": "afdac1a72d8c9209c9f1b67dff8ba40869115e1d77c1c186d585302eb100d595"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/rebuild-contract.json",
+      "sha256": "a96225f8aa8a4e9e754328b9177430677c5dc73ed0059b5751b4bea0443e137e"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-lujored/rebuild-created.json",
+      "sha256": "eb66baba811817b9f39b122d4ad47dec1e7954c978a736cfd2dc567999639f44"
+    }
+  },
+  "supersedes": [
+    {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/release.json",
+      "sha256": "d7e1bd550cfa84edb08ff597f68caf9d182e571212f002b334cd16b8534b5435"
+    }
+  ]
+}

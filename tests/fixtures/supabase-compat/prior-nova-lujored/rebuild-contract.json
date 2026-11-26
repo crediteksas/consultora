@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_recover",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "644d3786ac62ce4432eea503fa036d32",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_renew_platforms",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "310aaa3eca6ed0754245b71d3e532134",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_retail_register",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_registration jsonb, p_consent jsonb, p_photo_subject text, p_photo_hashes jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "b338b06e837f34b0bed1648f333db06e",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_retail_resume",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp uuid, p_enlace uuid, p_cedula text, p_celular text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "0bcf2cd405ea5d1ee63f4bd34ebf654e",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_allied_login_reserve",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_phone text, p_challenge_id uuid, p_code_hash text, p_ip_hash text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "9eeb4e542b123cb9b3317575e306cb35",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_allied_login_session",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_session_hash text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "729442de8643aad4fd2be48c53341684",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_options",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_enlace_registro_id uuid, p_celular text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "2259c9a983775b83f5db33ef11ad169d",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_reserve",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_cedula text, p_celular text, p_enlace_registro_id uuid, p_request_id uuid, p_channel text, p_selected_reason text, p_codigo_hash text, p_expira_at timestamp with time zone",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "4f464e19635a35094508a61507a063ed",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_status",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_cedula text, p_celular text, p_enlace_registro_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "1eb79dcd469763209fb965320d800435",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_payjoy_source_matches",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_application uuid, p_payload_hash text, p_document text, p_phone text, p_consent jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "323dc2ef7b96dfd6b032bb34e87a611d",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_candidates",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "45a4cef1412f9c4fec450fc4844fefcb",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_review",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_revision integer, p_actor uuid, p_action text, p_note text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "dc58e6597f5cea17170a864b5785c1f9",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_save",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_fingerprint text, p_decision jsonb, p_summary jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "a5e1e03d04bc0efce7249681c549719f",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-lujored.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from the Krediya correction. Exact Lujo function declarations only; no provisioning or policy-row replay. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "schema": "krediya_private",
+    "name": "calcular_y_enviar_aprobacion",
+    "kind": "function",
+    "identity": "p_id uuid"
+  },
+  {
+    "schema": "krediya_private",
+    "name": "utilidad_consulta",
+    "kind": "function",
+    "identity": "p_operation_id uuid"
+  },
+  {
+    "schema": "public",
+    "name": "aliados_contexto_precio_krediya",
+    "kind": "function",
+    "identity": "p_operation_id uuid"
+  },
+  {
+    "schema": "public",
+    "name": "aliados_resolver_precio_krediya",
+    "kind": "function",
+    "identity": "p_operation_id uuid, p_decision text, p_precio_venta numeric, p_pagamos numeric, p_justificacion text"
+  }
+]

@@ -92,3 +92,22 @@ test('novedades no usan pastillas rosadas para explicaciones largas',()=>{
  assert.doesNotMatch(app,/class="badge con_novedades">\$\{issueLabel\}/);
  assert.match(html,/#priceImpact\{white-space:pre-line/);
 });
+
+test('corregir una venta habilita ambos importes, conserva la corrección previa y exige motivo y pesos enteros',async()=>{
+ const current={...base,pvp_aplicado:1050000,pagamos_aplicado:750000,pvp_guardado:1000000,pvp_recibido:900000,pagamos_guardado:700000,inicial:100000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Revisión ficticia anterior'}};
+ const e=editor(current);let destination;e.context.loadTab=async(...args)=>{destination=args};await e.context.open('fixture-credit',{operationOnly:true});
+ assert.match(e.$('priceEditorContent').innerHTML,/type="hidden" id="priceDecision" value="editar_operacion"/);assert.doesNotMatch(e.$('priceEditorContent').innerHTML,/Aplicar a ventas desde/);
+ assert.match(e.$('priceEditorContent').innerHTML,/min="1" step="1"/);assert.equal(e.$('decisionPvp').value,1050000);assert.equal(e.$('decisionPagamos').value,750000);assert.equal(e.$('decisionPvp').disabled,false);assert.equal(e.$('savePriceDecision').disabled,true);
+ e.$('priceReason').value='Corrección confirmada de esta venta';e.$('priceReason').oninput();assert.equal(e.$('savePriceDecision').disabled,false);assert.match(e.$('priceImpact').textContent,/Margen parcial antes de gasto financiero/);assert.doesNotMatch(e.$('priceImpact').textContent,/Utilidad neta estimada/);
+ e.$('decisionPvp').value=1050000.5;e.$('decisionPvp').oninput();assert.equal(e.$('savePriceDecision').disabled,true);e.$('decisionPvp').value=1050000;e.$('decisionPvp').oninput();
+ await e.$('priceDecisionForm').onsubmit({preventDefault(){}});assert.equal(e.calls.length,2);assert.equal(e.calls[1].name,'aliados_resolver_precio_krediya');assert.equal(e.calls[1].args.p_operation_id,'fixture-credit');assert.equal(e.calls[1].args.p_decision,'editar_operacion');assert.deepEqual(destination,['operations','fixture-credit']);assert.ok(!e.calls.some(c=>/guardar_tarifa|calcular|pagar/.test(c.name)));
+});
+
+test('un fallo de conexión mantiene el formulario y pide comprobar la venta antes de reintentar',async()=>{
+ const e=editor({...base,inicial:10});await e.context.open('fixture-credit',{operationOnly:true});
+ e.$('priceReason').value='Confirmado';e.$('priceReason').oninput();
+ e.context.sb.rpc=async()=>{throw Error('offline')};
+ await e.$('priceDecisionForm').onsubmit({preventDefault(){}});
+ assert.match(e.$('priceSaveError').textContent,/Reabre esta venta para comprobar/);
+ assert.equal(e.$('savePriceDecision').disabled,false);
+});

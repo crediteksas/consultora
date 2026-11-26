@@ -46,7 +46,7 @@ function operations(rows, contexts = [], incidents = [], selected = {}) {
     esc: escapeHtml,
     // Null would format as zero, so a missing-value regression remains observable.
     money: (value) => `COP ${Number(value)}`,
-    openPriceEditor: (id) => calls.push(['editor', id]),
+    openPriceEditor: (id,options) => calls.push(['editor', id,options?.operationOnly]),
     tarifarioKrediya: {openTariff:()=>calls.push(['tarifario'])},
     loadTab: (...args) => calls.push(['tab', ...args])
   };
@@ -264,9 +264,10 @@ test('la novedad conserva la referencia, IMEI y precios congelados de su operaci
   assert.doesNotMatch(html,/SAMSUNG|otra-imei|999999/);
 });
 
-test('la diferencia permite editar la referencia sin exigir aprobación individual', () => {
+test('la diferencia abre la corrección de una venta y no el tarifario general', () => {
   const result = operations([row], [tariff], [priceIssue]);
-  assert.equal(result.buttons('[data-open-tariff]').length, 1);
+  assert.equal(result.buttons('[data-open-tariff]').length, 0);
+  const [edit]=result.buttons('[data-edit-operation-price]');assert.ok(edit);edit.onclick();assert.deepEqual(result.calls[0],['editor',row.id,true]);
   assert.match(result.html, /Editar PVP y PAGAMOS/);
   assert.match(result.html, /informe consolidado de 7 días/);
   assert.doesNotMatch(result.html, /Dar instrucción a Maythe|Revisar precios/);
@@ -371,4 +372,27 @@ test('resumen calculado conserva los totales calculados y permite cero real', ()
   assert.match(list, /<td>COP 0<\/td>/);
   assert.match(metrics, /<small>Total a girar<\/small><strong>COP 414650<\/strong>/);
   assert.match(metrics, /<small>Utilidad total del negocio<\/small><strong>COP 0<\/strong>/);
+});
+
+test('corrección marcada se muestra aun si falta un bono; conserva fuente y tarifa histórica',()=>{
+ const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Acuerdo ficticio revisado'},automatica:{disponible:false,motivo:'Falta bono del ejecutivo'}};
+ const result=operations([row],[c]);assert.match(metricHtml(result.html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(result.html,'PAGAMOS pactado'),/750000/);assert.match(metricHtml(result.html,'PVP KORA'),/646400/);assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(result.html,/Acuerdo ficticio revisado/);assert.doesNotMatch(result.html,/class="pvp-difference-notice"/);assert.equal(result.buttons('[data-edit-operation-price]').length,1);assert.equal(result.buttons('[data-open-tariff]').length,0);
+});
+
+test('corrección posterior al cálculo muestra los nuevos importes y retiene utilidad hasta recalcular',()=>{
+ const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,fecha:'2026-11-26T12:00:00Z',motivo:'Acuerdo ficticio'}};
+ const old={explanation:{valor_comercial:701500},pagamos:484800,pago_aliado:414650,total_bonos:20000,utilidad_creditek:123456,policy_snapshot:{motor:'krediya_v2',...tariff}};
+ const result=operations([{...row,ejecutivo_id:'fixture-executive',liquidation_calculations:[old]}],[c],[],{estado:'importada'});
+ assert.match(metricHtml(result.html,'PVP corregido para esta venta'),/1050000/);assert.match(metricHtml(result.html,'PAGAMOS pactado'),/750000/);assert.match(metricHtml(result.html,'Giro estimado · PAGAMOS menos inicial'),/679850/);
+ assert.match(metricHtml(result.html,'Utilidad después de bonos, gasto financiero y provisión'),/Pendiente de recalcular el lote/);
+ assert.doesNotMatch(result.html,/COP 123456|Giro al beneficiario|Pago neto liquidado|Bonos liquidados/);
+ assert.match(metricHtml(result.html,'PVP recibido de Krediya'),/701500/);assert.match(metricHtml(result.html,'PVP KORA'),/646400/);
+});
+
+test('un cálculo corregido vigente conserva pendiente el bono señalado en su snapshot',()=>{
+ const correction={ambito:'venta_v1',precio_venta:1050000,pagamos:750000,fecha:'2026-11-26T12:00:00Z',motivo:'Ficticio'};
+ const c={...tariff,pvp_aplicado:1050000,pagamos_aplicado:750000,correccion_venta:correction};
+ const calc={explanation:{valor_comercial:1050000},pagamos:750000,pago_aliado:679850,total_bonos:20000,utilidad_creditek:123456,policy_snapshot:{motor:'krediya_v2',...c,bono_ejecutivo_pendiente:true}};
+ const {html}=operations([{...row,ejecutivo_id:'fixture-executive',liquidation_calculations:[calc]}],[c]);
+ assert.match(metricHtml(html,'Utilidad después de bonos, gasto financiero y provisión'),/Falta bono del ejecutivo/);assert.doesNotMatch(html,/COP 123456/);
 });

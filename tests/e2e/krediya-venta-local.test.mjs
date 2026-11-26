@@ -1,0 +1,22 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile,mkdir} from 'node:fs/promises';import {resolve,extname} from 'node:path';import {chromium} from '@playwright/test';
+const root=process.cwd(),app=await readFile('creditek/erp/aliados-liquidaciones-app.js','utf8'),editor=app.slice(app.indexOf('  async function openPriceEditor('),app.indexOf('  async function stateRpc('));
+const html=(await readFile('creditek/erp/aliados-liquidaciones.html','utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
+const fixture={referencia:'Equipo Ficticio con tarifa histórica',tienda:'Tienda Ficticia',imei:'FICTICIO',fecha:'2026-11-17',pvp_guardado:1000000,pagamos_guardado:700000,pvp_recibido:900000,pvp_aplicado:1050000,pagamos_aplicado:750000,inicial:100000,bonos:0,correccion_venta:{ambito:'venta_v1',precio_venta:1050000,pagamos:750000,motivo:'Corrección ficticia anterior'}};
+test('editor individual permite corregir sin tocar tarifa: escritorio y móvil con estilos reales',async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ for(const width of [1440,390,320]){
+  const page=await browser.newPage({viewport:{width,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname!=='kora.test')return route.abort();if(u.pathname==='/creditek/erp/aliados-liquidaciones.html')return route.fulfill({contentType:'text/html',body:html});const p=resolve(root,'.'+u.pathname);if(!p.startsWith(root+'/'))return route.abort();try{return route.fulfill({contentType:({'.css':'text/css','.js':'text/javascript'})[extname(p)]||'application/octet-stream',body:await readFile(p)});}catch{return route.fulfill({status:404,body:''});}});
+  await page.goto('https://kora.test/creditek/erp/aliados-liquidaciones.html');await page.addStyleTag({url:'https://kora.test/design-system/components/kora-responsive.css'});
+  await page.evaluate(({editor,fixture})=>{
+   document.body.classList.add('kora-product-page','kora-responsive-ready');window.fixtureCalls=[];window.$=id=>document.getElementById(id);window.money=v=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);window.esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));window.selected={id:'fixture-lot'};window.loadBatches=window.openDetail=async()=>{};window.loadTab=async(...a)=>window.fixtureCalls.push({tab:a});window.sb={rpc:async(name,args)=>{window.fixtureCalls.push({name,args});return name==='aliados_contexto_precio_krediya'?{data:fixture}:{error:null};}};
+   window.fixtureOpen=Function(editor+';return openPriceEditor;')();
+  },{editor,fixture});
+  await page.evaluate(()=>window.fixtureOpen('fixture-credit',{operationOnly:true}));await page.getByRole('dialog').filter({has:page.locator('#priceDecisionForm')}).waitFor();
+  assert.equal(await page.locator('#decisionPvp').inputValue(), '1050000');assert.equal(await page.locator('#decisionPagamos').inputValue(),'750000');assert.equal(await page.locator('#decisionPvp').isEditable(),true);assert.equal(await page.locator('#decisionPagamos').isEditable(),true);assert.equal(await page.locator('#priceDecisionForm input[type=date]').count(),0);
+  const box=await page.locator('#priceEditor .modal-box').boundingBox();assert.ok(box.x>=-1&&box.y>=-1&&box.x+box.width<=width+1&&box.y+box.height<=901,JSON.stringify(box));assert.equal(await page.locator('#priceEditor .modal-box').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true);
+  await page.locator('#decisionPvp').fill('1100000');await page.locator('#decisionPagamos').fill('780000');await page.locator('#priceReason').fill('Corrección ficticia confirmada para esta venta');assert.equal(await page.locator('#savePriceDecision').isEnabled(),true);
+  await page.locator('#savePriceDecision').click();const calls=await page.evaluate(()=>window.fixtureCalls);const writes=calls.filter(c=>c.name&&c.name!=='aliados_contexto_precio_krediya');assert.equal(writes.length,1);assert.equal(writes[0].name,'aliados_resolver_precio_krediya');assert.equal(writes[0].args.p_operation_id,'fixture-credit');assert.equal(writes[0].args.p_precio_venta,1100000);assert.equal(writes[0].args.p_pagamos,780000);assert.ok(calls.some(c=>c.tab?.[0]==='operations'&&c.tab[1]==='fixture-credit'));assert.deepEqual(errors,[]);await page.close();
+ }
+ }finally{await browser.close();}
+});

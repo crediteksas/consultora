@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Four existing functions, isolated PGlite upgrade/rebuild using exact before/after code and fictional dependency schemas. No table, policy, permission, worker or production-data changes in this evidence.",
+  "migration_sha256": {
+    "supabase/migrations/20261126174052_krediya_correccion_precios_por_venta.sql": "ee68495c9b5840beded46e2dedcc4540d37c40cac1abebd1e5ce452de7d6b6e9"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-krediya-venta.test.mjs",
+      "sha256": "ce3ebc26b58f8d2d117e3011f6452d761a918e8f4c647e9147843f6a58f90c52"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/upgrade-before.json",
+      "sha256": "651701c12f556c13ae3966a0f021e11df4bfab9f17a36fcf6340b9934a8fee04"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/upgrade-after.json",
+      "sha256": "549e8661688ed655f671ebc3070dfed2d1ab197043fd83ee3447c9077dd5a794"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/upgrade-contract.json",
+      "sha256": "44515f087cc6f4aa89ddd0a4d3b79531fc2f570ff86bb822fb2fa27d6e479d5d"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/upgrade-created.json",
+      "sha256": "c29be6867bb896fd8993e7db89a30202a6fb29cc842a23fbd13e38ba83fa8508"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/rebuild-before.json",
+      "sha256": "0407375860e765c024208c475aca5217aecf391af6dec48e4e4b87d4e0a659e4"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/rebuild-after.json",
+      "sha256": "0fed6c12fcaecf4551ac8b43f9f0c859617a7d2f626a712bbeabffe6c70e0a60"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/rebuild-contract.json",
+      "sha256": "44515f087cc6f4aa89ddd0a4d3b79531fc2f570ff86bb822fb2fa27d6e479d5d"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/krediya-venta/rebuild-created.json",
+      "sha256": "c29be6867bb896fd8993e7db89a30202a6fb29cc842a23fbd13e38ba83fa8508"
+    }
+  }
+}

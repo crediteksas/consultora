@@ -1,0 +1,29 @@
+[
+  {
+    "schema": "public",
+    "name": "b2b_certificados_cliente",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "b2b_facturas_emitidas",
+    "kind": "r"
+  },
+  {
+    "schema": "public",
+    "name": "b2b_retenciones_cliente",
+    "kind": "r"
+  },
+  {
+    "schema": "kora_private",
+    "name": "auditar_registro_fiscal_b2b",
+    "kind": "function",
+    "identity": ""
+  },
+  {
+    "schema": "kora_private",
+    "name": "validar_periodo_fiscal_b2b",
+    "kind": "function",
+    "identity": ""
+  }
+]

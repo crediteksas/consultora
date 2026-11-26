@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_recover",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "206a317319283a01985495b0528dac5a",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_renew_platforms",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp_id uuid, p_cedula text, p_celular text, p_enlace_id uuid, p_commit jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "bbc7b9052f69f2c29b623a1a14fce0c4",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_retail_register",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_registration jsonb, p_consent jsonb, p_photo_subject text, p_photo_hashes jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "6e427c1b74e54a9a7f70d9852141eab3",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "kora_nova_retail_resume",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_otp uuid, p_enlace uuid, p_cedula text, p_celular text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "3e09e0fa1965fc16d6e8bc8af230726e",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_options",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_enlace_registro_id uuid, p_celular text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "db3e4768c8c538a5e46472ead9f33315",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_reserve",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_cedula text, p_celular text, p_enlace_registro_id uuid, p_request_id uuid, p_channel text, p_selected_reason text, p_codigo_hash text, p_expira_at timestamp with time zone",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "0b8ed1fbd721c6bd5c7e84885bc4e723",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_client_otp_status",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_request_id uuid, p_cedula text, p_celular text, p_enlace_registro_id uuid",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "0f8c073a97a8820184654c0b70814051",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_payjoy_source_matches",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_application uuid, p_payload_hash text, p_document text, p_phone text, p_consent jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "b027577725e625b95a70e164fab590a0",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_candidates",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "97fa47de4c26be3a9e26fe521d570ff8",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_review",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_revision integer, p_actor uuid, p_action text, p_note text",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "dc58e6597f5cea17170a864b5785c1f9",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    },
+    {
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "name": "nova_retail_save",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "EXECUTE"
+        }
+      ],
+      "schema": "public",
+      "identity": "p_source uuid, p_fingerprint text, p_decision jsonb, p_summary jsonb",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "1f4e7913310b47aa796eb45a9f528435",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "justification": "Already-reviewed Nova sources on main, separate from B2B. Replacing invoker definitions preserves exact service-only EXECUTE grants and existing relation permissions. This release does not replay the SQL in production."
+    }
+  ]
+}

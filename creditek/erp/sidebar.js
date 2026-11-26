@@ -275,6 +275,7 @@ html.${SHELL_ERROR_CLASS} #creditekShellBootError button {
       { label: 'Compra proveedor', href: 'compra-proveedor.html', lucide: 'package-plus', description: 'Registra compras, costos, pagos e ingreso de mercancía.', roles: ['gerencia', 'auditoria'] },
       { label: 'Inventario Central', href: 'bodega-central.html', lucide: 'warehouse', description: 'Consulta y administra las existencias de Creditek B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', lucide: 'book-open-check', description: 'Consulta cargos, abonos, saldos y soportes de clientes comerciales B2B.', roles: ['gerencia', 'auditoria'] },
+      { label: 'Facturas emitidas', href: 'facturas-emitidas-b2b.html', lucide: 'receipt-text', description: 'Consulta las ventas fiscales, el IVA y las retenciones certificadas por cada cliente B2B.', roles: ['gerencia', 'auditoria'] },
       { label: 'Dashboard B2B', href: 'utilidad-creditek.html#dashboard', lucide: 'layout-dashboard', description: 'Consulta facturación, costos y utilidad B2B en un solo resumen.', roles: ['gerencia', 'auditoria'] },
       { label: 'Resumen de saldos B2B', href: 'resumen-saldos-b2b.html', lucide: 'scale', description: 'Consulta cuánto deben las tiendas y clientes, cuánto se debe a proveedores y la diferencia entre ambas carteras.', roles: ['gerencia', 'auditoria'] },
     ]},

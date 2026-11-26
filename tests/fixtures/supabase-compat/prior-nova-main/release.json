@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Read-only isolated preservation evidence for two previously applied Nova migrations, no Worker or production changes.",
+  "migration_sha256": {
+    "supabase/migrations/20261125233814_nova_retail_restrictive_approval_guard.sql": "866fffe8bcf848045632b9602f45bfc5c663dffc3d9311949273cf6e8661cb75",
+    "supabase/migrations/20261126002712_nova_three_allied_kora_flow.sql": "310944798a8f57a182756a23dc949438263852d343bbc9632f6ab441bd534f68"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-prior-nova-main.test.mjs",
+      "sha256": "a4b23d36be47568993d71e46f2fc54bd425baef95d610a53ca74dad7a0a185f8"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/upgrade-before.json",
+      "sha256": "6295060de7c89045060e054723d0623f2ab04d30c08289c664fe369b6854f56c"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/upgrade-after.json",
+      "sha256": "da87fcf85700d4d562ec05650a6b684e39e4bb5d65a09a9881ebfc56fe5ffdb5"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/upgrade-contract.json",
+      "sha256": "e5685671dbb9b221248bf16ab933f47b5208415a6e3e592601c008a050560cce"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/upgrade-created.json",
+      "sha256": "bb0f834beba6ede0937db990f0b6119ca500bbdcb0fa1074fc47147848513b40"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/rebuild-before.json",
+      "sha256": "fa313fb4e815f99e468d2ed080bafd4c31a322ea021ca97b7b04908fac1a612d"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/rebuild-after.json",
+      "sha256": "02e9d0316bb5632eb1f80b7732d7a2b78181027394fff01a859fcf64b8683701"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/rebuild-contract.json",
+      "sha256": "e5685671dbb9b221248bf16ab933f47b5208415a6e3e592601c008a050560cce"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/rebuild-created.json",
+      "sha256": "bb0f834beba6ede0937db990f0b6119ca500bbdcb0fa1074fc47147848513b40"
+    }
+  }
+}

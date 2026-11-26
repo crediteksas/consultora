@@ -74,6 +74,14 @@
     {
       "path": "tests/fixtures/supabase-compat/liquidaciones-pesos/release.json",
       "sha256": "f182c29b10aad6bcb2fbd278cd02d0dc9e3370b42101dab36263ecf4db7bd310"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/release.json",
+      "sha256": "5f4d4af2f021ec28bb49698913790d184d0c32def976570c9a6272cdb36934d7"
+    },
+    {
+      "path": "tests/fixtures/supabase-compat/prior-nova-main/release.json",
+      "sha256": "d7e1bd550cfa84edb08ff597f68caf9d182e571212f002b334cd16b8534b5435"
     }
   ],
   "upgrade": {

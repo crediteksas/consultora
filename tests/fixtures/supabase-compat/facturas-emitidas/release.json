@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "scope": "Isolated upgrade/rebuild of documentary B2B issued invoices and customer withholding certificates. Fictional fixture; no production data or financial posting.",
+  "migration_sha256": {
+    "supabase/migrations/20261126021316_b2b_facturas_emitidas_conciliacion.sql": "21228b84bed171d0fbc6684338132e93aef929e903dfed4a3fa8a78b9e77a3f8"
+  },
+  "isolation_tests": [
+    {
+      "path": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "sha256": "da42ebbd0f27441ed3b374fc581ba2a14bb20d65a38cb108c8d93a1c13c4b9e7"
+    }
+  ],
+  "test_runner_sha256": "bd59347f9fd39574dab2a780736a6c1161a9c9e61963531d463cd380afaf6d98",
+  "emitter_sha256": "a71cb32dab8f595088d3f0bb9ee5700e984e96ff1fea8fd5778a525c8586703f",
+  "upgrade": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/upgrade-before.json",
+      "sha256": "840a2363a689265b0ee53906c0629ba5129cad942431dac82c0a403ed51768f1"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/upgrade-after.json",
+      "sha256": "44215b27b5ba1a016f20b63ea8c85561a8d7e1f44fb7035e7a821e7abdbd5d97"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/upgrade-contract.json",
+      "sha256": "a88e8760792cbd343d3c93af78d4ac85957a029a275220c05b88e66b37dd5772"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/upgrade-created.json",
+      "sha256": "ae5a88f9cbf20a77e85bb7553d5341153f147b2d708bffd48e12c1da5d308d7a"
+    }
+  },
+  "rebuild": {
+    "before": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/rebuild-before.json",
+      "sha256": "0a0efbc12422702593d95f71a16f635a93ec43429a40967a199e8e52ffc31146"
+    },
+    "after": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/rebuild-after.json",
+      "sha256": "a6e0f4dd65365b8dae857b34b95b486ee507f9ab628854ae490f2eae607baeec"
+    },
+    "contract": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/rebuild-contract.json",
+      "sha256": "a88e8760792cbd343d3c93af78d4ac85957a029a275220c05b88e66b37dd5772"
+    },
+    "created": {
+      "path": "tests/fixtures/supabase-compat/facturas-emitidas/rebuild-created.json",
+      "sha256": "ae5a88f9cbf20a77e85bb7553d5341153f147b2d708bffd48e12c1da5d308d7a"
+    }
+  }
+}

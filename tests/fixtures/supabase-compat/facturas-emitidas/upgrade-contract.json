@@ -1,0 +1,599 @@
+{
+  "schema_version": 1,
+  "project": "kora",
+  "objects": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "b2b_certificados_cliente",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "tipo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "desde",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "hasta",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "base_certificada",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor_certificado",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_correo_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_archivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "lote",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "justification": "Documentary fiscal records: active corporate profiles can read. Browser API roles anon/authenticated have no write grants; service_role retains its provider DML grants with TRUNCATE explicitly revoked. Both invoker trigger helpers have no API EXECUTE grants. No legacy object changes."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "b2b_facturas_emitidas",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "emisor_nit",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "receptor_nit",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "numero",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "subtotal",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "iva",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "total",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "retencion_impresa",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "neto_impreso",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cufe",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "detalle",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cantidad",
+          "type": "numeric(16,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "observacion",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado_documento",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "motivo_revision",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_correo_id",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_archivo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fuente_sha256",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "soportes_adicionales",
+          "type": "jsonb",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "lote",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "justification": "Documentary fiscal records: active corporate profiles can read. Browser API roles anon/authenticated have no write grants; service_role retains its provider DML grants with TRUNCATE explicitly revoked. Both invoker trigger helpers have no API EXECUTE grants. No legacy object changes."
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdxtm/postgres,authenticated=r/postgres}",
+      "rls": true,
+      "kind": "r",
+      "name": "b2b_retenciones_cliente",
+      "owner": "postgres",
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "MAINTAIN"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantor": "postgres",
+          "grantable": false,
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "cliente_codigo",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "certificado_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "linea",
+          "type": "integer",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "fecha",
+          "type": "date",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "base",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "valor",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "referencia",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "factura_id",
+          "type": "uuid",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "estado",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "candidatas",
+          "type": "text[]",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "nota",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "diferencia_base",
+          "type": "numeric(18,2)",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "lote",
+          "type": "text",
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "acl": null,
+          "name": "registrado_at",
+          "type": "timestamp with time zone",
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "options": null,
+      "force_rls": false,
+      "policy_count": 1,
+      "definition_md5": null,
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "justification": "Documentary fiscal records: active corporate profiles can read. Browser API roles anon/authenticated have no write grants; service_role retains its provider DML grants with TRUNCATE explicitly revoked. Both invoker trigger helpers have no API EXECUTE grants. No legacy object changes."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "auditar_registro_fiscal_b2b",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "a96c4439feadb56981513d4c896cac4b",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "justification": "Documentary fiscal records: active corporate profiles can read. Browser API roles anon/authenticated have no write grants; service_role retains its provider DML grants with TRUNCATE explicitly revoked. Both invoker trigger helpers have no API EXECUTE grants. No legacy object changes."
+    },
+    {
+      "acl": "{postgres=X/postgres}",
+      "name": "validar_periodo_fiscal_b2b",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "grants": [],
+      "schema": "kora_private",
+      "identity": "",
+      "config_md5": "033ede72622928c856582b307dccfe4b",
+      "routine_kind": "f",
+      "definition_md5": "79daf4eb83a9cffe8070f86e1938617a",
+      "security_definer": false,
+      "kind": "function",
+      "column_acls": {},
+      "isolation_test": "tests/security/supabase-compatibility-facturas-emitidas.test.mjs",
+      "justification": "Documentary fiscal records: active corporate profiles can read. Browser API roles anon/authenticated have no write grants; service_role retains its provider DML grants with TRUNCATE explicitly revoked. Both invoker trigger helpers have no API EXECUTE grants. No legacy object changes."
+    }
+  ],
+  "allow_catalog_changes": {
+    "policies": "[{\"check_md5\":null,\"command\":\"r\",\"name\":\"b2b_certificados_cliente_lectura\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"b2b_certificados_cliente\",\"using_md5\":\"3cee36d001608c15ffb5110923891e85\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"b2b_facturas_emitidas_lectura\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"b2b_facturas_emitidas\",\"using_md5\":\"3cee36d001608c15ffb5110923891e85\"},{\"check_md5\":null,\"command\":\"r\",\"name\":\"b2b_retenciones_cliente_lectura\",\"permissive\":true,\"roles\":[\"authenticated\"],\"schema\":\"public\",\"table\":\"b2b_retenciones_cliente\",\"using_md5\":\"3cee36d001608c15ffb5110923891e85\"}]",
+    "triggers": "[{\"definition_md5\":\"7a1c88b532751b096beb36bc635db40e\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"auditar_registro_fiscal_b2b\",\"function_schema\":\"kora_private\",\"name\":\"b2b_certificados_cliente_auditoria\",\"schema\":\"public\",\"table\":\"b2b_certificados_cliente\"},{\"definition_md5\":\"f267def9bf2037bd759b27e2528b963d\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"auditar_registro_fiscal_b2b\",\"function_schema\":\"kora_private\",\"name\":\"b2b_facturas_emitidas_auditoria\",\"schema\":\"public\",\"table\":\"b2b_facturas_emitidas\"},{\"definition_md5\":\"fd72a9eb731e765f30db1282ddb52fdd\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"auditar_registro_fiscal_b2b\",\"function_schema\":\"kora_private\",\"name\":\"b2b_retenciones_cliente_auditoria\",\"schema\":\"public\",\"table\":\"b2b_retenciones_cliente\"},{\"definition_md5\":\"9f5ef80f9a405c78ef7a643b95a5bacf\",\"enabled\":\"O\",\"function_identity\":\"\",\"function_name\":\"validar_periodo_fiscal_b2b\",\"function_schema\":\"kora_private\",\"name\":\"b2b_retenciones_cliente_periodo\",\"schema\":\"public\",\"table\":\"b2b_retenciones_cliente\"}]"
+  }
+}

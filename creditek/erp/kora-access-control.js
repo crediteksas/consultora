@@ -16,7 +16,7 @@
   const B2B_ROUTES = new Set([
     'pedidos-b2b.html', 'proveedores.html', 'compra-proveedor.html', 'bodega-central.html',
     'remisiones.html', 'documento-remision.html', 'cuenta-corriente.html', 'cartera-b2b.html',
-    'utilidad-creditek.html', 'resumen-saldos-b2b.html',
+    'utilidad-creditek.html', 'resumen-saldos-b2b.html', 'facturas-emitidas-b2b.html',
   ]);
   const ALLIES_ROUTES = new Set([
     'aliados-dashboard.html', 'aliados.html', 'aliados-ejecutivos.html',
@@ -70,6 +70,7 @@
       { label: 'Inventario Central', href: 'bodega-central.html', icon: 'warehouse' },
       { label: 'Remisiones', href: 'remisiones.html', icon: 'file-output' },
       { label: 'Cartera clientes B2B', href: 'cartera-b2b.html', icon: 'book-open-check' },
+      { label: 'Facturas emitidas', href: 'facturas-emitidas-b2b.html', icon: 'receipt-text' },
       { label: 'Consignaciones', href: 'cuenta-corriente.html#consignaciones', icon: 'landmark' },
     ] },
     { title: 'CREDITEK ALIADOS', icon: 'handshake', capability: 'aliados', items: [
